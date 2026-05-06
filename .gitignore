@@ -84,3 +84,12 @@ assets/c__Users_*
 
 # Local agent tooling scratchpad (MCP/automation helpers)
 agent-tools/
+
+# Local REST Client files with real tokens (copy from englishdom-graphql.http)
+http/*.local.http
+
+# Per-Python-version venvs (e.g. backend/venv-312 for the project-target 3.12)
+backend/venv-*/
+
+# Supabase CLI local cache
+supabase/.temp/
