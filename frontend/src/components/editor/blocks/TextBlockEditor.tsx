@@ -105,7 +105,7 @@ export function TextBlockEditor({ block, onSaved }: Props) {
           Save Text
         </Button>
         {autoSaveStatus === "pending" && (
-          <span className="text-xs text-muted-foreground animate-pulse">
+          <span className="text-xs text-muted-foreground">
             Unsaved changes...
           </span>
         )}
