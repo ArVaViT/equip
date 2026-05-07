@@ -45,9 +45,17 @@ internally).
 :bulb: **Accessibility audit** — WCAG 2.1 AA compliance, screen reader
 testing, keyboard navigation for all interactive elements.
 
-:bulb: **i18n framework** — extract hardcoded Russian strings into a
-translation system (likely `react-i18next`) so the platform can serve
-English, Ukrainian, and other language communities.
+:white_check_mark: **Bilingual content (RU↔EN)** — `react-i18next` for
+the UI; Gemini-backed translation pipeline for all teacher-authored
+fields (registry-driven, cached per source hash); canonical KJV /
+Synodal substitution for `<blockquote>` Bible quotes; CI guard
+prevents endpoint regressions. See the [Unreleased] entry in the
+[CHANGELOG](CHANGELOG.md) for the full list of shipped pieces.
+
+:bulb: **Ukrainian (UK) as a third locale** — extending the existing
+RU/EN pipeline to UK is a registry change (locales tuple, `language_names`
+prompt map, optional UK Bible) plus translation runs; deferred until
+there's confirmed UK demand from the community.
 
 :bulb: **Comprehensive test coverage** — push backend above 95%, add
 Playwright E2E tests for critical student and teacher flows.
@@ -112,5 +120,6 @@ setup for organizations that want to run their own instance.
 We especially welcome contributions from:
 - **Nonprofit Bible schools** who can share their real-world needs.
 - **Designers** who want to improve the student/teacher experience.
-- **Translators** who can help make the platform multilingual.
+- **Translators** who can review and refine the AI-translated RU↔EN
+  content (especially the canonical Bible-school terminology).
 - **QA testers** who can help us find and fix bugs.

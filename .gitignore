@@ -85,7 +85,14 @@ assets/c__Users_*
 # Local agent tooling scratchpad (MCP/automation helpers)
 agent-tools/
 
-# Local REST Client files with real tokens (copy from englishdom-graphql.http)
+# Ad-hoc one-shot backfill scripts — keep out of source control to
+# avoid drift; the durable equivalent is the registry-driven hook.
+backend/scripts/backfill_one_course.py
+
+# Local REST Client (.http) scratch directory. Lives in the workspace
+# but is personal — never tracked. Pre-existing rule preserved for
+# the older `*.local.http` pattern.
+http/
 http/*.local.http
 
 # Per-Python-version venvs (e.g. backend/venv-312 for the project-target 3.12)
