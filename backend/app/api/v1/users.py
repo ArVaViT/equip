@@ -102,9 +102,11 @@ def update_my_preferences(
 
     previous = current_user.preferred_locale
     current_user.preferred_locale = body.preferred_locale
-    db.commit()
-    db.refresh(current_user)
 
+    # Audit log MUST share a transaction with the locale change. Writing
+    # the audit row before the commit means a single COMMIT either makes
+    # both visible or rolls both back — there is never a window in which
+    # the new locale is durable but the audit trail is missing.
     log_action(
         db,
         current_user.id,
@@ -114,6 +116,9 @@ def update_my_preferences(
         details={"preferred_locale": {"from": previous, "to": body.preferred_locale}},
         request=request,
     )
+
+    db.commit()
+    db.refresh(current_user)
 
     return current_user
 

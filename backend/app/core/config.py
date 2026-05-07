@@ -1,7 +1,7 @@
 import logging
 import os
 
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
@@ -32,9 +32,14 @@ class Settings(BaseSettings):
     # the API key would leak into the public bundle. The pipeline is opt-in:
     # when the key is absent the translation service degrades to a no-op so
     # dev environments without billing can still run the rest of the app.
-    GEMINI_API_KEY: str | None = Field(default=None, description="Google AI Studio API key (server-only)")
+    # ``SecretStr`` keeps the value out of any incidental ``Settings``
+    # repr/log dump; callers must use ``.get_secret_value()`` to read it.
+    GEMINI_API_KEY: SecretStr | None = Field(default=None, description="Google AI Studio API key (server-only)")
     GEMINI_MODEL: str = Field(default="gemini-flash-latest", description="Gemini model id used for translations")
-    GEMINI_TIMEOUT_SECONDS: float = Field(default=30.0, description="Per-request timeout for Gemini calls")
+    # 15s is enough for typical course-block translations; combined with the
+    # bounded retry schedule in ``GeminiTranslationProvider`` (≤1.5s budget)
+    # this keeps a single bad batch from monopolising a worker for ~95s.
+    GEMINI_TIMEOUT_SECONDS: float = Field(default=15.0, description="Per-request timeout for Gemini calls")
     GEMINI_MAX_OUTPUT_TOKENS: int = Field(default=4096, description="Cap on generation length")
 
     @model_validator(mode="after")
