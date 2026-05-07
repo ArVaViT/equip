@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react"
 import { useAuth } from "@/context/useAuth"
-import { registerSchema } from "@/lib/validations/auth"
+import { makeRegisterSchema } from "@/lib/validations/auth"
+import i18n from "@/i18n/config"
 
 export type FormState = {
   full_name: string
@@ -47,7 +48,7 @@ export function useRegister() {
   const handleSubmit = useCallback(async () => {
     setServerError("")
 
-    const result = registerSchema.safeParse(form)
+    const result = makeRegisterSchema().safeParse(form)
     if (!result.success) {
       const fieldErrors: Partial<Record<string, string>> = {}
       for (const issue of result.error.issues) {
@@ -72,7 +73,7 @@ export function useRegister() {
       if (supaErr.message === "DUPLICATE_EMAIL") {
         setDuplicateEmail(true)
       } else {
-        setServerError(supaErr.message || "Registration failed. Please try again.")
+        setServerError(supaErr.message || i18n.t("auth.errors.registrationFailed"))
       }
     } finally {
       setLoading(false)
@@ -85,7 +86,7 @@ export function useRegister() {
       await signInWithGoogle()
     } catch (err: unknown) {
       const supaErr = err as { message?: string }
-      setServerError(supaErr.message || "Google sign-up failed.")
+      setServerError(supaErr.message || i18n.t("auth.errors.googleSignUpFailed"))
     } finally {
       setGoogleLoading(false)
     }

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom"
 import { ArrowLeft, Clock, MailCheck } from "lucide-react"
+import { Trans, useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import AuthLayout from "@/components/layout/AuthLayout"
 
@@ -14,13 +15,18 @@ interface Props {
  * tools unlock.
  */
 export function SuccessView({ email, isTeacher }: Props) {
+  const { t } = useTranslation()
   return (
     <AuthLayout
-      heading={isTeacher ? "Application submitted" : "Check your email"}
+      heading={
+        isTeacher
+          ? t("authRegister.success.headingTeacher")
+          : t("authRegister.success.headingDefault")
+      }
       subheading={
         isTeacher
-          ? "One more step before you can start teaching"
-          : "Almost there — just one more step"
+          ? t("authRegister.success.subheadingTeacher")
+          : t("authRegister.success.subheadingDefault")
       }
     >
       <div className="space-y-6 animate-fade-in">
@@ -31,23 +37,25 @@ export function SuccessView({ email, isTeacher }: Props) {
             }`}
           >
             {isTeacher ? (
-              <Clock className="h-8 w-8 text-warning" />
+              <Clock className="h-8 w-8 text-warning" strokeWidth={1.75} aria-hidden />
             ) : (
-              <MailCheck className="h-8 w-8 text-primary" />
+              <MailCheck className="h-8 w-8 text-primary" strokeWidth={1.75} aria-hidden />
             )}
           </div>
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              We sent a confirmation link to <strong className="text-foreground">{email}</strong>.
+              <Trans
+                i18nKey="authRegister.success.body"
+                values={{ email }}
+                components={{ strong: <strong className="text-foreground" /> }}
+              />
               <br />
-              Click the link in the email to activate your account.
+              {t("authRegister.success.clickLinkToActivate")}
             </p>
             {isTeacher && (
               <div className="mt-4 rounded-md border border-border border-l-[3px] border-l-warning bg-warning/5 p-3">
                 <p className="text-sm leading-relaxed text-foreground">
-                  After confirming your email, your teacher account will need to be approved by an
-                  administrator. You'll be able to log in, but course creation tools will be
-                  available once approved.
+                  {t("authRegister.success.teacherApprovalBanner")}
                 </p>
               </div>
             )}
@@ -55,8 +63,8 @@ export function SuccessView({ email, isTeacher }: Props) {
         </div>
         <Link to="/login" className="block">
           <Button variant="outline" size="lg" className="w-full">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Sign In
+            <ArrowLeft className="h-4 w-4 mr-2" strokeWidth={1.75} aria-hidden />
+            {t("authRegister.success.backToSignIn")}
           </Button>
         </Link>
       </div>
