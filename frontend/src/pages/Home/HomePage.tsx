@@ -122,7 +122,7 @@ function MyCoursesSection() {
     <div className="stagger-fade-in flex flex-col gap-4">
       {filtered
         .filter((e) => e.course?.id)
-        .map((enrollment) => {
+        .map((enrollment, index) => {
         const grade = grades.find((g) => g.course_id === enrollment.course_id)
         const progressColor =
           enrollment.progress >= 100 ? "bg-success" : "bg-primary"
@@ -132,6 +132,7 @@ function MyCoursesSection() {
           <Link
             key={enrollment.id}
             to={`/courses/${courseId}`}
+            style={{ "--stagger-index": index } as React.CSSProperties}
             className="motion-safe-hover-lift group block rounded-md border border-border/90 bg-muted/10 px-4 py-4 transition-colors hover:border-primary/30 hover:bg-muted/25 sm:px-5"
           >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
@@ -252,7 +253,7 @@ export default function HomePage() {
 
       {!user && (
         <div className="mb-8 flex items-center justify-center gap-2 rounded-md border border-border border-l-[3px] border-l-info bg-info/5 px-4 py-3">
-          <LogIn className="h-4 w-4 text-info" />
+          <LogIn className="h-4 w-4 text-info" strokeWidth={1.75} aria-hidden="true" />
           <p className="text-sm text-foreground">
             <Link
               to="/login"
@@ -288,8 +289,12 @@ export default function HomePage() {
         />
       ) : (
         <div className="stagger-fade-in grid grid-cols-1 gap-7 sm:grid-cols-2 lg:grid-cols-3">
-          {courses.map((course) => (
-            <CourseCard key={course.id} course={course} />
+          {courses.map((course, index) => (
+            <CourseCard
+              key={course.id}
+              course={course}
+              style={{ "--stagger-index": index } as React.CSSProperties}
+            />
           ))}
         </div>
       )}

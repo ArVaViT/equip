@@ -30,7 +30,7 @@ export default function AnnouncementBanner() {
   return (
     <div className="border-b border-border bg-muted/40">
       <div className="container mx-auto flex items-center gap-3 px-4 py-2.5">
-        <Megaphone className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <Megaphone className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
         <div className="min-w-0 flex-1 text-wrap-safe">
           <span className="text-sm font-medium text-foreground">{announcement.title}</span>
           {announcement.content && (
@@ -46,7 +46,7 @@ export default function AnnouncementBanner() {
           className="rounded p-1 text-muted-foreground hover:bg-muted"
           aria-label="Dismiss announcement"
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
         </button>
       </div>
     </div>

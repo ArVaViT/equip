@@ -105,7 +105,7 @@ export function UsersCard({
             </div>
           )}
           <div className="relative w-full max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
             <Input
               placeholder="Search by name or email…"
               value={searchInput}

@@ -111,7 +111,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
         <CardContent className="py-6">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-warning/10">
-              <Clock className="h-6 w-6 animate-pulse text-warning" />
+              <Clock className="h-6 w-6 text-warning" strokeWidth={1.75} aria-hidden="true" />
             </div>
             <div className="flex-1">
               <h3 className="font-serif text-base font-semibold">Awaiting teacher approval</h3>
@@ -131,7 +131,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
         <CardContent className="py-6">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-info/10">
-              <Clock className="h-6 w-6 animate-pulse text-info" />
+              <Clock className="h-6 w-6 text-info" strokeWidth={1.75} aria-hidden="true" />
             </div>
             <div className="flex-1">
               <h3 className="font-serif text-base font-semibold">Awaiting admin approval</h3>

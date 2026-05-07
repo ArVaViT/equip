@@ -184,63 +184,36 @@
       transform: translateY(0);
     }
   }
-  /* Staggered entrance for list/grid children — editorial, short duration */
+  /* Staggered entrance for list/grid children — editorial, short duration.
+     Unbounded: callers set `style={{ "--stagger-index": index }}` on each
+     direct child so any list length staggers correctly. If `--stagger-index`
+     is missing the child still animates (delay 0); a small bounded fallback
+     for the first eight children below preserves the staggered look on
+     legacy callers that don't yet set the custom property. */
   .stagger-fade-in > * {
     animation: fade-in 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--stagger-index, 0) * 45ms);
   }
-  .stagger-fade-in > *:nth-child(1) {
-    animation-delay: 0ms;
-  }
-  .stagger-fade-in > *:nth-child(2) {
+  .stagger-fade-in > *:not([style*="--stagger-index"]):nth-child(2) {
     animation-delay: 45ms;
   }
-  .stagger-fade-in > *:nth-child(3) {
+  .stagger-fade-in > *:not([style*="--stagger-index"]):nth-child(3) {
     animation-delay: 90ms;
   }
-  .stagger-fade-in > *:nth-child(4) {
+  .stagger-fade-in > *:not([style*="--stagger-index"]):nth-child(4) {
     animation-delay: 135ms;
   }
-  .stagger-fade-in > *:nth-child(5) {
+  .stagger-fade-in > *:not([style*="--stagger-index"]):nth-child(5) {
     animation-delay: 180ms;
   }
-  .stagger-fade-in > *:nth-child(6) {
+  .stagger-fade-in > *:not([style*="--stagger-index"]):nth-child(6) {
     animation-delay: 225ms;
   }
-  .stagger-fade-in > *:nth-child(7) {
+  .stagger-fade-in > *:not([style*="--stagger-index"]):nth-child(7) {
     animation-delay: 270ms;
   }
-  .stagger-fade-in > *:nth-child(8) {
+  .stagger-fade-in > *:not([style*="--stagger-index"]):nth-child(8) {
     animation-delay: 315ms;
-  }
-  .stagger-fade-in > *:nth-child(9) {
-    animation-delay: 360ms;
-  }
-  .stagger-fade-in > *:nth-child(10) {
-    animation-delay: 405ms;
-  }
-  .stagger-fade-in > *:nth-child(11) {
-    animation-delay: 450ms;
-  }
-  .stagger-fade-in > *:nth-child(12) {
-    animation-delay: 495ms;
-  }
-  .stagger-fade-in > *:nth-child(13) {
-    animation-delay: 540ms;
-  }
-  .stagger-fade-in > *:nth-child(14) {
-    animation-delay: 585ms;
-  }
-  .stagger-fade-in > *:nth-child(15) {
-    animation-delay: 630ms;
-  }
-  .stagger-fade-in > *:nth-child(16) {
-    animation-delay: 675ms;
-  }
-  .stagger-fade-in > *:nth-child(17) {
-    animation-delay: 720ms;
-  }
-  .stagger-fade-in > *:nth-child(18) {
-    animation-delay: 765ms;
   }
   @media (prefers-reduced-motion: no-preference) {
     .motion-safe-hover-lift {

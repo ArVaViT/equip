@@ -10,6 +10,7 @@ import { formatDate } from "@/i18n/format"
 
 interface CourseCardProps {
   course: Course
+  style?: React.CSSProperties
 }
 
 type EnrollmentState = "opens" | "closed" | "open" | null
@@ -49,7 +50,7 @@ function EnrollmentBadge({ start, end }: { start?: string | null; end?: string |
   )
 }
 
-function CourseCard({ course }: CourseCardProps) {
+function CourseCard({ course, style }: CourseCardProps) {
   const { t } = useTranslation()
   const [imgError, setImgError] = useState(false)
   const coverSrc = toProxyImage(course.image_url)
@@ -58,6 +59,7 @@ function CourseCard({ course }: CourseCardProps) {
   return (
     <Link
       to={`/courses/${course.id}`}
+      style={style}
       className="group block rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       <Card className="flex h-full flex-col overflow-hidden border-border/60 transition-colors hover:border-primary/40">

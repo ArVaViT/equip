@@ -218,7 +218,7 @@ export default function StudentProgress() {
       />
 
       <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
         <Input
           placeholder="Search students by name or email..."
           value={searchInput}

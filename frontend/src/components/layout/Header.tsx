@@ -92,6 +92,11 @@ export default function Header() {
                 {t("header.certificates")}
               </HeaderNavLink>
               {isTeacher && (
+                // header.manage / header.admin are the COMPACT (desktop bar) labels
+                // for the same destinations as header.manageCourses / header.adminPanel
+                // used in the mobile sheet. Two keys per destination is intentional:
+                // the bar is space-constrained, the sheet has room for a verbose label.
+                // Don't unify these — see UI-DECISIONS.md.
                 <HeaderNavLink to="/teacher" active={isActive("/teacher")}>
                   {t("header.manage")}
                 </HeaderNavLink>
@@ -131,7 +136,7 @@ export default function Header() {
                           }}
                         />
                       ) : (
-                        <UserIcon className="h-3.5 w-3.5" strokeWidth={ICON_STROKE} />
+                        <UserIcon className="h-3.5 w-3.5" strokeWidth={ICON_STROKE} aria-hidden="true" />
                       )}
                     </Button>
                   </Link>
@@ -162,7 +167,7 @@ export default function Header() {
                 aria-label={t("header.menu")}
                 aria-expanded={mobileOpen}
               >
-                <Menu className="h-4 w-4" strokeWidth={ICON_STROKE} />
+                <Menu className="h-4 w-4" strokeWidth={ICON_STROKE} aria-hidden="true" />
               </Button>
             </div>
           </div>
@@ -202,6 +207,9 @@ export default function Header() {
                     {t("header.certificates")}
                   </HeaderNavLink>
                   {isTeacher && (
+                    // header.manageCourses / header.adminPanel are the VERBOSE (mobile sheet)
+                    // labels — paired intentionally with the compact header.manage /
+                    // header.admin used in the desktop bar above. See UI-DECISIONS.md.
                     <HeaderNavLink variant="sheet" to="/teacher" active={isActive("/teacher")} onNavigate={closeMobile}>
                       {t("header.manageCourses")}
                     </HeaderNavLink>
@@ -222,7 +230,13 @@ export default function Header() {
                   </div>
                   <Link
                     to="/profile"
-                    className="flex min-h-10 w-full items-center rounded-md px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted active:bg-muted/80"
+                    className={cn(
+                      "flex min-h-10 w-full items-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-muted active:bg-muted/80",
+                      isActive("/profile")
+                        ? "bg-muted/60 text-foreground"
+                        : "text-foreground",
+                    )}
+                    aria-current={isActive("/profile") ? "page" : undefined}
                     onClick={closeMobile}
                   >
                     {t("header.profileAndSettings")}
