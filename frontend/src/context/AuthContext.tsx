@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import { supabase } from "@/lib/supabase"
 import { authService } from "@/services/auth"
+import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import type { User } from "@/types"
 import { AuthContext } from "./auth-context"
 import { setDatadogUser, clearDatadogUser } from "@/lib/datadog"
@@ -35,7 +36,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             full_name: data.full_name,
             avatar_url: data.avatar_url ?? null,
             role: data.role,
-            preferred_locale: data.preferred_locale === "en" ? "en" : "ru",
+            // Profile rows are CHECK-constrained to the supported locale
+            // set, but defend against drift / older rows by validating with
+            // `isSupportedLocale`. Fall back to `DEFAULT_LOCALE` ("ru") since
+            // that's the project's source language and every existing course
+            // is authored in it — this keeps unknown values from silently
+            // pinning users to a locale that isn't actually theirs.
+            preferred_locale: isSupportedLocale(data.preferred_locale)
+              ? data.preferred_locale
+              : DEFAULT_LOCALE,
             created_at: data.created_at,
             updated_at: data.updated_at,
           } as const
