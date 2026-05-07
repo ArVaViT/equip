@@ -270,6 +270,76 @@ def test_translate_entity_fields_skips_empty_text(db: Session):
     assert {r.field for r in rows} == {"title"}
 
 
+def test_translate_entity_fields_survives_concurrent_insert(monkeypatch, db: Session):
+    """Two concurrent translation hooks must not crash the orchestrator.
+
+    Simulates the race where ``_translate_one_field`` selects no existing
+    row (peer hasn't committed yet), the peer commits, and our INSERT then
+    hits ``content_translations_unique``. The savepoint pattern must catch
+    the ``IntegrityError`` and convert the work into an in-place update,
+    not propagate the 500.
+    """
+    course = _make_course(db)
+
+    # Pre-seed the row that "the other concurrent worker" already inserted.
+    db.add(
+        ContentTranslation(
+            entity_type="course",
+            entity_id=course.id,
+            field="title",
+            locale="en",
+            text="[en]preexisting",
+            source_hash="0" * 64,  # stale hash so the orchestrator wants to update
+            status="ok",
+            origin="mt",
+        )
+    )
+    db.commit()
+
+    # Make the orchestrator's first SELECT return None so it takes the
+    # "INSERT new row" branch — exactly the race window we worry about in
+    # production. Subsequent queries (notably the savepoint-recovery refetch)
+    # see the real data.
+    seen = {"calls": 0}
+    original_query = db.query
+
+    def patched_query(model, *args, **kwargs):
+        q = original_query(model, *args, **kwargs)
+        if model is ContentTranslation and seen["calls"] == 0:
+            seen["calls"] += 1
+            q.one_or_none = lambda: None  # type: ignore[method-assign]
+        return q
+
+    monkeypatch.setattr(db, "query", patched_query)
+    provider = _RecordingProvider()
+
+    report = translate_entity_fields(
+        db,
+        entity_type="course",
+        entity_id=str(course.id),
+        source_locale="ru",
+        fields=[TranslationFieldSpec(field="title", text=course.title)],
+        provider=provider,
+    )
+
+    # The orchestrator must survive — exactly one translation, no failure.
+    assert report.failed == 0
+    assert report.translated == 1
+
+    # Restore real query so the assertion below uses an unpatched session.
+    monkeypatch.setattr(db, "query", original_query)
+    rows = (
+        db.query(ContentTranslation)
+        .filter_by(entity_type="course", entity_id=course.id, field="title", locale="en")
+        .all()
+    )
+    # The unique constraint stays intact: still exactly one row.
+    assert len(rows) == 1
+    # And it carries the freshly translated text, not the pre-seeded value.
+    assert rows[0].text.startswith("[en]")
+    assert rows[0].text != "[en]preexisting"
+
+
 def test_translate_entity_fields_no_op_when_provider_disabled(monkeypatch, db: Session):
     monkeypatch.setattr(
         "app.services.translation.service.settings.GEMINI_API_KEY",
