@@ -150,17 +150,55 @@ def pre_substitute(
     for bm in _BLOCKQUOTE_PATTERN.finditer(html):
         bq_start, bq_end = bm.span()
         inner = bm.group("inner")
-        # Lookahead window for the reference: text right after </blockquote>.
-        tail = html[bq_end : bq_end + _REFERENCE_LOOKAHEAD]
-        refs = parse_references(tail)
-        if not refs:
+
+        # Two real-world layouts for the reference:
+        #
+        #   A) Inside, at the end of the blockquote text:
+        #        <blockquote>«…verse…» (Acts 1:8).</blockquote>
+        #   B) Outside, immediately after the closing tag:
+        #        <blockquote>…verse…</blockquote> (Acts 1:8)
+        #
+        # Try inside first — that's where Synodal-style citations sit in
+        # most academic prose. Fall back to the lookahead window after
+        # the closing tag so older content keeps working.
+        ref = None
+        verse_text_inner: str = inner
+        ref_tail_inner: str = ""
+        inner_refs = parse_references(inner)
+        if inner_refs:
+            # Take the *last* reference inside (it's almost always the
+            # citation appended after the verse, even when the prose
+            # happens to mention an earlier verse number conversationally).
+            last = inner_refs[-1]
+            # Extend the citation tail leftwards to include a leading
+            # ``(`` if present, plus a closing ``"`` / ``»`` / ``)`` /
+            # punctuation that closes the verse quote. The regex starts
+            # at "Acts" / "Деян." so we'd otherwise leave a stray ``(``
+            # inside the marker-replaced verse text.
+            tail_start = last.span[0]
+            stripped_left = inner[:tail_start].rstrip()
+            if stripped_left.endswith(("(", " (")):
+                # Walk back over the trailing whitespace + ``(``.
+                tail_start = inner.rfind("(", 0, tail_start)
+            verse_text_inner = inner[:tail_start]
+            ref_tail_inner = inner[tail_start:]
+            ref = last.ref
+        else:
+            tail = html[bq_end : bq_end + _REFERENCE_LOOKAHEAD]
+            outside_refs = parse_references(tail)
+            if outside_refs:
+                ref = outside_refs[0].ref
+                verse_text_inner = inner
+                ref_tail_inner = ""
+
+        if ref is None:
             continue
-        ref = refs[0].ref  # take the first reference closest to the blockquote
+
         canonical_source = lookup(ref, source_locale)
         if canonical_source is None:
             continue
 
-        author_text = _strip_html(inner)
+        author_text = _strip_html(verse_text_inner)
         if not author_text:
             continue
         ratio = SequenceMatcher(
@@ -177,22 +215,24 @@ def pre_substitute(
             continue
 
         marker = _marker_token()
-        # Append everything up to the blockquote opening tag, the opening
-        # tag itself (preserved verbatim), the marker, and the closing tag.
-        # Re-derive the opening/closing tags from the match groups so we
-        # don't lose attributes like ``class="quote"``.
+        # Re-derive the opening/closing tags from the match so we don't
+        # lose attributes like ``class="quote"``.
         opening_tag = html[bq_start : bq_start + html[bq_start:bq_end].index(">") + 1]
         closing_tag = "</blockquote>"
         out_parts.append(html[cursor:bq_start])
         out_parts.append(opening_tag)
         out_parts.append(marker)
+        # Preserve the citation tail (e.g. ``(Деян. 1:8).``) so the
+        # reference notation survives translation. Gemini will localize
+        # the book name (``Деян.`` → ``Acts``) just like any other prose.
+        out_parts.append(ref_tail_inner)
         out_parts.append(closing_tag)
         cursor = bq_end
         subs.append(
             Substitution(
                 marker=marker,
                 ref=ref,
-                original_inner=inner,
+                original_inner=verse_text_inner,
             )
         )
 

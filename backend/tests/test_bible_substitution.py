@@ -254,6 +254,45 @@ def test_full_roundtrip_synodal_to_kjv():
     assert "\x00" not in final
 
 
+def test_pre_substitute_reference_inside_blockquote():
+    """Real-world Synodal-style citation: the parenthesized reference
+    sits at the end of the blockquote text (not after the closing tag).
+    Substitution must still detect, replace the verse text with a
+    marker, and preserve the citation tail so the reader still sees
+    ``(Acts 20:28)`` next to the canonical English verse.
+    """
+    canonical_ru = lookup(BibleRef("acts", 20, 28), "ru")
+    assert canonical_ru is not None
+    html = (
+        f"<blockquote>«{canonical_ru}» (Деян. 20:28).</blockquote>\n"
+        f"<p>Это пастырское наставление.</p>"
+    )
+    out, subs = pre_substitute(html, "ru")
+    assert len(subs) == 1
+    assert subs[0].ref == BibleRef("acts", 20, 28)
+    # Russian verse text is gone, but the reference notation stays.
+    assert "пасти Церковь" not in out
+    assert "(Деян. 20:28)" in out
+
+
+def test_full_roundtrip_synodal_with_reference_inside():
+    """End-to-end: author wrote Synodal with citation inside the
+    blockquote → student in EN sees KJV with the (Acts ...) marker
+    surviving Gemini's locale transformation of the book name."""
+    canonical_ru = lookup(BibleRef("acts", 20, 28), "ru")
+    canonical_en = lookup(BibleRef("acts", 20, 28), "en")
+    assert canonical_ru and canonical_en
+    source_html = f"<blockquote>«{canonical_ru}» (Деян. 20:28).</blockquote>"
+    markered, subs = pre_substitute(source_html, "ru")
+    assert len(subs) == 1
+    # Mock Gemini: localize the citation prefix the way it really does.
+    translated = markered.replace("Деян.", "Acts")
+    final = post_substitute(translated, subs, "en")
+    assert canonical_en in final
+    assert canonical_ru not in final
+    assert "(Acts 20:28)" in final
+
+
 def test_full_roundtrip_kjv_to_synodal():
     """Inverse direction — author wrote KJV, student reads RU."""
     canonical_en = lookup(BibleRef("acts", 1, 8), "en")
