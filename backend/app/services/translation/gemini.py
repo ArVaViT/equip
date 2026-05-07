@@ -20,6 +20,7 @@ import httpx
 if TYPE_CHECKING:
     from types import TracebackType
 
+from app.services.bible.substitution import post_substitute, pre_substitute
 from app.services.translation.prompt import build_system_prompt, build_user_prompt
 from app.services.translation.protocol import (
     TranslationError,
@@ -102,6 +103,26 @@ class GeminiTranslationProvider:
         if request.source_locale == request.target_locale or not request.text.strip():
             return TranslationResult(text=request.text, model=self._model)
 
+        # For HTML content, swap canonical Bible quotes with sentinel
+        # markers BEFORE sending to Gemini, then restore them AFTER with
+        # the target-locale canonical text. This guarantees Bible quotes
+        # always come back as KJV / Synodal verbatim — never paraphrased
+        # by the model. Non-HTML content kinds (titles, descriptions,
+        # quiz options) skip this entirely. The system prompt's
+        # "preserve placeholders verbatim" rule covers the markers.
+        bible_subs: list = []
+        request_text = request.text
+        if request.content_kind == "html":
+            request_text, bible_subs = pre_substitute(request_text, request.source_locale)
+            if bible_subs:
+                request = TranslationRequest(
+                    text=request_text,
+                    source_locale=request.source_locale,
+                    target_locale=request.target_locale,
+                    content_kind=request.content_kind,
+                    context=request.context,
+                )
+
         payload = self._build_payload(request)
         url = f"{_API_BASE}/models/{self._model}:generateContent"
         headers = {"Content-Type": "application/json", "X-goog-api-key": self._api_key}
@@ -115,7 +136,18 @@ class GeminiTranslationProvider:
                 logger.warning("Gemini transport error attempt=%s err=%s", attempt, exc)
             else:
                 if response.status_code == 200:
-                    return self._parse_response(response.json())
+                    result = self._parse_response(response.json())
+                    if bible_subs:
+                        # Restore Bible quote markers with the canonical
+                        # target-locale text. Falls back to source if the
+                        # target-locale lookup misses (see ``post_substitute``).
+                        result = TranslationResult(
+                            text=post_substitute(result.text, bible_subs, request.target_locale),
+                            input_tokens=result.input_tokens,
+                            output_tokens=result.output_tokens,
+                            model=result.model,
+                        )
+                    return result
                 if response.status_code in _RETRYABLE_STATUSES:
                     last_error = TranslationError(f"Gemini returned {response.status_code}: {response.text[:200]}")
                     logger.warning(
