@@ -1,40 +1,38 @@
 """Translate all teacher-authored text under a course (metadata + tree).
 
-Invoked after publish and after edits while the course stays published. The
-orchestrator short-circuits unchanged sources via ``source_hash``, so idle
-hooks cost zero LLM calls.
+Invoked after publish and after edits while the course stays published.
+Idempotent via the orchestrator's ``source_hash`` short-circuit, so a
+re-run on an unchanged course costs zero LLM calls.
+
+Per-entity field specs (which fields, which content_kind) live in
+``registry.REGISTRY``; this module only encodes the *shape of the tree*
+— how to walk modules → chapters → blocks → quiz/assignment, plus the
+side entities (announcements, calendar events) bound by ``course_id``.
 """
 
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import selectinload
 
 from app.models.announcement import Announcement
 from app.models.assignment import Assignment
 from app.models.chapter_block import ChapterBlock
-from app.models.course import Course  # noqa: TC001
 from app.models.course_event import CourseEvent
 from app.models.quiz import Quiz, QuizQuestion
-from app.schemas.locale import LOCALE_CODES, LocaleCode
-from app.services.translation.orchestrator import (
-    OrchestratorReport,
-    TranslationFieldSpec,
-    translate_course_metadata,
-    translate_entity_fields,
-)
-from app.services.translation.protocol import TranslationProvider  # noqa: TC001
+from app.services.translation.orchestrator import OrchestratorReport
+from app.services.translation.registry import reconcile_entity
 from app.services.translation.service import is_translation_enabled
 
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+    from app.models.course import Course
+    from app.services.translation.protocol import TranslationProvider
+
 logger = logging.getLogger(__name__)
-
-
-def _course_source_locale(course: Course) -> LocaleCode:
-    for code in LOCALE_CODES:
-        if course.source_locale == code:
-            return code
-    return "ru"
 
 
 def merge_orchestrator_reports(*parts: OrchestratorReport) -> OrchestratorReport:
@@ -45,50 +43,24 @@ def merge_orchestrator_reports(*parts: OrchestratorReport) -> OrchestratorReport
     )
 
 
-def _translate_quiz_tree(
+def _walk_quiz_tree(
     db: Session,
     quiz: Quiz,
     *,
-    source_locale: LocaleCode,
-    course_title: str,
     provider: TranslationProvider | None,
 ) -> OrchestratorReport:
-    total = translate_entity_fields(
-        db,
-        entity_type="quiz",
-        entity_id=str(quiz.id),
-        source_locale=source_locale,
-        fields=[
-            TranslationFieldSpec(field="title", text=quiz.title, content_kind="title"),
-            TranslationFieldSpec(field="description", text=quiz.description, content_kind="plain"),
-        ],
-        context=f"Quiz in course: {course_title}",
-        provider=provider,
-    )
-    for q in quiz.questions:
-        r = translate_entity_fields(
-            db,
-            entity_type="quiz_question",
-            entity_id=str(q.id),
-            source_locale=source_locale,
-            fields=[
-                TranslationFieldSpec(field="question_text", text=q.question_text, content_kind="quiz_question"),
-            ],
-            context=f"Quiz: {quiz.title}",
-            provider=provider,
+    """Reconcile quiz + every nested question + every nested option."""
+    total = reconcile_entity(db, "quiz", quiz, provider=provider)
+    for question in quiz.questions:
+        total = merge_orchestrator_reports(
+            total,
+            reconcile_entity(db, "quiz_question", question, provider=provider),
         )
-        total = merge_orchestrator_reports(total, r)
-        for opt in q.options:
-            o = translate_entity_fields(
-                db,
-                entity_type="quiz_option",
-                entity_id=str(opt.id),
-                source_locale=source_locale,
-                fields=[TranslationFieldSpec(field="option_text", text=opt.option_text, content_kind="quiz_option")],
-                context="Answer option for a Bible-school quiz question.",
-                provider=provider,
+        for opt in question.options:
+            total = merge_orchestrator_reports(
+                total,
+                reconcile_entity(db, "quiz_option", opt, provider=provider),
             )
-            total = merge_orchestrator_reports(total, o)
     return total
 
 
@@ -98,44 +70,38 @@ def translate_course_content(
     *,
     provider: TranslationProvider | None = None,
 ) -> OrchestratorReport:
-    """Translate metadata, modules, chapters, blocks, quizzes, and assignments."""
+    """Translate everything teacher-authored under ``course`` into every
+    locale that's not the course's source locale.
+
+    Iteration order: course metadata → modules → chapters → chapter
+    blocks (following block→quiz / block→assignment links) → side
+    entities (announcements, calendar events). Each per-entity step
+    delegates to ``reconcile_entity`` which reads the field spec from
+    ``REGISTRY``.
+    """
     if not is_translation_enabled():
         return OrchestratorReport()
 
-    total = translate_course_metadata(db, course, provider=provider)
-    source_locale = _course_source_locale(course)
+    total = reconcile_entity(db, "course", course, provider=provider)
 
     for module in course.modules:
-        r = translate_entity_fields(
-            db,
-            entity_type="module",
-            entity_id=str(module.id),
-            source_locale=source_locale,
-            fields=[
-                TranslationFieldSpec(field="title", text=module.title, content_kind="title"),
-                TranslationFieldSpec(field="description", text=module.description, content_kind="plain"),
-            ],
-            context=f"Course module in «{course.title}»",
-            provider=provider,
+        total = merge_orchestrator_reports(
+            total,
+            reconcile_entity(db, "module", module, provider=provider),
         )
-        total = merge_orchestrator_reports(total, r)
 
     for module in course.modules:
         for chapter in module.chapters:
-            r = translate_entity_fields(
-                db,
-                entity_type="chapter",
-                entity_id=str(chapter.id),
-                source_locale=source_locale,
-                fields=[TranslationFieldSpec(field="title", text=chapter.title, content_kind="title")],
-                context=f"Chapter in course «{course.title}»",
-                provider=provider,
+            total = merge_orchestrator_reports(
+                total,
+                reconcile_entity(db, "chapter", chapter, provider=provider),
             )
-            total = merge_orchestrator_reports(total, r)
 
     chapter_ids = [ch.id for mod in course.modules for ch in mod.chapters]
     if not chapter_ids:
-        return total
+        # Empty course tree — still process side entities below.
+        side = _translate_course_side_entities(db, course, provider=provider)
+        return merge_orchestrator_reports(total, side)
 
     blocks = (
         db.query(ChapterBlock)
@@ -149,16 +115,10 @@ def translate_course_content(
 
     for block in blocks:
         if block.content and block.content.strip():
-            r = translate_entity_fields(
-                db,
-                entity_type="chapter_block",
-                entity_id=str(block.id),
-                source_locale=source_locale,
-                fields=[TranslationFieldSpec(field="content", text=block.content, content_kind="html")],
-                context=f"HTML fragment from course «{course.title}»",
-                provider=provider,
+            total = merge_orchestrator_reports(
+                total,
+                reconcile_entity(db, "chapter_block", block, provider=provider),
             )
-            total = merge_orchestrator_reports(total, r)
 
         qid = str(block.quiz_id) if block.quiz_id else ""
         if qid and qid not in seen_quiz:
@@ -172,13 +132,7 @@ def translate_course_content(
             if quiz:
                 total = merge_orchestrator_reports(
                     total,
-                    _translate_quiz_tree(
-                        db,
-                        quiz,
-                        source_locale=source_locale,
-                        course_title=course.title,
-                        provider=provider,
-                    ),
+                    _walk_quiz_tree(db, quiz, provider=provider),
                 )
 
         aid = str(block.assignment_id) if block.assignment_id else ""
@@ -186,57 +140,36 @@ def translate_course_content(
             seen_assignment.add(aid)
             assignment = db.query(Assignment).filter(Assignment.id == block.assignment_id).first()
             if assignment:
-                r = translate_entity_fields(
-                    db,
-                    entity_type="assignment",
-                    entity_id=str(assignment.id),
-                    source_locale=source_locale,
-                    fields=[
-                        TranslationFieldSpec(field="title", text=assignment.title, content_kind="title"),
-                        TranslationFieldSpec(field="description", text=assignment.description, content_kind="plain"),
-                    ],
-                    context=f"Assignment in course «{course.title}»",
-                    provider=provider,
+                total = merge_orchestrator_reports(
+                    total,
+                    reconcile_entity(db, "assignment", assignment, provider=provider),
                 )
-                total = merge_orchestrator_reports(total, r)
 
-    # Announcements live alongside the course (course_id FK) and are
-    # surfaced to students in the announcements feed; they're not on the
-    # chapter-tree walk above. Translate every announcement bound to this
-    # course on every publish so a student in EN sees the EN copy.
-    announcements = db.query(Announcement).filter(Announcement.course_id == course.id).all()
-    for ann in announcements:
-        r = translate_entity_fields(
-            db,
-            entity_type="announcement",
-            entity_id=str(ann.id),
-            source_locale=source_locale,
-            fields=[
-                TranslationFieldSpec(field="title", text=ann.title, content_kind="title"),
-                TranslationFieldSpec(field="content", text=ann.content, content_kind="plain"),
-            ],
-            context=f"Announcement in course «{course.title}»",
-            provider=provider,
+    side = _translate_course_side_entities(db, course, provider=provider)
+    return merge_orchestrator_reports(total, side)
+
+
+def _translate_course_side_entities(
+    db: Session,
+    course: Course,
+    *,
+    provider: TranslationProvider | None,
+) -> OrchestratorReport:
+    """Reconcile course-bound entities that are NOT in the chapter tree:
+    teacher-authored announcements + calendar events tied to this
+    course's ``course_id``.
+    """
+    total = OrchestratorReport()
+    for ann in db.query(Announcement).filter(Announcement.course_id == course.id).all():
+        total = merge_orchestrator_reports(
+            total,
+            reconcile_entity(db, "announcement", ann, provider=provider),
         )
-        total = merge_orchestrator_reports(total, r)
-
-    # Same shape for calendar events bound to the course.
-    events = db.query(CourseEvent).filter(CourseEvent.course_id == course.id).all()
-    for ev in events:
-        fields = [TranslationFieldSpec(field="title", text=ev.title, content_kind="title")]
-        if ev.description:
-            fields.append(TranslationFieldSpec(field="description", text=ev.description, content_kind="plain"))
-        r = translate_entity_fields(
-            db,
-            entity_type="course_event",
-            entity_id=str(ev.id),
-            source_locale=source_locale,
-            fields=fields,
-            context=f"Calendar event in course «{course.title}»",
-            provider=provider,
+    for ev in db.query(CourseEvent).filter(CourseEvent.course_id == course.id).all():
+        total = merge_orchestrator_reports(
+            total,
+            reconcile_entity(db, "course_event", ev, provider=provider),
         )
-        total = merge_orchestrator_reports(total, r)
-
     return total
 
 
