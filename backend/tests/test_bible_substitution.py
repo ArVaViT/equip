@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.bible.books import all_canonical_slugs, find_book
+from app.services.bible.books import all_canonical_slugs, display_book_name, find_book
 from app.services.bible.references import BibleRef, parse_references
 from app.services.bible.store import is_locale_bundled, lookup, reset_cache
 from app.services.bible.substitution import (
@@ -58,6 +58,55 @@ def test_canon_lists_66_books():
     assert len(all_canonical_slugs()) == 66
     assert "acts" in all_canonical_slugs()
     assert "revelation" in all_canonical_slugs()
+
+
+def test_find_book_recognizes_synodal_short_abbreviations():
+    """Real-world Synodal-style abbreviations seen in the smoke run.
+    Each one used to silently fail the alias lookup, which made the
+    substitution layer skip the verse for an entire RU-authored block."""
+    # Gospels — the highest-frequency hits in the Acts course content.
+    assert find_book("Матф.") == "matthew"
+    assert find_book("Матф") == "matthew"
+    assert find_book("Мт.") == "matthew"
+    assert find_book("Мар.") == "mark"
+    assert find_book("Лук.") == "luke"
+    assert find_book("Иоан.") == "john"
+    # Pauline epistles — the other place authors lean on short forms.
+    assert find_book("Фил.") == "philippians"
+    assert find_book("1 Фесс.") == "1thessalonians"
+    assert find_book("2 Фесс.") == "2thessalonians"
+    # Johannine letters with the ambiguous "Иоан"-stem — the longer
+    # numbered forms have to win over the bare ``иоан`` alias for John.
+    assert find_book("1 Иоан.") == "1john"
+    assert find_book("2 Иоан.") == "2john"
+    assert find_book("3 Иоан.") == "3john"
+
+
+def test_display_book_name_renders_local_short_forms():
+    assert display_book_name("matthew", "ru") == "Матф."
+    assert display_book_name("matthew", "en") == "Matt."
+    assert display_book_name("acts", "ru") == "Деян."
+    assert display_book_name("acts", "en") == "Acts"
+    assert display_book_name("1corinthians", "ru") == "1 Кор."
+    assert display_book_name("1corinthians", "en") == "1 Cor."
+    assert display_book_name("revelation", "ru") == "Откр."
+    assert display_book_name("revelation", "en") == "Rev."
+
+
+def test_display_book_name_returns_none_for_unknown_inputs():
+    assert display_book_name("nonexistent", "ru") is None
+    assert display_book_name("matthew", "uk") is None
+    assert display_book_name("", "ru") is None
+
+
+def test_every_canonical_slug_has_a_display_name_in_each_locale():
+    """The translation pipeline cannot localize a reference whose
+    canonical slug has no display entry in the target locale, so this
+    test pins the contract — every book covered by the parser must
+    also be covered by the renderer for both bundled locales."""
+    for slug in all_canonical_slugs():
+        assert display_book_name(slug, "ru") is not None, slug
+        assert display_book_name(slug, "en") is not None, slug
 
 
 # ---------------------------------------------------------------------------
@@ -321,3 +370,93 @@ def test_full_roundtrip_kjv_to_synodal():
     final = post_substitute(markered, subs, "ru")
     assert canonical_ru in final
     assert canonical_en not in final
+
+
+# ---------------------------------------------------------------------------
+# Regression: 2026-05-07 production smoke run found that an RU-authored
+# course quoting Matthew 28:19 with the Synodal-standard ``(Матф. 28:19)``
+# abbreviation never triggered the substitution layer — the alias was
+# missing from ``books._BOOKS`` and the parser silently returned no
+# refs, so Gemini got the whole blockquote with the "leave verses
+# untouched" rule and the Russian text leaked into the EN translation.
+# ---------------------------------------------------------------------------
+
+
+def test_full_roundtrip_synodal_matt_28_19_to_kjv():
+    """End-to-end Matt 28:19 RU → EN. Use the exact citation form a
+    Russian author would type — ``(Матф. 28:19)`` — and assert the
+    canonical KJV verse lands in the EN output and the Russian verse
+    is gone. This is the scenario that surfaced the 2026-05-07 bug."""
+    canonical_ru = lookup(BibleRef("matthew", 28, 19), "ru")
+    canonical_en = lookup(BibleRef("matthew", 28, 19), "en")
+    assert canonical_ru and canonical_en
+    source_html = (
+        f"<p>Завершающее повеление Иисуса ученикам:</p><blockquote>«{canonical_ru}» (Матф. 28:19).</blockquote>"
+    )
+    markered, subs = pre_substitute(source_html, "ru")
+    assert len(subs) == 1, "Матф. 28:19 must now be detected"
+    final = post_substitute(markered, subs, "en")
+    assert canonical_en in final
+    # The original Synodal verse must NOT survive into the EN output —
+    # if it does, the substitution silently failed.
+    assert canonical_ru not in final
+
+
+def test_post_substitute_preserves_space_before_parenthesized_reference():
+    """Cosmetic regression — earlier the marker swallowed the trailing
+    whitespace + closing quote of the blockquote, leaving
+    ``…canonical text.(Matt. 28:19).`` (no space) in the output. The
+    space must always be present so the rendered HTML reads naturally."""
+    canonical_en = lookup(BibleRef("matthew", 28, 19), "en")
+    assert canonical_en
+    source_html = f"<blockquote>“{canonical_en}” (Matt. 28:19).</blockquote>"
+    markered, subs = pre_substitute(source_html, "en")
+    assert len(subs) == 1
+    final = post_substitute(markered, subs, "ru")
+    # There must be exactly one space between the canonical verse and
+    # the opening paren of the reference.
+    assert ".(" not in final
+    assert ",(" not in final
+    # And the ref must immediately follow the canonical text, separated
+    # by a single ASCII space.
+    canonical_ru = lookup(BibleRef("matthew", 28, 19), "ru")
+    assert canonical_ru and canonical_ru + " (" in final
+
+
+def test_post_substitute_localizes_reference_book_name_to_target_locale():
+    """When the author quoted Matthew with the EN reference
+    ``(Matt. 28:19)`` and a Russian student reads the translation, the
+    reference itself should also read natively as ``(Матф. 28:19)``."""
+    canonical_en = lookup(BibleRef("matthew", 28, 19), "en")
+    assert canonical_en
+    source_html = f"<blockquote>{canonical_en} (Matt. 28:19).</blockquote>"
+    markered, subs = pre_substitute(source_html, "en")
+    assert len(subs) == 1
+    final = post_substitute(markered, subs, "ru")
+    assert "(Матф. 28:19)" in final
+    assert "(Matt. 28:19)" not in final
+
+
+def test_post_substitute_localizes_reference_book_name_in_inverse_direction():
+    """RU author with ``(Матф. 28:19)`` → EN student should read
+    ``(Matt. 28:19)``."""
+    canonical_ru = lookup(BibleRef("matthew", 28, 19), "ru")
+    assert canonical_ru
+    source_html = f"<blockquote>«{canonical_ru}» (Матф. 28:19).</blockquote>"
+    markered, subs = pre_substitute(source_html, "ru")
+    assert len(subs) == 1
+    final = post_substitute(markered, subs, "en")
+    assert "(Matt. 28:19)" in final
+    assert "(Матф. 28:19)" not in final
+
+
+def test_post_substitute_handles_verse_range_in_reference_localization():
+    """Range refs (``Matt. 28:18-20``) must localize to
+    ``Матф. 28:18-20`` — the localizer respects ``verse_end``."""
+    canonical_en = lookup(BibleRef("matthew", 28, 19), "en")
+    assert canonical_en
+    source_html = f"<blockquote>{canonical_en} (Matt. 28:19-19).</blockquote>"
+    _, subs = pre_substitute(source_html, "en")
+    assert len(subs) == 1
+    # The substitution dataclass keeps the literal source tail.
+    assert "Matt. 28:19-19" in subs[0].ref_tail or "Matt. 28:19" in subs[0].ref_tail
