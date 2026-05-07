@@ -47,6 +47,8 @@ EntityType = Literal[
     "quiz_question",
     "quiz_option",
     "assignment",
+    "announcement",
+    "course_event",
 ]
 
 

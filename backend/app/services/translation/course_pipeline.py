@@ -11,9 +11,11 @@ import logging
 
 from sqlalchemy.orm import Session, selectinload
 
+from app.models.announcement import Announcement
 from app.models.assignment import Assignment
 from app.models.chapter_block import ChapterBlock
 from app.models.course import Course  # noqa: TC001
+from app.models.course_event import CourseEvent
 from app.models.quiz import Quiz, QuizQuestion
 from app.schemas.locale import LOCALE_CODES, LocaleCode
 from app.services.translation.orchestrator import (
@@ -197,6 +199,43 @@ def translate_course_content(
                     provider=provider,
                 )
                 total = merge_orchestrator_reports(total, r)
+
+    # Announcements live alongside the course (course_id FK) and are
+    # surfaced to students in the announcements feed; they're not on the
+    # chapter-tree walk above. Translate every announcement bound to this
+    # course on every publish so a student in EN sees the EN copy.
+    announcements = db.query(Announcement).filter(Announcement.course_id == course.id).all()
+    for ann in announcements:
+        r = translate_entity_fields(
+            db,
+            entity_type="announcement",
+            entity_id=str(ann.id),
+            source_locale=source_locale,
+            fields=[
+                TranslationFieldSpec(field="title", text=ann.title, content_kind="title"),
+                TranslationFieldSpec(field="content", text=ann.content, content_kind="plain"),
+            ],
+            context=f"Announcement in course «{course.title}»",
+            provider=provider,
+        )
+        total = merge_orchestrator_reports(total, r)
+
+    # Same shape for calendar events bound to the course.
+    events = db.query(CourseEvent).filter(CourseEvent.course_id == course.id).all()
+    for ev in events:
+        fields = [TranslationFieldSpec(field="title", text=ev.title, content_kind="title")]
+        if ev.description:
+            fields.append(TranslationFieldSpec(field="description", text=ev.description, content_kind="plain"))
+        r = translate_entity_fields(
+            db,
+            entity_type="course_event",
+            entity_id=str(ev.id),
+            source_locale=source_locale,
+            fields=fields,
+            context=f"Calendar event in course «{course.title}»",
+            provider=provider,
+        )
+        total = merge_orchestrator_reports(total, r)
 
     return total
 
