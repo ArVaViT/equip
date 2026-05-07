@@ -8,6 +8,7 @@ import {
   XCircle,
 } from "lucide-react"
 import type { NotificationType } from "@/types"
+import { formatDate } from "@/i18n/format"
 
 /**
  * Icon + colour lookup tables keyed by notification type.
@@ -49,5 +50,5 @@ export function timeAgo(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`
   const days = Math.floor(hours / 24)
   if (days < 7) return `${days}d ago`
-  return new Date(dateStr).toLocaleDateString()
+  return formatDate(dateStr)
 }

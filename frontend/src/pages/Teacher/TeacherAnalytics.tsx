@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
 import { ArrowLeft, Users, TrendingUp, Award, Calendar, BarChart3, ClipboardList, UserCheck } from "lucide-react"
 import { ErrorState } from "@/components/patterns"
+import { formatDate } from "@/i18n/format"
 
 interface AnalyticsEnrollment {
   user_id: string
@@ -198,7 +199,7 @@ export default function TeacherAnalytics() {
                         </div>
                       </td>
                       <td className="py-3 text-muted-foreground">
-                        {e.enrolled_at ? new Date(e.enrolled_at).toLocaleDateString() : "—"}
+                        {e.enrolled_at ? formatDate(e.enrolled_at) : "—"}
                       </td>
                     </tr>
                   ))}

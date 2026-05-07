@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import type { Course } from "@/types"
 import { BookOpen, ArrowRight } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
+import { formatDate } from "@/i18n/format"
 
 interface CourseCardProps {
   course: Course
@@ -24,14 +25,13 @@ function enrollmentState(start?: string | null, end?: string | null): { state: E
 }
 
 function EnrollmentBadge({ start, end }: { start?: string | null; end?: string | null }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { state, date } = enrollmentState(start, end)
-  const locale = (i18n.language ?? "en").startsWith("ru") ? "ru-RU" : "en-US"
   if (!state) return null
   if (state === "opens") {
     return (
       <Badge variant="info" className="absolute right-3 top-3 z-10">
-        {t("courseCard.opensOn", { date: date!.toLocaleDateString(locale) })}
+        {t("courseCard.opensOn", { date: formatDate(date!) })}
       </Badge>
     )
   }

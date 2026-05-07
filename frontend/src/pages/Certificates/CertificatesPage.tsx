@@ -8,14 +8,13 @@ import type { Certificate, Enrollment } from "@/types"
 import { toast } from "@/lib/toast"
 import { Award, ArrowLeft, ScrollText } from "lucide-react"
 import PageSpinner from "@/components/ui/PageSpinner"
-import i18n from "@/i18n/config"
+import { formatDate } from "@/i18n/format"
 
 export default function CertificatesPage() {
   const { t } = useTranslation()
   const [certificates, setCertificates] = useState<Certificate[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [loading, setLoading] = useState(true)
-  const dateLocale = i18n.language?.startsWith("en") ? "en-US" : "ru-RU"
 
   useEffect(() => {
     let cancelled = false
@@ -122,7 +121,7 @@ export default function CertificatesPage() {
                     </dt>
                     <dd className="font-medium">
                       {cert.status === "approved" && cert.issued_at
-                        ? new Date(cert.issued_at).toLocaleDateString(dateLocale, {
+                        ? formatDate(cert.issued_at, {
                             year: "numeric",
                             month: "short",
                             day: "numeric",

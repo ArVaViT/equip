@@ -6,6 +6,7 @@ import { Modal } from "@/components/patterns"
 import { CohortStatusBadge } from "./badges"
 import type { CohortFormState } from "./types"
 import type { Cohort } from "@/types"
+import { formatDate } from "@/i18n/format"
 
 interface Props {
   open: boolean
@@ -150,8 +151,8 @@ function CohortRow({ cohort, onEdit, onDelete, onComplete }: RowProps) {
           <CohortStatusBadge status={cohort.status} />
         </div>
         <p className="text-xs text-muted-foreground">
-          {new Date(cohort.start_date).toLocaleDateString()} &mdash;{" "}
-          {new Date(cohort.end_date).toLocaleDateString()}
+          {formatDate(cohort.start_date)} &mdash;{" "}
+          {formatDate(cohort.end_date)}
         </p>
         <p className="text-xs text-muted-foreground mt-0.5">
           {cohort.student_count} student{cohort.student_count !== 1 ? "s" : ""}
@@ -159,8 +160,8 @@ function CohortRow({ cohort, onEdit, onDelete, onComplete }: RowProps) {
         </p>
         {cohort.enrollment_start && cohort.enrollment_end && (
           <p className="text-[10px] text-muted-foreground/70 mt-0.5">
-            Enrollment: {new Date(cohort.enrollment_start).toLocaleDateString()} —{" "}
-            {new Date(cohort.enrollment_end).toLocaleDateString()}
+            Enrollment: {formatDate(cohort.enrollment_start)} —{" "}
+            {formatDate(cohort.enrollment_end)}
           </p>
         )}
       </div>

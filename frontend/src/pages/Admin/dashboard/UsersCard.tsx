@@ -7,6 +7,7 @@ import { toProxyImage } from "@/lib/images"
 import PageSpinner from "@/components/ui/PageSpinner"
 import VirtualAdminUsers from "../VirtualAdminUsers"
 import type { UserRole } from "@/types"
+import { formatDate } from "@/i18n/format"
 import {
   type ProfileRow,
   ROLE_BADGE_CLASS,
@@ -315,7 +316,7 @@ function UserRow({
         </div>
       </td>
       <td className="px-6 py-3 text-muted-foreground">
-        {new Date(user.created_at).toLocaleDateString()}
+        {formatDate(user.created_at)}
       </td>
       <td className="px-3 py-3">
         <Button

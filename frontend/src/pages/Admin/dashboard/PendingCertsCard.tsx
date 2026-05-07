@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Award, CheckCircle, XCircle, Clock } from "lucide-react"
 import type { Certificate } from "@/types"
+import { formatDate } from "@/i18n/format"
 
 export type AdminCert = Certificate & {
   student_name?: string
@@ -55,7 +56,7 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
                   {cert.approved_at && (
                     <span className="flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
-                      {new Date(cert.approved_at).toLocaleDateString()}
+                      {formatDate(cert.approved_at)}
                     </span>
                   )}
                 </div>

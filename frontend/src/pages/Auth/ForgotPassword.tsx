@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
+import { Trans, useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -8,6 +9,7 @@ import AuthLayout from "@/components/layout/AuthLayout"
 import { ArrowLeft, Loader2, MailCheck } from "lucide-react"
 
 export default function ForgotPassword() {
+  const { t } = useTranslation()
   const [email, setEmail] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -20,11 +22,11 @@ export default function ForgotPassword() {
 
     const trimmed = email.trim()
     if (!trimmed) {
-      setError("Please enter your email address")
+      setError(t("auth.forgotPassword.errors.emailRequired"))
       return
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError("Please enter a valid email address")
+      setError(t("auth.forgotPassword.errors.emailInvalid"))
       return
     }
 
@@ -34,7 +36,7 @@ export default function ForgotPassword() {
       setSent(true)
     } catch (err: unknown) {
       if (import.meta.env.DEV) console.error("resetPassword failed", err)
-      setError("Failed to send reset email. Please try again in a moment.")
+      setError(t("auth.forgotPassword.errors.sendFailed"))
     } finally {
       setLoading(false)
     }
@@ -42,21 +44,27 @@ export default function ForgotPassword() {
 
   if (sent) {
     return (
-      <AuthLayout heading="Check your email" subheading="We've sent you a password reset link">
+      <AuthLayout
+        heading={t("auth.forgotPassword.sentHeading")}
+        subheading={t("auth.forgotPassword.sentSubheading")}
+      >
         <div className="space-y-6 animate-fade-in">
           <div className="flex flex-col items-center text-center gap-4 py-4">
             <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-              <MailCheck className="h-8 w-8 text-primary" />
+              <MailCheck className="h-8 w-8 text-primary" strokeWidth={1.75} aria-hidden />
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              If an account exists for <strong className="text-foreground">{email}</strong>,
-              you'll receive a reset link shortly. Check your inbox.
+              <Trans
+                i18nKey="auth.forgotPassword.sentBody"
+                values={{ email }}
+                components={{ strong: <strong className="text-foreground" /> }}
+              />
             </p>
           </div>
           <Link to="/login" className="block">
             <Button variant="outline" size="lg" className="w-full">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Sign In
+              <ArrowLeft className="h-4 w-4 mr-2" strokeWidth={1.75} aria-hidden />
+              {t("auth.forgotPassword.backToSignIn")}
             </Button>
           </Link>
         </div>
@@ -65,7 +73,10 @@ export default function ForgotPassword() {
   }
 
   return (
-    <AuthLayout heading="Reset password" subheading="Enter your email and we'll send you a reset link">
+    <AuthLayout
+      heading={t("auth.forgotPassword.heading")}
+      subheading={t("auth.forgotPassword.subheading")}
+    >
       <div className="space-y-6 animate-fade-in">
         {error && (
           <div role="alert" className="text-sm text-destructive bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
@@ -75,11 +86,11 @@ export default function ForgotPassword() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email address</Label>
+            <Label htmlFor="email">{t("auth.forgotPassword.emailLabel")}</Label>
             <Input
               id="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={t("auth.emailPlaceholder")}
               autoComplete="email"
               fieldSize="lg"
               value={email}
@@ -92,10 +103,10 @@ export default function ForgotPassword() {
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Sending...
+                {t("auth.forgotPassword.sending")}
               </>
             ) : (
-              "Send Reset Link"
+              t("auth.forgotPassword.submit")
             )}
           </Button>
         </form>
@@ -104,8 +115,8 @@ export default function ForgotPassword() {
           to="/login"
           className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
         >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back to Sign In
+          <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+          {t("auth.forgotPassword.backToSignIn")}
         </Link>
       </div>
     </AuthLayout>

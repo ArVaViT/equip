@@ -28,7 +28,7 @@ export function QuestionPrompt({ question, index, answer, onAnswer }: Props) {
             {question.question_text}
           </p>
           <span className="text-xs text-muted-foreground">
-            {t("quiz.questionPoints", { points: question.points })}
+            {t("quiz.questionPoints", { count: question.points })}
           </span>
         </div>
       </div>

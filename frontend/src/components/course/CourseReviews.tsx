@@ -7,6 +7,7 @@ import { toast } from "@/lib/toast"
 import type { CourseReview } from "@/types"
 import { Star, Trash2, MessageSquare } from "lucide-react"
 import PageSpinner from "@/components/ui/PageSpinner"
+import { formatDate } from "@/i18n/format"
 
 interface Props {
   courseId: string
@@ -111,7 +112,7 @@ export default function CourseReviews({ courseId }: Props) {
                   </div>
                   <div className="flex items-center gap-1">
                     <span className="text-xs text-muted-foreground">
-                      {new Date(review.created_at).toLocaleDateString()}
+                      {formatDate(review.created_at)}
                     </span>
                     {review.user_id === user?.id && (
                       confirmDeleteId === review.id ? (

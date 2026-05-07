@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -7,18 +8,29 @@ import { authService } from "@/services/auth"
 import AuthLayout from "@/components/layout/AuthLayout"
 import { z } from "zod"
 import { Loader2, CheckCircle2 } from "lucide-react"
+import i18n from "@/i18n/config"
 
-const resetSchema = z
-  .object({
-    password: z.string().min(6, "Password must be at least 6 characters"),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  })
+/**
+ * Build the schema fresh on each submit so error messages match the
+ * currently-active UI language. The factory defers to i18next.t() so
+ * switching languages between renders does the right thing.
+ */
+function makeResetSchema() {
+  return z
+    .object({
+      password: z
+        .string()
+        .min(6, i18n.t("auth.resetPassword.errors.passwordTooShort")),
+      confirmPassword: z.string(),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: i18n.t("auth.resetPassword.errors.passwordsDoNotMatch"),
+      path: ["confirmPassword"],
+    })
+}
 
 export default function ResetPassword() {
+  const { t } = useTranslation()
   const [form, setForm] = useState({ password: "", confirmPassword: "" })
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
   const [serverError, setServerError] = useState("")
@@ -37,7 +49,7 @@ export default function ResetPassword() {
     e.preventDefault()
     setServerError("")
 
-    const result = resetSchema.safeParse(form)
+    const result = makeResetSchema().safeParse(form)
     if (!result.success) {
       const fieldErrors: typeof errors = {}
       for (const issue of result.error.issues) {
@@ -55,7 +67,7 @@ export default function ResetPassword() {
       redirectTimer.current = setTimeout(() => navigate("/", { replace: true }), 2500)
     } catch (err: unknown) {
       const supaErr = err as { message?: string }
-      setServerError(supaErr.message || "Failed to reset password.")
+      setServerError(supaErr.message || t("auth.resetPassword.errors.resetFailed"))
     } finally {
       setLoading(false)
     }
@@ -63,14 +75,18 @@ export default function ResetPassword() {
 
   if (success) {
     return (
-      <AuthLayout heading="Password updated" subheading="You're all set">
+      <AuthLayout
+        heading={t("auth.resetPassword.successHeading")}
+        subheading={t("auth.resetPassword.successSubheading")}
+      >
         <div className="flex flex-col items-center text-center gap-4 py-6 animate-fade-in">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
-            <CheckCircle2 className="h-8 w-8 text-success" />
+            <CheckCircle2 className="h-8 w-8 text-success" strokeWidth={1.75} aria-hidden />
           </div>
           <p className="text-sm text-muted-foreground">
-            Your password has been updated successfully.
-            <br />Redirecting to dashboard...
+            {t("auth.resetPassword.successBody")}
+            <br />
+            {t("auth.resetPassword.redirecting")}
           </p>
           <div className="h-1 w-24 rounded-full bg-muted overflow-hidden">
             <div className="animate-grow-bar h-full rounded-full bg-primary" />
@@ -81,7 +97,10 @@ export default function ResetPassword() {
   }
 
   return (
-    <AuthLayout heading="Set new password" subheading="Choose a strong password for your account">
+    <AuthLayout
+      heading={t("auth.resetPassword.heading")}
+      subheading={t("auth.resetPassword.subheading")}
+    >
       <div className="space-y-6 animate-fade-in">
         {serverError && (
           <div role="alert" className="text-sm text-destructive bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
@@ -91,7 +110,7 @@ export default function ResetPassword() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="password">New Password</Label>
+            <Label htmlFor="password">{t("auth.resetPassword.newPassword")}</Label>
             <Input
               id="password"
               type="password"
@@ -114,7 +133,7 @@ export default function ResetPassword() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm New Password</Label>
+            <Label htmlFor="confirmPassword">{t("auth.resetPassword.confirmNewPassword")}</Label>
             <Input
               id="confirmPassword"
               type="password"
@@ -139,10 +158,10 @@ export default function ResetPassword() {
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Updating...
+                {t("auth.resetPassword.submitting")}
               </>
             ) : (
-              "Update Password"
+              t("auth.resetPassword.submit")
             )}
           </Button>
         </form>

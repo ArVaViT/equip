@@ -134,15 +134,11 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       <span className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-2 py-1 font-medium text-success">
                         <CheckCircle className="h-3.5 w-3.5" />
-                        {q.points === 1
-                          ? t("quiz.gradedPoints", {
-                              earned: answerResult?.points_earned ?? 0,
-                              max: q.points,
-                            })
-                          : t("quiz.gradedPointsPlural", {
-                              earned: answerResult?.points_earned ?? 0,
-                              max: q.points,
-                            })}
+                        {t("quiz.gradedPoints", {
+                          count: q.points,
+                          earned: answerResult?.points_earned ?? 0,
+                          max: q.points,
+                        })}
                       </span>
                       {answerResult?.grader_comment && (
                         <span className="text-muted-foreground">

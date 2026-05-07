@@ -12,8 +12,9 @@ import { useTheme } from "@/context/useTheme"
 import { usersService } from "@/services/users"
 import { storageService } from "@/services/storage"
 import { coursesService } from "@/services/courses"
-import { profileSchema } from "@/lib/validations/course"
+import { makeProfileSchema } from "@/lib/validations/course"
 import { toProxyImage } from "@/lib/images"
+import { formatDate } from "@/i18n/format"
 import type { User } from "@/types"
 import {
   User as UserIcon, Mail, Shield, Calendar, Save, Check, Camera, Globe,
@@ -32,9 +33,9 @@ function NameForm({ user, onSaved }: { user: User; onSaved: () => Promise<void> 
 
   const handleSave = async () => {
     setError("")
-    const result = profileSchema.safeParse({ full_name: name })
+    const result = makeProfileSchema().safeParse({ full_name: name })
     if (!result.success) {
-      setError(result.error.issues[0]?.message ?? "Invalid input")
+      setError(result.error.issues[0]?.message ?? t("profile.invalidInput"))
       return
     }
     setSaving(true)
@@ -292,7 +293,7 @@ export default function ProfilePage() {
                   <div>
                     <dt className="text-xs text-muted-foreground">{t("profile.memberSince")}</dt>
                     <dd className="text-sm font-medium">
-                      {new Date(user.created_at).toLocaleDateString(user.preferred_locale === "en" ? "en-US" : "ru-RU", {
+                      {formatDate(user.created_at, {
                         year: "numeric",
                         month: "long",
                         day: "numeric",

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/context/useAuth"
-import { loginSchema, type LoginFormData } from "@/lib/validations/auth"
+import { makeLoginSchema, type LoginFormData } from "@/lib/validations/auth"
 import AuthLayout from "@/components/layout/AuthLayout"
 import { Loader2 } from "lucide-react"
 
@@ -38,7 +38,7 @@ export default function Login() {
     e.preventDefault()
     setServerError("")
 
-    const result = loginSchema.safeParse(form)
+    const result = makeLoginSchema().safeParse(form)
     if (!result.success) {
       const fieldErrors: typeof errors = {}
       for (const issue of result.error.issues) {

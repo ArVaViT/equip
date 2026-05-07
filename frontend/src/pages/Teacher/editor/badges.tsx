@@ -1,15 +1,17 @@
+import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
 import type { Cohort } from "@/types"
 
 /** Enrollment-window state derived from (start, end) strings. */
 export function EnrollmentStatusBadge({ start, end }: { start: string; end: string }) {
-  if (!start && !end) return <Badge variant="muted">Not set</Badge>
+  const { t } = useTranslation()
+  if (!start && !end) return <Badge variant="muted">{t("teacherEditor.badges.notSet")}</Badge>
   const now = new Date()
   const s = start ? new Date(start) : null
   const e = end ? new Date(end) : null
-  if (s && now < s) return <Badge variant="info">Upcoming</Badge>
-  if (e && now > e) return <Badge variant="destructive">Closed</Badge>
-  return <Badge variant="success">Open</Badge>
+  if (s && now < s) return <Badge variant="info">{t("teacherEditor.badges.upcoming")}</Badge>
+  if (e && now > e) return <Badge variant="destructive">{t("teacherEditor.badges.closed")}</Badge>
+  return <Badge variant="success">{t("teacherEditor.badges.open")}</Badge>
 }
 
 const EVENT_BADGE_CLASS: Record<string, string> = {

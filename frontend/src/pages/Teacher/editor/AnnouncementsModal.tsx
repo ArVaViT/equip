@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Megaphone, Trash2 } from "lucide-react"
 import { Modal } from "@/components/patterns"
 import type { Announcement } from "@/types"
+import { formatDateTime } from "@/i18n/format"
 
 interface Props {
   open: boolean
@@ -67,7 +68,7 @@ export function AnnouncementsModal({
                     </p>
                   )}
                   <time className="text-[10px] text-muted-foreground/60 mt-1 block">
-                    {new Date(a.created_at).toLocaleString()}
+                    {formatDateTime(a.created_at)}
                   </time>
                 </div>
                 <Button

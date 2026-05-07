@@ -10,6 +10,7 @@ import {
   RESOURCE_OPTIONS,
   ACTION_BADGE_CLASS,
 } from "./constants"
+import { formatDateTime } from "@/i18n/format"
 
 interface Props {
   logs: AuditLogEntry[]
@@ -194,7 +195,7 @@ function AuditTable({
           {logs.map((log) => (
             <tr key={log.id} className="hover:bg-muted/50 transition-colors">
               <td className="px-6 py-3 text-muted-foreground whitespace-nowrap">
-                {new Date(log.created_at).toLocaleString()}
+                {formatDateTime(log.created_at)}
               </td>
               <td className="px-6 py-3 max-w-[160px] truncate" title={log.user_id ?? ""}>
                 {log.user_id

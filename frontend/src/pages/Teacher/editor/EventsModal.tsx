@@ -7,6 +7,7 @@ import { Modal } from "@/components/patterns"
 import { EventTypeBadge } from "./badges"
 import type { EventFormState } from "./types"
 import type { CourseEvent } from "@/types"
+import { formatDateTime } from "@/i18n/format"
 
 interface Props {
   open: boolean
@@ -132,7 +133,7 @@ function EventRow({
           <EventTypeBadge type={event.event_type} />
         </div>
         <p className="text-xs text-muted-foreground">
-          {new Date(event.event_date).toLocaleString()}
+          {formatDateTime(event.event_date)}
         </p>
         {event.description && (
           <p className="text-xs text-muted-foreground/70 mt-0.5 line-clamp-1">
