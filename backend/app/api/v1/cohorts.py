@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -10,6 +10,12 @@ from app.models.enrollment import Enrollment
 from app.models.student_grade import StudentGrade
 from app.models.user import User, UserRole
 from app.schemas.cohort import CohortCreate, CohortResponse, CohortUpdate
+from app.schemas.locale import LocaleCode, normalize_locale
+from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
+from app.services.translation.resolve_for_display import (
+    fetch_overlay_triples_bulk,
+    pick_overlay_value,
+)
 
 router = APIRouter(prefix="/cohorts", tags=["cohorts"])
 
@@ -39,10 +45,13 @@ def _get_cohort_or_404(db: Session, cohort_id: str) -> Cohort:
 
 @router.get("/course/{course_id}", response_model=list[CohortResponse])
 def list_cohorts(
+    response: Response,
     course_id: str,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ) -> list[CohortResponse]:
+    response.headers["Vary"] = "Accept-Language"
     course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
@@ -63,7 +72,39 @@ def list_cohorts(
         .all()
     )
     count_map = {row[0]: row[1] for row in counts}
-    return [_cohort_to_response(c, count_map.get(c.id, 0)) for c in cohorts]
+
+    # Owner + admin see source for editorial accuracy; everyone else
+    # gets the locale overlay (cohort.name is teacher-authored, so when
+    # a student in EN reads a course list whose cohorts were created in
+    # RU we'd otherwise display the source name).
+    is_owner = current_user is not None and str(course.created_by) == str(current_user.id)
+    is_admin = current_user is not None and current_user.role == UserRole.ADMIN.value
+    if is_owner or is_admin:
+        return [_cohort_to_response(c, count_map.get(c.id, 0)) for c in cohorts]
+
+    display_locale: LocaleCode = normalize_locale(accept_language)
+    source_locale: LocaleCode = normalize_locale(course.source_locale)
+    overlay_specs = [("cohort", str(c.id), "title") for c in cohorts]
+    overlay = fetch_overlay_triples_bulk(db, overlay_specs, display_locale)
+    out: list[CohortResponse] = []
+    for c in cohorts:
+        localized_name = (
+            pick_overlay_value(
+                overlay,
+                "cohort",
+                str(c.id),
+                "title",
+                c.name,
+                source_locale=source_locale,
+                display_locale=display_locale,
+            )
+            or c.name
+        )
+        resp = CohortResponse.model_validate(c)
+        resp.name = localized_name
+        resp.student_count = count_map.get(c.id, 0)
+        out.append(resp)
+    return out
 
 
 @router.post(
@@ -91,6 +132,7 @@ def create_cohort(
     db.add(cohort)
     db.commit()
     db.refresh(cohort)
+    reconcile_entity_if_course_published(db, "cohort", cohort)
     return _cohort_to_response(cohort, 0)
 
 
@@ -109,6 +151,7 @@ def update_cohort(
 
     db.commit()
     db.refresh(cohort)
+    reconcile_entity_if_course_published(db, "cohort", cohort)
     return _cohort_to_response(cohort, _count_students_in_cohort(db, cohort.id))
 
 

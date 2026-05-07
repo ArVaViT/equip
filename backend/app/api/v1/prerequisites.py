@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -7,6 +7,11 @@ from app.core.database import get_db
 from app.models.course import Course
 from app.models.prerequisite import CoursePrerequisite
 from app.models.user import User, UserRole
+from app.schemas.locale import LocaleCode, normalize_locale
+from app.services.translation.resolve_for_display import (
+    fetch_overlay_triples_bulk,
+    pick_overlay_value,
+)
 
 router = APIRouter(prefix="/prerequisites", tags=["prerequisites"])
 
@@ -21,12 +26,52 @@ class PrerequisiteResponse(BaseModel):
     prerequisite_course_title: str | None = None
 
 
+def _localized_title_map(
+    db: Session,
+    course_ids: list[str],
+    *,
+    display_locale: LocaleCode,
+) -> dict[str, str]:
+    """Return ``{course_id -> course title in display_locale}`` for live
+    courses, falling back to the source title when no translation row
+    exists. Uses the same overlay machinery as the catalog endpoint so
+    behaviour stays identical to ``GET /courses``.
+    """
+    if not course_ids:
+        return {}
+    rows = (
+        db.query(Course.id, Course.title, Course.source_locale)
+        .filter(Course.id.in_(course_ids), Course.deleted_at.is_(None))
+        .all()
+    )
+    specs = [("course", str(cid), "title") for cid, _, _ in rows]
+    overlay = fetch_overlay_triples_bulk(db, specs, display_locale)
+    out: dict[str, str] = {}
+    for cid, source_title, source_locale in rows:
+        out[str(cid)] = (
+            pick_overlay_value(
+                overlay,
+                "course",
+                str(cid),
+                "title",
+                source_title,
+                source_locale=normalize_locale(source_locale),
+                display_locale=display_locale,
+            )
+            or source_title
+        )
+    return out
+
+
 @router.get("/course/{course_id}", response_model=list[PrerequisiteResponse])
 def get_prerequisites(
+    response: Response,
     course_id: str,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    response.headers["Vary"] = "Accept-Language"
     # Requires auth and that the course is visible to the caller. Previously
     # this endpoint was public and would happily leak draft-course
     # relationships to anonymous callers (audit P1.4). Trashed courses are
@@ -42,14 +87,9 @@ def get_prerequisites(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
 
     prereqs = db.query(CoursePrerequisite).filter(CoursePrerequisite.course_id == course_id).all()
-
     prereq_ids = [p.prerequisite_course_id for p in prereqs]
-    # Hide trashed prerequisite targets — they should not appear as
-    # "required" courses when they've been removed from the catalog.
-    courses = (
-        db.query(Course).filter(Course.id.in_(prereq_ids), Course.deleted_at.is_(None)).all() if prereq_ids else []
-    )
-    title_map = {str(c.id): c.title for c in courses}
+    display_locale: LocaleCode = normalize_locale(accept_language)
+    title_map = _localized_title_map(db, prereq_ids, display_locale=display_locale)
 
     return [
         PrerequisiteResponse(

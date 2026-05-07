@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -11,9 +11,59 @@ from app.models.course import Course
 from app.models.enrollment import Enrollment
 from app.models.user import User
 from app.schemas.certificate import CertificateResponse, CertificateVerifyResponse
+from app.schemas.locale import LocaleCode, normalize_locale
 from app.services import certificate_service
+from app.services.translation.resolve_for_display import (
+    fetch_overlay_triples_bulk,
+    pick_overlay_value,
+)
 
 router = APIRouter(prefix="/certificates", tags=["certificates"])
+
+
+def _localize_cert_responses(
+    db: Session,
+    certs: list[Certificate],
+    *,
+    display_locale: LocaleCode,
+) -> list[CertificateResponse]:
+    """Build ``CertificateResponse`` instances with the course title
+    overlaid into the requested display locale. Falls back to the
+    course's source title when no translation row exists.
+    """
+    if not certs:
+        return []
+    course_ids = sorted({str(c.course_id) for c in certs if c.course_id})
+    if not course_ids:
+        return [CertificateResponse.model_validate(c, from_attributes=True) for c in certs]
+    courses = db.query(Course.id, Course.title, Course.source_locale).filter(Course.id.in_(course_ids)).all()
+    course_meta: dict[str, tuple[str, LocaleCode]] = {
+        str(cid): (title, normalize_locale(src)) for cid, title, src in courses
+    }
+    specs = [("course", cid, "title") for cid in course_meta]
+    overlay = fetch_overlay_triples_bulk(db, specs, display_locale)
+    out: list[CertificateResponse] = []
+    for cert in certs:
+        base = CertificateResponse.model_validate(cert, from_attributes=True)
+        meta = course_meta.get(str(cert.course_id))
+        if meta is None:
+            out.append(base)
+            continue
+        source_title, source_locale = meta
+        title = (
+            pick_overlay_value(
+                overlay,
+                "course",
+                str(cert.course_id),
+                "title",
+                source_title,
+                source_locale=source_locale,
+                display_locale=display_locale,
+            )
+            or source_title
+        )
+        out.append(base.model_copy(update={"course_title": title}))
+    return out
 
 
 @router.post("/course/{course_id}", response_model=CertificateResponse, status_code=status.HTTP_201_CREATED)
@@ -65,27 +115,34 @@ def request_certificate(
 
 @router.get("/course/{course_id}", response_model=CertificateResponse)
 def get_course_certificate(
+    response: Response,
     course_id: str,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Certificate:
+) -> CertificateResponse:
     """Get the current user's certificate for a specific course."""
+    response.headers["Vary"] = "Accept-Language"
     cert = (
         db.query(Certificate).filter(Certificate.user_id == current_user.id, Certificate.course_id == course_id).first()
     )
     if not cert:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No certificate found")
-    return cert
+    display_locale: LocaleCode = normalize_locale(accept_language)
+    return _localize_cert_responses(db, [cert], display_locale=display_locale)[0]
 
 
 @router.get("/my", response_model=list[CertificateResponse])
 def list_my_certificates(
+    response: Response,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> list[Certificate]:
-    return (
+) -> list[CertificateResponse]:
+    response.headers["Vary"] = "Accept-Language"
+    rows = (
         db.query(Certificate)
         .filter(Certificate.user_id == current_user.id)
         .order_by(Certificate.requested_at.desc())
@@ -93,6 +150,8 @@ def list_my_certificates(
         .limit(limit)
         .all()
     )
+    display_locale: LocaleCode = normalize_locale(accept_language)
+    return _localize_cert_responses(db, rows, display_locale=display_locale)
 
 
 @router.get("/pending", response_model=list[CertificateResponse])

@@ -146,24 +146,11 @@ WHITELIST_ENDPOINTS: dict[str, str] = {}
 
 KNOWN_VIOLATIONS_RULE1: frozenset[tuple[str, str]] = frozenset(
     {
-        # (endpoint_name, route_path). Each entry MUST cite a follow-up.
-        # The intent of this list is to *surface*, not to silence — every
-        # entry is a TODO ticket waiting for an owning PR.
-        # ----- existing gaps as of 2026-05-07 (PR-D introduces this test):
-        # certificates: course_title is teacher-authored RU but the read
-        # endpoints predate the locale overlay refactor.
-        # TODO follow-up PR: thread Accept-Language through certificates.
-        ("get_course_certificate", "/api/v1/certificates/course/{course_id}"),
-        ("list_my_certificates", "/api/v1/certificates/my"),
-        # cohorts: name is teacher-authored RU; cohorts.py still serves
-        # source for everyone. Translation pipeline does not yet cover
-        # cohort metadata.
-        # TODO follow-up PR: extend the entity registry + overlay to cohorts.
-        ("list_cohorts", "/api/v1/cohorts/course/{course_id}"),
-        # prerequisites: prerequisite_course_title is the upstream course
-        # title — same overlay should apply.
-        # TODO follow-up PR: localize prerequisite_course_title.
-        ("get_prerequisites", "/api/v1/prerequisites/course/{course_id}"),
+        # No known Rule 1 violations on main as of 2026-05-07 — PR #120
+        # closed certificates / cohorts / prerequisites by routing them
+        # through the same overlay machinery used by /courses. Adding a
+        # new entry here means a real gap we're choosing to leave open
+        # temporarily — cite the follow-up PR or issue.
     }
 )
 

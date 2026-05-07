@@ -84,14 +84,14 @@ def test_registry_has_model_class_for_every_entry():
 
 
 def test_registry_field_names_exist_on_models():
-    """A typo in ``FieldSpec.name`` is silent at registration time —
+    """A typo in ``FieldSpec.attr`` is silent at registration time —
     catch it here by introspecting each registered model."""
     for entity_type, reg in REGISTRY.items():
         model = ENTITY_MODEL[entity_type]
         attrs = set(dir(model))
         for fs in reg.fields:
-            assert fs.name in attrs, (
-                f"Registry says {entity_type!r} has field {fs.name!r}, but {model.__name__} has no such attribute"
+            assert fs.attr in attrs, (
+                f"Registry says {entity_type!r} reads field {fs.attr!r}, but {model.__name__} has no such attribute"
             )
 
 
