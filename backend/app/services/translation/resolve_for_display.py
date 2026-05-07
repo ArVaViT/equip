@@ -468,6 +468,70 @@ def localize_chapter_block_rows(
     return out
 
 
+def build_localized_module_response(
+    db: Session,
+    module: Module,
+    *,
+    display_locale: LocaleCode,
+    source_locale: LocaleCode,
+) -> ModuleResponse:
+    """Localized module title/description plus chapter titles.
+
+    Mirror of ``build_localized_course_response_with_tree`` but scoped to a
+    single module — the dedicated module-detail endpoint hits this so a
+    student opening a module sees module + chapter titles in the active
+    locale (was returning raw RU even though chapter titles were already in
+    ``content_translations``).
+    """
+    specs: list[tuple[str, str, str]] = [
+        ("module", str(module.id), "title"),
+        ("module", str(module.id), "description"),
+    ]
+    for ch in module.chapters:
+        specs.append(("chapter", str(ch.id), "title"))
+    overlay_t = fetch_overlay_triples_bulk(db, specs, display_locale)
+
+    mt = (
+        pick_overlay_value(
+            overlay_t,
+            "module",
+            str(module.id),
+            "title",
+            module.title,
+            source_locale=source_locale,
+            display_locale=display_locale,
+        )
+        or module.title
+    )
+    md = pick_overlay_value(
+        overlay_t,
+        "module",
+        str(module.id),
+        "description",
+        module.description,
+        source_locale=source_locale,
+        display_locale=display_locale,
+    )
+    new_chapters: list[ChapterResponse] = []
+    for ch in module.chapters:
+        cht = (
+            pick_overlay_value(
+                overlay_t,
+                "chapter",
+                str(ch.id),
+                "title",
+                ch.title,
+                source_locale=source_locale,
+                display_locale=display_locale,
+            )
+            or ch.title
+        )
+        ch_base = ChapterResponse.model_validate(ch, from_attributes=True)
+        new_chapters.append(ch_base.model_copy(update={"title": cht}))
+    base = ModuleResponse.model_validate(module, from_attributes=True)
+    return base.model_copy(update={"title": mt, "description": md, "chapters": new_chapters})
+
+
 def localize_announcement_rows(
     db: Session,
     announcements: list[Announcement],
@@ -564,6 +628,7 @@ __all__ = [
     "build_localized_course_response",
     "build_localized_course_response_with_tree",
     "build_localized_course_summary",
+    "build_localized_module_response",
     "build_localized_quiz_student_response",
     "fetch_overlay_triples_bulk",
     "get_course_source_locale_for_chapter",

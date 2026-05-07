@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_optional_user, require_teacher
 from app.core.database import get_db
-from app.models.course import Course, Module
+from app.models.course import Course
 from app.models.user import User, UserRole
 from app.schemas.course import CourseResponse, CourseSummary, ModuleResponse
 from app.schemas.locale import LocaleCode, normalize_locale
@@ -19,6 +19,7 @@ from app.services.translation.resolve_for_display import (
     batch_fetch_course_translations,
     build_localized_course_response_with_tree,
     build_localized_course_summary,
+    build_localized_module_response,
     should_apply_course_translation_overlay,
 )
 
@@ -108,20 +109,25 @@ def get_course_detail(
 def get_module_detail(
     course_id: str,
     module_id: str,
+    response: Response,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
-) -> Module:
+) -> ModuleResponse:
     # Lightweight access probe — avoids loading the whole course→modules→chapters
-    # tree just to check publication state.
+    # tree just to check publication state. Pull source_locale here too so we
+    # don't need a second course fetch to apply the translation overlay below.
     course_row = (
-        db.query(Course.status, Course.created_by).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
+        db.query(Course.status, Course.created_by, Course.source_locale)
+        .filter(Course.id == course_id, Course.deleted_at.is_(None))
+        .first()
     )
     if not course_row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Course '{course_id}' not found",
         )
-    course_status, course_owner_id = course_row
+    course_status, course_owner_id, course_source_locale = course_row
     if course_status != "published":
         if not current_user or (
             str(course_owner_id) != str(current_user.id) and current_user.role != UserRole.ADMIN.value
@@ -136,4 +142,23 @@ def get_module_detail(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Module '{module_id}' not found in course '{course_id}'",
         )
-    return module
+
+    response.headers["Vary"] = "Accept-Language"
+
+    # Owner + admin always see source for editorial accuracy (matches the
+    # rule in ``should_apply_course_translation_overlay`` for the parent
+    # course-detail endpoint). Everyone else (students, anonymous catalog
+    # browsers, other teachers) gets the locale overlay.
+    is_owner = current_user is not None and str(course_owner_id) == str(current_user.id)
+    is_admin = current_user is not None and current_user.role == UserRole.ADMIN.value
+    if is_owner or is_admin:
+        return ModuleResponse.model_validate(module, from_attributes=True)
+
+    display_locale: LocaleCode = normalize_locale(accept_language)
+    source_locale: LocaleCode = normalize_locale(course_source_locale)
+    return build_localized_module_response(
+        db,
+        module,
+        display_locale=display_locale,
+        source_locale=source_locale,
+    )
