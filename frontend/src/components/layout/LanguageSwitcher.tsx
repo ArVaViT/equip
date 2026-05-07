@@ -5,11 +5,12 @@ import { Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/context/useAuth"
 import {
-  LOCALE_STORAGE_KEY,
   SUPPORTED_LOCALES,
   isSupportedLocale,
   type SupportedLocale,
 } from "@/i18n/config"
+import { setDesiredLocale } from "@/i18n/useLocaleSync"
+import { toast } from "@/lib/toast"
 import { preferencesService } from "@/services/preferences"
 
 interface LanguageSwitcherProps {
@@ -35,24 +36,36 @@ export default function LanguageSwitcher({ variant = "full" }: LanguageSwitcherP
 
   const switchTo = async (locale: SupportedLocale) => {
     if (locale === active || pending) return
+    const previous = active
     setPending(locale)
+    // Mark the desired locale BEFORE flipping i18n so the sync hook never
+    // races with the auth profile while the PATCH is in flight.
+    setDesiredLocale(locale)
     try {
-      // Flip i18n + storage immediately so the UI never lags behind a click.
-      // The API call below catches up in the background; if it fails the
-      // local choice still stands until the next login.
+      // Flip i18n immediately so the UI never lags behind a click. The
+      // language-detector's `caches: ["localStorage"]` setting persists
+      // the new value to localStorage on the `languageChanged` event,
+      // so we don't write to localStorage manually.
       await i18n.changeLanguage(locale)
-      try {
-        window.localStorage.setItem(LOCALE_STORAGE_KEY, locale)
-      } catch {
-        // Storage may be unavailable; UI already reflects the change.
-      }
       if (user) {
-        await preferencesService.setPreferredLocale(locale).catch(() => {
-          // Network failure should not roll back the local switch — the user
-          // already sees the new language. The next successful save will
-          // sync server-side.
-        })
-        await refreshUser()
+        try {
+          await preferencesService.setPreferredLocale(locale)
+          // Once the profile reflects the new locale, the desired-guard
+          // clears itself the next time `useLocaleSync` runs.
+          await refreshUser()
+        } catch {
+          // PATCH failed: roll back UI + guard, and let the user know
+          // their choice did not persist server-side.
+          setDesiredLocale(null)
+          await i18n.changeLanguage(previous)
+          // Reuse the profile-update failure copy — saving a preference is
+          // semantically a profile mutation, and this avoids touching the
+          // locale JSON files (owned by other PRs running in parallel).
+          toast({ title: t("profile.updateFailed"), variant: "destructive" })
+        }
+      } else {
+        // Guests have no profile to reconcile against; clear the guard.
+        setDesiredLocale(null)
       }
     } finally {
       setPending(null)
