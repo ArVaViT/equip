@@ -32,6 +32,7 @@ TranslationEntityType = Literal[
     "assignment",
     "announcement",
     "course_event",
+    "cohort",
 ]
 TranslationField = Literal[
     "content",

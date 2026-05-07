@@ -20,6 +20,7 @@ from sqlalchemy.orm import selectinload
 from app.models.announcement import Announcement
 from app.models.assignment import Assignment
 from app.models.chapter_block import ChapterBlock
+from app.models.cohort import Cohort
 from app.models.course_event import CourseEvent
 from app.models.quiz import Quiz, QuizQuestion
 from app.services.translation.orchestrator import OrchestratorReport
@@ -169,6 +170,11 @@ def _translate_course_side_entities(
         total = merge_orchestrator_reports(
             total,
             reconcile_entity(db, "course_event", ev, provider=provider),
+        )
+    for co in db.query(Cohort).filter(Cohort.course_id == course.id).all():
+        total = merge_orchestrator_reports(
+            total,
+            reconcile_entity(db, "cohort", co, provider=provider),
         )
     return total
 

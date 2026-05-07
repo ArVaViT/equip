@@ -49,6 +49,7 @@ EntityType = Literal[
     "assignment",
     "announcement",
     "course_event",
+    "cohort",
 ]
 
 

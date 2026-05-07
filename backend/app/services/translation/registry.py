@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING, Any
 from app.models.announcement import Announcement
 from app.models.assignment import Assignment
 from app.models.chapter_block import ChapterBlock
+from app.models.cohort import Cohort
 from app.models.course import Chapter, Course, Module
 from app.models.course_event import CourseEvent
 from app.models.quiz import Quiz, QuizOption, QuizQuestion
@@ -60,13 +61,22 @@ if TYPE_CHECKING:
 class FieldSpec:
     """A translatable field on an entity model.
 
-    ``name`` is keyed against the ``TranslationField`` literal that
-    ``translate_entity_fields`` accepts; mypy enforces that nothing
-    outside the literal sneaks in.
+    ``name`` is what gets stored in ``content_translations.field``; it
+    must be a member of the ``TranslationField`` literal (which maps to
+    the DB ``field`` CHECK constraint). ``model_attr`` is the Python
+    attribute on the entity to read source text from — defaults to
+    ``name`` when the model attribute matches the DB field. They differ
+    when an entity uses a non-canonical field name (e.g. ``Cohort.name``
+    is conceptually a title — store it under ``field='title'``).
     """
 
     name: TranslationField
     content_kind: ContentKind
+    model_attr: str | None = None
+
+    @property
+    def attr(self) -> str:
+        return self.model_attr or self.name
 
 
 @dataclass(frozen=True, slots=True)
@@ -231,6 +241,12 @@ REGISTRY: dict[EntityType, EntityRegistration] = {
         resolve_course=_resolve_course_via_attr("course_id"),
         build_context=lambda _e, c: f"Calendar event in course «{c.title}»",
     ),
+    "cohort": EntityRegistration(
+        entity_type="cohort",
+        fields=(FieldSpec("title", "title", model_attr="name"),),
+        resolve_course=_resolve_course_via_attr("course_id"),
+        build_context=lambda _co, c: f"Student cohort name in course «{c.title}»",
+    ),
 }
 
 
@@ -246,6 +262,7 @@ ENTITY_MODEL: dict[EntityType, type] = {
     "assignment": Assignment,
     "announcement": Announcement,
     "course_event": CourseEvent,
+    "cohort": Cohort,
 }
 
 
@@ -284,7 +301,7 @@ def reconcile_entity(
 
     fields: list[TranslationFieldSpec] = []
     for fs in reg.fields:
-        text = getattr(entity, fs.name, None)
+        text = getattr(entity, fs.attr, None)
         if text is None or not str(text).strip():
             continue
         fields.append(TranslationFieldSpec(field=fs.name, text=text, content_kind=fs.content_kind))
