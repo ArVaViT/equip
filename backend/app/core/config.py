@@ -36,10 +36,13 @@ class Settings(BaseSettings):
     # repr/log dump; callers must use ``.get_secret_value()`` to read it.
     GEMINI_API_KEY: SecretStr | None = Field(default=None, description="Google AI Studio API key (server-only)")
     GEMINI_MODEL: str = Field(default="gemini-flash-latest", description="Gemini model id used for translations")
-    # 15s is enough for typical course-block translations; combined with the
-    # bounded retry schedule in ``GeminiTranslationProvider`` (≤1.5s budget)
-    # this keeps a single bad batch from monopolising a worker for ~95s.
-    GEMINI_TIMEOUT_SECONDS: float = Field(default=15.0, description="Per-request timeout for Gemini calls")
+    # 30s headroom: a 5 KB Russian HTML block (lesson-overview callout in
+    # the Acts course backfill) on ``gemini-flash-latest`` regularly takes
+    # 18-25s to translate to English. The earlier 15s default produced
+    # ``status='failed'`` rows for 7/40 chapter blocks. Combined with the
+    # bounded retry schedule in ``GeminiTranslationProvider`` (≤0.3s budget)
+    # this still keeps a single bad batch from monopolising a worker.
+    GEMINI_TIMEOUT_SECONDS: float = Field(default=30.0, description="Per-request timeout for Gemini calls")
     GEMINI_MAX_OUTPUT_TOKENS: int = Field(default=4096, description="Cap on generation length")
 
     @model_validator(mode="after")
