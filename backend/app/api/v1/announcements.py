@@ -16,6 +16,7 @@ from app.schemas.announcement import (
 )
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.notification_service import create_notifications_bulk
+from app.services.translation.pipeline_hooks import run_course_translation_pipeline_if_published
 from app.services.translation.resolve_for_display import localize_announcement_rows
 
 router = APIRouter(prefix="/announcements", tags=["announcements"])
@@ -146,6 +147,8 @@ def create_announcement(
 
     db.commit()
     db.refresh(announcement)
+    if data.course_id:
+        run_course_translation_pipeline_if_published(db, data.course_id)
     return announcement
 
 
@@ -175,6 +178,8 @@ def update_announcement(
 
     db.commit()
     db.refresh(announcement)
+    if announcement.course_id:
+        run_course_translation_pipeline_if_published(db, str(announcement.course_id))
     return announcement
 
 
