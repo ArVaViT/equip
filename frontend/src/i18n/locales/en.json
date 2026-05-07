@@ -46,7 +46,8 @@
     "loadFailed": "Failed to load notifications.",
     "tryAgain": "Try again",
     "loadMore": "Load more",
-    "loadingMore": "Loading..."
+    "loadingMore": "Loading...",
+    "deleteAriaLabel": "Delete notification"
   },
   "language": {
     "label": "Language",
@@ -73,7 +74,44 @@
     "marketingQuote": "Study to shew thyself approved unto God, a workman that needeth not to be ashamed.",
     "marketingReference": "2 Timothy 2:15",
     "marketingPanelFooter": "© {{year}} {{appName}}",
-    "toggleColorTheme": "Toggle color theme"
+    "toggleColorTheme": "Toggle color theme",
+    "errors": {
+      "registrationFailed": "Registration failed. Please try again.",
+      "googleSignUpFailed": "Google sign-up failed."
+    },
+    "forgotPassword": {
+      "heading": "Reset password",
+      "subheading": "Enter your email and we'll send you a reset link",
+      "emailLabel": "Email address",
+      "submit": "Send Reset Link",
+      "sending": "Sending...",
+      "backToSignIn": "Back to Sign In",
+      "sentHeading": "Check your email",
+      "sentSubheading": "We've sent you a password reset link",
+      "sentBody": "If an account exists for <strong>{{email}}</strong>, you'll receive a reset link shortly. Check your inbox.",
+      "errors": {
+        "emailRequired": "Please enter your email address",
+        "emailInvalid": "Please enter a valid email address",
+        "sendFailed": "Failed to send reset email. Please try again in a moment."
+      }
+    },
+    "resetPassword": {
+      "heading": "Set new password",
+      "subheading": "Choose a strong password for your account",
+      "newPassword": "New Password",
+      "confirmNewPassword": "Confirm New Password",
+      "submit": "Update Password",
+      "submitting": "Updating...",
+      "successHeading": "Password updated",
+      "successSubheading": "You're all set",
+      "successBody": "Your password has been updated successfully.",
+      "redirecting": "Redirecting to dashboard...",
+      "errors": {
+        "passwordTooShort": "Password must be at least 6 characters",
+        "passwordsDoNotMatch": "Passwords do not match",
+        "resetFailed": "Failed to reset password."
+      }
+    }
   },
   "profile": {
     "title": "Profile",
@@ -97,7 +135,8 @@
     "themeDark": "Dark mode",
     "themeLight": "Light mode",
     "switchToLight": "Light",
-    "switchToDark": "Dark"
+    "switchToDark": "Dark",
+    "invalidInput": "Invalid input"
   },
   "home": {
     "myCourses": "My Courses",
@@ -126,7 +165,8 @@
     "enrollmentClosed": "Enrollment closed",
     "enrollingNow": "Enrolling now",
     "openCourse": "Open",
-    "modulesLabel": "{{count}} modules"
+    "modulesLabel_one": "{{count}} module",
+    "modulesLabel_other": "{{count}} modules"
   },
   "pendingTeacher": {
     "banner": "Your teacher account is pending administrator approval. You can browse courses as a student in the meantime.",
@@ -297,19 +337,20 @@
     "passingScoreLine": "{{percent}}% — Passing score: {{passing}}%",
     "pendingTeacherReview": "Open-ended answers are pending teacher review",
     "reviewAnswers": "Review Answers",
-    "gradedPoints": "Graded · {{earned}}/{{max}} pt",
-    "gradedPointsPlural": "Graded · {{earned}}/{{max}} pts",
+    "gradedPoints_one": "Graded · {{earned}}/{{max}} pt",
+    "gradedPoints_other": "Graded · {{earned}}/{{max}} pts",
     "sentForReview": "Sent for teacher review",
     "yourAnswer": "Your answer:",
     "previousAttempts": "Previous attempts",
-    "questionPoints": "{{points}} pts",
+    "questionPoints_one": "{{count}} pt",
+    "questionPoints_other": "{{count}} pts",
     "true": "True",
     "false": "False",
     "typeAnswerPlaceholder": "Type your answer...",
-    "oneQuestion": "1 question",
-    "nQuestions": "{{n}} questions",
-    "onePoint": "1 point",
-    "nPoints": "{{n}} points",
+    "nQuestions_one": "{{count}} question",
+    "nQuestions_other": "{{count}} questions",
+    "nPoints_one": "{{count}} point",
+    "nPoints_other": "{{count}} points",
     "pointsBreakdown": "({{auto}} auto + {{manual}} review)",
     "passingShort": "Passing: {{score}}%",
     "attemptsShort": "Attempts: {{used}}/{{max}}",
@@ -375,6 +416,34 @@
     "confirmTrashConfirm": "Move to trash",
     "backToCourses": "Back to courses"
   },
+  "teacherDashboard": {
+    "courseCard": {
+      "statusPublished": "Published",
+      "statusDraft": "Draft",
+      "modules_one": "{{count}} module",
+      "modules_other": "{{count}} modules",
+      "createdOn": "Created {{date}}",
+      "thumbnailAlt": "{{title}} thumbnail",
+      "actionAnalytics": "Analytics",
+      "actionGradebook": "Gradebook",
+      "actionStudentProgress": "Student Progress",
+      "actionPublish": "Publish",
+      "actionUnpublish": "Unpublish",
+      "actionClone": "Clone course",
+      "actionCloneShort": "Clone",
+      "actionEdit": "Edit",
+      "actionEditCourse": "Edit course",
+      "actionDelete": "Delete"
+    }
+  },
+  "teacherEditor": {
+    "badges": {
+      "notSet": "Not set",
+      "upcoming": "Upcoming",
+      "closed": "Closed",
+      "open": "Open"
+    }
+  },
   "gradebook": {
     "summaryTab": "Summary Grades",
     "tableTab": "Grade Table",
@@ -407,10 +476,43 @@
     "accountType": "Account type",
     "orRegisterEmail": "or register with email",
     "fullName": "Full name",
+    "fullNamePlaceholder": "John Doe",
     "confirmPassword": "Confirm password",
+    "confirmPasswordShort": "Confirm",
     "alreadyHaveAccount": "Already have an account?",
     "creatingAccount": "Creating account...",
-    "createAccount": "Create account"
+    "createAccount": "Create account",
+    "errors": {
+      "fullNameTooShort": "Name must be at least 2 characters",
+      "emailInvalid": "Invalid email address",
+      "passwordTooShort": "Password must be at least 6 characters",
+      "passwordsDoNotMatch": "Passwords do not match",
+      "roleRequired": "Please select a role"
+    },
+    "duplicate": {
+      "heading": "Account may exist",
+      "subheading": "This email might already be registered",
+      "bodyExists": "An account with <strong>{{email}}</strong> may already exist.",
+      "bodyHint": "Please try signing in instead, or use the \"Forgot password\" option if you can't remember your credentials.",
+      "goToSignIn": "Go to Sign In",
+      "forgotPassword": "Forgot Password?",
+      "contactSupport": "Contact Support"
+    },
+    "success": {
+      "headingDefault": "Check your email",
+      "headingTeacher": "Application submitted",
+      "subheadingDefault": "Almost there — just one more step",
+      "subheadingTeacher": "One more step before you can start teaching",
+      "body": "We sent a confirmation link to <strong>{{email}}</strong>.",
+      "clickLinkToActivate": "Click the link in the email to activate your account.",
+      "teacherApprovalBanner": "After confirming your email, your teacher account will need to be approved by an administrator. You'll be able to log in, but course creation tools will be available once approved.",
+      "backToSignIn": "Back to Sign In"
+    }
+  },
+  "validation": {
+    "titleRequired": "Title is required",
+    "titleTooLong": "Title must be 300 characters or fewer",
+    "nameTooShort": "Name must be at least 2 characters"
   },
   "confirm": {
     "deleteBlock": "Delete this block?",

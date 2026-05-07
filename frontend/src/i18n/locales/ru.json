@@ -46,7 +46,8 @@
     "loadFailed": "Не удалось загрузить уведомления.",
     "tryAgain": "Повторить",
     "loadMore": "Ещё",
-    "loadingMore": "Загрузка..."
+    "loadingMore": "Загрузка...",
+    "deleteAriaLabel": "Удалить уведомление"
   },
   "language": {
     "label": "Язык",
@@ -73,7 +74,44 @@
     "marketingQuote": "Постарайся представить себя пред Богом испытанным, работником без поругания, верно распределяющим слово истины.",
     "marketingReference": "2 Тимофею 2:15",
     "marketingPanelFooter": "© {{year}} {{appName}}",
-    "toggleColorTheme": "Переключить светлую или тёмную тему"
+    "toggleColorTheme": "Переключить светлую или тёмную тему",
+    "errors": {
+      "registrationFailed": "Не удалось зарегистрироваться. Попробуйте снова.",
+      "googleSignUpFailed": "Не удалось зарегистрироваться через Google."
+    },
+    "forgotPassword": {
+      "heading": "Восстановление пароля",
+      "subheading": "Введите email — мы отправим ссылку для сброса",
+      "emailLabel": "Адрес email",
+      "submit": "Отправить ссылку",
+      "sending": "Отправка...",
+      "backToSignIn": "Вернуться ко входу",
+      "sentHeading": "Проверьте почту",
+      "sentSubheading": "Мы отправили ссылку для сброса пароля",
+      "sentBody": "Если аккаунт с адресом <strong>{{email}}</strong> существует, вы скоро получите ссылку. Проверьте входящие.",
+      "errors": {
+        "emailRequired": "Введите адрес email",
+        "emailInvalid": "Введите корректный email",
+        "sendFailed": "Не удалось отправить письмо. Попробуйте через минуту."
+      }
+    },
+    "resetPassword": {
+      "heading": "Новый пароль",
+      "subheading": "Выберите надёжный пароль для аккаунта",
+      "newPassword": "Новый пароль",
+      "confirmNewPassword": "Подтвердите новый пароль",
+      "submit": "Обновить пароль",
+      "submitting": "Обновление...",
+      "successHeading": "Пароль обновлён",
+      "successSubheading": "Готово",
+      "successBody": "Пароль успешно обновлён.",
+      "redirecting": "Переходим в личный кабинет...",
+      "errors": {
+        "passwordTooShort": "Пароль должен быть не менее 6 символов",
+        "passwordsDoNotMatch": "Пароли не совпадают",
+        "resetFailed": "Не удалось обновить пароль."
+      }
+    }
   },
   "profile": {
     "title": "Профиль",
@@ -97,7 +135,8 @@
     "themeDark": "Тёмная тема",
     "themeLight": "Светлая тема",
     "switchToLight": "Светлая",
-    "switchToDark": "Тёмная"
+    "switchToDark": "Тёмная",
+    "invalidInput": "Некорректный ввод"
   },
   "home": {
     "myCourses": "Мои курсы",
@@ -126,7 +165,10 @@
     "enrollmentClosed": "Набор закрыт",
     "enrollingNow": "Идёт набор",
     "openCourse": "Открыть",
-    "modulesLabel": "{{count}} модулей"
+    "modulesLabel_one": "{{count}} модуль",
+    "modulesLabel_few": "{{count}} модуля",
+    "modulesLabel_many": "{{count}} модулей",
+    "modulesLabel_other": "{{count}} модуля"
   },
   "pendingTeacher": {
     "banner": "Ваша заявка на учительский аккаунт ожидает одобрения администратора. Тем временем вы можете заниматься как студент.",
@@ -297,19 +339,28 @@
     "passingScoreLine": "{{percent}}% — проходной балл: {{passing}}%",
     "pendingTeacherReview": "Развёрнутые ответы ждут проверки преподавателя",
     "reviewAnswers": "Разбор ответов",
-    "gradedPoints": "Оценено · {{earned}}/{{max}} б.",
-    "gradedPointsPlural": "Оценено · {{earned}}/{{max}} б.",
+    "gradedPoints_one": "Оценено · {{earned}}/{{max}} балл",
+    "gradedPoints_few": "Оценено · {{earned}}/{{max}} балла",
+    "gradedPoints_many": "Оценено · {{earned}}/{{max}} баллов",
+    "gradedPoints_other": "Оценено · {{earned}}/{{max}} балла",
     "sentForReview": "Отправлено на проверку преподавателю",
     "yourAnswer": "Ваш ответ:",
     "previousAttempts": "Предыдущие попытки",
-    "questionPoints": "{{points}} б.",
+    "questionPoints_one": "{{count}} балл",
+    "questionPoints_few": "{{count}} балла",
+    "questionPoints_many": "{{count}} баллов",
+    "questionPoints_other": "{{count}} балла",
     "true": "Верно",
     "false": "Неверно",
     "typeAnswerPlaceholder": "Введите ответ…",
-    "oneQuestion": "1 вопрос",
-    "nQuestions": "{{n}} вопросов",
-    "onePoint": "1 балл",
-    "nPoints": "{{n}} баллов",
+    "nQuestions_one": "{{count}} вопрос",
+    "nQuestions_few": "{{count}} вопроса",
+    "nQuestions_many": "{{count}} вопросов",
+    "nQuestions_other": "{{count}} вопроса",
+    "nPoints_one": "{{count}} балл",
+    "nPoints_few": "{{count}} балла",
+    "nPoints_many": "{{count}} баллов",
+    "nPoints_other": "{{count}} балла",
     "pointsBreakdown": "({{auto}} авт. + {{manual}} на проверке)",
     "passingShort": "Проходной балл: {{score}}%",
     "attemptsShort": "Попытки: {{used}}/{{max}}",
@@ -375,6 +426,36 @@
     "confirmTrashConfirm": "В корзину",
     "backToCourses": "К курсам"
   },
+  "teacherDashboard": {
+    "courseCard": {
+      "statusPublished": "Опубликован",
+      "statusDraft": "Черновик",
+      "modules_one": "{{count}} модуль",
+      "modules_few": "{{count}} модуля",
+      "modules_many": "{{count}} модулей",
+      "modules_other": "{{count}} модуля",
+      "createdOn": "Создан {{date}}",
+      "thumbnailAlt": "Обложка курса {{title}}",
+      "actionAnalytics": "Аналитика",
+      "actionGradebook": "Журнал оценок",
+      "actionStudentProgress": "Прогресс студентов",
+      "actionPublish": "Опубликовать",
+      "actionUnpublish": "Снять с публикации",
+      "actionClone": "Скопировать курс",
+      "actionCloneShort": "Копия",
+      "actionEdit": "Редактировать",
+      "actionEditCourse": "Редактировать курс",
+      "actionDelete": "Удалить"
+    }
+  },
+  "teacherEditor": {
+    "badges": {
+      "notSet": "Не задано",
+      "upcoming": "Скоро",
+      "closed": "Закрыт",
+      "open": "Открыт"
+    }
+  },
   "gradebook": {
     "summaryTab": "Сводка оценок",
     "tableTab": "Таблица оценок",
@@ -407,10 +488,43 @@
     "accountType": "Тип аккаунта",
     "orRegisterEmail": "или регистрация по email",
     "fullName": "Полное имя",
+    "fullNamePlaceholder": "Иван Иванов",
     "confirmPassword": "Подтверждение пароля",
+    "confirmPasswordShort": "Подтверждение",
     "alreadyHaveAccount": "Уже есть аккаунт?",
     "creatingAccount": "Создание аккаунта...",
-    "createAccount": "Создать аккаунт"
+    "createAccount": "Создать аккаунт",
+    "errors": {
+      "fullNameTooShort": "Имя должно содержать минимум 2 символа",
+      "emailInvalid": "Некорректный email",
+      "passwordTooShort": "Пароль должен быть не менее 6 символов",
+      "passwordsDoNotMatch": "Пароли не совпадают",
+      "roleRequired": "Выберите роль"
+    },
+    "duplicate": {
+      "heading": "Аккаунт уже может существовать",
+      "subheading": "Этот email возможно уже зарегистрирован",
+      "bodyExists": "Аккаунт с адресом <strong>{{email}}</strong> возможно уже существует.",
+      "bodyHint": "Попробуйте войти или воспользуйтесь функцией «Забыли пароль», если не помните данные.",
+      "goToSignIn": "Перейти ко входу",
+      "forgotPassword": "Забыли пароль?",
+      "contactSupport": "Связаться с поддержкой"
+    },
+    "success": {
+      "headingDefault": "Проверьте почту",
+      "headingTeacher": "Заявка отправлена",
+      "subheadingDefault": "Почти готово — остался один шаг",
+      "subheadingTeacher": "Ещё один шаг перед началом преподавания",
+      "body": "Мы отправили ссылку подтверждения на <strong>{{email}}</strong>.",
+      "clickLinkToActivate": "Перейдите по ссылке в письме, чтобы активировать аккаунт.",
+      "teacherApprovalBanner": "После подтверждения email ваш преподавательский аккаунт должен быть одобрен администратором. Вход будет доступен сразу, а инструменты создания курсов — после одобрения.",
+      "backToSignIn": "Вернуться ко входу"
+    }
+  },
+  "validation": {
+    "titleRequired": "Укажите название",
+    "titleTooLong": "Название не должно превышать 300 символов",
+    "nameTooShort": "Имя должно содержать минимум 2 символа"
   },
   "confirm": {
     "deleteBlock": "Удалить этот блок?",
