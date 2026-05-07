@@ -46,6 +46,7 @@ from dataclasses import dataclass
 from difflib import SequenceMatcher
 from typing import TYPE_CHECKING
 
+from app.services.bible.books import display_book_name
 from app.services.bible.references import BibleRef, parse_references
 from app.services.bible.store import is_locale_bundled, lookup
 
@@ -81,11 +82,16 @@ class Substitution:
     sentinel that replaces the blockquote's inner text in the markered
     HTML; ``ref`` points at the canonical Bible passage;
     ``original_inner`` is the author's text (stripped of HTML), kept
-    for safe fallback when the target locale's lookup misses."""
+    for safe fallback when the target locale's lookup misses;
+    ``ref_tail`` is the parenthesized reference text that lived
+    immediately after the verse (e.g. ``(Matt. 28:19).``) and is
+    re-localized by ``post_substitute`` so a Russian reader sees
+    ``(Матф. 28:19).`` instead of the source-locale form."""
 
     marker: str
     ref: BibleRef
     original_inner: str
+    ref_tail: str = ""
 
 
 def _strip_html(html: str) -> str:
@@ -119,6 +125,29 @@ def _normalize_for_compare(s: str) -> str:
     )
     s = s.translate(table)
     return " ".join(s.split())
+
+
+def _localize_ref_tail(tail: str, target_locale: LocaleCode) -> str:
+    """Rewrite the book name in a parenthesized reference like
+    ``(Matt. 28:19)`` so it reads naturally in ``target_locale``
+    (``(Матф. 28:19)``). Uses the locale's conventional short form
+    from ``books.display_book_name``. Falls back to the original tail
+    when no parsable reference is found or no display name exists for
+    the target locale — never raises, so a stray edge case can't break
+    the whole post-substitute pass."""
+    parsed = parse_references(tail)
+    if not parsed:
+        return tail
+    p = parsed[0]
+    display = display_book_name(p.ref.book, target_locale)
+    if not display:
+        return tail
+    if p.ref.verse_end is not None:
+        formatted = f"{display} {p.ref.chapter}:{p.ref.verse_start}-{p.ref.verse_end}"
+    else:
+        formatted = f"{display} {p.ref.chapter}:{p.ref.verse_start}"
+    start, end = p.span
+    return tail[:start] + formatted + tail[end:]
 
 
 def _marker_token() -> str:
@@ -237,10 +266,17 @@ def pre_substitute(
         out_parts.append(html[cursor:bq_start])
         out_parts.append(opening_tag)
         out_parts.append(marker)
-        # Preserve the citation tail (e.g. ``(Деян. 1:8).``) so the
-        # reference notation survives translation. Gemini will localize
-        # the book name (``Деян.`` → ``Acts``) just like any other prose.
-        out_parts.append(ref_tail_inner)
+        # The marker swallowed the verse text including any trailing
+        # whitespace/quote chars; re-introduce a single space before
+        # ``(Acts 1:8)`` so the post-substituted output reads
+        # ``…canonical text. (Acts 1:8).`` and not
+        # ``…canonical text.(Acts 1:8).``. Only when the tail starts
+        # with ``(`` (the parenthesized-reference form we walked back
+        # to include); the no-paren form is rare and uses ref_tail="".
+        emitted_tail = ref_tail_inner
+        if emitted_tail.startswith("(") and not emitted_tail.startswith(" ("):
+            emitted_tail = " " + emitted_tail
+        out_parts.append(emitted_tail)
         out_parts.append(closing_tag)
         cursor = bq_end
         subs.append(
@@ -248,6 +284,7 @@ def pre_substitute(
                 marker=marker,
                 ref=ref,
                 original_inner=verse_text_inner,
+                ref_tail=emitted_tail,
             )
         )
 
@@ -265,15 +302,24 @@ def post_substitute(
     target_locale: LocaleCode,
 ) -> str:
     """Replace every marker in ``html`` with the canonical
-    ``target_locale`` text for its substitution. Falls back to the
-    original (source-locale) inner text when the target lookup misses
-    — better than leaking a sentinel marker into the rendered page."""
+    ``target_locale`` text for its substitution and rewrite the
+    surviving reference tail (``(Matt. 28:19)``) into the same locale's
+    conventional form (``(Матф. 28:19)``). Falls back to the original
+    (source-locale) inner text when the target lookup misses — better
+    than leaking a sentinel marker into the rendered page. Tail-rewrite
+    is best-effort: if the LLM mutated the tail in transit, the literal
+    string-replace becomes a no-op and the (slightly less native) tail
+    survives instead of disappearing."""
     if not subs:
         return html
     for sub in subs:
         canonical_target = lookup(sub.ref, target_locale)
         replacement = canonical_target if canonical_target is not None else sub.original_inner
         html = html.replace(sub.marker, replacement)
+        if sub.ref_tail:
+            localized = _localize_ref_tail(sub.ref_tail, target_locale)
+            if localized != sub.ref_tail:
+                html = html.replace(sub.ref_tail, localized, 1)
     return html
 
 
