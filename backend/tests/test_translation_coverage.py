@@ -81,10 +81,12 @@ TRANSLATION_HOOK_NAMES: tuple[str, ...] = (
     "translate_course_content",
 )
 
-# ``ENTITY_MODEL`` registry doesn't yet exist as a single dict — instead the
-# vocabulary is encoded in ``app.services.translation.protocol.EntityType``
-# (a Literal). We mirror it here so the test stays decoupled from runtime
-# code; any drift will be caught by ``test_entity_types_match_protocol``.
+# Mirror of the entity-type vocabulary at test time so the assertions
+# stay decoupled from runtime code. Drift between this list and
+# ``app.services.translation.{protocol.EntityType, registry.REGISTRY,
+# models.content_translation.TranslationEntityType}`` is caught by
+# ``test_entity_types_match_protocol`` below and by the structural
+# tests in ``test_translation_registry.py``.
 TRANSLATABLE_ENTITY_BODY_SCHEMAS: frozenset[str] = frozenset(
     {
         # course-tree write payloads
@@ -157,16 +159,12 @@ KNOWN_VIOLATIONS_RULE1: frozenset[tuple[str, str]] = frozenset(
 KNOWN_VIOLATIONS_RULE2: frozenset[tuple[str, str]] = frozenset(
     {
         # Same rules — surface, don't silence.
-        # ----- existing gaps as of 2026-05-07:
-        # NOTE: PR #116 added the hook for create/update of announcements
-        # and course events. If those landed BEFORE this test runs in CI,
-        # these entries can be deleted. They are listed here defensively
-        # so the test passes on whichever main commit it's first run on.
-        # TODO follow-up: drop these once #116 has landed in main.
-        ("create_announcement", "/api/v1/announcements"),
-        ("update_announcement", "/api/v1/announcements/{announcement_id}"),
-        ("create_course_event", "/api/v1/courses/{course_id}/events"),
-        ("update_course_event", "/api/v1/courses/{course_id}/events/{event_id}"),
+        # No known Rule 2 violations on main as of 2026-05-07. The
+        # announcement / course_event hooks landed in PR #116; the
+        # registry pattern in PR #117 makes new translatable entities
+        # self-document their hook needs. Adding a violation here means
+        # a real gap we're choosing to leave open temporarily — cite
+        # the follow-up PR or issue.
     }
 )
 
@@ -293,7 +291,10 @@ def test_entity_types_match_protocol() -> None:
     from app.services.translation.protocol import EntityType
 
     entity_types = set(_get_args(EntityType))
-    # Sanity-check: protocol must include the canonical course-tree set.
+    # Sanity-check: protocol must include every entity type the project
+    # currently translates. Adding a new registered entity? Append it
+    # here too so a future "let's drop X" change fails this test
+    # immediately, not silently at runtime.
     assert {
         "course",
         "module",
@@ -305,6 +306,7 @@ def test_entity_types_match_protocol() -> None:
         "assignment",
         "announcement",
         "course_event",
+        "cohort",
     }.issubset(entity_types), f"protocol.EntityType lost a registered type: have={entity_types}"
 
 

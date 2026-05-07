@@ -8,7 +8,67 @@ will adopt it starting with v1.0.0.
 
 ## [Unreleased]
 
-_Nothing yet — see the [ROADMAP](ROADMAP.md) for what's next._
+### Added — bilingual content (RU ↔ EN)
+
+- **Interface i18n** — full UI in Russian and English via `react-i18next`,
+  with native plural forms (`_one` / `_few` / `_many` / `_other`) for
+  Russian. Auth flows, teacher dashboard, calendar, certificates, and
+  notifications all translated; locale-aware date formatting.
+- **Course content translation pipeline** — every teacher-authored field
+  (course title/description, module, chapter title, chapter_block content,
+  quiz / question / option, assignment, announcement, course_event,
+  cohort name) is auto-translated to the other locale via the Google
+  Gemini API. Results cached in `public.content_translations` so
+  re-publish is free; `source_hash` short-circuits unchanged text.
+- **Bidirectional, no "main" language** — a course's `source_locale`
+  derives from the teacher's `preferred_locale` at create time. Author
+  in EN, RU students get RU. Author in RU, EN students get EN. No UI
+  dropdown; no default forced on the user.
+- **Canonical Bible quote substitution** — `app/services/bible/`
+  detects `<blockquote>` + Bible reference pairs (Russian or English),
+  swaps the verse with a sentinel marker, sends only the prose to
+  Gemini, then restores the canonical target-locale text from the
+  bundled KJV (1769) / Synodal (1876) JSON. Bible quotes always read
+  as the published canonical text in the student's locale, never a
+  paraphrase.
+
+### Added — translation infrastructure / safety
+
+- **Translation registry** — single source of truth for translatable
+  entities (`backend/app/services/translation/registry.py`). Adding a
+  new entity is a single registry entry plus a migration; the tree
+  walker, resolve helpers, write hooks, and Postgres CHECK constraint
+  are all driven from it.
+- **Per-entity write hook** — `reconcile_entity_if_course_published`
+  fires after each per-entity mutation (announcement create, cohort
+  update, etc.) so fresh content is translated immediately; idempotent
+  via `source_hash`.
+- **CI guard** — `tests/test_translation_coverage.py` introspects every
+  FastAPI route and enforces (a) GETs that return translatable schemas
+  must accept `Accept-Language`, (b) writes that mutate translatable
+  entities must reference one of the canonical hooks. Catches the
+  endpoint regressions that produced two manual backfills earlier in
+  the cycle.
+- **Provider hardening** — Gemini provider now rejects truncated
+  responses (`finishReason ≠ STOP`), rebuilds on API-key rotation,
+  splits HTTP timeouts (connect/read/write/pool), uses `SecretStr`
+  for the key, and recovers concurrent inserts via savepoint +
+  `IntegrityError`. Default model is `gemini-2.5-flash-lite` (no
+  thinking-token consumption — full Flash silently truncated long
+  blocks).
+
+### Changed
+
+- **Default Bible-quote prompt rule reframed** — the LLM is no longer
+  asked to "preserve scripture verbatim" as a primary mechanism; the
+  bible-substitution layer above handles canonical quotes. The prompt
+  rule remains as a fallback for paraphrased quotes (similarity below
+  0.80) so the prior behaviour is preserved for content the
+  substitution layer can't confidently match.
+- **Cohort / certificate / prerequisite views** now overlay
+  teacher-authored text into the requested locale (course title on a
+  certificate, cohort name in the student-facing list, prerequisite
+  course title in the catalog).
 
 ## [0.1.0] - 2026-04-24
 

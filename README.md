@@ -64,6 +64,7 @@ technical expertise that volunteer-run organizations simply don't have.
 | **Teacher tools** | Gradebook, analytics dashboard, cohort management, calendar, announcements |
 | **Admin tools** | User management, bulk operations, CSV export, course cloning, soft delete |
 | **Design** | Editorial aesthetic, dark/light theme, responsive (360px+), OKLCH semantic tokens |
+| **Bilingual content (RU↔EN)** | Auto-translation of all teacher-authored text via Gemini, cached per (entity, field, locale); canonical KJV / Synodal substitution for Bible quotes; symmetric — author writes in their language, students read in theirs |
 | **Security** | RLS on every table, server-side HTML sanitization, CORS lockdown, audit pipeline |
 
 ---
@@ -173,7 +174,7 @@ We welcome contributions of all sizes — from typo fixes to new features.
 **We especially welcome:**
 - Nonprofit Bible schools sharing their real-world needs
 - Designers improving the student/teacher experience
-- Translators helping make the platform multilingual
+- Translators reviewing and refining the AI-translated content (the platform is already RU↔EN bilingual; human review of the canonical Bible-school terminology is what would push quality from "good" to "great")
 - QA testers finding and reporting bugs
 
 ---

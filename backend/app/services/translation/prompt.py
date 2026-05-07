@@ -5,12 +5,16 @@ The system prompt is the single most important defence we have against:
     - Bible quotation drift (LLMs love to paraphrase scripture).
     - Markup damage (HTML attributes silently rewritten).
 
-For Bible passages we deliberately do NOT ask the model to "output the
-KJV/Synodal text" — even with public-domain canonical translations
-pinned, models confidently hallucinate verses. Instead, instruct the
-model to leave a quoted passage untouched and only translate the
-surrounding prose; a real verse-detection / lookup pipeline can come
-later as its own change.
+For Bible passages, the heavy lifting now happens **outside** the LLM:
+``app.services.bible.substitution`` detects `<blockquote>` + reference
+pairs in the source HTML, swaps the verse text for an ASCII
+``VERSE_<hex>`` marker (Postgres-safe, JSON-safe, recognised by the
+"preserve placeholders" rule below), and after the LLM returns the
+translation, restores each marker with the canonical target-locale
+text from bundled KJV (1769) / Synodal (1876) JSON. The "leave Bible
+passages untouched" rule below is the **fallback** for paraphrased
+quotes (similarity < 0.80 to canonical) — it preserves the previous
+behaviour for content the substitution layer can't confidently match.
 
 Treat this file like a CHECK constraint: changes here affect production
 output. Add a regression test before shipping a substantive edit.

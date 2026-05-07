@@ -17,15 +17,18 @@ Algorithm (``pre_substitute``):
    to the canonical text using ``difflib.SequenceMatcher``. If
    similarity ≥ 0.80, this is a canonical quote — replace the
    blockquote's inner text with a marker token. Track the substitution.
-6. Markers use ``\\x00`` NUL byte sentinels — those cannot appear in HTML
-   or TipTap content, so they survive the Gemini round-trip intact.
-   System prompt rule "preserve placeholders verbatim" covers them.
+6. Markers are plain-ASCII ``VERSE_<random hex>`` strings. They survive
+   JSON encoding to Gemini, the Postgres ``TEXT`` column they end up
+   stored in (NUL bytes are forbidden there — that was the v1 bug
+   that left raw markers visible in students' EN view), and the
+   prompt's "preserve placeholders verbatim" rule which the model
+   honours for identifier-shaped tokens.
 
 ``post_substitute`` is the inverse: replace each marker in the
 translated HTML with the canonical ``target_locale`` text. If the
 target-locale lookup fails (e.g. an exotic verse missing from the
 bundled file), restore the original blockquote text instead — better
-than leaving a NUL marker in the output.
+than leaving a marker visible in the rendered output.
 
 Why ≥ 0.80: SequenceMatcher tolerates minor punctuation/hyphenation
 differences (em-dash variants, ё vs е, smart quotes, "the" / "ye")
@@ -74,11 +77,11 @@ _SIMILARITY_THRESHOLD = 0.80
 @dataclass(frozen=True, slots=True)
 class Substitution:
     """One verse substitution recorded by ``pre_substitute`` and consumed
-    by ``post_substitute``. ``marker`` is the NUL-fenced sentinel that
-    replaces the blockquote's inner text in the markered HTML; ``ref``
-    points at the canonical Bible passage; ``original_inner`` is the
-    author's text (stripped of HTML), kept for safe fallback when the
-    target locale's lookup misses."""
+    by ``post_substitute``. ``marker`` is the ASCII ``VERSE_<hex>``
+    sentinel that replaces the blockquote's inner text in the markered
+    HTML; ``ref`` points at the canonical Bible passage;
+    ``original_inner`` is the author's text (stripped of HTML), kept
+    for safe fallback when the target locale's lookup misses."""
 
     marker: str
     ref: BibleRef
@@ -122,15 +125,19 @@ def _marker_token() -> str:
     """Produce a sentinel that survives the full round-trip.
 
     Constraints satisfied:
-    * Won't appear in legitimate teacher content — uses two Unicode
-      Private-Use Area code points (U+E000, U+E001) as fences.
+    * Plain ASCII — no Unicode Private-Use Area characters (the v1.5
+      attempt did that, and the invisible ``\\ue000`` / ``\\ue001`` chars
+      broke editor round-trips and the test suite's ASCII assertions).
     * Valid UTF-8, so it survives JSON encoding to Gemini and back.
     * Valid in Postgres TEXT (unlike NUL bytes, which the type
       explicitly rejects — that was the v1 bug that left raw markers
       visible in students' EN view of the Acts course).
-    * Distinctive prefix ``VERSE_`` keeps it greppable in logs.
+    * Distinctive prefix ``VERSE_`` keeps it greppable in logs and
+      makes the token "identifier-shaped" so the prompt's
+      "preserve placeholders verbatim" rule applies.
     * The random hex suffix lets multiple substitutions in one
-      document round-trip independently.
+      document round-trip independently and means an attacker can't
+      pre-craft a marker to confuse ``post_substitute``.
     """
     return f"VERSE_{secrets.token_hex(8)}"
 
@@ -260,7 +267,7 @@ def post_substitute(
     """Replace every marker in ``html`` with the canonical
     ``target_locale`` text for its substitution. Falls back to the
     original (source-locale) inner text when the target lookup misses
-    — better than leaking a NUL-byte marker into the rendered page."""
+    — better than leaking a sentinel marker into the rendered page."""
     if not subs:
         return html
     for sub in subs:
