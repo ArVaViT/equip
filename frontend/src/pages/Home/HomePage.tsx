@@ -252,7 +252,7 @@ export default function HomePage() {
 
       {!user && (
         <div className="mb-8 flex items-center justify-center gap-2 rounded-md border border-border border-l-[3px] border-l-info bg-info/5 px-4 py-3">
-          <LogIn className="h-4 w-4 text-info" />
+          <LogIn className="h-4 w-4 text-info" strokeWidth={1.75} aria-hidden="true" />
           <p className="text-sm text-foreground">
             <Link
               to="/login"

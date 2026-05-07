@@ -131,7 +131,7 @@ export default function Header() {
                           }}
                         />
                       ) : (
-                        <UserIcon className="h-3.5 w-3.5" strokeWidth={ICON_STROKE} />
+                        <UserIcon className="h-3.5 w-3.5" strokeWidth={ICON_STROKE} aria-hidden="true" />
                       )}
                     </Button>
                   </Link>
@@ -162,7 +162,7 @@ export default function Header() {
                 aria-label={t("header.menu")}
                 aria-expanded={mobileOpen}
               >
-                <Menu className="h-4 w-4" strokeWidth={ICON_STROKE} />
+                <Menu className="h-4 w-4" strokeWidth={ICON_STROKE} aria-hidden="true" />
               </Button>
             </div>
           </div>

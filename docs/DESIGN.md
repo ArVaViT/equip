@@ -52,8 +52,22 @@ One scale, one serif, one sans.
 ## Icons
 
 - `lucide-react` is the **only** icon library.
-- Sizes: `16` (inline), `20` (buttons), `24` (headers). Nothing else.
-- `strokeWidth={1.75}`. Never emoji as UI.
+- Sizes: `14` (footnote / inline metadata), `16` (inline), `20` (buttons),
+  `24` (headers). Nothing else.
+  - `14` (`h-3.5 w-3.5`) — footnote tier. Use for inline metadata badges
+    (e.g. `CourseCard` ratings/duration), inline-text adornments (e.g. the
+    footer support `Mail` icon, status dots, dismiss `X` in compact banners,
+    and the avatar fallback in the `7×7` profile button). Don't use it on
+    primary action buttons or page-header icons.
+  - `16` (`h-4 w-4`) — default inline icon (next to body-size labels).
+  - `20` (`h-5 w-5`) — icon-only buttons + leading icons in primary actions.
+  - `24` (`h-6 w-6`) — section headers and empty-state hero icons.
+- `strokeWidth={1.75}` on every icon, every size — including the 14px tier.
+- Mark icons that are decoration-only with `aria-hidden="true"`. Icons that
+  are the sole content of a button must instead carry an `aria-label` on
+  the button (or an `<span class="sr-only">`) — never both `aria-hidden`
+  and no accessible name.
+- Never emoji as UI.
 
 ## One pattern per job
 
