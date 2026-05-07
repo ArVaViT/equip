@@ -1,4 +1,5 @@
 import { Bell, Trash2 } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import type { Notification } from "@/types"
 import { cn } from "@/lib/utils"
 import {
@@ -18,6 +19,7 @@ interface Props {
  * live in `useNotifications`.
  */
 export function NotificationItem({ notification, onActivate, onDelete }: Props) {
+  const { t } = useTranslation()
   const Icon = NOTIFICATION_ICONS[notification.type] ?? Bell
   const color = NOTIFICATION_COLORS[notification.type] ?? "text-muted-foreground"
 
@@ -66,7 +68,7 @@ export function NotificationItem({ notification, onActivate, onDelete }: Props) 
           onDelete(notification.id)
         }}
         className="mt-0.5 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-        aria-label="Delete notification"
+        aria-label={t("notifications.deleteAriaLabel")}
       >
         <Trash2 className="h-3.5 w-3.5" />
       </button>

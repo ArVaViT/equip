@@ -21,10 +21,8 @@ export function QuizHeader({
 }: Props) {
   const { t } = useTranslation()
   const totalMaxScore = autoMaxScore + manualMaxScore
-  const questionsLabel =
-    questionCount === 1 ? t("quiz.oneQuestion") : t("quiz.nQuestions", { n: questionCount })
-  const pointsLabel =
-    totalMaxScore === 1 ? t("quiz.onePoint") : t("quiz.nPoints", { n: totalMaxScore })
+  const questionsLabel = t("quiz.nQuestions", { count: questionCount })
+  const pointsLabel = t("quiz.nPoints", { count: totalMaxScore })
 
   return (
     <div className="p-5 border-b">
