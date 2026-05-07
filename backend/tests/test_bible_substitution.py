@@ -279,10 +279,7 @@ def test_pre_substitute_reference_inside_blockquote():
     """
     canonical_ru = lookup(BibleRef("acts", 20, 28), "ru")
     assert canonical_ru is not None
-    html = (
-        f"<blockquote>«{canonical_ru}» (Деян. 20:28).</blockquote>\n"
-        f"<p>Это пастырское наставление.</p>"
-    )
+    html = f"<blockquote>«{canonical_ru}» (Деян. 20:28).</blockquote>\n<p>Это пастырское наставление.</p>"
     out, subs = pre_substitute(html, "ru")
     assert len(subs) == 1
     assert subs[0].ref == BibleRef("acts", 20, 28)
