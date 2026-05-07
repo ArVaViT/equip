@@ -3,16 +3,43 @@ import { useTranslation } from "react-i18next"
 
 import { useAuth } from "@/context/useAuth"
 
-import { LOCALE_STORAGE_KEY, isSupportedLocale } from "./config"
+import { isSupportedLocale, type SupportedLocale } from "./config"
 
 /**
- * Keep i18next, localStorage, and the authenticated profile in lockstep.
+ * Module-level "pending desired locale" guard.
  *
- * - On login: profile.preferred_locale wins. We update i18n and persist
- *   the choice to localStorage so a refresh picks the same value before
- *   the auth context has a chance to load.
+ * `LanguageSwitcher` updates this *before* it flips i18n optimistically and
+ * fires the `PATCH /users/me/preferences` request. While it's set, the sync
+ * hook below treats it as the source of truth and refuses to "correct" the
+ * UI back to the (still-stale) profile value. Once the profile catches up
+ * (or the switcher rolls back on failure), the guard is cleared.
+ *
+ * This is module-level on purpose: the switcher and the sync hook live in
+ * different parts of the tree but share a single i18n instance, so a single
+ * shared mutable cell is the simplest correct coordination.
+ */
+let desiredLocale: SupportedLocale | null = null
+
+export function setDesiredLocale(locale: SupportedLocale | null): void {
+  desiredLocale = locale
+}
+
+export function getDesiredLocale(): SupportedLocale | null {
+  return desiredLocale
+}
+
+/**
+ * Keep i18next and the authenticated profile in lockstep.
+ *
+ * - On login: profile.preferred_locale wins. We update i18n; the
+ *   `i18next-browser-languagedetector` cache (configured with
+ *   `caches: ["localStorage"]` in `config.ts`) writes the value to
+ *   localStorage automatically on `languageChanged`, so a refresh picks
+ *   the same value before the auth context has a chance to load.
  * - For guests: we leave i18next's detector alone (browser → localStorage
  *   fallback already runs at init time).
+ * - During an in-flight `LanguageSwitcher` PATCH: the `desiredLocale` guard
+ *   makes us a no-op so we don't fight the optimistic update.
  *
  * Mounted once in `App` near the auth provider.
  */
@@ -22,15 +49,18 @@ export function useLocaleSync(): void {
 
   useEffect(() => {
     if (!user) return
-    const desired = user.preferred_locale
-    if (!isSupportedLocale(desired)) return
-    if (i18n.language === desired) return
-    void i18n.changeLanguage(desired)
-    try {
-      window.localStorage.setItem(LOCALE_STORAGE_KEY, desired)
-    } catch {
-      // Storage can throw in privacy mode or quota-exceeded scenarios.
-      // The change still takes effect for the current session.
+    const profileLocale = user.preferred_locale
+    if (!isSupportedLocale(profileLocale)) return
+
+    // A switch is in progress and the profile hasn't caught up yet — defer.
+    if (desiredLocale !== null && desiredLocale !== profileLocale) return
+    // Profile now matches the user's pending desire (PATCH succeeded and the
+    // refresh landed). Drop the guard so future profile changes win normally.
+    if (desiredLocale === profileLocale) {
+      desiredLocale = null
     }
+
+    if (i18n.language === profileLocale) return
+    void i18n.changeLanguage(profileLocale)
   }, [user, i18n])
 }
