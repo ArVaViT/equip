@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import assert_course_owner, get_current_user, require_teacher
@@ -14,19 +14,31 @@ from app.schemas.announcement import (
     AnnouncementResponse,
     AnnouncementUpdate,
 )
+from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.notification_service import create_notifications_bulk
+from app.services.translation.resolve_for_display import localize_announcement_rows
 
 router = APIRouter(prefix="/announcements", tags=["announcements"])
 
 
+def _course_source_locale_map(db: Session, course_ids: list[str]) -> dict[str, LocaleCode]:
+    if not course_ids:
+        return {}
+    rows = db.query(Course.id, Course.source_locale).filter(Course.id.in_(course_ids)).all()
+    return {str(cid): normalize_locale(src) for cid, src in rows}
+
+
 @router.get("", response_model=list[AnnouncementResponse])
 def list_announcements(
+    response: Response,
     course_id: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> list[Announcement]:
+) -> list[AnnouncementResponse]:
+    response.headers["Vary"] = "Accept-Language"
     query = db.query(Announcement)
     is_admin = current_user.role in (UserRole.ADMIN.value, "admin")
 
@@ -67,7 +79,24 @@ def list_announcements(
         )
     # Admin without course_id sees all announcements (paginated, capped by limit).
 
-    return query.order_by(Announcement.created_at.desc()).offset(skip).limit(limit).all()
+    rows = query.order_by(Announcement.created_at.desc()).offset(skip).limit(limit).all()
+
+    # Admins see canonical source for moderation; everyone else (students,
+    # other teachers) gets the locale overlay if one exists.
+    if is_admin:
+        return [AnnouncementResponse.model_validate(a, from_attributes=True) for a in rows]
+
+    display_locale: LocaleCode = normalize_locale(accept_language)
+    course_ids = [str(a.course_id) for a in rows if a.course_id]
+    source_locales = _course_source_locale_map(db, course_ids)
+    # Group by source_locale so a single bulk overlay fetch covers each group.
+    out: list[AnnouncementResponse] = []
+    for src in {*source_locales.values(), normalize_locale(None)}:
+        bucket = [a for a in rows if source_locales.get(str(a.course_id), normalize_locale(None)) == src]
+        if not bucket:
+            continue
+        out.extend(localize_announcement_rows(db, bucket, display_locale=display_locale, source_locale=src))
+    return out
 
 
 @router.post("", response_model=AnnouncementResponse, status_code=status.HTTP_201_CREATED)

@@ -19,13 +19,17 @@ import uuid
 from sqlalchemy import tuple_
 from sqlalchemy.orm import Session  # noqa: TC002
 
+from app.models.announcement import Announcement  # noqa: TC001
 from app.models.assignment import Assignment  # noqa: TC001
 from app.models.chapter_block import ChapterBlock  # noqa: TC001
 from app.models.content_translation import ContentTranslation
 from app.models.course import Chapter, Course, Module
+from app.models.course_event import CourseEvent  # noqa: TC001
 from app.models.quiz import Quiz  # noqa: TC001
 from app.models.user import User, UserRole
+from app.schemas.announcement import AnnouncementResponse
 from app.schemas.assignment import AssignmentResponse
+from app.schemas.calendar import CourseEventResponse
 from app.schemas.chapter_block import BlockResponse
 from app.schemas.course import ChapterResponse, CourseResponse, CourseSummary, ModuleResponse
 from app.schemas.locale import LocaleCode, normalize_locale
@@ -464,6 +468,97 @@ def localize_chapter_block_rows(
     return out
 
 
+def localize_announcement_rows(
+    db: Session,
+    announcements: list[Announcement],
+    *,
+    display_locale: LocaleCode,
+    source_locale: LocaleCode,
+) -> list[AnnouncementResponse]:
+    """Apply stored translations to teacher-authored announcement rows."""
+    if not announcements:
+        return []
+    specs: list[tuple[str, str, str]] = []
+    for a in announcements:
+        specs.append(("announcement", str(a.id), "title"))
+        if a.content and str(a.content).strip():
+            specs.append(("announcement", str(a.id), "content"))
+    overlay_t = fetch_overlay_triples_bulk(db, specs, display_locale)
+    out: list[AnnouncementResponse] = []
+    for a in announcements:
+        base = AnnouncementResponse.model_validate(a, from_attributes=True)
+        title = (
+            pick_overlay_value(
+                overlay_t,
+                "announcement",
+                str(a.id),
+                "title",
+                a.title,
+                source_locale=source_locale,
+                display_locale=display_locale,
+            )
+            or a.title
+        )
+        content = (
+            pick_overlay_value(
+                overlay_t,
+                "announcement",
+                str(a.id),
+                "content",
+                a.content,
+                source_locale=source_locale,
+                display_locale=display_locale,
+            )
+            or a.content
+        )
+        out.append(base.model_copy(update={"title": title, "content": content}))
+    return out
+
+
+def localize_course_event_rows(
+    db: Session,
+    events: list[CourseEvent],
+    *,
+    display_locale: LocaleCode,
+    source_locale: LocaleCode,
+) -> list[CourseEventResponse]:
+    """Apply stored translations to calendar event rows."""
+    if not events:
+        return []
+    specs: list[tuple[str, str, str]] = []
+    for e in events:
+        specs.append(("course_event", str(e.id), "title"))
+        if e.description and str(e.description).strip():
+            specs.append(("course_event", str(e.id), "description"))
+    overlay_t = fetch_overlay_triples_bulk(db, specs, display_locale)
+    out: list[CourseEventResponse] = []
+    for e in events:
+        base = CourseEventResponse.model_validate(e, from_attributes=True)
+        title = (
+            pick_overlay_value(
+                overlay_t,
+                "course_event",
+                str(e.id),
+                "title",
+                e.title,
+                source_locale=source_locale,
+                display_locale=display_locale,
+            )
+            or e.title
+        )
+        description = pick_overlay_value(
+            overlay_t,
+            "course_event",
+            str(e.id),
+            "description",
+            e.description,
+            source_locale=source_locale,
+            display_locale=display_locale,
+        )
+        out.append(base.model_copy(update={"title": title, "description": description}))
+    return out
+
+
 __all__ = [
     "batch_fetch_course_translations",
     "build_localized_course_response",
@@ -472,8 +567,10 @@ __all__ = [
     "build_localized_quiz_student_response",
     "fetch_overlay_triples_bulk",
     "get_course_source_locale_for_chapter",
+    "localize_announcement_rows",
     "localize_assignment_rows",
     "localize_chapter_block_rows",
+    "localize_course_event_rows",
     "pick_overlay_value",
     "should_apply_course_translation_overlay",
     "should_apply_course_translation_overlay_for_chapter",

@@ -30,6 +30,8 @@ TranslationEntityType = Literal[
     "quiz_question",
     "quiz_option",
     "assignment",
+    "announcement",
+    "course_event",
 ]
 TranslationField = Literal[
     "content",

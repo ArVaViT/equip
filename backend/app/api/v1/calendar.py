@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_teacher, verify_course_owner
@@ -14,16 +14,27 @@ from app.schemas.calendar import (
     CourseEventResponse,
     CourseEventUpdate,
 )
+from app.schemas.locale import LocaleCode, normalize_locale
+from app.services.translation.resolve_for_display import (
+    fetch_overlay_triples_bulk,
+    localize_course_event_rows,
+    pick_overlay_value,
+)
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 
 
 @router.get("/events", response_model=list[CalendarEvent])
 def get_calendar_events(
+    response: Response,
     course_id: str | None = Query(None),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[CalendarEvent]:
+    response.headers["Vary"] = "Accept-Language"
+    is_admin = current_user.role == UserRole.ADMIN.value
+    display_locale: LocaleCode = normalize_locale(accept_language)
     enrolled_q = db.query(Enrollment.course_id).filter(Enrollment.user_id == current_user.id)
     if course_id:
         enrolled_q = enrolled_q.filter(Enrollment.course_id == course_id)
@@ -117,12 +128,56 @@ def get_calendar_events(
             )
 
     course_events = db.query(CourseEvent).filter(CourseEvent.course_id.in_(enrolled_course_ids)).all()
+
+    # Pre-fetch source locales per course so the overlay picks the right
+    # row (translation rows are keyed by display locale; fallback uses the
+    # course's source locale).
+    course_source_locales: dict[str, LocaleCode] = {}
+    for cid, src in db.query(Course.id, Course.source_locale).filter(Course.id.in_(enrolled_course_ids)).all():
+        course_source_locales[cid] = normalize_locale(src)
+
+    # Bulk-fetch overlay rows for every course_event title + non-empty description
+    # so non-admin students see the localized version. Admins always see source.
+    overlay_event: dict[tuple[str, str, str], str] = {}
+    if not is_admin and course_events:
+        specs: list[tuple[str, str, str]] = []
+        for ce in course_events:
+            specs.append(("course_event", str(ce.id), "title"))
+            if ce.description and str(ce.description).strip():
+                specs.append(("course_event", str(ce.id), "description"))
+        overlay_event = fetch_overlay_triples_bulk(db, specs, display_locale)
+
     for ce in course_events:
+        course_src = course_source_locales.get(ce.course_id, normalize_locale(None))
+        title = ce.title
+        description = ce.description
+        if not is_admin:
+            title = (
+                pick_overlay_value(
+                    overlay_event,
+                    "course_event",
+                    str(ce.id),
+                    "title",
+                    ce.title,
+                    source_locale=course_src,
+                    display_locale=display_locale,
+                )
+                or ce.title
+            )
+            description = pick_overlay_value(
+                overlay_event,
+                "course_event",
+                str(ce.id),
+                "description",
+                ce.description,
+                source_locale=course_src,
+                display_locale=display_locale,
+            )
         events.append(
             CalendarEvent(
                 id=str(ce.id),
-                title=ce.title,
-                description=ce.description,
+                title=title,
+                description=description,
                 event_type=ce.event_type,
                 event_date=ce.event_date,
                 course_id=ce.course_id,
@@ -169,12 +224,19 @@ def create_course_event(
     response_model=list[CourseEventResponse],
 )
 def list_course_events(
+    response: Response,
     course_id: str,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> list[CourseEvent]:
+) -> list[CourseEventResponse]:
+    response.headers["Vary"] = "Accept-Language"
     # Narrow probe: only the columns needed for ownership + soft-delete checks.
-    course_row = db.query(Course.created_by).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
+    course_row = (
+        db.query(Course.created_by, Course.source_locale)
+        .filter(Course.id == course_id, Course.deleted_at.is_(None))
+        .first()
+    )
     if not course_row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
     is_owner = str(course_row.created_by) == str(current_user.id)
@@ -190,7 +252,14 @@ def list_course_events(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You must be enrolled in this course to view events",
             )
-    return db.query(CourseEvent).filter(CourseEvent.course_id == course_id).order_by(CourseEvent.event_date).all()
+    rows = db.query(CourseEvent).filter(CourseEvent.course_id == course_id).order_by(CourseEvent.event_date).all()
+    # Owner + admin see source for editorial accuracy; everyone else gets the
+    # locale overlay if the translation pipeline has materialised one.
+    if is_owner or is_admin:
+        return [CourseEventResponse.model_validate(e, from_attributes=True) for e in rows]
+    display_locale: LocaleCode = normalize_locale(accept_language)
+    source_locale: LocaleCode = normalize_locale(course_row.source_locale)
+    return localize_course_event_rows(db, rows, display_locale=display_locale, source_locale=source_locale)
 
 
 @event_router.put(
