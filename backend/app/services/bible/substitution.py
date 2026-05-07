@@ -119,12 +119,20 @@ def _normalize_for_compare(s: str) -> str:
 
 
 def _marker_token() -> str:
-    """Produce a sentinel that cannot appear in any HTML payload.
-    NUL bytes are forbidden by both HTML5 parsers and TipTap, so the
-    marker survives Gemini's round-trip without escaping risk. The
-    random hex suffix keeps multiple substitutions in one document
-    distinguishable."""
-    return f"\x00VERSE_{secrets.token_hex(8)}\x00"
+    """Produce a sentinel that survives the full round-trip.
+
+    Constraints satisfied:
+    * Won't appear in legitimate teacher content — uses two Unicode
+      Private-Use Area code points (U+E000, U+E001) as fences.
+    * Valid UTF-8, so it survives JSON encoding to Gemini and back.
+    * Valid in Postgres TEXT (unlike NUL bytes, which the type
+      explicitly rejects — that was the v1 bug that left raw markers
+      visible in students' EN view of the Acts course).
+    * Distinctive prefix ``VERSE_`` keeps it greppable in logs.
+    * The random hex suffix lets multiple substitutions in one
+      document round-trip independently.
+    """
+    return f"VERSE_{secrets.token_hex(8)}"
 
 
 def pre_substitute(

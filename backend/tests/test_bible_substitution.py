@@ -201,31 +201,47 @@ def test_post_substitute_replaces_marker_with_target_canonical():
     """End-to-end: marker token put in by pre_substitute is replaced
     by the target-locale canonical text in post_substitute."""
     sub = Substitution(
-        marker="\x00VERSE_test1234\x00",
+        marker="VERSE_test1234",
         ref=BibleRef("acts", 1, 8),
         original_inner="но вы примете силу…",
     )
     translated = (
         "<p>Program of the book:</p>"
-        "<blockquote>«\x00VERSE_test1234\x00»</blockquote>"
+        "<blockquote>«VERSE_test1234»</blockquote>"
         "<p> (Acts 1:8). This is the central verse.</p>"
     )
     out = post_substitute(translated, [sub], "en")
     assert "ye shall receive power" in out.lower()
-    assert "\x00" not in out
+    # No leftover marker remains in the rendered page.
+    assert "VERSE_test1234" not in out
 
 
 def test_post_substitute_falls_back_to_source_when_target_missing():
-    """If the target locale lookup somehow misses (e.g. the bundled
-    file lacks that verse), fall back to the original source text
-    instead of leaking the NUL marker into the page."""
+    """If the target locale lookup misses (exotic verse not in the
+    bundled file), fall back to the original source text rather than
+    leaving a raw marker in the rendered page."""
     sub = Substitution(
-        marker="\x00VERSE_falls_back\x00",
+        marker="VERSE_falls_back",
         ref=BibleRef("acts", 99, 1),  # nonexistent
         original_inner="оригинальный текст",
     )
-    out = post_substitute("Body \x00VERSE_falls_back\x00 end.", [sub], "en")
+    out = post_substitute("Body VERSE_falls_back end.", [sub], "en")
     assert out == "Body оригинальный текст end."
+
+
+def test_marker_survives_postgres_text_column():
+    """Postgres TEXT rejects NUL bytes outright; the v1 marker used
+    \\x00 fences and the verse text leaked into production. Guard the
+    invariant: produced markers must contain no NUL bytes (and no other
+    Postgres-forbidden control chars)."""
+    from app.services.bible.substitution import _marker_token
+
+    for _ in range(50):
+        marker = _marker_token()
+        assert "\x00" not in marker, "NUL marker would be stripped by Postgres TEXT"
+        # ASCII-printable only is a stronger invariant — keeps logs and
+        # diff tools happy without further escaping.
+        assert marker.isascii() and marker.isprintable(), marker
 
 
 def test_full_roundtrip_synodal_to_kjv():
@@ -251,7 +267,7 @@ def test_full_roundtrip_synodal_to_kjv():
     final = post_substitute(translated_html, subs, "en")
     assert canonical_en in final
     assert canonical_ru not in final
-    assert "\x00" not in final
+    assert "VERSE_" not in final
 
 
 def test_pre_substitute_reference_inside_blockquote():
