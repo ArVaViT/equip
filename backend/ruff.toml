@@ -24,6 +24,15 @@ ignore = [
 [lint.isort]
 known-first-party = ["app"]
 
+[lint.per-file-ignores]
+# Bible book alias tables and verse-substitution tests intentionally
+# contain Cyrillic letters that look ambiguous to RUF001/002/003 — the
+# whole point of the file is recognizing the Russian forms verbatim.
+"app/services/bible/books.py" = ["RUF001", "RUF002", "RUF003"]
+"app/services/bible/references.py" = ["RUF001", "RUF002", "RUF003"]
+"app/services/bible/substitution.py" = ["RUF001", "RUF002", "RUF003"]
+"tests/test_bible_substitution.py" = ["RUF001", "RUF002", "RUF003"]
+
 [format]
 quote-style = "double"
 indent-style = "space"
