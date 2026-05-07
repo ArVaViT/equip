@@ -18,6 +18,8 @@ Anthropic, or a self-hosted model with one config change. See
 
 from app.services.translation.hash import compute_source_hash
 from app.services.translation.protocol import (
+    ContentKind,
+    EntityType,
     TranslationError,
     TranslationProvider,
     TranslationRequest,
@@ -30,6 +32,8 @@ from app.services.translation.service import (
 )
 
 __all__ = [
+    "ContentKind",
+    "EntityType",
     "NoopTranslationProvider",
     "TranslationError",
     "TranslationProvider",

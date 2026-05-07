@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
+    from app.services.translation.protocol import ContentKind
 
 _LANGUAGE_NAMES: dict[LocaleCode, str] = {"ru": "Russian", "en": "English"}
 
@@ -73,7 +74,7 @@ def _generate_fence_token() -> str:
     return secrets.token_hex(8)
 
 
-def build_user_prompt(*, text: str, content_kind: str, context: str | None) -> str:
+def build_user_prompt(*, text: str, content_kind: ContentKind, context: str | None) -> str:
     """Return the user message body.
 
     The fence markers are randomized per request so an attacker cannot embed

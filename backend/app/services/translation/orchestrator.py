@@ -38,6 +38,7 @@ from app.models.content_translation import (
 from app.schemas.locale import LOCALE_CODES, LocaleCode, normalize_locale
 from app.services.translation.hash import compute_source_hash
 from app.services.translation.protocol import (
+    ContentKind,
     TranslationError,
     TranslationProvider,
     TranslationRequest,
@@ -66,7 +67,7 @@ class TranslationFieldSpec:
     field: TranslationField
     text: str | None
     # See ``TranslationRequest.content_kind`` — chooses prompt nuances.
-    content_kind: str = "plain"
+    content_kind: ContentKind = "plain"
 
 
 @dataclass(frozen=True, slots=True)
@@ -210,7 +211,7 @@ def _translate_one_field(
     source_locale: LocaleCode,
     target_locale: LocaleCode,
     text: str,
-    content_kind: str,
+    content_kind: ContentKind,
     source_hash: str,
     context: str | None,
     provider: TranslationProvider,
