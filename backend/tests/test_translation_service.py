@@ -201,3 +201,51 @@ def test_gemini_raises_when_no_candidates_returned():
     provider = _gemini_with(handler)
     with pytest.raises(TranslationError):
         provider.translate(TranslationRequest(text="hi", source_locale="en", target_locale="ru"))
+
+
+def test_gemini_raises_typed_error_on_malformed_candidate():
+    """Non-dict ``candidates[0]`` must surface as a ``TranslationError``,
+    not an ``AttributeError`` that takes down the orchestrator batch."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"candidates": ["not-a-dict"]})
+
+    provider = _gemini_with(handler)
+    with pytest.raises(TranslationError):
+        provider.translate(TranslationRequest(text="hi", source_locale="en", target_locale="ru"))
+
+
+def test_gemini_does_not_close_caller_owned_client():
+    """If the caller injected an ``httpx.Client``, the provider must never
+    close it — closing a client the caller still owns broke tests in the past."""
+    transport = httpx.MockTransport(
+        lambda req: httpx.Response(
+            200,
+            json={"candidates": [{"content": {"parts": [{"text": "ok"}]}}]},
+        )
+    )
+    client = httpx.Client(transport=transport, timeout=5.0)
+    provider = GeminiTranslationProvider(
+        api_key="fake-key",
+        model="gemini-flash-latest",
+        timeout_seconds=5.0,
+        max_output_tokens=256,
+        client=client,
+    )
+    provider.close()
+    # Caller-owned client must still be usable after provider.close().
+    assert client.is_closed is False
+    client.close()
+
+
+def test_gemini_closes_owned_client_via_context_manager():
+    """A self-constructed client is released when used as a context manager."""
+    with GeminiTranslationProvider(
+        api_key="fake-key",
+        model="gemini-flash-latest",
+        timeout_seconds=5.0,
+        max_output_tokens=256,
+    ) as provider:
+        owned = provider._client
+        assert owned.is_closed is False
+    assert owned.is_closed is True

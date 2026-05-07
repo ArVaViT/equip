@@ -11,12 +11,14 @@ set. See ``app.services.translation.service.get_translation_provider``.
 
 from __future__ import annotations
 
-import contextlib
 import logging
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 from app.services.translation.prompt import build_system_prompt, build_user_prompt
 from app.services.translation.protocol import (
@@ -39,6 +41,13 @@ class GeminiTranslationProvider:
 
     Designed for short-lived FastAPI workers: one ``httpx.Client`` per
     instance, transports reused across calls, no global state.
+
+    Lifecycle: when the caller passes their own ``client``, we never close
+    it — that's the caller's responsibility. When we construct the client
+    ourselves, ``close()`` (or use as a context manager) releases the
+    transport. We deliberately do **not** define ``__del__``: GC ordering
+    on shutdown is unreliable, and silently closing a caller-owned client
+    in a finalizer is a footgun the test suite has tripped over.
     """
 
     name = "gemini"
@@ -61,13 +70,33 @@ class GeminiTranslationProvider:
         self._model = model
         self._max_output_tokens = max_output_tokens
         self._max_retries = max_retries
-        self._client = client or httpx.Client(timeout=timeout_seconds)
+        # Split timeout: a slow connect or a stuck pool checkout shouldn't
+        # eat the full read budget. Read uses the configured per-call cap
+        # (the actual generation latency); connect/write/pool stay short.
+        self._owns_client = client is None
+        self._client = client or httpx.Client(
+            timeout=httpx.Timeout(connect=5.0, read=timeout_seconds, write=10.0, pool=5.0),
+        )
 
-    def __del__(self) -> None:
-        # Best-effort cleanup; FastAPI workers usually outlive the provider
-        # but unit tests construct one per case.
-        with contextlib.suppress(Exception):
+    def close(self) -> None:
+        """Release the underlying HTTP client when we own it.
+
+        Idempotent; safe to call multiple times. No-op when the caller
+        injected the client (they retain ownership).
+        """
+        if self._owns_client:
             self._client.close()
+
+    def __enter__(self) -> GeminiTranslationProvider:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        self.close()
 
     def translate(self, request: TranslationRequest) -> TranslationResult:
         if request.source_locale == request.target_locale or not request.text.strip():
@@ -139,8 +168,18 @@ class GeminiTranslationProvider:
         if not candidates:
             raise TranslationError(f"Gemini returned no candidates: {body!r}")
 
-        parts = candidates[0].get("content", {}).get("parts") or []
-        text = "".join(p.get("text", "") for p in parts).strip()
+        # Gemini occasionally returns malformed candidates (string entries,
+        # missing ``content``/``parts``, ``parts`` items that are not dicts).
+        # Treat any structural deviation as a typed translation error so the
+        # orchestrator can persist a ``status='failed'`` row instead of the
+        # raw ``AttributeError`` taking down the whole batch.
+        try:
+            content = candidates[0].get("content") or {}
+            parts = content.get("parts") or []
+            text = "".join(p.get("text", "") for p in parts).strip()
+        except (AttributeError, KeyError, TypeError, IndexError) as exc:
+            raise TranslationError(f"Gemini returned malformed candidate: {body!r}") from exc
+
         if not text:
             raise TranslationError("Gemini returned an empty translation")
 
