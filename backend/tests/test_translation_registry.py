@@ -133,14 +133,14 @@ def test_reconcile_event_with_empty_description_skips_that_field(
 ):
     """An entity with one empty translatable field should still
     reconcile the non-empty fields, not skip the whole entity."""
-    from datetime import datetime, timezone
+    from datetime import UTC, datetime
 
     ev = CourseEvent(
         course_id=published_course.id,
         title="Final Exam",
         description="",
         event_type="exam",
-        event_date=datetime(2026, 12, 1, 10, 0, tzinfo=timezone.utc),
+        event_date=datetime(2026, 12, 1, 10, 0, tzinfo=UTC),
         created_by=teacher.id,
     )
     db.add(ev)
