@@ -52,11 +52,6 @@ Synodal substitution for `<blockquote>` Bible quotes; CI guard
 prevents endpoint regressions. See the [Unreleased] entry in the
 [CHANGELOG](CHANGELOG.md) for the full list of shipped pieces.
 
-:bulb: **Ukrainian (UK) as a third locale** — extending the existing
-RU/EN pipeline to UK is a registry change (locales tuple, `language_names`
-prompt map, optional UK Bible) plus translation runs; deferred until
-there's confirmed UK demand from the community.
-
 :bulb: **Comprehensive test coverage** — push backend above 95%, add
 Playwright E2E tests for critical student and teacher flows.
 
