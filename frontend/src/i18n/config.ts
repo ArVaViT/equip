@@ -60,6 +60,19 @@ const updateHtmlLang = (lng: string) => {
   }
 }
 updateHtmlLang(i18n.language)
-i18n.on("languageChanged", updateHtmlLang)
+
+// HMR re-evaluates this module on every save, so guard the listener
+// registration to avoid stacking duplicate handlers across hot reloads.
+declare global {
+  interface Window {
+    __bibleSchoolLocaleListener?: boolean
+  }
+}
+const globalScope: { __bibleSchoolLocaleListener?: boolean } =
+  typeof window !== "undefined" ? window : (globalThis as { __bibleSchoolLocaleListener?: boolean })
+if (!globalScope.__bibleSchoolLocaleListener) {
+  i18n.on("languageChanged", updateHtmlLang)
+  globalScope.__bibleSchoolLocaleListener = true
+}
 
 export default i18n
