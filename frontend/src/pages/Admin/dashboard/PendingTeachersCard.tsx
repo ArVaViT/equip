@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Clock, CheckCircle, XCircle } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import type { ProfileRow } from "./constants"
+import { formatDate } from "@/i18n/format"
 
 interface Props {
   pending: ProfileRow[]
@@ -50,7 +51,7 @@ export function PendingTeachersCard({ pending, updatingId, onApprove, onDeny }: 
                   <p className="font-medium truncate">{u.full_name || "No name"}</p>
                   <p className="text-sm text-muted-foreground truncate">{u.email}</p>
                   <p className="text-xs text-muted-foreground">
-                    Registered {new Date(u.created_at).toLocaleDateString()}
+                    Registered {formatDate(u.created_at)}
                   </p>
                 </div>
               </div>

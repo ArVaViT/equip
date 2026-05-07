@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { NativeSelect } from "@/components/ui/native-select"
 import { toProxyImage } from "@/lib/images"
 import type { UserRole } from "@/types"
+import { formatDate } from "@/i18n/format"
 
 interface ProfileRow {
   id: string
@@ -100,7 +101,7 @@ function UserRow({
         </NativeSelect>
       </div>
       <div role="cell" className="px-3 text-muted-foreground">
-        {new Date(u.created_at).toLocaleDateString()}
+        {formatDate(u.created_at)}
       </div>
       <div role="cell" className="flex items-center justify-center">
         <Button

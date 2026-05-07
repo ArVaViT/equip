@@ -6,6 +6,7 @@ import { useAuth } from "@/context/useAuth"
 import { toast } from "@/lib/toast"
 import type { Certificate } from "@/types"
 import { Award, Copy, CheckCircle, Sparkles, Clock, XCircle, RefreshCw, Star } from "lucide-react"
+import { formatDate } from "@/i18n/format"
 
 interface Props {
   courseId: string
@@ -189,7 +190,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
                   <p className="mb-0.5 text-xs text-muted-foreground">Issue date</p>
                   <p className="text-sm font-medium">
                     {certificate.issued_at
-                      ? new Date(certificate.issued_at).toLocaleDateString(undefined, {
+                      ? formatDate(certificate.issued_at, {
                           year: "numeric",
                           month: "long",
                           day: "numeric",

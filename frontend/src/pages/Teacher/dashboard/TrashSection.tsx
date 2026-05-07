@@ -8,6 +8,7 @@ import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { toast } from "@/lib/toast"
 import type { Course } from "@/types"
+import { formatDate } from "@/i18n/format"
 
 interface Props {
   visible: boolean
@@ -105,7 +106,7 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
                       <h4 className="text-sm font-medium truncate">{course.title}</h4>
                       {course.deleted_at && (
                         <p className="text-xs text-muted-foreground">
-                          Deleted {new Date(course.deleted_at).toLocaleDateString()}
+                          Deleted {formatDate(course.deleted_at)}
                         </p>
                       )}
                     </div>

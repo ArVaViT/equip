@@ -12,6 +12,7 @@ import {
   formStateToPayload,
   type AssignmentFormState,
 } from "./types"
+import { formatDate } from "@/i18n/format"
 
 interface Props {
   assignment: Assignment
@@ -97,7 +98,7 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span>Max: {assignment.max_score} pts</span>
             {assignment.due_date && (
-              <span>Due: {new Date(assignment.due_date).toLocaleDateString()}</span>
+              <span>Due: {formatDate(assignment.due_date)}</span>
             )}
           </div>
         </div>

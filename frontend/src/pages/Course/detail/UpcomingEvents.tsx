@@ -1,5 +1,6 @@
 import { AlertTriangle, CalendarDays } from "lucide-react"
 import type { CalendarEvent } from "@/types"
+import { formatDate } from "@/i18n/format"
 
 interface Props {
   events: CalendarEvent[]
@@ -57,7 +58,7 @@ export function UpcomingEvents({ events }: Props) {
                 {evt.title}
               </span>
               <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {evtDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                {formatDate(evtDate, { month: "short", day: "numeric" })}
               </span>
             </div>
           )

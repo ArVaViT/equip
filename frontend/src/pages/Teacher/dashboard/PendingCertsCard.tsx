@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { PendingCert } from "./types"
+import { formatDate } from "@/i18n/format"
 
 interface Props {
   certs: PendingCert[]
@@ -40,7 +41,7 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
                   <Clock className="h-3 w-3" />
                   Requested{" "}
                   {cert.requested_at
-                    ? new Date(cert.requested_at).toLocaleDateString()
+                    ? formatDate(cert.requested_at)
                     : "Unknown"}
                 </p>
               </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams, Link } from "react-router-dom"
-import i18n from "@/i18n/config"
+import { formatDateTime } from "@/i18n/format"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
@@ -103,7 +103,6 @@ export default function ModuleView() {
 
   const completedCount = gradableChapters.filter((c) => completedIds.has(c.id)).length
   const progressPercent = gradableChapters.length > 0 ? Math.round((completedCount / gradableChapters.length) * 100) : 100
-  const dateLocale = i18n.language?.startsWith("en") ? "en-US" : "ru-RU"
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-3xl">
@@ -145,7 +144,7 @@ export default function ModuleView() {
               isOverdue ? "text-destructive" : isUpcoming ? "text-warning" : "text-foreground"
             }`}>
               {isOverdue ? t("module.overdue") : t("module.due")}:{" "}
-              {dueDate.toLocaleString(dateLocale, {
+              {formatDateTime(dueDate, {
                 weekday: "short",
                 month: "short",
                 day: "numeric",

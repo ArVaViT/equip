@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { coursesService } from "@/services/courses"
 import type { Announcement } from "@/types"
 import { Megaphone } from "lucide-react"
+import { formatDate } from "@/i18n/format"
 
 interface Props {
   courseId: string
@@ -35,7 +36,7 @@ export default function CourseAnnouncements({ courseId }: Props) {
             <h4 className="text-sm font-medium">{a.title}</h4>
             <p className="mt-1 text-xs text-muted-foreground whitespace-pre-line">{a.content}</p>
             <time className="mt-1 block text-[10px] text-muted-foreground/60">
-              {new Date(a.created_at).toLocaleDateString()}
+              {formatDate(a.created_at)}
             </time>
           </div>
         </div>

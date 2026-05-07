@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CalendarEvent } from "@/types";
 import { getEventColor } from "./constants";
 import { formatTime } from "./utils";
+import { formatDate } from "@/i18n/format";
 
 interface SelectedDayPanelProps {
   selectedDay: Date;
@@ -17,7 +18,7 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <CalendarDays className="h-4 w-4 text-primary" />
-          {selectedDay.toLocaleDateString(undefined, {
+          {formatDate(selectedDay, {
             weekday: "long",
             month: "long",
             day: "numeric",

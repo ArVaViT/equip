@@ -1,6 +1,7 @@
 import { CheckCircle, Clock, XCircle } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import type { QuizAttempt } from "@/types"
+import { formatDate } from "@/i18n/format"
 
 interface Props {
   attempts: QuizAttempt[]
@@ -45,7 +46,7 @@ export function PreviousAttempts({ attempts, autoMaxScore }: Props) {
                 </span>
               </div>
               <span className="text-xs text-muted-foreground">
-                {att.completed_at ? new Date(att.completed_at).toLocaleDateString() : t("quiz.inProgress")}
+                {att.completed_at ? formatDate(att.completed_at) : t("quiz.inProgress")}
               </span>
             </div>
           )

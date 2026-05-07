@@ -9,6 +9,7 @@ import { getErrorDetail } from "@/lib/errorDetail"
 import { toast } from "@/lib/toast"
 import type { Assignment, AssignmentSubmission } from "@/types"
 import PageSpinner from "@/components/ui/PageSpinner"
+import { formatDate } from "@/i18n/format"
 import {
   FileText,
   Calendar,
@@ -174,7 +175,7 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
             <span className={`flex items-center gap-1 ${isOverdue ? "font-medium text-destructive" : ""}`}>
               <Calendar className="h-3 w-3" />
               {t("assignment.due")}{" "}
-              {new Date(assignment.due_date).toLocaleDateString()}
+              {formatDate(assignment.due_date)}
               {isOverdue && ` ${t("assignment.overdue")}`}
             </span>
           )}

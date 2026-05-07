@@ -6,6 +6,7 @@ import type { PendingAnswer } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CheckCircle2, GraduationCap, Loader2, Save, Users } from "lucide-react"
+import { formatDateTime } from "@/i18n/format"
 
 type EditableAnswer = PendingAnswer & {
   draftPoints: string
@@ -166,7 +167,7 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
                   {item.student_name || item.student_email}
                 </div>
                 {item.submitted_at && (
-                  <div>{new Date(item.submitted_at).toLocaleString()}</div>
+                  <div>{formatDateTime(item.submitted_at)}</div>
                 )}
               </div>
             </div>

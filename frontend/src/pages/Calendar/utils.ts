@@ -1,3 +1,5 @@
+import { formatDate } from "@/i18n/format";
+
 export function isSameDay(a: Date, b: Date): boolean {
   return (
     a.getFullYear() === b.getFullYear() &&
@@ -7,6 +9,9 @@ export function isSameDay(a: Date, b: Date): boolean {
 }
 
 export function formatTime(dateStr: string): string {
+  // Time-only display uses the OS locale; the only callsites are the
+  // calendar agenda where the row is already grouped by day, so the date
+  // separator is implicit. Keep this Intl-direct.
   return new Date(dateStr).toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
@@ -14,7 +19,7 @@ export function formatTime(dateStr: string): string {
 }
 
 export function formatShortDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString(undefined, {
+  return formatDate(dateStr, {
     month: "short",
     day: "numeric",
   });
