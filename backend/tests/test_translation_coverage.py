@@ -141,10 +141,10 @@ WHITELIST_ENDPOINTS: dict[str, str] = {}
 # KNOWN VIOLATIONS — surfaced, not silenced
 # ---------------------------------------------------------------------------
 #
-# Ground rule from CLAUDE.md / agent-autonomy: when this guard catches an
-# existing bug we add it here with a TODO so the test still passes today
-# while making the gap impossible to lose track of. Every entry MUST cite
-# the follow-up PR or issue.
+# Project ground rule: when this guard catches an existing bug we add
+# it here with a TODO so the test still passes today while making the
+# gap impossible to lose track of. Every entry MUST cite the follow-up
+# PR or issue.
 
 KNOWN_VIOLATIONS_RULE1: frozenset[tuple[str, str]] = frozenset(
     {

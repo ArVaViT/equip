@@ -55,7 +55,6 @@ frontend/.vite/
 .vscode/
 *.swp
 *.swo
-.cursor/
 
 # OS
 .DS_Store
@@ -77,8 +76,10 @@ credentials.json
 serviceAccountKey.json
 secrets/
 
-# Cursor IDE generated images
-assets/c__Users_*
+# Editor / assistant scratchpads — anyone is welcome to use whatever IDE
+# or AI helper they want, just keep its scratch files out of the repo.
+# Add tool-specific paths to your own ~/.gitignore_global instead of
+# polluting this list.
 
 .vercel
 

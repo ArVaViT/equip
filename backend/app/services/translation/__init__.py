@@ -11,9 +11,9 @@ Public surface (re-exported here):
     ... )
 
 The provider layer is abstract on purpose: every API call goes through
-``TranslationProvider.translate()`` so we can swap Gemini for OpenAI,
-Anthropic, or a self-hosted model with one config change. See
-``docs/multilingual-and-translation-notes.txt`` for the rollout plan.
+``TranslationProvider.translate()`` so we can swap Gemini for any
+other compatible translation API — or a self-hosted model — with one
+config change.
 """
 
 from app.services.translation.hash import compute_source_hash
