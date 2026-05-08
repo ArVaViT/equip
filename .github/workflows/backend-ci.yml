@@ -184,6 +184,7 @@ jobs:
               "student_grades",
               "audit_logs",
               "notifications",
+              "content_translations",
           }
           missing = required - tables
           if missing:

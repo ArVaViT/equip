@@ -87,7 +87,7 @@ technical expertise that volunteer-run organizations simply don't have.
 
 ### Prerequisites
 
-- **Node.js** >= 20, **npm** >= 10
+- **Node.js** 22.x (`.nvmrc` pins 22.18.0), **npm** >= 10
 - **Python** 3.12
 - A free [Supabase](https://supabase.com) project (or just run backend
   tests with SQLite — no Supabase needed)
