@@ -79,6 +79,11 @@
       "registrationFailed": "Registration failed. Please try again.",
       "googleSignUpFailed": "Google sign-up failed."
     },
+    "callback": {
+      "completing": "Completing sign in...",
+      "timedOut": "Sign-in didn't complete. Please try again.",
+      "redirecting": "Redirecting to login..."
+    },
     "forgotPassword": {
       "heading": "Reset password",
       "subheading": "Enter your email and we'll send you a reset link",

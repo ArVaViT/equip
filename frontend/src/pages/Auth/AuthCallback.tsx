@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import { supabase } from "@/lib/supabase"
 
 export default function AuthCallback() {
   const navigate = useNavigate()
   const handled = useRef(false)
   const [timedOut, setTimedOut] = useState(false)
+  const { t } = useTranslation()
 
   useEffect(() => {
     let redirectTimer: ReturnType<typeof setTimeout> | undefined
@@ -48,13 +50,13 @@ export default function AuthCallback() {
             <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center">
               <span className="text-destructive text-lg font-bold">!</span>
             </div>
-            <span className="text-sm text-destructive font-medium">Sign-in didn't complete. Please try again.</span>
-            <span className="text-xs text-muted-foreground">Redirecting to login...</span>
+            <span className="text-sm text-destructive font-medium">{t("auth.callback.timedOut")}</span>
+            <span className="text-xs text-muted-foreground">{t("auth.callback.redirecting")}</span>
           </>
         ) : (
           <>
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-            <span className="text-sm text-muted-foreground">Completing sign in...</span>
+            <span className="text-sm text-muted-foreground">{t("auth.callback.completing")}</span>
           </>
         )}
       </div>
