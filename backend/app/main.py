@@ -1,11 +1,12 @@
 import logging
 import os
 import time
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.api.v1 import api_router
@@ -130,9 +131,25 @@ async def health() -> dict:
     return {"status": "ok"}
 
 
+_STATIC_DIR = Path(__file__).parent / "static"
+_FAVICON_SVG = _STATIC_DIR / "favicon.svg"
+
+
 @app.get("/favicon.ico", include_in_schema=False)
-@app.get("/favicon.png", include_in_schema=False)
 @app.get("/favicon.svg", include_in_schema=False)
+async def favicon() -> FileResponse:
+    """Serve the same book-mark glyph as the frontend, but in the
+    project's slate-900 dark variant so the two Vercel deployments
+    are visually paired (frontend = brand blue, backend = dark
+    sibling). Browsers accept SVG behind any of the favicon paths;
+    Vercel's project-card scraper picks up `/favicon.ico` first."""
+    return FileResponse(_FAVICON_SVG, media_type="image/svg+xml")
+
+
+# /favicon.png and /vite.svg are noise endpoints that some clients
+# probe but which we don't actually want to serve. 204 keeps the
+# logs clean without raising 404 alerts.
+@app.get("/favicon.png", include_in_schema=False)
 @app.get("/vite.svg", include_in_schema=False)
-async def static_icons() -> Response:
+async def _noise_icons() -> Response:
     return Response(status_code=204)
