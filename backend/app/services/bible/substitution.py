@@ -208,6 +208,14 @@ def pre_substitute(
         ref = None
         verse_text_inner: str = inner
         ref_tail_inner: str = ""
+        # ``stored_ref_tail`` is the text we hand to ``post_substitute``
+        # for target-locale rewriting. Same as ``ref_tail_inner`` in
+        # the inner case (the marker re-emits it inside the
+        # blockquote), but in the outside case it points at the
+        # source-locale ref text that's still sitting in the
+        # surrounding HTML — so post can find and localize it without
+        # us re-emitting anything here.
+        stored_ref_tail: str = ""
         inner_refs = parse_references(inner)
         if inner_refs:
             # Take the *last* reference inside (it's almost always the
@@ -234,6 +242,15 @@ def pre_substitute(
                 ref = outside_refs[0].ref
                 verse_text_inner = inner
                 ref_tail_inner = ""
+                # The outside ref lives in the original HTML after the
+                # closing </blockquote>; we don't re-emit it here.
+                # ``post_substitute`` looks for ``stored_ref_tail`` in
+                # the translated HTML and rewrites the book name into
+                # the target locale (``Acts 1:8`` → ``Деян. 1:8``).
+                # Best-effort: if the LLM mutated the substring in
+                # transit, the literal replace becomes a no-op and the
+                # source-locale ref survives — never breaks rendering.
+                stored_ref_tail = outside_refs[0].raw_text
 
         if ref is None:
             continue
@@ -279,12 +296,17 @@ def pre_substitute(
         out_parts.append(emitted_tail)
         out_parts.append(closing_tag)
         cursor = bq_end
+        # ``ref_tail`` on Substitution is what post_substitute scans for
+        # to localize the book name. For inner-ref blockquotes it's the
+        # exact tail we just emitted; for outside-ref blockquotes it's
+        # the ref text we left untouched in the surrounding HTML so
+        # post can find and rewrite it (``stored_ref_tail`` set above).
         subs.append(
             Substitution(
                 marker=marker,
                 ref=ref,
                 original_inner=verse_text_inner,
-                ref_tail=emitted_tail,
+                ref_tail=emitted_tail or stored_ref_tail,
             )
         )
 

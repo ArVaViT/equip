@@ -450,6 +450,46 @@ def test_post_substitute_localizes_reference_book_name_in_inverse_direction():
     assert "(Матф. 28:19)" not in final
 
 
+def test_outside_blockquote_ref_localizes_into_target_locale():
+    """When the author put the citation AFTER ``</blockquote>``
+    (the older-content layout), substitution still replaces the verse
+    inside the blockquote. The outside reference text should also
+    surface in the target locale — a Russian student should read
+    ``(Деян. 1:8)`` next to a Synodal verse, not ``(Acts 1:8)``."""
+    canonical_en = lookup(BibleRef("acts", 1, 8), "en")
+    canonical_ru = lookup(BibleRef("acts", 1, 8), "ru")
+    assert canonical_en and canonical_ru
+    source_html = (
+        f"<p>Programme of the Book of Acts:</p>"
+        f"<blockquote>{canonical_en}</blockquote>"
+        f" (Acts 1:8). This is the central verse."
+    )
+    markered, subs = pre_substitute(source_html, "en")
+    assert len(subs) == 1
+    assert "Acts 1:8" in subs[0].ref_tail, "outside ref must be tracked on Substitution"
+    final = post_substitute(markered, subs, "ru")
+    assert canonical_ru in final
+    assert "(Деян. 1:8)" in final
+    assert "(Acts 1:8)" not in final
+
+
+def test_outside_blockquote_ref_inverse_direction():
+    """Inverse: RU author with outside ``(Деян. 1:8)`` → EN student
+    should see ``(Acts 1:8)`` next to the canonical KJV verse."""
+    canonical_ru = lookup(BibleRef("acts", 1, 8), "ru")
+    canonical_en = lookup(BibleRef("acts", 1, 8), "en")
+    assert canonical_ru and canonical_en
+    source_html = (
+        f"<p>Программа книги Деяний:</p><blockquote>{canonical_ru}</blockquote> (Деян. 1:8). Это центральный стих."
+    )
+    markered, subs = pre_substitute(source_html, "ru")
+    assert len(subs) == 1
+    final = post_substitute(markered, subs, "en")
+    assert canonical_en in final
+    assert "(Acts 1:8)" in final
+    assert "(Деян. 1:8)" not in final
+
+
 def test_post_substitute_handles_verse_range_in_reference_localization():
     """Range refs (``Matt. 28:18-20``) must localize to
     ``Матф. 28:18-20`` — the localizer respects ``verse_end``."""
