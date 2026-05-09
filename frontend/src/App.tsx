@@ -14,6 +14,7 @@ import Header from "./components/layout/Header"
 import Footer from "./components/layout/Footer"
 import AnnouncementBanner from "./components/announcements/AnnouncementBanner"
 import PageSpinner from "./components/ui/PageSpinner"
+import ScrollToTop from "./components/layout/ScrollToTop";
 
 const NotFound = lazy(() => import("./pages/NotFound"))
 
@@ -143,6 +144,7 @@ function AppRoutes() {
         </ErrorBoundary>
       </main>
       <Footer />
+      <ScrollToTop />
       <Toaster />
     </div>
   )
