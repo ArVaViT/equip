@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.api.v1 import api_router
 from app.core.config import settings
-from app.core.logging import setup_logging
+from app.core.logging import setup_logging, vercel_request_id
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security import SecurityHeadersMiddleware
 
@@ -108,17 +108,26 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    start = time.time()
-    response = await call_next(request)
-    duration = round((time.time() - start) * 1000, 1)
-    logger.info(
-        "%s %s %s %sms",
-        request.method,
-        request.url.path,
-        response.status_code,
-        duration,
-    )
-    return response
+    # Vercel attaches a unique id to every inbound request on the
+    # ``x-vercel-id`` header. Stashing it in a contextvar lets the
+    # DatadogHTTPHandler tag every WARNING+ log emitted during this
+    # request with the same id, so a RUM session error and the backend
+    # log line that produced it can be correlated by Vercel request id.
+    token = vercel_request_id.set(request.headers.get("x-vercel-id"))
+    try:
+        start = time.time()
+        response = await call_next(request)
+        duration = round((time.time() - start) * 1000, 1)
+        logger.info(
+            "%s %s %s %sms",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration,
+        )
+        return response
+    finally:
+        vercel_request_id.reset(token)
 
 
 @app.get("/")
