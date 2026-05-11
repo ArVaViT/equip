@@ -20,7 +20,11 @@ export default defineConfig({
     },
   },
   build: {
-    sourcemap: false,
+    // 'hidden' generates .map files alongside bundles but omits the
+    // //# sourceMappingURL trailer, so browsers don't auto-fetch them.
+    // Datadog RUM still resolves them server-side after upload via
+    // datadog-ci in the postbuild step.
+    sourcemap: 'hidden',
     rollupOptions: {
       output: {
         // Keep only the two chunks that genuinely benefit from manual

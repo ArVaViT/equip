@@ -8,6 +8,14 @@ export default tseslint.config(
   {
     ignores: ['dist/**', 'node_modules/**', 'coverage/**'],
   },
+  {
+    files: ['scripts/**/*.{js,mjs,cjs}'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.node },
+    },
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   reactHooks.configs.flat.recommended,

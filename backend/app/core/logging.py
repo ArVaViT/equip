@@ -1,9 +1,16 @@
+import contextvars
 import json
 import logging
 import os
 import sys
 import urllib.error
 import urllib.request
+
+# Per-request correlation. Vercel populates ``x-vercel-id`` on every
+# inbound request; main.log_requests middleware copies it here so the
+# DatadogHTTPHandler can stitch a WARNING/ERROR log to the originating
+# RUM session that triggered the request.
+vercel_request_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("vercel_request_id", default=None)
 
 
 class DatadogHTTPHandler(logging.Handler):
@@ -17,27 +24,45 @@ class DatadogHTTPHandler(logging.Handler):
 
     _REENTRY_GUARD_ATTR = "_dd_inside_emit"
 
-    def __init__(self, api_key: str, site: str, service: str, env: str, version: str) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        site: str,
+        service: str,
+        env: str,
+        version: str,
+        vercel_region: str,
+    ) -> None:
         super().__init__()
         self.api_key = api_key
         self.service = service
         self.env = env
         self.version = version
+        self.vercel_region = vercel_region
         self.endpoint = f"https://http-intake.logs.{site}/api/v2/logs"
 
     def emit(self, record: logging.LogRecord) -> None:
         if getattr(record, self._REENTRY_GUARD_ATTR, False):
             return
         try:
+            tags = [
+                f"env:{self.env}",
+                f"service:{self.service}",
+                f"version:{self.version}",
+                f"vercel_region:{self.vercel_region}",
+            ]
             payload = {
                 "ddsource": "python",
-                "ddtags": f"env:{self.env},service:{self.service},version:{self.version}",
+                "ddtags": ",".join(tags),
                 "service": self.service,
-                "hostname": "vercel",
+                "hostname": f"vercel-{self.vercel_region}",
                 "message": self.format(record),
                 "status": record.levelname.lower(),
                 "logger.name": record.name,
             }
+            req_id = vercel_request_id.get()
+            if req_id:
+                payload["vercel.request_id"] = req_id
             if record.exc_info and self.formatter:
                 exc_type = record.exc_info[0]
                 if exc_type is not None:
@@ -83,6 +108,7 @@ def setup_logging() -> None:
             service=os.environ.get("DD_SERVICE", "biblie-school-backend"),
             env=os.environ.get("DD_ENV", "production"),
             version=version,
+            vercel_region=os.environ.get("VERCEL_REGION", "unknown"),
         )
         dd_handler.setLevel(logging.WARNING)
         dd_handler.setFormatter(formatter)

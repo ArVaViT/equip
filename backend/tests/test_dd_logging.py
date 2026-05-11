@@ -17,6 +17,7 @@ def _make_handler() -> DatadogHTTPHandler:
         service="biblie-school-backend",
         env="production",
         version="abc1234",
+        vercel_region="iad1",
     )
 
 
@@ -48,7 +49,53 @@ def test_emit_posts_to_intake_with_api_key() -> None:
     assert body["status"] == "warning"
     assert "env:production" in body["ddtags"]
     assert "version:abc1234" in body["ddtags"]
+    assert "vercel_region:iad1" in body["ddtags"]
+    assert body["hostname"] == "vercel-iad1"
     assert body["message"] == "boom"
+
+
+def test_emit_includes_vercel_request_id_when_set() -> None:
+    from app.core.logging import vercel_request_id
+
+    h = _make_handler()
+    h.setFormatter(logging.Formatter("%(message)s"))
+    record = logging.LogRecord(
+        name="api",
+        level=logging.WARNING,
+        pathname="x.py",
+        lineno=1,
+        msg="boom",
+        args=(),
+        exc_info=None,
+    )
+    token = vercel_request_id.set("syd1::abc123")
+    try:
+        with patch("urllib.request.urlopen") as urlopen:
+            urlopen.return_value = MagicMock()
+            h.emit(record)
+        body = json.loads(urlopen.call_args.args[0].data.decode("utf-8"))
+        assert body["vercel.request_id"] == "syd1::abc123"
+    finally:
+        vercel_request_id.reset(token)
+
+
+def test_emit_omits_vercel_request_id_when_unset() -> None:
+    h = _make_handler()
+    h.setFormatter(logging.Formatter("%(message)s"))
+    record = logging.LogRecord(
+        name="api",
+        level=logging.WARNING,
+        pathname="x.py",
+        lineno=1,
+        msg="boom",
+        args=(),
+        exc_info=None,
+    )
+    with patch("urllib.request.urlopen") as urlopen:
+        urlopen.return_value = MagicMock()
+        h.emit(record)
+    body = json.loads(urlopen.call_args.args[0].data.decode("utf-8"))
+    assert "vercel.request_id" not in body
 
 
 def test_emit_swallows_network_errors() -> None:
