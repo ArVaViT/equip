@@ -1122,7 +1122,70 @@
     "title": "Admin Dashboard",
     "subtitle": "Manage users, roles, and monitor platform activity",
     "tabOverview": "Overview",
-    "tabAudit": "Audit Log"
+    "tabAudit": "Audit Log",
+    "users": {
+      "title": "Users",
+      "selectAllAria": "Select all users",
+      "selectAriaPrefix": "Select {{name}}",
+      "deleteAriaPrefix": "Delete {{name}}",
+      "deleteSelfTooltip": "You cannot delete your own account",
+      "deleteTooltip": "Delete user",
+      "avatarAltPrefix": "{{name}} avatar",
+      "searchPlaceholder": "Search by name or email…",
+      "thName": "Name",
+      "thEmail": "Email",
+      "thRole": "Role",
+      "thJoined": "Joined",
+      "thActions": "Actions",
+      "selectAllN": "Select all {{count}}",
+      "selected": "{{count}} selected",
+      "bulkUpdating": "Updating...",
+      "bulkApply": "Apply",
+      "bulkClear": "Clear",
+      "emptyNoMatch": "No users match your search",
+      "emptyNoUsers": "No users found",
+      "showing": "Showing {{shown}} of {{total}} users",
+      "missingName": "—"
+    },
+    "pendingTeachers": {
+      "title": "Pending Teacher Approvals",
+      "missingName": "No name",
+      "registered": "Registered {{date}}",
+      "approve": "Approve",
+      "deny": "Deny"
+    },
+    "pendingCerts": {
+      "title": "Certificate Approvals",
+      "studentFallback": "Student",
+      "courseFallback": "Course",
+      "approvedBy": "Approved by {{name}}",
+      "approve": "Approve",
+      "reject": "Reject"
+    },
+    "overview": {
+      "totalUsers": "Total Users",
+      "totalCourses": "Total Courses",
+      "totalEnrollments": "Total Enrollments"
+    },
+    "audit": {
+      "filterAction": "Action",
+      "filterResource": "Resource",
+      "filterFrom": "From",
+      "filterTo": "To",
+      "filterClear": "Clear filters",
+      "filterAllActions": "All actions",
+      "filterAllResources": "All resources",
+      "title": "Audit Log",
+      "entriesCount": "{{count}} entries",
+      "empty": "No audit logs found",
+      "page": "Page {{page}} of {{total}}",
+      "thDate": "Date",
+      "thUser": "User",
+      "thAction": "Action",
+      "thResource": "Resource",
+      "thResourceId": "Resource ID",
+      "thIp": "IP"
+    }
   },
   "roles": {
     "student": "Student",

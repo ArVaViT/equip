@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
@@ -65,26 +66,27 @@ export function UsersCard({
   onRoleChange,
   onDeleteUser,
 }: Props) {
+  const { t } = useTranslation()
   const allFilteredSelected =
     filtered.length > 0 && filtered.every((u) => selectedIds.has(u.id))
 
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between gap-4 space-y-0 flex-wrap">
-        <CardTitle className="text-xl">Users</CardTitle>
+        <CardTitle className="text-xl">{t("admin.users.title")}</CardTitle>
         <div className="flex items-center gap-3 flex-wrap">
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-1.5">
-              <span className="text-xs font-medium">{selectedIds.size} selected</span>
+              <span className="text-xs font-medium">{t("admin.users.selected", { count: selectedIds.size })}</span>
               <NativeSelect
                 fieldSize="xs"
                 value={bulkRole}
                 onChange={(e) => onBulkRoleChange(e.target.value as UserRole)}
               >
-                <option value="student">Student</option>
-                <option value="pending_teacher">Pending Teacher</option>
-                <option value="teacher">Teacher</option>
-                <option value="admin">Admin</option>
+                <option value="student">{t("roles.student")}</option>
+                <option value="pending_teacher">{t("roles.pendingTeacher")}</option>
+                <option value="teacher">{t("roles.teacher")}</option>
+                <option value="admin">{t("roles.admin")}</option>
               </NativeSelect>
               <Button
                 size="sm"
@@ -92,7 +94,7 @@ export function UsersCard({
                 onClick={onApplyBulkRole}
                 disabled={bulkUpdating}
               >
-                {bulkUpdating ? "Updating..." : "Apply"}
+                {bulkUpdating ? t("admin.users.bulkUpdating") : t("admin.users.bulkApply")}
               </Button>
               <Button
                 size="sm"
@@ -100,14 +102,14 @@ export function UsersCard({
                 className="h-7 text-xs"
                 onClick={onClearSelection}
               >
-                Clear
+                {t("admin.users.bulkClear")}
               </Button>
             </div>
           )}
           <div className="relative w-full max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
             <Input
-              placeholder="Search by name or email…"
+              placeholder={t("admin.users.searchPlaceholder")}
               value={searchInput}
               onChange={(e) => onSearchInputChange(e.target.value.slice(0, searchMaxLength))}
               maxLength={searchMaxLength}
@@ -129,10 +131,10 @@ export function UsersCard({
                 checked={allFilteredSelected}
                 onChange={onToggleSelectAll}
                 className="h-4 w-4 rounded border-input"
-                aria-label="Select all users"
+                aria-label={t("admin.users.selectAllAria")}
               />
               <span className="text-xs text-muted-foreground">
-                Select all {filtered.length}
+                {t("admin.users.selectAllN", { count: filtered.length })}
               </span>
             </div>
             <VirtualAdminUsers
@@ -161,7 +163,7 @@ export function UsersCard({
         )}
         {!loading && filtered.length > 0 && (
           <p className="text-xs text-muted-foreground mt-4 px-6">
-            Showing {filtered.length} of {users.length} users
+            {t("admin.users.showing", { shown: filtered.length, total: users.length })}
           </p>
         )}
       </CardContent>
@@ -170,11 +172,14 @@ export function UsersCard({
 }
 
 function EmptyUsers({ hasQuery }: { hasQuery: boolean }) {
+  const { t } = useTranslation()
   return (
     <div className="flex flex-col items-center py-16 text-center">
       <Users className="h-12 w-12 text-muted-foreground/40 mb-3" />
       <p className="text-muted-foreground">
-        {hasQuery ? "No users match your search" : "No users found"}
+        {hasQuery
+          ? t("admin.users.emptyNoMatch")
+          : t("admin.users.emptyNoUsers")}
       </p>
     </div>
   )
@@ -201,6 +206,7 @@ function UsersTable({
   onRoleChange,
   onDeleteUser,
 }: UsersTableProps) {
+  const { t } = useTranslation()
   const allFilteredSelected =
     filtered.length > 0 && filtered.every((u) => selectedIds.has(u.id))
 
@@ -215,14 +221,14 @@ function UsersTable({
                 checked={allFilteredSelected}
                 onChange={onToggleSelectAll}
                 className="h-4 w-4 rounded border-input"
-                aria-label="Select all users"
+                aria-label={t("admin.users.selectAllAria")}
               />
             </th>
-            <th className="px-6 py-3 font-medium text-muted-foreground">Name</th>
-            <th className="px-6 py-3 font-medium text-muted-foreground">Email</th>
-            <th className="px-6 py-3 font-medium text-muted-foreground">Role</th>
-            <th className="px-6 py-3 font-medium text-muted-foreground">Joined</th>
-            <th className="px-6 py-3 w-10" aria-label="Actions" />
+            <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thName")}</th>
+            <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thEmail")}</th>
+            <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thRole")}</th>
+            <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thJoined")}</th>
+            <th className="px-6 py-3 w-10" aria-label={t("admin.users.thActions")} />
           </tr>
         </thead>
         <tbody className="divide-y">
@@ -263,6 +269,8 @@ function UserRow({
   onRoleChange,
   onDeleteUser,
 }: UserRowProps) {
+  const { t } = useTranslation()
+  const displayName = user.full_name || user.email
   return (
     <tr
       className={`hover:bg-muted/50 transition-colors ${
@@ -275,7 +283,7 @@ function UserRow({
           checked={selected}
           onChange={() => onToggleSelect(user.id)}
           className="h-4 w-4 rounded border-input"
-          aria-label={`Select ${user.full_name || user.email}`}
+          aria-label={t("admin.users.selectAriaPrefix", { name: displayName })}
         />
       </td>
       <td className="px-6 py-3">
@@ -283,7 +291,7 @@ function UserRow({
           {user.avatar_url ? (
             <img
               src={toProxyImage(user.avatar_url)}
-              alt={`${user.full_name ?? user.email} avatar`}
+              alt={t("admin.users.avatarAltPrefix", { name: user.full_name ?? user.email })}
               className="h-8 w-8 rounded-full object-cover"
             />
           ) : (
@@ -291,7 +299,7 @@ function UserRow({
               {(user.full_name?.[0] ?? user.email[0] ?? "?").toUpperCase()}
             </div>
           )}
-          <span className="font-medium">{user.full_name || "—"}</span>
+          <span className="font-medium">{user.full_name || t("admin.users.missingName")}</span>
         </div>
       </td>
       <td className="px-6 py-3 text-muted-foreground">{user.email}</td>
@@ -308,10 +316,10 @@ function UserRow({
             disabled={updating || isSelf}
             onChange={(e) => onRoleChange(user.id, e.target.value as UserRole)}
           >
-            <option value="student">Student</option>
-            <option value="pending_teacher">Pending Teacher</option>
-            <option value="teacher">Teacher</option>
-            <option value="admin">Admin</option>
+            <option value="student">{t("roles.student")}</option>
+            <option value="pending_teacher">{t("roles.pendingTeacher")}</option>
+            <option value="teacher">{t("roles.teacher")}</option>
+            <option value="admin">{t("roles.admin")}</option>
           </NativeSelect>
         </div>
       </td>
@@ -325,8 +333,8 @@ function UserRow({
           className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
           disabled={updating || isSelf}
           onClick={() => onDeleteUser(user)}
-          aria-label={`Delete ${user.full_name || user.email}`}
-          title={isSelf ? "You cannot delete your own account" : "Delete user"}
+          aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
+          title={isSelf ? t("admin.users.deleteSelfTooltip") : t("admin.users.deleteTooltip")}
         >
           <Trash2 className="h-4 w-4" />
         </Button>

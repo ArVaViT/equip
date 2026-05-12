@@ -1154,7 +1154,70 @@
     "title": "Админ-панель",
     "subtitle": "Пользователи, роли и активность платформы",
     "tabOverview": "Обзор",
-    "tabAudit": "Журнал аудита"
+    "tabAudit": "Журнал аудита",
+    "users": {
+      "title": "Пользователи",
+      "selectAllAria": "Выбрать всех пользователей",
+      "selectAriaPrefix": "Выбрать {{name}}",
+      "deleteAriaPrefix": "Удалить {{name}}",
+      "deleteSelfTooltip": "Нельзя удалить собственный аккаунт",
+      "deleteTooltip": "Удалить пользователя",
+      "avatarAltPrefix": "Аватар {{name}}",
+      "searchPlaceholder": "Поиск по имени или email…",
+      "thName": "Имя",
+      "thEmail": "Email",
+      "thRole": "Роль",
+      "thJoined": "Дата регистрации",
+      "thActions": "Действия",
+      "selectAllN": "Выбрать все {{count}}",
+      "selected": "Выбрано: {{count}}",
+      "bulkUpdating": "Обновление...",
+      "bulkApply": "Применить",
+      "bulkClear": "Очистить",
+      "emptyNoMatch": "Нет пользователей по запросу",
+      "emptyNoUsers": "Пользователи не найдены",
+      "showing": "Показано {{shown}} из {{total}} пользователей",
+      "missingName": "—"
+    },
+    "pendingTeachers": {
+      "title": "Заявки преподавателей",
+      "missingName": "Без имени",
+      "registered": "Зарегистрирован {{date}}",
+      "approve": "Одобрить",
+      "deny": "Отклонить"
+    },
+    "pendingCerts": {
+      "title": "Сертификаты на финальное одобрение",
+      "studentFallback": "Студент",
+      "courseFallback": "Курс",
+      "approvedBy": "Одобрено: {{name}}",
+      "approve": "Одобрить",
+      "reject": "Отклонить"
+    },
+    "overview": {
+      "totalUsers": "Всего пользователей",
+      "totalCourses": "Всего курсов",
+      "totalEnrollments": "Всего записей"
+    },
+    "audit": {
+      "filterAction": "Действие",
+      "filterResource": "Объект",
+      "filterFrom": "С",
+      "filterTo": "По",
+      "filterClear": "Сбросить фильтры",
+      "filterAllActions": "Все действия",
+      "filterAllResources": "Все объекты",
+      "title": "Журнал аудита",
+      "entriesCount": "{{count}} записей",
+      "empty": "Записи журнала не найдены",
+      "page": "Стр. {{page}} из {{total}}",
+      "thDate": "Дата",
+      "thUser": "Пользователь",
+      "thAction": "Действие",
+      "thResource": "Объект",
+      "thResourceId": "ID объекта",
+      "thIp": "IP"
+    }
   },
   "roles": {
     "student": "Студент",

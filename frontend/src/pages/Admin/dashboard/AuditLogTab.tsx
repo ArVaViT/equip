@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
@@ -50,6 +51,7 @@ export function AuditLogTab({
   onReset,
   onPageChange,
 }: Props) {
+  const { t } = useTranslation()
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
   return (
@@ -57,12 +59,12 @@ export function AuditLogTab({
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-wrap items-end gap-3">
-            <FilterSelect label="Action" value={action} onChange={onAction} options={ACTION_OPTIONS} placeholder="All actions" />
-            <FilterSelect label="Resource" value={resource} onChange={onResource} options={RESOURCE_OPTIONS} placeholder="All resources" />
-            <FilterDate label="From" value={dateFrom} onChange={onDateFrom} />
-            <FilterDate label="To" value={dateTo} onChange={onDateTo} />
+            <FilterSelect label={t("admin.audit.filterAction")} value={action} onChange={onAction} options={ACTION_OPTIONS} placeholder={t("admin.audit.filterAllActions")} />
+            <FilterSelect label={t("admin.audit.filterResource")} value={resource} onChange={onResource} options={RESOURCE_OPTIONS} placeholder={t("admin.audit.filterAllResources")} />
+            <FilterDate label={t("admin.audit.filterFrom")} value={dateFrom} onChange={onDateFrom} />
+            <FilterDate label={t("admin.audit.filterTo")} value={dateTo} onChange={onDateTo} />
             <Button variant="ghost" size="sm" onClick={onReset} className="h-9">
-              Clear filters
+              {t("admin.audit.filterClear")}
             </Button>
           </div>
         </CardContent>
@@ -72,9 +74,9 @@ export function AuditLogTab({
         <CardHeader>
           <CardTitle className="text-xl flex items-center gap-2">
             <FileText className="h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden />
-            Audit Log
+            {t("admin.audit.title")}
             <span className="text-sm font-normal text-muted-foreground ml-2">
-              {total.toLocaleString()} entries
+              {t("admin.audit.entriesCount", { count: total })}
             </span>
           </CardTitle>
         </CardHeader>
@@ -84,14 +86,14 @@ export function AuditLogTab({
           ) : logs.length === 0 ? (
             <div className="flex flex-col items-center py-16 text-center">
               <FileText className="mb-3 h-12 w-12 text-muted-foreground/40" strokeWidth={1.75} aria-hidden />
-              <p className="text-muted-foreground">No audit logs found</p>
+              <p className="text-muted-foreground">{t("admin.audit.empty")}</p>
             </div>
           ) : (
             <>
               <AuditTable logs={logs} userMap={userMap} />
               <div className="flex items-center justify-between px-5 pb-1 pt-4">
                 <p className="text-xs text-muted-foreground">
-                  Page {page} of {totalPages}
+                  {t("admin.audit.page", { page, total: totalPages })}
                 </p>
                 <div className="flex items-center gap-2">
                   <Button
@@ -178,17 +180,18 @@ function AuditTable({
   logs: AuditLogEntry[]
   userMap: Record<string, string>
 }) {
+  const { t } = useTranslation()
   return (
     <div className="overflow-x-auto -mx-6">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-left">
-            <th className="px-6 py-3 font-medium text-muted-foreground">Date</th>
-            <th className="px-6 py-3 font-medium text-muted-foreground">User</th>
-            <th className="px-6 py-3 font-medium text-muted-foreground">Action</th>
-            <th className="px-6 py-3 font-medium text-muted-foreground">Resource</th>
-            <th className="px-6 py-3 font-medium text-muted-foreground">Resource ID</th>
-            <th className="px-6 py-3 font-medium text-muted-foreground">IP</th>
+            <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.audit.thDate")}</th>
+            <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.audit.thUser")}</th>
+            <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.audit.thAction")}</th>
+            <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.audit.thResource")}</th>
+            <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.audit.thResourceId")}</th>
+            <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.audit.thIp")}</th>
           </tr>
         </thead>
         <tbody className="divide-y">
