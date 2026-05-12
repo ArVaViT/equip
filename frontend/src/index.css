@@ -21,7 +21,7 @@
     --secondary-foreground: 265 28% 13%;
     --muted: 38 22% 94%;
     --muted-foreground: 265 12% 38%;
-    --accent: 146 32% 37%;
+    --accent: 146 28% 52%;
     --accent-foreground: 265 28% 13%;
     --destructive: 0 70% 42%;
     --destructive-foreground: 0 0% 98%;
@@ -44,7 +44,7 @@
     --sidebar-ring: 262 56% 38%;
 
     --chart-1: 262 56% 32%;
-    --chart-2: 146 32% 37%;
+    --chart-2: 146 28% 52%;
     --chart-3: 156 45% 34%;
     --chart-4: 30 85% 42%;
     --chart-5: 215 75% 42%;
@@ -341,6 +341,100 @@
   @media (prefers-reduced-motion: reduce) {
     .skeleton-shimmer::before {
       animation: none;
+    }
+  }
+}
+
+/* ===== View Transitions API =====
+   Applies whenever document.startViewTransition() is called (typically wrapped
+   around a route or state update). No effect until a caller opts in. */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    animation: 180ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
+  }
+  ::view-transition-new(root) {
+    animation: 240ms cubic-bezier(0.22, 1, 0.36, 1) both vt-fade-in-up;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== Expressive utilities (opt-in only) =====
+   Off by default. Apply on hero headlines, CTA hovers, success states,
+   anywhere DESIGN.md sanctions as an "expressive moment". Do not blanket. */
+@layer utilities {
+  .text-gradient-primary {
+    background-image: linear-gradient(
+      120deg,
+      hsl(var(--primary)) 0%,
+      hsl(var(--accent)) 50%,
+      hsl(var(--primary)) 100%
+    );
+    background-size: 200% 100%;
+    background-clip: text;
+    color: transparent;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .text-gradient-primary {
+      animation: text-gradient-shift 8s ease-in-out infinite alternate;
+    }
+  }
+  @keyframes text-gradient-shift {
+    from {
+      background-position: 0% 0%;
+    }
+    to {
+      background-position: 100% 0%;
+    }
+  }
+
+  .bg-cta-glow {
+    position: relative;
+    isolation: isolate;
+  }
+  .bg-cta-glow::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    border-radius: inherit;
+    background: radial-gradient(
+      80% 120% at 50% 100%,
+      hsl(var(--primary) / 0.35) 0%,
+      transparent 70%
+    );
+    opacity: 0;
+    transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+  }
+  .bg-cta-glow:hover::after,
+  .bg-cta-glow:focus-visible::after {
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bg-cta-glow::after {
+      transition: none;
     }
   }
 }
