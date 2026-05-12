@@ -1,12 +1,15 @@
 import { lazy, Suspense, useEffect, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { useTranslation } from "react-i18next"
+import { LayoutGroup, motion, useReducedMotion } from "motion/react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useAuth } from "@/context/useAuth"
 import { User as UserIcon, Menu } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import { cn } from "@/lib/utils"
+
+const UNDERLINE_LAYOUT_ID = "header-active-underline"
 
 const NotificationBell = lazy(() => import("./NotificationBell"))
 
@@ -25,6 +28,7 @@ function HeaderNavLink({
   onNavigate?: () => void
   variant?: "bar" | "sheet"
 }) {
+  const prefersReducedMotion = useReducedMotion()
   const isSheet = variant === "sheet"
   return (
     <Link
@@ -40,12 +44,25 @@ function HeaderNavLink({
             ? "border-primary bg-muted/25 font-medium text-foreground"
             : "text-foreground hover:border-border hover:bg-muted/40"),
         !isSheet &&
-          (active
-            ? "text-foreground after:pointer-events-none after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-sm after:bg-primary"
-            : "text-muted-foreground hover:text-foreground"),
+          (active ? "text-foreground" : "text-muted-foreground hover:text-foreground"),
       )}
     >
       {children}
+      {!isSheet &&
+        active &&
+        (prefersReducedMotion ? (
+          <span
+            className="pointer-events-none absolute inset-x-3 bottom-0 h-0.5 rounded-sm bg-primary"
+            aria-hidden
+          />
+        ) : (
+          <motion.span
+            layoutId={UNDERLINE_LAYOUT_ID}
+            className="pointer-events-none absolute inset-x-3 bottom-0 h-0.5 rounded-sm bg-primary"
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            aria-hidden
+          />
+        ))}
     </Link>
   )
 }
@@ -78,35 +95,37 @@ export default function Header() {
           </Link>
 
           {user ? (
-            <nav
-              className="hidden min-w-0 flex-1 flex-wrap items-stretch justify-center md:flex"
-              aria-label={t("header.navAriaLabel")}
-            >
-              <HeaderNavLink to="/" active={location.pathname === "/"}>
-                {t("header.courses")}
-              </HeaderNavLink>
-              <HeaderNavLink to="/calendar" active={isActive("/calendar")}>
-                {t("header.calendar")}
-              </HeaderNavLink>
-              <HeaderNavLink to="/certificates" active={isActive("/certificates")}>
-                {t("header.certificates")}
-              </HeaderNavLink>
-              {isTeacher && (
-                // header.manage / header.admin are the COMPACT (desktop bar) labels
-                // for the same destinations as header.manageCourses / header.adminPanel
-                // used in the mobile sheet. Two keys per destination is intentional:
-                // the bar is space-constrained, the sheet has room for a verbose label.
-                // Don't unify these — see UI-DECISIONS.md.
-                <HeaderNavLink to="/teacher" active={isActive("/teacher")}>
-                  {t("header.manage")}
+            <LayoutGroup id="header-nav">
+              <nav
+                className="hidden min-w-0 flex-1 flex-wrap items-stretch justify-center md:flex"
+                aria-label={t("header.navAriaLabel")}
+              >
+                <HeaderNavLink to="/" active={location.pathname === "/"}>
+                  {t("header.courses")}
                 </HeaderNavLink>
-              )}
-              {user.role === "admin" && (
-                <HeaderNavLink to="/admin" active={isActive("/admin")}>
-                  {t("header.admin")}
+                <HeaderNavLink to="/calendar" active={isActive("/calendar")}>
+                  {t("header.calendar")}
                 </HeaderNavLink>
-              )}
-            </nav>
+                <HeaderNavLink to="/certificates" active={isActive("/certificates")}>
+                  {t("header.certificates")}
+                </HeaderNavLink>
+                {isTeacher && (
+                  // header.manage / header.admin are the COMPACT (desktop bar) labels
+                  // for the same destinations as header.manageCourses / header.adminPanel
+                  // used in the mobile sheet. Two keys per destination is intentional:
+                  // the bar is space-constrained, the sheet has room for a verbose label.
+                  // Don't unify these — see UI-DECISIONS.md.
+                  <HeaderNavLink to="/teacher" active={isActive("/teacher")}>
+                    {t("header.manage")}
+                  </HeaderNavLink>
+                )}
+                {user.role === "admin" && (
+                  <HeaderNavLink to="/admin" active={isActive("/admin")}>
+                    {t("header.admin")}
+                  </HeaderNavLink>
+                )}
+              </nav>
+            </LayoutGroup>
           ) : (
             <div className="hidden flex-1 md:block" aria-hidden />
           )}
