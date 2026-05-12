@@ -444,7 +444,8 @@
       "actionCloneShort": "Clone",
       "actionEdit": "Edit",
       "actionEditCourse": "Edit course",
-      "actionDelete": "Delete"
+      "actionDelete": "Delete",
+      "actionMore": "More actions"
     }
   },
   "teacherEditor": {

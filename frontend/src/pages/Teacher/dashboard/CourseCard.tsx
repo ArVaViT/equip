@@ -8,6 +8,7 @@ import {
   Eye,
   EyeOff,
   Layers,
+  MoreHorizontal,
   Pencil,
   Trash2,
   Users,
@@ -15,6 +16,13 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { toProxyImage } from "@/lib/images"
 import { formatDate } from "@/i18n/format"
 import type { Course } from "@/types"
@@ -135,38 +143,49 @@ export function CourseCard({
             )}
             <span className="sr-only">{togglePublishLabel}</span>
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            title={t("teacherDashboard.courseCard.actionClone")}
-            disabled={cloningId === course.id}
-            onClick={() => onClone(course.id)}
-          >
-            {cloningId === course.id ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            ) : (
-              <Copy className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            )}
-            <span className="sr-only">
-              {t("teacherDashboard.courseCard.actionCloneShort")}
-            </span>
-          </Button>
           <Link to={`/teacher/courses/${course.id}`}>
             <Button
               variant="ghost"
               size="sm"
               aria-label={t("teacherDashboard.courseCard.actionEditCourse")}
+              title={t("teacherDashboard.courseCard.actionEditCourse")}
             >
               <Pencil className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-              <span className="hidden sm:inline">
-                {t("teacherDashboard.courseCard.actionEdit")}
-              </span>
             </Button>
           </Link>
-          <Button variant="destructive" size="sm" onClick={() => onDelete(course.id)}>
-            <Trash2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            {t("teacherDashboard.courseCard.actionDelete")}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={t("teacherDashboard.courseCard.actionMore")}
+                title={t("teacherDashboard.courseCard.actionMore")}
+              >
+                <MoreHorizontal className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={() => onClone(course.id)}
+                disabled={cloningId === course.id}
+              >
+                {cloningId === course.id ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  <Copy className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                )}
+                {t("teacherDashboard.courseCard.actionClone")}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => onDelete(course.id)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                {t("teacherDashboard.courseCard.actionDelete")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </Card>
