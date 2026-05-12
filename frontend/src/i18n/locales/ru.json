@@ -662,6 +662,87 @@
       }
     }
   },
+  "studentProgress": {
+    "loadFailed": "Не удалось загрузить прогресс студентов",
+    "loadFailedDescription": "Сервер временно недоступен. Попробуйте позже.",
+    "retry": "Повторить",
+    "backToCourses": "К моим курсам",
+    "breadcrumb": {
+      "myCourses": "Мои курсы",
+      "courseFallback": "Курс"
+    },
+    "heading": "Прогресс студентов",
+    "analytics": "Аналитика",
+    "gradebook": "Журнал оценок",
+    "searchPlaceholder": "Поиск студентов по имени или email...",
+    "table": {
+      "heading": "Студенты",
+      "description": "Нажмите на строку, чтобы увидеть детали",
+      "name": "Имя",
+      "email": "Email",
+      "progress": "Прогресс",
+      "chapters": "Главы",
+      "quizAvg": "Сред. тест",
+      "assignAvg": "Сред. задание",
+      "lastActive": "Активность",
+      "emptyNoMatch": "Нет студентов по запросу",
+      "emptyNoStudents": "Пока нет записанных студентов"
+    },
+    "row": {
+      "markedIncomplete": "Отмечено как не выполнено",
+      "markedComplete": "Отмечено как выполнено",
+      "toggleFailed": "Не удалось обновить статус",
+      "extraAttemptGranted": "Дополнительная попытка выдана",
+      "extraAttemptFailed": "Не удалось выдать попытку",
+      "overallGrade": "Общая оценка",
+      "overallGradeNa": "—",
+      "enrolled": "Записан",
+      "chaptersCompleted": "Глав завершено",
+      "chaptersCompletedValue": "{{done}} из {{total}}",
+      "progress": "Прогресс",
+      "chapterBreakdown": "По главам",
+      "gradebookButton": "Журнал оценок",
+      "viewAnalytics": "Аналитика"
+    },
+    "chapterRow": {
+      "notCompleted": "Не завершено",
+      "quizScore": "Тест: {{score}}/{{max}}",
+      "extraAttemptTitle": "Выдать дополнительную попытку",
+      "completedByTeacher": "Засчитано преподавателем",
+      "completedByQuiz": "Завершено через тест",
+      "completedBySubmission": "Завершено через задание",
+      "undo": "Отменить",
+      "complete": "Засчитать"
+    }
+  },
+  "teacherAnalytics": {
+    "courseFallback": "Курс",
+    "loadFailed": "Не удалось загрузить аналитику",
+    "backToCourses": "К моим курсам",
+    "backToDashboard": "К панели",
+    "heading": "Аналитика курса",
+    "studentProgress": "Прогресс студентов",
+    "gradebook": "Журнал оценок",
+    "stats": {
+      "totalStudents": "Всего студентов",
+      "averageProgress": "Средний прогресс",
+      "completed": "Завершили (100%)",
+      "enrolledThisMonth": "Записались за месяц"
+    },
+    "enrollments": {
+      "heading": "Записи на курс",
+      "subheadingCount_one": "{{count}} студент записан",
+      "subheadingCount_few": "{{count}} студента записано",
+      "subheadingCount_many": "{{count}} студентов записано",
+      "subheadingCount_other": "{{count}} студентов записано",
+      "emptyText": "Пока никто не записался.",
+      "name": "Имя",
+      "email": "Email",
+      "progress": "Прогресс",
+      "enrolled": "Записан",
+      "unknown": "Неизвестно"
+    }
+  },
   "reviews": {
     "loadFailed": "Не удалось загрузить отзывы",
     "deleted": "Отзыв удалён",

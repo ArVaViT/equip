@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import {
   Card,
   CardContent,
@@ -44,17 +45,18 @@ export function StudentTable({
   onToggleSort,
   onChapterUpdate,
 }: Props) {
+  const { t } = useTranslation()
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Users className="h-5 w-5" />
-          Students
+          {t("studentProgress.table.heading")}
           <span className="text-sm font-normal text-muted-foreground">
             ({students.length})
           </span>
         </CardTitle>
-        <CardDescription>Click a row to view detailed breakdown</CardDescription>
+        <CardDescription>{t("studentProgress.table.description")}</CardDescription>
       </CardHeader>
       <CardContent>
         {students.length === 0 ? (
@@ -66,25 +68,25 @@ export function StudentTable({
                 <tr className="border-b text-left">
                   <th className="pb-3 pr-2 w-8" />
                   <SortableHeader
-                    label="Name"
+                    label={t("studentProgress.table.name")}
                     col="name"
                     sortBy={sortBy}
                     sortDir={sortDir}
                     onToggle={onToggleSort}
                   />
-                  <th className="pb-3 font-medium text-muted-foreground">Email</th>
+                  <th className="pb-3 font-medium text-muted-foreground">{t("studentProgress.table.email")}</th>
                   <SortableHeader
-                    label="Progress"
+                    label={t("studentProgress.table.progress")}
                     col="progress"
                     sortBy={sortBy}
                     sortDir={sortDir}
                     onToggle={onToggleSort}
                   />
-                  <th className="pb-3 font-medium text-muted-foreground">Chapters</th>
-                  <th className="pb-3 font-medium text-muted-foreground">Quiz Avg</th>
-                  <th className="pb-3 font-medium text-muted-foreground">Assign. Avg</th>
+                  <th className="pb-3 font-medium text-muted-foreground">{t("studentProgress.table.chapters")}</th>
+                  <th className="pb-3 font-medium text-muted-foreground">{t("studentProgress.table.quizAvg")}</th>
+                  <th className="pb-3 font-medium text-muted-foreground">{t("studentProgress.table.assignAvg")}</th>
                   <SortableHeader
-                    label="Last Active"
+                    label={t("studentProgress.table.lastActive")}
                     col="last_activity"
                     sortBy={sortBy}
                     sortDir={sortDir}
@@ -116,11 +118,14 @@ export function StudentTable({
 }
 
 function EmptyState({ hasSearch }: { hasSearch: boolean }) {
+  const { t } = useTranslation()
   return (
     <div className="text-center py-12 text-muted-foreground">
       <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
       <p className="text-sm">
-        {hasSearch ? "No students match your search" : "No students enrolled yet"}
+        {hasSearch
+          ? t("studentProgress.table.emptyNoMatch")
+          : t("studentProgress.table.emptyNoStudents")}
       </p>
     </div>
   )

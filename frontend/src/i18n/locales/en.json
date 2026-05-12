@@ -646,6 +646,85 @@
       }
     }
   },
+  "studentProgress": {
+    "loadFailed": "Failed to load student progress",
+    "loadFailedDescription": "The server may be temporarily unavailable. Please try again.",
+    "retry": "Retry",
+    "backToCourses": "Back to courses",
+    "breadcrumb": {
+      "myCourses": "My Courses",
+      "courseFallback": "Course"
+    },
+    "heading": "Student Progress",
+    "analytics": "Analytics",
+    "gradebook": "Gradebook",
+    "searchPlaceholder": "Search students by name or email...",
+    "table": {
+      "heading": "Students",
+      "description": "Click a row to view detailed breakdown",
+      "name": "Name",
+      "email": "Email",
+      "progress": "Progress",
+      "chapters": "Chapters",
+      "quizAvg": "Quiz Avg",
+      "assignAvg": "Assign. Avg",
+      "lastActive": "Last Active",
+      "emptyNoMatch": "No students match your search",
+      "emptyNoStudents": "No students enrolled yet"
+    },
+    "row": {
+      "markedIncomplete": "Marked as incomplete",
+      "markedComplete": "Marked as complete",
+      "toggleFailed": "Failed to update completion",
+      "extraAttemptGranted": "Extra attempt granted",
+      "extraAttemptFailed": "Failed to grant extra attempt",
+      "overallGrade": "Overall Grade",
+      "overallGradeNa": "N/A",
+      "enrolled": "Enrolled",
+      "chaptersCompleted": "Chapters Completed",
+      "chaptersCompletedValue": "{{done}} of {{total}}",
+      "progress": "Progress",
+      "chapterBreakdown": "Chapter Breakdown",
+      "gradebookButton": "Gradebook",
+      "viewAnalytics": "View Analytics"
+    },
+    "chapterRow": {
+      "notCompleted": "Not completed",
+      "quizScore": "Quiz: {{score}}/{{max}}",
+      "extraAttemptTitle": "Grant extra attempt",
+      "completedByTeacher": "Completed by teacher",
+      "completedByQuiz": "Completed via quiz",
+      "completedBySubmission": "Completed via submission",
+      "undo": "Undo",
+      "complete": "Complete"
+    }
+  },
+  "teacherAnalytics": {
+    "courseFallback": "Course",
+    "loadFailed": "Failed to load analytics",
+    "backToCourses": "Back to courses",
+    "backToDashboard": "Back to dashboard",
+    "heading": "Course Analytics",
+    "studentProgress": "Student Progress",
+    "gradebook": "Gradebook",
+    "stats": {
+      "totalStudents": "Total Students",
+      "averageProgress": "Average Progress",
+      "completed": "Completed (100%)",
+      "enrolledThisMonth": "Enrolled This Month"
+    },
+    "enrollments": {
+      "heading": "Student Enrollments",
+      "subheadingCount_one": "{{count}} student enrolled",
+      "subheadingCount_other": "{{count}} students enrolled",
+      "emptyText": "No students have enrolled yet.",
+      "name": "Name",
+      "email": "Email",
+      "progress": "Progress",
+      "enrolled": "Enrolled",
+      "unknown": "Unknown"
+    }
+  },
   "reviews": {
     "loadFailed": "Failed to load reviews",
     "deleted": "Review deleted",
