@@ -1,4 +1,5 @@
 import { Fragment, useMemo } from "react"
+import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -50,6 +51,7 @@ export function GradeTableTab({
   onSaveGrade,
   onToggleExpand,
 }: Props) {
+  const { t } = useTranslation()
   const allChapters: ChapterInfo[] = useMemo(
     () => orderedModules.flatMap((m) => moduleChapterMap.get(m.id) ?? []),
     [orderedModules, moduleChapterMap],
@@ -60,7 +62,7 @@ export function GradeTableTab({
       <Card>
         <CardContent className="py-12 text-center">
           <BookOpen className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">Could not load progress data.</p>
+          <p className="text-sm text-muted-foreground">{t("gradebook.failedLoad")}</p>
         </CardContent>
       </Card>
     )
@@ -71,7 +73,7 @@ export function GradeTableTab({
       <Card>
         <CardContent className="py-12 text-center">
           <Users className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">No students enrolled yet.</p>
+          <p className="text-sm text-muted-foreground">{t("gradebook.summary.empty")}</p>
         </CardContent>
       </Card>
     )
@@ -81,10 +83,8 @@ export function GradeTableTab({
     <div className="space-y-4">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Student Grade Table</CardTitle>
-          <CardDescription className="text-xs">
-            Reading/video chapters = 1 pt for completion · Quiz/exam = scored · Assignment = teacher-graded pts
-          </CardDescription>
+          <CardTitle className="text-base">{t("gradebook.table.title")}</CardTitle>
+          <CardDescription className="text-xs">{t("gradebook.table.description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -128,11 +128,12 @@ function GradeTableHead({
   moduleChapterMap: Map<string, ChapterInfo[]>
   allChapters: ChapterInfo[]
 }) {
+  const { t } = useTranslation()
   return (
     <thead>
       <tr>
         <th className="sticky left-0 z-10 bg-card border-b border-r px-3 py-2 text-left font-semibold text-sm w-44 min-w-[11rem]">
-          Student
+          {t("gradebook.table.thStudent")}
         </th>
         {orderedModules.map((mod) => {
           const modChapters = moduleChapterMap.get(mod.id) ?? []
@@ -148,7 +149,7 @@ function GradeTableHead({
           )
         })}
         <th className="border-b px-2 py-2 text-center font-semibold bg-muted/40 w-20">
-          Total
+          {t("gradebook.table.thTotal")}
         </th>
       </tr>
       <tr>
@@ -196,6 +197,7 @@ function GradeTableRow({
   onUpdateForm,
   onSaveGrade,
 }: GradeTableRowProps) {
+  const { t } = useTranslation()
   const chMap = studentChapterMap.get(student.id)
   const { earned, total } = computeStudentTotals(allChapters, chMap)
 
@@ -253,24 +255,24 @@ function GradeTableRow({
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1">
                 <label className="flex items-center gap-1 text-xs font-medium">
-                  <Award className="h-3.5 w-3.5" strokeWidth={1.75} /> Override Grade
+                  <Award className="h-3.5 w-3.5" strokeWidth={1.75} /> {t("gradebook.table.overrideGrade")}
                 </label>
                 <Input
                   value={form.grade}
                   onChange={(e) => onUpdateForm(student.id, "grade", e.target.value)}
-                  placeholder="A, B+, 95..."
+                  placeholder={t("gradebook.table.overridePlaceholder")}
                   fieldSize="sm"
                   className="w-28"
                 />
               </div>
               <div className="space-y-1 flex-1 min-w-[180px]">
                 <label className="flex items-center gap-1 text-xs font-medium">
-                  <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.75} /> Comment
+                  <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.75} /> {t("gradebook.table.comment")}
                 </label>
                 <Input
                   value={form.comment}
                   onChange={(e) => onUpdateForm(student.id, "comment", e.target.value)}
-                  placeholder="Teacher's note..."
+                  placeholder={t("gradebook.table.commentPlaceholder")}
                   fieldSize="sm"
                   className="min-w-0 flex-1"
                 />
@@ -282,7 +284,7 @@ function GradeTableRow({
                 disabled={saving}
               >
                 <Save className="mr-1 h-3.5 w-3.5" strokeWidth={1.75} />
-                {saving ? "Saving..." : "Save Grade"}
+                {saving ? t("gradebook.table.saving") : t("gradebook.table.saveGrade")}
               </Button>
             </div>
           </td>
@@ -297,6 +299,7 @@ function GradeTableRow({
  * completion marker for reading/video chapters.
  */
 function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
+  const { t } = useTranslation()
   if (!chapter) {
     return (
       <div className="flex items-center justify-center h-9 rounded bg-muted/30 text-muted-foreground/40 text-xs">
@@ -345,10 +348,10 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
           {graded ? (
             <>
               <span className="font-semibold">{chapter.assignment_result.grade}pt</span>
-              <span className="text-[10px] opacity-70">graded</span>
+              <span className="text-[10px] opacity-70">{t("gradebook.table.cellGraded")}</span>
             </>
           ) : (
-            <span>submitted</span>
+            <span>{t("gradebook.table.cellSubmitted")}</span>
           )}
         </div>
       )
@@ -413,43 +416,44 @@ function computeStudentTotals(
 }
 
 function GradeTableLegend() {
+  const { t } = useTranslation()
   return (
     <div className="mt-4 flex flex-wrap gap-4 border-t pt-4 text-xs text-muted-foreground">
       <div className="flex items-center gap-1.5">
         <div className="flex h-4 w-4 items-center justify-center rounded border border-success/30 bg-success/10">
           <CheckCircle2 className="h-2.5 w-2.5 text-success" />
         </div>
-        Completed (1 pt)
+        {t("gradebook.table.legend.completed")}
       </div>
       <div className="flex items-center gap-1.5">
         <div className="flex h-4 w-6 items-center justify-center rounded border border-success/30 bg-success/10 text-[9px] font-semibold text-success">
           85%
         </div>
-        Quiz passed
+        {t("gradebook.table.legend.quizPassed")}
       </div>
       <div className="flex items-center gap-1.5">
         <div className="flex h-4 w-6 items-center justify-center rounded border border-destructive/30 bg-destructive/10 text-[9px] font-semibold text-destructive">
           40%
         </div>
-        Quiz failed
+        {t("gradebook.table.legend.quizFailed")}
       </div>
       <div className="flex items-center gap-1.5">
         <div className="flex h-4 w-10 items-center justify-center rounded border border-info/30 bg-info/10 text-[9px] font-semibold text-info">
-          graded
+          {t("gradebook.table.cellGraded")}
         </div>
-        Assignment graded
+        {t("gradebook.table.legend.assignmentGraded")}
       </div>
       <div className="flex items-center gap-1.5">
         <div className="flex h-4 w-14 items-center justify-center rounded border border-warning/30 bg-warning/10 text-[9px] text-warning">
-          submitted
+          {t("gradebook.table.cellSubmitted")}
         </div>
-        Assignment submitted
+        {t("gradebook.table.legend.assignmentSubmitted")}
       </div>
       <div className="flex items-center gap-1.5">
         <div className="flex h-4 w-4 items-center justify-center rounded border bg-muted/30">
           <Circle className="h-2.5 w-2.5 text-muted-foreground/40" />
         </div>
-        Not submitted
+        {t("gradebook.table.legend.notSubmitted")}
       </div>
     </div>
   )
