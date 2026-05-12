@@ -60,15 +60,12 @@ export default function CertificatesPage() {
         </Button>
       </Link>
 
-      <div className="mb-8">
-        <h1 className="flex items-center gap-3 font-serif text-3xl font-bold tracking-tight">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
-            <Award className="h-5 w-5 text-muted-foreground" />
-          </div>
-          {t("certificates.title")}
-        </h1>
-        <p className="mt-2 text-muted-foreground">{t("certificates.subtitle")}</p>
-      </div>
+      <h1 className="mb-8 flex items-center gap-3 font-serif text-3xl font-bold tracking-tight">
+        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+          <Award className="h-5 w-5 text-muted-foreground" />
+        </div>
+        {t("certificates.title")}
+      </h1>
 
       {certificates.length === 0 ? (
         <Card className="border-dashed">
