@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useTranslation } from "react-i18next"
 import { Check, Pencil, X, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -27,7 +28,7 @@ const sizeClasses: Record<Size, string> = {
 export function InlineEdit({
   value,
   onSave,
-  placeholder = "Click to edit",
+  placeholder,
   size = "body",
   multiline = false,
   maxLength,
@@ -37,6 +38,8 @@ export function InlineEdit({
   textClassName,
   ariaLabel,
 }: InlineEditProps) {
+  const { t } = useTranslation()
+  const resolvedPlaceholder = placeholder ?? t("inlineEdit.defaultPlaceholder")
   const [editing, setEditing] = React.useState(false)
   const [draft, setDraft] = React.useState(value)
   const [saving, setSaving] = React.useState(false)
@@ -128,7 +131,7 @@ export function InlineEdit({
       onKeyDown,
       onBlur,
       maxLength,
-      placeholder,
+      placeholder: resolvedPlaceholder,
       disabled: saving,
       "aria-label": ariaLabel,
       className: cn(
@@ -163,7 +166,7 @@ export function InlineEdit({
                 className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => void commit()}
-                aria-label="Save"
+                aria-label={t("inlineEdit.save")}
               >
                 <Check className="h-4 w-4" />
               </button>
@@ -172,7 +175,7 @@ export function InlineEdit({
                 className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={cancel}
-                aria-label="Cancel"
+                aria-label={t("inlineEdit.cancel")}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -184,7 +187,7 @@ export function InlineEdit({
   }
 
   const isEmpty = !value.trim()
-  const displayText = isEmpty ? placeholder : value
+  const displayText = isEmpty ? resolvedPlaceholder : value
 
   if (disabled) {
     return (
@@ -209,7 +212,7 @@ export function InlineEdit({
       <button
         type="button"
         onClick={start}
-        aria-label={ariaLabel ?? `Edit ${placeholder.toLowerCase()}`}
+        aria-label={ariaLabel ?? t("inlineEdit.editAria", { what: resolvedPlaceholder.toLowerCase() })}
         className={cn(
           "flex-1 min-w-0 cursor-text rounded-md px-2 py-1 text-left transition-colors text-wrap-safe hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           multiline && "whitespace-pre-line",

@@ -12,7 +12,16 @@
     "search": "Search",
     "signIn": "Sign In",
     "signOut": "Sign Out",
-    "register": "Register"
+    "register": "Register",
+    "close": "Close",
+    "scrollToTop": "Scroll to top",
+    "dismissAnnouncement": "Dismiss announcement"
+  },
+  "inlineEdit": {
+    "defaultPlaceholder": "Click to edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "editAria": "Edit {{what}}"
   },
   "header": {
     "courses": "Courses",
@@ -748,7 +757,21 @@
     "subtitle": "Your deadlines, events, and schedule in one place",
     "filterByCourse": "Filter by course",
     "allCourses": "All Courses",
-    "retry": "Retry"
+    "retry": "Retry",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "today": "Today",
+    "moreEvents": "+{{count}} more",
+    "selectedDayEmpty": "No events on this day",
+    "upcomingTitle": "Upcoming (14 days)",
+    "upcomingEmpty": "No upcoming events",
+    "overdue": "Overdue",
+    "eventTypes": {
+      "deadline": "Deadline",
+      "live_session": "Live session",
+      "exam": "Exam",
+      "other": "Other"
+    }
   },
   "teacher": {
     "dashboardTitle": "My Courses",

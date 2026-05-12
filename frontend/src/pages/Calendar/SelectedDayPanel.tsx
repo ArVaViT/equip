@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { BookOpen, CalendarDays, Clock } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +14,7 @@ interface SelectedDayPanelProps {
 }
 
 export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps) {
+  const { t } = useTranslation();
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -28,7 +30,7 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
       <CardContent>
         {events.length === 0 ? (
           <p className="text-sm text-muted-foreground py-3 text-center">
-            No events on this day
+            {t("calendar.selectedDayEmpty")}
           </p>
         ) : (
           <div className="space-y-2">
@@ -48,7 +50,7 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
                           <Clock className="h-2.5 w-2.5" />
                           {formatTime(evt.event_date)}
                         </span>
-                        <span className="capitalize">{evt.event_type.replace("_", " ")}</span>
+                        <span>{t(`calendar.eventTypes.${evt.event_type}`, { defaultValue: evt.event_type.replace("_", " ") })}</span>
                       </div>
                       {evt.course_title && (
                         <Link
