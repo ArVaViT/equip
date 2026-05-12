@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -28,6 +29,7 @@ export function QuestionCard({
   onRemoveOption,
   onUpdateOption,
 }: Props) {
+  const { t } = useTranslation()
   return (
     <Card className="bg-muted/30">
       <CardContent className="p-4 space-y-3">
@@ -53,12 +55,12 @@ export function QuestionCard({
           <div className="flex-1 space-y-3">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-muted-foreground">
-                Q{qIdx + 1}
+                {t("quizEditor.questions.questionPrefix", { n: qIdx + 1 })}
               </span>
               <Input
                 value={q.question_text}
                 onChange={(e) => onUpdate({ question_text: e.target.value })}
-                placeholder="Question text..."
+                placeholder={t("quizEditor.questions.questionPlaceholder")}
                 className="h-8 text-sm flex-1"
               />
               <Button
@@ -81,14 +83,16 @@ export function QuestionCard({
                 }
                 className="h-7 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <option value="multiple_choice">Multiple Choice</option>
-                <option value="true_false">True / False</option>
-                <option value="short_answer">Short Answer</option>
-                <option value="essay">Essay</option>
+                <option value="multiple_choice">{t("quizEditor.questions.types.multiple_choice")}</option>
+                <option value="true_false">{t("quizEditor.questions.types.true_false")}</option>
+                <option value="short_answer">{t("quizEditor.questions.types.short_answer")}</option>
+                <option value="essay">{t("quizEditor.questions.types.essay")}</option>
               </select>
               {q.question_type === "essay" && (
                 <div className="flex items-center gap-1">
-                  <Label className="text-xs text-muted-foreground">Min words:</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    {t("quizEditor.questions.minWords")}
+                  </Label>
                   <Input
                     type="number"
                     min={1}
@@ -107,7 +111,9 @@ export function QuestionCard({
                 </div>
               )}
               <div className="flex items-center gap-1">
-                <Label className="text-xs text-muted-foreground">Points:</Label>
+                <Label className="text-xs text-muted-foreground">
+                  {t("quizEditor.questions.points")}
+                </Label>
                 <Input
                   type="number"
                   min={1}
@@ -128,14 +134,14 @@ export function QuestionCard({
                       checked={opt.is_correct}
                       onChange={() => onUpdateOption(oIdx, { is_correct: true })}
                       className="accent-primary shrink-0"
-                      title="Mark as correct"
+                      title={t("quizEditor.questions.markCorrect")}
                     />
                     <Input
                       value={opt.option_text}
                       onChange={(e) =>
                         onUpdateOption(oIdx, { option_text: e.target.value })
                       }
-                      placeholder={`Option ${oIdx + 1}`}
+                      placeholder={t("quizEditor.questions.optionPlaceholder", { n: oIdx + 1 })}
                       className="h-7 text-xs flex-1"
                     />
                     {q.options.length > 2 && (
@@ -152,7 +158,7 @@ export function QuestionCard({
                 ))}
                 <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onAddOption}>
                   <Plus className="h-3 w-3 mr-1" />
-                  Add Option
+                  {t("quizEditor.questions.addOption")}
                 </Button>
               </div>
             )}
@@ -183,13 +189,13 @@ export function QuestionCard({
 
             {q.question_type === "short_answer" && (
               <p className="text-xs text-muted-foreground italic">
-                Students will type a free-text answer. Graded manually.
+                {t("quizEditor.questions.shortAnswerHint")}
               </p>
             )}
 
             {q.question_type === "essay" && (
               <p className="text-xs text-muted-foreground italic">
-                Long-form written response. Graded manually from the Submissions tab.
+                {t("quizEditor.questions.essayHint")}
               </p>
             )}
           </div>

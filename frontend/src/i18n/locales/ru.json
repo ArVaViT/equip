@@ -379,6 +379,92 @@
     "inProgress": "В процессе",
     "attemptPoints": "{{score}}/{{max}} баллов"
   },
+  "quizEditor": {
+    "validation": {
+      "titleRequired": "Укажите название теста",
+      "addAtLeastOneQuestion": "Добавьте хотя бы один вопрос",
+      "validScoreRequired": "Введите корректный балл (0 или больше)",
+      "scoreCantExceed": "Балл не может превышать {{max}} за этот вопрос"
+    },
+    "toast": {
+      "quizSaved": "Тест сохранён",
+      "quizSaveFailed": "Не удалось сохранить тест",
+      "quizDeleted": "Тест удалён",
+      "quizDeleteFailed": "Не удалось удалить тест",
+      "gradeSaved": "Оценка сохранена",
+      "gradeSaveFailed": "Не удалось сохранить оценку"
+    },
+    "confirmDelete": {
+      "title": "Удалить этот тест?",
+      "description": "Студенты потеряют доступ к тесту и попыткам.",
+      "confirm": "Удалить тест"
+    },
+    "heading": {
+      "editQuiz": "Изменить тест",
+      "editExam": "Изменить экзамен",
+      "createQuiz": "Создать тест",
+      "createExam": "Создать экзамен"
+    },
+    "fields": {
+      "quizTitle": "Название теста",
+      "titlePlaceholder": "напр. Тест по главе",
+      "description": "Описание (необязательно)",
+      "descriptionPlaceholder": "Краткое описание теста...",
+      "passingScore": "Проходной балл (%)",
+      "maxAttempts": "Максимум попыток"
+    },
+    "questions": {
+      "heading": "Вопросы ({{count}})",
+      "addQuestion": "Добавить вопрос",
+      "empty": "Пока нет вопросов. Нажмите «Добавить вопрос», чтобы начать.",
+      "questionPrefix": "В{{n}}",
+      "questionPlaceholder": "Текст вопроса...",
+      "types": {
+        "multiple_choice": "Один из вариантов",
+        "true_false": "Верно / Неверно",
+        "short_answer": "Короткий ответ",
+        "essay": "Эссе"
+      },
+      "minWords": "Мин. слов:",
+      "points": "Баллы:",
+      "markCorrect": "Отметить как правильный",
+      "optionPlaceholder": "Вариант {{n}}",
+      "addOption": "Добавить вариант",
+      "shortAnswerHint": "Студенты введут свободный текст. Оценивается вручную.",
+      "essayHint": "Развёрнутый письменный ответ. Оценивается вручную во вкладке проверки."
+    },
+    "save": {
+      "saving": "Сохранение...",
+      "saveQuiz": "Сохранить тест",
+      "saveExam": "Сохранить экзамен",
+      "deleteQuiz": "Удалить тест",
+      "deleteExam": "Удалить экзамен"
+    },
+    "review": {
+      "loadFailed": "Не удалось загрузить ответы. Попробуйте снова.",
+      "emptyAlready": "Пока нет открытых ответов.",
+      "emptyAllGraded": "Нет ответов на проверку — всё проверено.",
+      "openEndedCount_one": "{{count}} открытый ответ",
+      "openEndedCount_few": "{{count}} открытых ответа",
+      "openEndedCount_many": "{{count}} открытых ответов",
+      "openEndedCount_other": "{{count}} открытых ответа",
+      "showAlreadyGraded": "Показывать уже проверенные",
+      "essay": "Эссе",
+      "shortAnswer": "Короткий ответ",
+      "upToPoints_one": "до {{count}} балла",
+      "upToPoints_few": "до {{count}} баллов",
+      "upToPoints_many": "до {{count}} баллов",
+      "upToPoints_other": "до {{count}} баллов",
+      "wordsWithMin": "{{count}} / {{min}} слов",
+      "wordsCount": "{{count}} слов",
+      "emptyAnswer": "(пусто)",
+      "pointsLabel": "Баллы (0–{{max}})",
+      "commentLabel": "Комментарий (необязательно)",
+      "commentPlaceholder": "Отзыв, который увидит студент…",
+      "saved": "Сохранено",
+      "saveGrade": "Сохранить оценку"
+    }
+  },
   "assignment": {
     "loadFailed": "Не удалось загрузить задания. Обновите страницу.",
     "statusSubmitted": "Отправлено — на проверке",
