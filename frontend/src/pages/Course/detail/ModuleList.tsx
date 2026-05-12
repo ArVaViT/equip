@@ -16,6 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { StaggerChildren } from "@/components/motion"
 import { isGradableChapterType } from "@/lib/chapterTypes"
 import type { Module } from "@/types"
 import { formatDate } from "./types"
@@ -37,7 +38,7 @@ export function ModuleList({ courseId, modules, completedChapterIds }: Props) {
       </h2>
 
       {modules.length > 0 ? (
-        <div className="space-y-2">
+        <StaggerChildren className="space-y-2">
           {modules.map((module, idx) => (
             <ModuleRow
               key={module.id}
@@ -48,7 +49,7 @@ export function ModuleList({ courseId, modules, completedChapterIds }: Props) {
               completedChapterIds={completedChapterIds}
             />
           ))}
-        </div>
+        </StaggerChildren>
       ) : (
         <Card className="border-dashed">
           <CardContent className="py-8 text-center text-muted-foreground text-sm">
