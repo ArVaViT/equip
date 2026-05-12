@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,6 +28,7 @@ export function GradingConfigCard({
   onSave,
   saving,
 }: Props) {
+  const { t } = useTranslation()
   const total = draft.quiz_weight + draft.assignment_weight + draft.participation_weight
   const valid = total === 100
 
@@ -37,9 +39,9 @@ export function GradingConfigCard({
           <div className="flex items-center gap-2">
             <Settings2 className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} aria-hidden />
             <div>
-              <CardTitle className="text-base">Grading Configuration</CardTitle>
+              <CardTitle className="text-base">{t("gradebook.config.title")}</CardTitle>
               <CardDescription className="text-xs">
-                Set how quizzes, assignments, and participation contribute to final grades
+                {t("gradebook.config.description")}
               </CardDescription>
             </div>
           </div>
@@ -54,17 +56,17 @@ export function GradingConfigCard({
         <CardContent className="border-t pt-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <WeightField
-              label="Quiz Weight (%)"
+              label={t("gradebook.config.quizWeight")}
               value={draft.quiz_weight}
               onChange={(v) => onDraftChange({ ...draft, quiz_weight: v })}
             />
             <WeightField
-              label="Assignment Weight (%)"
+              label={t("gradebook.config.assignmentWeight")}
               value={draft.assignment_weight}
               onChange={(v) => onDraftChange({ ...draft, assignment_weight: v })}
             />
             <WeightField
-              label="Participation Weight (%)"
+              label={t("gradebook.config.participationWeight")}
               value={draft.participation_weight}
               onChange={(v) => onDraftChange({ ...draft, participation_weight: v })}
             />
@@ -75,11 +77,13 @@ export function GradingConfigCard({
                 valid ? "text-success" : "text-destructive"
               }`}
             >
-              Total: {total}% {valid ? "✓" : "(must equal 100%)"}
+              {valid
+                ? t("gradebook.config.totalValid", { total })
+                : t("gradebook.config.totalInvalid", { total })}
             </p>
             <Button size="sm" onClick={onSave} disabled={!valid || saving}>
               <Save className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-              {saving ? "Saving..." : "Save Weights"}
+              {saving ? t("gradebook.config.saving") : t("gradebook.config.save")}
             </Button>
           </div>
         </CardContent>

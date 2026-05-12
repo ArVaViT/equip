@@ -1052,7 +1052,71 @@
     "breadcrumbCourses": "My Courses",
     "pageHeading": "Gradebook",
     "exportCsv": "Export CSV",
-    "exporting": "Exporting..."
+    "exporting": "Exporting...",
+    "stats": {
+      "students": "Students",
+      "classAverage": "Class Average",
+      "manuallyGraded": "Manually Graded",
+      "weights": "Weights Q/A/P"
+    },
+    "config": {
+      "title": "Grading Configuration",
+      "description": "Set how quizzes, assignments, and participation contribute to final grades",
+      "quizWeight": "Quiz Weight (%)",
+      "assignmentWeight": "Assignment Weight (%)",
+      "participationWeight": "Participation Weight (%)",
+      "totalValid": "Total: {{total}}% ✓",
+      "totalInvalid": "Total: {{total}}% (must equal 100%)",
+      "saving": "Saving...",
+      "save": "Save Weights"
+    },
+    "summary": {
+      "title": "Student Grades",
+      "description": "Auto-calculated based on quiz scores, assignment grades, and chapter completion. Click a student to override manually.",
+      "empty": "No students enrolled yet.",
+      "thStudent": "Student",
+      "thQuiz": "Quiz",
+      "thAssignment": "Assign.",
+      "thParticipation": "Particip.",
+      "thFinal": "Final",
+      "thGrade": "Grade",
+      "thManual": "Manual",
+      "unknownStudent": "Unknown",
+      "breakdownQuiz": "Quiz Avg:",
+      "breakdownAssignment": "Assignment Avg:",
+      "breakdownParticipation": "Participation:",
+      "manualDiffers": "Manual grade <strong>{{manual}}</strong> differs from calculated <strong>{{calc}}</strong> ({{pct}}%)",
+      "overrideGrade": "Override Grade",
+      "overridePlaceholder": "A, B+, 95...",
+      "comment": "Comment",
+      "commentPlaceholder": "Teacher's note...",
+      "savingManual": "Saving...",
+      "saveManual": "Save Manual Grade",
+      "classAverageRow_one": "Class Average ({{count}} student)",
+      "classAverageRow_other": "Class Average ({{count}} students)"
+    },
+    "table": {
+      "title": "Student Grade Table",
+      "description": "Reading/video chapters = 1 pt for completion · Quiz/exam = scored · Assignment = teacher-graded pts",
+      "thStudent": "Student",
+      "thTotal": "Total",
+      "overrideGrade": "Override Grade",
+      "overridePlaceholder": "A, B+, 95...",
+      "comment": "Comment",
+      "commentPlaceholder": "Teacher's note...",
+      "saving": "Saving...",
+      "saveGrade": "Save Grade",
+      "cellGraded": "graded",
+      "cellSubmitted": "submitted",
+      "legend": {
+        "completed": "Completed (1 pt)",
+        "quizPassed": "Quiz passed",
+        "quizFailed": "Quiz failed",
+        "assignmentGraded": "Assignment graded",
+        "assignmentSubmitted": "Assignment submitted",
+        "notSubmitted": "Not submitted"
+      }
+    }
   },
   "admin": {
     "title": "Admin Dashboard",
