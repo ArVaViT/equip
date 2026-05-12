@@ -180,7 +180,11 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
           <Button
             onClick={handleSubmit}
             disabled={!allAnswered || submitting || attemptsReached}
-            className="w-full"
+            className={
+              !allAnswered || submitting || attemptsReached
+                ? "w-full"
+                : "w-full bg-cta-glow"
+            }
           >
             {submitting ? (
               <>
