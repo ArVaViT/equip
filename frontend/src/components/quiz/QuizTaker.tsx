@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import PageSpinner from "@/components/ui/PageSpinner"
+import { StaggerChildren } from "@/components/motion"
 import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { toast } from "@/lib/toast"
@@ -164,15 +165,17 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
               {t("quiz.maxAttemptsReached", { type: t(assessmentTypeKey).toLowerCase() })}
             </div>
           )}
-          {sortedQuestions.map((question, idx) => (
-            <QuestionPrompt
-              key={question.id}
-              question={question}
-              index={idx}
-              answer={answers[question.id]}
-              onAnswer={(val) => setAnswer(question.id, val)}
-            />
-          ))}
+          <StaggerChildren className="space-y-6">
+            {sortedQuestions.map((question, idx) => (
+              <QuestionPrompt
+                key={question.id}
+                question={question}
+                index={idx}
+                answer={answers[question.id]}
+                onAnswer={(val) => setAnswer(question.id, val)}
+              />
+            ))}
+          </StaggerChildren>
 
           <Button
             onClick={handleSubmit}
