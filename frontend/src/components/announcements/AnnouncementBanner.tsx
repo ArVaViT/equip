@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { useTranslation } from "react-i18next"
 import { coursesService } from "@/services/courses"
 import { useAuth } from "@/context/useAuth"
 import type { Announcement } from "@/types"
@@ -6,6 +7,7 @@ import { Megaphone, X } from "lucide-react"
 
 export default function AnnouncementBanner() {
   const { user } = useAuth()
+  const { t } = useTranslation()
   const [announcement, setAnnouncement] = useState<Announcement | null>(null)
   const [dismissed, setDismissed] = useState(false)
 
@@ -44,7 +46,7 @@ export default function AnnouncementBanner() {
         <button
           onClick={() => setDismissed(true)}
           className="rounded p-1 text-muted-foreground hover:bg-muted"
-          aria-label="Dismiss announcement"
+          aria-label={t("common.dismissAnnouncement")}
         >
           <X className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
         </button>

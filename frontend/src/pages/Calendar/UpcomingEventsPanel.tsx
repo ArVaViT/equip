@@ -1,4 +1,5 @@
 import { Clock } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CalendarEvent } from "@/types";
@@ -14,17 +15,18 @@ interface UpcomingEventsPanelProps {
  * get flagged as overdue so the student can act on them.
  */
 export function UpcomingEventsPanel({ events }: UpcomingEventsPanelProps) {
+  const { t } = useTranslation();
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />
-          Upcoming (14 days)
+          {t("calendar.upcomingTitle")}
         </CardTitle>
       </CardHeader>
       <CardContent>
         {events.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">No upcoming events</p>
+          <p className="text-sm text-muted-foreground py-4 text-center">{t("calendar.upcomingEmpty")}</p>
         ) : (
           <div className="space-y-2">
             {events.map((evt) => {
@@ -52,7 +54,7 @@ export function UpcomingEventsPanel({ events }: UpcomingEventsPanelProps) {
                       <span>{formatShortDate(evt.event_date)}</span>
                       <span>{formatTime(evt.event_date)}</span>
                       {overdue && (
-                        <span className="font-medium text-destructive">Overdue</span>
+                        <span className="font-medium text-destructive">{t("calendar.overdue")}</span>
                       )}
                     </div>
                     {evt.course_title && (

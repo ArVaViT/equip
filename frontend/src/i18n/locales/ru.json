@@ -12,7 +12,16 @@
     "search": "Поиск",
     "signIn": "Войти",
     "signOut": "Выйти",
-    "register": "Регистрация"
+    "register": "Регистрация",
+    "close": "Закрыть",
+    "scrollToTop": "Наверх",
+    "dismissAnnouncement": "Закрыть объявление"
+  },
+  "inlineEdit": {
+    "defaultPlaceholder": "Нажмите для редактирования",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "editAria": "Изменить {{what}}"
   },
   "header": {
     "courses": "Курсы",
@@ -768,7 +777,21 @@
     "subtitle": "Сроки, события и расписание в одном месте",
     "filterByCourse": "Фильтр по курсу",
     "allCourses": "Все курсы",
-    "retry": "Повторить"
+    "retry": "Повторить",
+    "prevMonth": "Предыдущий месяц",
+    "nextMonth": "Следующий месяц",
+    "today": "Сегодня",
+    "moreEvents": "+ещё {{count}}",
+    "selectedDayEmpty": "В этот день событий нет",
+    "upcomingTitle": "Ближайшие (14 дней)",
+    "upcomingEmpty": "Нет предстоящих событий",
+    "overdue": "Просрочено",
+    "eventTypes": {
+      "deadline": "Дедлайн",
+      "live_session": "Прямая сессия",
+      "exam": "Экзамен",
+      "other": "Другое"
+    }
   },
   "teacher": {
     "dashboardTitle": "Мои курсы",
