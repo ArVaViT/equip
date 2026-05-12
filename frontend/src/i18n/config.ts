@@ -47,9 +47,9 @@ i18n
     },
     fallbackLng: DEFAULT_LOCALE,
     supportedLngs: SUPPORTED_LOCALES as unknown as string[],
-    // Most page text is in `<Trans>` or `t('namespace.key')` calls. We do not
-    // ship raw HTML strings through translations, so escaping is safe to keep
-    // off — react-i18next's render path handles JSX escaping itself.
+    // Most page text is in <Trans> or t() calls. We do not ship raw HTML
+    // strings through translations, so escaping is safe to keep off —
+    // react-i18next's render path handles JSX escaping itself.
     interpolation: { escapeValue: false },
     detection: {
       order: ["localStorage", "navigator", "htmlTag"],
@@ -58,9 +58,9 @@ i18n
     },
     returnNull: false,
     // Surface missing keys loudly in non-prod so bilingual drift can't sneak
-    // in. In test mode we throw — a test rendering a component that calls
-    // `t("missing.key")` will fail immediately, catching the bug in CI. In
-    // dev we `console.error` so the page still renders but the developer sees
+    // in. In test mode we throw — a test rendering a component with a
+    // missing-key lookup will fail immediately, catching the bug in CI. In
+    // dev we console.error so the page still renders but the developer sees
     // it. In prod we stay silent (the key string is the fallback, which is
     // ugly but not catastrophic).
     saveMissing: !isProd,
