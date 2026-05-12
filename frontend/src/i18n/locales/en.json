@@ -369,6 +369,88 @@
     "inProgress": "In progress",
     "attemptPoints": "{{score}}/{{max}} points"
   },
+  "quizEditor": {
+    "validation": {
+      "titleRequired": "Quiz title is required",
+      "addAtLeastOneQuestion": "Add at least one question",
+      "validScoreRequired": "Enter a valid score (0 or higher)",
+      "scoreCantExceed": "Score can't exceed {{max}} for this question"
+    },
+    "toast": {
+      "quizSaved": "Quiz saved",
+      "quizSaveFailed": "Failed to save quiz",
+      "quizDeleted": "Quiz deleted",
+      "quizDeleteFailed": "Failed to delete quiz",
+      "gradeSaved": "Grade saved",
+      "gradeSaveFailed": "Failed to save grade"
+    },
+    "confirmDelete": {
+      "title": "Delete this quiz?",
+      "description": "Students will lose access to the quiz and its attempts.",
+      "confirm": "Delete quiz"
+    },
+    "heading": {
+      "editQuiz": "Edit Quiz",
+      "editExam": "Edit Exam",
+      "createQuiz": "Create Quiz",
+      "createExam": "Create Exam"
+    },
+    "fields": {
+      "quizTitle": "Quiz Title",
+      "titlePlaceholder": "e.g. Chapter Review Quiz",
+      "description": "Description (optional)",
+      "descriptionPlaceholder": "Brief description of the quiz...",
+      "passingScore": "Passing Score (%)",
+      "maxAttempts": "Maximum Attempts"
+    },
+    "questions": {
+      "heading": "Questions ({{count}})",
+      "addQuestion": "Add Question",
+      "empty": "No questions yet. Click \"Add Question\" to start.",
+      "questionPrefix": "Q{{n}}",
+      "questionPlaceholder": "Question text...",
+      "types": {
+        "multiple_choice": "Multiple Choice",
+        "true_false": "True / False",
+        "short_answer": "Short Answer",
+        "essay": "Essay"
+      },
+      "minWords": "Min words:",
+      "points": "Points:",
+      "markCorrect": "Mark as correct",
+      "optionPlaceholder": "Option {{n}}",
+      "addOption": "Add Option",
+      "shortAnswerHint": "Students will type a free-text answer. Graded manually.",
+      "essayHint": "Long-form written response. Graded manually from the Submissions tab."
+    },
+    "save": {
+      "saving": "Saving...",
+      "saveQuiz": "Save Quiz",
+      "saveExam": "Save Exam",
+      "deleteQuiz": "Delete Quiz",
+      "deleteExam": "Delete Exam"
+    },
+    "review": {
+      "loadFailed": "Failed to load submissions. Please try again.",
+      "emptyAlready": "No open-ended answers yet.",
+      "emptyAllGraded": "Nothing to grade — you're all caught up.",
+      "openEndedCount_one": "{{count}} open-ended answer",
+      "openEndedCount_other": "{{count}} open-ended answers",
+      "showAlreadyGraded": "Show already graded",
+      "essay": "Essay",
+      "shortAnswer": "Short answer",
+      "upToPoints_one": "up to {{count}} pt",
+      "upToPoints_other": "up to {{count}} pts",
+      "wordsWithMin": "{{count}} / {{min}} words",
+      "wordsCount": "{{count}} words",
+      "emptyAnswer": "(empty)",
+      "pointsLabel": "Points (0–{{max}})",
+      "commentLabel": "Comment (optional)",
+      "commentPlaceholder": "Feedback shown to the student…",
+      "saved": "Saved",
+      "saveGrade": "Save grade"
+    }
+  },
   "assignment": {
     "loadFailed": "Failed to load assignments. Please try refreshing.",
     "statusSubmitted": "Submitted — Awaiting Review",

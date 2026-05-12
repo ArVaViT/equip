@@ -1,4 +1,5 @@
 import { Loader2, Plus, Save, Trash2 } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import type { Quiz } from "@/types"
 import { QuestionCard } from "./QuestionCard"
@@ -54,6 +55,7 @@ export function QuizEditView({
   deleting,
   onDelete,
 }: Props) {
+  const { t } = useTranslation()
   return (
     <>
       <QuizHeaderFields
@@ -70,10 +72,12 @@ export function QuizEditView({
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Questions ({questions.length})</span>
+          <span className="text-sm font-medium">
+            {t("quizEditor.questions.heading", { count: questions.length })}
+          </span>
           <Button variant="outline" size="sm" onClick={onAddQuestion} className="h-7 text-xs">
             <Plus className="h-3 w-3 mr-1" />
-            Add Question
+            {t("quizEditor.questions.addQuestion")}
           </Button>
         </div>
 
@@ -94,7 +98,7 @@ export function QuizEditView({
 
         {questions.length === 0 && (
           <div className="text-center py-6 border border-dashed rounded-md text-sm text-muted-foreground">
-            No questions yet. Click "Add Question" to start.
+            {t("quizEditor.questions.empty")}
           </div>
         )}
       </div>
@@ -106,7 +110,11 @@ export function QuizEditView({
           ) : (
             <Save className="h-3.5 w-3.5 mr-1.5" />
           )}
-          {saving ? "Saving..." : `Save ${chapterType === "exam" ? "Exam" : "Quiz"}`}
+          {saving
+            ? t("quizEditor.save.saving")
+            : chapterType === "exam"
+              ? t("quizEditor.save.saveExam")
+              : t("quizEditor.save.saveQuiz")}
         </Button>
         {existingQuiz && (
           <Button size="sm" variant="destructive" onClick={onDelete} disabled={deleting}>
@@ -115,7 +123,9 @@ export function QuizEditView({
             ) : (
               <Trash2 className="h-3.5 w-3.5 mr-1.5" />
             )}
-            {`Delete ${chapterType === "exam" ? "Exam" : "Quiz"}`}
+            {chapterType === "exam"
+              ? t("quizEditor.save.deleteExam")
+              : t("quizEditor.save.deleteQuiz")}
           </Button>
         )}
       </div>

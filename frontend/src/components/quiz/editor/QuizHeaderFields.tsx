@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -25,30 +26,31 @@ export function QuizHeaderFields({
   setMaxAttempts,
   chapterType,
 }: Props) {
+  const { t } = useTranslation()
   return (
     <div className="grid gap-3">
       <div className="space-y-1.5">
-        <Label className="text-xs">Quiz Title</Label>
+        <Label className="text-xs">{t("quizEditor.fields.quizTitle")}</Label>
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g. Chapter Review Quiz"
+          placeholder={t("quizEditor.fields.titlePlaceholder")}
           fieldSize="sm"
           className="text-sm"
         />
       </div>
       <div className="space-y-1.5">
-        <Label className="text-xs">Description (optional)</Label>
+        <Label className="text-xs">{t("quizEditor.fields.description")}</Label>
         <Textarea
           fieldSize="sm"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Brief description of the quiz..."
+          placeholder={t("quizEditor.fields.descriptionPlaceholder")}
           className="text-sm"
         />
       </div>
       <div className="space-y-1.5">
-        <Label className="text-xs">Passing Score (%)</Label>
+        <Label className="text-xs">{t("quizEditor.fields.passingScore")}</Label>
         <Input
           type="number"
           min={0}
@@ -61,7 +63,7 @@ export function QuizHeaderFields({
       </div>
       {chapterType === "exam" && (
         <div className="space-y-1.5">
-          <Label className="text-xs">Maximum Attempts</Label>
+          <Label className="text-xs">{t("quizEditor.fields.maxAttempts")}</Label>
           <Input
             type="number"
             min={1}

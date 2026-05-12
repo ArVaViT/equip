@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { ClipboardList, Loader2 } from "lucide-react"
 import { useConfirm } from "@/components/ui/alert-dialog"
 import { coursesService } from "@/services/courses"
@@ -23,6 +24,7 @@ export default function QuizEditor({
   onQuizSaved,
 }: QuizEditorProps) {
   const confirm = useConfirm()
+  const { t } = useTranslation()
   const draft = useQuizDraft({ chapterId, chapterType })
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -30,11 +32,11 @@ export default function QuizEditor({
 
   const handleSave = async () => {
     if (!draft.title.trim()) {
-      toast({ title: "Quiz title is required", variant: "destructive" })
+      toast({ title: t("quizEditor.validation.titleRequired"), variant: "destructive" })
       return
     }
     if (draft.questions.length === 0) {
-      toast({ title: "Add at least one question", variant: "destructive" })
+      toast({ title: t("quizEditor.validation.addAtLeastOneQuestion"), variant: "destructive" })
       return
     }
 
@@ -69,9 +71,9 @@ export default function QuizEditor({
           // Old quiz cleanup is best-effort; the new quiz was already saved
         })
       }
-      toast({ title: "Quiz saved", variant: "success" })
+      toast({ title: t("quizEditor.toast.quizSaved"), variant: "success" })
     } catch {
-      toast({ title: "Failed to save quiz", variant: "destructive" })
+      toast({ title: t("quizEditor.toast.quizSaveFailed"), variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -80,9 +82,9 @@ export default function QuizEditor({
   const handleDelete = async () => {
     if (!draft.existingQuiz) return
     const ok = await confirm({
-      title: "Delete this quiz?",
-      description: "Students will lose access to the quiz and its attempts.",
-      confirmLabel: "Delete quiz",
+      title: t("quizEditor.confirmDelete.title"),
+      description: t("quizEditor.confirmDelete.description"),
+      confirmLabel: t("quizEditor.confirmDelete.confirm"),
       tone: "destructive",
     })
     if (!ok) return
@@ -90,9 +92,9 @@ export default function QuizEditor({
     try {
       await coursesService.deleteQuiz(draft.existingQuiz.id, chapterId)
       draft.resetAll()
-      toast({ title: "Quiz deleted", variant: "success" })
+      toast({ title: t("quizEditor.toast.quizDeleted"), variant: "success" })
     } catch {
-      toast({ title: "Failed to delete quiz", variant: "destructive" })
+      toast({ title: t("quizEditor.toast.quizDeleteFailed"), variant: "destructive" })
     } finally {
       setDeleting(false)
     }
@@ -118,8 +120,12 @@ export default function QuizEditor({
           <ClipboardList className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-medium">
             {draft.existingQuiz
-              ? `Edit ${chapterType === "exam" ? "Exam" : "Quiz"}`
-              : `Create ${chapterType === "exam" ? "Exam" : "Quiz"}`}
+              ? chapterType === "exam"
+                ? t("quizEditor.heading.editExam")
+                : t("quizEditor.heading.editQuiz")
+              : chapterType === "exam"
+                ? t("quizEditor.heading.createExam")
+                : t("quizEditor.heading.createQuiz")}
           </span>
         </div>
         {draft.existingQuiz && hasManualQuestions && (
