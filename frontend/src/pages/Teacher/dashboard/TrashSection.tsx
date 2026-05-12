@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Archive, RotateCcw, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -18,6 +19,7 @@ interface Props {
 
 export function TrashSection({ visible, onToggle, onRestore }: Props) {
   const confirm = useConfirm()
+  const { t } = useTranslation()
   const [trashedCourses, setTrashedCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(false)
   const [restoringId, setRestoringId] = useState<string | null>(null)
@@ -33,7 +35,7 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
       })
       .catch(() => {
         if (!signal.cancelled)
-          toast({ title: "Failed to load trash", variant: "destructive" })
+          toast({ title: t("teacherDashboard.trash.loadFailed"), variant: "destructive" })
       })
       .finally(() => {
         if (!signal.cancelled) setLoading(false)
@@ -41,7 +43,7 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
     return () => {
       signal.cancelled = true
     }
-  }, [visible])
+  }, [visible, t])
 
   const handleRestore = async (id: string) => {
     setRestoringId(id)
@@ -49,10 +51,10 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
       const restored = await coursesService.restoreCourse(id)
       setTrashedCourses((prev) => prev.filter((c) => c.id !== id))
       onRestore(restored)
-      toast({ title: "Course restored", variant: "success" })
+      toast({ title: t("teacherDashboard.trash.restored"), variant: "success" })
     } catch (err) {
       toast({
-        title: getErrorDetail(err, "Failed to restore course"),
+        title: getErrorDetail(err, t("teacherDashboard.trash.restoreFailed")),
         variant: "destructive",
       })
     } finally {
@@ -62,20 +64,19 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
 
   const handlePermanentDelete = async (id: string) => {
     const ok = await confirm({
-      title: "Permanently delete this course?",
-      description:
-        "This will permanently delete the course and all its data (modules, chapters, enrollments, grades). This action cannot be undone.",
-      confirmLabel: "Delete permanently",
+      title: t("teacherDashboard.trash.confirmDelete.title"),
+      description: t("teacherDashboard.trash.confirmDelete.description"),
+      confirmLabel: t("teacherDashboard.trash.confirmDelete.confirm"),
       tone: "destructive",
     })
     if (!ok) return
     try {
       await coursesService.permanentlyDeleteCourse(id)
       setTrashedCourses((prev) => prev.filter((c) => c.id !== id))
-      toast({ title: "Course permanently deleted" })
+      toast({ title: t("teacherDashboard.trash.deleted") })
     } catch (err) {
       toast({
-        title: getErrorDetail(err, "Failed to delete course"),
+        title: getErrorDetail(err, t("teacherDashboard.trash.deleteFailed")),
         variant: "destructive",
       })
     }
@@ -88,7 +89,9 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <Archive className="h-4 w-4" />
-        {visible ? "Hide Trash" : "Show Trash"}
+        {visible
+          ? t("teacherDashboard.trash.hide")
+          : t("teacherDashboard.trash.show")}
       </button>
 
       {visible && (
@@ -96,7 +99,9 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
           {loading ? (
             <PageSpinner variant="section" />
           ) : trashedCourses.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">Trash is empty.</p>
+            <p className="text-sm text-muted-foreground py-4">
+              {t("teacherDashboard.trash.empty")}
+            </p>
           ) : (
             <div className="space-y-3">
               {trashedCourses.map((course) => (
@@ -106,7 +111,9 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
                       <h4 className="text-sm font-medium truncate">{course.title}</h4>
                       {course.deleted_at && (
                         <p className="text-xs text-muted-foreground">
-                          Deleted {formatDate(course.deleted_at)}
+                          {t("teacherDashboard.trash.deletedAt", {
+                            date: formatDate(course.deleted_at),
+                          })}
                         </p>
                       )}
                     </div>
@@ -118,7 +125,7 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
                         disabled={restoringId === course.id}
                       >
                         <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-                        Restore
+                        {t("teacherDashboard.trash.restore")}
                       </Button>
                       <Button
                         size="sm"
@@ -126,7 +133,7 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
                         onClick={() => handlePermanentDelete(course.id)}
                       >
                         <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                        Delete Forever
+                        {t("teacherDashboard.trash.deleteForever")}
                       </Button>
                     </div>
                   </div>

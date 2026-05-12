@@ -447,6 +447,50 @@
       "actionEditCourse": "Edit course",
       "actionDelete": "Delete",
       "actionMore": "More actions"
+    },
+    "createForm": {
+      "title": "Create New Course",
+      "titleLabel": "Title",
+      "titlePlaceholder": "Introduction to Theology",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "A brief description of the course...",
+      "imageUrlLabel": "Cover Image URL (optional — or upload after creating)",
+      "imageUrlPlaceholder": "https://... (you can upload in the editor)",
+      "creating": "Creating...",
+      "submit": "Create Course",
+      "cancel": "Cancel"
+    },
+    "empty": {
+      "title": "No courses yet",
+      "description": "Create your first course to start teaching",
+      "action": "Create Course"
+    },
+    "trash": {
+      "show": "Show Trash",
+      "hide": "Hide Trash",
+      "empty": "Trash is empty.",
+      "loadFailed": "Failed to load trash",
+      "restored": "Course restored",
+      "restoreFailed": "Failed to restore course",
+      "confirmDelete": {
+        "title": "Permanently delete this course?",
+        "description": "This will permanently delete the course and all its data (modules, chapters, enrollments, grades). This action cannot be undone.",
+        "confirm": "Delete permanently"
+      },
+      "deleted": "Course permanently deleted",
+      "deleteFailed": "Failed to delete course",
+      "deletedAt": "Deleted {{date}}",
+      "restore": "Restore",
+      "deleteForever": "Delete Forever"
+    },
+    "pendingCerts": {
+      "title": "Pending Certificates",
+      "studentFallback": "Student",
+      "courseFallback": "Course",
+      "requestedPrefix": "Requested {{date}}",
+      "requestedUnknown": "Requested (unknown date)",
+      "approve": "Approve",
+      "reject": "Reject"
     }
   },
   "teacherEditor": {
