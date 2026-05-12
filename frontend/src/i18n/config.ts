@@ -30,6 +30,13 @@ export function isSupportedLocale(value: unknown): value is SupportedLocale {
   return typeof value === "string" && (SUPPORTED_LOCALES as readonly string[]).includes(value)
 }
 
+// Vite injects `import.meta.env.MODE` as "development" / "production" / "test"
+// (vitest sets MODE="test"). Guard for non-Vite environments just in case.
+const mode =
+  typeof import.meta !== "undefined" && import.meta.env ? import.meta.env.MODE : "production"
+const isProd = mode === "production"
+const isTest = mode === "test"
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -50,6 +57,23 @@ i18n
       caches: ["localStorage"],
     },
     returnNull: false,
+    // Surface missing keys loudly in non-prod so bilingual drift can't sneak
+    // in. In test mode we throw — a test rendering a component that calls
+    // `t("missing.key")` will fail immediately, catching the bug in CI. In
+    // dev we `console.error` so the page still renders but the developer sees
+    // it. In prod we stay silent (the key string is the fallback, which is
+    // ugly but not catastrophic).
+    saveMissing: !isProd,
+    missingKeyHandler: isProd
+      ? undefined
+      : (lngs, ns, key) => {
+          const locales = Array.isArray(lngs) ? lngs.join(", ") : String(lngs)
+          const msg = `[i18n] missing key "${ns}:${key}" for locale(s) ${locales}`
+          if (isTest) {
+            throw new Error(msg)
+          }
+          console.error(msg)
+        },
   })
 
 // Keep <html lang> in sync with the active locale so screen readers, browser
