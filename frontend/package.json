@@ -11,6 +11,7 @@
     "dev": "vite",
     "build": "tsc && vite build && node scripts/upload-sourcemaps.mjs",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
+    "i18n:check": "node scripts/i18n-check.mjs",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run"
