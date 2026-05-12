@@ -188,21 +188,6 @@ export default function ProfilePage() {
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-8 md:px-6">
-      <header className="animate-fade-in mb-8 rounded-md border border-border bg-card px-5 py-6 sm:px-8">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          {t("profile.pageEyebrow")}
-        </p>
-        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border border-border/80 bg-muted">
-            <UserIcon className="h-7 w-7 text-muted-foreground" strokeWidth={1.75} aria-hidden />
-          </div>
-          <div className="min-w-0 space-y-1">
-            <h1 className="font-serif text-3xl font-bold tracking-tight">{t("profile.title")}</h1>
-            <p className="text-muted-foreground">{t("profile.pageLead")}</p>
-          </div>
-        </div>
-      </header>
-
       <div className="stagger-fade-in space-y-6">
         <Card className="overflow-hidden transition-[border-color] duration-200 hover:border-primary/25">
           <CardHeader className="border-b border-border bg-gradient-accent-subtle">
