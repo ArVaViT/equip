@@ -143,7 +143,7 @@ export default function Login() {
             {errors.password && <p id="password-error" role="alert" className="text-xs text-destructive mt-1">{errors.password}</p>}
           </div>
 
-          <Button type="submit" size="lg" className="w-full font-medium rounded-md" disabled={loading}>
+          <Button type="submit" size="lg" className="bg-cta-glow w-full font-medium rounded-md" disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
