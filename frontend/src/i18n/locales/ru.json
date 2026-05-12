@@ -456,7 +456,8 @@
       "actionCloneShort": "Копия",
       "actionEdit": "Редактировать",
       "actionEditCourse": "Редактировать курс",
-      "actionDelete": "Удалить"
+      "actionDelete": "Удалить",
+      "actionMore": "Ещё действия"
     }
   },
   "teacherEditor": {
