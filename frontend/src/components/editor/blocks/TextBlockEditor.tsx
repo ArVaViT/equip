@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Check, Loader2, Save } from "lucide-react"
 import RichTextEditor from "../RichTextEditor"
@@ -22,6 +23,7 @@ const SAVED_FLASH_MS = 2000
  * browser tab is hidden so background tabs don't hammer the API.
  */
 export function TextBlockEditor({ block, onSaved }: Props) {
+  const { t } = useTranslation()
   const [content, setContent] = useState(block.content ?? "")
   const [savingExplicit, setSavingExplicit] = useState(false)
   const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>("idle")
@@ -63,7 +65,7 @@ export function TextBlockEditor({ block, onSaved }: Props) {
       } catch {
         if (!mountedRef.current) return
         setAutoSaveStatus("idle")
-        toast({ title: "Auto-save failed", variant: "destructive" })
+        toast({ title: t("blockEditor.text.autoSaveFailed"), variant: "destructive" })
       }
     }, AUTOSAVE_DELAY_MS)
   }
@@ -76,9 +78,9 @@ export function TextBlockEditor({ block, onSaved }: Props) {
     try {
       const updated = await coursesService.updateBlock(block.id, { content })
       onSaved(updated)
-      toast({ title: "Block saved", variant: "success" })
+      toast({ title: t("blockEditor.text.saved"), variant: "success" })
     } catch {
-      toast({ title: "Failed to save block", variant: "destructive" })
+      toast({ title: t("blockEditor.text.saveFailed"), variant: "destructive" })
     } finally {
       setSavingExplicit(false)
     }
@@ -93,7 +95,7 @@ export function TextBlockEditor({ block, onSaved }: Props) {
           contentRef.current = html
           scheduleAutoSave()
         }}
-        placeholder="Write block content..."
+        placeholder={t("blockEditor.text.placeholder")}
       />
       <div className="flex items-center gap-3">
         <Button size="sm" onClick={saveExplicit} disabled={savingExplicit}>
@@ -102,23 +104,23 @@ export function TextBlockEditor({ block, onSaved }: Props) {
           ) : (
             <Save className="h-3.5 w-3.5 mr-1.5" />
           )}
-          Save Text
+          {t("blockEditor.text.saveButton")}
         </Button>
         {autoSaveStatus === "pending" && (
           <span className="text-xs text-muted-foreground">
-            Unsaved changes...
+            {t("blockEditor.text.statusUnsaved")}
           </span>
         )}
         {autoSaveStatus === "saving" && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Loader2 className="h-3 w-3 animate-spin" />
-            Auto-saving...
+            {t("blockEditor.text.statusAutoSaving")}
           </span>
         )}
         {autoSaveStatus === "saved" && (
           <span className="flex items-center gap-1 text-xs text-success">
             <Check className="h-3 w-3" />
-            Saved
+            {t("blockEditor.text.statusSaved")}
           </span>
         )}
       </div>

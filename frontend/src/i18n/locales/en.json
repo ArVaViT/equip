@@ -451,6 +451,74 @@
       "saveGrade": "Save grade"
     }
   },
+  "blockEditor": {
+    "loadFailed": "Failed to load blocks: {{detail}}",
+    "addedSuccess": "{{type}} block added",
+    "addFailed": "Failed to add block: {{detail}}",
+    "deleted": "Block deleted",
+    "deleteFailed": "Failed to delete block",
+    "confirmDelete": {
+      "title": "Delete this block?",
+      "confirm": "Delete"
+    },
+    "reorderFailed": "Failed to reorder blocks",
+    "updateFailed": "Failed to update block",
+    "contentBlocks": "Content Blocks",
+    "blocksCount_one": "{{count}} block",
+    "blocksCount_other": "{{count}} blocks",
+    "empty": "No blocks yet. Add your first content block below.",
+    "addBlock": "Add Block",
+    "types": {
+      "text": "Text",
+      "quiz": "Quiz",
+      "assignment": "Assignment",
+      "file": "File"
+    },
+    "text": {
+      "autoSaveFailed": "Auto-save failed",
+      "saved": "Block saved",
+      "saveFailed": "Failed to save block",
+      "placeholder": "Write block content...",
+      "saveButton": "Save Text",
+      "statusUnsaved": "Unsaved changes...",
+      "statusAutoSaving": "Auto-saving...",
+      "statusSaved": "Saved"
+    },
+    "file": {
+      "uploaded": "File uploaded",
+      "uploadFailedDefault": "Upload failed",
+      "removeFailed": "Failed to remove file",
+      "attachedFile": "Attached File",
+      "replace": "Replace",
+      "removeAria": "Remove file",
+      "uploading": "Uploading...",
+      "uploadCta": "Upload a file"
+    },
+    "toolbar": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "heading2": "Heading 2",
+      "heading3": "Heading 3",
+      "bulletList": "Bullet List",
+      "numberedList": "Numbered List",
+      "blockquote": "Blockquote",
+      "horizontalRule": "Horizontal Rule",
+      "insertImage": "Insert Image",
+      "insertYoutube": "Insert YouTube Video",
+      "insertAudio": "Insert Audio",
+      "link": "Link",
+      "undo": "Undo",
+      "redo": "Redo"
+    },
+    "callout": {
+      "trigger": "Callout Block",
+      "remove": "Remove Block",
+      "info": "Information",
+      "verse": "Bible Verse",
+      "takeaway": "Key Takeaway",
+      "warning": "Warning"
+    }
+  },
   "assignmentEditor": {
     "validation": {
       "titleRequired": "Assignment title is required"

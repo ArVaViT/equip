@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { Editor } from "@tiptap/react";
 import {
   Info,
@@ -13,16 +14,15 @@ import type { CalloutVariant } from "./CalloutExtension";
 
 interface CalloutChoice {
   value: CalloutVariant;
-  label: string;
   icon: typeof Info;
   color: string;
 }
 
 const CALLOUT_VARIANTS: CalloutChoice[] = [
-  { value: "info", label: "Information", icon: Info, color: "text-info" },
-  { value: "verse", label: "Bible Verse", icon: BookOpen, color: "text-accent" },
-  { value: "takeaway", label: "Key Takeaway", icon: Lightbulb, color: "text-success" },
-  { value: "warning", label: "Warning", icon: AlertTriangle, color: "text-warning" },
+  { value: "info", icon: Info, color: "text-info" },
+  { value: "verse", icon: BookOpen, color: "text-accent" },
+  { value: "takeaway", icon: Lightbulb, color: "text-success" },
+  { value: "warning", icon: AlertTriangle, color: "text-warning" },
 ];
 
 /**
@@ -37,6 +37,7 @@ export function CalloutDropdown({
   editor: Editor;
   iconSize: number;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -68,7 +69,7 @@ export function CalloutDropdown({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        title="Callout Block"
+        title={t("blockEditor.callout.trigger")}
         className={cn(
           "flex items-center gap-0.5 rounded p-1.5 transition-colors",
           isActive
@@ -91,7 +92,7 @@ export function CalloutDropdown({
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left"
               >
                 <Icon size={16} className={v.color} />
-                {v.label}
+                {t(`blockEditor.callout.${v.value}`)}
               </button>
             );
           })}
@@ -103,7 +104,7 @@ export function CalloutDropdown({
                 onClick={removeCallout}
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-muted transition-colors text-left"
               >
-                Remove Block
+                {t("blockEditor.callout.remove")}
               </button>
             </>
           )}

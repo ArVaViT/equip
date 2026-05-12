@@ -465,6 +465,76 @@
       "saveGrade": "Сохранить оценку"
     }
   },
+  "blockEditor": {
+    "loadFailed": "Не удалось загрузить блоки: {{detail}}",
+    "addedSuccess": "Блок «{{type}}» добавлен",
+    "addFailed": "Не удалось добавить блок: {{detail}}",
+    "deleted": "Блок удалён",
+    "deleteFailed": "Не удалось удалить блок",
+    "confirmDelete": {
+      "title": "Удалить этот блок?",
+      "confirm": "Удалить"
+    },
+    "reorderFailed": "Не удалось изменить порядок блоков",
+    "updateFailed": "Не удалось обновить блок",
+    "contentBlocks": "Блоки содержимого",
+    "blocksCount_one": "{{count}} блок",
+    "blocksCount_few": "{{count}} блока",
+    "blocksCount_many": "{{count}} блоков",
+    "blocksCount_other": "{{count}} блоков",
+    "empty": "Пока нет блоков. Добавьте первый блок ниже.",
+    "addBlock": "Добавить блок",
+    "types": {
+      "text": "Текст",
+      "quiz": "Тест",
+      "assignment": "Задание",
+      "file": "Файл"
+    },
+    "text": {
+      "autoSaveFailed": "Не удалось автосохранить",
+      "saved": "Блок сохранён",
+      "saveFailed": "Не удалось сохранить блок",
+      "placeholder": "Введите содержимое блока...",
+      "saveButton": "Сохранить текст",
+      "statusUnsaved": "Несохранённые изменения...",
+      "statusAutoSaving": "Автосохранение...",
+      "statusSaved": "Сохранено"
+    },
+    "file": {
+      "uploaded": "Файл загружен",
+      "uploadFailedDefault": "Не удалось загрузить",
+      "removeFailed": "Не удалось удалить файл",
+      "attachedFile": "Прикреплённый файл",
+      "replace": "Заменить",
+      "removeAria": "Удалить файл",
+      "uploading": "Загрузка...",
+      "uploadCta": "Загрузить файл"
+    },
+    "toolbar": {
+      "bold": "Жирный",
+      "italic": "Курсив",
+      "heading2": "Заголовок 2",
+      "heading3": "Заголовок 3",
+      "bulletList": "Маркированный список",
+      "numberedList": "Нумерованный список",
+      "blockquote": "Цитата",
+      "horizontalRule": "Горизонтальная линия",
+      "insertImage": "Вставить изображение",
+      "insertYoutube": "Вставить YouTube видео",
+      "insertAudio": "Вставить аудио",
+      "link": "Ссылка",
+      "undo": "Отменить",
+      "redo": "Повторить"
+    },
+    "callout": {
+      "trigger": "Блок-выноска",
+      "remove": "Удалить блок",
+      "info": "Информация",
+      "verse": "Библейский стих",
+      "takeaway": "Ключевая мысль",
+      "warning": "Предупреждение"
+    }
+  },
   "assignmentEditor": {
     "validation": {
       "titleRequired": "Укажите название задания"
