@@ -47,12 +47,7 @@ export default function AdminDashboard() {
         <div className="p-2 rounded-lg bg-primary/10">
           <Shield className="h-6 w-6 text-primary" />
         </div>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t("admin.title")}</h1>
-          <p className="text-muted-foreground mt-0.5">
-            {t("admin.subtitle")}
-          </p>
-        </div>
+        <h1 className="text-3xl font-bold tracking-tight">{t("admin.title")}</h1>
       </div>
 
       <AdminTabs active={tab} onChange={setTab} />
