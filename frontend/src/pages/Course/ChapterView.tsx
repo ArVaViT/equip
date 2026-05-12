@@ -153,14 +153,18 @@ function ChapterBodyBlocks({
     )
   }
   return (
-    <div className="space-y-6">
-      {blocks.map((block) => (
-        <BlockRenderer
+    <div className="stagger-fade-in space-y-6">
+      {blocks.map((block, idx) => (
+        <div
           key={block.id}
-          block={block}
-          onProgressChanged={onProgressChanged}
-          onAssignmentCountLoaded={onAssignmentCountLoaded}
-        />
+          style={{ "--stagger-index": Math.min(idx, 12) } as React.CSSProperties}
+        >
+          <BlockRenderer
+            block={block}
+            onProgressChanged={onProgressChanged}
+            onAssignmentCountLoaded={onAssignmentCountLoaded}
+          />
+        </div>
       ))}
     </div>
   )
