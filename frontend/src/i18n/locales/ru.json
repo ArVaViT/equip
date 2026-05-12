@@ -519,7 +519,74 @@
     "chapterCount_one": "{{count}} глава",
     "chapterCount_few": "{{count}} главы",
     "chapterCount_many": "{{count}} глав",
-    "chapterCount_other": "{{count}} глав"
+    "chapterCount_other": "{{count}} глав",
+    "modals": {
+      "enrollment": {
+        "title": "Период записи",
+        "status": "Статус",
+        "start": "Начало",
+        "end": "Окончание",
+        "save": "Сохранить",
+        "saving": "Сохранение…"
+      },
+      "announcements": {
+        "title": "Объявления",
+        "titlePlaceholder": "Заголовок",
+        "contentPlaceholder": "Текст (необязательно)",
+        "post": "Опубликовать",
+        "posting": "Публикация…",
+        "empty": "Пока нет объявлений."
+      },
+      "materials": {
+        "title": "Материалы курса",
+        "upload": "Загрузить файл",
+        "empty": "Пока нет загруженных материалов.",
+        "sizeKb": "{{kb}} КБ"
+      },
+      "events": {
+        "title": "События курса",
+        "editEvent": "Редактировать событие",
+        "createEvent": "Создать событие",
+        "titlePlaceholder": "Название события",
+        "descriptionPlaceholder": "Описание (необязательно)",
+        "type": "Тип",
+        "dateTime": "Дата и время",
+        "saving": "Сохранение…",
+        "update": "Обновить событие",
+        "create": "Создать событие",
+        "cancel": "Отмена",
+        "empty": "Пока нет событий.",
+        "types": {
+          "deadline": "Дедлайн",
+          "live_session": "Прямая сессия",
+          "exam": "Экзамен",
+          "other": "Другое"
+        }
+      },
+      "cohorts": {
+        "title": "Управление когортами",
+        "editCohort": "Редактировать когорту",
+        "createCohort": "Создать когорту",
+        "namePlaceholder": "Название когорты (например, Весна 2026)",
+        "startDate": "Дата начала",
+        "endDate": "Дата окончания",
+        "enrollmentStart": "Начало записи",
+        "enrollmentEnd": "Окончание записи",
+        "maxStudents": "Максимум студентов (необязательно)",
+        "maxStudentsPlaceholder": "Без ограничения",
+        "saving": "Сохранение…",
+        "update": "Обновить когорту",
+        "create": "Создать когорту",
+        "cancel": "Отмена",
+        "empty": "Пока нет когорт.",
+        "studentCount_one": "{{count}} студент",
+        "studentCount_few": "{{count}} студента",
+        "studentCount_many": "{{count}} студентов",
+        "studentCount_other": "{{count}} студента",
+        "studentMaxSuffix": " / {{max}} макс.",
+        "enrollmentWindow": "Запись: {{start}} — {{end}}"
+      }
+    }
   },
   "moduleEditor": {
     "toast": {

@@ -505,7 +505,72 @@
     "noModulesYet": "No modules yet",
     "noModulesYetDescription": "Add your first module to start building the course.",
     "chapterCount_one": "{{count}} chapter",
-    "chapterCount_other": "{{count}} chapters"
+    "chapterCount_other": "{{count}} chapters",
+    "modals": {
+      "enrollment": {
+        "title": "Enrollment Period",
+        "status": "Status",
+        "start": "Start",
+        "end": "End",
+        "save": "Save",
+        "saving": "Saving…"
+      },
+      "announcements": {
+        "title": "Announcements",
+        "titlePlaceholder": "Title",
+        "contentPlaceholder": "Content (optional)",
+        "post": "Post",
+        "posting": "Posting…",
+        "empty": "No announcements yet."
+      },
+      "materials": {
+        "title": "Course Materials",
+        "upload": "Upload File",
+        "empty": "No materials uploaded yet.",
+        "sizeKb": "{{kb}} KB"
+      },
+      "events": {
+        "title": "Course Events",
+        "editEvent": "Edit Event",
+        "createEvent": "Create Event",
+        "titlePlaceholder": "Event title",
+        "descriptionPlaceholder": "Description (optional)",
+        "type": "Type",
+        "dateTime": "Date & Time",
+        "saving": "Saving…",
+        "update": "Update Event",
+        "create": "Create Event",
+        "cancel": "Cancel",
+        "empty": "No events yet.",
+        "types": {
+          "deadline": "Deadline",
+          "live_session": "Live Session",
+          "exam": "Exam",
+          "other": "Other"
+        }
+      },
+      "cohorts": {
+        "title": "Manage Cohorts",
+        "editCohort": "Edit Cohort",
+        "createCohort": "Create Cohort",
+        "namePlaceholder": "Cohort name (e.g. Spring 2026)",
+        "startDate": "Start Date",
+        "endDate": "End Date",
+        "enrollmentStart": "Enrollment Start",
+        "enrollmentEnd": "Enrollment End",
+        "maxStudents": "Max Students (optional)",
+        "maxStudentsPlaceholder": "Unlimited",
+        "saving": "Saving…",
+        "update": "Update Cohort",
+        "create": "Create Cohort",
+        "cancel": "Cancel",
+        "empty": "No cohorts yet.",
+        "studentCount_one": "{{count}} student",
+        "studentCount_other": "{{count}} students",
+        "studentMaxSuffix": " / {{max}} max",
+        "enrollmentWindow": "Enrollment: {{start}} — {{end}}"
+      }
+    }
   },
   "moduleEditor": {
     "toast": {

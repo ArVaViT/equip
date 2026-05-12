@@ -1,4 +1,5 @@
 import type { Ref } from "react"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Download, Loader2, Paperclip, X } from "lucide-react"
 import { Modal } from "@/components/patterns"
@@ -29,8 +30,9 @@ export function MaterialsModal({
   onDelete,
   fileInputRef,
 }: Props) {
+  const { t } = useTranslation()
   return (
-    <Modal open={open} onClose={onClose} title="Course Materials">
+    <Modal open={open} onClose={onClose} title={t("teacherEditor.modals.materials.title")}>
       <div className="space-y-4">
         <Button
           variant="outline"
@@ -44,7 +46,7 @@ export function MaterialsModal({
           ) : (
             <Paperclip className="h-4 w-4 mr-1.5" />
           )}
-          Upload File
+          {t("teacherEditor.modals.materials.upload")}
         </Button>
         <input
           ref={fileInputRef}
@@ -55,7 +57,7 @@ export function MaterialsModal({
         />
         {materials.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-6">
-            No materials uploaded yet.
+            {t("teacherEditor.modals.materials.empty")}
           </p>
         ) : (
           <div className="space-y-2 max-h-60 overflow-y-auto">
@@ -68,7 +70,7 @@ export function MaterialsModal({
                 <span className="text-sm flex-1 truncate">{m.name}</span>
                 {m.size && (
                   <span className="text-xs text-muted-foreground shrink-0">
-                    {(m.size / 1024).toFixed(0)} KB
+                    {t("teacherEditor.modals.materials.sizeKb", { kb: (m.size / 1024).toFixed(0) })}
                   </span>
                 )}
                 <Button

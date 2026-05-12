@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -31,29 +32,32 @@ export function AnnouncementsModal({
   onPost,
   onDelete,
 }: Props) {
+  const { t } = useTranslation()
   return (
-    <Modal open={open} onClose={onClose} title="Announcements">
+    <Modal open={open} onClose={onClose} title={t("teacherEditor.modals.announcements.title")}>
       <div className="space-y-4">
         <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
           <Input
             value={title}
             onChange={(e) => onTitleChange(e.target.value)}
-            placeholder="Title"
+            placeholder={t("teacherEditor.modals.announcements.titlePlaceholder")}
           />
           <Textarea
             fieldSize="sm"
             value={content}
             onChange={(e) => onContentChange(e.target.value)}
-            placeholder="Content (optional)"
+            placeholder={t("teacherEditor.modals.announcements.contentPlaceholder")}
           />
           <Button size="sm" onClick={onPost} disabled={posting || !title.trim()}>
             <Megaphone className="h-3.5 w-3.5 mr-1.5" />
-            {posting ? "Posting…" : "Post"}
+            {posting
+              ? t("teacherEditor.modals.announcements.posting")
+              : t("teacherEditor.modals.announcements.post")}
           </Button>
         </div>
         {announcements.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
-            No announcements yet.
+            {t("teacherEditor.modals.announcements.empty")}
           </p>
         ) : (
           <div className="space-y-2 max-h-60 overflow-y-auto">

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,12 +24,7 @@ interface Props {
   onDelete: (id: string) => void
 }
 
-const EVENT_TYPES: readonly { value: string; label: string }[] = [
-  { value: "deadline", label: "Deadline" },
-  { value: "live_session", label: "Live Session" },
-  { value: "exam", label: "Exam" },
-  { value: "other", label: "Other" },
-]
+const EVENT_TYPE_VALUES = ["deadline", "live_session", "exam", "other"] as const
 
 export function EventsModal({
   open,
@@ -43,44 +39,47 @@ export function EventsModal({
   onEdit,
   onDelete,
 }: Props) {
+  const { t } = useTranslation()
   const patch = (p: Partial<EventFormState>) => onFormChange({ ...form, ...p })
   const canSubmit = form.title.trim() && form.event_date && !saving
 
   return (
-    <Modal open={open} onClose={onClose} title="Course Events">
+    <Modal open={open} onClose={onClose} title={t("teacherEditor.modals.events.title")}>
       <div className="space-y-4">
         <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {editingId ? "Edit Event" : "Create Event"}
+            {editingId
+              ? t("teacherEditor.modals.events.editEvent")
+              : t("teacherEditor.modals.events.createEvent")}
           </p>
           <Input
             value={form.title}
             onChange={(e) => patch({ title: e.target.value })}
-            placeholder="Event title"
+            placeholder={t("teacherEditor.modals.events.titlePlaceholder")}
           />
           <Textarea
             fieldSize="sm"
             value={form.description}
             onChange={(e) => patch({ description: e.target.value })}
-            placeholder="Description (optional)"
+            placeholder={t("teacherEditor.modals.events.descriptionPlaceholder")}
           />
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Type</Label>
+              <Label className="text-xs">{t("teacherEditor.modals.events.type")}</Label>
               <select
                 value={form.event_type}
                 onChange={(e) => patch({ event_type: e.target.value })}
                 className="w-full text-sm border rounded-md px-2 py-1.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                {EVENT_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
+                {EVENT_TYPE_VALUES.map((value) => (
+                  <option key={value} value={value}>
+                    {t(`teacherEditor.modals.events.types.${value}`)}
                   </option>
                 ))}
               </select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Date & Time</Label>
+              <Label className="text-xs">{t("teacherEditor.modals.events.dateTime")}</Label>
               <Input
                 type="datetime-local"
                 value={form.event_date}
@@ -92,18 +91,24 @@ export function EventsModal({
           <div className="flex gap-2">
             <Button size="sm" onClick={onSave} disabled={!canSubmit}>
               <Save className="h-3.5 w-3.5 mr-1.5" />
-              {saving ? "Saving…" : editingId ? "Update Event" : "Create Event"}
+              {saving
+                ? t("teacherEditor.modals.events.saving")
+                : editingId
+                  ? t("teacherEditor.modals.events.update")
+                  : t("teacherEditor.modals.events.create")}
             </Button>
             {editingId && (
               <Button size="sm" variant="ghost" onClick={onCancelEdit}>
-                Cancel
+                {t("teacherEditor.modals.events.cancel")}
               </Button>
             )}
           </div>
         </div>
 
         {events.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">No events yet.</p>
+          <p className="text-sm text-muted-foreground text-center py-4">
+            {t("teacherEditor.modals.events.empty")}
+          </p>
         ) : (
           <div className="space-y-2 max-h-72 overflow-y-auto">
             {events.map((event) => (
