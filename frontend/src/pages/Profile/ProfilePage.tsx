@@ -5,8 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { InlineEdit } from "@/components/patterns"
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher"
 import { useAuth } from "@/context/useAuth"
 import { useTheme } from "@/context/useTheme"
@@ -16,9 +15,9 @@ import { coursesService } from "@/services/courses"
 import { makeProfileSchema } from "@/lib/validations/course"
 import { toProxyImage } from "@/lib/images"
 import { formatDate } from "@/i18n/format"
-import type { User } from "@/types"
+import { toast } from "@/lib/toast"
 import {
-  User as UserIcon, Mail, Shield, Calendar, Save, Check, Camera, Globe,
+  User as UserIcon, Mail, Shield, Calendar, Camera, Globe,
   Loader2, Award, BookOpen, ArrowRight, LogOut, Moon, Sun,
 } from "lucide-react"
 
@@ -44,76 +43,6 @@ function useCountUp(target: number, durationMs = 800) {
     return () => window.clearInterval(id)
   }, [target, durationMs, prefersReducedMotion])
   return displayed
-}
-
-function NameForm({ user, onSaved }: { user: User; onSaved: () => Promise<void> }) {
-  const { t } = useTranslation()
-  const [name, setName] = useState(user.full_name ?? "")
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [error, setError] = useState("")
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout>>()
-
-  useEffect(() => () => { clearTimeout(savedTimerRef.current) }, [])
-
-  const handleSave = async () => {
-    setError("")
-    const result = makeProfileSchema().safeParse({ full_name: name })
-    if (!result.success) {
-      setError(result.error.issues[0]?.message ?? t("profile.invalidInput"))
-      return
-    }
-    setSaving(true)
-    try {
-      await usersService.updateProfile({ full_name: result.data.full_name })
-      await onSaved()
-      setName(result.data.full_name)
-      setSaved(true)
-      savedTimerRef.current = setTimeout(() => setSaved(false), 2000)
-    } catch {
-      setError(t("profile.updateFailed"))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="space-y-2">
-      <Label htmlFor="name">{t("profile.fullName")}</Label>
-      <div className="flex gap-2">
-        <Input
-          id="name"
-          fieldSize="lg"
-          value={name}
-          onChange={(e) => {
-            setName(e.target.value)
-            setSaved(false)
-            setError("")
-          }}
-          aria-invalid={!!error}
-          aria-describedby={error ? "profile-name-error" : undefined}
-        />
-        <Button onClick={handleSave} disabled={saving || saved} size="lg" className="shrink-0">
-          {saved ? (
-            <>
-              <Check className="h-4 w-4 mr-1.5" strokeWidth={1.75} aria-hidden />
-              {t("common.saved")}
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4 mr-1.5" strokeWidth={1.75} aria-hidden />
-              {saving ? t("common.saving") : t("common.save")}
-            </>
-          )}
-        </Button>
-      </div>
-      {error && (
-        <p id="profile-name-error" role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      )}
-    </div>
-  )
 }
 
 export default function ProfilePage() {
@@ -176,6 +105,24 @@ export default function ProfilePage() {
     navigate("/login", { replace: true })
   }
 
+  const handleSaveName = async (next: string) => {
+    const result = makeProfileSchema().safeParse({ full_name: next })
+    if (!result.success) {
+      toast({
+        title: result.error.issues[0]?.message ?? t("profile.invalidInput"),
+        variant: "destructive",
+      })
+      throw new Error("validation")
+    }
+    try {
+      await usersService.updateProfile({ full_name: result.data.full_name })
+      await refreshUser()
+    } catch {
+      toast({ title: t("profile.updateFailed"), variant: "destructive" })
+      throw new Error("save")
+    }
+  }
+
   if (!user) {
     return <PageSpinner />
   }
@@ -226,18 +173,26 @@ export default function ProfilePage() {
                   onChange={handleAvatarChange}
                 />
               </div>
-              <div className="min-w-0 space-y-0.5">
-                <CardTitle className="font-serif text-xl font-semibold tracking-tight">
-                  {user.full_name || t("header.profile")}
-                </CardTitle>
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <InlineEdit
+                  size="h2"
+                  value={user.full_name ?? ""}
+                  onSave={handleSaveName}
+                  required
+                  maxLength={150}
+                  placeholder={t("profile.fullName")}
+                  ariaLabel={t("profile.editName")}
+                  textClassName="tracking-tight"
+                />
                 <CardDescription className="text-sm capitalize">{user.role}</CardDescription>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4 pt-6">
-            <NameForm key={user.id} user={user} onSaved={refreshUser} />
-            {error && <p className="text-sm text-destructive">{error}</p>}
-          </CardContent>
+          {error && (
+            <CardContent className="pt-6">
+              <p className="text-sm text-destructive">{error}</p>
+            </CardContent>
+          )}
         </Card>
 
         <Card className="transition-[border-color] duration-200 hover:border-primary/25">
