@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { LayoutGroup, motion, useReducedMotion } from "motion/react"
+import { PressFeedback } from "@/components/motion"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useAuth } from "@/context/useAuth"
@@ -137,27 +138,29 @@ export default function Header() {
                   <Suspense fallback={<div className="h-7 w-7 shrink-0" aria-hidden />}>
                     <NotificationBell />
                   </Suspense>
-                  <Link to="/profile">
-                    <Button
-                      variant={isActive("/profile") ? "secondary" : "ghost"}
-                      size="sm"
-                      className="h-7 w-7 shrink-0 rounded-full p-0"
-                      aria-label={t("header.profile")}
-                      title={t("header.profileAndSettings")}
-                    >
-                      {user.avatar_url ? (
-                        <img
-                          src={toProxyImage(user.avatar_url)}
-                          alt=""
-                          className="h-6 w-6 rounded-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none"
-                          }}
-                        />
-                      ) : (
-                        <UserIcon className="h-3.5 w-3.5" strokeWidth={ICON_STROKE} aria-hidden="true" />
-                      )}
-                    </Button>
+                  <Link to="/profile" className="inline-flex">
+                    <PressFeedback className="inline-flex">
+                      <Button
+                        variant={isActive("/profile") ? "secondary" : "ghost"}
+                        size="sm"
+                        className="h-7 w-7 shrink-0 rounded-full p-0"
+                        aria-label={t("header.profile")}
+                        title={t("header.profileAndSettings")}
+                      >
+                        {user.avatar_url ? (
+                          <img
+                            src={toProxyImage(user.avatar_url)}
+                            alt=""
+                            className="h-6 w-6 rounded-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none"
+                            }}
+                          />
+                        ) : (
+                          <UserIcon className="h-3.5 w-3.5" strokeWidth={ICON_STROKE} aria-hidden="true" />
+                        )}
+                      </Button>
+                    </PressFeedback>
                   </Link>
                 </>
               ) : (
@@ -177,17 +180,19 @@ export default function Header() {
             </div>
 
             <div className="flex md:hidden">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 min-w-8 px-1 text-muted-foreground hover:text-foreground"
-                onClick={() => setMobileOpen(true)}
-                aria-label={t("header.menu")}
-                aria-expanded={mobileOpen}
-              >
-                <Menu className="h-4 w-4" strokeWidth={ICON_STROKE} aria-hidden="true" />
-              </Button>
+              <PressFeedback className="inline-flex">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 min-w-8 px-1 text-muted-foreground hover:text-foreground"
+                  onClick={() => setMobileOpen(true)}
+                  aria-label={t("header.menu")}
+                  aria-expanded={mobileOpen}
+                >
+                  <Menu className="h-4 w-4" strokeWidth={ICON_STROKE} aria-hidden="true" />
+                </Button>
+              </PressFeedback>
             </div>
           </div>
         </div>
