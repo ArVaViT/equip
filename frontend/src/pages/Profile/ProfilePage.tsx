@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
+import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { Button } from "@/components/ui/button"
@@ -20,6 +21,30 @@ import {
   User as UserIcon, Mail, Shield, Calendar, Save, Check, Camera, Globe,
   Loader2, Award, BookOpen, ArrowRight, LogOut, Moon, Sun,
 } from "lucide-react"
+
+const EDITORIAL_EASE = [0.22, 1, 0.36, 1] as const
+
+function useCountUp(target: number, durationMs = 800) {
+  const prefersReducedMotion = useReducedMotion()
+  const [displayed, setDisplayed] = useState(0)
+  useEffect(() => {
+    if (prefersReducedMotion || target <= 0) {
+      setDisplayed(target)
+      return
+    }
+    const steps = Math.min(24, Math.max(target, 6))
+    const stepMs = durationMs / steps
+    let i = 0
+    setDisplayed(0)
+    const id = window.setInterval(() => {
+      i++
+      setDisplayed(Math.min(target, Math.round((target * i) / steps)))
+      if (i >= steps) window.clearInterval(id)
+    }, stepMs)
+    return () => window.clearInterval(id)
+  }, [target, durationMs, prefersReducedMotion])
+  return displayed
+}
 
 function NameForm({ user, onSaved }: { user: User; onSaved: () => Promise<void> }) {
   const { t } = useTranslation()
@@ -94,12 +119,15 @@ function NameForm({ user, onSaved }: { user: User; onSaved: () => Promise<void> 
 export default function ProfilePage() {
   const { user, refreshUser, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
+  const prefersReducedMotion = useReducedMotion()
   const navigate = useNavigate()
   const { t } = useTranslation()
   const [error, setError] = useState("")
   const [uploading, setUploading] = useState(false)
   const [certificateCount, setCertificateCount] = useState(0)
   const [completedCount, setCompletedCount] = useState(0)
+  const animatedCompleted = useCountUp(completedCount)
+  const animatedCertificates = useCountUp(certificateCount)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -241,7 +269,7 @@ export default function ProfilePage() {
                   <BookOpen className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} aria-hidden />
                 </div>
                 <div>
-                  <p className="text-2xl font-semibold leading-none tabular-nums">{completedCount}</p>
+                  <p className="text-2xl font-semibold leading-none tabular-nums">{animatedCompleted}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{t("profile.coursesCompleted")}</p>
                 </div>
               </div>
@@ -250,7 +278,7 @@ export default function ProfilePage() {
                   <Award className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} aria-hidden />
                 </div>
                 <div>
-                  <p className="text-2xl font-semibold leading-none tabular-nums">{certificateCount}</p>
+                  <p className="text-2xl font-semibold leading-none tabular-nums">{animatedCertificates}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{t("profile.certificatesEarned")}</p>
                 </div>
               </div>
@@ -326,10 +354,29 @@ export default function ProfilePage() {
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={toggleTheme}>
-                {theme === "dark" ? (
-                  <Sun className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                {prefersReducedMotion ? (
+                  theme === "dark" ? (
+                    <Sun className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  ) : (
+                    <Moon className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  )
                 ) : (
-                  <Moon className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.span
+                      key={theme}
+                      className="mr-1.5 inline-flex"
+                      initial={{ rotate: -45, opacity: 0 }}
+                      animate={{ rotate: 0, opacity: 1 }}
+                      exit={{ rotate: 45, opacity: 0 }}
+                      transition={{ duration: 0.22, ease: EDITORIAL_EASE }}
+                    >
+                      {theme === "dark" ? (
+                        <Sun className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                      ) : (
+                        <Moon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                      )}
+                    </motion.span>
+                  </AnimatePresence>
                 )}
                 {theme === "dark" ? t("profile.switchToLight") : t("profile.switchToDark")}
               </Button>
