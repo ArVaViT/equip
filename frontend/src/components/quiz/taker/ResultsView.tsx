@@ -2,6 +2,7 @@ import { AlertCircle, BookOpen, CheckCircle, Trophy, XCircle } from "lucide-reac
 import { useTranslation } from "react-i18next"
 import { motion, useReducedMotion } from "motion/react"
 import { Card, CardContent } from "@/components/ui/card"
+import { StaggerChildren } from "@/components/motion"
 import type { Quiz, QuizAttempt, QuizQuestion } from "@/types"
 import type { AnswerMap } from "./types"
 
@@ -68,7 +69,8 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
 
       <div className="space-y-4">
         <h4 className="text-sm font-semibold">{t("quiz.reviewAnswers")}</h4>
-        {questions.map((q, idx) => {
+        <StaggerChildren className="space-y-4">
+          {questions.map((q, idx) => {
           const userAnswer = answers[q.id]
           const answerResult = answerMap.get(q.id)
           const isManual =
@@ -174,6 +176,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
             </div>
           )
         })}
+        </StaggerChildren>
       </div>
     </div>
   )
