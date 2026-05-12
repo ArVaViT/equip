@@ -459,6 +459,50 @@
       "actionEditCourse": "Редактировать курс",
       "actionDelete": "Удалить",
       "actionMore": "Ещё действия"
+    },
+    "createForm": {
+      "title": "Создать новый курс",
+      "titleLabel": "Название",
+      "titlePlaceholder": "Введение в богословие",
+      "descriptionLabel": "Описание",
+      "descriptionPlaceholder": "Краткое описание курса...",
+      "imageUrlLabel": "URL обложки (необязательно — можно загрузить после создания)",
+      "imageUrlPlaceholder": "https://... (можно загрузить в редакторе)",
+      "creating": "Создание...",
+      "submit": "Создать курс",
+      "cancel": "Отмена"
+    },
+    "empty": {
+      "title": "Пока нет курсов",
+      "description": "Создайте первый курс, чтобы начать преподавать",
+      "action": "Создать курс"
+    },
+    "trash": {
+      "show": "Показать корзину",
+      "hide": "Скрыть корзину",
+      "empty": "Корзина пуста.",
+      "loadFailed": "Не удалось загрузить корзину",
+      "restored": "Курс восстановлен",
+      "restoreFailed": "Не удалось восстановить курс",
+      "confirmDelete": {
+        "title": "Удалить курс навсегда?",
+        "description": "Курс и все его данные (модули, главы, записи, оценки) будут удалены безвозвратно. Это действие нельзя отменить.",
+        "confirm": "Удалить навсегда"
+      },
+      "deleted": "Курс удалён навсегда",
+      "deleteFailed": "Не удалось удалить курс",
+      "deletedAt": "Удалён {{date}}",
+      "restore": "Восстановить",
+      "deleteForever": "Удалить навсегда"
+    },
+    "pendingCerts": {
+      "title": "Сертификаты на одобрение",
+      "studentFallback": "Студент",
+      "courseFallback": "Курс",
+      "requestedPrefix": "Запрошен {{date}}",
+      "requestedUnknown": "Запрошен (дата неизвестна)",
+      "approve": "Одобрить",
+      "reject": "Отклонить"
     }
   },
   "teacherEditor": {
