@@ -64,7 +64,7 @@
     "email": "Email",
     "emailPlaceholder": "you@example.com",
     "password": "Password",
-    "forgotPassword": "Forgot password?",
+    "forgotPasswordLink": "Forgot password?",
     "signIn": "Sign In",
     "signingIn": "Signing in...",
     "noAccount": "Don't have an account?",
