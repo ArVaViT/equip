@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react"
+import { useTranslation } from "react-i18next"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
@@ -18,6 +19,7 @@ interface Props {
 
 export default function CertificateCard({ courseId, progress, certificate, onCertificateUpdate, onReviewSubmitted }: Props) {
   const { user } = useAuth()
+  const { t } = useTranslation()
   const [requesting, setRequesting] = useState(false)
   const [copied, setCopied] = useState(false)
   const copyTimer = useRef<ReturnType<typeof setTimeout>>()
@@ -33,7 +35,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
 
   const handleReviewSubmit = async () => {
     if (reviewRating === 0) {
-      toast({ title: "Please select a rating", variant: "destructive" })
+      toast({ title: t("certificates.card.review.missingRating"), variant: "destructive" })
       return
     }
     setReviewSubmitting(true)
@@ -42,11 +44,11 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
         rating: reviewRating,
         comment: reviewComment || undefined,
       })
-      toast({ title: "Review submitted!", variant: "success" })
+      toast({ title: t("certificates.card.review.submitted"), variant: "success" })
       setReviewDone(true)
       onReviewSubmitted?.()
     } catch {
-      toast({ title: "Failed to submit review", variant: "destructive" })
+      toast({ title: t("certificates.card.review.submitFailed"), variant: "destructive" })
     } finally {
       setReviewSubmitting(false)
     }
@@ -57,9 +59,9 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
     try {
       const cert = await coursesService.requestCertificate(courseId)
       onCertificateUpdate(cert)
-      toast({ title: "Certificate requested!", variant: "success" })
+      toast({ title: t("certificates.card.requestSuccess"), variant: "success" })
     } catch {
-      toast({ title: "Failed to request certificate", variant: "destructive" })
+      toast({ title: t("certificates.card.requestFailed"), variant: "destructive" })
     } finally {
       setRequesting(false)
     }
@@ -73,7 +75,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
       clearTimeout(copyTimer.current)
       copyTimer.current = setTimeout(() => setCopied(false), 2000)
     } catch {
-      toast({ title: "Failed to copy", variant: "destructive" })
+      toast({ title: t("certificates.card.copyFailed"), variant: "destructive" })
     }
   }
 
@@ -89,15 +91,15 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
             </div>
             <div className="flex-1">
               <h3 className="font-serif text-base font-semibold">
-                You completed this course
+                {t("certificates.card.completedTitle")}
               </h3>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                Request your certificate of completion for review.
+                {t("certificates.card.completedDescription")}
               </p>
             </div>
             <Button onClick={handleRequest} disabled={requesting}>
               <Sparkles className="mr-1.5 h-4 w-4" />
-              {requesting ? "Requesting..." : "Request Certificate"}
+              {requesting ? t("certificates.card.requesting") : t("certificates.card.request")}
             </Button>
           </div>
         </CardContent>
@@ -114,9 +116,9 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
               <Clock className="h-6 w-6 text-warning" strokeWidth={1.75} aria-hidden="true" />
             </div>
             <div className="flex-1">
-              <h3 className="font-serif text-base font-semibold">Awaiting teacher approval</h3>
+              <h3 className="font-serif text-base font-semibold">{t("certificates.card.pendingTitle")}</h3>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                Your certificate request has been submitted. Your instructor will review it shortly.
+                {t("certificates.card.pendingDescription")}
               </p>
             </div>
           </div>
@@ -134,9 +136,9 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
               <Clock className="h-6 w-6 text-info" strokeWidth={1.75} aria-hidden="true" />
             </div>
             <div className="flex-1">
-              <h3 className="font-serif text-base font-semibold">Awaiting admin approval</h3>
+              <h3 className="font-serif text-base font-semibold">{t("certificates.card.adminPendingTitle")}</h3>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                Your teacher has approved your certificate. It is now pending final admin approval.
+                {t("certificates.card.adminPendingDescription")}
               </p>
             </div>
           </div>
@@ -156,17 +158,17 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
             <div className="min-w-0 flex-1 space-y-3">
               <div>
                 <div className="mb-1 flex items-center gap-2">
-                  <h3 className="font-serif text-lg font-semibold">Certificate approved</h3>
+                  <h3 className="font-serif text-lg font-semibold">{t("certificates.card.approvedTitle")}</h3>
                   <Sparkles className="h-4 w-4 text-accent" />
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Congratulations! Your certificate has been approved.
+                  {t("certificates.card.approvedDescription")}
                 </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-4">
                 <div>
-                  <p className="mb-0.5 text-xs text-muted-foreground">Certificate number</p>
+                  <p className="mb-0.5 text-xs text-muted-foreground">{t("certificates.card.certificateNumber")}</p>
                   <div className="flex items-center gap-2">
                     <code className="select-all rounded border border-border bg-background px-2.5 py-1 font-mono text-sm">
                       {certificate.certificate_number}
@@ -176,7 +178,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
                       size="sm"
                       className="h-7 w-7 p-0"
                       onClick={handleCopy}
-                      aria-label="Copy certificate number"
+                      aria-label={t("certificates.card.copyAria")}
                     >
                       {copied ? (
                         <CheckCircle className="h-3.5 w-3.5 text-success" />
@@ -187,7 +189,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
                   </div>
                 </div>
                 <div>
-                  <p className="mb-0.5 text-xs text-muted-foreground">Issue date</p>
+                  <p className="mb-0.5 text-xs text-muted-foreground">{t("certificates.card.issueDate")}</p>
                   <p className="text-sm font-medium">
                     {certificate.issued_at
                       ? formatDate(certificate.issued_at, {
@@ -195,7 +197,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
                           month: "long",
                           day: "numeric",
                         })
-                      : "Pending"}
+                      : t("certificates.card.issuePending")}
                   </p>
                 </div>
               </div>
@@ -204,7 +206,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
 
           {user && !reviewDone && (
             <div className="space-y-3 border-t border-border pt-5">
-              <h4 className="text-sm font-medium">How was this course? Leave a review</h4>
+              <h4 className="text-sm font-medium">{t("certificates.card.review.heading")}</h4>
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((value) => (
                   <button
@@ -214,7 +216,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
                     onMouseEnter={() => setReviewHover(value)}
                     onMouseLeave={() => setReviewHover(0)}
                     className="transition-transform hover:scale-110 focus:outline-none"
-                    aria-label={`Rate ${value} out of 5`}
+                    aria-label={t("certificates.card.review.starAria", { value })}
                   >
                     <Star
                       className={`h-6 w-6 transition-colors ${
@@ -234,12 +236,12 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
               <textarea
                 value={reviewComment}
                 onChange={(e) => setReviewComment(e.target.value)}
-                placeholder="Share your thoughts about this course... (optional)"
+                placeholder={t("certificates.card.review.commentPlaceholder")}
                 rows={3}
                 className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
               <Button onClick={handleReviewSubmit} disabled={reviewSubmitting} size="sm">
-                {reviewSubmitting ? "Submitting..." : "Submit Review"}
+                {reviewSubmitting ? t("certificates.card.review.submitting") : t("certificates.card.review.submit")}
               </Button>
             </div>
           )}
@@ -247,7 +249,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
           {reviewDone && (
             <div className="flex items-center gap-2 border-t border-border pt-4 text-sm text-success">
               <CheckCircle className="h-4 w-4" />
-              Thank you for your review!
+              {t("certificates.card.review.thanks")}
             </div>
           )}
         </CardContent>
@@ -265,16 +267,15 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
             </div>
             <div className="flex-1">
               <h3 className="font-serif text-base font-semibold">
-                Certificate request was not approved
+                {t("certificates.card.rejectedTitle")}
               </h3>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                Unfortunately, your certificate request was rejected. You may re-request after
-                addressing any outstanding requirements.
+                {t("certificates.card.rejectedDescription")}
               </p>
             </div>
             <Button onClick={handleRequest} disabled={requesting} variant="outline">
               <RefreshCw className="mr-1.5 h-4 w-4" />
-              {requesting ? "Requesting..." : "Re-request"}
+              {requesting ? t("certificates.card.requesting") : t("certificates.card.rerequest")}
             </Button>
           </div>
         </CardContent>
