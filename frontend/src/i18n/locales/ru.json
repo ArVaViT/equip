@@ -141,7 +141,8 @@
     "themeLight": "Светлая тема",
     "switchToLight": "Светлая",
     "switchToDark": "Тёмная",
-    "invalidInput": "Некорректный ввод"
+    "invalidInput": "Некорректный ввод",
+    "editName": "Изменить имя"
   },
   "home": {
     "myCourses": "Мои курсы",

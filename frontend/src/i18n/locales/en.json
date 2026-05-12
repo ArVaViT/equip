@@ -141,7 +141,8 @@
     "themeLight": "Light mode",
     "switchToLight": "Light",
     "switchToDark": "Dark",
-    "invalidInput": "Invalid input"
+    "invalidInput": "Invalid input",
+    "editName": "Edit name"
   },
   "home": {
     "myCourses": "My Courses",
