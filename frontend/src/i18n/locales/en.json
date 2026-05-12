@@ -485,7 +485,25 @@
       "title": "Delete this chapter?",
       "description": "The chapter and its content will be removed.",
       "confirm": "Delete"
-    }
+    },
+    "notFound": {
+      "title": "Module not found",
+      "description": "The module may have been deleted or you may not have access.",
+      "backToCourse": "Back to course"
+    },
+    "backToCourse": "Back to course",
+    "untitledModule": "Untitled module",
+    "addDescription": "Add a module description",
+    "editTitle": "Edit module title",
+    "editDescription": "Edit module description",
+    "dueDate": "Due date",
+    "clear": "Clear",
+    "noChapters": {
+      "title": "No chapters yet",
+      "description": "Add your first chapter to start building this module.",
+      "action": "Add chapter"
+    },
+    "addChapter": "Add chapter"
   },
   "courseDetail": {
     "allCourses": "All Courses",

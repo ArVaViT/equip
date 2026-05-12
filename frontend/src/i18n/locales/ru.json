@@ -499,7 +499,25 @@
       "title": "Удалить главу?",
       "description": "Глава и её содержимое будут удалены.",
       "confirm": "Удалить"
-    }
+    },
+    "notFound": {
+      "title": "Модуль не найден",
+      "description": "Модуль мог быть удалён, или у вас нет доступа.",
+      "backToCourse": "К курсу"
+    },
+    "backToCourse": "К курсу",
+    "untitledModule": "Без названия",
+    "addDescription": "Добавьте описание модуля",
+    "editTitle": "Изменить название модуля",
+    "editDescription": "Изменить описание модуля",
+    "dueDate": "Срок сдачи",
+    "clear": "Очистить",
+    "noChapters": {
+      "title": "Пока нет глав",
+      "description": "Добавьте первую главу, чтобы начать наполнять модуль.",
+      "action": "Добавить главу"
+    },
+    "addChapter": "Добавить главу"
   },
   "courseDetail": {
     "allCourses": "Все курсы",

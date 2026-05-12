@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { CalendarDays, Pencil, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,7 @@ export default function ModuleEditor() {
   const { courseId, moduleId } = useParams<{ courseId: string; moduleId: string }>();
   const navigate = useNavigate();
   const confirm = useConfirm();
+  const { t } = useTranslation();
 
   const {
     mod,
@@ -41,15 +43,15 @@ export default function ModuleEditor() {
     return (
       <div className="container mx-auto px-4">
         <ErrorState
-          title="Module not found"
-          description="The module may have been deleted or you may not have access."
+          title={t("moduleEditor.notFound.title")}
+          description={t("moduleEditor.notFound.description")}
           action={
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigate(`/teacher/courses/${courseId}`)}
             >
-              Back to course
+              {t("moduleEditor.notFound.backToCourse")}
             </Button>
           }
         />
@@ -65,15 +67,15 @@ export default function ModuleEditor() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <PageHeader
         backTo={`/teacher/courses/${courseId}`}
-        backLabel="Back to course"
+        backLabel={t("moduleEditor.backToCourse")}
         title={
           <InlineEdit
             size="h1"
             value={mod.title}
             onSave={(v) => saveModuleField("title", v)}
             required
-            placeholder="Untitled module"
-            ariaLabel="Edit module title"
+            placeholder={t("moduleEditor.untitledModule")}
+            ariaLabel={t("moduleEditor.editTitle")}
             maxLength={200}
           />
         }
@@ -83,19 +85,21 @@ export default function ModuleEditor() {
             multiline
             value={mod.description ?? ""}
             onSave={(v) => saveModuleField("description", v)}
-            placeholder="Add a module description"
-            ariaLabel="Edit module description"
+            placeholder={t("moduleEditor.addDescription")}
+            ariaLabel={t("moduleEditor.editDescription")}
             maxLength={2000}
           />
         }
         meta={
           <>
             <Badge variant="muted">
-              {chapters.length} {chapters.length === 1 ? "chapter" : "chapters"}
+              {t("teacherEditor.chapterCount", { count: chapters.length })}
             </Badge>
             <div className="flex items-center gap-2">
               <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-              <Label className="text-xs text-muted-foreground">Due date</Label>
+              <Label className="text-xs text-muted-foreground">
+                {t("moduleEditor.dueDate")}
+              </Label>
               <Input
                 type="datetime-local"
                 value={modDueDate}
@@ -110,7 +114,7 @@ export default function ModuleEditor() {
                   className="h-6 text-xs text-muted-foreground"
                   onClick={clearDueDate}
                 >
-                  Clear
+                  {t("moduleEditor.clear")}
                 </Button>
               )}
             </div>
@@ -121,12 +125,12 @@ export default function ModuleEditor() {
       {chapters.length === 0 ? (
         <EmptyState
           icon={<Pencil />}
-          title="No chapters yet"
-          description="Add your first chapter to start building this module."
+          title={t("moduleEditor.noChapters.title")}
+          description={t("moduleEditor.noChapters.description")}
           action={
             <Button onClick={addChapter} size="sm">
               <Plus className="h-4 w-4 mr-1.5" />
-              Add chapter
+              {t("moduleEditor.noChapters.action")}
             </Button>
           }
           className="mb-6"
@@ -149,7 +153,7 @@ export default function ModuleEditor() {
 
       <Button variant="outline" className="w-full border-dashed h-12" onClick={addChapter}>
         <Plus className="h-4 w-4 mr-2" />
-        Add Chapter
+        {t("moduleEditor.addChapter")}
       </Button>
     </div>
   );
