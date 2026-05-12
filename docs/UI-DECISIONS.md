@@ -43,3 +43,33 @@ because it had spread to ~50 callsites organically before being formal.
 It's the **footnote** tier — inline metadata badges, dismiss `X` in
 compact banners, the avatar fallback in the `7×7` profile button. Never
 on primary action buttons or page-header icons.
+
+## Design polish wave — May 2026, owner-approved override
+
+The "do not re-litigate" freeze above expires 2026-05-20, but on 2026-05-12 the
+project owner approved a design polish wave that overrides specific elements of
+the freeze earlier than that date.
+
+**Approved overrides (effective 2026-05-12):**
+
+- Aesthetic direction shifts from strict editorial to "editorial + expressive
+  moments" (see `docs/DESIGN.md` for the formal rules and what counts as an
+  expressive moment).
+- `motion` library (formerly `framer-motion`) is added as a documented exception
+  to the four-check rule in `DESIGN.md`.
+- Page-by-page polish PRs are allowed before 2026-05-20 because they fall under
+  the approved wave, not a same-day flip.
+
+**Still frozen (do not change without explicit re-sign-off):**
+
+- Header height `h-11 md:h-12`
+- HomePage hero search field + headline
+- Footer surface `bg-background/95`
+- Logo size `text-sm md:text-base`
+- Avatar button size `h-7 w-7`
+- `header.manage` vs `header.manageCourses` key split
+- Lucide icon size tiers 14 / 16 / 20 / 24 + `strokeWidth={1.75}`
+
+These remained frozen because the polish wave is about motion, color, and
+micro-interactions — not geometry. Geometry stays stable through the wave so
+that motion lands on a stable scaffold instead of a moving one.
