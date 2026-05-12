@@ -505,6 +505,62 @@
     },
     "addChapter": "Add chapter"
   },
+  "courseEditor": {
+    "notFound": {
+      "title": "Course not found",
+      "description": "The course may have been deleted or you may not have access.",
+      "backToCourses": "Back to courses"
+    },
+    "myCourses": "My courses",
+    "untitledCourse": "Untitled course",
+    "addDescription": "Add a course description",
+    "editTitle": "Edit course title",
+    "editDescription": "Edit course description",
+    "published": "Published",
+    "draft": "Draft",
+    "publish": "Publish",
+    "unpublish": "Unpublish",
+    "moreActions": "More actions",
+    "menu": {
+      "enrollment": "Enrollment",
+      "announcements": "Announcements",
+      "materials": "Materials",
+      "events": "Events",
+      "cohorts": "Cohorts"
+    }
+  },
+  "chapterEditor": {
+    "notFound": {
+      "title": "Chapter not found",
+      "description": "The chapter may have been deleted or you may not have access.",
+      "backToModule": "Back to module"
+    },
+    "moduleFallback": "Module",
+    "chapterFallback": "Chapter",
+    "breadcrumb": {
+      "myCourses": "My Courses",
+      "course": "Course"
+    },
+    "toast": {
+      "chapterNotFound": "Chapter not found",
+      "loadFailed": "Failed to load chapter",
+      "invalidData": "Invalid chapter data",
+      "saved": "Chapter saved",
+      "saveFailed": "Failed to save: {{detail}}"
+    },
+    "unknownError": "Unknown error",
+    "leaveConfirm": {
+      "title": "Leave without saving?",
+      "description": "You have unsaved changes. They will be lost if you leave now.",
+      "confirm": "Leave"
+    },
+    "back": "Back",
+    "titlePlaceholder": "Chapter title",
+    "chapterType": "Chapter Type",
+    "save": "Save Chapter",
+    "saving": "Saving...",
+    "saveHint": "Ctrl+S to save"
+  },
   "courseDetail": {
     "allCourses": "All Courses",
     "manageCourse": "Manage Course",

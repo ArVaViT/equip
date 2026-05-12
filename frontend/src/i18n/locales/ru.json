@@ -519,6 +519,62 @@
     },
     "addChapter": "Добавить главу"
   },
+  "courseEditor": {
+    "notFound": {
+      "title": "Курс не найден",
+      "description": "Курс мог быть удалён, или у вас нет доступа.",
+      "backToCourses": "К моим курсам"
+    },
+    "myCourses": "Мои курсы",
+    "untitledCourse": "Без названия",
+    "addDescription": "Добавьте описание курса",
+    "editTitle": "Изменить название курса",
+    "editDescription": "Изменить описание курса",
+    "published": "Опубликован",
+    "draft": "Черновик",
+    "publish": "Опубликовать",
+    "unpublish": "Снять с публикации",
+    "moreActions": "Ещё действия",
+    "menu": {
+      "enrollment": "Запись",
+      "announcements": "Объявления",
+      "materials": "Материалы",
+      "events": "События",
+      "cohorts": "Когорты"
+    }
+  },
+  "chapterEditor": {
+    "notFound": {
+      "title": "Глава не найдена",
+      "description": "Глава могла быть удалена, или у вас нет доступа.",
+      "backToModule": "К модулю"
+    },
+    "moduleFallback": "Модуль",
+    "chapterFallback": "Глава",
+    "breadcrumb": {
+      "myCourses": "Мои курсы",
+      "course": "Курс"
+    },
+    "toast": {
+      "chapterNotFound": "Глава не найдена",
+      "loadFailed": "Не удалось загрузить главу",
+      "invalidData": "Некорректные данные главы",
+      "saved": "Глава сохранена",
+      "saveFailed": "Не удалось сохранить: {{detail}}"
+    },
+    "unknownError": "Неизвестная ошибка",
+    "leaveConfirm": {
+      "title": "Выйти без сохранения?",
+      "description": "Есть несохранённые изменения. Они будут потеряны при выходе.",
+      "confirm": "Выйти"
+    },
+    "back": "Назад",
+    "titlePlaceholder": "Название главы",
+    "chapterType": "Тип главы",
+    "save": "Сохранить главу",
+    "saving": "Сохранение...",
+    "saveHint": "Ctrl+S для сохранения"
+  },
   "courseDetail": {
     "allCourses": "Все курсы",
     "manageCourse": "Управлять курсом",

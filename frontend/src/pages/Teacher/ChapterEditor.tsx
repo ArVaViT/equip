@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -45,6 +46,7 @@ export default function ChapterEditor() {
   }>()
   const navigate = useNavigate()
   const confirm = useConfirm()
+  const { t } = useTranslation()
 
   const [chapter, setChapter] = useState<Chapter | null>(null)
   const [loading, setLoading] = useState(true)
@@ -52,7 +54,7 @@ export default function ChapterEditor() {
 
   const [title, setTitle] = useState("")
   const [chapterType, setChapterType] = useState<ChapterType>("reading")
-  const [moduleName, setModuleName] = useState("Module")
+  const [moduleName, setModuleName] = useState(() => t("chapterEditor.moduleFallback"))
   const [isDirty, setIsDirty] = useState(false)
 
   const load = useCallback(async (signal?: { cancelled: boolean }) => {
@@ -64,7 +66,7 @@ export default function ChapterEditor() {
       setModuleName(mod.title)
       const ch = mod.chapters?.find((c) => c.id === chapterId)
       if (!ch) {
-        toast({ title: "Chapter not found", variant: "destructive" })
+        toast({ title: t("chapterEditor.toast.chapterNotFound"), variant: "destructive" })
         navigate(`/teacher/courses/${courseId}/modules/${moduleId}/edit`)
         return
       }
@@ -79,12 +81,12 @@ export default function ChapterEditor() {
       setIsDirty(false)
     } catch {
       if (signal?.cancelled) return
-      toast({ title: "Failed to load chapter", variant: "destructive" })
+      toast({ title: t("chapterEditor.toast.loadFailed"), variant: "destructive" })
       navigate(`/teacher/courses/${courseId}/modules/${moduleId}/edit`)
     } finally {
       if (!signal?.cancelled) setLoading(false)
     }
-  }, [courseId, moduleId, chapterId, navigate])
+  }, [courseId, moduleId, chapterId, navigate, t])
 
   useEffect(() => {
     const signal = { cancelled: false }
@@ -125,7 +127,7 @@ export default function ChapterEditor() {
     if (!validation.success) {
       const first = validation.error.issues[0]
       toast({
-        title: first?.message ?? "Invalid chapter data",
+        title: first?.message ?? t("chapterEditor.toast.invalidData"),
         variant: "destructive",
       })
       return
@@ -141,14 +143,17 @@ export default function ChapterEditor() {
       const snapshot = JSON.stringify({ title: title.trim(), chapterType })
       setInitialSnapshot(snapshot)
       setIsDirty(false)
-      toast({ title: "Chapter saved" })
+      toast({ title: t("chapterEditor.toast.saved") })
     } catch (error: unknown) {
-      const detail = getErrorDetail(error) || "Unknown error"
-      toast({ title: `Failed to save: ${detail}`, variant: "destructive" })
+      const detail = getErrorDetail(error) || t("chapterEditor.unknownError")
+      toast({
+        title: t("chapterEditor.toast.saveFailed", { detail }),
+        variant: "destructive",
+      })
     } finally {
       setSaving(false)
     }
-  }, [courseId, moduleId, chapterId, title, chapterType])
+  }, [courseId, moduleId, chapterId, title, chapterType, t])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -179,15 +184,15 @@ export default function ChapterEditor() {
   if (!chapter) return (
     <div className="container mx-auto px-4">
       <ErrorState
-        title="Chapter not found"
-        description="The chapter may have been deleted or you may not have access."
+        title={t("chapterEditor.notFound.title")}
+        description={t("chapterEditor.notFound.description")}
         action={
           <Button
             variant="outline"
             size="sm"
             onClick={() => navigate(`/teacher/courses/${courseId}/modules/${moduleId}/edit`)}
           >
-            Back to module
+            {t("chapterEditor.notFound.backToModule")}
           </Button>
         }
       />
@@ -199,14 +204,14 @@ export default function ChapterEditor() {
       {/* Breadcrumb */}
       <div className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
         <Link to="/teacher" className="hover:text-foreground transition-colors">
-          My Courses
+          {t("chapterEditor.breadcrumb.myCourses")}
         </Link>
         <ChevronRight className="h-3.5 w-3.5" />
         <Link
           to={`/teacher/courses/${courseId}`}
           className="hover:text-foreground transition-colors"
         >
-          Course
+          {t("chapterEditor.breadcrumb.course")}
         </Link>
         <ChevronRight className="h-3.5 w-3.5" />
         <Link
@@ -217,7 +222,7 @@ export default function ChapterEditor() {
         </Link>
         <ChevronRight className="h-3.5 w-3.5" />
         <span className="text-foreground font-medium truncate max-w-[200px]">
-          {title || "Chapter"}
+          {title || t("chapterEditor.chapterFallback")}
         </span>
       </div>
 
@@ -230,9 +235,9 @@ export default function ChapterEditor() {
           onClick={async () => {
             if (isDirty) {
               const ok = await confirm({
-                title: "Leave without saving?",
-                description: "You have unsaved changes. They will be lost if you leave now.",
-                confirmLabel: "Leave",
+                title: t("chapterEditor.leaveConfirm.title"),
+                description: t("chapterEditor.leaveConfirm.description"),
+                confirmLabel: t("chapterEditor.leaveConfirm.confirm"),
                 tone: "destructive",
               })
               if (!ok) return
@@ -241,19 +246,21 @@ export default function ChapterEditor() {
           }}
         >
           <ArrowLeft className="h-4 w-4 mr-1" />
-          Back
+          {t("chapterEditor.back")}
         </Button>
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="font-serif text-2xl font-bold border-none shadow-none hover:border-border/50 hover:shadow-sm focus-visible:ring-1 h-auto py-1 px-2 flex-1"
-          placeholder="Chapter title"
+          placeholder={t("chapterEditor.titlePlaceholder")}
         />
       </div>
 
       {/* Chapter Type Selector */}
       <div className="mb-6">
-        <Label className="text-sm font-semibold mb-3 block">Chapter Type</Label>
+        <Label className="text-sm font-semibold mb-3 block">
+          {t("chapterEditor.chapterType")}
+        </Label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {EDITOR_OPTIONS.map((ct) => {
             const Icon = ct.icon
@@ -316,9 +323,9 @@ export default function ChapterEditor() {
           ) : (
             <Save className="h-4 w-4 mr-2" />
           )}
-          {saving ? "Saving..." : "Save Chapter"}
+          {saving ? t("chapterEditor.saving") : t("chapterEditor.save")}
         </Button>
-        <span className="text-xs text-muted-foreground">Ctrl+S to save</span>
+        <span className="text-xs text-muted-foreground">{t("chapterEditor.saveHint")}</span>
       </div>
     </div>
   )
