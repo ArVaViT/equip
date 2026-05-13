@@ -48,6 +48,7 @@ TestSessionFactory = sessionmaker(bind=test_engine, autocommit=False, autoflush=
 # Stable UUIDs so tests can reference them predictably
 TEACHER_ID = uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 STUDENT_ID = uuid.UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+ADMIN_ID = uuid.UUID("cccccccc-cccc-cccc-cccc-cccccccccccc")
 
 # ---------------------------------------------------------------------------
 # Per-test table lifecycle — drop/create keeps every test fully isolated
@@ -117,6 +118,15 @@ def _make_student() -> User:
     )
 
 
+def _make_admin() -> User:
+    return User(
+        id=ADMIN_ID,
+        email="admin@example.com",
+        full_name="Test Admin",
+        role=UserRole.ADMIN.value,
+    )
+
+
 @pytest.fixture()
 def teacher(db: Session) -> User:
     user = _make_teacher()
@@ -129,6 +139,15 @@ def teacher(db: Session) -> User:
 @pytest.fixture()
 def student(db: Session) -> User:
     user = _make_student()
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@pytest.fixture()
+def admin(db: Session) -> User:
+    user = _make_admin()
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -169,6 +188,27 @@ def student_client(db: Session, teacher: User, student: User) -> TestClient:
 
     def _override_user():
         return student
+
+    app.dependency_overrides[get_db] = _override_db
+    app.dependency_overrides[get_current_user] = _override_user
+    app.dependency_overrides[get_optional_user] = _override_user
+
+    with TestClient(app, raise_server_exceptions=False) as tc:
+        yield tc
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def admin_client(db: Session, teacher: User, admin: User) -> TestClient:
+    """TestClient authenticated as a seeded admin (teacher also seeded
+    for course-authorship scenarios where admin manages teacher's courses)."""
+
+    def _override_db():
+        yield db
+
+    def _override_user():
+        return admin
 
     app.dependency_overrides[get_db] = _override_db
     app.dependency_overrides[get_current_user] = _override_user

@@ -171,7 +171,18 @@ def _translate_course_side_entities(
             total,
             reconcile_entity(db, "course_event", ev, provider=provider),
         )
-    for co in db.query(Cohort).filter(Cohort.course_id == course.id).all():
+    # Cohorts now live independently of courses (ADR-010) and attach via
+    # the ``cohort_courses`` junction. Reconcile every cohort that
+    # currently includes this course — each course-locale pair gets its
+    # own translation overlay row for the cohort name.
+    from app.models.cohort import CohortCourse
+
+    for co in (
+        db.query(Cohort)
+        .join(CohortCourse, Cohort.id == CohortCourse.cohort_id)
+        .filter(CohortCourse.course_id == course.id)
+        .all()
+    ):
         total = merge_orchestrator_reports(
             total,
             reconcile_entity(db, "cohort", co, provider=provider),
