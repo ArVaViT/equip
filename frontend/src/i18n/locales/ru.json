@@ -15,8 +15,7 @@
     "register": "Регистрация",
     "close": "Закрыть",
     "scrollToTop": "Наверх",
-    "dismissAnnouncement": "Закрыть объявление",
-    "notifications": "Уведомления"
+    "dismissAnnouncement": "Закрыть объявление"
   },
   "inlineEdit": {
     "defaultPlaceholder": "Нажмите для редактирования",
@@ -41,7 +40,8 @@
     "menu": "Меню",
     "navAriaLabel": "Основная навигация",
     "mobileMenuTitle": "Навигация",
-    "mobileMenuDescription": "Разделы сайта, уведомления и аккаунт."
+    "mobileMenuDescription": "Разделы сайта, уведомления и аккаунт.",
+    "notifications": "Уведомления"
   },
   "footer": {
     "tagline": "Системное изучение Библии для тех, кто относится к Писанию серьёзно.",
