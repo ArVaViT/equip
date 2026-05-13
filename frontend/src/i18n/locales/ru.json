@@ -21,7 +21,11 @@
     "defaultPlaceholder": "Нажмите для редактирования",
     "save": "Сохранить",
     "cancel": "Отмена",
-    "editAria": "Изменить {{what}}"
+    "editAria": "Изменить {{what}}",
+    "cover": {
+      "replace": "Заменить",
+      "remove": "Удалить"
+    }
   },
   "header": {
     "courses": "Курсы",
@@ -386,7 +390,15 @@
     "passingShort": "Проходной балл: {{score}}%",
     "attemptsShort": "Попытки: {{used}}/{{max}}",
     "inProgress": "В процессе",
-    "attemptPoints": "{{score}}/{{max}} баллов"
+    "attemptPoints": "{{score}}/{{max}} баллов",
+    "essayPlaceholder": "Напишите ответ-эссе…",
+    "essayPlaceholderMin": "Минимум {{count}} слов. Ответ будет проверен преподавателем.",
+    "essayHelper": "Эссе · проверяет преподаватель",
+    "wordsCount_one": "{{count}} слово",
+    "wordsCount_few": "{{count}} слова",
+    "wordsCount_many": "{{count}} слов",
+    "wordsCount_other": "{{count}} слов",
+    "wordsWithMin": "{{count}} / {{min}} требуется"
   },
   "quizEditor": {
     "validation": {
@@ -448,6 +460,10 @@
       "saveExam": "Сохранить экзамен",
       "deleteQuiz": "Удалить тест",
       "deleteExam": "Удалить экзамен"
+    },
+    "modeToggle": {
+      "edit": "Редактирование",
+      "submissions": "Ответы"
     },
     "review": {
       "loadFailed": "Не удалось загрузить ответы. Попробуйте снова.",
@@ -617,7 +633,8 @@
     "yourResponse": "Ваш ответ",
     "responsePlaceholder": "Напишите ответ на задание...",
     "fileLinkOptional": "Ссылка на файл (необязательно)",
-    "submitting": "Отправка..."
+    "submitting": "Отправка...",
+    "fileLinkPlaceholder": "https://drive.google.com/..."
   },
   "certificates": {
     "dashboard": "Главная",

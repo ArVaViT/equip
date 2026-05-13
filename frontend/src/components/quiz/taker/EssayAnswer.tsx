@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { Textarea } from "@/components/ui/textarea"
 
 interface Props {
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export function EssayAnswer({ value, minWords, onChange }: Props) {
+  const { t } = useTranslation()
   const words = value.trim() ? value.trim().split(/\s+/).filter(Boolean).length : 0
   const minReached = !minWords || words >= minWords
   return (
@@ -17,16 +19,17 @@ export function EssayAnswer({ value, minWords, onChange }: Props) {
         onChange={(e) => onChange(e.target.value)}
         placeholder={
           minWords
-            ? `Write at least ${minWords} words. Your response will be reviewed by the teacher.`
-            : "Write your essay response…"
+            ? t("quiz.essayPlaceholderMin", { count: minWords })
+            : t("quiz.essayPlaceholder")
         }
         className="min-h-[220px]"
       />
       <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">Essay · graded by the teacher</span>
+        <span className="text-muted-foreground">{t("quiz.essayHelper")}</span>
         <span className={minReached ? "text-muted-foreground" : "text-warning font-medium"}>
-          {words} word{words === 1 ? "" : "s"}
-          {minWords ? ` / ${minWords} required` : ""}
+          {minWords
+            ? t("quiz.wordsWithMin", { count: words, min: minWords })
+            : t("quiz.wordsCount", { count: words })}
         </span>
       </div>
     </div>

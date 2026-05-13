@@ -21,7 +21,11 @@
     "defaultPlaceholder": "Click to edit",
     "save": "Save",
     "cancel": "Cancel",
-    "editAria": "Edit {{what}}"
+    "editAria": "Edit {{what}}",
+    "cover": {
+      "replace": "Replace",
+      "remove": "Remove"
+    }
   },
   "header": {
     "courses": "Courses",
@@ -376,7 +380,13 @@
     "passingShort": "Passing: {{score}}%",
     "attemptsShort": "Attempts: {{used}}/{{max}}",
     "inProgress": "In progress",
-    "attemptPoints": "{{score}}/{{max}} points"
+    "attemptPoints": "{{score}}/{{max}} points",
+    "essayPlaceholder": "Write your essay response…",
+    "essayPlaceholderMin": "Write at least {{count}} words. Your response will be reviewed by the teacher.",
+    "essayHelper": "Essay · graded by the teacher",
+    "wordsCount_one": "{{count}} word",
+    "wordsCount_other": "{{count}} words",
+    "wordsWithMin": "{{count}} / {{min}} required"
   },
   "quizEditor": {
     "validation": {
@@ -438,6 +448,10 @@
       "saveExam": "Save Exam",
       "deleteQuiz": "Delete Quiz",
       "deleteExam": "Delete Exam"
+    },
+    "modeToggle": {
+      "edit": "Edit",
+      "submissions": "Submissions"
     },
     "review": {
       "loadFailed": "Failed to load submissions. Please try again.",
@@ -601,7 +615,8 @@
     "yourResponse": "Your Response",
     "responsePlaceholder": "Write your assignment response here...",
     "fileLinkOptional": "File Link (optional)",
-    "submitting": "Submitting..."
+    "submitting": "Submitting...",
+    "fileLinkPlaceholder": "https://drive.google.com/..."
   },
   "certificates": {
     "dashboard": "Dashboard",

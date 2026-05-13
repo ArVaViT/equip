@@ -111,7 +111,7 @@ export default function Login() {
             <Input
               id="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={t("auth.emailPlaceholder")}
               autoComplete="email"
               fieldSize="lg"
               value={form.email}
