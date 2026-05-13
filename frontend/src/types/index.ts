@@ -20,6 +20,11 @@ export interface Course {
   description: string | null
   image_url: string | null
   status: 'draft' | 'published'
+  // Controls enrollment policy independently from `status` (ADR-010):
+  // - 'public'    catalog enroll button works (subject to enrollment_start/end)
+  // - 'institute' enroll button is shown disabled with the
+  //              'Доступно только по приглашению' label
+  access_mode: 'public' | 'institute'
   created_by: string
   created_at: string
   updated_at: string
