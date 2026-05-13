@@ -171,7 +171,7 @@ export default function Header() {
   </TooltipTrigger>
 
   <TooltipContent side="bottom" sideOffset={8}>
-    <p>Profile</p>
+   <p>{t("header.profile")}</p>
   </TooltipContent>
 </Tooltip>
                 </>

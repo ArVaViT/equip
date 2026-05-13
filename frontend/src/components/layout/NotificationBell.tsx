@@ -124,7 +124,7 @@ export default function NotificationBell({
         </TooltipTrigger>
 
   <TooltipContent side="bottom">
-    <p>Notifications</p>
+    <p>{t("header.notifications")}</p>
   </TooltipContent>
 </Tooltip>
 
