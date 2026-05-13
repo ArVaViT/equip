@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ChevronDown, ChevronRight, Loader2, Pencil, Trash2 } from "lucide-react"
@@ -25,6 +26,7 @@ interface Props {
  * list of student submissions (lazy-loaded on first expand).
  */
 export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const [submissions, setSubmissions] = useState<AssignmentSubmission[]>([])
   const [loadingSubs, setLoadingSubs] = useState(false)
@@ -55,7 +57,7 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
 
   const handleUpdate = async () => {
     if (!form.title.trim()) {
-      toast({ title: "Assignment title is required", variant: "destructive" })
+      toast({ title: t("assignmentEditor.validation.titleRequired"), variant: "destructive" })
       return
     }
     setUpdating(true)
@@ -66,9 +68,9 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
       )
       onUpdate(updated)
       setEditing(false)
-      toast({ title: "Assignment updated", variant: "success" })
+      toast({ title: t("assignmentEditor.toast.updated"), variant: "success" })
     } catch {
-      toast({ title: "Failed to update assignment", variant: "destructive" })
+      toast({ title: t("assignmentEditor.toast.updateFailed"), variant: "destructive" })
     } finally {
       setUpdating(false)
     }
@@ -96,9 +98,11 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
         <div className="flex-1 min-w-0">
           <span className="text-sm font-medium">{assignment.title}</span>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span>Max: {assignment.max_score} pts</span>
+            <span>{t("assignmentEditor.item.maxPts", { max: assignment.max_score })}</span>
             {assignment.due_date && (
-              <span>Due: {formatDate(assignment.due_date)}</span>
+              <span>
+                {t("assignmentEditor.item.due", { date: formatDate(assignment.due_date) })}
+              </span>
             )}
           </div>
         </div>
@@ -151,12 +155,12 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
             </div>
           ) : submissions.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
-              No submissions yet.
+              {t("assignmentEditor.item.noSubmissions")}
             </p>
           ) : (
             <div className="space-y-3 mt-3">
               <h4 className="text-xs font-semibold text-muted-foreground">
-                Submissions ({submissions.length})
+                {t("assignmentEditor.item.submissionsCount", { count: submissions.length })}
               </h4>
               {submissions.map((sub) => (
                 <SubmissionGrader

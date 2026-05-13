@@ -1,4 +1,5 @@
 import { useMemo } from "react"
+import { useTranslation, Trans } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -54,6 +55,7 @@ export function SummaryTab({
   onUpdateForm,
   onSaveGrade,
 }: Props) {
+  const { t } = useTranslation()
   const sortedStudents = useMemo(() => {
     if (!summary) return []
     const list = [...summary.students]
@@ -101,24 +103,22 @@ export function SummaryTab({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Student Grades</CardTitle>
-        <CardDescription>
-          Auto-calculated based on quiz scores, assignment grades, and chapter completion. Click a student to override manually.
-        </CardDescription>
+        <CardTitle>{t("gradebook.summary.title")}</CardTitle>
+        <CardDescription>{t("gradebook.summary.description")}</CardDescription>
       </CardHeader>
       <CardContent>
         {studentCount === 0 ? (
-          <p className="text-sm text-muted-foreground py-8 text-center">No students enrolled yet.</p>
+          <p className="text-sm text-muted-foreground py-8 text-center">{t("gradebook.summary.empty")}</p>
         ) : (
           <div className="overflow-x-auto">
             <div className="grid grid-cols-[1fr_80px_80px_90px_80px_70px_70px] gap-3 px-4 py-3 border-b bg-muted/30 rounded-t-lg min-w-[700px]">
-              <SortHeader field="name" label="Student" sortField={sortField} sortDir={sortDir} onToggle={toggleSort} />
-              <SortHeader field="quiz" label="Quiz" sortField={sortField} sortDir={sortDir} onToggle={toggleSort} className="justify-end" />
-              <SortHeader field="assignment" label="Assign." sortField={sortField} sortDir={sortDir} onToggle={toggleSort} className="justify-end" />
-              <SortHeader field="participation" label="Particip." sortField={sortField} sortDir={sortDir} onToggle={toggleSort} className="justify-end" />
-              <SortHeader field="final" label="Final" sortField={sortField} sortDir={sortDir} onToggle={toggleSort} className="justify-end" />
-              <SortHeader field="letter" label="Grade" sortField={sortField} sortDir={sortDir} onToggle={toggleSort} className="justify-center" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">Manual</span>
+              <SortHeader field="name" label={t("gradebook.summary.thStudent")} sortField={sortField} sortDir={sortDir} onToggle={toggleSort} />
+              <SortHeader field="quiz" label={t("gradebook.summary.thQuiz")} sortField={sortField} sortDir={sortDir} onToggle={toggleSort} className="justify-end" />
+              <SortHeader field="assignment" label={t("gradebook.summary.thAssignment")} sortField={sortField} sortDir={sortDir} onToggle={toggleSort} className="justify-end" />
+              <SortHeader field="participation" label={t("gradebook.summary.thParticipation")} sortField={sortField} sortDir={sortDir} onToggle={toggleSort} className="justify-end" />
+              <SortHeader field="final" label={t("gradebook.summary.thFinal")} sortField={sortField} sortDir={sortDir} onToggle={toggleSort} className="justify-end" />
+              <SortHeader field="letter" label={t("gradebook.summary.thGrade")} sortField={sortField} sortDir={sortDir} onToggle={toggleSort} className="justify-center" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">{t("gradebook.summary.thManual")}</span>
             </div>
 
             <div className="divide-y min-w-[700px]">
@@ -207,6 +207,7 @@ function StudentSummaryRow({
   onUpdateForm,
   onSaveGrade,
 }: StudentSummaryRowProps) {
+  const { t } = useTranslation()
   const b = student.breakdown
   const hasDifferentManual = Boolean(manualGrade?.grade && manualGrade.grade !== b.letter_grade)
 
@@ -223,7 +224,7 @@ function StudentSummaryRow({
             <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
           )}
           <div className="min-w-0">
-            <p className="text-sm font-medium truncate">{student.student_name || "Unknown"}</p>
+            <p className="text-sm font-medium truncate">{student.student_name || t("gradebook.summary.unknownStudent")}</p>
             <p className="text-xs text-muted-foreground truncate">{student.student_email}</p>
           </div>
         </div>
@@ -257,19 +258,19 @@ function StudentSummaryRow({
         <div className="border-t px-4 py-4 bg-muted/10 space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm">
             <BreakdownEntry
-              label="Quiz Avg:"
+              label={t("gradebook.summary.breakdownQuiz")}
               pct={b.quiz_avg}
               weight={config.quiz_weight}
               weighted={b.quiz_weighted}
             />
             <BreakdownEntry
-              label="Assignment Avg:"
+              label={t("gradebook.summary.breakdownAssignment")}
               pct={b.assignment_avg}
               weight={config.assignment_weight}
               weighted={b.assignment_weighted}
             />
             <BreakdownEntry
-              label="Participation:"
+              label={t("gradebook.summary.breakdownParticipation")}
               pct={b.participation_pct}
               weight={config.participation_weight}
               weighted={b.participation_weighted}
@@ -278,31 +279,38 @@ function StudentSummaryRow({
 
           {hasDifferentManual && (
             <div className="rounded border border-border border-l-[3px] border-l-warning bg-warning/10 px-3 py-2 text-xs text-foreground">
-              Manual grade <strong>{manualGrade?.grade}</strong> differs from calculated{" "}
-              <strong>{b.letter_grade}</strong> ({b.final_score.toFixed(1)}%)
+              <Trans
+                i18nKey="gradebook.summary.manualDiffers"
+                values={{
+                  manual: manualGrade?.grade ?? "",
+                  calc: b.letter_grade,
+                  pct: b.final_score.toFixed(1),
+                }}
+                components={{ strong: <strong /> }}
+              />
             </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3">
             <div className="space-y-1.5">
               <label className="flex items-center gap-1 text-xs font-medium">
-                <Award className="h-3.5 w-3.5" strokeWidth={1.75} /> Override Grade
+                <Award className="h-3.5 w-3.5" strokeWidth={1.75} /> {t("gradebook.summary.overrideGrade")}
               </label>
               <Input
                 value={form.grade}
                 onChange={(e) => onUpdateForm(student.student_id, "grade", e.target.value)}
-                placeholder="A, B+, 95..."
+                placeholder={t("gradebook.summary.overridePlaceholder")}
                 fieldSize="md"
               />
             </div>
             <div className="space-y-1.5">
               <label className="flex items-center gap-1 text-xs font-medium">
-                <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.75} /> Comment
+                <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.75} /> {t("gradebook.summary.comment")}
               </label>
               <Input
                 value={form.comment}
                 onChange={(e) => onUpdateForm(student.student_id, "comment", e.target.value)}
-                placeholder="Teacher's note..."
+                placeholder={t("gradebook.summary.commentPlaceholder")}
                 fieldSize="md"
               />
             </div>
@@ -314,7 +322,7 @@ function StudentSummaryRow({
             disabled={saving}
           >
             <Save className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} />
-            {saving ? "Saving..." : "Save Manual Grade"}
+            {saving ? t("gradebook.summary.savingManual") : t("gradebook.summary.saveManual")}
           </Button>
         </div>
       )}
@@ -353,12 +361,13 @@ function ClassAverageRow({
   studentCount: number
   classAvg: number
 }) {
+  const { t } = useTranslation()
   const avg = (pick: (s: StudentCalculatedGrade) => number) =>
     summary.students.reduce((acc, st) => acc + pick(st), 0) / studentCount
 
   return (
     <div className="grid grid-cols-[1fr_80px_80px_90px_80px_70px_70px] gap-3 px-4 py-3 bg-muted/40 font-semibold text-sm items-center border-t-2">
-      <span className="pl-6">Class Average ({studentCount} students)</span>
+      <span className="pl-6">{t("gradebook.summary.classAverageRow", { count: studentCount })}</span>
       <p className="tabular-nums text-right">{avg((s) => s.breakdown.quiz_avg).toFixed(1)}%</p>
       <p className="tabular-nums text-right">{avg((s) => s.breakdown.assignment_avg).toFixed(1)}%</p>
       <p className="tabular-nums text-right">{avg((s) => s.breakdown.participation_pct).toFixed(1)}%</p>

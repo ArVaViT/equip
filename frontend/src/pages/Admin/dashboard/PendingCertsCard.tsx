@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -21,6 +22,7 @@ interface Props {
 
 /** Certificates pending final admin approval after a teacher signed off. */
 export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props) {
+  const { t } = useTranslation()
   if (certs.length === 0) return null
 
   return (
@@ -28,7 +30,7 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
       <CardHeader>
         <CardTitle className="text-xl flex items-center gap-2">
           <Award className="h-5 w-5 text-primary" strokeWidth={1.75} aria-hidden />
-          Certificate Approvals
+          {t("admin.pendingCerts.title")}
           <Badge variant="default" className="font-normal">
             {certs.length}
           </Badge>
@@ -42,15 +44,15 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
               className="flex items-center justify-between rounded-md border border-l-[3px] border-l-primary/60 bg-primary/5 p-4"
             >
               <div className="min-w-0">
-                <p className="font-medium truncate">{cert.student_name || "Student"}</p>
+                <p className="font-medium truncate">{cert.student_name || t("admin.pendingCerts.studentFallback")}</p>
                 <p className="text-sm text-muted-foreground truncate">
-                  {cert.course_title || "Course"}
+                  {cert.course_title || t("admin.pendingCerts.courseFallback")}
                 </p>
                 <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                   {cert.approved_by_name && (
                     <span className="flex items-center gap-1">
                       <CheckCircle className="h-3.5 w-3.5 text-success" strokeWidth={1.75} aria-hidden />
-                      Approved by {cert.approved_by_name}
+                      {t("admin.pendingCerts.approvedBy", { name: cert.approved_by_name })}
                     </span>
                   )}
                   {cert.approved_at && (
@@ -68,7 +70,7 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
                   disabled={actionId === cert.id}
                 >
                   <CheckCircle className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-                  Approve
+                  {t("admin.pendingCerts.approve")}
                 </Button>
                 <Button
                   size="sm"
@@ -78,7 +80,7 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
                   className="text-destructive hover:text-destructive"
                 >
                   <XCircle className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-                  Reject
+                  {t("admin.pendingCerts.reject")}
                 </Button>
               </div>
             </div>

@@ -24,11 +24,36 @@ export const SUPPORTED_LOCALES = ["ru", "en"] as const
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
 export const DEFAULT_LOCALE: SupportedLocale = "ru"
 
-export const LOCALE_STORAGE_KEY = "bible-school:locale"
+export const LOCALE_STORAGE_KEY = "equip:locale"
+const LEGACY_LOCALE_STORAGE_KEY = "bible-school:locale"
+
+// One-time migration: existing users still have their locale under the old
+// pre-rebrand key. Carry the value over so a returning user keeps their
+// language preference instead of silently snapping back to the RU default.
+if (typeof window !== "undefined") {
+  try {
+    const legacy = window.localStorage.getItem(LEGACY_LOCALE_STORAGE_KEY)
+    if (legacy && !window.localStorage.getItem(LOCALE_STORAGE_KEY)) {
+      window.localStorage.setItem(LOCALE_STORAGE_KEY, legacy)
+    }
+    if (legacy !== null) {
+      window.localStorage.removeItem(LEGACY_LOCALE_STORAGE_KEY)
+    }
+  } catch {
+    // localStorage may throw (private mode, quota, disabled) — degrade silently
+  }
+}
 
 export function isSupportedLocale(value: unknown): value is SupportedLocale {
   return typeof value === "string" && (SUPPORTED_LOCALES as readonly string[]).includes(value)
 }
+
+// Vite injects `import.meta.env.MODE` as "development" / "production" / "test"
+// (vitest sets MODE="test"). Guard for non-Vite environments just in case.
+const mode =
+  typeof import.meta !== "undefined" && import.meta.env ? import.meta.env.MODE : "production"
+const isProd = mode === "production"
+const isTest = mode === "test"
 
 i18n
   .use(LanguageDetector)
@@ -40,9 +65,9 @@ i18n
     },
     fallbackLng: DEFAULT_LOCALE,
     supportedLngs: SUPPORTED_LOCALES as unknown as string[],
-    // Most page text is in `<Trans>` or `t('namespace.key')` calls. We do not
-    // ship raw HTML strings through translations, so escaping is safe to keep
-    // off — react-i18next's render path handles JSX escaping itself.
+    // Most page text is in <Trans> or t() calls. We do not ship raw HTML
+    // strings through translations, so escaping is safe to keep off —
+    // react-i18next's render path handles JSX escaping itself.
     interpolation: { escapeValue: false },
     detection: {
       order: ["localStorage", "navigator", "htmlTag"],
@@ -50,6 +75,23 @@ i18n
       caches: ["localStorage"],
     },
     returnNull: false,
+    // Surface missing keys loudly in non-prod so bilingual drift can't sneak
+    // in. In test mode we throw — a test rendering a component with a
+    // missing-key lookup will fail immediately, catching the bug in CI. In
+    // dev we console.error so the page still renders but the developer sees
+    // it. In prod we stay silent (the key string is the fallback, which is
+    // ugly but not catastrophic).
+    saveMissing: !isProd,
+    missingKeyHandler: isProd
+      ? undefined
+      : (lngs, ns, key) => {
+          const locales = Array.isArray(lngs) ? lngs.join(", ") : String(lngs)
+          const msg = `[i18n] missing key "${ns}:${key}" for locale(s) ${locales}`
+          if (isTest) {
+            throw new Error(msg)
+          }
+          console.error(msg)
+        },
   })
 
 // Keep <html lang> in sync with the active locale so screen readers, browser
@@ -65,14 +107,14 @@ updateHtmlLang(i18n.language)
 // registration to avoid stacking duplicate handlers across hot reloads.
 declare global {
   interface Window {
-    __bibleSchoolLocaleListener?: boolean
+    __equipLocaleListener?: boolean
   }
 }
-const globalScope: { __bibleSchoolLocaleListener?: boolean } =
-  typeof window !== "undefined" ? window : (globalThis as { __bibleSchoolLocaleListener?: boolean })
-if (!globalScope.__bibleSchoolLocaleListener) {
+const globalScope: { __equipLocaleListener?: boolean } =
+  typeof window !== "undefined" ? window : (globalThis as { __equipLocaleListener?: boolean })
+if (!globalScope.__equipLocaleListener) {
   i18n.on("languageChanged", updateHtmlLang)
-  globalScope.__bibleSchoolLocaleListener = true
+  globalScope.__equipLocaleListener = true
 }
 
 export default i18n

@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import QuizTaker from "@/components/quiz/QuizTaker"
 import AssignmentPanel from "@/components/assignment/AssignmentPanel"
+import { PressFeedback } from "@/components/motion"
 import {
   isGradableChapterType,
   normalizeChapterType,
@@ -153,14 +154,18 @@ function ChapterBodyBlocks({
     )
   }
   return (
-    <div className="space-y-6">
-      {blocks.map((block) => (
-        <BlockRenderer
+    <div className="stagger-fade-in space-y-6">
+      {blocks.map((block, idx) => (
+        <div
           key={block.id}
-          block={block}
-          onProgressChanged={onProgressChanged}
-          onAssignmentCountLoaded={onAssignmentCountLoaded}
-        />
+          style={{ "--stagger-index": Math.min(idx, 12) } as React.CSSProperties}
+        >
+          <BlockRenderer
+            block={block}
+            onProgressChanged={onProgressChanged}
+            onAssignmentCountLoaded={onAssignmentCountLoaded}
+          />
+        </div>
       ))}
     </div>
   )
@@ -189,14 +194,16 @@ function ChapterNav({
   return (
     <div className="mt-8 pt-6 border-t flex items-center justify-between">
       {prevChapter ? (
-        <Button
-          variant="outline"
-          onClick={() => navigate(`/courses/${courseId}/modules/${moduleId}/chapters/${prevChapter.id}`)}
-          className="gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-          {t("chapter.prevChapter")}
-        </Button>
+        <PressFeedback>
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/courses/${courseId}/modules/${moduleId}/chapters/${prevChapter.id}`)}
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+            {t("chapter.prevChapter")}
+          </Button>
+        </PressFeedback>
       ) : (
         <Button variant="outline" disabled className="gap-2">
           <ArrowLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
@@ -215,14 +222,16 @@ function ChapterNav({
             {t("chapter.nextChapter")}
           </Button>
         ) : (
-          <Button
-            variant="outline"
-            onClick={() => navigate(`/courses/${courseId}/modules/${moduleId}/chapters/${nextChapter.id}`)}
-            className="gap-2"
-          >
-            {t("chapter.nextChapter")}
-            <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-          </Button>
+          <PressFeedback>
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/courses/${courseId}/modules/${moduleId}/chapters/${nextChapter.id}`)}
+              className="gap-2"
+            >
+              {t("chapter.nextChapter")}
+              <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+            </Button>
+          </PressFeedback>
         )
       ) : (
         <Button variant="outline" disabled className="gap-2">

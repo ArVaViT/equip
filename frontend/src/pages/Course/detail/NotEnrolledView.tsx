@@ -57,7 +57,7 @@ export function NotEnrolledView({
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-3xl">
+    <div className="animate-fade-in container mx-auto px-4 py-6 max-w-3xl">
       <Link to="/">
         <Button variant="ghost" size="sm" className="mb-4 h-8 text-xs">
           <ArrowLeft className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
@@ -148,7 +148,9 @@ export function NotEnrolledView({
           // surfaced the prior conditional that hid Enroll from owners.
           <div className="flex flex-wrap items-center gap-3">
             <Link to={`/teacher/courses/${course.id}`}>
-              <Button size="lg">{t("courseDetail.manageCourse")}</Button>
+              <Button size="lg" className="bg-cta-glow">
+                {t("courseDetail.manageCourse")}
+              </Button>
             </Link>
             <Button
               onClick={handleEnrollClick}
@@ -166,7 +168,12 @@ export function NotEnrolledView({
           </div>
         ) : isSignedIn ? (
           <div>
-            <Button onClick={handleEnrollClick} disabled={enrolling || !canEnroll} size="lg">
+            <Button
+              onClick={handleEnrollClick}
+              disabled={enrolling || !canEnroll}
+              size="lg"
+              className={!canEnroll ? undefined : "bg-cta-glow"}
+            >
               <Users className="mr-2 h-4 w-4" strokeWidth={1.75} aria-hidden />
               {!canEnroll
                 ? t("courseDetail.enrollmentNotAvailable")
@@ -184,7 +191,9 @@ export function NotEnrolledView({
           </div>
         ) : (
           <Link to="/login">
-            <Button size="lg">{t("courseDetail.signInToEnroll")}</Button>
+            <Button size="lg" className="bg-cta-glow">
+              {t("courseDetail.signInToEnroll")}
+            </Button>
           </Link>
         )}
       </div>

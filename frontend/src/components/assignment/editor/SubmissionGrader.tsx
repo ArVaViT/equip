@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,6 +23,7 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
+  const { t } = useTranslation()
   const [grade, setGrade] = useState(submission.grade ?? 0)
   const [feedback, setFeedback] = useState(submission.feedback ?? "")
   const [status, setStatus] = useState(submission.status)
@@ -36,9 +38,9 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
         status,
       })
       onUpdate(updated)
-      toast({ title: "Submission graded", variant: "success" })
+      toast({ title: t("assignmentEditor.toast.graded"), variant: "success" })
     } catch {
-      toast({ title: "Failed to grade", variant: "destructive" })
+      toast({ title: t("assignmentEditor.toast.gradeFailed"), variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -75,7 +77,7 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
             className="flex items-center gap-1 text-xs text-info hover:underline"
           >
             <FileText className="h-3 w-3" />
-            View attached file
+            {t("assignmentEditor.grader.viewFile")}
           </a>
         )}
 
@@ -98,21 +100,21 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
             onChange={(e) => setStatus(e.target.value as AssignmentSubmission["status"])}
             className="h-7 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <option value="graded">Grade</option>
-            <option value="returned">Return for revision</option>
+            <option value="graded">{t("assignmentEditor.grader.statusGrade")}</option>
+            <option value="returned">{t("assignmentEditor.grader.statusReturn")}</option>
           </select>
         </div>
 
         <div className="space-y-1">
           <Label className="text-xs flex items-center gap-1">
             <MessageSquare className="h-3 w-3" />
-            Feedback
+            {t("assignmentEditor.grader.feedback")}
           </Label>
           <Textarea
             fieldSize="sm"
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
-            placeholder="Optional feedback for the student..."
+            placeholder={t("assignmentEditor.grader.feedbackPlaceholder")}
             className="min-h-[50px] text-xs"
           />
         </div>
@@ -123,7 +125,7 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
           ) : (
             <Save className="h-3 w-3 mr-1" />
           )}
-          {saving ? "Saving..." : "Save Grade"}
+          {saving ? t("assignmentEditor.grader.saving") : t("assignmentEditor.grader.save")}
         </Button>
       </CardContent>
     </Card>

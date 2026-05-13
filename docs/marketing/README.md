@@ -6,7 +6,7 @@ consumed.
 
 | File | Used by |
 |---|---|
-| `devto-bible-school-lms-cover.png` (1376×768) | The single DEV.to post Vadym wrote promoting biblie-school in April 2026. Source for the OpenGraph share-card at `frontend/public/og-image.jpg` (1200×630, q=85 JPEG, ~29 KB). |
+| `devto-bible-school-lms-cover.png` (1376×768) | The single DEV.to post Vadym wrote promoting Equip in April 2026 (filename kept for asset-history continuity). Source for the OpenGraph share-card at `frontend/public/og-image.jpg` (1200×630, q=85 JPEG, ~29 KB). |
 
 If the cover changes, regenerate the OG card with a one-shot Pillow
 script — JPEG at q=85 is the sweet spot for share previews:

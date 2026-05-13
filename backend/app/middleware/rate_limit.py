@@ -7,7 +7,7 @@ We considered three strategies for rate limiting in this deployment:
 1. **In-memory per-instance (current).** Simple, zero-dependency, no network
    round-trip. Drawback: Vercel serverless functions run on N independent
    workers, so an attacker distributing requests across cold workers sees
-   ~N times the effective budget. For a ~100-user Bible School app with no API
+   ~N times the effective budget. For a ~100-user Equip app with no API
    keys to harvest, this is acceptable "defense-in-depth" — not a hard
    enforcement boundary.
 

@@ -221,7 +221,7 @@ REGISTRY: dict[EntityType, EntityRegistration] = {
         entity_type="quiz_option",
         fields=(FieldSpec("option_text", "quiz_option"),),
         resolve_course=_resolve_course_via_option,
-        build_context=lambda _o, _c: "Answer option for a Bible-school quiz question.",
+        build_context=lambda _o, _c: "Answer option for a Bible-study quiz question.",
     ),
     "assignment": EntityRegistration(
         entity_type="assignment",

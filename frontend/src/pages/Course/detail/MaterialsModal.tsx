@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { Modal } from "@/components/patterns"
 import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
@@ -18,11 +19,12 @@ export function MaterialsModal({
   downloadingPath,
   onDownload,
 }: Props) {
+  const { t } = useTranslation()
   return (
-    <Modal open={open} onClose={onClose} title="Course Materials">
+    <Modal open={open} onClose={onClose} title={t("courseDetail.materialsModal.title")}>
       {materials.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-6">
-          No materials available.
+          {t("courseDetail.materialsModal.empty")}
         </p>
       ) : (
         <div className="divide-y rounded-md border text-sm">

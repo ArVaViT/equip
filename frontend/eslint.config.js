@@ -60,6 +60,26 @@ export default tseslint.config(
           message:
             'Use <AlertDialog> / useConfirm() / sonner toasts — never native window dialogs.',
         },
+        {
+          // i18n guard — JSX text content must go through t() (or <Trans>).
+          // Triggers on 3+ consecutive Latin or Cyrillic letters between tags;
+          // whitespace, punctuation, numbers and short tokens pass through.
+          // Suppress for legitimate exceptions (rare) with an inline disable
+          // comment + a short reason.
+          selector:
+            "JSXText[value=/[A-Za-zА-Яа-яЁё]{3,}/]",
+          message:
+            'Hardcoded user-facing text — wrap in t("namespace.key") instead of inlining (or use <Trans i18nKey="…"> for embedded markup).',
+        },
+        {
+          // i18n guard — string-literal values for user-facing attributes must
+          // also be wrapped in t(). Covers aria-label / title / placeholder /
+          // alt (the four attributes that screen readers + tooltips read).
+          selector:
+            "JSXAttribute[name.name=/^(aria-label|title|placeholder|alt)$/] > Literal[value=/[A-Za-zА-Яа-яЁё]{3,}/]",
+          message:
+            'Hardcoded user-facing attribute value — use {t("namespace.key")} so it translates.',
+        },
       ],
       'no-restricted-globals': [
         'error',
@@ -68,6 +88,13 @@ export default tseslint.config(
           message: 'Use sonner (toast) — never native alert().',
         },
       ],
+    },
+  },
+  // Test files: allow hardcoded English in test names, fixtures, mocks.
+  {
+    files: ['**/*.test.{ts,tsx}', '**/__tests__/**/*.{ts,tsx}', 'src/test/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': 'off',
     },
   },
 )

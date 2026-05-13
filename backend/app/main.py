@@ -22,9 +22,9 @@ logger = logging.getLogger("api")
 _IS_PRODUCTION = bool(os.environ.get("VERCEL") or os.environ.get("PRODUCTION"))
 
 app = FastAPI(
-    title="Bible School API",
+    title="Equip API",
     description=(
-        "RESTful API for the Bible School learning platform. "
+        "RESTful API for the Equip learning platform. "
         "Provides endpoints for course management, user enrollment, "
         "progress tracking, and file uploads."
     ),
@@ -132,7 +132,7 @@ async def log_requests(request: Request, call_next):
 
 @app.get("/")
 async def root() -> dict:
-    return {"message": "Bible School API", "version": "1.0.0"}
+    return {"message": "Equip API", "version": "1.0.0"}
 
 
 @app.get("/health")

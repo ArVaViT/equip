@@ -1,4 +1,4 @@
-"""Shared test fixtures for the Bible School API backend.
+"""Shared test fixtures for the Equip API backend.
 
 Sets up an in-memory SQLite database so tests run without any external
 services.  PgUUID / postgresql.JSON columns compile to generic types

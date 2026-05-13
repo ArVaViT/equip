@@ -139,5 +139,5 @@ over the preceding months and is now available under the MIT license.
 - "Bibliya kak istoricheskiy dokument" (Bible as a Historical Document) —
   mini-course with Bible Project video chapters and module quiz.
 
-[Unreleased]: https://github.com/ArVaViT/biblie-school/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/ArVaViT/biblie-school/releases/tag/v0.1.0
+[Unreleased]: https://github.com/ArVaViT/equip/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/ArVaViT/equip/releases/tag/v0.1.0

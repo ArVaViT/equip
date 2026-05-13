@@ -22,9 +22,14 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str | None = Field(default=None, description="JWT secret key")
     JWT_ALGORITHM: str = "HS256"
 
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,https://biblie-school-frontend.vercel.app"
+    CORS_ORIGINS: str = (
+        "http://localhost:3000,http://localhost:5173,"
+        "https://equipbible.com,https://www.equipbible.com,"
+        "https://equip-frontend.vercel.app"
+    )
     CORS_ORIGIN_REGEX: str = (
-        r"^https://biblie-school-frontend(?:-[\w-]+)?\.vercel\.app$"
+        r"^https://equip-frontend(?:-[\w-]+)?\.vercel\.app$"
+        r"|^https://(?:www\.)?equipbible\.com$"
         r"|^http://localhost:\d+$"
     )
 

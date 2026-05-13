@@ -34,7 +34,7 @@ jobs:
           if [ -z "${API_URL}" ]; then
             # Fall back to the production default. Override via the repo var
             # `KEEPALIVE_API_URL` if the API moves or we spin up a second env.
-            API_URL="https://biblie-school-frontend.vercel.app/api/v1/courses?limit=1"
+            API_URL="https://equipbible.com/api/v1/courses?limit=1"
           fi
           echo "api_url=${API_URL}" >> "$GITHUB_OUTPUT"
           echo "Will ping: ${API_URL}"

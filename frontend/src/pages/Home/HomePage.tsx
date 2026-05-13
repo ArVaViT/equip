@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
+import { motion, useReducedMotion } from "motion/react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
@@ -13,6 +14,8 @@ import { Search, BookOpen, LogIn, ArrowRight, CheckCircle } from "lucide-react"
 import { EmptyState, ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
+
+const EDITORIAL_EASE = [0.22, 1, 0.36, 1] as const
 
 function MyCoursesSectionHeader() {
   const { t } = useTranslation()
@@ -40,6 +43,7 @@ function MyCoursesSectionBody({ children }: { children: React.ReactNode }) {
 function MyCoursesSection() {
   const { t } = useTranslation()
   const { user } = useAuth()
+  const prefersReducedMotion = useReducedMotion()
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [grades, setGrades] = useState<StudentGrade[]>([])
   const [loading, setLoading] = useState(true)
@@ -147,14 +151,24 @@ function MyCoursesSection() {
                 </div>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                   <div className="flex min-w-0 flex-1 items-center gap-3 sm:max-w-md">
-                    <div className="h-2 min-w-28 flex-1 rounded-full bg-muted">
-                      <div
-                        className={cn(
-                          "h-full rounded-full transition-[width] duration-700 ease-out",
-                          progressColor,
-                        )}
-                        style={{ width: `${Math.min(enrollment.progress, 100)}%` }}
-                      />
+                    <div className="h-2 min-w-28 flex-1 overflow-hidden rounded-full bg-muted">
+                      {prefersReducedMotion ? (
+                        <div
+                          className={cn("h-full rounded-full", progressColor)}
+                          style={{ width: `${Math.min(enrollment.progress, 100)}%` }}
+                        />
+                      ) : (
+                        <motion.div
+                          className={cn("h-full rounded-full", progressColor)}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.min(enrollment.progress, 100)}%` }}
+                          transition={{
+                            duration: 0.9,
+                            delay: 0.15 + index * 0.045,
+                            ease: EDITORIAL_EASE,
+                          }}
+                        />
+                      )}
                     </div>
                     <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
                       {enrollment.progress}%
@@ -226,7 +240,7 @@ export default function HomePage() {
           </p>
           <h1
             id="home-catalog-heading"
-            className="animate-fade-in animate-delay-100 text-balance font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl"
+            className="animate-fade-in animate-delay-100 text-balance font-serif text-3xl font-bold tracking-tight text-gradient-primary sm:text-4xl"
           >
             {user ? t("home.browseCourses") : t("home.courseCatalog")}
           </h1>

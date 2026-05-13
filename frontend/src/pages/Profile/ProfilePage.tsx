@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
+import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { InlineEdit } from "@/components/patterns"
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher"
 import { useAuth } from "@/context/useAuth"
 import { useTheme } from "@/context/useTheme"
@@ -15,91 +15,48 @@ import { coursesService } from "@/services/courses"
 import { makeProfileSchema } from "@/lib/validations/course"
 import { toProxyImage } from "@/lib/images"
 import { formatDate } from "@/i18n/format"
-import type { User } from "@/types"
+import { toast } from "@/lib/toast"
 import {
-  User as UserIcon, Mail, Shield, Calendar, Save, Check, Camera, Globe,
+  User as UserIcon, Mail, Shield, Calendar, Camera, Globe,
   Loader2, Award, BookOpen, ArrowRight, LogOut, Moon, Sun,
 } from "lucide-react"
 
-function NameForm({ user, onSaved }: { user: User; onSaved: () => Promise<void> }) {
-  const { t } = useTranslation()
-  const [name, setName] = useState(user.full_name ?? "")
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [error, setError] = useState("")
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout>>()
+const EDITORIAL_EASE = [0.22, 1, 0.36, 1] as const
 
-  useEffect(() => () => { clearTimeout(savedTimerRef.current) }, [])
-
-  const handleSave = async () => {
-    setError("")
-    const result = makeProfileSchema().safeParse({ full_name: name })
-    if (!result.success) {
-      setError(result.error.issues[0]?.message ?? t("profile.invalidInput"))
+function useCountUp(target: number, durationMs = 800) {
+  const prefersReducedMotion = useReducedMotion()
+  const [displayed, setDisplayed] = useState(0)
+  useEffect(() => {
+    if (prefersReducedMotion || target <= 0) {
+      setDisplayed(target)
       return
     }
-    setSaving(true)
-    try {
-      await usersService.updateProfile({ full_name: result.data.full_name })
-      await onSaved()
-      setName(result.data.full_name)
-      setSaved(true)
-      savedTimerRef.current = setTimeout(() => setSaved(false), 2000)
-    } catch {
-      setError(t("profile.updateFailed"))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="space-y-2">
-      <Label htmlFor="name">{t("profile.fullName")}</Label>
-      <div className="flex gap-2">
-        <Input
-          id="name"
-          fieldSize="lg"
-          value={name}
-          onChange={(e) => {
-            setName(e.target.value)
-            setSaved(false)
-            setError("")
-          }}
-          aria-invalid={!!error}
-          aria-describedby={error ? "profile-name-error" : undefined}
-        />
-        <Button onClick={handleSave} disabled={saving || saved} size="lg" className="shrink-0">
-          {saved ? (
-            <>
-              <Check className="h-4 w-4 mr-1.5" strokeWidth={1.75} aria-hidden />
-              {t("common.saved")}
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4 mr-1.5" strokeWidth={1.75} aria-hidden />
-              {saving ? t("common.saving") : t("common.save")}
-            </>
-          )}
-        </Button>
-      </div>
-      {error && (
-        <p id="profile-name-error" role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      )}
-    </div>
-  )
+    const steps = Math.min(24, Math.max(target, 6))
+    const stepMs = durationMs / steps
+    let i = 0
+    setDisplayed(0)
+    const id = window.setInterval(() => {
+      i++
+      setDisplayed(Math.min(target, Math.round((target * i) / steps)))
+      if (i >= steps) window.clearInterval(id)
+    }, stepMs)
+    return () => window.clearInterval(id)
+  }, [target, durationMs, prefersReducedMotion])
+  return displayed
 }
 
 export default function ProfilePage() {
   const { user, refreshUser, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
+  const prefersReducedMotion = useReducedMotion()
   const navigate = useNavigate()
   const { t } = useTranslation()
   const [error, setError] = useState("")
   const [uploading, setUploading] = useState(false)
   const [certificateCount, setCertificateCount] = useState(0)
   const [completedCount, setCompletedCount] = useState(0)
+  const animatedCompleted = useCountUp(completedCount)
+  const animatedCertificates = useCountUp(certificateCount)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -148,6 +105,24 @@ export default function ProfilePage() {
     navigate("/login", { replace: true })
   }
 
+  const handleSaveName = async (next: string) => {
+    const result = makeProfileSchema().safeParse({ full_name: next })
+    if (!result.success) {
+      toast({
+        title: result.error.issues[0]?.message ?? t("profile.invalidInput"),
+        variant: "destructive",
+      })
+      throw new Error("validation")
+    }
+    try {
+      await usersService.updateProfile({ full_name: result.data.full_name })
+      await refreshUser()
+    } catch {
+      toast({ title: t("profile.updateFailed"), variant: "destructive" })
+      throw new Error("save")
+    }
+  }
+
   if (!user) {
     return <PageSpinner />
   }
@@ -160,21 +135,6 @@ export default function ProfilePage() {
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-8 md:px-6">
-      <header className="animate-fade-in mb-8 rounded-md border border-border bg-card px-5 py-6 sm:px-8">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          {t("profile.pageEyebrow")}
-        </p>
-        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border border-border/80 bg-muted">
-            <UserIcon className="h-7 w-7 text-muted-foreground" strokeWidth={1.75} aria-hidden />
-          </div>
-          <div className="min-w-0 space-y-1">
-            <h1 className="font-serif text-3xl font-bold tracking-tight">{t("profile.title")}</h1>
-            <p className="text-muted-foreground">{t("profile.pageLead")}</p>
-          </div>
-        </div>
-      </header>
-
       <div className="stagger-fade-in space-y-6">
         <Card className="overflow-hidden transition-[border-color] duration-200 hover:border-primary/25">
           <CardHeader className="border-b border-border bg-gradient-accent-subtle">
@@ -213,18 +173,26 @@ export default function ProfilePage() {
                   onChange={handleAvatarChange}
                 />
               </div>
-              <div className="min-w-0 space-y-0.5">
-                <CardTitle className="font-serif text-xl font-semibold tracking-tight">
-                  {user.full_name || t("header.profile")}
-                </CardTitle>
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <InlineEdit
+                  size="h2"
+                  value={user.full_name ?? ""}
+                  onSave={handleSaveName}
+                  required
+                  maxLength={150}
+                  placeholder={t("profile.fullName")}
+                  ariaLabel={t("profile.editName")}
+                  textClassName="tracking-tight"
+                />
                 <CardDescription className="text-sm capitalize">{user.role}</CardDescription>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4 pt-6">
-            <NameForm key={user.id} user={user} onSaved={refreshUser} />
-            {error && <p className="text-sm text-destructive">{error}</p>}
-          </CardContent>
+          {error && (
+            <CardContent className="pt-6">
+              <p className="text-sm text-destructive">{error}</p>
+            </CardContent>
+          )}
         </Card>
 
         <Card className="transition-[border-color] duration-200 hover:border-primary/25">
@@ -241,7 +209,7 @@ export default function ProfilePage() {
                   <BookOpen className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} aria-hidden />
                 </div>
                 <div>
-                  <p className="text-2xl font-semibold leading-none tabular-nums">{completedCount}</p>
+                  <p className="text-2xl font-semibold leading-none tabular-nums">{animatedCompleted}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{t("profile.coursesCompleted")}</p>
                 </div>
               </div>
@@ -250,7 +218,7 @@ export default function ProfilePage() {
                   <Award className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} aria-hidden />
                 </div>
                 <div>
-                  <p className="text-2xl font-semibold leading-none tabular-nums">{certificateCount}</p>
+                  <p className="text-2xl font-semibold leading-none tabular-nums">{animatedCertificates}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{t("profile.certificatesEarned")}</p>
                 </div>
               </div>
@@ -326,10 +294,29 @@ export default function ProfilePage() {
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={toggleTheme}>
-                {theme === "dark" ? (
-                  <Sun className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                {prefersReducedMotion ? (
+                  theme === "dark" ? (
+                    <Sun className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  ) : (
+                    <Moon className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  )
                 ) : (
-                  <Moon className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.span
+                      key={theme}
+                      className="mr-1.5 inline-flex"
+                      initial={{ rotate: -45, opacity: 0 }}
+                      animate={{ rotate: 0, opacity: 1 }}
+                      exit={{ rotate: 45, opacity: 0 }}
+                      transition={{ duration: 0.22, ease: EDITORIAL_EASE }}
+                    >
+                      {theme === "dark" ? (
+                        <Sun className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                      ) : (
+                        <Moon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                      )}
+                    </motion.span>
+                  </AnimatePresence>
                 )}
                 {theme === "dark" ? t("profile.switchToLight") : t("profile.switchToDark")}
               </Button>

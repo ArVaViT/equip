@@ -1,4 +1,4 @@
-# Contributing to Bible School LMS
+# Contributing to Equip
 
 Thank you for considering a contribution! This project is built by and for
 nonprofit Bible schools, ministries, and individual believers who want a
@@ -30,8 +30,8 @@ makes a real difference.
 ### 1. Fork and clone
 
 ```bash
-gh repo fork ArVaViT/biblie-school --clone
-cd biblie-school
+gh repo fork ArVaViT/equip --clone
+cd equip
 ```
 
 ### 2. Install dependencies
@@ -160,7 +160,7 @@ a 2000-line PR sits for weeks.
 | `enhancement` | Improvement to existing functionality |
 | `documentation` | Docs, README, or inline help improvements |
 
-Check the [open issues](https://github.com/ArVaViT/biblie-school/issues) and
+Check the [open issues](https://github.com/ArVaViT/equip/issues) and
 the [ROADMAP](ROADMAP.md) for bigger-picture direction.
 
 ## Style guides
@@ -189,10 +189,10 @@ the [ROADMAP](ROADMAP.md) for bigger-picture direction.
 
 ## Getting help
 
-- **Discussions:** Use [GitHub Discussions](https://github.com/ArVaViT/biblie-school/discussions)
+- **Discussions:** Use [GitHub Discussions](https://github.com/ArVaViT/equip/discussions)
   for questions, ideas, and community conversation.
-- **Issues:** Open a [bug report](https://github.com/ArVaViT/biblie-school/issues/new?template=bug_report.yml)
-  or [feature request](https://github.com/ArVaViT/biblie-school/issues/new?template=feature_request.yml).
+- **Issues:** Open a [bug report](https://github.com/ArVaViT/equip/issues/new?template=bug_report.yml)
+  or [feature request](https://github.com/ArVaViT/equip/issues/new?template=feature_request.yml).
 - **Email:** arvavitcorp@gmail.com for anything sensitive.
 
 ---

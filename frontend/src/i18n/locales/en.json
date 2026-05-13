@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Bible School",
+    "appName": "Equip",
     "save": "Save",
     "saving": "Saving...",
     "saved": "Saved",
@@ -12,7 +12,20 @@
     "search": "Search",
     "signIn": "Sign In",
     "signOut": "Sign Out",
-    "register": "Register"
+    "register": "Register",
+    "close": "Close",
+    "scrollToTop": "Scroll to top",
+    "dismissAnnouncement": "Dismiss announcement"
+  },
+  "inlineEdit": {
+    "defaultPlaceholder": "Click to edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "editAria": "Edit {{what}}",
+    "cover": {
+      "replace": "Replace",
+      "remove": "Remove"
+    }
   },
   "header": {
     "courses": "Courses",
@@ -64,7 +77,7 @@
     "email": "Email",
     "emailPlaceholder": "you@example.com",
     "password": "Password",
-    "forgotPassword": "Forgot password?",
+    "forgotPasswordLink": "Forgot password?",
     "signIn": "Sign In",
     "signingIn": "Signing in...",
     "noAccount": "Don't have an account?",
@@ -141,7 +154,8 @@
     "themeLight": "Light mode",
     "switchToLight": "Light",
     "switchToDark": "Dark",
-    "invalidInput": "Invalid input"
+    "invalidInput": "Invalid input",
+    "editName": "Edit name"
   },
   "home": {
     "myCourses": "My Courses",
@@ -366,7 +380,220 @@
     "passingShort": "Passing: {{score}}%",
     "attemptsShort": "Attempts: {{used}}/{{max}}",
     "inProgress": "In progress",
-    "attemptPoints": "{{score}}/{{max}} points"
+    "attemptPoints": "{{score}}/{{max}} points",
+    "essayPlaceholder": "Write your essay response…",
+    "essayPlaceholderMin": "Write at least {{count}} words. Your response will be reviewed by the teacher.",
+    "essayHelper": "Essay · graded by the teacher",
+    "wordsCount_one": "{{count}} word",
+    "wordsCount_other": "{{count}} words",
+    "wordsWithMin": "{{count}} / {{min}} required"
+  },
+  "quizEditor": {
+    "validation": {
+      "titleRequired": "Quiz title is required",
+      "addAtLeastOneQuestion": "Add at least one question",
+      "validScoreRequired": "Enter a valid score (0 or higher)",
+      "scoreCantExceed": "Score can't exceed {{max}} for this question"
+    },
+    "toast": {
+      "quizSaved": "Quiz saved",
+      "quizSaveFailed": "Failed to save quiz",
+      "quizDeleted": "Quiz deleted",
+      "quizDeleteFailed": "Failed to delete quiz",
+      "gradeSaved": "Grade saved",
+      "gradeSaveFailed": "Failed to save grade"
+    },
+    "confirmDelete": {
+      "title": "Delete this quiz?",
+      "description": "Students will lose access to the quiz and its attempts.",
+      "confirm": "Delete quiz"
+    },
+    "heading": {
+      "editQuiz": "Edit Quiz",
+      "editExam": "Edit Exam",
+      "createQuiz": "Create Quiz",
+      "createExam": "Create Exam"
+    },
+    "fields": {
+      "quizTitle": "Quiz Title",
+      "titlePlaceholder": "e.g. Chapter Review Quiz",
+      "description": "Description (optional)",
+      "descriptionPlaceholder": "Brief description of the quiz...",
+      "passingScore": "Passing Score (%)",
+      "maxAttempts": "Maximum Attempts"
+    },
+    "questions": {
+      "heading": "Questions ({{count}})",
+      "addQuestion": "Add Question",
+      "empty": "No questions yet. Click \"Add Question\" to start.",
+      "questionPrefix": "Q{{n}}",
+      "questionPlaceholder": "Question text...",
+      "types": {
+        "multiple_choice": "Multiple Choice",
+        "true_false": "True / False",
+        "short_answer": "Short Answer",
+        "essay": "Essay"
+      },
+      "minWords": "Min words:",
+      "points": "Points:",
+      "markCorrect": "Mark as correct",
+      "optionPlaceholder": "Option {{n}}",
+      "addOption": "Add Option",
+      "shortAnswerHint": "Students will type a free-text answer. Graded manually.",
+      "essayHint": "Long-form written response. Graded manually from the Submissions tab."
+    },
+    "save": {
+      "saving": "Saving...",
+      "saveQuiz": "Save Quiz",
+      "saveExam": "Save Exam",
+      "deleteQuiz": "Delete Quiz",
+      "deleteExam": "Delete Exam"
+    },
+    "modeToggle": {
+      "edit": "Edit",
+      "submissions": "Submissions"
+    },
+    "review": {
+      "loadFailed": "Failed to load submissions. Please try again.",
+      "emptyAlready": "No open-ended answers yet.",
+      "emptyAllGraded": "Nothing to grade — you're all caught up.",
+      "openEndedCount_one": "{{count}} open-ended answer",
+      "openEndedCount_other": "{{count}} open-ended answers",
+      "showAlreadyGraded": "Show already graded",
+      "essay": "Essay",
+      "shortAnswer": "Short answer",
+      "upToPoints_one": "up to {{count}} pt",
+      "upToPoints_other": "up to {{count}} pts",
+      "wordsWithMin": "{{count}} / {{min}} words",
+      "wordsCount": "{{count}} words",
+      "emptyAnswer": "(empty)",
+      "pointsLabel": "Points (0–{{max}})",
+      "commentLabel": "Comment (optional)",
+      "commentPlaceholder": "Feedback shown to the student…",
+      "saved": "Saved",
+      "saveGrade": "Save grade"
+    }
+  },
+  "blockEditor": {
+    "loadFailed": "Failed to load blocks: {{detail}}",
+    "addedSuccess": "{{type}} block added",
+    "addFailed": "Failed to add block: {{detail}}",
+    "deleted": "Block deleted",
+    "deleteFailed": "Failed to delete block",
+    "confirmDelete": {
+      "title": "Delete this block?",
+      "confirm": "Delete"
+    },
+    "reorderFailed": "Failed to reorder blocks",
+    "updateFailed": "Failed to update block",
+    "contentBlocks": "Content Blocks",
+    "blocksCount_one": "{{count}} block",
+    "blocksCount_other": "{{count}} blocks",
+    "empty": "No blocks yet. Add your first content block below.",
+    "addBlock": "Add Block",
+    "types": {
+      "text": "Text",
+      "quiz": "Quiz",
+      "assignment": "Assignment",
+      "file": "File"
+    },
+    "text": {
+      "autoSaveFailed": "Auto-save failed",
+      "saved": "Block saved",
+      "saveFailed": "Failed to save block",
+      "placeholder": "Write block content...",
+      "saveButton": "Save Text",
+      "statusUnsaved": "Unsaved changes...",
+      "statusAutoSaving": "Auto-saving...",
+      "statusSaved": "Saved"
+    },
+    "file": {
+      "uploaded": "File uploaded",
+      "uploadFailedDefault": "Upload failed",
+      "removeFailed": "Failed to remove file",
+      "attachedFile": "Attached File",
+      "replace": "Replace",
+      "removeAria": "Remove file",
+      "uploading": "Uploading...",
+      "uploadCta": "Upload a file"
+    },
+    "toolbar": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "heading2": "Heading 2",
+      "heading3": "Heading 3",
+      "bulletList": "Bullet List",
+      "numberedList": "Numbered List",
+      "blockquote": "Blockquote",
+      "horizontalRule": "Horizontal Rule",
+      "insertImage": "Insert Image",
+      "insertYoutube": "Insert YouTube Video",
+      "insertAudio": "Insert Audio",
+      "link": "Link",
+      "undo": "Undo",
+      "redo": "Redo"
+    },
+    "callout": {
+      "trigger": "Callout Block",
+      "remove": "Remove Block",
+      "info": "Information",
+      "verse": "Bible Verse",
+      "takeaway": "Key Takeaway",
+      "warning": "Warning"
+    }
+  },
+  "assignmentEditor": {
+    "validation": {
+      "titleRequired": "Assignment title is required"
+    },
+    "toast": {
+      "created": "Assignment created",
+      "createFailed": "Failed to create assignment",
+      "updated": "Assignment updated",
+      "updateFailed": "Failed to update assignment",
+      "deleted": "Assignment deleted",
+      "deleteFailed": "Failed to delete assignment",
+      "graded": "Submission graded",
+      "gradeFailed": "Failed to grade"
+    },
+    "confirmDelete": {
+      "title": "Delete this assignment?",
+      "description": "All student submissions will also be deleted.",
+      "confirm": "Delete assignment"
+    },
+    "loadFailed": "Failed to load assignments. Please try refreshing.",
+    "heading": "Assignments ({{count}})",
+    "newAssignment": "New Assignment",
+    "empty": "No assignments for this chapter.",
+    "form": {
+      "title": "Title",
+      "titlePlaceholder": "e.g. Chapter Reflection Essay",
+      "description": "Description (optional)",
+      "descriptionPlaceholder": "Assignment instructions...",
+      "maxScore": "Max Score",
+      "dueDate": "Due Date (optional)",
+      "creating": "Creating...",
+      "create": "Create Assignment",
+      "updating": "Updating...",
+      "update": "Update Assignment",
+      "cancel": "Cancel"
+    },
+    "item": {
+      "maxPts": "Max: {{max}} pts",
+      "due": "Due: {{date}}",
+      "noSubmissions": "No submissions yet.",
+      "submissionsCount": "Submissions ({{count}})"
+    },
+    "grader": {
+      "viewFile": "View attached file",
+      "statusGrade": "Grade",
+      "statusReturn": "Return for revision",
+      "feedback": "Feedback",
+      "feedbackPlaceholder": "Optional feedback for the student...",
+      "saving": "Saving...",
+      "save": "Save Grade",
+      "studentIdPrefix": "{{prefix}}..."
+    }
   },
   "assignment": {
     "loadFailed": "Failed to load assignments. Please try refreshing.",
@@ -388,7 +615,8 @@
     "yourResponse": "Your Response",
     "responsePlaceholder": "Write your assignment response here...",
     "fileLinkOptional": "File Link (optional)",
-    "submitting": "Submitting..."
+    "submitting": "Submitting...",
+    "fileLinkPlaceholder": "https://drive.google.com/..."
   },
   "certificates": {
     "dashboard": "Dashboard",
@@ -407,14 +635,158 @@
     "pendingApproval": "Pending approval",
     "awaitingAdmin": "Awaiting admin",
     "rejected": "Rejected",
-    "pending": "Pending"
+    "pending": "Pending",
+    "card": {
+      "completedTitle": "You completed this course",
+      "completedDescription": "Request your certificate of completion for review.",
+      "requesting": "Requesting...",
+      "request": "Request Certificate",
+      "requestSuccess": "Certificate requested!",
+      "requestFailed": "Failed to request certificate",
+      "pendingTitle": "Awaiting teacher approval",
+      "pendingDescription": "Your certificate request has been submitted. Your instructor will review it shortly.",
+      "adminPendingTitle": "Awaiting admin approval",
+      "adminPendingDescription": "Your teacher has approved your certificate. It is now pending final admin approval.",
+      "approvedTitle": "Certificate approved",
+      "approvedDescription": "Congratulations! Your certificate has been approved.",
+      "certificateNumber": "Certificate number",
+      "copyAria": "Copy certificate number",
+      "copyFailed": "Failed to copy",
+      "issueDate": "Issue date",
+      "issuePending": "Pending",
+      "rejectedTitle": "Certificate request was not approved",
+      "rejectedDescription": "Unfortunately, your certificate request was rejected. You may re-request after addressing any outstanding requirements.",
+      "rerequest": "Re-request",
+      "review": {
+        "heading": "How was this course? Leave a review",
+        "starAria": "Rate {{value}} out of 5",
+        "commentPlaceholder": "Share your thoughts about this course... (optional)",
+        "submitting": "Submitting...",
+        "submit": "Submit Review",
+        "thanks": "Thank you for your review!",
+        "missingRating": "Please select a rating",
+        "submitted": "Review submitted!",
+        "submitFailed": "Failed to submit review"
+      }
+    }
+  },
+  "studentProgress": {
+    "loadFailed": "Failed to load student progress",
+    "loadFailedDescription": "The server may be temporarily unavailable. Please try again.",
+    "retry": "Retry",
+    "backToCourses": "Back to courses",
+    "breadcrumb": {
+      "myCourses": "My Courses",
+      "courseFallback": "Course"
+    },
+    "heading": "Student Progress",
+    "analytics": "Analytics",
+    "gradebook": "Gradebook",
+    "searchPlaceholder": "Search students by name or email...",
+    "table": {
+      "heading": "Students",
+      "description": "Click a row to view detailed breakdown",
+      "name": "Name",
+      "email": "Email",
+      "progress": "Progress",
+      "chapters": "Chapters",
+      "quizAvg": "Quiz Avg",
+      "assignAvg": "Assign. Avg",
+      "lastActive": "Last Active",
+      "emptyNoMatch": "No students match your search",
+      "emptyNoStudents": "No students enrolled yet"
+    },
+    "row": {
+      "markedIncomplete": "Marked as incomplete",
+      "markedComplete": "Marked as complete",
+      "toggleFailed": "Failed to update completion",
+      "extraAttemptGranted": "Extra attempt granted",
+      "extraAttemptFailed": "Failed to grant extra attempt",
+      "overallGrade": "Overall Grade",
+      "overallGradeNa": "N/A",
+      "enrolled": "Enrolled",
+      "chaptersCompleted": "Chapters Completed",
+      "chaptersCompletedValue": "{{done}} of {{total}}",
+      "progress": "Progress",
+      "chapterBreakdown": "Chapter Breakdown",
+      "gradebookButton": "Gradebook",
+      "viewAnalytics": "View Analytics"
+    },
+    "chapterRow": {
+      "notCompleted": "Not completed",
+      "quizScore": "Quiz: {{score}}/{{max}}",
+      "extraAttemptTitle": "Grant extra attempt",
+      "completedByTeacher": "Completed by teacher",
+      "completedByQuiz": "Completed via quiz",
+      "completedBySubmission": "Completed via submission",
+      "undo": "Undo",
+      "complete": "Complete"
+    }
+  },
+  "teacherAnalytics": {
+    "courseFallback": "Course",
+    "loadFailed": "Failed to load analytics",
+    "backToCourses": "Back to courses",
+    "backToDashboard": "Back to dashboard",
+    "heading": "Course Analytics",
+    "studentProgress": "Student Progress",
+    "gradebook": "Gradebook",
+    "stats": {
+      "totalStudents": "Total Students",
+      "averageProgress": "Average Progress",
+      "completed": "Completed (100%)",
+      "enrolledThisMonth": "Enrolled This Month"
+    },
+    "enrollments": {
+      "heading": "Student Enrollments",
+      "subheadingCount_one": "{{count}} student enrolled",
+      "subheadingCount_other": "{{count}} students enrolled",
+      "emptyText": "No students have enrolled yet.",
+      "name": "Name",
+      "email": "Email",
+      "progress": "Progress",
+      "enrolled": "Enrolled",
+      "unknown": "Unknown"
+    }
+  },
+  "reviews": {
+    "loadFailed": "Failed to load reviews",
+    "deleted": "Review deleted",
+    "deleteFailed": "Failed to delete review",
+    "heading": "Reviews",
+    "outOf5": "out of 5",
+    "reviewCount_one": "{{count}} review",
+    "reviewCount_other": "{{count}} reviews",
+    "loadFailedInline": "Couldn't load reviews.",
+    "retry": "Retry",
+    "empty": "No reviews yet.",
+    "anonymous": "Anonymous",
+    "confirmDeletePrefix": "Delete?",
+    "confirmDeleteLoading": "…",
+    "confirmDeleteYes": "Yes",
+    "confirmDeleteNo": "No",
+    "deleteAria": "Delete review"
   },
   "calendar": {
     "title": "Calendar",
     "subtitle": "Your deadlines, events, and schedule in one place",
     "filterByCourse": "Filter by course",
     "allCourses": "All Courses",
-    "retry": "Retry"
+    "retry": "Retry",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "today": "Today",
+    "moreEvents": "+{{count}} more",
+    "selectedDayEmpty": "No events on this day",
+    "upcomingTitle": "Upcoming (14 days)",
+    "upcomingEmpty": "No upcoming events",
+    "overdue": "Overdue",
+    "eventTypes": {
+      "deadline": "Deadline",
+      "live_session": "Live session",
+      "exam": "Exam",
+      "other": "Other"
+    }
   },
   "teacher": {
     "dashboardTitle": "My Courses",
@@ -444,7 +816,52 @@
       "actionCloneShort": "Clone",
       "actionEdit": "Edit",
       "actionEditCourse": "Edit course",
-      "actionDelete": "Delete"
+      "actionDelete": "Delete",
+      "actionMore": "More actions"
+    },
+    "createForm": {
+      "title": "Create New Course",
+      "titleLabel": "Title",
+      "titlePlaceholder": "Introduction to Theology",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "A brief description of the course...",
+      "imageUrlLabel": "Cover Image URL (optional — or upload after creating)",
+      "imageUrlPlaceholder": "https://... (you can upload in the editor)",
+      "creating": "Creating...",
+      "submit": "Create Course",
+      "cancel": "Cancel"
+    },
+    "empty": {
+      "title": "No courses yet",
+      "description": "Create your first course to start teaching",
+      "action": "Create Course"
+    },
+    "trash": {
+      "show": "Show Trash",
+      "hide": "Hide Trash",
+      "empty": "Trash is empty.",
+      "loadFailed": "Failed to load trash",
+      "restored": "Course restored",
+      "restoreFailed": "Failed to restore course",
+      "confirmDelete": {
+        "title": "Permanently delete this course?",
+        "description": "This will permanently delete the course and all its data (modules, chapters, enrollments, grades). This action cannot be undone.",
+        "confirm": "Delete permanently"
+      },
+      "deleted": "Course permanently deleted",
+      "deleteFailed": "Failed to delete course",
+      "deletedAt": "Deleted {{date}}",
+      "restore": "Restore",
+      "deleteForever": "Delete Forever"
+    },
+    "pendingCerts": {
+      "title": "Pending Certificates",
+      "studentFallback": "Student",
+      "courseFallback": "Course",
+      "requestedPrefix": "Requested {{date}}",
+      "requestedUnknown": "Requested (unknown date)",
+      "approve": "Approve",
+      "reject": "Reject"
     }
   },
   "teacherEditor": {
@@ -459,7 +876,72 @@
     "noModulesYet": "No modules yet",
     "noModulesYetDescription": "Add your first module to start building the course.",
     "chapterCount_one": "{{count}} chapter",
-    "chapterCount_other": "{{count}} chapters"
+    "chapterCount_other": "{{count}} chapters",
+    "modals": {
+      "enrollment": {
+        "title": "Enrollment Period",
+        "status": "Status",
+        "start": "Start",
+        "end": "End",
+        "save": "Save",
+        "saving": "Saving…"
+      },
+      "announcements": {
+        "title": "Announcements",
+        "titlePlaceholder": "Title",
+        "contentPlaceholder": "Content (optional)",
+        "post": "Post",
+        "posting": "Posting…",
+        "empty": "No announcements yet."
+      },
+      "materials": {
+        "title": "Course Materials",
+        "upload": "Upload File",
+        "empty": "No materials uploaded yet.",
+        "sizeKb": "{{kb}} KB"
+      },
+      "events": {
+        "title": "Course Events",
+        "editEvent": "Edit Event",
+        "createEvent": "Create Event",
+        "titlePlaceholder": "Event title",
+        "descriptionPlaceholder": "Description (optional)",
+        "type": "Type",
+        "dateTime": "Date & Time",
+        "saving": "Saving…",
+        "update": "Update Event",
+        "create": "Create Event",
+        "cancel": "Cancel",
+        "empty": "No events yet.",
+        "types": {
+          "deadline": "Deadline",
+          "live_session": "Live Session",
+          "exam": "Exam",
+          "other": "Other"
+        }
+      },
+      "cohorts": {
+        "title": "Manage Cohorts",
+        "editCohort": "Edit Cohort",
+        "createCohort": "Create Cohort",
+        "namePlaceholder": "Cohort name (e.g. Spring 2026)",
+        "startDate": "Start Date",
+        "endDate": "End Date",
+        "enrollmentStart": "Enrollment Start",
+        "enrollmentEnd": "Enrollment End",
+        "maxStudents": "Max Students (optional)",
+        "maxStudentsPlaceholder": "Unlimited",
+        "saving": "Saving…",
+        "update": "Update Cohort",
+        "create": "Create Cohort",
+        "cancel": "Cancel",
+        "empty": "No cohorts yet.",
+        "studentCount_one": "{{count}} student",
+        "studentCount_other": "{{count}} students",
+        "studentMaxSuffix": " / {{max}} max",
+        "enrollmentWindow": "Enrollment: {{start}} — {{end}}"
+      }
+    }
   },
   "moduleEditor": {
     "toast": {
@@ -483,7 +965,81 @@
       "title": "Delete this chapter?",
       "description": "The chapter and its content will be removed.",
       "confirm": "Delete"
+    },
+    "notFound": {
+      "title": "Module not found",
+      "description": "The module may have been deleted or you may not have access.",
+      "backToCourse": "Back to course"
+    },
+    "backToCourse": "Back to course",
+    "untitledModule": "Untitled module",
+    "addDescription": "Add a module description",
+    "editTitle": "Edit module title",
+    "editDescription": "Edit module description",
+    "dueDate": "Due date",
+    "clear": "Clear",
+    "noChapters": {
+      "title": "No chapters yet",
+      "description": "Add your first chapter to start building this module.",
+      "action": "Add chapter"
+    },
+    "addChapter": "Add chapter"
+  },
+  "courseEditor": {
+    "notFound": {
+      "title": "Course not found",
+      "description": "The course may have been deleted or you may not have access.",
+      "backToCourses": "Back to courses"
+    },
+    "myCourses": "My courses",
+    "untitledCourse": "Untitled course",
+    "addDescription": "Add a course description",
+    "editTitle": "Edit course title",
+    "editDescription": "Edit course description",
+    "published": "Published",
+    "draft": "Draft",
+    "publish": "Publish",
+    "unpublish": "Unpublish",
+    "moreActions": "More actions",
+    "menu": {
+      "enrollment": "Enrollment",
+      "announcements": "Announcements",
+      "materials": "Materials",
+      "events": "Events",
+      "cohorts": "Cohorts"
     }
+  },
+  "chapterEditor": {
+    "notFound": {
+      "title": "Chapter not found",
+      "description": "The chapter may have been deleted or you may not have access.",
+      "backToModule": "Back to module"
+    },
+    "moduleFallback": "Module",
+    "chapterFallback": "Chapter",
+    "breadcrumb": {
+      "myCourses": "My Courses",
+      "course": "Course"
+    },
+    "toast": {
+      "chapterNotFound": "Chapter not found",
+      "loadFailed": "Failed to load chapter",
+      "invalidData": "Invalid chapter data",
+      "saved": "Chapter saved",
+      "saveFailed": "Failed to save: {{detail}}"
+    },
+    "unknownError": "Unknown error",
+    "leaveConfirm": {
+      "title": "Leave without saving?",
+      "description": "You have unsaved changes. They will be lost if you leave now.",
+      "confirm": "Leave"
+    },
+    "back": "Back",
+    "titlePlaceholder": "Chapter title",
+    "chapterType": "Chapter Type",
+    "save": "Save Chapter",
+    "saving": "Saving...",
+    "saveHint": "Ctrl+S to save"
   },
   "courseDetail": {
     "allCourses": "All Courses",
@@ -507,7 +1063,25 @@
     "moduleLocked": "Locked",
     "moduleLockHint": "Complete all assessments in the previous module to unlock.",
     "due": "Due",
-    "overdue": "Overdue"
+    "overdue": "Overdue",
+    "downloadFailed": "Failed to download file",
+    "materialsButton": "Materials ({{count}})",
+    "reviewsButton": "Reviews",
+    "reviewsModalTitle": "Course Reviews",
+    "materialsModal": {
+      "title": "Course Materials",
+      "empty": "No materials available."
+    },
+    "cohortSelect": {
+      "title": "Select a Cohort",
+      "intro": "Multiple cohorts are available. Choose one to enroll in:",
+      "spotsFilled": "{{enrolled}}/{{max}} spots filled",
+      "enrolling": "Enrolling...",
+      "enroll": "Enroll"
+    },
+    "upcoming": {
+      "heading": "Upcoming Deadlines & Events"
+    }
   },
   "gradebook": {
     "summaryTab": "Summary Grades",
@@ -516,13 +1090,140 @@
     "breadcrumbCourses": "My Courses",
     "pageHeading": "Gradebook",
     "exportCsv": "Export CSV",
-    "exporting": "Exporting..."
+    "exporting": "Exporting...",
+    "stats": {
+      "students": "Students",
+      "classAverage": "Class Average",
+      "manuallyGraded": "Manually Graded",
+      "weights": "Weights Q/A/P"
+    },
+    "config": {
+      "title": "Grading Configuration",
+      "description": "Set how quizzes, assignments, and participation contribute to final grades",
+      "quizWeight": "Quiz Weight (%)",
+      "assignmentWeight": "Assignment Weight (%)",
+      "participationWeight": "Participation Weight (%)",
+      "totalValid": "Total: {{total}}% ✓",
+      "totalInvalid": "Total: {{total}}% (must equal 100%)",
+      "saving": "Saving...",
+      "save": "Save Weights"
+    },
+    "summary": {
+      "title": "Student Grades",
+      "description": "Auto-calculated based on quiz scores, assignment grades, and chapter completion. Click a student to override manually.",
+      "empty": "No students enrolled yet.",
+      "thStudent": "Student",
+      "thQuiz": "Quiz",
+      "thAssignment": "Assign.",
+      "thParticipation": "Particip.",
+      "thFinal": "Final",
+      "thGrade": "Grade",
+      "thManual": "Manual",
+      "unknownStudent": "Unknown",
+      "breakdownQuiz": "Quiz Avg:",
+      "breakdownAssignment": "Assignment Avg:",
+      "breakdownParticipation": "Participation:",
+      "manualDiffers": "Manual grade <strong>{{manual}}</strong> differs from calculated <strong>{{calc}}</strong> ({{pct}}%)",
+      "overrideGrade": "Override Grade",
+      "overridePlaceholder": "A, B+, 95...",
+      "comment": "Comment",
+      "commentPlaceholder": "Teacher's note...",
+      "savingManual": "Saving...",
+      "saveManual": "Save Manual Grade",
+      "classAverageRow_one": "Class Average ({{count}} student)",
+      "classAverageRow_other": "Class Average ({{count}} students)"
+    },
+    "table": {
+      "title": "Student Grade Table",
+      "description": "Reading/video chapters = 1 pt for completion · Quiz/exam = scored · Assignment = teacher-graded pts",
+      "thStudent": "Student",
+      "thTotal": "Total",
+      "overrideGrade": "Override Grade",
+      "overridePlaceholder": "A, B+, 95...",
+      "comment": "Comment",
+      "commentPlaceholder": "Teacher's note...",
+      "saving": "Saving...",
+      "saveGrade": "Save Grade",
+      "cellGraded": "graded",
+      "cellSubmitted": "submitted",
+      "legend": {
+        "completed": "Completed (1 pt)",
+        "quizPassed": "Quiz passed",
+        "quizFailed": "Quiz failed",
+        "assignmentGraded": "Assignment graded",
+        "assignmentSubmitted": "Assignment submitted",
+        "notSubmitted": "Not submitted"
+      }
+    }
   },
   "admin": {
     "title": "Admin Dashboard",
     "subtitle": "Manage users, roles, and monitor platform activity",
     "tabOverview": "Overview",
-    "tabAudit": "Audit Log"
+    "tabAudit": "Audit Log",
+    "users": {
+      "title": "Users",
+      "selectAllAria": "Select all users",
+      "selectAriaPrefix": "Select {{name}}",
+      "deleteAriaPrefix": "Delete {{name}}",
+      "deleteSelfTooltip": "You cannot delete your own account",
+      "deleteTooltip": "Delete user",
+      "avatarAltPrefix": "{{name}} avatar",
+      "searchPlaceholder": "Search by name or email…",
+      "thName": "Name",
+      "thEmail": "Email",
+      "thRole": "Role",
+      "thJoined": "Joined",
+      "thActions": "Actions",
+      "selectAllN": "Select all {{count}}",
+      "selected": "{{count}} selected",
+      "bulkUpdating": "Updating...",
+      "bulkApply": "Apply",
+      "bulkClear": "Clear",
+      "emptyNoMatch": "No users match your search",
+      "emptyNoUsers": "No users found",
+      "showing": "Showing {{shown}} of {{total}} users",
+      "missingName": "—"
+    },
+    "pendingTeachers": {
+      "title": "Pending Teacher Approvals",
+      "missingName": "No name",
+      "registered": "Registered {{date}}",
+      "approve": "Approve",
+      "deny": "Deny"
+    },
+    "pendingCerts": {
+      "title": "Certificate Approvals",
+      "studentFallback": "Student",
+      "courseFallback": "Course",
+      "approvedBy": "Approved by {{name}}",
+      "approve": "Approve",
+      "reject": "Reject"
+    },
+    "overview": {
+      "totalUsers": "Total Users",
+      "totalCourses": "Total Courses",
+      "totalEnrollments": "Total Enrollments"
+    },
+    "audit": {
+      "filterAction": "Action",
+      "filterResource": "Resource",
+      "filterFrom": "From",
+      "filterTo": "To",
+      "filterClear": "Clear filters",
+      "filterAllActions": "All actions",
+      "filterAllResources": "All resources",
+      "title": "Audit Log",
+      "entriesCount": "{{count}} entries",
+      "empty": "No audit logs found",
+      "page": "Page {{page}} of {{total}}",
+      "thDate": "Date",
+      "thUser": "User",
+      "thAction": "Action",
+      "thResource": "Resource",
+      "thResourceId": "Resource ID",
+      "thIp": "IP"
+    }
   },
   "roles": {
     "student": "Student",

@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="frontend/public/favicon.svg" width="80" alt="Bible School LMS logo" />
+  <img src="frontend/public/favicon.svg" width="80" alt="Equip logo" />
 </p>
 
-<h1 align="center">Bible School LMS</h1>
+<h1 align="center">Equip</h1>
 
 <p align="center">
   A free, open-source learning management system built for Bible schools,
@@ -10,22 +10,22 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ArVaViT/biblie-school/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/ArVaViT/biblie-school?style=flat-square" alt="MIT License" />
+  <a href="https://github.com/ArVaViT/equip/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/ArVaViT/equip?style=flat-square" alt="MIT License" />
   </a>
-  <a href="https://github.com/ArVaViT/biblie-school/actions/workflows/backend-ci.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/ArVaViT/biblie-school/backend-ci.yml?label=backend&style=flat-square" alt="Backend CI" />
+  <a href="https://github.com/ArVaViT/equip/actions/workflows/backend-ci.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/ArVaViT/equip/backend-ci.yml?label=backend&style=flat-square" alt="Backend CI" />
   </a>
-  <a href="https://github.com/ArVaViT/biblie-school/actions/workflows/frontend-ci.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/ArVaViT/biblie-school/frontend-ci.yml?label=frontend&style=flat-square" alt="Frontend CI" />
+  <a href="https://github.com/ArVaViT/equip/actions/workflows/frontend-ci.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/ArVaViT/equip/frontend-ci.yml?label=frontend&style=flat-square" alt="Frontend CI" />
   </a>
-  <a href="https://github.com/ArVaViT/biblie-school/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22">
-    <img src="https://img.shields.io/github/issues/ArVaViT/biblie-school/good%20first%20issue?style=flat-square&color=7057ff&label=good%20first%20issues" alt="Good first issues" />
+  <a href="https://github.com/ArVaViT/equip/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22">
+    <img src="https://img.shields.io/github/issues/ArVaViT/equip/good%20first%20issue?style=flat-square&color=7057ff&label=good%20first%20issues" alt="Good first issues" />
   </a>
 </p>
 
 <p align="center">
-  <a href="https://biblie-school-frontend.vercel.app">Live demo</a> &middot;
+  <a href="https://equipbible.com">Live demo</a> &middot;
   <a href="ROADMAP.md">Roadmap</a> &middot;
   <a href="CONTRIBUTING.md">Contributing</a> &middot;
   <a href="CHANGELOG.md">Changelog</a>
@@ -40,7 +40,7 @@ programs around the world still manage courses on paper, WhatsApp, or
 spreadsheets. Commercial LMS platforms are expensive, overkill, or require
 technical expertise that volunteer-run organizations simply don't have.
 
-**Bible School LMS** is designed to change that:
+**Equip** is designed to change that:
 
 - **Free forever** — MIT-licensed, no paywalls, no "premium" tiers.
 - **Simple to deploy** — one-click Vercel deploy with a free Supabase
@@ -95,8 +95,8 @@ technical expertise that volunteer-run organizations simply don't have.
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/<your-username>/biblie-school.git
-cd biblie-school
+git clone https://github.com/<your-username>/equip.git
+cd equip
 
 # Frontend
 cd frontend && npm ci && cd ..
@@ -167,7 +167,7 @@ supabase/
 We welcome contributions of all sizes — from typo fixes to new features.
 
 1. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup and workflow details.
-2. Check [open issues](https://github.com/ArVaViT/biblie-school/issues)
+2. Check [open issues](https://github.com/ArVaViT/equip/issues)
    — look for the `good first issue` label if you're new.
 3. See the [ROADMAP](ROADMAP.md) for bigger-picture direction.
 
@@ -189,7 +189,7 @@ this platform:
 - **No vendor lock-in.** Host it yourself or use the free tiers of Vercel +
   Supabase.
 - **You don't need a developer on staff.** Follow the quick start above, or
-  open a [discussion](https://github.com/ArVaViT/biblie-school/discussions)
+  open a [discussion](https://github.com/ArVaViT/equip/discussions)
   and the community will help.
 - **Your feedback shapes the product.** Open a feature request — the roadmap
   is driven by real ministry needs.
@@ -198,8 +198,8 @@ this platform:
 
 ## Community
 
-- [GitHub Discussions](https://github.com/ArVaViT/biblie-school/discussions) — questions, ideas, show & tell
-- [Issue tracker](https://github.com/ArVaViT/biblie-school/issues) — bug reports and feature requests
+- [GitHub Discussions](https://github.com/ArVaViT/equip/discussions) — questions, ideas, show & tell
+- [Issue tracker](https://github.com/ArVaViT/equip/issues) — bug reports and feature requests
 - [Changelog](CHANGELOG.md) — what's new in each release
 - [Security policy](SECURITY.md) — how to report vulnerabilities
 

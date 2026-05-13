@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, Link } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { Button } from "@/components/ui/button"
@@ -37,6 +38,7 @@ interface Analytics {
 
 export default function TeacherAnalytics() {
   const { courseId } = useParams<{ courseId: string }>()
+  const { t } = useTranslation()
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
   const [courseTitle, setCourseTitle] = useState("")
   const [loading, setLoading] = useState(true)
@@ -57,7 +59,7 @@ export default function TeacherAnalytics() {
           avgProgress: raw.avg_progress ?? raw.avgProgress ?? 0,
           completedCount: raw.completion_count ?? raw.completedCount ?? 0,
         })
-        setCourseTitle(raw.course_title ?? "Course")
+        setCourseTitle(raw.course_title ?? t("teacherAnalytics.courseFallback"))
       } catch {
         // analytics remains null — fallback UI handles this
       } finally {
@@ -66,7 +68,7 @@ export default function TeacherAnalytics() {
     }
     load()
     return () => { cancelled = true }
-  }, [courseId])
+  }, [courseId, t])
 
   const enrolledThisMonth = analytics?.enrollments.filter((e) => {
     if (!e.enrolled_at) return false
@@ -85,12 +87,12 @@ export default function TeacherAnalytics() {
       <div className="container mx-auto px-4 py-8 max-w-5xl">
         <ErrorState
           icon={<BarChart3 />}
-          title="Failed to load analytics"
+          title={t("teacherAnalytics.loadFailed")}
           action={
             <Link to="/teacher">
               <Button variant="ghost">
                 <ArrowLeft className="h-4 w-4 mr-1.5" />
-                Back to courses
+                {t("teacherAnalytics.backToCourses")}
               </Button>
             </Link>
           }
@@ -100,24 +102,24 @@ export default function TeacherAnalytics() {
   }
 
   const stats = [
-    { label: "Total Students", value: analytics.totalStudents, icon: Users },
-    { label: "Average Progress", value: `${analytics.avgProgress}%`, icon: TrendingUp },
-    { label: "Completed (100%)", value: analytics.completedCount, icon: Award },
-    { label: "Enrolled This Month", value: enrolledThisMonth, icon: Calendar },
+    { label: t("teacherAnalytics.stats.totalStudents"), value: analytics.totalStudents, icon: Users },
+    { label: t("teacherAnalytics.stats.averageProgress"), value: `${analytics.avgProgress}%`, icon: TrendingUp },
+    { label: t("teacherAnalytics.stats.completed"), value: analytics.completedCount, icon: Award },
+    { label: t("teacherAnalytics.stats.enrolledThisMonth"), value: enrolledThisMonth, icon: Calendar },
   ]
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <div className="flex items-center gap-3 mb-8">
         <Link to="/teacher">
-          <Button variant="ghost" size="icon" className="shrink-0" aria-label="Back to dashboard">
+          <Button variant="ghost" size="icon" className="shrink-0" aria-label={t("teacherAnalytics.backToDashboard")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <div className="flex-1">
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <BarChart3 className="h-7 w-7 text-primary" />
-            Course Analytics
+            {t("teacherAnalytics.heading")}
           </h1>
           {courseTitle && (
             <p className="text-muted-foreground mt-1">{courseTitle}</p>
@@ -126,13 +128,13 @@ export default function TeacherAnalytics() {
         <Link to={`/teacher/courses/${courseId}/progress`}>
           <Button size="sm" variant="outline">
             <UserCheck className="h-4 w-4 mr-1.5" />
-            Student Progress
+            {t("teacherAnalytics.studentProgress")}
           </Button>
         </Link>
         <Link to={`/teacher/courses/${courseId}/gradebook`}>
           <Button size="sm" variant="outline">
             <ClipboardList className="h-4 w-4 mr-1.5" />
-            Gradebook
+            {t("teacherAnalytics.gradebook")}
           </Button>
         </Link>
       </div>
@@ -155,32 +157,32 @@ export default function TeacherAnalytics() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Student Enrollments</CardTitle>
+          <CardTitle>{t("teacherAnalytics.enrollments.heading")}</CardTitle>
           <CardDescription>
-            {analytics.totalStudents} student{analytics.totalStudents !== 1 && "s"} enrolled
+            {t("teacherAnalytics.enrollments.subheadingCount", { count: analytics.totalStudents })}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {analytics.enrollments.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
-              No students have enrolled yet.
+              {t("teacherAnalytics.enrollments.emptyText")}
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left">
-                    <th className="pb-3 font-medium text-muted-foreground">Name</th>
-                    <th className="pb-3 font-medium text-muted-foreground">Email</th>
-                    <th className="pb-3 font-medium text-muted-foreground">Progress</th>
-                    <th className="pb-3 font-medium text-muted-foreground">Enrolled</th>
+                    <th className="pb-3 font-medium text-muted-foreground">{t("teacherAnalytics.enrollments.name")}</th>
+                    <th className="pb-3 font-medium text-muted-foreground">{t("teacherAnalytics.enrollments.email")}</th>
+                    <th className="pb-3 font-medium text-muted-foreground">{t("teacherAnalytics.enrollments.progress")}</th>
+                    <th className="pb-3 font-medium text-muted-foreground">{t("teacherAnalytics.enrollments.enrolled")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {analytics.enrollments.map((e) => (
                     <tr key={e.user_id} className="border-b last:border-0">
                       <td className="py-3 font-medium">
-                        {e.full_name ?? e.student?.full_name ?? "Unknown"}
+                        {e.full_name ?? e.student?.full_name ?? t("teacherAnalytics.enrollments.unknown")}
                       </td>
                       <td className="py-3 text-muted-foreground">
                         {e.email ?? e.student?.email ?? "—"}

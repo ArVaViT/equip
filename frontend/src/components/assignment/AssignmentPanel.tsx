@@ -243,7 +243,7 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
               <Input
                 value={fileUrl}
                 onChange={(e) => setFileUrl(e.target.value)}
-                placeholder="https://drive.google.com/..."
+                placeholder={t("assignment.fileLinkPlaceholder")}
                 fieldSize="sm"
                 className="text-sm"
               />

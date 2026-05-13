@@ -214,12 +214,7 @@ export default function TeacherDashboard() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t("teacher.dashboardTitle")}</h1>
-          <p className="text-muted-foreground mt-1">
-            {t("teacher.dashboardSubtitle")}
-          </p>
-        </div>
+        <h1 className="text-3xl font-bold tracking-tight">{t("teacher.dashboardTitle")}</h1>
         <Button onClick={() => setShowCreate(!showCreate)} size="sm">
           <Plus className="h-4 w-4 mr-1.5" />
           {t("teacher.newCourse")}

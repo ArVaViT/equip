@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Paperclip, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import CourseAnnouncements from "@/components/announcements/CourseAnnouncements"
@@ -46,6 +47,7 @@ export function EnrolledView({
   certificate,
   onCertificateUpdate,
 }: Props) {
+  const { t } = useTranslation()
   const [materialsModal, setMaterialsModal] = useState(false)
   const [reviewsModal, setReviewsModal] = useState(false)
   const [downloadingPath, setDownloadingPath] = useState<string | null>(null)
@@ -58,14 +60,14 @@ export function EnrolledView({
       const url = await storageService.getSignedMaterialUrl(path)
       window.open(url, "_blank", "noopener,noreferrer")
     } catch {
-      toast({ title: "Failed to download file", variant: "destructive" })
+      toast({ title: t("courseDetail.downloadFailed"), variant: "destructive" })
     } finally {
       setDownloadingPath(null)
     }
-  }, [])
+  }, [t])
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-4xl">
+    <div className="animate-fade-in container mx-auto px-4 py-6 max-w-4xl">
       <EnrolledHeader
         course={course}
         enrollment={enrollment}
@@ -98,12 +100,12 @@ export function EnrolledView({
         {materials.length > 0 && (
           <Button variant="outline" size="sm" onClick={() => setMaterialsModal(true)}>
             <Paperclip className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-            Materials ({materials.length})
+            {t("courseDetail.materialsButton", { count: materials.length })}
           </Button>
         )}
         <Button variant="outline" size="sm" onClick={() => setReviewsModal(true)}>
           <Star className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-          Reviews
+          {t("courseDetail.reviewsButton")}
         </Button>
       </div>
 
@@ -115,7 +117,7 @@ export function EnrolledView({
         onDownload={handleDownload}
       />
 
-      <Modal open={reviewsModal} onClose={() => setReviewsModal(false)} title="Course Reviews">
+      <Modal open={reviewsModal} onClose={() => setReviewsModal(false)} title={t("courseDetail.reviewsModalTitle")}>
         <CourseReviews courseId={course.id} />
       </Modal>
     </div>

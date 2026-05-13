@@ -14,7 +14,7 @@ def _make_handler() -> DatadogHTTPHandler:
     return DatadogHTTPHandler(
         api_key="test-key",
         site="us5.datadoghq.com",
-        service="biblie-school-backend",
+        service="equip-backend",
         env="production",
         version="abc1234",
         vercel_region="iad1",
@@ -45,7 +45,7 @@ def test_emit_posts_to_intake_with_api_key() -> None:
     req = urlopen.call_args.args[0]
     assert req.headers["Dd-api-key"] == "test-key"
     body = json.loads(req.data.decode("utf-8"))
-    assert body["service"] == "biblie-school-backend"
+    assert body["service"] == "equip-backend"
     assert body["status"] == "warning"
     assert "env:production" in body["ddtags"]
     assert "version:abc1234" in body["ddtags"]

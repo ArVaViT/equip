@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import {
   CheckCircle,
@@ -35,6 +36,7 @@ export function ChapterBreakdownRow({
   onToggleComplete,
   onGrantExtraAttempt,
 }: Props) {
+  const { t } = useTranslation()
   const title =
     chapterInfo?.title ?? quiz?.chapter_title ?? assignment?.chapter_title ?? chapterId
   const gradable = chapterInfo ? isGradableChapterType(chapterInfo.chapter_type) : false
@@ -51,7 +53,9 @@ export function ChapterBreakdownRow({
             {completed ? (
               <CompletionLabel completedBy={chapterInfo.completed_by} />
             ) : (
-              <span className="text-muted-foreground">Not completed</span>
+              <span className="text-muted-foreground">
+                {t("studentProgress.chapterRow.notCompleted")}
+              </span>
             )}
           </p>
         )}
@@ -65,7 +69,10 @@ export function ChapterBreakdownRow({
             <XCircle className="h-3.5 w-3.5 text-destructive" />
           )}
           <span>
-            Quiz: {quiz.score}/{quiz.max_score}
+            {t("studentProgress.chapterRow.quizScore", {
+              score: quiz.score,
+              max: quiz.max_score,
+            })}
           </span>
           {quiz.quiz_id && (
             <Button
@@ -77,7 +84,7 @@ export function ChapterBreakdownRow({
                 e.stopPropagation()
                 onGrantExtraAttempt(quiz.quiz_id!)
               }}
-              title="Grant extra attempt"
+              title={t("studentProgress.chapterRow.extraAttemptTitle")}
             >
               {grantingQuizId === quiz.quiz_id ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -123,7 +130,9 @@ export function ChapterBreakdownRow({
           ) : (
             <CheckCircle className="h-3 w-3 mr-1" />
           )}
-          {completed ? "Undo" : "Complete"}
+          {completed
+            ? t("studentProgress.chapterRow.undo")
+            : t("studentProgress.chapterRow.complete")}
         </Button>
       )}
     </div>
@@ -135,11 +144,12 @@ function CompletionLabel({
 }: {
   completedBy: ChapterInfo["completed_by"]
 }) {
+  const { t } = useTranslation()
   if (completedBy === "teacher") {
-    return <span className="text-info">Completed by teacher</span>
+    return <span className="text-info">{t("studentProgress.chapterRow.completedByTeacher")}</span>
   }
   if (completedBy === "quiz") {
-    return <span className="text-success">Completed via quiz</span>
+    return <span className="text-success">{t("studentProgress.chapterRow.completedByQuiz")}</span>
   }
-  return <span className="text-success">Completed via submission</span>
+  return <span className="text-success">{t("studentProgress.chapterRow.completedBySubmission")}</span>
 }

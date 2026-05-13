@@ -1,4 +1,5 @@
 import type { Editor } from "@tiptap/react";
+import { useTranslation } from "react-i18next";
 import {
   Bold,
   Italic,
@@ -81,12 +82,13 @@ export function EditorToolbar({
   onAddAudio,
   onSetLink,
 }: EditorToolbarProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-wrap items-center gap-0.5 border-b border-input px-2 py-1.5">
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBold().run()}
         active={editor.isActive("bold")}
-        title="Bold"
+        title={t("blockEditor.toolbar.bold")}
       >
         <Bold size={TOOLBAR_ICON_SIZE} />
       </ToolbarButton>
@@ -94,7 +96,7 @@ export function EditorToolbar({
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleItalic().run()}
         active={editor.isActive("italic")}
-        title="Italic"
+        title={t("blockEditor.toolbar.italic")}
       >
         <Italic size={TOOLBAR_ICON_SIZE} />
       </ToolbarButton>
@@ -104,7 +106,7 @@ export function EditorToolbar({
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         active={editor.isActive("heading", { level: 2 })}
-        title="Heading 2"
+        title={t("blockEditor.toolbar.heading2")}
       >
         <Heading2 size={TOOLBAR_ICON_SIZE} />
       </ToolbarButton>
@@ -112,7 +114,7 @@ export function EditorToolbar({
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
         active={editor.isActive("heading", { level: 3 })}
-        title="Heading 3"
+        title={t("blockEditor.toolbar.heading3")}
       >
         <Heading3 size={TOOLBAR_ICON_SIZE} />
       </ToolbarButton>
@@ -122,7 +124,7 @@ export function EditorToolbar({
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBulletList().run()}
         active={editor.isActive("bulletList")}
-        title="Bullet List"
+        title={t("blockEditor.toolbar.bulletList")}
       >
         <List size={TOOLBAR_ICON_SIZE} />
       </ToolbarButton>
@@ -130,7 +132,7 @@ export function EditorToolbar({
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
         active={editor.isActive("orderedList")}
-        title="Numbered List"
+        title={t("blockEditor.toolbar.numberedList")}
       >
         <ListOrdered size={TOOLBAR_ICON_SIZE} />
       </ToolbarButton>
@@ -138,14 +140,14 @@ export function EditorToolbar({
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
         active={editor.isActive("blockquote")}
-        title="Blockquote"
+        title={t("blockEditor.toolbar.blockquote")}
       >
         <Quote size={TOOLBAR_ICON_SIZE} />
       </ToolbarButton>
 
       <ToolbarButton
         onClick={() => editor.chain().focus().setHorizontalRule().run()}
-        title="Horizontal Rule"
+        title={t("blockEditor.toolbar.horizontalRule")}
       >
         <Minus size={TOOLBAR_ICON_SIZE} />
       </ToolbarButton>
@@ -156,7 +158,7 @@ export function EditorToolbar({
 
       <ToolbarDivider />
 
-      <ToolbarButton onClick={onAddImage} disabled={uploading} title="Insert Image">
+      <ToolbarButton onClick={onAddImage} disabled={uploading} title={t("blockEditor.toolbar.insertImage")}>
         {uploading ? (
           <span className="inline-block h-[18px] w-[18px] animate-spin rounded-full border-2 border-current border-t-transparent" />
         ) : (
@@ -164,18 +166,18 @@ export function EditorToolbar({
         )}
       </ToolbarButton>
 
-      <ToolbarButton onClick={onAddYoutube} title="Insert YouTube Video">
+      <ToolbarButton onClick={onAddYoutube} title={t("blockEditor.toolbar.insertYoutube")}>
         <Youtube size={TOOLBAR_ICON_SIZE} />
       </ToolbarButton>
 
-      <ToolbarButton onClick={onAddAudio} title="Insert Audio">
+      <ToolbarButton onClick={onAddAudio} title={t("blockEditor.toolbar.insertAudio")}>
         <Headphones size={TOOLBAR_ICON_SIZE} />
       </ToolbarButton>
 
       <ToolbarButton
         onClick={onSetLink}
         active={editor.isActive("link")}
-        title="Link"
+        title={t("blockEditor.toolbar.link")}
       >
         <Link2 size={TOOLBAR_ICON_SIZE} />
       </ToolbarButton>
@@ -185,7 +187,7 @@ export function EditorToolbar({
       <ToolbarButton
         onClick={() => editor.chain().focus().undo().run()}
         disabled={!editor.can().undo()}
-        title="Undo"
+        title={t("blockEditor.toolbar.undo")}
       >
         <Undo2 size={TOOLBAR_ICON_SIZE} />
       </ToolbarButton>
@@ -193,7 +195,7 @@ export function EditorToolbar({
       <ToolbarButton
         onClick={() => editor.chain().focus().redo().run()}
         disabled={!editor.can().redo()}
-        title="Redo"
+        title={t("blockEditor.toolbar.redo")}
       >
         <Redo2 size={TOOLBAR_ICON_SIZE} />
       </ToolbarButton>

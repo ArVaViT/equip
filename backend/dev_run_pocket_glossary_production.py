@@ -29,7 +29,7 @@ from tests.glossary_pocket_payload import run_pocket_glossary  # noqa: E402
 
 API_BASE = os.environ.get(
     "API_BASE",
-    "https://biblie-school-backend.vercel.app/api/v1",
+    "https://api.equipbible.com/api/v1",
 ).rstrip("/")
 
 
@@ -156,7 +156,7 @@ def main() -> None:
     print(f"Cover file: {cover_path}  (uploads to course-assets/<course_id>/cover.{ext})")
     cid = run_pocket_glossary(_Http(), set_cover=set_cover)
     print("OK, course published:", cid)
-    print(f"Open: https://biblie-school-frontend.vercel.app (catalog) or teacher dashboard. Course id: {cid}")
+    print(f"Open: https://equipbible.com (catalog) or teacher dashboard. Course id: {cid}")
 
 
 if __name__ == "__main__":

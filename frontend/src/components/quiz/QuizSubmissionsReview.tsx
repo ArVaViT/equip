@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { coursesService } from "@/services/courses"
 import { toast } from "@/lib/toast"
 import { getErrorDetail } from "@/lib/errorDetail"
@@ -33,6 +34,7 @@ interface Props {
 }
 
 export default function QuizSubmissionsReview({ quizId }: Props) {
+  const { t } = useTranslation()
   const [items, setItems] = useState<EditableAnswer[]>([])
   const [loading, setLoading] = useState(true)
   const [showGraded, setShowGraded] = useState(false)
@@ -62,12 +64,12 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
   const handleSave = async (item: EditableAnswer) => {
     const pointsNum = Number(item.draftPoints)
     if (Number.isNaN(pointsNum) || pointsNum < 0) {
-      toast({ title: "Enter a valid score (0 or higher)", variant: "destructive" })
+      toast({ title: t("quizEditor.validation.validScoreRequired"), variant: "destructive" })
       return
     }
     if (pointsNum > item.max_points) {
       toast({
-        title: `Score can't exceed ${item.max_points} for this question`,
+        title: t("quizEditor.validation.scoreCantExceed", { max: item.max_points }),
         variant: "destructive",
       })
       return
@@ -80,7 +82,7 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
         item.draftComment.trim() || null,
       )
       updateDraft(item.answer_id, { savingState: "saved" })
-      toast({ title: "Grade saved", variant: "success" })
+      toast({ title: t("quizEditor.toast.gradeSaved"), variant: "success" })
       // Ungraded mode: drop the row from the list after a beat so the
       // teacher sees the success state before it disappears.
       if (!showGraded) {
@@ -90,7 +92,10 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
       }
     } catch (err: unknown) {
       const detail = getErrorDetail(err)
-      toast({ title: detail || "Failed to save grade", variant: "destructive" })
+      toast({
+        title: detail || t("quizEditor.toast.gradeSaveFailed"),
+        variant: "destructive",
+      })
       updateDraft(item.answer_id, { savingState: "idle" })
     }
   }
@@ -106,7 +111,7 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
   if (error) {
     return (
       <p className="text-sm text-destructive py-4 text-center">
-        Failed to load submissions. Please try again.
+        {t("quizEditor.review.loadFailed")}
       </p>
     )
   }
@@ -118,9 +123,9 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
           <Users className="h-4 w-4" />
           {items.length === 0
             ? showGraded
-              ? "No open-ended answers yet."
-              : "Nothing to grade — you're all caught up."
-            : `${items.length} open-ended answer${items.length === 1 ? "" : "s"}`}
+              ? t("quizEditor.review.emptyAlready")
+              : t("quizEditor.review.emptyAllGraded")
+            : t("quizEditor.review.openEndedCount", { count: items.length })}
         </div>
         <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
           <input
@@ -129,7 +134,7 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
             onChange={(e) => setShowGraded(e.target.checked)}
             className="accent-primary"
           />
-          Show already graded
+          {t("quizEditor.review.showAlreadyGraded")}
         </label>
       </div>
 
@@ -148,17 +153,19 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                   <span className="inline-flex items-center gap-1">
                     <GraduationCap className="h-3.5 w-3.5" />
-                    {item.question_type === "essay" ? "Essay" : "Short answer"} · up to{" "}
-                    {item.max_points} pt{item.max_points !== 1 ? "s" : ""}
+                    {item.question_type === "essay"
+                      ? t("quizEditor.review.essay")
+                      : t("quizEditor.review.shortAnswer")}{" "}
+                    · {t("quizEditor.review.upToPoints", { count: item.max_points })}
                   </span>
                   {item.min_words ? (
                     <span
                       className={wordCount < item.min_words ? "text-warning" : undefined}
                     >
-                      {wordCount} / {item.min_words} words
+                      {t("quizEditor.review.wordsWithMin", { count: wordCount, min: item.min_words })}
                     </span>
                   ) : (
-                    <span>{wordCount} words</span>
+                    <span>{t("quizEditor.review.wordsCount", { count: wordCount })}</span>
                   )}
                 </div>
               </div>
@@ -173,12 +180,18 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
             </div>
 
             <div className="rounded-md border border-dashed bg-muted/30 p-3 text-sm whitespace-pre-wrap text-wrap-safe">
-              {item.text_answer || <span className="text-muted-foreground italic">(empty)</span>}
+              {item.text_answer || (
+                <span className="text-muted-foreground italic">
+                  {t("quizEditor.review.emptyAnswer")}
+                </span>
+              )}
             </div>
 
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Points (0–{item.max_points})</label>
+                <label className="text-xs text-muted-foreground">
+                  {t("quizEditor.review.pointsLabel", { max: item.max_points })}
+                </label>
                 <Input
                   type="number"
                   min={0}
@@ -189,11 +202,13 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
                 />
               </div>
               <div className="flex-1 min-w-[220px] space-y-1">
-                <label className="text-xs text-muted-foreground">Comment (optional)</label>
+                <label className="text-xs text-muted-foreground">
+                  {t("quizEditor.review.commentLabel")}
+                </label>
                 <Input
                   value={item.draftComment}
                   onChange={(e) => updateDraft(item.answer_id, { draftComment: e.target.value })}
-                  placeholder="Feedback shown to the student…"
+                  placeholder={t("quizEditor.review.commentPlaceholder")}
                   className="h-8 text-sm"
                 />
               </div>
@@ -209,7 +224,9 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
                 ) : (
                   <Save className="h-3.5 w-3.5 mr-1.5" />
                 )}
-                {item.savingState === "saved" ? "Saved" : "Save grade"}
+                {item.savingState === "saved"
+                  ? t("quizEditor.review.saved")
+                  : t("quizEditor.review.saveGrade")}
               </Button>
             </div>
           </div>

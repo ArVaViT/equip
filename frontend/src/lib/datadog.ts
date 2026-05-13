@@ -29,7 +29,7 @@ export function initDatadogRum() {
 
   const env = import.meta.env.VITE_DATADOG_ENV ?? import.meta.env.MODE
   const site = import.meta.env.VITE_DATADOG_SITE ?? "us5.datadoghq.com"
-  const service = import.meta.env.VITE_DATADOG_SERVICE ?? "biblie-school-frontend"
+  const service = import.meta.env.VITE_DATADOG_SERVICE ?? "equip-frontend"
   const version = import.meta.env.VITE_APP_VERSION ?? "0.0.0"
 
   datadogRum.init({

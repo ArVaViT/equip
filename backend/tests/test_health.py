@@ -8,7 +8,7 @@ def test_root_returns_api_info():
         resp = tc.get("/")
     assert resp.status_code == 200
     body = resp.json()
-    assert body["message"] == "Bible School API"
+    assert body["message"] == "Equip API"
     assert "version" in body
 
 

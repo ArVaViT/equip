@@ -105,7 +105,7 @@ def setup_logging() -> None:
         dd_handler = DatadogHTTPHandler(
             api_key=api_key,
             site=os.environ.get("DD_SITE", "datadoghq.com"),
-            service=os.environ.get("DD_SERVICE", "biblie-school-backend"),
+            service=os.environ.get("DD_SERVICE", "equip-backend"),
             env=os.environ.get("DD_ENV", "production"),
             version=version,
             vercel_region=os.environ.get("VERCEL_REGION", "unknown"),

@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -54,6 +55,7 @@ export default function CourseEditor() {
   const { courseId } = useParams<{ courseId: string }>()
   const navigate = useNavigate()
   const confirm = useConfirm()
+  const { t } = useTranslation()
 
   const [modal, setModal] = useState<CourseEditorModal>(null)
   const closeModal = useCallback(() => setModal(null), [])
@@ -70,11 +72,11 @@ export default function CourseEditor() {
     return (
       <div className="container mx-auto px-4">
         <ErrorState
-          title="Course not found"
-          description="The course may have been deleted or you may not have access."
+          title={t("courseEditor.notFound.title")}
+          description={t("courseEditor.notFound.description")}
           action={
             <Button variant="outline" size="sm" onClick={goBack}>
-              Back to courses
+              {t("courseEditor.notFound.backToCourses")}
             </Button>
           }
         />
@@ -87,7 +89,7 @@ export default function CourseEditor() {
     <div className="container mx-auto max-w-4xl px-4 py-8">
       <PageHeader
         backTo="/teacher"
-        backLabel="My courses"
+        backLabel={t("courseEditor.myCourses")}
         cover={
           <InlineEditCover
             value={course.image_url}
@@ -102,8 +104,8 @@ export default function CourseEditor() {
             value={course.title}
             onSave={(v) => data.savePatch({ title: v })}
             required
-            placeholder="Untitled course"
-            ariaLabel="Edit course title"
+            placeholder={t("courseEditor.untitledCourse")}
+            ariaLabel={t("courseEditor.editTitle")}
             maxLength={200}
           />
         }
@@ -113,14 +115,14 @@ export default function CourseEditor() {
             multiline
             value={course.description ?? ""}
             onSave={(v) => data.savePatch({ description: v || null })}
-            placeholder="Add a course description"
-            ariaLabel="Edit course description"
+            placeholder={t("courseEditor.addDescription")}
+            ariaLabel={t("courseEditor.editDescription")}
             maxLength={2000}
           />
         }
         meta={
           <Badge variant={pub ? "success" : "warning"} className="uppercase tracking-wide">
-            {pub ? "Published" : "Draft"}
+            {pub ? t("courseEditor.published") : t("courseEditor.draft")}
           </Badge>
         }
         actions={
@@ -131,23 +133,23 @@ export default function CourseEditor() {
               ) : (
                 <Eye className="h-3.5 w-3.5 mr-1.5" />
               )}
-              {pub ? "Unpublish" : "Publish"}
+              {pub ? t("courseEditor.unpublish") : t("courseEditor.publish")}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" aria-label="More actions">
+                <Button variant="outline" size="sm" aria-label={t("courseEditor.moreActions")}>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onSelect={() => setModal("enroll")}>
-                  <Calendar /> Enrollment
+                  <Calendar /> {t("courseEditor.menu.enrollment")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setModal("announce")}>
-                  <Megaphone /> Announcements
+                  <Megaphone /> {t("courseEditor.menu.announcements")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setModal("materials")}>
-                  <Paperclip /> Materials
+                  <Paperclip /> {t("courseEditor.menu.materials")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -156,7 +158,7 @@ export default function CourseEditor() {
                     setModal("events")
                   }}
                 >
-                  <CalendarDays /> Events
+                  <CalendarDays /> {t("courseEditor.menu.events")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={() => {
@@ -164,7 +166,7 @@ export default function CourseEditor() {
                     setModal("cohorts")
                   }}
                 >
-                  <Users /> Cohorts
+                  <Users /> {t("courseEditor.menu.cohorts")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

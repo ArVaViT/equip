@@ -14,6 +14,11 @@ frontend/frontend/
 .tmp-commit-msg.txt
 .commit-msg.tmp
 
+# Cursor IDE local rules + settings — referenced by CLAUDE.md as canonical
+# conventions but deliberately kept out of git (decision reverted in 0aa5aef
+# back in 2026-04). Each contributor maintains their own.
+.cursor/
+
 # Python
 __pycache__/
 *.py[cod]

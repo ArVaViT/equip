@@ -4,9 +4,18 @@ Single source of truth for how this app looks and behaves. Short on purpose.
 
 ## Aesthetic
 
-**Editorial, not playful.** Think Linear / Stripe docs / The Atlantic, not Duolingo.
-High contrast, confident typography, minimal colour, tight spacing, zero gratuitous
-gradients or shadows.
+**Editorial, with expressive moments.** Think Linear / Stripe docs / The Atlantic
+as the baseline — high contrast, confident typography, tight spacing — but with a
+deliberate set of expressive surfaces where motion, gradients, and richer
+interactions earn their place: hero areas, CTA buttons, success states, page
+transitions, the auth marketing column. The default state of any view is still
+quiet and flat. Expressive moments are framed by quiet ones; they don't blanket
+the UI.
+
+The expressive direction was formalized on 2026-05-12 (see
+`docs/UI-DECISIONS.md`). Before that the rule was "zero gratuitous gradients or
+shadows" — that's now scoped to *static / dense* surfaces (forms, tables, data
+views). Expressive surfaces have their own rules in "Motion" below.
 
 ## Tokens
 
@@ -49,6 +58,40 @@ One scale, one serif, one sans.
 - **Spacing:** Tailwind scale, multiples of 4. Page padding `p-6` desktop,
   `p-4` mobile. Cards `p-5`.
 
+## Motion
+
+Motion is part of the design language, not absent from it. Rules:
+
+- **Library:** `motion` (the package formerly known as `framer-motion`),
+  imported as `motion/react`. Documented exception to the 4-check rule in
+  "Adding a library" below.
+- **Primitives live in `frontend/src/components/motion/`:**
+  - `<FadeIn>` — opacity + small Y on mount
+  - `<StaggerChildren>` — orchestrated entrance for list/grid items
+  - `<Reveal>` — IntersectionObserver-based entrance for scroll-revealed content
+  - `<HoverLift>` — card-style hover translation (2px default)
+  - `<PressFeedback>` — button-style press scale (0.97 default)
+  - `<PageTransition>` — route-keyed `AnimatePresence` crossfade
+  - Reach for these before hand-rolling `motion.div` in a feature file.
+- **Easing:** `cubic-bezier(0.22, 1, 0.36, 1)` ("editorial ease") everywhere —
+  smooth, no bounce, no overshoot. Spring physics are banned outside drag
+  previews and toast slide-ins; both require sign-off.
+- **Duration scale:** 120ms (press feedback), 280ms (hover, page transitions),
+  480ms (mount fade-in), 550ms (scroll reveal). Nothing slower than 600ms,
+  nothing faster than 100ms.
+- **Reduced motion:** every primitive falls back to instant render under
+  `prefers-reduced-motion: reduce`. Hand-rolled motion must do the same — use
+  the `useReducedMotion` hook from `motion/react` as the single source of truth.
+- **Banned patterns:** auto-playing carousels, marquee, scroll-jacking,
+  parallax-on-everything, looping non-decorative animation, bouncy springs on
+  navigation, anything blocking interaction during entrance.
+
+The existing CSS animation system in `index.css` (`animate-fade-in`,
+`stagger-fade-in`, `motion-safe-hover-lift`, `skeleton-shimmer`, `ambient-mesh`,
+`hero-breathe`) stays in place for low-stakes / pre-React content and as a
+fallback in legacy callsites. Migration to motion primitives is gradual,
+page-by-page, not a big-bang rewrite.
+
 ## Icons
 
 - `lucide-react` is the **only** icon library.
@@ -88,6 +131,7 @@ One scale, one serif, one sans.
 | Validation             | `zod` |
 | HTTP                   | `axios` |
 | Sanitise HTML          | `dompurify` |
+| Motion                 | `motion/react` via `components/motion/*` |
 
 If a job is missing from this table, add it here before installing anything.
 
@@ -133,7 +177,12 @@ Four-check rule:
 3. Actively maintained (release in last 6 months).
 4. Adds ≤ 20 KB gzip to initial bundle.
 
-If any check fails, don't add it.
+If any check fails, don't add it. **Documented exceptions:**
+
+- `motion` (~30 KB gzip, fails check 4) — approved 2026-05-12 for the expressive
+  direction. The orchestrated entrance, viewport reveal, and `AnimatePresence`
+  primitives are not achievable in pure CSS without re-implementing them, and
+  the expected migration spans every page across Waves 2-4 of the polish work.
 
 ## Dark mode
 

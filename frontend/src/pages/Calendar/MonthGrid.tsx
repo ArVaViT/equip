@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -35,6 +36,7 @@ export function MonthGrid({
   onNextMonth,
   onGoToday,
 }: MonthGridProps) {
+  const { t } = useTranslation();
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -48,19 +50,19 @@ export function MonthGrid({
               size="sm"
               className="h-8 w-8 p-0"
               onClick={onPrevMonth}
-              aria-label="Previous month"
+              aria-label={t("calendar.prevMonth")}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <Button variant="outline" size="sm" className="h-8 text-xs" onClick={onGoToday}>
-              Today
+              {t("calendar.today")}
             </Button>
             <Button
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0"
               onClick={onNextMonth}
-              aria-label="Next month"
+              aria-label={t("calendar.nextMonth")}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -122,7 +124,7 @@ export function MonthGrid({
                     })}
                     {dayEvents.length > 3 && (
                       <span className="text-[9px] text-muted-foreground pl-1">
-                        +{dayEvents.length - 3} more
+                        {t("calendar.moreEvents", { count: dayEvents.length - 3 })}
                       </span>
                     )}
                   </div>
@@ -136,8 +138,8 @@ export function MonthGrid({
           {Object.entries(EVENT_COLORS).map(([type, color]) => (
             <span key={type} className="flex items-center gap-1">
               <span className={`w-2 h-2 rounded-full ${color.dot}`} />
-              <span className="capitalize text-muted-foreground">
-                {type.replace("_", " ")}
+              <span className="text-muted-foreground">
+                {t(`calendar.eventTypes.${type}`, { defaultValue: type.replace("_", " ") })}
               </span>
             </span>
           ))}

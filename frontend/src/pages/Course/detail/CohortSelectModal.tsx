@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { Modal } from "@/components/patterns"
 import { Button } from "@/components/ui/button"
 import type { Cohort } from "@/types"
@@ -22,11 +23,12 @@ export function CohortSelectModal({
   onConfirm,
   enrolling,
 }: Props) {
+  const { t } = useTranslation()
   return (
-    <Modal open={open} onClose={onClose} title="Select a Cohort">
+    <Modal open={open} onClose={onClose} title={t("courseDetail.cohortSelect.title")}>
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Multiple cohorts are available. Choose one to enroll in:
+          {t("courseDetail.cohortSelect.intro")}
         </p>
         {cohorts.map((cohort) => (
           <label
@@ -51,7 +53,10 @@ export function CohortSelectModal({
               </p>
               {cohort.max_students && (
                 <p className="text-xs text-muted-foreground">
-                  {cohort.student_count}/{cohort.max_students} spots filled
+                  {t("courseDetail.cohortSelect.spotsFilled", {
+                    enrolled: cohort.student_count,
+                    max: cohort.max_students,
+                  })}
                 </p>
               )}
             </div>
@@ -62,7 +67,9 @@ export function CohortSelectModal({
           disabled={!selectedCohortId || enrolling}
           className="w-full"
         >
-          {enrolling ? "Enrolling..." : "Enroll"}
+          {enrolling
+            ? t("courseDetail.cohortSelect.enrolling")
+            : t("courseDetail.cohortSelect.enroll")}
         </Button>
       </div>
     </Modal>

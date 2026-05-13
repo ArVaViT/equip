@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,6 +16,7 @@ interface Props {
 
 /** Warning-accented list of users whose role is `pending_teacher`. */
 export function PendingTeachersCard({ pending, updatingId, onApprove, onDeny }: Props) {
+  const { t } = useTranslation()
   if (pending.length === 0) return null
 
   return (
@@ -22,7 +24,7 @@ export function PendingTeachersCard({ pending, updatingId, onApprove, onDeny }: 
       <CardHeader>
         <CardTitle className="text-xl flex items-center gap-2">
           <Clock className="h-5 w-5 text-warning" strokeWidth={1.75} aria-hidden />
-          Pending Teacher Approvals
+          {t("admin.pendingTeachers.title")}
           <Badge variant="warning" className="font-normal">
             {pending.length}
           </Badge>
@@ -39,7 +41,7 @@ export function PendingTeachersCard({ pending, updatingId, onApprove, onDeny }: 
                 {u.avatar_url ? (
                   <img
                     src={toProxyImage(u.avatar_url)}
-                    alt={`${u.full_name ?? u.email} avatar`}
+                    alt={t("admin.users.avatarAltPrefix", { name: u.full_name ?? u.email })}
                     className="h-10 w-10 rounded-full object-cover"
                   />
                 ) : (
@@ -48,17 +50,17 @@ export function PendingTeachersCard({ pending, updatingId, onApprove, onDeny }: 
                   </div>
                 )}
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{u.full_name || "No name"}</p>
+                  <p className="font-medium truncate">{u.full_name || t("admin.pendingTeachers.missingName")}</p>
                   <p className="text-sm text-muted-foreground truncate">{u.email}</p>
                   <p className="text-xs text-muted-foreground">
-                    Registered {formatDate(u.created_at)}
+                    {t("admin.pendingTeachers.registered", { date: formatDate(u.created_at) })}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0 ml-4">
                 <Button size="sm" onClick={() => onApprove(u)} disabled={updatingId === u.id}>
                   <CheckCircle className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-                  Approve
+                  {t("admin.pendingTeachers.approve")}
                 </Button>
                 <Button
                   size="sm"
@@ -68,7 +70,7 @@ export function PendingTeachersCard({ pending, updatingId, onApprove, onDeny }: 
                   className="text-destructive hover:text-destructive"
                 >
                   <XCircle className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-                  Deny
+                  {t("admin.pendingTeachers.deny")}
                 </Button>
               </div>
             </div>

@@ -26,11 +26,11 @@ const args = [
   'upload',
   'dist/assets',
   '--service',
-  'biblie-school-frontend',
+  'equip-frontend',
   '--release-version',
   version,
   '--minified-path-prefix',
-  'https://biblie-school-frontend.vercel.app/assets',
+  'https://equipbible.com/assets',
 ]
 
 console.log(`[sourcemaps] uploading version=${version}`)

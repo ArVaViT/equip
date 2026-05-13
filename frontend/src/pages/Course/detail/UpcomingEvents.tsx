@@ -1,4 +1,5 @@
 import { AlertTriangle, CalendarDays } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import type { CalendarEvent } from "@/types"
 import { formatDate } from "@/i18n/format"
 
@@ -7,14 +8,15 @@ interface Props {
 }
 
 export function UpcomingEvents({ events }: Props) {
+  const { t } = useTranslation()
   if (events.length === 0) return null
 
   const now = new Date()
   const upcoming = events
     .filter((e) => {
       if (!e.event_date) return false
-      const t = new Date(e.event_date).getTime()
-      return !Number.isNaN(t) && t > now.getTime() - 24 * 60 * 60 * 1000
+      const ts = new Date(e.event_date).getTime()
+      return !Number.isNaN(ts) && ts > now.getTime() - 24 * 60 * 60 * 1000
     })
     .slice(0, 5)
 
@@ -24,7 +26,7 @@ export function UpcomingEvents({ events }: Props) {
     <div className="mb-5">
       <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
         <CalendarDays className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-        Upcoming Deadlines & Events
+        {t("courseDetail.upcoming.heading")}
       </h2>
       <div className="space-y-1.5">
         {upcoming.map((evt) => {

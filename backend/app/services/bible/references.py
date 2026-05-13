@@ -17,7 +17,7 @@ the trap where a permissive ``\\w+`` book pattern eats preceding words
 ("See Acts 1:8" → matched "See Acts").
 
 Cross-chapter ranges (``Acts 1:8-2:3``) are intentionally NOT supported
-in this first cut: rare in biblie-school's content, parsing them blurs
+in this first cut: rare in Equip's content, parsing them blurs
 into a "range walker" that materially complicates the lookup contract.
 """
 

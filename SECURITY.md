@@ -61,4 +61,4 @@ The following are **out of scope**:
 - Production API docs (`/docs`, `/redoc`) are disabled.
 - `pip-audit` and `npm audit` run in CI on every push and PR.
 
-Thank you for helping keep Bible School LMS and its users safe.
+Thank you for helping keep Equip and its users safe.
