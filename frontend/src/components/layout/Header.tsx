@@ -9,7 +9,7 @@ import { useAuth } from "@/context/useAuth"
 import { User as UserIcon, Menu } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import { cn } from "@/lib/utils"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent,TooltipTrigger } from "@/components/ui/tooltip"
 
 const UNDERLINE_LAYOUT_ID = "header-active-underline"
 

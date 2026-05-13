@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import type { Notification } from "@/types"
 import { useNotifications } from "./notifications/useNotifications"
 import { NotificationPanel } from "./notifications/NotificationPanel"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 export interface NotificationBellProps {
   /** Full-width panel under the bell inside narrow drawers (e.g. mobile header sheet). */
