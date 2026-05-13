@@ -1,6 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="8" fill="#0f172a"/>
-  <path d="M8 7h7c1.1 0 2 .9 2 2v14c0-.55-.45-1-1-1H8V7z" fill="white" opacity="0.9"/>
-  <path d="M24 7h-7c-1.1 0-2 .9-2 2v14c0-.55.45-1 1-1h8V7z" fill="white" opacity="0.7"/>
-  <path d="M16 9v13" stroke="white" stroke-width="0.5" opacity="0.5"/>
+  <!-- Equip favicon — deep violet field with inverse E mark.
+       Canonical source: equipbible-docs/design/assets/favicon.svg. -->
+  <rect width="32" height="32" rx="7" fill="#422277"/>
+  <g fill="#FAF7F1">
+    <rect x="9" y="8" width="3" height="16"/>
+    <rect x="9" y="8" width="14" height="3"/>
+    <rect x="9" y="15" width="11" height="3"/>
+    <rect x="9" y="21" width="14" height="3"/>
+  </g>
 </svg>
