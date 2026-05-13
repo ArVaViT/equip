@@ -1,7 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <!-- Equip favicon — deep violet field with inverse E mark.
-       Canonical source: equipbible-docs/design/assets/favicon.svg. -->
-  <rect width="32" height="32" rx="7" fill="#422277"/>
+  <!-- Equip API favicon — deep sage field (success token #2F7A53) with
+       warm-paper E mark. Inverse of the frontend favicon so that the
+       api.equipbible.com browser tab is visually distinct from
+       equipbible.com at a glance, while staying inside the brand palette.
+       Canonical source: equipbible-docs/design/assets/favicon.svg with
+       --primary swapped for --success. -->
+  <rect width="32" height="32" rx="7" fill="#2F7A53"/>
   <g fill="#FAF7F1">
     <rect x="9" y="8" width="3" height="16"/>
     <rect x="9" y="8" width="14" height="3"/>
