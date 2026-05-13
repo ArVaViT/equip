@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.api.v1 import api_router
@@ -130,9 +130,51 @@ async def log_requests(request: Request, call_next):
         vercel_request_id.reset(token)
 
 
+_ROOT_HTML = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/favicon.svg">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#2F7A53">
+<title>Equip API</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+       max-width:520px;margin:6rem auto;padding:0 1.5rem;color:#1a1a2e;
+       background:#FAF7F1;line-height:1.55}
+  h1{font-size:1.5rem;margin:0 0 .25rem;color:#2F7A53}
+  p{margin:.5rem 0;color:#4a4a6a;font-size:.95rem}
+  code{background:#fff;padding:.1em .35em;border-radius:4px;font-size:.9em}
+  a{color:#422277;text-decoration:none;border-bottom:1px solid #422277}
+  @media (prefers-color-scheme:dark){body{background:#1a1a1d;color:#fbfaf7}
+    h1{color:#A98FE3}p{color:#c5c2cf}code{background:#2a2a2e}
+    a{color:#A98FE3;border-bottom-color:#A98FE3}}
+</style>
+</head>
+<body>
+<h1>Equip API</h1>
+<p>v1.0.0 — RESTful backend for the Equip learning platform.</p>
+<p>This is a JSON API; routes live under <code>/api/v1/*</code>.
+Try <code>/health</code> for a quick liveness probe.</p>
+<p>Frontend: <a href="https://equipbible.com">equipbible.com</a></p>
+</body>
+</html>
+"""
+
+
 @app.get("/")
-async def root() -> dict:
-    return {"message": "Equip API", "version": "1.0.0"}
+async def root(request: Request) -> Response:
+    """Serve a small HTML landing for browsers (so the tab favicon and
+    Vercel's project-card scraper both pick up our brand mark) and JSON
+    for API clients. Negotiation is based on the request's Accept header:
+    anything that lists ``text/html`` ahead of (or without) ``application/json``
+    gets HTML; everything else keeps the historical JSON contract."""
+    accept = request.headers.get("accept", "").lower()
+    wants_html = "text/html" in accept and ("application/json" not in accept or accept.find("text/html") < accept.find("application/json"))
+    if wants_html:
+        return HTMLResponse(_ROOT_HTML)
+    return JSONResponse({"message": "Equip API", "version": "1.0.0"})
 
 
 @app.get("/health")
@@ -147,11 +189,13 @@ _FAVICON_SVG = _STATIC_DIR / "favicon.svg"
 @app.get("/favicon.ico", include_in_schema=False)
 @app.get("/favicon.svg", include_in_schema=False)
 async def favicon() -> FileResponse:
-    """Serve the same book-mark glyph as the frontend, but in the
-    project's slate-900 dark variant so the two Vercel deployments
-    are visually paired (frontend = brand blue, backend = dark
-    sibling). Browsers accept SVG behind any of the favicon paths;
-    Vercel's project-card scraper picks up `/favicon.ico` first."""
+    """Serve the sage-on-cream Equip API mark. Same glyph as the frontend
+    favicon (warm-paper E) but on the ``--success`` deep-sage background
+    (``#2F7A53``) instead of the ``--primary`` violet, so the
+    api.equipbible.com browser tab is visually distinct from
+    equipbible.com at a glance while staying inside the brand palette.
+    Both ``/favicon.ico`` and ``/favicon.svg`` resolve here; browsers and
+    Vercel's project-card scraper accept SVG behind either path."""
     return FileResponse(_FAVICON_SVG, media_type="image/svg+xml")
 
 
