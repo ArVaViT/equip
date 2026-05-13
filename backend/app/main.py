@@ -171,7 +171,9 @@ async def root(request: Request) -> Response:
     anything that lists ``text/html`` ahead of (or without) ``application/json``
     gets HTML; everything else keeps the historical JSON contract."""
     accept = request.headers.get("accept", "").lower()
-    wants_html = "text/html" in accept and ("application/json" not in accept or accept.find("text/html") < accept.find("application/json"))
+    wants_html = "text/html" in accept and (
+        "application/json" not in accept or accept.find("text/html") < accept.find("application/json")
+    )
     if wants_html:
         return HTMLResponse(_ROOT_HTML)
     return JSONResponse({"message": "Equip API", "version": "1.0.0"})
