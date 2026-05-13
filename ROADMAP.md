@@ -1,12 +1,12 @@
 # Roadmap
 
-This document outlines the planned direction for Bible School LMS. It is a
+This document outlines the planned direction for Equip. It is a
 living document — priorities may shift based on community feedback and
 contributor interest.
 
 Have an idea? Open a
-[feature request](https://github.com/ArVaViT/biblie-school/issues/new?template=feature_request.yml)
-or start a [discussion](https://github.com/ArVaViT/biblie-school/discussions).
+[feature request](https://github.com/ArVaViT/equip/issues/new?template=feature_request.yml)
+or start a [discussion](https://github.com/ArVaViT/equip/discussions).
 
 ## Legend
 
