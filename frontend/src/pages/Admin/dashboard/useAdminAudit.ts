@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
+import { useAsyncData } from "@/hooks/useAsyncData"
 import { coursesService } from "@/services/courses"
 import type { AuditLogQuery } from "@/services/audit"
 import { toast } from "@/lib/toast"
@@ -42,7 +43,6 @@ export function useAdminAudit({ enabled }: UseAdminAuditArgs) {
 
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(false)
 
   const updateAudit = useCallback(
     (patch: Record<string, string | null>, opts: { resetPage?: boolean } = {}) =>
@@ -61,38 +61,37 @@ export function useAdminAudit({ enabled }: UseAdminAuditArgs) {
     [setParams],
   )
 
-  useEffect(() => {
-    if (!enabled) return
-    let cancelled = false
-    setLoading(true)
-    ;(async () => {
-      try {
-        const query: AuditLogQuery = { page, page_size: AUDIT_PAGE_SIZE }
-        if (action) query.action = action
-        if (resource) query.resource_type = resource
-        if (dateFrom) query.date_from = new Date(dateFrom).toISOString()
-        // Treat the "to" filter as the full day: everything up to
-        // 23:59:59 of that calendar date.
-        if (dateTo) query.date_to = new Date(dateTo + "T23:59:59").toISOString()
+  const { data: fetchedData, loading, error: fetchError } = useAsyncData(
+    async (isCancelled) => {
+      if (!enabled) return undefined
+      const query: AuditLogQuery = { page, page_size: AUDIT_PAGE_SIZE }
+      if (action) query.action = action
+      if (resource) query.resource_type = resource
+      if (dateFrom) query.date_from = new Date(dateFrom).toISOString()
+      if (dateTo) query.date_to = new Date(dateTo + "T23:59:59").toISOString()
 
-        const data = await coursesService.getAuditLogs(query)
-        if (cancelled) return
-        setLogs(data.items ?? [])
-        setTotal(data.total ?? 0)
-      } catch (err: unknown) {
-        if (cancelled) return
-        const detail =
-          getErrorDetail(err) ||
-          "The audit_logs table may not exist yet. Deploy the latest migration."
-        toast({ title: `Audit log error: ${detail}`, variant: "destructive" })
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [enabled, page, action, resource, dateFrom, dateTo])
+      const data = await coursesService.getAuditLogs(query)
+      if (isCancelled()) return undefined
+      return data
+    },
+    [enabled, page, action, resource, dateFrom, dateTo],
+  )
+
+  // Sync fetched data into individual state
+  useEffect(() => {
+    if (!fetchedData) return
+    setLogs(fetchedData.items ?? [])
+    setTotal(fetchedData.total ?? 0)
+  }, [fetchedData])
+
+  // Surface fetch errors as toasts (matching original behaviour)
+  useEffect(() => {
+    if (!fetchError) return
+    const detail =
+      getErrorDetail(fetchError) ||
+      "The audit_logs table may not exist yet. Deploy the latest migration."
+    toast({ title: `Audit log error: ${detail}`, variant: "destructive" })
+  }, [fetchError])
 
   const resetFilters = () =>
     updateAudit({ ax: null, ar: null, af: null, at: null, ap: null })

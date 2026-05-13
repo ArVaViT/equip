@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
+import { useAsyncData } from "@/hooks/useAsyncData"
 import { coursesService } from "@/services/courses"
 import { supabase } from "@/lib/supabase"
 import { toast } from "@/lib/toast"
@@ -34,8 +35,6 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
   const [users, setUsers] = useState<ProfileRow[]>([])
   const [stats, setStats] = useState<AdminStats>({ users: 0, courses: 0, enrollments: 0 })
   const [adminCerts, setAdminCerts] = useState<AdminCert[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkRole, setBulkRole] = useState<UserRole>("student")
@@ -45,36 +44,35 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), [])
 
+  const { data: fetchedData, loading, error: fetchError } = useAsyncData(
+    async (isCancelled) => {
+      const [allUsers, coursesCount, enrollmentsCount, certs] = await Promise.all([
+        coursesService.getAllUsers(),
+        supabase.from("courses").select("id", { count: "exact", head: true }),
+        supabase.from("enrollments").select("id", { count: "exact", head: true }),
+        coursesService.getAdminPendingCerts().catch(() => []),
+      ])
+      if (isCancelled()) return undefined
+      return { allUsers, coursesCount, enrollmentsCount, certs }
+    },
+    [reloadKey],
+  )
+
+  // Sync fetched data into individual state (handlers still need setUsers/setAdminCerts)
   useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    ;(async () => {
-      try {
-        const [allUsers, coursesCount, enrollmentsCount, certs] = await Promise.all([
-          coursesService.getAllUsers(),
-          supabase.from("courses").select("id", { count: "exact", head: true }),
-          supabase.from("enrollments").select("id", { count: "exact", head: true }),
-          coursesService.getAdminPendingCerts().catch(() => []),
-        ])
-        if (cancelled) return
-        setUsers(allUsers as ProfileRow[])
-        setStats({
-          users: allUsers.length,
-          courses: coursesCount.count ?? 0,
-          enrollments: enrollmentsCount.count ?? 0,
-        })
-        setAdminCerts(certs)
-      } catch {
-        if (!cancelled) setError("Failed to load admin data. Please try again.")
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [reloadKey])
+    if (!fetchedData) return
+    const { allUsers, coursesCount, enrollmentsCount, certs } = fetchedData
+    setUsers(allUsers as ProfileRow[])
+    setStats({
+      users: allUsers.length,
+      courses: coursesCount.count ?? 0,
+      enrollments: enrollmentsCount.count ?? 0,
+    })
+    setAdminCerts(certs)
+  }, [fetchedData])
+
+  // Map Error | null → string | null to match the rest of the hook's contract
+  const error = fetchError?.message ?? null
 
   const filtered = useMemo(() => {
     const q = urlQuery.trim().toLowerCase()
