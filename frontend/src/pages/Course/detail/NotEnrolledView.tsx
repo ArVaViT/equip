@@ -33,7 +33,12 @@ export function NotEnrolledView({
 
   const activeCohort = cohorts.find((c) => c.status === "active")
   const enrollableCohorts = cohorts.filter(isEnrollableCohort)
-  const canEnroll = enrollableCohorts.length > 0 || cohorts.length === 0
+  // Institute courses (ADR-010): students can't self-enroll. Directors
+  // add them via the admin cohort UI. Owners (teacher/admin viewing
+  // their own course) still get the normal flow so they can preview.
+  const isInstituteGate = course.access_mode === "institute" && !isOwner
+  const canEnroll =
+    !isInstituteGate && (enrollableCohorts.length > 0 || cohorts.length === 0)
 
   const handleEnrollClick = () => {
     if (enrollableCohorts.length === 0) {
@@ -165,6 +170,16 @@ export function NotEnrolledView({
                   ? t("courseDetail.enrolling")
                   : t("courseDetail.enrollInCourse")}
             </Button>
+          </div>
+        ) : isInstituteGate ? (
+          <div>
+            <Button size="lg" disabled>
+              <Users className="mr-2 h-4 w-4" strokeWidth={1.75} aria-hidden />
+              {t("courseDetail.byInvitationOnly")}
+            </Button>
+            <p className="text-sm text-muted-foreground mt-2 max-w-prose">
+              {t("courseDetail.byInvitationOnlyHint")}
+            </p>
           </div>
         ) : isSignedIn ? (
           <div>

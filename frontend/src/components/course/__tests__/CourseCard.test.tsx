@@ -127,4 +127,17 @@ describe("CourseCard", () => {
     )
     expect(screen.getByText(/2 modules/i)).toBeInTheDocument()
   })
+
+  it('shows the "By invitation" badge on institute courses instead of the enrollment-window badge', () => {
+    const futureEnd = new Date(Date.now() + 86_400_000).toISOString()
+    renderCard(
+      makeCourse({
+        access_mode: "institute",
+        enrollment_start: null,
+        enrollment_end: futureEnd,
+      }),
+    )
+    expect(screen.getByText(/by invitation/i)).toBeInTheDocument()
+    expect(screen.queryByText(/enrolling now/i)).not.toBeInTheDocument()
+  })
 })
