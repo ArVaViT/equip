@@ -24,7 +24,25 @@ export const SUPPORTED_LOCALES = ["ru", "en"] as const
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
 export const DEFAULT_LOCALE: SupportedLocale = "ru"
 
-export const LOCALE_STORAGE_KEY = "bible-school:locale"
+export const LOCALE_STORAGE_KEY = "equip:locale"
+const LEGACY_LOCALE_STORAGE_KEY = "bible-school:locale"
+
+// One-time migration: existing users still have their locale under the old
+// pre-rebrand key. Carry the value over so a returning user keeps their
+// language preference instead of silently snapping back to the RU default.
+if (typeof window !== "undefined") {
+  try {
+    const legacy = window.localStorage.getItem(LEGACY_LOCALE_STORAGE_KEY)
+    if (legacy && !window.localStorage.getItem(LOCALE_STORAGE_KEY)) {
+      window.localStorage.setItem(LOCALE_STORAGE_KEY, legacy)
+    }
+    if (legacy !== null) {
+      window.localStorage.removeItem(LEGACY_LOCALE_STORAGE_KEY)
+    }
+  } catch {
+    // localStorage may throw (private mode, quota, disabled) — degrade silently
+  }
+}
 
 export function isSupportedLocale(value: unknown): value is SupportedLocale {
   return typeof value === "string" && (SUPPORTED_LOCALES as readonly string[]).includes(value)
