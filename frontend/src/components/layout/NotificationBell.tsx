@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import type { Notification } from "@/types"
 import { useNotifications } from "./notifications/useNotifications"
 import { NotificationPanel } from "./notifications/NotificationPanel"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 export interface NotificationBellProps {
   /** Full-width panel under the bell inside narrow drawers (e.g. mobile header sheet). */
@@ -78,6 +79,8 @@ export default function NotificationBell({
 
   return (
     <div className={cn("relative", isSheet && "w-full")}>
+      <Tooltip>
+  <TooltipTrigger asChild>
       <Button
         ref={buttonRef}
         variant="ghost"
@@ -118,6 +121,12 @@ export default function NotificationBell({
           </>
         )}
       </Button>
+        </TooltipTrigger>
+
+  <TooltipContent side="bottom">
+    <p>Notifications</p>
+  </TooltipContent>
+</Tooltip>
 
       {open && (
         <NotificationPanel

@@ -9,6 +9,7 @@ import './i18n/config'
 import '@fontsource-variable/inter/index.css'
 import '@fontsource-variable/fraunces/index.css'
 import './index.css'
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 // Initialize monitoring before React mounts so early boot errors
 // (bad env vars, missing #root, etc.) get captured. No-op when the
@@ -23,7 +24,9 @@ if (!rootEl) {
 ReactDOM.createRoot(rootEl).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      <TooltipProvider>   
+        <App />
+      </TooltipProvider>
     </ErrorBoundary>
   </React.StrictMode>,
 )

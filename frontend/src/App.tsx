@@ -15,6 +15,7 @@ import Footer from "./components/layout/Footer"
 import AnnouncementBanner from "./components/announcements/AnnouncementBanner"
 import PageSpinner from "./components/ui/PageSpinner"
 import ScrollToTop from "./components/layout/ScrollToTop";
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 const NotFound = lazy(() => import("./pages/NotFound"))
 
@@ -149,14 +150,15 @@ function AppRoutes() {
     </div>
   )
 }
-
 export default function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
           <ConfirmProvider>
-            <AppRoutes />
+            <TooltipProvider>        
+              <AppRoutes />
+            </TooltipProvider>      
           </ConfirmProvider>
         </AuthProvider>
       </ThemeProvider>

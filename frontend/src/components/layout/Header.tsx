@@ -7,6 +7,7 @@ import { useAuth } from "@/context/useAuth"
 import { User as UserIcon, Menu } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import { cn } from "@/lib/utils"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 const NotificationBell = lazy(() => import("./NotificationBell"))
 
@@ -67,7 +68,7 @@ export default function Header() {
   const closeMobile = () => setMobileOpen(false)
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/90 bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/75">
+    <header className="sticky top-0 z-40 border-b border-border/90 bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/75">
       <div className="container mx-auto max-w-[1400px] px-4">
         <div className="flex h-11 items-stretch justify-between gap-2 md:h-12 md:gap-4">
           <Link
@@ -118,28 +119,36 @@ export default function Header() {
                   <Suspense fallback={<div className="h-7 w-7 shrink-0" aria-hidden />}>
                     <NotificationBell />
                   </Suspense>
-                  <Link to="/profile">
-                    <Button
-                      variant={isActive("/profile") ? "secondary" : "ghost"}
-                      size="sm"
-                      className="h-7 w-7 shrink-0 rounded-full p-0"
-                      aria-label={t("header.profile")}
-                      title={t("header.profileAndSettings")}
-                    >
-                      {user.avatar_url ? (
-                        <img
-                          src={toProxyImage(user.avatar_url)}
-                          alt=""
-                          className="h-6 w-6 rounded-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none"
-                          }}
-                        />
-                      ) : (
-                        <UserIcon className="h-3.5 w-3.5" strokeWidth={ICON_STROKE} aria-hidden="true" />
-                      )}
-                    </Button>
-                  </Link>
+                 
+<Tooltip>
+  <TooltipTrigger asChild>
+    <Link to="/profile">
+      <Button
+        variant={isActive("/profile") ? "secondary" : "ghost"}
+        size="sm"
+        className="h-7 w-7 shrink-0 rounded-full p-0"
+        aria-label={t("header.profile")}
+      >
+        {user.avatar_url ? (
+          <img
+            src={toProxyImage(user.avatar_url)}
+            alt=""
+            className="h-6 w-6 rounded-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = "none"
+            }}
+          />
+        ) : (
+          <UserIcon className="h-3.5 w-3.5" strokeWidth={ICON_STROKE} aria-hidden="true" />
+        )}
+      </Button>
+    </Link>
+  </TooltipTrigger>
+  <TooltipContent side="bottom" sideOffset={8}>
+    <p>Profile</p>
+  </TooltipContent>
+</Tooltip>
+
                 </>
               ) : (
                 <>
@@ -177,7 +186,7 @@ export default function Header() {
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent
           side="right"
-          className="flex max-h-[100dvh] flex-col gap-0 overflow-hidden p-0"
+          className="flex max-h-[100dvh] flex-col gap-0 overflow-visible p-0"
         >
           <SheetHeader className="shrink-0 px-5 pb-3 pt-5">
             <SheetTitle className="font-sans text-sm font-semibold tracking-normal text-foreground">

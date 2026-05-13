@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ChevronUp } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 export default function ScrollToTop() {
   const [visible, setVisible] = useState(false);
