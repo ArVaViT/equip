@@ -135,9 +135,14 @@ def _purge_user(db: Session, uid: UUID) -> None:
     db.query(ChapterProgress).filter(ChapterProgress.user_id == uid).delete(synchronize_session=False)
     db.query(Notification).filter(Notification.user_id == uid).delete(synchronize_session=False)
 
-    attempt_ids = [a.id for a in db.query(QuizAttempt.id).filter(QuizAttempt.user_id == uid).all()]
-    if attempt_ids:
-        db.query(QuizAnswer).filter(QuizAnswer.attempt_id.in_(attempt_ids)).delete(synchronize_session=False)
+    # Delete every QuizAnswer whose parent QuizAttempt belongs to this user,
+    # then the QuizAttempts themselves. The answer delete is a single SQL
+    # round-trip (subquery against QuizAttempt) instead of pulling all
+    # attempt IDs into Python first — same result, one fewer query and no
+    # memory overhead proportional to attempt count.
+    db.query(QuizAnswer).filter(
+        QuizAnswer.attempt_id.in_(db.query(QuizAttempt.id).filter(QuizAttempt.user_id == uid))
+    ).delete(synchronize_session=False)
     db.query(QuizAttempt).filter(QuizAttempt.user_id == uid).delete(synchronize_session=False)
 
     db.query(AssignmentSubmission).filter(AssignmentSubmission.student_id == uid).delete(synchronize_session=False)

@@ -46,13 +46,19 @@ def get_calendar_events(
 
     # Drop trashed courses — users may still have enrollments pointing to
     # deleted courses, but their calendar should not advertise deadlines
-    # from content that has been removed from the catalog.
+    # from content that has been removed from the catalog. We fetch title
+    # AND source_locale in the same query (previously two separate fetches);
+    # source_locale is needed below for the translation overlay.
     course_titles: dict[str, str] = {}
-    courses = (
-        db.query(Course.id, Course.title).filter(Course.id.in_(enrolled_course_ids), Course.deleted_at.is_(None)).all()
+    course_source_locales: dict[str, LocaleCode] = {}
+    course_rows = (
+        db.query(Course.id, Course.title, Course.source_locale)
+        .filter(Course.id.in_(enrolled_course_ids), Course.deleted_at.is_(None))
+        .all()
     )
-    for cid, ctitle in courses:
+    for cid, ctitle, csrc in course_rows:
         course_titles[cid] = ctitle
+        course_source_locales[cid] = normalize_locale(csrc)
     enrolled_course_ids = list(course_titles.keys())
     if not enrolled_course_ids:
         return []
@@ -129,13 +135,6 @@ def get_calendar_events(
             )
 
     course_events = db.query(CourseEvent).filter(CourseEvent.course_id.in_(enrolled_course_ids)).all()
-
-    # Pre-fetch source locales per course so the overlay picks the right
-    # row (translation rows are keyed by display locale; fallback uses the
-    # course's source locale).
-    course_source_locales: dict[str, LocaleCode] = {}
-    for cid, src in db.query(Course.id, Course.source_locale).filter(Course.id.in_(enrolled_course_ids)).all():
-        course_source_locales[cid] = normalize_locale(src)
 
     # Bulk-fetch overlay rows for every course_event title + non-empty description
     # so non-admin students see the localized version. Admins always see source.
