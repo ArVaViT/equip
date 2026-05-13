@@ -1,6 +1,5 @@
 import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
-import type { Cohort } from "@/types"
 
 /** Enrollment-window state derived from (start, end) strings. */
 export function EnrollmentStatusBadge({ start, end }: { start: string; end: string }) {
@@ -33,19 +32,6 @@ export function EventTypeBadge({ type }: { type: string }) {
   )
 }
 
-const COHORT_BADGE_CLASS: Record<Cohort["status"], string> = {
-  upcoming: "bg-info/15 text-info",
-  active: "bg-success/15 text-success",
-  completed: "bg-muted text-muted-foreground",
-  archived: "bg-warning/15 text-warning",
-}
-
-export function CohortStatusBadge({ status }: { status: Cohort["status"] }) {
-  return (
-    <span
-      className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${COHORT_BADGE_CLASS[status]}`}
-    >
-      {status}
-    </span>
-  )
-}
+// CohortStatusBadge was used only by the (now-removed) teacher CohortsModal.
+// When the admin cohort UI ships (issue #212) it will own the cohort badge
+// in `pages/Admin/cohorts/`.

@@ -920,27 +920,6 @@
           "exam": "Exam",
           "other": "Other"
         }
-      },
-      "cohorts": {
-        "title": "Manage Cohorts",
-        "editCohort": "Edit Cohort",
-        "createCohort": "Create Cohort",
-        "namePlaceholder": "Cohort name (e.g. Spring 2026)",
-        "startDate": "Start Date",
-        "endDate": "End Date",
-        "enrollmentStart": "Enrollment Start",
-        "enrollmentEnd": "Enrollment End",
-        "maxStudents": "Max Students (optional)",
-        "maxStudentsPlaceholder": "Unlimited",
-        "saving": "Saving…",
-        "update": "Update Cohort",
-        "create": "Create Cohort",
-        "cancel": "Cancel",
-        "empty": "No cohorts yet.",
-        "studentCount_one": "{{count}} student",
-        "studentCount_other": "{{count}} students",
-        "studentMaxSuffix": " / {{max}} max",
-        "enrollmentWindow": "Enrollment: {{start}} — {{end}}"
       }
     }
   },
@@ -1006,8 +985,7 @@
       "enrollment": "Enrollment",
       "announcements": "Announcements",
       "materials": "Materials",
-      "events": "Events",
-      "cohorts": "Cohorts"
+      "events": "Events"
     }
   },
   "chapterEditor": {

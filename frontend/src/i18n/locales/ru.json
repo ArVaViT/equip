@@ -946,29 +946,6 @@
           "exam": "Экзамен",
           "other": "Другое"
         }
-      },
-      "cohorts": {
-        "title": "Управление когортами",
-        "editCohort": "Редактировать когорту",
-        "createCohort": "Создать когорту",
-        "namePlaceholder": "Название когорты (например, Весна 2026)",
-        "startDate": "Дата начала",
-        "endDate": "Дата окончания",
-        "enrollmentStart": "Начало записи",
-        "enrollmentEnd": "Окончание записи",
-        "maxStudents": "Максимум студентов (необязательно)",
-        "maxStudentsPlaceholder": "Без ограничения",
-        "saving": "Сохранение…",
-        "update": "Обновить когорту",
-        "create": "Создать когорту",
-        "cancel": "Отмена",
-        "empty": "Пока нет когорт.",
-        "studentCount_one": "{{count}} студент",
-        "studentCount_few": "{{count}} студента",
-        "studentCount_many": "{{count}} студентов",
-        "studentCount_other": "{{count}} студента",
-        "studentMaxSuffix": " / {{max}} макс.",
-        "enrollmentWindow": "Запись: {{start}} — {{end}}"
       }
     }
   },
@@ -1034,8 +1011,7 @@
       "enrollment": "Запись",
       "announcements": "Объявления",
       "materials": "Материалы",
-      "events": "События",
-      "cohorts": "Когорты"
+      "events": "События"
     }
   },
   "chapterEditor": {

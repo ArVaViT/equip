@@ -20,6 +20,11 @@ export interface Course {
   description: string | null
   image_url: string | null
   status: 'draft' | 'published'
+  // Controls enrollment policy independently from `status` (ADR-010):
+  // - 'public'    catalog enroll button works (subject to enrollment_start/end)
+  // - 'institute' enroll button is shown disabled with the
+  //              'Доступно только по приглашению' label
+  access_mode: 'public' | 'institute'
   created_by: string
   created_at: string
   updated_at: string
@@ -246,17 +251,19 @@ export interface CourseReview {
 
 export interface Cohort {
   id: string
-  course_id: string
   name: string
   start_date: string
   end_date: string
   enrollment_start: string | null
   enrollment_end: string | null
-  status: 'upcoming' | 'active' | 'completed' | 'archived'
+  status: 'upcoming' | 'active' | 'completed'
   max_students: number | null
-  student_count: number
+  created_by: string | null
   created_at: string
-  updated_at: string
+  updated_at: string | null
+  // Computed on the server from cohort_courses + enrollments — see ADR-010.
+  course_ids: string[]
+  student_count: number
 }
 
 export type NotificationType =

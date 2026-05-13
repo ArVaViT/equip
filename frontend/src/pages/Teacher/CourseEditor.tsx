@@ -19,7 +19,6 @@ import {
   Megaphone,
   MoreHorizontal,
   Paperclip,
-  Users,
 } from "lucide-react"
 import {
   ErrorState,
@@ -29,14 +28,12 @@ import {
 } from "@/components/patterns"
 import {
   AnnouncementsModal,
-  CohortsModal,
   CourseEditorSkeleton,
   EnrollmentModal,
   EventsModal,
   MaterialsModal,
   ModulesList,
   useAnnouncementsSection,
-  useCohortsSection,
   useCourseData,
   useEventsSection,
   useMaterialsSection,
@@ -64,7 +61,9 @@ export default function CourseEditor() {
   const data = useCourseData(courseId, confirm, goBack)
   const announcements = useAnnouncementsSection(courseId, confirm)
   const materials = useMaterialsSection(courseId, confirm)
-  const cohorts = useCohortsSection(courseId, confirm)
+  // Cohort management lives in the admin UI per ADR-010 — teachers
+  // don't create or manage cohorts. Their only cohort surface is the
+  // gradebook filter for their course.
   const events = useEventsSection(courseId, confirm)
 
   if (data.loading) return <CourseEditorSkeleton />
@@ -160,14 +159,6 @@ export default function CourseEditor() {
                 >
                   <CalendarDays /> {t("courseEditor.menu.events")}
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    cohorts.resetForm()
-                    setModal("cohorts")
-                  }}
-                >
-                  <Users /> {t("courseEditor.menu.cohorts")}
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </>
@@ -221,24 +212,6 @@ export default function CourseEditor() {
         onDownload={materials.download}
         onDelete={materials.remove}
         fileInputRef={materials.inputRef}
-      />
-
-      <CohortsModal
-        open={modal === "cohorts"}
-        onClose={() => {
-          closeModal()
-          cohorts.resetForm()
-        }}
-        cohorts={cohorts.cohorts}
-        form={cohorts.form}
-        onFormChange={cohorts.setForm}
-        editingId={cohorts.editingId}
-        saving={cohorts.saving}
-        onSave={cohorts.save}
-        onCancelEdit={cohorts.resetForm}
-        onEdit={cohorts.startEdit}
-        onDelete={cohorts.remove}
-        onComplete={cohorts.complete}
       />
 
       <EventsModal
