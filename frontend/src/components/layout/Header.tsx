@@ -86,7 +86,7 @@ export default function Header() {
   const closeMobile = () => setMobileOpen(false)
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/90 bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/75">
+    <header className="sticky top-0 z-50 border-b border-border/90 bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/75">
       <div className="container mx-auto max-w-[1400px] px-4">
         <div className="flex h-11 items-stretch justify-between gap-2 md:h-12 md:gap-4">
           <Link
@@ -192,19 +192,26 @@ export default function Header() {
             </div>
 
             <div className="flex md:hidden">
-              <PressFeedback className="inline-flex">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 min-w-8 px-1 text-muted-foreground hover:text-foreground"
-                  onClick={() => setMobileOpen(true)}
-                  aria-label={t("header.menu")}
-                  aria-expanded={mobileOpen}
-                >
-                  <Menu className="h-4 w-4" strokeWidth={ICON_STROKE} aria-hidden="true" />
-                </Button>
-              </PressFeedback>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PressFeedback className="inline-flex">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 min-w-8 px-1 text-muted-foreground hover:text-foreground"
+                      onClick={() => setMobileOpen(true)}
+                      aria-label={t("header.menu")}
+                      aria-expanded={mobileOpen}
+                    >
+                      <Menu className="h-4 w-4" strokeWidth={ICON_STROKE} aria-hidden="true" />
+                    </Button>
+                  </PressFeedback>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" sideOffset={8}>
+                  <p>{t("header.menu")}</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </div>
@@ -213,7 +220,7 @@ export default function Header() {
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent
           side="right"
-          className="flex max-h-[100dvh] flex-col gap-0 overflow-visible p-0"
+          className="flex max-h-[100dvh] flex-col gap-0 overflow-hidden p-0"
         >
           <SheetHeader className="shrink-0 px-5 pb-3 pt-5">
             <SheetTitle className="font-sans text-sm font-semibold tracking-normal text-foreground">
