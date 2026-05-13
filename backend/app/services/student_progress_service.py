@@ -287,12 +287,15 @@ def build_course_student_progress(db: Session, course: Course, course_id: str) -
         for ch_id, assignments in assignment_map.items():
             ch_key = (uid, str(ch_id))
             submissions = subs_by_user_chapter.get(ch_key, [])
+            # Build assignment_id -> latest-submission dict once per chapter
+            # so the per-assignment lookup is O(1) instead of an O(M) list
+            # comprehension. Submissions are already filtered to the latest
+            # per assignment upstream in _aggregate_assignment_submissions.
+            sub_by_assignment: dict[str, dict[str, Any]] = {s["assignment_id"]: s for s in submissions}
             for a in assignments:
-                a_id = str(a.id)
-                matching = [s for s in submissions if s["assignment_id"] == a_id]
-                if not matching:
+                latest = sub_by_assignment.get(str(a.id))
+                if latest is None:
                     continue
-                latest = matching[0]
                 assignment_results.append(
                     {
                         "chapter_title": chapter_title_map.get(str(ch_id), ""),
