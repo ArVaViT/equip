@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.core.database import get_db
-from app.models.cohort import Cohort
+from app.models.cohort import Cohort, CohortCourse
 from app.models.enrollment import Enrollment
 from app.models.user import User
 from app.schemas.course import EnrollmentResponse
@@ -54,14 +54,26 @@ def _enforce_cohort_gates(db: Session, course_id: str, cohort_id: str, now: date
     """Validate that the student can enroll into the requested cohort.
 
     Returns nothing on success; raises the appropriate HTTPException on
-    any gate failure (unknown cohort, inactive status, window not open,
-    window closed, or capacity reached).
+    any gate failure (cohort doesn't include this course, inactive
+    status, window not open, window closed, or capacity reached).
+
+    Cohort-course membership is checked through the ``cohort_courses``
+    junction (ADR-010): a cohort is valid for this course iff there's
+    a junction row tying the two.
     """
-    cohort = db.query(Cohort).filter(Cohort.id == cohort_id, Cohort.course_id == course_id).with_for_update().first()
+    cohort = db.query(Cohort).filter(Cohort.id == cohort_id).with_for_update().first()
     if not cohort:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cohort not found for this course",
+            detail="Cohort not found",
+        )
+    junction = (
+        db.query(CohortCourse).filter(CohortCourse.cohort_id == cohort.id, CohortCourse.course_id == course_id).first()
+    )
+    if junction is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cohort does not include this course",
         )
     if cohort.status != "active":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cohort is not active")
@@ -76,7 +88,12 @@ def _enforce_cohort_gates(db: Session, course_id: str, cohort_id: str, now: date
             detail="Cohort enrollment period has ended",
         )
     if cohort.max_students:
-        current_count = db.query(sa_func.count(Enrollment.id)).filter(Enrollment.cohort_id == cohort.id).scalar() or 0
+        current_count = (
+            db.query(sa_func.count(sa_func.distinct(Enrollment.user_id)))
+            .filter(Enrollment.cohort_id == cohort.id)
+            .scalar()
+            or 0
+        )
         if current_count >= cohort.max_students:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -107,10 +124,21 @@ def enroll_course(
 
     cohort_id: str | None = None
     if body.cohort_id:
+        # Cohort-route self-enrollment works for either access mode —
+        # joining the cohort is the director's intent regardless of
+        # whether the course is institute or public.
         _enforce_cohort_gates(db, course_id, body.cohort_id, now)
         cohort_id = body.cohort_id
     else:
-        # Cohort-less enrollment is gated by the course-level window only.
+        # Solo (no-cohort) enrollment. Institute courses block this path
+        # entirely (ADR-010): admin must add the student directly via
+        # the cohort endpoints or the admin-direct enrollment endpoint.
+        if course.access_mode == "institute":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This course is available only by invitation from the institute",
+            )
+        # Public courses are gated by the course-level enrollment window.
         if course.enrollment_start and now < course.enrollment_start:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

@@ -30,7 +30,13 @@ class Course(Base):
     __tablename__ = "courses"
     __table_args__ = (
         Index("ix_courses_created_by", "created_by"),
-        Index("ix_courses_status", "status"),
+        Index(
+            "ix_courses_status_created_at",
+            "status",
+            text("created_at DESC"),
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        Index("ix_courses_access_mode", "access_mode"),
         Index(
             "ix_courses_created_by_active",
             "created_by",
@@ -47,6 +53,11 @@ class Course(Base):
     description: Mapped[str | None] = mapped_column()
     image_url: Mapped[str | None] = mapped_column()
     status: Mapped[str] = mapped_column(default="draft")
+    # Access mode controls who can ENROLL in the course (separate from
+    # status which controls whether it's published in the catalog at all).
+    # See ADR-010 in equipbible-docs/product/decisions/ — institute-mode
+    # courses are visible but solo-enrollment is gated to admin.
+    access_mode: Mapped[str] = mapped_column(default="public", server_default="public")
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("profiles.id", ondelete="SET NULL"))
     enrollment_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     enrollment_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
