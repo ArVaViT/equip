@@ -63,7 +63,13 @@ function CourseCard({ course, style }: CourseCardProps) {
   const cardInner = (
     <Card className="flex h-full flex-col overflow-hidden border-border/60 transition-colors hover:border-primary/40">
       <div className="relative">
-        <EnrollmentBadge start={course.enrollment_start} end={course.enrollment_end} />
+        {course.access_mode === "institute" ? (
+          <Badge variant="muted" className="absolute right-3 top-3 z-10">
+            {t("courseCard.byInvitation")}
+          </Badge>
+        ) : (
+          <EnrollmentBadge start={course.enrollment_start} end={course.enrollment_end} />
+        )}
         {coverSrc && !imgError ? (
           <div className="aspect-[16/10] w-full overflow-hidden bg-muted">
             <img

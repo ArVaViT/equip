@@ -184,6 +184,7 @@
     "opensOn": "Opens {{date}}",
     "enrollmentClosed": "Enrollment closed",
     "enrollingNow": "Enrolling now",
+    "byInvitation": "By invitation",
     "openCourse": "Open",
     "modulesLabel_one": "{{count}} module",
     "modulesLabel_other": "{{count}} modules"
@@ -1027,6 +1028,8 @@
     "enrolling": "Enrolling...",
     "enrollmentNotAvailable": "Enrollment not available",
     "signInToEnroll": "Sign in to Enroll",
+    "byInvitationOnly": "By invitation only",
+    "byInvitationOnlyHint": "This course is part of an institute program. The program directors enroll students directly — please contact them.",
     "enrollmentClosedAllCohorts": "Enrollment window is closed for all available cohorts.",
     "noCohortsAvailable": "No cohorts are currently available for this course.",
     "enrollmentRangeLabel": "Enrollment: {{start}} — {{end}}",
