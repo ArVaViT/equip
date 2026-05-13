@@ -15,7 +15,8 @@
     "register": "Регистрация",
     "close": "Закрыть",
     "scrollToTop": "Наверх",
-    "dismissAnnouncement": "Закрыть объявление"
+    "dismissAnnouncement": "Закрыть объявление",
+    "notifications": "Уведомления"
   },
   "inlineEdit": {
     "defaultPlaceholder": "Нажмите для редактирования",

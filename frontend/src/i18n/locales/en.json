@@ -40,7 +40,8 @@
     "menu": "Menu",
     "navAriaLabel": "Main navigation",
     "mobileMenuTitle": "Navigation",
-    "mobileMenuDescription": "Site sections, notifications, and account."
+    "mobileMenuDescription": "Site sections, notifications, and account.",
+    "notifications": "Notifications"
   },
   "footer": {
     "tagline": "Structured biblical teaching for learners who take Scripture seriously.",
