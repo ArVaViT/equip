@@ -135,7 +135,10 @@ _ROOT_HTML = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="apple-touch-icon" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="shortcut icon" href="/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#2F7A53">
 <title>Equip API</title>
@@ -185,26 +188,64 @@ async def health() -> dict:
 
 
 _STATIC_DIR = Path(__file__).parent / "static"
-_FAVICON_SVG = _STATIC_DIR / "favicon.svg"
+
+# Sage-on-cream Equip API icon set. Same "E" glyph as the frontend
+# favicon (warm-paper inverse) but on a deep-sage ``--success`` field
+# (#2F7A53) instead of the violet ``--primary``, so the
+# api.equipbible.com browser tab and Vercel project tile are visually
+# distinct from equipbible.com while staying inside the brand palette.
+#
+# Why multiple formats:
+# - .svg scales perfectly but some legacy scrapers + iOS apple-touch-icon
+#   rendering favor PNG/ICO binaries.
+# - Multi-resolution .ico (16/32/48) is what most browsers cache first
+#   from the /favicon.ico path; serving a real ICO container avoids the
+#   "SVG-masquerading-as-ICO" silent-fallback some clients hit.
+# - apple-touch-icon.png 180x180 = iOS Home Screen.
+# - android-chrome-{192,512}.png = Android PWA install + adaptive icon.
+#
+# Regenerate via ``python app/static/_generate_icons.py`` whenever the
+# canonical SVG shape changes.
+_ICON_FILES: dict[str, tuple[str, str]] = {
+    "/favicon.svg": ("favicon.svg", "image/svg+xml"),
+    "/favicon.ico": ("favicon.ico", "image/x-icon"),
+    "/favicon-16x16.png": ("favicon-16x16.png", "image/png"),
+    "/favicon-32x32.png": ("favicon-32x32.png", "image/png"),
+    "/apple-touch-icon.png": ("apple-touch-icon.png", "image/png"),
+    "/apple-touch-icon-precomposed.png": ("apple-touch-icon.png", "image/png"),
+    "/android-chrome-192x192.png": ("android-chrome-192x192.png", "image/png"),
+    "/android-chrome-512x512.png": ("android-chrome-512x512.png", "image/png"),
+}
 
 
-@app.get("/favicon.ico", include_in_schema=False)
-@app.get("/favicon.svg", include_in_schema=False)
-async def favicon() -> FileResponse:
-    """Serve the sage-on-cream Equip API mark. Same glyph as the frontend
-    favicon (warm-paper E) but on the ``--success`` deep-sage background
-    (``#2F7A53``) instead of the ``--primary`` violet, so the
-    api.equipbible.com browser tab is visually distinct from
-    equipbible.com at a glance while staying inside the brand palette.
-    Both ``/favicon.ico`` and ``/favicon.svg`` resolve here; browsers and
-    Vercel's project-card scraper accept SVG behind either path."""
-    return FileResponse(_FAVICON_SVG, media_type="image/svg+xml")
+def _icon_route(filename: str, media_type: str):
+    """Build a handler that returns the icon file with strong-ish caching.
+    24-hour public cache: long enough that browsers don't re-fetch on every
+    tab open, short enough that a real change rolls out within a day even
+    if a downstream proxy ignores ETags."""
+
+    async def handler() -> FileResponse:
+        return FileResponse(
+            _STATIC_DIR / filename,
+            media_type=media_type,
+            headers={"Cache-Control": "public, max-age=86400, must-revalidate"},
+        )
+
+    return handler
 
 
-# /favicon.png and /vite.svg are noise endpoints that some clients
-# probe but which we don't actually want to serve. 204 keeps the
+for _path, (_file, _mime) in _ICON_FILES.items():
+    app.add_api_route(
+        _path,
+        _icon_route(_file, _mime),
+        include_in_schema=False,
+        methods=["GET", "HEAD"],
+    )
+
+
+# /vite.svg is a noise endpoint that some clients probe; 204 keeps the
 # logs clean without raising 404 alerts.
-@app.get("/favicon.png", include_in_schema=False)
 @app.get("/vite.svg", include_in_schema=False)
+@app.head("/vite.svg", include_in_schema=False)
 async def _noise_icons() -> Response:
     return Response(status_code=204)
