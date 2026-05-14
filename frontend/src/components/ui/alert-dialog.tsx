@@ -105,6 +105,11 @@ AlertDialogCancel.displayName = AlertDialogPrimitive.Cancel.displayName
 interface ConfirmOptions {
   title: string
   description?: string
+  /** Optional bullet list rendered below ``description``. Use sparingly —
+   *  only when the user genuinely needs to see a small list of specific
+   *  items before deciding (e.g. "the following critical checks will
+   *  ship to students if you publish anyway"). */
+  bulletList?: readonly string[]
   confirmLabel?: string
   cancelLabel?: string
   tone?: "default" | "destructive"
@@ -192,6 +197,16 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 <AlertDialogDescription className="whitespace-pre-line">
                   {confirmState.description}
                 </AlertDialogDescription>
+              )}
+              {confirmState.bulletList && confirmState.bulletList.length > 0 && (
+                <ul className="mt-3 space-y-1 rounded-md border border-border bg-muted/30 px-4 py-3 text-sm text-foreground">
+                  {confirmState.bulletList.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-wrap-safe">
+                      <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-muted-foreground" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
               )}
             </AlertDialogHeader>
             <AlertDialogFooter>

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
@@ -33,16 +33,19 @@ import {
   AccessModeModal,
   AnnouncementsModal,
   CourseEditorSkeleton,
+  CourseReadinessCard,
   EnrollmentModal,
   EventsModal,
   MaterialsModal,
   ModulesList,
   useAnnouncementsSection,
   useCourseData,
+  useCourseReadiness,
   useEventsSection,
   useMaterialsSection,
 } from "./editor"
 import type { CourseEditorModal } from "./editor/types"
+import type { ReadinessAction } from "@/services/courseReadiness"
 
 /**
  * Course editor: the one place teachers edit everything about a course.
@@ -72,6 +75,85 @@ export default function CourseEditor() {
   // don't create or manage cohorts. Their only cohort surface is the
   // gradebook filter for their course.
   const events = useEventsSection(courseId, confirm)
+  const readiness = useCourseReadiness(courseId)
+  const descriptionAnchorRef = useRef<HTMLDivElement | null>(null)
+  const coverAnchorRef = useRef<HTMLDivElement | null>(null)
+
+  const pub = data.course?.status === "published"
+
+  // ── Publish-flow with critical-readiness confirm ────────────────
+  // When the teacher tries to publish a course that has critical
+  // readiness failures, we warn instead of blocking. They can still
+  // proceed (no hard gate) but they have to make a deliberate choice.
+  const handleTogglePublish = useCallback(async () => {
+    if (!pub && readiness.report && readiness.report.critical_failing > 0) {
+      const failing = readiness.report.checks
+        .filter((c) => c.severity === "critical" && !c.passed)
+        .map((c) =>
+          t(c.message_key, {
+            defaultValue: c.message_key,
+            title: c.subject?.title,
+          }),
+        )
+      const ok = await confirm({
+        title: t("courseReadiness.publishConfirm.title"),
+        description: t("courseReadiness.publishConfirm.description", {
+          count: readiness.report.critical_failing,
+        }),
+        // Show up to 5 specific issues inline so the teacher knows what
+        // they're shipping; one-line, comma-joined feels truthful without
+        // a wall of bullet points.
+        bulletList: failing.slice(0, 5),
+        confirmLabel: t("courseReadiness.publishConfirm.confirm"),
+        tone: "destructive",
+      })
+      if (!ok) return
+    }
+    await data.togglePublish()
+    void readiness.refresh()
+  }, [confirm, data, pub, readiness, t])
+
+  // ── Deep-link fix actions ───────────────────────────────────────
+  const handleFix = useCallback(
+    (action: ReadinessAction) => {
+      const params = action.params
+      switch (action.type) {
+        case "set_description": {
+          descriptionAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+          const editButton =
+            descriptionAnchorRef.current?.querySelector<HTMLButtonElement>("button")
+          editButton?.click()
+          break
+        }
+        case "set_cover_image": {
+          coverAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+          break
+        }
+        case "open_enrollment":
+          setModal("enroll")
+          break
+        case "add_module":
+          void data.addModule().then(() => void readiness.refresh())
+          break
+        case "open_module":
+          if (params.module_id)
+            navigate(`/teacher/courses/${courseId}/modules/${params.module_id}/edit`)
+          break
+        case "open_chapter":
+        case "open_quiz":
+        case "open_assignment":
+          if (params.module_id && params.chapter_id)
+            navigate(
+              `/teacher/courses/${courseId}/modules/${params.module_id}/chapters/${params.chapter_id}/edit`,
+            )
+          break
+        case "open_grading_weights":
+          navigate(`/teacher/courses/${courseId}/gradebook`)
+          break
+      }
+    },
+    [courseId, data, navigate, readiness],
+  )
 
   if (data.loading) return <CourseEditorSkeleton />
   if (!data.course)
@@ -89,7 +171,7 @@ export default function CourseEditor() {
       </div>
     )
 
-  const { course, published: pub } = data
+  const { course } = data
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
@@ -97,12 +179,14 @@ export default function CourseEditor() {
         backTo="/teacher"
         backLabel={t("courseEditor.myCourses")}
         cover={
-          <InlineEditCover
-            value={course.image_url}
-            onUpload={data.uploadCover}
-            onRemove={data.removeCover}
-            alt={course.title}
-          />
+          <div ref={coverAnchorRef}>
+            <InlineEditCover
+              value={course.image_url}
+              onUpload={data.uploadCover}
+              onRemove={data.removeCover}
+              alt={course.title}
+            />
+          </div>
         }
         title={
           <InlineEdit
@@ -116,15 +200,17 @@ export default function CourseEditor() {
           />
         }
         description={
-          <InlineEdit
-            size="body"
-            multiline
-            value={course.description ?? ""}
-            onSave={(v) => data.savePatch({ description: v || null })}
-            placeholder={t("courseEditor.addDescription")}
-            ariaLabel={t("courseEditor.editDescription")}
-            maxLength={2000}
-          />
+          <div ref={descriptionAnchorRef}>
+            <InlineEdit
+              size="body"
+              multiline
+              value={course.description ?? ""}
+              onSave={(v) => data.savePatch({ description: v || null })}
+              placeholder={t("courseEditor.addDescription")}
+              ariaLabel={t("courseEditor.editDescription")}
+              maxLength={2000}
+            />
+          </div>
         }
         meta={
           <Badge variant={pub ? "success" : "warning"} className="uppercase tracking-wide">
@@ -133,7 +219,7 @@ export default function CourseEditor() {
         }
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={data.togglePublish}>
+            <Button variant="outline" size="sm" onClick={handleTogglePublish}>
               {pub ? (
                 <EyeOff className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
               ) : (
@@ -180,12 +266,24 @@ export default function CourseEditor() {
         }
       />
 
+      <CourseReadinessCard
+        report={readiness.report}
+        loading={readiness.loading}
+        onFix={handleFix}
+      />
+
       <ModulesList
         courseId={courseId ?? ""}
         modules={data.sortedModules}
         onDragEnd={data.reorderModules}
-        onAdd={data.addModule}
-        onRemove={data.removeModule}
+        onAdd={async () => {
+          await data.addModule()
+          void readiness.refresh()
+        }}
+        onRemove={async (id) => {
+          await data.removeModule(id)
+          void readiness.refresh()
+        }}
       />
 
       <EnrollmentModal

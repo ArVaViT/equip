@@ -1512,5 +1512,39 @@
       "label": "Assignment",
       "description": "Submit work for grading"
     }
+  },
+  "courseReadiness": {
+    "title": "Course readiness",
+    "fix": "Fix",
+    "allPassed": "Everything looks good — your course is ready to publish.",
+    "summary": "{{passing}} of {{total}} checks passing",
+    "criticalCount_one": "{{count}} critical item still missing",
+    "criticalCount_other": "{{count}} critical items still missing",
+    "severity": {
+      "critical": "Critical",
+      "recommended": "Recommended",
+      "polish": "Polish"
+    },
+    "publishConfirm": {
+      "title": "Publish despite missing items?",
+      "description_one": "This course still has {{count}} critical item that students would notice. You can publish anyway, but it is usually better to fix these first.",
+      "description_other": "This course still has {{count}} critical items that students would notice. You can publish anyway, but it is usually better to fix these first.",
+      "confirm": "Publish anyway"
+    },
+    "checks": {
+      "hasDescription": "The course has a description for the catalog.",
+      "hasCoverImage": "The course has a cover image.",
+      "hasEnrollmentWindow": "Enrollment open / close dates are set.",
+      "hasAtLeastOneModule": "The course has at least one module.",
+      "hasMultipleModules": "The course has two or more modules.",
+      "moduleHasChapters": "\"{{title}}\" has at least one chapter.",
+      "readingHasContent": "\"{{title}}\" has reading content.",
+      "quizHasQuestion": "Quiz in \"{{title}}\" has at least one question.",
+      "examHasQuestion": "Exam in \"{{title}}\" has at least one question.",
+      "quizQuestionsComplete": "Every question in \"{{title}}\" has the answers it needs (options, correct marker).",
+      "assignmentHasBrief": "Assignment in \"{{title}}\" has a brief / description.",
+      "quizWeightNonzero": "Quizzes count toward the final grade.",
+      "assignmentWeightNonzero": "Assignments count toward the final grade."
+    }
   }
 }

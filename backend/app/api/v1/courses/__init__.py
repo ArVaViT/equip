@@ -14,6 +14,7 @@ from . import chapters as _chapters  # noqa: F401
 from . import crud as _crud  # noqa: F401
 from . import enrollment as _enrollment  # noqa: F401
 from . import modules as _modules  # noqa: F401
+from . import readiness as _readiness  # noqa: F401
 from . import translate as _translate  # noqa: F401
 from ._router import router
 
