@@ -7,6 +7,7 @@ serialize the response" lives here.
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -122,19 +123,24 @@ def persist_answers(
         is_correct, points_earned = grade_auto_answer(question, ans.selected_option_id, options_by_id)
         total_score += points_earned
 
-        answer_row = QuizAnswer(
-            attempt_id=attempt.id,
-            question_id=ans.question_id,
-            selected_option_id=ans.selected_option_id,
-            text_answer=ans.text_answer,
-            is_correct=is_correct,
-            points_earned=points_earned,
+        # Pre-generate the PK so we can build QuizAnswerResult without
+        # round-tripping a flush per row. The caller (`submit_quiz`)
+        # commits once at the end, which flushes everything.
+        answer_id = uuid.uuid4()
+        db.add(
+            QuizAnswer(
+                id=answer_id,
+                attempt_id=attempt.id,
+                question_id=ans.question_id,
+                selected_option_id=ans.selected_option_id,
+                text_answer=ans.text_answer,
+                is_correct=is_correct,
+                points_earned=points_earned,
+            )
         )
-        db.add(answer_row)
-        db.flush()
         answer_results.append(
             QuizAnswerResult(
-                id=answer_row.id,
+                id=answer_id,
                 question_id=ans.question_id,
                 selected_option_id=ans.selected_option_id,
                 text_answer=ans.text_answer,
@@ -150,19 +156,21 @@ def persist_answers(
     for q in quiz.questions:
         if q.id in answered:
             continue
-        skip_row = QuizAnswer(
-            attempt_id=attempt.id,
-            question_id=q.id,
-            selected_option_id=None,
-            text_answer=None,
-            is_correct=False,
-            points_earned=0,
+        skip_id = uuid.uuid4()
+        db.add(
+            QuizAnswer(
+                id=skip_id,
+                attempt_id=attempt.id,
+                question_id=q.id,
+                selected_option_id=None,
+                text_answer=None,
+                is_correct=False,
+                points_earned=0,
+            )
         )
-        db.add(skip_row)
-        db.flush()
         answer_results.append(
             QuizAnswerResult(
-                id=skip_row.id,
+                id=skip_id,
                 question_id=q.id,
                 selected_option_id=None,
                 text_answer=None,
