@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import type { DraftOption, DraftQuestion } from "./types"
+import { getTrueFalseLabel, type DraftOption, type DraftQuestion } from "./types"
 
 interface Props {
   question: DraftQuestion
@@ -68,6 +68,7 @@ export function QuestionCard({
                 size="sm"
                 className="text-destructive hover:text-destructive h-7 w-7 p-0 shrink-0"
                 onClick={onRemove}
+                aria-label={t("quizEditor.questions.removeQuestionAria", { n: qIdx + 1 })}
               >
                 <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
               </Button>
@@ -150,6 +151,7 @@ export function QuestionCard({
                         size="sm"
                         className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive shrink-0"
                         onClick={() => onRemoveOption(oIdx)}
+                        aria-label={t("quizEditor.questions.removeOptionAria", { n: oIdx + 1 })}
                       >
                         <Trash2 className="h-3 w-3" strokeWidth={1.75} />
                       </Button>
@@ -181,7 +183,7 @@ export function QuestionCard({
                       onChange={() => onUpdateOption(oIdx, { is_correct: true })}
                       className="accent-primary"
                     />
-                    {opt.option_text}
+                    {getTrueFalseLabel(opt.option_text, t)}
                   </label>
                 ))}
               </div>
