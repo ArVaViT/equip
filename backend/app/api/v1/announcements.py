@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import assert_course_owner, get_current_user, require_teacher
 from app.core.database import get_db
+from app.core.sanitize import sanitize_string
 from app.models.announcement import Announcement
 from app.models.course import Course
 from app.models.enrollment import Enrollment
@@ -121,10 +122,17 @@ def create_announcement(
     else:
         course = None
 
+    # Defence-in-depth: the React app sanitizes via DOMPurify before
+    # sending, but a direct API caller can bypass that. Announcements
+    # fan out to every enrolled student via create_notifications_bulk
+    # below — an unsanitized payload would persist stored XSS into the
+    # notification feed and the announcement banner.
+    safe_title = sanitize_string(data.title)
+    safe_content = sanitize_string(data.content)
     announcement = Announcement(
         id=uuid.uuid4(),
-        title=data.title,
-        content=data.content,
+        title=safe_title,
+        content=safe_content,
         course_id=data.course_id,
         created_by=teacher.id,
     )
@@ -172,9 +180,9 @@ def update_announcement(
         )
 
     if data.title is not None:
-        announcement.title = data.title
+        announcement.title = sanitize_string(data.title)
     if data.content is not None:
-        announcement.content = data.content
+        announcement.content = sanitize_string(data.content)
 
     db.commit()
     db.refresh(announcement)
