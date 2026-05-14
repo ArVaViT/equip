@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useSearchParams } from "react-router-dom"
 import { useAsyncData } from "@/hooks/useAsyncData"
 import { coursesService } from "@/services/courses"
@@ -32,6 +33,7 @@ const pickOption = <T extends readonly string[]>(
  * is bookmarkable and survives navigation.
  */
 export function useAdminAudit({ enabled }: UseAdminAuditArgs) {
+  const { t } = useTranslation()
   const [params, setParams] = useSearchParams()
 
   const action = pickOption(params.get("ax"), ACTION_OPTIONS)
@@ -87,11 +89,9 @@ export function useAdminAudit({ enabled }: UseAdminAuditArgs) {
   // Surface fetch errors as toasts (matching original behaviour)
   useEffect(() => {
     if (!fetchError) return
-    const detail =
-      getErrorDetail(fetchError) ||
-      "The audit_logs table may not exist yet. Deploy the latest migration."
-    toast({ title: `Audit log error: ${detail}`, variant: "destructive" })
-  }, [fetchError])
+    const detail = getErrorDetail(fetchError) || t("admin.audit.errorTableMissing")
+    toast({ title: `${t("admin.audit.errorPrefix")}: ${detail}`, variant: "destructive" })
+  }, [fetchError, t])
 
   const resetFilters = () =>
     updateAudit({ ax: null, ar: null, af: null, at: null, ap: null })

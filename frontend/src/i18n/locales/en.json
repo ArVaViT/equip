@@ -783,6 +783,7 @@
     "upcomingTitle": "Upcoming (14 days)",
     "upcomingEmpty": "No upcoming events",
     "overdue": "Overdue",
+    "loadError": "Failed to load calendar events. Please try again.",
     "eventTypes": {
       "deadline": "Deadline",
       "live_session": "Live session",
@@ -1277,7 +1278,21 @@
       "missingName": "No name",
       "registered": "Registered {{date}}",
       "approve": "Approve",
-      "deny": "Deny"
+      "deny": "Deny",
+      "toast": {
+        "approved": "Teacher approved",
+        "approveFailed": "Failed to approve teacher",
+        "denied": "Teacher denied",
+        "denyFailed": "Failed to deny teacher"
+      },
+      "confirm": {
+        "approveTitle": "Approve this teacher?",
+        "approveDescription": "{{name}} will gain access to teacher features.",
+        "approveAction": "Approve",
+        "denyTitle": "Deny this teacher?",
+        "denyDescription": "{{name}}'s teacher request will be rejected.",
+        "denyAction": "Deny"
+      }
     },
     "pendingCerts": {
       "title": "Certificate Approvals",
@@ -1285,12 +1300,35 @@
       "courseFallback": "Course",
       "approvedBy": "Approved by {{name}}",
       "approve": "Approve",
-      "reject": "Reject"
+      "reject": "Reject",
+      "toast": {
+        "approved": "Certificate approved",
+        "approveFailed": "Failed to approve certificate",
+        "rejected": "Certificate rejected",
+        "rejectFailed": "Failed to reject certificate"
+      }
     },
     "overview": {
       "totalUsers": "Total Users",
       "totalCourses": "Total Courses",
-      "totalEnrollments": "Total Enrollments"
+      "totalEnrollments": "Total Enrollments",
+      "loadError": "Failed to load admin data. Please try again.",
+      "toast": {
+        "roleUpdated": "Role updated",
+        "roleUpdateFailed": "Failed to update role",
+        "userDeleted": "User deleted",
+        "deleteUserFailed": "Failed to delete user",
+        "bulkUpdated": "Updated {{count}} user(s) to {{role}}",
+        "bulkUpdateFailed": "Bulk update failed"
+      },
+      "confirm": {
+        "deleteUserTitle": "Delete {{name}}?",
+        "deleteUserDescription": "This permanently removes their account, enrollments, submissions, grades, certificates, and notifications. Courses they created will be kept but disassociated. This cannot be undone.",
+        "deleteUserAction": "Delete account",
+        "bulkRoleTitle": "Change role for selected users?",
+        "bulkRoleDescription": "{{count}} user(s) will be set to role \"{{role}}\".",
+        "bulkRoleAction": "Apply"
+      }
     },
     "audit": {
       "filterAction": "Action",
@@ -1309,7 +1347,9 @@
       "thAction": "Action",
       "thResource": "Resource",
       "thResourceId": "Resource ID",
-      "thIp": "IP"
+      "thIp": "IP",
+      "errorPrefix": "Audit log error",
+      "errorTableMissing": "The audit_logs table may not exist yet. Deploy the latest migration."
     }
   },
   "roles": {

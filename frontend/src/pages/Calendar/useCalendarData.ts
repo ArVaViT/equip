@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { coursesService } from "@/services/courses";
@@ -22,6 +23,7 @@ interface CalendarData {
  * reload after a transient fetch failure.
  */
 export function useCalendarData(): CalendarData {
+  const { t } = useTranslation();
   const [retryCount, setRetryCount] = useState(0);
   const [params, setParams] = useSearchParams();
 
@@ -51,7 +53,7 @@ export function useCalendarData(): CalendarData {
   // The CalendarData interface promises a `string | null` user-facing message.
   // Always emit the curated fallback so a raw axios "Network Error" never
   // leaks into the calendar page's error banner.
-  const fetchError = error ? "Failed to load calendar events. Please try again." : null;
+  const fetchError = error ? t("calendar.loadError") : null;
 
   return {
     events: fetchedData?.events ?? [],

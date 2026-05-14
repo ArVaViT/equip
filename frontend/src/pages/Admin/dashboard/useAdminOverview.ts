@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
 import { useAsyncData } from "@/hooks/useAsyncData"
 import { coursesService } from "@/services/courses"
@@ -9,6 +10,13 @@ import { useConfirm } from "@/components/ui/alert-dialog"
 import type { UserRole } from "@/types"
 import type { AdminCert } from "./PendingCertsCard"
 import type { AdminStats, ProfileRow } from "./constants"
+
+const ROLE_I18N_KEY: Record<UserRole, string> = {
+  student: "roles.student",
+  pending_teacher: "roles.pendingTeacher",
+  teacher: "roles.teacher",
+  admin: "roles.admin",
+}
 
 interface UseAdminOverviewArgs {
   /** Current signed-in user id — excluded from bulk operations and delete confirmations. */
@@ -24,6 +32,7 @@ interface UseAdminOverviewArgs {
  */
 export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
   const confirm = useConfirm()
+  const { t } = useTranslation()
 
   const {
     input: searchInput,
@@ -74,7 +83,7 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
   // Surface a friendly fallback to the rest of the hook's `error: string | null`
   // contract — AdminDashboard renders this verbatim in <ErrorState>, so we
   // never want a raw axios / supabase message bleeding into the UI.
-  const error = fetchError ? "Failed to load admin data. Please try again." : null
+  const error = fetchError ? t("admin.overview.loadError") : null
 
   const filtered = useMemo(() => {
     const q = urlQuery.trim().toLowerCase()
@@ -105,9 +114,9 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
     try {
       await coursesService.updateUserRole(userId, newRole)
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)))
-      toast({ title: "Role updated", variant: "success" })
+      toast({ title: t("admin.overview.toast.roleUpdated"), variant: "success" })
     } catch {
-      toast({ title: "Failed to update role", variant: "destructive" })
+      toast({ title: t("admin.overview.toast.roleUpdateFailed"), variant: "destructive" })
     } finally {
       setUpdatingId(null)
     }
@@ -115,10 +124,9 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
 
   const handleDeleteUser = async (target: ProfileRow) => {
     const ok = await confirm({
-      title: `Delete ${target.full_name || target.email}?`,
-      description:
-        "This permanently removes their account, enrollments, submissions, grades, certificates, and notifications. Courses they created will be kept but disassociated. This cannot be undone.",
-      confirmLabel: "Delete account",
+      title: t("admin.overview.confirm.deleteUserTitle", { name: target.full_name || target.email }),
+      description: t("admin.overview.confirm.deleteUserDescription"),
+      confirmLabel: t("admin.overview.confirm.deleteUserAction"),
       tone: "destructive",
     })
     if (!ok) return
@@ -132,9 +140,12 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
         next.delete(target.id)
         return next
       })
-      toast({ title: "User deleted", variant: "success" })
+      toast({ title: t("admin.overview.toast.userDeleted"), variant: "success" })
     } catch (err) {
-      toast({ title: getErrorDetail(err, "Failed to delete user"), variant: "destructive" })
+      toast({
+        title: getErrorDetail(err, t("admin.overview.toast.deleteUserFailed")),
+        variant: "destructive",
+      })
     } finally {
       setUpdatingId(null)
     }
@@ -166,10 +177,14 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
     // themselves mid-action would lock them out.
     const ids = [...selectedIds].filter((id) => id !== currentUserId)
     if (ids.length === 0) return
+    const localizedRole = t(ROLE_I18N_KEY[bulkRole])
     const ok = await confirm({
-      title: "Change role for selected users?",
-      description: `${ids.length} user(s) will be set to role "${bulkRole}".`,
-      confirmLabel: "Apply",
+      title: t("admin.overview.confirm.bulkRoleTitle"),
+      description: t("admin.overview.confirm.bulkRoleDescription", {
+        count: ids.length,
+        role: localizedRole,
+      }),
+      confirmLabel: t("admin.overview.confirm.bulkRoleAction"),
     })
     if (!ok) return
     setBulkUpdating(true)
@@ -179,9 +194,18 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
         prev.map((u) => (ids.includes(u.id) ? { ...u, role: bulkRole } : u)),
       )
       setSelectedIds(new Set())
-      toast({ title: `Updated ${result.updated} user(s) to ${bulkRole}`, variant: "success" })
+      toast({
+        title: t("admin.overview.toast.bulkUpdated", {
+          count: result.updated,
+          role: localizedRole,
+        }),
+        variant: "success",
+      })
     } catch (err) {
-      toast({ title: getErrorDetail(err, "Bulk update failed"), variant: "destructive" })
+      toast({
+        title: getErrorDetail(err, t("admin.overview.toast.bulkUpdateFailed")),
+        variant: "destructive",
+      })
     } finally {
       setBulkUpdating(false)
     }
@@ -208,22 +232,36 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
   }
 
   const approvePendingTeacher = async (u: ProfileRow) => {
+    const name = u.full_name || u.email
     const ok = await confirm({
-      title: "Approve this teacher?",
-      description: `${u.full_name || u.email} will gain access to teacher features.`,
-      confirmLabel: "Approve",
+      title: t("admin.pendingTeachers.confirm.approveTitle"),
+      description: t("admin.pendingTeachers.confirm.approveDescription", { name }),
+      confirmLabel: t("admin.pendingTeachers.confirm.approveAction"),
     })
-    if (ok) await setTeacherRole(u.id, "teacher", "Teacher approved", "Failed to approve teacher")
+    if (ok)
+      await setTeacherRole(
+        u.id,
+        "teacher",
+        t("admin.pendingTeachers.toast.approved"),
+        t("admin.pendingTeachers.toast.approveFailed"),
+      )
   }
 
   const denyPendingTeacher = async (u: ProfileRow) => {
+    const name = u.full_name || u.email
     const ok = await confirm({
-      title: "Deny this teacher?",
-      description: `${u.full_name || u.email}'s teacher request will be rejected.`,
-      confirmLabel: "Deny",
+      title: t("admin.pendingTeachers.confirm.denyTitle"),
+      description: t("admin.pendingTeachers.confirm.denyDescription", { name }),
+      confirmLabel: t("admin.pendingTeachers.confirm.denyAction"),
       tone: "destructive",
     })
-    if (ok) await setTeacherRole(u.id, "student", "Teacher denied", "Failed to deny teacher")
+    if (ok)
+      await setTeacherRole(
+        u.id,
+        "student",
+        t("admin.pendingTeachers.toast.denied"),
+        t("admin.pendingTeachers.toast.denyFailed"),
+      )
   }
 
   const handleCertDecision = async (
@@ -248,16 +286,16 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
     handleCertDecision(
       certId,
       () => coursesService.adminApproveCert(certId),
-      "Certificate approved",
-      "Failed to approve certificate",
+      t("admin.pendingCerts.toast.approved"),
+      t("admin.pendingCerts.toast.approveFailed"),
     )
 
   const handleRejectCert = (certId: string) =>
     handleCertDecision(
       certId,
       () => coursesService.rejectCert(certId),
-      "Certificate rejected",
-      "Failed to reject certificate",
+      t("admin.pendingCerts.toast.rejected"),
+      t("admin.pendingCerts.toast.rejectFailed"),
     )
 
   return {
