@@ -195,6 +195,132 @@ class TestListCohortsForCourse:
         assert names == ["One"]
 
 
+class TestListAllCohorts:
+    """``GET /cohorts`` — admin-wide list with optional status filter."""
+
+    def test_empty_admin_list(self, admin_client: TestClient):
+        resp = admin_client.get(COHORT_PREFIX)
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_returns_all_cohorts_ordered_by_start_date_desc(self, admin_client: TestClient, db: Session):
+        _seed_course(db)
+        older = NOW - timedelta(days=30)
+        newer = NOW - timedelta(days=5)
+        _seed_cohort_with_course(db, name="Older", start_date=older)
+        _seed_cohort_with_course(db, name="Newer", start_date=newer)
+
+        resp = admin_client.get(COHORT_PREFIX)
+        assert resp.status_code == 200
+        names = [c["name"] for c in resp.json()]
+        assert names == ["Newer", "Older"]
+
+    def test_status_filter_returns_only_matching(self, admin_client: TestClient, db: Session):
+        _seed_course(db)
+        _seed_cohort_with_course(db, name="Upcoming One", status="upcoming")
+        _seed_cohort_with_course(db, name="Active One", status="active")
+        _seed_cohort_with_course(db, name="Completed One", status="completed")
+
+        resp = admin_client.get(COHORT_PREFIX, params={"status": "active"})
+        assert resp.status_code == 200
+        names = [c["name"] for c in resp.json()]
+        assert names == ["Active One"]
+
+    def test_serializes_course_ids_and_student_count(self, admin_client: TestClient, db: Session, student):
+        _seed_course(db, course_id="c-1")
+        _seed_course(db, course_id="c-2")
+        cohort = _seed_cohort_with_course(db, course_id="c-1", name="N")
+        # Attach second course + enrol the student in both.
+        db.add(CohortCourse(cohort_id=cohort.id, course_id="c-2"))
+        _seed_enrollment(db, course_id="c-1", cohort_id=cohort.id)
+        _seed_enrollment(db, course_id="c-2", cohort_id=cohort.id)
+        db.commit()
+
+        resp = admin_client.get(COHORT_PREFIX)
+        body = resp.json()
+        assert len(body) == 1
+        # student_count counts DISTINCT users — one student in two courses = 1.
+        assert body[0]["student_count"] == 1
+        assert set(body[0]["course_ids"]) == {"c-1", "c-2"}
+
+    def test_teacher_cannot_list(self, client: TestClient):
+        resp = client.get(COHORT_PREFIX)
+        assert resp.status_code == 403
+
+    def test_student_cannot_list(self, student_client: TestClient):
+        resp = student_client.get(COHORT_PREFIX)
+        assert resp.status_code == 403
+
+
+class TestGetCohort:
+    """``GET /cohorts/{id}`` — single-fetch with computed course_ids +
+    student_count."""
+
+    def test_admin_gets_cohort_with_computed_fields(self, admin_client: TestClient, db: Session, student):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db, name="Spring")
+        _seed_enrollment(db, course_id="test-course-1", cohort_id=cohort.id)
+
+        resp = admin_client.get(f"{COHORT_PREFIX}/{cohort.id}")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["name"] == "Spring"
+        assert body["course_ids"] == ["test-course-1"]
+        assert body["student_count"] == 1
+
+    def test_nonexistent_returns_404(self, admin_client: TestClient):
+        resp = admin_client.get(f"{COHORT_PREFIX}/{uuid.uuid4()}")
+        assert resp.status_code == 404
+
+    def test_teacher_cannot_get(self, client: TestClient, db: Session):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        resp = client.get(f"{COHORT_PREFIX}/{cohort.id}")
+        assert resp.status_code == 403
+
+    def test_student_cannot_get(self, student_client: TestClient, db: Session):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        resp = student_client.get(f"{COHORT_PREFIX}/{cohort.id}")
+        assert resp.status_code == 403
+
+
+class TestListCohortCourses:
+    """``GET /cohorts/{id}/courses`` — plain list[str] junction reader."""
+
+    def test_returns_attached_course_ids(self, admin_client: TestClient, db: Session):
+        _seed_course(db, course_id="c-A")
+        _seed_course(db, course_id="c-B")
+        cohort = _seed_cohort_with_course(db, course_id="c-A")
+        db.add(CohortCourse(cohort_id=cohort.id, course_id="c-B"))
+        db.commit()
+
+        resp = admin_client.get(f"{COHORT_PREFIX}/{cohort.id}/courses")
+        assert resp.status_code == 200
+        assert set(resp.json()) == {"c-A", "c-B"}
+
+    def test_empty_when_no_courses_attached(self, admin_client: TestClient, db: Session):
+        # Cohort with no junction rows
+        cohort = Cohort(name="Empty", start_date=NOW, end_date=NEXT_WEEK)
+        db.add(cohort)
+        db.commit()
+        db.refresh(cohort)
+
+        resp = admin_client.get(f"{COHORT_PREFIX}/{cohort.id}/courses")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_nonexistent_cohort_returns_404(self, admin_client: TestClient):
+        resp = admin_client.get(f"{COHORT_PREFIX}/{uuid.uuid4()}/courses")
+        assert resp.status_code == 404
+
+    def test_teacher_cannot_list(self, client: TestClient, db: Session):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        resp = client.get(f"{COHORT_PREFIX}/{cohort.id}/courses")
+        assert resp.status_code == 403
+
+
 class TestCreateCohort:
     """``POST /cohorts`` — admin-only, creates an empty cohort. Courses
     and students are attached separately."""
