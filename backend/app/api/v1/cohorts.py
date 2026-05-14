@@ -41,12 +41,9 @@ from app.schemas.cohort import (
     CohortStudentAdd,
     CohortUpdate,
 )
-from app.schemas.locale import LocaleCode, normalize_locale
+from app.schemas.locale import normalize_locale
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
-from app.services.translation.resolve_for_display import (
-    fetch_overlay_triples_bulk,
-    pick_overlay_value,
-)
+from app.services.translation.resolve_for_display import Localizer
 
 router = APIRouter(prefix="/cohorts", tags=["cohorts"])
 
@@ -513,20 +510,13 @@ def list_cohorts_for_course(
     if is_owner or is_admin:
         return _serialize_many(db, cohorts)
 
-    display_locale: LocaleCode = normalize_locale(accept_language)
-    source_locale: LocaleCode = normalize_locale(course.source_locale)
-    overlay_specs = [("cohort", str(c.id), "title") for c in cohorts]
-    overlay = fetch_overlay_triples_bulk(db, overlay_specs, display_locale)
+    loc = Localizer.build(
+        db,
+        [("cohort", str(c.id), "title") for c in cohorts],
+        source_locale=normalize_locale(course.source_locale),
+        display_locale=normalize_locale(accept_language),
+    )
     serialized = _serialize_many(db, cohorts)
     for resp, c in zip(serialized, cohorts, strict=True):
-        localized = pick_overlay_value(
-            overlay,
-            "cohort",
-            str(c.id),
-            "title",
-            c.name,
-            source_locale=source_locale,
-            display_locale=display_locale,
-        )
-        resp.name = localized or c.name
+        resp.name = loc.pick("cohort", str(c.id), "title", c.name) or c.name
     return serialized
