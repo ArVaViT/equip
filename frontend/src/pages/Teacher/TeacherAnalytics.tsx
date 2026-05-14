@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useParams, Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import PageSpinner from "@/components/ui/PageSpinner"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
 import { ArrowLeft, Users, TrendingUp, Award, Calendar, BarChart3, ClipboardList, UserCheck } from "lucide-react"
@@ -79,7 +79,7 @@ export default function TeacherAnalytics() {
   }).length ?? 0
 
   if (loading) {
-    return <PageSpinner />
+    return <TeacherAnalyticsSkeleton />
   }
 
   if (!analytics) {
@@ -117,8 +117,8 @@ export default function TeacherAnalytics() {
           </Button>
         </Link>
         <div className="flex-1">
-          <h1 className="text-3xl font-serif font-bold tracking-tight flex items-center gap-2">
-            <BarChart3 className="h-7 w-7 text-primary" strokeWidth={1.75} />
+          <h1 className="flex items-center gap-2 font-serif text-3xl font-bold tracking-tight">
+            <BarChart3 className="h-6 w-6 shrink-0 text-primary" strokeWidth={1.75} aria-hidden />
             {t("teacherAnalytics.heading")}
           </h1>
           {courseTitle && (
@@ -203,6 +203,35 @@ export default function TeacherAnalytics() {
           )}
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+/**
+ * Shimmer placeholder for the analytics page. Mirrors the real layout
+ * (back button + serif H1, four stat cards, enrolments card) so the
+ * page doesn't jump when data resolves.
+ */
+function TeacherAnalyticsSkeleton() {
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-5xl" aria-busy="true">
+      <div className="flex items-center gap-3 mb-8">
+        <Skeleton className="h-8 w-8 shrink-0 rounded-md" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-8 w-64 max-w-full" />
+          <Skeleton className="h-4 w-40 max-w-full" />
+        </div>
+        <Skeleton className="hidden sm:block h-9 w-32" />
+        <Skeleton className="hidden sm:block h-9 w-28" />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 rounded-md" />
+        ))}
+      </div>
+
+      <Skeleton className="h-64 rounded-md" />
     </div>
   )
 }
