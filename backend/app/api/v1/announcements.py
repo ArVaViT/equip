@@ -106,12 +106,38 @@ def list_announcements(
     return out
 
 
-@router.post("", response_model=AnnouncementResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=AnnouncementResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Post an announcement (course-scoped or global admin-only)",
+    responses={
+        201: {
+            "description": "Announcement saved, sanitized; fan-out notifications "
+            "queued for every enrolled student (course-scoped only)."
+        },
+        403: {"description": "Caller does not own the target course"},
+        404: {"description": "Target course does not exist"},
+    },
+)
 def create_announcement(
     data: AnnouncementCreate,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> Announcement:
+    """Two flavors, picked by ``data.course_id``:
+
+    - **Course-scoped** (``course_id`` set): only the course owner can
+      post. Triggers a notification fan-out to every enrolled student
+      (minus the author).
+    - **Global** (``course_id`` is None): admin-only authoring path
+      (gated by ``require_teacher`` + the route's own check elsewhere
+      — admins satisfy ``require_teacher``).
+
+    Both flavors sanitize ``title`` and ``content`` server-side as
+    defence-in-depth against direct API callers that bypass the
+    frontend's DOMPurify.
+    """
     if data.course_id:
         course = db.query(Course).filter(Course.id == data.course_id).first()
         if not course:

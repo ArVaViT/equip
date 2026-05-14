@@ -195,42 +195,105 @@ def list_admin_pending_certificates(
     )
 
 
-@router.put("/{cert_id}/teacher-approve", response_model=CertificateResponse)
+@router.put(
+    "/{cert_id}/teacher-approve",
+    response_model=CertificateResponse,
+    summary="Teacher signs off on a pending certificate request",
+    responses={
+        200: {"description": "Certificate moved from ``pending`` to ``teacher_approved``"},
+        400: {"description": "Certificate is not in ``pending`` state"},
+        403: {"description": "Caller does not own the certificate's course"},
+        404: {"description": "Certificate not found"},
+    },
+)
 def teacher_approve_certificate(
     cert_id: UUID,
     request: Request,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> Certificate:
+    """First step of the two-stage approval workflow.
+
+    The teacher who owns the course must confirm the student earned the
+    certificate before an admin can issue it. This call is idempotent
+    against concurrent reviewer clicks: a ``FOR UPDATE`` lock on the
+    certificate row serializes parallel approvers (see
+    ``certificate_service._load_cert_or_404``).
+    """
     return certificate_service.teacher_approve(db, cert_id, teacher, request)
 
 
-@router.put("/{cert_id}/admin-approve", response_model=CertificateResponse)
+@router.put(
+    "/{cert_id}/admin-approve",
+    response_model=CertificateResponse,
+    summary="Admin issues a teacher-approved certificate",
+    responses={
+        200: {"description": "Certificate issued with a unique ``certificate_number``"},
+        400: {"description": "Certificate is not in ``teacher_approved`` state"},
+        403: {"description": "Caller is not an admin"},
+        404: {"description": "Certificate not found"},
+    },
+)
 def admin_approve_certificate(
     cert_id: UUID,
     request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> Certificate:
+    """Second step. Generates the public ``certificate_number`` and
+    fires a ``certificate_approved`` notification to the student. The
+    ``FOR UPDATE`` lock prevents double-issuance from concurrent admin
+    clicks."""
     return certificate_service.admin_approve(db, cert_id, admin, request)
 
 
-@router.put("/{cert_id}/reject", response_model=CertificateResponse)
+@router.put(
+    "/{cert_id}/reject",
+    response_model=CertificateResponse,
+    summary="Reject a certificate request (teacher or admin)",
+    responses={
+        200: {"description": "Certificate moved to ``rejected`` state"},
+        400: {"description": "Certificate is already in a terminal state"},
+        403: {"description": "Caller does not own the course"},
+        404: {"description": "Certificate not found"},
+    },
+)
 def reject_certificate(
     cert_id: UUID,
     request: Request,
     current_user: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> Certificate:
-    """Teacher or admin can reject a certificate."""
+    """Either reviewer (teacher or admin) can reject up until issuance.
+    Cannot be reversed — a rejected certificate stays rejected and the
+    student must re-request."""
     return certificate_service.reject(db, cert_id, current_user, request)
 
 
-@router.get("/verify/{certificate_number}", response_model=CertificateVerifyResponse)
+@router.get(
+    "/verify/{certificate_number}",
+    response_model=CertificateVerifyResponse,
+    summary="Public lookup by certificate number",
+    responses={
+        200: {
+            "description": "``valid=true`` with issuee + course info if the number "
+            "matches an issued certificate, else ``valid=false`` with no PII."
+        },
+    },
+)
 def verify_certificate(
     certificate_number: str,
     db: Session = Depends(get_db),
 ) -> CertificateVerifyResponse:
+    """Unauthenticated certificate verification.
+
+    Used by recipients to share their credential — the URL is something
+    like ``https://equipbible.com/verify/{number}`` that the SPA hits
+    this endpoint from. Returns a minimal PII surface (``user_name`` +
+    ``course_title``) only for valid numbers; invalid numbers return
+    ``valid=false`` with the number echoed so the caller can show a
+    "not found" page without confirming what other numbers exist.
+    """
     row = (
         db.query(Certificate, User, Course)
         .outerjoin(User, Certificate.user_id == User.id)

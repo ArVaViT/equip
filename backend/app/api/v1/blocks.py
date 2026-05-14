@@ -39,13 +39,31 @@ def list_blocks(
     return rows
 
 
-@router.post("/chapter/{chapter_id}", response_model=BlockResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/chapter/{chapter_id}",
+    response_model=BlockResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a chapter block (text / quiz / assignment / file)",
+    responses={
+        201: {"description": "Block persisted; translation reconcile fires async"},
+        403: {"description": "Caller does not own the chapter's course"},
+        404: {"description": "Chapter not found"},
+        409: {"description": "Referenced ``quiz_id`` / ``assignment_id`` no longer exists"},
+    },
+)
 def create_block(
     chapter_id: str,
     data: BlockCreate,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
+    """Append a block to the chapter. ``order_index`` is provided by the
+    client so multi-block writes preserve the intended ordering even
+    when the frontend optimistically reorders before save.
+
+    Rich text (``content``) is sanitized server-side with ``bleach``
+    even though the frontend already DOMPurifies — defence-in-depth
+    for direct API callers."""
     verify_chapter_owner(db, chapter_id, teacher)
     # Defence-in-depth: the frontend runs DOMPurify before sending, but a
     # direct API caller can bypass that. We re-sanitize here so stored block
@@ -80,13 +98,29 @@ def create_block(
     return block
 
 
-@router.put("/{block_id}", response_model=BlockResponse)
+@router.put(
+    "/{block_id}",
+    response_model=BlockResponse,
+    summary="Update a block in place",
+    responses={
+        200: {"description": "Block updated and translation overlay reconciled"},
+        403: {"description": "Caller does not own the chapter's course"},
+        404: {"description": "Block not found"},
+        409: {"description": "Referenced ``quiz_id`` / ``assignment_id`` no longer exists"},
+    },
+)
 def update_block(
     block_id: UUID,
     data: BlockUpdate,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
+    """Patch any subset of block fields. ``content`` is sanitized
+    server-side. Changing ``block_type`` is allowed (e.g. text → quiz)
+    but the client should clear / set the type-specific fields
+    (``quiz_id``, ``assignment_id``, ``file_*``) consistently;
+    constraints aren't enforced at the schema layer because writes from
+    the editor never mix types in the same patch."""
     block = db.query(ChapterBlock).filter(ChapterBlock.id == block_id).first()
     if not block:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Block not found")
