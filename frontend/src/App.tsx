@@ -16,6 +16,7 @@ import AnnouncementBanner from "./components/announcements/AnnouncementBanner"
 import PageSpinner from "./components/ui/PageSpinner"
 import ScrollToTop from "./components/layout/ScrollToTop";
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { SUPPORT_EMAIL } from "@/lib/brand"
 
 const NotFound = lazy(() => import("./pages/NotFound"))
 
@@ -71,7 +72,7 @@ function PendingTeacherBanner() {
             components={{
               supportLink: (
                 <a
-                  href="mailto:support@bibleschool.com"
+                  href={`mailto:${SUPPORT_EMAIL}`}
                   className="underline font-medium hover:no-underline"
                 />
               ),

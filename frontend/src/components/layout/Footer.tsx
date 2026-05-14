@@ -2,8 +2,7 @@ import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Mail } from "lucide-react"
 import { useAuth } from "@/context/useAuth"
-
-const SUPPORT_EMAIL = "support@bibleschool.com"
+import { SUPPORT_EMAIL } from "@/lib/brand"
 
 export default function Footer() {
   const { t } = useTranslation()
