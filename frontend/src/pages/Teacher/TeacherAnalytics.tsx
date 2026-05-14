@@ -6,7 +6,7 @@ import PageSpinner from "@/components/ui/PageSpinner"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
 import { ArrowLeft, Users, TrendingUp, Award, Calendar, BarChart3, ClipboardList, UserCheck } from "lucide-react"
-import { ErrorState } from "@/components/patterns"
+import { ErrorState, StatCard } from "@/components/patterns"
 import { formatDate } from "@/i18n/format"
 
 interface AnalyticsEnrollment {
@@ -141,17 +141,7 @@ export default function TeacherAnalytics() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {stats.map((s) => (
-          <Card key={s.label}>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{s.label}</p>
-                  <p className="text-2xl font-bold mt-1">{s.value}</p>
-                </div>
-                <s.icon className="h-8 w-8 text-muted-foreground/60" />
-              </div>
-            </CardContent>
-          </Card>
+          <StatCard key={s.label} label={s.label} value={s.value} icon={s.icon} />
         ))}
       </div>
 
