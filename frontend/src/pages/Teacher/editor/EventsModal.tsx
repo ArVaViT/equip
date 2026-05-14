@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Pencil, Save, Trash2 } from "lucide-react"
-import { Modal } from "@/components/patterns"
+import { CalendarDays, Pencil, Save, Trash2 } from "lucide-react"
+import { EmptyState, Modal } from "@/components/patterns"
 import { EventTypeBadge } from "./badges"
 import type { EventFormState } from "./types"
 import type { CourseEvent } from "@/types"
@@ -106,9 +106,11 @@ export function EventsModal({
         </div>
 
         {events.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            {t("teacherEditor.modals.events.empty")}
-          </p>
+          <EmptyState
+            variant="compact"
+            icon={<CalendarDays strokeWidth={1.75} aria-hidden />}
+            title={t("teacherEditor.modals.events.empty")}
+          />
         ) : (
           <div className="space-y-2 max-h-72 overflow-y-auto">
             {events.map((event) => (

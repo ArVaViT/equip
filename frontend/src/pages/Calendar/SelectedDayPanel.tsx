@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { BookOpen, CalendarDays, Clock } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/patterns";
 import type { CalendarEvent } from "@/types";
 import { getEventColor } from "./constants";
 import { formatTime } from "./utils";
@@ -29,9 +30,11 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
       </CardHeader>
       <CardContent>
         {events.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-3 text-center">
-            {t("calendar.selectedDayEmpty")}
-          </p>
+          <EmptyState
+            variant="compact"
+            icon={<CalendarDays strokeWidth={1.75} aria-hidden />}
+            title={t("calendar.selectedDayEmpty")}
+          />
         ) : (
           <div className="space-y-2">
             {events.map((evt) => {

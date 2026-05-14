@@ -2,7 +2,7 @@ import type { Ref } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Download, Loader2, Paperclip, X } from "lucide-react"
-import { Modal } from "@/components/patterns"
+import { EmptyState, Modal } from "@/components/patterns"
 import type { MaterialFile } from "./types"
 
 interface Props {
@@ -56,9 +56,11 @@ export function MaterialsModal({
           onChange={onUploadChange}
         />
         {materials.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-6">
-            {t("teacherEditor.modals.materials.empty")}
-          </p>
+          <EmptyState
+            variant="compact"
+            icon={<Paperclip strokeWidth={1.75} aria-hidden />}
+            title={t("teacherEditor.modals.materials.empty")}
+          />
         ) : (
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {materials.map((m) => (
