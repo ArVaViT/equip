@@ -99,8 +99,12 @@ block types, grading logic, or integrations without forking.
 :thought_balloon: **API v2** — GraphQL or tRPC for more efficient data
 fetching as the feature set grows.
 
-:thought_balloon: **Self-hosted installer** — one-command Docker Compose
-setup for organizations that want to run their own instance.
+:thought_balloon: **Self-hosted installer** — a one-command setup
+(scripted Vercel + Supabase provisioning, OR a packaged Docker
+Compose stack — to be decided when the demand is real) for
+organizations that want to run their own instance. _Note: until
+this is on the active roadmap, the project intentionally avoids
+container-based workflows everywhere else; see CONTRIBUTING._
 
 ---
 

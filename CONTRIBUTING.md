@@ -22,8 +22,8 @@ makes a real difference.
 
 | Tool       | Version  | Notes |
 |------------|----------|-------|
-| Node.js    | >= 20    | `node -v` to check |
-| npm        | >= 10    | ships with Node 20+ |
+| Node.js    | >= 22.12 | matches CI (`22.18.0`); `node -v` to check |
+| npm        | >= 10    | ships with Node 22+ |
 | Python     | 3.12     | must match CI and Vercel runtime |
 | Git        | any      | |
 
@@ -40,8 +40,11 @@ cd equip
 # Frontend
 cd frontend && npm ci && cd ..
 
-# Backend
-cd backend && pip install -r requirements.txt && cd ..
+# Backend (runtime + tooling)
+# requirements-ci.txt is a superset of requirements.txt; installing it
+# mirrors the CI environment so `pytest`, `mypy`, `ruff`, `pip-audit`
+# all work locally.
+cd backend && pip install -r requirements-ci.txt && cd ..
 ```
 
 ### 3. Configure environment
@@ -67,11 +70,18 @@ cd frontend && npm run dev                     # http://localhost:5173
 ### 5. Run tests
 
 ```bash
-cd backend  && python -m pytest tests/   # 396+ tests
+cd backend  && python -m pytest tests/   # 540+ tests, ~10s
 cd frontend && npm run test:run           # Vitest + jsdom
 ```
 
 If all tests pass, you're ready to contribute!
+
+### Architecture decision records
+
+Major architectural decisions live under [`docs/adr/`](docs/adr/).
+Read the index before changing anything that crosses module
+boundaries (cohorts, translation pipeline, soft-delete behaviour,
+etc.).
 
 ## Project structure
 
@@ -184,8 +194,27 @@ the [ROADMAP](ROADMAP.md) for bigger-picture direction.
 ### General
 
 - Code, comments, commit messages, and docs are in **English**.
-- The application UI is in **Russian** (target audience).
-- No Docker — the project intentionally avoids container-based workflows.
+- The application UI is **bilingual** RU↔EN with the design language
+  targeting Russian-speaking Bible schools first. Every user-facing
+  string goes through `t(...)` — see `.cursor/rules/frontend-react.mdc`.
+- No Docker — the project intentionally avoids container-based
+  workflows today. A potential self-hosted installer (which may use
+  Docker Compose) is on the long-term roadmap; if/when that lands the
+  rule changes only for that path. Until then: deploy via Vercel,
+  develop natively.
+
+### Conventions library
+
+The canonical conventions live under [`.cursor/rules/*.mdc`](.cursor/rules/).
+These files are written for the Cursor editor's AI features but they're
+plain Markdown — read them in any editor:
+
+- `project-overview.mdc` — stack, scale targets, established patterns
+- `backend-python.mdc` — FastAPI / SQLAlchemy / Pydantic conventions
+- `frontend-react.mdc` — design system, one-per-job library policy
+- `supabase-migrations.mdc` — append-only migration workflow
+- `git-ci.mdc` — Conventional Commits + CI matrix
+- `agent-autonomy.mdc` — testing expectations before declaring done
 
 ## Getting help
 
