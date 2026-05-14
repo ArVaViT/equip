@@ -42,8 +42,22 @@ def generate_certificate_number() -> str:
     return "CERT-" + hashlib.sha256(raw.encode()).hexdigest()[:12].upper()
 
 
-def _load_cert_or_404(db: Session, cert_id: UUID) -> Certificate:
-    cert = db.query(Certificate).filter(Certificate.id == cert_id).first()
+def _load_cert_or_404(db: Session, cert_id: UUID, *, for_update: bool = False) -> Certificate:
+    """Load a certificate row, optionally with ``FOR UPDATE``.
+
+    Transition helpers (``teacher_approve`` / ``admin_approve`` /
+    ``reject``) pass ``for_update=True`` so concurrent reviewer clicks
+    serialize on the row. Without it, two parallel approve clicks both
+    pass the ``_assert_status`` gate, both regenerate
+    ``certificate_number``, both fire the ``certificate_approved``
+    notification, and both write an audit row. Read paths use the
+    default ``for_update=False`` — no need to hold a lock for a view.
+    SQLite (test path) treats ``with_for_update`` as a no-op.
+    """
+    q = db.query(Certificate).filter(Certificate.id == cert_id)
+    if for_update:
+        q = q.with_for_update()
+    cert = q.first()
     if not cert:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -86,7 +100,7 @@ def _status_error_message(cert: Certificate, allowed: tuple[str, ...]) -> str:
 
 
 def teacher_approve(db: Session, cert_id: UUID, teacher: User, request: Request) -> Certificate:
-    cert = _load_cert_or_404(db, cert_id)
+    cert = _load_cert_or_404(db, cert_id, for_update=True)
     _assert_status(cert, "pending")
 
     ownership_detail = "You can only approve certificates for your own courses"
@@ -112,7 +126,7 @@ def teacher_approve(db: Session, cert_id: UUID, teacher: User, request: Request)
 
 
 def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> Certificate:
-    cert = _load_cert_or_404(db, cert_id)
+    cert = _load_cert_or_404(db, cert_id, for_update=True)
     _assert_status(cert, "teacher_approved")
 
     cert.status = "approved"
@@ -152,7 +166,7 @@ def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> 
 
 
 def reject(db: Session, cert_id: UUID, user: User, request: Request) -> Certificate:
-    cert = _load_cert_or_404(db, cert_id)
+    cert = _load_cert_or_404(db, cert_id, for_update=True)
     if cert.status in ("approved", "rejected"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

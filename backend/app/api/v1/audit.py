@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
@@ -49,7 +49,18 @@ def list_audit_logs(
     q = db.query(AuditLog)
 
     if user_id:
-        q = q.filter(AuditLog.user_id == user_id)
+        # The column is a typed UUID; a malformed query-string value
+        # would raise ``invalid input syntax for type uuid`` from
+        # Postgres and surface as a 500. Validate up-front and 400
+        # so clients get an actionable error.
+        try:
+            parsed_user_id = UUID(user_id)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="user_id must be a valid UUID",
+            ) from exc
+        q = q.filter(AuditLog.user_id == parsed_user_id)
     if resource_type:
         q = q.filter(AuditLog.resource_type == resource_type)
     if action:
