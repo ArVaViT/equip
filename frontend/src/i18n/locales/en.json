@@ -180,7 +180,11 @@
     "noCoursesYet": "No courses yet",
     "tryDifferentSearch": "Try a different search term",
     "checkBackSoon": "Check back soon for new courses",
-    "loadFailed": "Failed to load courses. Please try again later."
+    "loadFailed": "Failed to load courses. Please try again later.",
+    "votd": {
+      "eyebrow": "Today",
+      "title": "Verse of the Day"
+    }
   },
   "courseCard": {
     "opensOn": "Opens {{date}}",

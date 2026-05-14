@@ -13,6 +13,7 @@ import CourseCardSkeleton from "@/components/skeletons/CourseCardSkeleton"
 import { Search, BookOpen, LogIn, ArrowRight, CheckCircle } from "lucide-react"
 import { EmptyState, ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
+import { VerseOfTheDayCard } from "@/components/home/VerseOfTheDayCard"
 import { cn } from "@/lib/utils"
 
 const EDITORIAL_EASE = [0.22, 1, 0.36, 1] as const
@@ -228,7 +229,15 @@ export default function HomePage() {
 
   return (
     <div className="container mx-auto px-4 py-10">
-      {user && <MyCoursesSection />}
+      {user && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
+          {/* My Courses on the left (wide) sits next to the Verse of the
+              Day on the right (narrow). On mobile they stack with My
+              Courses first — the actionable column wins above the fold. */}
+          <MyCoursesSection />
+          <VerseOfTheDayCard />
+        </div>
+      )}
 
       <section className="relative mb-14 md:mb-20" aria-labelledby="home-catalog-heading">
         <div className="pointer-events-none absolute left-1/2 top-0 -z-0 h-[min(22rem,55vw)] w-[min(120vw,44rem)] -translate-x-1/2 md:h-[26rem] md:w-[52rem]">
