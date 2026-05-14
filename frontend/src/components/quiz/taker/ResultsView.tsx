@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { StaggerChildren } from "@/components/motion"
 import type { Quiz, QuizAttempt, QuizQuestion } from "@/types"
 import type { AnswerMap } from "./types"
+import { getTrueFalseLabel } from "@/components/quiz/editor/types"
 
 interface Props {
   result: QuizAttempt
@@ -123,6 +124,10 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                     .map((opt) => {
                       const isSelected = userAnswer?.selected_option_id === opt.id
                       const isRight = answerResult?.correct_option_id === opt.id
+                      const displayText =
+                        q.question_type === "true_false"
+                          ? getTrueFalseLabel(opt.option_text, t)
+                          : opt.option_text
                       return (
                         <div
                           key={opt.id}
@@ -136,7 +141,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                         >
                           {isSelected && !isRight ? "✗ " : ""}
                           {isRight ? "✓ " : ""}
-                          {opt.option_text}
+                          {displayText}
                         </div>
                       )
                     })}

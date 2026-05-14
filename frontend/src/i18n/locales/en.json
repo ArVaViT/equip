@@ -420,7 +420,13 @@
       "optionPlaceholder": "Option {{n}}",
       "addOption": "Add Option",
       "shortAnswerHint": "Students will type a free-text answer. Graded manually.",
-      "essayHint": "Long-form written response. Graded manually from the Submissions tab."
+      "essayHint": "Long-form written response. Graded manually from the Submissions tab.",
+      "removeQuestionAria": "Remove question {{n}}",
+      "removeOptionAria": "Remove option {{n}}",
+      "trueFalseOption": {
+        "True": "True",
+        "False": "False"
+      }
     },
     "save": {
       "saving": "Saving...",
