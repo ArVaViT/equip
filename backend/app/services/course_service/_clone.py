@@ -113,13 +113,14 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
                 is_locked=chapter.is_locked,
             )
             db.add(new_chapter)
-            # Flush the chapter before its children (quizzes/assignments/blocks)
-            # so FK constraints see a parent row. The unit-of-work topological
-            # sort normally handles this, but ``ChapterBlock.chapter_id`` is a
-            # plain String FK (not wired through a ``relationship``), so some
-            # dialects — including SQLite with PRAGMA foreign_keys=ON — issue
-            # the block INSERT before the chapter INSERT and raise a FK error.
-            db.flush()
+            # Postgres' unit-of-work topological sort handles the chapter →
+            # block ordering correctly; SQLite (PRAGMA foreign_keys=ON, used
+            # by tests) does not because ``ChapterBlock.chapter_id`` is a
+            # plain String FK without a relationship wired through. Gate the
+            # flush to the SQLite path so prod clones don't take N
+            # round-trips for a cosmetic test-only safety net.
+            if db.bind is not None and db.bind.dialect.name == "sqlite":
+                db.flush()
 
             quiz_id_map: dict[str, uuid.UUID] = {}
             assignment_id_map: dict[str, uuid.UUID] = {}
