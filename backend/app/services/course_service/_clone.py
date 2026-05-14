@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from app.models.assignment import Assignment
 from app.models.chapter_block import ChapterBlock
-from app.models.course import Chapter, Course, Module
+from app.models.course import Chapter, Course, CourseStatus, Module
 from app.models.quiz import Quiz, QuizOption, QuizQuestion
 
 from ._queries import _COURSE_TREE
@@ -82,7 +82,7 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
         title=f"{original.title} (Copy)",
         description=original.description,
         image_url=original.image_url,
-        status="draft",
+        status=CourseStatus.DRAFT,
         created_by=uuid.UUID(teacher_id) if isinstance(teacher_id, str) else teacher_id,
         enrollment_start=None,
         enrollment_end=None,

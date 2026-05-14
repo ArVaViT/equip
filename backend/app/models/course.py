@@ -1,3 +1,4 @@
+import enum
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -10,6 +11,35 @@ from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models.enrollment import Enrollment
+
+
+class CourseStatus(enum.StrEnum):
+    """Publication state of a course.
+
+    ``draft`` — only the course owner + admins can see it. Self-enrollment
+    is blocked.
+    ``published`` — visible in the public catalog; students can enroll.
+
+    Stored as a raw string in Postgres (CHECK-constrained); the enum
+    just gives Python code a single source of truth so a typo in
+    ``"publshed"`` is caught at the call site instead of silently
+    excluding rows from queries.
+    """
+
+    DRAFT = "draft"
+    PUBLISHED = "published"
+
+
+class CourseAccessMode(enum.StrEnum):
+    """Whether a published course accepts solo self-enrollment.
+
+    ``public`` — anyone can enroll within the course's enrollment window.
+    ``institute`` — only admins add students via the cohort flow
+    (see ADR-010).
+    """
+
+    PUBLIC = "public"
+    INSTITUTE = "institute"
 
 
 class TSVector(TypeDecorator):
@@ -52,7 +82,7 @@ class Course(Base):
     title: Mapped[str] = mapped_column()
     description: Mapped[str | None] = mapped_column()
     image_url: Mapped[str | None] = mapped_column()
-    status: Mapped[str] = mapped_column(default="draft")
+    status: Mapped[str] = mapped_column(default=CourseStatus.DRAFT)
     # Access mode controls who can ENROLL in the course (separate from
     # status which controls whether it's published in the catalog at all).
     # See ADR-010 in equipbible-docs/product/decisions/ — institute-mode

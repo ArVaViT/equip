@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
-from app.models.course import Chapter, Course, Module
+from app.models.course import Chapter, Course, CourseStatus, Module
 from app.models.enrollment import Enrollment
 from app.models.user import User, UserRole
 
@@ -186,7 +186,7 @@ def verify_chapter_access(db: Session, chapter_id: str, user: User) -> Chapter:
         return chapter
     if str(course.created_by) == str(user.id):
         return chapter
-    if course.status != "published":
+    if course.status != CourseStatus.PUBLISHED:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chapter not found")
     enrolled = db.query(Enrollment).filter(Enrollment.user_id == user.id, Enrollment.course_id == course.id).first()
     if not enrolled:
