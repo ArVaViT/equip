@@ -693,6 +693,20 @@
       "completedBySubmission": "Completed via submission",
       "undo": "Undo",
       "complete": "Complete"
+    },
+    "stats": {
+      "totalStudents": "Total Students",
+      "averageProgress": "Average Progress",
+      "completionRate": "Completion Rate"
+    },
+    "relative": {
+      "never": "Never",
+      "minutesAgo_one": "{{count}}m ago",
+      "minutesAgo_other": "{{count}}m ago",
+      "hoursAgo_one": "{{count}}h ago",
+      "hoursAgo_other": "{{count}}h ago",
+      "daysAgo_one": "{{count}}d ago",
+      "daysAgo_other": "{{count}}d ago"
     }
   },
   "teacherAnalytics": {
@@ -969,7 +983,11 @@
       "description": "Add your first chapter to start building this module.",
       "action": "Add chapter"
     },
-    "addChapter": "Add chapter"
+    "addChapter": "Add chapter",
+    "lockChapterTooltip": "Lock chapter",
+    "unlockChapterTooltip": "Unlock chapter",
+    "editChapterAria": "Edit chapter {{title}}",
+    "deleteChapterAria": "Delete chapter {{title}}"
   },
   "courseEditor": {
     "notFound": {
@@ -1431,6 +1449,24 @@
       "audioPlaceholder": "https://example.com/lesson.mp3",
       "audioConfirm": "Embed",
       "imageUrlPlaceholder": "https://…"
+    }
+  },
+  "chapterTypes": {
+    "reading": {
+      "label": "Lesson",
+      "description": "Mix text, video, audio, files and more into a single lesson"
+    },
+    "quiz": {
+      "label": "Quiz",
+      "description": "Test student knowledge"
+    },
+    "exam": {
+      "label": "Exam",
+      "description": "Final assessment with attempts limit"
+    },
+    "assignment": {
+      "label": "Assignment",
+      "description": "Submit work for grading"
     }
   }
 }

@@ -26,15 +26,10 @@ import {
 import { ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
 
-const EDITOR_OPTIONS = CHAPTER_TYPES.map((value) => {
-  const meta = CHAPTER_TYPE_META[value]
-  return {
-    value,
-    label: meta.label,
-    desc: meta.description,
-    icon: meta.icon,
-  }
-})
+const EDITOR_OPTIONS = CHAPTER_TYPES.map((value) => ({
+  value,
+  icon: CHAPTER_TYPE_META[value].icon,
+}))
 
 type ChapterUpdatePayload = Parameters<typeof coursesService.updateChapter>[3]
 
@@ -286,10 +281,10 @@ export default function ChapterEditor() {
                       selected ? "text-primary" : ""
                     }`}
                   >
-                    {ct.label}
+                    {t(`chapterTypes.${ct.value}.label`)}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {ct.desc}
+                    {t(`chapterTypes.${ct.value}.description`)}
                   </div>
                 </div>
               </button>

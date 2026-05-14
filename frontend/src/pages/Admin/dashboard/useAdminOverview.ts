@@ -9,14 +9,7 @@ import { getErrorDetail } from "@/lib/errorDetail"
 import { useConfirm } from "@/components/ui/alert-dialog"
 import { ROLES, type UserRole } from "@/types"
 import type { AdminCert } from "./PendingCertsCard"
-import type { AdminStats, ProfileRow } from "./constants"
-
-const ROLE_I18N_KEY: Record<UserRole, string> = {
-  student: "roles.student",
-  pending_teacher: "roles.pendingTeacher",
-  teacher: "roles.teacher",
-  admin: "roles.admin",
-}
+import { ROLE_I18N_KEY, type AdminStats, type ProfileRow } from "./constants"
 
 interface UseAdminOverviewArgs {
   /** Current signed-in user id — excluded from bulk operations and delete confirmations. */

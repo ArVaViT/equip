@@ -22,7 +22,7 @@ interface VirtualAdminUsersProps {
   updatingId: string | null
   currentUserId: string | undefined
   roleBadgeClass: Record<string, string>
-  roleDisplayNames: Record<string, string>
+  roleI18nKey: Record<string, string>
   onToggleSelect: (id: string) => void
   onRoleChange: (userId: string, role: UserRole) => void
   onDeleteUser: (user: ProfileRow) => void
@@ -40,7 +40,7 @@ function UserRow({
   updatingId,
   currentUserId,
   roleBadgeClass,
-  roleDisplayNames,
+  roleI18nKey,
   onToggleSelect,
   onRoleChange,
   onDeleteUser,
@@ -89,7 +89,7 @@ function UserRow({
         <span
           className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${roleBadgeClass[u.role] ?? ""}`}
         >
-          {roleDisplayNames[u.role] ?? u.role}
+          {t(roleI18nKey[u.role] ?? "")}
         </span>
         <NativeSelect
           fieldSize="sm"
@@ -129,7 +129,7 @@ export default function VirtualAdminUsers({
   updatingId,
   currentUserId,
   roleBadgeClass,
-  roleDisplayNames,
+  roleI18nKey,
   onToggleSelect,
   onRoleChange,
   onDeleteUser,
@@ -162,7 +162,7 @@ export default function VirtualAdminUsers({
           updatingId,
           currentUserId,
           roleBadgeClass,
-          roleDisplayNames,
+          roleI18nKey,
           onToggleSelect,
           onRoleChange,
           onDeleteUser,

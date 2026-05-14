@@ -137,7 +137,7 @@ export function StudentRow({
           <ScoreBadge value={assignmentAvg} />
         </td>
         <td className="py-3 text-muted-foreground text-xs">
-          {relativeTime(student.last_activity)}
+          {relativeTime(student.last_activity, t)}
         </td>
       </tr>
       {isExpanded && (

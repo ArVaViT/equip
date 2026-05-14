@@ -12,7 +12,7 @@ import { formatDate } from "@/i18n/format"
 import {
   type ProfileRow,
   ROLE_BADGE_CLASS,
-  ROLE_DISPLAY_NAMES,
+  ROLE_I18N_KEY,
 } from "./constants"
 
 /**
@@ -143,7 +143,7 @@ export function UsersCard({
               updatingId={updatingId}
               currentUserId={currentUserId}
               roleBadgeClass={ROLE_BADGE_CLASS}
-              roleDisplayNames={ROLE_DISPLAY_NAMES}
+              roleI18nKey={ROLE_I18N_KEY}
               onToggleSelect={onToggleSelect}
               onRoleChange={onRoleChange}
               onDeleteUser={onDeleteUser}
@@ -308,7 +308,7 @@ function UserRow({
           <span
             className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${ROLE_BADGE_CLASS[user.role]}`}
           >
-            {ROLE_DISPLAY_NAMES[user.role]}
+            {t(ROLE_I18N_KEY[user.role])}
           </span>
           <NativeSelect
             fieldSize="sm"

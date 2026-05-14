@@ -38,12 +38,20 @@ export const ACTION_BADGE_CLASS: Record<string, string> = {
   grade: "bg-warning/15 text-warning",
 }
 
-/** Human-readable role names for dropdowns and badges. */
-export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
-  student: "Student",
-  pending_teacher: "Pending Teacher",
-  teacher: "Teacher",
-  admin: "Admin",
+/** Maps each role to its i18n key. Use with ``useTranslation().t`` to
+ * render localized role labels — never hardcode the English values.
+ *
+ * The camelCase keys (``pendingTeacher``) are i18next conventions; the
+ * snake_case role values (``pending_teacher``) mirror the Pydantic /
+ * Postgres CHECK constraint. The mapping lives here so the bridge is
+ * a single source of truth instead of being re-derived in every
+ * component that needs to render a role.
+ */
+export const ROLE_I18N_KEY: Record<UserRole, string> = {
+  student: "roles.student",
+  pending_teacher: "roles.pendingTeacher",
+  teacher: "roles.teacher",
+  admin: "roles.admin",
 }
 
 /** Role-pill color classes. */

@@ -711,6 +711,26 @@
       "completedBySubmission": "Завершено через задание",
       "undo": "Отменить",
       "complete": "Засчитать"
+    },
+    "stats": {
+      "totalStudents": "Всего студентов",
+      "averageProgress": "Средний прогресс",
+      "completionRate": "Процент завершения"
+    },
+    "relative": {
+      "never": "Никогда",
+      "minutesAgo_one": "{{count}} мин назад",
+      "minutesAgo_few": "{{count}} мин назад",
+      "minutesAgo_many": "{{count}} мин назад",
+      "minutesAgo_other": "{{count}} мин назад",
+      "hoursAgo_one": "{{count}} ч назад",
+      "hoursAgo_few": "{{count}} ч назад",
+      "hoursAgo_many": "{{count}} ч назад",
+      "hoursAgo_other": "{{count}} ч назад",
+      "daysAgo_one": "{{count}} д назад",
+      "daysAgo_few": "{{count}} д назад",
+      "daysAgo_many": "{{count}} д назад",
+      "daysAgo_other": "{{count}} д назад"
     }
   },
   "teacherAnalytics": {
@@ -995,7 +1015,11 @@
       "description": "Добавьте первую главу, чтобы начать наполнять модуль.",
       "action": "Добавить главу"
     },
-    "addChapter": "Добавить главу"
+    "addChapter": "Добавить главу",
+    "lockChapterTooltip": "Заблокировать главу",
+    "unlockChapterTooltip": "Разблокировать главу",
+    "editChapterAria": "Редактировать главу {{title}}",
+    "deleteChapterAria": "Удалить главу {{title}}"
   },
   "courseEditor": {
     "notFound": {
@@ -1463,6 +1487,24 @@
       "audioPlaceholder": "https://example.com/lesson.mp3",
       "audioConfirm": "Встроить",
       "imageUrlPlaceholder": "https://…"
+    }
+  },
+  "chapterTypes": {
+    "reading": {
+      "label": "Урок",
+      "description": "Текст, видео, аудио и файлы в одном уроке"
+    },
+    "quiz": {
+      "label": "Тест",
+      "description": "Проверка знаний студентов"
+    },
+    "exam": {
+      "label": "Экзамен",
+      "description": "Финальная аттестация с ограничением попыток"
+    },
+    "assignment": {
+      "label": "Задание",
+      "description": "Работа на проверку преподавателю"
     }
   }
 }

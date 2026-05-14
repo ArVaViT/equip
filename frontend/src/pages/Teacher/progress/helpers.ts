@@ -56,16 +56,25 @@ export function formatDate(d: string | null): string {
   })
 }
 
-/** "3m ago" / "5d ago" / falls back to formatDate after 7 days. */
-export function relativeTime(d: string | null): string {
-  if (!d) return "Never"
+/** Translator type matches react-i18next's ``useTranslation().t``. */
+type Translator = (key: string, options?: { count?: number }) => string
+
+/** "3m ago" / "5d ago" / falls back to formatDate after 7 days.
+ *
+ * Takes the translator as a parameter so this stays a pure function —
+ * the caller passes ``t`` from ``useTranslation()``. The i18next plural
+ * machinery handles the per-locale ``minutesAgo_one`` / ``_few`` /
+ * ``_many`` forms via the ``count`` option.
+ */
+export function relativeTime(d: string | null, t: Translator): string {
+  if (!d) return t("studentProgress.relative.never")
   const diff = Date.now() - new Date(d).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 60) return `${mins}m ago`
+  if (mins < 60) return t("studentProgress.relative.minutesAgo", { count: mins })
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h ago`
+  if (hours < 24) return t("studentProgress.relative.hoursAgo", { count: hours })
   const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}d ago`
+  if (days < 7) return t("studentProgress.relative.daysAgo", { count: days })
   return formatDate(d)
 }
 

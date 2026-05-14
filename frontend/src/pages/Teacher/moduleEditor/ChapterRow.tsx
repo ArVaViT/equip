@@ -1,10 +1,11 @@
 import { Draggable } from "@hello-pangea/dnd";
 import { GripVertical, Lock, Pencil, Trash2, Unlock } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { getChapterTypeMeta } from "@/lib/chapterTypes";
+import { getChapterTypeMeta, normalizeChapterType } from "@/lib/chapterTypes";
 import type { Chapter } from "@/types";
 
 interface ChapterRowProps {
@@ -31,7 +32,8 @@ export function ChapterRow({
   onEdit,
   onDelete,
 }: ChapterRowProps) {
-  const type = chapter.chapter_type || "reading";
+  const { t } = useTranslation();
+  const type = normalizeChapterType(chapter.chapter_type);
   const badgeClass = getChapterTypeMeta(type).badgeColor;
 
   return (
@@ -60,9 +62,9 @@ export function ChapterRow({
             />
 
             <span
-              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0 capitalize ${badgeClass}`}
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0 ${badgeClass}`}
             >
-              {type}
+              {t(`chapterTypes.${type}.label`)}
             </span>
 
             <Button
@@ -72,12 +74,13 @@ export function ChapterRow({
                 chapter.is_locked ? "text-warning hover:text-warning" : "text-muted-foreground"
               }`}
               onClick={onToggleLock}
-              title={chapter.is_locked ? "Unlock chapter" : "Lock chapter"}
+              title={chapter.is_locked ? t("moduleEditor.unlockChapterTooltip") : t("moduleEditor.lockChapterTooltip")}
+              aria-label={chapter.is_locked ? t("moduleEditor.unlockChapterTooltip") : t("moduleEditor.lockChapterTooltip")}
             >
               {chapter.is_locked ? (
-                <Lock className="h-3.5 w-3.5" />
+                <Lock className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
               ) : (
-                <Unlock className="h-3.5 w-3.5" />
+                <Unlock className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
               )}
             </Button>
 
@@ -86,8 +89,9 @@ export function ChapterRow({
               size="sm"
               className="shrink-0 h-8 w-8 p-0"
               onClick={onEdit}
+              aria-label={t("moduleEditor.editChapterAria", { title: chapter.title })}
             >
-              <Pencil className="h-3.5 w-3.5" />
+              <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
             </Button>
 
             <Button
@@ -95,8 +99,9 @@ export function ChapterRow({
               size="sm"
               className="shrink-0 h-8 w-8 p-0 text-destructive hover:text-destructive"
               onClick={onDelete}
+              aria-label={t("moduleEditor.deleteChapterAria", { title: chapter.title })}
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
             </Button>
           </div>
         </Card>
