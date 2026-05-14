@@ -88,6 +88,7 @@ export function BlockRow({
             e.stopPropagation()
             onDelete()
           }}
+          aria-label={t("blockEditor.deleteBlockAria", { label })}
         >
           <Trash2 className="h-3 w-3" />
         </Button>

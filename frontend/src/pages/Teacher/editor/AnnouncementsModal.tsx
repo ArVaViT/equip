@@ -80,6 +80,7 @@ export function AnnouncementsModal({
                   size="sm"
                   className="h-7 w-7 p-0 text-destructive hover:text-destructive shrink-0"
                   onClick={() => onDelete(a.id)}
+                  aria-label={t("teacherEditor.modals.announcements.deleteAria", { title: a.title })}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>

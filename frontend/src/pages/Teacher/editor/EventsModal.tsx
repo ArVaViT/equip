@@ -130,6 +130,7 @@ function EventRow({
   onEdit: (e: CourseEvent) => void
   onDelete: (id: string) => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="flex items-start gap-3 p-3 border rounded-lg">
       <div className="flex-1 min-w-0">
@@ -147,7 +148,13 @@ function EventRow({
         )}
       </div>
       <div className="flex flex-col gap-1 shrink-0">
-        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onEdit(event)}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs"
+          onClick={() => onEdit(event)}
+          aria-label={t("teacherEditor.modals.events.editAria", { title: event.title })}
+        >
           <Pencil className="h-3 w-3" />
         </Button>
         <Button
@@ -155,6 +162,7 @@ function EventRow({
           size="sm"
           className="h-7 text-xs text-destructive hover:text-destructive"
           onClick={() => onDelete(event.id)}
+          aria-label={t("teacherEditor.modals.events.deleteAria", { title: event.title })}
         >
           <Trash2 className="h-3 w-3" />
         </Button>

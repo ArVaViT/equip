@@ -114,6 +114,7 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
             e.stopPropagation()
             startEdit()
           }}
+          aria-label={t("assignmentEditor.item.editAria", { title: assignment.title })}
         >
           <Pencil className="h-3.5 w-3.5" />
         </Button>
@@ -125,6 +126,7 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
             e.stopPropagation()
             onDelete(assignment.id)
           }}
+          aria-label={t("assignmentEditor.item.deleteAria", { title: assignment.title })}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>

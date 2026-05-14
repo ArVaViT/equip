@@ -520,7 +520,8 @@
       "verse": "Bible Verse",
       "takeaway": "Key Takeaway",
       "warning": "Warning"
-    }
+    },
+    "deleteBlockAria": "Delete {{label}} block"
   },
   "assignmentEditor": {
     "validation": {
@@ -562,7 +563,9 @@
       "maxPts": "Max: {{max}} pts",
       "due": "Due: {{date}}",
       "noSubmissions": "No submissions yet.",
-      "submissionsCount": "Submissions ({{count}})"
+      "submissionsCount": "Submissions ({{count}})",
+      "editAria": "Edit assignment {{title}}",
+      "deleteAria": "Delete assignment {{title}}"
     },
     "grader": {
       "viewFile": "View attached file",
@@ -883,13 +886,16 @@
         "contentPlaceholder": "Content (optional)",
         "post": "Post",
         "posting": "Posting…",
-        "empty": "No announcements yet."
+        "empty": "No announcements yet.",
+        "deleteAria": "Delete announcement {{title}}"
       },
       "materials": {
         "title": "Course Materials",
         "upload": "Upload File",
         "empty": "No materials uploaded yet.",
-        "sizeKb": "{{kb}} KB"
+        "sizeKb": "{{kb}} KB",
+        "downloadAria": "Download {{name}}",
+        "deleteAria": "Delete {{name}}"
       },
       "events": {
         "title": "Course Events",
@@ -909,7 +915,9 @@
           "live_session": "Live Session",
           "exam": "Exam",
           "other": "Other"
-        }
+        },
+        "editAria": "Edit event {{title}}",
+        "deleteAria": "Delete event {{title}}"
       }
     },
     "toast": {
