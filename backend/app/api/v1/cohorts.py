@@ -179,7 +179,19 @@ def update_cohort(
     db: Session = Depends(get_db),
 ) -> CohortResponse:
     cohort = _get_or_404(db, cohort_id)
-    for field, value in data.model_dump(exclude_unset=True).items():
+    # Cohort lifecycle is forward-only: ``upcoming → active → completed``.
+    # A completed cohort represents historical state — its grades and
+    # certificates are frozen — so reverting status would silently make
+    # those records mutable again. Block the regression here, not via
+    # the schema, because the schema is also used by the ``complete``
+    # endpoint where ``completed`` is the legitimate target.
+    patch = data.model_dump(exclude_unset=True)
+    if "status" in patch and cohort.status == "completed" and patch["status"] != "completed":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot reopen a completed cohort",
+        )
+    for field, value in patch.items():
         setattr(cohort, field, value)
     db.commit()
     db.refresh(cohort)
