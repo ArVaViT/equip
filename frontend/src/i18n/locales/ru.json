@@ -20,7 +20,17 @@
     "editAria": "Изменить {{what}}",
     "cover": {
       "replace": "Заменить",
-      "remove": "Удалить"
+      "remove": "Удалить",
+      "empty": "Нажмите или перетащите изображение",
+      "disabled": "Без обложки",
+      "unsupportedTitle": "Неподдерживаемый файл",
+      "unsupportedDescription": "Выберите изображение.",
+      "tooLargeTitle": "Изображение слишком большое",
+      "tooLargeDescription": "Максимум {{max}} МБ.",
+      "uploadFailedTitle": "Загрузка не удалась",
+      "removeConfirmTitle": "Удалить обложку?",
+      "removeConfirmDescription": "Обложка курса будет очищена.",
+      "removeConfirmAction": "Удалить"
     }
   },
   "header": {
@@ -906,6 +916,43 @@
           "other": "Другое"
         }
       }
+    },
+    "toast": {
+      "saved": "Сохранено",
+      "saveFailed": "Не удалось сохранить",
+      "coverUpdated": "Обложка обновлена",
+      "coverRemoved": "Обложка удалена",
+      "coverRemoveFailed": "Не удалось удалить обложку",
+      "enrollmentSaved": "Период записи сохранён",
+      "published": "Опубликовано",
+      "unpublished": "Снято с публикации",
+      "publishFailed": "Не удалось изменить статус публикации",
+      "moduleAdded": "Модуль добавлен",
+      "moduleAddFailed": "Не удалось добавить модуль",
+      "moduleRemoveFailed": "Не удалось удалить модуль",
+      "moduleOrderFailed": "Не удалось сохранить порядок модулей",
+      "announcementPostFailed": "Не удалось опубликовать объявление",
+      "announcementDeleteFailed": "Не удалось удалить объявление",
+      "eventCreated": "Событие создано",
+      "eventUpdated": "Событие обновлено",
+      "eventDeleted": "Событие удалено",
+      "eventSaveFailed": "Не удалось сохранить событие",
+      "eventDeleteFailed": "Не удалось удалить событие",
+      "materialUploadFailed": "Загрузка не удалась",
+      "materialDownloadFailed": "Скачивание не удалось",
+      "materialDeleteFailed": "Не удалось удалить материал"
+    },
+    "confirm": {
+      "deleteModuleTitle": "Удалить этот модуль?",
+      "deleteModuleDescription": "Все главы внутри модуля также будут удалены.",
+      "deleteModuleAction": "Удалить",
+      "deleteAnnouncementTitle": "Удалить это объявление?",
+      "deleteAnnouncementAction": "Удалить",
+      "deleteEventTitle": "Удалить это событие?",
+      "deleteEventAction": "Удалить",
+      "deleteMaterialTitle": "Удалить материал?",
+      "deleteMaterialDescription": "«{{name}}» будет удалён безвозвратно.",
+      "deleteMaterialAction": "Удалить"
     }
   },
   "moduleEditor": {
@@ -1394,5 +1441,28 @@
     "titleRequired": "Укажите название",
     "titleTooLong": "Название не должно превышать 300 символов",
     "nameTooShort": "Имя должно содержать минимум 2 символа"
+  },
+  "editor": {
+    "toast": {
+      "imageUploadFailed": "Не удалось загрузить изображение",
+      "audioUrlInvalid": "URL аудио должен начинаться с http(s)"
+    },
+    "prompt": {
+      "addLinkTitle": "Добавить ссылку",
+      "addLinkDescription": "Вставьте или введите URL для ссылки. Оставьте пустым, чтобы удалить существующую ссылку.",
+      "addLinkConfirm": "Применить",
+      "uploadFailedTitle": "Загрузка не удалась",
+      "uploadFailedDescription": "Не удалось загрузить файл. Вставьте URL изображения вручную или отмените.",
+      "uploadFailedConfirm": "Вставить",
+      "youtubeTitle": "Встроить видео YouTube",
+      "youtubeDescription": "Вставьте полный YouTube-URL (https://www.youtube.com/watch?v=…).",
+      "youtubePlaceholder": "https://www.youtube.com/watch?v=…",
+      "youtubeConfirm": "Встроить",
+      "audioTitle": "Встроить аудио",
+      "audioDescription": "Вставьте прямой https://-URL к аудиофайлу (mp3, m4a, ogg).",
+      "audioPlaceholder": "https://example.com/lesson.mp3",
+      "audioConfirm": "Встроить",
+      "imageUrlPlaceholder": "https://…"
+    }
   }
 }

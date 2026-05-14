@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import type { DropResult } from "@hello-pangea/dnd"
 import { coursesService } from "@/services/courses"
 import { storageService } from "@/services/storage"
@@ -44,6 +45,7 @@ export function useCourseData(
   confirm: Confirm,
   onNotFound: () => void,
 ): CourseData {
+  const { t } = useTranslation()
   const [course, setCourse] = useState<Course | null>(null)
   const [loading, setLoading] = useState(true)
   const [enrollStart, setEnrollStart] = useState("")
@@ -84,13 +86,13 @@ export function useCourseData(
       try {
         const updated = await coursesService.updateCourse(courseId, patch)
         setCourse((p) => (p ? { ...p, ...updated } : p))
-        toast({ title: "Saved", variant: "success" })
+        toast({ title: t("teacherEditor.toast.saved"), variant: "success" })
       } catch {
-        toast({ title: "Failed to save", variant: "destructive" })
+        toast({ title: t("teacherEditor.toast.saveFailed"), variant: "destructive" })
         throw new Error("save failed")
       }
     },
-    [courseId],
+    [courseId, t],
   )
 
   const uploadCover = useCallback(
@@ -99,10 +101,10 @@ export function useCourseData(
       const url = await storageService.uploadCourseImage(courseId, file)
       await coursesService.updateCourse(courseId, { image_url: url })
       setCourse((p) => (p ? { ...p, image_url: url } : p))
-      toast({ title: "Cover updated", variant: "success" })
+      toast({ title: t("teacherEditor.toast.coverUpdated"), variant: "success" })
       return url
     },
-    [courseId],
+    [courseId, t],
   )
 
   const removeCover = useCallback(async () => {
@@ -110,11 +112,11 @@ export function useCourseData(
     try {
       await coursesService.updateCourse(courseId, { image_url: null })
       setCourse((p) => (p ? { ...p, image_url: null } : p))
-      toast({ title: "Cover removed", variant: "success" })
+      toast({ title: t("teacherEditor.toast.coverRemoved"), variant: "success" })
     } catch {
-      toast({ title: "Failed to remove cover", variant: "destructive" })
+      toast({ title: t("teacherEditor.toast.coverRemoveFailed"), variant: "destructive" })
     }
-  }, [courseId])
+  }, [courseId, t])
 
   const saveEnrollment = useCallback(async () => {
     if (!courseId) return false
@@ -126,15 +128,15 @@ export function useCourseData(
       }
       await coursesService.updateCourse(courseId, payload)
       setCourse((p) => (p ? { ...p, ...payload } : p))
-      toast({ title: "Enrollment saved", variant: "success" })
+      toast({ title: t("teacherEditor.toast.enrollmentSaved"), variant: "success" })
       return true
     } catch {
-      toast({ title: "Failed to save", variant: "destructive" })
+      toast({ title: t("teacherEditor.toast.saveFailed"), variant: "destructive" })
       return false
     } finally {
       setSavingEnrollment(false)
     }
-  }, [courseId, enrollStart, enrollEnd])
+  }, [courseId, enrollStart, enrollEnd, t])
 
   const togglePublish = useCallback(async () => {
     if (!courseId || !course) return
@@ -143,13 +145,16 @@ export function useCourseData(
       await coursesService.updateCourse(courseId, { status: next })
       setCourse((p) => (p ? { ...p, status: next } : p))
       toast({
-        title: next === "published" ? "Published" : "Unpublished",
+        title:
+          next === "published"
+            ? t("teacherEditor.toast.published")
+            : t("teacherEditor.toast.unpublished"),
         variant: "success",
       })
     } catch {
-      toast({ title: "Failed", variant: "destructive" })
+      toast({ title: t("teacherEditor.toast.publishFailed"), variant: "destructive" })
     }
-  }, [courseId, course])
+  }, [courseId, course, t])
 
   const addModule = useCallback(async () => {
     if (!courseId) return
@@ -162,19 +167,19 @@ export function useCourseData(
       setCourse((p) =>
         p ? { ...p, modules: [...(p.modules ?? []), { ...m, chapters: [] }] } : p,
       )
-      toast({ title: "Module added", variant: "success" })
+      toast({ title: t("teacherEditor.toast.moduleAdded"), variant: "success" })
     } catch {
-      toast({ title: "Failed", variant: "destructive" })
+      toast({ title: t("teacherEditor.toast.moduleAddFailed"), variant: "destructive" })
     }
-  }, [courseId, course?.modules?.length])
+  }, [courseId, course?.modules?.length, t])
 
   const removeModule = useCallback(
     async (id: string) => {
       if (!courseId) return
       const ok = await confirm({
-        title: "Delete this module?",
-        description: "All chapters inside the module will also be removed.",
-        confirmLabel: "Delete",
+        title: t("teacherEditor.confirm.deleteModuleTitle"),
+        description: t("teacherEditor.confirm.deleteModuleDescription"),
+        confirmLabel: t("teacherEditor.confirm.deleteModuleAction"),
         tone: "destructive",
       })
       if (!ok) return
@@ -182,10 +187,10 @@ export function useCourseData(
         await coursesService.deleteModule(courseId, id)
         setCourse((p) => (p ? { ...p, modules: p.modules?.filter((m) => m.id !== id) } : p))
       } catch {
-        toast({ title: "Failed", variant: "destructive" })
+        toast({ title: t("teacherEditor.toast.moduleRemoveFailed"), variant: "destructive" })
       }
     },
-    [courseId, confirm],
+    [courseId, confirm, t],
   )
 
   const sortedModules = useMemo(
@@ -223,13 +228,13 @@ export function useCourseData(
             .filter(Boolean),
         )
       } catch {
-        toast({ title: "Failed to save module order", variant: "destructive" })
+        toast({ title: t("teacherEditor.toast.moduleOrderFailed"), variant: "destructive" })
         void loadCourse({ cancelled: false })
       } finally {
         setReordering(false)
       }
     },
-    [sortedModules, courseId, loadCourse, reordering],
+    [sortedModules, courseId, loadCourse, reordering, t],
   )
 
   return {
