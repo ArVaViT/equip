@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react"
 import { useAuth } from "@/context/useAuth"
 import { makeRegisterSchema } from "@/lib/validations/auth"
-import i18n from "@/i18n/config"
+import i18n, { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 
 export type FormState = {
   full_name: string
@@ -61,11 +61,21 @@ export function useRegister() {
 
     setLoading(true)
     try {
+      // Source the new user's ``preferred_locale`` from the language
+      // the registration form was rendered in — that's whatever
+      // i18next resolved (browser language for first-time visitors,
+      // localStorage for returning ones). The trigger whitelists this
+      // value against the same supported set as the DB CHECK, so a
+      // surprise locale gracefully falls back to the column default.
+      const preferredLocale = isSupportedLocale(i18n.resolvedLanguage)
+        ? i18n.resolvedLanguage
+        : DEFAULT_LOCALE
       await register(
         result.data.email,
         result.data.password,
         result.data.full_name,
         result.data.role,
+        preferredLocale,
       )
       setSuccess(true)
     } catch (err: unknown) {
