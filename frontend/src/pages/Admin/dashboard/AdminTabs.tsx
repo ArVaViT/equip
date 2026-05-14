@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next"
-import { Users, FileText } from "lucide-react"
+import { Users, GraduationCap, FileText } from "lucide-react"
 import type { AdminTab } from "./constants"
 
 interface Props {
@@ -17,6 +17,12 @@ export function AdminTabs({ active, onChange }: Props) {
         onClick={() => onChange("overview")}
         icon={<Users className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
         label={t("admin.tabOverview")}
+      />
+      <TabButton
+        active={active === "cohorts"}
+        onClick={() => onChange("cohorts")}
+        icon={<GraduationCap className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
+        label={t("admin.tabCohorts")}
       />
       <TabButton
         active={active === "audit"}

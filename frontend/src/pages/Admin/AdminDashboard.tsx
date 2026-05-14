@@ -13,6 +13,7 @@ import { UsersCard } from "./dashboard/UsersCard"
 import { AuditLogTab } from "./dashboard/AuditLogTab"
 import { useAdminOverview } from "./dashboard/useAdminOverview"
 import { useAdminAudit } from "./dashboard/useAdminAudit"
+import { CohortsTab } from "./cohorts"
 
 /**
  * Admin dashboard orchestrator. Delegates every piece of state to
@@ -103,6 +104,8 @@ export default function AdminDashboard() {
           />
         </>
       )}
+
+      {tab === "cohorts" && <CohortsTab />}
 
       {!overview.error && tab === "audit" && (
         <AuditLogTab

@@ -1,3 +1,4 @@
+export { AccessModeModal } from "./AccessModeModal"
 export { AnnouncementsModal } from "./AnnouncementsModal"
 export { CourseEditorSkeleton } from "./LoadingSkeleton"
 export { EnrollmentModal } from "./EnrollmentModal"
