@@ -43,13 +43,17 @@ export function InlineEditCover({
   const handleFile = async (file: File | undefined | null) => {
     if (!file) return
     if (!file.type.startsWith("image/")) {
-      toast({ title: "Unsupported file", description: "Pick an image file.", variant: "destructive" })
+      toast({
+        title: t("inlineEdit.cover.unsupportedTitle"),
+        description: t("inlineEdit.cover.unsupportedDescription"),
+        variant: "destructive",
+      })
       return
     }
     if (file.size > maxSizeMB * 1024 * 1024) {
       toast({
-        title: "Image too large",
-        description: `Max ${maxSizeMB} MB.`,
+        title: t("inlineEdit.cover.tooLargeTitle"),
+        description: t("inlineEdit.cover.tooLargeDescription", { max: maxSizeMB }),
         variant: "destructive",
       })
       return
@@ -58,8 +62,8 @@ export function InlineEditCover({
       setBusy(true)
       await onUpload(file)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Upload failed"
-      toast({ title: "Upload failed", description: msg, variant: "destructive" })
+      const msg = err instanceof Error ? err.message : t("inlineEdit.cover.uploadFailedTitle")
+      toast({ title: t("inlineEdit.cover.uploadFailedTitle"), description: msg, variant: "destructive" })
     } finally {
       setBusy(false)
     }
@@ -68,10 +72,10 @@ export function InlineEditCover({
   const remove = async () => {
     if (!onRemove) return
     const ok = await confirm({
-      title: "Remove cover?",
-      description: "This will clear the course cover image.",
+      title: t("inlineEdit.cover.removeConfirmTitle"),
+      description: t("inlineEdit.cover.removeConfirmDescription"),
       tone: "destructive",
-      confirmLabel: "Remove",
+      confirmLabel: t("inlineEdit.cover.removeConfirmAction"),
     })
     if (!ok) return
     try {
@@ -120,7 +124,7 @@ export function InlineEditCover({
             <>
               <ImagePlus className="h-6 w-6" />
               <span className="text-sm">
-                {disabled ? "No cover" : "Click or drop image"}
+                {disabled ? t("inlineEdit.cover.disabled") : t("inlineEdit.cover.empty")}
               </span>
             </>
           )}

@@ -20,7 +20,17 @@
     "editAria": "Edit {{what}}",
     "cover": {
       "replace": "Replace",
-      "remove": "Remove"
+      "remove": "Remove",
+      "empty": "Click or drop image",
+      "disabled": "No cover",
+      "unsupportedTitle": "Unsupported file",
+      "unsupportedDescription": "Pick an image file.",
+      "tooLargeTitle": "Image too large",
+      "tooLargeDescription": "Max {{max}} MB.",
+      "uploadFailedTitle": "Upload failed",
+      "removeConfirmTitle": "Remove cover?",
+      "removeConfirmDescription": "This will clear the course cover image.",
+      "removeConfirmAction": "Remove"
     }
   },
   "header": {
@@ -880,6 +890,43 @@
           "other": "Other"
         }
       }
+    },
+    "toast": {
+      "saved": "Saved",
+      "saveFailed": "Failed to save",
+      "coverUpdated": "Cover updated",
+      "coverRemoved": "Cover removed",
+      "coverRemoveFailed": "Failed to remove cover",
+      "enrollmentSaved": "Enrollment saved",
+      "published": "Published",
+      "unpublished": "Unpublished",
+      "publishFailed": "Failed to update publish status",
+      "moduleAdded": "Module added",
+      "moduleAddFailed": "Failed to add module",
+      "moduleRemoveFailed": "Failed to remove module",
+      "moduleOrderFailed": "Failed to save module order",
+      "announcementPostFailed": "Failed to post announcement",
+      "announcementDeleteFailed": "Failed to delete announcement",
+      "eventCreated": "Event created",
+      "eventUpdated": "Event updated",
+      "eventDeleted": "Event deleted",
+      "eventSaveFailed": "Failed to save event",
+      "eventDeleteFailed": "Failed to delete event",
+      "materialUploadFailed": "Upload failed",
+      "materialDownloadFailed": "Download failed",
+      "materialDeleteFailed": "Failed to delete material"
+    },
+    "confirm": {
+      "deleteModuleTitle": "Delete this module?",
+      "deleteModuleDescription": "All chapters inside the module will also be removed.",
+      "deleteModuleAction": "Delete",
+      "deleteAnnouncementTitle": "Delete this announcement?",
+      "deleteAnnouncementAction": "Delete",
+      "deleteEventTitle": "Delete this event?",
+      "deleteEventAction": "Delete",
+      "deleteMaterialTitle": "Delete material?",
+      "deleteMaterialDescription": "\"{{name}}\" will be permanently removed.",
+      "deleteMaterialAction": "Delete"
     }
   },
   "moduleEditor": {
@@ -1362,5 +1409,28 @@
     "titleRequired": "Title is required",
     "titleTooLong": "Title must be 300 characters or fewer",
     "nameTooShort": "Name must be at least 2 characters"
+  },
+  "editor": {
+    "toast": {
+      "imageUploadFailed": "Image upload failed",
+      "audioUrlInvalid": "Audio URL must start with http(s)"
+    },
+    "prompt": {
+      "addLinkTitle": "Add link",
+      "addLinkDescription": "Paste or type the URL you want to link to. Leave empty to remove an existing link.",
+      "addLinkConfirm": "Apply",
+      "uploadFailedTitle": "Upload failed",
+      "uploadFailedDescription": "We couldn't upload the file. Paste an image URL instead, or cancel.",
+      "uploadFailedConfirm": "Insert",
+      "youtubeTitle": "Embed YouTube video",
+      "youtubeDescription": "Paste the full YouTube URL (https://www.youtube.com/watch?v=…).",
+      "youtubePlaceholder": "https://www.youtube.com/watch?v=…",
+      "youtubeConfirm": "Embed",
+      "audioTitle": "Embed audio",
+      "audioDescription": "Paste a direct https:// URL to an audio file (mp3, m4a, ogg).",
+      "audioPlaceholder": "https://example.com/lesson.mp3",
+      "audioConfirm": "Embed",
+      "imageUrlPlaceholder": "https://…"
+    }
   }
 }

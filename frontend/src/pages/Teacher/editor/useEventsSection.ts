@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { coursesService } from "@/services/courses"
 import { toast } from "@/lib/toast"
 import type { CourseEvent } from "@/types"
@@ -27,6 +28,7 @@ export function useEventsSection(
   courseId: string | undefined,
   confirm: Confirm,
 ): EventsSection {
+  const { t } = useTranslation()
   const [events, setEvents] = useState<CourseEvent[]>([])
   const [form, setForm] = useState<EventFormState>(EMPTY_EVENT_FORM)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -76,38 +78,38 @@ export function useEventsSection(
       if (editingId) {
         const updated = await coursesService.updateCourseEvent(courseId, editingId, payload)
         setEvents((p) => p.map((ev) => (ev.id === editingId ? updated : ev)))
-        toast({ title: "Event updated", variant: "success" })
+        toast({ title: t("teacherEditor.toast.eventUpdated"), variant: "success" })
       } else {
         const created = await coursesService.createCourseEvent(courseId, payload)
         setEvents((p) => [...p, created])
-        toast({ title: "Event created", variant: "success" })
+        toast({ title: t("teacherEditor.toast.eventCreated"), variant: "success" })
       }
       resetForm()
     } catch {
-      toast({ title: "Failed to save event", variant: "destructive" })
+      toast({ title: t("teacherEditor.toast.eventSaveFailed"), variant: "destructive" })
     } finally {
       setSaving(false)
     }
-  }, [courseId, form, editingId, resetForm])
+  }, [courseId, form, editingId, resetForm, t])
 
   const remove = useCallback(
     async (id: string) => {
       if (!courseId) return
       const ok = await confirm({
-        title: "Delete this event?",
-        confirmLabel: "Delete",
+        title: t("teacherEditor.confirm.deleteEventTitle"),
+        confirmLabel: t("teacherEditor.confirm.deleteEventAction"),
         tone: "destructive",
       })
       if (!ok) return
       try {
         await coursesService.deleteCourseEvent(courseId, id)
         setEvents((p) => p.filter((e) => e.id !== id))
-        toast({ title: "Event deleted", variant: "success" })
+        toast({ title: t("teacherEditor.toast.eventDeleted"), variant: "success" })
       } catch {
-        toast({ title: "Failed", variant: "destructive" })
+        toast({ title: t("teacherEditor.toast.eventDeleteFailed"), variant: "destructive" })
       }
     },
-    [courseId, confirm],
+    [courseId, confirm, t],
   )
 
   return {
