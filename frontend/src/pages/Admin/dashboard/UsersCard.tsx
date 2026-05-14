@@ -3,18 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Users, Search, Trash2 } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import PageSpinner from "@/components/ui/PageSpinner"
 import VirtualAdminUsers from "../VirtualAdminUsers"
+import { RoleSelector } from "@/components/admin/RoleSelector"
 import type { UserRole } from "@/types"
 import { formatDate } from "@/i18n/format"
-import {
-  type ProfileRow,
-  ROLE_BADGE_VARIANT,
-  ROLE_I18N_KEY,
-} from "./constants"
+import { type ProfileRow } from "./constants"
 
 /**
  * Above this row count we swap the full <table> render for a react-window
@@ -303,22 +299,12 @@ function UserRow({
       </td>
       <td className="px-6 py-3 text-muted-foreground">{user.email}</td>
       <td className="px-6 py-3">
-        <div className="flex items-center gap-2">
-          <Badge variant={ROLE_BADGE_VARIANT[user.role]}>
-            {t(ROLE_I18N_KEY[user.role])}
-          </Badge>
-          <NativeSelect
-            fieldSize="sm"
-            value={user.role}
-            disabled={updating || isSelf}
-            onChange={(e) => onRoleChange(user.id, e.target.value as UserRole)}
-          >
-            <option value="student">{t("roles.student")}</option>
-            <option value="pending_teacher">{t("roles.pendingTeacher")}</option>
-            <option value="teacher">{t("roles.teacher")}</option>
-            <option value="admin">{t("roles.admin")}</option>
-          </NativeSelect>
-        </div>
+        <RoleSelector
+          role={user.role}
+          disabled={updating || isSelf}
+          onChange={(next) => onRoleChange(user.id, next)}
+          ariaLabel={t("admin.users.changeRoleAria", { name: displayName })}
+        />
       </td>
       <td className="px-6 py-3 text-muted-foreground">
         {formatDate(user.created_at)}

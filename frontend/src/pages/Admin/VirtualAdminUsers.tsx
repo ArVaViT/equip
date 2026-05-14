@@ -2,12 +2,10 @@ import { List, type RowComponentProps } from "react-window"
 import { useTranslation } from "react-i18next"
 import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { NativeSelect } from "@/components/ui/native-select"
+import { RoleSelector } from "@/components/admin/RoleSelector"
 import { toProxyImage } from "@/lib/images"
 import type { UserRole } from "@/types"
 import { formatDate } from "@/i18n/format"
-import { ROLE_BADGE_VARIANT, ROLE_I18N_KEY } from "./dashboard/constants"
 
 interface ProfileRow {
   id: string
@@ -84,20 +82,12 @@ function UserRow({
         {u.email}
       </div>
       <div role="cell" className="px-3 flex items-center gap-2">
-        <Badge variant={ROLE_BADGE_VARIANT[u.role]}>
-          {t(ROLE_I18N_KEY[u.role])}
-        </Badge>
-        <NativeSelect
-          fieldSize="sm"
-          value={u.role}
+        <RoleSelector
+          role={u.role}
           disabled={updatingId === u.id || u.id === currentUserId}
-          onChange={(e) => onRoleChange(u.id, e.target.value as UserRole)}
-        >
-          <option value="student">{t("roles.student")}</option>
-          <option value="pending_teacher">{t("roles.pendingTeacher")}</option>
-          <option value="teacher">{t("roles.teacher")}</option>
-          <option value="admin">{t("roles.admin")}</option>
-        </NativeSelect>
+          onChange={(next) => onRoleChange(u.id, next)}
+          ariaLabel={t("admin.users.changeRoleAria", { name: displayName })}
+        />
       </div>
       <div role="cell" className="px-3 text-muted-foreground">
         {formatDate(u.created_at)}

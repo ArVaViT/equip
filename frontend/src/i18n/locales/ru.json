@@ -1356,7 +1356,8 @@
       "emptyNoMatch": "Нет пользователей по запросу",
       "emptyNoUsers": "Пользователи не найдены",
       "showing": "Показано {{shown}} из {{total}} пользователей",
-      "missingName": "—"
+      "missingName": "—",
+      "changeRoleAria": "Изменить роль для {{name}}"
     },
     "pendingTeachers": {
       "title": "Заявки преподавателей",

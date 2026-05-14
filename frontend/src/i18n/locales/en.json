@@ -1318,7 +1318,8 @@
       "emptyNoMatch": "No users match your search",
       "emptyNoUsers": "No users found",
       "showing": "Showing {{shown}} of {{total}} users",
-      "missingName": "—"
+      "missingName": "—",
+      "changeRoleAria": "Change role for {{name}}"
     },
     "pendingTeachers": {
       "title": "Pending Teacher Approvals",
