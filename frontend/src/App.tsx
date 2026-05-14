@@ -17,6 +17,7 @@ import PageSpinner from "./components/ui/PageSpinner"
 import ScrollToTop from "./components/layout/ScrollToTop";
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { SUPPORT_EMAIL } from "@/lib/brand"
+import { ROLES } from "@/types"
 
 const NotFound = lazy(() => import("./pages/NotFound"))
 
@@ -119,7 +120,7 @@ function AppRoutes() {
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header />
-      {user?.role === "pending_teacher" && <PendingTeacherBanner />}
+      {user?.role === ROLES.PENDING_TEACHER && <PendingTeacherBanner />}
       <AnnouncementBanner />
       <main className="flex-1">
         <ErrorBoundary>

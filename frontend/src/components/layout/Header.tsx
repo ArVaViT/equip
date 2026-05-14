@@ -6,6 +6,7 @@ import { PressFeedback } from "@/components/motion"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useAuth } from "@/context/useAuth"
+import { ROLES } from "@/types"
 import { User as UserIcon, Menu } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import { cn } from "@/lib/utils"
@@ -75,7 +76,7 @@ export default function Header() {
   const { t } = useTranslation()
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  const isTeacher = user?.role === "teacher" || user?.role === "admin"
+  const isTeacher = user?.role === ROLES.TEACHER || user?.role === ROLES.ADMIN
   const isActive = (path: string) =>
     path === "/" ? location.pathname === "/" : location.pathname.startsWith(path)
 
@@ -121,7 +122,7 @@ export default function Header() {
                     {t("header.manage")}
                   </HeaderNavLink>
                 )}
-                {user.role === "admin" && (
+                {user.role === ROLES.ADMIN && (
                   <HeaderNavLink to="/admin" active={isActive("/admin")}>
                     {t("header.admin")}
                   </HeaderNavLink>
@@ -257,7 +258,7 @@ export default function Header() {
                       {t("header.manageCourses")}
                     </HeaderNavLink>
                   )}
-                  {user.role === "admin" && (
+                  {user.role === ROLES.ADMIN && (
                     <HeaderNavLink variant="sheet" to="/admin" active={isActive("/admin")} onNavigate={closeMobile}>
                       {t("header.adminPanel")}
                     </HeaderNavLink>

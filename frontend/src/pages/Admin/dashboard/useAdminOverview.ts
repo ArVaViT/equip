@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase"
 import { toast } from "@/lib/toast"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { useConfirm } from "@/components/ui/alert-dialog"
-import type { UserRole } from "@/types"
+import { ROLES, type UserRole } from "@/types"
 import type { AdminCert } from "./PendingCertsCard"
 import type { AdminStats, ProfileRow } from "./constants"
 
@@ -212,7 +212,7 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
   }
 
   const pendingTeachers = useMemo(
-    () => users.filter((u) => u.role === "pending_teacher"),
+    () => users.filter((u) => u.role === ROLES.PENDING_TEACHER),
     [users],
   )
 
