@@ -15,6 +15,7 @@ not surprised by machine translations when the UI is in another language.
 from __future__ import annotations
 
 import uuid
+from typing import cast
 
 from sqlalchemy import tuple_
 from sqlalchemy.orm import Session  # noqa: TC002
@@ -105,17 +106,35 @@ def _localize_optional_description(
     return overlay.get(dkey)
 
 
+def _build_localized_course[T: CourseSummary | CourseResponse](
+    schema_cls: type[T],
+    course: Course,
+    overlay: dict[tuple[str, str], str],
+    display_locale: LocaleCode,
+) -> T:
+    """Shared body for ``build_localized_course_summary`` /
+    ``_response``. The two were byte-for-byte identical except for the
+    return-type / ``model_validate`` target — this collapses them.
+
+    ``cast(T, …)`` is required because Pydantic's ``model_copy``
+    signature is ``Self`` and mypy can't narrow ``Self`` back to ``T``
+    through the bound union. The cast is sound: ``base`` was just
+    validated as ``T``, so ``base.model_copy(...)`` is also ``T``.
+    """
+    title = pick_localized_text(course, "title", course.title, overlay, display_locale)
+    desc = _localize_optional_description(course, course.description, overlay, display_locale)
+    base = schema_cls.model_validate(course, from_attributes=True)
+    if title == base.title and desc == base.description:
+        return cast("T", base)
+    return cast("T", base.model_copy(update={"title": title, "description": desc}))
+
+
 def build_localized_course_summary(
     course: Course,
     overlay: dict[tuple[str, str], str],
     display_locale: LocaleCode,
 ) -> CourseSummary:
-    title = pick_localized_text(course, "title", course.title, overlay, display_locale)
-    desc = _localize_optional_description(course, course.description, overlay, display_locale)
-    base = CourseSummary.model_validate(course, from_attributes=True)
-    if title == base.title and desc == base.description:
-        return base
-    return base.model_copy(update={"title": title, "description": desc})
+    return _build_localized_course(CourseSummary, course, overlay, display_locale)
 
 
 def build_localized_course_response(
@@ -123,12 +142,7 @@ def build_localized_course_response(
     overlay: dict[tuple[str, str], str],
     display_locale: LocaleCode,
 ) -> CourseResponse:
-    title = pick_localized_text(course, "title", course.title, overlay, display_locale)
-    desc = _localize_optional_description(course, course.description, overlay, display_locale)
-    base = CourseResponse.model_validate(course, from_attributes=True)
-    if title == base.title and desc == base.description:
-        return base
-    return base.model_copy(update={"title": title, "description": desc})
+    return _build_localized_course(CourseResponse, course, overlay, display_locale)
 
 
 def fetch_overlay_triples_bulk(
