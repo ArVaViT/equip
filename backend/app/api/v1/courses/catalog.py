@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_optional_user, is_owner_or_admin, require_teacher
 from app.core.database import get_db
-from app.models.course import Course
+from app.models.course import Course, CourseStatus
 from app.models.user import User, UserRole
 from app.schemas.course import CourseResponse, CourseSummary, ModuleResponse
 from app.schemas.locale import LocaleCode, normalize_locale
@@ -91,7 +91,7 @@ def get_course_detail(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Course '{course_id}' not found",
         )
-    if course.status != "published" and not is_owner_or_admin(course, current_user):
+    if course.status != CourseStatus.PUBLISHED and not is_owner_or_admin(course, current_user):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Course '{course_id}' not found",
@@ -125,7 +125,7 @@ def get_module_detail(
             detail=f"Course '{course_id}' not found",
         )
     course_status, course_owner_id, course_source_locale = course_row
-    if course_status != "published":
+    if course_status != CourseStatus.PUBLISHED:
         if not current_user or (
             str(course_owner_id) != str(current_user.id) and current_user.role != UserRole.ADMIN.value
         ):

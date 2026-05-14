@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import assert_course_owner, require_teacher
 from app.core.database import get_db
 from app.core.sanitize import sanitize_string
-from app.models.course import Course
+from app.models.course import Course, CourseStatus
 from app.models.user import User, UserRole
 from app.schemas.course import CourseCreate, CourseResponse, CourseUpdate
 from app.services.audit_service import log_action
@@ -81,7 +81,7 @@ def update_existing_course(
         details = {"old_status": old_status, "new_status": data.status}
     # Special-case draft→published so the audit log distinguishes a
     # publication event from a generic update.
-    is_publish_event = data.status == "published" and old_status != "published"
+    is_publish_event = data.status == CourseStatus.PUBLISHED and old_status != CourseStatus.PUBLISHED
     action = "publish" if is_publish_event else "update"
     log_action(db, teacher.id, action, "course", course_id, details=details or None, request=request)
 
@@ -90,7 +90,7 @@ def update_existing_course(
     # Failures must NOT block the save — failed rows are persisted for retry.
     # ``result`` is the same SQLAlchemy instance ``update_course`` mutated, so
     # there's no need to re-load the full course tree just to translate it.
-    if result.status == "published":
+    if result.status == CourseStatus.PUBLISHED:
         try:
             translate_course_content(db, result)
         except Exception:
@@ -136,7 +136,7 @@ def clone_existing_course(
     # Drafts are only visible (and therefore clonable) to their owner,
     # regardless of admin status.
     is_owner = str(course.created_by) == str(teacher.id)
-    if course.status != "published" and not is_owner:
+    if course.status != CourseStatus.PUBLISHED and not is_owner:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the owner can clone a draft course",

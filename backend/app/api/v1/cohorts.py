@@ -30,8 +30,8 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_optional_user, is_owner_or_admin, require_admin
 from app.core.database import get_db
-from app.models.cohort import Cohort, CohortCourse
-from app.models.course import Course
+from app.models.cohort import Cohort, CohortCourse, CohortStatus
+from app.models.course import Course, CourseStatus
 from app.models.enrollment import Enrollment
 from app.models.user import User, UserRole
 from app.schemas.cohort import (
@@ -186,7 +186,7 @@ def update_cohort(
     # the schema, because the schema is also used by the ``complete``
     # endpoint where ``completed`` is the legitimate target.
     patch = data.model_dump(exclude_unset=True)
-    if "status" in patch and cohort.status == "completed" and patch["status"] != "completed":
+    if "status" in patch and cohort.status == CohortStatus.COMPLETED and patch["status"] != CohortStatus.COMPLETED:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot reopen a completed cohort",
@@ -223,12 +223,12 @@ def complete_cohort(
     db: Session = Depends(get_db),
 ) -> CohortResponse:
     cohort = _get_or_404(db, cohort_id)
-    if cohort.status == "completed":
+    if cohort.status == CohortStatus.COMPLETED:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cohort is already completed",
         )
-    cohort.status = "completed"
+    cohort.status = CohortStatus.COMPLETED
     db.commit()
     db.refresh(cohort)
     return _serialize(db, cohort)
@@ -495,7 +495,7 @@ def list_cohorts_for_course(
     course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
-    if course.status != "published" and not is_owner_or_admin(course, current_user):
+    if course.status != CourseStatus.PUBLISHED and not is_owner_or_admin(course, current_user):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
 
     cohorts = (

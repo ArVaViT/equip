@@ -1,3 +1,4 @@
+import enum
 import uuid
 from datetime import datetime
 
@@ -5,6 +6,21 @@ from sqlalchemy import DateTime, ForeignKey, Index, String, UniqueConstraint, fu
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+
+
+class CertificateStatus(enum.StrEnum):
+    """Certificate request → approve → issue state machine.
+
+    ``pending`` — student requested. Teacher must approve first.
+    ``teacher_approved`` — instructor signed off. Admin issues from here.
+    ``approved`` — admin issued; ``certificate_number`` populated.
+    ``rejected`` — either reviewer can reject before issuance.
+    """
+
+    PENDING = "pending"
+    TEACHER_APPROVED = "teacher_approved"
+    APPROVED = "approved"
+    REJECTED = "rejected"
 
 
 class Certificate(Base):
