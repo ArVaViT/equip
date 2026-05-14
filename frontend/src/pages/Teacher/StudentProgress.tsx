@@ -155,7 +155,7 @@ export default function StudentProgress() {
     return (
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <ErrorState
-          icon={<Users />}
+          icon={<Users strokeWidth={1.75} />}
           title={t("studentProgress.loadFailed")}
           description={t("studentProgress.loadFailedDescription")}
           action={
@@ -166,7 +166,7 @@ export default function StudentProgress() {
           secondaryAction={
             <Link to="/teacher">
               <Button variant="ghost">
-                <ArrowLeft className="h-4 w-4 mr-1.5" />
+                <ArrowLeft className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
                 {t("studentProgress.backToCourses")}
               </Button>
             </Link>
@@ -181,14 +181,14 @@ export default function StudentProgress() {
         <Link to="/teacher" className="hover:text-foreground transition-colors">
           {t("studentProgress.breadcrumb.myCourses")}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5" />
+        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
         <Link
           to={`/teacher/courses/${courseId}`}
           className="hover:text-foreground transition-colors"
         >
           {data.course_title || t("studentProgress.breadcrumb.courseFallback")}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5" />
+        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
         <span className="text-foreground font-medium">{t("studentProgress.heading")}</span>
       </div>
 
@@ -200,13 +200,13 @@ export default function StudentProgress() {
         <div className="flex items-center gap-2">
           <Link to={`/teacher/courses/${courseId}/analytics`}>
             <Button size="sm" variant="outline">
-              <BarChart3 className="h-4 w-4 mr-1.5" />
+              <BarChart3 className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
               {t("studentProgress.analytics")}
             </Button>
           </Link>
           <Link to={`/teacher/courses/${courseId}/gradebook`}>
             <Button size="sm" variant="outline">
-              <ClipboardList className="h-4 w-4 mr-1.5" />
+              <ClipboardList className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
               {t("studentProgress.gradebook")}
             </Button>
           </Link>

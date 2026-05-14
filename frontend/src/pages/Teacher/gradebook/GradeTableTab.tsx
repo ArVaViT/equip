@@ -61,7 +61,7 @@ export function GradeTableTab({
     return (
       <Card>
         <CardContent className="py-12 text-center">
-          <BookOpen className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+          <BookOpen className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" strokeWidth={1.75} />
           <p className="text-sm text-muted-foreground">{t("gradebook.failedLoad")}</p>
         </CardContent>
       </Card>
@@ -72,7 +72,7 @@ export function GradeTableTab({
     return (
       <Card>
         <CardContent className="py-12 text-center">
-          <Users className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+          <Users className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" strokeWidth={1.75} />
           <p className="text-sm text-muted-foreground">{t("gradebook.summary.empty")}</p>
         </CardContent>
       </Card>
@@ -369,7 +369,7 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
 function EmptyCell() {
   return (
     <div className="flex items-center justify-center h-9 rounded bg-muted/30 text-muted-foreground/50 text-xs">
-      <Circle className="h-3.5 w-3.5" />
+      <Circle className="h-3.5 w-3.5" strokeWidth={1.75} />
     </div>
   )
 }
@@ -421,7 +421,7 @@ function GradeTableLegend() {
     <div className="mt-4 flex flex-wrap gap-4 border-t pt-4 text-xs text-muted-foreground">
       <div className="flex items-center gap-1.5">
         <div className="flex h-4 w-4 items-center justify-center rounded border border-success/30 bg-success/10">
-          <CheckCircle2 className="h-2.5 w-2.5 text-success" />
+          <CheckCircle2 className="h-2.5 w-2.5 text-success" strokeWidth={1.75} />
         </div>
         {t("gradebook.table.legend.completed")}
       </div>
@@ -451,7 +451,7 @@ function GradeTableLegend() {
       </div>
       <div className="flex items-center gap-1.5">
         <div className="flex h-4 w-4 items-center justify-center rounded border bg-muted/30">
-          <Circle className="h-2.5 w-2.5 text-muted-foreground/40" />
+          <Circle className="h-2.5 w-2.5 text-muted-foreground/40" strokeWidth={1.75} />
         </div>
         {t("gradebook.table.legend.notSubmitted")}
       </div>

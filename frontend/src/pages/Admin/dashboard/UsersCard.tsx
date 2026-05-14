@@ -174,7 +174,7 @@ function EmptyUsers({ hasQuery }: { hasQuery: boolean }) {
   const { t } = useTranslation()
   return (
     <div className="flex flex-col items-center py-16 text-center">
-      <Users className="h-12 w-12 text-muted-foreground/40 mb-3" />
+      <Users className="h-12 w-12 text-muted-foreground/40 mb-3" strokeWidth={1.75} />
       <p className="text-muted-foreground">
         {hasQuery
           ? t("admin.users.emptyNoMatch")
@@ -333,7 +333,7 @@ function UserRow({
           aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
           title={isSelf ? t("admin.users.deleteSelfTooltip") : t("admin.users.deleteTooltip")}
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
         </Button>
       </td>
     </tr>

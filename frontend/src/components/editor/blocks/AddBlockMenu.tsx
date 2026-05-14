@@ -32,9 +32,9 @@ export function AddBlockMenu({ onAdd, adding }: Props) {
         disabled={adding}
       >
         {adding ? (
-          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} />
         ) : (
-          <Plus className="h-3.5 w-3.5 mr-1.5" />
+          <Plus className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
         )}
         {t("blockEditor.addBlock")}
       </Button>

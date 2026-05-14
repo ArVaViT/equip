@@ -27,7 +27,7 @@ export function QuizHeader({
   return (
     <div className="p-5 border-b">
       <div className="flex items-center gap-2 mb-1">
-        <ClipboardList className="h-5 w-5 shrink-0 text-muted-foreground" />
+        <ClipboardList className="h-5 w-5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
         <h3 className="min-w-0 flex-1 text-base font-semibold text-wrap-safe">
           {quiz.title}
         </h3>

@@ -3,7 +3,7 @@ import { AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface ErrorStateProps {
-  /** Icon slot. Defaults to <AlertTriangle />. */
+  /** Icon slot. Defaults to <AlertTriangle strokeWidth={1.75} />. */
   icon?: ReactNode
   /** Short headline. Defaults to "Something went wrong". */
   title?: string

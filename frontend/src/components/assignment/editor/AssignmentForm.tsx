@@ -92,14 +92,14 @@ export function AssignmentForm({ value, onChange, onSubmit, onCancel, submitting
         <div className="flex gap-2">
           <Button size="sm" onClick={onSubmit} disabled={submitting}>
             {submitting ? (
-              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} />
             ) : (
-              <Save className="h-3.5 w-3.5 mr-1.5" />
+              <Save className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
             )}
             {submitLabel}
           </Button>
           <Button size="sm" variant="ghost" onClick={onCancel}>
-            {mode === "edit" && <X className="h-3.5 w-3.5 mr-1.5" />}
+            {mode === "edit" && <X className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />}
             {t("assignmentEditor.form.cancel")}
           </Button>
         </div>

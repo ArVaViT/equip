@@ -70,7 +70,7 @@ export function NotificationItem({ notification, onActivate, onDelete }: Props) 
         className="mt-0.5 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
         aria-label={t("notifications.deleteAriaLabel")}
       >
-        <Trash2 className="h-3.5 w-3.5" />
+        <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
       </button>
     </div>
   )

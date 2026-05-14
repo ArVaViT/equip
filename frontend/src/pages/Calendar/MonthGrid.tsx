@@ -52,7 +52,7 @@ export function MonthGrid({
               onClick={onPrevMonth}
               aria-label={t("calendar.prevMonth")}
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4" strokeWidth={1.75} />
             </Button>
             <Button variant="outline" size="sm" className="h-8 text-xs" onClick={onGoToday}>
               {t("calendar.today")}
@@ -64,7 +64,7 @@ export function MonthGrid({
               onClick={onNextMonth}
               aria-label={t("calendar.nextMonth")}
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4" strokeWidth={1.75} />
             </Button>
           </div>
         </div>

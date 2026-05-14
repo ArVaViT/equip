@@ -14,6 +14,7 @@ import { storageService } from "@/services/storage"
 import { coursesService } from "@/services/courses"
 import { makeProfileSchema } from "@/lib/validations/course"
 import { toProxyImage } from "@/lib/images"
+import { ROLE_I18N_KEY } from "@/lib/roles"
 import { formatDate } from "@/i18n/format"
 import { toast } from "@/lib/toast"
 import {
@@ -184,7 +185,7 @@ export default function ProfilePage() {
                   ariaLabel={t("profile.editName")}
                   textClassName="tracking-tight"
                 />
-                <CardDescription className="text-sm capitalize">{user.role}</CardDescription>
+                <CardDescription className="text-sm">{t(ROLE_I18N_KEY[user.role])}</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -252,7 +253,7 @@ export default function ProfilePage() {
                 <Shield className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
                 <div>
                   <dt className="text-xs text-muted-foreground">{t("profile.role")}</dt>
-                  <dd className="text-sm font-medium capitalize">{user.role}</dd>
+                  <dd className="text-sm font-medium">{t(ROLE_I18N_KEY[user.role])}</dd>
                 </div>
               </div>
               {user.created_at && (

@@ -70,7 +70,7 @@ export function EnrollmentModal({
           </div>
         </div>
         <Button onClick={onSave} disabled={saving} className="w-full">
-          <Save className="h-4 w-4 mr-1.5" />
+          <Save className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
           {saving
             ? t("teacherEditor.modals.enrollment.saving")
             : t("teacherEditor.modals.enrollment.save")}

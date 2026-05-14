@@ -89,7 +89,7 @@ export default function ModuleView() {
     return (
       <div className="container mx-auto px-4">
         <ErrorState
-          icon={<Book />}
+          icon={<Book strokeWidth={1.75} />}
           title={error ?? t("toast.moduleNotFound")}
           action={
             <Link to={courseId ? `/courses/${courseId}` : "/"}>
@@ -108,7 +108,7 @@ export default function ModuleView() {
     <div className="container mx-auto px-4 py-6 max-w-3xl">
       <Link to={`/courses/${courseId}`}>
         <Button variant="ghost" size="sm" className="mb-4 h-8 text-xs">
-          <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+          <ArrowLeft className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
           {t("course.backToCourse")}
         </Button>
       </Link>
@@ -136,9 +136,9 @@ export default function ModuleView() {
                 : "border-border bg-muted/50"
           }`}>
             {isOverdue ? (
-              <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
+              <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" strokeWidth={1.75} />
             ) : (
-              <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
             )}
             <span className={`text-sm font-medium ${
               isOverdue ? "text-destructive" : isUpcoming ? "text-warning" : "text-foreground"
@@ -159,7 +159,7 @@ export default function ModuleView() {
 
       {allComplete && (
         <div className="mb-4 flex items-center gap-2 rounded-md border border-border border-l-[3px] border-l-success bg-success/10 px-3 py-2">
-          <CheckCircle className="h-4 w-4 shrink-0 text-success" />
+          <CheckCircle className="h-4 w-4 shrink-0 text-success" strokeWidth={1.75} />
           <span className="text-sm font-medium text-success">{t("module.moduleComplete")}</span>
         </div>
       )}
@@ -183,7 +183,7 @@ export default function ModuleView() {
 
       <div>
         <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <Book className="h-4 w-4" />
+          <Book className="h-4 w-4" strokeWidth={1.75} />
           {t("module.chaptersHeading")}
           <span className="text-sm font-normal text-muted-foreground">
             ({sortedChapters.length})
@@ -209,14 +209,14 @@ export default function ModuleView() {
                   >
                     <CardHeader className="pb-2">
                       <CardTitle className="flex min-w-0 items-center gap-2 text-base">
-                        <Lock className="h-5 w-5 text-muted-foreground/50 shrink-0" />
+                        <Lock className="h-5 w-5 text-muted-foreground/50 shrink-0" strokeWidth={1.75} />
                         <span className="min-w-0 flex-1 truncate text-muted-foreground">
                           {chapter.title}
                         </span>
                         {chapter.chapter_type && (
                           <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
                         )}
-                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/30" />
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/30" strokeWidth={1.75} />
                       </CardTitle>
                     </CardHeader>
                   </Card>
@@ -237,11 +237,11 @@ export default function ModuleView() {
                       <CardTitle className="flex min-w-0 items-center gap-2 text-base">
                         {isGradable ? (
                           isCompleted ? (
-                            <CheckCircle className="h-5 w-5 shrink-0 text-success" />
+                            <CheckCircle className="h-5 w-5 shrink-0 text-success" strokeWidth={1.75} />
                           ) : requiresTeacher ? (
-                            <Lock className="h-5 w-5 shrink-0 text-warning" />
+                            <Lock className="h-5 w-5 shrink-0 text-warning" strokeWidth={1.75} />
                           ) : (
-                            <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" />
+                            <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" strokeWidth={1.75} />
                           )
                         ) : null}
                         <span className={`min-w-0 flex-1 truncate ${isCompleted ? "text-muted-foreground" : ""}`}>
@@ -250,7 +250,7 @@ export default function ModuleView() {
                         {chapter.chapter_type && (
                           <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
                         )}
-                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40" />
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40" strokeWidth={1.75} />
                       </CardTitle>
                     </CardHeader>
                   </Card>

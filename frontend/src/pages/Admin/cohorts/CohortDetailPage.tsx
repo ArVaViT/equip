@@ -329,7 +329,7 @@ export default function CohortDetailPage() {
                     onClick={() => detachCourse(c.id)}
                     aria-label={t("admin.cohorts.detachAriaPrefix", { name: c.title })}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                   </Button>
                 </li>
               ))}
@@ -389,7 +389,7 @@ export default function CohortDetailPage() {
                             name: s.full_name ?? s.email,
                           })}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                         </Button>
                       </td>
                     </tr>

@@ -51,7 +51,7 @@ export function ChapterRow({
               {...dragProvided.dragHandleProps}
               className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground shrink-0 transition-colors"
             >
-              <GripVertical className="h-4 w-4" />
+              <GripVertical className="h-4 w-4" strokeWidth={1.75} />
             </div>
 
             <Input

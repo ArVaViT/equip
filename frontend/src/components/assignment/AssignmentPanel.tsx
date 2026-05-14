@@ -158,17 +158,17 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
   const statusConfig: Record<string, { icon: React.ReactNode; label: string; color: string }> = useMemo(
     () => ({
       submitted: {
-        icon: <Clock className="h-4 w-4" />,
+        icon: <Clock className="h-4 w-4" strokeWidth={1.75} />,
         label: t("assignment.statusSubmitted"),
         color: "border-info/30 bg-info/10 text-info",
       },
       graded: {
-        icon: <CheckCircle className="h-4 w-4" />,
+        icon: <CheckCircle className="h-4 w-4" strokeWidth={1.75} />,
         label: t("assignment.statusGraded"),
         color: "border-success/30 bg-success/10 text-success",
       },
       returned: {
-        icon: <RotateCcw className="h-4 w-4" />,
+        icon: <RotateCcw className="h-4 w-4" strokeWidth={1.75} />,
         label: t("assignment.statusReturned"),
         color: "border-warning/30 bg-warning/10 text-warning",
       },
@@ -180,7 +180,7 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
     <div className="border rounded-lg bg-card">
       <div className="p-5 border-b">
         <div className="flex items-center gap-2 mb-1">
-          <FileText className="h-5 w-5 text-muted-foreground" />
+          <FileText className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} />
           <h3 className="font-semibold text-base">{assignment.title}</h3>
         </div>
         {assignment.description && (
@@ -188,12 +188,12 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
         )}
         <div className="flex items-center gap-4 ml-7 mt-2 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
-            <Star className="h-3 w-3" />
+            <Star className="h-3 w-3" strokeWidth={1.75} />
             {t("assignment.maxPoints", { max: assignment.max_score })}
           </span>
           {assignment.due_date && (
             <span className={`flex items-center gap-1 ${isOverdue ? "font-medium text-destructive" : ""}`}>
-              <Calendar className="h-3 w-3" />
+              <Calendar className="h-3 w-3" strokeWidth={1.75} />
               {t("assignment.due")}{" "}
               {formatDate(assignment.due_date)}
               {isOverdue && ` ${t("assignment.overdue")}`}
@@ -222,7 +222,7 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
             {submission.feedback && (
               <div className="rounded-md border bg-muted/30 p-3">
                 <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1">
-                  <MessageSquare className="h-3 w-3" />
+                  <MessageSquare className="h-3 w-3" strokeWidth={1.75} />
                   {t("assignment.instructorFeedback")}
                 </div>
                 <p className="text-sm text-wrap-safe whitespace-pre-wrap">{submission.feedback}</p>
@@ -257,7 +257,7 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs flex items-center gap-1.5">
-                <LinkIcon className="h-3 w-3" />
+                <LinkIcon className="h-3 w-3" strokeWidth={1.75} />
                 {t("assignment.fileLinkOptional")}
               </Label>
               <Input
@@ -274,9 +274,9 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
               disabled={submitting || (!content.trim() && !fileUrl.trim())}
             >
               {submitting ? (
-                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} />
               ) : (
-                <Send className="h-3.5 w-3.5 mr-1.5" />
+                <Send className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
               )}
               {submitting ? t("assignment.submitting") : canResubmit ? t("assignment.resubmit") : t("assignment.submit")}
             </Button>

@@ -216,7 +216,7 @@ export default function TeacherDashboard() {
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-serif font-bold tracking-tight">{t("teacher.dashboardTitle")}</h1>
         <Button onClick={() => setShowCreate(!showCreate)} size="sm">
-          <Plus className="h-4 w-4 mr-1.5" />
+          <Plus className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
           {t("teacher.newCourse")}
         </Button>
       </div>
@@ -245,7 +245,7 @@ export default function TeacherDashboard() {
       ) : error ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <BookOpen className="h-12 w-12 text-destructive/40 mb-4" />
+            <BookOpen className="h-12 w-12 text-destructive/40 mb-4" strokeWidth={1.75} />
             <h3 className="text-lg font-medium mb-1">{t("teacher.somethingWrong")}</h3>
             <p className="text-sm text-muted-foreground mb-4">{error}</p>
             <Button onClick={() => load()} size="sm" variant="outline">

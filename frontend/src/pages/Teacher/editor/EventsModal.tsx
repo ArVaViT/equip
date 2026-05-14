@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Pencil, Save, Trash2 } from "lucide-react"
-import { Modal } from "@/components/patterns"
+import { CalendarDays, Pencil, Save, Trash2 } from "lucide-react"
+import { EmptyState, Modal } from "@/components/patterns"
 import { EventTypeBadge } from "./badges"
 import type { EventFormState } from "./types"
 import type { CourseEvent } from "@/types"
@@ -90,7 +90,7 @@ export function EventsModal({
           </div>
           <div className="flex gap-2">
             <Button size="sm" onClick={onSave} disabled={!canSubmit}>
-              <Save className="h-3.5 w-3.5 mr-1.5" />
+              <Save className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
               {saving
                 ? t("teacherEditor.modals.events.saving")
                 : editingId
@@ -106,9 +106,11 @@ export function EventsModal({
         </div>
 
         {events.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            {t("teacherEditor.modals.events.empty")}
-          </p>
+          <EmptyState
+            variant="compact"
+            icon={<CalendarDays strokeWidth={1.75} aria-hidden />}
+            title={t("teacherEditor.modals.events.empty")}
+          />
         ) : (
           <div className="space-y-2 max-h-72 overflow-y-auto">
             {events.map((event) => (
@@ -130,6 +132,7 @@ function EventRow({
   onEdit: (e: CourseEvent) => void
   onDelete: (id: string) => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="flex items-start gap-3 p-3 border rounded-lg">
       <div className="flex-1 min-w-0">
@@ -147,16 +150,23 @@ function EventRow({
         )}
       </div>
       <div className="flex flex-col gap-1 shrink-0">
-        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onEdit(event)}>
-          <Pencil className="h-3 w-3" />
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs"
+          onClick={() => onEdit(event)}
+          aria-label={t("teacherEditor.modals.events.editAria", { title: event.title })}
+        >
+          <Pencil className="h-3 w-3" strokeWidth={1.75} />
         </Button>
         <Button
           variant="ghost"
           size="sm"
           className="h-7 text-xs text-destructive hover:text-destructive"
           onClick={() => onDelete(event.id)}
+          aria-label={t("teacherEditor.modals.events.deleteAria", { title: event.title })}
         >
-          <Trash2 className="h-3 w-3" />
+          <Trash2 className="h-3 w-3" strokeWidth={1.75} />
         </Button>
       </div>
     </div>

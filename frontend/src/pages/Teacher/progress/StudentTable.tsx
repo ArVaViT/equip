@@ -50,7 +50,7 @@ export function StudentTable({
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
-          <Users className="h-5 w-5" />
+          <Users className="h-5 w-5" strokeWidth={1.75} />
           {t("studentProgress.table.heading")}
           <span className="text-sm font-normal text-muted-foreground">
             ({students.length})
@@ -121,7 +121,7 @@ function EmptyState({ hasSearch }: { hasSearch: boolean }) {
   const { t } = useTranslation()
   return (
     <div className="text-center py-12 text-muted-foreground">
-      <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
+      <Users className="h-10 w-10 mx-auto mb-3 opacity-30" strokeWidth={1.75} />
       <p className="text-sm">
         {hasSearch
           ? t("studentProgress.table.emptyNoMatch")

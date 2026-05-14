@@ -126,7 +126,7 @@ export default function CourseDetail() {
     return (
       <div className="container mx-auto px-4">
         <ErrorState
-          icon={<BookOpen />}
+          icon={<BookOpen strokeWidth={1.75} />}
           title={error ?? t("toast.courseNotFound")}
           action={
             <Link to="/">

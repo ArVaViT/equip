@@ -103,7 +103,7 @@ export default function QuizEditor({
   if (draft.loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" strokeWidth={1.75} />
       </div>
     )
   }
@@ -117,7 +117,7 @@ export default function QuizEditor({
     <div className="space-y-4 mt-3">
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2">
-          <ClipboardList className="h-4 w-4 text-muted-foreground" />
+          <ClipboardList className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
           <span className="text-sm font-medium">
             {draft.existingQuiz
               ? chapterType === "exam"

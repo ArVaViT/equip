@@ -76,7 +76,7 @@ export function QuizEditView({
             {t("quizEditor.questions.heading", { count: questions.length })}
           </span>
           <Button variant="outline" size="sm" onClick={onAddQuestion} className="h-7 text-xs">
-            <Plus className="h-3 w-3 mr-1" />
+            <Plus className="h-3 w-3 mr-1" strokeWidth={1.75} />
             {t("quizEditor.questions.addQuestion")}
           </Button>
         </div>
@@ -106,9 +106,9 @@ export function QuizEditView({
       <div className="flex items-center gap-2 pt-2">
         <Button size="sm" onClick={onSave} disabled={saving}>
           {saving ? (
-            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} />
           ) : (
-            <Save className="h-3.5 w-3.5 mr-1.5" />
+            <Save className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
           )}
           {saving
             ? t("quizEditor.save.saving")
@@ -119,9 +119,9 @@ export function QuizEditView({
         {existingQuiz && (
           <Button size="sm" variant="destructive" onClick={onDelete} disabled={deleting}>
             {deleting ? (
-              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} />
             ) : (
-              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+              <Trash2 className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
             )}
             {chapterType === "exam"
               ? t("quizEditor.save.deleteExam")

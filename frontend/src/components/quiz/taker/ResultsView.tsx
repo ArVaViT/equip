@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { StaggerChildren } from "@/components/motion"
 import type { Quiz, QuizAttempt, QuizQuestion } from "@/types"
 import type { AnswerMap } from "./types"
+import { getTrueFalseLabel } from "@/components/quiz/editor/types"
 
 interface Props {
   result: QuizAttempt
@@ -109,9 +110,9 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                 {isCorrect !== null && (
                   <span className="shrink-0">
                     {isCorrect ? (
-                      <CheckCircle className="h-4 w-4 text-success" />
+                      <CheckCircle className="h-4 w-4 text-success" strokeWidth={1.75} />
                     ) : (
-                      <XCircle className="h-4 w-4 text-destructive" />
+                      <XCircle className="h-4 w-4 text-destructive" strokeWidth={1.75} />
                     )}
                   </span>
                 )}
@@ -123,6 +124,10 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                     .map((opt) => {
                       const isSelected = userAnswer?.selected_option_id === opt.id
                       const isRight = answerResult?.correct_option_id === opt.id
+                      const displayText =
+                        q.question_type === "true_false"
+                          ? getTrueFalseLabel(opt.option_text, t)
+                          : opt.option_text
                       return (
                         <div
                           key={opt.id}
@@ -136,7 +141,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                         >
                           {isSelected && !isRight ? "✗ " : ""}
                           {isRight ? "✓ " : ""}
-                          {opt.option_text}
+                          {displayText}
                         </div>
                       )
                     })}
@@ -147,7 +152,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                   {hasGrade ? (
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       <span className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-2 py-1 font-medium text-success">
-                        <CheckCircle className="h-3.5 w-3.5" />
+                        <CheckCircle className="h-3.5 w-3.5" strokeWidth={1.75} />
                         {t("quiz.gradedPoints", {
                           count: q.points,
                           earned: answerResult?.points_earned ?? 0,
@@ -162,7 +167,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                     </div>
                   ) : (
                     <div className="flex w-fit items-center gap-1.5 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-1.5 text-xs font-medium text-warning">
-                      <BookOpen className="h-3.5 w-3.5 shrink-0" />
+                      <BookOpen className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
                       {t("quiz.sentForReview")}
                     </div>
                   )}

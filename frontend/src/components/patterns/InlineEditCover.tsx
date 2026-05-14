@@ -119,10 +119,10 @@ export function InlineEditCover({
           className="group flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {busy ? (
-            <Loader2 className="h-6 w-6 animate-spin" />
+            <Loader2 className="h-6 w-6 animate-spin" strokeWidth={1.75} />
           ) : (
             <>
-              <ImagePlus className="h-6 w-6" />
+              <ImagePlus className="h-6 w-6" strokeWidth={1.75} />
               <span className="text-sm">
                 {disabled ? t("inlineEdit.cover.disabled") : t("inlineEdit.cover.empty")}
               </span>
@@ -147,9 +147,9 @@ export function InlineEditCover({
                 className="inline-flex items-center gap-1.5 rounded-md bg-background/90 px-2.5 py-1 text-xs font-medium text-foreground shadow-sm ring-1 ring-border hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {busy ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.75} />
                 ) : (
-                  <Upload className="h-3.5 w-3.5" />
+                  <Upload className="h-3.5 w-3.5" strokeWidth={1.75} />
                 )}
                 {t("inlineEdit.cover.replace")}
               </button>
@@ -160,7 +160,7 @@ export function InlineEditCover({
                   disabled={busy}
                   className="inline-flex items-center gap-1.5 rounded-md bg-background/90 px-2.5 py-1 text-xs font-medium text-foreground shadow-sm ring-1 ring-border hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
                   {t("inlineEdit.cover.remove")}
                 </button>
               )}

@@ -91,9 +91,9 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
         }}
       >
         {expanded ? (
-          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" strokeWidth={1.75} />
         ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" strokeWidth={1.75} />
         )}
         <div className="flex-1 min-w-0">
           <span className="text-sm font-medium">{assignment.title}</span>
@@ -114,8 +114,9 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
             e.stopPropagation()
             startEdit()
           }}
+          aria-label={t("assignmentEditor.item.editAria", { title: assignment.title })}
         >
-          <Pencil className="h-3.5 w-3.5" />
+          <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />
         </Button>
         <Button
           variant="ghost"
@@ -125,8 +126,9 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
             e.stopPropagation()
             onDelete(assignment.id)
           }}
+          aria-label={t("assignmentEditor.item.deleteAria", { title: assignment.title })}
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
         </Button>
       </div>
 
@@ -151,7 +153,7 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
 
           {loadingSubs ? (
             <div className="flex items-center justify-center py-6">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" strokeWidth={1.75} />
             </div>
           ) : submissions.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">

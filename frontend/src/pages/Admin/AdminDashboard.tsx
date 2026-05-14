@@ -46,7 +46,7 @@ export default function AdminDashboard() {
     <div className="animate-fade-in container mx-auto px-4 py-8 max-w-6xl">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 rounded-lg bg-primary/10">
-          <Shield className="h-6 w-6 text-primary" />
+          <Shield className="h-6 w-6 text-primary" strokeWidth={1.75} />
         </div>
         <h1 className="text-3xl font-serif font-bold tracking-tight">{t("admin.title")}</h1>
       </div>
@@ -55,7 +55,7 @@ export default function AdminDashboard() {
 
       {overview.error && (
         <ErrorState
-          icon={<Shield />}
+          icon={<Shield strokeWidth={1.75} />}
           description={overview.error}
           action={
             <Button onClick={overview.reload} size="sm" variant="outline">

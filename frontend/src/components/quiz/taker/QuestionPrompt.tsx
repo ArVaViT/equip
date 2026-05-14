@@ -3,6 +3,7 @@ import type { QuizQuestion } from "@/types"
 import { EssayAnswer } from "./EssayAnswer"
 import type { QuizAnswer } from "./types"
 import { Textarea } from "@/components/ui/textarea"
+import { getTrueFalseLabel } from "@/components/quiz/editor/types"
 
 interface Props {
   question: QuizQuestion
@@ -70,7 +71,7 @@ export function QuestionPrompt({ question, index, answer, onAnswer }: Props) {
                   : "border-border hover:bg-muted/50"
               }`}
             >
-              {opt.option_text}
+              {getTrueFalseLabel(opt.option_text, t)}
             </button>
           ))}
         </div>

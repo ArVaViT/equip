@@ -61,12 +61,12 @@ export function FileBlockEditor({ block, chapterId, onUpdated }: Props) {
   return (
     <div className="space-y-2">
       <Label className="text-xs flex items-center gap-1.5">
-        <Paperclip className="h-3.5 w-3.5" />
+        <Paperclip className="h-3.5 w-3.5" strokeWidth={1.75} />
         {t("blockEditor.file.attachedFile")}
       </Label>
       {hasFile ? (
         <div className="flex items-center gap-2 rounded-md border px-3 py-2 bg-muted/30">
-          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+          <FileText className="h-4 w-4 text-muted-foreground shrink-0" strokeWidth={1.75} />
           <span className="text-sm flex-1 truncate">
             {block.file_name ?? block.file_path}
           </span>
@@ -77,7 +77,7 @@ export function FileBlockEditor({ block, chapterId, onUpdated }: Props) {
             disabled={uploading}
             className="h-7 text-xs"
           >
-            {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : t("blockEditor.file.replace")}
+            {uploading ? <Loader2 className="h-3 w-3 animate-spin" strokeWidth={1.75} /> : t("blockEditor.file.replace")}
           </Button>
           <Button
             size="sm"
@@ -87,7 +87,7 @@ export function FileBlockEditor({ block, chapterId, onUpdated }: Props) {
             className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
             aria-label={t("blockEditor.file.removeAria")}
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-3.5 w-3.5" strokeWidth={1.75} />
           </Button>
         </div>
       ) : (
@@ -99,9 +99,9 @@ export function FileBlockEditor({ block, chapterId, onUpdated }: Props) {
           className="w-full border-dashed"
         >
           {uploading ? (
-            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} />
           ) : (
-            <Upload className="h-3.5 w-3.5 mr-1.5" />
+            <Upload className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
           )}
           {uploading ? t("blockEditor.file.uploading") : t("blockEditor.file.uploadCta")}
         </Button>
