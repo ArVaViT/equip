@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Users, Search, Trash2 } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import PageSpinner from "@/components/ui/PageSpinner"
@@ -11,7 +12,7 @@ import type { UserRole } from "@/types"
 import { formatDate } from "@/i18n/format"
 import {
   type ProfileRow,
-  ROLE_BADGE_CLASS,
+  ROLE_BADGE_VARIANT,
   ROLE_I18N_KEY,
 } from "./constants"
 
@@ -142,8 +143,6 @@ export function UsersCard({
               selectedIds={selectedIds}
               updatingId={updatingId}
               currentUserId={currentUserId}
-              roleBadgeClass={ROLE_BADGE_CLASS}
-              roleI18nKey={ROLE_I18N_KEY}
               onToggleSelect={onToggleSelect}
               onRoleChange={onRoleChange}
               onDeleteUser={onDeleteUser}
@@ -305,11 +304,9 @@ function UserRow({
       <td className="px-6 py-3 text-muted-foreground">{user.email}</td>
       <td className="px-6 py-3">
         <div className="flex items-center gap-2">
-          <span
-            className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${ROLE_BADGE_CLASS[user.role]}`}
-          >
+          <Badge variant={ROLE_BADGE_VARIANT[user.role]}>
             {t(ROLE_I18N_KEY[user.role])}
-          </span>
+          </Badge>
           <NativeSelect
             fieldSize="sm"
             value={user.role}

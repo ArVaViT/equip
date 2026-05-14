@@ -61,12 +61,15 @@ export const ROLE_I18N_KEY: Record<UserRole, string> = {
   admin: "roles.admin",
 }
 
-/** Role-pill color classes. */
-export const ROLE_BADGE_CLASS: Record<UserRole, string> = {
-  admin: "bg-destructive/15 text-destructive",
-  teacher: "bg-primary/15 text-primary",
-  pending_teacher: "bg-warning/15 text-warning",
-  student: "bg-info/15 text-info",
+/** Maps each role to its `<Badge>` variant. */
+export const ROLE_BADGE_VARIANT: Record<
+  UserRole,
+  "destructiveSubtle" | "primarySubtle" | "warningSubtle" | "infoSubtle"
+> = {
+  admin: "destructiveSubtle",
+  teacher: "primarySubtle",
+  pending_teacher: "warningSubtle",
+  student: "infoSubtle",
 }
 
 export interface ProfileRow {

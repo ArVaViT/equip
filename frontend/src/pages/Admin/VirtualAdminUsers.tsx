@@ -2,10 +2,12 @@ import { List, type RowComponentProps } from "react-window"
 import { useTranslation } from "react-i18next"
 import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { NativeSelect } from "@/components/ui/native-select"
 import { toProxyImage } from "@/lib/images"
 import type { UserRole } from "@/types"
 import { formatDate } from "@/i18n/format"
+import { ROLE_BADGE_VARIANT, ROLE_I18N_KEY } from "./dashboard/constants"
 
 interface ProfileRow {
   id: string
@@ -21,8 +23,6 @@ interface VirtualAdminUsersProps {
   selectedIds: Set<string>
   updatingId: string | null
   currentUserId: string | undefined
-  roleBadgeClass: Record<string, string>
-  roleI18nKey: Record<string, string>
   onToggleSelect: (id: string) => void
   onRoleChange: (userId: string, role: UserRole) => void
   onDeleteUser: (user: ProfileRow) => void
@@ -39,8 +39,6 @@ function UserRow({
   selectedIds,
   updatingId,
   currentUserId,
-  roleBadgeClass,
-  roleI18nKey,
   onToggleSelect,
   onRoleChange,
   onDeleteUser,
@@ -86,11 +84,9 @@ function UserRow({
         {u.email}
       </div>
       <div role="cell" className="px-3 flex items-center gap-2">
-        <span
-          className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${roleBadgeClass[u.role] ?? ""}`}
-        >
-          {t(roleI18nKey[u.role] ?? "")}
-        </span>
+        <Badge variant={ROLE_BADGE_VARIANT[u.role]}>
+          {t(ROLE_I18N_KEY[u.role])}
+        </Badge>
         <NativeSelect
           fieldSize="sm"
           value={u.role}
@@ -128,8 +124,6 @@ export default function VirtualAdminUsers({
   selectedIds,
   updatingId,
   currentUserId,
-  roleBadgeClass,
-  roleI18nKey,
   onToggleSelect,
   onRoleChange,
   onDeleteUser,
@@ -161,8 +155,6 @@ export default function VirtualAdminUsers({
           selectedIds,
           updatingId,
           currentUserId,
-          roleBadgeClass,
-          roleI18nKey,
           onToggleSelect,
           onRoleChange,
           onDeleteUser,
