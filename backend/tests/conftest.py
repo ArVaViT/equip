@@ -63,6 +63,32 @@ def _reset_tables():
 
 
 @pytest.fixture(autouse=True)
+def _disable_translation(monkeypatch: pytest.MonkeyPatch):
+    """Default-disable the Gemini translation pipeline for every test.
+
+    Without this, any test that touches a write hook calling
+    ``run_course_translation_pipeline_if_published`` /
+    ``reconcile_entity_if_course_published`` will (a) try to hit the
+    real Gemini API if ``GEMINI_API_KEY`` is set in the CI environment
+    and (b) flake with HTTP 429 quota errors when the dev key's daily
+    cap is exhausted.
+
+    We unset both the env var AND ``settings.GEMINI_API_KEY`` so
+    ``is_translation_enabled()`` returns False through its natural
+    code path. Tests that DO want real translation (e.g.
+    ``test_translation_orchestrator.py``) re-enable it explicitly via
+    their own ``monkeypatch.setattr(settings.GEMINI_API_KEY, ...)``,
+    and that re-enable wins because their fixture runs second.
+    """
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setattr(
+        "app.services.translation.service.settings.GEMINI_API_KEY",
+        None,
+        raising=False,
+    )
+
+
+@pytest.fixture(autouse=True)
 def _clear_rate_limit():
     """Reset in-memory rate-limiter between tests to prevent 429s."""
     from app.middleware.rate_limit import RateLimitMiddleware
