@@ -71,8 +71,10 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
     setAdminCerts(certs)
   }, [fetchedData])
 
-  // Map Error | null → string | null to match the rest of the hook's contract
-  const error = fetchError?.message ?? null
+  // Surface a friendly fallback to the rest of the hook's `error: string | null`
+  // contract — AdminDashboard renders this verbatim in <ErrorState>, so we
+  // never want a raw axios / supabase message bleeding into the UI.
+  const error = fetchError ? "Failed to load admin data. Please try again." : null
 
   const filtered = useMemo(() => {
     const q = urlQuery.trim().toLowerCase()

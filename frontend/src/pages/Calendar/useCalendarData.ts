@@ -48,10 +48,10 @@ export function useCalendarData(): CalendarData {
     [filterCourseId, retryCount],
   );
 
-  // Map Error | null → string | null to match the CalendarData interface
-  const fetchError = error
-    ? (error.message || "Failed to load calendar events. Please try again.")
-    : null;
+  // The CalendarData interface promises a `string | null` user-facing message.
+  // Always emit the curated fallback so a raw axios "Network Error" never
+  // leaks into the calendar page's error banner.
+  const fetchError = error ? "Failed to load calendar events. Please try again." : null;
 
   return {
     events: fetchedData?.events ?? [],
