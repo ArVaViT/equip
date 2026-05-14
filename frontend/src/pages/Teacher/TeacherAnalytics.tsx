@@ -6,7 +6,7 @@ import PageSpinner from "@/components/ui/PageSpinner"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
 import { ArrowLeft, Users, TrendingUp, Award, Calendar, BarChart3, ClipboardList, UserCheck } from "lucide-react"
-import { ErrorState, StatCard } from "@/components/patterns"
+import { EmptyState, ErrorState, StatCard } from "@/components/patterns"
 import { formatDate } from "@/i18n/format"
 
 interface AnalyticsEnrollment {
@@ -154,9 +154,11 @@ export default function TeacherAnalytics() {
         </CardHeader>
         <CardContent>
           {analytics.enrollments.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              {t("teacherAnalytics.enrollments.emptyText")}
-            </p>
+            <EmptyState
+              variant="compact"
+              icon={<Users strokeWidth={1.75} aria-hidden />}
+              title={t("teacherAnalytics.enrollments.emptyText")}
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
