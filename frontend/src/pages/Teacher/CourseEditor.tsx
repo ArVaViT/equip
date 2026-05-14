@@ -22,6 +22,7 @@ import {
   Paperclip,
 } from "lucide-react"
 import { useAuth } from "@/context/useAuth"
+import { ROLES } from "@/types"
 import {
   ErrorState,
   InlineEdit,
@@ -57,7 +58,7 @@ export default function CourseEditor() {
   const confirm = useConfirm()
   const { t } = useTranslation()
   const { user } = useAuth()
-  const isAdmin = user?.role === "admin"
+  const isAdmin = user?.role === ROLES.ADMIN
 
   const [modal, setModal] = useState<CourseEditorModal>(null)
   const [savingAccessMode, setSavingAccessMode] = useState(false)
