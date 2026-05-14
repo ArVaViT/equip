@@ -263,10 +263,12 @@ export default function ChapterEditor() {
             return (
               <button
                 key={ct.value}
+                type="button"
                 onClick={() => setChapterType(ct.value)}
-                className={`flex items-start gap-3 rounded-lg border-2 p-4 text-left transition-all ${
+                aria-pressed={selected}
+                className={`flex items-start gap-3 rounded-md border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                   selected
-                    ? "border-primary bg-primary/5 shadow-sm"
+                    ? "border-primary bg-primary/[0.04] ring-1 ring-primary/40"
                     : "border-border hover:border-primary/30 hover:bg-muted/40"
                 }`}
               >
@@ -274,6 +276,8 @@ export default function ChapterEditor() {
                   className={`h-5 w-5 mt-0.5 shrink-0 ${
                     selected ? "text-primary" : "text-muted-foreground"
                   }`}
+                  strokeWidth={1.75}
+                  aria-hidden
                 />
                 <div>
                   <div
