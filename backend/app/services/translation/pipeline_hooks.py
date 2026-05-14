@@ -48,9 +48,7 @@ def run_course_translation_pipeline_if_published(db: Session, course_id: str) ->
     # the course is still a draft, and loading the full course tree just to
     # read ``status`` is wasted I/O. Only pay for the full tree when we
     # actually intend to translate.
-    course_status = (
-        db.query(Course.status).filter(Course.id == course_id, Course.deleted_at.is_(None)).scalar()
-    )
+    course_status = db.query(Course.status).filter(Course.id == course_id, Course.deleted_at.is_(None)).scalar()
     if course_status != "published":
         return
     course = get_course(db, course_id)
