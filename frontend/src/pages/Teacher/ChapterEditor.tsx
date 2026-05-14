@@ -310,18 +310,62 @@ export default function ChapterEditor() {
         </CardContent>
       </Card>
 
-      {/* Save button */}
+      {/* Inline save button (always visible). When the chapter is dirty,
+          a sticky reminder also appears at the bottom of the viewport. */}
       <div className="flex items-center gap-3">
         <Button onClick={save} disabled={saving}>
           {saving ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} aria-hidden />
           ) : (
-            <Save className="h-4 w-4 mr-2" />
+            <Save className="h-4 w-4 mr-2" strokeWidth={1.75} aria-hidden />
           )}
           {saving ? t("chapterEditor.saving") : t("chapterEditor.save")}
         </Button>
         <span className="text-xs text-muted-foreground">{t("chapterEditor.saveHint")}</span>
       </div>
+
+      {/* Sticky save bar — only renders while there are unsaved changes.
+          The pulsing warning dot is the visual cue for "unsaved"; the
+          accompanying text reuses the existing `saveHint` ("Ctrl+S to
+          save") string so we don't introduce a new i18n key from this
+          PR. TODO i18n: a future bilingual pass can swap the dot's
+          aria-label and add an explicit `chapterEditor.unsavedChanges`
+          status string. */}
+      {isDirty && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-4 sm:pb-6">
+          <Card
+            role="status"
+            aria-live="polite"
+            className="pointer-events-auto animate-fade-in w-full max-w-2xl bg-card/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/85"
+          >
+            <CardContent className="flex items-center gap-3 px-4 py-3">
+              <span
+                className="relative flex h-2 w-2 shrink-0"
+                aria-hidden
+              >
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warning/60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-warning" />
+              </span>
+              <span className="flex-1 text-xs text-muted-foreground sm:text-sm">
+                {t("chapterEditor.saveHint")}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                onClick={save}
+                disabled={saving}
+              >
+                {saving ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} aria-hidden />
+                ) : (
+                  <Save className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} aria-hidden />
+                )}
+                {saving ? t("chapterEditor.saving") : t("chapterEditor.save")}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
