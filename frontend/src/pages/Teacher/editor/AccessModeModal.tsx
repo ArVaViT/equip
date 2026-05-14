@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
-import { Lock, Globe, Save } from "lucide-react"
+import { Check, Lock, Globe, Save } from "lucide-react"
 import { Modal } from "@/components/patterns"
 import { Button } from "@/components/ui/button"
 
@@ -78,7 +78,8 @@ function Option({ checked, onSelect, icon, label, description }: OptionProps) {
     <button
       type="button"
       onClick={onSelect}
-      className={`w-full text-left rounded-md border p-3 transition-colors ${
+      aria-pressed={checked}
+      className={`w-full text-left rounded-md border p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
         checked
           ? "border-primary bg-primary/5"
           : "border-border hover:border-primary/40"
@@ -88,7 +89,11 @@ function Option({ checked, onSelect, icon, label, description }: OptionProps) {
         {icon}
         <span className="font-medium text-sm">{label}</span>
         {checked && (
-          <span className="ml-auto text-xs text-primary font-medium">●</span>
+          <Check
+            className="ml-auto h-4 w-4 text-primary"
+            strokeWidth={1.75}
+            aria-hidden
+          />
         )}
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
