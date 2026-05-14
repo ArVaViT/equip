@@ -20,7 +20,7 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
     <Card className="mb-8 border-l-[3px] border-l-warning">
       <CardHeader>
         <CardTitle className="text-xl flex items-center gap-2">
-          <Award className="h-5 w-5 text-warning" />
+          <Award className="h-5 w-5 text-warning" strokeWidth={1.75} />
           {t("teacherDashboard.pendingCerts.title")}
           <Badge variant="warning" className="font-normal">
             {certs.length}
@@ -42,7 +42,7 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
                   {cert.course_title || t("teacherDashboard.pendingCerts.courseFallback")}
                 </p>
                 <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                  <Clock className="h-3 w-3" />
+                  <Clock className="h-3 w-3" strokeWidth={1.75} />
                   {cert.requested_at
                     ? t("teacherDashboard.pendingCerts.requestedPrefix", {
                         date: formatDate(cert.requested_at),
@@ -56,7 +56,7 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
                   onClick={() => onApprove(cert.id)}
                   disabled={actionId === cert.id}
                 >
-                  <CheckCircle className="h-4 w-4 mr-1.5" />
+                  <CheckCircle className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
                   {t("teacherDashboard.pendingCerts.approve")}
                 </Button>
                 <Button
@@ -66,7 +66,7 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
                   disabled={actionId === cert.id}
                   className="text-destructive hover:text-destructive"
                 >
-                  <XCircle className="h-4 w-4 mr-1.5" />
+                  <XCircle className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
                   {t("teacherDashboard.pendingCerts.reject")}
                 </Button>
               </div>

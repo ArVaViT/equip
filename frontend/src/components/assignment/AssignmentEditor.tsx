@@ -101,7 +101,7 @@ export default function AssignmentEditor({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" strokeWidth={1.75} />
       </div>
     )
   }
@@ -118,7 +118,7 @@ export default function AssignmentEditor({
     <div className="space-y-4 mt-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-muted-foreground" />
+          <FileText className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
           <span className="text-sm font-medium">
             {t("assignmentEditor.heading", { count: assignments.length })}
           </span>
@@ -129,7 +129,7 @@ export default function AssignmentEditor({
           className="h-7 text-xs"
           onClick={() => setShowCreate((v) => !v)}
         >
-          <Plus className="h-3 w-3 mr-1" />
+          <Plus className="h-3 w-3 mr-1" strokeWidth={1.75} />
           {t("assignmentEditor.newAssignment")}
         </Button>
       </div>

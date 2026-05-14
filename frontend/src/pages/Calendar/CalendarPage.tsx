@@ -49,7 +49,7 @@ export default function CalendarPage() {
           description={fetchError}
           action={
             <Button variant="outline" size="sm" onClick={retry}>
-              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
               {t("calendar.retry")}
             </Button>
           }
@@ -62,13 +62,13 @@ export default function CalendarPage() {
     <div className="container mx-auto px-4 py-6 max-w-6xl">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-          <CalendarDays className="h-6 w-6 text-primary" />
+          <CalendarDays className="h-6 w-6 text-primary" strokeWidth={1.75} />
           {t("calendar.title")}
         </h1>
 
         {enrollments.length > 0 && (
           <div className="flex items-center gap-2">
-            <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+            <Filter className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
             <NativeSelect
               fieldSize="md"
               value={filterCourseId}

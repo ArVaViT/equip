@@ -3,10 +3,11 @@ import { useTranslation, Trans } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { EmptyState } from "@/components/patterns"
 import {
   ChevronDown, ChevronRight,
   ArrowUp, ArrowDown, ArrowUpDown,
-  Save, Award, MessageSquare,
+  Save, Award, MessageSquare, Users,
 } from "lucide-react"
 import type {
   GradingConfig,
@@ -108,7 +109,11 @@ export function SummaryTab({
       </CardHeader>
       <CardContent>
         {studentCount === 0 ? (
-          <p className="text-sm text-muted-foreground py-8 text-center">{t("gradebook.summary.empty")}</p>
+          <EmptyState
+            variant="compact"
+            icon={<Users strokeWidth={1.75} aria-hidden />}
+            title={t("gradebook.summary.empty")}
+          />
         ) : (
           <div className="overflow-x-auto">
             <div className="grid grid-cols-[1fr_80px_80px_90px_80px_70px_70px] gap-3 px-4 py-3 border-b bg-muted/30 rounded-t-lg min-w-[700px]">

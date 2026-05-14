@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { BookOpen, CalendarDays, Clock } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/patterns";
 import type { CalendarEvent } from "@/types";
 import { getEventColor } from "./constants";
 import { formatTime } from "./utils";
@@ -19,7 +20,7 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <CalendarDays className="h-4 w-4 text-primary" />
+          <CalendarDays className="h-4 w-4 text-primary" strokeWidth={1.75} />
           {formatDate(selectedDay, {
             weekday: "long",
             month: "long",
@@ -29,9 +30,11 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
       </CardHeader>
       <CardContent>
         {events.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-3 text-center">
-            {t("calendar.selectedDayEmpty")}
-          </p>
+          <EmptyState
+            variant="compact"
+            icon={<CalendarDays strokeWidth={1.75} aria-hidden />}
+            title={t("calendar.selectedDayEmpty")}
+          />
         ) : (
           <div className="space-y-2">
             {events.map((evt) => {
@@ -47,7 +50,7 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
                       <p className={`text-sm font-medium ${color.text}`}>{evt.title}</p>
                       <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
                         <span className="flex items-center gap-0.5">
-                          <Clock className="h-2.5 w-2.5" />
+                          <Clock className="h-2.5 w-2.5" strokeWidth={1.75} />
                           {formatTime(evt.event_date)}
                         </span>
                         <span>{t(`calendar.eventTypes.${evt.event_type}`, { defaultValue: evt.event_type.replace("_", " ") })}</span>
@@ -57,7 +60,7 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
                           to={`/courses/${evt.course_id}`}
                           className="flex items-center gap-1 mt-1 text-[10px] text-primary hover:underline"
                         >
-                          <BookOpen className="h-2.5 w-2.5" />
+                          <BookOpen className="h-2.5 w-2.5" strokeWidth={1.75} />
                           {evt.course_title}
                         </Link>
                       )}

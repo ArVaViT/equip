@@ -27,12 +27,12 @@ export function letterColor(letter: string): string {
 export function chapterTypeIcon(type: string) {
   switch (type) {
     case "quiz":
-      return <HelpCircle className="h-3 w-3" />
+      return <HelpCircle className="h-3 w-3" strokeWidth={1.75} />
     case "exam":
-      return <GraduationCap className="h-3 w-3" />
+      return <GraduationCap className="h-3 w-3" strokeWidth={1.75} />
     case "assignment":
-      return <ClipboardList className="h-3 w-3" />
+      return <ClipboardList className="h-3 w-3" strokeWidth={1.75} />
     default:
-      return <FileText className="h-3 w-3" />
+      return <FileText className="h-3 w-3" strokeWidth={1.75} />
   }
 }

@@ -6,7 +6,7 @@ import PageSpinner from "@/components/ui/PageSpinner"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
 import { ArrowLeft, Users, TrendingUp, Award, Calendar, BarChart3, ClipboardList, UserCheck } from "lucide-react"
-import { ErrorState, StatCard } from "@/components/patterns"
+import { EmptyState, ErrorState, StatCard } from "@/components/patterns"
 import { formatDate } from "@/i18n/format"
 
 interface AnalyticsEnrollment {
@@ -86,12 +86,12 @@ export default function TeacherAnalytics() {
     return (
       <div className="container mx-auto px-4 py-8 max-w-5xl">
         <ErrorState
-          icon={<BarChart3 />}
+          icon={<BarChart3 strokeWidth={1.75} />}
           title={t("teacherAnalytics.loadFailed")}
           action={
             <Link to="/teacher">
               <Button variant="ghost">
-                <ArrowLeft className="h-4 w-4 mr-1.5" />
+                <ArrowLeft className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
                 {t("teacherAnalytics.backToCourses")}
               </Button>
             </Link>
@@ -113,12 +113,12 @@ export default function TeacherAnalytics() {
       <div className="flex items-center gap-3 mb-8">
         <Link to="/teacher">
           <Button variant="ghost" size="icon" className="shrink-0" aria-label={t("teacherAnalytics.backToDashboard")}>
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
           </Button>
         </Link>
         <div className="flex-1">
           <h1 className="text-3xl font-serif font-bold tracking-tight flex items-center gap-2">
-            <BarChart3 className="h-7 w-7 text-primary" />
+            <BarChart3 className="h-7 w-7 text-primary" strokeWidth={1.75} />
             {t("teacherAnalytics.heading")}
           </h1>
           {courseTitle && (
@@ -127,13 +127,13 @@ export default function TeacherAnalytics() {
         </div>
         <Link to={`/teacher/courses/${courseId}/progress`}>
           <Button size="sm" variant="outline">
-            <UserCheck className="h-4 w-4 mr-1.5" />
+            <UserCheck className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
             {t("teacherAnalytics.studentProgress")}
           </Button>
         </Link>
         <Link to={`/teacher/courses/${courseId}/gradebook`}>
           <Button size="sm" variant="outline">
-            <ClipboardList className="h-4 w-4 mr-1.5" />
+            <ClipboardList className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
             {t("teacherAnalytics.gradebook")}
           </Button>
         </Link>
@@ -154,9 +154,11 @@ export default function TeacherAnalytics() {
         </CardHeader>
         <CardContent>
           {analytics.enrollments.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              {t("teacherAnalytics.enrollments.emptyText")}
-            </p>
+            <EmptyState
+              variant="compact"
+              icon={<Users strokeWidth={1.75} aria-hidden />}
+              title={t("teacherAnalytics.enrollments.emptyText")}
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

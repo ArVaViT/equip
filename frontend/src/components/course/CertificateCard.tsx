@@ -87,7 +87,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
         <CardContent className="py-6">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted">
-              <Award className="h-6 w-6 text-muted-foreground" />
+              <Award className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
             </div>
             <div className="flex-1">
               <h3 className="font-serif text-base font-semibold">
@@ -98,7 +98,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
               </p>
             </div>
             <Button onClick={handleRequest} disabled={requesting}>
-              <Sparkles className="mr-1.5 h-4 w-4" />
+              <Sparkles className="mr-1.5 h-4 w-4" strokeWidth={1.75} />
               {requesting ? t("certificates.card.requesting") : t("certificates.card.request")}
             </Button>
           </div>
@@ -153,13 +153,13 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
         <CardContent className="space-y-5 py-6">
           <div className="flex items-start gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-accent/15">
-              <Award className="h-6 w-6 text-accent" />
+              <Award className="h-6 w-6 text-accent" strokeWidth={1.75} />
             </div>
             <div className="min-w-0 flex-1 space-y-3">
               <div>
                 <div className="mb-1 flex items-center gap-2">
                   <h3 className="font-serif text-lg font-semibold">{t("certificates.card.approvedTitle")}</h3>
-                  <Sparkles className="h-4 w-4 text-accent" />
+                  <Sparkles className="h-4 w-4 text-accent" strokeWidth={1.75} />
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {t("certificates.card.approvedDescription")}
@@ -181,9 +181,9 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
                       aria-label={t("certificates.card.copyAria")}
                     >
                       {copied ? (
-                        <CheckCircle className="h-3.5 w-3.5 text-success" />
+                        <CheckCircle className="h-3.5 w-3.5 text-success" strokeWidth={1.75} />
                       ) : (
-                        <Copy className="h-3.5 w-3.5" />
+                        <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
                       )}
                     </Button>
                   </div>
@@ -224,7 +224,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
                           ? "fill-warning text-warning"
                           : "text-muted-foreground/30"
                       }`}
-                    />
+                    strokeWidth={1.75} />
                   </button>
                 ))}
                 {reviewRating > 0 && (
@@ -248,7 +248,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
 
           {reviewDone && (
             <div className="flex items-center gap-2 border-t border-border pt-4 text-sm text-success">
-              <CheckCircle className="h-4 w-4" />
+              <CheckCircle className="h-4 w-4" strokeWidth={1.75} />
               {t("certificates.card.review.thanks")}
             </div>
           )}
@@ -263,7 +263,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
         <CardContent className="py-6">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-destructive/10">
-              <XCircle className="h-6 w-6 text-destructive" />
+              <XCircle className="h-6 w-6 text-destructive" strokeWidth={1.75} />
             </div>
             <div className="flex-1">
               <h3 className="font-serif text-base font-semibold">
@@ -274,7 +274,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
               </p>
             </div>
             <Button onClick={handleRequest} disabled={requesting} variant="outline">
-              <RefreshCw className="mr-1.5 h-4 w-4" />
+              <RefreshCw className="mr-1.5 h-4 w-4" strokeWidth={1.75} />
               {requesting ? t("certificates.card.requesting") : t("certificates.card.rerequest")}
             </Button>
           </div>

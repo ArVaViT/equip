@@ -71,11 +71,11 @@ export function BlockRow({
         className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none"
         onClick={onExpandToggle}
       >
-        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0 cursor-grab" />
+        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0 cursor-grab" strokeWidth={1.75} />
         {expanded ? (
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" strokeWidth={1.75} />
         ) : (
-          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" strokeWidth={1.75} />
         )}
         <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <span className="text-sm font-medium flex-1">{label}</span>
@@ -88,8 +88,9 @@ export function BlockRow({
             e.stopPropagation()
             onDelete()
           }}
+          aria-label={t("blockEditor.deleteBlockAria", { label })}
         >
-          <Trash2 className="h-3 w-3" />
+          <Trash2 className="h-3 w-3" strokeWidth={1.75} />
         </Button>
       </div>
 

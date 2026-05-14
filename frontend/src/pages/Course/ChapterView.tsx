@@ -357,7 +357,7 @@ export default function ChapterView() {
     return (
       <div className="container mx-auto px-4">
         <ErrorState
-          icon={<Book />}
+          icon={<Book strokeWidth={1.75} />}
           title={error ?? t("toast.chapterNotFound")}
           action={
             courseId && moduleId ? (
@@ -389,7 +389,7 @@ export default function ChapterView() {
         </Link>
 
         <div className="text-center py-16">
-          <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" strokeWidth={1.75} />
           <h2 className="font-serif text-xl font-semibold mb-2">{t("chapter.lockedTitle")}</h2>
           <p className="text-muted-foreground">{t("chapter.lockedHint")}</p>
           {prevChapter && (
@@ -453,12 +453,12 @@ export default function ChapterView() {
         <div className="mt-6 pt-4 border-t">
           {isCompleted ? (
             <p className="flex items-center gap-2 text-sm text-success">
-              <CheckCircle className="h-4 w-4" />
+              <CheckCircle className="h-4 w-4" strokeWidth={1.75} />
               {t("chapter.completed")}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <Circle className="h-4 w-4" />
+              <Circle className="h-4 w-4" strokeWidth={1.75} />
               {t("chapter.submitAssignmentToComplete")}
             </p>
           )}

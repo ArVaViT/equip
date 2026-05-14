@@ -2,6 +2,7 @@ import { Clock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/patterns";
 import type { CalendarEvent } from "@/types";
 import { getEventColor } from "./constants";
 import { formatShortDate, formatTime, isOverdue } from "./utils";
@@ -20,13 +21,17 @@ export function UpcomingEventsPanel({ events }: UpcomingEventsPanelProps) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Clock className="h-4 w-4 text-muted-foreground" />
+          <Clock className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
           {t("calendar.upcomingTitle")}
         </CardTitle>
       </CardHeader>
       <CardContent>
         {events.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">{t("calendar.upcomingEmpty")}</p>
+          <EmptyState
+            variant="compact"
+            icon={<Clock strokeWidth={1.75} aria-hidden />}
+            title={t("calendar.upcomingEmpty")}
+          />
         ) : (
           <div className="space-y-2">
             {events.map((evt) => {

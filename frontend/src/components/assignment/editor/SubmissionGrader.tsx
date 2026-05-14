@@ -54,7 +54,7 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
       <CardContent className="p-3 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm">
-            <User className="h-3.5 w-3.5 text-muted-foreground" />
+            <User className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
             <span className="text-xs text-muted-foreground">
               {submission.student_id.slice(0, 8)}...
             </span>
@@ -79,14 +79,14 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
             rel="noopener noreferrer"
             className="flex items-center gap-1 text-xs text-info hover:underline"
           >
-            <FileText className="h-3 w-3" />
+            <FileText className="h-3 w-3" strokeWidth={1.75} />
             {t("assignmentEditor.grader.viewFile")}
           </a>
         )}
 
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
-            <Star className="h-3.5 w-3.5 text-muted-foreground" />
+            <Star className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
             <Input
               type="number"
               min={0}
@@ -110,7 +110,7 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
 
         <div className="space-y-1">
           <Label className="text-xs flex items-center gap-1">
-            <MessageSquare className="h-3 w-3" />
+            <MessageSquare className="h-3 w-3" strokeWidth={1.75} />
             {t("assignmentEditor.grader.feedback")}
           </Label>
           <Textarea
@@ -124,9 +124,9 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
 
         <Button size="sm" className="h-7 text-xs" onClick={save} disabled={saving}>
           {saving ? (
-            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+            <Loader2 className="h-3 w-3 mr-1 animate-spin" strokeWidth={1.75} />
           ) : (
-            <Save className="h-3 w-3 mr-1" />
+            <Save className="h-3 w-3 mr-1" strokeWidth={1.75} />
           )}
           {saving ? t("assignmentEditor.grader.saving") : t("assignmentEditor.grader.save")}
         </Button>

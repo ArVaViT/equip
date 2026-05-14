@@ -55,14 +55,14 @@ export default function CertificatesPage() {
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <Link to="/">
         <Button variant="ghost" size="sm" className="mb-6 h-8 text-xs">
-          <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+          <ArrowLeft className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
           {t("certificates.dashboard")}
         </Button>
       </Link>
 
       <h1 className="mb-8 flex items-center gap-3 font-serif text-3xl font-bold tracking-tight">
         <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
-          <Award className="h-5 w-5 text-muted-foreground" />
+          <Award className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} />
         </div>
         {t("certificates.title")}
       </h1>
@@ -71,7 +71,7 @@ export default function CertificatesPage() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-20 text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-              <ScrollText className="h-8 w-8 text-muted-foreground/50" />
+              <ScrollText className="h-8 w-8 text-muted-foreground/50" strokeWidth={1.75} />
             </div>
             <h3 className="mb-1 text-lg font-medium">{t("certificates.emptyTitle")}</h3>
             <p className="mb-6 max-w-sm text-sm text-muted-foreground">
@@ -92,7 +92,7 @@ export default function CertificatesPage() {
               <CardContent className="pb-5 pt-6">
                 <div className="mb-4 flex items-start justify-between">
                   <div className="flex h-11 w-11 items-center justify-center rounded-md bg-muted">
-                    <Award className="h-5 w-5 text-muted-foreground" />
+                    <Award className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} />
                   </div>
                   <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">
                     {t("certificates.badge")}

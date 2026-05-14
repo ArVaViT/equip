@@ -12,7 +12,7 @@ export function EmptyCoursesCard({ onCreate }: Props) {
   return (
     <Card className="border-dashed">
       <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-        <BookOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
+        <BookOpen className="h-12 w-12 text-muted-foreground/50 mb-4" strokeWidth={1.75} />
         <h3 className="text-lg font-medium mb-1">
           {t("teacherDashboard.empty.title")}
         </h3>
@@ -20,7 +20,7 @@ export function EmptyCoursesCard({ onCreate }: Props) {
           {t("teacherDashboard.empty.description")}
         </p>
         <Button onClick={onCreate} size="sm">
-          <Plus className="h-4 w-4 mr-1.5" />
+          <Plus className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
           {t("teacherDashboard.empty.action")}
         </Button>
       </CardContent>

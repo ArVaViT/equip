@@ -112,7 +112,7 @@ function UserRow({
           aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
           title={u.id === currentUserId ? t("admin.users.deleteSelfTooltip") : t("admin.users.deleteTooltip")}
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
         </Button>
       </div>
     </div>

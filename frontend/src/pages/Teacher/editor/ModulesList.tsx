@@ -29,23 +29,23 @@ export function ModulesList({ courseId, modules, onDragEnd, onAdd, onRemove }: P
     <>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="font-serif text-xl font-semibold flex items-center gap-2">
-          <Layers className="h-5 w-5 text-primary/60" />
+          <Layers className="h-5 w-5 text-primary/60" strokeWidth={1.75} />
           {t("teacherEditor.modulesHeading")}
         </h2>
         <Button onClick={onAdd} size="sm" variant="outline">
-          <Plus className="h-4 w-4 mr-1.5" />
+          <Plus className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
           {t("teacherEditor.addModule")}
         </Button>
       </div>
 
       {modules.length === 0 ? (
         <EmptyState
-          icon={<Layers />}
+          icon={<Layers strokeWidth={1.75} />}
           title={t("teacherEditor.noModulesYet")}
           description={t("teacherEditor.noModulesYetDescription")}
           action={
             <Button onClick={onAdd} size="sm">
-              <Plus className="h-4 w-4 mr-1.5" />
+              <Plus className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
               {t("teacherEditor.addModule")}
             </Button>
           }
@@ -77,7 +77,7 @@ export function ModulesList({ courseId, modules, onDragEnd, onAdd, onRemove }: P
                           className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground shrink-0 transition-colors"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <GripVertical className="h-4 w-4" />
+                          <GripVertical className="h-4 w-4" strokeWidth={1.75} />
                         </div>
                         <span className="text-xs font-mono text-muted-foreground/50 w-6 text-right shrink-0">
                           {i + 1}
@@ -99,7 +99,7 @@ export function ModulesList({ courseId, modules, onDragEnd, onAdd, onRemove }: P
                             onRemove(mod.id)
                           }}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
                         </Button>
                       </Card>
                     )}

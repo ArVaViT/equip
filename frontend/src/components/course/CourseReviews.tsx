@@ -69,7 +69,7 @@ export default function CourseReviews({ courseId }: Props) {
     <Card>
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
-          <MessageSquare className="h-5 w-5" />
+          <MessageSquare className="h-5 w-5" strokeWidth={1.75} />
           {t("reviews.heading")}
           {reviews.length > 0 && (
             <span className="text-sm font-normal text-muted-foreground ml-1">
@@ -147,7 +147,7 @@ export default function CourseReviews({ courseId }: Props) {
                           onClick={() => setConfirmDeleteId(review.id)}
                           aria-label={t("reviews.deleteAria")}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
                         </Button>
                       )
                     )}
@@ -182,7 +182,7 @@ function StarDisplay({ rating, size = "sm" }: { rating: number; size?: "sm" | "l
                 ? "fill-warning text-warning"
                 : "text-muted-foreground/30"
             }`}
-          />
+          strokeWidth={1.75} />
         )
       })}
     </div>

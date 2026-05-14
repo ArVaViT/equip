@@ -135,27 +135,27 @@ export default function CourseEditor() {
           <>
             <Button variant="outline" size="sm" onClick={data.togglePublish}>
               {pub ? (
-                <EyeOff className="h-3.5 w-3.5 mr-1.5" />
+                <EyeOff className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
               ) : (
-                <Eye className="h-3.5 w-3.5 mr-1.5" />
+                <Eye className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
               )}
               {pub ? t("courseEditor.unpublish") : t("courseEditor.publish")}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" aria-label={t("courseEditor.moreActions")}>
-                  <MoreHorizontal className="h-4 w-4" />
+                  <MoreHorizontal className="h-4 w-4" strokeWidth={1.75} />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onSelect={() => setModal("enroll")}>
-                  <Calendar /> {t("courseEditor.menu.enrollment")}
+                  <Calendar strokeWidth={1.75} /> {t("courseEditor.menu.enrollment")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setModal("announce")}>
-                  <Megaphone /> {t("courseEditor.menu.announcements")}
+                  <Megaphone strokeWidth={1.75} /> {t("courseEditor.menu.announcements")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setModal("materials")}>
-                  <Paperclip /> {t("courseEditor.menu.materials")}
+                  <Paperclip strokeWidth={1.75} /> {t("courseEditor.menu.materials")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -164,13 +164,13 @@ export default function CourseEditor() {
                     setModal("events")
                   }}
                 >
-                  <CalendarDays /> {t("courseEditor.menu.events")}
+                  <CalendarDays strokeWidth={1.75} /> {t("courseEditor.menu.events")}
                 </DropdownMenuItem>
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => setModal("access")}>
-                      <Lock /> {t("courseEditor.menu.accessMode")}
+                      <Lock strokeWidth={1.75} /> {t("courseEditor.menu.accessMode")}
                     </DropdownMenuItem>
                   </>
                 )}

@@ -96,7 +96,7 @@ export default function ModuleEditor() {
               {t("teacherEditor.chapterCount", { count: chapters.length })}
             </Badge>
             <div className="flex items-center gap-2">
-              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
               <Label className="text-xs text-muted-foreground">
                 {t("moduleEditor.dueDate")}
               </Label>
@@ -124,12 +124,12 @@ export default function ModuleEditor() {
 
       {chapters.length === 0 ? (
         <EmptyState
-          icon={<Pencil />}
+          icon={<Pencil strokeWidth={1.75} />}
           title={t("moduleEditor.noChapters.title")}
           description={t("moduleEditor.noChapters.description")}
           action={
             <Button onClick={addChapter} size="sm">
-              <Plus className="h-4 w-4 mr-1.5" />
+              <Plus className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
               {t("moduleEditor.noChapters.action")}
             </Button>
           }
@@ -152,7 +152,7 @@ export default function ModuleEditor() {
       )}
 
       <Button variant="outline" className="w-full border-dashed h-12" onClick={addChapter}>
-        <Plus className="h-4 w-4 mr-2" />
+        <Plus className="h-4 w-4 mr-2" strokeWidth={1.75} />
         {t("moduleEditor.addChapter")}
       </Button>
     </div>

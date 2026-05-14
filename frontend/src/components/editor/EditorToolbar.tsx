@@ -90,7 +90,7 @@ export function EditorToolbar({
         active={editor.isActive("bold")}
         title={t("blockEditor.toolbar.bold")}
       >
-        <Bold size={TOOLBAR_ICON_SIZE} />
+        <Bold size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} />
       </ToolbarButton>
 
       <ToolbarButton
@@ -98,7 +98,7 @@ export function EditorToolbar({
         active={editor.isActive("italic")}
         title={t("blockEditor.toolbar.italic")}
       >
-        <Italic size={TOOLBAR_ICON_SIZE} />
+        <Italic size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} />
       </ToolbarButton>
 
       <ToolbarDivider />
@@ -108,7 +108,7 @@ export function EditorToolbar({
         active={editor.isActive("heading", { level: 2 })}
         title={t("blockEditor.toolbar.heading2")}
       >
-        <Heading2 size={TOOLBAR_ICON_SIZE} />
+        <Heading2 size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} />
       </ToolbarButton>
 
       <ToolbarButton
@@ -116,7 +116,7 @@ export function EditorToolbar({
         active={editor.isActive("heading", { level: 3 })}
         title={t("blockEditor.toolbar.heading3")}
       >
-        <Heading3 size={TOOLBAR_ICON_SIZE} />
+        <Heading3 size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} />
       </ToolbarButton>
 
       <ToolbarDivider />
@@ -126,7 +126,7 @@ export function EditorToolbar({
         active={editor.isActive("bulletList")}
         title={t("blockEditor.toolbar.bulletList")}
       >
-        <List size={TOOLBAR_ICON_SIZE} />
+        <List size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} />
       </ToolbarButton>
 
       <ToolbarButton
@@ -134,7 +134,7 @@ export function EditorToolbar({
         active={editor.isActive("orderedList")}
         title={t("blockEditor.toolbar.numberedList")}
       >
-        <ListOrdered size={TOOLBAR_ICON_SIZE} />
+        <ListOrdered size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} />
       </ToolbarButton>
 
       <ToolbarButton
@@ -142,14 +142,14 @@ export function EditorToolbar({
         active={editor.isActive("blockquote")}
         title={t("blockEditor.toolbar.blockquote")}
       >
-        <Quote size={TOOLBAR_ICON_SIZE} />
+        <Quote size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} />
       </ToolbarButton>
 
       <ToolbarButton
         onClick={() => editor.chain().focus().setHorizontalRule().run()}
         title={t("blockEditor.toolbar.horizontalRule")}
       >
-        <Minus size={TOOLBAR_ICON_SIZE} />
+        <Minus size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} />
       </ToolbarButton>
 
       <ToolbarDivider />
@@ -162,16 +162,16 @@ export function EditorToolbar({
         {uploading ? (
           <span className="inline-block h-[18px] w-[18px] animate-spin rounded-full border-2 border-current border-t-transparent" />
         ) : (
-          <ImageIcon size={TOOLBAR_ICON_SIZE} />
+          <ImageIcon size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} />
         )}
       </ToolbarButton>
 
       <ToolbarButton onClick={onAddYoutube} title={t("blockEditor.toolbar.insertYoutube")}>
-        <Youtube size={TOOLBAR_ICON_SIZE} />
+        <Youtube size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} />
       </ToolbarButton>
 
       <ToolbarButton onClick={onAddAudio} title={t("blockEditor.toolbar.insertAudio")}>
-        <Headphones size={TOOLBAR_ICON_SIZE} />
+        <Headphones size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} />
       </ToolbarButton>
 
       <ToolbarButton
@@ -179,7 +179,7 @@ export function EditorToolbar({
         active={editor.isActive("link")}
         title={t("blockEditor.toolbar.link")}
       >
-        <Link2 size={TOOLBAR_ICON_SIZE} />
+        <Link2 size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} />
       </ToolbarButton>
 
       <ToolbarDivider />
@@ -189,7 +189,7 @@ export function EditorToolbar({
         disabled={!editor.can().undo()}
         title={t("blockEditor.toolbar.undo")}
       >
-        <Undo2 size={TOOLBAR_ICON_SIZE} />
+        <Undo2 size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} />
       </ToolbarButton>
 
       <ToolbarButton
@@ -197,7 +197,7 @@ export function EditorToolbar({
         disabled={!editor.can().redo()}
         title={t("blockEditor.toolbar.redo")}
       >
-        <Redo2 size={TOOLBAR_ICON_SIZE} />
+        <Redo2 size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} />
       </ToolbarButton>
     </div>
   );

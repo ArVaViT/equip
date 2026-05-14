@@ -64,9 +64,9 @@ export function ChapterBreakdownRow({
       {quiz && (
         <div className="flex items-center gap-1.5 text-xs">
           {quiz.passed ? (
-            <CheckCircle className="h-3.5 w-3.5 text-success" />
+            <CheckCircle className="h-3.5 w-3.5 text-success" strokeWidth={1.75} />
           ) : (
-            <XCircle className="h-3.5 w-3.5 text-destructive" />
+            <XCircle className="h-3.5 w-3.5 text-destructive" strokeWidth={1.75} />
           )}
           <span>
             {t("studentProgress.chapterRow.quizScore", {
@@ -87,9 +87,9 @@ export function ChapterBreakdownRow({
               title={t("studentProgress.chapterRow.extraAttemptTitle")}
             >
               {grantingQuizId === quiz.quiz_id ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin" strokeWidth={1.75} />
               ) : (
-                <RotateCcw className="h-3 w-3" />
+                <RotateCcw className="h-3 w-3" strokeWidth={1.75} />
               )}
             </Button>
           )}
@@ -99,9 +99,9 @@ export function ChapterBreakdownRow({
       {assignment && (
         <div className="flex items-center gap-1.5 text-xs">
           {assignment.status === "graded" ? (
-            <CheckCircle className="h-3.5 w-3.5 text-success" />
+            <CheckCircle className="h-3.5 w-3.5 text-success" strokeWidth={1.75} />
           ) : (
-            <Clock className="h-3.5 w-3.5 text-warning" />
+            <Clock className="h-3.5 w-3.5 text-warning" strokeWidth={1.75} />
           )}
           <span>
             {assignment.title}:{" "}
@@ -124,11 +124,11 @@ export function ChapterBreakdownRow({
           }}
         >
           {togglingChapterId === chapterInfo.id ? (
-            <Clock className="h-3 w-3 mr-1 animate-spin" />
+            <Clock className="h-3 w-3 mr-1 animate-spin" strokeWidth={1.75} />
           ) : completed ? (
-            <XCircle className="h-3 w-3 mr-1" />
+            <XCircle className="h-3 w-3 mr-1" strokeWidth={1.75} />
           ) : (
-            <CheckCircle className="h-3 w-3 mr-1" />
+            <CheckCircle className="h-3 w-3 mr-1" strokeWidth={1.75} />
           )}
           {completed
             ? t("studentProgress.chapterRow.undo")

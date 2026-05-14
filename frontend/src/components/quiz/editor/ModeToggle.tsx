@@ -32,7 +32,7 @@ export function ModeToggle({ mode, setMode }: Props) {
             : "text-muted-foreground hover:text-foreground"
         }`}
       >
-        <GraduationCap className="h-3.5 w-3.5" />
+        <GraduationCap className="h-3.5 w-3.5" strokeWidth={1.75} />
         {t("quizEditor.modeToggle.submissions")}
       </button>
     </div>

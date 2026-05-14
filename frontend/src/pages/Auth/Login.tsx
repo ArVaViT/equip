@@ -90,7 +90,7 @@ export default function Login() {
           disabled={googleLoading || loading}
         >
           {googleLoading ? (
-            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("auth.connecting")}</>
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />{t("auth.connecting")}</>
           ) : (
             <><GoogleIcon className="h-4 w-4 mr-2.5" />{t("auth.continueWithGoogle")}</>
           )}
@@ -146,7 +146,7 @@ export default function Login() {
           <Button type="submit" size="lg" className="bg-cta-glow w-full font-medium rounded-md" disabled={loading}>
             {loading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />
                 {t("auth.signingIn")}
               </>
             ) : (

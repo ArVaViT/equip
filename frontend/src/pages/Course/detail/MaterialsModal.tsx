@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next"
-import { Modal } from "@/components/patterns"
+import { EmptyState, Modal } from "@/components/patterns"
 import { Button } from "@/components/ui/button"
-import { Download } from "lucide-react"
+import { Download, Paperclip } from "lucide-react"
 import type { CourseMaterial } from "./types"
 
 interface Props {
@@ -23,9 +23,11 @@ export function MaterialsModal({
   return (
     <Modal open={open} onClose={onClose} title={t("courseDetail.materialsModal.title")}>
       {materials.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-6">
-          {t("courseDetail.materialsModal.empty")}
-        </p>
+        <EmptyState
+          variant="compact"
+          icon={<Paperclip strokeWidth={1.75} aria-hidden />}
+          title={t("courseDetail.materialsModal.empty")}
+        />
       ) : (
         <div className="divide-y rounded-md border text-sm">
           {materials.map((file) => (

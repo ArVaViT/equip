@@ -68,7 +68,7 @@ export const NotificationPanel = forwardRef<HTMLDivElement, Props>(
               onClick={onMarkAllRead}
               className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
-              <CheckCheck className="h-3.5 w-3.5" />
+              <CheckCheck className="h-3.5 w-3.5" strokeWidth={1.75} />
               {t("notifications.markAllRead")}
             </button>
           )}
@@ -84,7 +84,7 @@ export const NotificationPanel = forwardRef<HTMLDivElement, Props>(
             <PageSpinner variant="section" />
           ) : loadError ? (
             <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
-              <AlertCircle className="h-8 w-8 text-destructive/70" />
+              <AlertCircle className="h-8 w-8 text-destructive/70" strokeWidth={1.75} />
               <p className="text-sm text-destructive">{t("notifications.loadFailed")}</p>
               <button
                 type="button"
@@ -96,7 +96,7 @@ export const NotificationPanel = forwardRef<HTMLDivElement, Props>(
             </div>
           ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
-              <Bell className="h-8 w-8 opacity-30" />
+              <Bell className="h-8 w-8 opacity-30" strokeWidth={1.75} />
               <p className="text-sm">{t("notifications.empty")}</p>
             </div>
           ) : (

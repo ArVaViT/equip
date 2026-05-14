@@ -201,21 +201,21 @@ export default function ChapterEditor() {
         <Link to="/teacher" className="hover:text-foreground transition-colors">
           {t("chapterEditor.breadcrumb.myCourses")}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5" />
+        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
         <Link
           to={`/teacher/courses/${courseId}`}
           className="hover:text-foreground transition-colors"
         >
           {t("chapterEditor.breadcrumb.course")}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5" />
+        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
         <Link
           to={`/teacher/courses/${courseId}/modules/${moduleId}/edit`}
           className="hover:text-foreground transition-colors"
         >
           {moduleName}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5" />
+        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
         <span className="text-foreground font-medium truncate max-w-[200px]">
           {title || t("chapterEditor.chapterFallback")}
         </span>
@@ -240,7 +240,7 @@ export default function ChapterEditor() {
             navigate(`/teacher/courses/${courseId}/modules/${moduleId}/edit`)
           }}
         >
-          <ArrowLeft className="h-4 w-4 mr-1" />
+          <ArrowLeft className="h-4 w-4 mr-1" strokeWidth={1.75} />
           {t("chapterEditor.back")}
         </Button>
         <Input
@@ -263,10 +263,12 @@ export default function ChapterEditor() {
             return (
               <button
                 key={ct.value}
+                type="button"
                 onClick={() => setChapterType(ct.value)}
-                className={`flex items-start gap-3 rounded-lg border-2 p-4 text-left transition-all ${
+                aria-pressed={selected}
+                className={`flex items-start gap-3 rounded-md border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                   selected
-                    ? "border-primary bg-primary/5 shadow-sm"
+                    ? "border-primary bg-primary/[0.04] ring-1 ring-primary/40"
                     : "border-border hover:border-primary/30 hover:bg-muted/40"
                 }`}
               >
@@ -274,6 +276,8 @@ export default function ChapterEditor() {
                   className={`h-5 w-5 mt-0.5 shrink-0 ${
                     selected ? "text-primary" : "text-muted-foreground"
                   }`}
+                  strokeWidth={1.75}
+                  aria-hidden
                 />
                 <div>
                   <div

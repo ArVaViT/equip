@@ -1,5 +1,9 @@
 import type { UserRole } from "@/types"
 
+// Re-export from the shared location so Profile + other surfaces can
+// use the same role i18n mapping without depending on Admin pages.
+export { ROLE_I18N_KEY, ROLE_BADGE_VARIANT } from "@/lib/roles"
+
 export type AdminTab = "overview" | "cohorts" | "audit"
 export const ADMIN_TABS: readonly AdminTab[] = ["overview", "cohorts", "audit"]
 
@@ -43,33 +47,6 @@ export const ACTION_BADGE_VARIANT: Record<
   approve: "successSubtle",
   reject: "destructiveSubtle",
   grade: "warningSubtle",
-}
-
-/** Maps each role to its i18n key. Use with ``useTranslation().t`` to
- * render localized role labels — never hardcode the English values.
- *
- * The camelCase keys (``pendingTeacher``) are i18next conventions; the
- * snake_case role values (``pending_teacher``) mirror the Pydantic /
- * Postgres CHECK constraint. The mapping lives here so the bridge is
- * a single source of truth instead of being re-derived in every
- * component that needs to render a role.
- */
-export const ROLE_I18N_KEY: Record<UserRole, string> = {
-  student: "roles.student",
-  pending_teacher: "roles.pendingTeacher",
-  teacher: "roles.teacher",
-  admin: "roles.admin",
-}
-
-/** Maps each role to its `<Badge>` variant. */
-export const ROLE_BADGE_VARIANT: Record<
-  UserRole,
-  "destructiveSubtle" | "primarySubtle" | "warningSubtle" | "infoSubtle"
-> = {
-  admin: "destructiveSubtle",
-  teacher: "primarySubtle",
-  pending_teacher: "warningSubtle",
-  student: "infoSubtle",
 }
 
 export interface ProfileRow {

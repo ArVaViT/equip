@@ -158,7 +158,7 @@ export function InlineEdit({
         )}
         <span className="flex shrink-0 items-center gap-1 pt-1">
           {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" strokeWidth={1.75} />
           ) : (
             <>
               <button
@@ -168,7 +168,7 @@ export function InlineEdit({
                 onClick={() => void commit()}
                 aria-label={t("inlineEdit.save")}
               >
-                <Check className="h-4 w-4" />
+                <Check className="h-4 w-4" strokeWidth={1.75} />
               </button>
               <button
                 type="button"
@@ -177,7 +177,7 @@ export function InlineEdit({
                 onClick={cancel}
                 aria-label={t("inlineEdit.cancel")}
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" strokeWidth={1.75} />
               </button>
             </>
           )}
@@ -225,7 +225,7 @@ export function InlineEdit({
       </button>
       <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover/edit:opacity-100 group-focus-within/edit:opacity-100">
         <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-background/80 text-muted-foreground shadow-sm ring-1 ring-border">
-          <Pencil className="h-3.5 w-3.5" />
+          <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />
         </span>
       </span>
     </span>

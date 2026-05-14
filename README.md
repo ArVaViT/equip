@@ -127,8 +127,9 @@ cd frontend && npm run dev                      # http://localhost:5173
 ### 4. Run tests
 
 ```bash
-cd backend  && python -m pytest tests/    # 396+ tests (SQLite in-memory)
+cd backend  && python -m pytest tests/    # 540+ tests (SQLite in-memory)
 cd frontend && npm run test:run           # Vitest + jsdom
+cd frontend && npm run i18n:check         # bilingual locale parity (en.json ↔ ru.json)
 ```
 
 ---
@@ -195,6 +196,18 @@ this platform:
   is driven by real ministry needs.
 
 ---
+
+## Documentation
+
+| Audience | Document |
+|----------|----------|
+| Contributors | [CONTRIBUTING.md](CONTRIBUTING.md) — setup, workflow, conventions |
+| Designers / UI work | [docs/DESIGN.md](docs/DESIGN.md) — aesthetic, tokens, motion, banned patterns |
+| Component reuse | [docs/COMPONENTS.md](docs/COMPONENTS.md) — the patterns library (`<Badge>`, `<StatCard>`, `<EmptyState>`, …) |
+| Translators / i18n work | [docs/I18N.md](docs/I18N.md) — bilingual workflow, locale files, key parity |
+| Architecture | [docs/adr/](docs/adr/) — Architecture Decision Records |
+| Cross-cutting UI calls | [docs/UI-DECISIONS.md](docs/UI-DECISIONS.md) — frozen UI decisions log |
+| Security disclosure | [SECURITY.md](SECURITY.md) |
 
 ## Community
 

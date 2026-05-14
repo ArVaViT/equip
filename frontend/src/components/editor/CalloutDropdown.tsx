@@ -77,8 +77,8 @@ export function CalloutDropdown({
             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
         )}
       >
-        <Info size={iconSize} />
-        <ChevronDown size={12} />
+        <Info size={iconSize} strokeWidth={1.75} />
+        <ChevronDown size={12} strokeWidth={1.75} />
       </button>
       {open && (
         <div className="absolute left-0 top-full z-20 mt-1 w-52 rounded-md border bg-background py-1 shadow-lg">
