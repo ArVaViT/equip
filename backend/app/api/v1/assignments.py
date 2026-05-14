@@ -106,13 +106,34 @@ def delete_assignment(
     db.commit()
 
 
-@router.post("/{assignment_id}/submit", response_model=SubmissionResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{assignment_id}/submit",
+    response_model=SubmissionResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Student submits an assignment response",
+    responses={
+        201: {
+            "description": "Submission persisted in ``pending`` state; chapter "
+            "progress flipped to completed; enrollment percent re-synced."
+        },
+        403: {"description": "Student is not enrolled in the assignment's course"},
+        404: {"description": "Assignment not found"},
+    },
+)
 def submit_assignment(
     assignment_id: UUID,
     data: SubmissionCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """Submit a response to an assignment.
+
+    Resubmissions are allowed (a student can submit multiple times
+    before the teacher grades). The chapter-progress side effect runs
+    on every submit so a student who later resubmits doesn't lose
+    their "this chapter is done" badge. Grading then happens through
+    ``grade_submission`` on the teacher side.
+    """
     assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
     if not assignment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
