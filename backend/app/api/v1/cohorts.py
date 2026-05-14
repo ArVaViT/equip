@@ -68,11 +68,41 @@ def _student_count(db: Session, cohort_id: UUID) -> int:
     )
 
 
+def _serialize_many(db: Session, cohorts: list[Cohort]) -> list[CohortResponse]:
+    """Batch version of ``_serialize`` — resolves ``course_ids`` and
+    ``student_count`` for every cohort in two GROUP-BY queries instead
+    of two-per-cohort. List endpoints must use this."""
+    if not cohorts:
+        return []
+    cohort_ids = [c.id for c in cohorts]
+
+    courses_by_cohort: dict[UUID, list[str]] = {}
+    for cohort_id, course_id in db.query(CohortCourse.cohort_id, CohortCourse.course_id).filter(
+        CohortCourse.cohort_id.in_(cohort_ids)
+    ):
+        courses_by_cohort.setdefault(cohort_id, []).append(course_id)
+
+    counts_by_cohort: dict[UUID, int] = {
+        cohort_id: count
+        for cohort_id, count in db.query(
+            Enrollment.cohort_id,
+            func.count(func.distinct(Enrollment.user_id)),
+        )
+        .filter(Enrollment.cohort_id.in_(cohort_ids))
+        .group_by(Enrollment.cohort_id)
+    }
+
+    out: list[CohortResponse] = []
+    for c in cohorts:
+        resp = CohortResponse.model_validate(c)
+        resp.course_ids = courses_by_cohort.get(c.id, [])
+        resp.student_count = counts_by_cohort.get(c.id, 0)
+        out.append(resp)
+    return out
+
+
 def _serialize(db: Session, cohort: Cohort) -> CohortResponse:
-    resp = CohortResponse.model_validate(cohort)
-    resp.course_ids = _course_ids_for_cohort(db, cohort.id)
-    resp.student_count = _student_count(db, cohort.id)
-    return resp
+    return _serialize_many(db, [cohort])[0]
 
 
 def _get_or_404(db: Session, cohort_id: UUID) -> Cohort:
@@ -104,7 +134,7 @@ def list_cohorts(
     if status_filter:
         q = q.filter(Cohort.status == status_filter)
     cohorts = q.order_by(Cohort.start_date.desc()).all()
-    return [_serialize(db, c) for c in cohorts]
+    return _serialize_many(db, cohorts)
 
 
 @router.post("", response_model=CohortResponse, status_code=status.HTTP_201_CREATED)
@@ -153,13 +183,9 @@ def update_cohort(
         setattr(cohort, field, value)
     db.commit()
     db.refresh(cohort)
-    # Translation reconcile for each course this cohort is attached to —
-    # cohort name is teacher/director-authored, so each course-locale
-    # pair gets a translation overlay row.
-    for cid in _course_ids_for_cohort(db, cohort.id):
-        course = db.query(Course).filter(Course.id == cid).first()
-        if course is not None:
-            reconcile_entity_if_course_published(db, "cohort", cohort)
+    # Translation reconcile reads the attached-course set internally and
+    # is idempotent — call once per cohort, not once per attached course.
+    reconcile_entity_if_course_published(db, "cohort", cohort)
     return _serialize(db, cohort)
 
 
@@ -235,26 +261,27 @@ def attach_course(
         db.flush()
 
     # Auto-enroll every existing cohort student in this course.
-    existing_students = db.query(Enrollment.user_id).filter(Enrollment.cohort_id == cohort.id).distinct().all()
-    for (user_id,) in existing_students:
-        already = (
-            db.query(Enrollment)
-            .filter(
-                Enrollment.user_id == user_id,
-                Enrollment.course_id == course.id,
-                Enrollment.cohort_id == cohort.id,
-            )
-            .first()
+    # Two bounded queries — set difference in Python — instead of N+1
+    # exists-checks per student.
+    all_cohort_users = {
+        row[0] for row in db.query(Enrollment.user_id).filter(Enrollment.cohort_id == cohort.id).distinct()
+    }
+    already_enrolled = {
+        row[0]
+        for row in db.query(Enrollment.user_id).filter(
+            Enrollment.cohort_id == cohort.id,
+            Enrollment.course_id == course.id,
         )
-        if already is None:
-            db.add(
-                Enrollment(
-                    id=f"enr-{cohort.id}-{user_id}-{course.id}",
-                    user_id=user_id,
-                    course_id=course.id,
-                    cohort_id=cohort.id,
-                )
+    }
+    for user_id in all_cohort_users - already_enrolled:
+        db.add(
+            Enrollment(
+                id=f"enr-{cohort.id}-{user_id}-{course.id}",
+                user_id=user_id,
+                course_id=course.id,
+                cohort_id=cohort.id,
             )
+        )
 
     try:
         db.commit()
@@ -350,12 +377,20 @@ def add_student(
     ``email`` to an existing platform user, then auto-creates enrollment
     rows for every course already attached to this cohort. Idempotent —
     re-adding the same student is a no-op."""
-    cohort = _get_or_404(db, cohort_id)
     if not body.user_id and not body.email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Provide user_id or email",
         )
+
+    # FOR UPDATE on the Cohort row so the capacity check below and the
+    # enrollment writes that follow are atomic against concurrent admin
+    # add_student calls — without this, two admins seeing
+    # ``current_count == max_students - 1`` can both succeed and overshoot.
+    # SQLite (test path) treats ``with_for_update`` as a no-op.
+    cohort = db.query(Cohort).filter(Cohort.id == cohort_id).with_for_update().first()
+    if not cohort:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cohort not found")
 
     if body.user_id:
         user = db.query(User).filter(User.id == body.user_id).first()
@@ -367,13 +402,20 @@ def add_student(
             detail="User not found — ask them to sign up first",
         )
 
+    # One bounded query: every course this user is already enrolled in
+    # within this cohort. Drives both the capacity gate (idempotent
+    # re-add) and the per-course skip loop below.
+    already_enrolled_courses: set[str] = {
+        row[0]
+        for row in db.query(Enrollment.course_id).filter(
+            Enrollment.cohort_id == cohort.id,
+            Enrollment.user_id == user.id,
+        )
+    }
+
     if cohort.max_students:
         current_count = _student_count(db, cohort.id)
-        already_in = (
-            db.query(Enrollment).filter(Enrollment.cohort_id == cohort.id, Enrollment.user_id == user.id).first()
-            is not None
-        )
-        if not already_in and current_count >= cohort.max_students:
+        if not already_enrolled_courses and current_count >= cohort.max_students:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Cohort has reached maximum capacity",
@@ -381,24 +423,16 @@ def add_student(
 
     course_ids = _course_ids_for_cohort(db, cohort.id)
     for course_id in course_ids:
-        already = (
-            db.query(Enrollment)
-            .filter(
-                Enrollment.user_id == user.id,
-                Enrollment.course_id == course_id,
-                Enrollment.cohort_id == cohort.id,
+        if course_id in already_enrolled_courses:
+            continue
+        db.add(
+            Enrollment(
+                id=f"enr-{cohort.id}-{user.id}-{course_id}",
+                user_id=user.id,
+                course_id=course_id,
+                cohort_id=cohort.id,
             )
-            .first()
         )
-        if already is None:
-            db.add(
-                Enrollment(
-                    id=f"enr-{cohort.id}-{user.id}-{course_id}",
-                    user_id=user.id,
-                    course_id=course_id,
-                    cohort_id=cohort.id,
-                )
-            )
 
     try:
         db.commit()
@@ -468,14 +502,14 @@ def list_cohorts_for_course(
     is_owner = current_user is not None and str(course.created_by) == str(current_user.id)
     is_admin = current_user is not None and current_user.role == UserRole.ADMIN.value
     if is_owner or is_admin:
-        return [_serialize(db, c) for c in cohorts]
+        return _serialize_many(db, cohorts)
 
     display_locale: LocaleCode = normalize_locale(accept_language)
     source_locale: LocaleCode = normalize_locale(course.source_locale)
     overlay_specs = [("cohort", str(c.id), "title") for c in cohorts]
     overlay = fetch_overlay_triples_bulk(db, overlay_specs, display_locale)
-    out: list[CohortResponse] = []
-    for c in cohorts:
+    serialized = _serialize_many(db, cohorts)
+    for resp, c in zip(serialized, cohorts, strict=True):
         localized = pick_overlay_value(
             overlay,
             "cohort",
@@ -485,7 +519,5 @@ def list_cohorts_for_course(
             source_locale=source_locale,
             display_locale=display_locale,
         )
-        resp = _serialize(db, c)
         resp.name = localized or c.name
-        out.append(resp)
-    return out
+    return serialized
