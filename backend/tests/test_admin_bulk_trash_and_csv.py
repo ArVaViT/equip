@@ -26,7 +26,7 @@ from app.api.dependencies import (
 )
 from app.core.database import get_db
 from app.main import app
-from app.models.course import Course
+from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
 from app.models.user import User, UserRole
 from tests.conftest import STUDENT_ID, TEACHER_ID
@@ -297,6 +297,77 @@ class TestTrashAndRestore:
         row = db.query(Course).filter(Course.id == "restore-me").first()
         assert row is not None
         assert row.deleted_at is None
+
+    def test_restore_preserves_independently_deleted_chapters(self, client: TestClient, db: Session):
+        """Symmetric restore: a chapter the teacher trashed BEFORE the
+        whole course was trashed must stay trashed when the course is
+        restored. The two deletes have different ``deleted_at``
+        timestamps; only rows matching the course tombstone get flipped
+        back to live."""
+        earlier = datetime(2026, 5, 1, 12, 0, tzinfo=UTC)
+        course_tombstone = datetime(2026, 5, 14, 9, 0, tzinfo=UTC)
+
+        _seed_course_direct(db, course_id="restore-mix", deleted=False)
+        # Manually set the course's deleted_at to the cascade timestamp so the
+        # restore picks up the right value.
+        course = db.query(Course).filter(Course.id == "restore-mix").first()
+        assert course is not None
+        course.deleted_at = course_tombstone
+
+        # Two modules, one trashed independently before the course was.
+        live_module = Module(
+            id="mod-live",
+            course_id="restore-mix",
+            title="Live Module",
+            order_index=0,
+            deleted_at=course_tombstone,  # cascaded with the course
+        )
+        orphan_module = Module(
+            id="mod-orphan",
+            course_id="restore-mix",
+            title="Orphan Module (teacher deleted before course trash)",
+            order_index=1,
+            deleted_at=earlier,
+        )
+        db.add(live_module)
+        db.add(orphan_module)
+        db.commit()
+
+        # And one chapter that was also independently deleted.
+        orphan_chapter = Chapter(
+            id="ch-orphan",
+            module_id="mod-live",
+            title="Orphan Chapter",
+            order_index=0,
+            deleted_at=earlier,
+        )
+        live_chapter = Chapter(
+            id="ch-live",
+            module_id="mod-live",
+            title="Live Chapter",
+            order_index=1,
+            deleted_at=course_tombstone,
+        )
+        db.add(orphan_chapter)
+        db.add(live_chapter)
+        db.commit()
+
+        resp = client.post(f"{COURSES_PREFIX}/restore-mix/restore")
+        assert resp.status_code == 200
+
+        db.expire_all()
+        assert db.query(Course).filter(Course.id == "restore-mix").first().deleted_at is None
+        assert db.query(Module).filter(Module.id == "mod-live").first().deleted_at is None
+        # Compare against ``is not None`` rather than the exact ``earlier``
+        # value: SQLite's datetime roundtrip can shift microsecond
+        # precision; the invariant is "stays deleted", not "exact value".
+        assert db.query(Module).filter(Module.id == "mod-orphan").first().deleted_at is not None, (
+            "Module that was deleted before the course tombstone must stay deleted"
+        )
+        assert db.query(Chapter).filter(Chapter.id == "ch-live").first().deleted_at is None
+        assert db.query(Chapter).filter(Chapter.id == "ch-orphan").first().deleted_at is not None, (
+            "Chapter that was deleted before the course tombstone must stay deleted"
+        )
 
     def test_restore_nonexistent_returns_404(self, client: TestClient):
         resp = client.post(f"{COURSES_PREFIX}/nonexistent/restore")
