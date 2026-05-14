@@ -34,7 +34,16 @@ class AuditLogPage(BaseModel):
     page_size: int
 
 
-@router.get("", response_model=AuditLogPage)
+@router.get(
+    "",
+    response_model=AuditLogPage,
+    summary="Paginated audit log query (admin-only)",
+    responses={
+        200: {"description": "Paginated audit-log rows matching the filters"},
+        400: {"description": "Malformed ``user_id`` (not a UUID)"},
+        403: {"description": "Caller is not an admin"},
+    },
+)
 def list_audit_logs(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
@@ -46,6 +55,17 @@ def list_audit_logs(
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> dict:
+    """Read the audit log. Every write that goes through ``log_action``
+    leaves a row here; this endpoint is how admins reconstruct
+    timelines for incident response or just routine sanity checks.
+
+    Filters are AND-combined: passing both ``action=create`` and
+    ``resource_type=course`` returns only course-create rows. Date
+    filters are inclusive on both ends. The default ``page_size`` of
+    50 matches the admin UI; the 200 cap exists to protect against an
+    inadvertent ``page_size=999999`` that would page the whole table
+    into memory.
+    """
     q = db.query(AuditLog)
 
     if user_id:
