@@ -377,6 +377,73 @@ class TestUpdateCohort:
         assert resp.status_code == 403
 
 
+class TestCohortStateMachine:
+    """Cohort lifecycle is forward-only: ``upcoming → active → completed``.
+    Verify the patch endpoint blocks status regressions out of completed."""
+
+    def test_cannot_reopen_completed_cohort(self, admin_client: TestClient, db: Session):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db, status="completed")
+        resp = admin_client.patch(f"{COHORT_PREFIX}/{cohort.id}", json={"status": "active"})
+        assert resp.status_code == 400
+        assert "completed" in resp.json()["detail"].lower()
+
+    def test_cannot_revert_completed_to_upcoming(self, admin_client: TestClient, db: Session):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db, status="completed")
+        resp = admin_client.patch(f"{COHORT_PREFIX}/{cohort.id}", json={"status": "upcoming"})
+        assert resp.status_code == 400
+
+    def test_can_patch_other_fields_on_completed_cohort(self, admin_client: TestClient, db: Session):
+        # Status guard must not block name / metadata edits on a completed cohort.
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db, status="completed")
+        resp = admin_client.patch(f"{COHORT_PREFIX}/{cohort.id}", json={"name": "Renamed"})
+        assert resp.status_code == 200
+
+
+class TestCohortDateValidation:
+    """``CohortCreate`` enforces ``enrollment_start ≤ enrollment_end ≤
+    start_date < end_date`` so a malformed window never reaches the DB."""
+
+    def test_end_before_start_rejected(self, admin_client: TestClient):
+        resp = admin_client.post(
+            COHORT_PREFIX,
+            json=_cohort_payload(end_date=(NOW - timedelta(days=1)).isoformat()),
+        )
+        assert resp.status_code == 422
+
+    def test_enrollment_end_before_start_rejected(self, admin_client: TestClient):
+        resp = admin_client.post(
+            COHORT_PREFIX,
+            json=_cohort_payload(
+                enrollment_start=NOW.isoformat(),
+                enrollment_end=(NOW - timedelta(hours=1)).isoformat(),
+            ),
+        )
+        assert resp.status_code == 422
+
+    def test_enrollment_end_after_cohort_start_rejected(self, admin_client: TestClient):
+        resp = admin_client.post(
+            COHORT_PREFIX,
+            json=_cohort_payload(
+                enrollment_start=NOW.isoformat(),
+                enrollment_end=(NOW + timedelta(days=10)).isoformat(),
+                start_date=(NOW + timedelta(days=1)).isoformat(),
+            ),
+        )
+        assert resp.status_code == 422
+
+    def test_add_student_rejects_malformed_email(self, admin_client: TestClient, db: Session):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        resp = admin_client.post(
+            f"{COHORT_PREFIX}/{cohort.id}/students",
+            json={"email": "not-an-email"},
+        )
+        assert resp.status_code == 422
+
+
 class TestDeleteCohort:
     def test_admin_deletes_cohort_and_orphans_enrollments(self, admin_client: TestClient, db: Session, student):
         _seed_course(db)
