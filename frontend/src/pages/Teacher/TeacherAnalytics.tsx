@@ -117,7 +117,7 @@ export default function TeacherAnalytics() {
           </Button>
         </Link>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+          <h1 className="text-3xl font-serif font-bold tracking-tight flex items-center gap-2">
             <BarChart3 className="h-7 w-7 text-primary" />
             {t("teacherAnalytics.heading")}
           </h1>

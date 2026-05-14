@@ -199,7 +199,7 @@ export default function CohortDetailPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap mb-8">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold tracking-tight">{cohort.name}</h1>
+            <h1 className="text-3xl font-serif font-bold tracking-tight">{cohort.name}</h1>
             <Badge variant={STATUS_BADGE[cohort.status]} className="capitalize">
               {t(`admin.cohorts.status${capitalize(cohort.status)}`)}
             </Badge>

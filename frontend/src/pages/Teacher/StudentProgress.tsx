@@ -194,7 +194,7 @@ export default function StudentProgress() {
 
       <div className="flex items-center gap-3 mb-8">
         <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">{t("studentProgress.heading")}</h1>
+          <h1 className="text-3xl font-serif font-bold tracking-tight">{t("studentProgress.heading")}</h1>
           <p className="text-muted-foreground mt-1">{data.course_title}</p>
         </div>
         <div className="flex items-center gap-2">
