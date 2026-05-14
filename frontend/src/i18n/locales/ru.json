@@ -1,15 +1,11 @@
 {
   "common": {
     "appName": "Equip",
-    "save": "Сохранить",
-    "saving": "Сохранение...",
-    "saved": "Сохранено",
     "cancel": "Отмена",
     "continue": "Продолжить",
     "tryAgain": "Повторить",
     "loading": "Загрузка...",
     "view": "Открыть",
-    "search": "Поиск",
     "signIn": "Войти",
     "signOut": "Выйти",
     "register": "Регистрация",
@@ -45,8 +41,6 @@
   },
   "footer": {
     "tagline": "Системное изучение Библии для тех, кто относится к Писанию серьёзно.",
-    "explore": "Разделы",
-    "teaching": "Преподавание",
     "teacherDashboard": "Панель преподавателя",
     "support": "Связаться с поддержкой",
     "rightsReserved": "Все права защищены."
@@ -133,9 +127,6 @@
     }
   },
   "profile": {
-    "title": "Профиль",
-    "pageEyebrow": "Ваш аккаунт",
-    "pageLead": "Имя, аватар, прогресс и настройки в одном месте.",
     "fullName": "Полное имя",
     "changeAvatar": "Изменить аватар",
     "uploadFailed": "Не удалось загрузить аватар",
@@ -229,8 +220,6 @@
     "loadChapterFailed": "Не удалось загрузить главу. Попробуйте снова.",
     "loadModuleFailed": "Не удалось загрузить модуль. Попробуйте снова.",
     "loadCourseFailed": "Не удалось загрузить курс. Попробуйте снова.",
-    "loadGradebookFailed": "Не удалось загрузить журнал оценок. Попробуйте снова.",
-    "genericLoadFailed": "Что-то пошло не так",
     "loadTeacherCoursesFailed": "Не удалось загрузить ваши курсы. Попробуйте снова.",
     "boundary": {
       "heading": "Что-то пошло не так",
@@ -266,37 +255,25 @@
     "certificatesLoadFailed": "Не удалось загрузить сертификаты",
     "openFileFailed": "Не удалось открыть файл. Попробуйте снова.",
     "assignmentTitleRequired": "Укажите название задания",
-    "assignmentUpdated": "Задание обновлено",
     "assignmentUpdateFailed": "Не удалось обновить задание",
     "assignmentSubmitFailed": "Не удалось отправить задание",
     "unsupportedFile": "Неподдерживаемый файл",
     "pickImageFile": "Выберите файл изображения.",
     "uploadFailed": "Не удалось загрузить",
-    "markedIncomplete": "Отмечено как непройденное",
-    "markedComplete": "Отмечено как выполненное",
     "completionUpdateFailed": "Не удалось обновить статус прохождения",
-    "extraAttemptGranted": "Дополнительная попытка предоставлена",
-    "extraAttemptFailed": "Не удалось выдать дополнительную попытку",
     "autosaveFailed": "Автосохранение не удалось",
-    "blockSaved": "Блок сохранён",
     "blockSaveFailed": "Не удалось сохранить блок",
-    "assignmentCreated": "Задание создано",
     "assignmentCreateFailed": "Не удалось создать задание",
-    "assignmentDeleted": "Задание удалено",
     "assignmentDeleteFailed": "Не удалось удалить задание",
     "invalidScore": "Введите корректный балл (0 или больше)",
     "submissionGraded": "Ответ оценён",
     "gradeFailed": "Не удалось выставить оценку",
     "selectRating": "Выберите оценку",
-    "reviewSubmitted": "Отзыв отправлен!",
     "reviewSubmitFailed": "Не удалось отправить отзыв",
-    "certificateRequested": "Запрос на сертификат отправлен!",
     "certificateRequestFailed": "Не удалось запросить сертификат",
     "copyFailed": "Не удалось скопировать",
     "blocksLoadFailedPrefix": "Не удалось загрузить блоки:",
-    "blockAdded": "Добавлен блок: {{type}}",
     "blockAddFailedPrefix": "Не удалось добавить блок:",
-    "blockDeleted": "Блок удалён",
     "blockDeleteFailed": "Не удалось удалить блок",
     "reorderBlocksFailed": "Не удалось изменить порядок блоков",
     "chapterSaved": "Глава сохранена",
@@ -309,20 +286,15 @@
     "quizNeedsQuestion": "Добавьте хотя бы один вопрос",
     "quizSaved": "Тест сохранён",
     "quizSaveFailed": "Не удалось сохранить тест",
-    "quizDeleted": "Тест удалён",
-    "quizDeleteFailed": "Не удалось удалить тест",
-    "fileUploaded": "Файл загружен",
     "fileRemoveFailed": "Не удалось удалить файл",
     "blockUpdateFailed": "Не удалось обновить блок",
     "reviewsLoadFailed": "Не удалось загрузить отзывы",
-    "reviewDeleted": "Отзыв удалён",
     "reviewDeleteFailed": "Не удалось удалить отзыв",
     "chapterLoadFailed": "Не удалось загрузить главу"
   },
   "module": {
     "overdue": "Просрочено",
     "due": "Срок",
-    "dueAt": "{{date}} в {{time}}",
     "moduleComplete": "Модуль завершён — отлично!",
     "completedProgress": "{{done}}/{{total}} завершено",
     "chaptersHeading": "Главы",
@@ -332,10 +304,7 @@
     "backToCourses": "Все курсы",
     "backToCourse": "К курсу",
     "backToModule": "К модулю",
-    "goHome": "На главную",
-    "enrollSuccess": "Вы успешно записались",
-    "enrollFailed": "Не удалось записаться. Попробуйте снова.",
-    "allCourses": "Все курсы"
+    "goHome": "На главную"
   },
   "chapter": {
     "lockedTitle": "Глава заблокирована",
@@ -377,8 +346,6 @@
     "questionPoints_few": "{{count}} балла",
     "questionPoints_many": "{{count}} баллов",
     "questionPoints_other": "{{count}} балла",
-    "true": "Верно",
-    "false": "Неверно",
     "typeAnswerPlaceholder": "Введите ответ…",
     "nQuestions_one": "{{count}} вопрос",
     "nQuestions_few": "{{count}} вопроса",
@@ -611,8 +578,7 @@
       "feedback": "Отзыв",
       "feedbackPlaceholder": "Необязательный отзыв студенту...",
       "saving": "Сохранение...",
-      "save": "Сохранить оценку",
-      "studentIdPrefix": "{{prefix}}..."
+      "save": "Сохранить оценку"
     }
   },
   "assignment": {
@@ -623,11 +589,8 @@
     "maxPoints": "Макс.: {{max}} б.",
     "due": "Срок:",
     "overdue": "(просрочено)",
-    "linkLabel": "Ссылка",
     "submit": "Отправить задание",
     "resubmit": "Отправить снова",
-    "placeholder": "Напишите ответ или вставьте ссылку…",
-    "feedbackFromTeacher": "Комментарий преподавателя",
     "points": "баллов",
     "instructorFeedback": "Комментарий преподавателя",
     "yourSubmission": "Ваша работа",
@@ -641,13 +604,10 @@
   "certificates": {
     "dashboard": "Главная",
     "title": "Мои сертификаты",
-    "subtitle": "Сертификаты за завершённые курсы",
     "emptyTitle": "Пока нет сертификатов",
     "emptyDescription": "Завершите курс, чтобы получить первый сертификат. Продолжайте учиться!",
     "browseCourses": "Каталог курсов",
     "badge": "Сертификат",
-    "issued": "Выдан",
-    "failedLoad": "Не удалось загрузить сертификаты",
     "courseFallback": "Курс {{id}}",
     "certificateNo": "№ сертификата",
     "issuedOrStatus": "Выдан",
@@ -815,7 +775,6 @@
   },
   "teacher": {
     "dashboardTitle": "Мои курсы",
-    "dashboardSubtitle": "Создавайте и управляйте содержимым курсов",
     "newCourse": "Новый курс",
     "searchPlaceholder": "Поиск курсов...",
     "somethingWrong": "Что-то пошло не так",
@@ -840,8 +799,6 @@
       "actionPublish": "Опубликовать",
       "actionUnpublish": "Снять с публикации",
       "actionClone": "Скопировать курс",
-      "actionCloneShort": "Копия",
-      "actionEdit": "Редактировать",
       "actionEditCourse": "Редактировать курс",
       "actionDelete": "Удалить",
       "actionMore": "Ещё действия"
@@ -1402,7 +1359,6 @@
     "orRegisterEmail": "или регистрация по email",
     "fullName": "Полное имя",
     "fullNamePlaceholder": "Иван Иванов",
-    "confirmPassword": "Подтверждение пароля",
     "confirmPasswordShort": "Подтверждение",
     "alreadyHaveAccount": "Уже есть аккаунт?",
     "creatingAccount": "Создание аккаунта...",
@@ -1438,17 +1394,5 @@
     "titleRequired": "Укажите название",
     "titleTooLong": "Название не должно превышать 300 символов",
     "nameTooShort": "Имя должно содержать минимум 2 символа"
-  },
-  "confirm": {
-    "deleteBlock": "Удалить этот блок?",
-    "delete": "Удалить"
-  },
-  "editor": {
-    "blockTypes": {
-      "text": "Текст",
-      "quiz": "Тест",
-      "assignment": "Задание",
-      "file": "Файл"
-    }
   }
 }

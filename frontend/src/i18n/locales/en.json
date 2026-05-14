@@ -1,15 +1,11 @@
 {
   "common": {
     "appName": "Equip",
-    "save": "Save",
-    "saving": "Saving...",
-    "saved": "Saved",
     "cancel": "Cancel",
     "continue": "Continue",
     "tryAgain": "Try again",
     "loading": "Loading...",
     "view": "View",
-    "search": "Search",
     "signIn": "Sign In",
     "signOut": "Sign Out",
     "register": "Register",
@@ -45,8 +41,6 @@
   },
   "footer": {
     "tagline": "Structured biblical teaching for learners who take Scripture seriously.",
-    "explore": "Explore",
-    "teaching": "Teaching",
     "teacherDashboard": "Teacher dashboard",
     "support": "Contact support",
     "rightsReserved": "All rights reserved."
@@ -133,9 +127,6 @@
     }
   },
   "profile": {
-    "title": "Profile",
-    "pageEyebrow": "Your account",
-    "pageLead": "Name, avatar, progress, and preferences in one place.",
     "fullName": "Full Name",
     "changeAvatar": "Change avatar",
     "uploadFailed": "Failed to upload avatar",
@@ -227,8 +218,6 @@
     "loadChapterFailed": "Failed to load chapter. Please try again.",
     "loadModuleFailed": "Failed to load module. Please try again.",
     "loadCourseFailed": "Failed to load course. Please try again.",
-    "loadGradebookFailed": "Failed to load gradebook. Please try again.",
-    "genericLoadFailed": "Something went wrong",
     "loadTeacherCoursesFailed": "Failed to load your courses. Please try again.",
     "boundary": {
       "heading": "Something went wrong",
@@ -264,37 +253,25 @@
     "certificatesLoadFailed": "Failed to load certificates",
     "openFileFailed": "Could not open file. Please try again.",
     "assignmentTitleRequired": "Assignment title is required",
-    "assignmentUpdated": "Assignment updated",
     "assignmentUpdateFailed": "Failed to update assignment",
     "assignmentSubmitFailed": "Failed to submit assignment",
     "unsupportedFile": "Unsupported file",
     "pickImageFile": "Pick an image file.",
     "uploadFailed": "Upload failed",
-    "markedIncomplete": "Marked as incomplete",
-    "markedComplete": "Marked as complete",
     "completionUpdateFailed": "Failed to update completion",
-    "extraAttemptGranted": "Extra attempt granted",
-    "extraAttemptFailed": "Failed to grant extra attempt",
     "autosaveFailed": "Auto-save failed",
-    "blockSaved": "Block saved",
     "blockSaveFailed": "Failed to save block",
-    "assignmentCreated": "Assignment created",
     "assignmentCreateFailed": "Failed to create assignment",
-    "assignmentDeleted": "Assignment deleted",
     "assignmentDeleteFailed": "Failed to delete assignment",
     "invalidScore": "Enter a valid score (0 or higher)",
     "submissionGraded": "Submission graded",
     "gradeFailed": "Failed to grade",
     "selectRating": "Please select a rating",
-    "reviewSubmitted": "Review submitted!",
     "reviewSubmitFailed": "Failed to submit review",
-    "certificateRequested": "Certificate requested!",
     "certificateRequestFailed": "Failed to request certificate",
     "copyFailed": "Failed to copy",
     "blocksLoadFailedPrefix": "Failed to load blocks:",
-    "blockAdded": "{{type}} block added",
     "blockAddFailedPrefix": "Failed to add block:",
-    "blockDeleted": "Block deleted",
     "blockDeleteFailed": "Failed to delete block",
     "reorderBlocksFailed": "Failed to reorder blocks",
     "chapterSaved": "Chapter saved",
@@ -307,20 +284,15 @@
     "quizNeedsQuestion": "Add at least one question",
     "quizSaved": "Quiz saved",
     "quizSaveFailed": "Failed to save quiz",
-    "quizDeleted": "Quiz deleted",
-    "quizDeleteFailed": "Failed to delete quiz",
-    "fileUploaded": "File uploaded",
     "fileRemoveFailed": "Failed to remove file",
     "blockUpdateFailed": "Failed to update block",
     "reviewsLoadFailed": "Failed to load reviews",
-    "reviewDeleted": "Review deleted",
     "reviewDeleteFailed": "Failed to delete review",
     "chapterLoadFailed": "Failed to load chapter"
   },
   "module": {
     "overdue": "Overdue",
     "due": "Due",
-    "dueAt": "{{date}} at {{time}}",
     "moduleComplete": "Module complete — well done!",
     "completedProgress": "{{done}}/{{total}} completed",
     "chaptersHeading": "Chapters",
@@ -330,10 +302,7 @@
     "backToCourses": "Back to Courses",
     "backToCourse": "Back to Course",
     "backToModule": "Back to Module",
-    "goHome": "Go Home",
-    "enrollSuccess": "Enrolled successfully",
-    "enrollFailed": "Failed to enroll. Please try again.",
-    "allCourses": "All Courses"
+    "goHome": "Go Home"
   },
   "chapter": {
     "lockedTitle": "Chapter Locked",
@@ -371,8 +340,6 @@
     "previousAttempts": "Previous attempts",
     "questionPoints_one": "{{count}} pt",
     "questionPoints_other": "{{count}} pts",
-    "true": "True",
-    "false": "False",
     "typeAnswerPlaceholder": "Type your answer...",
     "nQuestions_one": "{{count}} question",
     "nQuestions_other": "{{count}} questions",
@@ -593,8 +560,7 @@
       "feedback": "Feedback",
       "feedbackPlaceholder": "Optional feedback for the student...",
       "saving": "Saving...",
-      "save": "Save Grade",
-      "studentIdPrefix": "{{prefix}}..."
+      "save": "Save Grade"
     }
   },
   "assignment": {
@@ -605,11 +571,8 @@
     "maxPoints": "Max: {{max}} pts",
     "due": "Due:",
     "overdue": "(overdue)",
-    "linkLabel": "Link",
     "submit": "Submit Assignment",
     "resubmit": "Resubmit",
-    "placeholder": "Write your response or paste a link…",
-    "feedbackFromTeacher": "Feedback from teacher",
     "points": "points",
     "instructorFeedback": "Instructor Feedback",
     "yourSubmission": "Your Submission",
@@ -623,13 +586,10 @@
   "certificates": {
     "dashboard": "Dashboard",
     "title": "My Certificates",
-    "subtitle": "Certificates you've earned for completing courses",
     "emptyTitle": "No certificates yet",
     "emptyDescription": "Complete a course to earn your first certificate. Keep learning and collecting achievements!",
     "browseCourses": "Browse Courses",
     "badge": "Certificate",
-    "issued": "Issued",
-    "failedLoad": "Failed to load certificates",
     "courseFallback": "Course {{id}}",
     "certificateNo": "Certificate No.",
     "issuedOrStatus": "Issued",
@@ -793,7 +753,6 @@
   },
   "teacher": {
     "dashboardTitle": "My Courses",
-    "dashboardSubtitle": "Create and manage your course content",
     "newCourse": "New Course",
     "searchPlaceholder": "Search courses...",
     "somethingWrong": "Something went wrong",
@@ -816,8 +775,6 @@
       "actionPublish": "Publish",
       "actionUnpublish": "Unpublish",
       "actionClone": "Clone course",
-      "actionCloneShort": "Clone",
-      "actionEdit": "Edit",
       "actionEditCourse": "Edit course",
       "actionDelete": "Delete",
       "actionMore": "More actions"
@@ -1370,7 +1327,6 @@
     "orRegisterEmail": "or register with email",
     "fullName": "Full name",
     "fullNamePlaceholder": "John Doe",
-    "confirmPassword": "Confirm password",
     "confirmPasswordShort": "Confirm",
     "alreadyHaveAccount": "Already have an account?",
     "creatingAccount": "Creating account...",
@@ -1406,17 +1362,5 @@
     "titleRequired": "Title is required",
     "titleTooLong": "Title must be 300 characters or fewer",
     "nameTooShort": "Name must be at least 2 characters"
-  },
-  "confirm": {
-    "deleteBlock": "Delete this block?",
-    "delete": "Delete"
-  },
-  "editor": {
-    "blockTypes": {
-      "text": "Text",
-      "quiz": "Quiz",
-      "assignment": "Assignment",
-      "file": "File"
-    }
   }
 }
