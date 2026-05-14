@@ -23,4 +23,5 @@ export type CourseEditorModal =
   | "announce"
   | "materials"
   | "events"
+  | "access"
   | null

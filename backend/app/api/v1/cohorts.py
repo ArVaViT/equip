@@ -304,21 +304,27 @@ def list_cohort_students(
 ) -> list[dict]:
     """One row per student in the cohort. Per-course progress is the
     union of their enrollment rows in this cohort, summarized by
-    course_id so the cohort overview can show a matrix."""
+    course_id so the cohort overview can show a matrix.
+
+    Includes ``full_name`` + ``email`` from ``profiles`` so the admin
+    table renders identity without an N+1 follow-up fetch per row."""
     cohort = _get_or_404(db, cohort_id)
     rows = (
-        db.query(Enrollment)
+        db.query(Enrollment, User.full_name, User.email)
+        .join(User, Enrollment.user_id == User.id)
         .filter(Enrollment.cohort_id == cohort.id)
         .order_by(Enrollment.user_id, Enrollment.course_id)
         .all()
     )
     by_user: dict[str, dict] = {}
-    for e in rows:
+    for e, full_name, email in rows:
         key = str(e.user_id)
         by_user.setdefault(
             key,
             {
                 "user_id": key,
+                "full_name": full_name,
+                "email": email,
                 "per_course": {},
             },
         )

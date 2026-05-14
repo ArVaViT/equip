@@ -1,7 +1,7 @@
 import type { UserRole } from "@/types"
 
-export type AdminTab = "overview" | "audit"
-export const ADMIN_TABS: readonly AdminTab[] = ["overview", "audit"]
+export type AdminTab = "overview" | "cohorts" | "audit"
+export const ADMIN_TABS: readonly AdminTab[] = ["overview", "cohorts", "audit"]
 
 export const ACTION_OPTIONS = [
   "create",

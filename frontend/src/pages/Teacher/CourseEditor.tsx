@@ -16,10 +16,12 @@ import {
   CalendarDays,
   Eye,
   EyeOff,
+  Lock,
   Megaphone,
   MoreHorizontal,
   Paperclip,
 } from "lucide-react"
+import { useAuth } from "@/context/useAuth"
 import {
   ErrorState,
   InlineEdit,
@@ -27,6 +29,7 @@ import {
   PageHeader,
 } from "@/components/patterns"
 import {
+  AccessModeModal,
   AnnouncementsModal,
   CourseEditorSkeleton,
   EnrollmentModal,
@@ -53,8 +56,11 @@ export default function CourseEditor() {
   const navigate = useNavigate()
   const confirm = useConfirm()
   const { t } = useTranslation()
+  const { user } = useAuth()
+  const isAdmin = user?.role === "admin"
 
   const [modal, setModal] = useState<CourseEditorModal>(null)
+  const [savingAccessMode, setSavingAccessMode] = useState(false)
   const closeModal = useCallback(() => setModal(null), [])
   const goBack = useCallback(() => navigate("/teacher"), [navigate])
 
@@ -159,6 +165,14 @@ export default function CourseEditor() {
                 >
                   <CalendarDays /> {t("courseEditor.menu.events")}
                 </DropdownMenuItem>
+                {isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => setModal("access")}>
+                      <Lock /> {t("courseEditor.menu.accessMode")}
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </>
@@ -230,6 +244,24 @@ export default function CourseEditor() {
         onEdit={events.startEdit}
         onDelete={events.remove}
       />
+
+      {isAdmin && (
+        <AccessModeModal
+          open={modal === "access"}
+          onClose={closeModal}
+          current={course.access_mode}
+          saving={savingAccessMode}
+          onSave={async (next) => {
+            setSavingAccessMode(true)
+            try {
+              await data.savePatch({ access_mode: next })
+              closeModal()
+            } finally {
+              setSavingAccessMode(false)
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

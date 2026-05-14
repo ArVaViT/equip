@@ -74,6 +74,7 @@ const courseCrud = {
       description?: string | null
       image_url?: string | null
       status?: string
+      access_mode?: "public" | "institute"
       enrollment_start?: string | null
       enrollment_end?: string | null
     },

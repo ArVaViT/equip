@@ -38,6 +38,7 @@ const StudentProgress = lazy(() => import("./pages/Teacher/StudentProgress"))
 const ChapterView = lazy(() => import("./pages/Course/ChapterView"))
 const ChapterEditor = lazy(() => import("./pages/Teacher/ChapterEditor"))
 const AdminDashboard = lazy(() => import("./pages/Admin/AdminDashboard"))
+const CohortDetailPage = lazy(() => import("./pages/Admin/cohorts/CohortDetailPage"))
 const CalendarPage = lazy(() => import("./pages/Calendar/CalendarPage"))
 
 type RouteMode = "private" | "public" | "teacher" | "admin"
@@ -139,6 +140,7 @@ function AppRoutes() {
               <Route path="/teacher/courses/:courseId/gradebook" element={<Gate mode="teacher"><TeacherGradebook /></Gate>} />
               <Route path="/teacher/courses/:courseId/progress" element={<Gate mode="teacher"><StudentProgress /></Gate>} />
               <Route path="/admin" element={<Gate mode="admin"><AdminDashboard /></Gate>} />
+              <Route path="/admin/cohorts/:cohortId" element={<Gate mode="admin"><CohortDetailPage /></Gate>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
