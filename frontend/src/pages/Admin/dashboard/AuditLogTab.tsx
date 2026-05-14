@@ -59,8 +59,22 @@ export function AuditLogTab({
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-wrap items-end gap-3">
-            <FilterSelect label={t("admin.audit.filterAction")} value={action} onChange={onAction} options={ACTION_OPTIONS} placeholder={t("admin.audit.filterAllActions")} />
-            <FilterSelect label={t("admin.audit.filterResource")} value={resource} onChange={onResource} options={RESOURCE_OPTIONS} placeholder={t("admin.audit.filterAllResources")} />
+            <FilterSelect
+              label={t("admin.audit.filterAction")}
+              value={action}
+              onChange={onAction}
+              options={ACTION_OPTIONS}
+              optionLabel={(o) => t(`admin.audit.actionValue.${o}`)}
+              placeholder={t("admin.audit.filterAllActions")}
+            />
+            <FilterSelect
+              label={t("admin.audit.filterResource")}
+              value={resource}
+              onChange={onResource}
+              options={RESOURCE_OPTIONS}
+              optionLabel={(o) => t(`admin.audit.resourceValue.${o}`)}
+              placeholder={t("admin.audit.filterAllResources")}
+            />
             <FilterDate label={t("admin.audit.filterFrom")} value={dateFrom} onChange={onDateFrom} />
             <FilterDate label={t("admin.audit.filterTo")} value={dateTo} onChange={onDateTo} />
             <Button variant="ghost" size="sm" onClick={onReset} className="h-9">
@@ -127,10 +141,11 @@ interface FilterSelectProps {
   value: string
   onChange: (next: string) => void
   options: readonly string[]
+  optionLabel: (option: string) => string
   placeholder: string
 }
 
-function FilterSelect({ label, value, onChange, options, placeholder }: FilterSelectProps) {
+function FilterSelect({ label, value, onChange, options, optionLabel, placeholder }: FilterSelectProps) {
   return (
     <div className="space-y-1">
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
@@ -142,7 +157,7 @@ function FilterSelect({ label, value, onChange, options, placeholder }: FilterSe
         <option value="">{placeholder}</option>
         {options.map((o) => (
           <option key={o} value={o}>
-            {o}
+            {optionLabel(o)}
           </option>
         ))}
       </NativeSelect>
@@ -211,10 +226,12 @@ function AuditTable({
                     ACTION_BADGE_CLASS[log.action] || "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {log.action}
+                  {t(`admin.audit.actionValue.${log.action}`, { defaultValue: log.action })}
                 </span>
               </td>
-              <td className="px-6 py-3 text-muted-foreground">{log.resource_type}</td>
+              <td className="px-6 py-3 text-muted-foreground">
+                {t(`admin.audit.resourceValue.${log.resource_type}`, { defaultValue: log.resource_type })}
+              </td>
               <td
                 className="px-6 py-3 font-mono text-xs text-muted-foreground max-w-[120px] truncate"
                 title={log.resource_id}

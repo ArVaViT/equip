@@ -157,7 +157,8 @@
     "switchToLight": "Светлая",
     "switchToDark": "Тёмная",
     "invalidInput": "Некорректный ввод",
-    "editName": "Изменить имя"
+    "editName": "Изменить имя",
+    "avatarAlt": "Аватар {{name}}"
   },
   "home": {
     "myCourses": "Мои курсы",
@@ -609,7 +610,13 @@
     "responsePlaceholder": "Напишите ответ на задание...",
     "fileLinkOptional": "Ссылка на файл (необязательно)",
     "submitting": "Отправка...",
-    "fileLinkPlaceholder": "https://drive.google.com/..."
+    "fileLinkPlaceholder": "https://drive.google.com/...",
+    "statusValue": {
+      "pending": "Ожидает",
+      "submitted": "Сдано",
+      "graded": "Оценено",
+      "returned": "Возвращено"
+    }
   },
   "certificates": {
     "dashboard": "Главная",
@@ -1409,7 +1416,26 @@
       "thResourceId": "ID объекта",
       "thIp": "IP",
       "errorPrefix": "Ошибка журнала аудита",
-      "errorTableMissing": "Таблица audit_logs ещё не создана. Примените последнюю миграцию."
+      "errorTableMissing": "Таблица audit_logs ещё не создана. Примените последнюю миграцию.",
+      "actionValue": {
+        "create": "Создание",
+        "update": "Обновление",
+        "delete": "Удаление",
+        "publish": "Публикация",
+        "enroll": "Запись",
+        "approve": "Одобрение",
+        "reject": "Отклонение",
+        "grade": "Оценка"
+      },
+      "resourceValue": {
+        "course": "Курс",
+        "module": "Модуль",
+        "chapter": "Глава",
+        "enrollment": "Запись",
+        "certificate": "Сертификат",
+        "assignment_submission": "Сданная работа",
+        "user": "Пользователь"
+      }
     }
   },
   "roles": {

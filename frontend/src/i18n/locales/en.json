@@ -157,7 +157,8 @@
     "switchToLight": "Light",
     "switchToDark": "Dark",
     "invalidInput": "Invalid input",
-    "editName": "Edit name"
+    "editName": "Edit name",
+    "avatarAlt": "{{name}} avatar"
   },
   "home": {
     "myCourses": "My Courses",
@@ -591,7 +592,13 @@
     "responsePlaceholder": "Write your assignment response here...",
     "fileLinkOptional": "File Link (optional)",
     "submitting": "Submitting...",
-    "fileLinkPlaceholder": "https://drive.google.com/..."
+    "fileLinkPlaceholder": "https://drive.google.com/...",
+    "statusValue": {
+      "pending": "Pending",
+      "submitted": "Submitted",
+      "graded": "Graded",
+      "returned": "Returned"
+    }
   },
   "certificates": {
     "dashboard": "Dashboard",
@@ -1371,7 +1378,26 @@
       "thResourceId": "Resource ID",
       "thIp": "IP",
       "errorPrefix": "Audit log error",
-      "errorTableMissing": "The audit_logs table may not exist yet. Deploy the latest migration."
+      "errorTableMissing": "The audit_logs table may not exist yet. Deploy the latest migration.",
+      "actionValue": {
+        "create": "Created",
+        "update": "Updated",
+        "delete": "Deleted",
+        "publish": "Published",
+        "enroll": "Enrolled",
+        "approve": "Approved",
+        "reject": "Rejected",
+        "grade": "Graded"
+      },
+      "resourceValue": {
+        "course": "Course",
+        "module": "Module",
+        "chapter": "Chapter",
+        "enrollment": "Enrollment",
+        "certificate": "Certificate",
+        "assignment_submission": "Assignment submission",
+        "user": "User"
+      }
     }
   },
   "roles": {

@@ -59,7 +59,7 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
           <span
             className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[submission.status]}`}
           >
-            {submission.status}
+            {t(`assignment.statusValue.${submission.status}`, { defaultValue: submission.status })}
           </span>
         </div>
 

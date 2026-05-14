@@ -143,7 +143,7 @@ export default function ProfilePage() {
                 {user.avatar_url ? (
                   <img
                     src={toProxyImage(user.avatar_url)}
-                    alt={`${user.full_name ?? "User"} avatar`}
+                    alt={t("profile.avatarAlt", { name: user.full_name ?? user.email })}
                     loading="lazy"
                     className="h-20 w-20 rounded-full border border-border object-cover ring-2 ring-background"
                   />

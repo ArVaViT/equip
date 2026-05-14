@@ -20,14 +20,20 @@ const EVENT_BADGE_CLASS: Record<string, string> = {
   other: "bg-muted text-muted-foreground",
 }
 
+const KNOWN_EVENT_TYPES = new Set(["deadline", "live_session", "exam", "other"])
+
 export function EventTypeBadge({ type }: { type: string }) {
+  const { t } = useTranslation()
+  // Fall back to "other" for unknown types so we still render a sensible
+  // localized label (the i18n keys cover the four supported types).
+  const key = KNOWN_EVENT_TYPES.has(type) ? type : "other"
   return (
     <span
-      className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium capitalize ${
+      className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
         EVENT_BADGE_CLASS[type] ?? EVENT_BADGE_CLASS.other
       }`}
     >
-      {type.replace("_", " ")}
+      {t(`teacherEditor.modals.events.types.${key}`)}
     </span>
   )
 }

@@ -107,7 +107,7 @@ export function ChapterBreakdownRow({
             {assignment.title}:{" "}
             {assignment.grade !== null
               ? `${assignment.grade}/${assignment.max_score}`
-              : assignment.status}
+              : t(`assignment.statusValue.${assignment.status}`, { defaultValue: assignment.status })}
           </span>
         </div>
       )}
