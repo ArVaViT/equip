@@ -1,0 +1,33 @@
+-- ADR-010 (cohort_top_level, applied 2026-05-13) intended to relax the
+-- enrollments uniqueness from (user_id, course_id) -> (user_id, course_id,
+-- COALESCE(cohort_id, sentinel)) so that a student can RETAKE a course in
+-- a different cohort while keeping the original attempt's grades intact.
+--
+-- The cohort migration created the new partial-COALESCE unique index
+-- (uq_enrollment_user_course_cohort) correctly, but the DROP CONSTRAINT
+-- targeted a name that didn't exist:
+--
+--   ALTER TABLE public.enrollments DROP CONSTRAINT IF EXISTS uq_enrollment_user_course;
+--
+-- The actual constraint was named ``enrollments_user_id_course_id_key``
+-- (default Postgres name when ``UNIQUE (user_id, course_id)`` was declared
+-- on the original create table without an explicit name). The
+-- ``IF EXISTS`` clause swallowed the no-op silently and the old
+-- constraint stayed in place.
+--
+-- Effect on production today: any retake-in-different-cohort INSERT fails
+-- with ``duplicate key value violates unique constraint
+-- "enrollments_user_id_course_id_key"`` — the ADR-010 retake path is
+-- silently broken. (No real retake has been attempted yet, so no incident
+-- has been filed.)
+--
+-- Data safety: a count of (user_id, course_id) duplicate groups on
+-- 2026-05-15 returned 0 rows, so dropping the constraint cannot expose
+-- pre-existing duplicates. The new
+-- uq_enrollment_user_course_cohort index continues to enforce the
+-- intended uniqueness (with NULL cohort_id treated as a fixed sentinel
+-- via COALESCE) so accidental double-enrollment in the solo flow is
+-- still blocked.
+
+ALTER TABLE public.enrollments
+  DROP CONSTRAINT IF EXISTS enrollments_user_id_course_id_key;
