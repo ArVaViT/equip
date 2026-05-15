@@ -130,9 +130,9 @@ export default function ModuleView() {
         return (
           <div className={`mb-4 flex items-center gap-2 rounded-md border px-3 py-2 ${
             isOverdue
-              ? "border-l-[3px] border-l-destructive border-border bg-destructive/5"
+              ? "border-l-stripe border-l-destructive border-border bg-destructive/5"
               : isUpcoming
-                ? "border-l-[3px] border-l-warning border-border bg-warning/10"
+                ? "border-l-stripe border-l-warning border-border bg-warning/10"
                 : "border-border bg-muted/50"
           }`}>
             {isOverdue ? (
@@ -156,7 +156,7 @@ export default function ModuleView() {
       })()}
 
       {allComplete && (
-        <div className="mb-4 flex items-center gap-2 rounded-md border border-border border-l-[3px] border-l-success bg-success/10 px-3 py-2">
+        <div className="mb-4 flex items-center gap-2 rounded-md border border-border border-l-stripe border-l-success bg-success/10 px-3 py-2">
           <CheckCircle className="h-4 w-4 shrink-0 text-success" strokeWidth={1.75} />
           <span className="text-sm font-medium text-success">{t("module.moduleComplete")}</span>
         </div>

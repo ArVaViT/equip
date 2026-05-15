@@ -283,7 +283,7 @@ function StudentSummaryRow({
           </div>
 
           {hasDifferentManual && (
-            <div className="rounded border border-border border-l-[3px] border-l-warning bg-warning/10 px-3 py-2 text-xs text-foreground">
+            <div className="rounded border border-border border-l-stripe border-l-warning bg-warning/10 px-3 py-2 text-xs text-foreground">
               <Trans
                 i18nKey="gradebook.summary.manualDiffers"
                 values={{

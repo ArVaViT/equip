@@ -87,7 +87,7 @@ export default function CertificatesPage() {
           {certificates.map((cert) => (
             <Card
               key={cert.id}
-              className="group relative overflow-hidden border-l-[3px] border-l-accent transition-colors hover:border-primary/40"
+              className="group relative overflow-hidden border-l-stripe border-l-accent transition-colors hover:border-primary/40"
             >
               <CardContent className="pb-5 pt-6">
                 <div className="mb-4 flex items-start justify-between">
