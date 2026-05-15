@@ -197,8 +197,68 @@ doesn't look right in one theme, fix the token — don't branch on `.dark`.
 
 ## Accessibility
 
-- Every icon-only button has `aria-label`.
-- Focus rings via `ring` token, never hidden.
-- Text contrast ≥ 4.5:1 for body, ≥ 3:1 for large.
+### Rules (the short list)
+
+- Every icon-only button has `aria-label`. Decorative icons get `aria-hidden="true"`.
+- Focus rings via `ring` token, never hidden. Use the standard set:
+  `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`.
+- Text contrast ≥ 4.5:1 for body, ≥ 3:1 for large. **Verified end-to-end** —
+  including translucent overlays — by `frontend/scripts/contrast-audit.mjs`.
+  See `docs/contrast-audit.md` for the full table (re-generate after touching
+  `index.css` with `node scripts/contrast-audit.mjs --markdown > ../docs/contrast-audit.md`).
 - Keyboard reachable: every action must be reachable without a pointer.
 - Run axe-core locally before a release.
+
+### Semantic HTML — choose the right element
+
+- **Clickable surfaces:** always `<button type="button">` for actions or
+  `<a href>` for navigation. Never `<div onClick>` or `role="button"` on a
+  div *if a real button would work*. The only acceptable `role="button" tabIndex={0}` is the dnd drag handle pattern (see `ChapterRow`, `AssignmentItem`,
+  `ModulesList`) where a real button would steal the drag.
+- **Headings:** every page must have one `<h1>` describing its primary subject.
+  Sub-sections use `<h2>` / `<h3>`. **Never** style a `<div>` or `<span>` to
+  look like a heading. `InlineEdit` ships an actual `<h1>` / `<h2>` when
+  `size="h1" | "h2"` — use it for editable titles.
+- **Landmarks:** the authenticated shell renders `<header>`, `<main id="main-content">`, `<footer>`. The first focusable element is a skip link
+  pointing at `#main-content`.
+
+### Live regions
+
+- **Toasts** (`sonner`) ship `role="status"` / `role="alert"` already.
+- **Loading spinners** (`PageSpinner`) ship `role="status" aria-live="polite"`
+  with an accessible label. Always prefer `PageSpinner` over hand-rolled rings.
+- **Banners** that may appear mid-session (announcements, error toasts) use
+  `role="status" aria-live="polite"`. Critical errors get `role="alert"`.
+
+### Dropdowns and dialogs
+
+- Radix Dialog / AlertDialog already handle focus trap, `role="dialog"`,
+  Escape-to-close, focus return. Do NOT rebuild these.
+- Custom dropdowns (e.g. `CalloutDropdown` in the editor) MUST wire:
+  - `aria-haspopup="menu"` + `aria-expanded` on the trigger
+  - `role="menu"` + `aria-label` on the menu container
+  - `role="menuitem"` on each entry
+  - Escape-to-close keyboard handler
+- Custom prompt inputs use the dialog title as the input's `aria-label` —
+  the input is the dialog's sole field, so the title IS its label.
+
+### Forms
+
+- Every input has either `<Label htmlFor>` (visible) or `aria-label`
+  (icon-only / search). Search inputs MUST set `type="search"`.
+- Validation errors are wired via `aria-invalid={!!err}` and
+  `aria-describedby={err ? "name-error" : undefined}`, with the error
+  rendered as `<p id="name-error" role="alert">`.
+
+### Color contrast — translucent surfaces
+
+The contrast-audit script composites alpha overlays against their base so we
+catch cases where the *effective* surface drops below AA. Currently checked:
+
+- `bg-muted/{15,30,40,60}` over page and over card
+- `bg-warning/10` (pending-teacher banner)
+- `bg-destructive/10` (form error banner)
+- `bg-primary/{5,15}` (selected cards, active toolbar buttons)
+
+All current combinations pass AA on both themes. If you add a new low-alpha
+overlay token combination, extend the `PAIRS` array in the script and re-run.

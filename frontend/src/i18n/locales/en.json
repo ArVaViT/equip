@@ -490,6 +490,7 @@
       "uploadCta": "Upload a file"
     },
     "toolbar": {
+      "ariaLabel": "Text formatting",
       "bold": "Bold",
       "italic": "Italic",
       "heading2": "Heading 2",
