@@ -94,7 +94,7 @@ export default function CertificatesPage() {
                   <div className="flex h-11 w-11 items-center justify-center rounded-md bg-muted">
                     <Award className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} />
                   </div>
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                  <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground/70">
                     {t("certificates.badge")}
                   </span>
                 </div>

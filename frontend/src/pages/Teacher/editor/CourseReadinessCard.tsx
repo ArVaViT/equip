@@ -119,7 +119,7 @@ export function CourseReadinessCard({ report, loading, onFix }: Props) {
           prefersReducedMotion={Boolean(prefersReducedMotion)}
         />
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             {t("courseReadiness.title")}
           </p>
           <p className="mt-0.5 font-serif text-base font-semibold tracking-tight text-foreground">
