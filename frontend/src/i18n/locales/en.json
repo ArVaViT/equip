@@ -733,7 +733,10 @@
     "courseFallback": "Course",
     "loadFailed": "Failed to load analytics",
     "backToCourses": "Back to courses",
-    "backToDashboard": "Back to dashboard",
+    "breadcrumb": {
+      "myCourses": "My Courses",
+      "courseFallback": "Course"
+    },
     "heading": "Course Analytics",
     "studentProgress": "Student Progress",
     "gradebook": "Gradebook",
@@ -1131,6 +1134,7 @@
     "tableTab": "Grade Table",
     "failedLoad": "Failed to load gradebook. Please try again.",
     "breadcrumbCourses": "My Courses",
+    "breadcrumbCourseFallback": "Course",
     "pageHeading": "Gradebook",
     "exportCsv": "Export CSV",
     "exporting": "Exporting...",

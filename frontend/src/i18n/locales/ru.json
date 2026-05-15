@@ -757,7 +757,10 @@
     "courseFallback": "Курс",
     "loadFailed": "Не удалось загрузить аналитику",
     "backToCourses": "К моим курсам",
-    "backToDashboard": "К панели",
+    "breadcrumb": {
+      "myCourses": "Мои курсы",
+      "courseFallback": "Курс"
+    },
     "heading": "Аналитика курса",
     "studentProgress": "Прогресс студентов",
     "gradebook": "Журнал оценок",
@@ -1167,6 +1170,7 @@
     "tableTab": "Таблица оценок",
     "failedLoad": "Не удалось загрузить журнал. Попробуйте снова.",
     "breadcrumbCourses": "Мои курсы",
+    "breadcrumbCourseFallback": "Курс",
     "pageHeading": "Журнал оценок",
     "exportCsv": "Экспорт CSV",
     "exporting": "Экспорт…",
