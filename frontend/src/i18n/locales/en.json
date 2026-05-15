@@ -624,6 +624,9 @@
   "certificates": {
     "backToCourses": "Back to courses",
     "title": "My Certificates",
+    "eyebrow": "Achievements",
+    "subtitle_one": "{{count}} certificate earned",
+    "subtitle_other": "{{count}} certificates earned",
     "emptyTitle": "No certificates yet",
     "emptyDescription": "Complete a course to earn your first certificate. Keep learning and collecting achievements!",
     "browseCourses": "Browse Courses",
@@ -647,6 +650,7 @@
       "pendingDescription": "Your certificate request has been submitted. Your instructor will review it shortly.",
       "adminPendingTitle": "Awaiting admin approval",
       "adminPendingDescription": "Your teacher has approved your certificate. It is now pending final admin approval.",
+      "approvedEyebrow": "Awarded",
       "approvedTitle": "Certificate approved",
       "approvedDescription": "Congratulations! Your certificate has been approved.",
       "certificateNumber": "Certificate number",
@@ -658,6 +662,7 @@
       "rejectedDescription": "Unfortunately, your certificate request was rejected. You may re-request after addressing any outstanding requirements.",
       "rerequest": "Re-request",
       "review": {
+        "eyebrow": "Your turn",
         "heading": "How was this course? Leave a review",
         "starAria": "Rate {{value}} out of 5",
         "commentPlaceholder": "Share your thoughts about this course... (optional)",
