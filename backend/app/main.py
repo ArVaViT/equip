@@ -91,7 +91,19 @@ async def integrity_error_handler(request: Request, exc: IntegrityError):
 
 @app.exception_handler(SQLAlchemyError)
 async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
-    logger.error("Database error on %s %s: %s", request.method, request.url.path, exc)
+    # ``exc_info=True`` so the DatadogHTTPHandler ships the full stack
+    # trace as ``error.stack``. Without it the log line only carries the
+    # exception's ``str()`` -- useful for IntegrityError where we already
+    # extracted pgcode + constraint, but useless for the general case
+    # (lock timeout, connection drop mid-statement, OperationalError)
+    # where the originating call site is what we actually need.
+    logger.error(
+        "Database error on %s %s: %s",
+        request.method,
+        request.url.path,
+        exc,
+        exc_info=True,
+    )
     return JSONResponse(
         status_code=503,
         content={"detail": "Database temporarily unavailable. Please try again."},
