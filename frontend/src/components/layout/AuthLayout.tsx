@@ -57,8 +57,11 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
 
       {/* Form panel */}
       <div className="flex flex-1 flex-col">
-        <div className="flex items-center justify-between border-b border-border/60 bg-background/90 px-4 py-3 backdrop-blur-sm lg:hidden">
-          <Link to="/" className="flex items-center gap-2.5 text-foreground transition-opacity hover:opacity-80">
+        <div className="flex items-center justify-between border-b border-border/60 bg-background/90 px-4 py-2 backdrop-blur-sm lg:hidden">
+          <Link
+            to="/"
+            className="-mx-1 inline-flex min-h-[44px] items-center gap-2.5 px-1 text-foreground transition-opacity hover:opacity-80"
+          >
             <BookOpen className="h-5 w-5 shrink-0 text-accent" strokeWidth={1.75} aria-hidden />
             <span className="font-serif text-base font-bold leading-none tracking-tight">{t("common.appName")}</span>
           </Link>
@@ -67,7 +70,7 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
             size="sm"
             type="button"
             onClick={toggleTheme}
-            className="h-9 w-9 shrink-0 rounded-full p-0"
+            className="h-11 w-11 shrink-0 rounded-full p-0"
             aria-label={t("auth.toggleColorTheme")}
           >
             {theme === "dark" ? (
