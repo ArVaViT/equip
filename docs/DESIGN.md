@@ -47,6 +47,12 @@ One scale, one serif, one sans.
 - **Sans (`Inter`):** everything else.
 - **Scale:** `32 / 24 / 18 / 16 / 14 / 13` px. No `text-[Npx]` arbitrary values.
 - **Weights:** 400 body, 500 UI, 600 emphasis, 700 display. No 800/900.
+- **Editorial eyebrow:** the tiny uppercase label that sits above a heading
+  (e.g. VerseOfTheDayCard, CourseReadinessCard) is `text-xs font-medium
+  uppercase tracking-[0.18em] text-muted-foreground`. The wide tracking is
+  load-bearing — that's what makes it read as an eyebrow rather than a
+  shrunk body line. Inline is fine; only worth extracting a component if it
+  appears more than ~4 times.
 
 ## Spacing, radius, elevation
 

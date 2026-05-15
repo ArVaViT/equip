@@ -78,7 +78,7 @@ export function ChapterBreakdownRow({
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+              className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground"
               disabled={grantingQuizId === quiz.quiz_id}
               onClick={(e) => {
                 e.stopPropagation()

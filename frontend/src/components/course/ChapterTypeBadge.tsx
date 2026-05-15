@@ -13,7 +13,7 @@ export default function ChapterTypeBadge({ type, size = "md" }: Props) {
   const Icon = meta.icon
   const sizing =
     size === "sm"
-      ? "gap-1 px-2 py-0.5 text-[10px]"
+      ? "gap-1 px-2 py-0.5 text-xs"
       : "gap-1.5 px-3 py-1 text-xs"
   const iconSize = size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5"
   return (
