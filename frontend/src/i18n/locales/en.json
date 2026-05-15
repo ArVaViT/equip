@@ -614,7 +614,7 @@
     }
   },
   "certificates": {
-    "dashboard": "Dashboard",
+    "backToCourses": "Back to courses",
     "title": "My Certificates",
     "emptyTitle": "No certificates yet",
     "emptyDescription": "Complete a course to earn your first certificate. Keep learning and collecting achievements!",
