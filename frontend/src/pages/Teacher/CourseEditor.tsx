@@ -174,7 +174,7 @@ export default function CourseEditor() {
   const { course } = data
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8">
+    <div className="container mx-auto max-w-4xl px-4 py-6 sm:py-8">
       <PageHeader
         backTo="/teacher"
         backLabel={t("courseEditor.myCourses")}

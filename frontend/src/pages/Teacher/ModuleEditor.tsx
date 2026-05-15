@@ -64,7 +64,7 @@ export default function ModuleEditor() {
   );
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container mx-auto max-w-4xl px-4 py-6 sm:py-8">
       <PageHeader
         backTo={`/teacher/courses/${courseId}`}
         backLabel={t("moduleEditor.backToCourse")}
@@ -105,13 +105,13 @@ export default function ModuleEditor() {
                 value={modDueDate}
                 onChange={(e) => setModDueDate(e.target.value)}
                 onBlur={(e) => saveDueDate(e.target.value)}
-                className="text-xs h-7 w-auto border-border/50"
+                className="h-9 w-auto border-border/50 text-xs sm:h-7"
               />
               {modDueDate && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 text-xs text-muted-foreground"
+                  className="h-9 text-xs text-muted-foreground sm:h-6"
                   onClick={clearDueDate}
                 >
                   {t("moduleEditor.clear")}
