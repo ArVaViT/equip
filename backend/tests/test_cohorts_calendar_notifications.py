@@ -1159,6 +1159,29 @@ class TestCreateAnnouncement:
         )
         assert resp.status_code == 404
 
+    def test_create_for_soft_deleted_course_returns_404(self, client: TestClient, db: Session):
+        """A teacher who's already trashed a course cannot post an
+        announcement to it. The course is gone from every catalog
+        surface, but enrollments persist (so a fan-out would still hit
+        every student) and the announcement would link to content the
+        student can no longer reach. Treat the trashed course as
+        not-found, matching every other ``Course.deleted_at IS NULL``
+        gate elsewhere in the API.
+        """
+        course = _create_course_via_api(client)
+        # Soft-delete the course directly so we don't depend on the
+        # delete-course endpoint's exact response shape.
+        row = db.query(Course).filter(Course.id == course["id"]).first()
+        assert row is not None
+        row.deleted_at = NOW
+        db.commit()
+
+        resp = client.post(
+            ANNOUNCEMENT_PREFIX,
+            json=_announcement_payload(course_id=course["id"]),
+        )
+        assert resp.status_code == 404
+
     def test_create_missing_title_returns_422(self, client: TestClient):
         resp = client.post(
             ANNOUNCEMENT_PREFIX,

@@ -139,7 +139,12 @@ def create_announcement(
     frontend's DOMPurify.
     """
     if data.course_id:
-        course = db.query(Course).filter(Course.id == data.course_id).first()
+        # Course must be alive — a teacher who's already trashed the
+        # course shouldn't be able to push an announcement that fans out
+        # notifications to every enrolled student via
+        # ``create_notifications_bulk`` below, pointing at content that
+        # no longer exists in the catalog.
+        course = db.query(Course).filter(Course.id == data.course_id, Course.deleted_at.is_(None)).first()
         if not course:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
