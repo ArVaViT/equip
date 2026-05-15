@@ -9,6 +9,7 @@ import {
   ListOrdered,
   Quote,
   Link2,
+  Loader2,
   Undo2,
   Redo2,
   ImageIcon,
@@ -160,7 +161,7 @@ export function EditorToolbar({
 
       <ToolbarButton onClick={onAddImage} disabled={uploading} title={t("blockEditor.toolbar.insertImage")}>
         {uploading ? (
-          <span className="inline-block h-[18px] w-[18px] animate-spin rounded-full border-2 border-current border-t-transparent" />
+          <Loader2 size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} className="animate-spin" />
         ) : (
           <ImageIcon size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} />
         )}

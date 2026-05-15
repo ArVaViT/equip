@@ -8,6 +8,7 @@ import {
   Eye,
   EyeOff,
   Layers,
+  Loader2,
   MoreHorizontal,
   Pencil,
   Trash2,
@@ -170,7 +171,7 @@ export function CourseCard({
                 disabled={cloningId === course.id}
               >
                 {cloningId === course.id ? (
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
                 ) : (
                   <Copy className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                 )}
