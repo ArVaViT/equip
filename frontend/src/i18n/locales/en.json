@@ -1396,6 +1396,8 @@
       "thResource": "Resource",
       "thResourceId": "Resource ID",
       "thIp": "IP",
+      "prevPageAria": "Previous page",
+      "nextPageAria": "Next page",
       "errorPrefix": "Audit log error",
       "errorTableMissing": "The audit_logs table may not exist yet. Deploy the latest migration.",
       "actionValue": {

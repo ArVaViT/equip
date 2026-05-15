@@ -56,9 +56,9 @@ export function CohortsTab() {
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between gap-4 space-y-0 flex-wrap">
+      <CardHeader className="flex-col items-stretch gap-3 space-y-0 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4">
         <CardTitle className="text-xl">{t("admin.cohorts.title")}</CardTitle>
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <NativeSelect
             fieldSize="sm"
             value={statusFilter}
@@ -84,7 +84,7 @@ export function CohortsTab() {
               className="pl-9"
             />
           </div>
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
+          <Button size="sm" onClick={() => setCreateOpen(true)} className="h-11 sm:h-9">
             <Plus className="h-4 w-4 mr-1.5" strokeWidth={1.75} aria-hidden />
             {t("admin.cohorts.createButton")}
           </Button>
@@ -103,58 +103,96 @@ export function CohortsTab() {
         ) : filtered.length === 0 ? (
           <EmptyCohorts hasQuery={Boolean(search)} onCreate={() => setCreateOpen(true)} />
         ) : (
-          <div className="overflow-x-auto -mx-6">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="px-6 py-3 font-medium text-muted-foreground">
-                    {t("admin.cohorts.thName")}
-                  </th>
-                  <th className="px-6 py-3 font-medium text-muted-foreground">
-                    {t("admin.cohorts.thStatus")}
-                  </th>
-                  <th className="px-6 py-3 font-medium text-muted-foreground">
-                    {t("admin.cohorts.thDates")}
-                  </th>
-                  <th className="px-6 py-3 font-medium text-muted-foreground">
-                    {t("admin.cohorts.thCourses")}
-                  </th>
-                  <th className="px-6 py-3 font-medium text-muted-foreground">
-                    {t("admin.cohorts.thStudents")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {filtered.map((c) => (
-                  <tr key={c.id} className="hover:bg-muted/50 transition-colors">
-                    <td className="px-6 py-3">
-                      <Link
-                        to={`/admin/cohorts/${c.id}`}
-                        className="font-medium hover:text-primary"
-                      >
-                        {c.name}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-3">
-                      <Badge variant={STATUS_BADGE[c.status]} className="capitalize">
-                        {t(`admin.cohorts.status${capitalize(c.status)}`)}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-3 text-muted-foreground">
-                      {formatDate(c.start_date)} &mdash; {formatDate(c.end_date)}
-                    </td>
-                    <td className="px-6 py-3 text-muted-foreground">
-                      {c.course_ids.length}
-                    </td>
-                    <td className="px-6 py-3 text-muted-foreground">
-                      {c.student_count}
-                      {c.max_students ? ` / ${c.max_students}` : ""}
-                    </td>
+          <>
+            {/* Mobile: stack of cards. Each card is the full row, link-wrapped. */}
+            <div className="space-y-2 sm:hidden">
+              {filtered.map((c) => (
+                <Link
+                  key={c.id}
+                  to={`/admin/cohorts/${c.id}`}
+                  className="block rounded-md border border-border bg-card p-3 transition-colors hover:border-primary/30 hover:bg-muted/40"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">{c.name}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formatDate(c.start_date)} &mdash; {formatDate(c.end_date)}
+                      </p>
+                    </div>
+                    <Badge variant={STATUS_BADGE[c.status]} className="shrink-0 capitalize">
+                      {t(`admin.cohorts.status${capitalize(c.status)}`)}
+                    </Badge>
+                  </div>
+                  <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+                    <span>
+                      {t("admin.cohorts.thCourses")}: <span className="text-foreground">{c.course_ids.length}</span>
+                    </span>
+                    <span>
+                      {t("admin.cohorts.thStudents")}:{" "}
+                      <span className="text-foreground">
+                        {c.student_count}
+                        {c.max_students ? ` / ${c.max_students}` : ""}
+                      </span>
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            {/* Desktop: classic table */}
+            <div className="hidden overflow-x-auto -mx-6 sm:block">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left">
+                    <th className="px-6 py-3 font-medium text-muted-foreground">
+                      {t("admin.cohorts.thName")}
+                    </th>
+                    <th className="px-6 py-3 font-medium text-muted-foreground">
+                      {t("admin.cohorts.thStatus")}
+                    </th>
+                    <th className="px-6 py-3 font-medium text-muted-foreground">
+                      {t("admin.cohorts.thDates")}
+                    </th>
+                    <th className="px-6 py-3 font-medium text-muted-foreground">
+                      {t("admin.cohorts.thCourses")}
+                    </th>
+                    <th className="px-6 py-3 font-medium text-muted-foreground">
+                      {t("admin.cohorts.thStudents")}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y">
+                  {filtered.map((c) => (
+                    <tr key={c.id} className="hover:bg-muted/50 transition-colors">
+                      <td className="px-6 py-3">
+                        <Link
+                          to={`/admin/cohorts/${c.id}`}
+                          className="font-medium hover:text-primary"
+                        >
+                          {c.name}
+                        </Link>
+                      </td>
+                      <td className="px-6 py-3">
+                        <Badge variant={STATUS_BADGE[c.status]} className="capitalize">
+                          {t(`admin.cohorts.status${capitalize(c.status)}`)}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-3 text-muted-foreground">
+                        {formatDate(c.start_date)} &mdash; {formatDate(c.end_date)}
+                      </td>
+                      <td className="px-6 py-3 text-muted-foreground">
+                        {c.course_ids.length}
+                      </td>
+                      <td className="px-6 py-3 text-muted-foreground">
+                        {c.student_count}
+                        {c.max_students ? ` / ${c.max_students}` : ""}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </CardContent>
 

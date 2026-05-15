@@ -1434,6 +1434,8 @@
       "thResource": "Объект",
       "thResourceId": "ID объекта",
       "thIp": "IP",
+      "prevPageAria": "Предыдущая страница",
+      "nextPageAria": "Следующая страница",
       "errorPrefix": "Ошибка журнала аудита",
       "errorTableMissing": "Таблица audit_logs ещё не создана. Примените последнюю миграцию.",
       "actionValue": {

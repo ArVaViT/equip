@@ -59,7 +59,7 @@ export function AuditLogTab({
     <div className="space-y-6">
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-end">
             <FilterSelect
               label={t("admin.audit.filterAction")}
               value={action}
@@ -78,7 +78,7 @@ export function AuditLogTab({
             />
             <FilterDate label={t("admin.audit.filterFrom")} value={dateFrom} onChange={onDateFrom} />
             <FilterDate label={t("admin.audit.filterTo")} value={dateTo} onChange={onDateTo} />
-            <Button variant="ghost" size="sm" onClick={onReset} className="h-9">
+            <Button variant="ghost" size="sm" onClick={onReset} className="h-11 sm:h-9">
               {t("admin.audit.filterClear")}
             </Button>
           </div>
@@ -116,6 +116,8 @@ export function AuditLogTab({
                     size="sm"
                     disabled={page <= 1}
                     onClick={() => onPageChange(page - 1)}
+                    className="h-11 w-11 p-0 sm:h-9 sm:w-9"
+                    aria-label={t("admin.audit.prevPageAria", { defaultValue: "Previous page" })}
                   >
                     <ChevronLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                   </Button>
@@ -124,6 +126,8 @@ export function AuditLogTab({
                     size="sm"
                     disabled={page >= totalPages}
                     onClick={() => onPageChange(page + 1)}
+                    className="h-11 w-11 p-0 sm:h-9 sm:w-9"
+                    aria-label={t("admin.audit.nextPageAria", { defaultValue: "Next page" })}
                   >
                     <ChevronRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                   </Button>
@@ -154,6 +158,7 @@ function FilterSelect({ label, value, onChange, options, optionLabel, placeholde
         fieldSize="md"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        className="w-full sm:w-auto"
       >
         <option value="">{placeholder}</option>
         {options.map((o) => (
@@ -183,7 +188,7 @@ function FilterDate({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         fieldSize="md"
-        className="w-40"
+        className="w-full sm:w-40"
       />
     </div>
   )
