@@ -30,7 +30,7 @@ export default function CourseAnnouncements({ courseId }: Props) {
   return (
     <div className="space-y-3 mb-6">
       {announcements.map((a) => (
-        <div key={a.id} className="flex gap-3 rounded-md border border-border border-l-[3px] border-l-info bg-info/5 p-4">
+        <div key={a.id} className="flex gap-3 rounded-md border border-border border-l-stripe border-l-info bg-info/5 p-4">
           <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-info" strokeWidth={1.75} />
           <div className="min-w-0 flex-1 text-wrap-safe">
             <h4 className="text-sm font-medium">{a.title}</h4>

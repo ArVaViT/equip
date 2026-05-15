@@ -83,7 +83,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
 
   if (!certificate) {
     return (
-      <Card className="border-dashed border-l-[3px] border-l-accent">
+      <Card className="border-dashed border-l-stripe border-l-accent">
         <CardContent className="py-6">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted">
@@ -109,7 +109,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
 
   if (certificate.status === "pending") {
     return (
-      <Card className="border-l-[3px] border-l-warning">
+      <Card className="border-l-stripe border-l-warning">
         <CardContent className="py-6">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-warning/10">
@@ -129,7 +129,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
 
   if (certificate.status === "teacher_approved") {
     return (
-      <Card className="border-l-[3px] border-l-info">
+      <Card className="border-l-stripe border-l-info">
         <CardContent className="py-6">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-info/10">
@@ -149,7 +149,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
 
   if (certificate.status === "approved") {
     return (
-      <Card className="border-l-[3px] border-l-accent">
+      <Card className="border-l-stripe border-l-accent">
         <CardContent className="space-y-5 py-6">
           <div className="flex items-start gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-accent/15">
@@ -255,7 +255,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
 
   if (certificate.status === "rejected") {
     return (
-      <Card className="border-l-[3px] border-l-destructive">
+      <Card className="border-l-stripe border-l-destructive">
         <CardContent className="py-6">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-destructive/10">
