@@ -118,7 +118,18 @@ def grade_answer(
             detail="Only open-ended answers (short_answer / essay) can be graded manually",
         )
 
-    attempt = db.query(QuizAttempt).filter(QuizAttempt.id == answer.attempt_id).first()
+    # ``FOR UPDATE`` on the attempt row so two teachers grading two
+    # different answers from the same attempt serialize on the lock.
+    # Without it, both teachers SELECT the attempt at the same score,
+    # ``recompute_attempt_grade`` sums the answer rows from each one's
+    # snapshot (missing the other's still-uncommitted update), and the
+    # second commit overwrites the first with a stale total. SQLite
+    # (test path) treats ``with_for_update`` as a no-op so single-test
+    # behaviour is unchanged; Postgres takes a row lock that serializes
+    # the recompute + write of ``attempt.score`` / ``attempt.passed``.
+    attempt = (
+        db.query(QuizAttempt).filter(QuizAttempt.id == answer.attempt_id).with_for_update().first()
+    )
     if not attempt:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attempt not found")
 

@@ -1239,6 +1239,47 @@ def test_grade_essay_answer_recomputes_passed(client: TestClient, student, db: S
     assert graded_list[0]["points_earned"] == 18
 
 
+def test_grade_answer_acquires_for_update_lock_on_attempt(client: TestClient, student, db: Session, monkeypatch):
+    """The PATCH handler must take a ``FOR UPDATE`` row lock on the
+    attempt before recomputing the aggregate score.
+
+    Without the lock, two teachers grading two different open-ended
+    answers on the same attempt race: each one's
+    ``recompute_attempt_grade`` reads the answer rows from its own
+    snapshot, sums them, and writes back ``attempt.score`` /
+    ``attempt.passed``. The second commit overwrites the first with a
+    stale total.
+
+    SQLite compiles ``with_for_update`` to a no-op (no SAVEPOINT/lock
+    syntax exists), so we can't observe the lock in the emitted SQL.
+    Instead, spy on ``Query.with_for_update`` and assert it was invoked
+    for a QuizAttempt query inside the handler.
+    """
+    from sqlalchemy.orm import Query
+
+    _seed_course_with_enrollment(db)
+    _quiz, _essay, _attempt, essay_answer = _seed_submitted_essay_attempt(db)
+
+    locked_entities: list[str] = []
+    real_with_for_update = Query.with_for_update
+
+    def _spy(self, *args, **kwargs):
+        entity_names = [str(ent) for ent in self.column_descriptions]
+        locked_entities.extend(entity_names)
+        return real_with_for_update(self, *args, **kwargs)
+
+    monkeypatch.setattr(Query, "with_for_update", _spy)
+
+    resp = client.patch(
+        f"/api/v1/quizzes/answers/{essay_answer.id}",
+        json={"points_earned": 5},
+    )
+    assert resp.status_code == 200, resp.text
+
+    quiz_attempt_locks = [e for e in locked_entities if "QuizAttempt" in e]
+    assert quiz_attempt_locks, f"grade_answer must SELECT the attempt with FOR UPDATE; saw locks on: {locked_entities}"
+
+
 def test_grade_zero_with_no_comment_clears_pending_queue(client: TestClient, student, db: Session):
     """A 0-point grade with no comment must still drop out of the pending queue.
 
