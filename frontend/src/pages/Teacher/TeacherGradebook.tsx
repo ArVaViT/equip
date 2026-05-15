@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react"
+import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams, useSearchParams, Link } from "react-router-dom"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -23,6 +23,7 @@ import { GradebookTabs } from "./gradebook/GradebookTabs"
 import { GradingConfigCard } from "./gradebook/GradingConfigCard"
 import { SummaryTab } from "./gradebook/SummaryTab"
 import { GradeTableTab } from "./gradebook/GradeTableTab"
+import { EMPTY_FORM } from "./gradebook/helpers"
 
 /**
  * Gradebook page: top-level composition of the summary view, the grade
@@ -86,6 +87,13 @@ export default function TeacherGradebook() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [forms, setForms] = useState<Map<string, GradeForm>>(new Map())
+  // Mirror of `forms` so memoised handlers (saveGrade) can read the
+  // current draft without taking `forms` as a dependency and busting
+  // their stable identity on every keystroke.
+  const formsRef = useRef(forms)
+  useEffect(() => {
+    formsRef.current = forms
+  }, [forms])
   const [saving, setSaving] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
 
@@ -159,43 +167,55 @@ export default function TeacherGradebook() {
     }
   }
 
-  const toggleExpand = (userId: string) => {
-    if (expandedId === userId) {
-      setExpandedId(null)
-    } else {
-      setExpandedId(userId)
-      if (!forms.has(userId)) {
-        setForms((prev) => new Map(prev).set(userId, { grade: "", comment: "" }))
-      }
-    }
-  }
-
-  const updateForm = (userId: string, field: keyof GradeForm, value: string) => {
-    setForms((prev) => {
-      const next = new Map(prev)
-      const current = next.get(userId) ?? { grade: "", comment: "" }
-      next.set(userId, { ...current, [field]: value })
-      return next
-    })
-  }
-
-  const saveGrade = async (userId: string) => {
-    if (!courseId) return
-    setSaving(userId)
-    try {
-      const form = forms.get(userId) ?? { grade: "", comment: "" }
-      const data = await coursesService.upsertGrade(courseId, userId, {
-        grade: form.grade.trim() || undefined,
-        comment: form.comment.trim() || undefined,
+  // Stable identity for the row-level handlers so memoised row components
+  // (StudentSummaryRow / GradeTableRow) don't get a fresh prop on every
+  // keystroke in any unrelated row's override form.
+  const toggleExpand = useCallback((userId: string) => {
+    setExpandedId((prev) => {
+      if (prev === userId) return null
+      // Seed an empty draft for newly-expanded rows so the inputs are
+      // controlled from the first render. Skip the setForms call when the
+      // entry already exists to avoid an extra render on re-expand.
+      setForms((prevForms) => {
+        if (prevForms.has(userId)) return prevForms
+        return new Map(prevForms).set(userId, EMPTY_FORM)
       })
-      setManualGrades((prev) => new Map(prev).set(userId, data))
-      toast({ title: t("toast.gradeSaved"), variant: "success" })
-    } catch {
-      toast({ title: t("toast.gradeSaveFailed"), variant: "destructive" })
-    } finally {
-      setSaving(null)
-    }
-  }
+      return userId
+    })
+  }, [])
+
+  const updateForm = useCallback(
+    (userId: string, field: keyof GradeForm, value: string) => {
+      setForms((prev) => {
+        const next = new Map(prev)
+        const current = next.get(userId) ?? EMPTY_FORM
+        next.set(userId, { ...current, [field]: value })
+        return next
+      })
+    },
+    [],
+  )
+
+  const saveGrade = useCallback(
+    async (userId: string) => {
+      if (!courseId) return
+      setSaving(userId)
+      try {
+        const form = formsRef.current.get(userId) ?? EMPTY_FORM
+        const data = await coursesService.upsertGrade(courseId, userId, {
+          grade: form.grade.trim() || undefined,
+          comment: form.comment.trim() || undefined,
+        })
+        setManualGrades((prev) => new Map(prev).set(userId, data))
+        toast({ title: t("toast.gradeSaved"), variant: "success" })
+      } catch {
+        toast({ title: t("toast.gradeSaveFailed"), variant: "destructive" })
+      } finally {
+        setSaving(null)
+      }
+    },
+    [courseId, t],
+  )
 
   const handleExportCSV = async () => {
     if (!courseId) return
