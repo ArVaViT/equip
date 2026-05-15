@@ -37,7 +37,7 @@ export function UpcomingEvents({ events }: Props) {
               key={evt.id}
               className={`flex items-center gap-2 px-3 py-2 rounded-md border text-sm ${
                 overdue
-                  ? "border-l-[3px] border-l-destructive border-border bg-destructive/5"
+                  ? "border-l-stripe border-l-destructive border-border bg-destructive/5"
                   : "border-border hover:bg-muted/50"
               }`}
             >

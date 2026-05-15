@@ -5,6 +5,7 @@ import { NativeSelect } from "@/components/ui/native-select"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState } from "@/components/patterns/EmptyState"
 import { FileText, ChevronLeft, ChevronRight } from "lucide-react"
 import type { AuditLogEntry } from "@/types"
 import {
@@ -99,10 +100,11 @@ export function AuditLogTab({
           {loading ? (
             <AuditTableSkeleton />
           ) : logs.length === 0 ? (
-            <div className="flex flex-col items-center py-16 text-center">
-              <FileText className="mb-3 h-12 w-12 text-muted-foreground/40" strokeWidth={1.75} aria-hidden />
-              <p className="text-muted-foreground">{t("admin.audit.empty")}</p>
-            </div>
+            <EmptyState
+              variant="compact"
+              icon={<FileText strokeWidth={1.75} aria-hidden />}
+              title={t("admin.audit.empty")}
+            />
           ) : (
             <>
               <AuditTable logs={logs} userMap={userMap} />

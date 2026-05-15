@@ -56,7 +56,7 @@ export default function CertificatesPage() {
       <Link to="/">
         <Button variant="ghost" size="sm" className="mb-6 h-8 text-xs">
           <ArrowLeft className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
-          {t("certificates.dashboard")}
+          {t("certificates.backToCourses")}
         </Button>
       </Link>
 
@@ -87,14 +87,14 @@ export default function CertificatesPage() {
           {certificates.map((cert) => (
             <Card
               key={cert.id}
-              className="group relative overflow-hidden border-l-[3px] border-l-accent transition-colors hover:border-primary/40"
+              className="group relative overflow-hidden border-l-stripe border-l-accent transition-colors hover:border-primary/40"
             >
               <CardContent className="pb-5 pt-6">
                 <div className="mb-4 flex items-start justify-between">
                   <div className="flex h-11 w-11 items-center justify-center rounded-md bg-muted">
                     <Award className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} />
                   </div>
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                  <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground/70">
                     {t("certificates.badge")}
                   </span>
                 </div>

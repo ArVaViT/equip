@@ -293,6 +293,13 @@ export default function TeacherGradebook() {
           {t("gradebook.breadcrumbCourses")}
         </Link>
         <ChevronRight className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} aria-hidden />
+        <Link
+          to={`/teacher/courses/${courseId}`}
+          className="hover:text-foreground transition-colors truncate"
+        >
+          {courseTitle || t("gradebook.breadcrumbCourseFallback")}
+        </Link>
+        <ChevronRight className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} aria-hidden />
         <span className="text-foreground font-medium">{t("gradebook.pageHeading")}</span>
       </div>
 

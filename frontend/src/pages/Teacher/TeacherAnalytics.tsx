@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
-import { ArrowLeft, Users, TrendingUp, Award, Calendar, BarChart3, ClipboardList, UserCheck } from "lucide-react"
+import { ArrowLeft, Users, TrendingUp, Award, Calendar, BarChart3, ChevronRight, ClipboardList, UserCheck } from "lucide-react"
 import { EmptyState, ErrorState, StatCard } from "@/components/patterns"
 import { formatDate } from "@/i18n/format"
 
@@ -110,12 +110,22 @@ export default function TeacherAnalytics() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <div className="flex items-center gap-3 mb-8">
-        <Link to="/teacher">
-          <Button variant="ghost" size="icon" className="shrink-0" aria-label={t("teacherAnalytics.backToDashboard")}>
-            <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
-          </Button>
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+        <Link to="/teacher" className="hover:text-foreground transition-colors">
+          {t("teacherAnalytics.breadcrumb.myCourses")}
         </Link>
+        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+        <Link
+          to={`/teacher/courses/${courseId}`}
+          className="hover:text-foreground transition-colors truncate"
+        >
+          {courseTitle || t("teacherAnalytics.breadcrumb.courseFallback")}
+        </Link>
+        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+        <span className="text-foreground font-medium">{t("teacherAnalytics.heading")}</span>
+      </div>
+
+      <div className="flex items-center gap-3 mb-8">
         <div className="flex-1">
           <h1 className="flex items-center gap-2 font-serif text-3xl font-bold tracking-tight">
             <BarChart3 className="h-6 w-6 shrink-0 text-primary" strokeWidth={1.75} aria-hidden />

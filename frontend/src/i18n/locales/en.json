@@ -149,7 +149,6 @@
     "viewAllCertificates": "View all certificates",
     "accountDetails": "Account Details",
     "memberSince": "Member since",
-    "role": "Role",
     "preferences": "Preferences",
     "theme": "Theme",
     "themeDark": "Dark mode",
@@ -614,7 +613,7 @@
     }
   },
   "certificates": {
-    "dashboard": "Dashboard",
+    "backToCourses": "Back to courses",
     "title": "My Certificates",
     "emptyTitle": "No certificates yet",
     "emptyDescription": "Complete a course to earn your first certificate. Keep learning and collecting achievements!",
@@ -733,7 +732,10 @@
     "courseFallback": "Course",
     "loadFailed": "Failed to load analytics",
     "backToCourses": "Back to courses",
-    "backToDashboard": "Back to dashboard",
+    "breadcrumb": {
+      "myCourses": "My Courses",
+      "courseFallback": "Course"
+    },
     "heading": "Course Analytics",
     "studentProgress": "Student Progress",
     "gradebook": "Gradebook",
@@ -775,7 +777,6 @@
   },
   "calendar": {
     "title": "Calendar",
-    "subtitle": "Your deadlines, events, and schedule in one place",
     "filterByCourse": "Filter by course",
     "allCourses": "All Courses",
     "retry": "Retry",
@@ -788,6 +789,9 @@
     "upcomingEmpty": "No upcoming events",
     "overdue": "Overdue",
     "loadError": "Failed to load calendar events. Please try again.",
+    "noEnrollmentsTitle": "Your calendar is empty",
+    "noEnrollmentsDescription": "Enroll in a course to see its deadlines, exams, and live sessions on your calendar.",
+    "browseCourses": "Browse courses",
     "eventTypes": {
       "deadline": "Deadline",
       "live_session": "Live session",
@@ -1131,6 +1135,7 @@
     "tableTab": "Grade Table",
     "failedLoad": "Failed to load gradebook. Please try again.",
     "breadcrumbCourses": "My Courses",
+    "breadcrumbCourseFallback": "Course",
     "pageHeading": "Gradebook",
     "exportCsv": "Export CSV",
     "exporting": "Exporting...",

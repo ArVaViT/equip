@@ -64,7 +64,7 @@ function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }
 function PendingTeacherBanner() {
   const { t } = useTranslation()
   return (
-    <div className="border-b border-border border-l-[3px] border-l-warning bg-warning/10">
+    <div className="border-b border-border border-l-stripe border-l-warning bg-warning/10">
       <div className="container mx-auto px-4 py-3 text-center">
         <p className="text-sm text-foreground">
           {t("pendingTeacher.banner")}{" "}

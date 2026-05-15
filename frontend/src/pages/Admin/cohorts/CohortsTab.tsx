@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState } from "@/components/patterns/EmptyState"
 import { cohortsService } from "@/services/cohorts"
 import { formatDate } from "@/i18n/format"
 import type { Cohort } from "@/types"
@@ -215,18 +216,19 @@ function capitalize(s: string): string {
 function EmptyCohorts({ hasQuery, onCreate }: { hasQuery: boolean; onCreate: () => void }) {
   const { t } = useTranslation()
   return (
-    <div className="flex flex-col items-center py-16 text-center">
-      <GraduationCap className="h-12 w-12 text-muted-foreground/40 mb-3" strokeWidth={1.5} aria-hidden />
-      <p className="text-muted-foreground mb-4">
-        {hasQuery ? t("admin.cohorts.emptyNoMatch") : t("admin.cohorts.emptyNoCohorts")}
-      </p>
-      {!hasQuery && (
-        <Button size="sm" onClick={onCreate}>
-          <Plus className="h-4 w-4 mr-1.5" strokeWidth={1.75} aria-hidden />
-          {t("admin.cohorts.createButton")}
-        </Button>
-      )}
-    </div>
+    <EmptyState
+      variant="compact"
+      icon={<GraduationCap strokeWidth={1.75} aria-hidden />}
+      title={hasQuery ? t("admin.cohorts.emptyNoMatch") : t("admin.cohorts.emptyNoCohorts")}
+      action={
+        !hasQuery ? (
+          <Button size="sm" onClick={onCreate}>
+            <Plus className="h-4 w-4 mr-1.5" strokeWidth={1.75} aria-hidden />
+            {t("admin.cohorts.createButton")}
+          </Button>
+        ) : undefined
+      }
+    />
   )
 }
 

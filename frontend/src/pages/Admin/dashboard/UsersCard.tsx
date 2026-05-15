@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Users, Search, Trash2 } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import PageSpinner from "@/components/ui/PageSpinner"
+import { EmptyState } from "@/components/patterns/EmptyState"
 import VirtualAdminUsers from "../VirtualAdminUsers"
 import { RoleSelector } from "@/components/admin/RoleSelector"
 import type { UserRole } from "@/types"
@@ -170,14 +171,13 @@ export function UsersCard({
 function EmptyUsers({ hasQuery }: { hasQuery: boolean }) {
   const { t } = useTranslation()
   return (
-    <div className="flex flex-col items-center py-16 text-center">
-      <Users className="h-12 w-12 text-muted-foreground/40 mb-3" strokeWidth={1.75} />
-      <p className="text-muted-foreground">
-        {hasQuery
-          ? t("admin.users.emptyNoMatch")
-          : t("admin.users.emptyNoUsers")}
-      </p>
-    </div>
+    <EmptyState
+      variant="compact"
+      icon={<Users strokeWidth={1.75} aria-hidden />}
+      title={
+        hasQuery ? t("admin.users.emptyNoMatch") : t("admin.users.emptyNoUsers")
+      }
+    />
   )
 }
 

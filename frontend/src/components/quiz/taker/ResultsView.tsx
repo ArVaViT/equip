@@ -34,8 +34,8 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
       <Card
         className={
           result.passed
-            ? "border-l-[3px] border-l-success"
-            : "border-l-[3px] border-l-destructive"
+            ? "border-l-stripe border-l-success"
+            : "border-l-stripe border-l-destructive"
         }
       >
         <CardContent className="py-6 text-center">
