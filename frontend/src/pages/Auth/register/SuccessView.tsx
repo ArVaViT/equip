@@ -53,7 +53,7 @@ export function SuccessView({ email, isTeacher }: Props) {
               {t("authRegister.success.clickLinkToActivate")}
             </p>
             {isTeacher && (
-              <div className="mt-4 rounded-md border border-border border-l-[3px] border-l-warning bg-warning/5 p-3">
+              <div className="mt-4 rounded-md border border-border border-l-stripe border-l-warning bg-warning/5 p-3">
                 <p className="text-sm leading-relaxed text-foreground">
                   {t("authRegister.success.teacherApprovalBanner")}
                 </p>

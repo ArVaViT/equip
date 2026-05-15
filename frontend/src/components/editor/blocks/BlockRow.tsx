@@ -79,7 +79,7 @@ export function BlockRow({
         )}
         <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <span className="text-sm font-medium flex-1">{label}</span>
-        <span className="text-[10px] text-muted-foreground">#{index + 1}</span>
+        <span className="text-xs text-muted-foreground">#{index + 1}</span>
         <Button
           variant="ghost"
           size="sm"

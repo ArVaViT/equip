@@ -175,7 +175,7 @@ class Chapter(Base):
     module_id: Mapped[str] = mapped_column(ForeignKey("modules.id"))
     title: Mapped[str] = mapped_column()
     order_index: Mapped[int] = mapped_column(default=0)
-    chapter_type: Mapped[str] = mapped_column(default="reading")
+    chapter_type: Mapped[str] = mapped_column(default="reading", server_default="reading")
     requires_completion: Mapped[bool] = mapped_column(default=False)
     is_locked: Mapped[bool] = mapped_column(default=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -161,7 +161,7 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
       ) : (
         <div className="p-5 space-y-6">
           {attemptsReached && (
-            <div className="rounded-md border border-border border-l-[3px] border-l-warning bg-warning/10 px-3 py-2 text-xs text-foreground">
+            <div className="rounded-md border border-border border-l-stripe border-l-warning bg-warning/10 px-3 py-2 text-xs text-foreground">
               {t("quiz.maxAttemptsReached", { type: t(assessmentTypeKey).toLowerCase() })}
             </div>
           )}

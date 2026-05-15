@@ -106,3 +106,44 @@ export function formatDateLong(
     ...options,
   })
 }
+
+/**
+ * Convert a backend UTC ISO timestamp (or ``null``/``undefined``) into
+ * the ``YYYY-MM-DDTHH:mm`` string a ``<input type="datetime-local">``
+ * expects.
+ *
+ * The browser interprets that input value in the **local** timezone,
+ * so the obvious shortcut — ``iso.slice(0, 16)`` — silently shows the
+ * UTC wall-clock as if it were local. A user in UTC-7 looking at
+ * ``2026-06-01T00:00:00Z`` would see ``2026-06-01 00:00`` in the
+ * input, edit it (or just hit save), and have ``new Date(value)``
+ * re-encode to ``2026-06-01T07:00:00Z`` — a 7-hour drift on every
+ * round-trip.
+ *
+ * Use together with ``localInputToIso`` on save.
+ */
+export function isoToLocalInput(iso: string | null | undefined): string {
+  if (!iso) return ""
+  const d = toDate(iso)
+  if (!d) return ""
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  )
+}
+
+/**
+ * Convert the value from a ``<input type="datetime-local">`` (which
+ * the browser interprets in the local timezone) into a UTC ISO string
+ * the backend can store. Returns ``null`` for an empty input so the
+ * caller can ``PATCH`` a clear without distinguishing missing from
+ * empty.
+ *
+ * Use together with ``isoToLocalInput`` on load.
+ */
+export function localInputToIso(value: string): string | null {
+  if (!value) return null
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toISOString()
+}

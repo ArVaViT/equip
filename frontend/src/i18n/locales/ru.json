@@ -164,7 +164,6 @@
     "viewAllCertificates": "Все сертификаты",
     "accountDetails": "Сведения об аккаунте",
     "memberSince": "С нами с",
-    "role": "Роль",
     "preferences": "Настройки",
     "theme": "Тема",
     "themeDark": "Тёмная тема",
@@ -647,7 +646,7 @@
     }
   },
   "certificates": {
-    "dashboard": "Главная",
+    "backToCourses": "К курсам",
     "title": "Мои сертификаты",
     "emptyTitle": "Пока нет сертификатов",
     "emptyDescription": "Завершите курс, чтобы получить первый сертификат. Продолжайте учиться!",
@@ -772,7 +771,10 @@
     "courseFallback": "Курс",
     "loadFailed": "Не удалось загрузить аналитику",
     "backToCourses": "К моим курсам",
-    "backToDashboard": "К панели",
+    "breadcrumb": {
+      "myCourses": "Мои курсы",
+      "courseFallback": "Курс"
+    },
     "heading": "Аналитика курса",
     "studentProgress": "Прогресс студентов",
     "gradebook": "Журнал оценок",
@@ -818,7 +820,6 @@
   },
   "calendar": {
     "title": "Календарь",
-    "subtitle": "Сроки, события и расписание в одном месте",
     "filterByCourse": "Фильтр по курсу",
     "allCourses": "Все курсы",
     "retry": "Повторить",
@@ -831,6 +832,9 @@
     "upcomingEmpty": "Нет предстоящих событий",
     "overdue": "Просрочено",
     "loadError": "Не удалось загрузить события календаря. Попробуйте ещё раз.",
+    "noEnrollmentsTitle": "Календарь пуст",
+    "noEnrollmentsDescription": "Запишитесь на курс — и его дедлайны, экзамены и онлайн-встречи появятся в вашем календаре.",
+    "browseCourses": "К курсам",
     "eventTypes": {
       "deadline": "Дедлайн",
       "live_session": "Прямая сессия",
@@ -1182,6 +1186,7 @@
     "tableTab": "Таблица оценок",
     "failedLoad": "Не удалось загрузить журнал. Попробуйте снова.",
     "breadcrumbCourses": "Мои курсы",
+    "breadcrumbCourseFallback": "Курс",
     "pageHeading": "Журнал оценок",
     "exportCsv": "Экспорт CSV",
     "exporting": "Экспорт…",

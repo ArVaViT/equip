@@ -4,6 +4,7 @@ import type { DropResult } from "@hello-pangea/dnd"
 import { coursesService } from "@/services/courses"
 import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
+import { isoToLocalInput, localInputToIso } from "@/i18n/format"
 import type { Course } from "@/types"
 import type { useConfirm } from "@/components/ui/alert-dialog"
 
@@ -61,8 +62,8 @@ export function useCourseData(
         const data = await coursesService.getCourse(courseId)
         if (signal.cancelled) return
         setCourse(data)
-        setEnrollStart(data.enrollment_start?.slice(0, 16) ?? "")
-        setEnrollEnd(data.enrollment_end?.slice(0, 16) ?? "")
+        setEnrollStart(isoToLocalInput(data.enrollment_start))
+        setEnrollEnd(isoToLocalInput(data.enrollment_end))
       } catch {
         if (!signal.cancelled) onNotFound()
       } finally {
@@ -123,8 +124,8 @@ export function useCourseData(
     setSavingEnrollment(true)
     try {
       const payload = {
-        enrollment_start: enrollStart ? new Date(enrollStart).toISOString() : null,
-        enrollment_end: enrollEnd ? new Date(enrollEnd).toISOString() : null,
+        enrollment_start: localInputToIso(enrollStart),
+        enrollment_end: localInputToIso(enrollEnd),
       }
       await coursesService.updateCourse(courseId, payload)
       setCourse((p) => (p ? { ...p, ...payload } : p))
