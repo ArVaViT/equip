@@ -73,7 +73,7 @@ export function AnnouncementsModal({
                       {a.content}
                     </p>
                   )}
-                  <time className="text-[10px] text-muted-foreground/60 mt-1 block">
+                  <time className="mt-1 block text-xs text-muted-foreground/60">
                     {formatDateTime(a.created_at)}
                   </time>
                 </div>

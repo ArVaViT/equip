@@ -74,7 +74,7 @@ export function MonthGrid({
           {DAY_NAMES.map((d) => (
             <div
               key={d}
-              className="text-center text-[10px] font-medium text-muted-foreground uppercase tracking-wider py-1"
+              className="text-center text-xs font-medium text-muted-foreground uppercase tracking-wider py-1"
             >
               {d}
             </div>
@@ -115,7 +115,7 @@ export function MonthGrid({
                       return (
                         <span
                           key={evt.id}
-                          className={`block w-full rounded px-1 py-0.5 text-[9px] leading-tight truncate ${color.bg} ${color.text}`}
+                          className={`block w-full rounded px-1 py-0.5 text-xs leading-tight truncate ${color.bg} ${color.text}`}
                           title={evt.title}
                         >
                           {evt.title}
@@ -123,7 +123,7 @@ export function MonthGrid({
                       );
                     })}
                     {dayEvents.length > 3 && (
-                      <span className="text-[9px] text-muted-foreground pl-1">
+                      <span className="text-xs text-muted-foreground pl-1">
                         {t("calendar.moreEvents", { count: dayEvents.length - 3 })}
                       </span>
                     )}
@@ -134,7 +134,7 @@ export function MonthGrid({
           })}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 mt-3 text-[10px]">
+        <div className="flex flex-wrap items-center gap-3 mt-3 text-xs">
           {Object.entries(EVENT_COLORS).map(([type, color]) => (
             <span key={type} className="flex items-center gap-1">
               <span className={`w-2 h-2 rounded-full ${color.dot}`} />

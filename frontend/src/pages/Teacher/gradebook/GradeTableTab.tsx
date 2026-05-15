@@ -162,7 +162,7 @@ function GradeTableHead({
           >
             <div className="flex flex-col items-center gap-0.5">
               <span className="text-muted-foreground">{chapterTypeIcon(ch.chapter_type)}</span>
-              <span className="truncate max-w-[52px] text-[10px]">{ch.title}</span>
+              <span className="truncate max-w-[52px] text-xs">{ch.title}</span>
             </div>
           </th>
         ))}
@@ -218,7 +218,7 @@ function GradeTableRow({
               <p className="truncate text-xs font-semibold max-w-[140px]">
                 {student.full_name || student.email}
               </p>
-              <p className="truncate text-[10px] text-muted-foreground max-w-[140px]">
+              <p className="truncate text-xs text-muted-foreground max-w-[140px]">
                 {student.email}
               </p>
             </div>
@@ -236,10 +236,10 @@ function GradeTableRow({
         <td className="border-b px-2 py-2 text-center">
           <div className="flex flex-col items-center">
             <span className="font-semibold text-sm">{earned}</span>
-            <span className="text-[10px] text-muted-foreground">/{total}</span>
+            <span className="text-xs text-muted-foreground">/{total}</span>
             {manualGrade?.grade && (
               <span
-                className={`mt-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${letterColor(
+                className={`mt-0.5 rounded-full px-1.5 py-0.5 text-xs font-bold ${letterColor(
                   manualGrade.grade,
                 )}`}
               >
@@ -325,7 +325,7 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
           }`}
         >
           <span className="font-semibold">{pct}%</span>
-          <span className="text-[10px] opacity-70">
+          <span className="text-xs opacity-70">
             {chapter.quiz_result.score}/{chapter.quiz_result.max_score}
           </span>
         </div>
@@ -348,7 +348,7 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
           {graded ? (
             <>
               <span className="font-semibold">{chapter.assignment_result.grade}pt</span>
-              <span className="text-[10px] opacity-70">{t("gradebook.table.cellGraded")}</span>
+              <span className="text-xs opacity-70">{t("gradebook.table.cellGraded")}</span>
             </>
           ) : (
             <span>{t("gradebook.table.cellSubmitted")}</span>
@@ -360,7 +360,7 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
   }
 
   return (
-    <div className="flex items-center justify-center h-9 rounded bg-muted/20 text-muted-foreground/30 text-[10px]">
+    <div className="flex items-center justify-center h-9 rounded bg-muted/20 text-muted-foreground/30 text-xs">
       —
     </div>
   )
@@ -420,38 +420,38 @@ function GradeTableLegend() {
   return (
     <div className="mt-4 flex flex-wrap gap-4 border-t pt-4 text-xs text-muted-foreground">
       <div className="flex items-center gap-1.5">
-        <div className="flex h-4 w-4 items-center justify-center rounded border border-success/30 bg-success/10">
-          <CheckCircle2 className="h-2.5 w-2.5 text-success" strokeWidth={1.75} />
+        <div className="flex h-5 w-5 items-center justify-center rounded border border-success/30 bg-success/10">
+          <CheckCircle2 className="h-3 w-3 text-success" strokeWidth={1.75} />
         </div>
         {t("gradebook.table.legend.completed")}
       </div>
       <div className="flex items-center gap-1.5">
-        <div className="flex h-4 w-6 items-center justify-center rounded border border-success/30 bg-success/10 text-[9px] font-semibold text-success">
+        <div className="flex h-5 w-9 items-center justify-center rounded border border-success/30 bg-success/10 text-xs font-semibold text-success">
           85%
         </div>
         {t("gradebook.table.legend.quizPassed")}
       </div>
       <div className="flex items-center gap-1.5">
-        <div className="flex h-4 w-6 items-center justify-center rounded border border-destructive/30 bg-destructive/10 text-[9px] font-semibold text-destructive">
+        <div className="flex h-5 w-9 items-center justify-center rounded border border-destructive/30 bg-destructive/10 text-xs font-semibold text-destructive">
           40%
         </div>
         {t("gradebook.table.legend.quizFailed")}
       </div>
       <div className="flex items-center gap-1.5">
-        <div className="flex h-4 w-10 items-center justify-center rounded border border-info/30 bg-info/10 text-[9px] font-semibold text-info">
+        <div className="flex h-5 items-center justify-center rounded border border-info/30 bg-info/10 px-1.5 text-xs font-semibold text-info">
           {t("gradebook.table.cellGraded")}
         </div>
         {t("gradebook.table.legend.assignmentGraded")}
       </div>
       <div className="flex items-center gap-1.5">
-        <div className="flex h-4 w-14 items-center justify-center rounded border border-warning/30 bg-warning/10 text-[9px] text-warning">
+        <div className="flex h-5 items-center justify-center rounded border border-warning/30 bg-warning/10 px-1.5 text-xs text-warning">
           {t("gradebook.table.cellSubmitted")}
         </div>
         {t("gradebook.table.legend.assignmentSubmitted")}
       </div>
       <div className="flex items-center gap-1.5">
-        <div className="flex h-4 w-4 items-center justify-center rounded border bg-muted/30">
-          <Circle className="h-2.5 w-2.5 text-muted-foreground/40" strokeWidth={1.75} />
+        <div className="flex h-5 w-5 items-center justify-center rounded border bg-muted/30">
+          <Circle className="h-3 w-3 text-muted-foreground/40" strokeWidth={1.75} />
         </div>
         {t("gradebook.table.legend.notSubmitted")}
       </div>
