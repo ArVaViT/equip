@@ -116,15 +116,15 @@ function FileBlockLink({
       type="button"
       onClick={handleClick}
       disabled={opening}
-      className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-muted/50 disabled:opacity-60"
+      className="inline-flex min-h-[44px] items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-muted/50 disabled:opacity-60 sm:min-h-0"
     >
       {opening ? (
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" strokeWidth={1.75} aria-hidden />
       ) : (
         <File className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden />
       )}
-      <span>{label}</span>
-      <Download className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+      <span className="break-all">{label}</span>
+      <Download className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
     </button>
   )
 }
@@ -191,51 +191,57 @@ function ChapterNav({
   const { t } = useTranslation()
   const navigate = useNavigate()
 
+  const navBtn = "h-11 gap-2 sm:h-10"
+  const prevLabel = t("chapter.prevChapter")
+  const nextLabel = t("chapter.nextChapter")
+
   return (
-    <div className="mt-8 pt-6 border-t flex items-center justify-between">
+    <div className="mt-8 flex items-center justify-between gap-2 border-t pt-6">
       {prevChapter ? (
         <PressFeedback>
           <Button
             variant="outline"
             onClick={() => navigate(`/courses/${courseId}/modules/${moduleId}/chapters/${prevChapter.id}`)}
-            className="gap-2"
+            className={navBtn}
+            aria-label={prevLabel}
           >
             <ArrowLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            {t("chapter.prevChapter")}
+            <span className="hidden sm:inline">{prevLabel}</span>
           </Button>
         </PressFeedback>
       ) : (
-        <Button variant="outline" disabled className="gap-2">
+        <Button variant="outline" disabled className={navBtn} aria-label={prevLabel}>
           <ArrowLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-          {t("chapter.prevChapter")}
+          <span className="hidden sm:inline">{prevLabel}</span>
         </Button>
       )}
 
-      <span className="text-xs text-muted-foreground">
+      <span className="text-xs font-medium tabular-nums text-muted-foreground">
         {currentIdx + 1}/{total}
       </span>
 
       {nextChapter ? (
         isNextLocked ? (
-          <Button variant="outline" disabled className="gap-2">
+          <Button variant="outline" disabled className={navBtn} aria-label={nextLabel}>
             <Lock className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            {t("chapter.nextChapter")}
+            <span className="hidden sm:inline">{nextLabel}</span>
           </Button>
         ) : (
           <PressFeedback>
             <Button
               variant="outline"
               onClick={() => navigate(`/courses/${courseId}/modules/${moduleId}/chapters/${nextChapter.id}`)}
-              className="gap-2"
+              className={navBtn}
+              aria-label={nextLabel}
             >
-              {t("chapter.nextChapter")}
+              <span className="hidden sm:inline">{nextLabel}</span>
               <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             </Button>
           </PressFeedback>
         )
       ) : (
-        <Button variant="outline" disabled className="gap-2">
-          {t("chapter.nextChapter")}
+        <Button variant="outline" disabled className={navBtn} aria-label={nextLabel}>
+          <span className="hidden sm:inline">{nextLabel}</span>
           <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
         </Button>
       )}
@@ -381,8 +387,8 @@ export default function ChapterView() {
   if (locked) {
     return (
       <div className="container mx-auto px-4 py-6 max-w-3xl">
-        <Link to={`/courses/${courseId}/modules/${moduleId}`}>
-          <Button variant="ghost" size="sm" className="mb-4 h-8 text-xs">
+        <Link to={`/courses/${courseId}/modules/${moduleId}`} className="-mx-2 mb-4 inline-flex">
+          <Button variant="ghost" size="sm" className="h-11 text-xs sm:h-8">
             <ArrowLeft className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
             {t("course.backToModule")}
           </Button>
@@ -406,8 +412,8 @@ export default function ChapterView() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-3xl">
-      <Link to={`/courses/${courseId}/modules/${moduleId}`}>
-        <Button variant="ghost" size="sm" className="mb-6 h-8 text-xs">
+      <Link to={`/courses/${courseId}/modules/${moduleId}`} className="-mx-2 mb-6 inline-flex">
+        <Button variant="ghost" size="sm" className="h-11 text-xs sm:h-8">
           <ArrowLeft className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
           {t("course.backToModule")}
         </Button>
