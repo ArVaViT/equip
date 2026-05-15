@@ -21,7 +21,7 @@ import { ErrorState } from "@/components/patterns"
 import { cohortsService, type CohortStudent } from "@/services/cohorts"
 import { coursesService } from "@/services/courses"
 import { toast } from "@/lib/toast"
-import { formatDate } from "@/i18n/format"
+import { formatDate, isoToLocalInput, localInputToIso } from "@/i18n/format"
 import type { Cohort, Course } from "@/types"
 import { AttachCourseDialog } from "./AttachCourseDialog"
 import { AddStudentDialog } from "./AddStudentDialog"
@@ -466,7 +466,7 @@ interface DateFieldProps {
 }
 
 function DateField({ label, value, disabled, nullable, onSave }: DateFieldProps) {
-  const local = value ? value.slice(0, 16) : ""
+  const local = isoToLocalInput(value)
   return (
     <div className="space-y-1.5">
       <Label className="text-xs">{label}</Label>
@@ -480,7 +480,8 @@ function DateField({ label, value, disabled, nullable, onSave }: DateFieldProps)
             if (nullable) void onSave(null)
             return
           }
-          void onSave(new Date(v).toISOString())
+          const iso = localInputToIso(v)
+          if (iso) void onSave(iso)
         }}
       />
     </div>
