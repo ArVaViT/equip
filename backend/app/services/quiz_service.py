@@ -111,6 +111,7 @@ def persist_answers(
     total_score = 0
     answer_results: list[QuizAnswerResult] = []
     answered: set[Any] = set()
+    now = datetime.now(UTC)
 
     for ans in submitted:
         question = questions_map.get(ans.question_id)
@@ -122,6 +123,13 @@ def persist_answers(
         answered.add(question.id)
         is_correct, points_earned = grade_auto_answer(question, ans.selected_option_id, options_by_id)
         total_score += points_earned
+        # Auto-gradable answers are scored deterministically right now,
+        # so they get ``graded_at`` stamped at submit. Open-ended
+        # answers (essay / short_answer) keep ``graded_at = NULL`` until
+        # a teacher hits PATCH /quizzes/answers/{id} — the pending
+        # queue uses that NULL as its single source of truth for "this
+        # answer still needs a human".
+        auto_graded_at = now if question.question_type in AUTO_GRADED_QUESTION_TYPES else None
 
         # Pre-generate the PK so we can build QuizAnswerResult without
         # round-tripping a flush per row. The caller (`submit_quiz`)
@@ -136,6 +144,7 @@ def persist_answers(
                 text_answer=ans.text_answer,
                 is_correct=is_correct,
                 points_earned=points_earned,
+                graded_at=auto_graded_at,
             )
         )
         answer_results.append(
@@ -157,6 +166,11 @@ def persist_answers(
         if q.id in answered:
             continue
         skip_id = uuid.uuid4()
+        # Auto-gradable skips are final at 0. Open-ended skips have no
+        # ``text_answer`` so they never enter the pending queue (the
+        # query requires ``text_answer IS NOT NULL``), but stamping
+        # ``graded_at`` for them too keeps ``graded_at IS NULL`` strictly
+        # equivalent to "an essay/short_answer with text awaiting review".
         db.add(
             QuizAnswer(
                 id=skip_id,
@@ -166,6 +180,7 @@ def persist_answers(
                 text_answer=None,
                 is_correct=False,
                 points_earned=0,
+                graded_at=now,
             )
         )
         answer_results.append(

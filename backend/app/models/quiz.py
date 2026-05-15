@@ -116,5 +116,14 @@ class QuizAnswer(Base):
     # Teacher feedback for manually-graded answers; null until a teacher
     # actually grades it (see PATCH /quizzes/answers/{id}).
     grader_comment: Mapped[str | None] = mapped_column(Text)
+    # When this answer was last graded. ``NULL`` means "still pending a
+    # teacher's manual review" — used by the pending-answer queue to
+    # distinguish unmodified open-ended answers from ones a teacher
+    # legitimately scored at 0 with no comment (see migration
+    # 20260515153526_quiz_answers_graded_at.sql). Auto-graded answer
+    # types (multiple_choice / true_false) are stamped at submit time
+    # because they're scored deterministically; only open-ended answers
+    # ever have ``graded_at IS NULL`` in steady state.
+    graded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     attempt: Mapped["QuizAttempt"] = relationship(back_populates="answers")
