@@ -73,12 +73,13 @@ export function UsersCard({
         <CardTitle className="text-xl">{t("admin.users.title")}</CardTitle>
         <div className="flex items-center gap-3 flex-wrap">
           {selectedIds.size > 0 && (
-            <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-1.5">
+            <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 sm:w-auto">
               <span className="text-xs font-medium">{t("admin.users.selected", { count: selectedIds.size })}</span>
               <NativeSelect
-                fieldSize="xs"
+                fieldSize="sm"
                 value={bulkRole}
                 onChange={(e) => onBulkRoleChange(e.target.value as UserRole)}
+                className="w-auto"
               >
                 <option value="student">{t("roles.student")}</option>
                 <option value="pending_teacher">{t("roles.pendingTeacher")}</option>
@@ -87,7 +88,7 @@ export function UsersCard({
               </NativeSelect>
               <Button
                 size="sm"
-                className="h-7 text-xs"
+                className="h-9 text-xs sm:h-7"
                 onClick={onApplyBulkRole}
                 disabled={bulkUpdating}
               >
@@ -96,7 +97,7 @@ export function UsersCard({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 text-xs"
+                className="h-9 text-xs sm:h-7"
                 onClick={onClearSelection}
               >
                 {t("admin.users.bulkClear")}
@@ -206,29 +207,23 @@ function UsersTable({
     filtered.length > 0 && filtered.every((u) => selectedIds.has(u.id))
 
   return (
-    <div className="overflow-x-auto -mx-6">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left">
-            <th className="px-3 py-3 w-10">
-              <input
-                type="checkbox"
-                checked={allFilteredSelected}
-                onChange={onToggleSelectAll}
-                className="h-4 w-4 rounded border-input"
-                aria-label={t("admin.users.selectAllAria")}
-              />
-            </th>
-            <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thName")}</th>
-            <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thEmail")}</th>
-            <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thRole")}</th>
-            <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thJoined")}</th>
-            <th className="px-6 py-3 w-10" aria-label={t("admin.users.thActions")} />
-          </tr>
-        </thead>
-        <tbody className="divide-y">
+    <>
+      {/* Mobile: stacked card list — the table doesn't fit a phone. Same
+          data, same controls, larger tap targets. */}
+      <div className="-mx-3 space-y-2 sm:hidden">
+        <label className="mx-3 flex min-h-[44px] items-center gap-2 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={allFilteredSelected}
+            onChange={onToggleSelectAll}
+            className="h-4 w-4 rounded border-input"
+            aria-label={t("admin.users.selectAllAria")}
+          />
+          <span>{t("admin.users.selectAllN", { count: filtered.length })}</span>
+        </label>
+        <div className="mx-3 space-y-2">
           {filtered.map((u) => (
-            <UserRow
+            <UserCard
               key={u.id}
               user={u}
               selected={selectedIds.has(u.id)}
@@ -239,8 +234,115 @@ function UsersTable({
               onDeleteUser={onDeleteUser}
             />
           ))}
-        </tbody>
-      </table>
+        </div>
+      </div>
+
+      {/* Desktop: classic semantic table */}
+      <div className="hidden overflow-x-auto -mx-6 sm:block">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left">
+              <th className="px-3 py-3 w-10">
+                <input
+                  type="checkbox"
+                  checked={allFilteredSelected}
+                  onChange={onToggleSelectAll}
+                  className="h-4 w-4 rounded border-input"
+                  aria-label={t("admin.users.selectAllAria")}
+                />
+              </th>
+              <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thName")}</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thEmail")}</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thRole")}</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thJoined")}</th>
+              <th className="px-6 py-3 w-10" aria-label={t("admin.users.thActions")} />
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {filtered.map((u) => (
+              <UserRow
+                key={u.id}
+                user={u}
+                selected={selectedIds.has(u.id)}
+                updating={updatingId === u.id}
+                isSelf={u.id === currentUserId}
+                onToggleSelect={onToggleSelect}
+                onRoleChange={onRoleChange}
+                onDeleteUser={onDeleteUser}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}
+
+function UserCard({
+  user,
+  selected,
+  updating,
+  isSelf,
+  onToggleSelect,
+  onRoleChange,
+  onDeleteUser,
+}: UserRowProps) {
+  const { t } = useTranslation()
+  const displayName = user.full_name || user.email
+  return (
+    <div
+      className={`rounded-md border border-border bg-card p-3 transition-colors ${
+        selected ? "border-primary/40 bg-primary/[0.03]" : ""
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggleSelect(user.id)}
+          className="mt-1.5 h-4 w-4 shrink-0 rounded border-input"
+          aria-label={t("admin.users.selectAriaPrefix", { name: displayName })}
+        />
+        {user.avatar_url ? (
+          <img
+            src={toProxyImage(user.avatar_url)}
+            alt={t("admin.users.avatarAltPrefix", { name: user.full_name ?? user.email })}
+            className="h-10 w-10 shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground">
+            {(user.full_name?.[0] ?? user.email[0] ?? "?").toUpperCase()}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-foreground">
+            {user.full_name || t("admin.users.missingName")}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {formatDate(user.created_at)}
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-11 w-11 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+          disabled={updating || isSelf}
+          onClick={() => onDeleteUser(user)}
+          aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
+          title={isSelf ? t("admin.users.deleteSelfTooltip") : t("admin.users.deleteTooltip")}
+        >
+          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+        </Button>
+      </div>
+      <div className="mt-3 pl-7">
+        <RoleSelector
+          role={user.role}
+          disabled={updating || isSelf}
+          onChange={(next) => onRoleChange(user.id, next)}
+          ariaLabel={t("admin.users.changeRoleAria", { name: displayName })}
+        />
+      </div>
     </div>
   )
 }

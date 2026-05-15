@@ -43,12 +43,12 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="animate-fade-in container mx-auto px-4 py-8 max-w-6xl">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 rounded-lg bg-primary/10">
+    <div className="animate-fade-in container mx-auto max-w-6xl px-4 py-6 sm:py-8">
+      <div className="mb-6 flex items-center gap-3">
+        <div className="rounded-lg bg-primary/10 p-2">
           <Shield className="h-6 w-6 text-primary" strokeWidth={1.75} />
         </div>
-        <h1 className="text-3xl font-serif font-bold tracking-tight">{t("admin.title")}</h1>
+        <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">{t("admin.title")}</h1>
       </div>
 
       <AdminTabs active={tab} onChange={setTab} />
