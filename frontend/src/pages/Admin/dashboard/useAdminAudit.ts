@@ -69,8 +69,27 @@ export function useAdminAudit({ enabled }: UseAdminAuditArgs) {
       const query: AuditLogQuery = { page, page_size: AUDIT_PAGE_SIZE }
       if (action) query.action = action
       if (resource) query.resource_type = resource
-      if (dateFrom) query.date_from = new Date(dateFrom).toISOString()
-      if (dateTo) query.date_to = new Date(dateTo + "T23:59:59").toISOString()
+      // Both bounds anchor to the **local** calendar day the admin
+      // typed — date_from at 00:00, date_to at 23:59:59. Naive
+      // ``new Date("2026-05-14")`` parses as UTC midnight while
+      // ``new Date("2026-05-14T23:59:59")`` parses as local, so a
+      // round-trip mixed the zones and clipped late-evening events
+      // on the user's last day. ``new Date(year, month, day, ...)``
+      // is unambiguously local on both ends. ``ISO_DATE_REGEX``
+      // already guaranteed the YYYY-MM-DD shape, so the slice
+      // indices are stable.
+      if (dateFrom) {
+        const y = Number(dateFrom.slice(0, 4))
+        const m = Number(dateFrom.slice(5, 7))
+        const d = Number(dateFrom.slice(8, 10))
+        query.date_from = new Date(y, m - 1, d, 0, 0, 0, 0).toISOString()
+      }
+      if (dateTo) {
+        const y = Number(dateTo.slice(0, 4))
+        const m = Number(dateTo.slice(5, 7))
+        const d = Number(dateTo.slice(8, 10))
+        query.date_to = new Date(y, m - 1, d, 23, 59, 59, 999).toISOString()
+      }
 
       const data = await coursesService.getAuditLogs(query)
       if (isCancelled()) return undefined
