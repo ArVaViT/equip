@@ -355,9 +355,7 @@ class TestEnrollRouteCohortHappyPath:
         assert resp.status_code == 200, resp.text
 
         rows = (
-            db.query(Enrollment)
-            .filter(Enrollment.user_id == STUDENT_ID, Enrollment.course_id == "test-course-1")
-            .all()
+            db.query(Enrollment).filter(Enrollment.user_id == STUDENT_ID, Enrollment.course_id == "test-course-1").all()
         )
         assert len(rows) == 1
         assert str(rows[0].cohort_id) == str(cohort.id)
