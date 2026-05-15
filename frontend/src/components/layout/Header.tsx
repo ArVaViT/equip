@@ -10,6 +10,7 @@ import { ROLES } from "@/types"
 import { User as UserIcon, Menu } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import { cn } from "@/lib/utils"
+import { EDITORIAL_EASE } from "@/lib/motion"
 import { Tooltip, TooltipContent,TooltipTrigger } from "@/components/ui/tooltip"
 
 const UNDERLINE_LAYOUT_ID = "header-active-underline"
@@ -62,7 +63,7 @@ function HeaderNavLink({
           <motion.span
             layoutId={UNDERLINE_LAYOUT_ID}
             className="pointer-events-none absolute inset-x-3 bottom-0 h-0.5 rounded-sm bg-primary"
-            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.32, ease: EDITORIAL_EASE }}
             aria-hidden
           />
         ))}

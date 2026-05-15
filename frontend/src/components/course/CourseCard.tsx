@@ -8,8 +8,7 @@ import type { Course } from "@/types"
 import { BookOpen, ArrowRight } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import { formatDate } from "@/i18n/format"
-
-const EDITORIAL_EASE = [0.22, 1, 0.36, 1] as const
+import { EDITORIAL_EASE } from "@/lib/motion"
 
 interface CourseCardProps {
   course: Course

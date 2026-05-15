@@ -1,5 +1,6 @@
 import { Children, type ReactNode } from "react"
 import { motion, useReducedMotion } from "motion/react"
+import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
 
 type StaggerChildrenProps = {
   children: ReactNode
@@ -9,12 +10,10 @@ type StaggerChildrenProps = {
   className?: string
 }
 
-const EDITORIAL_EASE = [0.22, 1, 0.36, 1] as const
-
 export function StaggerChildren({
   children,
   stagger = 0.045,
-  duration = 0.48,
+  duration = MOTION_DURATION.entrance,
   y = 8,
   className,
 }: StaggerChildrenProps) {
