@@ -777,7 +777,6 @@
   },
   "calendar": {
     "title": "Calendar",
-    "subtitle": "Your deadlines, events, and schedule in one place",
     "filterByCourse": "Filter by course",
     "allCourses": "All Courses",
     "retry": "Retry",
@@ -790,6 +789,9 @@
     "upcomingEmpty": "No upcoming events",
     "overdue": "Overdue",
     "loadError": "Failed to load calendar events. Please try again.",
+    "noEnrollmentsTitle": "Your calendar is empty",
+    "noEnrollmentsDescription": "Enroll in a course to see its deadlines, exams, and live sessions on your calendar.",
+    "browseCourses": "Browse courses",
     "eventTypes": {
       "deadline": "Deadline",
       "live_session": "Live session",
