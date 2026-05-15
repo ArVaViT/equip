@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { coursesService } from "@/services/courses"
 import { toast } from "@/lib/toast"
+import { isoToLocalInput, localInputToIso } from "@/i18n/format"
 import type { CourseEvent } from "@/types"
 import type { useConfirm } from "@/components/ui/alert-dialog"
 import { EMPTY_EVENT_FORM, type EventFormState } from "./types"
@@ -60,7 +61,7 @@ export function useEventsSection(
       title: ev.title,
       description: ev.description ?? "",
       event_type: ev.event_type,
-      event_date: ev.event_date.slice(0, 16),
+      event_date: isoToLocalInput(ev.event_date),
     })
     setEditingId(ev.id)
   }, [])
@@ -68,11 +69,16 @@ export function useEventsSection(
   const save = useCallback(async () => {
     if (!courseId || !form.title.trim() || !form.event_date) return
     setSaving(true)
+    const isoDate = localInputToIso(form.event_date)
+    if (!isoDate) {
+      setSaving(false)
+      return
+    }
     const payload = {
       title: form.title.trim(),
       description: form.description.trim() || undefined,
       event_type: form.event_type,
-      event_date: new Date(form.event_date).toISOString(),
+      event_date: isoDate,
     }
     try {
       if (editingId) {
