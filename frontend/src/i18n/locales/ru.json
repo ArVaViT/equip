@@ -11,6 +11,7 @@
     "register": "Регистрация",
     "close": "Закрыть",
     "scrollToTop": "Наверх",
+    "skipToContent": "Перейти к содержимому",
     "dismissAnnouncement": "Закрыть объявление"
   },
   "inlineEdit": {
@@ -514,6 +515,7 @@
       "uploadCta": "Загрузить файл"
     },
     "toolbar": {
+      "ariaLabel": "Форматирование текста",
       "bold": "Жирный",
       "italic": "Курсив",
       "heading2": "Заголовок 2",

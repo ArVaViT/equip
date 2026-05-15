@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react"
 import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -7,11 +8,15 @@ import { Users, Search, Trash2 } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { EmptyState } from "@/components/patterns/EmptyState"
-import VirtualAdminUsers from "../VirtualAdminUsers"
 import { RoleSelector } from "@/components/admin/RoleSelector"
 import type { UserRole } from "@/types"
 import { formatDate } from "@/i18n/format"
 import { type ProfileRow } from "./constants"
+
+// Only rendered when the filtered list crosses USERS_VIRTUAL_THRESHOLD —
+// keeps `react-window` (~10 KB gz) out of the eager AdminDashboard chunk
+// for the common case (small tenants with <50 users).
+const VirtualAdminUsers = lazy(() => import("../VirtualAdminUsers"))
 
 /**
  * Above this row count we swap the full <table> render for a react-window
@@ -136,15 +141,17 @@ export function UsersCard({
                 {t("admin.users.selectAllN", { count: filtered.length })}
               </span>
             </div>
-            <VirtualAdminUsers
-              users={filtered}
-              selectedIds={selectedIds}
-              updatingId={updatingId}
-              currentUserId={currentUserId}
-              onToggleSelect={onToggleSelect}
-              onRoleChange={onRoleChange}
-              onDeleteUser={onDeleteUser}
-            />
+            <Suspense fallback={<PageSpinner />}>
+              <VirtualAdminUsers
+                users={filtered}
+                selectedIds={selectedIds}
+                updatingId={updatingId}
+                currentUserId={currentUserId}
+                onToggleSelect={onToggleSelect}
+                onRoleChange={onRoleChange}
+                onDeleteUser={onDeleteUser}
+              />
+            </Suspense>
           </>
         ) : (
           <UsersTable

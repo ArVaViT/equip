@@ -1,19 +1,31 @@
+import { lazy, Suspense } from "react"
 import { Navigate, useSearchParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Shield } from "lucide-react"
 import { useAuth } from "@/context/useAuth"
 import { Button } from "@/components/ui/button"
 import { ErrorState } from "@/components/patterns"
+import PageSpinner from "@/components/ui/PageSpinner"
 import { ADMIN_TABS, type AdminTab } from "./dashboard/constants"
 import { AdminTabs } from "./dashboard/AdminTabs"
 import { OverviewStats } from "./dashboard/OverviewStats"
 import { PendingTeachersCard } from "./dashboard/PendingTeachersCard"
 import { PendingCertsCard } from "./dashboard/PendingCertsCard"
 import { UsersCard } from "./dashboard/UsersCard"
-import { AuditLogTab } from "./dashboard/AuditLogTab"
 import { useAdminOverview } from "./dashboard/useAdminOverview"
 import { useAdminAudit } from "./dashboard/useAdminAudit"
-import { CohortsTab } from "./cohorts"
+
+// The audit log and cohorts tabs are rarely the entry point — most admins
+// land on Overview. Splitting them off keeps the initial AdminDashboard
+// chunk lean (no react-window for cohorts via VirtualAdminUsers is still in
+// UsersCard, but the audit table machinery and the cohorts list components
+// don't need to ship until the matching tab is selected).
+const AuditLogTab = lazy(() =>
+  import("./dashboard/AuditLogTab").then((m) => ({ default: m.AuditLogTab })),
+)
+const CohortsTab = lazy(() =>
+  import("./cohorts/CohortsTab").then((m) => ({ default: m.CohortsTab })),
+)
 
 /**
  * Admin dashboard orchestrator. Delegates every piece of state to
@@ -105,27 +117,33 @@ export default function AdminDashboard() {
         </>
       )}
 
-      {tab === "cohorts" && <CohortsTab />}
+      {tab === "cohorts" && (
+        <Suspense fallback={<PageSpinner />}>
+          <CohortsTab />
+        </Suspense>
+      )}
 
       {!overview.error && tab === "audit" && (
-        <AuditLogTab
-          logs={audit.logs}
-          total={audit.total}
-          loading={audit.loading}
-          page={audit.page}
-          pageSize={audit.pageSize}
-          userMap={overview.userMap}
-          action={audit.action}
-          resource={audit.resource}
-          dateFrom={audit.dateFrom}
-          dateTo={audit.dateTo}
-          onAction={audit.setAction}
-          onResource={audit.setResource}
-          onDateFrom={audit.setDateFrom}
-          onDateTo={audit.setDateTo}
-          onReset={audit.resetFilters}
-          onPageChange={audit.setPage}
-        />
+        <Suspense fallback={<PageSpinner />}>
+          <AuditLogTab
+            logs={audit.logs}
+            total={audit.total}
+            loading={audit.loading}
+            page={audit.page}
+            pageSize={audit.pageSize}
+            userMap={overview.userMap}
+            action={audit.action}
+            resource={audit.resource}
+            dateFrom={audit.dateFrom}
+            dateTo={audit.dateTo}
+            onAction={audit.setAction}
+            onResource={audit.setResource}
+            onDateFrom={audit.setDateFrom}
+            onDateTo={audit.setDateTo}
+            onReset={audit.resetFilters}
+            onPageChange={audit.setPage}
+          />
+        </Suspense>
       )}
     </div>
   )

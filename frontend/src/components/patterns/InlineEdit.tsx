@@ -189,9 +189,16 @@ export function InlineEdit({
   const isEmpty = !value.trim()
   const displayText = isEmpty ? resolvedPlaceholder : value
 
+  // Promote the display container to a real heading element when the caller
+  // requested a heading-sized rendition. The button-as-trigger pattern stays
+  // wrapped inside, so the click/keyboard/aria-label affordance is unchanged
+  // — but assistive tech now sees an actual <h1>/<h2> in the page outline
+  // instead of a styled <span>.
+  const HeadingTag = size === "h1" ? "h1" : size === "h2" ? "h2" : "span"
+
   if (disabled) {
     return (
-      <span className={cn("inline-block w-full", className)}>
+      <HeadingTag className={cn("inline-block w-full", size !== "body" && "m-0", className)}>
         <span
           className={cn(
             "text-wrap-safe",
@@ -203,12 +210,22 @@ export function InlineEdit({
         >
           {displayText}
         </span>
-      </span>
+      </HeadingTag>
     )
   }
 
+  // For heading sizes we render a block-level <h1>/<h2> so the page outline
+  // is correct. The original body variant kept `inline-flex` so it could sit
+  // next to neighbouring text — that contract is preserved below.
   return (
-    <span className={cn("group/edit relative inline-flex w-full items-start gap-2", className)}>
+    <HeadingTag
+      className={cn(
+        size === "body"
+          ? "group/edit relative inline-flex w-full items-start gap-2"
+          : "group/edit relative flex w-full items-start gap-2 m-0",
+        className,
+      )}
+    >
       <button
         type="button"
         onClick={start}
@@ -228,6 +245,6 @@ export function InlineEdit({
           <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />
         </span>
       </span>
-    </span>
+    </HeadingTag>
   )
 }
