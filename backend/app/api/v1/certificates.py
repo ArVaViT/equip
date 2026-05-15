@@ -72,7 +72,16 @@ def request_certificate(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Certificate:
-    """Request a certificate (creates a pending request)."""
+    """Request a certificate (creates a pending request).
+
+    Re-request after rejection: the cert row carries a ``(user_id,
+    course_id)`` unique constraint, so we cannot just INSERT a fresh
+    pending row when a previous request was rejected. Instead we reset
+    the rejected row back to ``pending`` (clearing approver timestamps)
+    so the student can have another go through the teacher / admin
+    workflow — matching ``reject``'s docstring promise that "a rejected
+    certificate stays rejected and the student must re-request".
+    """
     # Soft-deleted courses must not accept new certificate requests.
     course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
     if not course:
@@ -92,7 +101,18 @@ def request_certificate(
     existing = (
         db.query(Certificate).filter(Certificate.user_id == current_user.id, Certificate.course_id == course_id).first()
     )
-    if existing:
+    if existing is not None:
+        if existing.status == "rejected":
+            # Reopen the request rather than silently returning the
+            # rejected row (which previously made the "request" button a
+            # no-op for any student who had been rejected once).
+            existing.status = "pending"
+            existing.teacher_approved_at = None
+            existing.teacher_approved_by = None
+            existing.admin_approved_at = None
+            existing.admin_approved_by = None
+            db.commit()
+            db.refresh(existing)
         return existing
 
     cert = Certificate(user_id=current_user.id, course_id=course_id, status="pending")
@@ -106,7 +126,15 @@ def request_certificate(
             .filter(Certificate.user_id == current_user.id, Certificate.course_id == course_id)
             .first()
         )
-        if existing:
+        if existing is not None:
+            if existing.status == "rejected":
+                existing.status = "pending"
+                existing.teacher_approved_at = None
+                existing.teacher_approved_by = None
+                existing.admin_approved_at = None
+                existing.admin_approved_by = None
+                db.commit()
+                db.refresh(existing)
             return existing
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Certificate already requested") from exc
     db.refresh(cert)

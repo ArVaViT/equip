@@ -234,6 +234,35 @@ class TestRequestCertificate:
         r = anon_client.post("/api/v1/certificates/course/course-1")
         assert r.status_code in (401, 403)
 
+    def test_rerequest_after_rejection_reopens_to_pending(self, student_client: TestClient, db: Session):
+        """A student must be able to ask again after a rejection.
+
+        ``reject``'s docstring promises "a rejected certificate stays
+        rejected and the student must re-request" — but the
+        ``(user_id, course_id)`` unique constraint plus the previous
+        ``if existing: return existing`` short-circuit meant a
+        re-request silently handed back the rejected row, making the
+        action a no-op. Reset to ``pending`` so the workflow restarts.
+        """
+        _seed_enrolled_course(db, progress=100)
+        rejected = _seed_certificate(db, "course-1", cert_status="rejected")
+        # Pretend a teacher had stamped approval before the admin rejected:
+        rejected.teacher_approved_at = datetime(2026, 1, 1, tzinfo=UTC)
+        rejected.teacher_approved_by = TEACHER_ID
+        db.commit()
+
+        r = student_client.post("/api/v1/certificates/course/course-1")
+        assert r.status_code == 201
+        body = r.json()
+        assert body["id"] == str(rejected.id)
+        assert body["status"] == "pending"
+        # Old approver stamps are cleared so the next teacher review
+        # starts from a clean slate.
+        assert body["teacher_approved_at"] is None
+        assert body["teacher_approved_by"] is None
+        assert body["admin_approved_at"] is None
+        assert body["admin_approved_by"] is None
+
 
 class TestGetCourseCertificate:
     """GET /api/v1/certificates/course/{course_id}"""
