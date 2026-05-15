@@ -392,6 +392,80 @@ def test_my_progress_returns_only_completed_course_chapters(student_client: Test
     assert response.json() == [chapter.id]
 
 
+def test_submit_assignment_survives_concurrent_chapter_progress_insert(student_client: TestClient, db: Session):
+    """The submit handler races a teacher manually marking the chapter
+    complete: both can hit the ``uq_progress_user_chapter`` unique key
+    at commit. Before the SAVEPOINT fix the entire submit transaction
+    rolled back and the ``AssignmentSubmission`` was lost.
+
+    Reproduces the race by pre-inserting a competing ChapterProgress
+    row (so the unique key is already taken) and forcing the handler's
+    initial ChapterProgress lookup to MISS so it falls into the INSERT
+    path. In production the lookup miss would happen because the
+    competing writer hasn't committed yet; in test we patch ``.first()``
+    once.
+    """
+    from sqlalchemy.orm import Query
+
+    _course, _module, chapter = _seed_course_graph(db)
+    assignment = Assignment(
+        id=uuid.uuid4(),
+        chapter_id=chapter.id,
+        title="Reflection",
+        max_score=10,
+    )
+    db.add(assignment)
+    db.add(
+        ChapterProgress(
+            user_id=STUDENT_ID,
+            chapter_id=chapter.id,
+            completed=True,
+            completion_type="teacher",
+        )
+    )
+    db.commit()
+
+    real_first = Query.first
+    state = {"missed": False}
+
+    def _maybe_miss(self):
+        descs = self.column_descriptions
+        if not state["missed"] and descs and getattr(descs[0].get("type"), "__name__", "") == "ChapterProgress":
+            state["missed"] = True
+            return None
+        return real_first(self)
+
+    Query.first = _maybe_miss
+    try:
+        resp = student_client.post(
+            f"/api/v1/assignments/{assignment.id}/submit",
+            json={"content": "x"},
+        )
+    finally:
+        Query.first = real_first
+
+    # Before the fix this came back as 409 (IntegrityError middleware);
+    # after, the SAVEPOINT absorbs the collision and the submit commits.
+    assert resp.status_code == 201, resp.text
+
+    db.expire_all()
+    progress_rows = (
+        db.query(ChapterProgress)
+        .filter(
+            ChapterProgress.user_id == STUDENT_ID,
+            ChapterProgress.chapter_id == chapter.id,
+        )
+        .all()
+    )
+    assert len(progress_rows) == 1
+    assert progress_rows[0].completed is True
+
+    from app.models.assignment import AssignmentSubmission
+
+    sub_count = db.query(AssignmentSubmission).filter(AssignmentSubmission.assignment_id == assignment.id).count()
+    assert sub_count == 1
+
+
 def test_student_can_fetch_own_assignment_submissions(student_client: TestClient, db: Session):
     course, _module, chapter = _seed_course_graph(db)
     assignment = Assignment(

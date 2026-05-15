@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
@@ -165,11 +166,33 @@ def submit_assignment(
         .first()
     )
     if not progress:
-        progress = ChapterProgress(
-            user_id=current_user.id,
-            chapter_id=assignment.chapter_id,
-        )
-        db.add(progress)
+        # Insert the new ChapterProgress inside a SAVEPOINT so a
+        # concurrent writer (teacher manually marking the chapter
+        # complete at the same instant, or another resubmit) racing us
+        # to the ``uq_progress_user_chapter`` unique key does not abort
+        # the whole submit and lose the AssignmentSubmission row. On
+        # collision we re-fetch the winner row and use it instead.
+        # Mirrors the race fix in ``teacher_complete_chapter`` (#301).
+        try:
+            with db.begin_nested():
+                progress = ChapterProgress(
+                    user_id=current_user.id,
+                    chapter_id=assignment.chapter_id,
+                )
+                db.add(progress)
+                db.flush()
+        except IntegrityError:
+            progress = (
+                db.query(ChapterProgress)
+                .filter(
+                    ChapterProgress.user_id == current_user.id,
+                    ChapterProgress.chapter_id == assignment.chapter_id,
+                )
+                .first()
+            )
+            if progress is None:
+                raise
+
     if not progress.completed:
         progress.completed = True
         progress.completed_at = datetime.now(UTC)

@@ -666,6 +666,78 @@ def test_delete_quiz_anon_unauthorized(anon_client: TestClient):
 # ── POST /api/v1/quizzes/{quiz_id}/submit ─────────────────────────────────
 
 
+def test_submit_quiz_survives_concurrent_chapter_progress_insert(student_client: TestClient, db: Session):
+    """``submit_quiz`` upserts a ChapterProgress row when the student
+    passes. A teacher manually marking the chapter complete (or a
+    parallel quiz submission) at the same instant can race the INSERT,
+    tripping the ``uq_progress_user_chapter`` unique key. Before the
+    SAVEPOINT wrap in ``upsert_passed_chapter_progress`` this took
+    down the whole submit transaction.
+    """
+    from sqlalchemy.orm import Query
+
+    from app.models.chapter_progress import ChapterProgress
+
+    _seed_course_with_enrollment(db)
+    quiz, questions, opts = _seed_quiz_with_questions(db)
+
+    db.add(
+        ChapterProgress(
+            user_id=STUDENT_ID,
+            chapter_id="ch-1",
+            completed=True,
+            completion_type="teacher",
+        )
+    )
+    db.commit()
+
+    real_first = Query.first
+    state = {"missed": False}
+
+    def _maybe_miss(self):
+        descs = self.column_descriptions
+        if not state["missed"] and descs and getattr(descs[0].get("type"), "__name__", "") == "ChapterProgress":
+            state["missed"] = True
+            return None
+        return real_first(self)
+
+    Query.first = _maybe_miss
+    try:
+        resp = student_client.post(
+            f"/api/v1/quizzes/{quiz.id}/submit",
+            json={
+                "answers": [
+                    {
+                        "question_id": str(questions[0].id),
+                        "selected_option_id": str(opts["q1_correct"]),
+                    },
+                    {
+                        "question_id": str(questions[1].id),
+                        "selected_option_id": str(opts["q2_correct"]),
+                    },
+                ],
+            },
+        )
+    finally:
+        Query.first = real_first
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["passed"] is True
+
+    db.expire_all()
+    progress_rows = (
+        db.query(ChapterProgress)
+        .filter(
+            ChapterProgress.user_id == STUDENT_ID,
+            ChapterProgress.chapter_id == "ch-1",
+        )
+        .all()
+    )
+    assert len(progress_rows) == 1
+    assert progress_rows[0].completed is True
+
+
 def test_submit_quiz_perfect_score(student_client: TestClient, db: Session):
     _seed_course_with_enrollment(db)
     quiz, questions, opts = _seed_quiz_with_questions(db)

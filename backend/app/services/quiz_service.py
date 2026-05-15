@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 
 from app.api.dependencies import resolve_chapter_course_id
 from app.models.chapter_progress import ChapterProgress
@@ -198,7 +199,15 @@ def persist_answers(
 
 
 def upsert_passed_chapter_progress(db: Session, user_id: UUID, chapter_id: str) -> None:
-    """Mark the chapter as ``quiz``-completed for the student (idempotent)."""
+    """Mark the chapter as ``quiz``-completed for the student (idempotent).
+
+    Race-safe: a concurrent teacher-mark-complete or assignment-submit
+    for the same ``(user, chapter)`` may also be inserting a progress
+    row. We wrap the INSERT in a SAVEPOINT so the unique-constraint
+    collision aborts only the savepoint — not the caller's transaction
+    — and re-fetch the winner row to apply the "completed = true"
+    update on top of it.
+    """
     cp = (
         db.query(ChapterProgress)
         .filter(
@@ -208,8 +217,22 @@ def upsert_passed_chapter_progress(db: Session, user_id: UUID, chapter_id: str) 
         .first()
     )
     if not cp:
-        cp = ChapterProgress(user_id=user_id, chapter_id=chapter_id)
-        db.add(cp)
+        try:
+            with db.begin_nested():
+                cp = ChapterProgress(user_id=user_id, chapter_id=chapter_id)
+                db.add(cp)
+                db.flush()
+        except IntegrityError:
+            cp = (
+                db.query(ChapterProgress)
+                .filter(
+                    ChapterProgress.user_id == user_id,
+                    ChapterProgress.chapter_id == chapter_id,
+                )
+                .first()
+            )
+            if cp is None:
+                raise
     if not cp.completed:
         cp.completed = True
         cp.completed_at = datetime.now(UTC)
