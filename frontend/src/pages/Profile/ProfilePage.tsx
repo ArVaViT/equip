@@ -18,7 +18,7 @@ import { ROLE_I18N_KEY } from "@/lib/roles"
 import { formatDateLong } from "@/i18n/format"
 import { toast } from "@/lib/toast"
 import {
-  User as UserIcon, Mail, Shield, Calendar, Camera, Globe,
+  User as UserIcon, Mail, Calendar, Camera, Globe,
   Loader2, Award, BookOpen, ArrowRight, LogOut, Moon, Sun,
 } from "lucide-react"
 
@@ -247,13 +247,6 @@ export default function ProfilePage() {
                 <div className="min-w-0">
                   <dt className="text-xs text-muted-foreground">{t("auth.email")}</dt>
                   <dd className="text-sm font-medium">{user.email}</dd>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 px-4 py-3">
-                <Shield className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
-                <div>
-                  <dt className="text-xs text-muted-foreground">{t("profile.role")}</dt>
-                  <dd className="text-sm font-medium">{t(ROLE_I18N_KEY[user.role])}</dd>
                 </div>
               </div>
               {user.created_at && (
