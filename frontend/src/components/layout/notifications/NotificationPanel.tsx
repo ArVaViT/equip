@@ -54,10 +54,15 @@ export const NotificationPanel = forwardRef<HTMLDivElement, Props>(
         role="region"
         aria-label={t("notifications.panelAriaLabel")}
         className={cn(
-          "absolute top-full z-50 mt-2 overflow-hidden rounded-lg border border-border bg-background shadow-lg",
+          "absolute top-full z-50 mt-2 overflow-hidden rounded-lg border border-border shadow-lg",
+          // Glass effect on the desktop popover only: when the notification
+          // dropdown floats over a busy course/admin page, the frosted layer
+          // separates it from the content underneath without using a hard
+          // shadow alone. Stays solid on the mobile sheet variant — the
+          // sheet already has its own backdrop, doubling up reads as noise.
           isSheet
-            ? "left-0 right-0 z-[60] w-full max-w-none"
-            : "right-0 w-80 sm:w-96",
+            ? "left-0 right-0 z-[60] w-full max-w-none bg-background"
+            : "right-0 w-80 sm:w-96 bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/75",
         )}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
