@@ -56,7 +56,7 @@ export default function CertificatesPage() {
       <Link to="/">
         <Button variant="ghost" size="sm" className="mb-6 h-8 text-xs">
           <ArrowLeft className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
-          {t("certificates.dashboard")}
+          {t("certificates.backToCourses")}
         </Button>
       </Link>
 
