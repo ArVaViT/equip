@@ -17,7 +17,7 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
   const { t } = useTranslation()
   if (certs.length === 0) return null
   return (
-    <Card className="mb-8 border-l-[3px] border-l-warning">
+    <Card className="mb-8 border-l-stripe border-l-warning">
       <CardHeader>
         <CardTitle className="text-xl flex items-center gap-2">
           <Award className="h-5 w-5 text-warning" strokeWidth={1.75} />
@@ -32,7 +32,7 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
           {certs.map((cert) => (
             <div
               key={cert.id}
-              className="flex items-center justify-between rounded-md border border-l-[3px] border-l-warning/60 bg-warning/5 p-4"
+              className="flex items-center justify-between rounded-md border border-l-stripe border-l-warning/60 bg-warning/5 p-4"
             >
               <div className="min-w-0">
                 <p className="font-medium truncate">

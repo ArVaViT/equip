@@ -318,6 +318,14 @@
     overflow-wrap: anywhere;
     word-break: normal;
   }
+  /* Accent stripe — a 3 px left border used as an editorial marker on
+     status cards and rows (pending items, errors, warnings). Replaces
+     the `border-l-[3px]` arbitrary value that was sprinkled across the
+     codebase; pair with `border-l-{semantic-color}` to set the hue.
+     Width-only utility so the color stays a separate concern. */
+  .border-l-stripe {
+    border-left-width: 3px;
+  }
 }
 
 @layer components {
