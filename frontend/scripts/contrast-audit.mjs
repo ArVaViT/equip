@@ -59,7 +59,29 @@ function contrastRatio(hslA, hslB) {
   return (light + 0.05) / (dark + 0.05)
 }
 
+// Compose a translucent surface (foregroundToken at given alpha 0..1) over a
+// solid base. We need this because Tailwind classes like `bg-muted/30` paint
+// 30% of `--muted` on top of whatever is behind — the *effective* background
+// is the alpha-blend, and that's what contrast must be measured against.
+function composeHsl(overlayHsl, alpha, baseHsl) {
+  const [or, og, ob] = hslToRgb(...parseHsl(overlayHsl))
+  const [br, bg, bb] = hslToRgb(...parseHsl(baseHsl))
+  const r = or * alpha + br * (1 - alpha)
+  const g = og * alpha + bg * (1 - alpha)
+  const b = ob * alpha + bb * (1 - alpha)
+  return [r, g, b]
+}
+
+function contrastRatioRgb(rgbA, rgbB) {
+  const lA = relativeLuminance(rgbA)
+  const lB = relativeLuminance(rgbB)
+  const [light, dark] = lA > lB ? [lA, lB] : [lB, lA]
+  return (light + 0.05) / (dark + 0.05)
+}
+
 // Pairs we care about: [foreground token, background token, role, size]
+// A `bgAlpha` entry means the background is `bgToken` painted at that alpha
+// over `bgBase` (default: --background) — composited just like CSS does.
 const PAIRS = [
   ["foreground", "background", "body text on page", "normal"],
   ["muted-foreground", "background", "captions on page", "normal"],
@@ -79,19 +101,46 @@ const PAIRS = [
   ["sidebar-accent-foreground", "sidebar-accent", "sidebar active item", "normal"],
   ["auth-panel-text", "auth-panel-bg", "auth panel body text", "normal"],
   ["auth-panel-text-muted", "auth-panel-bg", "auth panel caption", "normal"],
+  // ----- Translucent overlay surfaces -----
+  // Repeated in the codebase: `bg-muted/30`, `bg-muted/40`, `bg-muted/60`,
+  // `bg-muted/15`, `bg-warning/10`, `bg-destructive/10`, `bg-primary/5`.
+  // We check that body text and captions stay readable on the COMPOSITED
+  // surface — not just on the solid token.
+  { fg: "foreground", bg: "muted", bgAlpha: 0.3, role: "body text on bg-muted/30 over page", size: "normal" },
+  { fg: "foreground", bg: "muted", bgAlpha: 0.4, role: "body text on bg-muted/40 over page", size: "normal" },
+  { fg: "foreground", bg: "muted", bgAlpha: 0.6, role: "body text on bg-muted/60 over page", size: "normal" },
+  { fg: "muted-foreground", bg: "muted", bgAlpha: 0.15, role: "caption on bg-muted/15 over page", size: "normal" },
+  { fg: "muted-foreground", bg: "muted", bgAlpha: 0.3, role: "caption on bg-muted/30 over page", size: "normal" },
+  { fg: "muted-foreground", bg: "muted", bgAlpha: 0.4, role: "caption on bg-muted/40 over page", size: "normal" },
+  { fg: "foreground", bg: "warning", bgAlpha: 0.1, role: "body text on bg-warning/10 over page (pending banner)", size: "normal" },
+  { fg: "foreground", bg: "destructive", bgAlpha: 0.1, role: "body text on bg-destructive/10 over page (error banner)", size: "normal" },
+  { fg: "foreground", bg: "primary", bgAlpha: 0.05, role: "body text on bg-primary/5 over page (selected card)", size: "normal" },
+  { fg: "foreground", bg: "primary", bgAlpha: 0.15, role: "label on bg-primary/15 over page (active toolbar button)", size: "normal" },
+  // Card-context overlays (cards already paint solid --card under the wash).
+  { fg: "foreground", bg: "muted", bgAlpha: 0.3, bgBase: "card", role: "body text on bg-muted/30 over card", size: "normal" },
+  { fg: "muted-foreground", bg: "muted", bgAlpha: 0.15, bgBase: "card", role: "caption on bg-muted/15 over card", size: "normal" },
 ]
 
 const THRESHOLDS = { normal: 4.5, large: 3 }
 
+function normalizePair(p) {
+  if (Array.isArray(p)) {
+    const [fg, bg, role, size] = p
+    return { fg, bg, role, size }
+  }
+  return p
+}
+
 function audit(themeName, tokens) {
   const rows = []
   let failures = 0
-  for (const [fg, bg, role, size] of PAIRS) {
+  for (const raw of PAIRS) {
+    const { fg, bg, role, size, bgAlpha, bgBase } = normalizePair(raw)
     if (!(fg in tokens) || !(bg in tokens)) {
       rows.push({
         role,
         fg,
-        bg,
+        bg: bgAlpha ? `${bg}/${Math.round(bgAlpha * 100)}` : bg,
         ratio: null,
         threshold: THRESHOLDS[size],
         pass: null,
@@ -99,14 +148,36 @@ function audit(themeName, tokens) {
       })
       continue
     }
-    const ratio = contrastRatio(tokens[fg], tokens[bg])
+    let ratio
+    let bgLabel = bg
+    if (typeof bgAlpha === "number") {
+      const baseToken = bgBase ?? "background"
+      if (!(baseToken in tokens)) {
+        rows.push({
+          role,
+          fg,
+          bg: `${bg}/${Math.round(bgAlpha * 100)}`,
+          ratio: null,
+          threshold: THRESHOLDS[size],
+          pass: null,
+          note: `base ${baseToken} missing`,
+        })
+        continue
+      }
+      const composed = composeHsl(tokens[bg], bgAlpha, tokens[baseToken])
+      const fgRgb = hslToRgb(...parseHsl(tokens[fg]))
+      ratio = contrastRatioRgb(fgRgb, composed)
+      bgLabel = `${bg}/${Math.round(bgAlpha * 100)} on --${baseToken}`
+    } else {
+      ratio = contrastRatio(tokens[fg], tokens[bg])
+    }
     const threshold = THRESHOLDS[size]
     const pass = ratio >= threshold
     if (!pass) failures++
     rows.push({
       role,
       fg,
-      bg,
+      bg: bgLabel,
       ratio: ratio.toFixed(2),
       threshold,
       pass,

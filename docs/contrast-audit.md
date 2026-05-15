@@ -27,6 +27,18 @@ AA thresholds: normal text 4.5, large text 3.
 | sidebar active item | `--sidebar-accent-foreground` | `--sidebar-accent` | 9.99 | 4.5 | PASS  |
 | auth panel body text | `--auth-panel-text` | `--auth-panel-bg` | 15.05 | 4.5 | PASS  |
 | auth panel caption | `--auth-panel-text-muted` | `--auth-panel-bg` | 8.17 | 4.5 | PASS  |
+| body text on bg-muted/30 over page | `--foreground` | `--muted/30 on --background` | 15.87 | 4.5 | PASS  |
+| body text on bg-muted/40 over page | `--foreground` | `--muted/40 on --background` | 15.77 | 4.5 | PASS  |
+| body text on bg-muted/60 over page | `--foreground` | `--muted/60 on --background` | 15.57 | 4.5 | PASS  |
+| caption on bg-muted/15 over page | `--muted-foreground` | `--muted/15 on --background` | 6.51 | 4.5 | PASS  |
+| caption on bg-muted/30 over page | `--muted-foreground` | `--muted/30 on --background` | 6.45 | 4.5 | PASS  |
+| caption on bg-muted/40 over page | `--muted-foreground` | `--muted/40 on --background` | 6.41 | 4.5 | PASS  |
+| body text on bg-warning/10 over page (pending banner) | `--foreground` | `--warning/10 on --background` | 14.45 | 4.5 | PASS  |
+| body text on bg-destructive/10 over page (error banner) | `--foreground` | `--destructive/10 on --background` | 13.73 | 4.5 | PASS  |
+| body text on bg-primary/5 over page (selected card) | `--foreground` | `--primary/5 on --background` | 14.80 | 4.5 | PASS  |
+| label on bg-primary/15 over page (active toolbar button) | `--foreground` | `--primary/15 on --background` | 12.27 | 4.5 | PASS  |
+| body text on bg-muted/30 over card | `--foreground` | `--muted/30 on --card` | 16.33 | 4.5 | PASS  |
+| caption on bg-muted/15 over card | `--muted-foreground` | `--muted/15 on --card` | 6.74 | 4.5 | PASS  |
 
 **0** failures in light theme.
 
@@ -53,6 +65,18 @@ AA thresholds: normal text 4.5, large text 3.
 | sidebar active item | `--sidebar-accent-foreground` | `--sidebar-accent` | 5.85 | 4.5 | PASS  |
 | auth panel body text | `--auth-panel-text` | `--auth-panel-bg` | 16.69 | 4.5 | PASS  |
 | auth panel caption | `--auth-panel-text-muted` | `--auth-panel-bg` | 6.60 | 4.5 | PASS  |
+| body text on bg-muted/30 over page | `--foreground` | `--muted/30 on --background` | 16.00 | 4.5 | PASS  |
+| body text on bg-muted/40 over page | `--foreground` | `--muted/40 on --background` | 15.75 | 4.5 | PASS  |
+| body text on bg-muted/60 over page | `--foreground` | `--muted/60 on --background` | 15.23 | 4.5 | PASS  |
+| caption on bg-muted/15 over page | `--muted-foreground` | `--muted/15 on --background` | 5.52 | 4.5 | PASS  |
+| caption on bg-muted/30 over page | `--muted-foreground` | `--muted/30 on --background` | 5.40 | 4.5 | PASS  |
+| caption on bg-muted/40 over page | `--muted-foreground` | `--muted/40 on --background` | 5.32 | 4.5 | PASS  |
+| body text on bg-warning/10 over page (pending banner) | `--foreground` | `--warning/10 on --background` | 14.43 | 4.5 | PASS  |
+| body text on bg-destructive/10 over page (error banner) | `--foreground` | `--destructive/10 on --background` | 15.59 | 4.5 | PASS  |
+| body text on bg-primary/5 over page (selected card) | `--foreground` | `--primary/5 on --background` | 15.63 | 4.5 | PASS  |
+| label on bg-primary/15 over page (active toolbar button) | `--foreground` | `--primary/15 on --background` | 13.25 | 4.5 | PASS  |
+| body text on bg-muted/30 over card | `--foreground` | `--muted/30 on --card` | 15.11 | 4.5 | PASS  |
+| caption on bg-muted/15 over card | `--muted-foreground` | `--muted/15 on --card` | 5.17 | 4.5 | PASS  |
 
 **0** failures in dark theme.
 
