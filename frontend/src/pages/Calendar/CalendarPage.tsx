@@ -1,10 +1,11 @@
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { CalendarDays, Filter, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import PageSpinner from "@/components/ui/PageSpinner";
-import { ErrorState } from "@/components/patterns";
+import { EmptyState, ErrorState } from "@/components/patterns";
 
 import { MonthGrid } from "./MonthGrid";
 import { SelectedDayPanel } from "./SelectedDayPanel";
@@ -58,6 +59,12 @@ export default function CalendarPage() {
     );
   }
 
+  // A student with no enrollments cannot have calendar events. Skip the
+  // empty month grid + empty sidebar (two "no events" blocks stacked) and
+  // show a single page-level empty state that points to the courses
+  // catalog — same pattern as HomePage's noEnrollments empty state.
+  const hasNoEnrollments = enrollments.length === 0 && events.length === 0;
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
@@ -87,29 +94,42 @@ export default function CalendarPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <MonthGrid
-            year={year}
-            month={month}
-            today={new Date()}
-            calendarDays={calendarDays}
-            eventsByDate={eventsByDate}
-            selectedDay={selectedDay}
-            onSelectDay={setSelectedDay}
-            onPrevMonth={prevMonth}
-            onNextMonth={nextMonth}
-            onGoToday={goToday}
-          />
-        </div>
+      {hasNoEnrollments ? (
+        <EmptyState
+          icon={<CalendarDays strokeWidth={1.75} aria-hidden />}
+          title={t("calendar.noEnrollmentsTitle")}
+          description={t("calendar.noEnrollmentsDescription")}
+          action={
+            <Link to="/">
+              <Button size="sm">{t("calendar.browseCourses")}</Button>
+            </Link>
+          }
+        />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <MonthGrid
+              year={year}
+              month={month}
+              today={new Date()}
+              calendarDays={calendarDays}
+              eventsByDate={eventsByDate}
+              selectedDay={selectedDay}
+              onSelectDay={setSelectedDay}
+              onPrevMonth={prevMonth}
+              onNextMonth={nextMonth}
+              onGoToday={goToday}
+            />
+          </div>
 
-        <div className="space-y-4">
-          {selectedDay && (
-            <SelectedDayPanel selectedDay={selectedDay} events={selectedDayEvents} />
-          )}
-          <UpcomingEventsPanel events={upcomingEvents} />
+          <div className="space-y-4">
+            {selectedDay && (
+              <SelectedDayPanel selectedDay={selectedDay} events={selectedDayEvents} />
+            )}
+            <UpcomingEventsPanel events={upcomingEvents} />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
