@@ -66,7 +66,7 @@ export function VerseOfTheDayCard() {
             />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
               {t("home.votd.eyebrow")}
             </p>
             <h2
@@ -89,15 +89,15 @@ export function VerseOfTheDayCard() {
           </div>
         ) : (
           <figure className="space-y-4">
-            <blockquote className="font-serif text-base leading-relaxed text-foreground sm:text-[17px]">
+            <blockquote className="font-serif text-base leading-relaxed text-foreground sm:text-lg">
               &ldquo;{verse.text}&rdquo;
             </blockquote>
-            <figcaption className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs">
+            <figcaption className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-muted-foreground sm:text-xs">
               <cite className="not-italic font-medium text-foreground">
                 {verse.reference}
               </cite>
-              <span className="text-muted-foreground">·</span>
-              <span className="text-muted-foreground">{verse.version}</span>
+              <span aria-hidden>·</span>
+              <span>{verse.version}</span>
             </figcaption>
           </figure>
         )}
