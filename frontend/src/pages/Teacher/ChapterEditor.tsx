@@ -195,28 +195,28 @@ export default function ChapterEditor() {
   )
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      {/* Breadcrumb */}
+    <div className="container mx-auto max-w-4xl px-4 py-6 sm:py-8">
+      {/* Breadcrumb — earlier crumbs hide on mobile to keep one line. */}
       <div className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
-        <Link to="/teacher" className="hover:text-foreground transition-colors">
+        <Link to="/teacher" className="hidden transition-colors hover:text-foreground sm:inline">
           {t("chapterEditor.breadcrumb.myCourses")}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+        <ChevronRight className="hidden h-3.5 w-3.5 sm:inline-block" strokeWidth={1.75} />
         <Link
           to={`/teacher/courses/${courseId}`}
-          className="hover:text-foreground transition-colors"
+          className="hidden transition-colors hover:text-foreground sm:inline"
         >
           {t("chapterEditor.breadcrumb.course")}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+        <ChevronRight className="hidden h-3.5 w-3.5 sm:inline-block" strokeWidth={1.75} />
         <Link
           to={`/teacher/courses/${courseId}/modules/${moduleId}/edit`}
-          className="hover:text-foreground transition-colors"
+          className="min-w-0 truncate transition-colors hover:text-foreground"
         >
           {moduleName}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
-        <span className="text-foreground font-medium truncate max-w-[200px]">
+        <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+        <span className="min-w-0 truncate font-medium text-foreground sm:max-w-[200px]">
           {title || t("chapterEditor.chapterFallback")}
         </span>
       </div>
@@ -336,7 +336,7 @@ export default function ChapterEditor() {
           aria-label and add an explicit `chapterEditor.unsavedChanges`
           status string. */}
       {isDirty && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-4 sm:pb-6">
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-6">
           <Card
             role="status"
             aria-live="polite"

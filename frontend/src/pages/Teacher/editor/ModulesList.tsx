@@ -74,7 +74,7 @@ export function ModulesList({ courseId, modules, onDragEnd, onAdd, onRemove }: P
                       >
                         <div
                           {...dragProvided.dragHandleProps}
-                          className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground shrink-0 transition-colors"
+                          className="-ml-2 flex h-11 w-8 shrink-0 cursor-grab items-center justify-center text-muted-foreground/40 transition-colors hover:text-muted-foreground active:cursor-grabbing sm:h-9"
                           onClick={(e) => e.stopPropagation()}
                           role="button"
                           tabIndex={0}
@@ -96,7 +96,7 @@ export function ModulesList({ courseId, modules, onDragEnd, onAdd, onRemove }: P
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="opacity-60 group-hover:opacity-100 text-destructive hover:text-destructive shrink-0 transition-opacity"
+                          className="h-11 w-11 shrink-0 p-0 text-destructive opacity-100 transition-opacity hover:text-destructive sm:h-9 sm:w-9 sm:opacity-60 sm:group-hover:opacity-100"
                           onClick={(e) => {
                             e.stopPropagation()
                             onRemove(mod.id)

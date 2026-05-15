@@ -212,10 +212,10 @@ export default function TeacherDashboard() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-serif font-bold tracking-tight">{t("teacher.dashboardTitle")}</h1>
-        <Button onClick={() => setShowCreate(!showCreate)} size="sm">
+    <div className="container mx-auto max-w-5xl px-4 py-6 sm:py-8">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 sm:mb-8">
+        <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">{t("teacher.dashboardTitle")}</h1>
+        <Button onClick={() => setShowCreate(!showCreate)} size="sm" className="h-11 sm:h-9">
           <Plus className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
           {t("teacher.newCourse")}
         </Button>
