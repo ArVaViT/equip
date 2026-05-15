@@ -1239,6 +1239,43 @@ def test_grade_essay_answer_recomputes_passed(client: TestClient, student, db: S
     assert graded_list[0]["points_earned"] == 18
 
 
+def test_grade_zero_with_no_comment_clears_pending_queue(client: TestClient, student, db: Session):
+    """A 0-point grade with no comment must still drop out of the pending queue.
+
+    Regression for the bug where the pending-answers filter used
+    ``(grader_comment IS NULL AND points_earned == 0)`` as its
+    "still pending" heuristic — that's exactly what a "graded as 0 with
+    no feedback" row also looks like, so the row would silently reappear
+    on every reload and the teacher could never actually mark a poor
+    essay as zero without inventing a comment.
+    """
+    _seed_course_with_enrollment(db)
+    quiz, _essay, _attempt, essay_answer = _seed_submitted_essay_attempt(db)
+
+    # Pre-state: row visible in the pending queue.
+    pending = client.get(f"/api/v1/quizzes/{quiz.id}/pending-answers").json()
+    assert len(pending) == 1
+    assert pending[0]["answer_id"] == str(essay_answer.id)
+
+    # Grade with the exact ambiguous combo: 0 points, no comment.
+    resp = client.patch(
+        f"/api/v1/quizzes/answers/{essay_answer.id}",
+        json={"points_earned": 0},
+    )
+    assert resp.status_code == 200, resp.text
+
+    # Post-state: row is no longer pending.
+    pending_after = client.get(f"/api/v1/quizzes/{quiz.id}/pending-answers").json()
+    assert pending_after == []
+
+    # And it does show up when the teacher asks for graded rows too.
+    graded = client.get(f"/api/v1/quizzes/{quiz.id}/pending-answers?include_graded=true").json()
+    assert len(graded) == 1
+    assert graded[0]["answer_id"] == str(essay_answer.id)
+    assert graded[0]["points_earned"] == 0
+    assert graded[0]["grader_comment"] is None
+
+
 def test_grade_answer_rejects_points_above_cap(client: TestClient, student, db: Session):
     _seed_course_with_enrollment(db)
     _quiz, _essay, _attempt, essay_answer = _seed_submitted_essay_attempt(db)
