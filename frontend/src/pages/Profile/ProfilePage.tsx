@@ -175,15 +175,18 @@ export default function ProfilePage() {
                 />
               </div>
               <div className="min-w-0 flex-1 space-y-0.5">
+                {/* The user's full name doubles as the page's h1 — every
+                    profile is "about this person", so their name is the
+                    natural document heading. Sub-cards below use CardTitle. */}
                 <InlineEdit
-                  size="h2"
+                  size="h1"
                   value={user.full_name ?? ""}
                   onSave={handleSaveName}
                   required
                   maxLength={150}
                   placeholder={t("profile.fullName")}
                   ariaLabel={t("profile.editName")}
-                  textClassName="tracking-tight"
+                  textClassName="text-xl md:text-2xl tracking-tight"
                 />
                 <CardDescription className="text-sm">{t(ROLE_I18N_KEY[user.role])}</CardDescription>
               </div>
