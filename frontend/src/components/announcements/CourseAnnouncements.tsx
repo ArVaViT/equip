@@ -35,7 +35,7 @@ export default function CourseAnnouncements({ courseId }: Props) {
           <div className="min-w-0 flex-1 text-wrap-safe">
             <h4 className="text-sm font-medium">{a.title}</h4>
             <p className="mt-1 text-xs text-muted-foreground whitespace-pre-line">{a.content}</p>
-            <time className="mt-1 block text-[10px] text-muted-foreground/60">
+            <time className="mt-1 block text-xs text-muted-foreground/60">
               {formatDate(a.created_at)}
             </time>
           </div>

@@ -49,7 +49,7 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
                     <span className={`mt-1 w-2 h-2 rounded-full shrink-0 ${color.dot}`} />
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium ${color.text}`}>{evt.title}</p>
-                      <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
+                      <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
                         <span className="flex items-center gap-0.5">
                           <Clock className="h-2.5 w-2.5" strokeWidth={1.75} />
                           {formatTime(evt.event_date)}
@@ -59,14 +59,14 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
                       {evt.course_title && (
                         <Link
                           to={`/courses/${evt.course_id}`}
-                          className="flex items-center gap-1 mt-1 text-[10px] text-primary hover:underline"
+                          className="flex items-center gap-1 mt-1 text-xs text-primary hover:underline"
                         >
                           <BookOpen className="h-2.5 w-2.5" strokeWidth={1.75} />
                           {evt.course_title}
                         </Link>
                       )}
                       {evt.description && (
-                        <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                           {evt.description}
                         </p>
                       )}
