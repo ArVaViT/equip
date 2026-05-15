@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { useTranslation, Trans } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -21,7 +21,7 @@ import {
   type SortDir,
   type GradeForm,
 } from "./types"
-import { letterColor } from "./helpers"
+import { EMPTY_FORM, letterColor } from "./helpers"
 
 interface Props {
   summary: GradeSummaryResponse | null
@@ -133,7 +133,7 @@ export function SummaryTab({
                   student={student}
                   config={config}
                   manualGrade={manualGrades.get(student.student_id)}
-                  form={forms.get(student.student_id) ?? { grade: "", comment: "" }}
+                  form={forms.get(student.student_id) ?? EMPTY_FORM}
                   expanded={expandedId === student.student_id}
                   saving={saving === student.student_id}
                   onToggleExpand={onToggleExpand}
@@ -201,7 +201,15 @@ interface StudentSummaryRowProps {
   onSaveGrade: (userId: string) => void
 }
 
-function StudentSummaryRow({
+/**
+ * Per-student row. Memoised so a keystroke in one row's override form
+ * (which mutates the parent's `forms` map → re-renders SummaryTab) does
+ * not also re-render every other row. All callback props are stable via
+ * `useCallback` in `TeacherGradebook` and the default `form` is the
+ * shared `EMPTY_FORM` constant, so the shallow-props compare actually
+ * catches.
+ */
+const StudentSummaryRow = memo(function StudentSummaryRow({
   student,
   config,
   manualGrade,
@@ -333,7 +341,7 @@ function StudentSummaryRow({
       )}
     </div>
   )
-}
+})
 
 function BreakdownEntry({
   label,

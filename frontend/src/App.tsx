@@ -119,10 +119,19 @@ function AppRoutes() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
+      {/* Skip link — hidden until focused via Tab. First focusable element on
+          every authenticated page so keyboard / screen-reader users can jump
+          past the persistent Header + banners straight to page content. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        {t("common.skipToContent")}
+      </a>
       <Header />
       {user?.role === ROLES.PENDING_TEACHER && <PendingTeacherBanner />}
       <AnnouncementBanner />
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
         <ErrorBoundary>
           <Suspense fallback={<PageSpinner />}>
             <Routes>

@@ -48,8 +48,15 @@ export function CalloutDropdown({
         setOpen(false);
       }
     };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, [open]);
 
   const insertCallout = (variant: CalloutVariant) => {
@@ -70,39 +77,48 @@ export function CalloutDropdown({
         type="button"
         onClick={() => setOpen((v) => !v)}
         title={t("blockEditor.callout.trigger")}
+        aria-label={t("blockEditor.callout.trigger")}
+        aria-haspopup="menu"
+        aria-expanded={open}
         className={cn(
-          "flex items-center gap-0.5 rounded p-1.5 transition-colors",
+          "flex items-center gap-0.5 rounded p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           isActive
             ? "bg-primary/15 text-primary"
             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
         )}
       >
-        <Info size={iconSize} strokeWidth={1.75} />
-        <ChevronDown size={12} strokeWidth={1.75} />
+        <Info size={iconSize} strokeWidth={1.75} aria-hidden="true" />
+        <ChevronDown size={12} strokeWidth={1.75} aria-hidden="true" />
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-20 mt-1 w-52 rounded-md border bg-background py-1 shadow-lg">
+        <div
+          role="menu"
+          aria-label={t("blockEditor.callout.trigger")}
+          className="absolute left-0 top-full z-20 mt-1 w-52 rounded-md border bg-background py-1 shadow-lg"
+        >
           {CALLOUT_VARIANTS.map((v) => {
             const Icon = v.icon;
             return (
               <button
                 key={v.value}
                 type="button"
+                role="menuitem"
                 onClick={() => insertCallout(v.value)}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left focus-visible:outline-none focus-visible:bg-muted"
               >
-                <Icon size={16} className={v.color} />
+                <Icon size={16} className={v.color} aria-hidden="true" />
                 {t(`blockEditor.callout.${v.value}`)}
               </button>
             );
           })}
           {isActive && (
             <>
-              <div className="my-1 border-t" />
+              <div className="my-1 border-t" role="separator" />
               <button
                 type="button"
+                role="menuitem"
                 onClick={removeCallout}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-muted transition-colors text-left"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-muted transition-colors text-left focus-visible:outline-none focus-visible:bg-muted"
               >
                 {t("blockEditor.callout.remove")}
               </button>

@@ -261,7 +261,9 @@ export default function TeacherDashboard() {
             <div className="mb-4 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
               <Input
+                type="search"
                 placeholder={t("teacher.searchPlaceholder")}
+                aria-label={t("teacher.searchPlaceholder")}
                 value={searchInput}
                 onChange={(e) =>
                   setSearchInput(e.target.value.slice(0, MAX_SEARCH_LEN))

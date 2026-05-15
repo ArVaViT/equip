@@ -11,6 +11,7 @@
     "register": "Register",
     "close": "Close",
     "scrollToTop": "Scroll to top",
+    "skipToContent": "Skip to main content",
     "dismissAnnouncement": "Dismiss announcement"
   },
   "inlineEdit": {
@@ -490,6 +491,7 @@
       "uploadCta": "Upload a file"
     },
     "toolbar": {
+      "ariaLabel": "Text formatting",
       "bold": "Bold",
       "italic": "Italic",
       "heading2": "Heading 2",

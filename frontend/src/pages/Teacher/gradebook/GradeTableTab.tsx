@@ -1,4 +1,4 @@
-import { Fragment, useMemo } from "react"
+import { Fragment, memo, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,7 +15,7 @@ import type {
   StudentProgressData,
   GradeForm,
 } from "./types"
-import { letterColor, chapterTypeIcon } from "./helpers"
+import { EMPTY_FORM, letterColor, chapterTypeIcon } from "./helpers"
 
 interface Props {
   progressData: ProgressResponse | null
@@ -101,7 +101,7 @@ export function GradeTableTab({
                     allChapters={allChapters}
                     studentChapterMap={studentChapterMap}
                     manualGrade={manualGrades.get(student.id)}
-                    form={forms.get(student.id) ?? { grade: "", comment: "" }}
+                    form={forms.get(student.id) ?? EMPTY_FORM}
                     expanded={expandedId === student.id}
                     saving={saving === student.id}
                     onToggleExpand={onToggleExpand}
@@ -185,7 +185,14 @@ interface GradeTableRowProps {
   onSaveGrade: (userId: string) => void
 }
 
-function GradeTableRow({
+/**
+ * One spreadsheet row per student. Memoised so typing in one row's
+ * override-grade form (which is parent state) doesn't rerender every
+ * other row. The row's `studentChapterMap` is the full course-wide map
+ * intentionally — its identity is stable across renders because it lives
+ * in a `useMemo` in `TeacherGradebook`, so referential equality holds.
+ */
+const GradeTableRow = memo(function GradeTableRow({
   student,
   allChapters,
   studentChapterMap,
@@ -292,7 +299,7 @@ function GradeTableRow({
       )}
     </Fragment>
   )
-}
+})
 
 /**
  * Chapter-type specific status cell: quiz score, assignment state, or a
