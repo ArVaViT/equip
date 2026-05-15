@@ -37,7 +37,7 @@ from datetime import UTC, datetime
 
 import pytest
 import sqlalchemy.types as _sa_types
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session  # noqa: TC002  (used at runtime by fixtures)
 
 from app.models.announcement import Announcement
 from app.models.assignment import Assignment
@@ -226,9 +226,7 @@ class TestResolveCourseViaAttr:
 
 
 class TestResolveCourseViaModule:
-    def test_resolves_chapter_to_course_via_relationship(
-        self, db: Session, course: Course, chapter: Chapter
-    ):
+    def test_resolves_chapter_to_course_via_relationship(self, db: Session, course: Course, chapter: Chapter):
         # The relationship is lazy-loaded; trigger it once before the
         # resolver runs to mirror the orchestrator's usage path.
         _ = chapter.module
@@ -324,9 +322,7 @@ class TestResolveCourseViaQuizChapter:
 
 
 class TestResolveCourseViaQuestion:
-    def test_resolves_question_to_course(
-        self, db: Session, course: Course, quiz_question: QuizQuestion
-    ):
+    def test_resolves_question_to_course(self, db: Session, course: Course, quiz_question: QuizQuestion):
         assert _resolve_course_via_question(db, quiz_question) is not None
         assert _resolve_course_via_question(db, quiz_question).id == course.id
 
@@ -349,9 +345,7 @@ class TestResolveCourseViaQuestion:
 
 
 class TestResolveCourseViaOption:
-    def test_resolves_option_to_course(
-        self, db: Session, course: Course, quiz_option: QuizOption
-    ):
+    def test_resolves_option_to_course(self, db: Session, course: Course, quiz_option: QuizOption):
         assert _resolve_course_via_option(db, quiz_option) is not None
         assert _resolve_course_via_option(db, quiz_option).id == course.id
 
@@ -380,9 +374,7 @@ class TestRegistryWiring:
     suite would miss — every resolver function would still be a callable
     of the right shape."""
 
-    def test_announcement_resolves_via_course_id_attr(
-        self, db: Session, course: Course, teacher
-    ):
+    def test_announcement_resolves_via_course_id_attr(self, db: Session, course: Course, teacher):
         from app.services.translation.registry import REGISTRY
 
         ann = Announcement(
@@ -398,9 +390,7 @@ class TestRegistryWiring:
         assert resolved is not None
         assert resolved.id == course.id
 
-    def test_course_event_resolves_via_course_id_attr(
-        self, db: Session, course: Course, teacher
-    ):
+    def test_course_event_resolves_via_course_id_attr(self, db: Session, course: Course, teacher):
         from app.services.translation.registry import REGISTRY
 
         ev = CourseEvent(
@@ -418,9 +408,7 @@ class TestRegistryWiring:
         assert resolved is not None
         assert resolved.id == course.id
 
-    def test_cohort_resolves_via_course_id_attr_and_is_none_for_top_level_cohort(
-        self, db: Session
-    ):
+    def test_cohort_resolves_via_course_id_attr_and_is_none_for_top_level_cohort(self, db: Session):
         """The cohort entry uses ``_resolve_course_via_attr('course_id')``
         but Cohort is a top-level admin entity (ADR-010) that doesn't HAVE
         a ``course_id`` column. The resolver therefore returns None for
