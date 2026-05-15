@@ -131,8 +131,20 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
     setResult(null)
   }
 
+  const answeredCount = sortedQuestions.reduce((count, q) => {
+    const a = answers[q.id]
+    if (!a) return count
+    if (q.question_type === "short_answer" || q.question_type === "essay") {
+      return a.text_answer?.trim() ? count + 1 : count
+    }
+    return a.selected_option_id ? count + 1 : count
+  }, 0)
+  const answerProgress = sortedQuestions.length
+    ? Math.round((answeredCount / sortedQuestions.length) * 100)
+    : 0
+
   return (
-    <div className="border rounded-lg bg-card mt-6">
+    <div className="mt-6 rounded-lg border border-border bg-card">
       <QuizHeader
         quiz={quiz}
         questionCount={sortedQuestions.length}
@@ -159,7 +171,21 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
           )}
         </>
       ) : (
-        <div className="p-5 space-y-6">
+        <div className="space-y-6 p-5">
+          {!attemptsReached && (
+            <div className="flex items-center gap-3" aria-hidden>
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground tabular-nums">
+                {t("quiz.progressEyebrow", { current: answeredCount, total: sortedQuestions.length })}
+              </p>
+              <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out"
+                  style={{ width: `${answerProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           {attemptsReached && (
             <div className="rounded-md border border-border border-l-stripe border-l-warning bg-warning/10 px-3 py-2 text-xs text-foreground">
               {t("quiz.maxAttemptsReached", { type: t(assessmentTypeKey).toLowerCase() })}
@@ -198,7 +224,7 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
             )}
           </Button>
           {!allAnswered && !attemptsReached && (
-            <p className="text-xs text-muted-foreground text-center">
+            <p className="text-center text-xs text-muted-foreground">
               {t("quiz.answerAll")}
             </p>
           )}

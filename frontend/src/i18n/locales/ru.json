@@ -359,6 +359,7 @@
     "submitQuiz": "Отправить тест",
     "submitExam": "Отправить экзамен",
     "answerAll": "Ответьте на все вопросы, чтобы отправить",
+    "progressEyebrow": "{{current}} / {{total}} отвечено",
     "passedTitle": "Зачёт!",
     "notPassedTitle": "Почти",
     "passingScoreLine": "{{percent}}% — проходной балл: {{passing}}%",

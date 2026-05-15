@@ -38,9 +38,9 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
             : "border-l-stripe border-l-destructive"
         }
       >
-        <CardContent className="py-6 text-center">
+        <CardContent className="py-7 text-center">
           {prefersReducedMotion ? (
-            <ResultIcon className={`mx-auto mb-3 h-10 w-10 ${iconColor}`} />
+            <ResultIcon className={`mx-auto mb-3 h-10 w-10 ${iconColor}`} strokeWidth={1.75} aria-hidden />
           ) : (
             <motion.div
               className="mx-auto mb-3 w-fit"
@@ -48,20 +48,21 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", stiffness: 320, damping: 18, delay: 0.05 }}
             >
-              <ResultIcon className={`h-10 w-10 ${iconColor}`} />
+              <ResultIcon className={`h-10 w-10 ${iconColor}`} strokeWidth={1.75} aria-hidden />
             </motion.div>
           )}
-          <h3 className="text-lg font-bold mb-1">
+          <p className={`mb-2 text-xs font-medium uppercase tracking-[0.18em] ${result.passed ? "text-success" : "text-destructive"}`}>
             {result.passed ? t("quiz.passedTitle") : t("quiz.notPassedTitle")}
-          </h3>
-          <p className="text-2xl font-bold mb-1">
-            {result.score ?? 0}/{result.max_score ?? 0}
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="font-serif text-3xl font-semibold tabular-nums tracking-tight">
+            {result.score ?? 0}
+            <span className="text-muted-foreground/60"> / {result.max_score ?? 0}</span>
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground tabular-nums">
             {t("quiz.passingScoreLine", { percent: scorePercent, passing: quiz.passing_score })}
           </p>
           {hasOpenEnded && (
-            <p className="mt-2 text-xs text-warning">
+            <p className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning">
               {t("quiz.pendingTeacherReview")}
             </p>
           )}
@@ -69,7 +70,9 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
       </Card>
 
       <div className="space-y-4">
-        <h4 className="text-sm font-semibold">{t("quiz.reviewAnswers")}</h4>
+        <h4 className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          {t("quiz.reviewAnswers")}
+        </h4>
         <StaggerChildren className="space-y-4">
           {questions.map((q, idx) => {
           const userAnswer = answers[q.id]
@@ -100,11 +103,14 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                     : "border-destructive/30 bg-destructive/5"
               }`}
             >
-              <div className="flex items-start gap-2 mb-2">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
+              <div className="flex items-start gap-3 mb-2">
+                <span
+                  aria-hidden
+                  className="inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded border border-border bg-background px-1 text-xs font-medium tabular-nums text-muted-foreground"
+                >
                   {idx + 1}
                 </span>
-                <p className="min-w-0 flex-1 text-sm font-medium text-wrap-safe whitespace-pre-line">
+                <p className="min-w-0 flex-1 text-sm font-medium leading-relaxed text-wrap-safe whitespace-pre-line">
                   {q.question_text}
                 </p>
                 {isCorrect !== null && (

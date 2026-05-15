@@ -351,6 +351,7 @@
     "submitQuiz": "Submit Quiz",
     "submitExam": "Submit Exam",
     "answerAll": "Answer all questions to submit",
+    "progressEyebrow": "{{current}} / {{total}} answered",
     "passedTitle": "You Passed!",
     "notPassedTitle": "Not Quite",
     "passingScoreLine": "{{percent}}% — Passing score: {{passing}}%",
