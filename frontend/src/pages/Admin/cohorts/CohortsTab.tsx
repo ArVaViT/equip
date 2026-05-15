@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { NativeSelect } from "@/components/ui/native-select"
-import PageSpinner from "@/components/ui/PageSpinner"
+import { Skeleton } from "@/components/ui/skeleton"
 import { cohortsService } from "@/services/cohorts"
 import { formatDate } from "@/i18n/format"
 import type { Cohort } from "@/types"
@@ -92,7 +92,7 @@ export function CohortsTab() {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <PageSpinner />
+          <CohortsTableSkeleton />
         ) : error ? (
           <div className="py-10 text-center">
             <p className="text-sm text-destructive">{error}</p>
@@ -226,6 +226,45 @@ function EmptyCohorts({ hasQuery, onCreate }: { hasQuery: boolean; onCreate: () 
           {t("admin.cohorts.createButton")}
         </Button>
       )}
+    </div>
+  )
+}
+
+/**
+ * Cohort list loading placeholder. Mirrors the table on desktop and the
+ * stacked card list on mobile so the layout doesn't snap when data arrives.
+ */
+function CohortsTableSkeleton() {
+  return (
+    <div aria-busy="true">
+      {/* Mobile stack */}
+      <div className="space-y-2 sm:hidden">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-md border border-border bg-card p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            <div className="mt-3 flex items-center gap-4">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Desktop table */}
+      <div className="hidden overflow-x-auto -mx-6 sm:block">
+        {Array.from({ length: 6 }).map((_, row) => (
+          <div key={row} className="px-6 py-3 border-b flex items-center gap-4">
+            {Array.from({ length: 5 }).map((_, col) => (
+              <Skeleton key={col} className="h-4 flex-1" />
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

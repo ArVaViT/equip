@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import PageSpinner from "@/components/ui/PageSpinner"
+import { Skeleton } from "@/components/ui/skeleton"
 import { FileText, ChevronLeft, ChevronRight } from "lucide-react"
 import type { AuditLogEntry } from "@/types"
 import {
@@ -97,7 +97,7 @@ export function AuditLogTab({
         </CardHeader>
         <CardContent>
           {loading ? (
-            <PageSpinner />
+            <AuditTableSkeleton />
           ) : logs.length === 0 ? (
             <div className="flex flex-col items-center py-16 text-center">
               <FileText className="mb-3 h-12 w-12 text-muted-foreground/40" strokeWidth={1.75} aria-hidden />
@@ -251,6 +251,30 @@ function AuditTable({
           ))}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+/**
+ * Audit-table loading placeholder. Renders 8 ghost rows in the table layout
+ * so column widths don't snap when real data arrives. Calling 8 because that's
+ * the default page size for the audit log.
+ */
+function AuditTableSkeleton() {
+  return (
+    <div className="-mx-6 overflow-x-auto" aria-busy="true">
+      <div className="px-6 py-3 border-b flex gap-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-3 flex-1" />
+        ))}
+      </div>
+      {Array.from({ length: 8 }).map((_, row) => (
+        <div key={row} className="px-6 py-3 border-b flex gap-4 items-center">
+          {Array.from({ length: 5 }).map((_, col) => (
+            <Skeleton key={col} className="h-4 flex-1" />
+          ))}
+        </div>
+      ))}
     </div>
   )
 }
