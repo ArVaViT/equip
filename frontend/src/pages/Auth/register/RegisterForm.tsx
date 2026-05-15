@@ -139,7 +139,7 @@ export function RegisterForm({
                     >
                       {t(r.labelKey)}
                     </span>
-                    <span className="text-[11px] text-muted-foreground text-center leading-tight">
+                    <span className="text-xs text-muted-foreground text-center leading-tight">
                       {t(r.descKey)}
                     </span>
                   </button>
