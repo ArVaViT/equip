@@ -541,6 +541,46 @@ class TestDetachCourse:
         resp = admin_client.delete(f"{COHORT_PREFIX}/{cohort_resp.json()['id']}/courses/test-course-1")
         assert resp.status_code == 204
 
+    def test_re_attach_after_detach_rebinds_orphaned_enrollments(self, admin_client: TestClient, db: Session, student):
+        # Same silent-failure bug as TestRemoveStudent.test_re_add_…,
+        # surfacing through the course junction this time. The student
+        # must stay a cohort member (via a second course) so the
+        # auto-enroll branch fires on re-attach; otherwise re-attach has
+        # no auto-enroll target and the orphan question is moot.
+        # Before the fix, the auto-enroll INSERT collided on the
+        # deterministic PK ``enr-{cohort}-{user}-{course}`` left over from
+        # the previous attach, the IntegrityError was swallowed, and the
+        # student stayed stranded on the re-attached course.
+        _seed_course(db, course_id="course-1")
+        _seed_course(db, course_id="course-2")
+        cohort = _seed_cohort_with_course(db, course_id="course-1")
+        _attach_course_via_junction(db, cohort.id, "course-2")
+        # Student is enrolled in BOTH courses through the cohort.
+        _seed_enrollment(db, course_id="course-1", cohort_id=cohort.id)
+        _seed_enrollment(db, course_id="course-2", cohort_id=cohort.id)
+
+        # Detach course-1 → that one enrollment's cohort_id becomes NULL.
+        resp = admin_client.delete(f"{COHORT_PREFIX}/{cohort.id}/courses/course-1")
+        assert resp.status_code == 204
+        orphan = db.query(Enrollment).filter(Enrollment.user_id == STUDENT_ID, Enrollment.course_id == "course-1").one()
+        assert orphan.cohort_id is None
+
+        # Re-attach course-1. The student is still a cohort member via
+        # course-2, so they're in ``all_cohort_users`` and the auto-enroll
+        # loop runs for them. Must rebind the orphan, not no-op.
+        resp = admin_client.post(f"{COHORT_PREFIX}/{cohort.id}/courses", json={"course_id": "course-1"})
+        assert resp.status_code == 201
+
+        rebound = (
+            db.query(Enrollment).filter(Enrollment.user_id == STUDENT_ID, Enrollment.course_id == "course-1").one()
+        )
+        assert rebound.cohort_id == cohort.id
+        # No duplicate row was created.
+        assert (
+            db.query(Enrollment).filter(Enrollment.user_id == STUDENT_ID, Enrollment.course_id == "course-1").count()
+            == 1
+        )
+
 
 class TestAddStudent:
     def test_add_by_user_id_auto_enrolls_in_all_cohort_courses(self, admin_client: TestClient, db: Session, student):
@@ -597,6 +637,34 @@ class TestRemoveStudent:
         surviving = db.query(Enrollment).filter(Enrollment.user_id == STUDENT_ID).all()
         assert len(surviving) == 1
         assert surviving[0].cohort_id is None
+
+    def test_re_add_after_remove_rebinds_orphaned_enrollment(self, admin_client: TestClient, db: Session, student):
+        # Reproduces a silent-failure bug: ``add_student`` used to INSERT a
+        # row with the deterministic PK ``enr-{cohort}-{user}-{course}``,
+        # which collides with the orphaned row left behind by
+        # ``remove_student`` (the surviving row has ``cohort_id=NULL`` but
+        # the same PK). The IntegrityError was swallowed and the student
+        # was never actually re-attached to the cohort.
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        _seed_enrollment(db, course_id="test-course-1", cohort_id=cohort.id)
+
+        # Remove → row stays with cohort_id NULL.
+        resp = admin_client.delete(f"{COHORT_PREFIX}/{cohort.id}/students/{STUDENT_ID}")
+        assert resp.status_code == 204
+        assert (
+            db.query(Enrollment).filter(Enrollment.user_id == STUDENT_ID, Enrollment.cohort_id.is_(None)).count() == 1
+        )
+
+        # Re-add should rebind that orphaned row, not silently no-op.
+        resp = admin_client.post(f"{COHORT_PREFIX}/{cohort.id}/students", json={"user_id": str(STUDENT_ID)})
+        assert resp.status_code == 201
+
+        # Exactly one enrollment, now attached to the cohort.
+        all_rows = db.query(Enrollment).filter(Enrollment.user_id == STUDENT_ID).all()
+        assert len(all_rows) == 1
+        assert all_rows[0].cohort_id == cohort.id
+        assert all_rows[0].course_id == "test-course-1"
 
 
 class TestCohortStudents:

@@ -282,15 +282,37 @@ def attach_course(
             Enrollment.course_id == course.id,
         )
     }
-    for user_id in all_cohort_users - already_enrolled:
-        db.add(
-            Enrollment(
-                id=f"enr-{cohort.id}-{user_id}-{course.id}",
-                user_id=user_id,
-                course_id=course.id,
-                cohort_id=cohort.id,
+    # When a course was previously attached and detached, the per-student
+    # enrollment rows survive with ``cohort_id`` nulled (see
+    # ``detach_course``). Re-attaching must rebind those orphaned rows
+    # rather than INSERT new ones — the deterministic PK
+    # ``enr-{cohort}-{user}-{course}`` would otherwise collide and the
+    # IntegrityError below would swallow the failure silently, leaving
+    # the student unattached to the freshly re-attached course.
+    missing_user_ids = all_cohort_users - already_enrolled
+    if missing_user_ids:
+        rebound = (
+            db.query(Enrollment)
+            .filter(
+                Enrollment.user_id.in_(missing_user_ids),
+                Enrollment.course_id == course.id,
+                Enrollment.cohort_id.is_(None),
             )
+            .all()
         )
+        rebound_users = set()
+        for row in rebound:
+            row.cohort_id = cohort.id
+            rebound_users.add(row.user_id)
+        for user_id in missing_user_ids - rebound_users:
+            db.add(
+                Enrollment(
+                    id=f"enr-{cohort.id}-{user_id}-{course.id}",
+                    user_id=user_id,
+                    course_id=course.id,
+                    cohort_id=cohort.id,
+                )
+            )
 
     try:
         db.commit()
@@ -431,17 +453,39 @@ def add_student(
             )
 
     course_ids = _course_ids_for_cohort(db, cohort.id)
-    for course_id in course_ids:
-        if course_id in already_enrolled_courses:
-            continue
-        db.add(
-            Enrollment(
-                id=f"enr-{cohort.id}-{user.id}-{course_id}",
-                user_id=user.id,
-                course_id=course_id,
-                cohort_id=cohort.id,
+    missing_course_ids = [cid for cid in course_ids if cid not in already_enrolled_courses]
+
+    # A student that was previously removed via ``remove_student`` has
+    # surviving enrollment rows with ``cohort_id`` nulled. Re-adding must
+    # rebind those rows rather than INSERT new ones — the deterministic
+    # PK ``enr-{cohort}-{user}-{course}`` would otherwise collide and the
+    # IntegrityError below would swallow the failure silently, returning
+    # 201 while the student stays detached from the cohort.
+    if missing_course_ids:
+        rebound = (
+            db.query(Enrollment)
+            .filter(
+                Enrollment.user_id == user.id,
+                Enrollment.course_id.in_(missing_course_ids),
+                Enrollment.cohort_id.is_(None),
             )
+            .all()
         )
+        rebound_courses = set()
+        for row in rebound:
+            row.cohort_id = cohort.id
+            rebound_courses.add(row.course_id)
+        for course_id in missing_course_ids:
+            if course_id in rebound_courses:
+                continue
+            db.add(
+                Enrollment(
+                    id=f"enr-{cohort.id}-{user.id}-{course_id}",
+                    user_id=user.id,
+                    course_id=course_id,
+                    cohort_id=cohort.id,
+                )
+            )
 
     try:
         db.commit()
