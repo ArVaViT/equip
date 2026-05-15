@@ -990,6 +990,43 @@ class TestTeacherCompleteChapter:
         )
         assert r.status_code == 403
 
+    def test_idempotent_when_progress_pre_exists_not_yet_complete(self, client: TestClient, db: Session):
+        """Edge case: a row exists from a prior student action
+        (e.g. they started a quiz but never passed) but isn't yet
+        marked complete. The teacher's ``complete`` call must
+        promote that row in place, not crash and not create a
+        duplicate. This is the "happy path" cousin of the race
+        regression — both go through ``except IntegrityError`` if
+        the SELECT-then-INSERT timing lines up wrong.
+        """
+        _seed_enrolled_course(db)
+        # A prior writer left an incomplete row behind.
+        db.add(
+            ChapterProgress(
+                user_id=STUDENT_ID,
+                chapter_id="course-1-ch",
+                completed=False,
+                completion_type="self",
+            )
+        )
+        db.commit()
+
+        r = client.put(
+            f"/api/v1/progress/chapter/course-1-ch/student/{STUDENT_ID}/complete",
+        )
+        assert r.status_code == 200, r.text
+        rows = (
+            db.query(ChapterProgress)
+            .filter(
+                ChapterProgress.user_id == STUDENT_ID,
+                ChapterProgress.chapter_id == "course-1-ch",
+            )
+            .all()
+        )
+        assert len(rows) == 1
+        assert rows[0].completed is True
+        assert rows[0].completion_type == "teacher"
+
 
 class TestTeacherIncompleteChapter:
     """PUT /api/v1/progress/chapter/{chapter_id}/student/{student_id}/incomplete"""
