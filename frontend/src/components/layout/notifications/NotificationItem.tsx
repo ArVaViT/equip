@@ -58,7 +58,7 @@ export function NotificationItem({ notification, onActivate, onDelete }: Props) 
             {notification.message}
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground/70">
-            {timeAgo(notification.created_at)}
+            {timeAgo(notification.created_at, t)}
           </p>
         </div>
       </button>
