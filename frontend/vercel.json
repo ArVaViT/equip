@@ -20,6 +20,10 @@
         {
           "key": "Strict-Transport-Security",
           "value": "max-age=31536000; includeSubDomains"
+        },
+        {
+          "key": "Content-Security-Policy-Report-Only",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://rrisqutxlkamwfhcashl.supabase.co; font-src 'self' data:; connect-src 'self' https://api.equipbible.com https://rrisqutxlkamwfhcashl.supabase.co wss://rrisqutxlkamwfhcashl.supabase.co https://*.datadoghq.com https://*.browser-intake-datadoghq.com; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; worker-src 'self' blob:"
         }
       ]
     }
