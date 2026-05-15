@@ -40,8 +40,29 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.http import get_client_ip
 
+# Per-endpoint overrides. Resolution is a longest-prefix-style ``startswith``
+# (see ``_resolve_limit``), so any sub-route inherits the bucket of the closest
+# matching prefix. Pick conservative ceilings for unauthenticated routes and
+# anything that can be enumerated or that fans out to a paid upstream API.
+#
+# Limits in (max_calls, window_seconds) per client IP per bucket.
 ENDPOINT_LIMITS: dict[str, tuple[int, int]] = {
+    # Authenticated identity probe. Tight to keep token-brute attempts pricy.
+    # Frontend hits this once per page load + on auth state change, so 10/min
+    # is comfortably above legitimate usage.
     "/api/v1/auth/": (10, 60),
+    # Unauthenticated certificate-number lookup. Each call enumerates one
+    # value; cap at 30/min/IP so the verify page stays usable for the
+    # legitimate share-your-credential flow while making bulk enumeration
+    # impractical. Certificate numbers are random UUIDs already, so the cap
+    # is defence-in-depth, not the primary control.
+    "/api/v1/certificates/verify/": (30, 60),
+    # Verse-of-the-day proxies through an upstream Bible API on cache miss.
+    # The route is unauthenticated so it shows up on the marketing page in
+    # the future; 60/min/IP is well above the once-per-page-load real use
+    # case and prevents trivial cost-amplification attacks against the
+    # upstream quota.
+    "/api/v1/verse-of-the-day": (60, 60),
 }
 
 MAX_BUCKETS = 10_000
