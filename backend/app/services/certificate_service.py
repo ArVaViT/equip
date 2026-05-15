@@ -91,6 +91,23 @@ def _assert_status(cert: Certificate, expected: str | tuple[str, ...]) -> None:
         )
 
 
+def _assert_not_self_approval(cert: Certificate, approver: User) -> None:
+    """Refuse approval / issuance when the approver is the certificate recipient.
+
+    A teacher who owns a course satisfies ``assert_course_owner``, and an
+    admin satisfies ``require_admin`` — but neither check stops them from
+    being the *student* whose certificate is being signed off. That path
+    would let a course owner enroll in their own course, request a cert,
+    and self-sign it; or an admin to issue their own cert with no second
+    pair of eyes. Both undermine the two-stage approval design.
+    """
+    if str(cert.user_id) == str(approver.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You cannot approve or issue your own certificate",
+        )
+
+
 def _status_error_message(cert: Certificate, allowed: tuple[str, ...]) -> str:
     if allowed == ("pending",):
         return f"Certificate is not pending (current status: {cert.status})"
@@ -102,6 +119,7 @@ def _status_error_message(cert: Certificate, allowed: tuple[str, ...]) -> str:
 def teacher_approve(db: Session, cert_id: UUID, teacher: User, request: Request) -> Certificate:
     cert = _load_cert_or_404(db, cert_id, for_update=True)
     _assert_status(cert, "pending")
+    _assert_not_self_approval(cert, teacher)
 
     ownership_detail = "You can only approve certificates for your own courses"
     course = _load_active_course_or_403(db, cert.course_id, ownership_detail=ownership_detail)
@@ -128,6 +146,7 @@ def teacher_approve(db: Session, cert_id: UUID, teacher: User, request: Request)
 def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> Certificate:
     cert = _load_cert_or_404(db, cert_id, for_update=True)
     _assert_status(cert, "teacher_approved")
+    _assert_not_self_approval(cert, admin)
 
     cert.status = "approved"
     cert.certificate_number = generate_certificate_number()

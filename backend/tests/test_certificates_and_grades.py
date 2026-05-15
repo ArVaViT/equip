@@ -361,6 +361,33 @@ class TestTeacherApproveCertificate:
         r = student_client.put(f"/api/v1/certificates/{cert.id}/teacher-approve")
         assert r.status_code == 403
 
+    def test_self_approval_forbidden(self, client: TestClient, db: Session):
+        """A teacher cannot teacher-approve a certificate issued to themselves.
+
+        Regression: ``assert_course_owner`` passes when the teacher owns the
+        course, and nothing else stopped the same teacher from being both
+        approver and recipient. That collapses the two-stage approval
+        check into a single self-signed action.
+        """
+        _seed_course(db)  # course-1 owned by TEACHER_ID
+        # Enroll TEACHER_ID in their own course as a "student".
+        db.add(
+            Enrollment(
+                id="enroll-self",
+                user_id=TEACHER_ID,
+                course_id="course-1",
+                progress=100,
+            )
+        )
+        cert = Certificate(user_id=TEACHER_ID, course_id="course-1", status="pending")
+        db.add(cert)
+        db.commit()
+        db.refresh(cert)
+
+        r = client.put(f"/api/v1/certificates/{cert.id}/teacher-approve")
+        assert r.status_code == 403
+        assert "own" in r.json()["detail"].lower()
+
 
 class TestAdminApproveCertificate:
     """PUT /api/v1/certificates/{cert_id}/admin-approve"""
@@ -394,6 +421,36 @@ class TestAdminApproveCertificate:
         _make_admin(db)
         r = client.put(f"/api/v1/certificates/{uuid.uuid4()}/admin-approve")
         assert r.status_code == 404
+
+    def test_admin_self_approval_forbidden(self, client: TestClient, db: Session):
+        """Admin cannot issue a certificate where they are the recipient.
+
+        Regression: ``require_admin`` only checks the role, not whether
+        the admin is the certificate's user. Without this guard a single
+        admin account could complete the entire approve → issue path.
+        """
+        _make_admin(db)
+        _seed_course(db)  # course-1 owned by TEACHER_ID == the admin
+        db.add(
+            Enrollment(
+                id="enroll-self-admin",
+                user_id=TEACHER_ID,
+                course_id="course-1",
+                progress=100,
+            )
+        )
+        cert = Certificate(
+            user_id=TEACHER_ID,
+            course_id="course-1",
+            status="teacher_approved",
+        )
+        db.add(cert)
+        db.commit()
+        db.refresh(cert)
+
+        r = client.put(f"/api/v1/certificates/{cert.id}/admin-approve")
+        assert r.status_code == 403
+        assert "own" in r.json()["detail"].lower()
 
 
 class TestRejectCertificate:
