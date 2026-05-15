@@ -92,7 +92,7 @@ function CourseCard({ course, style }: CourseCardProps) {
           {course.title}
         </CardTitle>
         {course.description && (
-          <CardDescription className="line-clamp-2 text-xs leading-relaxed text-wrap-safe">
+          <CardDescription className="line-clamp-2 text-sm leading-relaxed text-wrap-safe sm:text-xs">
             {course.description}
           </CardDescription>
         )}
