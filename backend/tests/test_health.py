@@ -31,3 +31,28 @@ def test_health_returns_ok():
         resp = tc.get("/health")
     assert resp.status_code == 200
     assert resp.json() == {"status": "ok"}
+
+
+def test_response_includes_x_request_id_header():
+    """Every response must carry an ``X-Request-Id`` header so a user
+    reporting a bug can quote it and we can pivot from a single browser
+    session straight to the backend log line. Outside Vercel (here in
+    the test client) the middleware mints a UUID hex so the field is
+    always populated."""
+    with TestClient(app) as tc:
+        resp = tc.get("/health")
+    assert resp.status_code == 200
+    request_id = resp.headers.get("X-Request-Id")
+    assert request_id, "X-Request-Id must be set on every response"
+    # UUID hex (32 hex chars) when generated locally; Vercel ids look
+    # like ``iad1::abc123`` so we only sanity-check non-emptiness here.
+    assert len(request_id) >= 16
+
+
+def test_response_echoes_vercel_request_id_when_present():
+    """When Vercel forwards ``x-vercel-id`` we surface it verbatim
+    instead of minting our own, so the value matches what the Vercel
+    log viewer already shows for the same request."""
+    with TestClient(app) as tc:
+        resp = tc.get("/health", headers={"x-vercel-id": "iad1::test-abc-123"})
+    assert resp.headers.get("X-Request-Id") == "iad1::test-abc-123"
