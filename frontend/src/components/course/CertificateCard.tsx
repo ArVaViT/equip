@@ -153,22 +153,27 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
         <CardContent className="space-y-5 py-6">
           <div className="flex items-start gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-accent/15">
-              <Award className="h-6 w-6 text-accent" strokeWidth={1.75} />
+              <Award className="h-6 w-6 text-accent" strokeWidth={1.75} aria-hidden />
             </div>
-            <div className="min-w-0 flex-1 space-y-3">
+            <div className="min-w-0 flex-1 space-y-4">
               <div>
-                <div className="mb-1 flex items-center gap-2">
-                  <h3 className="font-serif text-lg font-semibold">{t("certificates.card.approvedTitle")}</h3>
-                  <Sparkles className="h-4 w-4 text-accent" strokeWidth={1.75} />
-                </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-accent">
+                  <Sparkles className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                  {t("certificates.card.approvedEyebrow")}
+                </p>
+                <h3 className="font-serif text-xl font-semibold tracking-tight">
+                  {t("certificates.card.approvedTitle")}
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
                   {t("certificates.card.approvedDescription")}
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-4">
+              <div className="grid gap-4 rounded-md border border-border bg-muted/20 p-4 sm:grid-cols-2">
                 <div>
-                  <p className="mb-0.5 text-xs text-muted-foreground">{t("certificates.card.certificateNumber")}</p>
+                  <p className="mb-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    {t("certificates.card.certificateNumber")}
+                  </p>
                   <div className="flex items-center gap-2">
                     <code className="select-all rounded border border-border bg-background px-2.5 py-1 font-mono text-sm">
                       {certificate.certificate_number}
@@ -189,7 +194,9 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
                   </div>
                 </div>
                 <div>
-                  <p className="mb-0.5 text-xs text-muted-foreground">{t("certificates.card.issueDate")}</p>
+                  <p className="mb-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    {t("certificates.card.issueDate")}
+                  </p>
                   <p className="text-sm font-medium">
                     {certificate.issued_at
                       ? formatDateLong(certificate.issued_at)
@@ -202,7 +209,10 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
 
           {user && !reviewDone && (
             <div className="space-y-3 border-t border-border pt-5">
-              <h4 className="text-sm font-medium">{t("certificates.card.review.heading")}</h4>
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                {t("certificates.card.review.eyebrow")}
+              </p>
+              <h4 className="font-serif text-base font-semibold tracking-tight">{t("certificates.card.review.heading")}</h4>
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((value) => (
                   <button
