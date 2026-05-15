@@ -24,10 +24,10 @@ import QuizTaker from "@/components/quiz/QuizTaker"
 import AssignmentPanel from "@/components/assignment/AssignmentPanel"
 import { PressFeedback } from "@/components/motion"
 import {
+  getChapterTypeMeta,
   isGradableChapterType,
   normalizeChapterType,
 } from "@/lib/chapterTypes"
-import ChapterTypeBadge from "@/components/course/ChapterTypeBadge"
 import { ErrorState } from "@/components/patterns"
 
 const BlockRenderer = memo(function BlockRenderer({
@@ -116,15 +116,23 @@ function FileBlockLink({
       type="button"
       onClick={handleClick}
       disabled={opening}
-      className="inline-flex min-h-[44px] items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-muted/50 disabled:opacity-60 sm:min-h-0"
+      className="group flex w-full items-center gap-3 rounded-md border border-border bg-card px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-muted/40 disabled:opacity-60"
+      aria-label={t("chapter.downloadFileAria", { name: label })}
     >
-      {opening ? (
-        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" strokeWidth={1.75} aria-hidden />
-      ) : (
-        <File className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden />
-      )}
-      <span className="break-all">{label}</span>
-      <Download className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted">
+        {opening ? (
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" strokeWidth={1.75} aria-hidden />
+        ) : (
+          <File className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          {t("chapter.attachmentEyebrow")}
+        </p>
+        <p className="mt-0.5 truncate text-sm font-medium text-foreground">{label}</p>
+      </div>
+      <Download className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" strokeWidth={1.75} aria-hidden />
     </button>
   )
 }
@@ -148,9 +156,11 @@ function ChapterBodyBlocks({
   if (loading) return <PageSpinner variant="section" />
   if (blocks.length === 0) {
     return (
-      <p className="text-muted-foreground text-center py-8">
-        {t("chapter.emptyContent")}
-      </p>
+      <div className="rounded-md border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
+        <p className="text-sm text-muted-foreground">
+          {t("chapter.emptyContent")}
+        </p>
+      </div>
     )
   }
   return (
@@ -168,6 +178,83 @@ function ChapterBodyBlocks({
         </div>
       ))}
     </div>
+  )
+}
+
+function ChapterNavLink({
+  side,
+  chapter,
+  courseId,
+  moduleId,
+  locked,
+}: {
+  side: "prev" | "next"
+  chapter: Chapter | null
+  courseId?: string
+  moduleId?: string
+  locked?: boolean
+}) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const eyebrow = side === "prev" ? t("chapter.prevEyebrow") : t("chapter.nextEyebrow")
+  const fallbackLabel = side === "prev" ? t("chapter.prevChapter") : t("chapter.nextChapter")
+  const alignment = side === "prev" ? "text-left" : "text-right"
+  const justify = side === "prev" ? "justify-start" : "justify-end"
+
+  const disabledClass =
+    "flex min-w-0 flex-1 cursor-not-allowed flex-col rounded-md border border-border bg-muted/20 px-3 py-2 opacity-60"
+  const enabledClass =
+    "group flex min-w-0 flex-1 flex-col rounded-md border border-border bg-card px-3 py-2 transition-colors hover:border-primary/40 hover:bg-muted/30"
+
+  if (!chapter) {
+    return (
+      <div className={`${disabledClass} ${alignment}`} aria-hidden="true">
+        <span className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground ${justify}`}>
+          {side === "prev" && <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.75} />}
+          {eyebrow}
+          {side === "next" && <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />}
+        </span>
+        <span className="mt-0.5 truncate text-sm text-muted-foreground/70">
+          {fallbackLabel}
+        </span>
+      </div>
+    )
+  }
+
+  if (locked) {
+    return (
+      <div className={`${disabledClass} ${alignment}`} aria-label={fallbackLabel}>
+        <span className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground ${justify}`}>
+          <Lock className="h-3.5 w-3.5" strokeWidth={1.75} />
+          {eyebrow}
+        </span>
+        <span className="mt-0.5 truncate text-sm font-medium text-muted-foreground">
+          {chapter.title}
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <PressFeedback className="flex min-w-0 flex-1">
+      <button
+        type="button"
+        onClick={() =>
+          navigate(`/courses/${courseId}/modules/${moduleId}/chapters/${chapter.id}`)
+        }
+        className={`${enabledClass} ${alignment}`}
+        aria-label={`${eyebrow}: ${chapter.title}`}
+      >
+        <span className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors group-hover:text-primary ${justify}`}>
+          {side === "prev" && <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.75} />}
+          {eyebrow}
+          {side === "next" && <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />}
+        </span>
+        <span className="mt-0.5 truncate text-sm font-medium text-foreground">
+          {chapter.title}
+        </span>
+      </button>
+    </PressFeedback>
   )
 }
 
@@ -189,63 +276,31 @@ function ChapterNav({
   isNextLocked: boolean
 }) {
   const { t } = useTranslation()
-  const navigate = useNavigate()
-
-  const navBtn = "h-11 gap-2 sm:h-10"
-  const prevLabel = t("chapter.prevChapter")
-  const nextLabel = t("chapter.nextChapter")
 
   return (
-    <div className="mt-8 flex items-center justify-between gap-2 border-t pt-6">
-      {prevChapter ? (
-        <PressFeedback>
-          <Button
-            variant="outline"
-            onClick={() => navigate(`/courses/${courseId}/modules/${moduleId}/chapters/${prevChapter.id}`)}
-            className={navBtn}
-            aria-label={prevLabel}
-          >
-            <ArrowLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            <span className="hidden sm:inline">{prevLabel}</span>
-          </Button>
-        </PressFeedback>
-      ) : (
-        <Button variant="outline" disabled className={navBtn} aria-label={prevLabel}>
-          <ArrowLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-          <span className="hidden sm:inline">{prevLabel}</span>
-        </Button>
-      )}
-
-      <span className="text-xs font-medium tabular-nums text-muted-foreground">
-        {currentIdx + 1}/{total}
-      </span>
-
-      {nextChapter ? (
-        isNextLocked ? (
-          <Button variant="outline" disabled className={navBtn} aria-label={nextLabel}>
-            <Lock className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            <span className="hidden sm:inline">{nextLabel}</span>
-          </Button>
-        ) : (
-          <PressFeedback>
-            <Button
-              variant="outline"
-              onClick={() => navigate(`/courses/${courseId}/modules/${moduleId}/chapters/${nextChapter.id}`)}
-              className={navBtn}
-              aria-label={nextLabel}
-            >
-              <span className="hidden sm:inline">{nextLabel}</span>
-              <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            </Button>
-          </PressFeedback>
-        )
-      ) : (
-        <Button variant="outline" disabled className={navBtn} aria-label={nextLabel}>
-          <span className="hidden sm:inline">{nextLabel}</span>
-          <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-        </Button>
-      )}
-    </div>
+    <nav
+      aria-label={t("chapter.navAriaLabel")}
+      className="mt-10 border-t border-border pt-6"
+    >
+      <p className="mb-3 text-center text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground tabular-nums">
+        {t("chapter.positionEyebrow", { current: currentIdx + 1, total })}
+      </p>
+      <div className="flex items-stretch gap-2 sm:gap-3">
+        <ChapterNavLink
+          side="prev"
+          chapter={prevChapter}
+          courseId={courseId}
+          moduleId={moduleId}
+        />
+        <ChapterNavLink
+          side="next"
+          chapter={nextChapter}
+          courseId={courseId}
+          moduleId={moduleId}
+          locked={isNextLocked}
+        />
+      </div>
+    </nav>
   )
 }
 
@@ -409,6 +464,8 @@ export default function ChapterView() {
   }
 
   const chapterType = normalizeChapterType(chapter.chapter_type)
+  const chapterTypeMeta = getChapterTypeMeta(chapterType)
+  const ChapterTypeIcon = chapterTypeMeta.icon
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-3xl">
@@ -419,20 +476,31 @@ export default function ChapterView() {
         </Button>
       </Link>
 
-      <div className="mb-8">
-        <div className="mb-3">
-          <ChapterTypeBadge type={chapterType} />
-        </div>
-        <h1 className="mb-1 font-serif text-3xl font-bold tracking-tight text-wrap-safe">
+      <header className="mb-10">
+        <p className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <ChapterTypeIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+            {t(`chapterTypes.${chapterType}.label`)}
+          </span>
+          <span aria-hidden className="text-muted-foreground/40">·</span>
+          <span className="tabular-nums">
+            {t("chapter.positionEyebrow", { current: currentIdx + 1, total: sortedChapters.length })}
+          </span>
+          {mod.title && (
+            <>
+              <span aria-hidden className="text-muted-foreground/40">·</span>
+              <span className="normal-case tracking-normal text-muted-foreground/80 text-wrap-safe">
+                {mod.title}
+              </span>
+            </>
+          )}
+        </p>
+        <h1 className="font-serif text-3xl font-semibold tracking-tight text-wrap-safe sm:text-4xl">
           {chapter.title}
         </h1>
-        <p className="text-sm text-muted-foreground text-wrap-safe">
-          {t("chapter.chapterOf", { current: currentIdx + 1, total: sortedChapters.length })}
-          {mod.title && <> &middot; {mod.title}</>}
-        </p>
-      </div>
+      </header>
 
-      <div className="mb-8 space-y-6">
+      <div className="mb-10 space-y-6">
         {chapterType === "reading" && (
           <ChapterBodyBlocks
             loading={loadingBlocks}
@@ -456,15 +524,15 @@ export default function ChapterView() {
       </div>
 
       {hasAssignments && (
-        <div className="mt-6 pt-4 border-t">
+        <div className="mt-6 border-t border-border pt-5">
           {isCompleted ? (
-            <p className="flex items-center gap-2 text-sm text-success">
-              <CheckCircle className="h-4 w-4" strokeWidth={1.75} />
+            <p className="flex items-center gap-2 text-sm font-medium text-success">
+              <CheckCircle className="h-4 w-4 shrink-0" strokeWidth={1.75} />
               {t("chapter.completed")}
             </p>
           ) : (
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <Circle className="h-4 w-4" strokeWidth={1.75} />
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Circle className="h-4 w-4 shrink-0" strokeWidth={1.75} />
               {t("chapter.submitAssignmentToComplete")}
             </p>
           )}

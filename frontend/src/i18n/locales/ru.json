@@ -340,12 +340,18 @@
     "lockedHint": "Завершите предыдущую главу, чтобы открыть эту.",
     "goToPreviousChapter": "К предыдущей главе",
     "chapterOf": "Глава {{current}} из {{total}}",
+    "positionEyebrow": "Глава {{current}} из {{total}}",
     "emptyContent": "В этой главе пока нет материалов.",
     "prevChapter": "Предыдущая глава",
     "nextChapter": "Следующая глава",
+    "prevEyebrow": "Назад",
+    "nextEyebrow": "Далее",
+    "navAriaLabel": "Навигация по главам",
     "completed": "Завершено",
     "submitAssignmentToComplete": "Отправьте задание, чтобы завершить главу",
-    "downloadFile": "Скачать файл"
+    "downloadFile": "Скачать файл",
+    "downloadFileAria": "Скачать вложение: {{name}}",
+    "attachmentEyebrow": "Вложение"
   },
   "quiz": {
     "exam": "Экзамен",

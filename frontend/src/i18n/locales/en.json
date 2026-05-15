@@ -332,12 +332,18 @@
     "lockedHint": "Complete the previous chapter to unlock this one.",
     "goToPreviousChapter": "Go to Previous Chapter",
     "chapterOf": "Chapter {{current}} of {{total}}",
+    "positionEyebrow": "Chapter {{current}} of {{total}}",
     "emptyContent": "No content has been added to this chapter yet.",
     "prevChapter": "Previous Chapter",
     "nextChapter": "Next Chapter",
+    "prevEyebrow": "Previous",
+    "nextEyebrow": "Next",
+    "navAriaLabel": "Chapter navigation",
     "completed": "Completed",
     "submitAssignmentToComplete": "Submit the assignment to complete this chapter",
-    "downloadFile": "Download file"
+    "downloadFile": "Download file",
+    "downloadFileAria": "Download attachment: {{name}}",
+    "attachmentEyebrow": "Attachment"
   },
   "quiz": {
     "exam": "Exam",
