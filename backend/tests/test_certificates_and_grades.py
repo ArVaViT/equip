@@ -565,6 +565,58 @@ class TestVerifyCertificate:
         assert r.json()["valid"] is False
 
 
+class TestCertificateSurvivesCourseDeletion:
+    """Regression: deleting a course must not hard-delete its certificates.
+
+    Before migration ``20260516020225``, ``certificates.course_id`` was
+    ``ON DELETE CASCADE``, so a permanent course delete blew away every
+    issued certificate for that course — a publicly-shared verify URL
+    would silently become invalid. The fix flips the FK to ``SET NULL``
+    so the certificate row survives with ``course_id = NULL`` and a
+    snapshotted ``archived_course_title`` (populated by a Postgres
+    BEFORE-DELETE trigger; in SQLite we set it manually to mirror the
+    contract).
+    """
+
+    def test_course_delete_sets_course_id_null_and_preserves_cert(self, client: TestClient, db: Session) -> None:
+        _seed_enrolled_course(db, progress=100)
+        cert = _seed_certificate(db, "course-1", cert_status="approved")
+        cert.certificate_number = "CERT-SURVIVES01"
+        # Simulate what the production trigger does atomically — snapshot the
+        # course title into the certificate before the course row is deleted.
+        # The SQLAlchemy model owns this column now, so the test path
+        # validates the model + endpoint contract without needing Postgres.
+        course = db.query(Course).filter(Course.id == "course-1").first()
+        assert course is not None
+        cert.archived_course_title = course.title
+        db.commit()
+
+        # Cascade by hand for the SQLite test path: delete the dependent rows
+        # the migration drops via ``ON DELETE CASCADE`` on those FKs so we
+        # don't trip those constraints here. The point of *this* test is the
+        # certificate row, not the unrelated cascades.
+        db.query(Enrollment).filter(Enrollment.course_id == "course-1").delete()
+        db.query(Chapter).filter(Chapter.module_id == "course-1-mod").delete()
+        db.query(Module).filter(Module.course_id == "course-1").delete()
+        db.commit()
+        db.delete(course)
+        db.commit()
+
+        # The cert row must still be there, with course_id nulled.
+        surviving = db.query(Certificate).filter(Certificate.id == cert.id).first()
+        assert surviving is not None
+        assert surviving.course_id is None
+        assert surviving.archived_course_title == "Test Course"
+
+        # The public verify endpoint reads ``archived_course_title`` when
+        # ``course`` is no longer joinable — the credential keeps verifying.
+        r = client.get("/api/v1/certificates/verify/CERT-SURVIVES01")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["valid"] is True
+        assert body["course_title"] == "Test Course"
+
+
 class TestFullCertificateLifecycle:
     """Integration: seed → teacher-approve → admin-approve → verify."""
 

@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, UniqueConstraint, func
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -35,7 +35,14 @@ class Certificate(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column()
-    course_id: Mapped[str] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
+    # ``course_id`` is nullable so that deleting a course doesn't hard-delete
+    # the certificate row — the FK fires ``ON DELETE SET NULL`` and a Postgres
+    # trigger snapshots the course title into ``archived_course_title``,
+    # leaving the verify endpoint with enough metadata to keep rendering the
+    # credential after the source course is gone. See migration
+    # ``20260516020225_certificates_course_set_null_with_archive.sql``.
+    course_id: Mapped[str | None] = mapped_column(ForeignKey("courses.id", ondelete="SET NULL"), nullable=True)
+    archived_course_title: Mapped[str | None] = mapped_column(Text, nullable=True)
     issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
     certificate_number: Mapped[str | None] = mapped_column(String(50), unique=True)
     status: Mapped[str] = mapped_column(String(20), default="pending")

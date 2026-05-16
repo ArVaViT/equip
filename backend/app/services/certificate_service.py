@@ -68,14 +68,22 @@ def _load_cert_or_404(db: Session, cert_id: UUID, *, for_update: bool = False) -
 
 def _load_active_course_or_403(
     db: Session,
-    course_id: str,
+    course_id: str | None,
     *,
     ownership_detail: str,
 ) -> Course:
     """Load a non-deleted course. If it's gone, surface a 403 with the
     provided ownership-denied message — a missing course for a cert is
     indistinguishable to the caller from "you don't own it".
+
+    ``course_id`` is nullable on ``Certificate`` because the FK fires
+    ``ON DELETE SET NULL`` when the underlying course is hard-deleted (see
+    migration ``20260516020225``). An archived certificate can no longer be
+    teacher-approved or admin-approved — there's no course to verify
+    ownership against — so we collapse that to the same 403.
     """
+    if course_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=ownership_detail)
     course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
     if not course:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=ownership_detail)

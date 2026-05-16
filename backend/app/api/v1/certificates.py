@@ -333,10 +333,15 @@ def verify_certificate(
         return CertificateVerifyResponse(valid=False, certificate_number=certificate_number)
 
     cert, user, course = row
+    # Fall back to ``archived_course_title`` (snapshotted by the
+    # BEFORE-DELETE trigger on ``courses``) when the source course has
+    # been deleted — the credential still has to verify even after the
+    # underlying course is gone.
+    course_title = course.title if course else cert.archived_course_title
     return CertificateVerifyResponse(
         valid=True,
         certificate_number=cert.certificate_number,
         user_name=user.full_name if user else None,
-        course_title=course.title if course else None,
+        course_title=course_title,
         issued_at=cert.issued_at,
     )
