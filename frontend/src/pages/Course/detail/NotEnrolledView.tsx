@@ -161,7 +161,7 @@ export function NotEnrolledView({
               onClick={handleEnrollClick}
               disabled={enrolling || !canEnroll}
               size="lg"
-              variant="outline"
+              className={!canEnroll ? undefined : "bg-primary text-primary-foreground hover:bg-primary/90"}
             >
               <Users className="mr-2 h-4 w-4" strokeWidth={1.75} aria-hidden />
               {!canEnroll
