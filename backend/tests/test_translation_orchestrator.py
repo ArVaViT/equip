@@ -246,6 +246,95 @@ def test_translate_entity_fields_records_failed_rows(db: Session):
         .one()
     )
     assert title_row.status == "failed"
+    # First failure must surface on ``attempts`` so future cycles can count.
+    assert title_row.attempts == 1
+
+
+def test_translate_entity_fields_promotes_to_failed_permanent_after_cap(db: Session):
+    """A row that fails five times in a row must transition to
+    ``failed_permanent`` and stay there. Reconciling again must short-circuit
+    instead of burning another provider call — that's the whole point of the
+    retry cap (Gemini API calls aren't free, and a permanent failure won't
+    flip just because we retry it the sixth time).
+    """
+    course = _make_course(db)
+    failing_title = course.title or ""
+    provider = _RecordingProvider(failures={failing_title})
+
+    # Five attempts → row promotes to ``failed_permanent``.
+    for _ in range(5):
+        translate_entity_fields(
+            db,
+            entity_type="course",
+            entity_id=str(course.id),
+            source_locale="ru",
+            fields=[TranslationFieldSpec(field="title", text=course.title, content_kind="title")],
+            provider=provider,
+        )
+
+    row = (
+        db.query(ContentTranslation)
+        .filter_by(entity_type="course", entity_id=course.id, field="title", locale="en")
+        .one()
+    )
+    assert row.status == "failed_permanent"
+    assert row.attempts == 5
+    calls_so_far = len(provider.calls)
+
+    # Sixth pass must skip the provider entirely.
+    report = translate_entity_fields(
+        db,
+        entity_type="course",
+        entity_id=str(course.id),
+        source_locale="ru",
+        fields=[TranslationFieldSpec(field="title", text=course.title, content_kind="title")],
+        provider=provider,
+    )
+    assert report.skipped == 1
+    assert report.failed == 0
+    # Provider was NOT called again — that's the cost-saving guarantee.
+    assert len(provider.calls) == calls_so_far
+
+
+def test_translate_entity_fields_resets_attempts_on_success(db: Session):
+    """A transient failure followed by a success must clear ``attempts``
+    back to 0 — otherwise a single hiccup in a row's history would push it
+    closer to the cap forever."""
+    course = _make_course(db)
+    failing_title = course.title or ""
+    # Fail twice, then succeed.
+    failing_provider = _RecordingProvider(failures={failing_title})
+    for _ in range(2):
+        translate_entity_fields(
+            db,
+            entity_type="course",
+            entity_id=str(course.id),
+            source_locale="ru",
+            fields=[TranslationFieldSpec(field="title", text=course.title, content_kind="title")],
+            provider=failing_provider,
+        )
+
+    row = (
+        db.query(ContentTranslation)
+        .filter_by(entity_type="course", entity_id=course.id, field="title", locale="en")
+        .one()
+    )
+    assert row.status == "failed"
+    assert row.attempts == 2
+
+    happy_provider = _RecordingProvider()
+    translate_entity_fields(
+        db,
+        entity_type="course",
+        entity_id=str(course.id),
+        source_locale="ru",
+        fields=[TranslationFieldSpec(field="title", text=course.title, content_kind="title")],
+        provider=happy_provider,
+    )
+
+    db.refresh(row)
+    assert row.status == "ok"
+    assert row.attempts == 0
 
 
 def test_translate_entity_fields_skips_empty_text(db: Session):

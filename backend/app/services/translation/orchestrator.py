@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.models.content_translation import (
+    TRANSLATION_MAX_ATTEMPTS,
     ContentTranslation,
     TranslationEntityType,
     TranslationField,
@@ -240,6 +241,15 @@ def _translate_one_field(
     if existing is not None and existing.status == "ok" and existing.source_hash == source_hash:
         return "skipped"
 
+    # Rows that hit the retry cap (``failed_permanent``) are terminal as far
+    # as the auto-pipeline is concerned. They stay terminal even if the
+    # source text mutates — a row that fails for a permanent reason (safety
+    # filter, oversize input) won't suddenly succeed because the prompt
+    # changed by one word. An operator who wants to retry must explicitly
+    # reset ``status='pending'`` + ``attempts=0`` from admin tooling.
+    if existing is not None and existing.status == "failed_permanent":
+        return "skipped"
+
     request = TranslationRequest(
         text=text,
         source_locale=source_locale,
@@ -250,12 +260,20 @@ def _translate_one_field(
     try:
         result = provider.translate(request)
     except TranslationError as exc:
+        # Compute the new attempts count first: existing.attempts + 1 if a
+        # row is already on disk, else 1 for the fresh failure. When we cross
+        # the cap, promote the row to ``failed_permanent`` so reconcile stops
+        # paying for retries that will never succeed.
+        attempts = (existing.attempts if existing is not None else 0) + 1
+        failed_status = "failed_permanent" if attempts >= TRANSLATION_MAX_ATTEMPTS else "failed"
         logger.warning(
-            "Translation failed entity=%s:%s field=%s locale=%s err=%s",
+            "Translation failed entity=%s:%s field=%s locale=%s attempts=%d status=%s err=%s",
             entity_type,
             entity_id,
             field,
             target_locale,
+            attempts,
+            failed_status,
             exc,
         )
         _persist_translation(
@@ -267,7 +285,8 @@ def _translate_one_field(
             target_locale=target_locale,
             text=existing.text if existing is not None else text,
             source_hash=source_hash,
-            status="failed",
+            status=failed_status,
+            attempts=attempts,
         )
         return "failed"
 
@@ -281,6 +300,9 @@ def _translate_one_field(
         text=result.text,
         source_hash=source_hash,
         status="ok",
+        # Success clears the failure budget — a successful translate after
+        # a transient failure shouldn't carry the previous attempts forward.
+        attempts=0,
     )
     return "translated"
 
@@ -296,6 +318,7 @@ def _persist_translation(
     text: str,
     source_hash: str,
     status: str,
+    attempts: int = 0,
 ) -> None:
     """Insert or update one translation row.
 
@@ -313,6 +336,7 @@ def _persist_translation(
         existing.text = text
         existing.source_hash = source_hash
         existing.status = status
+        existing.attempts = attempts
         return
 
     row = ContentTranslation(
@@ -324,6 +348,7 @@ def _persist_translation(
         source_hash=source_hash,
         status=status,
         origin="mt",
+        attempts=attempts,
     )
     try:
         with db.begin_nested():
@@ -355,6 +380,7 @@ def _persist_translation(
         winner.text = text
         winner.source_hash = source_hash
         winner.status = status
+        winner.attempts = attempts
 
 
 __all__ = [
