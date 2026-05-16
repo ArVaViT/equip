@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { EmptyState } from "@/components/patterns"
 import {
   BookOpen, Users, Circle, CheckCircle2,
   ChevronDown, ChevronRight, Award, MessageSquare, Save,
@@ -60,9 +61,12 @@ export function GradeTableTab({
   if (!progressData) {
     return (
       <Card>
-        <CardContent className="py-12 text-center">
-          <BookOpen className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" strokeWidth={1.75} />
-          <p className="text-sm text-muted-foreground">{t("gradebook.failedLoad")}</p>
+        <CardContent className="py-10">
+          <EmptyState
+            variant="compact"
+            icon={<BookOpen strokeWidth={1.75} aria-hidden />}
+            title={t("gradebook.failedLoad")}
+          />
         </CardContent>
       </Card>
     )
@@ -71,9 +75,12 @@ export function GradeTableTab({
   if (tableStudents.length === 0) {
     return (
       <Card>
-        <CardContent className="py-12 text-center">
-          <Users className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" strokeWidth={1.75} />
-          <p className="text-sm text-muted-foreground">{t("gradebook.summary.empty")}</p>
+        <CardContent className="py-10">
+          <EmptyState
+            variant="compact"
+            icon={<Users strokeWidth={1.75} aria-hidden />}
+            title={t("gradebook.summary.empty")}
+          />
         </CardContent>
       </Card>
     )
@@ -119,6 +126,14 @@ export function GradeTableTab({
   )
 }
 
+// Sticky student-column shadow that hints "this column is pinned" even when
+// the user hasn't scrolled yet. ``inset-y-0 right-0 -mr-px w-2`` paints a
+// 2-px wide gradient strip on the column's right edge; soft enough to fade
+// into the table border when stationary, strong enough to read as depth
+// when content scrolls underneath.
+const STICKY_COL_SHADOW =
+  "after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-2 after:-mr-2 after:bg-gradient-to-r after:from-foreground/[0.06] after:to-transparent"
+
 function GradeTableHead({
   orderedModules,
   moduleChapterMap,
@@ -132,7 +147,9 @@ function GradeTableHead({
   return (
     <thead>
       <tr>
-        <th className="sticky left-0 z-10 bg-card border-b border-r px-3 py-2 text-left font-semibold text-sm w-44 min-w-[11rem]">
+        <th
+          className={`sticky left-0 z-10 bg-muted/40 border-b border-r px-3 py-2 text-left font-semibold text-sm w-44 min-w-[11rem] relative ${STICKY_COL_SHADOW}`}
+        >
           {t("gradebook.table.thStudent")}
         </th>
         {orderedModules.map((mod) => {
@@ -148,12 +165,15 @@ function GradeTableHead({
             </th>
           )
         })}
-        <th className="border-b px-2 py-2 text-center font-semibold bg-muted/40 w-20">
+        <th className="border-b border-r px-2 py-2 text-center font-semibold bg-muted/40 w-20">
           {t("gradebook.table.thTotal")}
         </th>
       </tr>
       <tr>
-        <th className="sticky left-0 z-10 bg-card border-b border-r" />
+        <th
+          className={`sticky left-0 z-10 bg-muted/20 border-b border-r relative ${STICKY_COL_SHADOW}`}
+          aria-hidden
+        />
         {allChapters.map((ch) => (
           <th
             key={ch.id}
@@ -166,7 +186,7 @@ function GradeTableHead({
             </div>
           </th>
         ))}
-        <th className="border-b px-1 py-1.5 bg-muted/20" />
+        <th className="border-b border-r px-1 py-1.5 bg-muted/20" aria-hidden />
       </tr>
     </thead>
   )
@@ -211,10 +231,12 @@ const GradeTableRow = memo(function GradeTableRow({
   return (
     <Fragment>
       <tr
-        className="hover:bg-muted/20 cursor-pointer transition-colors"
+        className="group hover:bg-muted/20 cursor-pointer transition-colors"
         onClick={() => onToggleExpand(student.id)}
       >
-        <td className="sticky left-0 z-10 bg-card border-b border-r px-3 py-2 font-medium">
+        <td
+          className={`sticky left-0 z-10 bg-card group-hover:bg-muted/40 border-b border-r px-3 py-2 font-medium relative transition-colors ${STICKY_COL_SHADOW}`}
+        >
           <div className="flex items-center gap-1.5 min-w-0">
             {expanded ? (
               <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
