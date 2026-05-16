@@ -855,6 +855,30 @@ class TestCreateCourseEvent:
         )
         assert resp.status_code == 422
 
+    def test_create_strips_script_tag_from_title_and_description(self, client: TestClient):
+        """Regression: ``create_course_event`` must run user-supplied title /
+        description through ``sanitize_string`` so a direct API caller can't
+        store ``<script>`` or other dangerous markup that would later render
+        verbatim in the calendar or course-event list. The frontend already
+        sanitises before POSTing, but server-side is the defence-in-depth
+        layer — same shape as ``announcements.create``."""
+        course = _create_course_via_api(client)
+        resp = client.post(
+            f"{COURSES_PREFIX}/{course['id']}/events",
+            json=_event_payload(
+                title='Exam <script>alert(1)</script> <img src=x onerror="x()"> Time',
+                description='Be ready<a href="javascript:steal()">x</a>.',
+            ),
+        )
+        assert resp.status_code == 201
+        body = resp.json()
+        # The sanitiser drops ``<script>`` tags, on* event handlers, and
+        # javascript: URLs — that's the XSS-execution surface. Visible
+        # plain text the user typed around the tags is preserved.
+        assert "<script>" not in body["title"]
+        assert "onerror" not in body["title"]
+        assert "javascript:" not in body["description"]
+
 
 class TestListCourseEvents:
     def test_owner_can_list(self, client: TestClient):
