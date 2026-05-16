@@ -88,11 +88,9 @@ def list_announcements(
 
     rows = query.order_by(Announcement.created_at.desc()).offset(skip).limit(limit).all()
 
-    # Admins see canonical source for moderation; everyone else (students,
-    # other teachers) gets the locale overlay if one exists.
-    if is_admin:
-        return [AnnouncementResponse.model_validate(a, from_attributes=True) for a in rows]
-
+    # Locale wins. Every reader — students, teachers, admins — gets the
+    # locale overlay when one exists. Moderators who need raw source
+    # content use the admin-only audit/edit surfaces, not this list.
     display_locale: LocaleCode = normalize_locale(accept_language)
     course_ids = [str(a.course_id) for a in rows if a.course_id]
     source_locales = _course_source_locale_map(db, course_ids)
