@@ -5,8 +5,9 @@ import { NativeSelect } from "@/components/ui/native-select"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { cn } from "@/lib/utils"
 import { EmptyState } from "@/components/patterns/EmptyState"
-import { FileText, ChevronLeft, ChevronRight } from "lucide-react"
+import { FileText, ChevronLeft, ChevronRight, X } from "lucide-react"
 import type { AuditLogEntry } from "@/types"
 import {
   ACTION_OPTIONS,
@@ -34,7 +35,13 @@ interface Props {
   onPageChange: (nextPage: number) => void
 }
 
-/** Full audit-log tab: filters, table, and pagination. */
+/**
+ * Full audit-log tab: filter bar, table, pagination — all inside one
+ * Card. Filters and table share a surface so the bar feels like part
+ * of the same view rather than a separate widget floating above. Each
+ * filter has a label, but the filter row itself doesn't get an outer
+ * card border to compete with the table border below.
+ */
 export function AuditLogTab({
   logs,
   total,
@@ -55,91 +62,93 @@ export function AuditLogTab({
 }: Props) {
   const { t } = useTranslation()
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const filtersActive = Boolean(action || resource || dateFrom || dateTo)
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-end">
-            <FilterSelect
-              label={t("admin.audit.filterAction")}
-              value={action}
-              onChange={onAction}
-              options={ACTION_OPTIONS}
-              optionLabel={(o) => t(`admin.audit.actionValue.${o}`)}
-              placeholder={t("admin.audit.filterAllActions")}
-            />
-            <FilterSelect
-              label={t("admin.audit.filterResource")}
-              value={resource}
-              onChange={onResource}
-              options={RESOURCE_OPTIONS}
-              optionLabel={(o) => t(`admin.audit.resourceValue.${o}`)}
-              placeholder={t("admin.audit.filterAllResources")}
-            />
-            <FilterDate label={t("admin.audit.filterFrom")} value={dateFrom} onChange={onDateFrom} />
-            <FilterDate label={t("admin.audit.filterTo")} value={dateTo} onChange={onDateTo} />
-            <Button variant="ghost" size="sm" onClick={onReset} className="h-11 sm:h-9">
+    <Card>
+      <CardHeader className="gap-3 space-y-0 border-b">
+        <CardTitle className="text-xl flex items-center gap-2">
+          <FileText className="h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden />
+          {t("admin.audit.title")}
+          <span className="text-sm font-normal text-muted-foreground ml-1.5">
+            {t("admin.audit.entriesCount", { count: total })}
+          </span>
+        </CardTitle>
+        <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-end">
+          <FilterSelect
+            label={t("admin.audit.filterAction")}
+            value={action}
+            onChange={onAction}
+            options={ACTION_OPTIONS}
+            optionLabel={(o) => t(`admin.audit.actionValue.${o}`)}
+            placeholder={t("admin.audit.filterAllActions")}
+          />
+          <FilterSelect
+            label={t("admin.audit.filterResource")}
+            value={resource}
+            onChange={onResource}
+            options={RESOURCE_OPTIONS}
+            optionLabel={(o) => t(`admin.audit.resourceValue.${o}`)}
+            placeholder={t("admin.audit.filterAllResources")}
+          />
+          <FilterDate label={t("admin.audit.filterFrom")} value={dateFrom} onChange={onDateFrom} />
+          <FilterDate label={t("admin.audit.filterTo")} value={dateTo} onChange={onDateTo} />
+          {filtersActive && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onReset}
+              className="h-11 self-end text-muted-foreground hover:text-foreground sm:h-9"
+            >
+              <X className="mr-1 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
               {t("admin.audit.filterClear")}
             </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl flex items-center gap-2">
-            <FileText className="h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden />
-            {t("admin.audit.title")}
-            <span className="text-sm font-normal text-muted-foreground ml-2">
-              {t("admin.audit.entriesCount", { count: total })}
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <AuditTableSkeleton />
-          ) : logs.length === 0 ? (
-            <EmptyState
-              variant="compact"
-              icon={<FileText strokeWidth={1.75} aria-hidden />}
-              title={t("admin.audit.empty")}
-            />
-          ) : (
-            <>
-              <AuditTable logs={logs} userMap={userMap} />
-              <div className="flex items-center justify-between px-5 pb-1 pt-4">
-                <p className="text-xs text-muted-foreground">
-                  {t("admin.audit.page", { page, total: totalPages })}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page <= 1}
-                    onClick={() => onPageChange(page - 1)}
-                    className="h-11 w-11 p-0 sm:h-9 sm:w-9"
-                    aria-label={t("admin.audit.prevPageAria", { defaultValue: "Previous page" })}
-                  >
-                    <ChevronLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page >= totalPages}
-                    onClick={() => onPageChange(page + 1)}
-                    className="h-11 w-11 p-0 sm:h-9 sm:w-9"
-                    aria-label={t("admin.audit.nextPageAria", { defaultValue: "Next page" })}
-                  >
-                    <ChevronRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                  </Button>
-                </div>
-              </div>
-            </>
           )}
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {loading ? (
+          <AuditTableSkeleton />
+        ) : logs.length === 0 ? (
+          <EmptyState
+            variant="compact"
+            icon={<FileText strokeWidth={1.75} aria-hidden />}
+            title={t("admin.audit.empty")}
+          />
+        ) : (
+          <>
+            <AuditTable logs={logs} userMap={userMap} />
+            <div className="flex items-center justify-between px-5 pb-1 pt-4">
+              <p className="text-xs text-muted-foreground">
+                {t("admin.audit.page", { page, total: totalPages })}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => onPageChange(page - 1)}
+                  className="h-11 w-11 p-0 sm:h-9 sm:w-9"
+                  aria-label={t("admin.audit.prevPageAria")}
+                >
+                  <ChevronLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => onPageChange(page + 1)}
+                  className="h-11 w-11 p-0 sm:h-9 sm:w-9"
+                  aria-label={t("admin.audit.nextPageAria")}
+                >
+                  <ChevronRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -153,14 +162,18 @@ interface FilterSelectProps {
 }
 
 function FilterSelect({ label, value, onChange, options, optionLabel, placeholder }: FilterSelectProps) {
+  const isActive = value !== ""
   return (
     <div className="space-y-1">
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
       <NativeSelect
-        fieldSize="md"
+        fieldSize="sm"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full sm:w-auto"
+        className={cn(
+          "w-full sm:w-auto",
+          isActive && "ring-1 ring-primary/40 border-primary/40",
+        )}
       >
         <option value="">{placeholder}</option>
         {options.map((o) => (
@@ -182,6 +195,7 @@ function FilterDate({
   value: string
   onChange: (next: string) => void
 }) {
+  const isActive = value !== ""
   return (
     <div className="space-y-1">
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
@@ -189,8 +203,11 @@ function FilterDate({
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        fieldSize="md"
-        className="w-full sm:w-40"
+        fieldSize="sm"
+        className={cn(
+          "w-full sm:w-40",
+          isActive && "ring-1 ring-primary/40 border-primary/40",
+        )}
       />
     </div>
   )
