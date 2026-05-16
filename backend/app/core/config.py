@@ -74,10 +74,27 @@ class Settings(BaseSettings):
     # plus the new ``finishReason`` check in ``GeminiTranslationProvider``
     # closes that hole. Cost-wise the cap only matters when actually emitted.
     GEMINI_MAX_OUTPUT_TOKENS: int = Field(default=8192, description="Cap on generation length")
+    # Minimum spacing between two Gemini calls from the same worker, in
+    # seconds. ``0`` (default) is the right value for production: course
+    # publishing is naturally bursty-but-sparse and rarely trips Gemini's
+    # 15 RPM free-tier limit. Backfill scripts that fire hundreds of
+    # requests back-to-back should set this to ``4.5`` (≈13 RPM, one slot
+    # of headroom under the 15 RPM cap) to avoid 429-rate-limit storms.
+    GEMINI_MIN_INTERVAL_SECONDS: float = Field(
+        default=0.0,
+        description="Min seconds between two Gemini calls from the same worker (RPM throttle)",
+    )
 
     @model_validator(mode="after")
     def load_alternative_env_vars(self):
         """Support alternative env var names from Vercel/Supabase integration."""
+        # An empty ``GEMINI_MODEL`` env var (e.g. an operator set the Vercel
+        # variable to ``""``) would otherwise become the literal string ""
+        # in the request URL — ``models/:generateContent`` — and Gemini
+        # returns 404. Treat blank as "use the default" instead.
+        if not self.GEMINI_MODEL or not self.GEMINI_MODEL.strip():
+            self.GEMINI_MODEL = Settings.model_fields["GEMINI_MODEL"].default
+
         if not self.SUPABASE_SERVICE_ROLE_KEY:
             # Accept the legacy SUPABASE_KEY name from older deployments.
             # Anon keys are NEVER accepted as a server-side secret.

@@ -61,6 +61,7 @@ class GeminiTranslationProvider:
         timeout_seconds: float,
         max_output_tokens: int,
         max_retries: int = 2,
+        min_interval_seconds: float = 0.0,
         client: httpx.Client | None = None,
     ) -> None:
         if not api_key:
@@ -71,6 +72,12 @@ class GeminiTranslationProvider:
         self._model = model
         self._max_output_tokens = max_output_tokens
         self._max_retries = max_retries
+        # Min wall-time between two successive ``translate()`` calls on this
+        # instance. Set to ``4.5`` (≈13 RPM) when running backfill scripts
+        # against the free-tier 15 RPM cap; left at ``0`` in production
+        # where natural request spacing keeps us well under the limit.
+        self._min_interval_seconds = min_interval_seconds
+        self._last_call_monotonic: float = 0.0
         # Split timeout: a slow connect or a stuck pool checkout shouldn't
         # eat the full read budget. Read uses the configured per-call cap
         # (the actual generation latency); connect/write/pool stay short.
@@ -126,6 +133,17 @@ class GeminiTranslationProvider:
         payload = self._build_payload(request)
         url = f"{_API_BASE}/models/{self._model}:generateContent"
         headers = {"Content-Type": "application/json", "X-goog-api-key": self._api_key}
+
+        # Enforce the per-instance minimum interval before the first attempt
+        # of this translate() call. We only gate ``translate()`` entries —
+        # the bounded internal retry loop below should not be throttled too,
+        # since retries already back off on their own.
+        if self._min_interval_seconds > 0:
+            elapsed = time.monotonic() - self._last_call_monotonic
+            wait = self._min_interval_seconds - elapsed
+            if wait > 0:
+                time.sleep(wait)
+        self._last_call_monotonic = time.monotonic()
 
         last_error: Exception | None = None
         for attempt in range(self._max_retries + 1):
