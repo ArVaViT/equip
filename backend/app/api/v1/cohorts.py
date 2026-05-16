@@ -33,7 +33,7 @@ from app.core.database import get_db
 from app.models.cohort import Cohort, CohortCourse, CohortStatus
 from app.models.course import Course, CourseStatus
 from app.models.enrollment import Enrollment
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.schemas.cohort import (
     CohortCourseAttach,
     CohortCreate,
@@ -549,11 +549,9 @@ def list_cohorts_for_course(
     if not cohorts:
         return []
 
-    is_owner = current_user is not None and str(course.created_by) == str(current_user.id)
-    is_admin = current_user is not None and current_user.role == UserRole.ADMIN.value
-    if is_owner or is_admin:
-        return _serialize_many(db, cohorts)
-
+    # Locale wins. Every reader — students, owners, admins — gets the locale
+    # overlay when one exists. The admin cohort CRUD surface (``/cohorts`` and
+    # ``/cohorts/{id}``) still returns source for moderation and editing.
     loc = Localizer.build(
         db,
         [("cohort", str(c.id), "title") for c in cohorts],

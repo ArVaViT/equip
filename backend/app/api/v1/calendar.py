@@ -34,7 +34,6 @@ def get_calendar_events(
     db: Session = Depends(get_db),
 ) -> list[CalendarEvent]:
     response.headers["Vary"] = "Accept-Language"
-    is_admin = current_user.role == UserRole.ADMIN.value
     display_locale: LocaleCode = normalize_locale(accept_language)
     enrolled_q = db.query(Enrollment.course_id).filter(Enrollment.user_id == current_user.id)
     if course_id:
@@ -136,10 +135,11 @@ def get_calendar_events(
 
     course_events = db.query(CourseEvent).filter(CourseEvent.course_id.in_(enrolled_course_ids)).all()
 
-    # Bulk-fetch overlay rows for every course_event title + non-empty description
-    # so non-admin students see the localized version. Admins always see source.
+    # Bulk-fetch overlay rows for every course_event title + non-empty
+    # description. Locale wins for every reader, including admins — moderators
+    # who need raw source content use admin-only audit/edit surfaces.
     overlay_event: dict[tuple[str, str, str], str] = {}
-    if not is_admin and course_events:
+    if course_events:
         specs: list[tuple[str, str, str]] = []
         for ce in course_events:
             specs.append(("course_event", str(ce.id), "title"))
@@ -149,30 +149,27 @@ def get_calendar_events(
 
     for ce in course_events:
         course_src = course_source_locales.get(ce.course_id, normalize_locale(None))
-        title = ce.title
-        description = ce.description
-        if not is_admin:
-            title = (
-                pick_overlay_value(
-                    overlay_event,
-                    "course_event",
-                    str(ce.id),
-                    "title",
-                    ce.title,
-                    source_locale=course_src,
-                    display_locale=display_locale,
-                )
-                or ce.title
-            )
-            description = pick_overlay_value(
+        title = (
+            pick_overlay_value(
                 overlay_event,
                 "course_event",
                 str(ce.id),
-                "description",
-                ce.description,
+                "title",
+                ce.title,
                 source_locale=course_src,
                 display_locale=display_locale,
             )
+            or ce.title
+        )
+        description = pick_overlay_value(
+            overlay_event,
+            "course_event",
+            str(ce.id),
+            "description",
+            ce.description,
+            source_locale=course_src,
+            display_locale=display_locale,
+        )
         events.append(
             CalendarEvent(
                 id=str(ce.id),
@@ -254,10 +251,9 @@ def list_course_events(
                 detail="You must be enrolled in this course to view events",
             )
     rows = db.query(CourseEvent).filter(CourseEvent.course_id == course_id).order_by(CourseEvent.event_date).all()
-    # Owner + admin see source for editorial accuracy; everyone else gets the
-    # locale overlay if the translation pipeline has materialised one.
-    if is_owner or is_admin:
-        return [CourseEventResponse.model_validate(e, from_attributes=True) for e in rows]
+    # Locale wins. Every reader — students, owners, admins — gets the locale
+    # overlay when one exists. Editors that need raw source must use dedicated
+    # authoring endpoints (the PUT/POST routes below operate on raw columns).
     display_locale: LocaleCode = normalize_locale(accept_language)
     source_locale: LocaleCode = normalize_locale(course_row.source_locale)
     return localize_course_event_rows(db, rows, display_locale=display_locale, source_locale=source_locale)
