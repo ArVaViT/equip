@@ -1,15 +1,13 @@
 import api from "./api"
-import { cacheGet, cacheSet, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
+import { cached, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
 import type { GradingConfig, GradeSummaryResponse, StudentGrade } from "@/types"
 
 export const gradesService = {
   async getCourseGrades(courseId: string): Promise<StudentGrade[]> {
-    const key = `grades:course:${courseId}`
-    const cached = cacheGet<StudentGrade[]>(key)
-    if (cached) return cached
-    const response = await api.get<StudentGrade[]>(`/grades/course/${courseId}`)
-    cacheSet(key, response.data, CACHE_TTL.ONE_MINUTE)
-    return response.data
+    return cached(`grades:course:${courseId}`, CACHE_TTL.ONE_MINUTE, async () => {
+      const response = await api.get<StudentGrade[]>(`/grades/course/${courseId}`)
+      return response.data
+    })
   },
 
   async upsertGrade(
@@ -28,12 +26,10 @@ export const gradesService = {
   },
 
   async getMyGrades(): Promise<StudentGrade[]> {
-    const key = "grades:my"
-    const cached = cacheGet<StudentGrade[]>(key)
-    if (cached) return cached
-    const response = await api.get<StudentGrade[]>("/grades/my")
-    cacheSet(key, response.data, CACHE_TTL.ONE_MINUTE)
-    return response.data
+    return cached("grades:my", CACHE_TTL.ONE_MINUTE, async () => {
+      const response = await api.get<StudentGrade[]>("/grades/my")
+      return response.data
+    })
   },
 
   async updateGradingConfig(courseId: string, data: GradingConfig): Promise<GradingConfig> {
@@ -45,14 +41,12 @@ export const gradesService = {
   },
 
   async getGradeSummary(courseId: string): Promise<GradeSummaryResponse> {
-    const key = `grades:summary:${courseId}`
-    const cached = cacheGet<GradeSummaryResponse>(key)
-    if (cached) return cached
-    const response = await api.get<GradeSummaryResponse>(
-      `/grades/course/${courseId}/summary`,
-    )
-    cacheSet(key, response.data, CACHE_TTL.ONE_MINUTE)
-    return response.data
+    return cached(`grades:summary:${courseId}`, CACHE_TTL.ONE_MINUTE, async () => {
+      const response = await api.get<GradeSummaryResponse>(
+        `/grades/course/${courseId}/summary`,
+      )
+      return response.data
+    })
   },
 
   async exportGradesCSV(courseId: string): Promise<Blob> {

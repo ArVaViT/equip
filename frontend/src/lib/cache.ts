@@ -69,3 +69,32 @@ export function cacheInvalidatePrefix(prefix: string): void {
     if (key.startsWith(prefix)) store.delete(key)
   }
 }
+
+/**
+ * Cache-miss-then-fetch helper. Services do this dance constantly:
+ *
+ *   const cached = cacheGet<T>(key)
+ *   if (cached !== undefined) return cached
+ *   const fresh = await fetcher()
+ *   cacheSet(key, fresh, ttlMs)
+ *   return fresh
+ *
+ * which spreads the cache key, the TTL, and the fetcher across four
+ * statements per read endpoint. `cached()` collapses that into one
+ * expression so the call site only mentions the meaningful inputs.
+ *
+ * Uses `cacheGet` (which already handles expiry + null round-trip), so
+ * cached `null` values are honoured — `quizzesService.getChapterQuiz`
+ * relies on caching 404s as `null` to avoid re-fetching missing quizzes.
+ */
+export async function cached<T>(
+  key: string,
+  ttlMs: number,
+  fetcher: () => Promise<T>,
+): Promise<T> {
+  const hit = cacheGet<T>(key)
+  if (hit !== undefined) return hit
+  const fresh = await fetcher()
+  cacheSet(key, fresh, ttlMs)
+  return fresh
+}

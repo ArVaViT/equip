@@ -1,5 +1,5 @@
 import api from "./api"
-import { cacheGet, cacheSet, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
+import { cached, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
 import type { ChapterBlock, BlockType } from "@/types"
 
 type ChapterBlockCreateData = {
@@ -19,12 +19,10 @@ type ChapterBlockUpdateData = Partial<Omit<ChapterBlockCreateData, "block_type">
 
 export const blocksService = {
   async getChapterBlocks(chapterId: string): Promise<ChapterBlock[]> {
-    const key = `blocks:chapter:${chapterId}`
-    const cached = cacheGet<ChapterBlock[]>(key)
-    if (cached) return cached
-    const response = await api.get<ChapterBlock[]>(`/blocks/chapter/${chapterId}`)
-    cacheSet(key, response.data, CACHE_TTL.TWO_MINUTES)
-    return response.data
+    return cached(`blocks:chapter:${chapterId}`, CACHE_TTL.TWO_MINUTES, async () => {
+      const response = await api.get<ChapterBlock[]>(`/blocks/chapter/${chapterId}`)
+      return response.data
+    })
   },
 
   async createBlock(chapterId: string, data: ChapterBlockCreateData): Promise<ChapterBlock> {

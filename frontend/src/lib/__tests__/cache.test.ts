@@ -14,6 +14,7 @@ import {
   cacheSet,
   cacheInvalidate,
   cacheInvalidatePrefix,
+  cached,
 } from "@/lib/cache"
 
 // The cache module keeps state at module scope. Each test starts by
@@ -21,7 +22,7 @@ import {
 function resetCache(): void {
   // Cache exposes no clear() helper by design (services own their keys);
   // we walk the known test-prefixed keys instead.
-  for (const prefix of ["t:", "u:", "x:", "evict:"]) {
+  for (const prefix of ["t:", "u:", "x:", "evict:", "t:cached:"]) {
     cacheInvalidatePrefix(prefix)
   }
 }
@@ -109,6 +110,45 @@ describe("cache.cacheInvalidatePrefix", () => {
     cacheSet("u:keep", 1, 60_000)
     cacheInvalidatePrefix("u:no-such-prefix:")
     expect(cacheGet("u:keep")).toBe(1)
+  })
+})
+
+describe("cache.cached", () => {
+  it("calls the fetcher on miss and stores the result", async () => {
+    const fetcher = vi.fn().mockResolvedValue({ id: 1 })
+    const got = await cached("t:cached:miss", 60_000, fetcher)
+
+    expect(got).toEqual({ id: 1 })
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    expect(cacheGet("t:cached:miss")).toEqual({ id: 1 })
+  })
+
+  it("returns the cached value without calling the fetcher on hit", async () => {
+    cacheSet("t:cached:hit", "stored", 60_000)
+    const fetcher = vi.fn().mockResolvedValue("fresh")
+
+    const got = await cached("t:cached:hit", 60_000, fetcher)
+
+    expect(got).toBe("stored")
+    expect(fetcher).not.toHaveBeenCalled()
+  })
+
+  it("honours a cached null without re-fetching", async () => {
+    // quizzesService caches null for 404s; make sure that round-trips.
+    cacheSet<string | null>("t:cached:null", null, 60_000)
+    const fetcher = vi.fn().mockResolvedValue("should-not-be-called")
+
+    const got = await cached<string | null>("t:cached:null", 60_000, fetcher)
+
+    expect(got).toBeNull()
+    expect(fetcher).not.toHaveBeenCalled()
+  })
+
+  it("propagates fetcher errors without poisoning the cache", async () => {
+    const fetcher = vi.fn().mockRejectedValue(new Error("boom"))
+
+    await expect(cached("t:cached:throw", 60_000, fetcher)).rejects.toThrow("boom")
+    expect(cacheGet("t:cached:throw")).toBeUndefined()
   })
 })
 
