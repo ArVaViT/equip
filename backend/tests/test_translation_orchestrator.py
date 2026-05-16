@@ -470,3 +470,117 @@ def test_manual_translate_endpoint_returns_disabled_when_provider_off(monkeypatc
     body = resp.json()
     assert body["enabled"] is False
     assert body["translated"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Regression: walker must find quizzes + assignments via ``chapter_id``
+# ---------------------------------------------------------------------------
+#
+# Production teacher flow creates quizzes by inserting ``quizzes`` rows with
+# ``chapter_id`` set and never inserts a ``chapter_block`` with
+# ``quiz_id`` pointing at them. Before the 2026-05-16 fix the walker only
+# reached quizzes through the ``chapter_block.quiz_id`` indirection — so in
+# prod every quiz had ZERO translation rows even on courses where every
+# other entity was fully translated. Same shape for assignments.
+#
+# This test mirrors the prod attachment exactly: the chapter has NO
+# chapter_block with ``quiz_id`` (or any block at all); the quiz attaches
+# to the chapter only via its ``chapter_id`` FK. The walker must still
+# reach it and produce translation rows for the quiz tree.
+
+
+def test_walker_finds_quizzes_attached_via_chapter_id_only(db: Session):
+    """Production-shape attachment: quiz tied to a chapter via ``Quiz.chapter_id``
+    with no ``chapter_block`` mediating row. Walker must still translate it.
+
+    Regression for 2026-05-16: see commit message.
+    """
+    from app.models.course import Chapter, Module
+    from app.models.quiz import Quiz, QuizOption, QuizQuestion
+
+    course = _make_course(db, status="published")
+    module = Module(id=str(uuid.uuid4()), course_id=course.id, title="M1", order_index=0)
+    db.add(module)
+    db.flush()
+    chapter = Chapter(
+        id=str(uuid.uuid4()),
+        module_id=module.id,
+        title="Ch1",
+        order_index=0,
+        chapter_type="quiz",
+    )
+    db.add(chapter)
+    db.flush()
+    quiz = Quiz(chapter_id=chapter.id, title="Pop quiz", description="Test")
+    db.add(quiz)
+    db.flush()
+    question = QuizQuestion(
+        quiz_id=quiz.id,
+        question_text="What is the answer?",
+        question_type="multiple_choice",
+        order_index=0,
+        points=1,
+    )
+    db.add(question)
+    db.flush()
+    option = QuizOption(
+        question_id=question.id,
+        option_text="The answer",
+        is_correct=True,
+        order_index=0,
+    )
+    db.add(option)
+    db.commit()
+
+    provider = _RecordingProvider()
+    report = translate_course_content(db, course, provider=provider)
+
+    assert report.failed == 0
+    quiz_translations = db.query(ContentTranslation).filter_by(entity_type="quiz", entity_id=str(quiz.id)).all()
+    question_translations = (
+        db.query(ContentTranslation).filter_by(entity_type="quiz_question", entity_id=str(question.id)).all()
+    )
+    option_translations = (
+        db.query(ContentTranslation).filter_by(entity_type="quiz_option", entity_id=str(option.id)).all()
+    )
+    assert quiz_translations, "expected at least one translation row for the quiz"
+    assert question_translations, "expected at least one translation row for the quiz_question"
+    assert option_translations, "expected at least one translation row for the quiz_option"
+    # Source = ru, target = en, so each translation should be the
+    # ``[en]<source>`` shape the recording provider emits.
+    assert any(t.text.startswith("[en]") for t in question_translations)
+
+
+def test_walker_finds_assignments_attached_via_chapter_id_only(db: Session):
+    """Same regression shape for assignments — they also attach via
+    ``Assignment.chapter_id`` directly without a chapter_block bridge."""
+    from app.models.assignment import Assignment
+    from app.models.course import Chapter, Module
+
+    course = _make_course(db, status="published")
+    module = Module(id=str(uuid.uuid4()), course_id=course.id, title="M1", order_index=0)
+    db.add(module)
+    db.flush()
+    chapter = Chapter(
+        id=str(uuid.uuid4()),
+        module_id=module.id,
+        title="Ch1",
+        order_index=0,
+        chapter_type="assignment",
+    )
+    db.add(chapter)
+    db.flush()
+    assignment = Assignment(
+        chapter_id=chapter.id,
+        title="Reflection",
+        description="Write 500 words on the chapter.",
+    )
+    db.add(assignment)
+    db.commit()
+
+    provider = _RecordingProvider()
+    report = translate_course_content(db, course, provider=provider)
+
+    assert report.failed == 0
+    rows = db.query(ContentTranslation).filter_by(entity_type="assignment", entity_id=str(assignment.id)).all()
+    assert rows, "expected at least one translation row for the chapter-bound assignment"

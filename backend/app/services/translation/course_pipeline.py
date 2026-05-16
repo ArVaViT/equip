@@ -146,6 +146,44 @@ def translate_course_content(
                     reconcile_entity(db, "assignment", assignment, provider=provider),
                 )
 
+    # Production teacher flow attaches quizzes + assignments via the
+    # ``chapter_id`` FK directly; the chapter-block-mediated walk above
+    # is an aspirational shape that the create flows have never
+    # populated. Pick up anything the block walk missed by querying for
+    # quizzes / assignments bound to this course's chapters and
+    # reconcile any that ``seen_*`` hasn't already covered.
+    #
+    # This is what makes the pipeline actually translate quiz text in
+    # production. See 2026-05-16 audit; without this query, every
+    # course in prod had zero ``content_translations`` rows for
+    # ``quiz`` / ``quiz_question`` / ``quiz_option`` / ``assignment``.
+    chapter_bound_quizzes = (
+        db.query(Quiz)
+        .options(selectinload(Quiz.questions).selectinload(QuizQuestion.options))
+        .filter(Quiz.chapter_id.in_(chapter_ids))
+        .all()
+    )
+    for quiz in chapter_bound_quizzes:
+        qid = str(quiz.id)
+        if qid in seen_quiz:
+            continue
+        seen_quiz.add(qid)
+        total = merge_orchestrator_reports(
+            total,
+            _walk_quiz_tree(db, quiz, provider=provider),
+        )
+
+    chapter_bound_assignments = db.query(Assignment).filter(Assignment.chapter_id.in_(chapter_ids)).all()
+    for assignment in chapter_bound_assignments:
+        aid = str(assignment.id)
+        if aid in seen_assignment:
+            continue
+        seen_assignment.add(aid)
+        total = merge_orchestrator_reports(
+            total,
+            reconcile_entity(db, "assignment", assignment, provider=provider),
+        )
+
     side = _translate_course_side_entities(db, course, provider=provider)
     return merge_orchestrator_reports(total, side)
 
