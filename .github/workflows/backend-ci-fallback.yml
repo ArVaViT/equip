@@ -1,0 +1,34 @@
+name: Backend CI
+
+# Mirror of backend-ci.yml that runs ONLY when a pull request does NOT touch
+# backend code. It reports a successful `Backend CI Pass` check so the
+# required-status-check contract is always satisfied — without this, a
+# docs-only or frontend-only PR would stall waiting for the real backend CI
+# to report (it never does, because of the paths filter on backend-ci.yml).
+#
+# Keep the workflow `name:` and the `backend-ci-pass` job `name:` in sync
+# with backend-ci.yml. The check name reported to GitHub is derived from
+# both, so any drift breaks the required-check matching.
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+      - '.github/workflows/backend-ci-fallback.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-ci-pass:
+    name: Backend CI Pass
+    runs-on: ubuntu-latest
+    steps:
+      - name: No backend changes in this PR
+        run: echo "No files under backend/ were modified — backend CI auto-pass."

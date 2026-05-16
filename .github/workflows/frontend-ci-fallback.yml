@@ -1,0 +1,29 @@
+name: Frontend CI
+
+# Mirror of frontend-ci.yml that runs ONLY when a pull request does NOT
+# touch frontend code. See backend-ci-fallback.yml for the full rationale —
+# the same pattern applies here. Keep the workflow `name:` and the
+# `frontend-ci-pass` job `name:` in sync with frontend-ci.yml.
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+      - '.github/workflows/frontend-ci-fallback.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend-ci-pass:
+    name: Frontend CI Pass
+    runs-on: ubuntu-latest
+    steps:
+      - name: No frontend changes in this PR
+        run: echo "No files under frontend/ were modified — frontend CI auto-pass."

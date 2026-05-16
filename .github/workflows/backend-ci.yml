@@ -3,10 +3,16 @@ name: Backend CI
 on:
   push:
     branches: [main]
-    paths: ['backend/**', '.github/workflows/backend-ci.yml']
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+      - '.github/workflows/backend-ci-fallback.yml'
   pull_request:
     branches: [main]
-    paths: ['backend/**', '.github/workflows/backend-ci.yml']
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+      - '.github/workflows/backend-ci-fallback.yml'
 
 permissions:
   contents: read
@@ -191,3 +197,33 @@ jobs:
               raise SystemExit(f"Schema-smoke failed: missing tables on Postgres: {sorted(missing)}")
           print(f"OK: {len(tables)} tables materialized from models, all {len(required)} required tables present")
           PY
+
+  # ---------------------------------------------------------------------------
+  # Required-check aggregator. This single job is what the branch ruleset
+  # requires on every PR — its result reflects the outcome of every backend
+  # job above. `if: always()` ensures it runs even when upstream jobs fail,
+  # so the check is *reported red* rather than missing entirely (a missing
+  # required check blocks merge indefinitely). The mirror workflow
+  # `backend-ci-fallback.yml` produces the same check name on PRs that
+  # don't touch backend/, so the required-status-check contract is always
+  # satisfied. Keep the workflow `name:` and this job `name:` in sync with
+  # the fallback file.
+  # ---------------------------------------------------------------------------
+  backend-ci-pass:
+    name: Backend CI Pass
+    needs: [lint-and-test, schema-smoke-postgres]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all backend jobs succeeded
+        run: |
+          set -e
+          LT="${{ needs.lint-and-test.result }}"
+          SS="${{ needs.schema-smoke-postgres.result }}"
+          echo "lint-and-test=$LT"
+          echo "schema-smoke-postgres=$SS"
+          if [ "$LT" != "success" ] || [ "$SS" != "success" ]; then
+            echo "::error::One or more backend CI jobs failed."
+            exit 1
+          fi
+          echo "All backend CI jobs succeeded."

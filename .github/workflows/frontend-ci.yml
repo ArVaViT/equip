@@ -3,10 +3,16 @@ name: Frontend CI
 on:
   push:
     branches: [main]
-    paths: ['frontend/**', '.github/workflows/frontend-ci.yml']
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+      - '.github/workflows/frontend-ci-fallback.yml'
   pull_request:
     branches: [main]
-    paths: ['frontend/**', '.github/workflows/frontend-ci.yml']
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+      - '.github/workflows/frontend-ci-fallback.yml'
 
 permissions:
   contents: read
@@ -72,3 +78,28 @@ jobs:
 
       - name: Run unit tests
         run: npm run test:run
+
+  # ---------------------------------------------------------------------------
+  # Required-check aggregator. See the matching block in backend-ci.yml for
+  # the full rationale. Short version: this job is what the branch ruleset
+  # requires; its result mirrors the lint-and-build job above; the mirror
+  # workflow `frontend-ci-fallback.yml` produces the same check name on PRs
+  # that don't touch frontend/, so a docs-only PR is never stuck waiting
+  # for a check that will never report.
+  # ---------------------------------------------------------------------------
+  frontend-ci-pass:
+    name: Frontend CI Pass
+    needs: [lint-and-build]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify frontend job succeeded
+        run: |
+          set -e
+          LB="${{ needs.lint-and-build.result }}"
+          echo "lint-and-build=$LB"
+          if [ "$LB" != "success" ]; then
+            echo "::error::Frontend CI failed."
+            exit 1
+          fi
+          echo "Frontend CI succeeded."
