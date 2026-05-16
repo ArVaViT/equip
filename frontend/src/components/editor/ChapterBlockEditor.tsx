@@ -32,7 +32,12 @@ export default function ChapterBlockEditor({ chapterId }: Props) {
   const load = useCallback(
     async (signal?: { cancelled: boolean }) => {
       try {
-        const data = await coursesService.getChapterBlocks(chapterId)
+        // Editor-only fetch so the rich-text editor binds to the source
+        // `content` (TipTap HTML) regardless of UI locale. A teacher in
+        // EN UI editing their RU course would otherwise see the EN
+        // translation in the editor and a PATCH would overwrite the
+        // source `content` column with English HTML.
+        const data = await coursesService.getChapterBlocksForEdit(chapterId)
         if (signal?.cancelled) return
         setBlocks(data.sort((a, b) => a.order_index - b.order_index))
       } catch (error: unknown) {

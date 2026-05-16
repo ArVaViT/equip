@@ -6,7 +6,7 @@ Every route here attaches to the shared ``router`` in ``_router.py``.
 import uuid
 from uuid import UUID
 
-from fastapi import Depends, Header, HTTPException, Response, status
+from fastapi import Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.dependencies import (
@@ -32,6 +32,7 @@ from app.services.translation.pipeline_hooks import (
 from app.services.translation.resolve_for_display import (
     build_localized_quiz_student_response,
     get_course_source_locale_for_chapter,
+    is_chapter_course_owner_or_admin,
     should_apply_course_translation_overlay_for_chapter,
 )
 
@@ -44,6 +45,14 @@ def get_chapter_quiz(
     chapter_id: str,
     response: Response,
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    source: bool = Query(
+        False,
+        description=(
+            "Bypass the translation overlay and return source-language columns "
+            "(``title``, ``description``, ``question_text``, ``option_text``). "
+            "Owner / admin only — used by the quiz editor."
+        ),
+    ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -58,12 +67,20 @@ def get_chapter_quiz(
     if not quiz:
         return None
 
-    display_locale: LocaleCode = normalize_locale(accept_language)
-    src = get_course_source_locale_for_chapter(db, chapter_id)
-    if should_apply_course_translation_overlay_for_chapter(db, chapter_id=chapter_id, current_user=current_user):
-        resp = build_localized_quiz_student_response(db, quiz, display_locale=display_locale, source_locale=src)
-    else:
+    if source:
+        if not is_chapter_course_owner_or_admin(db, chapter_id=chapter_id, current_user=current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the course owner or an admin can request source-language content",
+            )
         resp = QuizStudentResponse.model_validate(quiz)
+    else:
+        display_locale: LocaleCode = normalize_locale(accept_language)
+        src = get_course_source_locale_for_chapter(db, chapter_id)
+        if should_apply_course_translation_overlay_for_chapter(db, chapter_id=chapter_id, current_user=current_user):
+            resp = build_localized_quiz_student_response(db, quiz, display_locale=display_locale, source_locale=src)
+        else:
+            resp = QuizStudentResponse.model_validate(quiz)
     if resp.max_attempts is not None:
         extra = (
             db.query(QuizExtraAttempt)

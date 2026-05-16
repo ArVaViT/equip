@@ -39,7 +39,11 @@ export function useModuleEditor(
       if (!courseId || !moduleId) return;
       setLoading(true);
       try {
-        const data = await coursesService.getModule(courseId, moduleId);
+        // `getModuleForEdit` forces ``?source=1`` so the editor binds to
+        // source-language `title` / `description` columns regardless of
+        // the viewer's UI locale. Without this an admin/owner in EN UI
+        // would type into the EN translation and overwrite the source.
+        const data = await coursesService.getModuleForEdit(courseId, moduleId);
         if (signal?.cancelled) return;
         setMod(data);
         setModDueDate(isoToLocalInput(data.due_date));

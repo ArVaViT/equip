@@ -136,6 +136,75 @@ class TestListChapterAssignments:
         assert r.status_code == 403
 
 
+class TestListChapterAssignmentsSourceParam:
+    """``?source=1`` is the editor's escape hatch — bypass the translation
+    overlay and return source columns regardless of ``Accept-Language``.
+    Gated to course owner + admin so source content (typos / unredacted
+    teacher drafts) never leaks to a student."""
+
+    def _seed_with_translation(self, db: Session, chapter_id: str) -> str:
+        from app.models.content_translation import ContentTranslation
+
+        asg_id = uuid.uuid4()
+        db.add(
+            Assignment(
+                id=asg_id,
+                chapter_id=chapter_id,
+                title="RU задание",
+                description="Описание RU",
+                max_score=10,
+            )
+        )
+        db.add(
+            ContentTranslation(
+                entity_type="assignment",
+                entity_id=str(asg_id),
+                field="title",
+                locale="en",
+                text="EN translation title",
+                source_hash="ah1",
+                status="ok",
+                origin="mt",
+            )
+        )
+        db.commit()
+        return str(asg_id)
+
+    def test_owner_with_source_param_gets_raw_columns(self, client: TestClient, db: Session):
+        _course, _mod, chapter = _seed_course_graph(db)
+        self._seed_with_translation(db, chapter.id)
+        r = client.get(
+            f"/api/v1/assignments/chapter/{chapter.id}",
+            params={"source": "1"},
+            headers={"Accept-Language": "en"},
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert len(body) == 1
+        assert body[0]["title"] == "RU задание"
+
+    def test_admin_with_source_param_gets_raw_columns(self, admin_client: TestClient, db: Session):
+        _course, _mod, chapter = _seed_course_graph(db)
+        self._seed_with_translation(db, chapter.id)
+        r = admin_client.get(
+            f"/api/v1/assignments/chapter/{chapter.id}",
+            params={"source": "1"},
+            headers={"Accept-Language": "en"},
+        )
+        assert r.status_code == 200, r.text
+        assert r.json()[0]["title"] == "RU задание"
+
+    def test_enrolled_student_with_source_param_403(self, student_client: TestClient, db: Session):
+        _course, _mod, chapter = _seed_course_graph(db)
+        self._seed_with_translation(db, chapter.id)
+        r = student_client.get(
+            f"/api/v1/assignments/chapter/{chapter.id}",
+            params={"source": "1"},
+            headers={"Accept-Language": "en"},
+        )
+        assert r.status_code == 403
+
+
 class TestCreateAssignment:
     """POST /api/v1/assignments"""
 

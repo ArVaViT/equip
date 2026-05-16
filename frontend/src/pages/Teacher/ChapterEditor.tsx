@@ -56,7 +56,11 @@ export default function ChapterEditor() {
     if (!courseId || !moduleId || !chapterId) return
     setLoading(true)
     try {
-      const mod = await coursesService.getModule(courseId, moduleId)
+      // Editor-only fetch so the breadcrumb's ``moduleName`` + the chapter
+      // title render in the source language regardless of the viewer's UI
+      // locale. Keeps the editor unambiguous: what you see is what you'd
+      // PATCH back.
+      const mod = await coursesService.getModuleForEdit(courseId, moduleId)
       if (signal?.cancelled) return
       setModuleName(mod.title)
       const ch = mod.chapters?.find((c) => c.id === chapterId)

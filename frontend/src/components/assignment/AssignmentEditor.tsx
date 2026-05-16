@@ -42,8 +42,12 @@ export default function AssignmentEditor({
     let cancelled = false
     setLoading(true)
     setFetchError(false)
+    // Editor-only fetch so the form binds to source-language `title` /
+    // `description` columns regardless of UI locale. Without this a
+    // teacher in EN UI editing their RU assignment would see the EN
+    // translation in the form and a PATCH would overwrite the source.
     coursesService
-      .getChapterAssignments(chapterId)
+      .getChapterAssignmentsForEdit(chapterId)
       .then((data) => {
         if (!cancelled) setAssignments(data)
       })

@@ -51,6 +51,33 @@ export const quizzesService = {
     })
   },
 
+  /**
+   * Editor-only fetch: forces source-language columns (title, description,
+   * question_text, option_text) regardless of the viewer's `preferred_locale`.
+   * Use from `QuizEditor` / `useQuizDraft` so a teacher in EN UI editing
+   * their RU quiz doesn't see EN translations in the editable fields (a
+   * PATCH would then overwrite the source `question_text` column).
+   *
+   * Owner / admin only — the backend returns 403 for anyone else.
+   * Intentionally bypasses the `quiz:chapter:{id}` cache so a teacher
+   * switching between taking and editing the same quiz doesn't see one
+   * view's payload bleed into the other.
+   */
+  async getChapterQuizForEdit(chapterId: string): Promise<Quiz | null> {
+    try {
+      const response = await api.get<Quiz | null>(
+        `/quizzes/chapter/${chapterId}`,
+        { params: { source: 1 } },
+      )
+      return response.data
+    } catch (err: unknown) {
+      if (isAxiosError(err) && err.response?.status === 404) {
+        return null
+      }
+      throw err
+    }
+  },
+
   async createQuiz(data: QuizCreateData): Promise<Quiz> {
     const response = await api.post<Quiz>("/quizzes", data)
     cacheInvalidate(`quiz:chapter:${data.chapter_id}`)

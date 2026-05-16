@@ -25,6 +25,25 @@ export const blocksService = {
     })
   },
 
+  /**
+   * Editor-only fetch: forces source-language `content` (TipTap HTML)
+   * regardless of the viewer's `preferred_locale`. Use from
+   * `ChapterBlockEditor` so a teacher in EN UI editing their RU course
+   * doesn't see the EN translation in the rich-text editor (a PATCH would
+   * then overwrite the source `content` column with English HTML).
+   *
+   * Owner / admin only — the backend returns 403 for anyone else.
+   * Intentionally bypasses the `blocks:chapter:{id}` cache so the editor
+   * view and the student view don't share state.
+   */
+  async getChapterBlocksForEdit(chapterId: string): Promise<ChapterBlock[]> {
+    const response = await api.get<ChapterBlock[]>(
+      `/blocks/chapter/${chapterId}`,
+      { params: { source: 1 } },
+    )
+    return response.data
+  },
+
   async createBlock(chapterId: string, data: ChapterBlockCreateData): Promise<ChapterBlock> {
     const response = await api.post<ChapterBlock>(`/blocks/chapter/${chapterId}`, data)
     cacheInvalidate(`blocks:chapter:${chapterId}`)

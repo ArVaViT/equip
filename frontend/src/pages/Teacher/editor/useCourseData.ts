@@ -59,7 +59,12 @@ export function useCourseData(
       if (!courseId) return
       setLoading(true)
       try {
-        const data = await coursesService.getCourse(courseId)
+        // `getCourseForEdit` forces ``?source=1`` so the InlineEdit fields
+        // bind to the source-language `title` / `description` columns,
+        // not the translation overlay. Without this an admin/owner in EN
+        // UI would type into the EN translation and save it back over
+        // the source — see PR #340 follow-up.
+        const data = await coursesService.getCourseForEdit(courseId)
         if (signal.cancelled) return
         setCourse(data)
         setEnrollStart(isoToLocalInput(data.enrollment_start))

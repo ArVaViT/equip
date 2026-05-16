@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models.chapter_block import ChapterBlock
+from app.models.content_translation import ContentTranslation
 from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
 from app.models.quiz import Quiz, QuizAttempt, QuizOption, QuizQuestion
@@ -178,6 +179,77 @@ def test_list_blocks_chapter_not_found(client: TestClient, db: Session):
 def test_list_blocks_anon_unauthorized(anon_client: TestClient):
     resp = anon_client.get("/api/v1/blocks/chapter/ch-1")
     assert resp.status_code == 401
+
+
+# ── GET /api/v1/blocks/chapter/{chapter_id}?source=1 (editor escape hatch) ──
+
+
+def _seed_block_with_en_translation(db: Session):
+    """Seed a chapter block with RU content and an EN translation overlay."""
+    block = ChapterBlock(
+        chapter_id="ch-1",
+        block_type="text",
+        order_index=0,
+        content="Русский контент",
+    )
+    db.add(block)
+    db.flush()
+    db.add(
+        ContentTranslation(
+            entity_type="chapter_block",
+            entity_id=str(block.id),
+            field="content",
+            locale="en",
+            text="<p>English content</p>",
+            source_hash="bh1",
+            status="ok",
+            origin="mt",
+        )
+    )
+    db.commit()
+    return block
+
+
+def test_list_blocks_source_param_returns_raw_for_owner(client: TestClient, db: Session):
+    """Editor path: teacher in EN UI editing their RU course must see the
+    source HTML (or PATCH would overwrite ``content`` with the EN translation)."""
+    _seed_course(db)
+    _seed_block_with_en_translation(db)
+
+    resp = client.get(
+        "/api/v1/blocks/chapter/ch-1",
+        params={"source": "1"},
+        headers={"Accept-Language": "en"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body) == 1
+    assert body[0]["content"] == "Русский контент"
+
+
+def test_list_blocks_source_param_returns_raw_for_admin(admin_client: TestClient, db: Session):
+    _seed_course(db)
+    _seed_block_with_en_translation(db)
+
+    resp = admin_client.get(
+        "/api/v1/blocks/chapter/ch-1",
+        params={"source": "1"},
+        headers={"Accept-Language": "en"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()[0]["content"] == "Русский контент"
+
+
+def test_list_blocks_source_param_403_for_enrolled_student(student_client: TestClient, db: Session):
+    _seed_course_with_enrollment(db)
+    _seed_block_with_en_translation(db)
+
+    resp = student_client.get(
+        "/api/v1/blocks/chapter/ch-1",
+        params={"source": "1"},
+        headers={"Accept-Language": "en"},
+    )
+    assert resp.status_code == 403
 
 
 # ── POST /api/v1/blocks/chapter/{chapter_id} ─────────────────────────────
@@ -450,6 +522,92 @@ def test_get_chapter_quiz_chapter_not_found(student_client: TestClient, db: Sess
 def test_get_chapter_quiz_anon_unauthorized(anon_client: TestClient):
     resp = anon_client.get("/api/v1/quizzes/chapter/ch-1")
     assert resp.status_code == 401
+
+
+# ── GET /api/v1/quizzes/chapter/{chapter_id}?source=1 (editor escape hatch) ──
+
+
+def _seed_quiz_with_en_translations(db: Session):
+    """Seed an RU-source quiz plus an EN ``content_translations`` overlay."""
+    quiz, questions, _opts = _seed_quiz_with_questions(db)
+    q1, q2 = questions
+    quiz.title = "RU тест"
+    quiz.description = "Описание"
+    q1.question_text = "Вопрос 1"
+    q2.question_text = "Вопрос 2"
+    db.add(
+        ContentTranslation(
+            entity_type="quiz",
+            entity_id=str(quiz.id),
+            field="title",
+            locale="en",
+            text="EN quiz title",
+            source_hash="qh1",
+            status="ok",
+            origin="mt",
+        )
+    )
+    db.add(
+        ContentTranslation(
+            entity_type="quiz_question",
+            entity_id=str(q1.id),
+            field="question_text",
+            locale="en",
+            text="EN question 1",
+            source_hash="qh2",
+            status="ok",
+            origin="mt",
+        )
+    )
+    db.commit()
+    return quiz, q1, q2
+
+
+def test_get_chapter_quiz_source_param_returns_raw_for_owner(client: TestClient, db: Session):
+    """``?source=1`` returns source columns even with ``Accept-Language: en``,
+    so a teacher in EN UI can't accidentally save the EN translation back to
+    the source ``question_text``."""
+    _seed_course(db)
+    _seed_quiz_with_en_translations(db)
+
+    resp = client.get(
+        "/api/v1/quizzes/chapter/ch-1",
+        params={"source": "1"},
+        headers={"Accept-Language": "en"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["title"] == "RU тест"
+    questions = sorted(body["questions"], key=lambda q: q["order_index"])
+    assert questions[0]["question_text"] == "Вопрос 1"
+
+
+def test_get_chapter_quiz_source_param_returns_raw_for_admin(admin_client: TestClient, db: Session):
+    _seed_course(db)
+    _seed_quiz_with_en_translations(db)
+
+    resp = admin_client.get(
+        "/api/v1/quizzes/chapter/ch-1",
+        params={"source": "1"},
+        headers={"Accept-Language": "en"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["title"] == "RU тест"
+
+
+def test_get_chapter_quiz_source_param_403_for_enrolled_student(student_client: TestClient, db: Session):
+    """Source content (typos, unredacted teacher drafts) shouldn't leak to
+    students. Even an enrolled student gets 403 — fail loudly so frontend
+    bugs surface immediately."""
+    _seed_course_with_enrollment(db)
+    _seed_quiz_with_en_translations(db)
+
+    resp = student_client.get(
+        "/api/v1/quizzes/chapter/ch-1",
+        params={"source": "1"},
+        headers={"Accept-Language": "en"},
+    )
+    assert resp.status_code == 403
 
 
 # ── GET /api/v1/quizzes/{quiz_id} (teacher detail) ──────────────────────

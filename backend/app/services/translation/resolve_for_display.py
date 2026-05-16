@@ -282,6 +282,40 @@ def should_apply_course_translation_overlay_for_chapter(
     return should_apply_course_translation_overlay(course=course, current_user=current_user)
 
 
+def is_chapter_course_owner_or_admin(
+    db: Session,
+    *,
+    chapter_id: str,
+    current_user: User | None,
+) -> bool:
+    """Return True when ``current_user`` owns the chapter's course or is admin.
+
+    Used by the editor-only ``?source=1`` gate on the chapter-scoped read
+    endpoints (``/quizzes/chapter/{id}``, ``/assignments/chapter/{id}``,
+    ``/blocks/chapter/{id}``). Returning source content to a regular student
+    would leak unredacted teacher drafts, so the param is gated.
+    """
+    if current_user is None:
+        return False
+    if current_user.role == UserRole.ADMIN.value:
+        return True
+    row = (
+        db.query(Course.created_by)
+        .join(Module, Module.course_id == Course.id)
+        .join(Chapter, Chapter.module_id == Module.id)
+        .filter(
+            Chapter.id == chapter_id,
+            Chapter.deleted_at.is_(None),
+            Module.deleted_at.is_(None),
+            Course.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if row is None:
+        return False
+    return _str_uuid(row[0]) == _str_uuid(current_user.id)
+
+
 def build_localized_course_response_with_tree(
     db: Session,
     course: Course,
@@ -507,6 +541,7 @@ __all__ = [
     "build_localized_quiz_student_response",
     "fetch_overlay_triples_bulk",
     "get_course_source_locale_for_chapter",
+    "is_chapter_course_owner_or_admin",
     "localize_announcement_rows",
     "localize_assignment_rows",
     "localize_chapter_block_rows",

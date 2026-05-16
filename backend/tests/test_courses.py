@@ -367,6 +367,187 @@ class TestCatalogLocalizedMetadata:
         assert r.status_code == 200
         assert r.json()["title"] == "English catalog title"
 
+    def test_get_detail_source_param_returns_raw_columns_for_owner(
+        self,
+        client: TestClient,
+        db: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """``?source=1`` bypasses the overlay even with an explicit EN
+        ``Accept-Language``. This is the editor-page escape hatch — without
+        it a teacher in EN UI viewing their RU course would see EN text in
+        the inline-edit fields and a PATCH would overwrite the source
+        ``title`` column with English.
+        """
+        monkeypatch.setattr(
+            "app.api.v1.courses.crud.translate_course_content",
+            lambda *args, **kwargs: OrchestratorReport(),
+        )
+        course = _create_course(
+            client,
+            title="Заголовок RU",
+            description="Описание RU",
+        )
+        cid = course["id"]
+        client.put(f"{PREFIX}/{cid}", json={"status": "published"})
+        self._seed_en_translations(db, cid)
+
+        # Sanity check: the same endpoint without ``?source=1`` still applies
+        # the EN overlay for the owner once we remove the implicit owner skip
+        # (today's main still skips for owner, so the assertion here is the
+        # source contract — that ``?source=1`` always returns source).
+        owner_with_source = client.get(
+            f"{PREFIX}/{cid}",
+            params={"source": "1"},
+            headers={"Accept-Language": "en"},
+        )
+        assert owner_with_source.status_code == 200
+        body = owner_with_source.json()
+        assert body["title"] == "Заголовок RU"
+        assert body["description"] == "Описание RU"
+
+    def test_get_detail_source_param_returns_raw_columns_for_admin(
+        self,
+        admin_client: TestClient,
+        client: TestClient,
+        db: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Admins managing a teacher's course also need source columns for
+        editor surfaces. ``client`` seeds the teacher + course; ``admin_client``
+        then opens the same course."""
+        monkeypatch.setattr(
+            "app.api.v1.courses.crud.translate_course_content",
+            lambda *args, **kwargs: OrchestratorReport(),
+        )
+        course = _create_course(
+            client,
+            title="Заголовок RU",
+            description="Описание RU",
+        )
+        cid = course["id"]
+        client.put(f"{PREFIX}/{cid}", json={"status": "published"})
+        self._seed_en_translations(db, cid)
+
+        resp = admin_client.get(
+            f"{PREFIX}/{cid}",
+            params={"source": "1"},
+            headers={"Accept-Language": "en"},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["title"] == "Заголовок RU"
+        assert body["description"] == "Описание RU"
+
+    def test_get_detail_source_param_403_for_non_owner_student(
+        self,
+        student_client: TestClient,
+        db: Session,
+    ) -> None:
+        """Source content can include unredacted teacher drafts / typos —
+        returning it to a regular student would be an information leak.
+        The endpoint denies loudly (403) so frontend regressions surface
+        immediately instead of leaking text on a slow rollout."""
+        # Seed via the DB directly so we don't share ``dependency_overrides``
+        # with another TestClient fixture (only ``student_client`` is in play).
+        course = Course(
+            id="course-source-403",
+            title="Заголовок RU",
+            description="Описание RU",
+            status="published",
+            created_by=TEACHER_ID,
+        )
+        db.add(course)
+        db.commit()
+        self._seed_en_translations(db, course.id)
+
+        resp = student_client.get(
+            f"{PREFIX}/{course.id}",
+            params={"source": "1"},
+            headers={"Accept-Language": "en"},
+        )
+        assert resp.status_code == 403
+
+    def test_get_module_detail_source_param_returns_raw_columns_for_owner(
+        self,
+        client: TestClient,
+        db: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The module-detail editor endpoint (``CourseEditor`` opens it for
+        each module via ``ModuleEditor``) must hand back source columns even
+        when the viewer is in EN UI."""
+        monkeypatch.setattr(
+            "app.api.v1.courses.crud.translate_course_content",
+            lambda *args, **kwargs: OrchestratorReport(),
+        )
+        course = _create_course(client, title="RU course", description="RU desc")
+        cid = course["id"]
+        client.put(f"{PREFIX}/{cid}", json={"status": "published"})
+
+        mod_resp = client.post(
+            f"{PREFIX}/{cid}/modules",
+            json={"title": "Модуль RU", "description": "Описание модуля", "order_index": 0},
+        )
+        assert mod_resp.status_code == 201, mod_resp.text
+        mod_id = mod_resp.json()["id"]
+
+        db.add(
+            ContentTranslation(
+                entity_type="module",
+                entity_id=str(mod_id),
+                field="title",
+                locale="en",
+                text="Module title EN",
+                source_hash="m1",
+                status="ok",
+                origin="mt",
+            )
+        )
+        db.commit()
+
+        resp = client.get(
+            f"{PREFIX}/{cid}/modules/{mod_id}",
+            params={"source": "1"},
+            headers={"Accept-Language": "en"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["title"] == "Модуль RU"
+
+    def test_get_module_detail_source_param_403_for_non_owner_student(
+        self,
+        student_client: TestClient,
+        db: Session,
+    ) -> None:
+        from app.models.course import Module
+
+        course = Course(
+            id="course-mod-source-403",
+            title="RU course",
+            description="RU desc",
+            status="published",
+            created_by=TEACHER_ID,
+        )
+        module = Module(
+            id="mod-source-403",
+            course_id=course.id,
+            title="Модуль RU",
+            description="x",
+            order_index=0,
+        )
+        db.add_all([course, module])
+        db.commit()
+
+        # ``get_module_detail`` doesn't enforce enrollment for published
+        # courses — any authenticated user can call it. The 403 must come
+        # from the ``?source=1`` gate, not from enrollment.
+        resp = student_client.get(
+            f"{PREFIX}/{course.id}/modules/{module.id}",
+            params={"source": "1"},
+            headers={"Accept-Language": "en"},
+        )
+        assert resp.status_code == 403
+
     def test_ru_ct_row_preferred_over_course_columns_when_source_locale_mismatch(
         self,
         client: TestClient,

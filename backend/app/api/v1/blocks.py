@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -14,6 +14,7 @@ from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import (
     get_course_source_locale_for_chapter,
+    is_chapter_course_owner_or_admin,
     localize_chapter_block_rows,
     should_apply_course_translation_overlay_for_chapter,
 )
@@ -26,12 +27,28 @@ def list_blocks(
     chapter_id: str,
     response: Response,
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    source: bool = Query(
+        False,
+        description=(
+            "Bypass the translation overlay and return source-language ``content`` "
+            "(rich-text HTML). Owner / admin only — used by the chapter block "
+            "editor so a teacher viewing their RU course in EN UI doesn't "
+            "accidentally save the EN translation back into the source content."
+        ),
+    ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     verify_chapter_access(db, chapter_id, current_user)
     response.headers["Vary"] = "Accept-Language"
     rows = db.query(ChapterBlock).filter(ChapterBlock.chapter_id == chapter_id).order_by(ChapterBlock.order_index).all()
+    if source:
+        if not is_chapter_course_owner_or_admin(db, chapter_id=chapter_id, current_user=current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the course owner or an admin can request source-language content",
+            )
+        return rows
     display_locale: LocaleCode = normalize_locale(accept_language)
     src = get_course_source_locale_for_chapter(db, chapter_id)
     if should_apply_course_translation_overlay_for_chapter(db, chapter_id=chapter_id, current_user=current_user):

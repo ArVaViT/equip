@@ -69,6 +69,27 @@ const courseCrud = {
     })
   },
 
+  /**
+   * Editor-only fetch: forces the API to return source-language columns
+   * regardless of the viewer's `preferred_locale`. Use from `CourseEditor` /
+   * `useCourseData` so a teacher editing their RU course in EN UI doesn't
+   * see the EN translation in InlineEdit fields (and PATCH it back into the
+   * source `title` column).
+   *
+   * Owner / admin only — the backend returns 403 for anyone else, so this
+   * function is safe to call from teacher-only routes.
+   *
+   * Intentionally bypasses the `courses:detail:{id}` cache: the student-
+   * facing read populates the same key with the localized payload, and we
+   * don't want one view to clobber the other.
+   */
+  async getCourseForEdit(id: string): Promise<Course> {
+    const response = await api.get<Course>(`/courses/${id}`, {
+      params: { source: 1 },
+    })
+    return response.data
+  },
+
   async getTeacherCourses(): Promise<Course[]> {
     return cached("courses:teacher", CACHE_TTL.ONE_MINUTE, async () => {
       const response = await api.get<Course[]>("/courses/my")
@@ -136,6 +157,20 @@ const courseCrud = {
       const response = await api.get<Module>(`/courses/${courseId}/modules/${moduleId}`)
       return response.data
     })
+  },
+
+  /**
+   * Editor-only fetch: see `getCourseForEdit`. Forces source-language
+   * columns from the module-detail endpoint so `ModuleEditor` and
+   * `ChapterEditor` (which loads its chapter list via the module response)
+   * don't see translation overlays in editable fields.
+   */
+  async getModuleForEdit(courseId: string, moduleId: string): Promise<Module> {
+    const response = await api.get<Module>(
+      `/courses/${courseId}/modules/${moduleId}`,
+      { params: { source: 1 } },
+    )
+    return response.data
   },
 
   async createModule(
