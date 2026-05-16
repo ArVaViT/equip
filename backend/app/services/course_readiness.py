@@ -152,6 +152,20 @@ def _open_chapter_action(chapter: Chapter) -> ReadinessAction:
     )
 
 
+def _open_quiz_action(chapter: Chapter) -> ReadinessAction:
+    return ReadinessAction(
+        type="open_quiz",
+        params={"module_id": chapter.module_id, "chapter_id": chapter.id},
+    )
+
+
+def _open_assignment_action(chapter: Chapter) -> ReadinessAction:
+    return ReadinessAction(
+        type="open_assignment",
+        params={"module_id": chapter.module_id, "chapter_id": chapter.id},
+    )
+
+
 # ─── Main entry point ───────────────────────────────────────────────────
 
 
@@ -297,10 +311,7 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
                             else "courseReadiness.checks.quizHasQuestion"
                         ),
                         subject=_make_chapter_subject(chapter),
-                        action=ReadinessAction(
-                            type="open_quiz",
-                            params={"module_id": chapter.module_id, "chapter_id": chapter.id},
-                        ),
+                        action=_open_quiz_action(chapter),
                     )
                 )
                 if quiz is not None:
@@ -312,10 +323,7 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
                             passed=not bad_questions,
                             message_key="courseReadiness.checks.quizQuestionsComplete",
                             subject=_make_chapter_subject(chapter),
-                            action=ReadinessAction(
-                                type="open_quiz",
-                                params={"module_id": chapter.module_id, "chapter_id": chapter.id},
-                            ),
+                            action=_open_quiz_action(chapter),
                         )
                     )
 
@@ -329,10 +337,7 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
                         passed=assignment is not None and bool((assignment.description or "").strip()),
                         message_key="courseReadiness.checks.assignmentHasBrief",
                         subject=_make_chapter_subject(chapter),
-                        action=ReadinessAction(
-                            type="open_assignment",
-                            params={"module_id": chapter.module_id, "chapter_id": chapter.id},
-                        ),
+                        action=_open_assignment_action(chapter),
                     )
                 )
 
