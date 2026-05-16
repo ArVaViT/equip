@@ -94,6 +94,54 @@ def grade_auto_answer(
     return False, 0
 
 
+def _add_answer_row(
+    db: Session,
+    *,
+    attempt_id: UUID,
+    question_id: UUID,
+    selected_option_id: UUID | None,
+    text_answer: str | None,
+    is_correct: bool,
+    points_earned: int,
+    graded_at: datetime | None,
+    correct_option_id: UUID | None,
+) -> QuizAnswerResult:
+    """Insert one ``QuizAnswer`` and return its matching ``QuizAnswerResult``.
+
+    Both the "student submitted this" and "student skipped this"
+    branches need to write a row with identical column shape and emit a
+    response payload with identical column shape. This collapses the
+    duplicate ORM/Pydantic construction down to one place so a future
+    column addition only has to be made twice (model + schema) instead
+    of four times (model + schema, x submitted, x skipped).
+    """
+    # Pre-generate the PK so we can build the result row without
+    # round-tripping a flush per answer. ``submit_quiz`` commits once
+    # at the end, which flushes everything.
+    answer_id = uuid.uuid4()
+    db.add(
+        QuizAnswer(
+            id=answer_id,
+            attempt_id=attempt_id,
+            question_id=question_id,
+            selected_option_id=selected_option_id,
+            text_answer=text_answer,
+            is_correct=is_correct,
+            points_earned=points_earned,
+            graded_at=graded_at,
+        )
+    )
+    return QuizAnswerResult(
+        id=answer_id,
+        question_id=question_id,
+        selected_option_id=selected_option_id,
+        text_answer=text_answer,
+        is_correct=is_correct,
+        points_earned=points_earned,
+        correct_option_id=correct_option_id,
+    )
+
+
 def persist_answers(
     db: Session,
     attempt: QuizAttempt,
@@ -114,6 +162,9 @@ def persist_answers(
     answered: set[Any] = set()
     now = datetime.now(UTC)
 
+    def correct_for(question_id: Any) -> UUID | None:
+        return correct_option_map.get(str(question_id)) if show_correct else None
+
     for ans in submitted:
         question = questions_map.get(ans.question_id)
         if not question:
@@ -131,14 +182,9 @@ def persist_answers(
         # queue uses that NULL as its single source of truth for "this
         # answer still needs a human".
         auto_graded_at = now if question.question_type in AUTO_GRADED_QUESTION_TYPES else None
-
-        # Pre-generate the PK so we can build QuizAnswerResult without
-        # round-tripping a flush per row. The caller (`submit_quiz`)
-        # commits once at the end, which flushes everything.
-        answer_id = uuid.uuid4()
-        db.add(
-            QuizAnswer(
-                id=answer_id,
+        answer_results.append(
+            _add_answer_row(
+                db,
                 attempt_id=attempt.id,
                 question_id=ans.question_id,
                 selected_option_id=ans.selected_option_id,
@@ -146,35 +192,25 @@ def persist_answers(
                 is_correct=is_correct,
                 points_earned=points_earned,
                 graded_at=auto_graded_at,
-            )
-        )
-        answer_results.append(
-            QuizAnswerResult(
-                id=answer_id,
-                question_id=ans.question_id,
-                selected_option_id=ans.selected_option_id,
-                text_answer=ans.text_answer,
-                is_correct=is_correct,
-                points_earned=points_earned,
-                correct_option_id=(correct_option_map.get(str(ans.question_id)) if show_correct else None),
+                correct_option_id=correct_for(ans.question_id),
             )
         )
 
     # Record a zeroed answer for every question the student skipped. This
     # keeps ``max_score`` honest and makes the results screen render
     # every row, not just the ones the student touched.
+    #
+    # Auto-gradable skips are final at 0. Open-ended skips have no
+    # ``text_answer`` so they never enter the pending queue (the query
+    # requires ``text_answer IS NOT NULL``), but stamping ``graded_at``
+    # for them too keeps ``graded_at IS NULL`` strictly equivalent to
+    # "an essay/short_answer with text awaiting review".
     for q in quiz.questions:
         if q.id in answered:
             continue
-        skip_id = uuid.uuid4()
-        # Auto-gradable skips are final at 0. Open-ended skips have no
-        # ``text_answer`` so they never enter the pending queue (the
-        # query requires ``text_answer IS NOT NULL``), but stamping
-        # ``graded_at`` for them too keeps ``graded_at IS NULL`` strictly
-        # equivalent to "an essay/short_answer with text awaiting review".
-        db.add(
-            QuizAnswer(
-                id=skip_id,
+        answer_results.append(
+            _add_answer_row(
+                db,
                 attempt_id=attempt.id,
                 question_id=q.id,
                 selected_option_id=None,
@@ -182,17 +218,7 @@ def persist_answers(
                 is_correct=False,
                 points_earned=0,
                 graded_at=now,
-            )
-        )
-        answer_results.append(
-            QuizAnswerResult(
-                id=skip_id,
-                question_id=q.id,
-                selected_option_id=None,
-                text_answer=None,
-                is_correct=False,
-                points_earned=0,
-                correct_option_id=(correct_option_map.get(str(q.id)) if show_correct else None),
+                correct_option_id=correct_for(q.id),
             )
         )
     return total_score, answer_results
