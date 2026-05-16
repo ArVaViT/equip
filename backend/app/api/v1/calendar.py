@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_teacher, verify_course_owner
 from app.core.database import get_db
+from app.core.sanitize import sanitize_string
 from app.models.assignment import Assignment
 from app.models.course import Chapter, Course, Module
 from app.models.course_event import CourseEvent
@@ -205,10 +206,16 @@ def create_course_event(
     db: Session = Depends(get_db),
 ) -> CourseEvent:
     verify_course_owner(db, course_id, teacher)
+    # Defence-in-depth: the frontend strips HTML before submit, but a direct
+    # API caller can post arbitrary markup. Same shape as
+    # ``announcements.create`` and ``courses.create`` — title is a plain
+    # short string, description may carry rich content (TipTap output),
+    # both go through ``sanitize_string`` which keeps the allowlisted tags
+    # and drops anything that could turn into stored XSS at render time.
     event = CourseEvent(
         course_id=course_id,
-        title=data.title,
-        description=data.description,
+        title=sanitize_string(data.title),
+        description=sanitize_string(data.description) if data.description else data.description,
         event_type=data.event_type,
         event_date=data.event_date,
         created_by=teacher.id,

@@ -44,4 +44,10 @@ class Certificate(Base):
     teacher_approved_by: Mapped[uuid.UUID | None] = mapped_column()
     admin_approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     admin_approved_by: Mapped[uuid.UUID | None] = mapped_column()
-    cohort_id: Mapped[uuid.UUID | None] = mapped_column()
+    # ``cohort_id`` carries an FK to ``cohorts.id`` with ``ON DELETE SET NULL``
+    # — cohorts are metadata, not a load-bearing identity for the cert, so
+    # deleting a cohort must not destroy issued certs. The constraint already
+    # lives in prod; the model just never declared it, leaving the CI
+    # schema-smoke job blind to the relationship. See migration
+    # ``20260516021349_certificates_cohort_fk_ensure.sql``.
+    cohort_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("cohorts.id", ondelete="SET NULL"), nullable=True)
