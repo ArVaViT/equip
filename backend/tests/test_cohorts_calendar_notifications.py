@@ -726,6 +726,151 @@ class TestCompleteCohort:
         assert resp.status_code == 403
 
 
+class TestCohortWriteActionsAreAudited:
+    """Every admin-only cohort write surface must leave a paper trail.
+
+    Regression: ``cohorts.py`` previously skipped ``audit_service.log_action``
+    on create/delete/complete/attach_course/detach_course/add_student/
+    remove_student. Those are exactly the actions an external auditor
+    expects to inspect, so a missing audit row is a real compliance hole.
+    Cover all seven surfaces in one parameterised-ish test that asserts a
+    matching ``AuditLog`` row exists after each call.
+    """
+
+    @staticmethod
+    def _seed_user(db: Session, *, role: str = "student") -> "uuid.UUID":
+        from app.models.user import User
+
+        uid = uuid.uuid4()
+        db.add(User(id=uid, email=f"u-{uid}@example.com", full_name="Student", role=role))
+        db.commit()
+        return uid
+
+    def test_create_writes_audit_row(self, admin_client: TestClient, db: Session):
+        from app.models.audit_log import AuditLog
+
+        resp = admin_client.post(COHORT_PREFIX, json=_cohort_payload(name="Audited"))
+        assert resp.status_code == 201
+        cohort_id = resp.json()["id"]
+        row = (
+            db.query(AuditLog)
+            .filter(AuditLog.resource_type == "cohort", AuditLog.resource_id == cohort_id, AuditLog.action == "create")
+            .first()
+        )
+        assert row is not None
+        assert str(row.user_id) == str(ADMIN_ID)
+
+    def test_delete_writes_audit_row(self, admin_client: TestClient, db: Session):
+        from app.models.audit_log import AuditLog
+
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db, name="Doomed")
+        cohort_id = str(cohort.id)
+        resp = admin_client.delete(f"{COHORT_PREFIX}/{cohort_id}")
+        assert resp.status_code == 204
+        row = (
+            db.query(AuditLog)
+            .filter(AuditLog.resource_type == "cohort", AuditLog.resource_id == cohort_id, AuditLog.action == "delete")
+            .first()
+        )
+        assert row is not None
+
+    def test_complete_writes_audit_row(self, admin_client: TestClient, db: Session):
+        from app.models.audit_log import AuditLog
+
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        resp = admin_client.post(f"{COHORT_PREFIX}/{cohort.id}/complete")
+        assert resp.status_code == 200
+        row = (
+            db.query(AuditLog)
+            .filter(
+                AuditLog.resource_type == "cohort",
+                AuditLog.resource_id == str(cohort.id),
+                AuditLog.action == "complete",
+            )
+            .first()
+        )
+        assert row is not None
+
+    def test_attach_course_writes_audit_row(self, admin_client: TestClient, db: Session):
+        from app.models.audit_log import AuditLog
+
+        _seed_course(db, course_id="course-attach")
+        cohort = _seed_cohort_with_course(db, course_id="course-attach")
+        # Attach a second course
+        _seed_course(db, course_id="course-2")
+        resp = admin_client.post(f"{COHORT_PREFIX}/{cohort.id}/courses", json={"course_id": "course-2"})
+        assert resp.status_code == 201
+        row = (
+            db.query(AuditLog)
+            .filter(
+                AuditLog.resource_type == "cohort",
+                AuditLog.resource_id == str(cohort.id),
+                AuditLog.action == "attach_course",
+            )
+            .first()
+        )
+        assert row is not None
+
+    def test_detach_course_writes_audit_row(self, admin_client: TestClient, db: Session):
+        from app.models.audit_log import AuditLog
+
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        resp = admin_client.delete(f"{COHORT_PREFIX}/{cohort.id}/courses/test-course-1")
+        assert resp.status_code == 204
+        row = (
+            db.query(AuditLog)
+            .filter(
+                AuditLog.resource_type == "cohort",
+                AuditLog.resource_id == str(cohort.id),
+                AuditLog.action == "detach_course",
+            )
+            .first()
+        )
+        assert row is not None
+
+    def test_add_student_writes_audit_row(self, admin_client: TestClient, db: Session):
+        from app.models.audit_log import AuditLog
+
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        student_uuid = self._seed_user(db)
+        resp = admin_client.post(f"{COHORT_PREFIX}/{cohort.id}/students", json={"user_id": str(student_uuid)})
+        assert resp.status_code == 201
+        row = (
+            db.query(AuditLog)
+            .filter(
+                AuditLog.resource_type == "cohort",
+                AuditLog.resource_id == str(cohort.id),
+                AuditLog.action == "add_student",
+            )
+            .first()
+        )
+        assert row is not None
+
+    def test_remove_student_writes_audit_row(self, admin_client: TestClient, db: Session):
+        from app.models.audit_log import AuditLog
+
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        student_uuid = self._seed_user(db)
+        admin_client.post(f"{COHORT_PREFIX}/{cohort.id}/students", json={"user_id": str(student_uuid)})
+        resp = admin_client.delete(f"{COHORT_PREFIX}/{cohort.id}/students/{student_uuid}")
+        assert resp.status_code == 204
+        row = (
+            db.query(AuditLog)
+            .filter(
+                AuditLog.resource_type == "cohort",
+                AuditLog.resource_id == str(cohort.id),
+                AuditLog.action == "remove_student",
+            )
+            .first()
+        )
+        assert row is not None
+
+
 class TestSoloEnrollmentAccessMode:
     """ADR-010 §1: ``access_mode='institute'`` blocks the solo-enroll
     path (no cohort_id in the request body). Cohort-route enrollment

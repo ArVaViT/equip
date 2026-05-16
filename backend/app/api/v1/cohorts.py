@@ -23,7 +23,7 @@ the top-level admin UI.
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -42,6 +42,7 @@ from app.schemas.cohort import (
     CohortUpdate,
 )
 from app.schemas.locale import normalize_locale
+from app.services.audit_service import log_action
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import Localizer
 
@@ -137,6 +138,7 @@ def list_cohorts(
 @router.post("", response_model=CohortResponse, status_code=status.HTTP_201_CREATED)
 def create_cohort(
     data: CohortCreate,
+    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
@@ -155,6 +157,15 @@ def create_cohort(
     db.add(cohort)
     db.commit()
     db.refresh(cohort)
+    log_action(
+        db,
+        admin.id,
+        "create",
+        "cohort",
+        str(cohort.id),
+        details={"name": cohort.name},
+        request=request,
+    )
     return _serialize(db, cohort)
 
 
@@ -201,6 +212,7 @@ def update_cohort(
 @router.delete("/{cohort_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_cohort(
     cohort_id: UUID,
+    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> None:
@@ -209,13 +221,24 @@ def delete_cohort(
     ``cohort_id`` set to NULL (``ON DELETE SET NULL`` on the FK) — that
     way historical grade data is preserved as orphaned solo enrollments."""
     cohort = _get_or_404(db, cohort_id)
+    cohort_name = cohort.name
     db.delete(cohort)
     db.commit()
+    log_action(
+        db,
+        admin.id,
+        "delete",
+        "cohort",
+        str(cohort_id),
+        details={"name": cohort_name},
+        request=request,
+    )
 
 
 @router.post("/{cohort_id}/complete", response_model=CohortResponse)
 def complete_cohort(
     cohort_id: UUID,
+    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
@@ -228,6 +251,15 @@ def complete_cohort(
     cohort.status = CohortStatus.COMPLETED
     db.commit()
     db.refresh(cohort)
+    log_action(
+        db,
+        admin.id,
+        "complete",
+        "cohort",
+        str(cohort.id),
+        details={"name": cohort.name},
+        request=request,
+    )
     return _serialize(db, cohort)
 
 
@@ -252,6 +284,7 @@ def list_cohort_courses(
 def attach_course(
     cohort_id: UUID,
     body: CohortCourseAttach,
+    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
@@ -320,6 +353,15 @@ def attach_course(
         # A concurrent attach raced us; safe to roll back and re-read.
         db.rollback()
     db.refresh(cohort)
+    log_action(
+        db,
+        admin.id,
+        "attach_course",
+        "cohort",
+        str(cohort.id),
+        details={"course_id": course.id},
+        request=request,
+    )
     reconcile_entity_if_course_published(db, "cohort", cohort)
     return _serialize(db, cohort)
 
@@ -331,6 +373,7 @@ def attach_course(
 def detach_course(
     cohort_id: UUID,
     course_id: str,
+    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> None:
@@ -349,6 +392,15 @@ def detach_course(
     ).update({Enrollment.cohort_id: None}, synchronize_session=False)
     db.delete(link)
     db.commit()
+    log_action(
+        db,
+        admin.id,
+        "detach_course",
+        "cohort",
+        str(cohort.id),
+        details={"course_id": course_id},
+        request=request,
+    )
 
 
 # ---------------------- junction: cohort x students -------------------
@@ -401,6 +453,7 @@ def list_cohort_students(
 def add_student(
     cohort_id: UUID,
     body: CohortStudentAdd,
+    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -491,6 +544,15 @@ def add_student(
         db.commit()
     except IntegrityError:
         db.rollback()
+    log_action(
+        db,
+        admin.id,
+        "add_student",
+        "cohort",
+        str(cohort.id),
+        details={"user_id": str(user.id), "email": user.email, "course_count": len(course_ids)},
+        request=request,
+    )
     return {"user_id": str(user.id), "course_ids": course_ids}
 
 
@@ -501,6 +563,7 @@ def add_student(
 def remove_student(
     cohort_id: UUID,
     user_id: UUID,
+    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> None:
@@ -511,6 +574,15 @@ def remove_student(
         {Enrollment.cohort_id: None}, synchronize_session=False
     )
     db.commit()
+    log_action(
+        db,
+        admin.id,
+        "remove_student",
+        "cohort",
+        str(cohort.id),
+        details={"user_id": str(user_id)},
+        request=request,
+    )
 
 
 # -------------------------- public-ish read ---------------------------
