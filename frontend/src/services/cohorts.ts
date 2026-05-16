@@ -1,5 +1,5 @@
 import api from "./api"
-import { cacheGet, cacheSet, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
+import { cached, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
 import type { Cohort } from "@/types"
 
 export interface CohortStudent {
@@ -49,12 +49,10 @@ function invalidateCourseLists() {
 
 export const cohortsService = {
   async getCourseCohorts(courseId: string): Promise<Cohort[]> {
-    const key = `cohorts:course:${courseId}`
-    const cached = cacheGet<Cohort[]>(key)
-    if (cached) return cached
-    const response = await api.get<Cohort[]>(`/cohorts/course/${courseId}`)
-    cacheSet(key, response.data, CACHE_TTL.TWO_MINUTES)
-    return response.data
+    return cached(`cohorts:course:${courseId}`, CACHE_TTL.TWO_MINUTES, async () => {
+      const response = await api.get<Cohort[]>(`/cohorts/course/${courseId}`)
+      return response.data
+    })
   },
 
   // -------------------- admin: cohort CRUD --------------------

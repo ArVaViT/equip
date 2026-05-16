@@ -1,5 +1,5 @@
 import api from "./api"
-import { cacheGet, cacheSet, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
+import { cached, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
 import type { Enrollment } from "@/types"
 
 export const enrollmentsService = {
@@ -19,24 +19,20 @@ export const enrollmentsService = {
     // HomePage, ProfilePage, CalendarPage, and CertificatesPage all call this
     // on mount. Without the short TTL we'd issue four identical requests for
     // /users/me/courses during a routine navigation.
-    const key = "courses:my"
-    const cached = cacheGet<Enrollment[]>(key)
-    if (cached) return cached
-    const response = await api.get<Enrollment[]>("/users/me/courses")
-    cacheSet(key, response.data, CACHE_TTL.ONE_MINUTE)
-    return response.data
+    return cached("courses:my", CACHE_TTL.ONE_MINUTE, async () => {
+      const response = await api.get<Enrollment[]>("/users/me/courses")
+      return response.data
+    })
   },
 
   async getEnrollmentStatus(
     courseId: string,
   ): Promise<{ enrolled: boolean; enrollment: Enrollment | null }> {
-    const key = `courses:enrollment-status:${courseId}`
-    const cached = cacheGet<{ enrolled: boolean; enrollment: Enrollment | null }>(key)
-    if (cached) return cached
-    const response = await api.get<{ enrolled: boolean; enrollment: Enrollment | null }>(
-      `/courses/${courseId}/enrollment-status`,
-    )
-    cacheSet(key, response.data, CACHE_TTL.ONE_MINUTE)
-    return response.data
+    return cached(`courses:enrollment-status:${courseId}`, CACHE_TTL.ONE_MINUTE, async () => {
+      const response = await api.get<{ enrolled: boolean; enrollment: Enrollment | null }>(
+        `/courses/${courseId}/enrollment-status`,
+      )
+      return response.data
+    })
   },
 }

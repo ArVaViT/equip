@@ -1,5 +1,5 @@
 import api from "./api"
-import { cacheGet, cacheSet, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
+import { cached, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
 import type { Course, Module, Chapter } from "@/types"
 
 import { adminUsersService } from "./adminUsers"
@@ -31,31 +31,25 @@ import { analyticsService } from "./analytics"
  */
 const courseCrud = {
   async getCourses(search?: string): Promise<Course[]> {
-    const key = `courses:list:${search ?? ""}`
-    const cached = cacheGet<Course[]>(key)
-    if (cached) return cached
-    const params = search ? { search } : undefined
-    const response = await api.get<Course[]>("/courses", { params })
-    cacheSet(key, response.data, CACHE_TTL.TWO_MINUTES)
-    return response.data
+    return cached(`courses:list:${search ?? ""}`, CACHE_TTL.TWO_MINUTES, async () => {
+      const params = search ? { search } : undefined
+      const response = await api.get<Course[]>("/courses", { params })
+      return response.data
+    })
   },
 
   async getCourse(id: string): Promise<Course> {
-    const key = `courses:detail:${id}`
-    const cached = cacheGet<Course>(key)
-    if (cached) return cached
-    const response = await api.get<Course>(`/courses/${id}`)
-    cacheSet(key, response.data, CACHE_TTL.THREE_MINUTES)
-    return response.data
+    return cached(`courses:detail:${id}`, CACHE_TTL.THREE_MINUTES, async () => {
+      const response = await api.get<Course>(`/courses/${id}`)
+      return response.data
+    })
   },
 
   async getTeacherCourses(): Promise<Course[]> {
-    const key = "courses:teacher"
-    const cached = cacheGet<Course[]>(key)
-    if (cached) return cached
-    const response = await api.get<Course[]>("/courses/my")
-    cacheSet(key, response.data, CACHE_TTL.ONE_MINUTE)
-    return response.data
+    return cached("courses:teacher", CACHE_TTL.ONE_MINUTE, async () => {
+      const response = await api.get<Course[]>("/courses/my")
+      return response.data
+    })
   },
 
   async createCourse(
@@ -122,12 +116,10 @@ const courseCrud = {
   },
 
   async getModule(courseId: string, moduleId: string): Promise<Module> {
-    const key = `courses:module:${courseId}:${moduleId}`
-    const cached = cacheGet<Module>(key)
-    if (cached) return cached
-    const response = await api.get<Module>(`/courses/${courseId}/modules/${moduleId}`)
-    cacheSet(key, response.data, CACHE_TTL.THREE_MINUTES)
-    return response.data
+    return cached(`courses:module:${courseId}:${moduleId}`, CACHE_TTL.THREE_MINUTES, async () => {
+      const response = await api.get<Module>(`/courses/${courseId}/modules/${moduleId}`)
+      return response.data
+    })
   },
 
   async createModule(
