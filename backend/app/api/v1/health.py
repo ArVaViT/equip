@@ -13,6 +13,19 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/health", tags=["health"])
 
 
+@router.get("", include_in_schema=False)
+def health_root() -> dict:
+    """API-namespaced alias for the root ``/health`` liveness probe.
+
+    External monitors (Datadog synthetics, Uptime Robot, etc.) sometimes
+    default to the API-prefixed path. Without this alias they hit a 404
+    and add noise to the error-rate panel. Body shape matches ``/health``
+    so a synthetic switching between the two doesn't see a behavior
+    change.
+    """
+    return {"status": "ok"}
+
+
 @router.get("/db")
 def check_database(
     db: Session = Depends(get_db),

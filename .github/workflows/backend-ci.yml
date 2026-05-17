@@ -1,22 +1,72 @@
 name: Backend CI
 
+# Triggers on every push to main and every PR targeting main, without a
+# top-level `paths:` filter. The `detect-changes` job below decides
+# whether the heavy work (lint, tests, schema smoke) actually runs based
+# on a diff of changed files. The aggregator job `Backend CI Pass` always
+# runs and reports a single stable check name, which is what the branch
+# ruleset requires. This avoids the fallback-workflow gymnastics: one
+# workflow, one check name, no concurrency collisions.
+
 on:
   push:
     branches: [main]
-    paths: ['backend/**', '.github/workflows/backend-ci.yml']
   pull_request:
     branches: [main]
-    paths: ['backend/**', '.github/workflows/backend-ci.yml']
 
 permissions:
   contents: read
 
 concurrency:
-  group: backend-ci-${{ github.workflow }}-${{ github.ref }}
+  group: backend-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # Determines whether any backend-relevant file changed in this push or PR.
+  # The heavy jobs gate on this output so docs-only PRs don't burn CI minutes.
+  # ---------------------------------------------------------------------------
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Detect backend-relevant changes
+        id: filter
+        run: |
+          set -e
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+            # event.before is 0000... when a branch is being created. main
+            # always has parents, so fall back to the first parent of HEAD.
+            if [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+              BASE_SHA="$(git rev-parse "$HEAD_SHA^")"
+            fi
+          fi
+          echo "Comparing $BASE_SHA..$HEAD_SHA"
+          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
+          echo "Changed files:"
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -qE '^backend/|^\.github/workflows/backend-ci\.yml$'; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "Backend changes detected — heavy jobs will run."
+          else
+            echo "backend=false" >> "$GITHUB_OUTPUT"
+            echo "No backend changes — heavy jobs will be skipped."
+          fi
+
   lint-and-test:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -95,6 +145,8 @@ jobs:
   # via the Supabase CLI / MCP), not from this workflow.
   # ---------------------------------------------------------------------------
   schema-smoke-postgres:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -191,3 +243,35 @@ jobs:
               raise SystemExit(f"Schema-smoke failed: missing tables on Postgres: {sorted(missing)}")
           print(f"OK: {len(tables)} tables materialized from models, all {len(required)} required tables present")
           PY
+
+  # ---------------------------------------------------------------------------
+  # Required-check aggregator. This single job is what the branch ruleset
+  # requires on every PR. It always runs (independent of detect-changes
+  # output) and reports a single stable check name. When backend files were
+  # not touched it auto-passes; when they were, it mirrors the result of
+  # the heavy jobs above.
+  # ---------------------------------------------------------------------------
+  backend-ci-pass:
+    name: Backend CI Pass
+    needs: [detect-changes, lint-and-test, schema-smoke-postgres]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify backend CI outcome
+        run: |
+          set -e
+          CHANGED="${{ needs.detect-changes.outputs.backend }}"
+          LT="${{ needs.lint-and-test.result }}"
+          SS="${{ needs.schema-smoke-postgres.result }}"
+          echo "backend_changed=$CHANGED"
+          echo "lint-and-test=$LT"
+          echo "schema-smoke-postgres=$SS"
+          if [ "$CHANGED" != "true" ]; then
+            echo "No backend changes — auto-pass."
+            exit 0
+          fi
+          if [ "$LT" != "success" ] || [ "$SS" != "success" ]; then
+            echo "::error::Backend CI failed."
+            exit 1
+          fi
+          echo "All backend CI jobs succeeded."

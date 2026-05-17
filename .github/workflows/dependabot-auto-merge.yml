@@ -1,0 +1,47 @@
+name: Dependabot auto-merge
+
+# Auto-merges Dependabot pull requests for patch and minor version bumps in
+# the npm and pip ecosystems once every required status check passes. Major
+# version bumps and github-actions updates always require manual review --
+# major bumps almost always need a migration step (see dependabot.yml ignore
+# block), and workflow changes affect CI itself.
+#
+# Safety model:
+#   - `gh pr merge --auto` does NOT bypass the branch ruleset. GitHub merges
+#     only after every required check on `main` reports success (currently
+#     pr-quality, Backend CI Pass, Frontend CI Pass).
+#   - `if: github.actor == 'dependabot[bot]'` guarantees this job only acts
+#     on Dependabot-authored PRs, regardless of what triggers the workflow.
+#   - `pull_request_target` is required so the job has the
+#     `pull-requests: write` permission needed to call the merge endpoint
+#     for Dependabot PRs (which run from a bot-owned ref, treated like a
+#     fork). We do NOT check out PR head code -- only Dependabot metadata
+#     and the merge API call run here.
+
+on: pull_request_target
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - name: Fetch Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for patch / minor npm + pip updates
+        if: >-
+          (steps.meta.outputs.update-type == 'version-update:semver-patch' ||
+           steps.meta.outputs.update-type == 'version-update:semver-minor') &&
+          (steps.meta.outputs.package-ecosystem == 'npm' ||
+           steps.meta.outputs.package-ecosystem == 'pip')
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,22 +1,62 @@
 name: Frontend CI
 
+# Triggers on every push to main and every PR targeting main, without a
+# top-level `paths:` filter. See backend-ci.yml for the full rationale —
+# the same always-run + detect-changes + aggregator pattern applies here.
+
 on:
   push:
     branches: [main]
-    paths: ['frontend/**', '.github/workflows/frontend-ci.yml']
   pull_request:
     branches: [main]
-    paths: ['frontend/**', '.github/workflows/frontend-ci.yml']
 
 permissions:
   contents: read
 
 concurrency:
-  group: frontend-ci-${{ github.workflow }}-${{ github.ref }}
+  group: frontend-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Detect frontend-relevant changes
+        id: filter
+        run: |
+          set -e
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+            if [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+              BASE_SHA="$(git rev-parse "$HEAD_SHA^")"
+            fi
+          fi
+          echo "Comparing $BASE_SHA..$HEAD_SHA"
+          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
+          echo "Changed files:"
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -qE '^frontend/|^\.github/workflows/frontend-ci\.yml$'; then
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+            echo "Frontend changes detected — heavy jobs will run."
+          else
+            echo "frontend=false" >> "$GITHUB_OUTPUT"
+            echo "No frontend changes — heavy jobs will be skipped."
+          fi
+
   lint-and-build:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -72,3 +112,30 @@ jobs:
 
       - name: Run unit tests
         run: npm run test:run
+
+  # ---------------------------------------------------------------------------
+  # Required-check aggregator. See the matching block in backend-ci.yml for
+  # the full rationale.
+  # ---------------------------------------------------------------------------
+  frontend-ci-pass:
+    name: Frontend CI Pass
+    needs: [detect-changes, lint-and-build]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify frontend CI outcome
+        run: |
+          set -e
+          CHANGED="${{ needs.detect-changes.outputs.frontend }}"
+          LB="${{ needs.lint-and-build.result }}"
+          echo "frontend_changed=$CHANGED"
+          echo "lint-and-build=$LB"
+          if [ "$CHANGED" != "true" ]; then
+            echo "No frontend changes — auto-pass."
+            exit 0
+          fi
+          if [ "$LB" != "success" ]; then
+            echo "::error::Frontend CI failed."
+            exit 1
+          fi
+          echo "Frontend CI succeeded."

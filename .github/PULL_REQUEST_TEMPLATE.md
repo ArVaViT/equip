@@ -13,6 +13,18 @@
 - [ ] CI / tooling
 - [ ] Breaking change (explain in the summary above)
 
+## How was this developed?
+
+<!--
+We transparently track AI assistance to keep the contribution history
+honest. This is informational — PRs are never rejected on the basis of
+the answer. See AGENTS.md for the Co-Authored-By trailer convention.
+-->
+
+- [ ] Hand-written, no AI assistance
+- [ ] AI-assisted (tool: _____)
+- [ ] Pair-programmed with AI (I drove the design; the agent helped with boilerplate, typing, or suggestions)
+
 ## Checklist
 
 - [ ] Follows [`docs/DESIGN.md`](../docs/DESIGN.md) — no raw palette classes,

@@ -10,7 +10,15 @@ logger = logging.getLogger(__name__)
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
-    SUPABASE_URL: str
+    # All boot-critical fields are ``Optional`` so the app process can boot
+    # even on a Vercel preview/development deployment that wasn't given the
+    # full env-var set. A missing value here doesn't crash on import — it
+    # bubbles up at request time through the existing 503 handlers in
+    # ``app.core.database.get_db`` / ``app.core.security.decode_access_token``.
+    # The list of missing critical fields is exposed via ``runtime_ready_errors()``
+    # so ``app.main`` can log a single startup warning instead of letting a
+    # Pydantic ``ValidationError`` traceback land on every favicon scrape.
+    SUPABASE_URL: str | None = Field(default=None, description="Supabase project URL")
     # Server-side Supabase key (admin queries only — e.g. reading auth.users
     # to sync ``profiles`` rows). Also read from the legacy SUPABASE_KEY env
     # var for backwards compatibility with early deployments — see
@@ -74,10 +82,27 @@ class Settings(BaseSettings):
     # plus the new ``finishReason`` check in ``GeminiTranslationProvider``
     # closes that hole. Cost-wise the cap only matters when actually emitted.
     GEMINI_MAX_OUTPUT_TOKENS: int = Field(default=8192, description="Cap on generation length")
+    # Minimum spacing between two Gemini calls from the same worker, in
+    # seconds. ``0`` (default) is the right value for production: course
+    # publishing is naturally bursty-but-sparse and rarely trips Gemini's
+    # 15 RPM free-tier limit. Backfill scripts that fire hundreds of
+    # requests back-to-back should set this to ``4.5`` (≈13 RPM, one slot
+    # of headroom under the 15 RPM cap) to avoid 429-rate-limit storms.
+    GEMINI_MIN_INTERVAL_SECONDS: float = Field(
+        default=0.0,
+        description="Min seconds between two Gemini calls from the same worker (RPM throttle)",
+    )
 
     @model_validator(mode="after")
     def load_alternative_env_vars(self):
         """Support alternative env var names from Vercel/Supabase integration."""
+        # An empty ``GEMINI_MODEL`` env var (e.g. an operator set the Vercel
+        # variable to ``""``) would otherwise become the literal string ""
+        # in the request URL — ``models/:generateContent`` — and Gemini
+        # returns 404. Treat blank as "use the default" instead.
+        if not self.GEMINI_MODEL or not self.GEMINI_MODEL.strip():
+            self.GEMINI_MODEL = Settings.model_fields["GEMINI_MODEL"].default
+
         if not self.SUPABASE_SERVICE_ROLE_KEY:
             # Accept the legacy SUPABASE_KEY name from older deployments.
             # Anon keys are NEVER accepted as a server-side secret.
@@ -101,12 +126,32 @@ class Settings(BaseSettings):
         if self.JWT_SECRET_KEY:
             self.JWT_SECRET_KEY = self.JWT_SECRET_KEY.strip()
 
-        if not self.DATABASE_URL:
-            raise ValueError("DATABASE_URL or POSTGRES_URL must be set")
-        if not self.JWT_SECRET_KEY:
-            raise ValueError("JWT_SECRET_KEY or SUPABASE_JWT_SECRET must be set")
+        # Critical-field validation moved to ``runtime_ready_errors()`` so
+        # boot succeeds on partially-configured environments (preview deploys
+        # without prod env vars) instead of crashing on module import and
+        # converting every favicon GET into a 500 with a full Pydantic stack
+        # trace. Real production must still surface missing config — the
+        # startup warning in ``app.main`` plus per-request 503s via the DB
+        # / auth dependencies cover that without spamming the error stream.
 
         return self
+
+    def runtime_ready_errors(self) -> list[str]:
+        """Names of critical fields not configured.
+
+        Returns ``[]`` when the app can serve authenticated API traffic;
+        otherwise lists the missing env-var names so ``app.main`` can emit
+        a single, scannable startup warning. Static surfaces (``/health``,
+        ``/favicon.*``, ``/``) work regardless of the result.
+        """
+        missing: list[str] = []
+        if not self.DATABASE_URL:
+            missing.append("DATABASE_URL")
+        if not self.JWT_SECRET_KEY:
+            missing.append("JWT_SECRET_KEY")
+        if not self.SUPABASE_URL:
+            missing.append("SUPABASE_URL")
+        return missing
 
     @property
     def cors_origins_list(self) -> list[str]:
