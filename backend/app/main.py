@@ -22,6 +22,21 @@ logger = logging.getLogger("api")
 
 _IS_PRODUCTION = bool(os.environ.get("VERCEL") or os.environ.get("PRODUCTION"))
 
+# Surface partially-configured environments (e.g. a Vercel preview deploy
+# that's missing prod env vars) as a single startup WARNING instead of a
+# Pydantic ValidationError that crashes the worker on import — which used
+# to convert every favicon / root scrape on those URLs into a 500 with a
+# full stack trace. Static routes (/health, /, /favicon.*) keep working;
+# anything that hits the DB or auth bounces a clean 503 / 401 through the
+# existing per-request handlers.
+_runtime_errors = settings.runtime_ready_errors()
+if _runtime_errors:
+    logger.warning(
+        "Backend booting in degraded mode; missing env vars: %s. "
+        "Static endpoints will respond; authenticated API routes will 503 / 401.",
+        ", ".join(_runtime_errors),
+    )
+
 app = FastAPI(
     title="Equip API",
     description=(
