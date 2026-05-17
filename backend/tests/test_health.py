@@ -33,6 +33,17 @@ def test_health_returns_ok():
     assert resp.json() == {"status": "ok"}
 
 
+def test_api_v1_health_alias_returns_ok():
+    """External monitors (Datadog synthetics) defaulted to the
+    API-namespaced ``/api/v1/health`` and hit 404s, padding the
+    error-rate panel. The alias body must match ``/health`` so a
+    synthetic switching between the two URLs reads identically."""
+    with TestClient(app) as tc:
+        resp = tc.get("/api/v1/health")
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok"}
+
+
 def test_response_includes_x_request_id_header():
     """Every response must carry an ``X-Request-Id`` header so a user
     reporting a bug can quote it and we can pivot from a single browser
