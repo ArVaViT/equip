@@ -13,6 +13,7 @@ import CourseCardSkeleton from "@/components/skeletons/CourseCardSkeleton"
 import { Search, BookOpen, LogIn, ArrowRight, CheckCircle } from "lucide-react"
 import { EmptyState, ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
+import { VerseOfTheDayCard } from "@/components/home/VerseOfTheDayCard"
 import { cn } from "@/lib/utils"
 
 const EDITORIAL_EASE = [0.22, 1, 0.36, 1] as const
@@ -227,10 +228,18 @@ export default function HomePage() {
   }, [query, reloadKey, t])
 
   return (
-    <div className="container mx-auto px-4 py-10">
-      {user && <MyCoursesSection />}
+    <div className="container mx-auto px-4 py-6 sm:py-10">
+      {user && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
+          {/* My Courses on the left (wide) sits next to the Verse of the
+              Day on the right (narrow). On mobile they stack with My
+              Courses first — the actionable column wins above the fold. */}
+          <MyCoursesSection />
+          <VerseOfTheDayCard />
+        </div>
+      )}
 
-      <section className="relative mb-14 md:mb-20" aria-labelledby="home-catalog-heading">
+      <section className="relative mb-10 md:mb-20" aria-labelledby="home-catalog-heading">
         <div className="pointer-events-none absolute left-1/2 top-0 -z-0 h-[min(22rem,55vw)] w-[min(120vw,44rem)] -translate-x-1/2 md:h-[26rem] md:w-[52rem]">
           <div className="bg-home-hero-glow h-full w-full blur-3xl" aria-hidden />
         </div>
@@ -266,12 +275,12 @@ export default function HomePage() {
       </section>
 
       {!user && (
-        <div className="mb-8 flex items-center justify-center gap-2 rounded-md border border-border border-l-[3px] border-l-info bg-info/5 px-4 py-3">
-          <LogIn className="h-4 w-4 text-info" strokeWidth={1.75} aria-hidden="true" />
+        <div className="mb-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-md border border-border border-l-[3px] border-l-info bg-info/5 px-4 py-3 text-center sm:text-left">
+          <LogIn className="h-4 w-4 shrink-0 text-info" strokeWidth={1.75} aria-hidden="true" />
           <p className="text-sm text-foreground">
             <Link
               to="/login"
-              className="font-medium underline underline-offset-2 hover:no-underline"
+              className="-my-2 inline-flex min-h-[44px] items-center font-medium underline underline-offset-2 hover:no-underline sm:my-0 sm:min-h-0"
             >
               {t("home.signInLink")}
             </Link>{" "}
@@ -281,7 +290,7 @@ export default function HomePage() {
       )}
 
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => <CourseCardSkeleton key={i} />)}
         </div>
       ) : error ? (
@@ -302,7 +311,7 @@ export default function HomePage() {
           className="border-none bg-transparent py-20"
         />
       ) : (
-        <div className="stagger-fade-in grid grid-cols-1 gap-7 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="stagger-fade-in grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3">
           {courses.map((course, index) => (
             <CourseCard
               key={course.id}

@@ -246,6 +246,95 @@ def test_translate_entity_fields_records_failed_rows(db: Session):
         .one()
     )
     assert title_row.status == "failed"
+    # First failure must surface on ``attempts`` so future cycles can count.
+    assert title_row.attempts == 1
+
+
+def test_translate_entity_fields_promotes_to_failed_permanent_after_cap(db: Session):
+    """A row that fails five times in a row must transition to
+    ``failed_permanent`` and stay there. Reconciling again must short-circuit
+    instead of burning another provider call — that's the whole point of the
+    retry cap (Gemini API calls aren't free, and a permanent failure won't
+    flip just because we retry it the sixth time).
+    """
+    course = _make_course(db)
+    failing_title = course.title or ""
+    provider = _RecordingProvider(failures={failing_title})
+
+    # Five attempts → row promotes to ``failed_permanent``.
+    for _ in range(5):
+        translate_entity_fields(
+            db,
+            entity_type="course",
+            entity_id=str(course.id),
+            source_locale="ru",
+            fields=[TranslationFieldSpec(field="title", text=course.title, content_kind="title")],
+            provider=provider,
+        )
+
+    row = (
+        db.query(ContentTranslation)
+        .filter_by(entity_type="course", entity_id=course.id, field="title", locale="en")
+        .one()
+    )
+    assert row.status == "failed_permanent"
+    assert row.attempts == 5
+    calls_so_far = len(provider.calls)
+
+    # Sixth pass must skip the provider entirely.
+    report = translate_entity_fields(
+        db,
+        entity_type="course",
+        entity_id=str(course.id),
+        source_locale="ru",
+        fields=[TranslationFieldSpec(field="title", text=course.title, content_kind="title")],
+        provider=provider,
+    )
+    assert report.skipped == 1
+    assert report.failed == 0
+    # Provider was NOT called again — that's the cost-saving guarantee.
+    assert len(provider.calls) == calls_so_far
+
+
+def test_translate_entity_fields_resets_attempts_on_success(db: Session):
+    """A transient failure followed by a success must clear ``attempts``
+    back to 0 — otherwise a single hiccup in a row's history would push it
+    closer to the cap forever."""
+    course = _make_course(db)
+    failing_title = course.title or ""
+    # Fail twice, then succeed.
+    failing_provider = _RecordingProvider(failures={failing_title})
+    for _ in range(2):
+        translate_entity_fields(
+            db,
+            entity_type="course",
+            entity_id=str(course.id),
+            source_locale="ru",
+            fields=[TranslationFieldSpec(field="title", text=course.title, content_kind="title")],
+            provider=failing_provider,
+        )
+
+    row = (
+        db.query(ContentTranslation)
+        .filter_by(entity_type="course", entity_id=course.id, field="title", locale="en")
+        .one()
+    )
+    assert row.status == "failed"
+    assert row.attempts == 2
+
+    happy_provider = _RecordingProvider()
+    translate_entity_fields(
+        db,
+        entity_type="course",
+        entity_id=str(course.id),
+        source_locale="ru",
+        fields=[TranslationFieldSpec(field="title", text=course.title, content_kind="title")],
+        provider=happy_provider,
+    )
+
+    db.refresh(row)
+    assert row.status == "ok"
+    assert row.attempts == 0
 
 
 def test_translate_entity_fields_skips_empty_text(db: Session):
@@ -470,3 +559,117 @@ def test_manual_translate_endpoint_returns_disabled_when_provider_off(monkeypatc
     body = resp.json()
     assert body["enabled"] is False
     assert body["translated"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Regression: walker must find quizzes + assignments via ``chapter_id``
+# ---------------------------------------------------------------------------
+#
+# Production teacher flow creates quizzes by inserting ``quizzes`` rows with
+# ``chapter_id`` set and never inserts a ``chapter_block`` with
+# ``quiz_id`` pointing at them. Before the 2026-05-16 fix the walker only
+# reached quizzes through the ``chapter_block.quiz_id`` indirection — so in
+# prod every quiz had ZERO translation rows even on courses where every
+# other entity was fully translated. Same shape for assignments.
+#
+# This test mirrors the prod attachment exactly: the chapter has NO
+# chapter_block with ``quiz_id`` (or any block at all); the quiz attaches
+# to the chapter only via its ``chapter_id`` FK. The walker must still
+# reach it and produce translation rows for the quiz tree.
+
+
+def test_walker_finds_quizzes_attached_via_chapter_id_only(db: Session):
+    """Production-shape attachment: quiz tied to a chapter via ``Quiz.chapter_id``
+    with no ``chapter_block`` mediating row. Walker must still translate it.
+
+    Regression for 2026-05-16: see commit message.
+    """
+    from app.models.course import Chapter, Module
+    from app.models.quiz import Quiz, QuizOption, QuizQuestion
+
+    course = _make_course(db, status="published")
+    module = Module(id=str(uuid.uuid4()), course_id=course.id, title="M1", order_index=0)
+    db.add(module)
+    db.flush()
+    chapter = Chapter(
+        id=str(uuid.uuid4()),
+        module_id=module.id,
+        title="Ch1",
+        order_index=0,
+        chapter_type="quiz",
+    )
+    db.add(chapter)
+    db.flush()
+    quiz = Quiz(chapter_id=chapter.id, title="Pop quiz", description="Test")
+    db.add(quiz)
+    db.flush()
+    question = QuizQuestion(
+        quiz_id=quiz.id,
+        question_text="What is the answer?",
+        question_type="multiple_choice",
+        order_index=0,
+        points=1,
+    )
+    db.add(question)
+    db.flush()
+    option = QuizOption(
+        question_id=question.id,
+        option_text="The answer",
+        is_correct=True,
+        order_index=0,
+    )
+    db.add(option)
+    db.commit()
+
+    provider = _RecordingProvider()
+    report = translate_course_content(db, course, provider=provider)
+
+    assert report.failed == 0
+    quiz_translations = db.query(ContentTranslation).filter_by(entity_type="quiz", entity_id=str(quiz.id)).all()
+    question_translations = (
+        db.query(ContentTranslation).filter_by(entity_type="quiz_question", entity_id=str(question.id)).all()
+    )
+    option_translations = (
+        db.query(ContentTranslation).filter_by(entity_type="quiz_option", entity_id=str(option.id)).all()
+    )
+    assert quiz_translations, "expected at least one translation row for the quiz"
+    assert question_translations, "expected at least one translation row for the quiz_question"
+    assert option_translations, "expected at least one translation row for the quiz_option"
+    # Source = ru, target = en, so each translation should be the
+    # ``[en]<source>`` shape the recording provider emits.
+    assert any(t.text.startswith("[en]") for t in question_translations)
+
+
+def test_walker_finds_assignments_attached_via_chapter_id_only(db: Session):
+    """Same regression shape for assignments — they also attach via
+    ``Assignment.chapter_id`` directly without a chapter_block bridge."""
+    from app.models.assignment import Assignment
+    from app.models.course import Chapter, Module
+
+    course = _make_course(db, status="published")
+    module = Module(id=str(uuid.uuid4()), course_id=course.id, title="M1", order_index=0)
+    db.add(module)
+    db.flush()
+    chapter = Chapter(
+        id=str(uuid.uuid4()),
+        module_id=module.id,
+        title="Ch1",
+        order_index=0,
+        chapter_type="assignment",
+    )
+    db.add(chapter)
+    db.flush()
+    assignment = Assignment(
+        chapter_id=chapter.id,
+        title="Reflection",
+        description="Write 500 words on the chapter.",
+    )
+    db.add(assignment)
+    db.commit()
+
+    provider = _RecordingProvider()
+    report = translate_course_content(db, course, provider=provider)
+
+    assert report.failed == 0
+    rows = db.query(ContentTranslation).filter_by(entity_type="assignment", entity_id=str(assignment.id)).all()
+    assert rows, "expected at least one translation row for the chapter-bound assignment"

@@ -29,8 +29,8 @@ export function EnrolledHeader({
   const { t } = useTranslation()
   return (
     <>
-      <Link to="/">
-        <Button variant="ghost" size="sm" className="mb-4 h-8 text-xs">
+      <Link to="/" className="-mx-2 mb-4 inline-flex">
+        <Button variant="ghost" size="sm" className="h-11 text-xs sm:h-8">
           <ArrowLeft className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
           {t("courseDetail.allCourses")}
         </Button>

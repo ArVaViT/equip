@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cohortsService } from "@/services/cohorts"
 import { toast } from "@/lib/toast"
+import { localInputToIso } from "@/i18n/format"
 
 interface Props {
   open: boolean
@@ -50,12 +51,18 @@ export function CreateCohortDialog({ open, onClose, onCreated }: Props) {
     if (!isValid) return
     setSaving(true)
     try {
+      const startIso = localInputToIso(start)
+      const endIso = localInputToIso(end)
+      if (!startIso || !endIso) {
+        setSaving(false)
+        return
+      }
       await cohortsService.createCohort({
         name: name.trim(),
-        start_date: new Date(start).toISOString(),
-        end_date: new Date(end).toISOString(),
-        enrollment_start: enrollStart ? new Date(enrollStart).toISOString() : null,
-        enrollment_end: enrollEnd ? new Date(enrollEnd).toISOString() : null,
+        start_date: startIso,
+        end_date: endIso,
+        enrollment_start: localInputToIso(enrollStart),
+        enrollment_end: localInputToIso(enrollEnd),
         max_students: maxStudents ? Number(maxStudents) : null,
       })
       toast({ title: t("admin.cohorts.toast.created"), variant: "success" })

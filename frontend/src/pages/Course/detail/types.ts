@@ -1,5 +1,5 @@
 import type { Cohort } from "@/types"
-import { formatDate as formatDateI18n } from "@/i18n/format"
+import { formatDateLong } from "@/i18n/format"
 
 export interface CourseMaterial {
   name: string
@@ -11,11 +11,9 @@ export interface CourseMaterial {
 type CohortEnrollmentStatus = "not_started" | "closed" | "open" | "no_window"
 
 export function formatDate(dateStr: string): string {
-  return formatDateI18n(dateStr, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
+  // Course-detail prose ("Cohort starts on…") reads better as editorial
+  // natural-language than canonical ISO.
+  return formatDateLong(dateStr, { month: "short" })
 }
 
 function getCohortEnrollmentStatus(cohort: Cohort): CohortEnrollmentStatus {

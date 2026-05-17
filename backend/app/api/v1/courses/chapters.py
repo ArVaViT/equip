@@ -16,7 +16,7 @@ from app.services.course_service import (
     get_module,
     update_chapter,
 )
-from app.services.translation.pipeline_hooks import run_course_translation_pipeline_if_published
+from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 
 from ._router import router
 
@@ -43,7 +43,7 @@ def create_new_chapter(
     if data.title:
         data.title = sanitize_string(data.title)
     created = create_chapter(db, module_id, data)
-    run_course_translation_pipeline_if_published(db, course_id)
+    reconcile_entity_if_course_published(db, "chapter", created)
     return created
 
 
@@ -69,7 +69,7 @@ def update_existing_chapter(
     if data.title:
         data.title = sanitize_string(data.title)
     updated = update_chapter(db, chapter, data)
-    run_course_translation_pipeline_if_published(db, course_id)
+    reconcile_entity_if_course_published(db, "chapter", updated)
     return updated
 
 

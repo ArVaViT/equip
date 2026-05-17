@@ -1,16 +1,15 @@
 import api from "./api"
-import { cacheGet, cacheSet, cacheInvalidate, cacheInvalidatePrefix } from "@/lib/cache"
+import { cached, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
 import type { Announcement } from "@/types"
 
 export const announcementsService = {
   async getAnnouncements(courseId?: string): Promise<Announcement[]> {
     const key = courseId ? `announcements:course:${courseId}` : `announcements:global`
-    const cached = cacheGet<Announcement[]>(key)
-    if (cached) return cached
-    const params = courseId ? { course_id: courseId } : undefined
-    const response = await api.get<Announcement[]>("/announcements", { params })
-    cacheSet(key, response.data, 2 * 60 * 1000)
-    return response.data
+    return cached(key, CACHE_TTL.TWO_MINUTES, async () => {
+      const params = courseId ? { course_id: courseId } : undefined
+      const response = await api.get<Announcement[]>("/announcements", { params })
+      return response.data
+    })
   },
 
   async createAnnouncement(data: {

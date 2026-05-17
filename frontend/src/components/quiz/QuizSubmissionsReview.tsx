@@ -103,7 +103,7 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" strokeWidth={1.75} />
       </div>
     )
   }
@@ -120,7 +120,7 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Users className="h-4 w-4" />
+          <Users className="h-4 w-4" strokeWidth={1.75} />
           {items.length === 0
             ? showGraded
               ? t("quizEditor.review.emptyAlready")
@@ -152,7 +152,7 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
                 </p>
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                   <span className="inline-flex items-center gap-1">
-                    <GraduationCap className="h-3.5 w-3.5" />
+                    <GraduationCap className="h-3.5 w-3.5" strokeWidth={1.75} />
                     {item.question_type === "essay"
                       ? t("quizEditor.review.essay")
                       : t("quizEditor.review.shortAnswer")}{" "}
@@ -218,11 +218,11 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
                 disabled={item.savingState === "saving"}
               >
                 {item.savingState === "saving" ? (
-                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} />
                 ) : item.savingState === "saved" ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
                 ) : (
-                  <Save className="h-3.5 w-3.5 mr-1.5" />
+                  <Save className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
                 )}
                 {item.savingState === "saved"
                   ? t("quizEditor.review.saved")

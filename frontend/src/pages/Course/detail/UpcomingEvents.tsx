@@ -1,7 +1,7 @@
 import { AlertTriangle, CalendarDays } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import type { CalendarEvent } from "@/types"
-import { formatDate } from "@/i18n/format"
+import { formatDateLong } from "@/i18n/format"
 
 interface Props {
   events: CalendarEvent[]
@@ -37,7 +37,7 @@ export function UpcomingEvents({ events }: Props) {
               key={evt.id}
               className={`flex items-center gap-2 px-3 py-2 rounded-md border text-sm ${
                 overdue
-                  ? "border-l-[3px] border-l-destructive border-border bg-destructive/5"
+                  ? "border-l-stripe border-l-destructive border-border bg-destructive/5"
                   : "border-border hover:bg-muted/50"
               }`}
             >
@@ -60,7 +60,7 @@ export function UpcomingEvents({ events }: Props) {
                 {evt.title}
               </span>
               <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {formatDate(evtDate, { month: "short", day: "numeric" })}
+                {formatDateLong(evtDate, { year: undefined, month: "short", day: "numeric" })}
               </span>
             </div>
           )

@@ -15,6 +15,10 @@ function sanitizeFileName(name: string): string {
   return name.replace(/[/\\:*?"<>|]/g, "_").replace(/\s+/g, "_").slice(0, 100)
 }
 
+function fileExtension(name: string, fallback: string = "jpg"): string {
+  return name.split(".").pop() ?? fallback
+}
+
 /**
  * Return a same-origin `/img/{bucket}/{path}` URL for public-bucket objects.
  * Vercel rewrites and Vite dev proxy map this to the Supabase Storage public
@@ -26,6 +30,34 @@ function getPublicUrl(bucket: string, path: string): string {
   return `/img/${bucket}/${path}`
 }
 
+/**
+ * Upload to a public bucket with upsert semantics and return the
+ * proxied public URL. Shared between avatar and cover-image uploads,
+ * which differ only in bucket + path template.
+ */
+async function uploadToPublicBucket(
+  bucket: string,
+  path: string,
+  file: File,
+): Promise<string> {
+  const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true })
+  if (error) throw error
+  return getPublicUrl(bucket, path)
+}
+
+/**
+ * Mint a short-lived signed URL for a private-bucket object. Shared
+ * between course-material downloads (always `course-materials`) and
+ * chapter file blocks (bucket varies per-block).
+ */
+async function createSignedDownloadUrl(bucket: string, path: string): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(path, SIGNED_URL_TTL_SECONDS)
+  if (error) throw error
+  return data.signedUrl
+}
+
 interface UploadedBlockFile {
   bucket: string
   path: string
@@ -34,27 +66,13 @@ interface UploadedBlockFile {
 
 export const storageService = {
   async uploadAvatar(userId: string, file: File): Promise<string> {
-    const ext = file.name.split(".").pop() ?? "jpg"
-    const path = `${userId}/avatar.${ext}`
-
-    const { error } = await supabase.storage
-      .from(AVATARS_BUCKET)
-      .upload(path, file, { upsert: true })
-
-    if (error) throw error
-    return getPublicUrl(AVATARS_BUCKET, path)
+    const path = `${userId}/avatar.${fileExtension(file.name)}`
+    return uploadToPublicBucket(AVATARS_BUCKET, path, file)
   },
 
   async uploadCourseImage(courseId: string, file: File): Promise<string> {
-    const ext = file.name.split(".").pop() ?? "jpg"
-    const path = `${courseId}/cover.${ext}`
-
-    const { error } = await supabase.storage
-      .from(COURSE_ASSETS_BUCKET)
-      .upload(path, file, { upsert: true })
-
-    if (error) throw error
-    return getPublicUrl(COURSE_ASSETS_BUCKET, path)
+    const path = `${courseId}/cover.${fileExtension(file.name)}`
+    return uploadToPublicBucket(COURSE_ASSETS_BUCKET, path, file)
   },
 
   /**
@@ -91,12 +109,7 @@ export const storageService = {
   },
 
   async getSignedMaterialUrl(path: string): Promise<string> {
-    const { data, error } = await supabase.storage
-      .from(COURSE_MATERIALS_BUCKET)
-      .createSignedUrl(path, SIGNED_URL_TTL_SECONDS)
-
-    if (error) throw error
-    return data.signedUrl
+    return createSignedDownloadUrl(COURSE_MATERIALS_BUCKET, path)
   },
 
   async deleteCourseMaterial(path: string): Promise<void> {
@@ -130,23 +143,17 @@ export const storageService = {
 
   /** Mint a short-lived signed URL for a block-attached file. */
   async getSignedBlockFileUrl(bucket: string, path: string): Promise<string> {
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .createSignedUrl(path, SIGNED_URL_TTL_SECONDS)
-
-    if (error) throw error
-    return data.signedUrl
+    return createSignedDownloadUrl(bucket, path)
   },
 
   async uploadContentImage(file: File): Promise<string> {
-    const ext = file.name.split(".").pop() ?? "jpg"
+    const ext = fileExtension(file.name)
     const random = Math.random().toString(36).slice(2, 10)
     const path = `content-images/${Date.now()}-${random}.${ext}`
 
-    const { error } = await supabase.storage
-      .from(COURSE_ASSETS_BUCKET)
-      .upload(path, file)
-
+    // Content images use upsert: false so the random suffix prevents
+    // overwriting an existing path; `uploadToPublicBucket` would upsert.
+    const { error } = await supabase.storage.from(COURSE_ASSETS_BUCKET).upload(path, file)
     if (error) throw error
     return getPublicUrl(COURSE_ASSETS_BUCKET, path)
   },

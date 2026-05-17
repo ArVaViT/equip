@@ -3,6 +3,23 @@ import type { ChapterType } from '@/lib/chapterTypes'
 export type UserRole = 'admin' | 'teacher' | 'pending_teacher' | 'student'
 export type PreferredLocale = 'ru' | 'en'
 
+/**
+ * Single source of truth for role string literals. Use ``ROLES.ADMIN``
+ * etc. instead of the bare ``"admin"`` everywhere — a typo in
+ * ``"adimn"`` is caught by TypeScript at the call site, whereas the
+ * bare string silently fails the role check.
+ *
+ * Mirrors the ``UserRole`` union (which mirrors the Pydantic
+ * Literal that mirrors the Postgres CHECK constraint on
+ * ``profiles.role``). All four representations stay in lockstep.
+ */
+export const ROLES = {
+  ADMIN: 'admin',
+  TEACHER: 'teacher',
+  PENDING_TEACHER: 'pending_teacher',
+  STUDENT: 'student',
+} as const satisfies Record<string, UserRole>
+
 export interface User {
   id: string
   email: string

@@ -3,8 +3,14 @@ import uuid
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import assert_course_owner, get_current_user, require_teacher
+from app.api.dependencies import (
+    assert_course_owner,
+    get_current_user,
+    is_owner_or_admin,
+    require_teacher,
+)
 from app.core.database import get_db
+from app.core.sanitize import sanitize_string
 from app.models.announcement import Announcement
 from app.models.course import Course
 from app.models.enrollment import Enrollment
@@ -16,7 +22,7 @@ from app.schemas.announcement import (
 )
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.notification_service import create_notifications_bulk
-from app.services.translation.pipeline_hooks import run_course_translation_pipeline_if_published
+from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import localize_announcement_rows
 
 router = APIRouter(prefix="/announcements", tags=["announcements"])
@@ -82,11 +88,9 @@ def list_announcements(
 
     rows = query.order_by(Announcement.created_at.desc()).offset(skip).limit(limit).all()
 
-    # Admins see canonical source for moderation; everyone else (students,
-    # other teachers) gets the locale overlay if one exists.
-    if is_admin:
-        return [AnnouncementResponse.model_validate(a, from_attributes=True) for a in rows]
-
+    # Locale wins. Every reader — students, teachers, admins — gets the
+    # locale overlay when one exists. Moderators who need raw source
+    # content use the admin-only audit/edit surfaces, not this list.
     display_locale: LocaleCode = normalize_locale(accept_language)
     course_ids = [str(a.course_id) for a in rows if a.course_id]
     source_locales = _course_source_locale_map(db, course_ids)
@@ -100,14 +104,45 @@ def list_announcements(
     return out
 
 
-@router.post("", response_model=AnnouncementResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=AnnouncementResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Post an announcement (course-scoped or global admin-only)",
+    responses={
+        201: {
+            "description": "Announcement saved, sanitized; fan-out notifications "
+            "queued for every enrolled student (course-scoped only)."
+        },
+        403: {"description": "Caller does not own the target course"},
+        404: {"description": "Target course does not exist"},
+    },
+)
 def create_announcement(
     data: AnnouncementCreate,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> Announcement:
+    """Two flavors, picked by ``data.course_id``:
+
+    - **Course-scoped** (``course_id`` set): only the course owner can
+      post. Triggers a notification fan-out to every enrolled student
+      (minus the author).
+    - **Global** (``course_id`` is None): admin-only authoring path
+      (gated by ``require_teacher`` + the route's own check elsewhere
+      — admins satisfy ``require_teacher``).
+
+    Both flavors sanitize ``title`` and ``content`` server-side as
+    defence-in-depth against direct API callers that bypass the
+    frontend's DOMPurify.
+    """
     if data.course_id:
-        course = db.query(Course).filter(Course.id == data.course_id).first()
+        # Course must be alive — a teacher who's already trashed the
+        # course shouldn't be able to push an announcement that fans out
+        # notifications to every enrolled student via
+        # ``create_notifications_bulk`` below, pointing at content that
+        # no longer exists in the catalog.
+        course = db.query(Course).filter(Course.id == data.course_id, Course.deleted_at.is_(None)).first()
         if not course:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -121,10 +156,17 @@ def create_announcement(
     else:
         course = None
 
+    # Defence-in-depth: the React app sanitizes via DOMPurify before
+    # sending, but a direct API caller can bypass that. Announcements
+    # fan out to every enrolled student via create_notifications_bulk
+    # below — an unsanitized payload would persist stored XSS into the
+    # notification feed and the announcement banner.
+    safe_title = sanitize_string(data.title)
+    safe_content = sanitize_string(data.content)
     announcement = Announcement(
         id=uuid.uuid4(),
-        title=data.title,
-        content=data.content,
+        title=safe_title,
+        content=safe_content,
         course_id=data.course_id,
         created_by=teacher.id,
     )
@@ -148,7 +190,7 @@ def create_announcement(
     db.commit()
     db.refresh(announcement)
     if data.course_id:
-        run_course_translation_pipeline_if_published(db, data.course_id)
+        reconcile_entity_if_course_published(db, "announcement", announcement)
     return announcement
 
 
@@ -165,21 +207,21 @@ def update_announcement(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Announcement not found",
         )
-    if str(announcement.created_by) != str(teacher.id) and teacher.role != UserRole.ADMIN.value:
+    if not is_owner_or_admin(announcement, teacher):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only edit your own announcements",
         )
 
     if data.title is not None:
-        announcement.title = data.title
+        announcement.title = sanitize_string(data.title)
     if data.content is not None:
-        announcement.content = data.content
+        announcement.content = sanitize_string(data.content)
 
     db.commit()
     db.refresh(announcement)
     if announcement.course_id:
-        run_course_translation_pipeline_if_published(db, str(announcement.course_id))
+        reconcile_entity_if_course_published(db, "announcement", announcement)
     return announcement
 
 
@@ -195,7 +237,7 @@ def delete_announcement(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Announcement not found",
         )
-    if str(announcement.created_by) != str(teacher.id) and teacher.role != UserRole.ADMIN.value:
+    if not is_owner_or_admin(announcement, teacher):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only delete your own announcements",

@@ -11,7 +11,7 @@ interface Props {
 export function AdminTabs({ active, onChange }: Props) {
   const { t } = useTranslation()
   return (
-    <div className="flex gap-1 mb-8 border-b">
+    <div className="mb-6 flex gap-1 border-b sm:mb-8">
       <TabButton
         active={active === "overview"}
         onClick={() => onChange("overview")}
@@ -45,7 +45,7 @@ function TabButton({ active, onClick, icon, label }: TabButtonProps) {
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+      className={`relative min-h-[44px] px-3 py-2.5 text-sm font-medium transition-colors sm:min-h-0 sm:px-4 ${
         active ? "text-primary" : "text-muted-foreground hover:text-foreground"
       }`}
     >

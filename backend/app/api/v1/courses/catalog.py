@@ -3,9 +3,9 @@
 from fastapi import Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_optional_user, require_teacher
+from app.api.dependencies import get_optional_user, is_owner_or_admin, require_teacher
 from app.core.database import get_db
-from app.models.course import Course
+from app.models.course import Course, CourseStatus
 from app.models.user import User, UserRole
 from app.schemas.course import CourseResponse, CourseSummary, ModuleResponse
 from app.schemas.locale import LocaleCode, normalize_locale
@@ -81,6 +81,15 @@ def get_course_detail(
     course_id: str,
     response: Response,
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    source: bool = Query(
+        False,
+        description=(
+            "Bypass the translation overlay and return source-language columns. "
+            "Owner / admin only — used by the course editor so a teacher viewing "
+            "their RU course in EN UI doesn't accidentally save the EN translation "
+            "back into the source title/description."
+        ),
+    ),
     current_user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ) -> CourseResponse:
@@ -91,14 +100,22 @@ def get_course_detail(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Course '{course_id}' not found",
         )
-    if course.status != "published":
-        if not current_user or (
-            str(course.created_by) != str(current_user.id) and current_user.role != UserRole.ADMIN.value
-        ):
+    if course.status != CourseStatus.PUBLISHED and not is_owner_or_admin(course, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Course '{course_id}' not found",
+        )
+    if source:
+        # Explicit "give me source columns" path for editor surfaces. Gated to
+        # owner + admin: returning unredacted source text to a regular student
+        # is an information leak (typos, draft notes, unreleased material).
+        if not is_owner_or_admin(course, current_user):
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Course '{course_id}' not found",
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the course owner or an admin can request source-language content",
             )
+        response.headers["Vary"] = "Accept-Language"
+        return CourseResponse.model_validate(course, from_attributes=True)
     response.headers["Vary"] = "Accept-Language"
     if not should_apply_course_translation_overlay(course=course, current_user=current_user):
         return CourseResponse.model_validate(course, from_attributes=True)
@@ -111,6 +128,13 @@ def get_module_detail(
     module_id: str,
     response: Response,
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    source: bool = Query(
+        False,
+        description=(
+            "Bypass the translation overlay and return source-language columns. "
+            "Owner / admin only — used by the module editor."
+        ),
+    ),
     current_user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ) -> ModuleResponse:
@@ -128,7 +152,7 @@ def get_module_detail(
             detail=f"Course '{course_id}' not found",
         )
     course_status, course_owner_id, course_source_locale = course_row
-    if course_status != "published":
+    if course_status != CourseStatus.PUBLISHED:
         if not current_user or (
             str(course_owner_id) != str(current_user.id) and current_user.role != UserRole.ADMIN.value
         ):
@@ -145,12 +169,25 @@ def get_module_detail(
 
     response.headers["Vary"] = "Accept-Language"
 
+    is_owner = current_user is not None and str(course_owner_id) == str(current_user.id)
+    is_admin = current_user is not None and current_user.role == UserRole.ADMIN.value
+
+    # Explicit "give me source columns" path for editor surfaces. Owner / admin
+    # only. Today's main also routes owner + admin to source via the implicit
+    # ``should_apply_course_translation_overlay`` rule; the explicit param
+    # survives once that implicit skip is removed (see PR #340).
+    if source:
+        if not (is_owner or is_admin):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the course owner or an admin can request source-language content",
+            )
+        return ModuleResponse.model_validate(module, from_attributes=True)
+
     # Owner + admin always see source for editorial accuracy (matches the
     # rule in ``should_apply_course_translation_overlay`` for the parent
     # course-detail endpoint). Everyone else (students, anonymous catalog
     # browsers, other teachers) gets the locale overlay.
-    is_owner = current_user is not None and str(course_owner_id) == str(current_user.id)
-    is_admin = current_user is not None and current_user.role == UserRole.ADMIN.value
     if is_owner or is_admin:
         return ModuleResponse.model_validate(module, from_attributes=True)
 

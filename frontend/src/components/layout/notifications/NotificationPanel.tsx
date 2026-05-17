@@ -54,10 +54,15 @@ export const NotificationPanel = forwardRef<HTMLDivElement, Props>(
         role="region"
         aria-label={t("notifications.panelAriaLabel")}
         className={cn(
-          "absolute top-full z-50 mt-2 overflow-hidden rounded-lg border border-border bg-background shadow-lg",
+          "absolute top-full z-50 mt-2 overflow-hidden rounded-lg border border-border shadow-lg",
+          // Glass effect on the desktop popover only: when the notification
+          // dropdown floats over a busy course/admin page, the frosted layer
+          // separates it from the content underneath without using a hard
+          // shadow alone. Stays solid on the mobile sheet variant — the
+          // sheet already has its own backdrop, doubling up reads as noise.
           isSheet
-            ? "left-0 right-0 z-[60] w-full max-w-none"
-            : "right-0 w-80 sm:w-96",
+            ? "left-0 right-0 z-[60] w-full max-w-none bg-background"
+            : "right-0 w-80 sm:w-96 bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/75",
         )}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -68,7 +73,7 @@ export const NotificationPanel = forwardRef<HTMLDivElement, Props>(
               onClick={onMarkAllRead}
               className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
-              <CheckCheck className="h-3.5 w-3.5" />
+              <CheckCheck className="h-3.5 w-3.5" strokeWidth={1.75} />
               {t("notifications.markAllRead")}
             </button>
           )}
@@ -84,7 +89,7 @@ export const NotificationPanel = forwardRef<HTMLDivElement, Props>(
             <PageSpinner variant="section" />
           ) : loadError ? (
             <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
-              <AlertCircle className="h-8 w-8 text-destructive/70" />
+              <AlertCircle className="h-8 w-8 text-destructive/70" strokeWidth={1.75} />
               <p className="text-sm text-destructive">{t("notifications.loadFailed")}</p>
               <button
                 type="button"
@@ -96,7 +101,7 @@ export const NotificationPanel = forwardRef<HTMLDivElement, Props>(
             </div>
           ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
-              <Bell className="h-8 w-8 opacity-30" />
+              <Bell className="h-8 w-8 opacity-30" strokeWidth={1.75} />
               <p className="text-sm">{t("notifications.empty")}</p>
             </div>
           ) : (

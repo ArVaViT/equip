@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback, useMemo } from "react"
+import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams, useSearchParams, Link } from "react-router-dom"
-import PageSpinner from "@/components/ui/PageSpinner"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
 import type { GradingConfig, GradeSummaryResponse, StudentGrade } from "@/types"
@@ -23,6 +23,7 @@ import { GradebookTabs } from "./gradebook/GradebookTabs"
 import { GradingConfigCard } from "./gradebook/GradingConfigCard"
 import { SummaryTab } from "./gradebook/SummaryTab"
 import { GradeTableTab } from "./gradebook/GradeTableTab"
+import { EMPTY_FORM } from "./gradebook/helpers"
 
 /**
  * Gradebook page: top-level composition of the summary view, the grade
@@ -86,6 +87,13 @@ export default function TeacherGradebook() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [forms, setForms] = useState<Map<string, GradeForm>>(new Map())
+  // Mirror of `forms` so memoised handlers (saveGrade) can read the
+  // current draft without taking `forms` as a dependency and busting
+  // their stable identity on every keystroke.
+  const formsRef = useRef(forms)
+  useEffect(() => {
+    formsRef.current = forms
+  }, [forms])
   const [saving, setSaving] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
 
@@ -159,43 +167,55 @@ export default function TeacherGradebook() {
     }
   }
 
-  const toggleExpand = (userId: string) => {
-    if (expandedId === userId) {
-      setExpandedId(null)
-    } else {
-      setExpandedId(userId)
-      if (!forms.has(userId)) {
-        setForms((prev) => new Map(prev).set(userId, { grade: "", comment: "" }))
-      }
-    }
-  }
-
-  const updateForm = (userId: string, field: keyof GradeForm, value: string) => {
-    setForms((prev) => {
-      const next = new Map(prev)
-      const current = next.get(userId) ?? { grade: "", comment: "" }
-      next.set(userId, { ...current, [field]: value })
-      return next
-    })
-  }
-
-  const saveGrade = async (userId: string) => {
-    if (!courseId) return
-    setSaving(userId)
-    try {
-      const form = forms.get(userId) ?? { grade: "", comment: "" }
-      const data = await coursesService.upsertGrade(courseId, userId, {
-        grade: form.grade.trim() || undefined,
-        comment: form.comment.trim() || undefined,
+  // Stable identity for the row-level handlers so memoised row components
+  // (StudentSummaryRow / GradeTableRow) don't get a fresh prop on every
+  // keystroke in any unrelated row's override form.
+  const toggleExpand = useCallback((userId: string) => {
+    setExpandedId((prev) => {
+      if (prev === userId) return null
+      // Seed an empty draft for newly-expanded rows so the inputs are
+      // controlled from the first render. Skip the setForms call when the
+      // entry already exists to avoid an extra render on re-expand.
+      setForms((prevForms) => {
+        if (prevForms.has(userId)) return prevForms
+        return new Map(prevForms).set(userId, EMPTY_FORM)
       })
-      setManualGrades((prev) => new Map(prev).set(userId, data))
-      toast({ title: t("toast.gradeSaved"), variant: "success" })
-    } catch {
-      toast({ title: t("toast.gradeSaveFailed"), variant: "destructive" })
-    } finally {
-      setSaving(null)
-    }
-  }
+      return userId
+    })
+  }, [])
+
+  const updateForm = useCallback(
+    (userId: string, field: keyof GradeForm, value: string) => {
+      setForms((prev) => {
+        const next = new Map(prev)
+        const current = next.get(userId) ?? EMPTY_FORM
+        next.set(userId, { ...current, [field]: value })
+        return next
+      })
+    },
+    [],
+  )
+
+  const saveGrade = useCallback(
+    async (userId: string) => {
+      if (!courseId) return
+      setSaving(userId)
+      try {
+        const form = formsRef.current.get(userId) ?? EMPTY_FORM
+        const data = await coursesService.upsertGrade(courseId, userId, {
+          grade: form.grade.trim() || undefined,
+          comment: form.comment.trim() || undefined,
+        })
+        setManualGrades((prev) => new Map(prev).set(userId, data))
+        toast({ title: t("toast.gradeSaved"), variant: "success" })
+      } catch {
+        toast({ title: t("toast.gradeSaveFailed"), variant: "destructive" })
+      } finally {
+        setSaving(null)
+      }
+    },
+    [courseId, t],
+  )
 
   const handleExportCSV = async () => {
     if (!courseId) return
@@ -257,7 +277,7 @@ export default function TeacherGradebook() {
     )
   }, [progressData])
 
-  if (loading) return <PageSpinner />
+  if (loading) return <TeacherGradebookSkeleton />
 
   if (error) {
     return (
@@ -291,6 +311,13 @@ export default function TeacherGradebook() {
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
         <Link to="/teacher" className="hover:text-foreground transition-colors">
           {t("gradebook.breadcrumbCourses")}
+        </Link>
+        <ChevronRight className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} aria-hidden />
+        <Link
+          to={`/teacher/courses/${courseId}`}
+          className="hover:text-foreground transition-colors truncate"
+        >
+          {courseTitle || t("gradebook.breadcrumbCourseFallback")}
         </Link>
         <ChevronRight className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} aria-hidden />
         <span className="text-foreground font-medium">{t("gradebook.pageHeading")}</span>
@@ -364,6 +391,41 @@ export default function TeacherGradebook() {
           onToggleExpand={toggleExpand}
         />
       )}
+    </div>
+  )
+}
+
+/**
+ * Shimmer placeholder for the gradebook page. Mirrors the real layout
+ * (breadcrumb, serif H1 with export button, stats row, tabs, summary
+ * card) so the page doesn't jump when data resolves.
+ */
+function TeacherGradebookSkeleton() {
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-7xl" aria-busy="true">
+      <div className="mb-6 flex items-center gap-2">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-4 rounded-full" />
+        <Skeleton className="h-4 w-32" />
+      </div>
+
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="space-y-2">
+          <Skeleton className="h-9 w-64 max-w-full" />
+          <Skeleton className="h-4 w-40 max-w-full" />
+        </div>
+        <Skeleton className="h-9 w-28" />
+      </div>
+
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 rounded-md" />
+        ))}
+      </div>
+
+      <Skeleton className="mb-6 h-10 w-72 max-w-full" />
+
+      <Skeleton className="h-96 rounded-md" />
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react"
 import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -6,14 +7,16 @@ import { Button } from "@/components/ui/button"
 import { Users, Search, Trash2 } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import PageSpinner from "@/components/ui/PageSpinner"
-import VirtualAdminUsers from "../VirtualAdminUsers"
+import { EmptyState } from "@/components/patterns/EmptyState"
+import { RoleSelector } from "@/components/admin/RoleSelector"
 import type { UserRole } from "@/types"
 import { formatDate } from "@/i18n/format"
-import {
-  type ProfileRow,
-  ROLE_BADGE_CLASS,
-  ROLE_DISPLAY_NAMES,
-} from "./constants"
+import { type ProfileRow } from "./constants"
+
+// Only rendered when the filtered list crosses USERS_VIRTUAL_THRESHOLD —
+// keeps `react-window` (~10 KB gz) out of the eager AdminDashboard chunk
+// for the common case (small tenants with <50 users).
+const VirtualAdminUsers = lazy(() => import("../VirtualAdminUsers"))
 
 /**
  * Above this row count we swap the full <table> render for a react-window
@@ -76,12 +79,13 @@ export function UsersCard({
         <CardTitle className="text-xl">{t("admin.users.title")}</CardTitle>
         <div className="flex items-center gap-3 flex-wrap">
           {selectedIds.size > 0 && (
-            <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-1.5">
+            <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 sm:w-auto">
               <span className="text-xs font-medium">{t("admin.users.selected", { count: selectedIds.size })}</span>
               <NativeSelect
-                fieldSize="xs"
+                fieldSize="sm"
                 value={bulkRole}
                 onChange={(e) => onBulkRoleChange(e.target.value as UserRole)}
+                className="w-auto"
               >
                 <option value="student">{t("roles.student")}</option>
                 <option value="pending_teacher">{t("roles.pendingTeacher")}</option>
@@ -90,7 +94,7 @@ export function UsersCard({
               </NativeSelect>
               <Button
                 size="sm"
-                className="h-7 text-xs"
+                className="h-9 text-xs sm:h-7"
                 onClick={onApplyBulkRole}
                 disabled={bulkUpdating}
               >
@@ -99,7 +103,7 @@ export function UsersCard({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 text-xs"
+                className="h-9 text-xs sm:h-7"
                 onClick={onClearSelection}
               >
                 {t("admin.users.bulkClear")}
@@ -137,17 +141,17 @@ export function UsersCard({
                 {t("admin.users.selectAllN", { count: filtered.length })}
               </span>
             </div>
-            <VirtualAdminUsers
-              users={filtered}
-              selectedIds={selectedIds}
-              updatingId={updatingId}
-              currentUserId={currentUserId}
-              roleBadgeClass={ROLE_BADGE_CLASS}
-              roleDisplayNames={ROLE_DISPLAY_NAMES}
-              onToggleSelect={onToggleSelect}
-              onRoleChange={onRoleChange}
-              onDeleteUser={onDeleteUser}
-            />
+            <Suspense fallback={<PageSpinner />}>
+              <VirtualAdminUsers
+                users={filtered}
+                selectedIds={selectedIds}
+                updatingId={updatingId}
+                currentUserId={currentUserId}
+                onToggleSelect={onToggleSelect}
+                onRoleChange={onRoleChange}
+                onDeleteUser={onDeleteUser}
+              />
+            </Suspense>
           </>
         ) : (
           <UsersTable
@@ -174,14 +178,13 @@ export function UsersCard({
 function EmptyUsers({ hasQuery }: { hasQuery: boolean }) {
   const { t } = useTranslation()
   return (
-    <div className="flex flex-col items-center py-16 text-center">
-      <Users className="h-12 w-12 text-muted-foreground/40 mb-3" />
-      <p className="text-muted-foreground">
-        {hasQuery
-          ? t("admin.users.emptyNoMatch")
-          : t("admin.users.emptyNoUsers")}
-      </p>
-    </div>
+    <EmptyState
+      variant="compact"
+      icon={<Users strokeWidth={1.75} aria-hidden />}
+      title={
+        hasQuery ? t("admin.users.emptyNoMatch") : t("admin.users.emptyNoUsers")
+      }
+    />
   )
 }
 
@@ -211,29 +214,23 @@ function UsersTable({
     filtered.length > 0 && filtered.every((u) => selectedIds.has(u.id))
 
   return (
-    <div className="overflow-x-auto -mx-6">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left">
-            <th className="px-3 py-3 w-10">
-              <input
-                type="checkbox"
-                checked={allFilteredSelected}
-                onChange={onToggleSelectAll}
-                className="h-4 w-4 rounded border-input"
-                aria-label={t("admin.users.selectAllAria")}
-              />
-            </th>
-            <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thName")}</th>
-            <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thEmail")}</th>
-            <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thRole")}</th>
-            <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thJoined")}</th>
-            <th className="px-6 py-3 w-10" aria-label={t("admin.users.thActions")} />
-          </tr>
-        </thead>
-        <tbody className="divide-y">
+    <>
+      {/* Mobile: stacked card list — the table doesn't fit a phone. Same
+          data, same controls, larger tap targets. */}
+      <div className="-mx-3 space-y-2 sm:hidden">
+        <label className="mx-3 flex min-h-[44px] items-center gap-2 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={allFilteredSelected}
+            onChange={onToggleSelectAll}
+            className="h-4 w-4 rounded border-input"
+            aria-label={t("admin.users.selectAllAria")}
+          />
+          <span>{t("admin.users.selectAllN", { count: filtered.length })}</span>
+        </label>
+        <div className="mx-3 space-y-2">
           {filtered.map((u) => (
-            <UserRow
+            <UserCard
               key={u.id}
               user={u}
               selected={selectedIds.has(u.id)}
@@ -244,8 +241,115 @@ function UsersTable({
               onDeleteUser={onDeleteUser}
             />
           ))}
-        </tbody>
-      </table>
+        </div>
+      </div>
+
+      {/* Desktop: classic semantic table */}
+      <div className="hidden overflow-x-auto -mx-6 sm:block">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left">
+              <th className="px-3 py-3 w-10">
+                <input
+                  type="checkbox"
+                  checked={allFilteredSelected}
+                  onChange={onToggleSelectAll}
+                  className="h-4 w-4 rounded border-input"
+                  aria-label={t("admin.users.selectAllAria")}
+                />
+              </th>
+              <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thName")}</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thEmail")}</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thRole")}</th>
+              <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thJoined")}</th>
+              <th className="px-6 py-3 w-10" aria-label={t("admin.users.thActions")} />
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {filtered.map((u) => (
+              <UserRow
+                key={u.id}
+                user={u}
+                selected={selectedIds.has(u.id)}
+                updating={updatingId === u.id}
+                isSelf={u.id === currentUserId}
+                onToggleSelect={onToggleSelect}
+                onRoleChange={onRoleChange}
+                onDeleteUser={onDeleteUser}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}
+
+function UserCard({
+  user,
+  selected,
+  updating,
+  isSelf,
+  onToggleSelect,
+  onRoleChange,
+  onDeleteUser,
+}: UserRowProps) {
+  const { t } = useTranslation()
+  const displayName = user.full_name || user.email
+  return (
+    <div
+      className={`rounded-md border border-border bg-card p-3 transition-colors ${
+        selected ? "border-primary/40 bg-primary/[0.03]" : ""
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggleSelect(user.id)}
+          className="mt-1.5 h-4 w-4 shrink-0 rounded border-input"
+          aria-label={t("admin.users.selectAriaPrefix", { name: displayName })}
+        />
+        {user.avatar_url ? (
+          <img
+            src={toProxyImage(user.avatar_url)}
+            alt={t("admin.users.avatarAltPrefix", { name: user.full_name ?? user.email })}
+            className="h-10 w-10 shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground">
+            {(user.full_name?.[0] ?? user.email[0] ?? "?").toUpperCase()}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-foreground">
+            {user.full_name || t("admin.users.missingName")}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {formatDate(user.created_at)}
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-11 w-11 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+          disabled={updating || isSelf}
+          onClick={() => onDeleteUser(user)}
+          aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
+          title={isSelf ? t("admin.users.deleteSelfTooltip") : t("admin.users.deleteTooltip")}
+        >
+          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+        </Button>
+      </div>
+      <div className="mt-3 pl-7">
+        <RoleSelector
+          role={user.role}
+          disabled={updating || isSelf}
+          onChange={(next) => onRoleChange(user.id, next)}
+          ariaLabel={t("admin.users.changeRoleAria", { name: displayName })}
+        />
+      </div>
     </div>
   )
 }
@@ -304,24 +408,12 @@ function UserRow({
       </td>
       <td className="px-6 py-3 text-muted-foreground">{user.email}</td>
       <td className="px-6 py-3">
-        <div className="flex items-center gap-2">
-          <span
-            className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${ROLE_BADGE_CLASS[user.role]}`}
-          >
-            {ROLE_DISPLAY_NAMES[user.role]}
-          </span>
-          <NativeSelect
-            fieldSize="sm"
-            value={user.role}
-            disabled={updating || isSelf}
-            onChange={(e) => onRoleChange(user.id, e.target.value as UserRole)}
-          >
-            <option value="student">{t("roles.student")}</option>
-            <option value="pending_teacher">{t("roles.pendingTeacher")}</option>
-            <option value="teacher">{t("roles.teacher")}</option>
-            <option value="admin">{t("roles.admin")}</option>
-          </NativeSelect>
-        </div>
+        <RoleSelector
+          role={user.role}
+          disabled={updating || isSelf}
+          onChange={(next) => onRoleChange(user.id, next)}
+          ariaLabel={t("admin.users.changeRoleAria", { name: displayName })}
+        />
       </td>
       <td className="px-6 py-3 text-muted-foreground">
         {formatDate(user.created_at)}
@@ -336,7 +428,7 @@ function UserRow({
           aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
           title={isSelf ? t("admin.users.deleteSelfTooltip") : t("admin.users.deleteTooltip")}
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
         </Button>
       </td>
     </tr>

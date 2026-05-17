@@ -23,17 +23,17 @@ the top-level admin UI.
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_optional_user, require_admin
+from app.api.dependencies import get_optional_user, is_owner_or_admin, require_admin
 from app.core.database import get_db
-from app.models.cohort import Cohort, CohortCourse
-from app.models.course import Course
+from app.models.cohort import Cohort, CohortCourse, CohortStatus
+from app.models.course import Course, CourseStatus
 from app.models.enrollment import Enrollment
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.schemas.cohort import (
     CohortCourseAttach,
     CohortCreate,
@@ -41,12 +41,10 @@ from app.schemas.cohort import (
     CohortStudentAdd,
     CohortUpdate,
 )
-from app.schemas.locale import LocaleCode, normalize_locale
+from app.schemas.locale import normalize_locale
+from app.services.audit_service import log_action
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
-from app.services.translation.resolve_for_display import (
-    fetch_overlay_triples_bulk,
-    pick_overlay_value,
-)
+from app.services.translation.resolve_for_display import Localizer
 
 router = APIRouter(prefix="/cohorts", tags=["cohorts"])
 
@@ -68,11 +66,41 @@ def _student_count(db: Session, cohort_id: UUID) -> int:
     )
 
 
+def _serialize_many(db: Session, cohorts: list[Cohort]) -> list[CohortResponse]:
+    """Batch version of ``_serialize`` — resolves ``course_ids`` and
+    ``student_count`` for every cohort in two GROUP-BY queries instead
+    of two-per-cohort. List endpoints must use this."""
+    if not cohorts:
+        return []
+    cohort_ids = [c.id for c in cohorts]
+
+    courses_by_cohort: dict[UUID, list[str]] = {}
+    for cohort_id, course_id in db.query(CohortCourse.cohort_id, CohortCourse.course_id).filter(
+        CohortCourse.cohort_id.in_(cohort_ids)
+    ):
+        courses_by_cohort.setdefault(cohort_id, []).append(course_id)
+
+    counts_by_cohort: dict[UUID, int] = {
+        cohort_id: count
+        for cohort_id, count in db.query(
+            Enrollment.cohort_id,
+            func.count(func.distinct(Enrollment.user_id)),
+        )
+        .filter(Enrollment.cohort_id.in_(cohort_ids))
+        .group_by(Enrollment.cohort_id)
+    }
+
+    out: list[CohortResponse] = []
+    for c in cohorts:
+        resp = CohortResponse.model_validate(c)
+        resp.course_ids = courses_by_cohort.get(c.id, [])
+        resp.student_count = counts_by_cohort.get(c.id, 0)
+        out.append(resp)
+    return out
+
+
 def _serialize(db: Session, cohort: Cohort) -> CohortResponse:
-    resp = CohortResponse.model_validate(cohort)
-    resp.course_ids = _course_ids_for_cohort(db, cohort.id)
-    resp.student_count = _student_count(db, cohort.id)
-    return resp
+    return _serialize_many(db, [cohort])[0]
 
 
 def _get_or_404(db: Session, cohort_id: UUID) -> Cohort:
@@ -104,12 +132,13 @@ def list_cohorts(
     if status_filter:
         q = q.filter(Cohort.status == status_filter)
     cohorts = q.order_by(Cohort.start_date.desc()).all()
-    return [_serialize(db, c) for c in cohorts]
+    return _serialize_many(db, cohorts)
 
 
 @router.post("", response_model=CohortResponse, status_code=status.HTTP_201_CREATED)
 def create_cohort(
     data: CohortCreate,
+    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
@@ -128,6 +157,15 @@ def create_cohort(
     db.add(cohort)
     db.commit()
     db.refresh(cohort)
+    log_action(
+        db,
+        admin.id,
+        "create",
+        "cohort",
+        str(cohort.id),
+        details={"name": cohort.name},
+        request=request,
+    )
     return _serialize(db, cohort)
 
 
@@ -149,23 +187,32 @@ def update_cohort(
     db: Session = Depends(get_db),
 ) -> CohortResponse:
     cohort = _get_or_404(db, cohort_id)
-    for field, value in data.model_dump(exclude_unset=True).items():
+    # Cohort lifecycle is forward-only: ``upcoming → active → completed``.
+    # A completed cohort represents historical state — its grades and
+    # certificates are frozen — so reverting status would silently make
+    # those records mutable again. Block the regression here, not via
+    # the schema, because the schema is also used by the ``complete``
+    # endpoint where ``completed`` is the legitimate target.
+    patch = data.model_dump(exclude_unset=True)
+    if "status" in patch and cohort.status == CohortStatus.COMPLETED and patch["status"] != CohortStatus.COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot reopen a completed cohort",
+        )
+    for field, value in patch.items():
         setattr(cohort, field, value)
     db.commit()
     db.refresh(cohort)
-    # Translation reconcile for each course this cohort is attached to —
-    # cohort name is teacher/director-authored, so each course-locale
-    # pair gets a translation overlay row.
-    for cid in _course_ids_for_cohort(db, cohort.id):
-        course = db.query(Course).filter(Course.id == cid).first()
-        if course is not None:
-            reconcile_entity_if_course_published(db, "cohort", cohort)
+    # Translation reconcile reads the attached-course set internally and
+    # is idempotent — call once per cohort, not once per attached course.
+    reconcile_entity_if_course_published(db, "cohort", cohort)
     return _serialize(db, cohort)
 
 
 @router.delete("/{cohort_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_cohort(
     cohort_id: UUID,
+    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> None:
@@ -174,25 +221,45 @@ def delete_cohort(
     ``cohort_id`` set to NULL (``ON DELETE SET NULL`` on the FK) — that
     way historical grade data is preserved as orphaned solo enrollments."""
     cohort = _get_or_404(db, cohort_id)
+    cohort_name = cohort.name
     db.delete(cohort)
     db.commit()
+    log_action(
+        db,
+        admin.id,
+        "delete",
+        "cohort",
+        str(cohort_id),
+        details={"name": cohort_name},
+        request=request,
+    )
 
 
 @router.post("/{cohort_id}/complete", response_model=CohortResponse)
 def complete_cohort(
     cohort_id: UUID,
+    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
     cohort = _get_or_404(db, cohort_id)
-    if cohort.status == "completed":
+    if cohort.status == CohortStatus.COMPLETED:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cohort is already completed",
         )
-    cohort.status = "completed"
+    cohort.status = CohortStatus.COMPLETED
     db.commit()
     db.refresh(cohort)
+    log_action(
+        db,
+        admin.id,
+        "complete",
+        "cohort",
+        str(cohort.id),
+        details={"name": cohort.name},
+        request=request,
+    )
     return _serialize(db, cohort)
 
 
@@ -217,6 +284,7 @@ def list_cohort_courses(
 def attach_course(
     cohort_id: UUID,
     body: CohortCourseAttach,
+    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
@@ -235,18 +303,41 @@ def attach_course(
         db.flush()
 
     # Auto-enroll every existing cohort student in this course.
-    existing_students = db.query(Enrollment.user_id).filter(Enrollment.cohort_id == cohort.id).distinct().all()
-    for (user_id,) in existing_students:
-        already = (
+    # Two bounded queries — set difference in Python — instead of N+1
+    # exists-checks per student.
+    all_cohort_users = {
+        row[0] for row in db.query(Enrollment.user_id).filter(Enrollment.cohort_id == cohort.id).distinct()
+    }
+    already_enrolled = {
+        row[0]
+        for row in db.query(Enrollment.user_id).filter(
+            Enrollment.cohort_id == cohort.id,
+            Enrollment.course_id == course.id,
+        )
+    }
+    # When a course was previously attached and detached, the per-student
+    # enrollment rows survive with ``cohort_id`` nulled (see
+    # ``detach_course``). Re-attaching must rebind those orphaned rows
+    # rather than INSERT new ones — the deterministic PK
+    # ``enr-{cohort}-{user}-{course}`` would otherwise collide and the
+    # IntegrityError below would swallow the failure silently, leaving
+    # the student unattached to the freshly re-attached course.
+    missing_user_ids = all_cohort_users - already_enrolled
+    if missing_user_ids:
+        rebound = (
             db.query(Enrollment)
             .filter(
-                Enrollment.user_id == user_id,
+                Enrollment.user_id.in_(missing_user_ids),
                 Enrollment.course_id == course.id,
-                Enrollment.cohort_id == cohort.id,
+                Enrollment.cohort_id.is_(None),
             )
-            .first()
+            .all()
         )
-        if already is None:
+        rebound_users = set()
+        for row in rebound:
+            row.cohort_id = cohort.id
+            rebound_users.add(row.user_id)
+        for user_id in missing_user_ids - rebound_users:
             db.add(
                 Enrollment(
                     id=f"enr-{cohort.id}-{user_id}-{course.id}",
@@ -262,6 +353,15 @@ def attach_course(
         # A concurrent attach raced us; safe to roll back and re-read.
         db.rollback()
     db.refresh(cohort)
+    log_action(
+        db,
+        admin.id,
+        "attach_course",
+        "cohort",
+        str(cohort.id),
+        details={"course_id": course.id},
+        request=request,
+    )
     reconcile_entity_if_course_published(db, "cohort", cohort)
     return _serialize(db, cohort)
 
@@ -273,6 +373,7 @@ def attach_course(
 def detach_course(
     cohort_id: UUID,
     course_id: str,
+    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> None:
@@ -291,6 +392,15 @@ def detach_course(
     ).update({Enrollment.cohort_id: None}, synchronize_session=False)
     db.delete(link)
     db.commit()
+    log_action(
+        db,
+        admin.id,
+        "detach_course",
+        "cohort",
+        str(cohort.id),
+        details={"course_id": course_id},
+        request=request,
+    )
 
 
 # ---------------------- junction: cohort x students -------------------
@@ -343,6 +453,7 @@ def list_cohort_students(
 def add_student(
     cohort_id: UUID,
     body: CohortStudentAdd,
+    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -350,12 +461,20 @@ def add_student(
     ``email`` to an existing platform user, then auto-creates enrollment
     rows for every course already attached to this cohort. Idempotent —
     re-adding the same student is a no-op."""
-    cohort = _get_or_404(db, cohort_id)
     if not body.user_id and not body.email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Provide user_id or email",
         )
+
+    # FOR UPDATE on the Cohort row so the capacity check below and the
+    # enrollment writes that follow are atomic against concurrent admin
+    # add_student calls — without this, two admins seeing
+    # ``current_count == max_students - 1`` can both succeed and overshoot.
+    # SQLite (test path) treats ``with_for_update`` as a no-op.
+    cohort = db.query(Cohort).filter(Cohort.id == cohort_id).with_for_update().first()
+    if not cohort:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cohort not found")
 
     if body.user_id:
         user = db.query(User).filter(User.id == body.user_id).first()
@@ -367,30 +486,51 @@ def add_student(
             detail="User not found — ask them to sign up first",
         )
 
+    # One bounded query: every course this user is already enrolled in
+    # within this cohort. Drives both the capacity gate (idempotent
+    # re-add) and the per-course skip loop below.
+    already_enrolled_courses: set[str] = {
+        row[0]
+        for row in db.query(Enrollment.course_id).filter(
+            Enrollment.cohort_id == cohort.id,
+            Enrollment.user_id == user.id,
+        )
+    }
+
     if cohort.max_students:
         current_count = _student_count(db, cohort.id)
-        already_in = (
-            db.query(Enrollment).filter(Enrollment.cohort_id == cohort.id, Enrollment.user_id == user.id).first()
-            is not None
-        )
-        if not already_in and current_count >= cohort.max_students:
+        if not already_enrolled_courses and current_count >= cohort.max_students:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Cohort has reached maximum capacity",
             )
 
     course_ids = _course_ids_for_cohort(db, cohort.id)
-    for course_id in course_ids:
-        already = (
+    missing_course_ids = [cid for cid in course_ids if cid not in already_enrolled_courses]
+
+    # A student that was previously removed via ``remove_student`` has
+    # surviving enrollment rows with ``cohort_id`` nulled. Re-adding must
+    # rebind those rows rather than INSERT new ones — the deterministic
+    # PK ``enr-{cohort}-{user}-{course}`` would otherwise collide and the
+    # IntegrityError below would swallow the failure silently, returning
+    # 201 while the student stays detached from the cohort.
+    if missing_course_ids:
+        rebound = (
             db.query(Enrollment)
             .filter(
                 Enrollment.user_id == user.id,
-                Enrollment.course_id == course_id,
-                Enrollment.cohort_id == cohort.id,
+                Enrollment.course_id.in_(missing_course_ids),
+                Enrollment.cohort_id.is_(None),
             )
-            .first()
+            .all()
         )
-        if already is None:
+        rebound_courses = set()
+        for row in rebound:
+            row.cohort_id = cohort.id
+            rebound_courses.add(row.course_id)
+        for course_id in missing_course_ids:
+            if course_id in rebound_courses:
+                continue
             db.add(
                 Enrollment(
                     id=f"enr-{cohort.id}-{user.id}-{course_id}",
@@ -404,6 +544,15 @@ def add_student(
         db.commit()
     except IntegrityError:
         db.rollback()
+    log_action(
+        db,
+        admin.id,
+        "add_student",
+        "cohort",
+        str(cohort.id),
+        details={"user_id": str(user.id), "email": user.email, "course_count": len(course_ids)},
+        request=request,
+    )
     return {"user_id": str(user.id), "course_ids": course_ids}
 
 
@@ -414,6 +563,7 @@ def add_student(
 def remove_student(
     cohort_id: UUID,
     user_id: UUID,
+    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> None:
@@ -424,6 +574,15 @@ def remove_student(
         {Enrollment.cohort_id: None}, synchronize_session=False
     )
     db.commit()
+    log_action(
+        db,
+        admin.id,
+        "remove_student",
+        "cohort",
+        str(cohort.id),
+        details={"user_id": str(user_id)},
+        request=request,
+    )
 
 
 # -------------------------- public-ish read ---------------------------
@@ -449,11 +608,8 @@ def list_cohorts_for_course(
     course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
-    if course.status != "published":
-        if not current_user or (
-            str(course.created_by) != str(current_user.id) and current_user.role != UserRole.ADMIN.value
-        ):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+    if course.status != CourseStatus.PUBLISHED and not is_owner_or_admin(course, current_user):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
 
     cohorts = (
         db.query(Cohort)
@@ -465,27 +621,16 @@ def list_cohorts_for_course(
     if not cohorts:
         return []
 
-    is_owner = current_user is not None and str(course.created_by) == str(current_user.id)
-    is_admin = current_user is not None and current_user.role == UserRole.ADMIN.value
-    if is_owner or is_admin:
-        return [_serialize(db, c) for c in cohorts]
-
-    display_locale: LocaleCode = normalize_locale(accept_language)
-    source_locale: LocaleCode = normalize_locale(course.source_locale)
-    overlay_specs = [("cohort", str(c.id), "title") for c in cohorts]
-    overlay = fetch_overlay_triples_bulk(db, overlay_specs, display_locale)
-    out: list[CohortResponse] = []
-    for c in cohorts:
-        localized = pick_overlay_value(
-            overlay,
-            "cohort",
-            str(c.id),
-            "title",
-            c.name,
-            source_locale=source_locale,
-            display_locale=display_locale,
-        )
-        resp = _serialize(db, c)
-        resp.name = localized or c.name
-        out.append(resp)
-    return out
+    # Locale wins. Every reader — students, owners, admins — gets the locale
+    # overlay when one exists. The admin cohort CRUD surface (``/cohorts`` and
+    # ``/cohorts/{id}``) still returns source for moderation and editing.
+    loc = Localizer.build(
+        db,
+        [("cohort", str(c.id), "title") for c in cohorts],
+        source_locale=normalize_locale(course.source_locale),
+        display_locale=normalize_locale(accept_language),
+    )
+    serialized = _serialize_many(db, cohorts)
+    for resp, c in zip(serialized, cohorts, strict=True):
+        resp.name = loc.pick("cohort", str(c.id), "title", c.name) or c.name
+    return serialized

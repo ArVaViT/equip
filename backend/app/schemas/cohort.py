@@ -10,7 +10,31 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+
+
+def _validate_cohort_dates(
+    *,
+    start_date: datetime | None,
+    end_date: datetime | None,
+    enrollment_start: datetime | None,
+    enrollment_end: datetime | None,
+) -> None:
+    """Enforce the chronological invariants every cohort must satisfy:
+
+    ``enrollment_start ≤ enrollment_end ≤ start_date < end_date``
+
+    Each pair is only checked when both sides are present (``CohortUpdate``
+    is a patch — most fields are optional). A teacher / admin shouldn't
+    be able to POST a window that ends before it starts or an enrollment
+    period that closes after the cohort begins.
+    """
+    if start_date is not None and end_date is not None and start_date >= end_date:
+        raise ValueError("end_date must be after start_date")
+    if enrollment_start is not None and enrollment_end is not None and enrollment_start > enrollment_end:
+        raise ValueError("enrollment_end must be on or after enrollment_start")
+    if enrollment_end is not None and start_date is not None and enrollment_end > start_date:
+        raise ValueError("enrollment_end must be on or before start_date")
 
 
 class CohortCreate(BaseModel):
@@ -24,6 +48,16 @@ class CohortCreate(BaseModel):
     enrollment_end: datetime | None = None
     max_students: int | None = Field(None, ge=1)
 
+    @model_validator(mode="after")
+    def _check_dates(self) -> "CohortCreate":
+        _validate_cohort_dates(
+            start_date=self.start_date,
+            end_date=self.end_date,
+            enrollment_start=self.enrollment_start,
+            enrollment_end=self.enrollment_end,
+        )
+        return self
+
 
 class CohortUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=200)
@@ -31,8 +65,21 @@ class CohortUpdate(BaseModel):
     end_date: datetime | None = None
     enrollment_start: datetime | None = None
     enrollment_end: datetime | None = None
+    # ``upcoming → active → completed`` is the intended forward path.
+    # Going back from ``completed`` is prevented at the route layer
+    # (see ``update_cohort`` in ``api/v1/cohorts.py``).
     status: Literal["upcoming", "active", "completed"] | None = None
     max_students: int | None = Field(None, ge=1)
+
+    @model_validator(mode="after")
+    def _check_dates(self) -> "CohortUpdate":
+        _validate_cohort_dates(
+            start_date=self.start_date,
+            end_date=self.end_date,
+            enrollment_start=self.enrollment_start,
+            enrollment_end=self.enrollment_end,
+        )
+        return self
 
 
 class CohortResponse(BaseModel):
@@ -73,7 +120,7 @@ class CohortStudentAdd(BaseModel):
     """
 
     user_id: UUID | None = None
-    email: str | None = None
+    email: EmailStr | None = None
 
 
 class CohortStudentRow(BaseModel):

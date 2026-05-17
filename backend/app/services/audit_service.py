@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 import logging
 from typing import TYPE_CHECKING
 
@@ -11,7 +10,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from fastapi import Request
-    from sqlalchemy.orm import Session, SessionTransaction
+    from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -26,30 +25,32 @@ def log_action(
     request: Request | None = None,
 ) -> None:
     """Persist an audit log entry inside a SAVEPOINT so it never
-    interferes with the caller's transaction."""
-    nested: SessionTransaction | None = None
-    try:
-        ip_address: str | None = None
-        user_agent: str | None = None
-        if request is not None:
-            ip_address = get_client_ip(request)
-            user_agent = request.headers.get("user-agent", "")[:500]
+    interferes with the caller's transaction.
 
-        nested = db.begin_nested()
-        entry = AuditLog(
-            user_id=user_id,
-            action=action,
-            resource_type=resource_type,
-            resource_id=str(resource_id),
-            details=details,
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
-        db.add(entry)
-        db.flush()
-        nested.commit()
+    Failure here is non-fatal — audit-log writes must not crash the
+    request that triggered them. The ``with db.begin_nested()`` block
+    rolls the savepoint back on its own if the INSERT raises, leaving
+    the caller's outer transaction intact.
+    """
+    ip_address: str | None = None
+    user_agent: str | None = None
+    if request is not None:
+        ip_address = get_client_ip(request)
+        user_agent = request.headers.get("user-agent", "")[:500]
+
+    try:
+        with db.begin_nested():
+            db.add(
+                AuditLog(
+                    user_id=user_id,
+                    action=action,
+                    resource_type=resource_type,
+                    resource_id=str(resource_id),
+                    details=details,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                )
+            )
+            db.flush()
     except Exception:
         logger.exception("Failed to write audit log")
-        if nested is not None:
-            with contextlib.suppress(Exception):
-                nested.rollback()

@@ -14,7 +14,7 @@ from app.services.course_service import (
     get_module,
     update_module,
 )
-from app.services.translation.pipeline_hooks import run_course_translation_pipeline_if_published
+from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 
 from ._router import router
 
@@ -32,7 +32,7 @@ def create_new_module(
 ) -> Module:
     verify_course_owner(db, course_id, teacher.id, allow_admin=False)
     created = create_module(db, course_id, data)
-    run_course_translation_pipeline_if_published(db, course_id)
+    reconcile_entity_if_course_published(db, "module", created)
     return created
 
 
@@ -52,7 +52,7 @@ def update_existing_module(
             detail=f"Module '{module_id}' not found in course '{course_id}'",
         )
     updated = update_module(db, module, data)
-    run_course_translation_pipeline_if_published(db, course_id)
+    reconcile_entity_if_course_published(db, "module", updated)
     return updated
 
 

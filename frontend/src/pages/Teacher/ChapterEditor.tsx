@@ -26,15 +26,10 @@ import {
 import { ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
 
-const EDITOR_OPTIONS = CHAPTER_TYPES.map((value) => {
-  const meta = CHAPTER_TYPE_META[value]
-  return {
-    value,
-    label: meta.label,
-    desc: meta.description,
-    icon: meta.icon,
-  }
-})
+const EDITOR_OPTIONS = CHAPTER_TYPES.map((value) => ({
+  value,
+  icon: CHAPTER_TYPE_META[value].icon,
+}))
 
 type ChapterUpdatePayload = Parameters<typeof coursesService.updateChapter>[3]
 
@@ -61,7 +56,11 @@ export default function ChapterEditor() {
     if (!courseId || !moduleId || !chapterId) return
     setLoading(true)
     try {
-      const mod = await coursesService.getModule(courseId, moduleId)
+      // Editor-only fetch so the breadcrumb's ``moduleName`` + the chapter
+      // title render in the source language regardless of the viewer's UI
+      // locale. Keeps the editor unambiguous: what you see is what you'd
+      // PATCH back.
+      const mod = await coursesService.getModuleForEdit(courseId, moduleId)
       if (signal?.cancelled) return
       setModuleName(mod.title)
       const ch = mod.chapters?.find((c) => c.id === chapterId)
@@ -200,28 +199,28 @@ export default function ChapterEditor() {
   )
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      {/* Breadcrumb */}
+    <div className="container mx-auto max-w-4xl px-4 py-6 sm:py-8">
+      {/* Breadcrumb — earlier crumbs hide on mobile to keep one line. */}
       <div className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
-        <Link to="/teacher" className="hover:text-foreground transition-colors">
+        <Link to="/teacher" className="hidden transition-colors hover:text-foreground sm:inline">
           {t("chapterEditor.breadcrumb.myCourses")}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5" />
+        <ChevronRight className="hidden h-3.5 w-3.5 sm:inline-block" strokeWidth={1.75} />
         <Link
           to={`/teacher/courses/${courseId}`}
-          className="hover:text-foreground transition-colors"
+          className="hidden transition-colors hover:text-foreground sm:inline"
         >
           {t("chapterEditor.breadcrumb.course")}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5" />
+        <ChevronRight className="hidden h-3.5 w-3.5 sm:inline-block" strokeWidth={1.75} />
         <Link
           to={`/teacher/courses/${courseId}/modules/${moduleId}/edit`}
-          className="hover:text-foreground transition-colors"
+          className="min-w-0 truncate transition-colors hover:text-foreground"
         >
           {moduleName}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span className="text-foreground font-medium truncate max-w-[200px]">
+        <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+        <span className="min-w-0 truncate font-medium text-foreground sm:max-w-[200px]">
           {title || t("chapterEditor.chapterFallback")}
         </span>
       </div>
@@ -245,7 +244,7 @@ export default function ChapterEditor() {
             navigate(`/teacher/courses/${courseId}/modules/${moduleId}/edit`)
           }}
         >
-          <ArrowLeft className="h-4 w-4 mr-1" />
+          <ArrowLeft className="h-4 w-4 mr-1" strokeWidth={1.75} />
           {t("chapterEditor.back")}
         </Button>
         <Input
@@ -268,10 +267,12 @@ export default function ChapterEditor() {
             return (
               <button
                 key={ct.value}
+                type="button"
                 onClick={() => setChapterType(ct.value)}
-                className={`flex items-start gap-3 rounded-lg border-2 p-4 text-left transition-all ${
+                aria-pressed={selected}
+                className={`flex items-start gap-3 rounded-md border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                   selected
-                    ? "border-primary bg-primary/5 shadow-sm"
+                    ? "border-primary bg-primary/[0.04] ring-1 ring-primary/40"
                     : "border-border hover:border-primary/30 hover:bg-muted/40"
                 }`}
               >
@@ -279,6 +280,8 @@ export default function ChapterEditor() {
                   className={`h-5 w-5 mt-0.5 shrink-0 ${
                     selected ? "text-primary" : "text-muted-foreground"
                   }`}
+                  strokeWidth={1.75}
+                  aria-hidden
                 />
                 <div>
                   <div
@@ -286,10 +289,10 @@ export default function ChapterEditor() {
                       selected ? "text-primary" : ""
                     }`}
                   >
-                    {ct.label}
+                    {t(`chapterTypes.${ct.value}.label`)}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {ct.desc}
+                    {t(`chapterTypes.${ct.value}.description`)}
                   </div>
                 </div>
               </button>
@@ -315,18 +318,62 @@ export default function ChapterEditor() {
         </CardContent>
       </Card>
 
-      {/* Save button */}
+      {/* Inline save button (always visible). When the chapter is dirty,
+          a sticky reminder also appears at the bottom of the viewport. */}
       <div className="flex items-center gap-3">
         <Button onClick={save} disabled={saving}>
           {saving ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} aria-hidden />
           ) : (
-            <Save className="h-4 w-4 mr-2" />
+            <Save className="h-4 w-4 mr-2" strokeWidth={1.75} aria-hidden />
           )}
           {saving ? t("chapterEditor.saving") : t("chapterEditor.save")}
         </Button>
         <span className="text-xs text-muted-foreground">{t("chapterEditor.saveHint")}</span>
       </div>
+
+      {/* Sticky save bar — only renders while there are unsaved changes.
+          The pulsing warning dot is the visual cue for "unsaved"; the
+          accompanying text reuses the existing `saveHint` ("Ctrl+S to
+          save") string so we don't introduce a new i18n key from this
+          PR. TODO i18n: a future bilingual pass can swap the dot's
+          aria-label and add an explicit `chapterEditor.unsavedChanges`
+          status string. */}
+      {isDirty && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-6">
+          <Card
+            role="status"
+            aria-live="polite"
+            className="pointer-events-auto animate-fade-in w-full max-w-2xl bg-card/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/85"
+          >
+            <CardContent className="flex items-center gap-3 px-4 py-3">
+              <span
+                className="relative flex h-2 w-2 shrink-0"
+                aria-hidden
+              >
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warning/60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-warning" />
+              </span>
+              <span className="flex-1 text-xs text-muted-foreground sm:text-sm">
+                {t("chapterEditor.saveHint")}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                onClick={save}
+                disabled={saving}
+              >
+                {saving ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} aria-hidden />
+                ) : (
+                  <Save className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} aria-hidden />
+                )}
+                {saving ? t("chapterEditor.saving") : t("chapterEditor.save")}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

@@ -82,16 +82,30 @@ def delete_course(db: Session, course: Course) -> None:
 def restore_course(db: Session, course: Course) -> Course:
     """Undelete a soft-deleted course tree via bulk UPDATEs.
 
-    We rely on direct UPDATE statements rather than walking ``course.modules``
-    because the eager loader in ``_COURSE_TREE`` filters out the very rows we
-    need to flip back to live (their ``deleted_at`` is set).
+    Symmetric to ``delete_course``: we only flip cascaded rows back to
+    live, NOT rows that were independently soft-deleted before the
+    course tombstone. ``delete_course`` stamps the cascade with a single
+    ``now`` timestamp, so matching ``Module.deleted_at == course.deleted_at``
+    (captured before we null it) restores exactly the cascade set —
+    rows with an earlier ``deleted_at`` (independently deleted by a
+    teacher before the course was trashed) stay deleted.
+
+    Direct UPDATE statements rather than walking ``course.modules``
+    because the eager loader in ``_COURSE_TREE`` filters out the very
+    rows we need to flip.
     """
+    tombstone = course.deleted_at
     course.deleted_at = None
-    db.query(Module).filter(Module.course_id == course.id).update({Module.deleted_at: None}, synchronize_session=False)
-    module_ids = select(Module.id).where(Module.course_id == course.id).scalar_subquery()
-    db.query(Chapter).filter(Chapter.module_id.in_(module_ids)).update(
-        {Chapter.deleted_at: None}, synchronize_session=False
-    )
+    if tombstone is not None:
+        db.query(Module).filter(
+            Module.course_id == course.id,
+            Module.deleted_at == tombstone,
+        ).update({Module.deleted_at: None}, synchronize_session=False)
+        module_ids = select(Module.id).where(Module.course_id == course.id).scalar_subquery()
+        db.query(Chapter).filter(
+            Chapter.module_id.in_(module_ids),
+            Chapter.deleted_at == tombstone,
+        ).update({Chapter.deleted_at: None}, synchronize_session=False)
     db.commit()
     db.refresh(course)
     return course

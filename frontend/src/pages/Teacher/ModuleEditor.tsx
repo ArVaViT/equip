@@ -64,7 +64,7 @@ export default function ModuleEditor() {
   );
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container mx-auto max-w-4xl px-4 py-6 sm:py-8">
       <PageHeader
         backTo={`/teacher/courses/${courseId}`}
         backLabel={t("moduleEditor.backToCourse")}
@@ -96,7 +96,7 @@ export default function ModuleEditor() {
               {t("teacherEditor.chapterCount", { count: chapters.length })}
             </Badge>
             <div className="flex items-center gap-2">
-              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
               <Label className="text-xs text-muted-foreground">
                 {t("moduleEditor.dueDate")}
               </Label>
@@ -105,13 +105,13 @@ export default function ModuleEditor() {
                 value={modDueDate}
                 onChange={(e) => setModDueDate(e.target.value)}
                 onBlur={(e) => saveDueDate(e.target.value)}
-                className="text-xs h-7 w-auto border-border/50"
+                className="h-9 w-auto border-border/50 text-xs sm:h-7"
               />
               {modDueDate && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 text-xs text-muted-foreground"
+                  className="h-9 text-xs text-muted-foreground sm:h-6"
                   onClick={clearDueDate}
                 >
                   {t("moduleEditor.clear")}
@@ -124,12 +124,12 @@ export default function ModuleEditor() {
 
       {chapters.length === 0 ? (
         <EmptyState
-          icon={<Pencil />}
+          icon={<Pencil strokeWidth={1.75} />}
           title={t("moduleEditor.noChapters.title")}
           description={t("moduleEditor.noChapters.description")}
           action={
             <Button onClick={addChapter} size="sm">
-              <Plus className="h-4 w-4 mr-1.5" />
+              <Plus className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
               {t("moduleEditor.noChapters.action")}
             </Button>
           }
@@ -152,7 +152,7 @@ export default function ModuleEditor() {
       )}
 
       <Button variant="outline" className="w-full border-dashed h-12" onClick={addChapter}>
-        <Plus className="h-4 w-4 mr-2" />
+        <Plus className="h-4 w-4 mr-2" strokeWidth={1.75} />
         {t("moduleEditor.addChapter")}
       </Button>
     </div>

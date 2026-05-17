@@ -1,5 +1,5 @@
 import api from "./api"
-import { cacheGet, cacheSet, cacheInvalidate, cacheInvalidatePrefix } from "@/lib/cache"
+import { cached, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
 import type { Course, Module, Chapter } from "@/types"
 
 import { adminUsersService } from "./adminUsers"
@@ -29,41 +29,79 @@ import { analyticsService } from "./analytics"
  * keep working during migration. New code should import the specific
  * per-domain service (e.g. `import { quizzesService } from "./quizzes"`).
  */
+
+// ─── Cache invalidation helpers ─────────────────────────────────────────
+// Mutations to courses/modules/chapters have to nudge several keys in
+// lockstep — these three helpers centralize the "graph" so the picture
+// of which mutation invalidates what is in one place.
+
+/** Course list pages (search-scoped and teacher-scoped). Touched by any course mutation. */
+function invalidateCourseLists(): void {
+  cacheInvalidatePrefix("courses:list:")
+  cacheInvalidate("courses:teacher")
+}
+
+/** A specific course's detail and a specific module's snapshot. Touched by module/chapter mutations. */
+function invalidateModuleScope(courseId: string, moduleId: string): void {
+  cacheInvalidate(`courses:detail:${courseId}`)
+  cacheInvalidate(`courses:module:${courseId}:${moduleId}`)
+}
+
+/** All modules under a course plus the course's detail. Used when wiping a whole course. */
+function invalidateAllModulesUnderCourse(courseId: string): void {
+  cacheInvalidate(`courses:detail:${courseId}`)
+  cacheInvalidatePrefix(`courses:module:${courseId}:`)
+}
+
 const courseCrud = {
   async getCourses(search?: string): Promise<Course[]> {
-    const key = `courses:list:${search ?? ""}`
-    const cached = cacheGet<Course[]>(key)
-    if (cached) return cached
-    const params = search ? { search } : undefined
-    const response = await api.get<Course[]>("/courses", { params })
-    cacheSet(key, response.data, 2 * 60 * 1000)
-    return response.data
+    return cached(`courses:list:${search ?? ""}`, CACHE_TTL.TWO_MINUTES, async () => {
+      const params = search ? { search } : undefined
+      const response = await api.get<Course[]>("/courses", { params })
+      return response.data
+    })
   },
 
   async getCourse(id: string): Promise<Course> {
-    const key = `courses:detail:${id}`
-    const cached = cacheGet<Course>(key)
-    if (cached) return cached
-    const response = await api.get<Course>(`/courses/${id}`)
-    cacheSet(key, response.data, 3 * 60 * 1000)
+    return cached(`courses:detail:${id}`, CACHE_TTL.THREE_MINUTES, async () => {
+      const response = await api.get<Course>(`/courses/${id}`)
+      return response.data
+    })
+  },
+
+  /**
+   * Editor-only fetch: forces the API to return source-language columns
+   * regardless of the viewer's `preferred_locale`. Use from `CourseEditor` /
+   * `useCourseData` so a teacher editing their RU course in EN UI doesn't
+   * see the EN translation in InlineEdit fields (and PATCH it back into the
+   * source `title` column).
+   *
+   * Owner / admin only — the backend returns 403 for anyone else, so this
+   * function is safe to call from teacher-only routes.
+   *
+   * Intentionally bypasses the `courses:detail:{id}` cache: the student-
+   * facing read populates the same key with the localized payload, and we
+   * don't want one view to clobber the other.
+   */
+  async getCourseForEdit(id: string): Promise<Course> {
+    const response = await api.get<Course>(`/courses/${id}`, {
+      params: { source: 1 },
+    })
     return response.data
   },
 
   async getTeacherCourses(): Promise<Course[]> {
-    const key = "courses:teacher"
-    const cached = cacheGet<Course[]>(key)
-    if (cached) return cached
-    const response = await api.get<Course[]>("/courses/my")
-    cacheSet(key, response.data, 60 * 1000)
-    return response.data
+    return cached("courses:teacher", CACHE_TTL.ONE_MINUTE, async () => {
+      const response = await api.get<Course[]>("/courses/my")
+      return response.data
+    })
   },
 
   async createCourse(
     data: { title: string; description?: string; image_url?: string },
   ): Promise<Course> {
     const response = await api.post<Course>("/courses", data)
-    cacheInvalidatePrefix("courses:list:")
-    cacheInvalidate("courses:teacher")
+    invalidateCourseLists()
     return response.data
   },
 
@@ -81,17 +119,14 @@ const courseCrud = {
   ): Promise<Course> {
     const response = await api.put<Course>(`/courses/${id}`, data)
     cacheInvalidate(`courses:detail:${id}`)
-    cacheInvalidatePrefix("courses:list:")
-    cacheInvalidate("courses:teacher")
+    invalidateCourseLists()
     return response.data
   },
 
   async deleteCourse(id: string): Promise<void> {
     await api.delete(`/courses/${id}`)
-    cacheInvalidate(`courses:detail:${id}`)
-    cacheInvalidatePrefix("courses:list:")
-    cacheInvalidatePrefix(`courses:module:${id}:`)
-    cacheInvalidate("courses:teacher")
+    invalidateAllModulesUnderCourse(id)
+    invalidateCourseLists()
   },
 
   async getTrashedCourses(): Promise<Course[]> {
@@ -101,32 +136,40 @@ const courseCrud = {
 
   async restoreCourse(id: string): Promise<Course> {
     const response = await api.post<Course>(`/courses/${id}/restore`)
-    cacheInvalidatePrefix("courses:list:")
-    cacheInvalidate("courses:teacher")
+    invalidateCourseLists()
     return response.data
   },
 
   async permanentlyDeleteCourse(id: string): Promise<void> {
     await api.delete(`/courses/${id}/permanent`)
-    cacheInvalidate(`courses:detail:${id}`)
-    cacheInvalidatePrefix("courses:list:")
-    cacheInvalidatePrefix(`courses:module:${id}:`)
-    cacheInvalidate("courses:teacher")
+    invalidateAllModulesUnderCourse(id)
+    invalidateCourseLists()
   },
 
   async cloneCourse(id: string): Promise<Course> {
     const response = await api.post<Course>(`/courses/${id}/clone`)
-    cacheInvalidatePrefix("courses:list:")
-    cacheInvalidate("courses:teacher")
+    invalidateCourseLists()
     return response.data
   },
 
   async getModule(courseId: string, moduleId: string): Promise<Module> {
-    const key = `courses:module:${courseId}:${moduleId}`
-    const cached = cacheGet<Module>(key)
-    if (cached) return cached
-    const response = await api.get<Module>(`/courses/${courseId}/modules/${moduleId}`)
-    cacheSet(key, response.data, 3 * 60 * 1000)
+    return cached(`courses:module:${courseId}:${moduleId}`, CACHE_TTL.THREE_MINUTES, async () => {
+      const response = await api.get<Module>(`/courses/${courseId}/modules/${moduleId}`)
+      return response.data
+    })
+  },
+
+  /**
+   * Editor-only fetch: see `getCourseForEdit`. Forces source-language
+   * columns from the module-detail endpoint so `ModuleEditor` and
+   * `ChapterEditor` (which loads its chapter list via the module response)
+   * don't see translation overlays in editable fields.
+   */
+  async getModuleForEdit(courseId: string, moduleId: string): Promise<Module> {
+    const response = await api.get<Module>(
+      `/courses/${courseId}/modules/${moduleId}`,
+      { params: { source: 1 } },
+    )
     return response.data
   },
 
@@ -135,8 +178,7 @@ const courseCrud = {
     data: { title: string; description?: string; order_index?: number },
   ): Promise<Module> {
     const response = await api.post<Module>(`/courses/${courseId}/modules`, data)
-    cacheInvalidate(`courses:detail:${courseId}`)
-    cacheInvalidatePrefix(`courses:module:${courseId}:`)
+    invalidateAllModulesUnderCourse(courseId)
     return response.data
   },
 
@@ -154,15 +196,13 @@ const courseCrud = {
       `/courses/${courseId}/modules/${moduleId}`,
       data,
     )
-    cacheInvalidate(`courses:detail:${courseId}`)
-    cacheInvalidate(`courses:module:${courseId}:${moduleId}`)
+    invalidateModuleScope(courseId, moduleId)
     return response.data
   },
 
   async deleteModule(courseId: string, moduleId: string): Promise<void> {
     await api.delete(`/courses/${courseId}/modules/${moduleId}`)
-    cacheInvalidate(`courses:detail:${courseId}`)
-    cacheInvalidate(`courses:module:${courseId}:${moduleId}`)
+    invalidateModuleScope(courseId, moduleId)
   },
 
   async createChapter(
@@ -174,8 +214,7 @@ const courseCrud = {
       `/courses/${courseId}/modules/${moduleId}/chapters`,
       data,
     )
-    cacheInvalidate(`courses:detail:${courseId}`)
-    cacheInvalidate(`courses:module:${courseId}:${moduleId}`)
+    invalidateModuleScope(courseId, moduleId)
     return response.data
   },
 
@@ -195,8 +234,7 @@ const courseCrud = {
       `/courses/${courseId}/modules/${moduleId}/chapters/${chapterId}`,
       data,
     )
-    cacheInvalidate(`courses:detail:${courseId}`)
-    cacheInvalidate(`courses:module:${courseId}:${moduleId}`)
+    invalidateModuleScope(courseId, moduleId)
     return response.data
   },
 
@@ -208,8 +246,7 @@ const courseCrud = {
     await api.delete(
       `/courses/${courseId}/modules/${moduleId}/chapters/${chapterId}`,
     )
-    cacheInvalidate(`courses:detail:${courseId}`)
-    cacheInvalidate(`courses:module:${courseId}:${moduleId}`)
+    invalidateModuleScope(courseId, moduleId)
   },
 }
 

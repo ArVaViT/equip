@@ -5,14 +5,14 @@ export const inputVariants = cva(
   {
     variants: {
       fieldSize: {
-        /** Default forms — 40px */
-        default: "h-10 px-3 py-2 text-sm file:text-sm",
-        /** Dense tables / gradebook — 36px */
-        md: "h-9 px-3 py-2 text-sm file:text-sm",
+        /** Default forms — 40px. Mobile text-base prevents iOS zoom-on-focus. */
+        default: "h-10 px-3 py-2 text-base sm:text-sm file:text-sm",
+        /** Dense tables / gradebook — 36px. Mobile text-base prevents iOS zoom. */
+        md: "h-9 px-3 py-2 text-base sm:text-sm file:text-sm",
         /** Editors / tight toolbars — 32px */
         sm: "h-8 px-2.5 py-1 text-xs file:text-xs",
-        /** Auth / comfortable touch — 44px */
-        lg: "h-11 px-3 py-2 text-sm file:text-sm",
+        /** Auth / comfortable touch — 44px. Mobile text-base prevents iOS zoom. */
+        lg: "h-11 px-3 py-2 text-base sm:text-sm file:text-sm",
       },
     },
     defaultVariants: {

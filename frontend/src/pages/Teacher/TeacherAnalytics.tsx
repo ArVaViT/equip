@@ -2,11 +2,11 @@ import { useEffect, useState } from "react"
 import { useParams, Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import PageSpinner from "@/components/ui/PageSpinner"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
-import { ArrowLeft, Users, TrendingUp, Award, Calendar, BarChart3, ClipboardList, UserCheck } from "lucide-react"
-import { ErrorState } from "@/components/patterns"
+import { ArrowLeft, Users, TrendingUp, Award, Calendar, BarChart3, ChevronRight, ClipboardList, UserCheck } from "lucide-react"
+import { EmptyState, ErrorState, StatCard } from "@/components/patterns"
 import { formatDate } from "@/i18n/format"
 
 interface AnalyticsEnrollment {
@@ -79,19 +79,19 @@ export default function TeacherAnalytics() {
   }).length ?? 0
 
   if (loading) {
-    return <PageSpinner />
+    return <TeacherAnalyticsSkeleton />
   }
 
   if (!analytics) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-5xl">
         <ErrorState
-          icon={<BarChart3 />}
+          icon={<BarChart3 strokeWidth={1.75} />}
           title={t("teacherAnalytics.loadFailed")}
           action={
             <Link to="/teacher">
               <Button variant="ghost">
-                <ArrowLeft className="h-4 w-4 mr-1.5" />
+                <ArrowLeft className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
                 {t("teacherAnalytics.backToCourses")}
               </Button>
             </Link>
@@ -110,15 +110,25 @@ export default function TeacherAnalytics() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <div className="flex items-center gap-3 mb-8">
-        <Link to="/teacher">
-          <Button variant="ghost" size="icon" className="shrink-0" aria-label={t("teacherAnalytics.backToDashboard")}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+        <Link to="/teacher" className="hover:text-foreground transition-colors">
+          {t("teacherAnalytics.breadcrumb.myCourses")}
         </Link>
+        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+        <Link
+          to={`/teacher/courses/${courseId}`}
+          className="hover:text-foreground transition-colors truncate"
+        >
+          {courseTitle || t("teacherAnalytics.breadcrumb.courseFallback")}
+        </Link>
+        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+        <span className="text-foreground font-medium">{t("teacherAnalytics.heading")}</span>
+      </div>
+
+      <div className="flex items-center gap-3 mb-8">
         <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <BarChart3 className="h-7 w-7 text-primary" />
+          <h1 className="flex items-center gap-2 font-serif text-3xl font-bold tracking-tight">
+            <BarChart3 className="h-6 w-6 shrink-0 text-primary" strokeWidth={1.75} aria-hidden />
             {t("teacherAnalytics.heading")}
           </h1>
           {courseTitle && (
@@ -127,13 +137,13 @@ export default function TeacherAnalytics() {
         </div>
         <Link to={`/teacher/courses/${courseId}/progress`}>
           <Button size="sm" variant="outline">
-            <UserCheck className="h-4 w-4 mr-1.5" />
+            <UserCheck className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
             {t("teacherAnalytics.studentProgress")}
           </Button>
         </Link>
         <Link to={`/teacher/courses/${courseId}/gradebook`}>
           <Button size="sm" variant="outline">
-            <ClipboardList className="h-4 w-4 mr-1.5" />
+            <ClipboardList className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
             {t("teacherAnalytics.gradebook")}
           </Button>
         </Link>
@@ -141,17 +151,7 @@ export default function TeacherAnalytics() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {stats.map((s) => (
-          <Card key={s.label}>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{s.label}</p>
-                  <p className="text-2xl font-bold mt-1">{s.value}</p>
-                </div>
-                <s.icon className="h-8 w-8 text-muted-foreground/60" />
-              </div>
-            </CardContent>
-          </Card>
+          <StatCard key={s.label} label={s.label} value={s.value} icon={s.icon} />
         ))}
       </div>
 
@@ -164,9 +164,11 @@ export default function TeacherAnalytics() {
         </CardHeader>
         <CardContent>
           {analytics.enrollments.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              {t("teacherAnalytics.enrollments.emptyText")}
-            </p>
+            <EmptyState
+              variant="compact"
+              icon={<Users strokeWidth={1.75} aria-hidden />}
+              title={t("teacherAnalytics.enrollments.emptyText")}
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -211,6 +213,35 @@ export default function TeacherAnalytics() {
           )}
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+/**
+ * Shimmer placeholder for the analytics page. Mirrors the real layout
+ * (back button + serif H1, four stat cards, enrolments card) so the
+ * page doesn't jump when data resolves.
+ */
+function TeacherAnalyticsSkeleton() {
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-5xl" aria-busy="true">
+      <div className="flex items-center gap-3 mb-8">
+        <Skeleton className="h-8 w-8 shrink-0 rounded-md" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-8 w-64 max-w-full" />
+          <Skeleton className="h-4 w-40 max-w-full" />
+        </div>
+        <Skeleton className="hidden sm:block h-9 w-32" />
+        <Skeleton className="hidden sm:block h-9 w-28" />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 rounded-md" />
+        ))}
+      </div>
+
+      <Skeleton className="h-64 rounded-md" />
     </div>
   )
 }

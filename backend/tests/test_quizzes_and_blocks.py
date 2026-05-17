@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models.chapter_block import ChapterBlock
+from app.models.content_translation import ContentTranslation
 from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
 from app.models.quiz import Quiz, QuizAttempt, QuizOption, QuizQuestion
@@ -178,6 +179,77 @@ def test_list_blocks_chapter_not_found(client: TestClient, db: Session):
 def test_list_blocks_anon_unauthorized(anon_client: TestClient):
     resp = anon_client.get("/api/v1/blocks/chapter/ch-1")
     assert resp.status_code == 401
+
+
+# ── GET /api/v1/blocks/chapter/{chapter_id}?source=1 (editor escape hatch) ──
+
+
+def _seed_block_with_en_translation(db: Session):
+    """Seed a chapter block with RU content and an EN translation overlay."""
+    block = ChapterBlock(
+        chapter_id="ch-1",
+        block_type="text",
+        order_index=0,
+        content="Русский контент",
+    )
+    db.add(block)
+    db.flush()
+    db.add(
+        ContentTranslation(
+            entity_type="chapter_block",
+            entity_id=str(block.id),
+            field="content",
+            locale="en",
+            text="<p>English content</p>",
+            source_hash="bh1",
+            status="ok",
+            origin="mt",
+        )
+    )
+    db.commit()
+    return block
+
+
+def test_list_blocks_source_param_returns_raw_for_owner(client: TestClient, db: Session):
+    """Editor path: teacher in EN UI editing their RU course must see the
+    source HTML (or PATCH would overwrite ``content`` with the EN translation)."""
+    _seed_course(db)
+    _seed_block_with_en_translation(db)
+
+    resp = client.get(
+        "/api/v1/blocks/chapter/ch-1",
+        params={"source": "1"},
+        headers={"Accept-Language": "en"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body) == 1
+    assert body[0]["content"] == "Русский контент"
+
+
+def test_list_blocks_source_param_returns_raw_for_admin(admin_client: TestClient, db: Session):
+    _seed_course(db)
+    _seed_block_with_en_translation(db)
+
+    resp = admin_client.get(
+        "/api/v1/blocks/chapter/ch-1",
+        params={"source": "1"},
+        headers={"Accept-Language": "en"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()[0]["content"] == "Русский контент"
+
+
+def test_list_blocks_source_param_403_for_enrolled_student(student_client: TestClient, db: Session):
+    _seed_course_with_enrollment(db)
+    _seed_block_with_en_translation(db)
+
+    resp = student_client.get(
+        "/api/v1/blocks/chapter/ch-1",
+        params={"source": "1"},
+        headers={"Accept-Language": "en"},
+    )
+    assert resp.status_code == 403
 
 
 # ── POST /api/v1/blocks/chapter/{chapter_id} ─────────────────────────────
@@ -452,6 +524,92 @@ def test_get_chapter_quiz_anon_unauthorized(anon_client: TestClient):
     assert resp.status_code == 401
 
 
+# ── GET /api/v1/quizzes/chapter/{chapter_id}?source=1 (editor escape hatch) ──
+
+
+def _seed_quiz_with_en_translations(db: Session):
+    """Seed an RU-source quiz plus an EN ``content_translations`` overlay."""
+    quiz, questions, _opts = _seed_quiz_with_questions(db)
+    q1, q2 = questions
+    quiz.title = "RU тест"
+    quiz.description = "Описание"
+    q1.question_text = "Вопрос 1"
+    q2.question_text = "Вопрос 2"
+    db.add(
+        ContentTranslation(
+            entity_type="quiz",
+            entity_id=str(quiz.id),
+            field="title",
+            locale="en",
+            text="EN quiz title",
+            source_hash="qh1",
+            status="ok",
+            origin="mt",
+        )
+    )
+    db.add(
+        ContentTranslation(
+            entity_type="quiz_question",
+            entity_id=str(q1.id),
+            field="question_text",
+            locale="en",
+            text="EN question 1",
+            source_hash="qh2",
+            status="ok",
+            origin="mt",
+        )
+    )
+    db.commit()
+    return quiz, q1, q2
+
+
+def test_get_chapter_quiz_source_param_returns_raw_for_owner(client: TestClient, db: Session):
+    """``?source=1`` returns source columns even with ``Accept-Language: en``,
+    so a teacher in EN UI can't accidentally save the EN translation back to
+    the source ``question_text``."""
+    _seed_course(db)
+    _seed_quiz_with_en_translations(db)
+
+    resp = client.get(
+        "/api/v1/quizzes/chapter/ch-1",
+        params={"source": "1"},
+        headers={"Accept-Language": "en"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["title"] == "RU тест"
+    questions = sorted(body["questions"], key=lambda q: q["order_index"])
+    assert questions[0]["question_text"] == "Вопрос 1"
+
+
+def test_get_chapter_quiz_source_param_returns_raw_for_admin(admin_client: TestClient, db: Session):
+    _seed_course(db)
+    _seed_quiz_with_en_translations(db)
+
+    resp = admin_client.get(
+        "/api/v1/quizzes/chapter/ch-1",
+        params={"source": "1"},
+        headers={"Accept-Language": "en"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["title"] == "RU тест"
+
+
+def test_get_chapter_quiz_source_param_403_for_enrolled_student(student_client: TestClient, db: Session):
+    """Source content (typos, unredacted teacher drafts) shouldn't leak to
+    students. Even an enrolled student gets 403 — fail loudly so frontend
+    bugs surface immediately."""
+    _seed_course_with_enrollment(db)
+    _seed_quiz_with_en_translations(db)
+
+    resp = student_client.get(
+        "/api/v1/quizzes/chapter/ch-1",
+        params={"source": "1"},
+        headers={"Accept-Language": "en"},
+    )
+    assert resp.status_code == 403
+
+
 # ── GET /api/v1/quizzes/{quiz_id} (teacher detail) ──────────────────────
 
 
@@ -664,6 +822,78 @@ def test_delete_quiz_anon_unauthorized(anon_client: TestClient):
 
 
 # ── POST /api/v1/quizzes/{quiz_id}/submit ─────────────────────────────────
+
+
+def test_submit_quiz_survives_concurrent_chapter_progress_insert(student_client: TestClient, db: Session):
+    """``submit_quiz`` upserts a ChapterProgress row when the student
+    passes. A teacher manually marking the chapter complete (or a
+    parallel quiz submission) at the same instant can race the INSERT,
+    tripping the ``uq_progress_user_chapter`` unique key. Before the
+    SAVEPOINT wrap in ``upsert_passed_chapter_progress`` this took
+    down the whole submit transaction.
+    """
+    from sqlalchemy.orm import Query
+
+    from app.models.chapter_progress import ChapterProgress
+
+    _seed_course_with_enrollment(db)
+    quiz, questions, opts = _seed_quiz_with_questions(db)
+
+    db.add(
+        ChapterProgress(
+            user_id=STUDENT_ID,
+            chapter_id="ch-1",
+            completed=True,
+            completion_type="teacher",
+        )
+    )
+    db.commit()
+
+    real_first = Query.first
+    state = {"missed": False}
+
+    def _maybe_miss(self):
+        descs = self.column_descriptions
+        if not state["missed"] and descs and getattr(descs[0].get("type"), "__name__", "") == "ChapterProgress":
+            state["missed"] = True
+            return None
+        return real_first(self)
+
+    Query.first = _maybe_miss
+    try:
+        resp = student_client.post(
+            f"/api/v1/quizzes/{quiz.id}/submit",
+            json={
+                "answers": [
+                    {
+                        "question_id": str(questions[0].id),
+                        "selected_option_id": str(opts["q1_correct"]),
+                    },
+                    {
+                        "question_id": str(questions[1].id),
+                        "selected_option_id": str(opts["q2_correct"]),
+                    },
+                ],
+            },
+        )
+    finally:
+        Query.first = real_first
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["passed"] is True
+
+    db.expire_all()
+    progress_rows = (
+        db.query(ChapterProgress)
+        .filter(
+            ChapterProgress.user_id == STUDENT_ID,
+            ChapterProgress.chapter_id == "ch-1",
+        )
+        .all()
+    )
+    assert len(progress_rows) == 1
+    assert progress_rows[0].completed is True
 
 
 def test_submit_quiz_perfect_score(student_client: TestClient, db: Session):
@@ -1237,6 +1467,84 @@ def test_grade_essay_answer_recomputes_passed(client: TestClient, student, db: S
     graded_list = client.get(f"/api/v1/quizzes/{quiz.id}/pending-answers?include_graded=true").json()
     assert len(graded_list) == 1
     assert graded_list[0]["points_earned"] == 18
+
+
+def test_grade_answer_acquires_for_update_lock_on_attempt(client: TestClient, student, db: Session, monkeypatch):
+    """The PATCH handler must take a ``FOR UPDATE`` row lock on the
+    attempt before recomputing the aggregate score.
+
+    Without the lock, two teachers grading two different open-ended
+    answers on the same attempt race: each one's
+    ``recompute_attempt_grade`` reads the answer rows from its own
+    snapshot, sums them, and writes back ``attempt.score`` /
+    ``attempt.passed``. The second commit overwrites the first with a
+    stale total.
+
+    SQLite compiles ``with_for_update`` to a no-op (no SAVEPOINT/lock
+    syntax exists), so we can't observe the lock in the emitted SQL.
+    Instead, spy on ``Query.with_for_update`` and assert it was invoked
+    for a QuizAttempt query inside the handler.
+    """
+    from sqlalchemy.orm import Query
+
+    _seed_course_with_enrollment(db)
+    _quiz, _essay, _attempt, essay_answer = _seed_submitted_essay_attempt(db)
+
+    locked_entities: list[str] = []
+    real_with_for_update = Query.with_for_update
+
+    def _spy(self, *args, **kwargs):
+        entity_names = [str(ent) for ent in self.column_descriptions]
+        locked_entities.extend(entity_names)
+        return real_with_for_update(self, *args, **kwargs)
+
+    monkeypatch.setattr(Query, "with_for_update", _spy)
+
+    resp = client.patch(
+        f"/api/v1/quizzes/answers/{essay_answer.id}",
+        json={"points_earned": 5},
+    )
+    assert resp.status_code == 200, resp.text
+
+    quiz_attempt_locks = [e for e in locked_entities if "QuizAttempt" in e]
+    assert quiz_attempt_locks, f"grade_answer must SELECT the attempt with FOR UPDATE; saw locks on: {locked_entities}"
+
+
+def test_grade_zero_with_no_comment_clears_pending_queue(client: TestClient, student, db: Session):
+    """A 0-point grade with no comment must still drop out of the pending queue.
+
+    Regression for the bug where the pending-answers filter used
+    ``(grader_comment IS NULL AND points_earned == 0)`` as its
+    "still pending" heuristic — that's exactly what a "graded as 0 with
+    no feedback" row also looks like, so the row would silently reappear
+    on every reload and the teacher could never actually mark a poor
+    essay as zero without inventing a comment.
+    """
+    _seed_course_with_enrollment(db)
+    quiz, _essay, _attempt, essay_answer = _seed_submitted_essay_attempt(db)
+
+    # Pre-state: row visible in the pending queue.
+    pending = client.get(f"/api/v1/quizzes/{quiz.id}/pending-answers").json()
+    assert len(pending) == 1
+    assert pending[0]["answer_id"] == str(essay_answer.id)
+
+    # Grade with the exact ambiguous combo: 0 points, no comment.
+    resp = client.patch(
+        f"/api/v1/quizzes/answers/{essay_answer.id}",
+        json={"points_earned": 0},
+    )
+    assert resp.status_code == 200, resp.text
+
+    # Post-state: row is no longer pending.
+    pending_after = client.get(f"/api/v1/quizzes/{quiz.id}/pending-answers").json()
+    assert pending_after == []
+
+    # And it does show up when the teacher asks for graded rows too.
+    graded = client.get(f"/api/v1/quizzes/{quiz.id}/pending-answers?include_graded=true").json()
+    assert len(graded) == 1
+    assert graded[0]["answer_id"] == str(essay_answer.id)
+    assert graded[0]["points_earned"] == 0
+    assert graded[0]["grader_comment"] is None
 
 
 def test_grade_answer_rejects_points_above_cap(client: TestClient, student, db: Session):

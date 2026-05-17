@@ -631,6 +631,14 @@ class TestAuditLog:
         assert resp.status_code == 200
         assert resp.json()["total"] >= 1
 
+    def test_invalid_user_id_returns_400(self, admin_client: TestClient):
+        # Used to surface a Postgres ``invalid input syntax for type uuid``
+        # 500. Validate up-front and 400 so a typo in the query string is
+        # a recoverable client error.
+        resp = admin_client.get("/api/v1/audit?user_id=not-a-uuid")
+        assert resp.status_code == 400
+        assert "uuid" in resp.json()["detail"].lower()
+
     def test_anon_rejected(self, anon_client: TestClient):
         resp = anon_client.get("/api/v1/audit")
         assert resp.status_code in (401, 403)

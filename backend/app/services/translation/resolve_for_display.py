@@ -15,6 +15,8 @@ not surprised by machine translations when the UI is in another language.
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
+from typing import cast
 
 from sqlalchemy import tuple_
 from sqlalchemy.orm import Session  # noqa: TC002
@@ -105,17 +107,35 @@ def _localize_optional_description(
     return overlay.get(dkey)
 
 
+def _build_localized_course[T: CourseSummary | CourseResponse](
+    schema_cls: type[T],
+    course: Course,
+    overlay: dict[tuple[str, str], str],
+    display_locale: LocaleCode,
+) -> T:
+    """Shared body for ``build_localized_course_summary`` /
+    ``_response``. The two were byte-for-byte identical except for the
+    return-type / ``model_validate`` target — this collapses them.
+
+    ``cast(T, …)`` is required because Pydantic's ``model_copy``
+    signature is ``Self`` and mypy can't narrow ``Self`` back to ``T``
+    through the bound union. The cast is sound: ``base`` was just
+    validated as ``T``, so ``base.model_copy(...)`` is also ``T``.
+    """
+    title = pick_localized_text(course, "title", course.title, overlay, display_locale)
+    desc = _localize_optional_description(course, course.description, overlay, display_locale)
+    base = schema_cls.model_validate(course, from_attributes=True)
+    if title == base.title and desc == base.description:
+        return cast("T", base)
+    return cast("T", base.model_copy(update={"title": title, "description": desc}))
+
+
 def build_localized_course_summary(
     course: Course,
     overlay: dict[tuple[str, str], str],
     display_locale: LocaleCode,
 ) -> CourseSummary:
-    title = pick_localized_text(course, "title", course.title, overlay, display_locale)
-    desc = _localize_optional_description(course, course.description, overlay, display_locale)
-    base = CourseSummary.model_validate(course, from_attributes=True)
-    if title == base.title and desc == base.description:
-        return base
-    return base.model_copy(update={"title": title, "description": desc})
+    return _build_localized_course(CourseSummary, course, overlay, display_locale)
 
 
 def build_localized_course_response(
@@ -123,12 +143,7 @@ def build_localized_course_response(
     overlay: dict[tuple[str, str], str],
     display_locale: LocaleCode,
 ) -> CourseResponse:
-    title = pick_localized_text(course, "title", course.title, overlay, display_locale)
-    desc = _localize_optional_description(course, course.description, overlay, display_locale)
-    base = CourseResponse.model_validate(course, from_attributes=True)
-    if title == base.title and desc == base.description:
-        return base
-    return base.model_copy(update={"title": title, "description": desc})
+    return _build_localized_course(CourseResponse, course, overlay, display_locale)
 
 
 def fetch_overlay_triples_bulk(
@@ -176,6 +191,54 @@ def pick_overlay_value(
     return overlay.get(key, base)
 
 
+@dataclass(frozen=True, slots=True)
+class Localizer:
+    """Per-request translation-overlay lookup.
+
+    Captures the overlay map plus the ``source_locale`` / ``display_locale``
+    pair so every call site drops from the 7-arg ``pick_overlay_value`` to
+    a 4-arg ``loc.pick(entity_type, id, field, base)``. The per-request
+    constants live on the instance; the call site only carries what
+    actually varies between rows.
+
+    Construct one per response; pass it down to inner row-builders.
+    """
+
+    overlay: dict[tuple[str, str, str], str]
+    source_locale: LocaleCode
+    display_locale: LocaleCode
+
+    def pick(self, entity_type: str, entity_id: str, field: str, base: str | None) -> str | None:
+        return pick_overlay_value(
+            self.overlay,
+            entity_type,
+            entity_id,
+            field,
+            base,
+            source_locale=self.source_locale,
+            display_locale=self.display_locale,
+        )
+
+    @classmethod
+    def build(
+        cls,
+        db: Session,
+        specs: list[tuple[str, str, str]],
+        *,
+        source_locale: LocaleCode,
+        display_locale: LocaleCode,
+    ) -> Localizer:
+        """Bulk-fetch the overlay rows for ``specs`` and wrap them in a
+        ``Localizer``. Convenience constructor for the common pattern of
+        ``Localizer(fetch_overlay_triples_bulk(...), source, display)``.
+        """
+        return cls(
+            overlay=fetch_overlay_triples_bulk(db, specs, display_locale),
+            source_locale=source_locale,
+            display_locale=display_locale,
+        )
+
+
 def get_course_source_locale_for_chapter(db: Session, chapter_id: str) -> LocaleCode:
     """Return ``courses.source_locale`` for the chapter's course (fallback ``ru``)."""
     row = (
@@ -219,6 +282,40 @@ def should_apply_course_translation_overlay_for_chapter(
     return should_apply_course_translation_overlay(course=course, current_user=current_user)
 
 
+def is_chapter_course_owner_or_admin(
+    db: Session,
+    *,
+    chapter_id: str,
+    current_user: User | None,
+) -> bool:
+    """Return True when ``current_user`` owns the chapter's course or is admin.
+
+    Used by the editor-only ``?source=1`` gate on the chapter-scoped read
+    endpoints (``/quizzes/chapter/{id}``, ``/assignments/chapter/{id}``,
+    ``/blocks/chapter/{id}``). Returning source content to a regular student
+    would leak unredacted teacher drafts, so the param is gated.
+    """
+    if current_user is None:
+        return False
+    if current_user.role == UserRole.ADMIN.value:
+        return True
+    row = (
+        db.query(Course.created_by)
+        .join(Module, Module.course_id == Course.id)
+        .join(Chapter, Chapter.module_id == Module.id)
+        .filter(
+            Chapter.id == chapter_id,
+            Chapter.deleted_at.is_(None),
+            Module.deleted_at.is_(None),
+            Course.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if row is None:
+        return False
+    return _str_uuid(row[0]) == _str_uuid(current_user.id)
+
+
 def build_localized_course_response_with_tree(
     db: Session,
     course: Course,
@@ -239,68 +336,23 @@ def build_localized_course_response_with_tree(
         for ch in mod.chapters:
             specs.append(("chapter", str(ch.id), "title"))
 
-    overlay_t = fetch_overlay_triples_bulk(db, specs, display_locale)
-    source_locale = normalize_locale(course.source_locale)
-
-    ct = (
-        pick_overlay_value(
-            overlay_t,
-            "course",
-            course.id,
-            "title",
-            course.title,
-            source_locale=source_locale,
-            display_locale=display_locale,
-        )
-        or course.title
-    )
-    cd = pick_overlay_value(
-        overlay_t,
-        "course",
-        course.id,
-        "description",
-        course.description,
-        source_locale=source_locale,
+    loc = Localizer.build(
+        db,
+        specs,
+        source_locale=normalize_locale(course.source_locale),
         display_locale=display_locale,
     )
 
+    ct = loc.pick("course", course.id, "title", course.title) or course.title
+    cd = loc.pick("course", course.id, "description", course.description)
+
     new_modules: list[ModuleResponse] = []
     for mod in course.modules:
-        mt = (
-            pick_overlay_value(
-                overlay_t,
-                "module",
-                str(mod.id),
-                "title",
-                mod.title,
-                source_locale=source_locale,
-                display_locale=display_locale,
-            )
-            or mod.title
-        )
-        md = pick_overlay_value(
-            overlay_t,
-            "module",
-            str(mod.id),
-            "description",
-            mod.description,
-            source_locale=source_locale,
-            display_locale=display_locale,
-        )
+        mt = loc.pick("module", str(mod.id), "title", mod.title) or mod.title
+        md = loc.pick("module", str(mod.id), "description", mod.description)
         new_chapters: list[ChapterResponse] = []
         for ch in mod.chapters:
-            cht = (
-                pick_overlay_value(
-                    overlay_t,
-                    "chapter",
-                    str(ch.id),
-                    "title",
-                    ch.title,
-                    source_locale=source_locale,
-                    display_locale=display_locale,
-                )
-                or ch.title
-            )
+            cht = loc.pick("chapter", str(ch.id), "title", ch.title) or ch.title
             ch_base = ChapterResponse.model_validate(ch, from_attributes=True)
             new_chapters.append(ch_base.model_copy(update={"title": cht}))
         mod_base = ModuleResponse.model_validate(mod, from_attributes=True)
@@ -326,56 +378,16 @@ def build_localized_quiz_student_response(
         specs.append(("quiz_question", str(qn.id), "question_text"))
         for opt in qn.options:
             specs.append(("quiz_option", str(opt.id), "option_text"))
-    overlay_t = fetch_overlay_triples_bulk(db, specs, display_locale)
-    new_title = (
-        pick_overlay_value(
-            overlay_t,
-            "quiz",
-            str(quiz.id),
-            "title",
-            quiz.title,
-            source_locale=source_locale,
-            display_locale=display_locale,
-        )
-        or quiz.title
-    )
-    new_desc = pick_overlay_value(
-        overlay_t,
-        "quiz",
-        str(quiz.id),
-        "description",
-        quiz.description,
-        source_locale=source_locale,
-        display_locale=display_locale,
-    )
+    loc = Localizer.build(db, specs, source_locale=source_locale, display_locale=display_locale)
+
+    new_title = loc.pick("quiz", str(quiz.id), "title", quiz.title) or quiz.title
+    new_desc = loc.pick("quiz", str(quiz.id), "description", quiz.description)
     new_questions: list[QuizQuestionStudentResponse] = []
     for qn in quiz.questions:
-        qt = (
-            pick_overlay_value(
-                overlay_t,
-                "quiz_question",
-                str(qn.id),
-                "question_text",
-                qn.question_text,
-                source_locale=source_locale,
-                display_locale=display_locale,
-            )
-            or qn.question_text
-        )
+        qt = loc.pick("quiz_question", str(qn.id), "question_text", qn.question_text) or qn.question_text
         new_opts: list[QuizOptionStudentResponse] = []
         for opt in qn.options:
-            ot = (
-                pick_overlay_value(
-                    overlay_t,
-                    "quiz_option",
-                    str(opt.id),
-                    "option_text",
-                    opt.option_text,
-                    source_locale=source_locale,
-                    display_locale=display_locale,
-                )
-                or opt.option_text
-            )
+            ot = loc.pick("quiz_option", str(opt.id), "option_text", opt.option_text) or opt.option_text
             ob = QuizOptionStudentResponse.model_validate(opt, from_attributes=True)
             new_opts.append(ob.model_copy(update={"option_text": ot}))
         qb = QuizQuestionStudentResponse.model_validate(qn, from_attributes=True)
@@ -401,31 +413,12 @@ def localize_assignment_rows(
                 ("assignment", str(a.id), "description"),
             ]
         )
-    overlay_t = fetch_overlay_triples_bulk(db, specs, display_locale)
+    loc = Localizer.build(db, specs, source_locale=source_locale, display_locale=display_locale)
     out: list[AssignmentResponse] = []
     for a in assignments:
         base = AssignmentResponse.model_validate(a, from_attributes=True)
-        t = (
-            pick_overlay_value(
-                overlay_t,
-                "assignment",
-                str(a.id),
-                "title",
-                a.title,
-                source_locale=source_locale,
-                display_locale=display_locale,
-            )
-            or a.title
-        )
-        d = pick_overlay_value(
-            overlay_t,
-            "assignment",
-            str(a.id),
-            "description",
-            a.description,
-            source_locale=source_locale,
-            display_locale=display_locale,
-        )
+        t = loc.pick("assignment", str(a.id), "title", a.title) or a.title
+        d = loc.pick("assignment", str(a.id), "description", a.description)
         out.append(base.model_copy(update={"title": t, "description": d}))
     return out
 
@@ -440,11 +433,10 @@ def localize_chapter_block_rows(
     """Apply stored translations to TipTap HTML stored on chapter blocks."""
     if not blocks:
         return []
-    specs: list[tuple[str, str, str]] = []
-    for b in blocks:
-        if b.content and str(b.content).strip():
-            specs.append(("chapter_block", str(b.id), "content"))
-    overlay_t = fetch_overlay_triples_bulk(db, specs, display_locale)
+    specs: list[tuple[str, str, str]] = [
+        ("chapter_block", str(b.id), "content") for b in blocks if b.content and str(b.content).strip()
+    ]
+    loc = Localizer.build(db, specs, source_locale=source_locale, display_locale=display_locale)
     out: list[BlockResponse] = []
     for b in blocks:
         base = BlockResponse.model_validate(b, from_attributes=True)
@@ -452,18 +444,7 @@ def localize_chapter_block_rows(
         if not content or not str(content).strip():
             out.append(base)
             continue
-        ct = (
-            pick_overlay_value(
-                overlay_t,
-                "chapter_block",
-                str(b.id),
-                "content",
-                content,
-                source_locale=source_locale,
-                display_locale=display_locale,
-            )
-            or content
-        )
+        ct = loc.pick("chapter_block", str(b.id), "content", content) or content
         out.append(base.model_copy(update={"content": ct}))
     return out
 
@@ -486,46 +467,15 @@ def build_localized_module_response(
     specs: list[tuple[str, str, str]] = [
         ("module", str(module.id), "title"),
         ("module", str(module.id), "description"),
+        *(("chapter", str(ch.id), "title") for ch in module.chapters),
     ]
-    for ch in module.chapters:
-        specs.append(("chapter", str(ch.id), "title"))
-    overlay_t = fetch_overlay_triples_bulk(db, specs, display_locale)
+    loc = Localizer.build(db, specs, source_locale=source_locale, display_locale=display_locale)
 
-    mt = (
-        pick_overlay_value(
-            overlay_t,
-            "module",
-            str(module.id),
-            "title",
-            module.title,
-            source_locale=source_locale,
-            display_locale=display_locale,
-        )
-        or module.title
-    )
-    md = pick_overlay_value(
-        overlay_t,
-        "module",
-        str(module.id),
-        "description",
-        module.description,
-        source_locale=source_locale,
-        display_locale=display_locale,
-    )
+    mt = loc.pick("module", str(module.id), "title", module.title) or module.title
+    md = loc.pick("module", str(module.id), "description", module.description)
     new_chapters: list[ChapterResponse] = []
     for ch in module.chapters:
-        cht = (
-            pick_overlay_value(
-                overlay_t,
-                "chapter",
-                str(ch.id),
-                "title",
-                ch.title,
-                source_locale=source_locale,
-                display_locale=display_locale,
-            )
-            or ch.title
-        )
+        cht = loc.pick("chapter", str(ch.id), "title", ch.title) or ch.title
         ch_base = ChapterResponse.model_validate(ch, from_attributes=True)
         new_chapters.append(ch_base.model_copy(update={"title": cht}))
     base = ModuleResponse.model_validate(module, from_attributes=True)
@@ -547,34 +497,12 @@ def localize_announcement_rows(
         specs.append(("announcement", str(a.id), "title"))
         if a.content and str(a.content).strip():
             specs.append(("announcement", str(a.id), "content"))
-    overlay_t = fetch_overlay_triples_bulk(db, specs, display_locale)
+    loc = Localizer.build(db, specs, source_locale=source_locale, display_locale=display_locale)
     out: list[AnnouncementResponse] = []
     for a in announcements:
         base = AnnouncementResponse.model_validate(a, from_attributes=True)
-        title = (
-            pick_overlay_value(
-                overlay_t,
-                "announcement",
-                str(a.id),
-                "title",
-                a.title,
-                source_locale=source_locale,
-                display_locale=display_locale,
-            )
-            or a.title
-        )
-        content = (
-            pick_overlay_value(
-                overlay_t,
-                "announcement",
-                str(a.id),
-                "content",
-                a.content,
-                source_locale=source_locale,
-                display_locale=display_locale,
-            )
-            or a.content
-        )
+        title = loc.pick("announcement", str(a.id), "title", a.title) or a.title
+        content = loc.pick("announcement", str(a.id), "content", a.content) or a.content
         out.append(base.model_copy(update={"title": title, "content": content}))
     return out
 
@@ -594,31 +522,12 @@ def localize_course_event_rows(
         specs.append(("course_event", str(e.id), "title"))
         if e.description and str(e.description).strip():
             specs.append(("course_event", str(e.id), "description"))
-    overlay_t = fetch_overlay_triples_bulk(db, specs, display_locale)
+    loc = Localizer.build(db, specs, source_locale=source_locale, display_locale=display_locale)
     out: list[CourseEventResponse] = []
     for e in events:
         base = CourseEventResponse.model_validate(e, from_attributes=True)
-        title = (
-            pick_overlay_value(
-                overlay_t,
-                "course_event",
-                str(e.id),
-                "title",
-                e.title,
-                source_locale=source_locale,
-                display_locale=display_locale,
-            )
-            or e.title
-        )
-        description = pick_overlay_value(
-            overlay_t,
-            "course_event",
-            str(e.id),
-            "description",
-            e.description,
-            source_locale=source_locale,
-            display_locale=display_locale,
-        )
+        title = loc.pick("course_event", str(e.id), "title", e.title) or e.title
+        description = loc.pick("course_event", str(e.id), "description", e.description)
         out.append(base.model_copy(update={"title": title, "description": description}))
     return out
 
@@ -632,6 +541,7 @@ __all__ = [
     "build_localized_quiz_student_response",
     "fetch_overlay_triples_bulk",
     "get_course_source_locale_for_chapter",
+    "is_chapter_course_owner_or_admin",
     "localize_announcement_rows",
     "localize_assignment_rows",
     "localize_chapter_block_rows",

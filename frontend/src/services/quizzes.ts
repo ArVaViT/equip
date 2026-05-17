@@ -1,5 +1,5 @@
 import api from "./api"
-import { cacheGet, cacheSet, cacheInvalidate, cacheInvalidatePrefix } from "@/lib/cache"
+import { cached, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
 import { isAxiosError } from "axios"
 import type {
   Quiz,
@@ -38,16 +38,40 @@ type QuizSubmissionAnswer = {
 
 export const quizzesService = {
   async getChapterQuiz(chapterId: string): Promise<Quiz | null> {
-    const key = `quiz:chapter:${chapterId}`
-    const cached = cacheGet<Quiz | null>(key)
-    if (cached !== undefined) return cached
+    // Caches both real quizzes AND 404-as-null so chapters without a quiz
+    // don't re-fetch on every render. `cached()` honours stored nulls.
+    return cached(`quiz:chapter:${chapterId}`, CACHE_TTL.TWO_MINUTES, async () => {
+      try {
+        const response = await api.get<Quiz | null>(`/quizzes/chapter/${chapterId}`)
+        return response.data
+      } catch (err: unknown) {
+        if (isAxiosError(err) && err.response?.status === 404) return null
+        throw err
+      }
+    })
+  },
+
+  /**
+   * Editor-only fetch: forces source-language columns (title, description,
+   * question_text, option_text) regardless of the viewer's `preferred_locale`.
+   * Use from `QuizEditor` / `useQuizDraft` so a teacher in EN UI editing
+   * their RU quiz doesn't see EN translations in the editable fields (a
+   * PATCH would then overwrite the source `question_text` column).
+   *
+   * Owner / admin only — the backend returns 403 for anyone else.
+   * Intentionally bypasses the `quiz:chapter:{id}` cache so a teacher
+   * switching between taking and editing the same quiz doesn't see one
+   * view's payload bleed into the other.
+   */
+  async getChapterQuizForEdit(chapterId: string): Promise<Quiz | null> {
     try {
-      const response = await api.get<Quiz | null>(`/quizzes/chapter/${chapterId}`)
-      cacheSet(key, response.data, 2 * 60 * 1000)
+      const response = await api.get<Quiz | null>(
+        `/quizzes/chapter/${chapterId}`,
+        { params: { source: 1 } },
+      )
       return response.data
     } catch (err: unknown) {
       if (isAxiosError(err) && err.response?.status === 404) {
-        cacheSet(key, null, 2 * 60 * 1000)
         return null
       }
       throw err

@@ -6,6 +6,7 @@ import type { DropResult } from "@hello-pangea/dnd";
 import { coursesService } from "@/services/courses";
 import { getErrorDetail } from "@/lib/errorDetail";
 import { toast } from "@/lib/toast";
+import { isoToLocalInput, localInputToIso } from "@/i18n/format";
 import { chapterSchema, moduleSchema } from "@/lib/validations/course";
 import type { Chapter, Module } from "@/types";
 import type { useConfirm } from "@/components/ui/alert-dialog";
@@ -38,10 +39,14 @@ export function useModuleEditor(
       if (!courseId || !moduleId) return;
       setLoading(true);
       try {
-        const data = await coursesService.getModule(courseId, moduleId);
+        // `getModuleForEdit` forces ``?source=1`` so the editor binds to
+        // source-language `title` / `description` columns regardless of
+        // the viewer's UI locale. Without this an admin/owner in EN UI
+        // would type into the EN translation and overwrite the source.
+        const data = await coursesService.getModuleForEdit(courseId, moduleId);
         if (signal?.cancelled) return;
         setMod(data);
-        setModDueDate(data.due_date ? data.due_date.slice(0, 16) : "");
+        setModDueDate(isoToLocalInput(data.due_date));
       } catch {
         if (signal?.cancelled) return;
         toast({ title: t("moduleEditor.toast.moduleNotFound"), variant: "destructive" });
@@ -87,7 +92,7 @@ export function useModuleEditor(
   const saveDueDate = async (value: string) => {
     if (!courseId || !moduleId) return;
     try {
-      const due = value ? new Date(value).toISOString() : null;
+      const due = localInputToIso(value);
       await coursesService.updateModule(courseId, moduleId, { due_date: due });
       setMod((prev) => (prev ? { ...prev, due_date: due } : prev));
     } catch {

@@ -3,6 +3,7 @@ import { Mail } from "lucide-react"
 import { Trans, useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import AuthLayout from "@/components/layout/AuthLayout"
+import { SUPPORT_EMAIL } from "@/lib/brand"
 
 /**
  * Terminal state shown when the register endpoint reports a duplicate
@@ -46,7 +47,7 @@ export function DuplicateEmailView({ email }: { email: string }) {
               {t("authRegister.duplicate.forgotPassword")}
             </Button>
           </Link>
-          <a href="mailto:support@bibleschool.com" className="block">
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="block">
             <Button variant="ghost" size="lg" className="w-full text-muted-foreground">
               {t("authRegister.duplicate.contactSupport")}
             </Button>

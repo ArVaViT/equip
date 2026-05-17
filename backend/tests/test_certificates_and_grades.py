@@ -234,6 +234,35 @@ class TestRequestCertificate:
         r = anon_client.post("/api/v1/certificates/course/course-1")
         assert r.status_code in (401, 403)
 
+    def test_rerequest_after_rejection_reopens_to_pending(self, student_client: TestClient, db: Session):
+        """A student must be able to ask again after a rejection.
+
+        ``reject``'s docstring promises "a rejected certificate stays
+        rejected and the student must re-request" — but the
+        ``(user_id, course_id)`` unique constraint plus the previous
+        ``if existing: return existing`` short-circuit meant a
+        re-request silently handed back the rejected row, making the
+        action a no-op. Reset to ``pending`` so the workflow restarts.
+        """
+        _seed_enrolled_course(db, progress=100)
+        rejected = _seed_certificate(db, "course-1", cert_status="rejected")
+        # Pretend a teacher had stamped approval before the admin rejected:
+        rejected.teacher_approved_at = datetime(2026, 1, 1, tzinfo=UTC)
+        rejected.teacher_approved_by = TEACHER_ID
+        db.commit()
+
+        r = student_client.post("/api/v1/certificates/course/course-1")
+        assert r.status_code == 201
+        body = r.json()
+        assert body["id"] == str(rejected.id)
+        assert body["status"] == "pending"
+        # Old approver stamps are cleared so the next teacher review
+        # starts from a clean slate.
+        assert body["teacher_approved_at"] is None
+        assert body["teacher_approved_by"] is None
+        assert body["admin_approved_at"] is None
+        assert body["admin_approved_by"] is None
+
 
 class TestGetCourseCertificate:
     """GET /api/v1/certificates/course/{course_id}"""
@@ -361,6 +390,33 @@ class TestTeacherApproveCertificate:
         r = student_client.put(f"/api/v1/certificates/{cert.id}/teacher-approve")
         assert r.status_code == 403
 
+    def test_self_approval_forbidden(self, client: TestClient, db: Session):
+        """A teacher cannot teacher-approve a certificate issued to themselves.
+
+        Regression: ``assert_course_owner`` passes when the teacher owns the
+        course, and nothing else stopped the same teacher from being both
+        approver and recipient. That collapses the two-stage approval
+        check into a single self-signed action.
+        """
+        _seed_course(db)  # course-1 owned by TEACHER_ID
+        # Enroll TEACHER_ID in their own course as a "student".
+        db.add(
+            Enrollment(
+                id="enroll-self",
+                user_id=TEACHER_ID,
+                course_id="course-1",
+                progress=100,
+            )
+        )
+        cert = Certificate(user_id=TEACHER_ID, course_id="course-1", status="pending")
+        db.add(cert)
+        db.commit()
+        db.refresh(cert)
+
+        r = client.put(f"/api/v1/certificates/{cert.id}/teacher-approve")
+        assert r.status_code == 403
+        assert "own" in r.json()["detail"].lower()
+
 
 class TestAdminApproveCertificate:
     """PUT /api/v1/certificates/{cert_id}/admin-approve"""
@@ -394,6 +450,36 @@ class TestAdminApproveCertificate:
         _make_admin(db)
         r = client.put(f"/api/v1/certificates/{uuid.uuid4()}/admin-approve")
         assert r.status_code == 404
+
+    def test_admin_self_approval_forbidden(self, client: TestClient, db: Session):
+        """Admin cannot issue a certificate where they are the recipient.
+
+        Regression: ``require_admin`` only checks the role, not whether
+        the admin is the certificate's user. Without this guard a single
+        admin account could complete the entire approve → issue path.
+        """
+        _make_admin(db)
+        _seed_course(db)  # course-1 owned by TEACHER_ID == the admin
+        db.add(
+            Enrollment(
+                id="enroll-self-admin",
+                user_id=TEACHER_ID,
+                course_id="course-1",
+                progress=100,
+            )
+        )
+        cert = Certificate(
+            user_id=TEACHER_ID,
+            course_id="course-1",
+            status="teacher_approved",
+        )
+        db.add(cert)
+        db.commit()
+        db.refresh(cert)
+
+        r = client.put(f"/api/v1/certificates/{cert.id}/admin-approve")
+        assert r.status_code == 403
+        assert "own" in r.json()["detail"].lower()
 
 
 class TestRejectCertificate:
@@ -477,6 +563,58 @@ class TestVerifyCertificate:
         r = anon_client.get("/api/v1/certificates/verify/CERT-NOPE")
         assert r.status_code == 200
         assert r.json()["valid"] is False
+
+
+class TestCertificateSurvivesCourseDeletion:
+    """Regression: deleting a course must not hard-delete its certificates.
+
+    Before migration ``20260516020225``, ``certificates.course_id`` was
+    ``ON DELETE CASCADE``, so a permanent course delete blew away every
+    issued certificate for that course — a publicly-shared verify URL
+    would silently become invalid. The fix flips the FK to ``SET NULL``
+    so the certificate row survives with ``course_id = NULL`` and a
+    snapshotted ``archived_course_title`` (populated by a Postgres
+    BEFORE-DELETE trigger; in SQLite we set it manually to mirror the
+    contract).
+    """
+
+    def test_course_delete_sets_course_id_null_and_preserves_cert(self, client: TestClient, db: Session) -> None:
+        _seed_enrolled_course(db, progress=100)
+        cert = _seed_certificate(db, "course-1", cert_status="approved")
+        cert.certificate_number = "CERT-SURVIVES01"
+        # Simulate what the production trigger does atomically — snapshot the
+        # course title into the certificate before the course row is deleted.
+        # The SQLAlchemy model owns this column now, so the test path
+        # validates the model + endpoint contract without needing Postgres.
+        course = db.query(Course).filter(Course.id == "course-1").first()
+        assert course is not None
+        cert.archived_course_title = course.title
+        db.commit()
+
+        # Cascade by hand for the SQLite test path: delete the dependent rows
+        # the migration drops via ``ON DELETE CASCADE`` on those FKs so we
+        # don't trip those constraints here. The point of *this* test is the
+        # certificate row, not the unrelated cascades.
+        db.query(Enrollment).filter(Enrollment.course_id == "course-1").delete()
+        db.query(Chapter).filter(Chapter.module_id == "course-1-mod").delete()
+        db.query(Module).filter(Module.course_id == "course-1").delete()
+        db.commit()
+        db.delete(course)
+        db.commit()
+
+        # The cert row must still be there, with course_id nulled.
+        surviving = db.query(Certificate).filter(Certificate.id == cert.id).first()
+        assert surviving is not None
+        assert surviving.course_id is None
+        assert surviving.archived_course_title == "Test Course"
+
+        # The public verify endpoint reads ``archived_course_title`` when
+        # ``course`` is no longer joinable — the credential keeps verifying.
+        r = client.get("/api/v1/certificates/verify/CERT-SURVIVES01")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["valid"] is True
+        assert body["course_title"] == "Test Course"
 
 
 class TestFullCertificateLifecycle:
@@ -989,6 +1127,43 @@ class TestTeacherCompleteChapter:
             f"/api/v1/progress/chapter/course-1-ch/student/{STUDENT_ID}/complete",
         )
         assert r.status_code == 403
+
+    def test_idempotent_when_progress_pre_exists_not_yet_complete(self, client: TestClient, db: Session):
+        """Edge case: a row exists from a prior student action
+        (e.g. they started a quiz but never passed) but isn't yet
+        marked complete. The teacher's ``complete`` call must
+        promote that row in place, not crash and not create a
+        duplicate. This is the "happy path" cousin of the race
+        regression — both go through ``except IntegrityError`` if
+        the SELECT-then-INSERT timing lines up wrong.
+        """
+        _seed_enrolled_course(db)
+        # A prior writer left an incomplete row behind.
+        db.add(
+            ChapterProgress(
+                user_id=STUDENT_ID,
+                chapter_id="course-1-ch",
+                completed=False,
+                completion_type="self",
+            )
+        )
+        db.commit()
+
+        r = client.put(
+            f"/api/v1/progress/chapter/course-1-ch/student/{STUDENT_ID}/complete",
+        )
+        assert r.status_code == 200, r.text
+        rows = (
+            db.query(ChapterProgress)
+            .filter(
+                ChapterProgress.user_id == STUDENT_ID,
+                ChapterProgress.chapter_id == "course-1-ch",
+            )
+            .all()
+        )
+        assert len(rows) == 1
+        assert rows[0].completed is True
+        assert rows[0].completion_type == "teacher"
 
 
 class TestTeacherIncompleteChapter:

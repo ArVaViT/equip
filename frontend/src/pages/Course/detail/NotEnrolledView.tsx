@@ -1,7 +1,7 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import { ArrowLeft, CalendarDays, Clock, Users } from "lucide-react"
+import { ArrowLeft, CalendarDays, Clock, Layers, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -17,6 +17,18 @@ interface Props {
   isSignedIn: boolean
   enrolling: boolean
   onEnroll: (cohortId?: string) => Promise<void> | void
+}
+
+const COHORT_STATUS_BADGE: Record<Cohort["status"], "success" | "info" | "muted"> = {
+  upcoming: "info",
+  active: "success",
+  completed: "muted",
+}
+
+const COHORT_STATUS_KEY: Record<Cohort["status"], string> = {
+  upcoming: "admin.cohorts.statusUpcoming",
+  active: "admin.cohorts.statusActive",
+  completed: "admin.cohorts.statusCompleted",
 }
 
 export function NotEnrolledView({
@@ -39,6 +51,17 @@ export function NotEnrolledView({
   const isInstituteGate = course.access_mode === "institute" && !isOwner
   const canEnroll =
     !isInstituteGate && (enrollableCohorts.length > 0 || cohorts.length === 0)
+
+  // Course-at-a-glance counts. Memoised because `course.modules` is a
+  // fresh array each render and we'd otherwise reduce twice (once for
+  // module count, once for chapter total) on every keystroke / state.
+  const { moduleCount, chapterCount } = useMemo(() => {
+    const mods = course.modules ?? []
+    return {
+      moduleCount: mods.length,
+      chapterCount: mods.reduce((sum, m) => sum + (m.chapters?.length ?? 0), 0),
+    }
+  }, [course.modules])
 
   const handleEnrollClick = () => {
     if (enrollableCohorts.length === 0) {
@@ -89,6 +112,25 @@ export function NotEnrolledView({
         {course.title}
       </h1>
 
+      {/* Course-at-a-glance: editorial eyebrow with module/chapter counts.
+          Renders only when the API returned modules (course.modules is the
+          eager-loaded list from /courses/:id). Keeps the surface honest
+          when a course is still a stub — no fake "0 modules" line. */}
+      {moduleCount > 0 && (
+        <p className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <Layers className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
+            {t("courseDetail.moduleCount", { count: moduleCount })}
+          </span>
+          {chapterCount > 0 && (
+            <>
+              <span aria-hidden className="text-muted-foreground/40">·</span>
+              <span>{t("courseDetail.chapterCount", { count: chapterCount })}</span>
+            </>
+          )}
+        </p>
+      )}
+
       {course.description && (
         <p className="text-muted-foreground leading-relaxed mb-6 whitespace-pre-line text-wrap-safe">
           {course.description}
@@ -98,11 +140,11 @@ export function NotEnrolledView({
       {activeCohort && (
         <Card className="mb-6">
           <CardContent className="py-4">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
               <CalendarDays className="h-4 w-4 text-primary" strokeWidth={1.75} aria-hidden />
               <span className="font-medium">{activeCohort.name}</span>
-              <Badge variant={activeCohort.status === "active" ? "success" : "info"}>
-                {activeCohort.status}
+              <Badge variant={COHORT_STATUS_BADGE[activeCohort.status]}>
+                {t(COHORT_STATUS_KEY[activeCohort.status])}
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">

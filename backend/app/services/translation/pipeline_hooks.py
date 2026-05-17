@@ -22,6 +22,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from app.models.course import Course, CourseStatus
 from app.services.course_service import get_course
 from app.services.translation.course_pipeline import translate_course_content
 from app.services.translation.registry import REGISTRY, reconcile_entity
@@ -43,8 +44,15 @@ def run_course_translation_pipeline_if_published(db: Session, course_id: str) ->
     """
     if not is_translation_enabled():
         return
+    # Narrow probe first — most write hooks fire during course building when
+    # the course is still a draft, and loading the full course tree just to
+    # read ``status`` is wasted I/O. Only pay for the full tree when we
+    # actually intend to translate.
+    course_status = db.query(Course.status).filter(Course.id == course_id, Course.deleted_at.is_(None)).scalar()
+    if course_status != CourseStatus.PUBLISHED:
+        return
     course = get_course(db, course_id)
-    if not course or course.status != "published":
+    if not course:
         return
     try:
         translate_course_content(db, course)
@@ -73,7 +81,7 @@ def reconcile_entity_if_course_published(
         return
     reg = REGISTRY[entity_type]
     course = reg.resolve_course(db, entity)
-    if not course or course.status != "published":
+    if not course or course.status != CourseStatus.PUBLISHED:
         return
     try:
         reconcile_entity(db, entity_type, entity)

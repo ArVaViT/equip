@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from sqlalchemy import DateTime, Index, String, Text, UniqueConstraint, func
+from sqlalchemy import DateTime, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -42,8 +42,16 @@ TranslationField = Literal[
     "option_text",
     "instructions",
 ]
-TranslationStatus = Literal["ok", "stale", "failed"]
+TranslationStatus = Literal["ok", "stale", "failed", "failed_permanent"]
 TranslationOrigin = Literal["mt", "human"]
+
+# How many transient failures we tolerate before promoting a row to
+# ``failed_permanent``. Five was picked to absorb a transient Gemini
+# outage / rate-limit burst without burning indefinite retries on rows
+# that fail for permanent reasons (safety filter trip, content too
+# large, bad encoding). Centralized here so admin tooling that re-queues
+# a row can refer back to the same constant.
+TRANSLATION_MAX_ATTEMPTS = 5
 
 
 class ContentTranslation(Base):
@@ -63,9 +71,14 @@ class ContentTranslation(Base):
     # we flip ``status`` to ``stale`` and re-queue the row instead of blowing
     # the translation away.
     source_hash: Mapped[str] = mapped_column(String(64))
-    status: Mapped[str] = mapped_column(String(16), default="ok", server_default="ok")
+    status: Mapped[str] = mapped_column(String(20), default="ok", server_default="ok")
     # ``origin = 'human'`` rows are never overwritten by the auto-pipeline.
     origin: Mapped[str] = mapped_column(String(16), default="mt", server_default="mt")
+    # How many translation attempts this row has burned. Increments on every
+    # provider failure; resets to 0 implicitly when a row goes back to ``ok``.
+    # When it reaches ``TRANSLATION_MAX_ATTEMPTS`` the orchestrator promotes
+    # the row to ``failed_permanent`` so the reconcile loop stops retrying.
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next"
 import {
   ArrowLeft,
   Calendar,
-  CheckCircle2,
   Plus,
   Trash2,
   Users,
@@ -14,7 +13,6 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { NativeSelect } from "@/components/ui/native-select"
 import { useConfirm } from "@/components/ui/alert-dialog"
 import { useAuth } from "@/context/useAuth"
 import PageSpinner from "@/components/ui/PageSpinner"
@@ -22,16 +20,11 @@ import { ErrorState } from "@/components/patterns"
 import { cohortsService, type CohortStudent } from "@/services/cohorts"
 import { coursesService } from "@/services/courses"
 import { toast } from "@/lib/toast"
-import { formatDate } from "@/i18n/format"
+import { formatDate, isoToLocalInput, localInputToIso } from "@/i18n/format"
 import type { Cohort, Course } from "@/types"
 import { AttachCourseDialog } from "./AttachCourseDialog"
 import { AddStudentDialog } from "./AddStudentDialog"
-
-const STATUS_BADGE: Record<Cohort["status"], "success" | "info" | "muted"> = {
-  upcoming: "info",
-  active: "success",
-  completed: "muted",
-}
+import { CohortStatusPicker } from "./CohortStatusPicker"
 
 export default function CohortDetailPage() {
   const { cohortId } = useParams<{ cohortId: string }>()
@@ -93,21 +86,27 @@ export default function CohortDetailPage() {
     }
   }
 
-  const handleComplete = async () => {
-    if (!cohortId) return
-    const ok = await confirm({
-      title: t("admin.cohorts.completeConfirmTitle"),
-      description: t("admin.cohorts.completeConfirmDescription"),
-      confirmLabel: t("admin.cohorts.completeConfirmAction"),
-    })
-    if (!ok) return
-    try {
-      const updated = await cohortsService.completeCohort(cohortId)
-      setCohort(updated)
-      toast({ title: t("admin.cohorts.toast.completed"), variant: "success" })
-    } catch {
-      toast({ title: t("admin.cohorts.toast.completeFailed"), variant: "destructive" })
+  /**
+   * Status is edited through the single ``CohortStatusPicker`` in the
+   * page header — the badge IS the picker (same pattern as
+   * ``RoleSelector``). Previously the status was rendered twice (the
+   * coloured header badge and a separate ``NativeSelect`` in the
+   * Details card); collapsed to one affordance.
+   *
+   * Transitioning to ``completed`` still confirms first because it's
+   * a one-way operation in practice (the cohort stops being editable).
+   */
+  const handleStatusChange = async (next: Cohort["status"]) => {
+    if (!cohortId || next === cohort?.status) return
+    if (next === "completed") {
+      const ok = await confirm({
+        title: t("admin.cohorts.completeConfirmTitle"),
+        description: t("admin.cohorts.completeConfirmDescription"),
+        confirmLabel: t("admin.cohorts.completeConfirmAction"),
+      })
+      if (!ok) return
     }
+    await patch({ status: next })
   }
 
   const handleDelete = async () => {
@@ -197,24 +196,23 @@ export default function CohortDetailPage() {
       </Link>
 
       <div className="flex items-start justify-between gap-4 flex-wrap mb-8">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold tracking-tight">{cohort.name}</h1>
-            <Badge variant={STATUS_BADGE[cohort.status]} className="capitalize">
-              {t(`admin.cohorts.status${capitalize(cohort.status)}`)}
-            </Badge>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-3 mb-2">
+            <h1 className="text-3xl font-serif font-bold tracking-tight text-wrap-safe">
+              {cohort.name}
+            </h1>
+            <CohortStatusPicker
+              status={cohort.status}
+              disabled={savingField}
+              onChange={(next) => void handleStatusChange(next)}
+              ariaLabel={t("admin.cohorts.fieldStatus")}
+            />
           </div>
           <p className="text-sm text-muted-foreground">
             {formatDate(cohort.start_date)} &mdash; {formatDate(cohort.end_date)}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {cohort.status !== "completed" && (
-            <Button variant="outline" size="sm" onClick={handleComplete}>
-              <CheckCircle2 className="h-4 w-4 mr-1.5" strokeWidth={1.75} aria-hidden />
-              {t("admin.cohorts.completeButton")}
-            </Button>
-          )}
           <Button variant="outline" size="sm" onClick={handleDelete} className="text-destructive hover:text-destructive">
             <Trash2 className="h-4 w-4 mr-1.5" strokeWidth={1.75} aria-hidden />
             {t("admin.cohorts.deleteButton")}
@@ -236,18 +234,18 @@ export default function CohortDetailPage() {
             onBlurSave={(v) => v !== cohort.name && patch({ name: v })}
             disabled={savingField}
           />
-          <div className="space-y-1.5">
-            <Label className="text-xs">{t("admin.cohorts.fieldStatus")}</Label>
-            <NativeSelect
-              value={cohort.status}
-              disabled={savingField}
-              onChange={(e) => void patch({ status: e.target.value as Cohort["status"] })}
-            >
-              <option value="upcoming">{t("admin.cohorts.statusUpcoming")}</option>
-              <option value="active">{t("admin.cohorts.statusActive")}</option>
-              <option value="completed">{t("admin.cohorts.statusCompleted")}</option>
-            </NativeSelect>
-          </div>
+          <Field
+            label={t("admin.cohorts.fieldMaxStudents")}
+            value={cohort.max_students == null ? "" : String(cohort.max_students)}
+            placeholder={t("admin.cohorts.unlimited")}
+            disabled={savingField}
+            onBlurSave={(v) => {
+              const n = v ? Number(v) : null
+              if (n === cohort.max_students) return
+              void patch({ max_students: n })
+            }}
+            inputType="number"
+          />
           <DateField
             label={t("admin.cohorts.fieldStart")}
             value={cohort.start_date}
@@ -277,18 +275,6 @@ export default function CohortDetailPage() {
             onSave={(iso) => patch({ enrollment_end: iso })}
             disabled={savingField}
             nullable
-          />
-          <Field
-            label={t("admin.cohorts.fieldMaxStudents")}
-            value={cohort.max_students == null ? "" : String(cohort.max_students)}
-            placeholder={t("admin.cohorts.unlimited")}
-            disabled={savingField}
-            onBlurSave={(v) => {
-              const n = v ? Number(v) : null
-              if (n === cohort.max_students) return
-              void patch({ max_students: n })
-            }}
-            inputType="number"
           />
         </CardContent>
       </Card>
@@ -329,7 +315,7 @@ export default function CohortDetailPage() {
                     onClick={() => detachCourse(c.id)}
                     aria-label={t("admin.cohorts.detachAriaPrefix", { name: c.title })}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                   </Button>
                 </li>
               ))}
@@ -389,7 +375,7 @@ export default function CohortDetailPage() {
                             name: s.full_name ?? s.email,
                           })}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                         </Button>
                       </td>
                     </tr>
@@ -422,10 +408,6 @@ export default function CohortDetailPage() {
       />
     </div>
   )
-}
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 interface FieldProps {
@@ -467,7 +449,7 @@ interface DateFieldProps {
 }
 
 function DateField({ label, value, disabled, nullable, onSave }: DateFieldProps) {
-  const local = value ? value.slice(0, 16) : ""
+  const local = isoToLocalInput(value)
   return (
     <div className="space-y-1.5">
       <Label className="text-xs">{label}</Label>
@@ -481,7 +463,8 @@ function DateField({ label, value, disabled, nullable, onSave }: DateFieldProps)
             if (nullable) void onSave(null)
             return
           }
-          void onSave(new Date(v).toISOString())
+          const iso = localInputToIso(v)
+          if (iso) void onSave(iso)
         }}
       />
     </div>

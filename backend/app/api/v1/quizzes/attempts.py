@@ -24,13 +24,43 @@ from ._deps import verify_quiz_owner
 from ._router import router
 
 
-@router.post("/{quiz_id}/submit", response_model=QuizAttemptResponse)
+@router.post(
+    "/{quiz_id}/submit",
+    response_model=QuizAttemptResponse,
+    summary="Submit a quiz attempt (student)",
+    responses={
+        200: {"description": "Attempt persisted with per-answer feedback"},
+        403: {
+            "description": "Student is not enrolled, or has used all allowed attempts "
+            "(``max_attempts`` + any ``quiz_extra_attempts`` grant)."
+        },
+        404: {"description": "Quiz not found"},
+    },
+)
 def submit_quiz(
     quiz_id: UUID,
     data: QuizSubmitRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """Submit one quiz attempt and persist the per-answer feedback.
+
+    Concurrency: the ``Quiz`` row is locked ``FOR UPDATE`` so two
+    parallel submits from the same student serialize on the lock —
+    ``ensure_attempts_available`` re-counts inside the lock and the
+    second request gets 403 if the first one consumed the last
+    attempt.
+
+    Scoring: auto-gradable question types (``multiple_choice``,
+    ``true_false``) score immediately; manual types
+    (``short_answer``, ``essay``) persist with ``points_earned = 0``
+    and need a teacher to grade them later via
+    ``PATCH /quizzes/answers/{answer_id}``. The returned ``passed``
+    flag therefore stays ``False`` for any quiz with at least one
+    manual question until the teacher grades enough of them to clear
+    ``passing_score``. Exam attempts deliberately don't leak the
+    ``correct_option_id`` back to the student.
+    """
     quiz = (
         db.query(Quiz)
         .options(selectinload(Quiz.questions).selectinload(QuizQuestion.options))

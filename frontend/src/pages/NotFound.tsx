@@ -14,7 +14,7 @@ export default function NotFound() {
       </p>
       <Link to="/">
         <Button>
-          <Home className="h-4 w-4 mr-2" />
+          <Home className="h-4 w-4 mr-2" strokeWidth={1.75} />
           {t("notFound.goHome")}
         </Button>
       </Link>

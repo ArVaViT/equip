@@ -20,7 +20,7 @@ export function PendingTeachersCard({ pending, updatingId, onApprove, onDeny }: 
   if (pending.length === 0) return null
 
   return (
-    <Card className="mb-8 border-l-[3px] border-l-warning">
+    <Card className="mb-8 border-l-stripe border-l-warning">
       <CardHeader>
         <CardTitle className="text-xl flex items-center gap-2">
           <Clock className="h-5 w-5 text-warning" strokeWidth={1.75} aria-hidden />
@@ -35,7 +35,7 @@ export function PendingTeachersCard({ pending, updatingId, onApprove, onDeny }: 
           {pending.map((u) => (
             <div
               key={u.id}
-              className="flex items-center justify-between rounded-md border border-l-[3px] border-l-warning/60 bg-warning/5 p-4"
+              className="flex items-center justify-between rounded-md border border-l-stripe border-l-warning/60 bg-warning/5 p-4"
             >
               <div className="flex items-center gap-3 min-w-0">
                 {u.avatar_url ? (

@@ -9,28 +9,44 @@ export default function AnnouncementBanner() {
   const { user } = useAuth()
   const { t } = useTranslation()
   const [announcement, setAnnouncement] = useState<Announcement | null>(null)
-  const [dismissed, setDismissed] = useState(false)
+  // ``dismissedId`` rather than a plain boolean: a fresh announcement
+  // (different ID) auto-resets the dismiss state, while the user's
+  // X click on the *current* one stays sticky. Pre-fix the flag was
+  // global, so:
+  //   * a user who dismissed banner A, then admin published banner B
+  //     — the user never saw B until they reloaded.
+  //   * a user who dismissed banner A and logged out — the next user
+  //     in the same browser tab also saw B as dismissed.
+  const [dismissedId, setDismissedId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) {
       setAnnouncement(null)
+      setDismissedId(null)
       return
     }
     let cancelled = false
     coursesService.getAnnouncements().then((list) => {
       if (cancelled) return
-      const systemWide = list.find((a) => !a.course_id)
-      if (systemWide) setAnnouncement(systemWide)
+      // ``setAnnouncement(null)`` for the no-match case is load-
+      // bearing: without it a previously-shown banner stays mounted
+      // after the system-wide announcement is unpublished. The
+      // ``if (systemWide)`` guard pre-fix made that stale.
+      setAnnouncement(list.find((a) => !a.course_id) ?? null)
     }).catch(() => {
       /* non-critical UI, degrade silently */
     })
     return () => { cancelled = true }
   }, [user])
 
-  if (!announcement || dismissed) return null
+  if (!announcement || announcement.id === dismissedId) return null
 
   return (
-    <div className="border-b border-border bg-muted/40">
+    // role="status" surfaces the banner to AT as a polite live region — the
+    // banner mounts mid-session whenever the user finishes loading or a new
+    // announcement is published, and a screen-reader user shouldn't have to
+    // re-Tab past the page just to discover it.
+    <div role="status" aria-live="polite" className="border-b border-border bg-muted/40">
       <div className="container mx-auto flex items-center gap-3 px-4 py-2.5">
         <Megaphone className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
         <div className="min-w-0 flex-1 text-wrap-safe">
@@ -44,8 +60,9 @@ export default function AnnouncementBanner() {
           )}
         </div>
         <button
-          onClick={() => setDismissed(true)}
-          className="rounded p-1 text-muted-foreground hover:bg-muted"
+          type="button"
+          onClick={() => setDismissedId(announcement.id)}
+          className="rounded p-1 text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           aria-label={t("common.dismissAnnouncement")}
         >
           <X className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />

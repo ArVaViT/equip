@@ -1,10 +1,65 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react"
+import i18n from "i18next"
 import { supabase } from "@/lib/supabase"
 import { authService } from "@/services/auth"
+import { preferencesService } from "@/services/preferences"
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import type { User } from "@/types"
 import { AuthContext } from "./auth-context"
 import { setDatadogUser, clearDatadogUser } from "@/lib/datadog"
+
+/**
+ * Heuristic for "this profile was created by *this* signup, just now".
+ * The window is generous on purpose: clock skew between the browser
+ * and Supabase, plus the delay between trigger insert and the time
+ * the AuthContext finally observes the row, can both be a few seconds.
+ * 60s comfortably covers both without falsely flagging a returning
+ * user whose profile happens to be a minute old.
+ */
+const FRESH_PROFILE_WINDOW_MS = 60_000
+
+/**
+ * Same Russian-or-English fold used by ``resolveDateLocale`` and the
+ * register form. Anything else degrades silently and we make no PATCH.
+ */
+function browserPreferredLocale(): "ru" | "en" | null {
+  const candidate = (i18n.resolvedLanguage ?? i18n.language ?? "").toLowerCase()
+  if (candidate.startsWith("ru")) return "ru"
+  if (candidate.startsWith("en")) return "en"
+  return null
+}
+
+/**
+ * For accounts created within the last minute whose profile locale
+ * still matches the column default ('ru') but the browser is showing
+ * a different supported language, PATCH the profile so the user keeps
+ * the language they registered in.
+ *
+ * Specifically targets Google-OAuth signups, which can't ship
+ * ``options.data.preferred_locale`` upfront the way email signup
+ * can. Email signups never trip this — the trigger already wrote the
+ * right value, so the guard sees a match and no-ops.
+ */
+async function reconcileFreshOAuthLocale(profile: User): Promise<User> {
+  if (!profile.created_at) return profile
+  if (profile.preferred_locale !== "ru") return profile
+
+  const createdAtMs = new Date(profile.created_at).getTime()
+  if (Number.isNaN(createdAtMs)) return profile
+  if (Date.now() - createdAtMs > FRESH_PROFILE_WINDOW_MS) return profile
+
+  const desired = browserPreferredLocale()
+  if (!desired || desired === profile.preferred_locale) return profile
+
+  try {
+    return await preferencesService.setPreferredLocale(desired)
+  } catch {
+    // Non-fatal: a transient PATCH failure shouldn't break the post-
+    // signup redirect. The user can flip the switcher manually and
+    // we'll try again on the next refresh.
+    return profile
+  }
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -30,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setLoading(false)
             return
           }
-          const nextUser = {
+          const nextUser: User = {
             id: data.id,
             email: data.email || email,
             full_name: data.full_name,
@@ -47,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               : DEFAULT_LOCALE,
             created_at: data.created_at,
             updated_at: data.updated_at,
-          } as const
+          }
           setUser(nextUser)
           // Attach the authenticated user to the current RUM session so
           // every downstream view/action/error/replay is tagged with
@@ -59,6 +114,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             role: nextUser.role,
           })
           setLoading(false)
+          // Fire-and-forget locale reconciliation for fresh accounts —
+          // the result feeds back into the same state setter so
+          // downstream listeners (``useLocaleSync``) pick up the new
+          // value on the next render tick.
+          void reconcileFreshOAuthLocale(nextUser).then((updated) => {
+            if (!mounted.current || activeUserId.current !== userId) return
+            if (updated !== nextUser) setUser(updated)
+          })
         },
         () => {
           if (mounted.current && activeUserId.current === userId) {
@@ -128,8 +191,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const register = useCallback(
-    async (email: string, password: string, fullName: string, role: "teacher" | "student") => {
-      await authService.register(email, password, fullName, role)
+    async (
+      email: string,
+      password: string,
+      fullName: string,
+      role: "teacher" | "student",
+      preferredLocale: "en" | "ru",
+    ) => {
+      await authService.register(email, password, fullName, role, preferredLocale)
     },
     [],
   )

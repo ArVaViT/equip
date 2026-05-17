@@ -43,13 +43,17 @@ export function InlineEditCover({
   const handleFile = async (file: File | undefined | null) => {
     if (!file) return
     if (!file.type.startsWith("image/")) {
-      toast({ title: "Unsupported file", description: "Pick an image file.", variant: "destructive" })
+      toast({
+        title: t("inlineEdit.cover.unsupportedTitle"),
+        description: t("inlineEdit.cover.unsupportedDescription"),
+        variant: "destructive",
+      })
       return
     }
     if (file.size > maxSizeMB * 1024 * 1024) {
       toast({
-        title: "Image too large",
-        description: `Max ${maxSizeMB} MB.`,
+        title: t("inlineEdit.cover.tooLargeTitle"),
+        description: t("inlineEdit.cover.tooLargeDescription", { max: maxSizeMB }),
         variant: "destructive",
       })
       return
@@ -58,8 +62,8 @@ export function InlineEditCover({
       setBusy(true)
       await onUpload(file)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Upload failed"
-      toast({ title: "Upload failed", description: msg, variant: "destructive" })
+      const msg = err instanceof Error ? err.message : t("inlineEdit.cover.uploadFailedTitle")
+      toast({ title: t("inlineEdit.cover.uploadFailedTitle"), description: msg, variant: "destructive" })
     } finally {
       setBusy(false)
     }
@@ -68,10 +72,10 @@ export function InlineEditCover({
   const remove = async () => {
     if (!onRemove) return
     const ok = await confirm({
-      title: "Remove cover?",
-      description: "This will clear the course cover image.",
+      title: t("inlineEdit.cover.removeConfirmTitle"),
+      description: t("inlineEdit.cover.removeConfirmDescription"),
       tone: "destructive",
-      confirmLabel: "Remove",
+      confirmLabel: t("inlineEdit.cover.removeConfirmAction"),
     })
     if (!ok) return
     try {
@@ -112,15 +116,15 @@ export function InlineEditCover({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={disabled || busy}
-          className="group flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="group flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           {busy ? (
-            <Loader2 className="h-6 w-6 animate-spin" />
+            <Loader2 className="h-6 w-6 animate-spin" strokeWidth={1.75} />
           ) : (
             <>
-              <ImagePlus className="h-6 w-6" />
+              <ImagePlus className="h-6 w-6" strokeWidth={1.75} />
               <span className="text-sm">
-                {disabled ? "No cover" : "Click or drop image"}
+                {disabled ? t("inlineEdit.cover.disabled") : t("inlineEdit.cover.empty")}
               </span>
             </>
           )}
@@ -140,12 +144,12 @@ export function InlineEditCover({
                 type="button"
                 onClick={() => inputRef.current?.click()}
                 disabled={busy}
-                className="inline-flex items-center gap-1.5 rounded-md bg-background/90 px-2.5 py-1 text-xs font-medium text-foreground shadow-sm ring-1 ring-border hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="inline-flex items-center gap-1.5 rounded-md bg-background/90 px-2.5 py-1 text-xs font-medium text-foreground shadow-sm ring-1 ring-border hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 {busy ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.75} />
                 ) : (
-                  <Upload className="h-3.5 w-3.5" />
+                  <Upload className="h-3.5 w-3.5" strokeWidth={1.75} />
                 )}
                 {t("inlineEdit.cover.replace")}
               </button>
@@ -154,9 +158,9 @@ export function InlineEditCover({
                   type="button"
                   onClick={remove}
                   disabled={busy}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-background/90 px-2.5 py-1 text-xs font-medium text-foreground shadow-sm ring-1 ring-border hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-background/90 px-2.5 py-1 text-xs font-medium text-foreground shadow-sm ring-1 ring-border hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
                   {t("inlineEdit.cover.remove")}
                 </button>
               )}

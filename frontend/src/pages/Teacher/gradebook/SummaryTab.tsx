@@ -1,12 +1,13 @@
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { useTranslation, Trans } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { EmptyState } from "@/components/patterns"
 import {
   ChevronDown, ChevronRight,
   ArrowUp, ArrowDown, ArrowUpDown,
-  Save, Award, MessageSquare,
+  Save, Award, MessageSquare, Users,
 } from "lucide-react"
 import type {
   GradingConfig,
@@ -20,7 +21,7 @@ import {
   type SortDir,
   type GradeForm,
 } from "./types"
-import { letterColor } from "./helpers"
+import { EMPTY_FORM, letterColor } from "./helpers"
 
 interface Props {
   summary: GradeSummaryResponse | null
@@ -108,7 +109,11 @@ export function SummaryTab({
       </CardHeader>
       <CardContent>
         {studentCount === 0 ? (
-          <p className="text-sm text-muted-foreground py-8 text-center">{t("gradebook.summary.empty")}</p>
+          <EmptyState
+            variant="compact"
+            icon={<Users strokeWidth={1.75} aria-hidden />}
+            title={t("gradebook.summary.empty")}
+          />
         ) : (
           <div className="overflow-x-auto">
             <div className="grid grid-cols-[1fr_80px_80px_90px_80px_70px_70px] gap-3 px-4 py-3 border-b bg-muted/30 rounded-t-lg min-w-[700px]">
@@ -128,7 +133,7 @@ export function SummaryTab({
                   student={student}
                   config={config}
                   manualGrade={manualGrades.get(student.student_id)}
-                  form={forms.get(student.student_id) ?? { grade: "", comment: "" }}
+                  form={forms.get(student.student_id) ?? EMPTY_FORM}
                   expanded={expandedId === student.student_id}
                   saving={saving === student.student_id}
                   onToggleExpand={onToggleExpand}
@@ -196,7 +201,15 @@ interface StudentSummaryRowProps {
   onSaveGrade: (userId: string) => void
 }
 
-function StudentSummaryRow({
+/**
+ * Per-student row. Memoised so a keystroke in one row's override form
+ * (which mutates the parent's `forms` map → re-renders SummaryTab) does
+ * not also re-render every other row. All callback props are stable via
+ * `useCallback` in `TeacherGradebook` and the default `form` is the
+ * shared `EMPTY_FORM` constant, so the shallow-props compare actually
+ * catches.
+ */
+const StudentSummaryRow = memo(function StudentSummaryRow({
   student,
   config,
   manualGrade,
@@ -278,7 +291,7 @@ function StudentSummaryRow({
           </div>
 
           {hasDifferentManual && (
-            <div className="rounded border border-border border-l-[3px] border-l-warning bg-warning/10 px-3 py-2 text-xs text-foreground">
+            <div className="rounded border border-border border-l-stripe border-l-warning bg-warning/10 px-3 py-2 text-xs text-foreground">
               <Trans
                 i18nKey="gradebook.summary.manualDiffers"
                 values={{
@@ -328,7 +341,7 @@ function StudentSummaryRow({
       )}
     </div>
   )
-}
+})
 
 function BreakdownEntry({
   label,

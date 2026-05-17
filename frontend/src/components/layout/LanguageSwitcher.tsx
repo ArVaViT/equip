@@ -84,7 +84,7 @@ export default function LanguageSwitcher({ variant = "full" }: LanguageSwitcherP
         aria-label={t("language.switchTo", { language: LABELS[next].native })}
         title={t("language.switchTo", { language: LABELS[next].native })}
       >
-        <Globe className="h-4 w-4" />
+        <Globe className="h-4 w-4" strokeWidth={1.75} />
         <span className="sr-only">{LABELS[next].short}</span>
       </Button>
     )

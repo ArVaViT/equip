@@ -10,6 +10,7 @@ Teachers do not own or manage cohorts; they only see the cohort id as
 a filter dropdown in their own course's gradebook.
 """
 
+import enum
 import uuid
 from datetime import datetime
 
@@ -17,6 +18,19 @@ from sqlalchemy import DateTime, ForeignKey, Index, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+
+
+class CohortStatus(enum.StrEnum):
+    """Forward-only cohort lifecycle: ``upcoming → active → completed``.
+
+    Going back from ``completed`` is blocked at the route layer (see
+    ``update_cohort``) — a completed cohort's grades and certificates
+    are frozen.
+    """
+
+    UPCOMING = "upcoming"
+    ACTIVE = "active"
+    COMPLETED = "completed"
 
 
 class Cohort(Base):

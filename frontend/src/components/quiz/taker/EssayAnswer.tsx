@@ -12,7 +12,7 @@ export function EssayAnswer({ value, minWords, onChange }: Props) {
   const words = value.trim() ? value.trim().split(/\s+/).filter(Boolean).length : 0
   const minReached = !minWords || words >= minWords
   return (
-    <div className="ml-8 space-y-1.5">
+    <div className="ml-9 space-y-1.5">
       <Textarea
         fieldSize="default"
         value={value}

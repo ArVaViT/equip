@@ -2,7 +2,7 @@ import { List, type RowComponentProps } from "react-window"
 import { useTranslation } from "react-i18next"
 import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { NativeSelect } from "@/components/ui/native-select"
+import { RoleSelector } from "@/components/admin/RoleSelector"
 import { toProxyImage } from "@/lib/images"
 import type { UserRole } from "@/types"
 import { formatDate } from "@/i18n/format"
@@ -21,8 +21,6 @@ interface VirtualAdminUsersProps {
   selectedIds: Set<string>
   updatingId: string | null
   currentUserId: string | undefined
-  roleBadgeClass: Record<string, string>
-  roleDisplayNames: Record<string, string>
   onToggleSelect: (id: string) => void
   onRoleChange: (userId: string, role: UserRole) => void
   onDeleteUser: (user: ProfileRow) => void
@@ -39,8 +37,6 @@ function UserRow({
   selectedIds,
   updatingId,
   currentUserId,
-  roleBadgeClass,
-  roleDisplayNames,
   onToggleSelect,
   onRoleChange,
   onDeleteUser,
@@ -86,22 +82,12 @@ function UserRow({
         {u.email}
       </div>
       <div role="cell" className="px-3 flex items-center gap-2">
-        <span
-          className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${roleBadgeClass[u.role] ?? ""}`}
-        >
-          {roleDisplayNames[u.role] ?? u.role}
-        </span>
-        <NativeSelect
-          fieldSize="sm"
-          value={u.role}
+        <RoleSelector
+          role={u.role}
           disabled={updatingId === u.id || u.id === currentUserId}
-          onChange={(e) => onRoleChange(u.id, e.target.value as UserRole)}
-        >
-          <option value="student">{t("roles.student")}</option>
-          <option value="pending_teacher">{t("roles.pendingTeacher")}</option>
-          <option value="teacher">{t("roles.teacher")}</option>
-          <option value="admin">{t("roles.admin")}</option>
-        </NativeSelect>
+          onChange={(next) => onRoleChange(u.id, next)}
+          ariaLabel={t("admin.users.changeRoleAria", { name: displayName })}
+        />
       </div>
       <div role="cell" className="px-3 text-muted-foreground">
         {formatDate(u.created_at)}
@@ -116,7 +102,7 @@ function UserRow({
           aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
           title={u.id === currentUserId ? t("admin.users.deleteSelfTooltip") : t("admin.users.deleteTooltip")}
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
         </Button>
       </div>
     </div>
@@ -128,8 +114,6 @@ export default function VirtualAdminUsers({
   selectedIds,
   updatingId,
   currentUserId,
-  roleBadgeClass,
-  roleDisplayNames,
   onToggleSelect,
   onRoleChange,
   onDeleteUser,
@@ -161,8 +145,6 @@ export default function VirtualAdminUsers({
           selectedIds,
           updatingId,
           currentUserId,
-          roleBadgeClass,
-          roleDisplayNames,
           onToggleSelect,
           onRoleChange,
           onDeleteUser,

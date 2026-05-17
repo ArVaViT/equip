@@ -3,6 +3,7 @@ import type { QuizQuestion } from "@/types"
 import { EssayAnswer } from "./EssayAnswer"
 import type { QuizAnswer } from "./types"
 import { Textarea } from "@/components/ui/textarea"
+import { getTrueFalseLabel } from "@/components/quiz/editor/types"
 
 interface Props {
   question: QuizQuestion
@@ -19,29 +20,32 @@ export function QuestionPrompt({ question, index, answer, onAnswer }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-start gap-2">
-        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+      <div className="flex items-start gap-3">
+        <span
+          aria-hidden
+          className="mt-0.5 inline-flex h-6 min-w-[1.5rem] shrink-0 items-center justify-center rounded-md border border-border bg-muted/60 px-1.5 text-xs font-medium tabular-nums text-muted-foreground"
+        >
           {index + 1}
         </span>
         <div className="min-w-0 flex-1 text-wrap-safe">
-          <p className="text-sm font-medium whitespace-pre-line">
+          <p className="text-sm font-medium leading-relaxed whitespace-pre-line">
             {question.question_text}
           </p>
-          <span className="text-xs text-muted-foreground">
+          <span className="mt-1 inline-block text-xs text-muted-foreground tabular-nums">
             {t("quiz.questionPoints", { count: question.points })}
           </span>
         </div>
       </div>
 
       {question.question_type === "multiple_choice" && (
-        <div className="ml-8 space-y-2">
+        <div className="ml-9 space-y-2">
           {sortedOptions.map((opt) => (
             <label
               key={opt.id}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-md border cursor-pointer transition-colors ${
+              className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 transition-colors ${
                 answer?.selected_option_id === opt.id
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:bg-muted/50"
+                  ? "border-primary/60 bg-primary/5 ring-1 ring-primary/30"
+                  : "border-border hover:bg-muted/40"
               }`}
             >
               <input
@@ -51,33 +55,33 @@ export function QuestionPrompt({ question, index, answer, onAnswer }: Props) {
                 onChange={() => onAnswer({ selected_option_id: opt.id })}
                 className="accent-primary"
               />
-              <span className="text-sm">{opt.option_text}</span>
+              <span className="text-sm text-wrap-safe">{opt.option_text}</span>
             </label>
           ))}
         </div>
       )}
 
       {question.question_type === "true_false" && (
-        <div className="ml-8 flex gap-3">
+        <div className="ml-9 grid grid-cols-2 gap-2">
           {sortedOptions.map((opt) => (
             <button
               key={opt.id}
               type="button"
               onClick={() => onAnswer({ selected_option_id: opt.id })}
-              className={`flex-1 py-2.5 rounded-md border text-sm font-medium transition-colors ${
+              className={`rounded-md border px-3 py-2.5 text-sm font-medium transition-colors ${
                 answer?.selected_option_id === opt.id
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border hover:bg-muted/50"
+                  ? "border-primary/60 bg-primary/10 text-primary ring-1 ring-primary/30"
+                  : "border-border hover:bg-muted/40"
               }`}
             >
-              {opt.option_text}
+              {getTrueFalseLabel(opt.option_text, t)}
             </button>
           ))}
         </div>
       )}
 
       {question.question_type === "short_answer" && (
-        <div className="ml-8">
+        <div className="ml-9">
           <Textarea
             fieldSize="default"
             value={answer?.text_answer ?? ""}

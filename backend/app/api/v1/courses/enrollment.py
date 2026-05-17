@@ -10,11 +10,12 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user
 from app.core.database import get_db
 from app.models.cohort import Cohort, CohortCourse
+from app.models.course import Course, CourseAccessMode, CourseStatus
 from app.models.enrollment import Enrollment
 from app.models.user import User
 from app.schemas.course import EnrollmentResponse
 from app.services.audit_service import log_action
-from app.services.course_service import enroll_user_in_course, get_course
+from app.services.course_service import enroll_user_in_course
 
 from ._router import router
 
@@ -109,13 +110,25 @@ def enroll_course(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Enrollment:
-    course = get_course(db, course_id)
-    if not course:
+    # Narrow probe — enrollment policy only reads four columns, no need
+    # to pull the full module + chapter tree for a yes/no check.
+    course_row = (
+        db.query(
+            Course.status,
+            Course.access_mode,
+            Course.enrollment_start,
+            Course.enrollment_end,
+        )
+        .filter(Course.id == course_id, Course.deleted_at.is_(None))
+        .first()
+    )
+    if course_row is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Course '{course_id}' not found",
         )
-    if course.status != "published":
+    course_status, access_mode, enrollment_start, enrollment_end = course_row
+    if course_status != CourseStatus.PUBLISHED:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Cannot enroll in an unpublished course",
@@ -133,18 +146,18 @@ def enroll_course(
         # Solo (no-cohort) enrollment. Institute courses block this path
         # entirely (ADR-010): admin must add the student directly via
         # the cohort endpoints or the admin-direct enrollment endpoint.
-        if course.access_mode == "institute":
+        if access_mode == CourseAccessMode.INSTITUTE:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="This course is available only by invitation from the institute",
             )
         # Public courses are gated by the course-level enrollment window.
-        if course.enrollment_start and now < course.enrollment_start:
+        if enrollment_start and now < enrollment_start:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Enrollment has not started yet",
             )
-        if course.enrollment_end and now > course.enrollment_end:
+        if enrollment_end and now > enrollment_end:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Enrollment period has ended",

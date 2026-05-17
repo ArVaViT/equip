@@ -135,7 +135,7 @@ export function InlineEdit({
       disabled: saving,
       "aria-label": ariaLabel,
       className: cn(
-        "w-full rounded-md border border-input bg-background px-2 py-1 outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        "w-full rounded-md border border-input bg-background px-2 py-1 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         sizeClasses[size],
         textClassName,
       ),
@@ -158,26 +158,26 @@ export function InlineEdit({
         )}
         <span className="flex shrink-0 items-center gap-1 pt-1">
           {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" strokeWidth={1.75} />
           ) : (
             <>
               <button
                 type="button"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => void commit()}
                 aria-label={t("inlineEdit.save")}
               >
-                <Check className="h-4 w-4" />
+                <Check className="h-4 w-4" strokeWidth={1.75} />
               </button>
               <button
                 type="button"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={cancel}
                 aria-label={t("inlineEdit.cancel")}
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" strokeWidth={1.75} />
               </button>
             </>
           )}
@@ -189,9 +189,16 @@ export function InlineEdit({
   const isEmpty = !value.trim()
   const displayText = isEmpty ? resolvedPlaceholder : value
 
+  // Promote the display container to a real heading element when the caller
+  // requested a heading-sized rendition. The button-as-trigger pattern stays
+  // wrapped inside, so the click/keyboard/aria-label affordance is unchanged
+  // — but assistive tech now sees an actual <h1>/<h2> in the page outline
+  // instead of a styled <span>.
+  const HeadingTag = size === "h1" ? "h1" : size === "h2" ? "h2" : "span"
+
   if (disabled) {
     return (
-      <span className={cn("inline-block w-full", className)}>
+      <HeadingTag className={cn("inline-block w-full", size !== "body" && "m-0", className)}>
         <span
           className={cn(
             "text-wrap-safe",
@@ -203,18 +210,28 @@ export function InlineEdit({
         >
           {displayText}
         </span>
-      </span>
+      </HeadingTag>
     )
   }
 
+  // For heading sizes we render a block-level <h1>/<h2> so the page outline
+  // is correct. The original body variant kept `inline-flex` so it could sit
+  // next to neighbouring text — that contract is preserved below.
   return (
-    <span className={cn("group/edit relative inline-flex w-full items-start gap-2", className)}>
+    <HeadingTag
+      className={cn(
+        size === "body"
+          ? "group/edit relative inline-flex w-full items-start gap-2"
+          : "group/edit relative flex w-full items-start gap-2 m-0",
+        className,
+      )}
+    >
       <button
         type="button"
         onClick={start}
         aria-label={ariaLabel ?? t("inlineEdit.editAria", { what: resolvedPlaceholder.toLowerCase() })}
         className={cn(
-          "flex-1 min-w-0 cursor-text rounded-md px-2 py-1 text-left transition-colors text-wrap-safe hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "flex-1 min-w-0 cursor-text rounded-md px-2 py-1 text-left transition-colors text-wrap-safe hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           multiline && "whitespace-pre-line",
           sizeClasses[size],
           isEmpty && "text-muted-foreground italic",
@@ -225,9 +242,9 @@ export function InlineEdit({
       </button>
       <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover/edit:opacity-100 group-focus-within/edit:opacity-100">
         <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-background/80 text-muted-foreground shadow-sm ring-1 ring-border">
-          <Pencil className="h-3.5 w-3.5" />
+          <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />
         </span>
       </span>
-    </span>
+    </HeadingTag>
   )
 }

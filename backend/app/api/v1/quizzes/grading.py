@@ -1,5 +1,6 @@
 """Teacher grading of open-ended quiz answers (and their pending queue)."""
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Query, status
@@ -56,10 +57,12 @@ def list_pending_answers(
         .order_by(QuizAttempt.completed_at.desc(), QuizQuestion.order_index.asc())
     )
     if not include_graded:
-        query = query.filter(
-            QuizAnswer.grader_comment.is_(None),
-            QuizAnswer.points_earned == 0,
-        )
+        # ``graded_at IS NULL`` is the authoritative "still pending"
+        # signal. The previous heuristic ``(grader_comment IS NULL AND
+        # points_earned == 0)`` silently kept rows in the queue when a
+        # teacher legitimately graded an open-ended answer as 0 with no
+        # comment — the row would re-appear on every page reload.
+        query = query.filter(QuizAnswer.graded_at.is_(None))
 
     results: list[PendingAnswerInfo] = []
     for answer, question, attempt, student in query.all():
@@ -115,7 +118,16 @@ def grade_answer(
             detail="Only open-ended answers (short_answer / essay) can be graded manually",
         )
 
-    attempt = db.query(QuizAttempt).filter(QuizAttempt.id == answer.attempt_id).first()
+    # ``FOR UPDATE`` on the attempt row so two teachers grading two
+    # different answers from the same attempt serialize on the lock.
+    # Without it, both teachers SELECT the attempt at the same score,
+    # ``recompute_attempt_grade`` sums the answer rows from each one's
+    # snapshot (missing the other's still-uncommitted update), and the
+    # second commit overwrites the first with a stale total. SQLite
+    # (test path) treats ``with_for_update`` as a no-op so single-test
+    # behaviour is unchanged; Postgres takes a row lock that serializes
+    # the recompute + write of ``attempt.score`` / ``attempt.passed``.
+    attempt = db.query(QuizAttempt).filter(QuizAttempt.id == answer.attempt_id).with_for_update().first()
     if not attempt:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attempt not found")
 
@@ -141,6 +153,9 @@ def grade_answer(
         answer.is_correct = False
     else:
         answer.is_correct = None
+    # Stamping ``graded_at`` is the one signal the pending-answer queue
+    # consults. Re-grading the same row simply refreshes the timestamp.
+    answer.graded_at = datetime.now(UTC)
 
     quiz_service.recompute_attempt_grade(db, attempt, quiz)
     db.commit()

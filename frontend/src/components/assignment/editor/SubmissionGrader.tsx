@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
 import { FileText, Loader2, MessageSquare, Save, Star, User } from "lucide-react"
 import { coursesService } from "@/services/courses"
 import { toast } from "@/lib/toast"
@@ -16,10 +17,12 @@ interface Props {
   onUpdate: (updated: AssignmentSubmission) => void
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  submitted: "bg-info/15 text-info",
-  graded: "bg-success/15 text-success",
-  returned: "bg-warning/15 text-warning",
+type StatusVariant = "infoSubtle" | "successSubtle" | "warningSubtle" | "muted"
+
+const STATUS_VARIANT: Record<string, StatusVariant> = {
+  submitted: "infoSubtle",
+  graded: "successSubtle",
+  returned: "warningSubtle",
 }
 
 export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
@@ -51,16 +54,16 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
       <CardContent className="p-3 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm">
-            <User className="h-3.5 w-3.5 text-muted-foreground" />
+            <User className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
             <span className="text-xs text-muted-foreground">
               {submission.student_id.slice(0, 8)}...
             </span>
           </div>
-          <span
-            className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[submission.status]}`}
-          >
-            {submission.status}
-          </span>
+          <Badge variant={STATUS_VARIANT[submission.status] ?? "muted"}>
+            {t(`assignment.statusValue.${submission.status}`, {
+              defaultValue: submission.status,
+            })}
+          </Badge>
         </div>
 
         {submission.content && (
@@ -76,14 +79,14 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
             rel="noopener noreferrer"
             className="flex items-center gap-1 text-xs text-info hover:underline"
           >
-            <FileText className="h-3 w-3" />
+            <FileText className="h-3 w-3" strokeWidth={1.75} />
             {t("assignmentEditor.grader.viewFile")}
           </a>
         )}
 
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
-            <Star className="h-3.5 w-3.5 text-muted-foreground" />
+            <Star className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
             <Input
               type="number"
               min={0}
@@ -107,7 +110,7 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
 
         <div className="space-y-1">
           <Label className="text-xs flex items-center gap-1">
-            <MessageSquare className="h-3 w-3" />
+            <MessageSquare className="h-3 w-3" strokeWidth={1.75} />
             {t("assignmentEditor.grader.feedback")}
           </Label>
           <Textarea
@@ -121,9 +124,9 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
 
         <Button size="sm" className="h-7 text-xs" onClick={save} disabled={saving}>
           {saving ? (
-            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+            <Loader2 className="h-3 w-3 mr-1 animate-spin" strokeWidth={1.75} />
           ) : (
-            <Save className="h-3 w-3 mr-1" />
+            <Save className="h-3 w-3 mr-1" strokeWidth={1.75} />
           )}
           {saving ? t("assignmentEditor.grader.saving") : t("assignmentEditor.grader.save")}
         </Button>

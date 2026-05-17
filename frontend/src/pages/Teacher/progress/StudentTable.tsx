@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Users } from "lucide-react"
+import { EmptyState as DesignEmptyState } from "@/components/patterns/EmptyState"
 import { StudentRow } from "./StudentRow"
 import {
   assignmentAvg,
@@ -50,7 +51,7 @@ export function StudentTable({
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
-          <Users className="h-5 w-5" />
+          <Users className="h-5 w-5" strokeWidth={1.75} />
           {t("studentProgress.table.heading")}
           <span className="text-sm font-normal text-muted-foreground">
             ({students.length})
@@ -120,14 +121,15 @@ export function StudentTable({
 function EmptyState({ hasSearch }: { hasSearch: boolean }) {
   const { t } = useTranslation()
   return (
-    <div className="text-center py-12 text-muted-foreground">
-      <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
-      <p className="text-sm">
-        {hasSearch
+    <DesignEmptyState
+      variant="compact"
+      icon={<Users strokeWidth={1.75} aria-hidden />}
+      title={
+        hasSearch
           ? t("studentProgress.table.emptyNoMatch")
-          : t("studentProgress.table.emptyNoStudents")}
-      </p>
-    </div>
+          : t("studentProgress.table.emptyNoStudents")
+      }
+    />
   )
 }
 

@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload, selectinload
 
-from app.models.course import Chapter, Course, Module
+from app.models.course import Chapter, Course, CourseStatus, Module
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -42,7 +42,11 @@ def get_courses(
     limit: int = 100,
     search: str | None = None,
 ) -> list[Course]:
-    query = db.query(Course).options(*_COURSE_TREE).filter(Course.status == "published", Course.deleted_at.is_(None))
+    query = (
+        db.query(Course)
+        .options(*_COURSE_TREE)
+        .filter(Course.status == CourseStatus.PUBLISHED, Course.deleted_at.is_(None))
+    )
     if search:
         ts_query = func.plainto_tsquery("russian", search)
         ts_query_en = func.plainto_tsquery("english", search)

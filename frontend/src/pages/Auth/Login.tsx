@@ -90,7 +90,7 @@ export default function Login() {
           disabled={googleLoading || loading}
         >
           {googleLoading ? (
-            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("auth.connecting")}</>
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />{t("auth.connecting")}</>
           ) : (
             <><GoogleIcon className="h-4 w-4 mr-2.5" />{t("auth.continueWithGoogle")}</>
           )}
@@ -126,7 +126,10 @@ export default function Login() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">{t("auth.password")}</Label>
-              <Link to="/forgot-password" className="text-xs text-primary hover:text-primary/80 transition-colors">
+              <Link
+                to="/forgot-password"
+                className="-my-2 inline-flex min-h-[44px] items-center px-1 text-sm text-primary transition-colors hover:text-primary/80 sm:min-h-0 sm:py-0 sm:text-xs"
+              >
                 {t("auth.forgotPasswordLink")}
               </Link>
             </div>
@@ -146,7 +149,7 @@ export default function Login() {
           <Button type="submit" size="lg" className="bg-cta-glow w-full font-medium rounded-md" disabled={loading}>
             {loading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />
                 {t("auth.signingIn")}
               </>
             ) : (

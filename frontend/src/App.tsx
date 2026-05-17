@@ -16,6 +16,8 @@ import AnnouncementBanner from "./components/announcements/AnnouncementBanner"
 import PageSpinner from "./components/ui/PageSpinner"
 import ScrollToTop from "./components/layout/ScrollToTop";
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { SUPPORT_EMAIL } from "@/lib/brand"
+import { ROLES } from "@/types"
 
 const NotFound = lazy(() => import("./pages/NotFound"))
 
@@ -62,7 +64,7 @@ function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }
 function PendingTeacherBanner() {
   const { t } = useTranslation()
   return (
-    <div className="border-b border-border border-l-[3px] border-l-warning bg-warning/10">
+    <div className="border-b border-border border-l-stripe border-l-warning bg-warning/10">
       <div className="container mx-auto px-4 py-3 text-center">
         <p className="text-sm text-foreground">
           {t("pendingTeacher.banner")}{" "}
@@ -71,7 +73,7 @@ function PendingTeacherBanner() {
             components={{
               supportLink: (
                 <a
-                  href="mailto:support@bibleschool.com"
+                  href={`mailto:${SUPPORT_EMAIL}`}
                   className="underline font-medium hover:no-underline"
                 />
               ),
@@ -117,10 +119,19 @@ function AppRoutes() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
+      {/* Skip link — hidden until focused via Tab. First focusable element on
+          every authenticated page so keyboard / screen-reader users can jump
+          past the persistent Header + banners straight to page content. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        {t("common.skipToContent")}
+      </a>
       <Header />
-      {user?.role === "pending_teacher" && <PendingTeacherBanner />}
+      {user?.role === ROLES.PENDING_TEACHER && <PendingTeacherBanner />}
       <AnnouncementBanner />
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
         <ErrorBoundary>
           <Suspense fallback={<PageSpinner />}>
             <Routes>

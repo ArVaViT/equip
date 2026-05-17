@@ -1,4 +1,4 @@
-import { formatDate } from "@/i18n/format";
+import { formatDateLong } from "@/i18n/format";
 
 export function isSameDay(a: Date, b: Date): boolean {
   return (
@@ -19,7 +19,11 @@ export function formatTime(dateStr: string): string {
 }
 
 export function formatShortDate(dateStr: string): string {
-  return formatDate(dateStr, {
+  // Editorial short form ("May 14" / "14 мая") for the calendar agenda —
+  // chronological grouping makes year/locale-canonical ISO redundant
+  // here, and natural-language reads better against the day labels.
+  return formatDateLong(dateStr, {
+    year: undefined,
     month: "short",
     day: "numeric",
   });

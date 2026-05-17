@@ -7,12 +7,25 @@ export const authService = {
     password: string,
     fullName: string,
     role: "teacher" | "student" = "student",
+    /**
+     * Locale the user registered in. Carried into Supabase's
+     * ``raw_user_meta_data.preferred_locale`` so the
+     * ``handle_new_user`` trigger seeds ``profiles.preferred_locale``
+     * to the same language the registration form was rendered in.
+     * The DB CHECK whitelists this value; passing anything else
+     * silently falls back to 'ru' at the trigger level.
+     */
+    preferredLocale: "en" | "ru" = "ru",
   ): Promise<void> {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName, role },
+        data: {
+          full_name: fullName,
+          role,
+          preferred_locale: preferredLocale,
+        },
       },
     })
     if (error) throw error

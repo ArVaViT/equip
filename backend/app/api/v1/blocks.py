@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -11,9 +11,10 @@ from app.models.chapter_block import ChapterBlock
 from app.models.user import User
 from app.schemas.chapter_block import BlockCreate, BlockReorderItem, BlockResponse, BlockUpdate
 from app.schemas.locale import LocaleCode, normalize_locale
-from app.services.translation.pipeline_hooks import run_course_translation_pipeline_if_published
+from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import (
     get_course_source_locale_for_chapter,
+    is_chapter_course_owner_or_admin,
     localize_chapter_block_rows,
     should_apply_course_translation_overlay_for_chapter,
 )
@@ -26,12 +27,28 @@ def list_blocks(
     chapter_id: str,
     response: Response,
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    source: bool = Query(
+        False,
+        description=(
+            "Bypass the translation overlay and return source-language ``content`` "
+            "(rich-text HTML). Owner / admin only — used by the chapter block "
+            "editor so a teacher viewing their RU course in EN UI doesn't "
+            "accidentally save the EN translation back into the source content."
+        ),
+    ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     verify_chapter_access(db, chapter_id, current_user)
     response.headers["Vary"] = "Accept-Language"
     rows = db.query(ChapterBlock).filter(ChapterBlock.chapter_id == chapter_id).order_by(ChapterBlock.order_index).all()
+    if source:
+        if not is_chapter_course_owner_or_admin(db, chapter_id=chapter_id, current_user=current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the course owner or an admin can request source-language content",
+            )
+        return rows
     display_locale: LocaleCode = normalize_locale(accept_language)
     src = get_course_source_locale_for_chapter(db, chapter_id)
     if should_apply_course_translation_overlay_for_chapter(db, chapter_id=chapter_id, current_user=current_user):
@@ -39,14 +56,32 @@ def list_blocks(
     return rows
 
 
-@router.post("/chapter/{chapter_id}", response_model=BlockResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/chapter/{chapter_id}",
+    response_model=BlockResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a chapter block (text / quiz / assignment / file)",
+    responses={
+        201: {"description": "Block persisted; translation reconcile fires async"},
+        403: {"description": "Caller does not own the chapter's course"},
+        404: {"description": "Chapter not found"},
+        409: {"description": "Referenced ``quiz_id`` / ``assignment_id`` no longer exists"},
+    },
+)
 def create_block(
     chapter_id: str,
     data: BlockCreate,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
-    _, course_id = verify_chapter_owner(db, chapter_id, teacher)
+    """Append a block to the chapter. ``order_index`` is provided by the
+    client so multi-block writes preserve the intended ordering even
+    when the frontend optimistically reorders before save.
+
+    Rich text (``content``) is sanitized server-side with ``bleach``
+    even though the frontend already DOMPurifies — defence-in-depth
+    for direct API callers."""
+    verify_chapter_owner(db, chapter_id, teacher)
     # Defence-in-depth: the frontend runs DOMPurify before sending, but a
     # direct API caller can bypass that. We re-sanitize here so stored block
     # HTML is safe to render for every downstream consumer (admin preview,
@@ -76,21 +111,37 @@ def create_block(
             detail="Referenced quiz or assignment no longer exists",
         ) from exc
     db.refresh(block)
-    run_course_translation_pipeline_if_published(db, course_id)
+    reconcile_entity_if_course_published(db, "chapter_block", block)
     return block
 
 
-@router.put("/{block_id}", response_model=BlockResponse)
+@router.put(
+    "/{block_id}",
+    response_model=BlockResponse,
+    summary="Update a block in place",
+    responses={
+        200: {"description": "Block updated and translation overlay reconciled"},
+        403: {"description": "Caller does not own the chapter's course"},
+        404: {"description": "Block not found"},
+        409: {"description": "Referenced ``quiz_id`` / ``assignment_id`` no longer exists"},
+    },
+)
 def update_block(
     block_id: UUID,
     data: BlockUpdate,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
+    """Patch any subset of block fields. ``content`` is sanitized
+    server-side. Changing ``block_type`` is allowed (e.g. text → quiz)
+    but the client should clear / set the type-specific fields
+    (``quiz_id``, ``assignment_id``, ``file_*``) consistently;
+    constraints aren't enforced at the schema layer because writes from
+    the editor never mix types in the same patch."""
     block = db.query(ChapterBlock).filter(ChapterBlock.id == block_id).first()
     if not block:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Block not found")
-    _, course_id = verify_chapter_owner(db, block.chapter_id, teacher)
+    verify_chapter_owner(db, block.chapter_id, teacher)
     for field, value in data.model_dump(exclude_unset=True).items():
         if field == "content" and value:
             value = sanitize_string(value)
@@ -104,7 +155,7 @@ def update_block(
             detail="Referenced quiz or assignment no longer exists",
         ) from exc
     db.refresh(block)
-    run_course_translation_pipeline_if_published(db, course_id)
+    reconcile_entity_if_course_published(db, "chapter_block", block)
     return block
 
 
@@ -117,10 +168,11 @@ def delete_block(
     block = db.query(ChapterBlock).filter(ChapterBlock.id == block_id).first()
     if not block:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Block not found")
-    _, course_id = verify_chapter_owner(db, block.chapter_id, teacher)
+    verify_chapter_owner(db, block.chapter_id, teacher)
     db.delete(block)
     db.commit()
-    run_course_translation_pipeline_if_published(db, course_id)
+    # No reconcile after delete — the entity is gone; translation rows
+    # cascade out via FK ON DELETE on content_translations.
 
 
 @router.put("/chapter/{chapter_id}/reorder", response_model=list[BlockResponse])

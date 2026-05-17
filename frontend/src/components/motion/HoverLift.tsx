@@ -1,5 +1,6 @@
 import { type ReactNode } from "react"
 import { motion, useReducedMotion } from "motion/react"
+import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
 
 type HoverLiftProps = {
   children: ReactNode
@@ -7,8 +8,6 @@ type HoverLiftProps = {
   lift?: number
   press?: number
 }
-
-const EDITORIAL_EASE = [0.22, 1, 0.36, 1] as const
 
 export function HoverLift({
   children,
@@ -27,7 +26,7 @@ export function HoverLift({
       className={className}
       whileHover={{ y: -lift }}
       whileTap={press ? { y: press } : undefined}
-      transition={{ duration: 0.28, ease: EDITORIAL_EASE }}
+      transition={{ duration: MOTION_DURATION.base, ease: EDITORIAL_EASE }}
     >
       {children}
     </motion.div>

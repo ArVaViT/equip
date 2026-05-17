@@ -117,9 +117,9 @@ export function StudentRow({
       >
         <td className="py-3 pr-2">
           {isExpanded ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <ChevronDown className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
           ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
           )}
         </td>
         <td className="py-3 font-medium">{student.full_name}</td>
@@ -137,7 +137,7 @@ export function StudentRow({
           <ScoreBadge value={assignmentAvg} />
         </td>
         <td className="py-3 text-muted-foreground text-xs">
-          {relativeTime(student.last_activity)}
+          {relativeTime(student.last_activity, t)}
         </td>
       </tr>
       {isExpanded && (
@@ -171,7 +171,7 @@ export function StudentRow({
               {allChapters.size > 0 && (
                 <div>
                   <h4 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
-                    <BookOpen className="h-4 w-4" />
+                    <BookOpen className="h-4 w-4" strokeWidth={1.75} />
                     {t("studentProgress.row.chapterBreakdown")}
                   </h4>
                   <div className="space-y-2">
@@ -195,13 +195,13 @@ export function StudentRow({
               <div className="flex items-center gap-2 pt-1">
                 <Link to={`/teacher/courses/${courseId}/gradebook`}>
                   <Button size="sm" variant="outline">
-                    <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
+                    <ClipboardList className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
                     {t("studentProgress.row.gradebookButton")}
                   </Button>
                 </Link>
                 <Link to={`/teacher/courses/${courseId}/analytics`}>
                   <Button size="sm" variant="ghost">
-                    <FileText className="h-3.5 w-3.5 mr-1.5" />
+                    <FileText className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
                     {t("studentProgress.row.viewAnalytics")}
                   </Button>
                 </Link>

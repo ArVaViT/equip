@@ -1,5 +1,5 @@
 import api from "./api"
-import { cacheGet, cacheSet, cacheInvalidatePrefix } from "@/lib/cache"
+import { cached, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
 import type { StudentProgressResponse } from "@/types"
 
 export const progressService = {
@@ -16,22 +16,18 @@ export const progressService = {
   },
 
   async getMyChapterProgress(courseId: string): Promise<string[]> {
-    const key = `progress:my:${courseId}`
-    const cached = cacheGet<string[]>(key)
-    if (cached) return cached
-    const response = await api.get<string[]>(`/progress/course/${courseId}/my-progress`)
-    cacheSet(key, response.data, 60 * 1000)
-    return response.data
+    return cached(`progress:my:${courseId}`, CACHE_TTL.ONE_MINUTE, async () => {
+      const response = await api.get<string[]>(`/progress/course/${courseId}/my-progress`)
+      return response.data
+    })
   },
 
   async getStudentProgress(courseId: string): Promise<StudentProgressResponse> {
-    const key = `progress:students:${courseId}`
-    const cached = cacheGet<StudentProgressResponse>(key)
-    if (cached) return cached
-    const response = await api.get<StudentProgressResponse>(
-      `/progress/course/${courseId}/students`,
-    )
-    cacheSet(key, response.data, 30 * 1000)
-    return response.data
+    return cached(`progress:students:${courseId}`, CACHE_TTL.THIRTY_SECONDS, async () => {
+      const response = await api.get<StudentProgressResponse>(
+        `/progress/course/${courseId}/students`,
+      )
+      return response.data
+    })
   },
 }

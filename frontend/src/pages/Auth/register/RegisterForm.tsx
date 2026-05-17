@@ -75,7 +75,7 @@ export function RegisterForm({
         >
           {googleLoading ? (
             <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />
               {t("auth.connecting")}
             </>
           ) : (
@@ -139,7 +139,7 @@ export function RegisterForm({
                     >
                       {t(r.labelKey)}
                     </span>
-                    <span className="text-[11px] text-muted-foreground text-center leading-tight">
+                    <span className="text-xs text-muted-foreground text-center leading-tight">
                       {t(r.descKey)}
                     </span>
                   </button>
@@ -254,7 +254,7 @@ export function RegisterForm({
           >
             {loading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />
                 {t("authRegister.creatingAccount")}
               </>
             ) : (

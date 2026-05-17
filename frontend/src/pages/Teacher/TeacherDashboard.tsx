@@ -5,7 +5,6 @@ import { BookOpen, Plus, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import PageSpinner from "@/components/ui/PageSpinner"
 import { useConfirm } from "@/components/ui/alert-dialog"
 import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
 import { courseSchema, type CourseFormData } from "@/lib/validations/course"
@@ -18,6 +17,7 @@ import {
   CreateCourseForm,
   EmptyCoursesCard,
   PendingCertsCard,
+  TeacherDashboardSkeleton,
   TrashSection,
   type PendingCert,
 } from "./dashboard"
@@ -212,11 +212,11 @@ export default function TeacherDashboard() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">{t("teacher.dashboardTitle")}</h1>
-        <Button onClick={() => setShowCreate(!showCreate)} size="sm">
-          <Plus className="h-4 w-4 mr-1.5" />
+    <div className="container mx-auto max-w-5xl px-4 py-6 sm:py-8">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 sm:mb-8">
+        <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">{t("teacher.dashboardTitle")}</h1>
+        <Button onClick={() => setShowCreate(!showCreate)} size="sm" className="h-11 sm:h-9">
+          <Plus className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
           {t("teacher.newCourse")}
         </Button>
       </div>
@@ -241,11 +241,11 @@ export default function TeacherDashboard() {
       />
 
       {loading ? (
-        <PageSpinner />
+        <TeacherDashboardSkeleton />
       ) : error ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <BookOpen className="h-12 w-12 text-destructive/40 mb-4" />
+            <BookOpen className="h-12 w-12 text-destructive/40 mb-4" strokeWidth={1.75} />
             <h3 className="text-lg font-medium mb-1">{t("teacher.somethingWrong")}</h3>
             <p className="text-sm text-muted-foreground mb-4">{error}</p>
             <Button onClick={() => load()} size="sm" variant="outline">
@@ -261,7 +261,9 @@ export default function TeacherDashboard() {
             <div className="mb-4 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
               <Input
+                type="search"
                 placeholder={t("teacher.searchPlaceholder")}
+                aria-label={t("teacher.searchPlaceholder")}
                 value={searchInput}
                 onChange={(e) =>
                   setSearchInput(e.target.value.slice(0, MAX_SEARCH_LEN))

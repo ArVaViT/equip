@@ -1,8 +1,9 @@
-import { Fragment, useMemo } from "react"
+import { Fragment, memo, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { EmptyState } from "@/components/patterns"
 import {
   BookOpen, Users, Circle, CheckCircle2,
   ChevronDown, ChevronRight, Award, MessageSquare, Save,
@@ -15,7 +16,7 @@ import type {
   StudentProgressData,
   GradeForm,
 } from "./types"
-import { letterColor, chapterTypeIcon } from "./helpers"
+import { EMPTY_FORM, letterColor, chapterTypeIcon } from "./helpers"
 
 interface Props {
   progressData: ProgressResponse | null
@@ -60,9 +61,12 @@ export function GradeTableTab({
   if (!progressData) {
     return (
       <Card>
-        <CardContent className="py-12 text-center">
-          <BookOpen className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">{t("gradebook.failedLoad")}</p>
+        <CardContent className="py-10">
+          <EmptyState
+            variant="compact"
+            icon={<BookOpen strokeWidth={1.75} aria-hidden />}
+            title={t("gradebook.failedLoad")}
+          />
         </CardContent>
       </Card>
     )
@@ -71,9 +75,12 @@ export function GradeTableTab({
   if (tableStudents.length === 0) {
     return (
       <Card>
-        <CardContent className="py-12 text-center">
-          <Users className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">{t("gradebook.summary.empty")}</p>
+        <CardContent className="py-10">
+          <EmptyState
+            variant="compact"
+            icon={<Users strokeWidth={1.75} aria-hidden />}
+            title={t("gradebook.summary.empty")}
+          />
         </CardContent>
       </Card>
     )
@@ -101,7 +108,7 @@ export function GradeTableTab({
                     allChapters={allChapters}
                     studentChapterMap={studentChapterMap}
                     manualGrade={manualGrades.get(student.id)}
-                    form={forms.get(student.id) ?? { grade: "", comment: "" }}
+                    form={forms.get(student.id) ?? EMPTY_FORM}
                     expanded={expandedId === student.id}
                     saving={saving === student.id}
                     onToggleExpand={onToggleExpand}
@@ -119,6 +126,14 @@ export function GradeTableTab({
   )
 }
 
+// Sticky student-column shadow that hints "this column is pinned" even when
+// the user hasn't scrolled yet. ``inset-y-0 right-0 -mr-px w-2`` paints a
+// 2-px wide gradient strip on the column's right edge; soft enough to fade
+// into the table border when stationary, strong enough to read as depth
+// when content scrolls underneath.
+const STICKY_COL_SHADOW =
+  "after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-2 after:-mr-2 after:bg-gradient-to-r after:from-foreground/[0.06] after:to-transparent"
+
 function GradeTableHead({
   orderedModules,
   moduleChapterMap,
@@ -132,7 +147,9 @@ function GradeTableHead({
   return (
     <thead>
       <tr>
-        <th className="sticky left-0 z-10 bg-card border-b border-r px-3 py-2 text-left font-semibold text-sm w-44 min-w-[11rem]">
+        <th
+          className={`sticky left-0 z-10 bg-muted/40 border-b border-r px-3 py-2 text-left font-semibold text-sm w-44 min-w-[11rem] relative ${STICKY_COL_SHADOW}`}
+        >
           {t("gradebook.table.thStudent")}
         </th>
         {orderedModules.map((mod) => {
@@ -148,12 +165,15 @@ function GradeTableHead({
             </th>
           )
         })}
-        <th className="border-b px-2 py-2 text-center font-semibold bg-muted/40 w-20">
+        <th className="border-b border-r px-2 py-2 text-center font-semibold bg-muted/40 w-20">
           {t("gradebook.table.thTotal")}
         </th>
       </tr>
       <tr>
-        <th className="sticky left-0 z-10 bg-card border-b border-r" />
+        <th
+          className={`sticky left-0 z-10 bg-muted/20 border-b border-r relative ${STICKY_COL_SHADOW}`}
+          aria-hidden
+        />
         {allChapters.map((ch) => (
           <th
             key={ch.id}
@@ -162,11 +182,11 @@ function GradeTableHead({
           >
             <div className="flex flex-col items-center gap-0.5">
               <span className="text-muted-foreground">{chapterTypeIcon(ch.chapter_type)}</span>
-              <span className="truncate max-w-[52px] text-[10px]">{ch.title}</span>
+              <span className="truncate max-w-[52px] text-xs">{ch.title}</span>
             </div>
           </th>
         ))}
-        <th className="border-b px-1 py-1.5 bg-muted/20" />
+        <th className="border-b border-r px-1 py-1.5 bg-muted/20" aria-hidden />
       </tr>
     </thead>
   )
@@ -185,7 +205,14 @@ interface GradeTableRowProps {
   onSaveGrade: (userId: string) => void
 }
 
-function GradeTableRow({
+/**
+ * One spreadsheet row per student. Memoised so typing in one row's
+ * override-grade form (which is parent state) doesn't rerender every
+ * other row. The row's `studentChapterMap` is the full course-wide map
+ * intentionally — its identity is stable across renders because it lives
+ * in a `useMemo` in `TeacherGradebook`, so referential equality holds.
+ */
+const GradeTableRow = memo(function GradeTableRow({
   student,
   allChapters,
   studentChapterMap,
@@ -204,10 +231,12 @@ function GradeTableRow({
   return (
     <Fragment>
       <tr
-        className="hover:bg-muted/20 cursor-pointer transition-colors"
+        className="group hover:bg-muted/20 cursor-pointer transition-colors"
         onClick={() => onToggleExpand(student.id)}
       >
-        <td className="sticky left-0 z-10 bg-card border-b border-r px-3 py-2 font-medium">
+        <td
+          className={`sticky left-0 z-10 bg-card group-hover:bg-muted/40 border-b border-r px-3 py-2 font-medium relative transition-colors ${STICKY_COL_SHADOW}`}
+        >
           <div className="flex items-center gap-1.5 min-w-0">
             {expanded ? (
               <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
@@ -218,7 +247,7 @@ function GradeTableRow({
               <p className="truncate text-xs font-semibold max-w-[140px]">
                 {student.full_name || student.email}
               </p>
-              <p className="truncate text-[10px] text-muted-foreground max-w-[140px]">
+              <p className="truncate text-xs text-muted-foreground max-w-[140px]">
                 {student.email}
               </p>
             </div>
@@ -236,10 +265,10 @@ function GradeTableRow({
         <td className="border-b px-2 py-2 text-center">
           <div className="flex flex-col items-center">
             <span className="font-semibold text-sm">{earned}</span>
-            <span className="text-[10px] text-muted-foreground">/{total}</span>
+            <span className="text-xs text-muted-foreground">/{total}</span>
             {manualGrade?.grade && (
               <span
-                className={`mt-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${letterColor(
+                className={`mt-0.5 rounded-full px-1.5 py-0.5 text-xs font-bold ${letterColor(
                   manualGrade.grade,
                 )}`}
               >
@@ -292,7 +321,7 @@ function GradeTableRow({
       )}
     </Fragment>
   )
-}
+})
 
 /**
  * Chapter-type specific status cell: quiz score, assignment state, or a
@@ -325,7 +354,7 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
           }`}
         >
           <span className="font-semibold">{pct}%</span>
-          <span className="text-[10px] opacity-70">
+          <span className="text-xs opacity-70">
             {chapter.quiz_result.score}/{chapter.quiz_result.max_score}
           </span>
         </div>
@@ -348,7 +377,7 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
           {graded ? (
             <>
               <span className="font-semibold">{chapter.assignment_result.grade}pt</span>
-              <span className="text-[10px] opacity-70">{t("gradebook.table.cellGraded")}</span>
+              <span className="text-xs opacity-70">{t("gradebook.table.cellGraded")}</span>
             </>
           ) : (
             <span>{t("gradebook.table.cellSubmitted")}</span>
@@ -360,7 +389,7 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
   }
 
   return (
-    <div className="flex items-center justify-center h-9 rounded bg-muted/20 text-muted-foreground/30 text-[10px]">
+    <div className="flex items-center justify-center h-9 rounded bg-muted/20 text-muted-foreground/30 text-xs">
       —
     </div>
   )
@@ -369,7 +398,7 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
 function EmptyCell() {
   return (
     <div className="flex items-center justify-center h-9 rounded bg-muted/30 text-muted-foreground/50 text-xs">
-      <Circle className="h-3.5 w-3.5" />
+      <Circle className="h-3.5 w-3.5" strokeWidth={1.75} />
     </div>
   )
 }
@@ -420,38 +449,38 @@ function GradeTableLegend() {
   return (
     <div className="mt-4 flex flex-wrap gap-4 border-t pt-4 text-xs text-muted-foreground">
       <div className="flex items-center gap-1.5">
-        <div className="flex h-4 w-4 items-center justify-center rounded border border-success/30 bg-success/10">
-          <CheckCircle2 className="h-2.5 w-2.5 text-success" />
+        <div className="flex h-5 w-5 items-center justify-center rounded border border-success/30 bg-success/10">
+          <CheckCircle2 className="h-3 w-3 text-success" strokeWidth={1.75} />
         </div>
         {t("gradebook.table.legend.completed")}
       </div>
       <div className="flex items-center gap-1.5">
-        <div className="flex h-4 w-6 items-center justify-center rounded border border-success/30 bg-success/10 text-[9px] font-semibold text-success">
+        <div className="flex h-5 w-9 items-center justify-center rounded border border-success/30 bg-success/10 text-xs font-semibold text-success">
           85%
         </div>
         {t("gradebook.table.legend.quizPassed")}
       </div>
       <div className="flex items-center gap-1.5">
-        <div className="flex h-4 w-6 items-center justify-center rounded border border-destructive/30 bg-destructive/10 text-[9px] font-semibold text-destructive">
+        <div className="flex h-5 w-9 items-center justify-center rounded border border-destructive/30 bg-destructive/10 text-xs font-semibold text-destructive">
           40%
         </div>
         {t("gradebook.table.legend.quizFailed")}
       </div>
       <div className="flex items-center gap-1.5">
-        <div className="flex h-4 w-10 items-center justify-center rounded border border-info/30 bg-info/10 text-[9px] font-semibold text-info">
+        <div className="flex h-5 items-center justify-center rounded border border-info/30 bg-info/10 px-1.5 text-xs font-semibold text-info">
           {t("gradebook.table.cellGraded")}
         </div>
         {t("gradebook.table.legend.assignmentGraded")}
       </div>
       <div className="flex items-center gap-1.5">
-        <div className="flex h-4 w-14 items-center justify-center rounded border border-warning/30 bg-warning/10 text-[9px] text-warning">
+        <div className="flex h-5 items-center justify-center rounded border border-warning/30 bg-warning/10 px-1.5 text-xs text-warning">
           {t("gradebook.table.cellSubmitted")}
         </div>
         {t("gradebook.table.legend.assignmentSubmitted")}
       </div>
       <div className="flex items-center gap-1.5">
-        <div className="flex h-4 w-4 items-center justify-center rounded border bg-muted/30">
-          <Circle className="h-2.5 w-2.5 text-muted-foreground/40" />
+        <div className="flex h-5 w-5 items-center justify-center rounded border bg-muted/30">
+          <Circle className="h-3 w-3 text-muted-foreground/40" strokeWidth={1.75} />
         </div>
         {t("gradebook.table.legend.notSubmitted")}
       </div>

@@ -29,9 +29,9 @@ export function PageHeader({
       {backTo && (
         <Link
           to={backTo}
-          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          className="-mx-2 inline-flex min-h-[44px] items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:mx-0 sm:min-h-0 sm:px-0"
         >
-          <ChevronLeft className="h-3.5 w-3.5" />
+          <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.75} />
           {backLabel}
         </Link>
       )}

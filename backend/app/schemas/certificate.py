@@ -9,7 +9,10 @@ class CertificateResponse(BaseModel):
 
     id: UUID
     user_id: UUID
-    course_id: str
+    # Nullable: the course this certificate was issued for may have been
+    # deleted. ``archived_course_title`` preserves the title for verification.
+    course_id: str | None = None
+    archived_course_title: str | None = None
     issued_at: datetime | None = None
     certificate_number: str | None = None
     status: str = "pending"

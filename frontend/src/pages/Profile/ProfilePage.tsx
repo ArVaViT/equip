@@ -14,10 +14,11 @@ import { storageService } from "@/services/storage"
 import { coursesService } from "@/services/courses"
 import { makeProfileSchema } from "@/lib/validations/course"
 import { toProxyImage } from "@/lib/images"
-import { formatDate } from "@/i18n/format"
+import { ROLE_I18N_KEY } from "@/lib/roles"
+import { formatDateLong } from "@/i18n/format"
 import { toast } from "@/lib/toast"
 import {
-  User as UserIcon, Mail, Shield, Calendar, Camera, Globe,
+  User as UserIcon, Mail, Calendar, Camera, Globe,
   Loader2, Award, BookOpen, ArrowRight, LogOut, Moon, Sun,
 } from "lucide-react"
 
@@ -143,7 +144,7 @@ export default function ProfilePage() {
                 {user.avatar_url ? (
                   <img
                     src={toProxyImage(user.avatar_url)}
-                    alt={`${user.full_name ?? "User"} avatar`}
+                    alt={t("profile.avatarAlt", { name: user.full_name ?? user.email })}
                     loading="lazy"
                     className="h-20 w-20 rounded-full border border-border object-cover ring-2 ring-background"
                   />
@@ -174,17 +175,20 @@ export default function ProfilePage() {
                 />
               </div>
               <div className="min-w-0 flex-1 space-y-0.5">
+                {/* The user's full name doubles as the page's h1 — every
+                    profile is "about this person", so their name is the
+                    natural document heading. Sub-cards below use CardTitle. */}
                 <InlineEdit
-                  size="h2"
+                  size="h1"
                   value={user.full_name ?? ""}
                   onSave={handleSaveName}
                   required
                   maxLength={150}
                   placeholder={t("profile.fullName")}
                   ariaLabel={t("profile.editName")}
-                  textClassName="tracking-tight"
+                  textClassName="text-xl md:text-2xl tracking-tight"
                 />
-                <CardDescription className="text-sm capitalize">{user.role}</CardDescription>
+                <CardDescription className="text-sm">{t(ROLE_I18N_KEY[user.role])}</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -248,24 +252,13 @@ export default function ProfilePage() {
                   <dd className="text-sm font-medium">{user.email}</dd>
                 </div>
               </div>
-              <div className="flex items-start gap-3 px-4 py-3">
-                <Shield className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
-                <div>
-                  <dt className="text-xs text-muted-foreground">{t("profile.role")}</dt>
-                  <dd className="text-sm font-medium capitalize">{user.role}</dd>
-                </div>
-              </div>
               {user.created_at && (
                 <div className="flex items-start gap-3 px-4 py-3">
                   <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
                   <div>
                     <dt className="text-xs text-muted-foreground">{t("profile.memberSince")}</dt>
                     <dd className="text-sm font-medium">
-                      {formatDate(user.created_at, {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
+                      {formatDateLong(user.created_at)}
                     </dd>
                   </div>
                 </div>

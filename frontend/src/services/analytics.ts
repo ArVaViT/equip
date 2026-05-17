@@ -1,5 +1,5 @@
 import api from "./api"
-import { cacheGet, cacheSet } from "@/lib/cache"
+import { cached, CACHE_TTL } from "@/lib/cache"
 
 interface CourseAnalyticsEnrollment {
   enrollment_id: string
@@ -21,11 +21,9 @@ interface CourseAnalytics {
 
 export const analyticsService = {
   async getCourseAnalyticsAPI(courseId: string): Promise<CourseAnalytics> {
-    const key = `analytics:course:${courseId}`
-    const cached = cacheGet<CourseAnalytics>(key)
-    if (cached) return cached
-    const response = await api.get<CourseAnalytics>(`/analytics/course/${courseId}`)
-    cacheSet(key, response.data, 30 * 1000)
-    return response.data
+    return cached(`analytics:course:${courseId}`, CACHE_TTL.THIRTY_SECONDS, async () => {
+      const response = await api.get<CourseAnalytics>(`/analytics/course/${courseId}`)
+      return response.data
+    })
   },
 }

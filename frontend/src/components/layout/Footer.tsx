@@ -2,15 +2,15 @@ import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Mail } from "lucide-react"
 import { useAuth } from "@/context/useAuth"
-
-const SUPPORT_EMAIL = "support@bibleschool.com"
+import { SUPPORT_EMAIL } from "@/lib/brand"
+import { ROLES } from "@/types"
 
 export default function Footer() {
   const { t } = useTranslation()
   const { user } = useAuth()
   const year = new Date().getFullYear()
-  const showTeacherDashboard = user?.role === "teacher" || user?.role === "admin"
-  const isAdmin = user?.role === "admin"
+  const showTeacherDashboard = user?.role === ROLES.TEACHER || user?.role === ROLES.ADMIN
+  const isAdmin = user?.role === ROLES.ADMIN
 
   const linkClass =
     "text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"

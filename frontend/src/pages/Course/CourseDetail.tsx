@@ -8,6 +8,7 @@ import { coursesService } from "@/services/courses"
 import { storageService } from "@/services/storage"
 import { useAuth } from "@/context/useAuth"
 import { toast } from "@/lib/toast"
+import { ROLES } from "@/types"
 import type {
   CalendarEvent,
   Certificate,
@@ -125,7 +126,7 @@ export default function CourseDetail() {
     return (
       <div className="container mx-auto px-4">
         <ErrorState
-          icon={<BookOpen />}
+          icon={<BookOpen strokeWidth={1.75} />}
           title={error ?? t("toast.courseNotFound")}
           action={
             <Link to="/">
@@ -139,7 +140,7 @@ export default function CourseDetail() {
     )
   }
 
-  const isOwner = user?.id === course.created_by || user?.role === "admin"
+  const isOwner = user?.id === course.created_by || user?.role === ROLES.ADMIN
   const sortedModules = [...(course.modules ?? [])].sort((a, b) => {
     const da = a.due_date ? new Date(a.due_date).getTime() : Infinity
     const db = b.due_date ? new Date(b.due_date).getTime() : Infinity

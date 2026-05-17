@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
@@ -34,7 +34,16 @@ class AuditLogPage(BaseModel):
     page_size: int
 
 
-@router.get("", response_model=AuditLogPage)
+@router.get(
+    "",
+    response_model=AuditLogPage,
+    summary="Paginated audit log query (admin-only)",
+    responses={
+        200: {"description": "Paginated audit-log rows matching the filters"},
+        400: {"description": "Malformed ``user_id`` (not a UUID)"},
+        403: {"description": "Caller is not an admin"},
+    },
+)
 def list_audit_logs(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
@@ -46,10 +55,32 @@ def list_audit_logs(
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> dict:
+    """Read the audit log. Every write that goes through ``log_action``
+    leaves a row here; this endpoint is how admins reconstruct
+    timelines for incident response or just routine sanity checks.
+
+    Filters are AND-combined: passing both ``action=create`` and
+    ``resource_type=course`` returns only course-create rows. Date
+    filters are inclusive on both ends. The default ``page_size`` of
+    50 matches the admin UI; the 200 cap exists to protect against an
+    inadvertent ``page_size=999999`` that would page the whole table
+    into memory.
+    """
     q = db.query(AuditLog)
 
     if user_id:
-        q = q.filter(AuditLog.user_id == user_id)
+        # The column is a typed UUID; a malformed query-string value
+        # would raise ``invalid input syntax for type uuid`` from
+        # Postgres and surface as a 500. Validate up-front and 400
+        # so clients get an actionable error.
+        try:
+            parsed_user_id = UUID(user_id)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="user_id must be a valid UUID",
+            ) from exc
+        q = q.filter(AuditLog.user_id == parsed_user_id)
     if resource_type:
         q = q.filter(AuditLog.resource_type == resource_type)
     if action:

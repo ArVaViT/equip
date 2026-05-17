@@ -88,7 +88,7 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
         onClick={onToggle}
         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
-        <Archive className="h-4 w-4" />
+        <Archive className="h-4 w-4" strokeWidth={1.75} />
         {visible
           ? t("teacherDashboard.trash.hide")
           : t("teacherDashboard.trash.show")}
@@ -124,7 +124,7 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
                         onClick={() => handleRestore(course.id)}
                         disabled={restoringId === course.id}
                       >
-                        <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                        <RotateCcw className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
                         {t("teacherDashboard.trash.restore")}
                       </Button>
                       <Button
@@ -132,7 +132,7 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
                         variant="destructive"
                         onClick={() => handlePermanentDelete(course.id)}
                       >
-                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
                         {t("teacherDashboard.trash.deleteForever")}
                       </Button>
                     </div>

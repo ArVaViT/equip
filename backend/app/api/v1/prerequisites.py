@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_teacher, verify_course_owner
 from app.core.database import get_db
-from app.models.course import Course
+from app.models.course import Course, CourseStatus
 from app.models.prerequisite import CoursePrerequisite
 from app.models.user import User, UserRole
 from app.schemas.locale import LocaleCode, normalize_locale
@@ -82,7 +82,7 @@ def get_prerequisites(
 
     is_admin = current_user.role == UserRole.ADMIN.value
     is_owner = str(course.created_by) == str(current_user.id)
-    is_published = getattr(course, "status", None) == "published"
+    is_published = getattr(course, "status", None) == CourseStatus.PUBLISHED
     if not (is_admin or is_owner or is_published):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
 

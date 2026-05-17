@@ -195,6 +195,132 @@ class TestListCohortsForCourse:
         assert names == ["One"]
 
 
+class TestListAllCohorts:
+    """``GET /cohorts`` — admin-wide list with optional status filter."""
+
+    def test_empty_admin_list(self, admin_client: TestClient):
+        resp = admin_client.get(COHORT_PREFIX)
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_returns_all_cohorts_ordered_by_start_date_desc(self, admin_client: TestClient, db: Session):
+        _seed_course(db)
+        older = NOW - timedelta(days=30)
+        newer = NOW - timedelta(days=5)
+        _seed_cohort_with_course(db, name="Older", start_date=older)
+        _seed_cohort_with_course(db, name="Newer", start_date=newer)
+
+        resp = admin_client.get(COHORT_PREFIX)
+        assert resp.status_code == 200
+        names = [c["name"] for c in resp.json()]
+        assert names == ["Newer", "Older"]
+
+    def test_status_filter_returns_only_matching(self, admin_client: TestClient, db: Session):
+        _seed_course(db)
+        _seed_cohort_with_course(db, name="Upcoming One", status="upcoming")
+        _seed_cohort_with_course(db, name="Active One", status="active")
+        _seed_cohort_with_course(db, name="Completed One", status="completed")
+
+        resp = admin_client.get(COHORT_PREFIX, params={"status": "active"})
+        assert resp.status_code == 200
+        names = [c["name"] for c in resp.json()]
+        assert names == ["Active One"]
+
+    def test_serializes_course_ids_and_student_count(self, admin_client: TestClient, db: Session, student):
+        _seed_course(db, course_id="c-1")
+        _seed_course(db, course_id="c-2")
+        cohort = _seed_cohort_with_course(db, course_id="c-1", name="N")
+        # Attach second course + enrol the student in both.
+        db.add(CohortCourse(cohort_id=cohort.id, course_id="c-2"))
+        _seed_enrollment(db, course_id="c-1", cohort_id=cohort.id)
+        _seed_enrollment(db, course_id="c-2", cohort_id=cohort.id)
+        db.commit()
+
+        resp = admin_client.get(COHORT_PREFIX)
+        body = resp.json()
+        assert len(body) == 1
+        # student_count counts DISTINCT users — one student in two courses = 1.
+        assert body[0]["student_count"] == 1
+        assert set(body[0]["course_ids"]) == {"c-1", "c-2"}
+
+    def test_teacher_cannot_list(self, client: TestClient):
+        resp = client.get(COHORT_PREFIX)
+        assert resp.status_code == 403
+
+    def test_student_cannot_list(self, student_client: TestClient):
+        resp = student_client.get(COHORT_PREFIX)
+        assert resp.status_code == 403
+
+
+class TestGetCohort:
+    """``GET /cohorts/{id}`` — single-fetch with computed course_ids +
+    student_count."""
+
+    def test_admin_gets_cohort_with_computed_fields(self, admin_client: TestClient, db: Session, student):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db, name="Spring")
+        _seed_enrollment(db, course_id="test-course-1", cohort_id=cohort.id)
+
+        resp = admin_client.get(f"{COHORT_PREFIX}/{cohort.id}")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["name"] == "Spring"
+        assert body["course_ids"] == ["test-course-1"]
+        assert body["student_count"] == 1
+
+    def test_nonexistent_returns_404(self, admin_client: TestClient):
+        resp = admin_client.get(f"{COHORT_PREFIX}/{uuid.uuid4()}")
+        assert resp.status_code == 404
+
+    def test_teacher_cannot_get(self, client: TestClient, db: Session):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        resp = client.get(f"{COHORT_PREFIX}/{cohort.id}")
+        assert resp.status_code == 403
+
+    def test_student_cannot_get(self, student_client: TestClient, db: Session):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        resp = student_client.get(f"{COHORT_PREFIX}/{cohort.id}")
+        assert resp.status_code == 403
+
+
+class TestListCohortCourses:
+    """``GET /cohorts/{id}/courses`` — plain list[str] junction reader."""
+
+    def test_returns_attached_course_ids(self, admin_client: TestClient, db: Session):
+        _seed_course(db, course_id="c-A")
+        _seed_course(db, course_id="c-B")
+        cohort = _seed_cohort_with_course(db, course_id="c-A")
+        db.add(CohortCourse(cohort_id=cohort.id, course_id="c-B"))
+        db.commit()
+
+        resp = admin_client.get(f"{COHORT_PREFIX}/{cohort.id}/courses")
+        assert resp.status_code == 200
+        assert set(resp.json()) == {"c-A", "c-B"}
+
+    def test_empty_when_no_courses_attached(self, admin_client: TestClient, db: Session):
+        # Cohort with no junction rows
+        cohort = Cohort(name="Empty", start_date=NOW, end_date=NEXT_WEEK)
+        db.add(cohort)
+        db.commit()
+        db.refresh(cohort)
+
+        resp = admin_client.get(f"{COHORT_PREFIX}/{cohort.id}/courses")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_nonexistent_cohort_returns_404(self, admin_client: TestClient):
+        resp = admin_client.get(f"{COHORT_PREFIX}/{uuid.uuid4()}/courses")
+        assert resp.status_code == 404
+
+    def test_teacher_cannot_list(self, client: TestClient, db: Session):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        resp = client.get(f"{COHORT_PREFIX}/{cohort.id}/courses")
+        assert resp.status_code == 403
+
+
 class TestCreateCohort:
     """``POST /cohorts`` — admin-only, creates an empty cohort. Courses
     and students are attached separately."""
@@ -249,6 +375,73 @@ class TestUpdateCohort:
         cohort = _seed_cohort_with_course(db)
         resp = client.patch(f"{COHORT_PREFIX}/{cohort.id}", json={"name": "Hacked"})
         assert resp.status_code == 403
+
+
+class TestCohortStateMachine:
+    """Cohort lifecycle is forward-only: ``upcoming → active → completed``.
+    Verify the patch endpoint blocks status regressions out of completed."""
+
+    def test_cannot_reopen_completed_cohort(self, admin_client: TestClient, db: Session):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db, status="completed")
+        resp = admin_client.patch(f"{COHORT_PREFIX}/{cohort.id}", json={"status": "active"})
+        assert resp.status_code == 400
+        assert "completed" in resp.json()["detail"].lower()
+
+    def test_cannot_revert_completed_to_upcoming(self, admin_client: TestClient, db: Session):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db, status="completed")
+        resp = admin_client.patch(f"{COHORT_PREFIX}/{cohort.id}", json={"status": "upcoming"})
+        assert resp.status_code == 400
+
+    def test_can_patch_other_fields_on_completed_cohort(self, admin_client: TestClient, db: Session):
+        # Status guard must not block name / metadata edits on a completed cohort.
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db, status="completed")
+        resp = admin_client.patch(f"{COHORT_PREFIX}/{cohort.id}", json={"name": "Renamed"})
+        assert resp.status_code == 200
+
+
+class TestCohortDateValidation:
+    """``CohortCreate`` enforces ``enrollment_start ≤ enrollment_end ≤
+    start_date < end_date`` so a malformed window never reaches the DB."""
+
+    def test_end_before_start_rejected(self, admin_client: TestClient):
+        resp = admin_client.post(
+            COHORT_PREFIX,
+            json=_cohort_payload(end_date=(NOW - timedelta(days=1)).isoformat()),
+        )
+        assert resp.status_code == 422
+
+    def test_enrollment_end_before_start_rejected(self, admin_client: TestClient):
+        resp = admin_client.post(
+            COHORT_PREFIX,
+            json=_cohort_payload(
+                enrollment_start=NOW.isoformat(),
+                enrollment_end=(NOW - timedelta(hours=1)).isoformat(),
+            ),
+        )
+        assert resp.status_code == 422
+
+    def test_enrollment_end_after_cohort_start_rejected(self, admin_client: TestClient):
+        resp = admin_client.post(
+            COHORT_PREFIX,
+            json=_cohort_payload(
+                enrollment_start=NOW.isoformat(),
+                enrollment_end=(NOW + timedelta(days=10)).isoformat(),
+                start_date=(NOW + timedelta(days=1)).isoformat(),
+            ),
+        )
+        assert resp.status_code == 422
+
+    def test_add_student_rejects_malformed_email(self, admin_client: TestClient, db: Session):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        resp = admin_client.post(
+            f"{COHORT_PREFIX}/{cohort.id}/students",
+            json={"email": "not-an-email"},
+        )
+        assert resp.status_code == 422
 
 
 class TestDeleteCohort:
@@ -348,6 +541,46 @@ class TestDetachCourse:
         resp = admin_client.delete(f"{COHORT_PREFIX}/{cohort_resp.json()['id']}/courses/test-course-1")
         assert resp.status_code == 204
 
+    def test_re_attach_after_detach_rebinds_orphaned_enrollments(self, admin_client: TestClient, db: Session, student):
+        # Same silent-failure bug as TestRemoveStudent.test_re_add_…,
+        # surfacing through the course junction this time. The student
+        # must stay a cohort member (via a second course) so the
+        # auto-enroll branch fires on re-attach; otherwise re-attach has
+        # no auto-enroll target and the orphan question is moot.
+        # Before the fix, the auto-enroll INSERT collided on the
+        # deterministic PK ``enr-{cohort}-{user}-{course}`` left over from
+        # the previous attach, the IntegrityError was swallowed, and the
+        # student stayed stranded on the re-attached course.
+        _seed_course(db, course_id="course-1")
+        _seed_course(db, course_id="course-2")
+        cohort = _seed_cohort_with_course(db, course_id="course-1")
+        _attach_course_via_junction(db, cohort.id, "course-2")
+        # Student is enrolled in BOTH courses through the cohort.
+        _seed_enrollment(db, course_id="course-1", cohort_id=cohort.id)
+        _seed_enrollment(db, course_id="course-2", cohort_id=cohort.id)
+
+        # Detach course-1 → that one enrollment's cohort_id becomes NULL.
+        resp = admin_client.delete(f"{COHORT_PREFIX}/{cohort.id}/courses/course-1")
+        assert resp.status_code == 204
+        orphan = db.query(Enrollment).filter(Enrollment.user_id == STUDENT_ID, Enrollment.course_id == "course-1").one()
+        assert orphan.cohort_id is None
+
+        # Re-attach course-1. The student is still a cohort member via
+        # course-2, so they're in ``all_cohort_users`` and the auto-enroll
+        # loop runs for them. Must rebind the orphan, not no-op.
+        resp = admin_client.post(f"{COHORT_PREFIX}/{cohort.id}/courses", json={"course_id": "course-1"})
+        assert resp.status_code == 201
+
+        rebound = (
+            db.query(Enrollment).filter(Enrollment.user_id == STUDENT_ID, Enrollment.course_id == "course-1").one()
+        )
+        assert rebound.cohort_id == cohort.id
+        # No duplicate row was created.
+        assert (
+            db.query(Enrollment).filter(Enrollment.user_id == STUDENT_ID, Enrollment.course_id == "course-1").count()
+            == 1
+        )
+
 
 class TestAddStudent:
     def test_add_by_user_id_auto_enrolls_in_all_cohort_courses(self, admin_client: TestClient, db: Session, student):
@@ -404,6 +637,34 @@ class TestRemoveStudent:
         surviving = db.query(Enrollment).filter(Enrollment.user_id == STUDENT_ID).all()
         assert len(surviving) == 1
         assert surviving[0].cohort_id is None
+
+    def test_re_add_after_remove_rebinds_orphaned_enrollment(self, admin_client: TestClient, db: Session, student):
+        # Reproduces a silent-failure bug: ``add_student`` used to INSERT a
+        # row with the deterministic PK ``enr-{cohort}-{user}-{course}``,
+        # which collides with the orphaned row left behind by
+        # ``remove_student`` (the surviving row has ``cohort_id=NULL`` but
+        # the same PK). The IntegrityError was swallowed and the student
+        # was never actually re-attached to the cohort.
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        _seed_enrollment(db, course_id="test-course-1", cohort_id=cohort.id)
+
+        # Remove → row stays with cohort_id NULL.
+        resp = admin_client.delete(f"{COHORT_PREFIX}/{cohort.id}/students/{STUDENT_ID}")
+        assert resp.status_code == 204
+        assert (
+            db.query(Enrollment).filter(Enrollment.user_id == STUDENT_ID, Enrollment.cohort_id.is_(None)).count() == 1
+        )
+
+        # Re-add should rebind that orphaned row, not silently no-op.
+        resp = admin_client.post(f"{COHORT_PREFIX}/{cohort.id}/students", json={"user_id": str(STUDENT_ID)})
+        assert resp.status_code == 201
+
+        # Exactly one enrollment, now attached to the cohort.
+        all_rows = db.query(Enrollment).filter(Enrollment.user_id == STUDENT_ID).all()
+        assert len(all_rows) == 1
+        assert all_rows[0].cohort_id == cohort.id
+        assert all_rows[0].course_id == "test-course-1"
 
 
 class TestCohortStudents:
@@ -463,6 +724,151 @@ class TestCompleteCohort:
         cohort = _seed_cohort_with_course(db)
         resp = student_client.post(f"{COHORT_PREFIX}/{cohort.id}/complete")
         assert resp.status_code == 403
+
+
+class TestCohortWriteActionsAreAudited:
+    """Every admin-only cohort write surface must leave a paper trail.
+
+    Regression: ``cohorts.py`` previously skipped ``audit_service.log_action``
+    on create/delete/complete/attach_course/detach_course/add_student/
+    remove_student. Those are exactly the actions an external auditor
+    expects to inspect, so a missing audit row is a real compliance hole.
+    Cover all seven surfaces in one parameterised-ish test that asserts a
+    matching ``AuditLog`` row exists after each call.
+    """
+
+    @staticmethod
+    def _seed_user(db: Session, *, role: str = "student") -> "uuid.UUID":
+        from app.models.user import User
+
+        uid = uuid.uuid4()
+        db.add(User(id=uid, email=f"u-{uid}@example.com", full_name="Student", role=role))
+        db.commit()
+        return uid
+
+    def test_create_writes_audit_row(self, admin_client: TestClient, db: Session):
+        from app.models.audit_log import AuditLog
+
+        resp = admin_client.post(COHORT_PREFIX, json=_cohort_payload(name="Audited"))
+        assert resp.status_code == 201
+        cohort_id = resp.json()["id"]
+        row = (
+            db.query(AuditLog)
+            .filter(AuditLog.resource_type == "cohort", AuditLog.resource_id == cohort_id, AuditLog.action == "create")
+            .first()
+        )
+        assert row is not None
+        assert str(row.user_id) == str(ADMIN_ID)
+
+    def test_delete_writes_audit_row(self, admin_client: TestClient, db: Session):
+        from app.models.audit_log import AuditLog
+
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db, name="Doomed")
+        cohort_id = str(cohort.id)
+        resp = admin_client.delete(f"{COHORT_PREFIX}/{cohort_id}")
+        assert resp.status_code == 204
+        row = (
+            db.query(AuditLog)
+            .filter(AuditLog.resource_type == "cohort", AuditLog.resource_id == cohort_id, AuditLog.action == "delete")
+            .first()
+        )
+        assert row is not None
+
+    def test_complete_writes_audit_row(self, admin_client: TestClient, db: Session):
+        from app.models.audit_log import AuditLog
+
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        resp = admin_client.post(f"{COHORT_PREFIX}/{cohort.id}/complete")
+        assert resp.status_code == 200
+        row = (
+            db.query(AuditLog)
+            .filter(
+                AuditLog.resource_type == "cohort",
+                AuditLog.resource_id == str(cohort.id),
+                AuditLog.action == "complete",
+            )
+            .first()
+        )
+        assert row is not None
+
+    def test_attach_course_writes_audit_row(self, admin_client: TestClient, db: Session):
+        from app.models.audit_log import AuditLog
+
+        _seed_course(db, course_id="course-attach")
+        cohort = _seed_cohort_with_course(db, course_id="course-attach")
+        # Attach a second course
+        _seed_course(db, course_id="course-2")
+        resp = admin_client.post(f"{COHORT_PREFIX}/{cohort.id}/courses", json={"course_id": "course-2"})
+        assert resp.status_code == 201
+        row = (
+            db.query(AuditLog)
+            .filter(
+                AuditLog.resource_type == "cohort",
+                AuditLog.resource_id == str(cohort.id),
+                AuditLog.action == "attach_course",
+            )
+            .first()
+        )
+        assert row is not None
+
+    def test_detach_course_writes_audit_row(self, admin_client: TestClient, db: Session):
+        from app.models.audit_log import AuditLog
+
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        resp = admin_client.delete(f"{COHORT_PREFIX}/{cohort.id}/courses/test-course-1")
+        assert resp.status_code == 204
+        row = (
+            db.query(AuditLog)
+            .filter(
+                AuditLog.resource_type == "cohort",
+                AuditLog.resource_id == str(cohort.id),
+                AuditLog.action == "detach_course",
+            )
+            .first()
+        )
+        assert row is not None
+
+    def test_add_student_writes_audit_row(self, admin_client: TestClient, db: Session):
+        from app.models.audit_log import AuditLog
+
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        student_uuid = self._seed_user(db)
+        resp = admin_client.post(f"{COHORT_PREFIX}/{cohort.id}/students", json={"user_id": str(student_uuid)})
+        assert resp.status_code == 201
+        row = (
+            db.query(AuditLog)
+            .filter(
+                AuditLog.resource_type == "cohort",
+                AuditLog.resource_id == str(cohort.id),
+                AuditLog.action == "add_student",
+            )
+            .first()
+        )
+        assert row is not None
+
+    def test_remove_student_writes_audit_row(self, admin_client: TestClient, db: Session):
+        from app.models.audit_log import AuditLog
+
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        student_uuid = self._seed_user(db)
+        admin_client.post(f"{COHORT_PREFIX}/{cohort.id}/students", json={"user_id": str(student_uuid)})
+        resp = admin_client.delete(f"{COHORT_PREFIX}/{cohort.id}/students/{student_uuid}")
+        assert resp.status_code == 204
+        row = (
+            db.query(AuditLog)
+            .filter(
+                AuditLog.resource_type == "cohort",
+                AuditLog.resource_id == str(cohort.id),
+                AuditLog.action == "remove_student",
+            )
+            .first()
+        )
+        assert row is not None
 
 
 class TestSoloEnrollmentAccessMode:
@@ -593,6 +999,30 @@ class TestCreateCourseEvent:
             json={"event_date": TOMORROW.isoformat()},
         )
         assert resp.status_code == 422
+
+    def test_create_strips_script_tag_from_title_and_description(self, client: TestClient):
+        """Regression: ``create_course_event`` must run user-supplied title /
+        description through ``sanitize_string`` so a direct API caller can't
+        store ``<script>`` or other dangerous markup that would later render
+        verbatim in the calendar or course-event list. The frontend already
+        sanitises before POSTing, but server-side is the defence-in-depth
+        layer — same shape as ``announcements.create``."""
+        course = _create_course_via_api(client)
+        resp = client.post(
+            f"{COURSES_PREFIX}/{course['id']}/events",
+            json=_event_payload(
+                title='Exam <script>alert(1)</script> <img src=x onerror="x()"> Time',
+                description='Be ready<a href="javascript:steal()">x</a>.',
+            ),
+        )
+        assert resp.status_code == 201
+        body = resp.json()
+        # The sanitiser drops ``<script>`` tags, on* event handlers, and
+        # javascript: URLs — that's the XSS-execution surface. Visible
+        # plain text the user typed around the tags is preserved.
+        assert "<script>" not in body["title"]
+        assert "onerror" not in body["title"]
+        assert "javascript:" not in body["description"]
 
 
 class TestListCourseEvents:
@@ -963,6 +1393,29 @@ class TestCreateAnnouncement:
         resp = client.post(
             ANNOUNCEMENT_PREFIX,
             json=_announcement_payload(course_id="nonexistent-course"),
+        )
+        assert resp.status_code == 404
+
+    def test_create_for_soft_deleted_course_returns_404(self, client: TestClient, db: Session):
+        """A teacher who's already trashed a course cannot post an
+        announcement to it. The course is gone from every catalog
+        surface, but enrollments persist (so a fan-out would still hit
+        every student) and the announcement would link to content the
+        student can no longer reach. Treat the trashed course as
+        not-found, matching every other ``Course.deleted_at IS NULL``
+        gate elsewhere in the API.
+        """
+        course = _create_course_via_api(client)
+        # Soft-delete the course directly so we don't depend on the
+        # delete-course endpoint's exact response shape.
+        row = db.query(Course).filter(Course.id == course["id"]).first()
+        assert row is not None
+        row.deleted_at = NOW
+        db.commit()
+
+        resp = client.post(
+            ANNOUNCEMENT_PREFIX,
+            json=_announcement_payload(course_id=course["id"]),
         )
         assert resp.status_code == 404
 

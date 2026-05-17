@@ -27,8 +27,19 @@ class Settings(BaseSettings):
         "https://equipbible.com,https://www.equipbible.com,"
         "https://equip-frontend.vercel.app"
     )
+    # Anchored to the Vercel team slug ``vadyms-projects-dfb6f76f``. The
+    # previous pattern (``equip-frontend(?:-[\w-]+)?\.vercel\.app``) would
+    # match any ``equip-frontend-X.vercel.app`` URL, including projects
+    # owned by other Vercel accounts -- an attacker could create
+    # ``equip-frontend-evil.vercel.app`` under their own team and trick
+    # the browser into a same-origin context against our backend with
+    # ``allow_credentials=True``. Locking the suffix to our team slug
+    # closes that hole. The bare ``equip-frontend.vercel.app`` alias is
+    # also allowed because Vercel keeps the canonical project URL as a
+    # team-agnostic redirect.
     CORS_ORIGIN_REGEX: str = (
-        r"^https://equip-frontend(?:-[\w-]+)?\.vercel\.app$"
+        r"^https://equip-frontend(?:-[\w-]+)?-vadyms-projects-dfb6f76f\.vercel\.app$"
+        r"|^https://equip-frontend\.vercel\.app$"
         r"|^https://(?:www\.)?equipbible\.com$"
         r"|^http://localhost:\d+$"
     )

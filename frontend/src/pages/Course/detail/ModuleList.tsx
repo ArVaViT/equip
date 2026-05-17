@@ -128,8 +128,11 @@ function ModuleRow({
             </span>
           </CardTitle>
           {!isLocked && (
-            <Link to={`/courses/${courseId}/modules/${module.id}`}>
-              <Button variant="ghost" size="sm" className="h-7 text-xs shrink-0">
+            <Link
+              to={`/courses/${courseId}/modules/${module.id}`}
+              className="-my-2 inline-flex shrink-0 sm:my-0"
+            >
+              <Button variant="ghost" size="sm" className="h-11 text-xs sm:h-7">
                 {t("courseDetail.openModule")}
                 <ArrowRight className="ml-1 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
               </Button>
@@ -158,7 +161,7 @@ function ModuleRow({
           const overdue = dueDate < now && !allComplete
           return (
             <div
-              className={`ml-8 mt-1 flex items-center gap-1 text-[11px] ${
+              className={`ml-8 mt-1 flex items-center gap-1 text-xs ${
                 overdue ? "text-destructive" : "text-muted-foreground"
               }`}
             >
