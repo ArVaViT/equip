@@ -203,7 +203,7 @@ export function NotEnrolledView({
               onClick={handleEnrollClick}
               disabled={enrolling || !canEnroll}
               size="lg"
-              variant="outline"
+              variant="secondary"
             >
               <Users className="mr-2 h-4 w-4" strokeWidth={1.75} aria-hidden />
               {!canEnroll
