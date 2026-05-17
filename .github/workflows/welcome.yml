@@ -1,0 +1,51 @@
+name: Welcome new contributors
+
+# Posts a friendly orientation comment the first time someone opens an
+# issue or pull request in this repo. Helps new contributors land on the
+# template + AGENTS.md without having to dig.
+#
+# Uses `pull_request_target` so the comment can be posted even from
+# forked PRs. We do NOT check out PR head code here — the action only
+# posts a comment via the GitHub API.
+
+on:
+  pull_request_target:
+    types: [opened]
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  greet:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Greet first-time contributor
+        uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+          issue-message: |
+            Welcome to Equip 🌱 — thanks for opening your first issue here.
+
+            A few things that help us help you fast:
+
+            - **Bugs:** include reproduction steps and the expected behavior. A screenshot or browser console snippet goes a long way.
+            - **Feature requests:** mention the school / ministry context — what are you trying to do that Equip is making hard?
+            - **Looking for something to work on?** Filter the issue tracker by [`good first issue`](https://github.com/ArVaViT/equip/labels/good%20first%20issue) or [`help wanted`](https://github.com/ArVaViT/equip/labels/help%20wanted). Comment on any of them to claim it.
+
+            A maintainer will respond within a few days. If it's something time-sensitive (security, broken production), please follow the disclosure path in [SECURITY.md](https://github.com/ArVaViT/equip/blob/main/SECURITY.md) or email arvavitcorp@gmail.com directly.
+
+          pr-message: |
+            Thanks for your first pull request to Equip 🎉
+
+            Quick checklist while CI runs:
+
+            - **PR template filled out?** Summary, type of change, AI-assistance disclosure, and the per-area checklist.
+            - **Local lint and tests passing?** `npm run lint && npm run test:run` for frontend; `ruff check . && mypy app/ && python -m pytest tests/` for backend.
+            - **Used an AI coding assistant?** Please credit the tool with a `Co-Authored-By:` trailer for transparency — see [`AGENTS.md`](https://github.com/ArVaViT/equip/blob/main/AGENTS.md) for the convention. (Not a gate — PRs aren't rejected for missing trailers, we just want the history to be honest.)
+            - **CI red?** Open the failing job, look at the bottom of the log, and iterate. Happy to help if you get stuck — comment on this PR and a maintainer will jump in.
+
+            We'll review within a few days.
