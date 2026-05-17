@@ -1,5 +1,43 @@
-import { datadogRum } from "@datadog/browser-rum"
+import { datadogRum, type RumEvent } from "@datadog/browser-rum"
 import { reactPlugin } from "@datadog/browser-rum-react"
+
+/**
+ * CSP-Report-Only violations RUM forwards to Datadog as ``@type:error``
+ * events. Most are real config drift we want to see; a few signatures
+ * are *structurally* benign and just inflate the error-rate panel:
+ *
+ *   1. **Zod 4 feature-detect** — at module load Zod runs
+ *      ``try { Function(""); return true } catch { return false }`` to
+ *      probe whether the runtime supports ``new Function()`` for schema
+ *      compilation. The probe is wrapped in try/catch so it never
+ *      breaks; CSP ``script-src 'self'`` (no ``'unsafe-eval'``) reports
+ *      it anyway. We'd rather keep CSP strict than whitelist eval to
+ *      silence the probe — the trade-off is a known-benign error
+ *      signature, which we filter here.
+ *
+ *   2. **Vercel preview-comments overlay** (``vercel.live``) — Vercel
+ *      injects the feedback toolbar on deployments **for the project
+ *      owner** (not anonymous users). The toolbar loads ``geist.woff2``
+ *      and ``geist_mono.woff2`` from ``vercel.live`` and trips
+ *      ``font-src`` / ``script-src``. Real visitors don't see this;
+ *      it's noise from owner browsing. Filtering it keeps the panel
+ *      honest without adding ``vercel.live`` to every CSP directive.
+ *
+ * Real CSP violations from our own assets still come through.
+ */
+export function isBenignCspViolation(event: RumEvent): boolean {
+  if (event.type !== "error") return false
+  const err = (event as RumEvent & { error?: { message?: string; stack?: string } }).error
+  if (!err) return false
+  const message = err.message ?? ""
+  const stack = err.stack ?? ""
+  if (!message.includes("csp_violation")) return false
+  // Zod schemas chunk feature-detect — try/catch protected, no behavior change.
+  if (stack.includes("/assets/schemas-")) return true
+  // Vercel preview-comments overlay — only loads for the project owner.
+  if (stack.includes("vercel.live") || message.includes("vercel.live")) return true
+  return false
+}
 
 // Datadog RUM is opt-in: if the applicationId / clientToken aren't set we
 // skip init entirely so local builds don't ship events to a dashboard nobody
@@ -74,6 +112,12 @@ export function initDatadogRum() {
     // "/courses/abc-uuid" and "/courses/def-uuid" aggregate into the
     // same view in dashboards.
     plugins: [reactPlugin({ router: true })],
+
+    // Drop known-benign CSP-Report-Only violation events client-side
+    // (see ``isBenignCspViolation`` for the signatures + rationale).
+    // Returning ``false`` here prevents the event from being sent to
+    // Datadog; everything else passes through unchanged.
+    beforeSend: (event) => !isBenignCspViolation(event),
   })
 }
 
