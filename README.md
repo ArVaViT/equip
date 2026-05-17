@@ -22,12 +22,19 @@
   <a href="https://github.com/ArVaViT/equip/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22">
     <img src="https://img.shields.io/github/issues/ArVaViT/equip/good%20first%20issue?style=flat-square&color=7057ff&label=good%20first%20issues" alt="Good first issues" />
   </a>
+  <a href="https://app.codecov.io/gh/ArVaViT/equip">
+    <img src="https://img.shields.io/codecov/c/github/ArVaViT/equip?style=flat-square&label=coverage" alt="Code coverage" />
+  </a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/ArVaViT/equip">
+    <img src="https://img.shields.io/ossf-scorecard/github.com/ArVaViT/equip?style=flat-square&label=openssf%20scorecard" alt="OpenSSF Scorecard" />
+  </a>
 </p>
 
 <p align="center">
   <a href="https://equipbible.com">Live demo</a> &middot;
   <a href="ROADMAP.md">Roadmap</a> &middot;
   <a href="CONTRIBUTING.md">Contributing</a> &middot;
+  <a href="SUPPORT.md">Support</a> &middot;
   <a href="CHANGELOG.md">Changelog</a>
 </p>
 
@@ -261,6 +268,7 @@ There are great LMS options out there. Equip exists in a specific gap they don't
 
 - [GitHub Discussions](https://github.com/ArVaViT/equip/discussions) — questions, ideas, show & tell
 - [Issue tracker](https://github.com/ArVaViT/equip/issues) — bug reports and feature requests
+- [Support](SUPPORT.md) — how to get help, response times, the right channel for each kind of question
 - [Changelog](CHANGELOG.md) — what's new in each release
 - [Security policy](SECURITY.md) — how to report vulnerabilities
 
