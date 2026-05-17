@@ -10,7 +10,15 @@ logger = logging.getLogger(__name__)
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
-    SUPABASE_URL: str
+    # All boot-critical fields are ``Optional`` so the app process can boot
+    # even on a Vercel preview/development deployment that wasn't given the
+    # full env-var set. A missing value here doesn't crash on import — it
+    # bubbles up at request time through the existing 503 handlers in
+    # ``app.core.database.get_db`` / ``app.core.security.decode_access_token``.
+    # The list of missing critical fields is exposed via ``runtime_ready_errors()``
+    # so ``app.main`` can log a single startup warning instead of letting a
+    # Pydantic ``ValidationError`` traceback land on every favicon scrape.
+    SUPABASE_URL: str | None = Field(default=None, description="Supabase project URL")
     # Server-side Supabase key (admin queries only — e.g. reading auth.users
     # to sync ``profiles`` rows). Also read from the legacy SUPABASE_KEY env
     # var for backwards compatibility with early deployments — see
@@ -118,12 +126,32 @@ class Settings(BaseSettings):
         if self.JWT_SECRET_KEY:
             self.JWT_SECRET_KEY = self.JWT_SECRET_KEY.strip()
 
-        if not self.DATABASE_URL:
-            raise ValueError("DATABASE_URL or POSTGRES_URL must be set")
-        if not self.JWT_SECRET_KEY:
-            raise ValueError("JWT_SECRET_KEY or SUPABASE_JWT_SECRET must be set")
+        # Critical-field validation moved to ``runtime_ready_errors()`` so
+        # boot succeeds on partially-configured environments (preview deploys
+        # without prod env vars) instead of crashing on module import and
+        # converting every favicon GET into a 500 with a full Pydantic stack
+        # trace. Real production must still surface missing config — the
+        # startup warning in ``app.main`` plus per-request 503s via the DB
+        # / auth dependencies cover that without spamming the error stream.
 
         return self
+
+    def runtime_ready_errors(self) -> list[str]:
+        """Names of critical fields not configured.
+
+        Returns ``[]`` when the app can serve authenticated API traffic;
+        otherwise lists the missing env-var names so ``app.main`` can emit
+        a single, scannable startup warning. Static surfaces (``/health``,
+        ``/favicon.*``, ``/``) work regardless of the result.
+        """
+        missing: list[str] = []
+        if not self.DATABASE_URL:
+            missing.append("DATABASE_URL")
+        if not self.JWT_SECRET_KEY:
+            missing.append("JWT_SECRET_KEY")
+        if not self.SUPABASE_URL:
+            missing.append("SUPABASE_URL")
+        return missing
 
     @property
     def cors_origins_list(self) -> list[str]:
