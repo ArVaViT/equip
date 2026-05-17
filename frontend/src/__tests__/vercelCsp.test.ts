@@ -61,11 +61,20 @@ const REQUIRED_TOKENS: ReadonlyArray<string> = [
   "default-src 'self'",
   // Scripts only from same-origin -- no inline, no eval.
   "script-src 'self'",
-  // Datadog RUM intake (us5 and any region; the SDK builds the host
-  // dynamically). Anchored to a wildcard subdomain to avoid having to
-  // chase each region rename.
+  // Datadog RUM intake. Two host-naming patterns coexist:
+  //   - subdomain form: ``us5.browser-intake-datadoghq.com`` (matched by
+  //     the wildcard)
+  //   - flat single-host form: ``browser-intake-us5-datadoghq.com`` (NOT
+  //     a subdomain of datadoghq.com -- separate registered domain). The
+  //     RUM SDK uses the flat form for US5, so we need an explicit entry.
+  // Without the explicit US5 host, each RUM POST tripped a
+  // ``securitypolicyviolation`` event, the RUM SDK reported it back to
+  // Datadog as a frontend error, and the "RUM error spike" monitor
+  // alerted on Datadog being blocked by our CSP -- a feedback loop.
   "https://*.datadoghq.com",
   "https://*.browser-intake-datadoghq.com",
+  "https://browser-intake-us5-datadoghq.com",
+  "https://session-replay-us5-datadoghq.com",
   // Supabase project endpoint (auth + REST + realtime websocket).
   "https://rrisqutxlkamwfhcashl.supabase.co",
   "wss://rrisqutxlkamwfhcashl.supabase.co",
