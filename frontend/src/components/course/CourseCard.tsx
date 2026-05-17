@@ -13,17 +13,16 @@ interface CourseCardProps {
   style?: React.CSSProperties
 }
 
-type StatusKind = "open" | "opens" | "closed" | "institute" | null
+type StatusKind = "open" | "opens" | "closed" | "institute"
 interface Status {
-  kind: Exclude<StatusKind, null>
+  kind: StatusKind
   label: string
 }
 
-// Distill the access mode + enrollment window into one (label, tone) tuple
-// so the render path doesn't carry a conditional ladder. ``institute``
-// suppresses the enrollment-window check — invitation-only courses don't
-// expose a public window, and showing both would mis-signal "anyone can
-// enroll if they hurry".
+// (label, tone) resolution for the status eyebrow. ``institute`` shadows
+// the enrollment-window check — invitation-only courses don't surface a
+// public window, and "Opens Mar 5" on a private course would mis-signal
+// "anyone can enroll if they hurry".
 function resolveStatus(course: Course, t: TFunction): Status | null {
   if (course.access_mode === "institute") {
     return { kind: "institute", label: t("courseCard.byInvitation") }
@@ -41,24 +40,30 @@ function resolveStatus(course: Course, t: TFunction): Status | null {
   return { kind: "open", label: t("courseCard.enrollingNow") }
 }
 
-// Dot + colored label instead of a filled pill. The filled-pill variant
-// reads as a marketing tag (Sale, New, etc.); dot + label reads as a
-// status indicator -- the modern Linear / Vercel pattern. Tones map
-// 1:1 to our semantic CSS tokens so dark-mode parity is automatic.
-const STATUS_TONE: Record<Status["kind"], { dot: string; text: string }> = {
+// Tones map 1:1 to our semantic CSS tokens so dark-mode parity is
+// automatic. Dot + label (not a filled pill) so the status reads as a
+// status indicator rather than a marketing tag.
+const STATUS_TONE: Record<StatusKind, { dot: string; text: string }> = {
   open: { dot: "bg-success", text: "text-success" },
   opens: { dot: "bg-info", text: "text-info" },
   closed: { dot: "bg-destructive", text: "text-destructive" },
   institute: { dot: "bg-muted-foreground/60", text: "text-muted-foreground" },
 }
 
-function StatusIndicator({ status }: { status: Status }) {
+// The status now sits ABOVE the title as an editorial eyebrow — the
+// pattern DESIGN.md formalised for VerseOfTheDayCard and
+// CourseReadinessCard ("text-xs font-medium uppercase tracking-[0.18em]
+// text-muted-foreground"). The wide tracking is load-bearing: that's
+// what makes it read as an eyebrow rather than a shrunk body line.
+function StatusEyebrow({ status }: { status: Status }) {
   const tone = STATUS_TONE[status.kind]
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <p
+      className={`inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] ${tone.text}`}
+    >
       <span className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} aria-hidden />
-      <span className={tone.text}>{status.label}</span>
-    </span>
+      {status.label}
+    </p>
   )
 }
 
@@ -77,11 +82,11 @@ function CourseCard({ course, style }: CourseCardProps) {
       className="group block rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       <Card className="flex h-full flex-col overflow-hidden hover:border-primary/40">
-        {/* Cover band. 16:9 keeps the image a header strip, not a hero.
-            The gradient on the empty state gives image-less cards a real
-            designed surface instead of a flat muted block -- pre-fill
-            material was the most "placeholder-y" tell of the old card. */}
-        <div className="aspect-[16/9] w-full overflow-hidden bg-gradient-to-br from-muted to-muted/40">
+        {/* Cinematic 21:9 cover band — slimmer than the old 16:10 / 16:9
+            so the typography below gets the visual weight. Gradient bg
+            on the empty state turns the image-less card from "missing"
+            into "designed". */}
+        <div className="aspect-[21/9] w-full overflow-hidden bg-gradient-to-br from-muted to-muted/40">
           {hasImage ? (
             <img
               src={coverSrc}
@@ -94,7 +99,7 @@ function CourseCard({ course, style }: CourseCardProps) {
           ) : (
             <div className="flex h-full w-full items-center justify-center">
               <BookOpen
-                className="h-10 w-10 text-primary/25"
+                className="h-9 w-9 text-primary/25"
                 strokeWidth={1.5}
                 aria-hidden
               />
@@ -102,34 +107,34 @@ function CourseCard({ course, style }: CourseCardProps) {
           )}
         </div>
 
-        <div className="flex flex-1 flex-col gap-3 p-5">
-          {/* text-xl + font-medium on Fraunces: confident headline without
-              tipping into "marketing" territory. text-lg (the previous
-              size) read as a subhead next to the image and let the page
-              feel timid. font-semibold here makes Fraunces too heavy. */}
-          <h3 className="font-serif text-xl font-medium leading-snug tracking-tight text-foreground line-clamp-2 text-wrap-safe">
+        <div className="flex flex-1 flex-col gap-4 p-5">
+          {/* Status eyebrow above the title. When there's no status (no
+              enrollment window, public access mode), nothing reserves
+              its row — the title slides up against the cover. */}
+          {status && <StatusEyebrow status={status} />}
+
+          {/* The title is the focal point of the card. text-2xl Fraunces
+              medium with tight tracking reads as a confident editorial
+              headline; the previous text-lg / text-xl sat as a subhead
+              under the image. font-semibold on Fraunces is too heavy in
+              a list view — medium is the calibrated choice. */}
+          <h3 className="font-serif text-2xl font-medium leading-[1.15] tracking-tight text-foreground line-clamp-2 text-wrap-safe">
             {course.title}
           </h3>
+
           {course.description && (
-            <p className="text-sm leading-relaxed text-muted-foreground line-clamp-2 text-wrap-safe">
+            <p className="text-[15px] leading-relaxed text-muted-foreground line-clamp-2 text-wrap-safe">
               {course.description}
             </p>
           )}
 
-          {/* Meta row: modules count, middle-dot separator, status as a
-              colored dot + label. The whole row is one quiet line that
-              sits at the bottom of every card via mt-auto. flex-wrap so
-              a long localised status string ("Открывается 5 марта 2026")
-              breaks under the modules count rather than getting clipped. */}
-          <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 pt-2 text-xs text-muted-foreground">
-            <span>{t("courseCard.modulesLabel", { count: moduleCount })}</span>
-            {status && (
-              <>
-                <span aria-hidden className="text-muted-foreground/40">·</span>
-                <StatusIndicator status={status} />
-              </>
-            )}
-          </div>
+          {/* Single quiet line at the bottom: modules count only — the
+              status is the eyebrow above the title now, no need to
+              repeat it here. mt-auto pins this against the lower edge
+              so every card aligns across the grid. */}
+          <p className="mt-auto pt-2 text-xs text-muted-foreground">
+            {t("courseCard.modulesLabel", { count: moduleCount })}
+          </p>
         </div>
       </Card>
     </Link>
