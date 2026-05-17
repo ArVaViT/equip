@@ -1,69 +1,114 @@
 import { useState, memo } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import type { TFunction } from "i18next"
-import { Card } from "@/components/ui/card"
+import { motion, useReducedMotion } from "motion/react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import type { Course } from "@/types"
-import { BookOpen } from "lucide-react"
+import { BookOpen, ArrowRight } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import { formatDate } from "@/i18n/format"
+import { EDITORIAL_EASE } from "@/lib/motion"
 
 interface CourseCardProps {
   course: Course
   style?: React.CSSProperties
 }
 
-type StatusKind = "open" | "opens" | "closed" | "institute"
-interface Status {
-  kind: StatusKind
-  label: string
+type EnrollmentState = "opens" | "closed" | "open" | null
+
+function enrollmentState(start?: string | null, end?: string | null): { state: EnrollmentState; date?: Date } {
+  if (!start && !end) return { state: null }
+  const now = new Date()
+  const s = start ? new Date(start) : null
+  const e = end ? new Date(end) : null
+  if (s && now < s) return { state: "opens", date: s }
+  if (e && now > e) return { state: "closed" }
+  return { state: "open" }
 }
 
-// (label, tone) resolution for the inline status indicator.
-// ``institute`` shadows the enrollment-window check — invitation-only
-// courses don't surface a public window, and showing one would
-// mis-signal "anyone can enroll if they hurry".
-function resolveStatus(course: Course, t: TFunction): Status | null {
-  if (course.access_mode === "institute") {
-    return { kind: "institute", label: t("courseCard.byInvitation") }
+function EnrollmentBadge({ start, end }: { start?: string | null; end?: string | null }) {
+  const { t } = useTranslation()
+  const { state, date } = enrollmentState(start, end)
+  if (!state) return null
+  if (state === "opens") {
+    return (
+      <Badge variant="info" className="absolute right-3 top-3 z-10">
+        {t("courseCard.opensOn", { date: formatDate(date!) })}
+      </Badge>
+    )
   }
-  const start = course.enrollment_start
-  const end = course.enrollment_end
-  if (!start && !end) return null
-  const now = Date.now()
-  if (start && new Date(start).getTime() > now) {
-    return { kind: "opens", label: t("courseCard.opensOn", { date: formatDate(new Date(start)) }) }
+  if (state === "closed") {
+    return (
+      <Badge variant="destructive" className="absolute right-3 top-3 z-10">
+        {t("courseCard.enrollmentClosed")}
+      </Badge>
+    )
   }
-  if (end && new Date(end).getTime() < now) {
-    return { kind: "closed", label: t("courseCard.enrollmentClosed") }
-  }
-  return { kind: "open", label: t("courseCard.enrollingNow") }
-}
-
-const STATUS_TONE: Record<StatusKind, { dot: string; text: string }> = {
-  open: { dot: "bg-success", text: "text-success" },
-  opens: { dot: "bg-info", text: "text-info" },
-  closed: { dot: "bg-destructive", text: "text-destructive" },
-  institute: { dot: "bg-muted-foreground/60", text: "text-muted-foreground" },
-}
-
-function StatusIndicator({ status }: { status: Status }) {
-  const tone = STATUS_TONE[status.kind]
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs">
-      <span className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} aria-hidden />
-      <span className={tone.text}>{status.label}</span>
-    </span>
+    <Badge variant="success" className="absolute right-3 top-3 z-10">
+      {t("courseCard.enrollingNow")}
+    </Badge>
   )
 }
 
 function CourseCard({ course, style }: CourseCardProps) {
   const { t } = useTranslation()
+  const prefersReducedMotion = useReducedMotion()
   const [imgError, setImgError] = useState(false)
   const coverSrc = toProxyImage(course.image_url)
   const moduleCount = course.modules?.length ?? 0
-  const hasImage = !!coverSrc && !imgError
-  const status = resolveStatus(course, t)
+
+  const cardInner = (
+    <Card className="flex h-full flex-col overflow-hidden border-border/60 transition-colors hover:border-primary/40">
+      <div className="relative">
+        {course.access_mode === "institute" ? (
+          <Badge variant="muted" className="absolute right-3 top-3 z-10">
+            {t("courseCard.byInvitation")}
+          </Badge>
+        ) : (
+          <EnrollmentBadge start={course.enrollment_start} end={course.enrollment_end} />
+        )}
+        {coverSrc && !imgError ? (
+          <div className="aspect-[16/10] w-full overflow-hidden bg-muted">
+            <img
+              src={coverSrc}
+              alt={course.title}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+              onError={() => setImgError(true)}
+            />
+          </div>
+        ) : (
+          <div className="flex aspect-[16/10] w-full items-center justify-center bg-muted">
+            <BookOpen className="h-10 w-10 text-muted-foreground/30" strokeWidth={1.75} aria-hidden />
+          </div>
+        )}
+      </div>
+      <CardHeader className="pb-2">
+        <CardTitle className="font-serif text-lg leading-snug line-clamp-2 text-wrap-safe">
+          {course.title}
+        </CardTitle>
+        {course.description && (
+          <CardDescription className="line-clamp-2 text-sm leading-relaxed text-wrap-safe sm:text-xs">
+            {course.description}
+          </CardDescription>
+        )}
+      </CardHeader>
+      <CardContent className="mt-auto flex items-center justify-between pt-2 text-xs text-muted-foreground">
+        <span className="uppercase tracking-wide">{t("courseCard.modulesLabel", { count: moduleCount })}</span>
+        <span className="inline-flex items-center gap-1 text-foreground/80 transition-colors group-hover:text-primary">
+          {t("courseCard.openCourse")}
+          <ArrowRight
+            className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
+            strokeWidth={1.75}
+            aria-hidden
+          />
+        </span>
+      </CardContent>
+    </Card>
+  )
 
   return (
     <Link
@@ -71,59 +116,18 @@ function CourseCard({ course, style }: CourseCardProps) {
       style={style}
       className="group block rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      {/* Catalog row, not a tile. Compact horizontal layout (Vercel
-          projects / Linear issues / GitHub repos shape) so the page
-          reads as part of the system rather than a wall of marketing
-          banners. The previous full-bleed cover was the "ad" tell —
-          a 56px thumbnail anchors the row without competing with the
-          title. */}
-      <Card className="flex h-full items-stretch gap-4 p-4 hover:border-primary/40 sm:items-center sm:gap-5">
-        {/* Thumbnail: small enough that vivid cover colours don't
-            dominate the page. ``rounded-md`` ties it to the card. The
-            empty-state gradient + brand-tinted icon keeps the
-            anchor consistent across cards with and without cover art. */}
-        <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-gradient-to-br from-muted to-muted/40 sm:h-16 sm:w-16">
-          {hasImage ? (
-            <img
-              src={coverSrc}
-              alt={course.title}
-              loading="lazy"
-              decoding="async"
-              className="h-full w-full object-cover"
-              onError={() => setImgError(true)}
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <BookOpen className="h-6 w-6 text-primary/30" strokeWidth={1.5} aria-hidden />
-            </div>
-          )}
-        </div>
-
-        {/* Main column. Title first (Inter medium — system sans, not
-            display serif; matches the rest of the dashboard), then a
-            single line of description, then the meta row with module
-            count and the status indicator. ``min-w-0`` so ``flex-1``
-            actually respects the line-clamp on long titles. */}
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h3 className="text-base font-medium leading-snug text-foreground line-clamp-1 text-wrap-safe">
-            {course.title}
-          </h3>
-          {course.description && (
-            <p className="text-sm leading-relaxed text-muted-foreground line-clamp-1 text-wrap-safe">
-              {course.description}
-            </p>
-          )}
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <span>{t("courseCard.modulesLabel", { count: moduleCount })}</span>
-            {status && (
-              <>
-                <span aria-hidden className="text-muted-foreground/40">·</span>
-                <StatusIndicator status={status} />
-              </>
-            )}
-          </div>
-        </div>
-      </Card>
+      {prefersReducedMotion ? (
+        cardInner
+      ) : (
+        <motion.div
+          whileHover={{ y: -2 }}
+          whileTap={{ scale: 0.985 }}
+          transition={{ duration: 0.28, ease: EDITORIAL_EASE }}
+          className="h-full"
+        >
+          {cardInner}
+        </motion.div>
+      )}
     </Link>
   )
 }
