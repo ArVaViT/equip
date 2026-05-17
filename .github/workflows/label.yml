@@ -1,0 +1,33 @@
+name: Label PR
+
+# Auto-applies path-based labels to pull requests so the triage view
+# at a glance shows which area of the codebase a PR touches. Uses
+# `pull_request_target` (not `pull_request`) so the workflow has the
+# write permission required to add labels, including on fork PRs. We
+# do NOT check out PR head code in this workflow — `actions/labeler`
+# reads only the file-change list from the PR metadata, so the elevated
+# token surface is safe.
+#
+# Label configuration: .github/labeler.yml
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: label-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply path-based labels
+        uses: actions/labeler@v5
+        with:
+          configuration-path: .github/labeler.yml
+          sync-labels: true

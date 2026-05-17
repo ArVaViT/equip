@@ -1,0 +1,42 @@
+# Configuration for actions/labeler@v5 — auto-applies labels to pull
+# requests based on the paths of files they touch. New label names added
+# here must already exist on the repo (created via `gh api -X POST
+# /repos/{owner}/{repo}/labels …`).
+#
+# Format reference:
+#   https://github.com/actions/labeler/blob/main/README.md
+
+backend:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'backend/**'
+
+frontend:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'frontend/**'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.md'
+          - 'docs/**'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/workflows/**'
+          - '.github/labeler.yml'
+          - '.github/dependabot.yml'
+
+migrations:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'supabase/migrations/**'
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/package.json'
+          - '**/package-lock.json'
+          - 'backend/requirements*.txt'

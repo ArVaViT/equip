@@ -134,6 +134,35 @@ supabase/
    ```
 4. **Push** and open a pull request against `main`.
 
+## Using AI coding assistants
+
+We welcome contributions developed with AI assistance — Claude Code,
+Cursor, Aider, GitHub Copilot, ChatGPT / Codex, Windsurf, Continue, and
+similar tools. The project ships an [`AGENTS.md`](AGENTS.md) at the
+repo root with the conventions agents should follow.
+
+We ask one thing in return: **be transparent about it.**
+
+- **Tick the PR-template checkbox** that says "AI-assisted" and name the
+  tool you used.
+- **Add a `Co-Authored-By:` trailer** to commits the agent helped
+  produce, so the contribution history reflects how the change was
+  actually made. Many agents (Claude Code, Cursor, Aider) add this
+  automatically when they read `AGENTS.md`; if yours doesn't, add it
+  manually:
+
+  ```
+  Co-Authored-By: Claude <noreply@anthropic.com>
+  ```
+
+  Use the identity that matches your tool. `AGENTS.md` has a short
+  reference table.
+
+This is a transparency convention, not a gate. PRs are never rejected
+for missing trailers — but a clean co-author history makes it legible
+(to us, and to you when you come back to the diff six months from now)
+how the codebase actually got built.
+
 ## Commit conventions
 
 We use [Conventional Commits](https://www.conventionalcommits.org/):
