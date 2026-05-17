@@ -290,7 +290,7 @@ export default function HomePage() {
       )}
 
       {loading ? (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
           {Array.from({ length: 6 }).map((_, i) => <CourseCardSkeleton key={i} />)}
         </div>
       ) : error ? (
@@ -311,7 +311,7 @@ export default function HomePage() {
           className="border-none bg-transparent py-20"
         />
       ) : (
-        <div className="stagger-fade-in grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3">
+        <div className="stagger-fade-in grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
           {courses.map((course, index) => (
             <CourseCard
               key={course.id}
