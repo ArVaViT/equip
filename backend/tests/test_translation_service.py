@@ -372,3 +372,92 @@ def test_gemini_closes_owned_client_via_context_manager():
         owned = provider._client
         assert owned.is_closed is False
     assert owned.is_closed is True
+
+
+def test_gemini_throttles_consecutive_calls(monkeypatch):
+    """With ``min_interval_seconds`` set, back-to-back ``translate()`` calls
+    must sleep enough to honor the configured RPM ceiling. We swap in a fake
+    monotonic clock + capture every ``time.sleep`` so the test runs in
+    microseconds while still asserting the real spacing the throttle would
+    enforce against Gemini's 15 RPM free-tier limit during backfill."""
+    from app.services.translation import gemini as gemini_mod
+
+    sleeps: list[float] = []
+    now = {"t": 1000.0}
+
+    monkeypatch.setattr(gemini_mod.time, "monotonic", lambda: now["t"])
+    monkeypatch.setattr(gemini_mod.time, "sleep", lambda s: sleeps.append(s))
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        # Each call consumes 0.5s of wall clock so the next call's
+        # remaining-budget calculation has something to subtract.
+        now["t"] += 0.5
+        return httpx.Response(
+            200,
+            json={"candidates": [{"content": {"parts": [{"text": "ok"}]}}]},
+        )
+
+    transport = httpx.MockTransport(handler)
+    client = httpx.Client(transport=transport, timeout=5.0)
+    provider = GeminiTranslationProvider(
+        api_key="fake-key",
+        model="gemini-flash-latest",
+        timeout_seconds=5.0,
+        max_output_tokens=256,
+        min_interval_seconds=4.5,
+        client=client,
+    )
+
+    for _ in range(3):
+        provider.translate(TranslationRequest(text="hi", source_locale="en", target_locale="ru"))
+
+    # First call: no prior call → no throttle sleep. Subsequent calls: the
+    # previous call took 0.5s, so we owe 4.5 - 0.5 = 4.0s of wait.
+    assert sleeps == [4.0, 4.0]
+
+
+def test_gemini_does_not_throttle_when_interval_is_zero(monkeypatch):
+    """Production default (``min_interval_seconds=0``) must not introduce
+    artificial latency — course publishing already throttles itself by user
+    cadence and a hot-path sleep would block the FastAPI worker."""
+    from app.services.translation import gemini as gemini_mod
+
+    sleeps: list[float] = []
+    monkeypatch.setattr(gemini_mod.time, "sleep", lambda s: sleeps.append(s))
+
+    transport = httpx.MockTransport(
+        lambda req: httpx.Response(
+            200,
+            json={"candidates": [{"content": {"parts": [{"text": "ok"}]}}]},
+        )
+    )
+    client = httpx.Client(transport=transport, timeout=5.0)
+    provider = GeminiTranslationProvider(
+        api_key="fake-key",
+        model="gemini-flash-latest",
+        timeout_seconds=5.0,
+        max_output_tokens=256,
+        client=client,
+    )
+    for _ in range(5):
+        provider.translate(TranslationRequest(text="hi", source_locale="en", target_locale="ru"))
+    assert sleeps == []
+
+
+def test_empty_gemini_model_env_falls_back_to_default(monkeypatch):
+    """A blank ``GEMINI_MODEL`` (e.g. ``GEMINI_MODEL=""`` in Vercel) used
+    to slip through and build a broken ``models/:generateContent`` URL.
+    The model-validator now coerces blank/whitespace values to the field
+    default so the provider always has a real model id."""
+    # Import lazily inside the test so monkeypatched env applies at construction.
+    from app.core.config import Settings
+
+    # Ensure other required env vars don't trip the validator.
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://x@localhost/x")
+    monkeypatch.setenv("JWT_SECRET_KEY", "x")
+
+    for blank in ("", "   "):
+        monkeypatch.setenv("GEMINI_MODEL", blank)
+        s = Settings(_env_file=None)
+        assert s.GEMINI_MODEL == "gemini-2.5-flash-lite"

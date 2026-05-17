@@ -67,7 +67,7 @@ def is_translation_enabled() -> bool:
 # Cache key includes every setting that influences provider construction.
 # When any of these mutate (e.g. an env-var rotation between requests on a
 # warm serverless instance) the next call detects the mismatch and rebuilds.
-_ProviderCacheKey = tuple[str | None, str, float, int]
+_ProviderCacheKey = tuple[str | None, str, float, int, float]
 
 
 def _current_cache_key() -> _ProviderCacheKey:
@@ -76,6 +76,7 @@ def _current_cache_key() -> _ProviderCacheKey:
         settings.GEMINI_MODEL,
         settings.GEMINI_TIMEOUT_SECONDS,
         settings.GEMINI_MAX_OUTPUT_TOKENS,
+        settings.GEMINI_MIN_INTERVAL_SECONDS,
     )
 
 
@@ -122,6 +123,7 @@ def get_translation_provider() -> TranslationProvider:
                 model=settings.GEMINI_MODEL,
                 timeout_seconds=settings.GEMINI_TIMEOUT_SECONDS,
                 max_output_tokens=settings.GEMINI_MAX_OUTPUT_TOKENS,
+                min_interval_seconds=settings.GEMINI_MIN_INTERVAL_SECONDS,
             )
 
         _cached_provider = provider
