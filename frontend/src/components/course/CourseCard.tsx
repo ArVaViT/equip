@@ -19,9 +19,9 @@ interface Status {
   label: string
 }
 
-// Distill access mode + enrollment window into one (label, tone) tuple.
+// (label, tone) resolution for the inline status indicator.
 // ``institute`` shadows the enrollment-window check — invitation-only
-// courses don't surface a public window, and showing both would
+// courses don't surface a public window, and showing one would
 // mis-signal "anyone can enroll if they hurry".
 function resolveStatus(course: Course, t: TFunction): Status | null {
   if (course.access_mode === "institute") {
@@ -40,9 +40,6 @@ function resolveStatus(course: Course, t: TFunction): Status | null {
   return { kind: "open", label: t("courseCard.enrollingNow") }
 }
 
-// Dot + colored label = status indicator (Linear / Vercel). The filled
-// ``<Badge>`` variant read as a marketing tag (Sale / New / Featured)
-// in the previous revision; this is the modern equivalent.
 const STATUS_TONE: Record<StatusKind, { dot: string; text: string }> = {
   open: { dot: "bg-success", text: "text-success" },
   opens: { dot: "bg-info", text: "text-info" },
@@ -74,27 +71,18 @@ function CourseCard({ course, style }: CourseCardProps) {
       style={style}
       className="group block rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      <Card
-        className={
-          // Vertical on mobile (cover-then-text, like every other card),
-          // horizontal on sm+ (cover-left, text-right, magazine listing).
-          // The horizontal layout is what stops the page from reading as
-          // a product grid — at sm+ widths each card has the proportions
-          // of a book in a catalogue rather than a tile in a marketplace.
-          "flex h-full flex-col overflow-hidden hover:border-primary/40 sm:flex-row"
-        }
-      >
-        {/* Cover: 21:9 strip on mobile (so the type below gets the
-            weight), 4:3 square-ish panel on sm+ (anchors the listing
-            from the left without taking more than ~38% of the row).
-            Image-less state uses a gradient + brand-tinted icon so it
-            reads as designed, not missing. */}
-        <div
-          className={
-            "aspect-[21/9] w-full overflow-hidden bg-gradient-to-br from-muted to-muted/40 " +
-            "sm:aspect-auto sm:h-full sm:w-[38%] sm:max-w-[260px] sm:flex-shrink-0"
-          }
-        >
+      {/* Catalog row, not a tile. Compact horizontal layout (Vercel
+          projects / Linear issues / GitHub repos shape) so the page
+          reads as part of the system rather than a wall of marketing
+          banners. The previous full-bleed cover was the "ad" tell —
+          a 56px thumbnail anchors the row without competing with the
+          title. */}
+      <Card className="flex h-full items-stretch gap-4 p-4 hover:border-primary/40 sm:items-center sm:gap-5">
+        {/* Thumbnail: small enough that vivid cover colours don't
+            dominate the page. ``rounded-md`` ties it to the card. The
+            empty-state gradient + brand-tinted icon keeps the
+            anchor consistent across cards with and without cover art. */}
+        <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-gradient-to-br from-muted to-muted/40 sm:h-16 sm:w-16">
           {hasImage ? (
             <img
               src={coverSrc}
@@ -105,53 +93,35 @@ function CourseCard({ course, style }: CourseCardProps) {
               onError={() => setImgError(true)}
             />
           ) : (
-            <div className="flex h-full min-h-32 w-full items-center justify-center">
-              <BookOpen
-                className="h-10 w-10 text-primary/25"
-                strokeWidth={1.5}
-                aria-hidden
-              />
+            <div className="flex h-full w-full items-center justify-center">
+              <BookOpen className="h-6 w-6 text-primary/30" strokeWidth={1.5} aria-hidden />
             </div>
           )}
         </div>
 
-        {/* Body. p-6 (deviates from the DESIGN.md p-5 default
-            deliberately) because the horizontal layout gives the text
-            column more horizontal room and the rhythm needs vertical
-            breathing to match — without it the title and description
-            crowd together against the cover edge. */}
-        <div className="flex flex-1 flex-col gap-3 p-6">
-          {/* Eyebrow: module count, uppercase tracked. Per DESIGN.md the
-              wide tracking is load-bearing — that's what makes it read
-              as an editorial label rather than a shrunk body line. */}
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            {t("courseCard.modulesLabel", { count: moduleCount })}
-          </p>
-
-          {/* Title: text-2xl Fraunces medium with tight leading and
-              negative tracking — confident editorial headline. Smaller
-              weights / sizes read as a subhead under the image; heavier
-              weights tip Fraunces into "marketing display". Medium at
-              2xl is the calibrated point. */}
-          <h3 className="font-serif text-2xl font-medium leading-[1.15] tracking-tight text-foreground line-clamp-2 text-wrap-safe">
+        {/* Main column. Title first (Inter medium — system sans, not
+            display serif; matches the rest of the dashboard), then a
+            single line of description, then the meta row with module
+            count and the status indicator. ``min-w-0`` so ``flex-1``
+            actually respects the line-clamp on long titles. */}
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <h3 className="text-base font-medium leading-snug text-foreground line-clamp-1 text-wrap-safe">
             {course.title}
           </h3>
-
           {course.description && (
-            <p className="text-[15px] leading-relaxed text-muted-foreground line-clamp-3 text-wrap-safe">
+            <p className="text-sm leading-relaxed text-muted-foreground line-clamp-1 text-wrap-safe">
               {course.description}
             </p>
           )}
-
-          {/* Status anchors the bottom of the body. mt-auto pins it
-              against the lower edge so it lines up across cards
-              regardless of title or description length. When there's no
-              status the row collapses entirely. */}
-          {status && (
-            <div className="mt-auto pt-3">
-              <StatusIndicator status={status} />
-            </div>
-          )}
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span>{t("courseCard.modulesLabel", { count: moduleCount })}</span>
+            {status && (
+              <>
+                <span aria-hidden className="text-muted-foreground/40">·</span>
+                <StatusIndicator status={status} />
+              </>
+            )}
+          </div>
         </div>
       </Card>
     </Link>
