@@ -167,7 +167,11 @@ export function useCourseData(
     const order = course?.modules?.length ?? 0
     try {
       const m = await coursesService.createModule(courseId, {
-        title: `Module ${order + 1}`,
+        // Seed in the teacher's UI locale. The previous ``Module N``
+        // literal was persisted as-is, so a Russian-UI teacher had to
+        // rename every freshly-added module or live with an English
+        // word in their course tree.
+        title: t("teacherEditor.defaults.moduleTitle", { n: order + 1 }),
         order_index: order,
       })
       setCourse((p) =>

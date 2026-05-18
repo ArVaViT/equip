@@ -903,6 +903,9 @@
       "closed": "Closed",
       "open": "Open"
     },
+    "defaults": {
+      "moduleTitle": "Module {{n}}"
+    },
     "modulesHeading": "Modules",
     "addModule": "Add module",
     "noModulesYet": "No modules yet",
@@ -999,6 +1002,9 @@
     }
   },
   "moduleEditor": {
+    "defaults": {
+      "chapterTitle": "Chapter {{n}}"
+    },
     "toast": {
       "moduleNotFound": "Module not found",
       "failedSaveModule": "Failed to save module",

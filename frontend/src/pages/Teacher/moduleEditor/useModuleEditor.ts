@@ -112,7 +112,10 @@ export function useModuleEditor(
     const order = mod.chapters?.length ?? 0;
     try {
       const ch = await coursesService.createChapter(courseId, moduleId, {
-        title: `Chapter ${order + 1}`,
+        // Seed in the teacher's UI locale. Persisted as-is, so the
+        // previous ``Chapter N`` literal stuck English into every
+        // Russian-UI teacher's course tree until they renamed it.
+        title: t("moduleEditor.defaults.chapterTitle", { n: order + 1 }),
         order_index: order,
       });
       setMod((prev) =>
