@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { NativeSelect } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea"
 import { CalendarDays, Pencil, Save, Trash2 } from "lucide-react"
 import { EmptyState, Modal } from "@/components/patterns"
@@ -66,17 +67,17 @@ export function EventsModal({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">{t("teacherEditor.modals.events.type")}</Label>
-              <select
+              <NativeSelect
+                fieldSize="sm"
                 value={form.event_type}
                 onChange={(e) => patch({ event_type: e.target.value })}
-                className="w-full text-sm border rounded-md px-2 py-1.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 {EVENT_TYPE_VALUES.map((value) => (
                   <option key={value} value={value}>
                     {t(`teacherEditor.modals.events.types.${value}`)}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">{t("teacherEditor.modals.events.dateTime")}</Label>

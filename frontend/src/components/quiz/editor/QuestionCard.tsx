@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { NativeSelect } from "@/components/ui/native-select"
 import { getTrueFalseLabel, type DraftOption, type DraftQuestion } from "./types"
 
 interface Props {
@@ -75,20 +76,22 @@ export function QuestionCard({
             </div>
 
             <div className="flex items-center gap-3">
-              <select
+              <NativeSelect
+                fieldSize="xs"
                 value={q.question_type}
+                aria-label={t("quizEditor.questions.questionTypeAria")}
                 onChange={(e) =>
                   onUpdate({
                     question_type: e.target.value as DraftQuestion["question_type"],
                   })
                 }
-                className="h-7 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="w-auto"
               >
                 <option value="multiple_choice">{t("quizEditor.questions.types.multiple_choice")}</option>
                 <option value="true_false">{t("quizEditor.questions.types.true_false")}</option>
                 <option value="short_answer">{t("quizEditor.questions.types.short_answer")}</option>
                 <option value="essay">{t("quizEditor.questions.types.essay")}</option>
-              </select>
+              </NativeSelect>
               {q.question_type === "essay" && (
                 <div className="flex items-center gap-1">
                   <Label className="text-xs text-muted-foreground">

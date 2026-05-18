@@ -403,6 +403,7 @@
       "essayHint": "Развёрнутый письменный ответ. Оценивается вручную во вкладке проверки.",
       "removeQuestionAria": "Удалить вопрос {{n}}",
       "removeOptionAria": "Удалить вариант {{n}}",
+      "questionTypeAria": "Тип вопроса",
       "trueFalseOption": {
         "True": "Истина",
         "False": "Ложь"
@@ -564,6 +565,7 @@
       "viewFile": "Открыть прикреплённый файл",
       "statusGrade": "Оценить",
       "statusReturn": "Вернуть на доработку",
+      "statusAria": "Действие проверки",
       "feedback": "Отзыв",
       "feedbackPlaceholder": "Необязательный отзыв студенту...",
       "saving": "Сохранение...",
