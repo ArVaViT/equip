@@ -93,7 +93,13 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
               min={0}
               max={maxScore}
               value={grade}
-              onChange={(e) => setGrade(Number(e.target.value))}
+              // Clamp into [0..maxScore] and fall back to 0 on empty/NaN.
+              // Without this the teacher clearing the field lands NaN in
+              // state, which JSON-serialises to ``null`` and trips the
+              // backend's ``grade: int`` validation on save.
+              onChange={(e) =>
+                setGrade(Math.min(maxScore, Math.max(0, Number(e.target.value) || 0)))
+              }
               fieldSize="sm"
               className="w-20"
             />
