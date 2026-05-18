@@ -16,7 +16,14 @@ function sanitizeFileName(name: string): string {
 }
 
 function fileExtension(name: string, fallback: string = "jpg"): string {
-  return name.split(".").pop() ?? fallback
+  // ``name.split(".").pop()`` returned the whole filename on
+  // extension-less inputs ("avatar" → "avatar"), producing weird
+  // paths like ``avatar.avatar``. Use last-dot position so we only
+  // treat as an extension what's actually after a separator, and
+  // fall through to ``fallback`` when there is none.
+  const idx = name.lastIndexOf(".")
+  if (idx === -1 || idx === name.length - 1) return fallback
+  return name.slice(idx + 1)
 }
 
 /**
