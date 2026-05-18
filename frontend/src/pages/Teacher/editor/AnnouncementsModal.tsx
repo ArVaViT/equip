@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Megaphone } from "lucide-react"
 import { EmptyState, Modal } from "@/components/patterns"
 import type { Announcement } from "@/types"
-import { AnnouncementPager } from "./AnnouncementPager"
+import { AnnouncementPager } from "@/components/announcements/AnnouncementPager"
 
 interface Props {
   open: boolean

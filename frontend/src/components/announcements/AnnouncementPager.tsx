@@ -7,23 +7,28 @@ import type { Announcement } from "@/types"
 
 interface AnnouncementPagerProps {
   announcements: Announcement[]
-  onDelete: (id: string) => void
+  /** Required only on surfaces where the viewer may delete entries
+   *  (i.e. the teacher's editor modal). Omitted on read-only feeds
+   *  (course detail page, banner, public surfaces). */
+  onDelete?: (id: string) => void
 }
 
 /**
  * Step-through view over a list of announcements. Replaces the vertical
- * stack so the modal stays one card tall regardless of how many posts
- * the teacher has, with prev/next arrows and a position counter.
+ * stack so the host (teacher modal or student course page) stays one
+ * card tall regardless of how many posts exist, with prev/next arrows
+ * and a position counter.
  *
  * Owns only the cursor index; the list, ordering, and the delete
  * action all belong to the parent. The cursor clamps after deletes
  * (so the card never blanks) and is *not* moved when a fresh
- * announcement is posted — the teacher keeps reading what they
- * were on instead of getting yanked to the new entry.
+ * announcement is posted — the reader keeps reading what they were
+ * on instead of getting yanked to the new entry.
  *
  * Keyboard: ← / → step when focus is anywhere inside the pager. We do
- * NOT install a window-level listener, so the keys never fight the
- * post-form's title/content inputs sitting next to the pager.
+ * NOT install a window-level listener, so the keys never fight any
+ * surrounding form inputs (e.g. the post-form sitting next to the
+ * pager in the teacher modal).
  */
 export function AnnouncementPager({ announcements, onDelete }: AnnouncementPagerProps) {
   const { t } = useTranslation()
@@ -85,15 +90,17 @@ export function AnnouncementPager({ announcements, onDelete }: AnnouncementPager
             {formatDateTime(current.created_at)}
           </time>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 shrink-0 p-0 text-destructive hover:text-destructive"
-          onClick={() => onDelete(current.id)}
-          aria-label={t("teacherEditor.modals.announcements.deleteAria", { title: current.title })}
-        >
-          <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
-        </Button>
+        {onDelete && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 shrink-0 p-0 text-destructive hover:text-destructive"
+            onClick={() => onDelete(current.id)}
+            aria-label={t("teacherEditor.modals.announcements.deleteAria", { title: current.title })}
+          >
+            <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+          </Button>
+        )}
       </div>
       {total > 1 && (
         <div className="flex items-center justify-between border-t bg-muted/40 px-2 py-1.5">

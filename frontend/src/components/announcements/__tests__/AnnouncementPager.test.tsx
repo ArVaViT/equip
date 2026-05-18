@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import i18n from "@/i18n/config"
 import type { Announcement } from "@/types"
-import { AnnouncementPager } from "@/pages/Teacher/editor/AnnouncementPager"
+import { AnnouncementPager } from "@/components/announcements/AnnouncementPager"
 
 /**
  * Contract of the pager:
@@ -54,6 +54,19 @@ describe("AnnouncementPager", () => {
     expect(screen.getByText("Only one")).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: /previous/i })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: /next/i })).not.toBeInTheDocument()
+  })
+
+  it("hides the delete button when no onDelete is provided (read-only mode)", () => {
+    render(
+      <AnnouncementPager
+        announcements={[make("a", "First"), make("b", "Second")]}
+      />,
+      { wrapper: Wrapper },
+    )
+    // Nav still works in read-only mode.
+    expect(screen.getByRole("button", { name: /next/i })).toBeInTheDocument()
+    // But there's no delete affordance.
+    expect(screen.queryByRole("button", { name: /delete announcement/i })).not.toBeInTheDocument()
   })
 
   it("shows the counter as '1 / N' on first render with many items", () => {
