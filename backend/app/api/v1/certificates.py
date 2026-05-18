@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, Request, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -310,7 +310,11 @@ def reject_certificate(
     },
 )
 def verify_certificate(
-    certificate_number: str,
+    # Real certificate numbers are ~17 chars (``CERT-`` + 12 hex). The
+    # column is ``String(50)``; cap the path param at 50 so a crafted
+    # multi-KB URL is rejected by FastAPI before the public unauth
+    # rate-limit bucket and the DB scan run.
+    certificate_number: str = Path(..., max_length=50),
     db: Session = Depends(get_db),
 ) -> CertificateVerifyResponse:
     """Unauthenticated certificate verification.
