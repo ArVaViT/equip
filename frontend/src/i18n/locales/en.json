@@ -69,9 +69,10 @@
       "eyebrow": "Today",
       "title": "Verse of the Day"
     },
-    "miniCalendar": {
-      "openFull": "Open full calendar",
-      "loadFailed": "Could not load events."
+    "today": {
+      "eyebrow": "Today",
+      "openFull": "Full calendar",
+      "empty": "No events scheduled for today."
     }
   },
   "courses": {
