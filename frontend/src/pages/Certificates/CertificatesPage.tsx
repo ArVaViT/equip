@@ -59,7 +59,7 @@ export default function CertificatesPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <Link to="/">
+      <Link to="/courses">
         <Button variant="ghost" size="sm" className="mb-6 h-8 text-xs">
           <ArrowLeft className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
           {t("certificates.backToCourses")}
@@ -90,7 +90,7 @@ export default function CertificatesPage() {
             <p className="mb-6 max-w-sm text-sm text-muted-foreground">
               {t("certificates.emptyDescription")}
             </p>
-            <Link to="/">
+            <Link to="/courses">
               <Button size="sm">{t("certificates.browseCourses")}</Button>
             </Link>
           </CardContent>

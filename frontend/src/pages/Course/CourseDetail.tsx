@@ -134,7 +134,7 @@ export default function CourseDetail() {
           icon={<BookOpen strokeWidth={1.75} />}
           title={error ?? t("toast.courseNotFound")}
           action={
-            <Link to="/">
+            <Link to="/courses">
               <Button variant="outline" size="sm">
                 {t("course.backToCourses")}
               </Button>
