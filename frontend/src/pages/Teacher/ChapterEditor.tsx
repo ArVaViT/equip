@@ -334,18 +334,17 @@ export default function ChapterEditor() {
         <span className="text-xs text-muted-foreground">{t("chapterEditor.saveHint")}</span>
       </div>
 
-      {/* Sticky save bar — only renders while there are unsaved changes.
-          The pulsing warning dot is the visual cue for "unsaved"; the
-          accompanying text reuses the existing `saveHint` ("Ctrl+S to
-          save") string so we don't introduce a new i18n key from this
-          PR. TODO i18n: a future bilingual pass can swap the dot's
-          aria-label and add an explicit `chapterEditor.unsavedChanges`
-          status string. */}
+      {/* Sticky save bar — only renders while there are unsaved
+          changes. The pulsing warning dot is the visual cue, the
+          ``aria-label`` on the parent card is the screen-reader cue
+          (announced via ``aria-live="polite"`` on first transition to
+          dirty). Inline text shows the Ctrl+S shortcut. */}
       {isDirty && (
         <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-6">
           <Card
             role="status"
             aria-live="polite"
+            aria-label={t("chapterEditor.unsavedChanges")}
             className="pointer-events-auto animate-fade-in w-full max-w-2xl bg-card/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/85"
           >
             <CardContent className="flex items-center gap-3 px-4 py-3">
@@ -357,6 +356,10 @@ export default function ChapterEditor() {
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-warning" />
               </span>
               <span className="flex-1 text-xs text-muted-foreground sm:text-sm">
+                <span className="font-medium text-foreground">
+                  {t("chapterEditor.unsavedChanges")}
+                </span>
+                <span className="mx-1.5 opacity-40">·</span>
                 {t("chapterEditor.saveHint")}
               </span>
               <Button

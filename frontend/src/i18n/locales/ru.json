@@ -1103,7 +1103,8 @@
     "chapterType": "Тип главы",
     "save": "Сохранить главу",
     "saving": "Сохранение...",
-    "saveHint": "Ctrl+S для сохранения"
+    "saveHint": "Ctrl+S для сохранения",
+    "unsavedChanges": "Есть несохранённые изменения"
   },
   "courseDetail": {
     "allCourses": "Все курсы",
