@@ -79,11 +79,20 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._hits: dict[str, list[float]] = defaultdict(list)
         self._last_cleanup: float = time.time()
 
-    def _resolve_limit(self, path: str) -> tuple[int, int]:
+    def _resolve_limit(self, path: str) -> tuple[str | None, int, int]:
+        """Return ``(matched_prefix, max_calls, window)``.
+
+        ``matched_prefix`` is the ``ENDPOINT_LIMITS`` key that matched
+        ``path``, or ``None`` when no override matched and the global
+        default applies. The caller uses the prefix (not the full path)
+        as the per-IP bucket key so a brute-force enumeration of
+        ``/certificates/verify/{cert_number}`` doesn't get a fresh budget
+        for every guess — every guess from one IP shares one bucket.
+        """
         for prefix, limit in ENDPOINT_LIMITS.items():
             if path.startswith(prefix):
-                return limit
-        return self.calls, self.window
+                return prefix, *limit
+        return None, self.calls, self.window
 
     def _cleanup_stale_buckets(self, now: float) -> None:
         if now - self._last_cleanup < CLEANUP_INTERVAL and len(self._hits) < MAX_BUCKETS:
@@ -102,9 +111,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         client_ip = get_client_ip(request, fallback="unknown") or "unknown"
         path = request.url.path
-        max_calls, window = self._resolve_limit(path)
+        matched_prefix, max_calls, window = self._resolve_limit(path)
 
-        bucket_key = f"{client_ip}:{path}" if max_calls != self.calls else client_ip
+        # Bucket on the matched PREFIX, not the full path. ``/certificates/
+        # verify/abc`` and ``/certificates/verify/xyz`` share one bucket per
+        # IP — otherwise an attacker enumerating cert numbers gets a fresh
+        # 30/min budget for every guess. Falls back to plain ``client_ip``
+        # for the global limiter so unrelated routes still share one bucket.
+        bucket_key = f"{client_ip}:{matched_prefix}" if matched_prefix else client_ip
         now = time.time()
         cutoff = now - window
 
