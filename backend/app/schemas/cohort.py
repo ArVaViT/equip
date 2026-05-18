@@ -109,7 +109,10 @@ class CohortResponse(BaseModel):
 class CohortCourseAttach(BaseModel):
     """POST /cohorts/{id}/courses — attach a course to a cohort."""
 
-    course_id: str = Field(..., min_length=1)
+    # Course ids are UUIDs (36 chars). The bound prevents a crafted
+    # 1 MB string from making it as far as the SQL layer where it'd
+    # waste a round trip before the FK check rejected it.
+    course_id: str = Field(..., min_length=1, max_length=36)
 
 
 class CohortStudentAdd(BaseModel):
