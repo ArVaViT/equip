@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react"
 import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Button } from "@/components/ui/button"
@@ -72,6 +73,14 @@ export function UsersCard({
   const { t } = useTranslation()
   const allFilteredSelected =
     filtered.length > 0 && filtered.every((u) => selectedIds.has(u.id))
+  // Three-state select-all: ``true`` when every row in the current
+  // filtered view is selected, ``"indeterminate"`` when only some are
+  // (Checkbox renders the dash glyph), ``false`` when none.
+  const selectAllState: boolean | "indeterminate" = allFilteredSelected
+    ? true
+    : selectedIds.size > 0
+      ? "indeterminate"
+      : false
 
   return (
     <Card>
@@ -130,11 +139,9 @@ export function UsersCard({
         ) : filtered.length >= USERS_VIRTUAL_THRESHOLD ? (
           <>
             <div className="flex items-center gap-3 px-3 pb-2">
-              <input
-                type="checkbox"
-                checked={allFilteredSelected}
-                onChange={onToggleSelectAll}
-                className="h-4 w-4 rounded border-input"
+              <Checkbox
+                checked={selectAllState}
+                onCheckedChange={onToggleSelectAll}
                 aria-label={t("admin.users.selectAllAria")}
               />
               <span className="text-xs text-muted-foreground">
@@ -212,6 +219,11 @@ function UsersTable({
   const { t } = useTranslation()
   const allFilteredSelected =
     filtered.length > 0 && filtered.every((u) => selectedIds.has(u.id))
+  const selectAllState: boolean | "indeterminate" = allFilteredSelected
+    ? true
+    : selectedIds.size > 0
+      ? "indeterminate"
+      : false
 
   return (
     <>
@@ -219,11 +231,9 @@ function UsersTable({
           data, same controls, larger tap targets. */}
       <div className="-mx-3 space-y-2 sm:hidden">
         <label className="mx-3 flex min-h-[44px] items-center gap-2 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={allFilteredSelected}
-            onChange={onToggleSelectAll}
-            className="h-4 w-4 rounded border-input"
+          <Checkbox
+            checked={selectAllState}
+            onCheckedChange={onToggleSelectAll}
             aria-label={t("admin.users.selectAllAria")}
           />
           <span>{t("admin.users.selectAllN", { count: filtered.length })}</span>
@@ -253,11 +263,9 @@ function UsersTable({
           <thead className="sticky top-0 z-10 bg-card">
             <tr className="border-b text-left">
               <th className="w-10 px-3 py-3">
-                <input
-                  type="checkbox"
-                  checked={allFilteredSelected}
-                  onChange={onToggleSelectAll}
-                  className="h-4 w-4 rounded border-input"
+                <Checkbox
+                  checked={selectAllState}
+                  onCheckedChange={onToggleSelectAll}
                   aria-label={t("admin.users.selectAllAria")}
                 />
               </th>
@@ -306,11 +314,10 @@ function UserCard({
       }`}
     >
       <div className="flex items-start gap-3">
-        <input
-          type="checkbox"
+        <Checkbox
+          className="mt-1.5"
           checked={selected}
-          onChange={() => onToggleSelect(user.id)}
-          className="mt-1.5 h-4 w-4 shrink-0 rounded border-input"
+          onCheckedChange={() => onToggleSelect(user.id)}
           aria-label={t("admin.users.selectAriaPrefix", { name: displayName })}
         />
         {user.avatar_url ? (
@@ -385,11 +392,9 @@ function UserRow({
       }`}
     >
       <td className="px-3 py-3">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={selected}
-          onChange={() => onToggleSelect(user.id)}
-          className="h-4 w-4 rounded border-input"
+          onCheckedChange={() => onToggleSelect(user.id)}
           aria-label={t("admin.users.selectAriaPrefix", { name: displayName })}
         />
       </td>
