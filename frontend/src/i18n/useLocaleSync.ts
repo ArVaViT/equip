@@ -62,5 +62,11 @@ export function useLocaleSync(): void {
 
     if (i18n.language === profileLocale) return
     void i18n.changeLanguage(profileLocale)
-  }, [user, i18n])
+    // Keying on ``user?.preferred_locale`` (not the whole ``user``)
+    // means a Supabase ``TOKEN_REFRESHED`` rewrite of the user
+    // object doesn't re-trigger the locale-sync work — the locale
+    // hasn't actually changed. Login (undefined → "ru") and a
+    // PreferencesService PATCH ("ru" → "en") both still flow.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.preferred_locale, i18n])
 }

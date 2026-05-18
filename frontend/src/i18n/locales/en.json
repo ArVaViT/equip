@@ -58,7 +58,6 @@
   },
   "dashboard": {
     "myCourses": "My Courses",
-    "myCoursesLead": "Your enrollments and progress in one place.",
     "myCoursesEmptyTitle": "No enrollments yet",
     "loadCoursesError": "Could not load your courses. Please try refreshing the page.",
     "noEnrollments": "You haven't enrolled in any courses yet. Browse the catalog to get started.",
@@ -94,7 +93,6 @@
     "eyebrow": "Daily",
     "title": "Today's Practice",
     "weekAriaLabel": "Days of the current week",
-    "todayTasksLabel": "Today",
     "comingSoon": "Daily tasks land soon — this is the placeholder.",
     "days": {
       "mon": "Mon",
@@ -1433,7 +1431,6 @@
       "thUser": "User",
       "thAction": "Action",
       "thResource": "Resource",
-      "thResourceId": "Resource ID",
       "thIp": "IP",
       "prevPageAria": "Previous page",
       "nextPageAria": "Next page",
