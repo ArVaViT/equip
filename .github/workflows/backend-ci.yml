@@ -143,7 +143,7 @@ jobs:
       # gate stable if Codecov has an outage -- the artifact above is the
       # durable backup.
       - name: Upload coverage to Codecov (backend)
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           files: ./backend/coverage.xml
           flags: backend

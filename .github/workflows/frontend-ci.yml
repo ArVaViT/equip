@@ -119,7 +119,7 @@ jobs:
       # `CODECOV_TOKEN` repo secret. `fail_ci_if_error: false` keeps the
       # gate stable if Codecov has an outage.
       - name: Upload coverage to Codecov (frontend)
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           files: ./frontend/coverage/lcov.info
           flags: frontend
