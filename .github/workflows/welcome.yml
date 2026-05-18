@@ -27,7 +27,13 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-          issue-message: |
+          # actions/first-interaction@v3 renamed the message inputs from
+          # kebab-case (``issue-message`` / ``pr-message``) to snake_case.
+          # The kebab spellings now resolve to undefined and the action
+          # exits 1 with ``Input required and not supplied: issue_message``
+          # on every new PR — visible in the CI badge but doesn't block
+          # the merge gate. Snake-case below restores the greeting.
+          issue_message: |
             Welcome to Equip 🌱 — thanks for opening your first issue here.
 
             A few things that help us help you fast:
@@ -38,7 +44,7 @@ jobs:
 
             A maintainer will respond within a few days. If it's something time-sensitive (security, broken production), please follow the disclosure path in [SECURITY.md](https://github.com/ArVaViT/equip/blob/main/SECURITY.md) or email supportequip@gmail.com directly.
 
-          pr-message: |
+          pr_message: |
             Thanks for your first pull request to Equip 🎉
 
             Quick checklist while CI runs:
