@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { VerseOfTheDayCard } from "@/components/home/VerseOfTheDayCard"
 import { StreakCard } from "@/components/dashboard/StreakCard"
 import { TodayCard } from "@/components/dashboard/TodayCard"
+import { PublicLanding } from "./PublicLanding"
 import { cn } from "@/lib/utils"
 
 const EDITORIAL_EASE = [0.22, 1, 0.36, 1] as const
@@ -221,28 +222,10 @@ function MyCoursesSection() {
  * Courses → Verse → Today → Streak.
  */
 export default function DashboardPage() {
-  const { t } = useTranslation()
   const { user } = useAuth()
 
   if (!user) {
-    return (
-      <div className="container mx-auto flex max-w-2xl flex-col items-center justify-center px-4 py-16 text-center sm:py-24">
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-          {t("common.appName")}
-        </h1>
-        <p className="mt-3 text-balance text-sm leading-relaxed text-muted-foreground md:text-base">
-          {t("footer.tagline")}
-        </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Link to="/courses">
-            <Button>{t("dashboard.browseAllCta")}</Button>
-          </Link>
-          <Link to="/login">
-            <Button variant="ghost">{t("common.signIn")}</Button>
-          </Link>
-        </div>
-      </div>
-    )
+    return <PublicLanding />
   }
 
   return (

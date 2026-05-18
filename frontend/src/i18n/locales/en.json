@@ -56,6 +56,61 @@
     "support": "Contact support",
     "rightsReserved": "All rights reserved."
   },
+  "landing": {
+    "hero": {
+      "registerCta": "Create account"
+    },
+    "features": {
+      "heading": "What's in Equip",
+      "subheading": "Tools for serious Scripture study — no distractions, no lost progress.",
+      "systematic": {
+        "title": "Structured courses",
+        "body": "Each course is broken into modules and chapters — you follow the structure, not stray fragments."
+      },
+      "progress": {
+        "title": "Per-chapter progress",
+        "body": "See what's done and what's left. A clear \"Done\" action on every chapter."
+      },
+      "certificates": {
+        "title": "Certificates",
+        "body": "Complete a course and get a certificate — publicly verifiable by number."
+      },
+      "bilingual": {
+        "title": "Bilingual",
+        "body": "Russian and English — switch in one click, no reload needed."
+      }
+    },
+    "how": {
+      "heading": "How it works",
+      "step1": "Sign up — takes a minute, email or Google is enough.",
+      "step2": "Open the catalog and enroll in the course you want.",
+      "step3": "Work through chapters, take quizzes, claim your certificate at the end."
+    },
+    "quicklinks": {
+      "heading": "Where to next",
+      "catalog": {
+        "title": "Course catalog",
+        "body": "Every published course — browse and enroll."
+      },
+      "register": {
+        "title": "Create an account",
+        "body": "Free registration for students."
+      },
+      "signIn": {
+        "title": "Sign in",
+        "body": "Already have an account? Pick up where you left off."
+      },
+      "forgot": {
+        "title": "Reset password",
+        "body": "Forgot it? We'll email you a reset link."
+      }
+    },
+    "finalCta": {
+      "heading": "Ready to start?",
+      "body": "Sign up in a minute — courses are free, progress saves automatically.",
+      "primary": "Create account"
+    }
+  },
   "dashboard": {
     "myCourses": "My Courses",
     "myCoursesEmptyTitle": "No enrollments yet",
