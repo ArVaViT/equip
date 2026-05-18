@@ -925,7 +925,9 @@
         "title": "Материалы курса",
         "upload": "Загрузить файл",
         "empty": "Пока нет загруженных материалов.",
+        "sizeBytes": "{{b}} Б",
         "sizeKb": "{{kb}} КБ",
+        "sizeMb": "{{mb}} МБ",
         "downloadAria": "Скачать «{{name}}»",
         "deleteAria": "Удалить «{{name}}»"
       },

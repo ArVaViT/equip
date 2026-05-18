@@ -936,7 +936,9 @@
         "title": "Course Materials",
         "upload": "Upload File",
         "empty": "No materials uploaded yet.",
+        "sizeBytes": "{{b}} B",
         "sizeKb": "{{kb}} KB",
+        "sizeMb": "{{mb}} MB",
         "downloadAria": "Download {{name}}",
         "deleteAria": "Delete {{name}}"
       },
