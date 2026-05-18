@@ -143,10 +143,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // ``user_metadata`` which is unreliable (often stale or missing, so
         // teachers/admins get demoted to student for one render). The
         // authoritative role lives in the ``profiles`` row that
-        // ``enrichProfile`` loads. Tab refocus triggers SIGNED_IN with the
-        // same user — if we already have them loaded we refresh silently
-        // without toggling ``loading``, which avoids both a spinner flash
-        // and a brief <Gate> redirect to "/".
+        // ``enrichProfile`` loads.
+        //
+        // Supabase fires SIGNED_IN every tab focus and TOKEN_REFRESHED every
+        // ~1h, both with the *same* user. Pre-fix we re-ran ``enrichProfile``
+        // for every one of them, so the production /rest/v1/profiles logs
+        // showed duplicate GETs in the same millisecond on every tab focus.
+        // The profile row barely changes (full_name / avatar / role mutate
+        // on admin action, not on JWT refresh), so we only re-fetch when
+        // the user id actually changes — i.e. a real sign-in by a new
+        // account. Same-user events become a no-op.
         if (event === "INITIAL_SESSION") {
           if (session?.user) {
             enrichProfile(session.user.id, session.user.email ?? "")
@@ -157,14 +163,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (event === "SIGNED_IN" && session?.user) {
-          if (activeUserId.current !== session.user.id) {
-            setLoading(true)
+          if (activeUserId.current === session.user.id) {
+            // Tab refocus or auto-refresh with the same account — we
+            // already have the authoritative profile loaded.
+            return
           }
+          setLoading(true)
           enrichProfile(session.user.id, session.user.email ?? "")
           return
         }
 
         if (event === "TOKEN_REFRESHED" && session?.user) {
+          // Pure JWT refresh — no profile change implied. The
+          // ``services/api.ts`` token cache picks the new JWT up on its
+          // own ``onAuthStateChange`` subscription, so we don't need
+          // to do anything here.
+          if (activeUserId.current === session.user.id) return
           enrichProfile(session.user.id, session.user.email ?? "")
           return
         }
