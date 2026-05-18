@@ -1317,7 +1317,11 @@
         "removeFailed": "Не удалось убрать студента",
         "deleted": "Когорта удалена",
         "deleteFailed": "Не удалось удалить когорту"
-      }
+      },
+      "filterStatus": "Статус",
+      "filterStartRange": "Дата начала",
+      "searchLabel": "Поиск",
+      "totalShown": "Показано {{shown}} из {{total}}"
     },
     "users": {
       "title": "Пользователи",
@@ -1404,8 +1408,6 @@
     "audit": {
       "filterAction": "Действие",
       "filterResource": "Объект",
-      "filterFrom": "С",
-      "filterTo": "По",
       "filterClear": "Сбросить фильтры",
       "filterAllActions": "Все действия",
       "filterAllResources": "Все объекты",
@@ -1441,7 +1443,11 @@
         "certificate": "Сертификат",
         "assignment_submission": "Сданная работа",
         "user": "Пользователь"
-      }
+      },
+      "filterRange": "Период",
+      "thDetails": "Что изменилось",
+      "pageSizeLabel": "Строк на странице",
+      "detailsEmpty": "Нет деталей"
     }
   },
   "roles": {
@@ -1631,5 +1637,11 @@
       "readChapter": "Прочитать сегодняшнюю главу",
       "memoryVerse": "Повторить памятный стих"
     }
+  },
+  "dateRangePicker": {
+    "placeholder": "Выберите диапазон",
+    "clear": "Очистить",
+    "prevMonth": "Предыдущий месяц",
+    "nextMonth": "Следующий месяц"
   }
 }

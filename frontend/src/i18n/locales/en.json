@@ -1324,7 +1324,11 @@
         "removeFailed": "Failed to remove student",
         "deleted": "Cohort deleted",
         "deleteFailed": "Failed to delete cohort"
-      }
+      },
+      "filterStatus": "Status",
+      "filterStartRange": "Start date",
+      "searchLabel": "Search",
+      "totalShown": "Showing {{shown}} of {{total}}"
     },
     "users": {
       "title": "Users",
@@ -1411,8 +1415,6 @@
     "audit": {
       "filterAction": "Action",
       "filterResource": "Resource",
-      "filterFrom": "From",
-      "filterTo": "To",
       "filterClear": "Clear filters",
       "filterAllActions": "All actions",
       "filterAllResources": "All resources",
@@ -1448,7 +1450,11 @@
         "certificate": "Certificate",
         "assignment_submission": "Assignment submission",
         "user": "User"
-      }
+      },
+      "filterRange": "Date range",
+      "thDetails": "Details",
+      "pageSizeLabel": "Rows per page",
+      "detailsEmpty": "No details"
     }
   },
   "roles": {
@@ -1579,5 +1585,11 @@
       "quizWeightNonzero": "Quizzes count toward the final grade.",
       "assignmentWeightNonzero": "Assignments count toward the final grade."
     }
+  },
+  "dateRangePicker": {
+    "placeholder": "Pick date range",
+    "clear": "Clear",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month"
   }
 }

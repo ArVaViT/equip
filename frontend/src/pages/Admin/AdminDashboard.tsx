@@ -142,6 +142,7 @@ export default function AdminDashboard() {
             onDateTo={audit.setDateTo}
             onReset={audit.resetFilters}
             onPageChange={audit.setPage}
+            onPageSizeChange={audit.setPageSize}
           />
         </Suspense>
       )}
