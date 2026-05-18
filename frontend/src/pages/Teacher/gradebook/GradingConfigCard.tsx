@@ -1,9 +1,11 @@
+import { useId } from "react"
 import { useTranslation } from "react-i18next"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Settings2, ChevronDown, ChevronRight, Save } from "lucide-react"
+import { Settings2, ChevronDown, Save } from "lucide-react"
+import { cn } from "@/lib/utils"
 import type { GradingConfig } from "@/types"
 
 interface Props {
@@ -31,29 +33,44 @@ export function GradingConfigCard({
   const { t } = useTranslation()
   const total = draft.quiz_weight + draft.assignment_weight + draft.participation_weight
   const valid = total === 100
+  // Stable id used for ``aria-controls`` so a screen-reader user
+  // pressing Enter/Space on the trigger knows which panel just opened.
+  const panelId = useId()
 
   return (
     <Card className="mb-6">
-      <CardHeader className="cursor-pointer select-none py-4" onClick={onToggle}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Settings2 className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} aria-hidden />
-            <div>
-              <CardTitle className="text-base">{t("gradebook.config.title")}</CardTitle>
-              <CardDescription className="text-xs">
-                {t("gradebook.config.description")}
-              </CardDescription>
-            </div>
+      {/* Trigger is a real ``<button>`` (not a div+onClick) so it gets
+          keyboard activation, focus ring, and disclosure semantics for
+          free. ``aria-expanded`` + ``aria-controls`` complete the
+          disclosure-widget contract; the chevron animates the same
+          state visually. */}
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={panelId}
+        className="flex w-full select-none items-center justify-between rounded-t-md px-6 py-4 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        <div className="flex items-center gap-2">
+          <Settings2 className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+          <div>
+            <CardTitle className="text-base">{t("gradebook.config.title")}</CardTitle>
+            <CardDescription className="text-xs">
+              {t("gradebook.config.description")}
+            </CardDescription>
           </div>
-          {open ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden />
-          )}
         </div>
-      </CardHeader>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+            open ? "rotate-0" : "-rotate-90",
+          )}
+          strokeWidth={1.75}
+          aria-hidden
+        />
+      </button>
       {open && (
-        <CardContent className="border-t pt-6">
+        <CardContent id={panelId} className="border-t pt-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <WeightField
               label={t("gradebook.config.quizWeight")}
