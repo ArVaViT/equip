@@ -40,7 +40,8 @@ def test_endpoint_resolves_to_per_route_override(path: str, expected_calls: int,
     not the global 100/60s default.
     """
     mw = RateLimitMiddleware(app=None, calls=100, window=60)
-    calls, window = mw._resolve_limit(path)
+    matched_prefix, calls, window = mw._resolve_limit(path)
+    assert matched_prefix is not None, f"{path} should have matched an override prefix"
     assert (calls, window) == (expected_calls, expected_window), (
         f"{path} resolved to ({calls}, {window}); expected ({expected_calls}, {expected_window}). "
         "Did someone drop the per-route override from ENDPOINT_LIMITS?"
@@ -53,8 +54,23 @@ def test_default_route_keeps_global_limit() -> None:
     added to ENDPOINT_LIMITS that would tighten everything.
     """
     mw = RateLimitMiddleware(app=None, calls=100, window=60)
-    calls, window = mw._resolve_limit("/api/v1/courses")
+    matched_prefix, calls, window = mw._resolve_limit("/api/v1/courses")
+    assert matched_prefix is None, "unmatched routes must signal no override"
     assert (calls, window) == (100, 60)
+
+
+def test_verify_paths_share_one_bucket_per_ip() -> None:
+    """Two different ``/certificates/verify/<X>`` requests from the same
+    IP must resolve to the SAME bucket-key prefix so an attacker who
+    varies the cert number can't get a fresh 30/min budget per guess.
+    Regression for the pre-fix bug where the bucket key included the
+    full path (cert-number tail), making the rate limit effectively
+    per-cert instead of per-IP.
+    """
+    mw = RateLimitMiddleware(app=None, calls=100, window=60)
+    prefix_a, _, _ = mw._resolve_limit("/api/v1/certificates/verify/aaa-111")
+    prefix_b, _, _ = mw._resolve_limit("/api/v1/certificates/verify/bbb-222")
+    assert prefix_a == prefix_b == "/api/v1/certificates/verify/"
 
 
 def test_sensitive_prefixes_are_all_present() -> None:
