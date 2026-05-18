@@ -4,7 +4,13 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { NativeSelect } from "@/components/ui/native-select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { FileText, Loader2, MessageSquare, Save, Star, User } from "lucide-react"
@@ -105,16 +111,22 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
             />
             <span className="text-xs text-muted-foreground">/ {maxScore}</span>
           </div>
-          <NativeSelect
-            fieldSize="xs"
+          <Select
             value={status}
-            aria-label={t("assignmentEditor.grader.statusAria")}
-            onChange={(e) => setStatus(e.target.value as AssignmentSubmission["status"])}
-            className="w-auto"
+            onValueChange={(v) => setStatus(v as AssignmentSubmission["status"])}
           >
-            <option value="graded">{t("assignmentEditor.grader.statusGrade")}</option>
-            <option value="returned">{t("assignmentEditor.grader.statusReturn")}</option>
-          </NativeSelect>
+            <SelectTrigger
+              size="xs"
+              aria-label={t("assignmentEditor.grader.statusAria")}
+              className="w-auto"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="graded">{t("assignmentEditor.grader.statusGrade")}</SelectItem>
+              <SelectItem value="returned">{t("assignmentEditor.grader.statusReturn")}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-1">

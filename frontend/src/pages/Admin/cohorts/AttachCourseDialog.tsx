@@ -3,7 +3,13 @@ import { useTranslation } from "react-i18next"
 import { Modal } from "@/components/patterns"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { NativeSelect } from "@/components/ui/native-select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { cohortsService } from "@/services/cohorts"
 import { coursesService } from "@/services/courses"
 import { toast } from "@/lib/toast"
@@ -80,13 +86,18 @@ export function AttachCourseDialog({
         ) : (
           <div className="space-y-1.5">
             <Label className="text-xs">{t("admin.cohorts.pickCourse")}</Label>
-            <NativeSelect value={selected} onChange={(e) => setSelected(e.target.value)}>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.title} {c.status === "draft" ? `· ${t("admin.cohorts.draftTag")}` : ""}
-                </option>
-              ))}
-            </NativeSelect>
+            <Select value={selected} onValueChange={setSelected}>
+              <SelectTrigger aria-label={t("admin.cohorts.pickCourse")}>
+                <SelectValue placeholder={t("admin.cohorts.pickCourse")} />
+              </SelectTrigger>
+              <SelectContent>
+                {courses.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.title} {c.status === "draft" ? `· ${t("admin.cohorts.draftTag")}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
         <div className="flex justify-end gap-2 pt-2">

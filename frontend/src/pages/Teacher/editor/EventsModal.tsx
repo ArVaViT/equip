@@ -2,7 +2,13 @@ import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { NativeSelect } from "@/components/ui/native-select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { CalendarDays, Pencil, Save, Trash2 } from "lucide-react"
 import { EmptyState, Modal } from "@/components/patterns"
@@ -67,17 +73,21 @@ export function EventsModal({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">{t("teacherEditor.modals.events.type")}</Label>
-              <NativeSelect
-                fieldSize="sm"
+              <Select
                 value={form.event_type}
-                onChange={(e) => patch({ event_type: e.target.value })}
+                onValueChange={(v) => patch({ event_type: v })}
               >
-                {EVENT_TYPE_VALUES.map((value) => (
-                  <option key={value} value={value}>
-                    {t(`teacherEditor.modals.events.types.${value}`)}
-                  </option>
-                ))}
-              </NativeSelect>
+                <SelectTrigger size="sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EVENT_TYPE_VALUES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {t(`teacherEditor.modals.events.types.${value}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">{t("teacherEditor.modals.events.dateTime")}</Label>

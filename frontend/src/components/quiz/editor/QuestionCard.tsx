@@ -4,7 +4,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { NativeSelect } from "@/components/ui/native-select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { getTrueFalseLabel, type DraftOption, type DraftQuestion } from "./types"
 
 interface Props {
@@ -76,22 +83,26 @@ export function QuestionCard({
             </div>
 
             <div className="flex items-center gap-3">
-              <NativeSelect
-                fieldSize="xs"
+              <Select
                 value={q.question_type}
-                aria-label={t("quizEditor.questions.questionTypeAria")}
-                onChange={(e) =>
-                  onUpdate({
-                    question_type: e.target.value as DraftQuestion["question_type"],
-                  })
+                onValueChange={(v) =>
+                  onUpdate({ question_type: v as DraftQuestion["question_type"] })
                 }
-                className="w-auto"
               >
-                <option value="multiple_choice">{t("quizEditor.questions.types.multiple_choice")}</option>
-                <option value="true_false">{t("quizEditor.questions.types.true_false")}</option>
-                <option value="short_answer">{t("quizEditor.questions.types.short_answer")}</option>
-                <option value="essay">{t("quizEditor.questions.types.essay")}</option>
-              </NativeSelect>
+                <SelectTrigger
+                  size="xs"
+                  aria-label={t("quizEditor.questions.questionTypeAria")}
+                  className="w-auto"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="multiple_choice">{t("quizEditor.questions.types.multiple_choice")}</SelectItem>
+                  <SelectItem value="true_false">{t("quizEditor.questions.types.true_false")}</SelectItem>
+                  <SelectItem value="short_answer">{t("quizEditor.questions.types.short_answer")}</SelectItem>
+                  <SelectItem value="essay">{t("quizEditor.questions.types.essay")}</SelectItem>
+                </SelectContent>
+              </Select>
               {q.question_type === "essay" && (
                 <div className="flex items-center gap-1">
                   <Label className="text-xs text-muted-foreground">
@@ -129,16 +140,20 @@ export function QuestionCard({
             </div>
 
             {q.question_type === "multiple_choice" && (
-              <div className="space-y-2">
+              <RadioGroup
+                className="space-y-2"
+                value={q.options.find((o) => o.is_correct)?.id ?? ""}
+                onValueChange={(v) => {
+                  const idx = q.options.findIndex((o) => o.id === v)
+                  if (idx >= 0) onUpdateOption(idx, { is_correct: true })
+                }}
+              >
                 {q.options.map((opt, oIdx) => (
                   <div key={opt.id} className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name={`correct-${q.id}`}
-                      checked={opt.is_correct}
-                      onChange={() => onUpdateOption(oIdx, { is_correct: true })}
-                      className="accent-primary shrink-0"
+                    <RadioGroupItem
+                      value={opt.id}
                       title={t("quizEditor.questions.markCorrect")}
+                      aria-label={t("quizEditor.questions.markCorrect")}
                     />
                     <Input
                       value={opt.option_text}
@@ -165,31 +180,33 @@ export function QuestionCard({
                   <Plus className="h-3 w-3 mr-1" strokeWidth={1.75} />
                   {t("quizEditor.questions.addOption")}
                 </Button>
-              </div>
+              </RadioGroup>
             )}
 
             {q.question_type === "true_false" && (
-              <div className="flex gap-3">
-                {q.options.map((opt, oIdx) => (
+              <RadioGroup
+                className="flex gap-3"
+                value={q.options.find((o) => o.is_correct)?.id ?? ""}
+                onValueChange={(v) => {
+                  const idx = q.options.findIndex((o) => o.id === v)
+                  if (idx >= 0) onUpdateOption(idx, { is_correct: true })
+                }}
+              >
+                {q.options.map((opt) => (
                   <label
                     key={opt.id}
+                    htmlFor={`tf-${q.id}-${opt.id}`}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs cursor-pointer ${
                       opt.is_correct
                         ? "border-success/50 bg-success/10"
                         : "border-border"
                     }`}
                   >
-                    <input
-                      type="radio"
-                      name={`correct-${q.id}`}
-                      checked={opt.is_correct}
-                      onChange={() => onUpdateOption(oIdx, { is_correct: true })}
-                      className="accent-primary"
-                    />
+                    <RadioGroupItem id={`tf-${q.id}-${opt.id}`} value={opt.id} />
                     {getTrueFalseLabel(opt.option_text, t)}
                   </label>
                 ))}
-              </div>
+              </RadioGroup>
             )}
 
             {q.question_type === "short_answer" && (
