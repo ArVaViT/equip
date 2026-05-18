@@ -11,11 +11,16 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { formatDateLong } from "@/i18n/format"
 
 export default function CertificatesPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [certificates, setCertificates] = useState<Certificate[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [loading, setLoading] = useState(true)
 
+  // ``i18n.language`` in deps so a locale flip re-pulls the
+  // localised course-title overlay without a hard reload. We
+  // deliberately do NOT include ``t`` — its reference change is
+  // implementation-defined across react-i18next versions and using
+  // it as a dep was the brittle pattern in this codebase.
   useEffect(() => {
     let cancelled = false
     const load = async () => {
@@ -37,7 +42,8 @@ export default function CertificatesPage() {
     return () => {
       cancelled = true
     }
-  }, [t])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [i18n.language])
 
   const courseTitle = (courseId: string) => {
     const enrollment = enrollments.find((e) => e.course_id === courseId)

@@ -11,19 +11,17 @@ import { EmptyState, ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
 import { VerseOfTheDayCard } from "@/components/home/VerseOfTheDayCard"
 import { StreakCard } from "@/components/dashboard/StreakCard"
-import { MiniCalendar } from "@/components/dashboard/MiniCalendar"
+import { TodayCard } from "@/components/dashboard/TodayCard"
 import { cn } from "@/lib/utils"
 
 const EDITORIAL_EASE = [0.22, 1, 0.36, 1] as const
 
 /**
- * "My Courses" — the single tallest dashboard surface, so it gets its
- * own internal scroll: the dashboard's contract is "fits one viewport
- * + footer below the fold", and an arbitrary number of enrollments
- * can't be allowed to push the rest of the grid off the screen.
- *
- * ``i18n.language`` in the dep list re-fetches when the user flips
- * locale, so localised course titles update without a hard reload.
+ * "My Courses" — left column of the Dashboard, given its own internal
+ * scroll so an arbitrary enrollment count can't push the rest of the
+ * grid off the screen. ``i18n.language`` in the dep list re-fetches
+ * on locale flip so localised course titles update without a hard
+ * reload.
  */
 function MyCoursesSection() {
   const { t, i18n } = useTranslation()
@@ -62,7 +60,7 @@ function MyCoursesSection() {
 
   const filtered = enrollments.filter((e) => e.course?.created_by !== user?.id)
 
-  const shell = (body: React.ReactNode) => (
+  const shell = (body: React.ReactNode, centered = false) => (
     <section className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md border border-border bg-card transition-[border-color] duration-300 hover:border-primary/25">
       <header className="flex items-center justify-between gap-3 border-b border-border bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex min-w-0 items-center gap-2.5">
@@ -79,17 +77,24 @@ function MyCoursesSection() {
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
         </Link>
       </header>
-      {/* Internal scroll. ``min-h-0`` + ``flex-1`` is the standard pattern
-          for a scrollable region inside a flex column — without it the
-          scroll container would size to its content, defeating the
-          single-viewport contract on the dashboard wrapper. */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">{body}</div>
+      {/* ``centered`` flips the body to flex-center so empty- and
+          error-states sit vertically in the middle of the scrollable
+          area instead of clinging to the top edge. ``min-h-0`` lets the
+          flex item shrink inside the column. */}
+      <div
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4",
+          centered && "flex items-center justify-center",
+        )}
+      >
+        {body}
+      </div>
     </section>
   )
 
   if (loading) {
     return shell(
-      <div className="space-y-3">
+      <div className="w-full space-y-3">
         {Array.from({ length: 2 }).map((_, i) => (
           <div key={i} className="rounded-md border border-border/80 bg-muted/10 px-3 py-3">
             <Skeleton className="h-4 w-3/5" />
@@ -103,7 +108,7 @@ function MyCoursesSection() {
   if (fetchError) {
     return shell(
       <ErrorState
-        className="py-8"
+        className="py-2"
         title={t("dashboard.loadCoursesError")}
         action={
           <Button type="button" variant="outline" size="sm" onClick={() => setRetryCount((c) => c + 1)}>
@@ -111,13 +116,14 @@ function MyCoursesSection() {
           </Button>
         }
       />,
+      true,
     )
   }
 
   if (filtered.length === 0) {
     return shell(
       <EmptyState
-        className="border-none bg-transparent px-4 py-8"
+        className="border-none bg-transparent px-4 py-2"
         icon={<BookOpen className="text-muted-foreground" strokeWidth={1.75} />}
         title={t("dashboard.myCoursesEmptyTitle")}
         description={t("dashboard.noEnrollments")}
@@ -127,6 +133,7 @@ function MyCoursesSection() {
           </Link>
         }
       />,
+      true,
     )
   }
 
@@ -202,23 +209,22 @@ function MyCoursesSection() {
 /**
  * Authenticated dashboard at ``/``.
  *
- * **Single-viewport contract.** The whole page is laid out to fit in
- * one viewport on desktop (lg+) and a tight stack on mobile. The
- * footer sits below the fold via ``min-h-[calc(100dvh-headerH)]`` on
- * the main element (see ``App.tsx``).
+ * **Single-viewport contract.** Footer sits below the fold via
+ * ``min-h-[calc(100dvh-headerH)]`` on the main element (App.tsx).
  *
- * **Layout.** Two-column on lg+: My Courses (wide, with internal
- * scroll) takes the left column; Verse + MiniCalendar + Streak stack
- * in the narrow right rail. On smaller screens everything collapses
- * to a single column in importance order (My Courses → Streak →
- * Verse → MiniCalendar).
+ * **Layout (lg+).** Two columns:
+ * - Left (wider): My Courses with internal scroll.
+ * - Right (narrow): Verse + Today + Streak in equal vertical thirds
+ *   so the right rail stays inside the viewport.
+ *
+ * **Mobile (< lg).** Single column stack in importance order: My
+ * Courses → Verse → Today → Streak.
  */
 export default function DashboardPage() {
   const { t } = useTranslation()
   const { user } = useAuth()
 
   if (!user) {
-    // Guests get the splash that bounces to the catalog or login.
     return (
       <div className="container mx-auto flex max-w-2xl flex-col items-center justify-center px-4 py-16 text-center sm:py-24">
         <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
@@ -241,22 +247,21 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto h-full px-4 py-4 sm:py-6 lg:h-[calc(100dvh-3rem-3rem)]">
-      {/* The ``lg:h-[calc(100dvh-3rem-3rem)]`` constraint (viewport
-          minus header h-12 minus container py-6) caps the grid height
-          on desktop so each card fills its share of one viewport
-          instead of expanding indefinitely. Below lg the grid is
-          natural-height; ``flex flex-col`` so a tall mobile stack
-          still has a sane outline. */}
       <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-5">
         <MyCoursesSection />
-        <div className="flex flex-col gap-4 lg:gap-5 lg:overflow-hidden">
-          <div className="lg:min-h-0 lg:flex-shrink lg:overflow-hidden">
+        {/* Right rail: equal-thirds on lg+ via grid-rows-3. Each card
+            gets the same vertical share so Verse + Today + Streak all
+            fit one viewport without one starving another. ``min-h-0``
+            on the inner grid items lets each card's internal overflow
+            kick in rather than expanding the row. */}
+        <div className="flex flex-col gap-4 lg:grid lg:grid-rows-3 lg:gap-5 lg:overflow-hidden">
+          <div className="lg:min-h-0 lg:overflow-hidden">
             <VerseOfTheDayCard />
           </div>
-          <div className="lg:min-h-0 lg:flex-shrink lg:overflow-hidden">
-            <MiniCalendar />
+          <div className="lg:min-h-0 lg:overflow-hidden">
+            <TodayCard />
           </div>
-          <div className="lg:min-h-0 lg:flex-shrink lg:overflow-hidden">
+          <div className="lg:min-h-0 lg:overflow-hidden">
             <StreakCard />
           </div>
         </div>

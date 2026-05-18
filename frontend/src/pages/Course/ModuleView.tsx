@@ -23,7 +23,7 @@ import { ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export default function ModuleView() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { courseId, moduleId } = useParams<{ courseId: string; moduleId: string }>()
   const { user } = useAuth()
   const [module, setModule] = useState<Module | null>(null)
@@ -57,7 +57,11 @@ export default function ModuleView() {
     }
     load()
     return () => { cancelled = true }
-  }, [courseId, moduleId, user?.id, t])
+    // ``i18n.language`` so a locale flip re-pulls the localised module
+    // title / chapter list. ``t`` is intentionally not a dep — its
+    // reference-change behaviour is implementation-defined.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseId, moduleId, user?.id, i18n.language])
 
   const sortedChapters = useMemo(
     () => [...(module?.chapters ?? [])].sort((a, b) => a.order_index - b.order_index),

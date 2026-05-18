@@ -24,7 +24,7 @@ import {
 } from "./detail"
 
 export default function CourseDetail() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const [course, setCourse] = useState<Course | null>(null)
@@ -89,10 +89,15 @@ export default function CourseDetail() {
     return () => {
       cancelled = true
     }
-    // Reload only when user identity changes — Supabase rewrites `user` on
-    // every TOKEN_REFRESHED tick, which would otherwise refetch mid-session.
+    // Reload only when course id, user identity, or active locale
+    // change. Plain ``user`` would refetch on every Supabase
+    // TOKEN_REFRESHED tick (the auth context rewrites the object);
+    // ``i18n.language`` covers the locale-flip case so the course
+    // title / module names / chapter list re-pull localised values
+    // without a hard reload. ``t`` is intentionally NOT in the dep
+    // list — its reference change is implementation-defined.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, user?.id])
+  }, [id, user?.id, i18n.language])
 
   const doEnroll = async (cohortId?: string) => {
     if (!id || !user) return
