@@ -1,7 +1,7 @@
 import { useEffect } from "react"
 import { useLocation } from "react-router-dom"
 
-const BASE = "Bible School"
+const BASE = "Bible School LMS"
 
 const TITLES: Record<string, string> = {
   "/login": "Sign In",
