@@ -69,7 +69,7 @@ describe("AnnouncementPager", () => {
     expect(screen.queryByRole("button", { name: /delete announcement/i })).not.toBeInTheDocument()
   })
 
-  it("shows the counter as '1 / N' on first render with many items", () => {
+  it("renders the first item as current on initial render with many items", () => {
     render(
       <AnnouncementPager
         announcements={[make("a", "First"), make("b", "Second"), make("c", "Third")]}
@@ -77,8 +77,20 @@ describe("AnnouncementPager", () => {
       />,
       { wrapper: Wrapper },
     )
-    expect(screen.getByText("1 / 3")).toBeInTheDocument()
     expect(screen.getByText("First")).toBeInTheDocument()
+    // Other items are not rendered — pager shows only the current one.
+    expect(screen.queryByText("Second")).not.toBeInTheDocument()
+    expect(screen.queryByText("Third")).not.toBeInTheDocument()
+    // Prev disabled at the start, next enabled.
+    expect(screen.getByRole("button", { name: /previous/i })).toBeDisabled()
+    expect(screen.getByRole("button", { name: /next/i })).not.toBeDisabled()
+  })
+
+  it("switches to a compact counter when more than 7 items are present", () => {
+    const many = Array.from({ length: 9 }, (_, i) => make(`id${i}`, `Item ${i + 1}`))
+    render(<AnnouncementPager announcements={many} onDelete={vi.fn()} />, { wrapper: Wrapper })
+    // 9 dots would clutter the rail — counter renders instead.
+    expect(screen.getByText("1 / 9")).toBeInTheDocument()
   })
 
   it("steps with the Next button and disables it at the end", async () => {
@@ -93,8 +105,8 @@ describe("AnnouncementPager", () => {
     const next = screen.getByRole("button", { name: /next/i })
     await user.click(next)
     expect(screen.getByText("Second")).toBeInTheDocument()
-    expect(screen.getByText("2 / 2")).toBeInTheDocument()
     expect(next).toBeDisabled()
+    expect(screen.getByRole("button", { name: /previous/i })).not.toBeDisabled()
   })
 
   it("steps with the keyboard when focus is inside the pager", async () => {
@@ -134,7 +146,8 @@ describe("AnnouncementPager", () => {
     await user.click(screen.getByRole("button", { name: /next/i }))
     await user.click(screen.getByRole("button", { name: /next/i }))
     expect(screen.getByText("Third")).toBeInTheDocument()
-    expect(screen.getByText("3 / 3")).toBeInTheDocument()
+    // Reached the tail.
+    expect(screen.getByRole("button", { name: /next/i })).toBeDisabled()
 
     rerender(
       <AnnouncementPager
@@ -142,8 +155,9 @@ describe("AnnouncementPager", () => {
         onDelete={onDelete}
       />,
     )
+    // Cursor clamps to the new last item ("Second"), card never blanks.
     expect(screen.getByText("Second")).toBeInTheDocument()
-    expect(screen.getByText("2 / 2")).toBeInTheDocument()
+    expect(screen.queryByText("Third")).not.toBeInTheDocument()
   })
 
   it("deletes the currently-displayed item, not a stale one", async () => {
