@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Draggable } from "@hello-pangea/dnd";
 import { GripVertical, Lock, Pencil, Trash2, Unlock } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -36,6 +37,12 @@ export function ChapterRow({
   const { t } = useTranslation();
   const type = normalizeChapterType(chapter.chapter_type);
 
+  // Capture the title at focus time so blur can skip the PATCH when
+  // nothing actually changed. Without this, every Tab-through or
+  // accidental click on the row's title field fired a no-op update —
+  // wasted network round-trip and an audit-log row per visit.
+  const focusValueRef = useRef<string>("");
+
   return (
     <Draggable draggableId={chapter.id} index={index}>
       {(dragProvided, snapshot) => (
@@ -62,7 +69,15 @@ export function ChapterRow({
               <Input
                 value={chapter.title}
                 onChange={(e) => onTitleChange(e.target.value)}
-                onBlur={(e) => onRename(e.target.value)}
+                onFocus={(e) => {
+                  focusValueRef.current = e.target.value;
+                }}
+                onBlur={(e) => {
+                  if (e.target.value.trim() === focusValueRef.current.trim()) {
+                    return;
+                  }
+                  onRename(e.target.value);
+                }}
                 className="h-9 flex-1 border-none font-medium shadow-none focus-visible:ring-1 sm:h-8 sm:text-sm"
               />
             </div>
