@@ -65,10 +65,19 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
     if (!fetchedData) return
     const { allUsers, coursesCount, enrollmentsCount, certs } = fetchedData
     setUsers(allUsers as ProfileRow[])
+    // ``Last 7 days`` is a client-side roll-up of the already-loaded
+    // user list so the overview doesn't pay for an extra API call.
+    // The window anchors at "now - 7d" each render — good enough for
+    // a rough trend, and cheap.
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+    const usersLast7Days = (allUsers as ProfileRow[]).filter(
+      (u) => new Date(u.created_at).getTime() >= sevenDaysAgo,
+    ).length
     setStats({
       users: allUsers.length,
       courses: coursesCount.count ?? 0,
       enrollments: enrollmentsCount.count ?? 0,
+      usersLast7Days,
     })
     setAdminCerts(certs)
   }, [fetchedData])

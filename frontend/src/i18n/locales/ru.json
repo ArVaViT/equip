@@ -1321,7 +1321,10 @@
       "filterStatus": "Статус",
       "filterStartRange": "Дата начала",
       "searchLabel": "Поиск",
-      "totalShown": "Показано {{shown}} из {{total}}"
+      "totalShown": "Показано {{shown}} из {{total}}",
+      "capacityLabel": "{{pct}}% заполнено",
+      "studentSearchPlaceholder": "Поиск студентов…",
+      "studentSearchNoMatch": "Ничего не найдено."
     },
     "users": {
       "title": "Пользователи",
@@ -1403,7 +1406,12 @@
         "bulkRoleTitle": "Изменить роль для выбранных пользователей?",
         "bulkRoleDescription": "Выбрано пользователей: {{count}}. Для них будет установлена роль «{{role}}».",
         "bulkRoleAction": "Применить"
-      }
+      },
+      "usersLast7Days_one": "+{{count}} за неделю",
+      "usersLast7Days_few": "+{{count}} за неделю",
+      "usersLast7Days_many": "+{{count}} за неделю",
+      "usersLast7Days_other": "+{{count}} за неделю",
+      "usersLast7Days_zero": "Новых регистраций нет"
     },
     "audit": {
       "filterAction": "Действие",
@@ -1447,7 +1455,8 @@
       "filterRange": "Период",
       "thDetails": "Что изменилось",
       "pageSizeLabel": "Строк на странице",
-      "detailsEmpty": "Нет деталей"
+      "detailsEmpty": "Нет деталей",
+      "summaryLabel": "На этой странице"
     }
   },
   "roles": {

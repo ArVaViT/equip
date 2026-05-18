@@ -62,4 +62,9 @@ export interface AdminStats {
   users: number
   courses: number
   enrollments: number
+  /** Users created in the last 7 days. Computed client-side from the
+   *  full ``users`` list (already loaded for the Users tab), so no
+   *  extra API hit. ``undefined`` while loading; concrete number once
+   *  the overview fetch resolves. */
+  usersLast7Days?: number
 }

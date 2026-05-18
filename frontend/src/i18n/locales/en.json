@@ -1328,7 +1328,10 @@
       "filterStatus": "Status",
       "filterStartRange": "Start date",
       "searchLabel": "Search",
-      "totalShown": "Showing {{shown}} of {{total}}"
+      "totalShown": "Showing {{shown}} of {{total}}",
+      "capacityLabel": "{{pct}}% full",
+      "studentSearchPlaceholder": "Search students…",
+      "studentSearchNoMatch": "No students match."
     },
     "users": {
       "title": "Users",
@@ -1410,7 +1413,10 @@
         "bulkRoleTitle": "Change role for selected users?",
         "bulkRoleDescription": "{{count}} user(s) will be set to role \"{{role}}\".",
         "bulkRoleAction": "Apply"
-      }
+      },
+      "usersLast7Days_one": "+{{count}} this week",
+      "usersLast7Days_other": "+{{count}} this week",
+      "usersLast7Days_zero": "No new signups this week"
     },
     "audit": {
       "filterAction": "Action",
@@ -1454,7 +1460,8 @@
       "filterRange": "Date range",
       "thDetails": "Details",
       "pageSizeLabel": "Rows per page",
-      "detailsEmpty": "No details"
+      "detailsEmpty": "No details",
+      "summaryLabel": "On this page"
     }
   },
   "roles": {

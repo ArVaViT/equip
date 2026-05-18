@@ -244,12 +244,15 @@ function UsersTable({
         </div>
       </div>
 
-      {/* Desktop: classic semantic table */}
-      <div className="hidden overflow-x-auto -mx-6 sm:block">
+      {/* Desktop: classic semantic table with internal scroll + sticky
+          header. ``max-h-[60vh]`` matches the audit log so the users
+          panel doesn't push the admin overview off-screen when the
+          tenant grows past 20-30 rows. */}
+      <div className="-mx-6 hidden max-h-[60vh] overflow-y-auto sm:block">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-card">
             <tr className="border-b text-left">
-              <th className="px-3 py-3 w-10">
+              <th className="w-10 px-3 py-3">
                 <input
                   type="checkbox"
                   checked={allFilteredSelected}
@@ -262,7 +265,7 @@ function UsersTable({
               <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thEmail")}</th>
               <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thRole")}</th>
               <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thJoined")}</th>
-              <th className="px-6 py-3 w-10" aria-label={t("admin.users.thActions")} />
+              <th className="w-10 px-6 py-3" aria-label={t("admin.users.thActions")} />
             </tr>
           </thead>
           <tbody className="divide-y">

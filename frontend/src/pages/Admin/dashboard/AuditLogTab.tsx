@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next"
+import { Link } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Button } from "@/components/ui/button"
@@ -16,7 +17,8 @@ import {
 } from "./constants"
 import { AUDIT_PAGE_SIZE_OPTIONS, type AuditPageSize } from "./useAdminAudit"
 import { AuditDetailsCell } from "./AuditDetailsCell"
-import { formatDateTime } from "@/i18n/format"
+import { AuditSummaryRow } from "./AuditSummaryRow"
+import { formatDateTime, formatRelative } from "@/i18n/format"
 
 interface Props {
   logs: AuditLogEntry[]
@@ -136,7 +138,10 @@ export function AuditLogTab({
             />
           </div>
         ) : (
-          <AuditTable logs={logs} userMap={userMap} />
+          <>
+            <AuditSummaryRow logs={logs} />
+            <AuditTable logs={logs} userMap={userMap} />
+          </>
         )}
 
         {/* Pagination + page-size selector. Always shown so the admin
@@ -254,8 +259,14 @@ function AuditTable({
         <tbody className="divide-y">
           {logs.map((log) => (
             <tr key={log.id} className="align-top transition-colors hover:bg-muted/40">
-              <td className="whitespace-nowrap px-5 py-3 text-xs text-muted-foreground">
-                {formatDateTime(log.created_at)}
+              {/* Relative time is scannable; ``title`` carries the
+                  exact timestamp so a hover (or screen reader) still
+                  surfaces sub-minute precision for audit forensics. */}
+              <td
+                className="whitespace-nowrap px-5 py-3 text-xs text-muted-foreground"
+                title={formatDateTime(log.created_at)}
+              >
+                {formatRelative(log.created_at)}
               </td>
               <td className="max-w-[160px] truncate px-5 py-3 text-xs" title={log.user_id ?? ""}>
                 {log.user_id ? userMap[log.user_id] || `${log.user_id.slice(0, 8)}…` : "—"}
@@ -266,21 +277,7 @@ function AuditTable({
                 </Badge>
               </td>
               <td className="px-5 py-3 text-xs">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-muted-foreground">
-                    {t(`admin.audit.resourceValue.${log.resource_type}`, {
-                      defaultValue: log.resource_type,
-                    })}
-                  </span>
-                  <span
-                    className="max-w-[160px] truncate font-mono text-[10px] text-muted-foreground/70"
-                    title={log.resource_id}
-                  >
-                    {log.resource_id.length > 14
-                      ? `${log.resource_id.slice(0, 14)}…`
-                      : log.resource_id}
-                  </span>
-                </div>
+                <AuditResourceCell type={log.resource_type} id={log.resource_id} />
               </td>
               <td className="max-w-[320px] px-5 py-3">
                 <AuditDetailsCell details={log.details} />
@@ -292,6 +289,55 @@ function AuditTable({
       </table>
     </div>
   )
+}
+
+/**
+ * Resource cell — type label on top, id below. When the resource type
+ * has a public detail page (currently only ``course``), the id becomes
+ * a Link so admins can jump straight to the affected entity. Cohort
+ * routing is admin-scoped but reachable as well. Other types render as
+ * plain mono text — we don't fabricate links to non-existent routes.
+ */
+function AuditResourceCell({ type, id }: { type: string; id: string }) {
+  const { t } = useTranslation()
+  const label = t(`admin.audit.resourceValue.${type}`, { defaultValue: type })
+  const shortId = id.length > 14 ? `${id.slice(0, 14)}…` : id
+  const href = resourceHref(type, id)
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-muted-foreground">{label}</span>
+      {href ? (
+        <Link
+          to={href}
+          className="max-w-[160px] truncate font-mono text-[10px] text-primary hover:underline"
+          title={id}
+        >
+          {shortId}
+        </Link>
+      ) : (
+        <span
+          className="max-w-[160px] truncate font-mono text-[10px] text-muted-foreground/70"
+          title={id}
+        >
+          {shortId}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function resourceHref(type: string, id: string): string | null {
+  switch (type) {
+    case "course":
+      return `/courses/${id}`
+    case "cohort":
+      return `/admin/cohorts/${id}`
+    default:
+      // Modules / chapters need parent ids that aren't on the audit
+      // row; certificates / enrollments / submissions / users have no
+      // public detail route today. Don't fake a link we can't honour.
+      return null
+  }
 }
 
 /**

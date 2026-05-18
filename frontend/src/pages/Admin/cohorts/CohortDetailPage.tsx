@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import {
   ArrowLeft,
   Calendar,
   Plus,
+  Search,
   Trash2,
   Users,
 } from "lucide-react"
@@ -25,6 +26,7 @@ import type { Cohort, Course } from "@/types"
 import { AttachCourseDialog } from "./AttachCourseDialog"
 import { AddStudentDialog } from "./AddStudentDialog"
 import { CohortStatusPicker } from "./CohortStatusPicker"
+import { cn } from "@/lib/utils"
 
 export default function CohortDetailPage() {
   const { cohortId } = useParams<{ cohortId: string }>()
@@ -195,10 +197,10 @@ export default function CohortDetailPage() {
         </Button>
       </Link>
 
-      <div className="flex items-start justify-between gap-4 flex-wrap mb-8">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-3 mb-2">
-            <h1 className="text-3xl font-serif font-bold tracking-tight text-wrap-safe">
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="mb-2 flex flex-wrap items-center gap-3">
+            <h1 className="font-serif text-3xl font-bold tracking-tight text-wrap-safe">
               {cohort.name}
             </h1>
             <CohortStatusPicker
@@ -211,10 +213,22 @@ export default function CohortDetailPage() {
           <p className="text-sm text-muted-foreground">
             {formatDate(cohort.start_date)} &mdash; {formatDate(cohort.end_date)}
           </p>
+          {/* Capacity meter — gives the admin an at-a-glance read of
+              how full the cohort is. Hidden when ``max_students`` is
+              null (unlimited) since the "X of unlimited" bar has no
+              meaningful fill state. */}
+          {cohort.max_students != null && (
+            <CapacityMeter current={cohort.student_count} cap={cohort.max_students} />
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleDelete} className="text-destructive hover:text-destructive">
-            <Trash2 className="h-4 w-4 mr-1.5" strokeWidth={1.75} aria-hidden />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDelete}
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash2 className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
             {t("admin.cohorts.deleteButton")}
           </Button>
         </div>
@@ -324,68 +338,7 @@ export default function CohortDetailPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Users className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            {t("admin.cohorts.studentsHeading", { count: students.length })}
-          </CardTitle>
-          <Button size="sm" onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4 mr-1.5" strokeWidth={1.75} aria-hidden />
-            {t("admin.cohorts.addStudentButton")}
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {students.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">
-              {t("admin.cohorts.noStudents")}
-            </p>
-          ) : (
-            <div className="overflow-x-auto -mx-6">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="px-6 py-3 font-medium text-muted-foreground">
-                      {t("admin.cohorts.thStudentName")}
-                    </th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground">
-                      {t("admin.cohorts.thStudentEmail")}
-                    </th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground">
-                      {t("admin.cohorts.thEnrolledCourses")}
-                    </th>
-                    <th className="px-6 py-3 w-10" aria-label={t("admin.cohorts.thActions")} />
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {students.map((s) => (
-                    <tr key={s.user_id} className="hover:bg-muted/50 transition-colors">
-                      <td className="px-6 py-3 font-medium">{s.full_name ?? "—"}</td>
-                      <td className="px-6 py-3 text-muted-foreground">{s.email}</td>
-                      <td className="px-6 py-3 text-muted-foreground">
-                        {Object.keys(s.per_course).length}
-                      </td>
-                      <td className="px-3 py-3">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                          onClick={() => removeStudent(s)}
-                          aria-label={t("admin.cohorts.removeStudentAriaPrefix", {
-                            name: s.full_name ?? s.email,
-                          })}
-                        >
-                          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <StudentsCard students={students} onAdd={() => setAddOpen(true)} onRemove={removeStudent} />
 
       <AttachCourseDialog
         open={attachOpen}
@@ -468,5 +421,153 @@ function DateField({ label, value, disabled, nullable, onSave }: DateFieldProps)
         }}
       />
     </div>
+  )
+}
+
+/**
+ * Horizontal capacity bar — quick read of "how full is this cohort".
+ * Tone shifts from primary → warning → destructive as utilisation
+ * climbs past 75% / 95% so an admin scanning multiple cohorts can
+ * spot the near-full ones without reading the X/Y numbers each time.
+ */
+function CapacityMeter({ current, cap }: { current: number; cap: number }) {
+  const { t } = useTranslation()
+  const safeCap = Math.max(cap, 1)
+  const pct = Math.min(100, Math.round((current / safeCap) * 100))
+  const tone = pct >= 95 ? "bg-destructive" : pct >= 75 ? "bg-warning" : "bg-primary"
+  return (
+    <div className="mt-3 max-w-xs">
+      <div className="flex items-baseline justify-between gap-3 text-xs">
+        <span className="font-medium tabular-nums text-foreground">
+          {current} / {cap}
+        </span>
+        <span className="text-muted-foreground">
+          {t("admin.cohorts.capacityLabel", { pct })}
+        </span>
+      </div>
+      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className={cn("h-full rounded-full transition-all duration-500", tone)}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Students panel with search + sticky-header internal-scroll table —
+ * same shape as the audit log so the admin's table vocabulary stays
+ * consistent across surfaces. Search is client-side over the already-
+ * loaded ``students`` list; the cohort list size stays in the low
+ * hundreds so a per-keystroke server round-trip isn't worth it.
+ */
+function StudentsCard({
+  students,
+  onAdd,
+  onRemove,
+}: {
+  students: CohortStudent[]
+  onAdd: () => void
+  onRemove: (s: CohortStudent) => void
+}) {
+  const { t } = useTranslation()
+  const [search, setSearch] = useState("")
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return students
+    return students.filter(
+      (s) =>
+        (s.full_name ?? "").toLowerCase().includes(q) ||
+        s.email.toLowerCase().includes(q),
+    )
+  }, [students, search])
+
+  return (
+    <Card>
+      <CardHeader className="gap-3 space-y-0">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Users className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+            {t("admin.cohorts.studentsHeading", { count: students.length })}
+          </CardTitle>
+          <Button size="sm" onClick={onAdd}>
+            <Plus className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+            {t("admin.cohorts.addStudentButton")}
+          </Button>
+        </div>
+        {students.length > 0 && (
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              strokeWidth={1.75}
+              aria-hidden
+            />
+            <Input
+              fieldSize="sm"
+              placeholder={t("admin.cohorts.studentSearchPlaceholder")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value.slice(0, 100))}
+              maxLength={100}
+              className="pl-9"
+            />
+          </div>
+        )}
+      </CardHeader>
+      <CardContent className="p-0">
+        {students.length === 0 ? (
+          <p className="px-6 py-6 text-sm text-muted-foreground">
+            {t("admin.cohorts.noStudents")}
+          </p>
+        ) : filtered.length === 0 ? (
+          <p className="px-6 py-6 text-sm text-muted-foreground">
+            {t("admin.cohorts.studentSearchNoMatch")}
+          </p>
+        ) : (
+          <div className="max-h-[55vh] overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 z-10 bg-card">
+                <tr className="border-b text-left">
+                  <th className="px-5 py-3 font-medium text-muted-foreground">
+                    {t("admin.cohorts.thStudentName")}
+                  </th>
+                  <th className="px-5 py-3 font-medium text-muted-foreground">
+                    {t("admin.cohorts.thStudentEmail")}
+                  </th>
+                  <th className="px-5 py-3 font-medium text-muted-foreground">
+                    {t("admin.cohorts.thEnrolledCourses")}
+                  </th>
+                  <th className="w-10 px-5 py-3" aria-label={t("admin.cohorts.thActions")} />
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {filtered.map((s) => (
+                  <tr key={s.user_id} className="transition-colors hover:bg-muted/40">
+                    <td className="px-5 py-3 font-medium">{s.full_name ?? "—"}</td>
+                    <td className="px-5 py-3 text-xs text-muted-foreground">{s.email}</td>
+                    <td className="px-5 py-3 text-muted-foreground tabular-nums">
+                      {Object.keys(s.per_course).length}
+                    </td>
+                    <td className="px-3 py-3">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => onRemove(s)}
+                        aria-label={t("admin.cohorts.removeStudentAriaPrefix", {
+                          name: s.full_name ?? s.email,
+                        })}
+                      >
+                        <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
