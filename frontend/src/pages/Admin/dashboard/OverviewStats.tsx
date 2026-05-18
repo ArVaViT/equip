@@ -55,7 +55,7 @@ export function OverviewStats({ stats, loading }: Props) {
   ] as const
 
   return (
-    <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
       {cards.map(({ key, icon: Icon, label, secondary }) => (
         <Card key={key}>
           <CardContent className="flex items-start gap-4 p-5">

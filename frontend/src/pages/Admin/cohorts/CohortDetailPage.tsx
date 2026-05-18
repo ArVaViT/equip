@@ -234,9 +234,9 @@ export default function CohortDetailPage() {
         </div>
       </div>
 
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Calendar className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             {t("admin.cohorts.detailsHeading")}
           </CardTitle>
@@ -293,31 +293,42 @@ export default function CohortDetailPage() {
         </CardContent>
       </Card>
 
-      <Card className="mb-8">
-        <CardHeader className="flex-row items-center justify-between space-y-0">
+      <Card className="mb-6">
+        <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
           <CardTitle className="text-lg">
             {t("admin.cohorts.coursesHeading", { count: courses.length })}
           </CardTitle>
-          <Button size="sm" onClick={() => setAttachOpen(true)}>
-            <Plus className="h-4 w-4 mr-1.5" strokeWidth={1.75} aria-hidden />
+          <Button size="sm" className="h-9" onClick={() => setAttachOpen(true)}>
+            <Plus className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
             {t("admin.cohorts.attachCourseButton")}
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           {courses.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">
+            <p className="py-4 text-sm text-muted-foreground">
               {t("admin.cohorts.noCoursesAttached")}
             </p>
           ) : (
-            <ul className="divide-y">
+            // Inline list of course chips — dense, visually consistent
+            // with the rest of the admin row vocabulary (Vercel-style
+            // "row of pills with a trailing remove"). Each chip links
+            // to the course detail; the trash button stops propagation
+            // so the remove confirmation doesn't double-fire on click.
+            <ul className="flex flex-col gap-2">
               {courses.map((c) => (
-                <li key={c.id} className="flex items-center justify-between py-3">
-                  <div>
-                    <Link to={`/teacher/courses/${c.id}`} className="font-medium hover:text-primary">
+                <li
+                  key={c.id}
+                  className="flex items-center justify-between gap-3 rounded-md border border-border/80 bg-muted/10 px-3 py-2 transition-colors hover:border-primary/30 hover:bg-muted/25"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Link
+                      to={`/teacher/courses/${c.id}`}
+                      className="truncate text-sm font-medium text-foreground hover:text-primary"
+                    >
                       {c.title}
                     </Link>
                     {c.access_mode === "institute" && (
-                      <Badge variant="muted" className="ml-2">
+                      <Badge variant="muted" className="shrink-0 font-normal">
                         {t("courseCard.byInvitation")}
                       </Badge>
                     )}
@@ -325,7 +336,7 @@ export default function CohortDetailPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-muted-foreground hover:text-destructive"
+                    className="h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-destructive"
                     onClick={() => detachCourse(c.id)}
                     aria-label={t("admin.cohorts.detachAriaPrefix", { name: c.title })}
                   >
