@@ -1589,6 +1589,10 @@
     "votd": {
       "eyebrow": "Сегодня",
       "title": "Стих дня"
+    },
+    "miniCalendar": {
+      "openFull": "Открыть календарь",
+      "loadFailed": "Не удалось загрузить события."
     }
   },
   "courses": {

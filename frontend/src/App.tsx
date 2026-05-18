@@ -132,7 +132,21 @@ function AppRoutes() {
       <Header />
       {user?.role === ROLES.PENDING_TEACHER && <PendingTeacherBanner />}
       <AnnouncementBanner />
-      <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
+      {/* ``min-h-[calc(100dvh-header)]`` keeps the footer permanently below
+          the initial viewport on every authenticated page — you only see it
+          after deliberately scrolling. ``100dvh`` (not ``100vh``) so the
+          mobile browser chrome's collapsing toolbar doesn't shift the
+          footer into view mid-scroll. Header height: ``h-11`` (2.75rem)
+          on mobile, ``md:h-12`` (3rem) from md up. Optional
+          banners (PendingTeacher / Announcement) take their own space
+          above main, which means with a banner active the visible
+          main is slightly shorter — acceptable: the footer-below-fold
+          contract still holds. */}
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="flex-1 focus:outline-none min-h-[calc(100dvh-2.75rem)] md:min-h-[calc(100dvh-3rem)]"
+      >
         <ErrorBoundary>
           <Suspense fallback={<PageSpinner />}>
             <Routes>

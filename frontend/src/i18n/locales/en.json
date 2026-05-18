@@ -68,6 +68,10 @@
     "votd": {
       "eyebrow": "Today",
       "title": "Verse of the Day"
+    },
+    "miniCalendar": {
+      "openFull": "Open full calendar",
+      "loadFailed": "Could not load events."
     }
   },
   "courses": {
