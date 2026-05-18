@@ -857,8 +857,8 @@
       "titlePlaceholder": "Introduction to Theology",
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "A brief description of the course...",
-      "imageUrlLabel": "Cover Image URL (optional — or upload after creating)",
-      "imageUrlPlaceholder": "https://... (you can upload in the editor)",
+      "optional": "optional",
+      "editorHint": "Cover image, modules, calendar, and everything else are set up in the editor next.",
       "creating": "Creating...",
       "submit": "Create Course",
       "cancel": "Cancel"

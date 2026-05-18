@@ -41,7 +41,6 @@ export default function TeacherDashboard() {
   const [form, setForm] = useState<CourseFormData>({
     title: "",
     description: "",
-    image_url: "",
   })
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
   const [saving, setSaving] = useState(false)
@@ -156,9 +155,8 @@ export default function TeacherDashboard() {
       const newCourse = await coursesService.createCourse({
         title: result.data.title,
         description: result.data.description || undefined,
-        image_url: result.data.image_url || undefined,
       })
-      setForm({ title: "", description: "", image_url: "" })
+      setForm({ title: "", description: "" })
       setShowCreate(false)
       setErrors({})
       toast({ title: t("toast.courseCreated"), variant: "success" })

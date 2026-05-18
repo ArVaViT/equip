@@ -35,7 +35,6 @@ describe("courseSchema", () => {
     const result = courseSchema.safeParse({
       title: "Valid",
       description: "",
-      image_url: "",
     })
     expect(result.success).toBe(true)
   })

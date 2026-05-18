@@ -32,7 +32,6 @@ export function makeCourseSchema() {
       .min(1, t("validation.titleRequired"))
       .max(300, t("validation.titleTooLong")),
     description: optionalString(10_000),
-    image_url: optionalString(2048),
   })
 }
 
