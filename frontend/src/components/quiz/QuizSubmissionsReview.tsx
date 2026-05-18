@@ -5,6 +5,7 @@ import { toast } from "@/lib/toast"
 import { getErrorDetail } from "@/lib/errorDetail"
 import type { PendingAnswer } from "@/types"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { CheckCircle2, GraduationCap, Loader2, Save, Users } from "lucide-react"
 import { formatDateTime } from "@/i18n/format"
@@ -128,11 +129,9 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
             : t("quizEditor.review.openEndedCount", { count: items.length })}
         </div>
         <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={showGraded}
-            onChange={(e) => setShowGraded(e.target.checked)}
-            className="accent-primary"
+            onCheckedChange={(v) => setShowGraded(v === true)}
           />
           {t("quizEditor.review.showAlreadyGraded")}
         </label>
