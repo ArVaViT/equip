@@ -890,6 +890,9 @@
       "closed": "Закрыт",
       "open": "Открыт"
     },
+    "defaults": {
+      "moduleTitle": "Модуль {{n}}"
+    },
     "modulesHeading": "Модули",
     "addModule": "Добавить модуль",
     "noModulesYet": "Пока нет модулей",
@@ -988,6 +991,9 @@
     }
   },
   "moduleEditor": {
+    "defaults": {
+      "chapterTitle": "Глава {{n}}"
+    },
     "toast": {
       "moduleNotFound": "Модуль не найден",
       "failedSaveModule": "Не удалось сохранить модуль",
