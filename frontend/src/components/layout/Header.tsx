@@ -105,6 +105,9 @@ export default function Header() {
                 aria-label={t("header.navAriaLabel")}
               >
                 <HeaderNavLink to="/" active={location.pathname === "/"}>
+                  {t("header.home")}
+                </HeaderNavLink>
+                <HeaderNavLink to="/courses" active={isActive("/courses")}>
                   {t("header.courses")}
                 </HeaderNavLink>
                 <HeaderNavLink to="/calendar" active={isActive("/calendar")}>
@@ -238,6 +241,9 @@ export default function Header() {
               {user ? (
                 <>
                   <HeaderNavLink variant="sheet" to="/" active={location.pathname === "/"} onNavigate={closeMobile}>
+                    {t("header.home")}
+                  </HeaderNavLink>
+                  <HeaderNavLink variant="sheet" to="/courses" active={isActive("/courses")} onNavigate={closeMobile}>
                     {t("header.courses")}
                   </HeaderNavLink>
                   <HeaderNavLink variant="sheet" to="/calendar" active={isActive("/calendar")} onNavigate={closeMobile}>
@@ -289,7 +295,7 @@ export default function Header() {
                 </>
               ) : (
                 <>
-                  <HeaderNavLink variant="sheet" to="/" active={location.pathname === "/"} onNavigate={closeMobile}>
+                  <HeaderNavLink variant="sheet" to="/courses" active={isActive("/courses")} onNavigate={closeMobile}>
                     {t("header.courses")}
                   </HeaderNavLink>
                   <HeaderNavLink variant="sheet" to="/login" active={isActive("/login")} onNavigate={closeMobile}>

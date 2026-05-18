@@ -26,7 +26,8 @@ const Register = lazy(() => import("./pages/Auth/Register"))
 const ForgotPassword = lazy(() => import("./pages/Auth/ForgotPassword"))
 const ResetPassword = lazy(() => import("./pages/Auth/ResetPassword"))
 const AuthCallback = lazy(() => import("./pages/Auth/AuthCallback"))
-const HomePage = lazy(() => import("./pages/Home/HomePage"))
+const DashboardPage = lazy(() => import("./pages/Dashboard/DashboardPage"))
+const CoursesPage = lazy(() => import("./pages/Courses/CoursesPage"))
 const ProfilePage = lazy(() => import("./pages/Profile/ProfilePage"))
 const CourseDetail = lazy(() => import("./pages/Course/CourseDetail"))
 const ModuleView = lazy(() => import("./pages/Course/ModuleView"))
@@ -135,8 +136,9 @@ function AppRoutes() {
         <ErrorBoundary>
           <Suspense fallback={<PageSpinner />}>
             <Routes>
-              <Route path="/" element={<HomePage />} />
+              <Route path="/" element={<DashboardPage />} />
               <Route path="/dashboard" element={<Navigate to="/" replace />} />
+              <Route path="/courses" element={<CoursesPage />} />
               <Route path="/profile" element={<Gate mode="private"><ProfilePage /></Gate>} />
               <Route path="/calendar" element={<Gate mode="private"><CalendarPage /></Gate>} />
               <Route path="/certificates" element={<Gate mode="private"><CertificatesPage /></Gate>} />
