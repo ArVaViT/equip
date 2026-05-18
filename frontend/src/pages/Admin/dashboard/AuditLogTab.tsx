@@ -18,6 +18,7 @@ import {
 import { AUDIT_PAGE_SIZE_OPTIONS, type AuditPageSize } from "./useAdminAudit"
 import { AuditDetailsCell } from "./AuditDetailsCell"
 import { AuditSummaryRow } from "./AuditSummaryRow"
+import { FilterField } from "./FilterField"
 import { formatDateTime, formatRelative } from "@/i18n/format"
 
 interface Props {
@@ -41,11 +42,22 @@ interface Props {
 }
 
 /**
- * Full audit-log tab: filter bar, scrollable table with sticky
- * header, pagination + page-size selector. Filters live in the card
- * header so the bar reads as part of the table view (not as a
- * floating widget). The table body uses internal overflow so a long
- * page doesn't push the rest of the admin UI off-screen.
+ * Full audit-log tab.
+ *
+ * **Single-viewport contract** on lg+ — the card grows to fill the
+ * remaining viewport below the admin chrome (page header + dashboard
+ * title + tab strip + container padding). The table body then takes
+ * whatever's left after the filter row + footer, so a long page only
+ * scrolls the rows themselves, not the surrounding chrome.
+ *
+ * Chrome budget on desktop (lg+):
+ *   - page header           ``h-12``    = 48 px
+ *   - container padding    ``sm:py-8``  = 64 px (top+bot)
+ *   - admin title + tabs               ≈ 95 px
+ *
+ * ``-200px`` leaves a small breathing margin. Below ``md`` the
+ * filter row can wrap to two lines, eating an extra ~50 px — the
+ * ``md`` breakpoint switches to a more conservative budget.
  */
 export function AuditLogTab({
   logs,
@@ -71,8 +83,8 @@ export function AuditLogTab({
   const filtersActive = Boolean(action || resource || dateFrom || dateTo)
 
   return (
-    <Card>
-      <CardHeader className="gap-3 space-y-0 border-b">
+    <Card className="flex max-h-[calc(100dvh-240px)] flex-col md:max-h-[calc(100dvh-200px)] md:min-h-[420px]">
+      <CardHeader className="shrink-0 gap-3 space-y-0 border-b">
         <CardTitle className="flex items-center gap-2 text-xl">
           <FileText className="h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden />
           {t("admin.audit.title")}
@@ -80,45 +92,67 @@ export function AuditLogTab({
             {t("admin.audit.entriesCount", { count: total })}
           </span>
         </CardTitle>
-        {/* Filter row. Selects sit on the left, the range picker on the
-            right of the same row on sm+; on mobile everything stacks
-            full-width so the touch targets stay tappable. */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-          <FilterSelect
-            label={t("admin.audit.filterAction")}
-            value={action}
-            onChange={onAction}
-            options={ACTION_OPTIONS}
-            optionLabel={(o) => t(`admin.audit.actionValue.${o}`)}
-            placeholder={t("admin.audit.filterAllActions")}
-          />
-          <FilterSelect
-            label={t("admin.audit.filterResource")}
-            value={resource}
-            onChange={onResource}
-            options={RESOURCE_OPTIONS}
-            optionLabel={(o) => t(`admin.audit.resourceValue.${o}`)}
-            placeholder={t("admin.audit.filterAllResources")}
-          />
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">
-              {t("admin.audit.filterRange")}
-            </label>
-            <DateRangePicker
-              value={{ from: dateFrom, to: dateTo }}
-              onChange={({ from, to }) => {
-                onDateFrom(from)
-                onDateTo(to)
-              }}
-              active={Boolean(dateFrom || dateTo)}
-            />
-          </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <FilterField label={t("admin.audit.filterAction")}>
+            {({ id }) => (
+              <NativeSelect
+                id={id}
+                fieldSize="sm"
+                value={action}
+                onChange={(e) => onAction(e.target.value)}
+                className={cn(
+                  "h-9 w-full sm:w-44",
+                  action && "border-primary/40 ring-1 ring-primary/40",
+                )}
+              >
+                <option value="">{t("admin.audit.filterAllActions")}</option>
+                {ACTION_OPTIONS.map((o) => (
+                  <option key={o} value={o}>
+                    {t(`admin.audit.actionValue.${o}`)}
+                  </option>
+                ))}
+              </NativeSelect>
+            )}
+          </FilterField>
+          <FilterField label={t("admin.audit.filterResource")}>
+            {({ id }) => (
+              <NativeSelect
+                id={id}
+                fieldSize="sm"
+                value={resource}
+                onChange={(e) => onResource(e.target.value)}
+                className={cn(
+                  "h-9 w-full sm:w-44",
+                  resource && "border-primary/40 ring-1 ring-primary/40",
+                )}
+              >
+                <option value="">{t("admin.audit.filterAllResources")}</option>
+                {RESOURCE_OPTIONS.map((o) => (
+                  <option key={o} value={o}>
+                    {t(`admin.audit.resourceValue.${o}`)}
+                  </option>
+                ))}
+              </NativeSelect>
+            )}
+          </FilterField>
+          <FilterField label={t("admin.audit.filterRange")}>
+            {() => (
+              <DateRangePicker
+                value={{ from: dateFrom, to: dateTo }}
+                onChange={({ from, to }) => {
+                  onDateFrom(from)
+                  onDateTo(to)
+                }}
+                active={Boolean(dateFrom || dateTo)}
+              />
+            )}
+          </FilterField>
           {filtersActive && (
             <Button
               variant="ghost"
               size="sm"
               onClick={onReset}
-              className="h-9 self-start text-muted-foreground hover:text-foreground sm:self-end"
+              className="h-9 self-end text-muted-foreground hover:text-foreground"
             >
               <X className="mr-1 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
               {t("admin.audit.filterClear")}
@@ -126,11 +160,11 @@ export function AuditLogTab({
           )}
         </div>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="flex min-h-0 flex-1 flex-col p-0">
         {loading ? (
           <AuditTableSkeleton />
         ) : logs.length === 0 ? (
-          <div className="px-6 py-10">
+          <div className="flex flex-1 items-center justify-center px-6 py-10">
             <EmptyState
               variant="compact"
               icon={<FileText strokeWidth={1.75} aria-hidden />}
@@ -144,9 +178,7 @@ export function AuditLogTab({
           </>
         )}
 
-        {/* Pagination + page-size selector. Always shown so the admin
-            can dial the density up/down even on an empty filter set. */}
-        <div className="flex flex-col items-stretch gap-2 border-t border-border px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex shrink-0 flex-col items-stretch gap-2 border-t border-border px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <label htmlFor="audit-page-size">{t("admin.audit.pageSizeLabel")}</label>
             <NativeSelect
@@ -154,7 +186,7 @@ export function AuditLogTab({
               fieldSize="sm"
               value={String(pageSize)}
               onChange={(e) => onPageSizeChange(Number(e.target.value) as AuditPageSize)}
-              className="w-20"
+              className="h-9 w-20"
             >
               {AUDIT_PAGE_SIZE_OPTIONS.map((n) => (
                 <option key={n} value={n}>
@@ -196,40 +228,6 @@ export function AuditLogTab({
   )
 }
 
-interface FilterSelectProps {
-  label: string
-  value: string
-  onChange: (next: string) => void
-  options: readonly string[]
-  optionLabel: (option: string) => string
-  placeholder: string
-}
-
-function FilterSelect({ label, value, onChange, options, optionLabel, placeholder }: FilterSelectProps) {
-  const isActive = value !== ""
-  return (
-    <div className="space-y-1">
-      <label className="text-xs font-medium text-muted-foreground">{label}</label>
-      <NativeSelect
-        fieldSize="sm"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn(
-          "w-full sm:w-44",
-          isActive && "border-primary/40 ring-1 ring-primary/40",
-        )}
-      >
-        <option value="">{placeholder}</option>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {optionLabel(o)}
-          </option>
-        ))}
-      </NativeSelect>
-    </div>
-  )
-}
-
 function AuditTable({
   logs,
   userMap,
@@ -239,12 +237,11 @@ function AuditTable({
 }) {
   const { t } = useTranslation()
   return (
-    // Internal scroll: ``max-h`` is sized so up to ~12 rows show
-    // before the body becomes scrollable on a typical viewport.
-    // ``sticky top-0`` on <thead> keeps the column heads visible while
-    // the body scrolls; the bg fill is required so rows don't bleed
-    // through the sticky cells.
-    <div className="max-h-[60vh] overflow-y-auto">
+    // ``flex-1 min-h-0`` so the table area takes whatever's left
+    // between the filter row (above) and the pagination (below);
+    // ``sticky top-0`` on <thead> keeps column heads visible while
+    // the body scrolls.
+    <div className="min-h-0 flex-1 overflow-y-auto">
       <table className="w-full text-sm">
         <thead className="sticky top-0 z-10 bg-card">
           <tr className="border-b text-left">
@@ -259,9 +256,6 @@ function AuditTable({
         <tbody className="divide-y">
           {logs.map((log) => (
             <tr key={log.id} className="align-top transition-colors hover:bg-muted/40">
-              {/* Relative time is scannable; ``title`` carries the
-                  exact timestamp so a hover (or screen reader) still
-                  surfaces sub-minute precision for audit forensics. */}
               <td
                 className="whitespace-nowrap px-5 py-3 text-xs text-muted-foreground"
                 title={formatDateTime(log.created_at)}
@@ -293,10 +287,10 @@ function AuditTable({
 
 /**
  * Resource cell — type label on top, id below. When the resource type
- * has a public detail page (currently only ``course``), the id becomes
- * a Link so admins can jump straight to the affected entity. Cohort
- * routing is admin-scoped but reachable as well. Other types render as
- * plain mono text — we don't fabricate links to non-existent routes.
+ * has a public detail page (currently only ``course`` / ``cohort``),
+ * the id becomes a Link so admins can jump straight to the affected
+ * entity. Other types render as plain mono text — we don't fabricate
+ * links to non-existent routes.
  */
 function AuditResourceCell({ type, id }: { type: string; id: string }) {
   const { t } = useTranslation()
@@ -333,20 +327,17 @@ function resourceHref(type: string, id: string): string | null {
     case "cohort":
       return `/admin/cohorts/${id}`
     default:
-      // Modules / chapters need parent ids that aren't on the audit
-      // row; certificates / enrollments / submissions / users have no
-      // public detail route today. Don't fake a link we can't honour.
       return null
   }
 }
 
 /**
- * Audit-table loading placeholder. Renders 8 ghost rows in the table
- * layout so column widths don't snap when real data arrives.
+ * Loading placeholder. Renders 8 ghost rows in the table layout so
+ * column widths don't snap when real data arrives.
  */
 function AuditTableSkeleton() {
   return (
-    <div className="max-h-[60vh] overflow-y-auto" aria-busy="true">
+    <div className="min-h-0 flex-1 overflow-y-auto" aria-busy="true">
       <div className="flex gap-4 border-b px-5 py-3">
         {Array.from({ length: 6 }).map((_, i) => (
           <Skeleton key={i} className="h-3 flex-1" />

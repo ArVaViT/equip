@@ -259,7 +259,8 @@
     "courseEditor": "Course Editor",
     "chapter": "Chapter",
     "module": "Module",
-    "course": "Course"
+    "course": "Course",
+    "courses": "Courses"
   },
   "notFound": {
     "title": "Page not found",

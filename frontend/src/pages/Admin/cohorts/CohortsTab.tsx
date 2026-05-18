@@ -14,6 +14,7 @@ import { cohortsService } from "@/services/cohorts"
 import { formatDate } from "@/i18n/format"
 import type { Cohort } from "@/types"
 import { CreateCohortDialog } from "./CreateCohortDialog"
+import { FilterField } from "../dashboard/FilterField"
 import { cn } from "@/lib/utils"
 
 const STATUS_BADGE: Record<Cohort["status"], "success" | "info" | "muted"> = {
@@ -145,8 +146,8 @@ export function CohortsTab() {
     updateCohorts({ cs: null, cq: null, cf: null, ct: null, cp: null })
 
   return (
-    <Card>
-      <CardHeader className="gap-3 space-y-0 border-b">
+    <Card className="flex max-h-[calc(100dvh-240px)] flex-col md:max-h-[calc(100dvh-200px)] md:min-h-[420px]">
+      <CardHeader className="shrink-0 gap-3 space-y-0 border-b">
         <div className="flex items-center justify-between gap-3">
           <CardTitle className="text-xl">{t("admin.cohorts.title")}</CardTitle>
           <Button size="sm" onClick={() => setCreateOpen(true)} className="h-9 shrink-0">
@@ -154,63 +155,61 @@ export function CohortsTab() {
             {t("admin.cohorts.createButton")}
           </Button>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">
-              {t("admin.cohorts.filterStatus")}
-            </label>
-            <NativeSelect
-              fieldSize="sm"
-              value={statusFilter}
-              onChange={(e) => setStatus(e.target.value as typeof statusFilter)}
-              className={cn(
-                "w-full sm:w-44",
-                statusFilter && "border-primary/40 ring-1 ring-primary/40",
-              )}
-            >
-              <option value="">{t("admin.cohorts.allStatuses")}</option>
-              <option value="upcoming">{t("admin.cohorts.statusUpcoming")}</option>
-              <option value="active">{t("admin.cohorts.statusActive")}</option>
-              <option value="completed">{t("admin.cohorts.statusCompleted")}</option>
-            </NativeSelect>
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">
-              {t("admin.cohorts.filterStartRange")}
-            </label>
-            <DateRangePicker
-              value={{ from: startFrom, to: startTo }}
-              onChange={setStartRange}
-              active={Boolean(startFrom || startTo)}
-            />
-          </div>
-          <div className="space-y-1 sm:flex-1">
-            <label className="text-xs font-medium text-muted-foreground" htmlFor="cohort-search">
-              {t("admin.cohorts.searchLabel")}
-            </label>
-            <div className="relative">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                strokeWidth={1.75}
-                aria-hidden
-              />
-              <Input
-                id="cohort-search"
+        <div className="flex flex-wrap items-end gap-3">
+          <FilterField label={t("admin.cohorts.filterStatus")}>
+            {({ id }) => (
+              <NativeSelect
+                id={id}
                 fieldSize="sm"
-                placeholder={t("admin.cohorts.searchPlaceholder")}
-                value={search}
-                onChange={(e) => setSearch(e.target.value.slice(0, 100))}
-                maxLength={100}
-                className="pl-9"
+                value={statusFilter}
+                onChange={(e) => setStatus(e.target.value as typeof statusFilter)}
+                className={cn(
+                  "h-9 w-full sm:w-44",
+                  statusFilter && "border-primary/40 ring-1 ring-primary/40",
+                )}
+              >
+                <option value="">{t("admin.cohorts.allStatuses")}</option>
+                <option value="upcoming">{t("admin.cohorts.statusUpcoming")}</option>
+                <option value="active">{t("admin.cohorts.statusActive")}</option>
+                <option value="completed">{t("admin.cohorts.statusCompleted")}</option>
+              </NativeSelect>
+            )}
+          </FilterField>
+          <FilterField label={t("admin.cohorts.filterStartRange")}>
+            {() => (
+              <DateRangePicker
+                value={{ from: startFrom, to: startTo }}
+                onChange={setStartRange}
+                active={Boolean(startFrom || startTo)}
               />
-            </div>
-          </div>
+            )}
+          </FilterField>
+          <FilterField label={t("admin.cohorts.searchLabel")} className="sm:flex-1">
+            {({ id }) => (
+              <div className="relative">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
+                <Input
+                  id={id}
+                  fieldSize="sm"
+                  placeholder={t("admin.cohorts.searchPlaceholder")}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value.slice(0, 100))}
+                  maxLength={100}
+                  className="h-9 pl-9"
+                />
+              </div>
+            )}
+          </FilterField>
           {filtersActive && (
             <Button
               variant="ghost"
               size="sm"
               onClick={resetFilters}
-              className="h-9 self-start text-muted-foreground hover:text-foreground sm:self-end"
+              className="h-9 self-end text-muted-foreground hover:text-foreground"
             >
               <X className="mr-1 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
               {t("admin.audit.filterClear")}
@@ -218,25 +217,27 @@ export function CohortsTab() {
           )}
         </div>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="flex min-h-0 flex-1 flex-col p-0">
         {loading ? (
           <CohortsTableSkeleton />
         ) : error ? (
-          <div className="px-6 py-10 text-center">
-            <p className="text-sm text-destructive">{error}</p>
-            <Button size="sm" variant="outline" className="mt-3" onClick={() => void load()}>
-              {t("common.tryAgain")}
-            </Button>
+          <div className="flex flex-1 items-center justify-center px-6 py-10">
+            <div className="text-center">
+              <p className="text-sm text-destructive">{error}</p>
+              <Button size="sm" variant="outline" className="mt-3" onClick={() => void load()}>
+                {t("common.tryAgain")}
+              </Button>
+            </div>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="px-6 py-10">
+          <div className="flex flex-1 items-center justify-center px-6 py-10">
             <EmptyCohorts hasQuery={filtersActive} onCreate={() => setCreateOpen(true)} />
           </div>
         ) : (
           <CohortsTable items={pageItems} />
         )}
 
-        <div className="flex flex-col items-stretch gap-2 border-t border-border px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex shrink-0 flex-col items-stretch gap-2 border-t border-border px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <label htmlFor="cohort-page-size">{t("admin.audit.pageSizeLabel")}</label>
             <NativeSelect
@@ -302,8 +303,10 @@ function CohortsTable({ items }: { items: Cohort[] }) {
   const { t } = useTranslation()
   return (
     <>
-      {/* Mobile stack — each row is a tappable card. */}
-      <div className="space-y-2 px-4 py-3 sm:hidden">
+      {/* Mobile stack — each row is a tappable card. ``flex-1 min-h-0``
+          + ``overflow-y-auto`` so a long list scrolls inside the card
+          rather than blowing out the page. */}
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3 sm:hidden">
         {items.map((c) => (
           <Link
             key={c.id}
@@ -338,8 +341,11 @@ function CohortsTable({ items }: { items: Cohort[] }) {
         ))}
       </div>
 
-      {/* Desktop sticky-header table with internal scroll. */}
-      <div className="hidden max-h-[60vh] overflow-y-auto sm:block">
+      {/* Desktop sticky-header table. ``min-h-0 flex-1`` so it
+          fills the remaining space inside the parent flex column
+          (between filter row above and pagination below) instead of
+          sizing to content. */}
+      <div className="hidden min-h-0 flex-1 overflow-y-auto sm:block">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10 bg-card">
             <tr className="border-b text-left">

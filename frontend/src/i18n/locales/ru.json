@@ -212,7 +212,8 @@
     "courseEditor": "Редактор курса",
     "chapter": "Глава",
     "module": "Модуль",
-    "course": "Курс"
+    "course": "Курс",
+    "courses": "Курсы"
   },
   "notFound": {
     "title": "Страница не найдена",
