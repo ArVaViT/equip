@@ -1114,7 +1114,8 @@
     "chapterType": "Chapter Type",
     "save": "Save Chapter",
     "saving": "Saving...",
-    "saveHint": "Ctrl+S to save"
+    "saveHint": "Ctrl+S to save",
+    "unsavedChanges": "You have unsaved changes"
   },
   "courseDetail": {
     "allCourses": "All Courses",
