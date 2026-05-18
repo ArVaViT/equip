@@ -38,7 +38,8 @@ def _course_source_locale_map(db: Session, course_ids: list[str]) -> dict[str, L
 @router.get("", response_model=list[AnnouncementResponse])
 def list_announcements(
     response: Response,
-    course_id: str | None = Query(None),
+    # 36 = UUID length; matches the bound on every Create schema id.
+    course_id: str | None = Query(None, max_length=36),
     global_only: bool = Query(False),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),

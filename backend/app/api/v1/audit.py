@@ -47,9 +47,13 @@ class AuditLogPage(BaseModel):
 def list_audit_logs(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    user_id: str | None = Query(None),
-    resource_type: str | None = Query(None),
-    action: str | None = Query(None),
+    # ``user_id`` is parsed as a UUID below, so 36 chars is the legitimate cap.
+    user_id: str | None = Query(None, max_length=36),
+    # ``resource_type`` / ``action`` map to ``String(50)`` columns; a longer
+    # query string can never match any row but would still run a wasted
+    # ``EXPLAIN`` + index lookup before returning empty. Bound at parse.
+    resource_type: str | None = Query(None, max_length=50),
+    action: str | None = Query(None, max_length=50),
     date_from: datetime | None = Query(None),
     date_to: datetime | None = Query(None),
     admin: User = Depends(require_admin),

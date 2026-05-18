@@ -29,7 +29,8 @@ router = APIRouter(prefix="/calendar", tags=["calendar"])
 @router.get("/events", response_model=list[CalendarEvent])
 def get_calendar_events(
     response: Response,
-    course_id: str | None = Query(None),
+    # 36 = UUID length; matches the bound on every Create schema id.
+    course_id: str | None = Query(None, max_length=36),
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
