@@ -41,9 +41,7 @@ _COURSE_TREE: tuple = (
 # ``CourseCard`` only consumes ``course.modules?.length``. Course-detail
 # requests stay on the full ``_COURSE_TREE`` so the nested chapter list
 # is still there for the enrolled-course view.
-_COURSE_LIST_TREE: tuple = (
-    selectinload(Course.modules.and_(Module.deleted_at.is_(None))),
-)
+_COURSE_LIST_TREE: tuple = (selectinload(Course.modules.and_(Module.deleted_at.is_(None))),)
 
 
 def get_courses(
