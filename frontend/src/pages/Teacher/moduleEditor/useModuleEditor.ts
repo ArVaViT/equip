@@ -7,7 +7,7 @@ import { coursesService } from "@/services/courses";
 import { getErrorDetail } from "@/lib/errorDetail";
 import { toast } from "@/lib/toast";
 import { isoToLocalInput, localInputToIso } from "@/i18n/format";
-import { chapterSchema, moduleSchema } from "@/lib/validations/course";
+import { makeChapterSchema, makeModuleSchema } from "@/lib/validations/course";
 import type { Chapter, Module } from "@/types";
 import type { useConfirm } from "@/components/ui/alert-dialog";
 
@@ -68,7 +68,9 @@ export function useModuleEditor(
 
   const saveModuleField = async (field: "title" | "description", value: string) => {
     if (!courseId || !moduleId) return;
-    const check = moduleSchema
+    // Build inside the handler so error messages match the current
+    // locale, not the bootstrap snapshot.
+    const check = makeModuleSchema()
       .pick({ title: true, description: true })
       .partial()
       .safeParse({ [field]: value });
@@ -141,7 +143,7 @@ export function useModuleEditor(
   const renameChapter = async (ch: Chapter, newTitle: string) => {
     if (!courseId || !moduleId || !newTitle.trim()) return;
     const trimmed = newTitle.trim();
-    const check = chapterSchema.pick({ title: true }).safeParse({ title: trimmed });
+    const check = makeChapterSchema().pick({ title: true }).safeParse({ title: trimmed });
     if (!check.success) {
       toast({
         title:

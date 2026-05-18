@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { useConfirm } from "@/components/ui/alert-dialog"
 import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
-import { courseSchema, type CourseFormData } from "@/lib/validations/course"
+import { makeCourseSchema, type CourseFormData } from "@/lib/validations/course"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { coursesService } from "@/services/courses"
 import { toast } from "@/lib/toast"
@@ -139,7 +139,9 @@ export default function TeacherDashboard() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    const result = courseSchema.safeParse(form)
+    // Build the schema inside the handler so error messages match
+    // the *current* locale, not the bootstrap snapshot.
+    const result = makeCourseSchema().safeParse(form)
     if (!result.success) {
       const fieldErrors: typeof errors = {}
       for (const issue of result.error.issues) {

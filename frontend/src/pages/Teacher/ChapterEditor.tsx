@@ -12,7 +12,7 @@ import AssignmentEditor from "@/components/assignment/AssignmentEditor"
 import { coursesService } from "@/services/courses"
 import type { Chapter } from "@/types"
 import { toast } from "@/lib/toast"
-import { chapterSchema } from "@/lib/validations/course"
+import { makeChapterSchema } from "@/lib/validations/course"
 import { useConfirm } from "@/components/ui/alert-dialog"
 import {
   ChevronRight, Save, Loader2, ArrowLeft,
@@ -119,7 +119,9 @@ export default function ChapterEditor() {
     // Only title + chapter_type live on the chapter row now. Reading content
     // is owned by chapter_blocks (edited inline inside ChapterBlockEditor,
     // which auto-saves). Quiz/exam/assignment editors write their own rows.
-    const validation = chapterSchema.safeParse({
+    // Build the schema inside the handler so error messages match
+    // the *current* locale, not the bootstrap snapshot.
+    const validation = makeChapterSchema().safeParse({
       title: title.trim(),
       chapter_type: chapterType,
     })

@@ -8,11 +8,11 @@ import i18n from "@/i18n/config"
  * schemas in ``backend/app/schemas/course.py`` so invalid input fails fast
  * client-side before we hit the server.
  *
- * User-facing message keys are resolved via i18next; the static schema
- * exports snapshot the bootstrap language at module-load. Components that
- * surface these errors to the user (course/module editors, profile page)
- * should call the matching `make*Schema()` factory inside their submit
- * handler so the error string matches the active UI language.
+ * Error messages resolve via i18next at schema-construction time, so
+ * every caller MUST invoke the ``make…Schema()`` factory inside its
+ * submit handler — never cache the returned schema at module scope.
+ * Caching snapshots the bootstrap-locale strings and leaves messages
+ * stuck in the wrong language after a locale switch.
  */
 
 const t = (key: string) => i18n.t(key)
@@ -73,9 +73,10 @@ export function makeProfileSchema() {
   })
 }
 
-export const courseSchema = makeCourseSchema()
-export const moduleSchema = makeModuleSchema()
-export const chapterSchema = makeChapterSchema()
-export const profileSchema = makeProfileSchema()
+// Static schema exports were ``= make…Schema()`` snapshots that froze
+// error messages at bootstrap-locale. Every callsite has been converted
+// to invoke the ``make…Schema()`` factory inside the submit handler so
+// validation messages update with the active locale; the snapshots are
+// gone now. Re-add them only if a non-user-facing caller appears (rare).
 
 export type CourseFormData = z.infer<ReturnType<typeof makeCourseSchema>>
