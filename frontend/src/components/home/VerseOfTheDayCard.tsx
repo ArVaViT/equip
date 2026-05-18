@@ -67,13 +67,13 @@ export function VerseOfTheDayCard() {
           </div>
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              {t("home.votd.eyebrow")}
+              {t("dashboard.votd.eyebrow")}
             </p>
             <h2
               id="verse-of-the-day-heading"
               className="font-serif text-lg font-semibold leading-tight tracking-tight text-foreground"
             >
-              {t("home.votd.title")}
+              {t("dashboard.votd.title")}
             </h2>
           </div>
         </div>

@@ -35,6 +35,7 @@
     }
   },
   "header": {
+    "home": "Главная",
     "courses": "Курсы",
     "calendar": "Календарь",
     "certificates": "Сертификаты",
@@ -52,7 +53,6 @@
   },
   "footer": {
     "tagline": "Системное изучение Библии для тех, кто относится к Писанию серьёзно.",
-    "teacherDashboard": "Панель преподавателя",
     "support": "Связаться с поддержкой",
     "rightsReserved": "Все права защищены."
   },
@@ -174,32 +174,6 @@
     "invalidInput": "Некорректный ввод",
     "editName": "Изменить имя",
     "avatarAlt": "Аватар {{name}}"
-  },
-  "home": {
-    "myCourses": "Мои курсы",
-    "myCoursesLead": "Ваши записи и прогресс в одном месте.",
-    "myCoursesEmptyTitle": "Пока нет записей на курсы",
-    "loadCoursesError": "Не удалось загрузить курсы. Обновите страницу.",
-    "noEnrollments": "Вы ещё не записаны ни на один курс. Выберите курс из каталога ниже.",
-    "course": "Курс",
-    "signInLink": "Войти",
-    "grade": "Оценка: {{grade}}",
-    "academicPrograms": "Учебные программы",
-    "browseCourses": "Каталог курсов",
-    "courseCatalog": "Каталог курсов",
-    "discoverMore": "Найдите новые курсы, чтобы расширить знания",
-    "browseSeminary": "Изучайте наши семинарские курсы и углубляйте знание Библии",
-    "searchPlaceholder": "Поиск курсов...",
-    "signInToEnroll": "чтобы записаться на курс",
-    "noCoursesFound": "Курсы не найдены",
-    "noCoursesYet": "Курсов пока нет",
-    "tryDifferentSearch": "Попробуйте другой запрос",
-    "checkBackSoon": "Заходите позже — скоро появятся новые курсы",
-    "loadFailed": "Не удалось загрузить курсы. Попробуйте позже.",
-    "votd": {
-      "eyebrow": "Сегодня",
-      "title": "Стих дня"
-    }
   },
   "courseCard": {
     "opensOn": "Набор с {{date}}",
@@ -1601,6 +1575,56 @@
       "assignmentHasBrief": "У задания в «{{title}}» есть описание.",
       "quizWeightNonzero": "Тесты учитываются в итоговой оценке.",
       "assignmentWeightNonzero": "Задания учитываются в итоговой оценке."
+    }
+  },
+  "dashboard": {
+    "myCourses": "Мои курсы",
+    "myCoursesLead": "Ваши записи на курсы и прогресс в одном месте.",
+    "myCoursesEmptyTitle": "Пока нет записей",
+    "loadCoursesError": "Не удалось загрузить ваши курсы. Попробуйте обновить страницу.",
+    "noEnrollments": "Вы пока не записаны ни на один курс. Откройте каталог чтобы начать.",
+    "course": "Курс",
+    "grade": "Оценка: {{grade}}",
+    "browseAllCta": "Открыть каталог",
+    "votd": {
+      "eyebrow": "Сегодня",
+      "title": "Стих дня"
+    }
+  },
+  "courses": {
+    "academicPrograms": "Учебные программы",
+    "pageTitle": "Каталог курсов",
+    "pageTitleAuthed": "Каталог курсов",
+    "pageSubtitle": "Изучайте семинарские курсы и углубляйте знание Писания",
+    "pageSubtitleAuthed": "Откройте для себя новые курсы и расширьте знания",
+    "searchPlaceholder": "Поиск курсов...",
+    "signInLink": "Войти",
+    "signInToEnroll": "чтобы записаться на курсы",
+    "noCoursesFound": "Курсы не найдены",
+    "noCoursesYet": "Пока нет курсов",
+    "tryDifferentSearch": "Попробуйте другой запрос",
+    "checkBackSoon": "Скоро появятся новые курсы",
+    "loadFailed": "Не удалось загрузить курсы. Попробуйте позже."
+  },
+  "streak": {
+    "eyebrow": "Ежедневно",
+    "title": "Сегодняшняя практика",
+    "weekAriaLabel": "Дни текущей недели",
+    "todayTasksLabel": "Сегодня",
+    "comingSoon": "Ежедневные задания скоро появятся — это плейсхолдер.",
+    "days": {
+      "mon": "Пн",
+      "tue": "Вт",
+      "wed": "Ср",
+      "thu": "Чт",
+      "fri": "Пт",
+      "sat": "Сб",
+      "sun": "Вс"
+    },
+    "tasksPreview": {
+      "questionOfDay": "Ответить на вопрос дня",
+      "readChapter": "Прочитать сегодняшнюю главу",
+      "memoryVerse": "Повторить памятный стих"
     }
   }
 }
