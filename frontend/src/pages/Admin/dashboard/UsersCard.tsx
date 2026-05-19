@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { Users, Search, Trash2 } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import PageSpinner from "@/components/ui/PageSpinner"
@@ -32,6 +33,9 @@ const VirtualAdminUsers = lazy(() => import("../VirtualAdminUsers"))
  */
 const USERS_VIRTUAL_THRESHOLD = 50
 
+/** Empty string = "all roles" (no filter). */
+export type RoleFilterValue = "" | "admin" | "teacher" | "pending_teacher" | "student"
+
 interface Props {
   users: ProfileRow[]
   filtered: ProfileRow[]
@@ -44,6 +48,9 @@ interface Props {
   bulkUpdating: boolean
   updatingId: string | null
   currentUserId: string | undefined
+  roleFilter: RoleFilterValue
+  roleCounts: Record<UserRole, number>
+  onRoleFilterChange: (next: RoleFilterValue) => void
   onSearchInputChange: (next: string) => void
   onBulkRoleChange: (next: UserRole) => void
   onApplyBulkRole: () => void
@@ -67,6 +74,9 @@ export function UsersCard({
   bulkUpdating,
   updatingId,
   currentUserId,
+  roleFilter,
+  roleCounts,
+  onRoleFilterChange,
   onSearchInputChange,
   onBulkRoleChange,
   onApplyBulkRole,
@@ -128,16 +138,76 @@ export function UsersCard({
               </Button>
             </div>
           )}
-          <div className="relative w-full max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
-            <Input
-              placeholder={t("admin.users.searchPlaceholder")}
-              value={searchInput}
-              onChange={(e) => onSearchInputChange(e.target.value.slice(0, searchMaxLength))}
-              maxLength={searchMaxLength}
-              className="pl-9"
-            />
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            {/* Role filter — narrows the table to a single role.
+                ``"all"`` ↔ empty string in the URL; same wrapper trick
+                the cohort / audit Selects use. */}
+            <Select
+              value={roleFilter || "all"}
+              onValueChange={(v) =>
+                onRoleFilterChange((v === "all" ? "" : v) as RoleFilterValue)
+              }
+            >
+              <SelectTrigger
+                size="sm"
+                aria-label={t("admin.users.roleFilterAria")}
+                className={cn(
+                  "h-9 w-full sm:w-44",
+                  roleFilter && "border-primary/40 ring-1 ring-primary/40",
+                )}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("admin.users.roleFilterAll")}</SelectItem>
+                <SelectItem value="admin">{t("roles.admin")}</SelectItem>
+                <SelectItem value="teacher">{t("roles.teacher")}</SelectItem>
+                <SelectItem value="pending_teacher">{t("roles.pendingTeacher")}</SelectItem>
+                <SelectItem value="student">{t("roles.student")}</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="relative w-full max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
+              <Input
+                placeholder={t("admin.users.searchPlaceholder")}
+                value={searchInput}
+                onChange={(e) => onSearchInputChange(e.target.value.slice(0, searchMaxLength))}
+                maxLength={searchMaxLength}
+                className="pl-9"
+              />
+            </div>
           </div>
+        </div>
+        {/* Role distribution chip strip — clickable shortcuts for the
+            filter that double as a tenant-shape snapshot. Hides
+            zero-count roles so the strip stays meaningful on small
+            tenants. Active filter gets the primary fill. */}
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          {(["admin", "teacher", "pending_teacher", "student"] as const).map((role) => {
+            if (roleCounts[role] === 0) return null
+            const active = roleFilter === role
+            return (
+              <button
+                key={role}
+                type="button"
+                onClick={() => onRoleFilterChange(active ? "" : role)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 transition-colors",
+                  active
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border hover:border-primary/40 hover:bg-muted",
+                )}
+              >
+                <span>{t(`roles.${role === "pending_teacher" ? "pendingTeacher" : role}`)}</span>
+                <span className={cn(
+                  "tabular-nums",
+                  active ? "opacity-90" : "text-muted-foreground"
+                )}>
+                  {roleCounts[role]}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </CardHeader>
       <CardContent>

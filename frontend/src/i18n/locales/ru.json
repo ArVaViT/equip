@@ -1407,6 +1407,8 @@
       "deleteTooltip": "Удалить пользователя",
       "avatarAltPrefix": "Аватар {{name}}",
       "searchPlaceholder": "Поиск по имени или email…",
+      "roleFilterAria": "Фильтр по роли",
+      "roleFilterAll": "Все роли",
       "thName": "Имя",
       "thEmail": "Email",
       "thRole": "Роль",

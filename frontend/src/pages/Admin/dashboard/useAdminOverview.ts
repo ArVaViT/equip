@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { useSearchParams } from "react-router-dom"
 import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
 import { useAsyncData } from "@/hooks/useAsyncData"
 import { coursesService } from "@/services/courses"
@@ -10,6 +11,13 @@ import { useConfirm } from "@/components/ui/alert-dialog"
 import { ROLES, type UserRole } from "@/types"
 import type { AdminCert } from "./PendingCertsCard"
 import { ROLE_I18N_KEY, type AdminStats, type ProfileRow } from "./constants"
+
+const ROLE_FILTER_VALUES = ["admin", "teacher", "pending_teacher", "student"] as const
+type RoleFilter = (typeof ROLE_FILTER_VALUES)[number] | ""
+
+function isRoleFilter(v: string): v is (typeof ROLE_FILTER_VALUES)[number] {
+  return (ROLE_FILTER_VALUES as readonly string[]).includes(v)
+}
 
 interface UseAdminOverviewArgs {
   /** Current signed-in user id — excluded from bulk operations and delete confirmations. */
@@ -26,6 +34,7 @@ interface UseAdminOverviewArgs {
 export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
   const confirm = useConfirm()
   const { t } = useTranslation()
+  const [params, setParams] = useSearchParams()
 
   const {
     input: searchInput,
@@ -33,6 +42,25 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
     value: urlQuery,
     maxLength: searchMaxLength,
   } = useDebouncedSearchParam()
+
+  // URL-state role filter so a bookmarked admin link round-trips with
+  // its filter. Reject any value not in the allow-list (defaults to "").
+  const rawRoleFilter = params.get("role") ?? ""
+  const roleFilter: RoleFilter = isRoleFilter(rawRoleFilter) ? rawRoleFilter : ""
+  const setRoleFilter = useCallback(
+    (next: RoleFilter) => {
+      setParams(
+        (prev) => {
+          const n = new URLSearchParams(prev)
+          if (next) n.set("role", next)
+          else n.delete("role")
+          return n
+        },
+        { replace: true },
+      )
+    },
+    [setParams],
+  )
 
   const [users, setUsers] = useState<ProfileRow[]>([])
   const [stats, setStats] = useState<AdminStats>({ users: 0, courses: 0, enrollments: 0 })
@@ -89,11 +117,33 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
 
   const filtered = useMemo(() => {
     const q = urlQuery.trim().toLowerCase()
-    if (!q) return users
-    return users.filter(
-      (u) => u.full_name?.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
-    )
-  }, [users, urlQuery])
+    return users.filter((u) => {
+      if (roleFilter && u.role !== roleFilter) return false
+      if (q && !u.full_name?.toLowerCase().includes(q) && !u.email.toLowerCase().includes(q)) {
+        return false
+      }
+      return true
+    })
+  }, [users, urlQuery, roleFilter])
+
+  /**
+   * Per-role counts across the whole user list (NOT filtered) — drives
+   * the chip strip above the search input so the admin sees the
+   * tenant's role distribution at a glance without flipping the
+   * filter through every value.
+   */
+  const roleCounts = useMemo(() => {
+    const counts: Record<UserRole, number> = {
+      admin: 0,
+      teacher: 0,
+      pending_teacher: 0,
+      student: 0,
+    }
+    for (const u of users) {
+      if (u.role in counts) counts[u.role as UserRole] += 1
+    }
+    return counts
+  }, [users])
 
   const userMap = useMemo(() => {
     const map: Record<string, string> = {}
@@ -318,6 +368,9 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
     setSearchInput,
     urlQuery,
     searchMaxLength,
+    roleFilter,
+    setRoleFilter,
+    roleCounts,
     reload,
     setBulkRole,
     handleRoleChange,
