@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DateTimePicker } from "@/components/ui/datetime-picker"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useConfirm } from "@/components/ui/alert-dialog"
@@ -417,19 +418,18 @@ function DateField({ label, value, disabled, nullable, onSave }: DateFieldProps)
   return (
     <div className="space-y-1.5">
       <Label className="text-xs">{label}</Label>
-      <Input
-        type="datetime-local"
+      <DateTimePicker
         value={local}
         disabled={disabled}
-        onChange={(e) => {
-          const v = e.target.value
-          if (!v) {
+        onChange={(next) => {
+          if (!next) {
             if (nullable) void onSave(null)
             return
           }
-          const iso = localInputToIso(v)
+          const iso = localInputToIso(next)
           if (iso) void onSave(iso)
         }}
+        className="w-full"
       />
     </div>
   )

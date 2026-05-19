@@ -1667,5 +1667,13 @@
     "clear": "Clear",
     "prevMonth": "Previous month",
     "nextMonth": "Next month"
+  },
+  "datePicker": {
+    "placeholder": "Pick a date"
+  },
+  "dateTimePicker": {
+    "placeholder": "Pick date + time",
+    "hourAria": "Hour",
+    "minuteAria": "Minute"
   }
 }

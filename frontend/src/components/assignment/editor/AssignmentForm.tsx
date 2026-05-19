@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -80,12 +81,11 @@ export function AssignmentForm({ value, onChange, onSubmit, onCancel, submitting
             <Label className="text-xs" htmlFor="assignment-due">
               {t("assignmentEditor.form.dueDate")}
             </Label>
-            <Input
+            <DatePicker
               id="assignment-due"
-              type="date"
               value={value.dueDate}
-              onChange={(e) => patch({ dueDate: e.target.value })}
-              fieldSize="sm"
+              onChange={(next) => patch({ dueDate: next })}
+              className="w-full"
             />
           </div>
         </div>

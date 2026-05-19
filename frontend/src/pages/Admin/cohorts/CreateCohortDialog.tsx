@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Modal } from "@/components/patterns"
 import { Button } from "@/components/ui/button"
+import { DateTimePicker } from "@/components/ui/datetime-picker"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cohortsService } from "@/services/cohorts"
@@ -90,29 +91,21 @@ export function CreateCohortDialog({ open, onClose, onCreated }: Props) {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs">{t("admin.cohorts.fieldStart")}</Label>
-            <Input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
+            <DateTimePicker value={start} onChange={setStart} className="w-full" />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">{t("admin.cohorts.fieldEnd")}</Label>
-            <Input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} />
+            <DateTimePicker value={end} onChange={setEnd} className="w-full" />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs">{t("admin.cohorts.fieldEnrollStart")}</Label>
-            <Input
-              type="datetime-local"
-              value={enrollStart}
-              onChange={(e) => setEnrollStart(e.target.value)}
-            />
+            <DateTimePicker value={enrollStart} onChange={setEnrollStart} className="w-full" />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">{t("admin.cohorts.fieldEnrollEnd")}</Label>
-            <Input
-              type="datetime-local"
-              value={enrollEnd}
-              onChange={(e) => setEnrollEnd(e.target.value)}
-            />
+            <DateTimePicker value={enrollEnd} onChange={setEnrollEnd} className="w-full" />
           </div>
         </div>
         <div className="space-y-1.5">

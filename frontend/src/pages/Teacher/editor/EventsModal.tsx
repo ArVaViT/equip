@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
+import { DateTimePicker } from "@/components/ui/datetime-picker"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -91,11 +92,10 @@ export function EventsModal({
             </div>
             <div className="space-y-1">
               <Label className="text-xs">{t("teacherEditor.modals.events.dateTime")}</Label>
-              <Input
-                type="datetime-local"
+              <DateTimePicker
                 value={form.event_date}
-                onChange={(e) => patch({ event_date: e.target.value })}
-                className="text-sm"
+                onChange={(next) => patch({ event_date: next })}
+                className="w-full"
               />
             </div>
           </div>
