@@ -1721,5 +1721,13 @@
     "clear": "Очистить",
     "prevMonth": "Предыдущий месяц",
     "nextMonth": "Следующий месяц"
+  },
+  "datePicker": {
+    "placeholder": "Выберите дату"
+  },
+  "dateTimePicker": {
+    "placeholder": "Выберите дату и время",
+    "hourAria": "Часы",
+    "minuteAria": "Минуты"
   }
 }
