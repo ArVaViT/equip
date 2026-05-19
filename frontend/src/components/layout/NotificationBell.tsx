@@ -80,53 +80,52 @@ export default function NotificationBell({
   return (
     <div className={cn("relative", isSheet && "w-full")}>
       <Tooltip>
-  <TooltipTrigger asChild>
-      <Button
-        ref={buttonRef}
-        variant="ghost"
-        size="sm"
-        className={cn(
-          "relative shadow-none ring-offset-background focus-visible:ring-1",
-          isNavRow
-            ? "flex h-auto min-h-10 w-full flex-row items-center justify-between rounded-md px-3 py-2 text-left text-sm font-normal hover:bg-muted"
-            : "p-0",
-          !isNavRow && isSheet && "h-10 min-h-10 w-10 min-w-10",
-          !isNavRow && !isSheet && "h-7 w-7",
-          isNavRow && open && "bg-muted/80",
-        )}
-        onClick={() => setOpen((prev) => !prev)}
-        aria-label={isNavRow ? undefined : t("notifications.menuAriaLabel")}
-        aria-expanded={open}
-        aria-haspopup="true"
-      >
-        {isNavRow ? (
-          <>
-            <span className="text-sm font-medium text-foreground">{t("notifications.title")}</span>
-            <span className="flex min-w-[1.25rem] items-center justify-end">
-              {unreadCount > 0 ? (
-                <span className="rounded-full bg-destructive px-2 py-0.5 text-xs font-semibold tabular-nums text-destructive-foreground">
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </span>
-              ) : null}
-            </span>
-          </>
-        ) : (
-          <>
-            <Bell className="h-3.5 w-3.5" strokeWidth={1.75} />
-            {unreadCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-xs font-bold leading-none text-destructive-foreground">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
+        <TooltipTrigger asChild>
+          <Button
+            ref={buttonRef}
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "relative shadow-none ring-offset-background focus-visible:ring-1",
+              isNavRow
+                ? "flex h-auto min-h-10 w-full flex-row items-center justify-between rounded-md px-3 py-2 text-left text-sm font-normal hover:bg-muted"
+                : "p-0",
+              !isNavRow && isSheet && "h-10 min-h-10 w-10 min-w-10",
+              !isNavRow && !isSheet && "h-7 w-7",
+              isNavRow && open && "bg-muted/80",
             )}
-          </>
-        )}
-      </Button>
+            onClick={() => setOpen((prev) => !prev)}
+            aria-label={isNavRow ? undefined : t("notifications.menuAriaLabel")}
+            aria-expanded={open}
+            aria-haspopup="true"
+          >
+            {isNavRow ? (
+              <>
+                <span className="text-sm font-medium text-foreground">{t("notifications.title")}</span>
+                <span className="flex min-w-[1.25rem] items-center justify-end">
+                  {unreadCount > 0 ? (
+                    <span className="rounded-full bg-destructive px-2 py-0.5 text-xs font-semibold tabular-nums text-destructive-foreground">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  ) : null}
+                </span>
+              </>
+            ) : (
+              <>
+                <Bell className="h-3.5 w-3.5" strokeWidth={1.75} />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-xs font-bold leading-none text-destructive-foreground">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </>
+            )}
+          </Button>
         </TooltipTrigger>
-
-  <TooltipContent side="bottom">
-    <p>{t("header.notifications")}</p>
-  </TooltipContent>
-</Tooltip>
+        <TooltipContent side="bottom">
+          <p>{t("header.notifications")}</p>
+        </TooltipContent>
+      </Tooltip>
 
       {open && (
         <NotificationPanel
