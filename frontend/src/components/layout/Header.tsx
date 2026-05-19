@@ -11,7 +11,7 @@ import { User as UserIcon, Menu } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import { cn } from "@/lib/utils"
 import { EDITORIAL_EASE } from "@/lib/motion"
-import { Tooltip, TooltipContent,TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 const UNDERLINE_LAYOUT_ID = "header-active-underline"
 
@@ -144,41 +144,40 @@ export default function Header() {
                   <Suspense fallback={<div className="h-7 w-7 shrink-0" aria-hidden />}>
                     <NotificationBell />
                   </Suspense>
-<Tooltip>
-  <TooltipTrigger asChild>
-    <Link to="/profile" className="inline-flex">
-      <PressFeedback className="inline-flex">
-        <Button
-          variant={isActive("/profile") ? "secondary" : "ghost"}
-          size="sm"
-          className="h-7 w-7 shrink-0 rounded-full p-0"
-          aria-label={t("header.profile")}
-        >
-          {user.avatar_url ? (
-            <img
-              src={toProxyImage(user.avatar_url)}
-              alt=""
-              className="h-6 w-6 rounded-full object-cover"
-              onError={(e) => {
-                e.currentTarget.style.display = "none"
-              }}
-            />
-          ) : (
-            <UserIcon
-              className="h-3.5 w-3.5"
-              strokeWidth={ICON_STROKE}
-              aria-hidden="true"
-            />
-          )}
-        </Button>
-      </PressFeedback>
-    </Link>
-  </TooltipTrigger>
-
-  <TooltipContent side="bottom" sideOffset={8}>
-   <p>{t("header.profile")}</p>
-  </TooltipContent>
-</Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link to="/profile" className="inline-flex">
+                        <PressFeedback className="inline-flex">
+                          <Button
+                            variant={isActive("/profile") ? "secondary" : "ghost"}
+                            size="sm"
+                            className="h-7 w-7 shrink-0 rounded-full p-0"
+                            aria-label={t("header.profile")}
+                          >
+                            {user.avatar_url ? (
+                              <img
+                                src={toProxyImage(user.avatar_url)}
+                                alt=""
+                                className="h-6 w-6 rounded-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none"
+                                }}
+                              />
+                            ) : (
+                              <UserIcon
+                                className="h-3.5 w-3.5"
+                                strokeWidth={ICON_STROKE}
+                                aria-hidden="true"
+                              />
+                            )}
+                          </Button>
+                        </PressFeedback>
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" sideOffset={8}>
+                      <p>{t("header.profile")}</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </>
               ) : (
                 <>
