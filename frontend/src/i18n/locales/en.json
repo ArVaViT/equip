@@ -1432,6 +1432,10 @@
       "title": "Pending Teacher Approvals",
       "missingName": "No name",
       "registered": "Registered {{date}}",
+      "registeredRelative": "Registered {{relative}}",
+      "disposableEmail": "throwaway",
+      "freeEmail": "free webmail",
+      "approveHint": "Approving lets them create + publish courses on the platform.",
       "approve": "Approve",
       "deny": "Deny",
       "toast": {
@@ -1454,6 +1458,10 @@
       "studentFallback": "Student",
       "courseFallback": "Course",
       "approvedBy": "Approved by {{name}}",
+      "teacherSignOff": "Teacher {{name}} signed off {{relative}}",
+      "requestedRelative": "Requested {{relative}}",
+      "requestedAtPrefix": "Requested at {{ts}}",
+      "approveHint": "Approving issues a public certificate number visible at /verify/<num>.",
       "approve": "Approve",
       "reject": "Reject",
       "toast": {

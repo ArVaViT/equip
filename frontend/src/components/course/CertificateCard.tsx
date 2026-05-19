@@ -68,7 +68,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
   }
 
   const handleCopy = async () => {
-    if (!certificate) return
+    if (!certificate?.certificate_number) return
     try {
       await navigator.clipboard.writeText(certificate.certificate_number)
       setCopied(true)

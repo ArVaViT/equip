@@ -234,11 +234,23 @@ export interface AssignmentSubmission {
 export interface Certificate {
   id: string
   user_id: string
-  course_id: string
-  issued_at: string
-  certificate_number: string
+  course_id: string | null
+  archived_course_title?: string | null
+  issued_at: string | null
+  certificate_number: string | null
   status: 'pending' | 'teacher_approved' | 'approved' | 'rejected'
-  requested_at: string
+  requested_at: string | null
+  teacher_approved_at?: string | null
+  teacher_approved_by?: string | null
+  admin_approved_at?: string | null
+  admin_approved_by?: string | null
+  // Enrichment populated by the pending-cert listing endpoints
+  // (teacher + admin panels); absent on the slim "/my" + course-detail
+  // payloads. Optional because every other consumer ignores them.
+  student_name?: string | null
+  student_email?: string | null
+  course_title?: string | null
+  teacher_approver_name?: string | null
 }
 
 export type BlockType = 'text' | 'quiz' | 'assignment' | 'file'

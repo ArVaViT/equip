@@ -1427,6 +1427,10 @@
       "title": "Заявки преподавателей",
       "missingName": "Без имени",
       "registered": "Зарегистрирован {{date}}",
+      "registeredRelative": "Зарегистрирован {{relative}}",
+      "disposableEmail": "одноразовая",
+      "freeEmail": "бесплатная почта",
+      "approveHint": "После одобрения сможет создавать и публиковать курсы.",
       "approve": "Одобрить",
       "deny": "Отклонить",
       "toast": {
@@ -1449,6 +1453,10 @@
       "studentFallback": "Студент",
       "courseFallback": "Курс",
       "approvedBy": "Одобрено: {{name}}",
+      "teacherSignOff": "Преподаватель {{name}} подтвердил {{relative}}",
+      "requestedRelative": "Запрошен {{relative}}",
+      "requestedAtPrefix": "Запрошен: {{ts}}",
+      "approveHint": "После одобрения появится номер сертификата на /verify/<num>.",
       "approve": "Одобрить",
       "reject": "Отклонить",
       "toast": {
