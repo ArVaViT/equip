@@ -4,6 +4,13 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { FileText, Loader2, MessageSquare, Save, Star, User } from "lucide-react"
@@ -92,20 +99,34 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
               min={0}
               max={maxScore}
               value={grade}
-              onChange={(e) => setGrade(Number(e.target.value))}
+              // Clamp into [0..maxScore] and fall back to 0 on empty/NaN.
+              // Without this the teacher clearing the field lands NaN in
+              // state, which JSON-serialises to ``null`` and trips the
+              // backend's ``grade: int`` validation on save.
+              onChange={(e) =>
+                setGrade(Math.min(maxScore, Math.max(0, Number(e.target.value) || 0)))
+              }
               fieldSize="sm"
               className="w-20"
             />
             <span className="text-xs text-muted-foreground">/ {maxScore}</span>
           </div>
-          <select
+          <Select
             value={status}
-            onChange={(e) => setStatus(e.target.value as AssignmentSubmission["status"])}
-            className="h-7 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onValueChange={(v) => setStatus(v as AssignmentSubmission["status"])}
           >
-            <option value="graded">{t("assignmentEditor.grader.statusGrade")}</option>
-            <option value="returned">{t("assignmentEditor.grader.statusReturn")}</option>
-          </select>
+            <SelectTrigger
+              size="xs"
+              aria-label={t("assignmentEditor.grader.statusAria")}
+              className="w-auto"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="graded">{t("assignmentEditor.grader.statusGrade")}</SelectItem>
+              <SelectItem value="returned">{t("assignmentEditor.grader.statusReturn")}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-1">

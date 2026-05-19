@@ -1,8 +1,8 @@
 import type { UserRole } from "@/types"
 
-// Re-export from the shared location so Profile + other surfaces can
-// use the same role i18n mapping without depending on Admin pages.
-export { ROLE_I18N_KEY, ROLE_BADGE_VARIANT } from "@/lib/roles"
+// Re-export from the shared location so Admin pages don't have to
+// reach into ``@/lib/roles`` directly for the i18n mapping.
+export { ROLE_I18N_KEY } from "@/lib/roles"
 
 export type AdminTab = "overview" | "cohorts" | "audit"
 export const ADMIN_TABS: readonly AdminTab[] = ["overview", "cohorts", "audit"]
@@ -62,4 +62,9 @@ export interface AdminStats {
   users: number
   courses: number
   enrollments: number
+  /** Users created in the last 7 days. Computed client-side from the
+   *  full ``users`` list (already loaded for the Users tab), so no
+   *  extra API hit. ``undefined`` while loading; concrete number once
+   *  the overview fetch resolves. */
+  usersLast7Days?: number
 }

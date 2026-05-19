@@ -12,7 +12,7 @@ import AssignmentEditor from "@/components/assignment/AssignmentEditor"
 import { coursesService } from "@/services/courses"
 import type { Chapter } from "@/types"
 import { toast } from "@/lib/toast"
-import { chapterSchema } from "@/lib/validations/course"
+import { makeChapterSchema } from "@/lib/validations/course"
 import { useConfirm } from "@/components/ui/alert-dialog"
 import {
   ChevronRight, Save, Loader2, ArrowLeft,
@@ -119,7 +119,9 @@ export default function ChapterEditor() {
     // Only title + chapter_type live on the chapter row now. Reading content
     // is owned by chapter_blocks (edited inline inside ChapterBlockEditor,
     // which auto-saves). Quiz/exam/assignment editors write their own rows.
-    const validation = chapterSchema.safeParse({
+    // Build the schema inside the handler so error messages match
+    // the *current* locale, not the bootstrap snapshot.
+    const validation = makeChapterSchema().safeParse({
       title: title.trim(),
       chapter_type: chapterType,
     })
@@ -165,6 +167,39 @@ export default function ChapterEditor() {
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [save])
 
+  // Shared dirty-check used by the Back button and every breadcrumb
+  // link. Pre-fix, only the Back button asked before discarding work;
+  // a click on any breadcrumb crumb silently navigated away. Three of
+  // them — easy to miss when you've just typed two paragraphs.
+  const guardedNavigate = useCallback(
+    async (to: string) => {
+      if (isDirty) {
+        const ok = await confirm({
+          title: t("chapterEditor.leaveConfirm.title"),
+          description: t("chapterEditor.leaveConfirm.description"),
+          confirmLabel: t("chapterEditor.leaveConfirm.confirm"),
+          tone: "destructive",
+        })
+        if (!ok) return
+      }
+      navigate(to)
+    },
+    [confirm, isDirty, navigate, t],
+  )
+
+  // Click interceptor for breadcrumb ``<Link>`` elements. Only swallows
+  // the plain left-click; Ctrl/Cmd/Shift/middle-click pass through to
+  // the browser default so open-in-new-tab still works without a
+  // confirm prompt (a new tab doesn't lose the editor's draft).
+  const handleNavClick = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    to: string,
+  ) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+    e.preventDefault()
+    void guardedNavigate(to)
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -200,14 +235,23 @@ export default function ChapterEditor() {
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-6 sm:py-8">
-      {/* Breadcrumb — earlier crumbs hide on mobile to keep one line. */}
+      {/* Breadcrumb — earlier crumbs hide on mobile to keep one line.
+          Each link intercepts normal-button clicks so the dirty-check
+          confirm fires before navigation; Ctrl/Cmd/Shift/middle-click
+          fall through to the browser default (open-in-new-tab etc.)
+          unchanged. */}
       <div className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
-        <Link to="/teacher" className="hidden transition-colors hover:text-foreground sm:inline">
+        <Link
+          to="/teacher"
+          onClick={(e) => handleNavClick(e, "/teacher")}
+          className="hidden transition-colors hover:text-foreground sm:inline"
+        >
           {t("chapterEditor.breadcrumb.myCourses")}
         </Link>
         <ChevronRight className="hidden h-3.5 w-3.5 sm:inline-block" strokeWidth={1.75} />
         <Link
           to={`/teacher/courses/${courseId}`}
+          onClick={(e) => handleNavClick(e, `/teacher/courses/${courseId}`)}
           className="hidden transition-colors hover:text-foreground sm:inline"
         >
           {t("chapterEditor.breadcrumb.course")}
@@ -215,6 +259,9 @@ export default function ChapterEditor() {
         <ChevronRight className="hidden h-3.5 w-3.5 sm:inline-block" strokeWidth={1.75} />
         <Link
           to={`/teacher/courses/${courseId}/modules/${moduleId}/edit`}
+          onClick={(e) =>
+            handleNavClick(e, `/teacher/courses/${courseId}/modules/${moduleId}/edit`)
+          }
           className="min-w-0 truncate transition-colors hover:text-foreground"
         >
           {moduleName}
@@ -231,28 +278,28 @@ export default function ChapterEditor() {
           variant="ghost"
           size="sm"
           className="shrink-0"
-          onClick={async () => {
-            if (isDirty) {
-              const ok = await confirm({
-                title: t("chapterEditor.leaveConfirm.title"),
-                description: t("chapterEditor.leaveConfirm.description"),
-                confirmLabel: t("chapterEditor.leaveConfirm.confirm"),
-                tone: "destructive",
-              })
-              if (!ok) return
-            }
-            navigate(`/teacher/courses/${courseId}/modules/${moduleId}/edit`)
-          }}
+          onClick={() =>
+            void guardedNavigate(
+              `/teacher/courses/${courseId}/modules/${moduleId}/edit`,
+            )
+          }
         >
           <ArrowLeft className="h-4 w-4 mr-1" strokeWidth={1.75} />
           {t("chapterEditor.back")}
         </Button>
-        <Input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="font-serif text-2xl font-bold border-none shadow-none hover:border-border/50 hover:shadow-sm focus-visible:ring-1 h-auto py-1 px-2 flex-1"
-          placeholder={t("chapterEditor.titlePlaceholder")}
-        />
+        {/* Render the editable title as a real ``<h1>`` so the page
+            outline has the chapter name at heading-level-1, and add
+            ``aria-label`` so the input still has an accessible name
+            even though its visual label is implicit. */}
+        <h1 className="m-0 flex-1">
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            aria-label={t("chapterEditor.editTitleAria")}
+            className="font-serif text-2xl font-bold border-none shadow-none hover:border-border/50 hover:shadow-sm focus-visible:ring-1 h-auto py-1 px-2 w-full"
+            placeholder={t("chapterEditor.titlePlaceholder")}
+          />
+        </h1>
       </div>
 
       {/* Chapter Type Selector */}
@@ -332,18 +379,17 @@ export default function ChapterEditor() {
         <span className="text-xs text-muted-foreground">{t("chapterEditor.saveHint")}</span>
       </div>
 
-      {/* Sticky save bar — only renders while there are unsaved changes.
-          The pulsing warning dot is the visual cue for "unsaved"; the
-          accompanying text reuses the existing `saveHint` ("Ctrl+S to
-          save") string so we don't introduce a new i18n key from this
-          PR. TODO i18n: a future bilingual pass can swap the dot's
-          aria-label and add an explicit `chapterEditor.unsavedChanges`
-          status string. */}
+      {/* Sticky save bar — only renders while there are unsaved
+          changes. The pulsing warning dot is the visual cue, the
+          ``aria-label`` on the parent card is the screen-reader cue
+          (announced via ``aria-live="polite"`` on first transition to
+          dirty). Inline text shows the Ctrl+S shortcut. */}
       {isDirty && (
         <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-6">
           <Card
             role="status"
             aria-live="polite"
+            aria-label={t("chapterEditor.unsavedChanges")}
             className="pointer-events-auto animate-fade-in w-full max-w-2xl bg-card/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/85"
           >
             <CardContent className="flex items-center gap-3 px-4 py-3">
@@ -355,6 +401,10 @@ export default function ChapterEditor() {
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-warning" />
               </span>
               <span className="flex-1 text-xs text-muted-foreground sm:text-sm">
+                <span className="font-medium text-foreground">
+                  {t("chapterEditor.unsavedChanges")}
+                </span>
+                <span className="mx-1.5 opacity-40">·</span>
                 {t("chapterEditor.saveHint")}
               </span>
               <Button

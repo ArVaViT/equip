@@ -136,6 +136,21 @@ jobs:
           path: backend/coverage.xml
           if-no-files-found: warn
 
+      # Upload to Codecov. Public repos with branch protection require
+      # an explicit token (tokenless uploads are rejected by Codecov when
+      # the target branch is protected); we read it from the
+      # `CODECOV_TOKEN` repo secret. `fail_ci_if_error: false` keeps the
+      # gate stable if Codecov has an outage -- the artifact above is the
+      # durable backup.
+      - name: Upload coverage to Codecov (backend)
+        uses: codecov/codecov-action@v6
+        with:
+          files: ./backend/coverage.xml
+          flags: backend
+          name: backend-coverage
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
   # ---------------------------------------------------------------------------
   # Postgres schema smoke test — validates that the SQLAlchemy models can
   # materialize a valid schema against real Postgres (not just SQLite).

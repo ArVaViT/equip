@@ -305,7 +305,7 @@ function ChapterNav({
 }
 
 export default function ChapterView() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { courseId, moduleId, chapterId } = useParams<{
     courseId: string
     moduleId: string
@@ -347,7 +347,10 @@ export default function ChapterView() {
     }
     load()
     return () => { cancelled = true }
-  }, [courseId, moduleId, user?.id, t])
+    // ``i18n.language`` so locale flip refreshes the localised module
+    // title + chapter list. ``t`` is intentionally not a dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseId, moduleId, user?.id, i18n.language])
 
   const sortedChapters = useMemo(
     () => [...(mod?.chapters ?? [])].sort((a, b) => a.order_index - b.order_index),
@@ -383,7 +386,12 @@ export default function ChapterView() {
       })
 
     return () => { cancelled = true }
-  }, [chapter])
+    // ``i18n.language`` so a locale flip mid-read re-pulls the
+    // translated HTML for the same chapter — the chapter object
+    // itself doesn't change, but its rendered content does. This was
+    // the most visible "language switch doesn't update the page"
+    // symptom: course title flipped, chapter body didn't.
+  }, [chapter, i18n.language])
 
   const isChapterLocked = useCallback(
     (ch: Chapter, idx: number) => {

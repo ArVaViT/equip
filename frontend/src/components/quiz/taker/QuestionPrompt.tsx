@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next"
 import type { QuizQuestion } from "@/types"
 import { EssayAnswer } from "./EssayAnswer"
 import type { QuizAnswer } from "./types"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import { getTrueFalseLabel } from "@/components/quiz/editor/types"
 
@@ -38,27 +39,26 @@ export function QuestionPrompt({ question, index, answer, onAnswer }: Props) {
       </div>
 
       {question.question_type === "multiple_choice" && (
-        <div className="ml-9 space-y-2">
+        <RadioGroup
+          className="ml-9 space-y-2"
+          value={answer?.selected_option_id ?? ""}
+          onValueChange={(v) => onAnswer({ selected_option_id: v })}
+        >
           {sortedOptions.map((opt) => (
             <label
               key={opt.id}
+              htmlFor={`q-${question.id}-${opt.id}`}
               className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 transition-colors ${
                 answer?.selected_option_id === opt.id
                   ? "border-primary/60 bg-primary/5 ring-1 ring-primary/30"
                   : "border-border hover:bg-muted/40"
               }`}
             >
-              <input
-                type="radio"
-                name={`q-${question.id}`}
-                checked={answer?.selected_option_id === opt.id}
-                onChange={() => onAnswer({ selected_option_id: opt.id })}
-                className="accent-primary"
-              />
+              <RadioGroupItem id={`q-${question.id}-${opt.id}`} value={opt.id} />
               <span className="text-sm text-wrap-safe">{opt.option_text}</span>
             </label>
           ))}
-        </div>
+        </RadioGroup>
       )}
 
       {question.question_type === "true_false" && (

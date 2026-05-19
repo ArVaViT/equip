@@ -80,7 +80,11 @@ export default function AdminDashboard() {
 
       {!overview.error && tab === "overview" && (
         <>
-          <OverviewStats stats={overview.stats} loading={overview.loading} />
+          <OverviewStats
+            stats={overview.stats}
+            loading={overview.loading}
+            pendingActions={overview.pendingTeachers.length + overview.adminCerts.length}
+          />
           <PendingTeachersCard
             pending={overview.pendingTeachers}
             updatingId={overview.updatingId}
@@ -105,6 +109,9 @@ export default function AdminDashboard() {
             bulkUpdating={overview.bulkUpdating}
             updatingId={overview.updatingId}
             currentUserId={user?.id}
+            roleFilter={overview.roleFilter}
+            roleCounts={overview.roleCounts}
+            onRoleFilterChange={overview.setRoleFilter}
             onSearchInputChange={overview.setSearchInput}
             onBulkRoleChange={overview.setBulkRole}
             onApplyBulkRole={overview.handleBulkRoleChange}
@@ -138,10 +145,10 @@ export default function AdminDashboard() {
             dateTo={audit.dateTo}
             onAction={audit.setAction}
             onResource={audit.setResource}
-            onDateFrom={audit.setDateFrom}
-            onDateTo={audit.setDateTo}
+            onDateRange={audit.setDateRange}
             onReset={audit.resetFilters}
             onPageChange={audit.setPage}
+            onPageSizeChange={audit.setPageSize}
           />
         </Suspense>
       )}

@@ -4,7 +4,7 @@ import { CalendarDays, Pencil, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { Label } from "@/components/ui/label";
 import { useConfirm } from "@/components/ui/alert-dialog";
 import { EmptyState, ErrorState, InlineEdit, PageHeader } from "@/components/patterns";
@@ -100,12 +100,13 @@ export default function ModuleEditor() {
               <Label className="text-xs text-muted-foreground">
                 {t("moduleEditor.dueDate")}
               </Label>
-              <Input
-                type="datetime-local"
+              <DateTimePicker
                 value={modDueDate}
-                onChange={(e) => setModDueDate(e.target.value)}
-                onBlur={(e) => saveDueDate(e.target.value)}
-                className="h-9 w-auto border-border/50 text-xs sm:h-7"
+                onChange={(next) => {
+                  setModDueDate(next)
+                  saveDueDate(next)
+                }}
+                className="w-auto"
               />
               {modDueDate && (
                 <Button

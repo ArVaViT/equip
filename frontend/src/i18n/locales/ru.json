@@ -35,6 +35,7 @@
     }
   },
   "header": {
+    "home": "Главная",
     "courses": "Курсы",
     "calendar": "Календарь",
     "certificates": "Сертификаты",
@@ -52,9 +53,63 @@
   },
   "footer": {
     "tagline": "Системное изучение Библии для тех, кто относится к Писанию серьёзно.",
-    "teacherDashboard": "Панель преподавателя",
     "support": "Связаться с поддержкой",
     "rightsReserved": "Все права защищены."
+  },
+  "landing": {
+    "hero": {
+      "registerCta": "Создать аккаунт"
+    },
+    "features": {
+      "heading": "Что в Equip",
+      "subheading": "Инструменты для серьёзного изучения Писания — без отвлечения и без потери прогресса.",
+      "systematic": {
+        "title": "Системные курсы",
+        "body": "Курс делится на модули и главы — ты идёшь по структуре, а не выхватываешь куски."
+      },
+      "progress": {
+        "title": "Прогресс по главам",
+        "body": "Видно, что пройдено и что осталось. Кнопка «Готово» в каждой главе."
+      },
+      "certificates": {
+        "title": "Сертификаты",
+        "body": "После завершения курса — сертификат с публичной проверкой по номеру."
+      },
+      "bilingual": {
+        "title": "Двуязычность",
+        "body": "Русский и английский — переключение в один клик, без перезагрузки."
+      }
+    },
+    "how": {
+      "heading": "Как это работает",
+      "step1": "Зарегистрируйся — займёт минуту, нужен только e-mail или Google.",
+      "step2": "Открой каталог и запишись на курс, который тебе интересен.",
+      "step3": "Изучай главами, проходи тесты, забирай сертификат в конце."
+    },
+    "quicklinks": {
+      "heading": "Куда дальше",
+      "catalog": {
+        "title": "Каталог курсов",
+        "body": "Все опубликованные курсы — листай и записывайся."
+      },
+      "register": {
+        "title": "Создать аккаунт",
+        "body": "Бесплатная регистрация для студентов."
+      },
+      "signIn": {
+        "title": "Войти",
+        "body": "Уже есть аккаунт — продолжай с того места, где остановился."
+      },
+      "forgot": {
+        "title": "Восстановить пароль",
+        "body": "Если забыл — пришлём ссылку для сброса на почту."
+      }
+    },
+    "finalCta": {
+      "heading": "Готов начать?",
+      "body": "Создай аккаунт за минуту — курсы бесплатны, прогресс сохраняется автоматически.",
+      "primary": "Создать аккаунт"
+    }
   },
   "notifications": {
     "menuAriaLabel": "Уведомления",
@@ -175,32 +230,6 @@
     "editName": "Изменить имя",
     "avatarAlt": "Аватар {{name}}"
   },
-  "home": {
-    "myCourses": "Мои курсы",
-    "myCoursesLead": "Ваши записи и прогресс в одном месте.",
-    "myCoursesEmptyTitle": "Пока нет записей на курсы",
-    "loadCoursesError": "Не удалось загрузить курсы. Обновите страницу.",
-    "noEnrollments": "Вы ещё не записаны ни на один курс. Выберите курс из каталога ниже.",
-    "course": "Курс",
-    "signInLink": "Войти",
-    "grade": "Оценка: {{grade}}",
-    "academicPrograms": "Учебные программы",
-    "browseCourses": "Каталог курсов",
-    "courseCatalog": "Каталог курсов",
-    "discoverMore": "Найдите новые курсы, чтобы расширить знания",
-    "browseSeminary": "Изучайте наши семинарские курсы и углубляйте знание Библии",
-    "searchPlaceholder": "Поиск курсов...",
-    "signInToEnroll": "чтобы записаться на курс",
-    "noCoursesFound": "Курсы не найдены",
-    "noCoursesYet": "Курсов пока нет",
-    "tryDifferentSearch": "Попробуйте другой запрос",
-    "checkBackSoon": "Заходите позже — скоро появятся новые курсы",
-    "loadFailed": "Не удалось загрузить курсы. Попробуйте позже.",
-    "votd": {
-      "eyebrow": "Сегодня",
-      "title": "Стих дня"
-    }
-  },
   "courseCard": {
     "opensOn": "Набор с {{date}}",
     "enrollmentClosed": "Набор закрыт",
@@ -238,7 +267,8 @@
     "courseEditor": "Редактор курса",
     "chapter": "Глава",
     "module": "Модуль",
-    "course": "Курс"
+    "course": "Курс",
+    "courses": "Курсы"
   },
   "notFound": {
     "title": "Страница не найдена",
@@ -428,6 +458,7 @@
       "essayHint": "Развёрнутый письменный ответ. Оценивается вручную во вкладке проверки.",
       "removeQuestionAria": "Удалить вопрос {{n}}",
       "removeOptionAria": "Удалить вариант {{n}}",
+      "questionTypeAria": "Тип вопроса",
       "trueFalseOption": {
         "True": "Истина",
         "False": "Ложь"
@@ -589,6 +620,7 @@
       "viewFile": "Открыть прикреплённый файл",
       "statusGrade": "Оценить",
       "statusReturn": "Вернуть на доработку",
+      "statusAria": "Действие проверки",
       "feedback": "Отзыв",
       "feedbackPlaceholder": "Необязательный отзыв студенту...",
       "saving": "Сохранение...",
@@ -869,8 +901,8 @@
       "titlePlaceholder": "Введение в богословие",
       "descriptionLabel": "Описание",
       "descriptionPlaceholder": "Краткое описание курса...",
-      "imageUrlLabel": "URL обложки (необязательно — можно загрузить после создания)",
-      "imageUrlPlaceholder": "https://... (можно загрузить в редакторе)",
+      "optional": "необязательно",
+      "editorHint": "Обложку, модули, календарь и всё остальное настроите в редакторе на следующем шаге.",
       "creating": "Создание...",
       "submit": "Создать курс",
       "cancel": "Отмена"
@@ -915,6 +947,9 @@
       "closed": "Закрыт",
       "open": "Открыт"
     },
+    "defaults": {
+      "moduleTitle": "Модуль {{n}}"
+    },
     "modulesHeading": "Модули",
     "addModule": "Добавить модуль",
     "noModulesYet": "Пока нет модулей",
@@ -941,13 +976,19 @@
         "post": "Опубликовать",
         "posting": "Публикация…",
         "empty": "Пока нет объявлений.",
-        "deleteAria": "Удалить объявление «{{title}}»"
+        "deleteAria": "Удалить объявление «{{title}}»",
+        "carouselRole": "карусель",
+        "prevAria": "Предыдущее объявление",
+        "nextAria": "Следующее объявление",
+        "position": "{{current}} / {{total}}"
       },
       "materials": {
         "title": "Материалы курса",
         "upload": "Загрузить файл",
         "empty": "Пока нет загруженных материалов.",
+        "sizeBytes": "{{b}} Б",
         "sizeKb": "{{kb}} КБ",
+        "sizeMb": "{{mb}} МБ",
         "downloadAria": "Скачать «{{name}}»",
         "deleteAria": "Удалить «{{name}}»"
       },
@@ -1013,6 +1054,9 @@
     }
   },
   "moduleEditor": {
+    "defaults": {
+      "chapterTitle": "Глава {{n}}"
+    },
     "toast": {
       "moduleNotFound": "Модуль не найден",
       "failedSaveModule": "Не удалось сохранить модуль",
@@ -1119,10 +1163,12 @@
     },
     "back": "Назад",
     "titlePlaceholder": "Название главы",
+    "editTitleAria": "Изменить название главы",
     "chapterType": "Тип главы",
     "save": "Сохранить главу",
     "saving": "Сохранение...",
-    "saveHint": "Ctrl+S для сохранения"
+    "saveHint": "Ctrl+S для сохранения",
+    "unsavedChanges": "Есть несохранённые изменения"
   },
   "courseDetail": {
     "allCourses": "Все курсы",
@@ -1343,7 +1389,14 @@
         "removeFailed": "Не удалось убрать студента",
         "deleted": "Когорта удалена",
         "deleteFailed": "Не удалось удалить когорту"
-      }
+      },
+      "filterStatus": "Статус",
+      "filterStartRange": "Дата начала",
+      "searchLabel": "Поиск",
+      "totalShown": "Показано {{shown}} из {{total}}",
+      "capacityLabel": "{{pct}}% заполнено",
+      "studentSearchPlaceholder": "Поиск студентов…",
+      "studentSearchNoMatch": "Ничего не найдено."
     },
     "users": {
       "title": "Пользователи",
@@ -1354,6 +1407,8 @@
       "deleteTooltip": "Удалить пользователя",
       "avatarAltPrefix": "Аватар {{name}}",
       "searchPlaceholder": "Поиск по имени или email…",
+      "roleFilterAria": "Фильтр по роли",
+      "roleFilterAll": "Все роли",
       "thName": "Имя",
       "thEmail": "Email",
       "thRole": "Роль",
@@ -1374,6 +1429,10 @@
       "title": "Заявки преподавателей",
       "missingName": "Без имени",
       "registered": "Зарегистрирован {{date}}",
+      "registeredRelative": "Зарегистрирован {{relative}}",
+      "disposableEmail": "одноразовая",
+      "freeEmail": "бесплатная почта",
+      "approveHint": "После одобрения сможет создавать и публиковать курсы.",
       "approve": "Одобрить",
       "deny": "Отклонить",
       "toast": {
@@ -1396,6 +1455,10 @@
       "studentFallback": "Студент",
       "courseFallback": "Курс",
       "approvedBy": "Одобрено: {{name}}",
+      "teacherSignOff": "Преподаватель {{name}} подтвердил {{relative}}",
+      "requestedRelative": "Запрошен {{relative}}",
+      "requestedAtPrefix": "Запрошен: {{ts}}",
+      "approveHint": "После одобрения появится номер сертификата на /verify/<num>.",
       "approve": "Одобрить",
       "reject": "Отклонить",
       "toast": {
@@ -1409,6 +1472,9 @@
       "totalUsers": "Всего пользователей",
       "totalCourses": "Всего курсов",
       "totalEnrollments": "Всего записей",
+      "pendingActions": "Требует внимания",
+      "pendingHint": "Заявки преподавателей и сертификаты ждут решения",
+      "pendingClear": "Всё разобрано — ничего не ждёт",
       "loadError": "Не удалось загрузить данные администратора. Попробуйте ещё раз.",
       "toast": {
         "roleUpdated": "Роль обновлена",
@@ -1425,13 +1491,16 @@
         "bulkRoleTitle": "Изменить роль для выбранных пользователей?",
         "bulkRoleDescription": "Выбрано пользователей: {{count}}. Для них будет установлена роль «{{role}}».",
         "bulkRoleAction": "Применить"
-      }
+      },
+      "usersLast7Days_one": "+{{count}} за неделю",
+      "usersLast7Days_few": "+{{count}} за неделю",
+      "usersLast7Days_many": "+{{count}} за неделю",
+      "usersLast7Days_other": "+{{count}} за неделю",
+      "usersLast7Days_zero": "Новых регистраций нет"
     },
     "audit": {
       "filterAction": "Действие",
       "filterResource": "Объект",
-      "filterFrom": "С",
-      "filterTo": "По",
       "filterClear": "Сбросить фильтры",
       "filterAllActions": "Все действия",
       "filterAllResources": "Все объекты",
@@ -1443,7 +1512,6 @@
       "thUser": "Пользователь",
       "thAction": "Действие",
       "thResource": "Объект",
-      "thResourceId": "ID объекта",
       "thIp": "IP",
       "prevPageAria": "Предыдущая страница",
       "nextPageAria": "Следующая страница",
@@ -1467,7 +1535,12 @@
         "certificate": "Сертификат",
         "assignment_submission": "Сданная работа",
         "user": "Пользователь"
-      }
+      },
+      "filterRange": "Период",
+      "thDetails": "Что изменилось",
+      "pageSizeLabel": "Строк на странице",
+      "detailsEmpty": "Нет деталей",
+      "summaryLabel": "На этой странице"
     }
   },
   "roles": {
@@ -1602,5 +1675,72 @@
       "quizWeightNonzero": "Тесты учитываются в итоговой оценке.",
       "assignmentWeightNonzero": "Задания учитываются в итоговой оценке."
     }
+  },
+  "dashboard": {
+    "myCourses": "Мои курсы",
+    "myCoursesEmptyTitle": "Пока нет записей",
+    "loadCoursesError": "Не удалось загрузить ваши курсы. Попробуйте обновить страницу.",
+    "noEnrollments": "Вы пока не записаны ни на один курс. Откройте каталог чтобы начать.",
+    "course": "Курс",
+    "grade": "Оценка: {{grade}}",
+    "browseAllCta": "Открыть каталог",
+    "votd": {
+      "eyebrow": "Сегодня",
+      "title": "Стих дня"
+    },
+    "today": {
+      "eyebrow": "Сегодня",
+      "openFull": "Календарь",
+      "empty": "На сегодня нет событий."
+    }
+  },
+  "courses": {
+    "academicPrograms": "Учебные программы",
+    "pageTitle": "Каталог курсов",
+    "pageTitleAuthed": "Каталог курсов",
+    "pageSubtitle": "Изучайте семинарские курсы и углубляйте знание Писания",
+    "pageSubtitleAuthed": "Откройте для себя новые курсы и расширьте знания",
+    "searchPlaceholder": "Поиск курсов...",
+    "signInLink": "Войти",
+    "signInToEnroll": "чтобы записаться на курсы",
+    "noCoursesFound": "Курсы не найдены",
+    "noCoursesYet": "Пока нет курсов",
+    "tryDifferentSearch": "Попробуйте другой запрос",
+    "checkBackSoon": "Скоро появятся новые курсы",
+    "loadFailed": "Не удалось загрузить курсы. Попробуйте позже."
+  },
+  "streak": {
+    "eyebrow": "Ежедневно",
+    "title": "Сегодняшняя практика",
+    "weekAriaLabel": "Дни текущей недели",
+    "comingSoon": "Ежедневные задания скоро появятся — это плейсхолдер.",
+    "days": {
+      "mon": "Пн",
+      "tue": "Вт",
+      "wed": "Ср",
+      "thu": "Чт",
+      "fri": "Пт",
+      "sat": "Сб",
+      "sun": "Вс"
+    },
+    "tasksPreview": {
+      "questionOfDay": "Ответить на вопрос дня",
+      "readChapter": "Прочитать сегодняшнюю главу",
+      "memoryVerse": "Повторить памятный стих"
+    }
+  },
+  "dateRangePicker": {
+    "placeholder": "Выберите диапазон",
+    "clear": "Очистить",
+    "prevMonth": "Предыдущий месяц",
+    "nextMonth": "Следующий месяц"
+  },
+  "datePicker": {
+    "placeholder": "Выберите дату"
+  },
+  "dateTimePicker": {
+    "placeholder": "Выберите дату и время",
+    "hourAria": "Часы",
+    "minuteAria": "Минуты"
   }
 }

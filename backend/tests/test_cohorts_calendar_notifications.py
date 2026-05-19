@@ -1366,6 +1366,18 @@ class TestListAnnouncements:
         resp = client.get(ANNOUNCEMENT_PREFIX)
         assert len(resp.json()) == 2
 
+    def test_global_only_filters_out_course_scoped(self, client: TestClient):
+        course = _create_course_via_api(client)
+        client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload(title="GlobalAnnouncement"))
+        client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload(title="CourseAnnouncement", course_id=course["id"]))
+
+        resp = client.get(ANNOUNCEMENT_PREFIX, params={"global_only": True})
+        assert resp.status_code == 200
+        rows = resp.json()
+        titles = [a["title"] for a in rows]
+        assert titles == ["GlobalAnnouncement"]
+        assert all(a["course_id"] is None for a in rows)
+
 
 class TestCreateAnnouncement:
     def test_create_global_returns_201(self, client: TestClient):

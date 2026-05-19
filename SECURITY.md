@@ -13,7 +13,7 @@ tagged releases with long-term support yet.
 
 **Please do NOT open a public GitHub issue for security vulnerabilities.**
 
-Instead, email **arvavitcorp@gmail.com** with:
+Instead, email **supportequip@gmail.com** with:
 
 1. A description of the vulnerability.
 2. Steps to reproduce (or a proof-of-concept).

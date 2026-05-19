@@ -243,7 +243,9 @@ def bulk_update_user_roles(
 def update_user_role(
     user_id: str,
     request: Request,
-    role: str = Query(...),
+    # Validated against ``VALID_ROLES`` below; cap keeps Pydantic from
+    # parsing a multi-MB role string before that allow-list check runs.
+    role: str = Query(..., max_length=32),
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> dict:

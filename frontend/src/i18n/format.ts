@@ -79,6 +79,39 @@ export function formatDateTimeMs(date: Date | string | number | null | undefined
 }
 
 /**
+ * Locale-aware relative time ("5m ago", "5 мин назад") for compact
+ * table cells where an absolute timestamp would dominate the row.
+ *
+ * Pair with ``title={formatDateTime(date)}`` on the rendering element
+ * so a hover (or screen reader) still surfaces the exact moment —
+ * relative ts is scannable but loses precision once you cross a day
+ * boundary, and an admin reading the audit log needs the exact value.
+ *
+ * Granularity rolls up: under a minute → "just now", under an hour →
+ * "Xm ago", under a day → "Xh ago", under a month → "Xd ago", else
+ * the absolute date so "3 months ago" doesn't muddy a real timeline.
+ */
+export function formatRelative(date: Date | string | number | null | undefined): string {
+  if (date == null) return ""
+  const d = toDate(date)
+  if (!d) return ""
+  const lang = (i18n.resolvedLanguage ?? i18n.language ?? "en").toLowerCase()
+  const locale = lang.startsWith("ru") ? "ru-RU" : "en-US"
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto", style: "short" })
+  const diffMs = d.getTime() - Date.now()
+  const absSec = Math.abs(diffMs) / 1000
+
+  if (absSec < 45) return rtf.format(0, "second").replace("0", "")
+  if (absSec < 3600) return rtf.format(Math.round(diffMs / 60_000), "minute")
+  if (absSec < 86_400) return rtf.format(Math.round(diffMs / 3_600_000), "hour")
+  if (absSec < 30 * 86_400) return rtf.format(Math.round(diffMs / 86_400_000), "day")
+  // For anything older, the absolute date reads more honestly than
+  // ``3 months ago`` (and is sortable, which is the rest of the
+  // module's promise).
+  return formatDate(d)
+}
+
+/**
  * Locale-aware long form (``Intl.DateTimeFormat``). EN and RU render
  * different strings on purpose — this is the editorial / ceremonial
  * format. Use it for prose: certificate body, calendar day header,

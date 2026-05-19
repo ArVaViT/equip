@@ -4,14 +4,11 @@ import i18n from "@/i18n/config"
 /**
  * Auth validation schemas.
  *
- * Error messages are translated via i18next at schema-construction time and
- * also re-resolved each time a builder is invoked, so the messages match
- * the active UI language whenever a form actually validates.
- *
- * Static `loginSchema` / `registerSchema` exports are kept for backwards
- * compatibility — they snapshot the bootstrap language. Components that
- * need the current locale (i.e. anything user-facing) should call
- * `makeLoginSchema()` / `makeRegisterSchema()` inside their submit handler.
+ * Error messages resolve via i18next at schema-construction time, so
+ * every caller MUST invoke the ``make…Schema()`` factory inside its
+ * submit handler — never cache the returned schema at module scope.
+ * Caching would snapshot the bootstrap-locale strings and leave error
+ * messages stuck in the wrong language after a locale switch.
  */
 const t = (key: string) => i18n.t(key)
 
@@ -39,7 +36,8 @@ export function makeRegisterSchema() {
     })
 }
 
-export const loginSchema = makeLoginSchema()
-export const registerSchema = makeRegisterSchema()
+// Static snapshots removed — every caller now invokes the factory
+// inside the submit handler so error messages match the active
+// locale (see ``Login.tsx`` / ``useRegister.ts`` / ``ResetPassword.tsx``).
 
 export type LoginFormData = z.infer<ReturnType<typeof makeLoginSchema>>

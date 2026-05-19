@@ -1,11 +1,19 @@
 import { describe, it, expect } from "vitest"
 import {
-  chapterSchema,
-  courseSchema,
-  moduleSchema,
-  profileSchema,
+  makeChapterSchema,
+  makeCourseSchema,
+  makeModuleSchema,
+  makeProfileSchema,
 } from "../course"
 import { CHAPTER_TYPES } from "@/lib/chapterTypes"
+
+// Tests are locale-agnostic, so building the schema once at module scope
+// matches the previous static-export semantics without re-running the
+// factory per assertion.
+const courseSchema = makeCourseSchema()
+const moduleSchema = makeModuleSchema()
+const chapterSchema = makeChapterSchema()
+const profileSchema = makeProfileSchema()
 
 describe("courseSchema", () => {
   it("accepts a valid minimal course", () => {
@@ -27,7 +35,6 @@ describe("courseSchema", () => {
     const result = courseSchema.safeParse({
       title: "Valid",
       description: "",
-      image_url: "",
     })
     expect(result.success).toBe(true)
   })

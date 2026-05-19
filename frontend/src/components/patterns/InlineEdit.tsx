@@ -92,6 +92,13 @@ export function InlineEdit({
       setSaving(true)
       await onSave(trimmed)
       setEditing(false)
+    } catch {
+      // Stay in editing mode so the user keeps their draft, and pull
+      // focus back to the input so the next keystroke retries instead
+      // of doing nothing on an unfocused field. The toast that the
+      // caller surfaces is the human-readable error reason; this just
+      // makes the recovery one keystroke instead of a re-click.
+      requestAnimationFrame(() => inputRef.current?.focus())
     } finally {
       setSaving(false)
     }

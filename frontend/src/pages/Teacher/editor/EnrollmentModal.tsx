@@ -1,7 +1,7 @@
 import { useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { DateTimePicker } from "@/components/ui/datetime-picker"
 import { Label } from "@/components/ui/label"
 import { Save } from "lucide-react"
 import { Modal } from "@/components/patterns"
@@ -52,20 +52,18 @@ export function EnrollmentModal({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label className="text-xs">{t("teacherEditor.modals.enrollment.start")}</Label>
-            <Input
-              type="datetime-local"
+            <DateTimePicker
               value={start}
-              onChange={(e) => onStartChange(e.target.value)}
-              className="text-sm"
+              onChange={onStartChange}
+              className="w-full"
             />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">{t("teacherEditor.modals.enrollment.end")}</Label>
-            <Input
-              type="datetime-local"
+            <DateTimePicker
               value={end}
-              onChange={(e) => onEndChange(e.target.value)}
-              className="text-sm"
+              onChange={onEndChange}
+              className="w-full"
             />
           </div>
         </div>

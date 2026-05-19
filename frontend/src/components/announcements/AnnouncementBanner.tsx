@@ -7,7 +7,7 @@ import { Megaphone, X } from "lucide-react"
 
 export default function AnnouncementBanner() {
   const { user } = useAuth()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [announcement, setAnnouncement] = useState<Announcement | null>(null)
   // ``dismissedId`` rather than a plain boolean: a fresh announcement
   // (different ID) auto-resets the dismiss state, while the user's
@@ -20,24 +20,28 @@ export default function AnnouncementBanner() {
   const [dismissedId, setDismissedId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!user) {
+    if (!user?.id) {
       setAnnouncement(null)
       setDismissedId(null)
       return
     }
     let cancelled = false
-    coursesService.getAnnouncements().then((list) => {
+    coursesService.getGlobalAnnouncements().then((list) => {
       if (cancelled) return
       // ``setAnnouncement(null)`` for the no-match case is load-
       // bearing: without it a previously-shown banner stays mounted
-      // after the system-wide announcement is unpublished. The
-      // ``if (systemWide)`` guard pre-fix made that stale.
-      setAnnouncement(list.find((a) => !a.course_id) ?? null)
+      // after the system-wide announcement is unpublished.
+      setAnnouncement(list[0] ?? null)
     }).catch(() => {
       /* non-critical UI, degrade silently */
     })
     return () => { cancelled = true }
-  }, [user])
+    // ``user?.id`` not ``user``: the AuthContext rewrites the user
+    // object on every Supabase ``TOKEN_REFRESHED`` tick (~hourly), so
+    // depending on the whole object re-fetched announcements on every
+    // refresh. ``i18n.language`` is in the deps so a locale flip
+    // re-pulls localised announcement content without a hard reload.
+  }, [user?.id, i18n.language])
 
   if (!announcement || announcement.id === dismissedId) return null
 

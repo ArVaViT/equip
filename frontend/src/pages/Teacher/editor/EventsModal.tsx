@@ -1,7 +1,15 @@
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
+import { DateTimePicker } from "@/components/ui/datetime-picker"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { CalendarDays, Pencil, Save, Trash2 } from "lucide-react"
 import { EmptyState, Modal } from "@/components/patterns"
@@ -66,25 +74,28 @@ export function EventsModal({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">{t("teacherEditor.modals.events.type")}</Label>
-              <select
+              <Select
                 value={form.event_type}
-                onChange={(e) => patch({ event_type: e.target.value })}
-                className="w-full text-sm border rounded-md px-2 py-1.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                onValueChange={(v) => patch({ event_type: v })}
               >
-                {EVENT_TYPE_VALUES.map((value) => (
-                  <option key={value} value={value}>
-                    {t(`teacherEditor.modals.events.types.${value}`)}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger size="sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EVENT_TYPE_VALUES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {t(`teacherEditor.modals.events.types.${value}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">{t("teacherEditor.modals.events.dateTime")}</Label>
-              <Input
-                type="datetime-local"
+              <DateTimePicker
                 value={form.event_date}
-                onChange={(e) => patch({ event_date: e.target.value })}
-                className="text-sm"
+                onChange={(next) => patch({ event_date: next })}
+                className="w-full"
               />
             </div>
           </div>

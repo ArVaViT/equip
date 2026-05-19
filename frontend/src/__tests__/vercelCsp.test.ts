@@ -1,19 +1,24 @@
 /**
- * Regression tests for the Content-Security-Policy-Report-Only header
- * served by `frontend/vercel.json`.
+ * Regression tests for the Content-Security-Policy header served by
+ * `frontend/vercel.json`.
  *
- * The CSP is enforced at the CDN edge, so it has no JavaScript surface
+ * Promoted from Report-Only to enforcing for the June 2026 launch:
+ * Report-Only had been live long enough to surface any violation via
+ * Datadog RUM's ``securitypolicyviolation`` capture, none persisted
+ * (the US5 host-pattern caveat noted below was caught during that
+ * window and fixed). Enforcing now gives ~2 weeks of real-traffic
+ * observation before the launch ad spend goes live.
+ *
+ * The CSP is applied at the CDN edge, so it has no JavaScript surface
  * we can poke at runtime -- the most reliable contract is a string-shape
  * check against `vercel.json` itself. These tests catch:
  *
  *   - someone dropping a connect-src origin (Datadog, Supabase, the API)
- *     which would silently start dropping telemetry in real browsers,
- *   - someone deleting the policy entirely (which would silently stop
- *     surfacing violations in the console), or
- *   - someone "promoting" Report-Only to enforcing CSP without updating
- *     the directive list to cover every legitimate origin (a 100%
- *     CSP-block of the live site is exactly what the report-only stage
- *     is supposed to prevent).
+ *     which would now hard-block telemetry / API calls in real browsers,
+ *   - someone deleting the policy entirely (silently removing every
+ *     enforced directive),
+ *   - someone re-introducing ``'unsafe-eval'`` or a wildcard script
+ *     source (which would un-defeat the whole script-src protection).
  *
  * If you legitimately need to remove or rename a directive, update the
  * EXPECTED_TOKENS table below in the same PR -- the test exists to make
@@ -42,16 +47,16 @@ function readVercelJson(): VercelConfig {
   return JSON.parse(raw) as VercelConfig
 }
 
-function findCspReportOnly(): string {
+function findCsp(): string {
   const cfg = readVercelJson()
   const headers = cfg.headers ?? []
   for (const rule of headers) {
     if (rule.source !== "/(.*)") continue
     for (const h of rule.headers) {
-      if (h.key === "Content-Security-Policy-Report-Only") return h.value
+      if (h.key === "Content-Security-Policy") return h.value
     }
   }
-  throw new Error("Content-Security-Policy-Report-Only header not found in vercel.json")
+  throw new Error("Content-Security-Policy header not found in vercel.json")
 }
 
 // Each entry: a directive token that MUST appear verbatim in the policy.
@@ -92,23 +97,27 @@ const REQUIRED_TOKENS: ReadonlyArray<string> = [
   "object-src 'none'",
 ]
 
-describe("CSP Report-Only header in vercel.json", () => {
+describe("CSP header in vercel.json", () => {
   it("contains every required directive token", () => {
-    const csp = findCspReportOnly()
+    const csp = findCsp()
     const missing = REQUIRED_TOKENS.filter((t) => !csp.includes(t))
     expect(missing).toEqual([])
   })
 
-  it("ships as Report-Only, not enforcing", () => {
-    // Belt-and-suspenders: the first pass intentionally ships in
-    // report-only mode so we surface violations without breaking the
-    // live site. Promoting to enforcing CSP is a deliberate later step
-    // that needs its own PR and its own review.
+  it("ships as enforcing, not Report-Only", () => {
+    // Belt-and-suspenders: launch hardening — the first pass shipped
+    // Report-Only; this asserts we have actually flipped to enforcing
+    // and haven't accidentally re-introduced the report-only key
+    // (which would silently re-disable every directive in production).
     const cfg = readVercelJson()
     const rule = cfg.headers?.find((r) => r.source === "/(.*)")
     expect(rule).toBeDefined()
     const enforcing = rule!.headers.find((h) => h.key === "Content-Security-Policy")
-    expect(enforcing).toBeUndefined()
+    expect(enforcing).toBeDefined()
+    const reportOnly = rule!.headers.find(
+      (h) => h.key === "Content-Security-Policy-Report-Only",
+    )
+    expect(reportOnly).toBeUndefined()
   })
 
   it("does not whitelist 'unsafe-eval' anywhere", () => {
@@ -117,12 +126,12 @@ describe("CSP Report-Only header in vercel.json", () => {
     // un-defeats the whole script-src protection. None of our deps
     // currently need it -- if a future dep does, this test forces a
     // conscious decision rather than a silent regression.
-    const csp = findCspReportOnly()
+    const csp = findCsp()
     expect(csp).not.toMatch(/['"]?unsafe-eval['"]?/)
   })
 
   it("does not whitelist a wildcard host for scripts", () => {
-    const csp = findCspReportOnly()
+    const csp = findCsp()
     // Pull just the script-src section so we don't trip on
     // unrelated wildcards in connect-src.
     const match = csp.match(/script-src[^;]*/)

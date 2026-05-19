@@ -21,6 +21,7 @@ is intentionally removed. Frontend that called it is being migrated to
 the top-level admin UI.
 """
 
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
@@ -122,7 +123,10 @@ def _course_or_404(db: Session, course_id: str) -> Course:
 
 @router.get("", response_model=list[CohortResponse])
 def list_cohorts(
-    status_filter: str | None = Query(None, alias="status"),
+    # Typed as a Literal so FastAPI rejects any value outside the three
+    # legal cohort statuses before the query runs. Matches the constraint
+    # already on ``CohortUpdate.status`` and the DB ``CHECK``.
+    status_filter: Literal["upcoming", "active", "completed"] | None = Query(None, alias="status"),
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> list[CohortResponse]:

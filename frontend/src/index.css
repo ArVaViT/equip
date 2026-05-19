@@ -146,6 +146,45 @@
       animation: none;
     }
   }
+
+  /* ── Custom scrollbar ────────────────────────────────────────
+     Replace the OS-default scrollbar (chunky grey on Windows,
+     wide brown on Linux) with a thin, branded one that respects
+     the active theme. Two browser-engine paths share the same
+     visual contract:
+
+       1. Firefox & modern Edge — ``scrollbar-color`` + ``scrollbar-width``
+       2. WebKit / Blink (Chrome, Safari, Brave, in-app webviews) —
+          ``::-webkit-scrollbar*`` pseudo-elements.
+
+     Touch devices keep their native overlay behaviour — the
+     ``:not(:hover)`` track-trick keeps the thumb low-contrast
+     when the user isn't actively scrolling, mimicking macOS. */
+  :where(html) {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.28);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: background-color 0.15s ease;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.5);
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
 }
 
 @layer utilities {

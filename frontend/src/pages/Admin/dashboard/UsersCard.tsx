@@ -1,9 +1,17 @@
 import { lazy, Suspense } from "react"
 import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { NativeSelect } from "@/components/ui/native-select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { Users, Search, Trash2 } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import PageSpinner from "@/components/ui/PageSpinner"
@@ -25,6 +33,9 @@ const VirtualAdminUsers = lazy(() => import("../VirtualAdminUsers"))
  */
 const USERS_VIRTUAL_THRESHOLD = 50
 
+/** Empty string = "all roles" (no filter). */
+export type RoleFilterValue = "" | "admin" | "teacher" | "pending_teacher" | "student"
+
 interface Props {
   users: ProfileRow[]
   filtered: ProfileRow[]
@@ -37,6 +48,9 @@ interface Props {
   bulkUpdating: boolean
   updatingId: string | null
   currentUserId: string | undefined
+  roleFilter: RoleFilterValue
+  roleCounts: Record<UserRole, number>
+  onRoleFilterChange: (next: RoleFilterValue) => void
   onSearchInputChange: (next: string) => void
   onBulkRoleChange: (next: UserRole) => void
   onApplyBulkRole: () => void
@@ -60,6 +74,9 @@ export function UsersCard({
   bulkUpdating,
   updatingId,
   currentUserId,
+  roleFilter,
+  roleCounts,
+  onRoleFilterChange,
   onSearchInputChange,
   onBulkRoleChange,
   onApplyBulkRole,
@@ -72,6 +89,14 @@ export function UsersCard({
   const { t } = useTranslation()
   const allFilteredSelected =
     filtered.length > 0 && filtered.every((u) => selectedIds.has(u.id))
+  // Three-state select-all: ``true`` when every row in the current
+  // filtered view is selected, ``"indeterminate"`` when only some are
+  // (Checkbox renders the dash glyph), ``false`` when none.
+  const selectAllState: boolean | "indeterminate" = allFilteredSelected
+    ? true
+    : selectedIds.size > 0
+      ? "indeterminate"
+      : false
 
   return (
     <Card>
@@ -81,17 +106,20 @@ export function UsersCard({
           {selectedIds.size > 0 && (
             <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 sm:w-auto">
               <span className="text-xs font-medium">{t("admin.users.selected", { count: selectedIds.size })}</span>
-              <NativeSelect
-                fieldSize="sm"
+              <Select
                 value={bulkRole}
-                onChange={(e) => onBulkRoleChange(e.target.value as UserRole)}
-                className="w-auto"
+                onValueChange={(v) => onBulkRoleChange(v as UserRole)}
               >
-                <option value="student">{t("roles.student")}</option>
-                <option value="pending_teacher">{t("roles.pendingTeacher")}</option>
-                <option value="teacher">{t("roles.teacher")}</option>
-                <option value="admin">{t("roles.admin")}</option>
-              </NativeSelect>
+                <SelectTrigger size="sm" className="w-auto">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="student">{t("roles.student")}</SelectItem>
+                  <SelectItem value="pending_teacher">{t("roles.pendingTeacher")}</SelectItem>
+                  <SelectItem value="teacher">{t("roles.teacher")}</SelectItem>
+                  <SelectItem value="admin">{t("roles.admin")}</SelectItem>
+                </SelectContent>
+              </Select>
               <Button
                 size="sm"
                 className="h-9 text-xs sm:h-7"
@@ -110,16 +138,76 @@ export function UsersCard({
               </Button>
             </div>
           )}
-          <div className="relative w-full max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
-            <Input
-              placeholder={t("admin.users.searchPlaceholder")}
-              value={searchInput}
-              onChange={(e) => onSearchInputChange(e.target.value.slice(0, searchMaxLength))}
-              maxLength={searchMaxLength}
-              className="pl-9"
-            />
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            {/* Role filter — narrows the table to a single role.
+                ``"all"`` ↔ empty string in the URL; same wrapper trick
+                the cohort / audit Selects use. */}
+            <Select
+              value={roleFilter || "all"}
+              onValueChange={(v) =>
+                onRoleFilterChange((v === "all" ? "" : v) as RoleFilterValue)
+              }
+            >
+              <SelectTrigger
+                size="sm"
+                aria-label={t("admin.users.roleFilterAria")}
+                className={cn(
+                  "h-9 w-full sm:w-44",
+                  roleFilter && "border-primary/40 ring-1 ring-primary/40",
+                )}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("admin.users.roleFilterAll")}</SelectItem>
+                <SelectItem value="admin">{t("roles.admin")}</SelectItem>
+                <SelectItem value="teacher">{t("roles.teacher")}</SelectItem>
+                <SelectItem value="pending_teacher">{t("roles.pendingTeacher")}</SelectItem>
+                <SelectItem value="student">{t("roles.student")}</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="relative w-full max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
+              <Input
+                placeholder={t("admin.users.searchPlaceholder")}
+                value={searchInput}
+                onChange={(e) => onSearchInputChange(e.target.value.slice(0, searchMaxLength))}
+                maxLength={searchMaxLength}
+                className="pl-9"
+              />
+            </div>
           </div>
+        </div>
+        {/* Role distribution chip strip — clickable shortcuts for the
+            filter that double as a tenant-shape snapshot. Hides
+            zero-count roles so the strip stays meaningful on small
+            tenants. Active filter gets the primary fill. */}
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          {(["admin", "teacher", "pending_teacher", "student"] as const).map((role) => {
+            if (roleCounts[role] === 0) return null
+            const active = roleFilter === role
+            return (
+              <button
+                key={role}
+                type="button"
+                onClick={() => onRoleFilterChange(active ? "" : role)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 transition-colors",
+                  active
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border hover:border-primary/40 hover:bg-muted",
+                )}
+              >
+                <span>{t(`roles.${role === "pending_teacher" ? "pendingTeacher" : role}`)}</span>
+                <span className={cn(
+                  "tabular-nums",
+                  active ? "opacity-90" : "text-muted-foreground"
+                )}>
+                  {roleCounts[role]}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </CardHeader>
       <CardContent>
@@ -130,11 +218,9 @@ export function UsersCard({
         ) : filtered.length >= USERS_VIRTUAL_THRESHOLD ? (
           <>
             <div className="flex items-center gap-3 px-3 pb-2">
-              <input
-                type="checkbox"
-                checked={allFilteredSelected}
-                onChange={onToggleSelectAll}
-                className="h-4 w-4 rounded border-input"
+              <Checkbox
+                checked={selectAllState}
+                onCheckedChange={onToggleSelectAll}
                 aria-label={t("admin.users.selectAllAria")}
               />
               <span className="text-xs text-muted-foreground">
@@ -212,6 +298,11 @@ function UsersTable({
   const { t } = useTranslation()
   const allFilteredSelected =
     filtered.length > 0 && filtered.every((u) => selectedIds.has(u.id))
+  const selectAllState: boolean | "indeterminate" = allFilteredSelected
+    ? true
+    : selectedIds.size > 0
+      ? "indeterminate"
+      : false
 
   return (
     <>
@@ -219,11 +310,9 @@ function UsersTable({
           data, same controls, larger tap targets. */}
       <div className="-mx-3 space-y-2 sm:hidden">
         <label className="mx-3 flex min-h-[44px] items-center gap-2 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={allFilteredSelected}
-            onChange={onToggleSelectAll}
-            className="h-4 w-4 rounded border-input"
+          <Checkbox
+            checked={selectAllState}
+            onCheckedChange={onToggleSelectAll}
             aria-label={t("admin.users.selectAllAria")}
           />
           <span>{t("admin.users.selectAllN", { count: filtered.length })}</span>
@@ -244,17 +333,36 @@ function UsersTable({
         </div>
       </div>
 
-      {/* Desktop: classic semantic table */}
-      <div className="hidden overflow-x-auto -mx-6 sm:block">
-        <table className="w-full text-sm">
-          <thead>
+      {/* Desktop: classic semantic table with internal scroll + sticky
+          header. ``table-fixed`` so column widths come from <colgroup>
+          rather than from cell content — a single 60-char student email
+          can't push the actions column off-screen. ``max-h-[60vh]``
+          matches the audit log so the users panel doesn't push the
+          admin overview off-screen when the tenant grows past 20-30
+          rows. */}
+      <div className="-mx-6 hidden max-h-[60vh] overflow-y-auto sm:block">
+        <table className="w-full table-fixed text-sm">
+          <colgroup>
+            <col className="w-10" />
+            {/* Name: enough room for "Vadym Arnaut" + avatar without
+                truncating, but capped so the rest of the row breathes. */}
+            <col className="w-[26%]" />
+            {/* Email: dominant column, given the most space; ellipsised
+                inside a ``truncate`` cell with full text in title attr. */}
+            <col className="w-[34%]" />
+            {/* Role: short pill, fixed slot keeps it aligned across rows. */}
+            <col className="w-[18%]" />
+            {/* Joined: ISO date, tabular-nums, narrow. */}
+            <col className="w-[14%]" />
+            {/* Actions: single 32-px icon button. */}
+            <col className="w-12" />
+          </colgroup>
+          <thead className="sticky top-0 z-10 bg-card">
             <tr className="border-b text-left">
-              <th className="px-3 py-3 w-10">
-                <input
-                  type="checkbox"
-                  checked={allFilteredSelected}
-                  onChange={onToggleSelectAll}
-                  className="h-4 w-4 rounded border-input"
+              <th className="px-3 py-3">
+                <Checkbox
+                  checked={selectAllState}
+                  onCheckedChange={onToggleSelectAll}
                   aria-label={t("admin.users.selectAllAria")}
                 />
               </th>
@@ -262,7 +370,7 @@ function UsersTable({
               <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thEmail")}</th>
               <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thRole")}</th>
               <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thJoined")}</th>
-              <th className="px-6 py-3 w-10" aria-label={t("admin.users.thActions")} />
+              <th className="px-3 py-3" aria-label={t("admin.users.thActions")} />
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -303,11 +411,10 @@ function UserCard({
       }`}
     >
       <div className="flex items-start gap-3">
-        <input
-          type="checkbox"
+        <Checkbox
+          className="mt-1.5"
           checked={selected}
-          onChange={() => onToggleSelect(user.id)}
-          className="mt-1.5 h-4 w-4 shrink-0 rounded border-input"
+          onCheckedChange={() => onToggleSelect(user.id)}
           aria-label={t("admin.users.selectAriaPrefix", { name: displayName })}
         />
         {user.avatar_url ? (
@@ -382,31 +489,33 @@ function UserRow({
       }`}
     >
       <td className="px-3 py-3">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={selected}
-          onChange={() => onToggleSelect(user.id)}
-          className="h-4 w-4 rounded border-input"
+          onCheckedChange={() => onToggleSelect(user.id)}
           aria-label={t("admin.users.selectAriaPrefix", { name: displayName })}
         />
       </td>
       <td className="px-6 py-3">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           {user.avatar_url ? (
             <img
               src={toProxyImage(user.avatar_url)}
               alt={t("admin.users.avatarAltPrefix", { name: user.full_name ?? user.email })}
-              className="h-8 w-8 rounded-full object-cover"
+              className="h-8 w-8 shrink-0 rounded-full object-cover"
             />
           ) : (
-            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
               {(user.full_name?.[0] ?? user.email[0] ?? "?").toUpperCase()}
             </div>
           )}
-          <span className="font-medium">{user.full_name || t("admin.users.missingName")}</span>
+          <span className="min-w-0 truncate font-medium" title={user.full_name ?? undefined}>
+            {user.full_name || t("admin.users.missingName")}
+          </span>
         </div>
       </td>
-      <td className="px-6 py-3 text-muted-foreground">{user.email}</td>
+      <td className="px-6 py-3 text-muted-foreground">
+        <span className="block truncate" title={user.email}>{user.email}</span>
+      </td>
       <td className="px-6 py-3">
         <RoleSelector
           role={user.role}
@@ -415,10 +524,10 @@ function UserRow({
           ariaLabel={t("admin.users.changeRoleAria", { name: displayName })}
         />
       </td>
-      <td className="px-6 py-3 text-muted-foreground">
+      <td className="whitespace-nowrap px-6 py-3 text-xs text-muted-foreground tabular-nums">
         {formatDate(user.created_at)}
       </td>
-      <td className="px-3 py-3">
+      <td className="px-3 py-3 text-right">
         <Button
           variant="ghost"
           size="sm"

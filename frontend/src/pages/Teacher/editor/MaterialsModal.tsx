@@ -1,5 +1,6 @@
 import type { Ref } from "react"
 import { useTranslation } from "react-i18next"
+import type { TFunction } from "i18next"
 import { Button } from "@/components/ui/button"
 import { Download, Loader2, Paperclip, X } from "lucide-react"
 import { EmptyState, Modal } from "@/components/patterns"
@@ -18,6 +19,24 @@ interface Props {
 }
 
 const ACCEPTED_TYPES = ".pdf,.doc,.docx,.ppt,.pptx,.txt,.mp3,.wav,.ogg,.mp4"
+
+const KB = 1024
+const MB = KB * 1024
+
+/**
+ * Human-readable file size in the active locale's unit.
+ *
+ * The previous formatter rendered everything in KB, which produced
+ * misleading output at both ends: a 400-byte text snippet showed as
+ * ``0 KB`` (rounded down via ``toFixed(0)``) and a 2 MB PDF showed as
+ * ``2048 KB``. This picks B / KB / MB so the number always looks
+ * sensible at a glance.
+ */
+function formatFileSize(bytes: number, t: TFunction): string {
+  if (bytes < KB) return t("teacherEditor.modals.materials.sizeBytes", { b: bytes })
+  if (bytes < MB) return t("teacherEditor.modals.materials.sizeKb", { kb: (bytes / KB).toFixed(0) })
+  return t("teacherEditor.modals.materials.sizeMb", { mb: (bytes / MB).toFixed(1) })
+}
 
 export function MaterialsModal({
   open,
@@ -72,7 +91,7 @@ export function MaterialsModal({
                 <span className="text-sm flex-1 truncate">{m.name}</span>
                 {m.size && (
                   <span className="text-xs text-muted-foreground shrink-0">
-                    {t("teacherEditor.modals.materials.sizeKb", { kb: (m.size / 1024).toFixed(0) })}
+                    {formatFileSize(m.size, t)}
                   </span>
                 )}
                 <Button

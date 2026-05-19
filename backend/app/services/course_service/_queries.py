@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 
 # Eager-load modules + their chapters without the cartesian row explosion a
 # chained ``joinedload`` would produce: one IN query per level means the
-# catalog page fetches ~3 rows of wire instead of ``courses * modules *
-# chapters`` when a course has many chapters.
+# course detail page fetches ~3 rows of wire instead of ``courses * modules
+# * chapters`` when a course has many chapters.
 #
 # The ``.and_()`` filters strip soft-deleted children at load time so the
 # course tree mirrors what students actually see. Trash and restore flows
@@ -34,6 +34,15 @@ _COURSE_TREE: tuple = (
     ),
 )
 
+# Slim loader for **catalog** views: pulls each course's modules so the UI
+# can show "X modules" on a card, but skips the chapter level entirely. A
+# typical catalog with 10 courses x 5 modules x 10 chapters drops from
+# ~500 rows of chapter wire data per page to zero, with no UI regression —
+# ``CourseCard`` only consumes ``course.modules?.length``. Course-detail
+# requests stay on the full ``_COURSE_TREE`` so the nested chapter list
+# is still there for the enrolled-course view.
+_COURSE_LIST_TREE: tuple = (selectinload(Course.modules.and_(Module.deleted_at.is_(None))),)
+
 
 def get_courses(
     db: Session,
@@ -44,7 +53,7 @@ def get_courses(
 ) -> list[Course]:
     query = (
         db.query(Course)
-        .options(*_COURSE_TREE)
+        .options(*_COURSE_LIST_TREE)
         .filter(Course.status == CourseStatus.PUBLISHED, Course.deleted_at.is_(None))
     )
     if search:
@@ -78,7 +87,12 @@ def get_teacher_courses(
     skip: int = 0,
     limit: int | None = None,
 ) -> list[Course]:
-    query = db.query(Course).options(*_COURSE_TREE).filter(Course.created_by == teacher_id)
+    # ``_COURSE_LIST_TREE`` (modules only, no chapters) keeps the
+    # teacher dashboard fast even when the teacher owns many courses
+    # with many chapters each — the dashboard CourseCard only reads
+    # ``course.modules?.length`` and the per-course actions navigate
+    # into the editor for full-tree fetches.
+    query = db.query(Course).options(*_COURSE_LIST_TREE).filter(Course.created_by == teacher_id)
     query = query.filter(Course.deleted_at.isnot(None)) if deleted_only else query.filter(Course.deleted_at.is_(None))
     query = query.order_by(Course.created_at.desc())
     if skip:

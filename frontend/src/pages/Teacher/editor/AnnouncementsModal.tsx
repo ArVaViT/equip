@@ -2,10 +2,10 @@ import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Megaphone, Trash2 } from "lucide-react"
+import { Megaphone } from "lucide-react"
 import { EmptyState, Modal } from "@/components/patterns"
 import type { Announcement } from "@/types"
-import { formatDateTime } from "@/i18n/format"
+import { AnnouncementPager } from "@/components/announcements/AnnouncementPager"
 
 interface Props {
   open: boolean
@@ -62,33 +62,7 @@ export function AnnouncementsModal({
             title={t("teacherEditor.modals.announcements.empty")}
           />
         ) : (
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {announcements.map((a) => (
-              <div key={a.id} className="flex items-start gap-3 p-3 border rounded-lg">
-                <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-info" strokeWidth={1.75} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-wrap-safe">{a.title}</p>
-                  {a.content && (
-                    <p className="mt-0.5 text-xs text-muted-foreground text-wrap-safe whitespace-pre-line">
-                      {a.content}
-                    </p>
-                  )}
-                  <time className="mt-1 block text-xs text-muted-foreground/60">
-                    {formatDateTime(a.created_at)}
-                  </time>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0 text-destructive hover:text-destructive shrink-0"
-                  onClick={() => onDelete(a.id)}
-                  aria-label={t("teacherEditor.modals.announcements.deleteAria", { title: a.title })}
-                >
-                  <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
-                </Button>
-              </div>
-            ))}
-          </div>
+          <AnnouncementPager announcements={announcements} onDelete={onDelete} />
         )}
       </div>
     </Modal>

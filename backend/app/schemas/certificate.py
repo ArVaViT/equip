@@ -21,6 +21,15 @@ class CertificateResponse(BaseModel):
     teacher_approved_by: UUID | None = None
     admin_approved_at: datetime | None = None
     admin_approved_by: UUID | None = None
+    # Optional enrichment fields populated by the pending-cert listing
+    # endpoints (teacher + admin panels). Pydantic skips them when the
+    # source ORM row doesn't carry them, so the broader fan-out of
+    # ``CertificateResponse`` consumers (student "my certs", course
+    # detail, etc.) keeps its slim payload.
+    student_name: str | None = None
+    student_email: str | None = None
+    course_title: str | None = None
+    teacher_approver_name: str | None = None
 
 
 class CertificateVerifyResponse(BaseModel):

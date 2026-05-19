@@ -11,6 +11,7 @@ function matchTitleKey(pathname: string): string | null {
     "/auth/callback": "pageTitle.authCallback",
     "/auth/confirm": "pageTitle.authConfirm",
     "/dashboard": "pageTitle.dashboard",
+    "/courses": "pageTitle.courses",
     "/profile": "pageTitle.profile",
     "/certificates": "pageTitle.certificates",
     "/calendar": "pageTitle.calendar",

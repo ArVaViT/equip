@@ -15,6 +15,11 @@ interface Props {
   onCancel: () => void
 }
 
+// Intentionally minimal: only ``title`` is required to land in the
+// editor. ``description`` is optional. Cover image, modules, calendar,
+// access mode, etc. all live in the editor — pushing every setting
+// into this gate scared first-time teachers off before they ever saw
+// the editor at all.
 export function CreateCourseForm({
   form,
   setForm,
@@ -40,6 +45,7 @@ export function CreateCourseForm({
             </Label>
             <Input
               id="title"
+              autoFocus
               value={form.title}
               onChange={(e) => {
                 setForm((p) => ({ ...p, title: e.target.value }))
@@ -52,6 +58,9 @@ export function CreateCourseForm({
           <div className="space-y-2">
             <Label htmlFor="desc">
               {t("teacherDashboard.createForm.descriptionLabel")}
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                {t("teacherDashboard.createForm.optional")}
+              </span>
             </Label>
             <textarea
               id="desc"
@@ -61,20 +70,9 @@ export function CreateCourseForm({
               placeholder={t("teacherDashboard.createForm.descriptionPlaceholder")}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="img">
-              {t("teacherDashboard.createForm.imageUrlLabel")}
-            </Label>
-            <Input
-              id="img"
-              value={form.image_url}
-              onChange={(e) => setForm((p) => ({ ...p, image_url: e.target.value }))}
-              placeholder={t("teacherDashboard.createForm.imageUrlPlaceholder")}
-            />
-            {errors.image_url && (
-              <p className="text-sm text-destructive">{errors.image_url}</p>
-            )}
-          </div>
+          <p className="text-xs text-muted-foreground">
+            {t("teacherDashboard.createForm.editorHint")}
+          </p>
           <div className="flex gap-2 pt-2">
             <Button type="submit" disabled={saving}>
               {saving

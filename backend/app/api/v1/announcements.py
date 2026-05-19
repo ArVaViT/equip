@@ -38,7 +38,9 @@ def _course_source_locale_map(db: Session, course_ids: list[str]) -> dict[str, L
 @router.get("", response_model=list[AnnouncementResponse])
 def list_announcements(
     response: Response,
-    course_id: str | None = Query(None),
+    # 36 = UUID length; matches the bound on every Create schema id.
+    course_id: str | None = Query(None, max_length=36),
+    global_only: bool = Query(False),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
@@ -49,7 +51,13 @@ def list_announcements(
     query = db.query(Announcement)
     is_admin = current_user.role in (UserRole.ADMIN.value, "admin")
 
-    if course_id is not None:
+    if global_only:
+        # AnnouncementBanner asks for site-wide-only rows; previously it
+        # pulled every announcement the user could see and filtered on
+        # the client. ``course_id`` is ignored when ``global_only`` is set
+        # (mutually exclusive intent; explicit param wins).
+        query = query.filter(Announcement.course_id.is_(None))
+    elif course_id is not None:
         if not is_admin:
             # Non-admin must be enrolled in or own this course to see its announcements.
             # Previously this branch skipped the check entirely (IDOR). See audit P0.4.

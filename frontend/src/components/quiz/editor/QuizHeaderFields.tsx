@@ -56,7 +56,13 @@ export function QuizHeaderFields({
           min={0}
           max={100}
           value={passingScore}
-          onChange={(e) => setPassingScore(Number(e.target.value))}
+          // Clamp to [0..100] and fall back to 0 on empty/NaN. Without
+          // this the field could land on NaN when the teacher clears it,
+          // which JSON-serialises to ``null`` and trips the backend's
+          // ``int`` schema on save.
+          onChange={(e) =>
+            setPassingScore(Math.min(100, Math.max(0, Number(e.target.value) || 0)))
+          }
           fieldSize="sm"
           className="w-28 text-sm"
         />

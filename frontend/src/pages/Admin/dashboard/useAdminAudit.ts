@@ -13,7 +13,13 @@ import {
   RESOURCE_OPTIONS,
 } from "./constants"
 
-const AUDIT_PAGE_SIZE = 25
+export const AUDIT_PAGE_SIZE_OPTIONS = [25, 50, 100] as const
+export type AuditPageSize = (typeof AUDIT_PAGE_SIZE_OPTIONS)[number]
+const DEFAULT_PAGE_SIZE: AuditPageSize = 25
+
+function isAuditPageSize(n: number): n is AuditPageSize {
+  return (AUDIT_PAGE_SIZE_OPTIONS as readonly number[]).includes(n)
+}
 
 interface UseAdminAuditArgs {
   /** When `false` the hook skips fetching — used to avoid loading the
@@ -42,6 +48,11 @@ export function useAdminAudit({ enabled }: UseAdminAuditArgs) {
   const dateTo = ISO_DATE_REGEX.test(params.get("at") ?? "") ? params.get("at")! : ""
   const rawPage = Number.parseInt(params.get("ap") ?? "1", 10)
   const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1
+  // Page size is also URL-state so a bookmarked admin link round-trips.
+  // Reject anything not in the allow-list (defaults to 25) so a crafted
+  // ``?aps=99999`` can't trigger a backend OOM.
+  const rawPageSize = Number.parseInt(params.get("aps") ?? "", 10)
+  const pageSize: AuditPageSize = isAuditPageSize(rawPageSize) ? rawPageSize : DEFAULT_PAGE_SIZE
 
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [total, setTotal] = useState(0)
@@ -66,7 +77,7 @@ export function useAdminAudit({ enabled }: UseAdminAuditArgs) {
   const { data: fetchedData, loading, error: fetchError } = useAsyncData(
     async (isCancelled) => {
       if (!enabled) return undefined
-      const query: AuditLogQuery = { page, page_size: AUDIT_PAGE_SIZE }
+      const query: AuditLogQuery = { page, page_size: pageSize }
       if (action) query.action = action
       if (resource) query.resource_type = resource
       // Both bounds anchor to the **local** calendar day the admin
@@ -95,7 +106,7 @@ export function useAdminAudit({ enabled }: UseAdminAuditArgs) {
       if (isCancelled()) return undefined
       return data
     },
-    [enabled, page, action, resource, dateFrom, dateTo],
+    [enabled, page, pageSize, action, resource, dateFrom, dateTo],
   )
 
   // Sync fetched data into individual state
@@ -120,16 +131,27 @@ export function useAdminAudit({ enabled }: UseAdminAuditArgs) {
     total,
     loading,
     page,
-    pageSize: AUDIT_PAGE_SIZE,
+    pageSize,
     action,
     resource,
     dateFrom,
     dateTo,
     setAction: (v: string) => updateAudit({ ax: v || null }, { resetPage: true }),
     setResource: (v: string) => updateAudit({ ar: v || null }, { resetPage: true }),
-    setDateFrom: (v: string) => updateAudit({ af: v || null }, { resetPage: true }),
-    setDateTo: (v: string) => updateAudit({ at: v || null }, { resetPage: true }),
+    // Atomic two-key write. The DateRangePicker fires both bounds in
+    // one handler; calling ``setDateFrom`` then ``setDateTo`` back-to-
+    // back used to lose the first one — both call ``setSearchParams``,
+    // and within a single event the second invocation reads the same
+    // ``prev`` URLSearchParams snapshot as the first, so the second
+    // write overwrites the first. Folding the two keys into one
+    // ``updateAudit`` call is the fix.
+    setDateRange: (from: string, to: string) =>
+      updateAudit({ af: from || null, at: to || null }, { resetPage: true }),
     setPage: (next: number) => updateAudit({ ap: next <= 1 ? null : String(next) }),
+    // Setting page size resets to page 1: the offset that was valid
+    // for the old size is meaningless under the new one.
+    setPageSize: (next: AuditPageSize) =>
+      updateAudit({ aps: next === DEFAULT_PAGE_SIZE ? null : String(next) }, { resetPage: true }),
     resetFilters,
   }
 }

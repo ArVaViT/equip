@@ -11,11 +11,16 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { formatDateLong } from "@/i18n/format"
 
 export default function CertificatesPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [certificates, setCertificates] = useState<Certificate[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [loading, setLoading] = useState(true)
 
+  // ``i18n.language`` in deps so a locale flip re-pulls the
+  // localised course-title overlay without a hard reload. We
+  // deliberately do NOT include ``t`` — its reference change is
+  // implementation-defined across react-i18next versions and using
+  // it as a dep was the brittle pattern in this codebase.
   useEffect(() => {
     let cancelled = false
     const load = async () => {
@@ -37,9 +42,11 @@ export default function CertificatesPage() {
     return () => {
       cancelled = true
     }
-  }, [t])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [i18n.language])
 
-  const courseTitle = (courseId: string) => {
+  const courseTitle = (courseId: string | null) => {
+    if (!courseId) return t("certificates.courseFallback", { id: "—" })
     const enrollment = enrollments.find((e) => e.course_id === courseId)
     return (
       enrollment?.course?.title ??
@@ -53,7 +60,7 @@ export default function CertificatesPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <Link to="/">
+      <Link to="/courses">
         <Button variant="ghost" size="sm" className="mb-6 h-8 text-xs">
           <ArrowLeft className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
           {t("certificates.backToCourses")}
@@ -84,7 +91,7 @@ export default function CertificatesPage() {
             <p className="mb-6 max-w-sm text-sm text-muted-foreground">
               {t("certificates.emptyDescription")}
             </p>
-            <Link to="/">
+            <Link to="/courses">
               <Button size="sm">{t("certificates.browseCourses")}</Button>
             </Link>
           </CardContent>

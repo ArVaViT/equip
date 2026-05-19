@@ -329,7 +329,7 @@ Tracked-in-git references that every contributor reads:
   for questions, ideas, and community conversation.
 - **Issues:** Open a [bug report](https://github.com/ArVaViT/equip/issues/new?template=bug_report.yml)
   or [feature request](https://github.com/ArVaViT/equip/issues/new?template=feature_request.yml).
-- **Email:** arvavitcorp@gmail.com for anything sensitive.
+- **Email:** supportequip@gmail.com for anything sensitive.
 
 ---
 

@@ -22,14 +22,50 @@
   <a href="https://github.com/ArVaViT/equip/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22">
     <img src="https://img.shields.io/github/issues/ArVaViT/equip/good%20first%20issue?style=flat-square&color=7057ff&label=good%20first%20issues" alt="Good first issues" />
   </a>
+  <a href="https://app.codecov.io/gh/ArVaViT/equip">
+    <img src="https://img.shields.io/codecov/c/github/ArVaViT/equip?style=flat-square&label=coverage" alt="Code coverage" />
+  </a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/ArVaViT/equip">
+    <img src="https://img.shields.io/ossf-scorecard/github.com/ArVaViT/equip?style=flat-square&label=openssf%20scorecard" alt="OpenSSF Scorecard" />
+  </a>
 </p>
 
 <p align="center">
   <a href="https://equipbible.com">Live demo</a> &middot;
   <a href="ROADMAP.md">Roadmap</a> &middot;
   <a href="CONTRIBUTING.md">Contributing</a> &middot;
+  <a href="SUPPORT.md">Support</a> &middot;
   <a href="CHANGELOG.md">Changelog</a>
 </p>
+
+---
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src=".github/assets/screenshots/login-desktop.png" alt="Equip login page — two-column layout with scripture on the left and a clean sign-in form on the right" />
+      <br /><sub>Sign in (light)</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src=".github/assets/screenshots/login-desktop-dark.png" alt="Equip login page in dark mode" />
+      <br /><sub>Sign in (dark)</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src=".github/assets/screenshots/register-desktop.png" alt="Equip account creation with a Student or Teacher role chooser" />
+      <br /><sub>Account creation — student / teacher role picker</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src=".github/assets/screenshots/login-mobile.png" alt="Equip sign-in on a 390px mobile viewport" width="240" />
+      <br /><sub>Mobile (390px)</sub>
+    </td>
+  </tr>
+</table>
+
+> Live at [equipbible.com](https://equipbible.com). Teacher and admin views (gradebook, course editor, analytics) are behind sign-in &mdash; create a free account to explore.
 
 ---
 
@@ -197,6 +233,25 @@ this platform:
 
 ---
 
+## How Equip compares
+
+There are great LMS options out there. Equip exists in a specific gap they don't fill well: a small Bible school or ministry that wants something modern, free, and Bible-aware without standing up a full LAMP server or paying per student.
+
+| | **Equip** | **Moodle** | **Google Classroom** | **Canvas LMS** |
+|---|---|---|---|---|
+| License / cost | MIT, free | GPL, free | Free | Per-user fees |
+| Self-hosted | One-click Vercel + Supabase free tier | LAMP server you maintain | SaaS only | SaaS only |
+| Setup effort | Minutes | Hours to days | None | None |
+| UI | Modern, theme-aware (light + dark) | Functional, dated | Modern | Modern |
+| Scripture handling | KJV / Synodal substitution, paraphrase guard | None | None | None |
+| Bilingual content | Auto RU&harr;EN via Gemini, cached | Manual i18n | None | Manual i18n |
+| Code customization | TypeScript + Python | PHP plugins | Closed source | Closed source |
+| Best fit | Small ministries, 20&ndash;100 students | Universities, 1000+ students | K&ndash;12 in Google Workspace | Enterprise with budget |
+
+**Pick Moodle** if you have IT staff and need every feature ever shipped. **Pick Canvas** if budget isn't a constraint. **Pick Google Classroom** if your students already live in Google Workspace and you don't need certificates or real assessments. **Pick Equip** if you want a small, modern, scripture-aware platform you can deploy in an afternoon.
+
+---
+
 ## Documentation
 
 | Audience | Document |
@@ -213,6 +268,7 @@ this platform:
 
 - [GitHub Discussions](https://github.com/ArVaViT/equip/discussions) — questions, ideas, show & tell
 - [Issue tracker](https://github.com/ArVaViT/equip/issues) — bug reports and feature requests
+- [Support](SUPPORT.md) — how to get help, response times, the right channel for each kind of question
 - [Changelog](CHANGELOG.md) — what's new in each release
 - [Security policy](SECURITY.md) — how to report vulnerabilities
 

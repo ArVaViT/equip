@@ -2,6 +2,7 @@ import { List, type RowComponentProps } from "react-window"
 import { useTranslation } from "react-i18next"
 import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { RoleSelector } from "@/components/admin/RoleSelector"
 import { toProxyImage } from "@/lib/images"
 import type { UserRole } from "@/types"
@@ -55,11 +56,9 @@ function UserRow({
       }`}
     >
       <div role="cell" className="flex items-center justify-center">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={selected}
-          onChange={() => onToggleSelect(u.id)}
-          className="h-4 w-4 rounded border-input"
+          onCheckedChange={() => onToggleSelect(u.id)}
           aria-label={t("admin.users.selectAriaPrefix", { name: displayName })}
         />
       </div>

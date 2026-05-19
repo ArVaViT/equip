@@ -71,7 +71,11 @@ class QuizQuestionStudentResponse(BaseModel):
 
 
 class QuizCreate(BaseModel):
-    chapter_id: str
+    # Chapter ids are UUIDs (36 chars). Cap at the schema layer so a crafted
+    # 1 MB string is rejected by Pydantic before the route runs ``verify_chapter_owner``
+    # against it. Matches the bounds already on ``AssignmentCreate.chapter_id``
+    # and ``CohortCourseAttach.course_id``.
+    chapter_id: str = Field(..., min_length=1, max_length=36)
     title: str = Field(..., min_length=1, max_length=300)
     description: str | None = Field(None, max_length=5000)
     quiz_type: Literal["quiz", "exam"] = "quiz"

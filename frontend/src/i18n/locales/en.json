@@ -35,6 +35,7 @@
     }
   },
   "header": {
+    "home": "Home",
     "courses": "Courses",
     "calendar": "Calendar",
     "certificates": "Certificates",
@@ -52,9 +53,116 @@
   },
   "footer": {
     "tagline": "Structured biblical teaching for learners who take Scripture seriously.",
-    "teacherDashboard": "Teacher dashboard",
     "support": "Contact support",
     "rightsReserved": "All rights reserved."
+  },
+  "landing": {
+    "hero": {
+      "registerCta": "Create account"
+    },
+    "features": {
+      "heading": "What's in Equip",
+      "subheading": "Tools for serious Scripture study — no distractions, no lost progress.",
+      "systematic": {
+        "title": "Structured courses",
+        "body": "Each course is broken into modules and chapters — you follow the structure, not stray fragments."
+      },
+      "progress": {
+        "title": "Per-chapter progress",
+        "body": "See what's done and what's left. A clear \"Done\" action on every chapter."
+      },
+      "certificates": {
+        "title": "Certificates",
+        "body": "Complete a course and get a certificate — publicly verifiable by number."
+      },
+      "bilingual": {
+        "title": "Bilingual",
+        "body": "Russian and English — switch in one click, no reload needed."
+      }
+    },
+    "how": {
+      "heading": "How it works",
+      "step1": "Sign up — takes a minute, email or Google is enough.",
+      "step2": "Open the catalog and enroll in the course you want.",
+      "step3": "Work through chapters, take quizzes, claim your certificate at the end."
+    },
+    "quicklinks": {
+      "heading": "Where to next",
+      "catalog": {
+        "title": "Course catalog",
+        "body": "Every published course — browse and enroll."
+      },
+      "register": {
+        "title": "Create an account",
+        "body": "Free registration for students."
+      },
+      "signIn": {
+        "title": "Sign in",
+        "body": "Already have an account? Pick up where you left off."
+      },
+      "forgot": {
+        "title": "Reset password",
+        "body": "Forgot it? We'll email you a reset link."
+      }
+    },
+    "finalCta": {
+      "heading": "Ready to start?",
+      "body": "Sign up in a minute — courses are free, progress saves automatically.",
+      "primary": "Create account"
+    }
+  },
+  "dashboard": {
+    "myCourses": "My Courses",
+    "myCoursesEmptyTitle": "No enrollments yet",
+    "loadCoursesError": "Could not load your courses. Please try refreshing the page.",
+    "noEnrollments": "You haven't enrolled in any courses yet. Browse the catalog to get started.",
+    "course": "Course",
+    "grade": "Grade: {{grade}}",
+    "browseAllCta": "Browse all courses",
+    "votd": {
+      "eyebrow": "Today",
+      "title": "Verse of the Day"
+    },
+    "today": {
+      "eyebrow": "Today",
+      "openFull": "Full calendar",
+      "empty": "No events scheduled for today."
+    }
+  },
+  "courses": {
+    "academicPrograms": "Academic Programs",
+    "pageTitle": "Course Catalog",
+    "pageTitleAuthed": "Browse Courses",
+    "pageSubtitle": "Browse our seminary courses and deepen your biblical knowledge",
+    "pageSubtitleAuthed": "Discover more courses to expand your knowledge",
+    "searchPlaceholder": "Search courses...",
+    "signInLink": "Sign in",
+    "signInToEnroll": "to enroll in courses",
+    "noCoursesFound": "No courses found",
+    "noCoursesYet": "No courses yet",
+    "tryDifferentSearch": "Try a different search term",
+    "checkBackSoon": "Check back soon for new courses",
+    "loadFailed": "Failed to load courses. Please try again later."
+  },
+  "streak": {
+    "eyebrow": "Daily",
+    "title": "Today's Practice",
+    "weekAriaLabel": "Days of the current week",
+    "comingSoon": "Daily tasks land soon — this is the placeholder.",
+    "days": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+    "tasksPreview": {
+      "questionOfDay": "Answer the question of the day",
+      "readChapter": "Read today's chapter",
+      "memoryVerse": "Recite the memory verse"
+    }
   },
   "notifications": {
     "menuAriaLabel": "Notifications",
@@ -169,32 +277,6 @@
     "editName": "Edit name",
     "avatarAlt": "{{name}} avatar"
   },
-  "home": {
-    "myCourses": "My Courses",
-    "myCoursesLead": "Your enrollments and progress in one place.",
-    "myCoursesEmptyTitle": "No enrollments yet",
-    "loadCoursesError": "Could not load your courses. Please try refreshing the page.",
-    "noEnrollments": "You haven't enrolled in any courses yet. Browse the catalog below to get started.",
-    "course": "Course",
-    "signInLink": "Sign in",
-    "grade": "Grade: {{grade}}",
-    "academicPrograms": "Academic Programs",
-    "browseCourses": "Browse Courses",
-    "courseCatalog": "Course Catalog",
-    "discoverMore": "Discover more courses to expand your knowledge",
-    "browseSeminary": "Browse our seminary courses and deepen your biblical knowledge",
-    "searchPlaceholder": "Search courses...",
-    "signInToEnroll": "to enroll in courses",
-    "noCoursesFound": "No courses found",
-    "noCoursesYet": "No courses yet",
-    "tryDifferentSearch": "Try a different search term",
-    "checkBackSoon": "Check back soon for new courses",
-    "loadFailed": "Failed to load courses. Please try again later.",
-    "votd": {
-      "eyebrow": "Today",
-      "title": "Verse of the Day"
-    }
-  },
   "courseCard": {
     "opensOn": "Opens {{date}}",
     "enrollmentClosed": "Enrollment closed",
@@ -230,7 +312,8 @@
     "courseEditor": "Course Editor",
     "chapter": "Chapter",
     "module": "Module",
-    "course": "Course"
+    "course": "Course",
+    "courses": "Courses"
   },
   "notFound": {
     "title": "Page not found",
@@ -410,6 +493,7 @@
       "essayHint": "Long-form written response. Graded manually from the Submissions tab.",
       "removeQuestionAria": "Remove question {{n}}",
       "removeOptionAria": "Remove option {{n}}",
+      "questionTypeAria": "Question type",
       "trueFalseOption": {
         "True": "True",
         "False": "False"
@@ -565,6 +649,7 @@
       "viewFile": "View attached file",
       "statusGrade": "Grade",
       "statusReturn": "Return for revision",
+      "statusAria": "Grading action",
       "feedback": "Feedback",
       "feedbackPlaceholder": "Optional feedback for the student...",
       "saving": "Saving...",
@@ -829,8 +914,8 @@
       "titlePlaceholder": "Introduction to Theology",
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "A brief description of the course...",
-      "imageUrlLabel": "Cover Image URL (optional — or upload after creating)",
-      "imageUrlPlaceholder": "https://... (you can upload in the editor)",
+      "optional": "optional",
+      "editorHint": "Cover image, modules, calendar, and everything else are set up in the editor next.",
       "creating": "Creating...",
       "submit": "Create Course",
       "cancel": "Cancel"
@@ -875,6 +960,9 @@
       "closed": "Closed",
       "open": "Open"
     },
+    "defaults": {
+      "moduleTitle": "Module {{n}}"
+    },
     "modulesHeading": "Modules",
     "addModule": "Add module",
     "noModulesYet": "No modules yet",
@@ -899,13 +987,19 @@
         "post": "Post",
         "posting": "Posting…",
         "empty": "No announcements yet.",
-        "deleteAria": "Delete announcement {{title}}"
+        "deleteAria": "Delete announcement {{title}}",
+        "carouselRole": "carousel",
+        "prevAria": "Previous announcement",
+        "nextAria": "Next announcement",
+        "position": "{{current}} / {{total}}"
       },
       "materials": {
         "title": "Course Materials",
         "upload": "Upload File",
         "empty": "No materials uploaded yet.",
+        "sizeBytes": "{{b}} B",
         "sizeKb": "{{kb}} KB",
+        "sizeMb": "{{mb}} MB",
         "downloadAria": "Download {{name}}",
         "deleteAria": "Delete {{name}}"
       },
@@ -971,6 +1065,9 @@
     }
   },
   "moduleEditor": {
+    "defaults": {
+      "chapterTitle": "Chapter {{n}}"
+    },
     "toast": {
       "moduleNotFound": "Module not found",
       "failedSaveModule": "Failed to save module",
@@ -1077,10 +1174,12 @@
     },
     "back": "Back",
     "titlePlaceholder": "Chapter title",
+    "editTitleAria": "Edit chapter title",
     "chapterType": "Chapter Type",
     "save": "Save Chapter",
     "saving": "Saving...",
-    "saveHint": "Ctrl+S to save"
+    "saveHint": "Ctrl+S to save",
+    "unsavedChanges": "You have unsaved changes"
   },
   "courseDetail": {
     "allCourses": "All Courses",
@@ -1295,7 +1394,14 @@
         "removeFailed": "Failed to remove student",
         "deleted": "Cohort deleted",
         "deleteFailed": "Failed to delete cohort"
-      }
+      },
+      "filterStatus": "Status",
+      "filterStartRange": "Start date",
+      "searchLabel": "Search",
+      "totalShown": "Showing {{shown}} of {{total}}",
+      "capacityLabel": "{{pct}}% full",
+      "studentSearchPlaceholder": "Search students…",
+      "studentSearchNoMatch": "No students match."
     },
     "users": {
       "title": "Users",
@@ -1306,6 +1412,8 @@
       "deleteTooltip": "Delete user",
       "avatarAltPrefix": "{{name}} avatar",
       "searchPlaceholder": "Search by name or email…",
+      "roleFilterAria": "Filter by role",
+      "roleFilterAll": "All roles",
       "thName": "Name",
       "thEmail": "Email",
       "thRole": "Role",
@@ -1326,6 +1434,10 @@
       "title": "Pending Teacher Approvals",
       "missingName": "No name",
       "registered": "Registered {{date}}",
+      "registeredRelative": "Registered {{relative}}",
+      "disposableEmail": "throwaway",
+      "freeEmail": "free webmail",
+      "approveHint": "Approving lets them create + publish courses on the platform.",
       "approve": "Approve",
       "deny": "Deny",
       "toast": {
@@ -1348,6 +1460,10 @@
       "studentFallback": "Student",
       "courseFallback": "Course",
       "approvedBy": "Approved by {{name}}",
+      "teacherSignOff": "Teacher {{name}} signed off {{relative}}",
+      "requestedRelative": "Requested {{relative}}",
+      "requestedAtPrefix": "Requested at {{ts}}",
+      "approveHint": "Approving issues a public certificate number visible at /verify/<num>.",
       "approve": "Approve",
       "reject": "Reject",
       "toast": {
@@ -1361,6 +1477,9 @@
       "totalUsers": "Total Users",
       "totalCourses": "Total Courses",
       "totalEnrollments": "Total Enrollments",
+      "pendingActions": "Action Required",
+      "pendingHint": "Teacher + certificate approvals waiting on you",
+      "pendingClear": "All clear — no items waiting",
       "loadError": "Failed to load admin data. Please try again.",
       "toast": {
         "roleUpdated": "Role updated",
@@ -1377,13 +1496,14 @@
         "bulkRoleTitle": "Change role for selected users?",
         "bulkRoleDescription": "{{count}} user(s) will be set to role \"{{role}}\".",
         "bulkRoleAction": "Apply"
-      }
+      },
+      "usersLast7Days_one": "+{{count}} this week",
+      "usersLast7Days_other": "+{{count}} this week",
+      "usersLast7Days_zero": "No new signups this week"
     },
     "audit": {
       "filterAction": "Action",
       "filterResource": "Resource",
-      "filterFrom": "From",
-      "filterTo": "To",
       "filterClear": "Clear filters",
       "filterAllActions": "All actions",
       "filterAllResources": "All resources",
@@ -1395,7 +1515,6 @@
       "thUser": "User",
       "thAction": "Action",
       "thResource": "Resource",
-      "thResourceId": "Resource ID",
       "thIp": "IP",
       "prevPageAria": "Previous page",
       "nextPageAria": "Next page",
@@ -1419,7 +1538,12 @@
         "certificate": "Certificate",
         "assignment_submission": "Assignment submission",
         "user": "User"
-      }
+      },
+      "filterRange": "Date range",
+      "thDetails": "Details",
+      "pageSizeLabel": "Rows per page",
+      "detailsEmpty": "No details",
+      "summaryLabel": "On this page"
     }
   },
   "roles": {
@@ -1550,5 +1674,19 @@
       "quizWeightNonzero": "Quizzes count toward the final grade.",
       "assignmentWeightNonzero": "Assignments count toward the final grade."
     }
+  },
+  "dateRangePicker": {
+    "placeholder": "Pick date range",
+    "clear": "Clear",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month"
+  },
+  "datePicker": {
+    "placeholder": "Pick a date"
+  },
+  "dateTimePicker": {
+    "placeholder": "Pick date + time",
+    "hourAria": "Hour",
+    "minuteAria": "Minute"
   }
 }

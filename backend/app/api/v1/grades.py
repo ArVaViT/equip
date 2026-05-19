@@ -256,7 +256,7 @@ def get_my_grade_for_course(
 @router.get("/course/{course_id}", response_model=list[GradeResponse])
 def list_course_grades(
     course_id: str,
-    cohort_id: str | None = Query(None),
+    cohort_id: str | None = Query(None, max_length=36),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     teacher: User = Depends(require_teacher),
@@ -273,7 +273,7 @@ def list_course_grades(
 def get_student_grade(
     course_id: str,
     student_id: str,
-    cohort_id: str | None = Query(None),
+    cohort_id: str | None = Query(None, max_length=36),
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> StudentGrade:
@@ -298,7 +298,7 @@ def upsert_student_grade(
     course_id: str,
     student_id: str,
     data: GradeUpsert,
-    cohort_id: str | None = Query(None),
+    cohort_id: str | None = Query(None, max_length=36),
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> StudentGrade:

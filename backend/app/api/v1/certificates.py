@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, Request, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -182,15 +182,68 @@ def list_my_certificates(
     return _localize_cert_responses(db, rows, display_locale=display_locale)
 
 
+def _enrich_pending_certs(
+    db: Session,
+    certs: list[Certificate],
+) -> list[CertificateResponse]:
+    """Resolve the contextual labels (student name/email, course title,
+    teacher approver name) for a list of pending Certificate rows.
+
+    Three batched lookups instead of N+1: one ``users`` query (covers
+    both student and approver in a single IN-list) and one ``courses``
+    query. Empty input short-circuits so the common no-pending case
+    stays free.
+    """
+    if not certs:
+        return []
+    student_ids = {c.user_id for c in certs}
+    approver_ids = {c.teacher_approved_by for c in certs if c.teacher_approved_by}
+    course_ids = {str(c.course_id) for c in certs if c.course_id}
+    user_meta: dict[str, tuple[str | None, str]] = {}
+    if student_ids or approver_ids:
+        for uid, full_name, email in (
+            db.query(User.id, User.full_name, User.email).filter(User.id.in_(student_ids | approver_ids)).all()
+        ):
+            user_meta[str(uid)] = (full_name, email)
+    course_titles: dict[str, str] = {}
+    if course_ids:
+        for cid, title in db.query(Course.id, Course.title).filter(Course.id.in_(course_ids)).all():
+            course_titles[str(cid)] = title
+
+    out: list[CertificateResponse] = []
+    for cert in certs:
+        student = user_meta.get(str(cert.user_id))
+        approver = user_meta.get(str(cert.teacher_approved_by)) if cert.teacher_approved_by else None
+        base = CertificateResponse.model_validate(cert, from_attributes=True)
+        out.append(
+            base.model_copy(
+                update={
+                    "student_name": student[0] if student else None,
+                    "student_email": student[1] if student else None,
+                    "course_title": (
+                        course_titles.get(str(cert.course_id)) if cert.course_id else cert.archived_course_title
+                    ),
+                    "teacher_approver_name": ((approver[0] or approver[1]) if approver else None),
+                }
+            )
+        )
+    return out
+
+
 @router.get("/pending", response_model=list[CertificateResponse])
 def list_pending_certificates(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
-) -> list[Certificate]:
-    """Teacher: list pending certificates for courses they teach."""
-    return (
+) -> list[CertificateResponse]:
+    """Teacher: list pending certificates for courses they teach.
+
+    Returns enriched rows (student name + email, course title) so the
+    teacher dashboard's pending-certs panel can render context without
+    a per-row follow-up call.
+    """
+    certs = (
         db.query(Certificate)
         .join(Course, Course.id == Certificate.course_id)
         .filter(
@@ -203,6 +256,7 @@ def list_pending_certificates(
         .limit(limit)
         .all()
     )
+    return _enrich_pending_certs(db, certs)
 
 
 @router.get("/admin/pending", response_model=list[CertificateResponse])
@@ -211,9 +265,14 @@ def list_admin_pending_certificates(
     limit: int = Query(50, ge=1, le=200),
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
-) -> list[Certificate]:
-    """Admin: list all teacher-approved certificates awaiting admin approval."""
-    return (
+) -> list[CertificateResponse]:
+    """Admin: teacher-approved certificates awaiting admin approval.
+
+    Returns enriched rows (student name + email, course title, name of
+    the teacher who signed off) so the admin overview panel can render
+    a real \"who / what / when\" context without per-row follow-up calls.
+    """
+    certs = (
         db.query(Certificate)
         .filter(Certificate.status == "teacher_approved")
         .order_by(Certificate.teacher_approved_at.asc())
@@ -221,6 +280,7 @@ def list_admin_pending_certificates(
         .limit(limit)
         .all()
     )
+    return _enrich_pending_certs(db, certs)
 
 
 @router.put(
@@ -310,7 +370,11 @@ def reject_certificate(
     },
 )
 def verify_certificate(
-    certificate_number: str,
+    # Real certificate numbers are ~17 chars (``CERT-`` + 12 hex). The
+    # column is ``String(50)``; cap the path param at 50 so a crafted
+    # multi-KB URL is rejected by FastAPI before the public unauth
+    # rate-limit bucket and the DB scan run.
+    certificate_number: str = Path(..., max_length=50),
     db: Session = Depends(get_db),
 ) -> CertificateVerifyResponse:
     """Unauthenticated certificate verification.
