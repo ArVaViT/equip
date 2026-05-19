@@ -264,14 +264,32 @@ function UsersTable({
       </div>
 
       {/* Desktop: classic semantic table with internal scroll + sticky
-          header. ``max-h-[60vh]`` matches the audit log so the users
-          panel doesn't push the admin overview off-screen when the
-          tenant grows past 20-30 rows. */}
+          header. ``table-fixed`` so column widths come from <colgroup>
+          rather than from cell content — a single 60-char student email
+          can't push the actions column off-screen. ``max-h-[60vh]``
+          matches the audit log so the users panel doesn't push the
+          admin overview off-screen when the tenant grows past 20-30
+          rows. */}
       <div className="-mx-6 hidden max-h-[60vh] overflow-y-auto sm:block">
-        <table className="w-full text-sm">
+        <table className="w-full table-fixed text-sm">
+          <colgroup>
+            <col className="w-10" />
+            {/* Name: enough room for "Vadym Arnaut" + avatar without
+                truncating, but capped so the rest of the row breathes. */}
+            <col className="w-[26%]" />
+            {/* Email: dominant column, given the most space; ellipsised
+                inside a ``truncate`` cell with full text in title attr. */}
+            <col className="w-[34%]" />
+            {/* Role: short pill, fixed slot keeps it aligned across rows. */}
+            <col className="w-[18%]" />
+            {/* Joined: ISO date, tabular-nums, narrow. */}
+            <col className="w-[14%]" />
+            {/* Actions: single 32-px icon button. */}
+            <col className="w-12" />
+          </colgroup>
           <thead className="sticky top-0 z-10 bg-card">
             <tr className="border-b text-left">
-              <th className="w-10 px-3 py-3">
+              <th className="px-3 py-3">
                 <Checkbox
                   checked={selectAllState}
                   onCheckedChange={onToggleSelectAll}
@@ -282,7 +300,7 @@ function UsersTable({
               <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thEmail")}</th>
               <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thRole")}</th>
               <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thJoined")}</th>
-              <th className="w-10 px-6 py-3" aria-label={t("admin.users.thActions")} />
+              <th className="px-3 py-3" aria-label={t("admin.users.thActions")} />
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -408,22 +426,26 @@ function UserRow({
         />
       </td>
       <td className="px-6 py-3">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           {user.avatar_url ? (
             <img
               src={toProxyImage(user.avatar_url)}
               alt={t("admin.users.avatarAltPrefix", { name: user.full_name ?? user.email })}
-              className="h-8 w-8 rounded-full object-cover"
+              className="h-8 w-8 shrink-0 rounded-full object-cover"
             />
           ) : (
-            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
               {(user.full_name?.[0] ?? user.email[0] ?? "?").toUpperCase()}
             </div>
           )}
-          <span className="font-medium">{user.full_name || t("admin.users.missingName")}</span>
+          <span className="min-w-0 truncate font-medium" title={user.full_name ?? undefined}>
+            {user.full_name || t("admin.users.missingName")}
+          </span>
         </div>
       </td>
-      <td className="px-6 py-3 text-muted-foreground">{user.email}</td>
+      <td className="px-6 py-3 text-muted-foreground">
+        <span className="block truncate" title={user.email}>{user.email}</span>
+      </td>
       <td className="px-6 py-3">
         <RoleSelector
           role={user.role}
@@ -432,10 +454,10 @@ function UserRow({
           ariaLabel={t("admin.users.changeRoleAria", { name: displayName })}
         />
       </td>
-      <td className="px-6 py-3 text-muted-foreground">
+      <td className="whitespace-nowrap px-6 py-3 text-xs text-muted-foreground tabular-nums">
         {formatDate(user.created_at)}
       </td>
-      <td className="px-3 py-3">
+      <td className="px-3 py-3 text-right">
         <Button
           variant="ghost"
           size="sm"
