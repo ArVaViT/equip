@@ -1477,6 +1477,9 @@
       "totalUsers": "Total Users",
       "totalCourses": "Total Courses",
       "totalEnrollments": "Total Enrollments",
+      "pendingActions": "Action Required",
+      "pendingHint": "Teacher + certificate approvals waiting on you",
+      "pendingClear": "All clear — no items waiting",
       "loadError": "Failed to load admin data. Please try again.",
       "toast": {
         "roleUpdated": "Role updated",

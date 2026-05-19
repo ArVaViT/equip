@@ -80,7 +80,11 @@ export default function AdminDashboard() {
 
       {!overview.error && tab === "overview" && (
         <>
-          <OverviewStats stats={overview.stats} loading={overview.loading} />
+          <OverviewStats
+            stats={overview.stats}
+            loading={overview.loading}
+            pendingActions={overview.pendingTeachers.length + overview.adminCerts.length}
+          />
           <PendingTeachersCard
             pending={overview.pendingTeachers}
             updatingId={overview.updatingId}
