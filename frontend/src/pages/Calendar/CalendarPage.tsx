@@ -3,7 +3,13 @@ import { useTranslation } from "react-i18next";
 import { CalendarDays, Filter, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { NativeSelect } from "@/components/ui/native-select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import PageSpinner from "@/components/ui/PageSpinner";
 import { EmptyState, ErrorState } from "@/components/patterns";
 
@@ -80,20 +86,26 @@ export default function CalendarPage() {
         {enrollments.length > 0 && (
           <div className="flex items-center gap-2">
             <Filter className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} aria-hidden />
-            <NativeSelect
-              fieldSize="md"
-              value={filterCourseId}
-              onChange={(e) => setFilterCourseId(e.target.value)}
-              className="max-w-xs min-w-[12rem]"
-              aria-label={t("calendar.filterByCourse")}
+            <Select
+              value={filterCourseId || "all"}
+              onValueChange={(v) => setFilterCourseId(v === "all" ? "" : v)}
             >
-              <option value="">{t("calendar.allCourses")}</option>
-              {enrollments.map((e) => (
-                <option key={e.course_id} value={e.course_id}>
-                  {e.course?.title ?? e.course_id}
-                </option>
-              ))}
-            </NativeSelect>
+              <SelectTrigger
+                size="md"
+                className="max-w-xs min-w-[12rem]"
+                aria-label={t("calendar.filterByCourse")}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("calendar.allCourses")}</SelectItem>
+                {enrollments.map((e) => (
+                  <SelectItem key={e.course_id} value={e.course_id}>
+                    {e.course?.title ?? e.course_id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
       </div>

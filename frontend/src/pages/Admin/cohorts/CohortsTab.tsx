@@ -6,7 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { NativeSelect } from "@/components/ui/native-select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { EmptyState } from "@/components/patterns/EmptyState"
@@ -158,21 +164,29 @@ export function CohortsTab() {
         <div className="flex flex-wrap items-end gap-3">
           <FilterField label={t("admin.cohorts.filterStatus")}>
             {({ id }) => (
-              <NativeSelect
-                id={id}
-                fieldSize="sm"
-                value={statusFilter}
-                onChange={(e) => setStatus(e.target.value as typeof statusFilter)}
-                className={cn(
-                  "h-9 w-full sm:w-44",
-                  statusFilter && "border-primary/40 ring-1 ring-primary/40",
-                )}
+              <Select
+                value={statusFilter || "all"}
+                onValueChange={(v) =>
+                  setStatus((v === "all" ? "" : v) as typeof statusFilter)
+                }
               >
-                <option value="">{t("admin.cohorts.allStatuses")}</option>
-                <option value="upcoming">{t("admin.cohorts.statusUpcoming")}</option>
-                <option value="active">{t("admin.cohorts.statusActive")}</option>
-                <option value="completed">{t("admin.cohorts.statusCompleted")}</option>
-              </NativeSelect>
+                <SelectTrigger
+                  id={id}
+                  size="sm"
+                  className={cn(
+                    "h-9 w-full sm:w-44",
+                    statusFilter && "border-primary/40 ring-1 ring-primary/40",
+                  )}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("admin.cohorts.allStatuses")}</SelectItem>
+                  <SelectItem value="upcoming">{t("admin.cohorts.statusUpcoming")}</SelectItem>
+                  <SelectItem value="active">{t("admin.cohorts.statusActive")}</SelectItem>
+                  <SelectItem value="completed">{t("admin.cohorts.statusCompleted")}</SelectItem>
+                </SelectContent>
+              </Select>
             )}
           </FilterField>
           <FilterField label={t("admin.cohorts.filterStartRange")}>
@@ -240,19 +254,21 @@ export function CohortsTab() {
         <div className="flex shrink-0 flex-col items-stretch gap-2 border-t border-border px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <label htmlFor="cohort-page-size">{t("admin.audit.pageSizeLabel")}</label>
-            <NativeSelect
-              id="cohort-page-size"
-              fieldSize="sm"
+            <Select
               value={String(pageSize)}
-              onChange={(e) => setPageSize(Number(e.target.value) as PageSize)}
-              className="w-20"
+              onValueChange={(v) => setPageSize(Number(v) as PageSize)}
             >
-              {PAGE_SIZE_OPTIONS.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </NativeSelect>
+              <SelectTrigger id="cohort-page-size" size="sm" className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PAGE_SIZE_OPTIONS.map((n) => (
+                  <SelectItem key={n} value={String(n)}>
+                    {n}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <span className="ml-2">
               {t("admin.cohorts.totalShown", { shown: pageItems.length, total: filtered.length })}
             </span>

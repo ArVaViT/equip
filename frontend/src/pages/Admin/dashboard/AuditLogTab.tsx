@@ -1,7 +1,13 @@
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { NativeSelect } from "@/components/ui/native-select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -95,44 +101,56 @@ export function AuditLogTab({
         <div className="flex flex-wrap items-end gap-3">
           <FilterField label={t("admin.audit.filterAction")}>
             {({ id }) => (
-              <NativeSelect
-                id={id}
-                fieldSize="sm"
-                value={action}
-                onChange={(e) => onAction(e.target.value)}
-                className={cn(
-                  "h-9 w-full sm:w-44",
-                  action && "border-primary/40 ring-1 ring-primary/40",
-                )}
+              <Select
+                value={action || "all"}
+                onValueChange={(v) => onAction(v === "all" ? "" : v)}
               >
-                <option value="">{t("admin.audit.filterAllActions")}</option>
-                {ACTION_OPTIONS.map((o) => (
-                  <option key={o} value={o}>
-                    {t(`admin.audit.actionValue.${o}`)}
-                  </option>
-                ))}
-              </NativeSelect>
+                <SelectTrigger
+                  id={id}
+                  size="sm"
+                  className={cn(
+                    "h-9 w-full sm:w-44",
+                    action && "border-primary/40 ring-1 ring-primary/40",
+                  )}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("admin.audit.filterAllActions")}</SelectItem>
+                  {ACTION_OPTIONS.map((o) => (
+                    <SelectItem key={o} value={o}>
+                      {t(`admin.audit.actionValue.${o}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           </FilterField>
           <FilterField label={t("admin.audit.filterResource")}>
             {({ id }) => (
-              <NativeSelect
-                id={id}
-                fieldSize="sm"
-                value={resource}
-                onChange={(e) => onResource(e.target.value)}
-                className={cn(
-                  "h-9 w-full sm:w-44",
-                  resource && "border-primary/40 ring-1 ring-primary/40",
-                )}
+              <Select
+                value={resource || "all"}
+                onValueChange={(v) => onResource(v === "all" ? "" : v)}
               >
-                <option value="">{t("admin.audit.filterAllResources")}</option>
-                {RESOURCE_OPTIONS.map((o) => (
-                  <option key={o} value={o}>
-                    {t(`admin.audit.resourceValue.${o}`)}
-                  </option>
-                ))}
-              </NativeSelect>
+                <SelectTrigger
+                  id={id}
+                  size="sm"
+                  className={cn(
+                    "h-9 w-full sm:w-44",
+                    resource && "border-primary/40 ring-1 ring-primary/40",
+                  )}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("admin.audit.filterAllResources")}</SelectItem>
+                  {RESOURCE_OPTIONS.map((o) => (
+                    <SelectItem key={o} value={o}>
+                      {t(`admin.audit.resourceValue.${o}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           </FilterField>
           <FilterField label={t("admin.audit.filterRange")}>
@@ -181,19 +199,21 @@ export function AuditLogTab({
         <div className="flex shrink-0 flex-col items-stretch gap-2 border-t border-border px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <label htmlFor="audit-page-size">{t("admin.audit.pageSizeLabel")}</label>
-            <NativeSelect
-              id="audit-page-size"
-              fieldSize="sm"
+            <Select
               value={String(pageSize)}
-              onChange={(e) => onPageSizeChange(Number(e.target.value) as AuditPageSize)}
-              className="h-9 w-20"
+              onValueChange={(v) => onPageSizeChange(Number(v) as AuditPageSize)}
             >
-              {AUDIT_PAGE_SIZE_OPTIONS.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </NativeSelect>
+              <SelectTrigger id="audit-page-size" size="sm" className="h-9 w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {AUDIT_PAGE_SIZE_OPTIONS.map((n) => (
+                  <SelectItem key={n} value={String(n)}>
+                    {n}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex items-center justify-between gap-3 sm:justify-end">
             <p className="text-xs text-muted-foreground">

@@ -3,7 +3,13 @@ import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { NativeSelect } from "@/components/ui/native-select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Users, Search, Trash2 } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
@@ -90,17 +96,20 @@ export function UsersCard({
           {selectedIds.size > 0 && (
             <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 sm:w-auto">
               <span className="text-xs font-medium">{t("admin.users.selected", { count: selectedIds.size })}</span>
-              <NativeSelect
-                fieldSize="sm"
+              <Select
                 value={bulkRole}
-                onChange={(e) => onBulkRoleChange(e.target.value as UserRole)}
-                className="w-auto"
+                onValueChange={(v) => onBulkRoleChange(v as UserRole)}
               >
-                <option value="student">{t("roles.student")}</option>
-                <option value="pending_teacher">{t("roles.pendingTeacher")}</option>
-                <option value="teacher">{t("roles.teacher")}</option>
-                <option value="admin">{t("roles.admin")}</option>
-              </NativeSelect>
+                <SelectTrigger size="sm" className="w-auto">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="student">{t("roles.student")}</SelectItem>
+                  <SelectItem value="pending_teacher">{t("roles.pendingTeacher")}</SelectItem>
+                  <SelectItem value="teacher">{t("roles.teacher")}</SelectItem>
+                  <SelectItem value="admin">{t("roles.admin")}</SelectItem>
+                </SelectContent>
+              </Select>
               <Button
                 size="sm"
                 className="h-9 text-xs sm:h-7"
