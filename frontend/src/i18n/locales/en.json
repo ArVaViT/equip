@@ -1412,6 +1412,8 @@
       "deleteTooltip": "Delete user",
       "avatarAltPrefix": "{{name}} avatar",
       "searchPlaceholder": "Search by name or email…",
+      "roleFilterAria": "Filter by role",
+      "roleFilterAll": "All roles",
       "thName": "Name",
       "thEmail": "Email",
       "thRole": "Role",

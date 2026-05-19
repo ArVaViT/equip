@@ -105,6 +105,9 @@ export default function AdminDashboard() {
             bulkUpdating={overview.bulkUpdating}
             updatingId={overview.updatingId}
             currentUserId={user?.id}
+            roleFilter={overview.roleFilter}
+            roleCounts={overview.roleCounts}
+            onRoleFilterChange={overview.setRoleFilter}
             onSearchInputChange={overview.setSearchInput}
             onBulkRoleChange={overview.setBulkRole}
             onApplyBulkRole={overview.handleBulkRoleChange}
