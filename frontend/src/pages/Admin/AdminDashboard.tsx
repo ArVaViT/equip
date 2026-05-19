@@ -138,8 +138,7 @@ export default function AdminDashboard() {
             dateTo={audit.dateTo}
             onAction={audit.setAction}
             onResource={audit.setResource}
-            onDateFrom={audit.setDateFrom}
-            onDateTo={audit.setDateTo}
+            onDateRange={audit.setDateRange}
             onReset={audit.resetFilters}
             onPageChange={audit.setPage}
             onPageSizeChange={audit.setPageSize}

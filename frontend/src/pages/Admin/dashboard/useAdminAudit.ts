@@ -138,8 +138,15 @@ export function useAdminAudit({ enabled }: UseAdminAuditArgs) {
     dateTo,
     setAction: (v: string) => updateAudit({ ax: v || null }, { resetPage: true }),
     setResource: (v: string) => updateAudit({ ar: v || null }, { resetPage: true }),
-    setDateFrom: (v: string) => updateAudit({ af: v || null }, { resetPage: true }),
-    setDateTo: (v: string) => updateAudit({ at: v || null }, { resetPage: true }),
+    // Atomic two-key write. The DateRangePicker fires both bounds in
+    // one handler; calling ``setDateFrom`` then ``setDateTo`` back-to-
+    // back used to lose the first one — both call ``setSearchParams``,
+    // and within a single event the second invocation reads the same
+    // ``prev`` URLSearchParams snapshot as the first, so the second
+    // write overwrites the first. Folding the two keys into one
+    // ``updateAudit`` call is the fix.
+    setDateRange: (from: string, to: string) =>
+      updateAudit({ af: from || null, at: to || null }, { resetPage: true }),
     setPage: (next: number) => updateAudit({ ap: next <= 1 ? null : String(next) }),
     // Setting page size resets to page 1: the offset that was valid
     // for the old size is meaningless under the new one.

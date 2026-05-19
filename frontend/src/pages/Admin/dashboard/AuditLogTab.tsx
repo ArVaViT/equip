@@ -40,8 +40,10 @@ interface Props {
   dateTo: string
   onAction: (next: string) => void
   onResource: (next: string) => void
-  onDateFrom: (next: string) => void
-  onDateTo: (next: string) => void
+  /** Single atomic setter for both date bounds — the date-range picker
+   *  emits both at once, so writing them through two separate setters
+   *  raced and dropped the ``from`` bound. */
+  onDateRange: (from: string, to: string) => void
   onReset: () => void
   onPageChange: (nextPage: number) => void
   onPageSizeChange: (next: AuditPageSize) => void
@@ -78,8 +80,7 @@ export function AuditLogTab({
   dateTo,
   onAction,
   onResource,
-  onDateFrom,
-  onDateTo,
+  onDateRange,
   onReset,
   onPageChange,
   onPageSizeChange,
@@ -157,10 +158,7 @@ export function AuditLogTab({
             {() => (
               <DateRangePicker
                 value={{ from: dateFrom, to: dateTo }}
-                onChange={({ from, to }) => {
-                  onDateFrom(from)
-                  onDateTo(to)
-                }}
+                onChange={({ from, to }) => onDateRange(from, to)}
                 active={Boolean(dateFrom || dateTo)}
               />
             )}
