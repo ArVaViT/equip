@@ -249,7 +249,7 @@ export function RegisterForm({
           <Button
             type="submit"
             size="lg"
-            className="bg-cta-glow w-full font-medium rounded-md"
+            className="w-full font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
             disabled={loading}
           >
             {loading ? (
