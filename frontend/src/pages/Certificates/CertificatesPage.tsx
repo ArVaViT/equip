@@ -45,7 +45,8 @@ export default function CertificatesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i18n.language])
 
-  const courseTitle = (courseId: string) => {
+  const courseTitle = (courseId: string | null) => {
+    if (!courseId) return t("certificates.courseFallback", { id: "—" })
     const enrollment = enrollments.find((e) => e.course_id === courseId)
     return (
       enrollment?.course?.title ??
