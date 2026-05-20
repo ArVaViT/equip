@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import type { Driver } from "driver.js"
 import { createEditorialTour, type TourStep } from "@/lib/tour"
@@ -85,7 +85,9 @@ function writeSeen(userId: string | undefined, tourId: string): void {
  * "user has been exposed to this once, don't pester them again". A
  * manual ``start()`` call from a "Take a tour" trigger always opens
  * the tour regardless of the flag, so the user can re-watch on
- * demand.
+ * demand. Manual start also cancels any pending auto-start timer so
+ * the user doesn't see a brief double-fire if they click within the
+ * autoStartDelayMs window.
  */
 export function useUserTour({
   tourId,
@@ -99,6 +101,7 @@ export function useUserTour({
   const { t } = useTranslation()
   const driverRef = useRef<Driver | null>(null)
   const firedRef = useRef(false)
+  const timerRef = useRef<number | null>(null)
   const stepsRef = useRef(steps)
   useEffect(() => {
     stepsRef.current = steps
@@ -106,7 +109,16 @@ export function useUserTour({
 
   const userId = user?.id
   const userRole = user?.role
-  const alreadySeen = readSeen(userId, tourId)
+  // ``alreadySeen`` is read once into state on mount instead of every
+  // render. Without this, every keystroke / sort change on a
+  // tour-hosting page (gradebook, etc.) would hit
+  // ``window.localStorage.getItem`` synchronously on the render path.
+  // The ``userId`` change re-reads (different account, possibly
+  // different flag) via the effect below.
+  const [alreadySeen, setAlreadySeen] = useState(() => readSeen(userId, tourId))
+  useEffect(() => {
+    setAlreadySeen(readSeen(userId, tourId))
+  }, [userId, tourId])
 
   const buildDriver = useCallback((): Driver => {
     return createEditorialTour({
@@ -128,6 +140,14 @@ export function useUserTour({
   }, [t, tourId, userId])
 
   const start = useCallback(() => {
+    // Manual start counts as "fired" — block any pending auto-start
+    // timer AND mark the surface as fired so the auto effect can't
+    // re-trigger after the user has already opened the tour by hand.
+    firedRef.current = true
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
     // Always rebuild — labels depend on the active i18n language, and
     // a stale Driver from a previous locale would render English
     // buttons on a Russian session (or vice versa).
@@ -148,19 +168,27 @@ export function useUserTour({
     if (ready === false) return
 
     firedRef.current = true
-    const timer = window.setTimeout(start, autoStartDelayMs)
-    return () => window.clearTimeout(timer)
-    // ``alreadySeen`` is a snapshot read at mount; deliberately not in
-    // deps so a mid-tour localStorage write doesn't re-fire. ``ready``
-    // IS in deps so data-dependent pages can flip from false → true
-    // after their fetch lands.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart, autoStartDelayMs, userId, userRole, ready, steps.length, start])
+    timerRef.current = window.setTimeout(start, autoStartDelayMs)
+    return () => {
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
+    }
+    // ``alreadySeen`` IS in deps (unlike before) because we now keep
+    // it in state — a flag write from another tab via storage event
+    // would still not invalidate, but the in-tab user-id swap that
+    // also re-reads the flag now properly re-evaluates.
+  }, [autoStart, autoStartDelayMs, userId, userRole, ready, steps.length, alreadySeen, skipRoles, start])
 
   useEffect(() => {
     return () => {
       driverRef.current?.destroy()
       driverRef.current = null
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
     }
   }, [])
 

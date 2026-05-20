@@ -22,7 +22,11 @@
   border-radius: 0.5rem;
   padding: 1.125rem 1.25rem;
   box-shadow: 0 12px 32px hsl(var(--foreground) / 0.18);
-  min-width: 280px;
+  /* ``min-width`` was a hard 280px which overflowed the 320px iPhone
+     SE viewport once the container's safe-area gutter was applied.
+     ``clamp`` keeps the desktop minimum but lets mobile shrink to fit
+     the actual viewport minus a small breathing gutter. */
+  min-width: clamp(240px, calc(100vw - 2rem), 280px);
   max-width: 360px;
 }
 
@@ -159,18 +163,22 @@
 }
 
 /* Calm the overlay — driver's default 70% black sucks the warmth out
-   of the page. We use the project's foreground token at lower alpha
-   so the spotlit element still reads as part of the same surface. */
+   of the page. We use a fixed dark token (not ``--foreground``) so
+   the scrim stays dark in BOTH themes. The earlier
+   ``hsl(var(--foreground))`` resolved to a *light* cream on dark
+   mode and inverted the overlay into a white wash. */
 .driver-overlay {
-  fill: hsl(var(--foreground)) !important;
+  fill: hsl(265 28% 13%) !important;
   opacity: 0.55 !important;
 }
 
 /* Stage outline (the rounded rectangle around the highlighted element)
-   in the sage accent so it shares the popover's left-stripe colour. */
-.driver-active-element {
-  box-shadow: 0 0 0 4px hsl(var(--accent) / 0.25);
-}
+   was previously a 4px box-shadow on ``.driver-active-element``. Box
+   shadows get clipped by any ancestor with ``overflow:hidden`` — a
+   common pattern in dashboard cards — so the accent ring was being
+   shaved off on multiple surfaces. We rely on driver.js's own
+   ``stagePadding`` cutout to delineate the spotlit element instead;
+   no extra outline that can be clipped. */
 
 /* Respect the user's reduced-motion preference: kill the popover fade
    so nothing animates. driver.js's animate=false skips the SVG

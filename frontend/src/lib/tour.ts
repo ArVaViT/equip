@@ -28,6 +28,26 @@ interface CreateTourOpts {
 }
 
 /**
+ * Read the current ``prefers-reduced-motion`` setting at call time.
+ *
+ * Honest fallback: ``window.matchMedia`` is missing in non-DOM
+ * environments (SSR, vitest jsdom without the polyfill), so we treat
+ * absence as "no preference" and let motion play. We re-read on every
+ * tour construction rather than caching, so the OS-level setting
+ * change reaches the next tour without a page reload.
+ */
+function reducedMotionPreferred(): boolean {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return false
+  }
+  try {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  } catch {
+    return false
+  }
+}
+
+/**
  * Build a driver.js tour with the editorial CSS class wired in and
  * localised navigation buttons.
  *
@@ -50,13 +70,22 @@ export function createEditorialTour({
   // which callback to fire. driver.js's own state.activeIndex isn't
   // reliable on the destroy hook — it gets reset before we see it.
   let reachedEnd = false
+  const animate = !reducedMotionPreferred()
 
   const config: Config = {
     steps: steps as DriveStep[],
-    animate: true,
+    // Both the SVG stage morph and the popover fade are gated on this
+    // single flag — driver.js doesn't expose them separately, and the
+    // CSS media query catches the popover fade as a defense in depth.
+    animate,
     smoothScroll: true,
     allowClose: true,
-    overlayColor: "hsl(var(--foreground))",
+    // The spotlit element should READ as the subject of the popover,
+    // not be a click-trap that scrolls the page underneath while the
+    // user is reading. Without this, the catalog-search step would
+    // accept keystrokes and reposition the spotlight on every char.
+    disableActiveInteraction: true,
+    overlayColor: "hsl(265 28% 13%)",
     overlayOpacity: 0.55,
     stagePadding: 6,
     stageRadius: 8,
@@ -67,6 +96,10 @@ export function createEditorialTour({
     doneBtnText: labels.done,
     popoverClass: "editorial-tour-popover",
     onNextClick: (_el, _step, { state, driver: d }) => {
+      // Last step's Next button doubles as Done — driver.js relabels
+      // it via ``doneBtnText`` but still fires the same onNextClick.
+      // Flag reachedEnd here so onDestroyed can distinguish a true
+      // completion from an Esc/X/overlay dismissal.
       if (state.activeIndex !== undefined && state.activeIndex + 1 >= steps.length) {
         reachedEnd = true
       }
