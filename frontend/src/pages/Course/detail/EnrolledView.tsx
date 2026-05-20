@@ -1,10 +1,11 @@
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Paperclip, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import CourseAnnouncements from "@/components/announcements/CourseAnnouncements"
 import CourseReviews from "@/components/course/CourseReviews"
 import CertificateCard from "@/components/course/CertificateCard"
+import CompletionDialog from "@/components/course/CompletionDialog"
 import { Modal } from "@/components/patterns"
 import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
@@ -51,8 +52,34 @@ export function EnrolledView({
   const [materialsModal, setMaterialsModal] = useState(false)
   const [reviewsModal, setReviewsModal] = useState(false)
   const [downloadingPath, setDownloadingPath] = useState<string | null>(null)
+  const [showCompletion, setShowCompletion] = useState(false)
 
   const enrolledCohort = cohorts.find((c) => c.id === enrollment.cohort_id)
+
+  // Course-completion celebration: when a student lands on this view
+  // with progress at 100% for the first time on this device, open the
+  // celebration dialog. We guard with a per-course localStorage flag
+  // so the moment doesn't re-fire on every revisit, and we set the
+  // flag on close (not on open) so a closed-before-render edge case
+  // doesn't silently swallow the moment.
+  useEffect(() => {
+    if (enrollment.progress < 100) return
+    if (typeof window === "undefined") return
+    const flagKey = `equip.celebrated.${course.id}`
+    if (window.localStorage.getItem(flagKey) === "1") return
+    setShowCompletion(true)
+  }, [enrollment.progress, course.id])
+
+  const handleCloseCompletion = useCallback(() => {
+    setShowCompletion(false)
+    if (typeof window === "undefined") return
+    try {
+      window.localStorage.setItem(`equip.celebrated.${course.id}`, "1")
+    } catch {
+      // localStorage can be denied in some private-browsing contexts;
+      // in that case the dialog will re-show on next visit. Acceptable.
+    }
+  }, [course.id])
 
   const handleDownload = useCallback(async (path: string) => {
     setDownloadingPath(path)
@@ -120,6 +147,15 @@ export function EnrolledView({
       <Modal open={reviewsModal} onClose={() => setReviewsModal(false)} title={t("courseDetail.reviewsModalTitle")}>
         <CourseReviews courseId={course.id} />
       </Modal>
+
+      <CompletionDialog
+        open={showCompletion}
+        onClose={handleCloseCompletion}
+        courseId={course.id}
+        courseTitle={course.title}
+        hasCertificate={certificate !== null}
+        onCertificateRequested={onCertificateUpdate}
+      />
     </div>
   )
 }
