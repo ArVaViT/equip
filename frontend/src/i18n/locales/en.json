@@ -152,6 +152,53 @@
     "requestCta": "Request certificate",
     "continueCta": "Continue"
   },
+  "tour": {
+    "next": "Next",
+    "previous": "Back",
+    "done": "Done",
+    "progress": "Step {{current}} of {{total}}",
+    "takeATour": "Take a tour",
+    "student": {
+      "myCourses": {
+        "title": "Your courses",
+        "body": "Every course you enroll in lands here. Tap one to keep going from where you left off."
+      },
+      "verse": {
+        "title": "Verse of the day",
+        "body": "A new passage every morning — a quiet way to begin before the lesson plan."
+      },
+      "today": {
+        "title": "Today's calendar",
+        "body": "Anything due or scheduled for today — assignments, classes, events — surfaces here."
+      },
+      "streak": {
+        "title": "Daily practice",
+        "body": "A gentle streak of the days you've engaged with Equip. Skip a day, no guilt."
+      },
+      "finale": {
+        "title": "That's the tour",
+        "body": "Browse the catalog when you're ready to enroll. You can replay this tour any time from the welcome panel."
+      }
+    },
+    "teacher": {
+      "newCourse": {
+        "title": "Create a course",
+        "body": "Open the editor here. You'll lay out modules, write chapters and quizzes, and publish when ready."
+      },
+      "pendingCerts": {
+        "title": "Pending certificates",
+        "body": "Students who finished your courses request certificates here. Approve or reject in two clicks."
+      },
+      "coursesList": {
+        "title": "Your courses",
+        "body": "Once you have published material, every course shows up here with quick toggles for publish, clone, edit and analytics."
+      },
+      "finale": {
+        "title": "That's the tour",
+        "body": "You can replay this tour from the welcome panel whenever you want a refresher."
+      }
+    }
+  },
   "courses": {
     "academicPrograms": "Academic Programs",
     "pageTitle": "Course Catalog",

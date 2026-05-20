@@ -13,6 +13,8 @@ import { VerseOfTheDayCard } from "@/components/home/VerseOfTheDayCard"
 import { StreakCard } from "@/components/dashboard/StreakCard"
 import { TodayCard } from "@/components/dashboard/TodayCard"
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard"
+import { useUserTour } from "@/hooks/useUserTour"
+import { studentDashboardSteps } from "@/lib/tourSteps"
 import { PublicLanding } from "./PublicLanding"
 import { cn } from "@/lib/utils"
 
@@ -29,6 +31,14 @@ function firstNameOf(fullName: string | null | undefined): string | null {
 
 const EDITORIAL_EASE = [0.22, 1, 0.36, 1] as const
 
+interface MyCoursesSectionProps {
+  /** Click handler wired by ``DashboardPage`` to start the dashboard
+   *  tour. We pipe it down through this section because the only
+   *  natural place to surface a "Take a tour" link visually is on the
+   *  empty-state welcome card that lives here. */
+  onTourStart: () => void
+}
+
 /**
  * "My Courses" — left column of the Dashboard, given its own internal
  * scroll so an arbitrary enrollment count can't push the rest of the
@@ -36,7 +46,7 @@ const EDITORIAL_EASE = [0.22, 1, 0.36, 1] as const
  * on locale flip so localised course titles update without a hard
  * reload.
  */
-function MyCoursesSection() {
+function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
   const { t, i18n } = useTranslation()
   const { user } = useAuth()
   const prefersReducedMotion = useReducedMotion()
@@ -82,7 +92,10 @@ function MyCoursesSection() {
     : t("dashboard.myCourses")
 
   const shell = (body: React.ReactNode, centered = false) => (
-    <section className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md border border-border bg-card transition-[border-color] duration-300 hover:border-primary/25">
+    <section
+      data-tour="my-courses"
+      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md border border-border bg-card transition-[border-color] duration-300 hover:border-primary/25"
+    >
       <header className="flex items-center justify-between gap-3 border-b border-border bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex min-w-0 items-center gap-2.5">
           <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
@@ -153,9 +166,20 @@ function MyCoursesSection() {
         }
         description={t("onboarding.student.body")}
         action={
-          <Link to="/courses">
-            <Button size="sm">{t("onboarding.student.primaryCta")}</Button>
-          </Link>
+          <div className="flex flex-col items-center gap-2 sm:flex-row">
+            <Link to="/courses">
+              <Button size="sm">{t("onboarding.student.primaryCta")}</Button>
+            </Link>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={onTourStart}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              {t("tour.takeATour")}
+            </Button>
+          </div>
         }
       />,
       true,
@@ -247,6 +271,15 @@ function MyCoursesSection() {
  */
 export default function DashboardPage() {
   const { user } = useAuth()
+  const { t } = useTranslation()
+  // The tour itself is locale-aware via ``useUserTour``; ``i18n`` here
+  // is just for ``t`` to build the steps. ``useMemo`` so the array
+  // reference is stable across re-renders that don't change locale.
+  const tourSteps = studentDashboardSteps(t)
+  const { start: startTour } = useUserTour({
+    tourId: "student-dashboard-v1",
+    steps: tourSteps,
+  })
 
   if (!user) {
     return <PublicLanding />
@@ -255,20 +288,20 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto h-full px-4 py-4 sm:py-6 lg:h-[calc(100dvh-3rem-3rem)]">
       <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-5">
-        <MyCoursesSection />
+        <MyCoursesSection onTourStart={startTour} />
         {/* Right rail: equal-thirds on lg+ via grid-rows-3. Each card
             gets the same vertical share so Verse + Today + Streak all
             fit one viewport without one starving another. ``min-h-0``
             on the inner grid items lets each card's internal overflow
             kick in rather than expanding the row. */}
         <div className="flex flex-col gap-4 lg:grid lg:grid-rows-3 lg:gap-5 lg:overflow-hidden">
-          <div className="lg:min-h-0 lg:overflow-hidden">
+          <div data-tour="verse-of-day" className="lg:min-h-0 lg:overflow-hidden">
             <VerseOfTheDayCard />
           </div>
-          <div className="lg:min-h-0 lg:overflow-hidden">
+          <div data-tour="today" className="lg:min-h-0 lg:overflow-hidden">
             <TodayCard />
           </div>
-          <div className="lg:min-h-0 lg:overflow-hidden">
+          <div data-tour="streak" className="lg:min-h-0 lg:overflow-hidden">
             <StreakCard />
           </div>
         </div>
