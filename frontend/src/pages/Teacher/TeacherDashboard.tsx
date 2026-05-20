@@ -21,6 +21,8 @@ import {
   TrashSection,
   type PendingCert,
 } from "./dashboard"
+import { useUserTour } from "@/hooks/useUserTour"
+import { teacherDashboardSteps } from "@/lib/tourSteps"
 
 export default function TeacherDashboard() {
   const { t } = useTranslation()
@@ -48,6 +50,11 @@ export default function TeacherDashboard() {
   const [cloningId, setCloningId] = useState<string | null>(null)
   const [pendingCerts, setPendingCerts] = useState<PendingCert[]>([])
   const [certActionId, setCertActionId] = useState<string | null>(null)
+  const tourSteps = teacherDashboardSteps(t)
+  const { start: startTour } = useUserTour({
+    tourId: "teacher-dashboard-v1",
+    steps: tourSteps,
+  })
 
   const filteredCourses = useMemo(() => {
     const q = urlQuery.trim().toLowerCase()
@@ -215,7 +222,12 @@ export default function TeacherDashboard() {
     <div className="container mx-auto max-w-5xl px-4 py-6 sm:py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 sm:mb-8">
         <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">{t("teacher.dashboardTitle")}</h1>
-        <Button onClick={() => setShowCreate(!showCreate)} size="sm" className="h-11 sm:h-9">
+        <Button
+          data-tour="new-course"
+          onClick={() => setShowCreate(!showCreate)}
+          size="sm"
+          className="h-11 sm:h-9"
+        >
           <Plus className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
           {t("teacher.newCourse")}
         </Button>
@@ -254,7 +266,10 @@ export default function TeacherDashboard() {
           </CardContent>
         </Card>
       ) : courses.length === 0 ? (
-        <EmptyCoursesCard onCreate={() => setShowCreate(true)} />
+        <EmptyCoursesCard
+          onCreate={() => setShowCreate(true)}
+          onTourStart={startTour}
+        />
       ) : (
         <>
           {courses.length > 3 && (
@@ -273,7 +288,7 @@ export default function TeacherDashboard() {
               />
             </div>
           )}
-          <div className="space-y-4">
+          <div data-tour="courses-list" className="space-y-4">
             {filteredCourses.map((course) => (
               <CourseCard
                 key={course.id}

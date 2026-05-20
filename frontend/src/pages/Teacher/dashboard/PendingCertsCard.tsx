@@ -17,7 +17,7 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
   const { t } = useTranslation()
   if (certs.length === 0) return null
   return (
-    <Card className="mb-8 border-l-stripe border-l-warning">
+    <Card data-tour="pending-certs" className="mb-8 border-l-stripe border-l-warning">
       <CardHeader>
         <CardTitle className="text-xl flex items-center gap-2">
           <Award className="h-5 w-5 text-warning" strokeWidth={1.75} />
