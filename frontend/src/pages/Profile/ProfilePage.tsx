@@ -21,6 +21,8 @@ import {
   User as UserIcon, Mail, Calendar, Camera, Globe,
   Loader2, Award, BookOpen, ArrowRight, LogOut, Moon, Sun,
 } from "lucide-react"
+import { useUserTour } from "@/hooks/useUserTour"
+import { profileSteps } from "@/lib/tourSteps"
 
 const EDITORIAL_EASE = [0.22, 1, 0.36, 1] as const
 
@@ -59,6 +61,11 @@ export default function ProfilePage() {
   const animatedCompleted = useCountUp(completedCount)
   const animatedCertificates = useCountUp(certificateCount)
   const fileRef = useRef<HTMLInputElement>(null)
+  useUserTour({
+    tourId: "profile-v1",
+    steps: profileSteps(t),
+    ready: !!user,
+  })
 
   useEffect(() => {
     if (!user?.id) return
@@ -136,7 +143,7 @@ export default function ProfilePage() {
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-8 md:px-6">
-      <div className="stagger-fade-in space-y-6">
+      <div data-tour="profile-form" className="stagger-fade-in space-y-6">
         <Card className="overflow-hidden transition-[border-color] duration-200 hover:border-primary/25">
           <CardHeader className="border-b border-border bg-gradient-accent-subtle">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-start">

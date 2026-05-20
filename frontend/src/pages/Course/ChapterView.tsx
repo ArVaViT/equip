@@ -29,6 +29,8 @@ import {
   normalizeChapterType,
 } from "@/lib/chapterTypes"
 import { ErrorState } from "@/components/patterns"
+import { useUserTour } from "@/hooks/useUserTour"
+import { chapterViewSteps } from "@/lib/tourSteps"
 
 const BlockRenderer = memo(function BlockRenderer({
   block,
@@ -321,6 +323,12 @@ export default function ChapterView() {
   const [loadingBlocks, setLoadingBlocks] = useState(false)
   const [hasAssignments, setHasAssignments] = useState(false)
 
+  useUserTour({
+    tourId: "chapter-view-v1",
+    steps: chapterViewSteps(t),
+    ready: !loading && !error && mod !== null,
+  })
+
   useEffect(() => {
     let cancelled = false
     const load = async () => {
@@ -484,7 +492,7 @@ export default function ChapterView() {
         </Button>
       </Link>
 
-      <header className="mb-10">
+      <header data-tour="chapter-header" className="mb-10">
         <p className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <ChapterTypeIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
@@ -508,7 +516,7 @@ export default function ChapterView() {
         </h1>
       </header>
 
-      <div className="mb-10 space-y-6">
+      <div data-tour="chapter-body" className="mb-10 space-y-6">
         {chapterType === "reading" && (
           <ChapterBodyBlocks
             loading={loadingBlocks}
@@ -547,15 +555,17 @@ export default function ChapterView() {
         </div>
       )}
 
-      <ChapterNav
-        prevChapter={prevChapter}
-        nextChapter={nextChapter}
-        currentIdx={currentIdx}
-        total={sortedChapters.length}
-        courseId={courseId}
-        moduleId={moduleId}
-        isNextLocked={nextChapter ? isChapterLocked(nextChapter, currentIdx + 1) : false}
-      />
+      <div data-tour="chapter-nav">
+        <ChapterNav
+          prevChapter={prevChapter}
+          nextChapter={nextChapter}
+          currentIdx={currentIdx}
+          total={sortedChapters.length}
+          courseId={courseId}
+          moduleId={moduleId}
+          isNextLocked={nextChapter ? isChapterLocked(nextChapter, currentIdx + 1) : false}
+        />
+      </div>
     </div>
   )
 }

@@ -8,6 +8,8 @@ import { coursesService } from "@/services/courses"
 import { ArrowLeft, Users, TrendingUp, Award, Calendar, BarChart3, ChevronRight, ClipboardList, UserCheck } from "lucide-react"
 import { EmptyState, ErrorState, StatCard } from "@/components/patterns"
 import { formatDate } from "@/i18n/format"
+import { useUserTour } from "@/hooks/useUserTour"
+import { analyticsSteps } from "@/lib/tourSteps"
 
 interface AnalyticsEnrollment {
   user_id: string
@@ -42,6 +44,12 @@ export default function TeacherAnalytics() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
   const [courseTitle, setCourseTitle] = useState("")
   const [loading, setLoading] = useState(true)
+
+  useUserTour({
+    tourId: "analytics-v1",
+    steps: analyticsSteps(t),
+    ready: !loading && analytics !== null,
+  })
 
   useEffect(() => {
     if (!courseId) return
@@ -149,7 +157,7 @@ export default function TeacherAnalytics() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div data-tour="analytics-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {stats.map((s) => (
           <StatCard key={s.label} label={s.label} value={s.value} icon={s.icon} />
         ))}

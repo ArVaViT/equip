@@ -8,6 +8,8 @@ import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { Label } from "@/components/ui/label";
 import { useConfirm } from "@/components/ui/alert-dialog";
 import { EmptyState, ErrorState, InlineEdit, PageHeader } from "@/components/patterns";
+import { useUserTour } from "@/hooks/useUserTour";
+import { moduleEditorSteps } from "@/lib/tourSteps";
 
 import { ChapterList } from "./moduleEditor/ChapterList";
 import { ModuleEditorSkeleton } from "./moduleEditor/LoadingSkeleton";
@@ -34,6 +36,12 @@ export default function ModuleEditor() {
     updateChapterLocal,
     handleChapterDragEnd,
   } = useModuleEditor(courseId, moduleId, confirm);
+
+  useUserTour({
+    tourId: "module-editor-v1",
+    steps: moduleEditorSteps(t),
+    ready: !loading && mod !== null,
+  });
 
   if (loading) {
     return <ModuleEditorSkeleton />;
@@ -65,6 +73,7 @@ export default function ModuleEditor() {
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-6 sm:py-8">
+      <div data-tour="module-editor-title">
       <PageHeader
         backTo={`/teacher/courses/${courseId}`}
         backLabel={t("moduleEditor.backToCourse")}
@@ -122,7 +131,9 @@ export default function ModuleEditor() {
           </>
         }
       />
+      </div>
 
+      <div data-tour="module-editor-chapters">
       {chapters.length === 0 ? (
         <EmptyState
           icon={<Pencil strokeWidth={1.75} />}
@@ -156,6 +167,7 @@ export default function ModuleEditor() {
         <Plus className="h-4 w-4 mr-2" strokeWidth={1.75} />
         {t("moduleEditor.addChapter")}
       </Button>
+      </div>
     </div>
   );
 }

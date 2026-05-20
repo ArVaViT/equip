@@ -7,6 +7,8 @@ import CourseReviews from "@/components/course/CourseReviews"
 import CertificateCard from "@/components/course/CertificateCard"
 import CompletionDialog from "@/components/course/CompletionDialog"
 import { Modal } from "@/components/patterns"
+import { useUserTour } from "@/hooks/useUserTour"
+import { courseDetailSteps } from "@/lib/tourSteps"
 import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
 import type {
@@ -56,6 +58,11 @@ export function EnrolledView({
 
   const enrolledCohort = cohorts.find((c) => c.id === enrollment.cohort_id)
 
+  useUserTour({
+    tourId: "course-detail-enrolled-v1",
+    steps: courseDetailSteps(t),
+  })
+
   // Course-completion celebration: when a student lands on this view
   // with progress at 100% for the first time on this device, open the
   // celebration dialog. We guard with a per-user-per-course
@@ -98,23 +105,27 @@ export function EnrolledView({
 
   return (
     <div className="animate-fade-in container mx-auto px-4 py-6 max-w-4xl">
-      <EnrolledHeader
-        course={course}
-        enrollment={enrollment}
-        enrolledCohort={enrolledCohort}
-        moduleCount={sortedModules.length}
-        chapterCount={totalChapters}
-      />
+      <div data-tour="course-header">
+        <EnrolledHeader
+          course={course}
+          enrollment={enrollment}
+          enrolledCohort={enrolledCohort}
+          moduleCount={sortedModules.length}
+          chapterCount={totalChapters}
+        />
+      </div>
 
       <CourseAnnouncements courseId={course.id} />
 
       <UpcomingEvents events={calendarEvents} />
 
-      <ModuleList
-        courseId={course.id}
-        modules={sortedModules}
-        completedChapterIds={completedChapterIds}
-      />
+      <div data-tour="module-list">
+        <ModuleList
+          courseId={course.id}
+          modules={sortedModules}
+          completedChapterIds={completedChapterIds}
+        />
+      </div>
 
       <div className="mt-6">
         <CertificateCard

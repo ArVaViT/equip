@@ -29,6 +29,8 @@ import {
   InlineEditCover,
   PageHeader,
 } from "@/components/patterns"
+import { useUserTour } from "@/hooks/useUserTour"
+import { courseEditorSteps } from "@/lib/tourSteps"
 import {
   AccessModeModal,
   AnnouncementsModal,
@@ -78,6 +80,11 @@ export default function CourseEditor() {
   const readiness = useCourseReadiness(courseId)
   const descriptionAnchorRef = useRef<HTMLDivElement | null>(null)
   const coverAnchorRef = useRef<HTMLDivElement | null>(null)
+  useUserTour({
+    tourId: "course-editor-v1",
+    steps: courseEditorSteps(t),
+    ready: !data.loading && data.course !== null,
+  })
 
   const pub = data.course?.status === "published"
 
@@ -175,6 +182,7 @@ export default function CourseEditor() {
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-6 sm:py-8">
+      <div data-tour="course-editor-header">
       <PageHeader
         backTo="/teacher"
         backLabel={t("courseEditor.myCourses")}
@@ -229,7 +237,7 @@ export default function CourseEditor() {
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" aria-label={t("courseEditor.moreActions")}>
+                <Button data-tour="course-editor-tabs" variant="outline" size="sm" aria-label={t("courseEditor.moreActions")}>
                   <MoreHorizontal className="h-4 w-4" strokeWidth={1.75} />
                 </Button>
               </DropdownMenuTrigger>
@@ -265,6 +273,7 @@ export default function CourseEditor() {
           </>
         }
       />
+      </div>
 
       <CourseReadinessCard
         report={readiness.report}
@@ -272,6 +281,7 @@ export default function CourseEditor() {
         onFix={handleFix}
       />
 
+      <div data-tour="course-editor-modules">
       <ModulesList
         courseId={courseId ?? ""}
         modules={data.sortedModules}
@@ -285,6 +295,7 @@ export default function CourseEditor() {
           void readiness.refresh()
         }}
       />
+      </div>
 
       <EnrollmentModal
         open={modal === "enroll"}

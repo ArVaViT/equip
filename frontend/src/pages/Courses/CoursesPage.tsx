@@ -11,6 +11,8 @@ import CourseCard from "@/components/course/CourseCard"
 import CourseCardSkeleton from "@/components/skeletons/CourseCardSkeleton"
 import { Search, BookOpen, LogIn } from "lucide-react"
 import { EmptyState, ErrorState } from "@/components/patterns"
+import { useUserTour } from "@/hooks/useUserTour"
+import { coursesCatalogSteps } from "@/lib/tourSteps"
 
 /**
  * Public course catalog. Lifted out of the old HomePage when the
@@ -33,6 +35,11 @@ export default function CoursesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
+  useUserTour({
+    tourId: "courses-catalog-v1",
+    steps: coursesCatalogSteps(t),
+    ready: !loading && !error,
+  })
 
   useEffect(() => {
     const signal = { cancelled: false }
@@ -73,7 +80,7 @@ export default function CoursesPage() {
           <p className="animate-fade-in animate-delay-200 mt-3 text-balance text-sm leading-relaxed text-muted-foreground md:text-base">
             {user ? t("courses.pageSubtitleAuthed") : t("courses.pageSubtitle")}
           </p>
-          <div className="animate-fade-in animate-delay-300 relative mx-auto mt-8 max-w-md">
+          <div data-tour="catalog-search" className="animate-fade-in animate-delay-300 relative mx-auto mt-8 max-w-md">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
               strokeWidth={1.75}
@@ -130,7 +137,7 @@ export default function CoursesPage() {
           className="border-none bg-transparent py-20"
         />
       ) : (
-        <div className="stagger-fade-in grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3">
+        <div data-tour="catalog-grid" className="stagger-fade-in grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3">
           {courses.map((course, index) => (
             <CourseCard key={course.id} course={course} style={{ "--stagger-index": index } as React.CSSProperties} />
           ))}
