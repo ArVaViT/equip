@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/select";
 import PageSpinner from "@/components/ui/PageSpinner";
 import { EmptyState, ErrorState } from "@/components/patterns";
+import { useUserTour } from "@/hooks/useUserTour";
+import { calendarSteps } from "@/lib/tourSteps";
 
 import { MonthGrid } from "./MonthGrid";
 import { SelectedDayPanel } from "./SelectedDayPanel";
@@ -44,6 +46,12 @@ export default function CalendarPage() {
     nextMonth,
     goToday,
   } = useMonthGrid(events);
+
+  useUserTour({
+    tourId: "calendar-v1",
+    steps: calendarSteps(t),
+    ready: !loading && !fetchError && enrollments.length > 0,
+  });
 
   if (loading) {
     return <PageSpinner />;
@@ -127,7 +135,7 @@ export default function CalendarPage() {
         />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+          <div data-tour="calendar-grid" className="lg:col-span-2">
             <MonthGrid
               year={year}
               month={month}
@@ -142,7 +150,7 @@ export default function CalendarPage() {
             />
           </div>
 
-          <div className="space-y-4">
+          <div data-tour="calendar-upcoming" className="space-y-4">
             {selectedDay && (
               <SelectedDayPanel selectedDay={selectedDay} events={selectedDayEvents} />
             )}

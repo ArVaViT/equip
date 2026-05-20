@@ -26,6 +26,8 @@ import {
   type SortColumn,
   type SortDirection,
 } from "./progress"
+import { useUserTour } from "@/hooks/useUserTour"
+import { studentProgressSteps } from "@/lib/tourSteps"
 
 /**
  * Teacher view of every enrolled student in a course. Owns the fetch,
@@ -50,6 +52,12 @@ export default function StudentProgress() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<SortColumn>("name")
   const [sortDir, setSortDir] = useState<SortDirection>("asc")
+
+  useUserTour({
+    tourId: "student-progress-v1",
+    steps: studentProgressSteps(t),
+    ready: !loading && data !== null,
+  })
 
   const load = useCallback(
     async (signal?: { cancelled: boolean }) => {
@@ -230,17 +238,19 @@ export default function StudentProgress() {
         />
       </div>
 
-      <StudentTable
-        students={filtered}
-        courseId={courseId ?? ""}
-        hasSearch={Boolean(search)}
-        expandedId={expandedId}
-        onExpandToggle={(id) => setExpandedId((prev) => (prev === id ? null : id))}
-        sortBy={sortBy}
-        sortDir={sortDir}
-        onToggleSort={toggleSort}
-        onChapterUpdate={handleStudentChapterUpdate}
-      />
+      <div data-tour="progress-table">
+        <StudentTable
+          students={filtered}
+          courseId={courseId ?? ""}
+          hasSearch={Boolean(search)}
+          expandedId={expandedId}
+          onExpandToggle={(id) => setExpandedId((prev) => (prev === id ? null : id))}
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onToggleSort={toggleSort}
+          onChapterUpdate={handleStudentChapterUpdate}
+        />
+      </div>
     </div>
   )
 }

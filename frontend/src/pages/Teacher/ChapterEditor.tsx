@@ -25,6 +25,8 @@ import {
 } from "@/lib/chapterTypes"
 import { ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useUserTour } from "@/hooks/useUserTour"
+import { chapterEditorSteps } from "@/lib/tourSteps"
 
 const EDITOR_OPTIONS = CHAPTER_TYPES.map((value) => ({
   value,
@@ -51,6 +53,12 @@ export default function ChapterEditor() {
   const [chapterType, setChapterType] = useState<ChapterType>("reading")
   const [moduleName, setModuleName] = useState(() => t("chapterEditor.moduleFallback"))
   const [isDirty, setIsDirty] = useState(false)
+
+  useUserTour({
+    tourId: "chapter-editor-v1",
+    steps: chapterEditorSteps(t),
+    ready: !loading && chapter !== null,
+  })
 
   const load = useCallback(async (signal?: { cancelled: boolean }) => {
     if (!courseId || !moduleId || !chapterId) return
@@ -273,7 +281,7 @@ export default function ChapterEditor() {
       </div>
 
       {/* Back button + title row */}
-      <div className="flex items-center gap-3 mb-6">
+      <div data-tour="chapter-editor-header" className="flex items-center gap-3 mb-6">
         <Button
           variant="ghost"
           size="sm"
@@ -349,7 +357,7 @@ export default function ChapterEditor() {
       </div>
 
       {/* Type-specific editor */}
-      <Card className="mb-6">
+      <Card data-tour="chapter-editor-blocks" className="mb-6">
         <CardContent className="p-6 space-y-4">
           {chapterType === "reading" && (
             <ChapterBlockEditor chapterId={chapter.id} />

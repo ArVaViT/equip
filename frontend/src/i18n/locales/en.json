@@ -180,6 +180,86 @@
         "body": "Browse the catalog when you're ready to enroll. You can replay this tour any time from the welcome panel."
       }
     },
+    "catalog": {
+      "search": {
+        "title": "Find a course",
+        "body": "Type a word from the title or description — search hits as you type. No results? Browse the grid below by topic."
+      },
+      "grid": {
+        "title": "Browse by card",
+        "body": "Every published course shows up as a card with its title, a short description, and an enroll button. Tap one to open."
+      },
+      "finale": {
+        "title": "Enjoy the catalog",
+        "body": "When you find something interesting, open it and enroll. Your dashboard will start filling up with your courses."
+      }
+    },
+    "courseDetail": {
+      "header": {
+        "title": "Course overview",
+        "body": "Title, description, and an enroll button if you're not in yet — or your progress bar once you are. Everything you need to start."
+      },
+      "modules": {
+        "title": "Modules and chapters",
+        "body": "The course is laid out in modules; each module has chapters. Click a chapter to open it. Locked ones unlock as you progress."
+      },
+      "finale": {
+        "title": "Ready when you are",
+        "body": "Start with the first chapter. We'll track your progress and surface the next step automatically."
+      }
+    },
+    "chapter": {
+      "header": {
+        "title": "Where you are",
+        "body": "The eyebrow tells you which chapter you're on (e.g. 'Chapter 2 of 7') and what kind it is — reading, quiz, exam, or assignment."
+      },
+      "body": {
+        "title": "The chapter content",
+        "body": "Read, take a quiz, or submit an assignment depending on the chapter type. Your progress saves automatically as you go."
+      },
+      "nav": {
+        "title": "Move between chapters",
+        "body": "Use these buttons to jump to the previous or next chapter without going back to the module list."
+      },
+      "finale": {
+        "title": "Take your time",
+        "body": "There's no clock. Work through the chapter at your pace and click 'Next' when you're ready."
+      }
+    },
+    "certs": {
+      "header": {
+        "title": "Your certificates",
+        "body": "Every course you've completed lands here. Approved certificates carry a unique number you can share or verify."
+      },
+      "finale": {
+        "title": "Earn your first",
+        "body": "Finish a course and request a certificate from the course page. Once a teacher and admin approve it, it appears here."
+      }
+    },
+    "calendar": {
+      "grid": {
+        "title": "The month at a glance",
+        "body": "Every event from every course you're enrolled in shows up here. Click a day to see what's on."
+      },
+      "upcoming": {
+        "title": "What's coming up",
+        "body": "A list of the next events in chronological order, so you don't have to flip through months."
+      },
+      "finale": {
+        "title": "Stay on top of things",
+        "body": "Filter by course at the top if you only want to see one. Everything else updates as your teachers publish events."
+      }
+    },
+    "profile": {
+      "form": {
+        "title": "Your profile",
+        "body": "Update your name, avatar, and language preference here. Changes save when you click outside the field."
+      },
+      "finale": {
+        "title": "All yours",
+        "body": "Your name and avatar appear on certificates and to your teachers. The language preference flips the whole app."
+      }
+    },
     "teacher": {
       "newCourse": {
         "title": "Create a course",
@@ -196,6 +276,82 @@
       "finale": {
         "title": "That's the tour",
         "body": "You can replay this tour from the welcome panel whenever you want a refresher."
+      }
+    },
+    "courseEditor": {
+      "header": {
+        "title": "Course settings",
+        "body": "Title, description, cover image, publish state — edit any of these inline. Save happens automatically when you click away."
+      },
+      "tabs": {
+        "title": "More course tools",
+        "body": "Announcements, materials, calendar events, cohort enrollment — all the secondary editing tools live behind this menu."
+      },
+      "modules": {
+        "title": "Modules and chapters",
+        "body": "Add a module, then add chapters inside it. Drag to reorder. Click a chapter to open its editor."
+      },
+      "finale": {
+        "title": "Build at your pace",
+        "body": "Save draft early, publish when ready. Students can't see drafts; you can preview them any time."
+      }
+    },
+    "moduleEditor": {
+      "title": {
+        "title": "Module details",
+        "body": "Edit the module's title, description, and due date inline. Changes save when you click outside the field."
+      },
+      "chapters": {
+        "title": "Chapters in this module",
+        "body": "Add chapters (reading, quiz, exam, or assignment), drag to reorder, click to edit. Lock chapters that should unlock in order."
+      },
+      "finale": {
+        "title": "Module on track",
+        "body": "When you're done, head back to the course editor to see how this module fits into the bigger picture."
+      }
+    },
+    "chapterEditor": {
+      "header": {
+        "title": "Chapter settings",
+        "body": "Title, type (reading / quiz / exam / assignment), lock state. These choose what the student sees when they open the chapter."
+      },
+      "blocks": {
+        "title": "Content blocks",
+        "body": "Build the chapter out of blocks: rich text, files, a quiz, or an assignment. Drag to reorder. Each block saves on its own."
+      },
+      "finale": {
+        "title": "Author at your pace",
+        "body": "Preview as a student any time from the course page. Drafts stay hidden until you publish the course."
+      }
+    },
+    "gradebook": {
+      "table": {
+        "title": "Your gradebook",
+        "body": "Every enrolled student gets a row; every gradable chapter gets a column. Click a cell to enter or update a grade."
+      },
+      "finale": {
+        "title": "Grades flow back",
+        "body": "Students see their grades on the course page and on their dashboard. Updates here surface immediately."
+      }
+    },
+    "analytics": {
+      "stats": {
+        "title": "Course at a glance",
+        "body": "Enrollment count, average progress, completion rate, average grade — the headline numbers for this course."
+      },
+      "finale": {
+        "title": "Watch how it lands",
+        "body": "Numbers update in real time as students enrol, finish chapters, and submit work. No refresh needed."
+      }
+    },
+    "studentProgress": {
+      "table": {
+        "title": "Per-student progress",
+        "body": "Every enrolled student with their progress percentage and last activity. Click a student to drill into their detailed view."
+      },
+      "finale": {
+        "title": "Coaching view",
+        "body": "Spot students who haven't logged in lately, or those stuck on a chapter. A nudge from you often makes the difference."
       }
     }
   },

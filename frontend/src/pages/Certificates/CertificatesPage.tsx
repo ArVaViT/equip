@@ -9,12 +9,19 @@ import { toast } from "@/lib/toast"
 import { Award, ArrowLeft, ScrollText } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatDateLong } from "@/i18n/format"
+import { useUserTour } from "@/hooks/useUserTour"
+import { certificatesSteps } from "@/lib/tourSteps"
 
 export default function CertificatesPage() {
   const { t, i18n } = useTranslation()
   const [certificates, setCertificates] = useState<Certificate[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [loading, setLoading] = useState(true)
+  useUserTour({
+    tourId: "certificates-v1",
+    steps: certificatesSteps(t),
+    ready: !loading,
+  })
 
   // ``i18n.language`` in deps so a locale flip re-pulls the
   // localised course-title overlay without a hard reload. We
@@ -67,7 +74,7 @@ export default function CertificatesPage() {
         </Button>
       </Link>
 
-      <header className="mb-10">
+      <header data-tour="certs-header" className="mb-10">
         <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
           {t("certificates.eyebrow")}
         </p>

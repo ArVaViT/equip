@@ -24,6 +24,8 @@ import { GradingConfigCard } from "./gradebook/GradingConfigCard"
 import { SummaryTab } from "./gradebook/SummaryTab"
 import { GradeTableTab } from "./gradebook/GradeTableTab"
 import { EMPTY_FORM } from "./gradebook/helpers"
+import { useUserTour } from "@/hooks/useUserTour"
+import { gradebookSteps } from "@/lib/tourSteps"
 
 /**
  * Gradebook page: top-level composition of the summary view, the grade
@@ -99,6 +101,12 @@ export default function TeacherGradebook() {
 
   const [reloadKey, setReloadKey] = useState(0)
   const reload = useCallback(() => setReloadKey((k) => k + 1), [])
+
+  useUserTour({
+    tourId: "gradebook-v1",
+    steps: gradebookSteps(t),
+    ready: !loading && !error,
+  })
 
   useEffect(() => {
     if (!courseId) return
@@ -348,6 +356,7 @@ export default function TeacherGradebook() {
 
       <GradebookTabs active={activeTab} onChange={setActiveTab} />
 
+      <div data-tour="gradebook-table">
       {activeTab === "summary" && (
         <>
           <GradingConfigCard
@@ -391,6 +400,7 @@ export default function TeacherGradebook() {
           onToggleExpand={toggleExpand}
         />
       )}
+      </div>
     </div>
   )
 }
