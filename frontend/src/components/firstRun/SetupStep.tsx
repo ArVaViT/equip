@@ -252,6 +252,9 @@ export function SetupStep({ onComplete, onSkip }: Props) {
             id={emailId}
             value={user?.email ?? ""}
             readOnly
+            // Skipped by the focus trap — typing is impossible, so
+            // landing a Tab cursor here just confuses keyboard users.
+            tabIndex={-1}
             className="mt-2 cursor-not-allowed bg-muted/40 text-muted-foreground"
           />
           <p className="mt-1.5 text-xs text-muted-foreground/80">

@@ -155,6 +155,11 @@ export function useGrandTour(): UseGrandTourReturn {
   }, [t, userId, navigate, location.pathname])
 
   const start = useCallback(() => {
+    // Defensive: don't yank the user into a tour while the first-run
+    // Privacy/Setup screens are up. Any future "Replay grand tour"
+    // trigger that calls ``start()`` during the gate would otherwise
+    // race the modal.
+    if (getFirstRunActive()) return
     firedRef.current = true
     if (timerRef.current !== null) {
       window.clearTimeout(timerRef.current)
@@ -179,18 +184,33 @@ export function useGrandTour(): UseGrandTourReturn {
     // covers the happy path.
     if (location.pathname !== "/") return
 
-    firedRef.current = true
     // Flag "grand tour is taking the wheel" SYNCHRONOUSLY here, even
     // though the tour itself doesn't fire until after the timeout.
     // Per-page useUserTour hooks subscribe to this signal and bail
     // their own auto-starts before they get a chance to race the
     // grand tour during the 500ms window.
     setGrandTourActive(true)
-    timerRef.current = window.setTimeout(buildAndDrive, AUTO_START_DELAY_MS)
+    // ``firedRef`` is set INSIDE the timer callback (not here)
+    // so a cancelled-while-pending timer doesn't poison future
+    // re-evaluations — see same pattern in ``useUserTour``. Same
+    // applies to ``timerRef``: nulled inside the callback so the
+    // cleanup below can reliably distinguish "still pending" from
+    // "already fired".
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null
+      firedRef.current = true
+      buildAndDrive()
+    }, AUTO_START_DELAY_MS)
     return () => {
       if (timerRef.current !== null) {
         window.clearTimeout(timerRef.current)
         timerRef.current = null
+        // Tour was scheduled but never started (e.g. user navigated
+        // off ``/`` during the 500 ms window, or first-run popped
+        // back up). Release the suppression signal so per-page tours
+        // on the user's new surface can fire normally — otherwise
+        // they'd be silently blocked until the next full reload.
+        setGrandTourActive(false)
       }
     }
   }, [userId, userRole, alreadySeen, firstRunActive, location.pathname, buildAndDrive])

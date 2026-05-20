@@ -206,8 +206,20 @@ export function useUserTour({
     // ``alreadySeen`` will be true on the next mount.
     if (grandTourActive && isCovered) return
 
-    firedRef.current = true
-    timerRef.current = window.setTimeout(start, autoStartDelayMs)
+    // ``firedRef`` is set INSIDE the timer callback, not here. If we
+    // set it synchronously and a dep flips (e.g. ``firstRunActive``
+    // false → true mid-mount), the cleanup cancels the pending timer
+    // but ``firedRef`` would stay true forever — the tour would
+    // never re-fire when conditions become favourable again. By
+    // deferring the flag-set to the callback, a cancelled-and-never-
+    // fired timer leaves ``firedRef=false`` so the next dep change
+    // can re-schedule cleanly. The flag still flips synchronously
+    // inside manual ``start()``.
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null
+      firedRef.current = true
+      start()
+    }, autoStartDelayMs)
     return () => {
       if (timerRef.current !== null) {
         window.clearTimeout(timerRef.current)
