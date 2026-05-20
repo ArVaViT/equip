@@ -1,8 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { useTranslation } from "react-i18next"
 import type { Driver } from "driver.js"
 import { createEditorialTour, type TourStep } from "@/lib/tour"
 import { useAuth } from "@/context/useAuth"
+import {
+  getGrandTourActive,
+  isCoveredByGrandTour,
+  subscribeGrandTour,
+} from "@/lib/tourState"
 
 interface UseUserTourOpts {
   /** Stable identifier for this surface's tour. Combined with the
@@ -120,6 +125,19 @@ export function useUserTour({
     setAlreadySeen(readSeen(userId, tourId))
   }, [userId, tourId])
 
+  // Reactive grand-tour signal: when the orchestrator decides to fire
+  // (or is already firing), per-page tours that the grand tour covers
+  // must bail their own auto-start so the user doesn't see two
+  // overlapping spotlights. Useful even after the grand tour has
+  // finished because the seen flag may not have been written yet
+  // when this hook's useState init ran on the same mount tick.
+  const grandTourActive = useSyncExternalStore(
+    subscribeGrandTour,
+    getGrandTourActive,
+    () => false,
+  )
+  const isCovered = isCoveredByGrandTour(tourId)
+
   const buildDriver = useCallback((): Driver => {
     return createEditorialTour({
       steps: stepsRef.current,
@@ -166,6 +184,11 @@ export function useUserTour({
     // ``ready === false`` is the only blocking value. ``undefined``
     // means "no gate" and lets the tour fire immediately.
     if (ready === false) return
+    // Grand tour wins races with its covered surfaces. If it's
+    // pending (scheduled) or actively running, the per-page tour for
+    // a covered surface stands down. Once the grand tour finishes,
+    // ``alreadySeen`` will be true on the next mount.
+    if (grandTourActive && isCovered) return
 
     firedRef.current = true
     timerRef.current = window.setTimeout(start, autoStartDelayMs)
@@ -175,11 +198,21 @@ export function useUserTour({
         timerRef.current = null
       }
     }
-    // ``alreadySeen`` IS in deps (unlike before) because we now keep
-    // it in state — a flag write from another tab via storage event
-    // would still not invalidate, but the in-tab user-id swap that
-    // also re-reads the flag now properly re-evaluates.
-  }, [autoStart, autoStartDelayMs, userId, userRole, ready, steps.length, alreadySeen, skipRoles, start])
+    // ``alreadySeen`` and ``grandTourActive`` IN deps so a mid-mount
+    // state change (e.g. grand tour fires after this hook has already
+    // run its first effect pass) re-runs the early-return chain and
+    // cancels any pending timer via the cleanup.
+  }, [autoStart, autoStartDelayMs, userId, userRole, ready, steps.length, alreadySeen, grandTourActive, isCovered, skipRoles, start])
+
+  // Defense in depth: if the grand tour activates while this hook's
+  // tour is already on screen, tear it down to make room. Doesn't
+  // fire on initial render thanks to the driverRef null-check.
+  useEffect(() => {
+    if (grandTourActive && isCovered && driverRef.current) {
+      driverRef.current.destroy()
+      driverRef.current = null
+    }
+  }, [grandTourActive, isCovered])
 
   useEffect(() => {
     return () => {

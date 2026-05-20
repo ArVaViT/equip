@@ -152,6 +152,20 @@
     "requestCta": "Request certificate",
     "continueCta": "Continue"
   },
+  "grandTour": {
+    "welcome": {
+      "title": "Welcome to Equip — let's take a quick look",
+      "body": "We'll walk through the main parts of the app together. Each click on 'Next' moves to the next stop; you can leave the tour at any time."
+    },
+    "calendar": {
+      "title": "Your calendar",
+      "body": "Anything due or scheduled across all your enrolled courses — assignments, classes, events — appears here. If you don't have any courses yet, it'll be empty."
+    },
+    "finale": {
+      "title": "That's Equip",
+      "body": "You've seen the main surfaces. Open a course from the catalog when you're ready. The welcome card on your dashboard has a 'Take a tour' link if you ever want to revisit any single page."
+    }
+  },
   "tour": {
     "next": "Next",
     "previous": "Back",

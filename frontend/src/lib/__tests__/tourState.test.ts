@@ -1,0 +1,60 @@
+import { afterEach, describe, expect, it, vi } from "vitest"
+import {
+  getGrandTourActive,
+  isCoveredByGrandTour,
+  setGrandTourActive,
+  subscribeGrandTour,
+} from "../tourState"
+
+afterEach(() => {
+  setGrandTourActive(false)
+})
+
+describe("tourState", () => {
+  it("getGrandTourActive defaults to false", () => {
+    expect(getGrandTourActive()).toBe(false)
+  })
+
+  it("setGrandTourActive(true) flips the signal", () => {
+    setGrandTourActive(true)
+    expect(getGrandTourActive()).toBe(true)
+  })
+
+  it("subscribers are notified on flips, and only on flips", () => {
+    const spy = vi.fn()
+    const unsub = subscribeGrandTour(spy)
+
+    setGrandTourActive(true)
+    expect(spy).toHaveBeenCalledTimes(1)
+
+    // No-op when value is already the same
+    setGrandTourActive(true)
+    expect(spy).toHaveBeenCalledTimes(1)
+
+    setGrandTourActive(false)
+    expect(spy).toHaveBeenCalledTimes(2)
+
+    unsub()
+    setGrandTourActive(true)
+    expect(spy).toHaveBeenCalledTimes(2)
+  })
+
+  it("isCoveredByGrandTour matches the student-covered tour ids", () => {
+    expect(isCoveredByGrandTour("student-dashboard-v1")).toBe(true)
+    expect(isCoveredByGrandTour("courses-catalog-v1")).toBe(true)
+    expect(isCoveredByGrandTour("calendar-v1")).toBe(true)
+    expect(isCoveredByGrandTour("certificates-v1")).toBe(true)
+    expect(isCoveredByGrandTour("profile-v1")).toBe(true)
+  })
+
+  it("isCoveredByGrandTour returns false for tours outside the manifest", () => {
+    // Deep contextual tours (chapter view, course editor, etc.) are
+    // NOT covered by the grand tour and must still fire on first
+    // visit to their surfaces.
+    expect(isCoveredByGrandTour("chapter-view-v1")).toBe(false)
+    expect(isCoveredByGrandTour("course-detail-enrolled-v1")).toBe(false)
+    expect(isCoveredByGrandTour("course-editor-v1")).toBe(false)
+    expect(isCoveredByGrandTour("teacher-dashboard-v1")).toBe(false)
+    expect(isCoveredByGrandTour("nonexistent")).toBe(false)
+  })
+})

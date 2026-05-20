@@ -18,6 +18,7 @@ import ScrollToTop from "./components/layout/ScrollToTop";
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { SUPPORT_EMAIL } from "@/lib/brand"
 import { ROLES } from "@/types"
+import { useGrandTour } from "@/hooks/useGrandTour"
 
 const NotFound = lazy(() => import("./pages/NotFound"))
 
@@ -95,6 +96,12 @@ function AppRoutes() {
   const isAuthPage = AUTH_PATHS.some((p) => location.pathname.startsWith(p))
   usePageTitle()
   useLocaleSync()
+  // Grand tour lives here so it has access to React Router (for
+  // programmatic navigation between steps) and AuthContext (for the
+  // role gate). Mounts after auth is resolved; the hook itself gates
+  // on userId so a logged-out render is a no-op. Don't mount it on
+  // auth pages — the user isn't signed in there.
+  useGrandTour()
 
   if (loading) {
     return <PageSpinner variant="screen" label={t("common.loading")} />
