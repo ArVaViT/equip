@@ -144,6 +144,14 @@
       "primaryCta": "Create your first course"
     }
   },
+  "completion": {
+    "eyebrow": "Course completed",
+    "title": "You finished {{courseTitle}}",
+    "body": "Take a moment. When you're ready, you can request your certificate of completion.",
+    "bodyHasCert": "Take a moment. Your certificate is just below on this page — it will be reviewed shortly.",
+    "requestCta": "Request certificate",
+    "continueCta": "Continue"
+  },
   "courses": {
     "academicPrograms": "Academic Programs",
     "pageTitle": "Course Catalog",
