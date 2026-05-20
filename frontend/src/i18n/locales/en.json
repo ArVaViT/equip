@@ -152,6 +152,51 @@
     "requestCta": "Request certificate",
     "continueCta": "Continue"
   },
+  "firstRun": {
+    "privacy": {
+      "eyebrow": "Privacy policy",
+      "title": "Before we begin",
+      "intro": "A short read so you know what Equip stores and what it doesn't. Full version available any time from the footer.",
+      "bullets": {
+        "collect": "We store your name, email, avatar, and what you do on your courses (progress, quiz answers, certificates) — only what's needed to run the platform for you.",
+        "share": "We don't sell your data and we don't share it with third parties for advertising. Anonymous performance telemetry helps us spot bugs (Datadog).",
+        "control": "You can edit or delete your account at any time from your profile."
+      },
+      "checkbox": "I have read and agree to the Privacy Policy and Terms of Service",
+      "next": "Continue"
+    },
+    "setup": {
+      "eyebrow": "Quick setup",
+      "title": "Make Equip yours",
+      "intro": "A few choices to set things up. You can change every one of these later from your profile.",
+      "avatar": {
+        "label": "Profile photo",
+        "change": "Choose photo",
+        "tooBig": "Image must be 2 MB or less."
+      },
+      "name": {
+        "label": "Display name",
+        "placeholder": "Your name as others will see it"
+      },
+      "email": {
+        "label": "Email",
+        "hint": "To change your email, head to Profile after setup."
+      },
+      "theme": {
+        "label": "Theme",
+        "light": "Light",
+        "dark": "Dark"
+      },
+      "language": {
+        "label": "Language",
+        "en": "English",
+        "ru": "Русский"
+      },
+      "submit": "Get started",
+      "skip": "Skip for now",
+      "saveFailed": "Couldn't save your changes — they'll stay as the previous values. You can update from your profile."
+    }
+  },
   "grandTour": {
     "welcome": {
       "title": "Welcome to Equip — let's take a quick look",

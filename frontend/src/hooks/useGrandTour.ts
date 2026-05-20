@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useLocation } from "react-router-dom"
 import type { Driver } from "driver.js"
 import { useAuth } from "@/context/useAuth"
 import { createGrandTour } from "@/lib/grandTour"
 import { STUDENT_GRAND_TOUR_COVERS, studentGrandTourSteps } from "@/lib/grandTourSteps"
-import { setGrandTourActive } from "@/lib/tourState"
+import {
+  getFirstRunActive,
+  setGrandTourActive,
+  subscribeFirstRun,
+} from "@/lib/tourState"
 
 const STORAGE_PREFIX_GRAND = "equip.grand-tour.seen"
 const STORAGE_PREFIX_PERPAGE = "equip.tour.seen"
@@ -109,6 +113,14 @@ export function useGrandTour(): UseGrandTourReturn {
     setAlreadySeen(readGrandSeen(userId))
   }, [userId])
 
+  // Wait for the Privacy + Setup screens to close before the grand
+  // tour can fire — those screens are a hard gate on first login.
+  const firstRunActive = useSyncExternalStore(
+    subscribeFirstRun,
+    getFirstRunActive,
+    () => false,
+  )
+
   const buildAndDrive = useCallback(() => {
     if (!userId) return
     const steps = studentGrandTourSteps(t)
@@ -156,6 +168,10 @@ export function useGrandTour(): UseGrandTourReturn {
     if (!userId) return
     if (alreadySeen) return
     if (userRole && userRole !== "student") return
+    // Block while the first-run flow (Privacy + Setup) is up.
+    // When the flow closes, the signal flips false; this effect
+    // re-runs and the tour fires on the same dashboard mount.
+    if (firstRunActive) return
     // Only kick off when we're already on the dashboard. A user
     // landing on ``/courses/:id`` from a shared link shouldn't get
     // teleported home for an orientation tour. The first surface the
@@ -177,7 +193,7 @@ export function useGrandTour(): UseGrandTourReturn {
         timerRef.current = null
       }
     }
-  }, [userId, userRole, alreadySeen, location.pathname, buildAndDrive])
+  }, [userId, userRole, alreadySeen, firstRunActive, location.pathname, buildAndDrive])
 
   useEffect(() => {
     return () => {

@@ -19,6 +19,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { SUPPORT_EMAIL } from "@/lib/brand"
 import { ROLES } from "@/types"
 import { useGrandTour } from "@/hooks/useGrandTour"
+import { FirstRunFlow } from "@/components/firstRun"
 
 const NotFound = lazy(() => import("./pages/NotFound"))
 
@@ -183,6 +184,12 @@ function AppRoutes() {
       <Footer />
       <ScrollToTop />
       <Toaster />
+      {/* First-run gate: Privacy Policy + Quick Setup, blocking until
+          the user accepts and finishes (or skips setup). Mounted
+          after the main tree so its overlay sits above everything in
+          DOM order; the explicit z-index in the component is the
+          actual stacking source of truth. */}
+      <FirstRunFlow />
     </div>
   )
 }

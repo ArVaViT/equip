@@ -1,13 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
+  getFirstRunActive,
   getGrandTourActive,
   isCoveredByGrandTour,
+  setFirstRunActive,
   setGrandTourActive,
+  subscribeFirstRun,
   subscribeGrandTour,
 } from "../tourState"
 
 afterEach(() => {
   setGrandTourActive(false)
+  setFirstRunActive(false)
 })
 
 describe("tourState", () => {
@@ -56,5 +60,30 @@ describe("tourState", () => {
     expect(isCoveredByGrandTour("course-editor-v1")).toBe(false)
     expect(isCoveredByGrandTour("teacher-dashboard-v1")).toBe(false)
     expect(isCoveredByGrandTour("nonexistent")).toBe(false)
+  })
+
+  it("firstRun signal: defaults false, flips, and notifies independently from grand-tour", () => {
+    expect(getFirstRunActive()).toBe(false)
+
+    const firstRunSpy = vi.fn()
+    const grandSpy = vi.fn()
+    const u1 = subscribeFirstRun(firstRunSpy)
+    const u2 = subscribeGrandTour(grandSpy)
+
+    setFirstRunActive(true)
+    expect(getFirstRunActive()).toBe(true)
+    expect(firstRunSpy).toHaveBeenCalledTimes(1)
+    // First-run flip MUST NOT cross-notify grand-tour subscribers
+    // (and vice versa) — the signals are independent.
+    expect(grandSpy).toHaveBeenCalledTimes(0)
+
+    setFirstRunActive(true)
+    expect(firstRunSpy).toHaveBeenCalledTimes(1) // idempotent
+
+    setFirstRunActive(false)
+    expect(firstRunSpy).toHaveBeenCalledTimes(2)
+
+    u1()
+    u2()
   })
 })
