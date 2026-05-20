@@ -129,6 +129,21 @@
       "empty": "No events scheduled for today."
     }
   },
+  "onboarding": {
+    "student": {
+      "eyebrow": "Welcome",
+      "title": "Welcome to Equip, {{name}}",
+      "titleNoName": "Welcome to Equip",
+      "body": "A quiet place to learn the Bible at your own pace. Each course here is written by a real teacher — pick a subject that draws you and begin.",
+      "primaryCta": "Browse the catalog"
+    },
+    "teacher": {
+      "eyebrow": "Welcome",
+      "title": "Your first course starts here",
+      "body": "Equip is your classroom. Lay out a course in chapters, write your own quizzes, sign certificates when students finish — and keep ownership of every word the whole way.",
+      "primaryCta": "Create your first course"
+    }
+  },
   "courses": {
     "academicPrograms": "Academic Programs",
     "pageTitle": "Course Catalog",
@@ -919,11 +934,6 @@
       "creating": "Creating...",
       "submit": "Create Course",
       "cancel": "Cancel"
-    },
-    "empty": {
-      "title": "No courses yet",
-      "description": "Create your first course to start teaching",
-      "action": "Create Course"
     },
     "trash": {
       "show": "Show Trash",

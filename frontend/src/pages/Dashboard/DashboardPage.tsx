@@ -7,13 +7,25 @@ import { coursesService } from "@/services/courses"
 import type { Enrollment, StudentGrade } from "@/types"
 import { useAuth } from "@/context/useAuth"
 import { ArrowRight, BookOpen, CheckCircle } from "lucide-react"
-import { EmptyState, ErrorState } from "@/components/patterns"
+import { ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
 import { VerseOfTheDayCard } from "@/components/home/VerseOfTheDayCard"
 import { StreakCard } from "@/components/dashboard/StreakCard"
 import { TodayCard } from "@/components/dashboard/TodayCard"
+import { WelcomeCard } from "@/components/dashboard/WelcomeCard"
 import { PublicLanding } from "./PublicLanding"
 import { cn } from "@/lib/utils"
+
+/** Strip the surname off a full name for personal greetings — "Vadym
+ *  Arnaut" → "Vadym". Returns null when the input is null/blank so the
+ *  caller can fall back to a name-less greeting. */
+function firstNameOf(fullName: string | null | undefined): string | null {
+  if (!fullName) return null
+  const trimmed = fullName.trim()
+  if (!trimmed) return null
+  const first = trimmed.split(/\s+/)[0]
+  return first || null
+}
 
 const EDITORIAL_EASE = [0.22, 1, 0.36, 1] as const
 
@@ -60,6 +72,14 @@ function MyCoursesSection() {
   }, [user?.id, retryCount, i18n.language])
 
   const filtered = enrollments.filter((e) => e.course?.created_by !== user?.id)
+  // Newcomers (zero enrollments after a successful load) get a warmer
+  // editorial welcome surface in place of the bare "no courses" empty
+  // state. The shell header label flips with it so a first-time user
+  // doesn't read "My Courses" above an empty rectangle.
+  const isNewcomer = !loading && !fetchError && filtered.length === 0
+  const headerLabel = isNewcomer
+    ? t("onboarding.student.eyebrow")
+    : t("dashboard.myCourses")
 
   const shell = (body: React.ReactNode, centered = false) => (
     <section className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md border border-border bg-card transition-[border-color] duration-300 hover:border-primary/25">
@@ -67,7 +87,7 @@ function MyCoursesSection() {
         <div className="flex min-w-0 items-center gap-2.5">
           <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
           <h2 className="truncate font-serif text-sm font-semibold tracking-tight text-foreground">
-            {t("dashboard.myCourses")}
+            {headerLabel}
           </h2>
         </div>
         <Link
@@ -122,15 +142,19 @@ function MyCoursesSection() {
   }
 
   if (filtered.length === 0) {
+    const firstName = firstNameOf(user?.full_name)
     return shell(
-      <EmptyState
-        className="border-none bg-transparent px-4 py-2"
-        icon={<BookOpen className="text-muted-foreground" strokeWidth={1.75} />}
-        title={t("dashboard.myCoursesEmptyTitle")}
-        description={t("dashboard.noEnrollments")}
+      <WelcomeCard
+        eyebrow={t("onboarding.student.eyebrow")}
+        title={
+          firstName
+            ? t("onboarding.student.title", { name: firstName })
+            : t("onboarding.student.titleNoName")
+        }
+        description={t("onboarding.student.body")}
         action={
           <Link to="/courses">
-            <Button size="sm">{t("dashboard.browseAllCta")}</Button>
+            <Button size="sm">{t("onboarding.student.primaryCta")}</Button>
           </Link>
         }
       />,
