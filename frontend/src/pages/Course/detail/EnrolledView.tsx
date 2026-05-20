@@ -58,28 +58,31 @@ export function EnrolledView({
 
   // Course-completion celebration: when a student lands on this view
   // with progress at 100% for the first time on this device, open the
-  // celebration dialog. We guard with a per-course localStorage flag
-  // so the moment doesn't re-fire on every revisit, and we set the
-  // flag on close (not on open) so a closed-before-render edge case
-  // doesn't silently swallow the moment.
+  // celebration dialog. We guard with a per-user-per-course
+  // localStorage flag — scoped by ``user_id`` so a second account on
+  // a shared device still gets its own celebration moment for a
+  // course the first user already finished. The flag is written on
+  // close (not on open) so a closed-before-render edge case doesn't
+  // silently swallow the moment.
+  const celebrationFlagKey = `equip.celebrated.${enrollment.user_id}.${course.id}`
+
   useEffect(() => {
-    if (enrollment.progress < 100) return
+    if (!(enrollment.progress >= 100)) return
     if (typeof window === "undefined") return
-    const flagKey = `equip.celebrated.${course.id}`
-    if (window.localStorage.getItem(flagKey) === "1") return
+    if (window.localStorage.getItem(celebrationFlagKey) === "1") return
     setShowCompletion(true)
-  }, [enrollment.progress, course.id])
+  }, [enrollment.progress, celebrationFlagKey])
 
   const handleCloseCompletion = useCallback(() => {
     setShowCompletion(false)
     if (typeof window === "undefined") return
     try {
-      window.localStorage.setItem(`equip.celebrated.${course.id}`, "1")
+      window.localStorage.setItem(celebrationFlagKey, "1")
     } catch {
       // localStorage can be denied in some private-browsing contexts;
       // in that case the dialog will re-show on next visit. Acceptable.
     }
-  }, [course.id])
+  }, [celebrationFlagKey])
 
   const handleDownload = useCallback(async (path: string) => {
     setDownloadingPath(path)
