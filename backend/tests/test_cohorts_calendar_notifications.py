@@ -871,6 +871,91 @@ class TestCohortWriteActionsAreAudited:
         assert row is not None
 
 
+class TestListCohortStudentsPagination:
+    """``GET /cohorts/{id}/students`` paginates at the student level so
+    each page returns whole student blocks (a student's enrollments
+    never split across pages). Defaults (skip=0, limit=100) preserve
+    the pre-pagination shape for any existing caller."""
+
+    @staticmethod
+    def _seed_users_in_cohort(db: Session, cohort, n: int) -> list:
+        from app.models.user import User
+
+        users = []
+        for i in range(n):
+            uid = uuid.UUID(int=0x10000000_0000_0000_0000_000000000000 + i)
+            db.add(
+                User(
+                    id=uid,
+                    email=f"student-{i:02d}@example.com",
+                    full_name=f"Student {i:02d}",
+                    role="student",
+                )
+            )
+            users.append(uid)
+        db.commit()
+        course_ids = [
+            row[0] for row in db.query(CohortCourse.course_id).filter(CohortCourse.cohort_id == cohort.id).all()
+        ]
+        for uid in users:
+            for cid in course_ids:
+                db.add(
+                    Enrollment(
+                        id=str(uuid.uuid4()),
+                        user_id=uid,
+                        course_id=cid,
+                        cohort_id=cohort.id,
+                        progress=0,
+                    )
+                )
+        db.commit()
+        return users
+
+    def test_default_returns_all_students_when_under_limit(self, admin_client: TestClient, db: Session):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        self._seed_users_in_cohort(db, cohort, 5)
+
+        resp = admin_client.get(f"{COHORT_PREFIX}/{cohort.id}/students")
+        assert resp.status_code == 200
+        assert len(resp.json()) == 5
+
+    def test_limit_bounds_response_at_student_level(self, admin_client: TestClient, db: Session):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        self._seed_users_in_cohort(db, cohort, 7)
+
+        resp = admin_client.get(f"{COHORT_PREFIX}/{cohort.id}/students?limit=3")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 3
+        for student in data:
+            assert "per_course" in student
+            assert len(student["per_course"]) >= 1
+
+    def test_skip_advances_to_next_page(self, admin_client: TestClient, db: Session):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        self._seed_users_in_cohort(db, cohort, 7)
+
+        page1 = admin_client.get(f"{COHORT_PREFIX}/{cohort.id}/students?limit=3").json()
+        page2 = admin_client.get(f"{COHORT_PREFIX}/{cohort.id}/students?skip=3&limit=3").json()
+        assert len(page1) == 3
+        assert len(page2) == 3
+        page1_ids = {s["user_id"] for s in page1}
+        page2_ids = {s["user_id"] for s in page2}
+        assert page1_ids.isdisjoint(page2_ids)
+
+    def test_empty_page_past_end(self, admin_client: TestClient, db: Session):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db)
+        self._seed_users_in_cohort(db, cohort, 3)
+
+        resp = admin_client.get(f"{COHORT_PREFIX}/{cohort.id}/students?skip=10")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+
 class TestAddStudentByEmail:
     """``POST /cohorts/{id}/students`` accepts either user_id or email.
     Email matching must be case-insensitive — ``profiles.email`` is plain
