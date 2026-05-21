@@ -33,7 +33,7 @@ export function MaterialsModal({
           {materials.map((file) => (
             <div
               key={file.path}
-              className="flex items-center justify-between px-3 py-2 hover:bg-muted/50 transition-colors"
+              className="flex items-center justify-between px-3 py-2 transition-colors hover:bg-muted/40"
             >
               <span className="truncate mr-2">{file.name}</span>
               <Button

@@ -189,7 +189,7 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
               key={enrollment.id}
               to={`/courses/${courseId}`}
               style={{ "--stagger-index": index } as React.CSSProperties}
-              className="group block rounded-md border border-border/80 bg-muted/10 px-3 py-2.5 transition-colors hover:border-primary/30 hover:bg-muted/25"
+              className="group block rounded-md border border-border bg-muted/10 px-3 py-2.5 transition-colors hover:border-primary/30 hover:bg-muted/40"
             >
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">

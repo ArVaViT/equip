@@ -33,10 +33,10 @@ export function CohortSelectModal({
         {cohorts.map((cohort) => (
           <label
             key={cohort.id}
-            className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+            className={`flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors ${
               selectedCohortId === cohort.id
-                ? "border-primary bg-primary/5"
-                : "hover:bg-muted/50"
+                ? "border-primary bg-primary/[0.08] dark:bg-primary/15"
+                : "hover:bg-muted/40"
             }`}
           >
             <input
