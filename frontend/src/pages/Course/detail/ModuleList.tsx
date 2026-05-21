@@ -31,7 +31,7 @@ export function ModuleList({ courseId, modules, completedChapterIds }: Props) {
   const { t } = useTranslation()
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+      <h2 className="mb-3 flex items-center gap-2 font-serif text-lg font-semibold tracking-tight">
         <BookOpen className="h-4 w-4" strokeWidth={1.75} aria-hidden />
         {t("courseDetail.modulesHeading")}
         <span className="text-sm font-normal text-muted-foreground">({modules.length})</span>
