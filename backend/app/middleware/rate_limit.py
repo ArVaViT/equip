@@ -63,6 +63,15 @@ ENDPOINT_LIMITS: dict[str, tuple[int, int]] = {
     # case and prevents trivial cost-amplification attacks against the
     # upstream quota.
     "/api/v1/verse-of-the-day": (60, 60),
+    # Admin-mutation buckets. A compromised admin token falls under the
+    # global 100/60s default otherwise, which is enough for an attacker
+    # to script delete-100-users-per-minute. These per-prefix ceilings
+    # are still generous for legitimate admin use (typing through 30
+    # role changes a minute is unusual; deleting 30 users a minute is
+    # very unusual). Reads on these prefixes also share the bucket --
+    # that's a small UX cost for the safety net.
+    "/api/v1/users/admin/": (30, 60),
+    "/api/v1/cohorts": (60, 60),
 }
 
 MAX_BUCKETS = 10_000
