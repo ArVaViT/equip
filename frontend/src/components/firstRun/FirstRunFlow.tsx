@@ -18,34 +18,12 @@ const EDITORIAL_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
-const STORAGE_PREFIX_PRIVACY = "equip.privacy.accepted"
-const STORAGE_PREFIX_SETUP = "equip.first-run.setup"
-// The picker flag CLOSES the first-run flow. Re-using the legacy
-// ``equip.first-run.completed`` key so users who already cleared
-// the pre-picker flow on prod don't see the picker pop up out of
-// nowhere on their next visit — they're past the first-run gate.
-const STORAGE_PREFIX_PICKER = "equip.first-run.completed"
-// The grand tour's seen-flag — we set it when the picker finishes
-// (or is skipped) so the cross-page tour doesn't auto-fire on top
-// of the user's brand-new enrollment. Manual "Take a tour" still
-// works via the WelcomeCard link.
-const STORAGE_PREFIX_GRAND_TOUR_SEEN = "equip.grand-tour.seen"
-
-function privacyKey(userId: string): string {
-  return `${STORAGE_PREFIX_PRIVACY}.${userId}`
-}
-
-function setupKey(userId: string): string {
-  return `${STORAGE_PREFIX_SETUP}.${userId}`
-}
-
-function pickerKey(userId: string): string {
-  return `${STORAGE_PREFIX_PICKER}.${userId}`
-}
-
-function grandTourSeenKey(userId: string): string {
-  return `${STORAGE_PREFIX_GRAND_TOUR_SEEN}.${userId}`
-}
+import {
+  firstRunPickerKey,
+  firstRunSetupKey,
+  grandTourSeenKey,
+  privacyAcceptedKey,
+} from "@/lib/storageKeys"
 
 function readFlag(key: string): boolean {
   if (typeof window === "undefined") return false
@@ -69,9 +47,9 @@ type Step = "privacy" | "setup" | "picker" | "splash" | "done"
 
 function decideInitialStep(userId: string | undefined): Step {
   if (!userId) return "done"
-  if (!readFlag(privacyKey(userId))) return "privacy"
-  if (!readFlag(setupKey(userId))) return "setup"
-  if (!readFlag(pickerKey(userId))) return "picker"
+  if (!readFlag(privacyAcceptedKey(userId))) return "privacy"
+  if (!readFlag(firstRunSetupKey(userId))) return "setup"
+  if (!readFlag(firstRunPickerKey(userId))) return "picker"
   return "done"
 }
 
@@ -183,25 +161,25 @@ export function FirstRunFlow() {
   }, [step])
 
   const handlePrivacyAccept = useCallback(() => {
-    if (userId) writeFlag(privacyKey(userId))
+    if (userId) writeFlag(privacyAcceptedKey(userId))
     setStep("setup")
   }, [userId])
 
   const handleSetupComplete = useCallback(() => {
-    if (userId) writeFlag(setupKey(userId))
+    if (userId) writeFlag(firstRunSetupKey(userId))
     setStep("picker")
   }, [userId])
 
   const handleSetupSkip = useCallback(() => {
     // Skip writes the flag too — the user has made the choice to
     // bypass setup; pestering them again next visit is wrong.
-    if (userId) writeFlag(setupKey(userId))
+    if (userId) writeFlag(firstRunSetupKey(userId))
     setStep("picker")
   }, [userId])
 
   const closePickerFlow = useCallback(() => {
     if (!userId) return
-    writeFlag(pickerKey(userId))
+    writeFlag(firstRunPickerKey(userId))
     // Also tick the grand-tour-seen flag so the cross-page
     // popover tour doesn't auto-fire on top of the user's brand-
     // new enrollment / dashboard. Manual replay via the

@@ -10,31 +10,23 @@ import {
   setGrandTourActive,
   subscribeFirstRun,
 } from "@/lib/tourState"
+import { grandTourSeenKey, perPageTourSeenKey } from "@/lib/storageKeys"
 
-const STORAGE_PREFIX_GRAND = "equip.grand-tour.seen"
-const STORAGE_PREFIX_PERPAGE = "equip.tour.seen"
 const AUTO_START_DELAY_MS = 500
 
-function grandFlagKey(userId: string | undefined): string | null {
-  if (!userId) return null
-  return `${STORAGE_PREFIX_GRAND}.${userId}`
-}
-
 function readGrandSeen(userId: string | undefined): boolean {
-  const key = grandFlagKey(userId)
-  if (!key || typeof window === "undefined") return false
+  if (!userId || typeof window === "undefined") return false
   try {
-    return window.localStorage.getItem(key) === "1"
+    return window.localStorage.getItem(grandTourSeenKey(userId)) === "1"
   } catch {
     return false
   }
 }
 
 function writeGrandSeen(userId: string | undefined): void {
-  const key = grandFlagKey(userId)
-  if (!key || typeof window === "undefined") return
+  if (!userId || typeof window === "undefined") return
   try {
-    window.localStorage.setItem(key, "1")
+    window.localStorage.setItem(grandTourSeenKey(userId), "1")
   } catch {
     /* private browsing */
   }
@@ -51,7 +43,7 @@ function suppressCoveredPerPageTours(userId: string | undefined): void {
   if (!userId || typeof window === "undefined") return
   for (const tourId of STUDENT_GRAND_TOUR_COVERS) {
     try {
-      window.localStorage.setItem(`${STORAGE_PREFIX_PERPAGE}.${userId}.${tourId}`, "1")
+      window.localStorage.setItem(perPageTourSeenKey(userId, tourId), "1")
     } catch {
       /* ignore */
     }
@@ -134,7 +126,12 @@ export function useGrandTour(): UseGrandTourReturn {
         progress: t("tour.progress", { current: "{{current}}", total: "{{total}}" }),
       },
       navigate,
-      initialPath: location.pathname,
+      // ``initialPath`` is captured at build time; reading
+      // ``window.location.pathname`` directly keeps ``buildAndDrive``
+      // out of ``location.pathname``'s dep chain, which used to
+      // trigger a callback re-bind on every internal tour navigation
+      // — visible as an unnecessary effect re-run on each step.
+      initialPath: typeof window !== "undefined" ? window.location.pathname : "/",
       reducedMotion: reducedMotionPreferred(),
       onDone: () => {
         writeGrandSeen(userId)
@@ -152,7 +149,7 @@ export function useGrandTour(): UseGrandTourReturn {
       },
     })
     driverRef.current.drive()
-  }, [t, userId, navigate, location.pathname])
+  }, [t, userId, navigate])
 
   const start = useCallback(() => {
     // Defensive: don't yank the user into a tour while the first-run
@@ -223,9 +220,14 @@ export function useGrandTour(): UseGrandTourReturn {
         window.clearTimeout(timerRef.current)
         timerRef.current = null
       }
-      // Reset shared signal on unmount so per-page tours can fire on
-      // the next mount cycle if the user signs back in.
-      setGrandTourActive(false)
+      // Only release the shared signal if THIS instance was the one
+      // that set it. Without the ``firedRef`` guard, a stray second
+      // mount (HMR, test, accidental double-mount) unmounting could
+      // clear the running instance's signal, letting per-page tours
+      // race a live grand tour.
+      if (firedRef.current) {
+        setGrandTourActive(false)
+      }
     }
   }, [])
 

@@ -1,6 +1,7 @@
 import { driver, type Config, type Driver, type DriveStep } from "driver.js"
 import "driver.js/dist/driver.css"
 import "@/styles/editorial-tour.css"
+import { sanitizeHtml } from "@/lib/sanitize"
 
 /**
  * A grand-tour step is a regular driver.js step plus an optional
@@ -103,10 +104,21 @@ export function createGrandTour({
 
   // Driver.js types want a mutable DriveStep[]; the route field is
   // ours and gets read separately from the array index inside the
-  // navigation hooks below.
+  // navigation hooks below. We also sanitise the popover text here
+  // for the same reason as ``createEditorialTour`` — driver.js
+  // renders title + description through ``innerHTML``, so any
+  // future user-interpolated tour copy could otherwise XSS.
   const baseSteps: DriveStep[] = steps.map((s) => ({
     element: s.element,
-    popover: s.popover,
+    popover: s.popover
+      ? {
+          ...s.popover,
+          title: s.popover.title ? sanitizeHtml(s.popover.title) : s.popover.title,
+          description: s.popover.description
+            ? sanitizeHtml(s.popover.description)
+            : s.popover.description,
+        }
+      : s.popover,
   }))
 
   // Pre-position on the first step's route so the very first

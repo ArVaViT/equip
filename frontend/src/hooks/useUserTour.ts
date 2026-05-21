@@ -10,6 +10,7 @@ import {
   subscribeFirstRun,
   subscribeGrandTour,
 } from "@/lib/tourState"
+import { perPageTourSeenKey } from "@/lib/storageKeys"
 
 interface UseUserTourOpts {
   /** Stable identifier for this surface's tour. Combined with the
@@ -50,29 +51,21 @@ interface UseUserTourReturn {
   alreadySeen: boolean
 }
 
-const STORAGE_PREFIX = "equip.tour.seen"
 const DEFAULT_SKIP_ROLES: ReadonlyArray<string> = ["admin"]
 
-function flagKey(userId: string | undefined, tourId: string): string | null {
-  if (!userId) return null
-  return `${STORAGE_PREFIX}.${userId}.${tourId}`
-}
-
 function readSeen(userId: string | undefined, tourId: string): boolean {
-  const key = flagKey(userId, tourId)
-  if (!key || typeof window === "undefined") return false
+  if (!userId || typeof window === "undefined") return false
   try {
-    return window.localStorage.getItem(key) === "1"
+    return window.localStorage.getItem(perPageTourSeenKey(userId, tourId)) === "1"
   } catch {
     return false
   }
 }
 
 function writeSeen(userId: string | undefined, tourId: string): void {
-  const key = flagKey(userId, tourId)
-  if (!key || typeof window === "undefined") return
+  if (!userId || typeof window === "undefined") return
   try {
-    window.localStorage.setItem(key, "1")
+    window.localStorage.setItem(perPageTourSeenKey(userId, tourId), "1")
   } catch {
     // Private-browsing or quota — the tour will re-offer next visit.
   }

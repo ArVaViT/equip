@@ -11,6 +11,7 @@ import { useUserTour } from "@/hooks/useUserTour"
 import { courseDetailSteps } from "@/lib/tourSteps"
 import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
+import { completionCelebratedKey } from "@/lib/storageKeys"
 import type {
   CalendarEvent,
   Certificate,
@@ -71,7 +72,7 @@ export function EnrolledView({
   // course the first user already finished. The flag is written on
   // close (not on open) so a closed-before-render edge case doesn't
   // silently swallow the moment.
-  const celebrationFlagKey = `equip.celebrated.${enrollment.user_id}.${course.id}`
+  const celebrationFlagKey = completionCelebratedKey(enrollment.user_id, course.id)
 
   useEffect(() => {
     if (!(enrollment.progress >= 100)) return
