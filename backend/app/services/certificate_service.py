@@ -27,6 +27,7 @@ from fastapi import HTTPException, Request, status
 from app.api.dependencies import assert_course_owner
 from app.models.certificate import Certificate
 from app.models.course import Course
+from app.models.user import UserRole
 from app.services.audit_service import log_action
 from app.services.notification_service import create_notification
 
@@ -156,6 +157,21 @@ def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> 
     _assert_status(cert, "teacher_approved")
     _assert_not_self_approval(cert, admin)
 
+    # Two-eyes guard. An admin who is ALSO the course's teacher can land on
+    # the cert at the ``teacher_approved`` stage (they signed it themselves
+    # via ``teacher_approve``) and then immediately admin-approve it,
+    # collapsing the two-step review into one human. Refuse when the
+    # admin's id matches the teacher-approver's so issuance always involves
+    # two distinct accounts.
+    if cert.teacher_approved_by is not None and str(cert.teacher_approved_by) == str(admin.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "You can't admin-approve a certificate you teacher-approved yourself. "
+                "Another admin needs to sign off on this issuance."
+            ),
+        )
+
     cert.status = "approved"
     cert.certificate_number = generate_certificate_number()
     now = datetime.now(UTC)
@@ -198,6 +214,21 @@ def reject(db: Session, cert_id: UUID, user: User, request: Request) -> Certific
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Certificate cannot be rejected (current status: {cert.status})",
+        )
+
+    # Stage-gated authorisation:
+    #   pending           -> teacher (course owner) or admin
+    #   teacher_approved  -> admin only (the cert is at the admin desk;
+    #                        the original teacher already signed off and
+    #                        shouldn't be able to walk it back without
+    #                        a second pair of eyes)
+    # Without this gate, a course-owning teacher could teacher-approve a
+    # cert, change their mind, and reject it after it reached the admin
+    # queue -- effectively a one-person veto of their own prior approval.
+    if cert.status == "teacher_approved" and user.role != UserRole.ADMIN.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=("Only an administrator can reject a certificate that has already passed teacher approval."),
         )
 
     ownership_detail = "You can only reject certificates for your own courses"

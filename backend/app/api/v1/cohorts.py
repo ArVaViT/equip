@@ -187,6 +187,7 @@ def get_cohort(
 def update_cohort(
     cohort_id: UUID,
     data: CohortUpdate,
+    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
@@ -203,13 +204,32 @@ def update_cohort(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot reopen a completed cohort",
         )
+    # Snapshot the fields the admin is actually changing for the audit
+    # row. Comparing pre/post values means a no-op PATCH (same fields,
+    # same values) doesn't generate a noisy audit entry, and a status
+    # flip like ``upcoming -> active`` is fully traceable: the row holds
+    # both ends of the transition.
+    changes: dict[str, dict[str, object]] = {}
     for field, value in patch.items():
+        before = getattr(cohort, field)
+        if before != value:
+            changes[field] = {"from": before, "to": value}
         setattr(cohort, field, value)
     db.commit()
     db.refresh(cohort)
     # Translation reconcile reads the attached-course set internally and
     # is idempotent — call once per cohort, not once per attached course.
     reconcile_entity_if_course_published(db, "cohort", cohort)
+    if changes:
+        log_action(
+            db,
+            admin.id,
+            "update",
+            "cohort",
+            str(cohort.id),
+            details={"changes": changes, "name": cohort.name},
+            request=request,
+        )
     return _serialize(db, cohort)
 
 
@@ -354,8 +374,24 @@ def attach_course(
     try:
         db.commit()
     except IntegrityError:
-        # A concurrent attach raced us; safe to roll back and re-read.
+        # Two paths can land here:
+        #   1. A concurrent attach raced us. After rollback the link
+        #      already exists, so the desired state is satisfied and
+        #      we treat it as idempotent success.
+        #   2. A different constraint actually fired (FK violation,
+        #      etc.) -- the link is missing post-rollback and we
+        #      surface a 409 instead of silently 201'ing.
         db.rollback()
+        still_linked = (
+            db.query(CohortCourse)
+            .filter(CohortCourse.cohort_id == cohort.id, CohortCourse.course_id == course.id)
+            .first()
+        )
+        if still_linked is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Could not attach course due to a conflict; please retry.",
+            ) from None
     db.refresh(cohort)
     log_action(
         db,
@@ -547,7 +583,21 @@ def add_student(
     try:
         db.commit()
     except IntegrityError:
+        # Same idempotency check as ``attach_course``: if a concurrent
+        # add_student already landed the enrollments for this (user,
+        # cohort), the desired state is satisfied -- 201. Otherwise
+        # we surface a 409 instead of silently lying about success.
         db.rollback()
+        landed = (
+            db.query(Enrollment.course_id)
+            .filter(Enrollment.cohort_id == cohort.id, Enrollment.user_id == user.id)
+            .first()
+        )
+        if landed is None and missing_course_ids:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Could not add student due to a conflict; please retry.",
+            ) from None
     log_action(
         db,
         admin.id,

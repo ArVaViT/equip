@@ -16,7 +16,7 @@ from app.models.enrollment import Enrollment
 from app.models.quiz import Quiz, QuizAttempt
 from app.models.student_grade import StudentGrade
 from app.models.user import User, UserRole
-from tests.conftest import STUDENT_ID, TEACHER_ID
+from tests.conftest import ADMIN_ID, STUDENT_ID, TEACHER_ID
 
 # SQLite does not auto-cast str → UUID for bind parameters.  The grade
 # endpoints receive ``student_id`` as a plain ``str`` from the URL and
@@ -492,10 +492,20 @@ class TestRejectCertificate:
         assert r.status_code == 200
         assert r.json()["status"] == "rejected"
 
-    def test_reject_teacher_approved(self, client: TestClient, db: Session):
+    def test_teacher_cannot_reject_teacher_approved(self, client: TestClient, db: Session):
+        # New stage-gated policy: once a cert is teacher-approved it sits
+        # at the admin desk, and the original teacher cannot walk back
+        # their own prior approval without a second pair of eyes.
         _seed_enrolled_course(db, progress=100)
         cert = _seed_certificate(db, "course-1", cert_status="teacher_approved")
         r = client.put(f"/api/v1/certificates/{cert.id}/reject")
+        assert r.status_code == 403
+
+    def test_admin_can_reject_teacher_approved(self, admin_client: TestClient, db: Session):
+        # Admin reject is the legitimate path at the teacher-approved stage.
+        _seed_enrolled_course(db, progress=100)
+        cert = _seed_certificate(db, "course-1", cert_status="teacher_approved")
+        r = admin_client.put(f"/api/v1/certificates/{cert.id}/reject")
         assert r.status_code == 200
         assert r.json()["status"] == "rejected"
 
@@ -618,19 +628,47 @@ class TestCertificateSurvivesCourseDeletion:
 
 
 class TestFullCertificateLifecycle:
-    """Integration: seed → teacher-approve → admin-approve → verify."""
+    """Integration: seed → teacher-approve → admin-approve → verify.
+
+    Two-eyes policy means teacher and admin MUST be distinct user
+    accounts. We use the dedicated ``admin_client`` fixture (a separate
+    seeded user) for the admin-approve step, instead of promoting the
+    same user mid-test like the old version did.
+    """
 
     def test_lifecycle(self, client: TestClient, db: Session):
+        from app.api.dependencies import get_current_user
+        from app.main import app
+
         _seed_enrolled_course(db, progress=100)
         cert = _seed_certificate(db, "course-1")
 
+        # Step 1: course-owning teacher signs off
         r = client.put(f"/api/v1/certificates/{cert.id}/teacher-approve")
         assert r.status_code == 200
         assert r.json()["status"] == "teacher_approved"
 
-        _make_admin(db)
-
-        r = client.put(f"/api/v1/certificates/{cert.id}/admin-approve")
+        # Step 2: swap auth to a DIFFERENT user (the admin fixture seeds
+        # ADMIN_ID) so the two-eyes policy is satisfied. The dependency
+        # override only persists inside the ``with`` block, so the
+        # subsequent verify call falls back to the teacher-authed client.
+        admin = User(
+            id=ADMIN_ID,
+            email="admin@example.com",
+            full_name="Test Admin",
+            role=UserRole.ADMIN.value,
+        )
+        db.add(admin)
+        db.commit()
+        prev_override = app.dependency_overrides.get(get_current_user)
+        app.dependency_overrides[get_current_user] = lambda: admin
+        try:
+            r = client.put(f"/api/v1/certificates/{cert.id}/admin-approve")
+        finally:
+            if prev_override is None:
+                app.dependency_overrides.pop(get_current_user, None)
+            else:
+                app.dependency_overrides[get_current_user] = prev_override
         assert r.status_code == 200
         cert_number = r.json()["certificate_number"]
         assert cert_number.startswith("CERT-")
@@ -638,6 +676,23 @@ class TestFullCertificateLifecycle:
         r = client.get(f"/api/v1/certificates/verify/{cert_number}")
         assert r.status_code == 200
         assert r.json()["valid"] is True
+
+    def test_admin_cannot_complete_own_teacher_approval(self, client: TestClient, db: Session):
+        """Regression for the two-eyes loophole: a teacher who's later
+        promoted to admin (or is admin from the start with course-owner
+        rights) cannot complete both approval stages single-handedly.
+        """
+        _seed_enrolled_course(db, progress=100)
+        cert = _seed_certificate(db, "course-1")
+
+        # Step 1: teacher_approve as TEACHER_ID
+        r = client.put(f"/api/v1/certificates/{cert.id}/teacher-approve")
+        assert r.status_code == 200
+
+        # Step 2: promote SAME user to admin and try to admin-approve
+        _make_admin(db)
+        r = client.put(f"/api/v1/certificates/{cert.id}/admin-approve")
+        assert r.status_code == 403
 
 
 # =====================================================================
