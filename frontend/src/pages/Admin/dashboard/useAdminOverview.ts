@@ -10,6 +10,7 @@ import { getErrorDetail } from "@/lib/errorDetail"
 import { useConfirm } from "@/components/ui/alert-dialog"
 import { ROLES, type UserRole } from "@/types"
 import type { AdminCert } from "./PendingCertsCard"
+import { displayNameOf } from "@/lib/userDisplay"
 import { ROLE_I18N_KEY, type AdminStats, type ProfileRow } from "./constants"
 
 const ROLE_FILTER_VALUES = ["admin", "teacher", "pending_teacher", "student"] as const
@@ -156,7 +157,9 @@ export function useAdminOverview({ currentUserId, enabled = true }: UseAdminOver
 
   const userMap = useMemo(() => {
     const map: Record<string, string> = {}
-    for (const u of users) map[u.id] = u.full_name || u.email
+    // ``displayNameOf`` handles whitespace-only full_names so the audit
+    // log doesn't render three blank glyphs as the user attribution.
+    for (const u of users) map[u.id] = displayNameOf(u.full_name, u.email)
     return map
   }, [users])
 
@@ -197,7 +200,7 @@ export function useAdminOverview({ currentUserId, enabled = true }: UseAdminOver
       return
     }
     const ok = await confirm({
-      title: t("admin.overview.confirm.deleteUserTitle", { name: target.full_name || target.email }),
+      title: t("admin.overview.confirm.deleteUserTitle", { name: displayNameOf(target.full_name, target.email) }),
       description: t("admin.overview.confirm.deleteUserDescription"),
       confirmLabel: t("admin.overview.confirm.deleteUserAction"),
       tone: "destructive",
@@ -305,7 +308,7 @@ export function useAdminOverview({ currentUserId, enabled = true }: UseAdminOver
   }
 
   const approvePendingTeacher = async (u: ProfileRow) => {
-    const name = u.full_name || u.email
+    const name = displayNameOf(u.full_name, u.email)
     const ok = await confirm({
       title: t("admin.pendingTeachers.confirm.approveTitle"),
       description: t("admin.pendingTeachers.confirm.approveDescription", { name }),
@@ -321,7 +324,7 @@ export function useAdminOverview({ currentUserId, enabled = true }: UseAdminOver
   }
 
   const denyPendingTeacher = async (u: ProfileRow) => {
-    const name = u.full_name || u.email
+    const name = displayNameOf(u.full_name, u.email)
     const ok = await confirm({
       title: t("admin.pendingTeachers.confirm.denyTitle"),
       description: t("admin.pendingTeachers.confirm.denyDescription", { name }),

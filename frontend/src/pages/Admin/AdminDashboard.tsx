@@ -65,7 +65,12 @@ export default function AdminDashboard() {
     const next = new URLSearchParams(params)
     if (nextTab === "overview") next.delete("tab")
     else next.set("tab", nextTab)
-    setParams(next, { replace: true })
+    // PUSH not replace -- tab switching is primary navigation and the
+    // browser back button should return to the previously viewed tab.
+    // Previously this used ``replace: true`` and pressing back from
+    // Audit left the /admin route entirely instead of unwinding to
+    // Overview.
+    setParams(next)
   }
 
   return (

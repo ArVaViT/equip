@@ -13,10 +13,11 @@ import {
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Users, Search, Trash2 } from "lucide-react"
-import { toProxyImage } from "@/lib/images"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { EmptyState } from "@/components/patterns/EmptyState"
 import { RoleSelector } from "@/components/admin/RoleSelector"
+import { UserAvatar } from "@/components/admin/UserAvatar"
+import { displayNameOf } from "@/lib/userDisplay"
 import type { UserRole } from "@/types"
 import { formatDate } from "@/i18n/format"
 import { type ProfileRow } from "./constants"
@@ -432,12 +433,13 @@ function UserCard({
   onDeleteUser,
 }: UserRowProps) {
   const { t } = useTranslation()
-  const displayName = user.full_name || user.email
+  const displayName = displayNameOf(user.full_name, user.email)
   return (
     <div
-      className={`rounded-md border border-border bg-card p-3 transition-colors ${
-        selected ? "border-primary/40 bg-primary/[0.08] dark:bg-primary/15" : ""
-      }`}
+      className={cn(
+        "rounded-md border border-border bg-card p-3 transition-colors",
+        selected && "border-primary/40 bg-primary/[0.08] dark:bg-primary/15",
+      )}
     >
       <div className="flex items-start gap-3">
         <Checkbox
@@ -446,20 +448,16 @@ function UserCard({
           onCheckedChange={() => onToggleSelect(user.id)}
           aria-label={t("admin.users.selectAriaPrefix", { name: displayName })}
         />
-        {user.avatar_url ? (
-          <img
-            src={toProxyImage(user.avatar_url)}
-            alt={t("admin.users.avatarAltPrefix", { name: user.full_name ?? user.email })}
-            className="h-10 w-10 shrink-0 rounded-full object-cover"
-          />
-        ) : (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground">
-            {(user.full_name?.[0] ?? user.email[0] ?? "?").toUpperCase()}
-          </div>
-        )}
+        <UserAvatar
+          avatarUrl={user.avatar_url}
+          fullName={user.full_name}
+          email={user.email}
+          size="md"
+          alt={t("admin.users.avatarAltPrefix", { name: displayName })}
+        />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-foreground">
-            {user.full_name || t("admin.users.missingName")}
+            {user.full_name?.trim() || t("admin.users.missingName")}
           </p>
           <p className="truncate text-xs text-muted-foreground">{user.email}</p>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -510,12 +508,13 @@ function UserRow({
   onDeleteUser,
 }: UserRowProps) {
   const { t } = useTranslation()
-  const displayName = user.full_name || user.email
+  const displayName = displayNameOf(user.full_name, user.email)
   return (
     <tr
-      className={`transition-colors hover:bg-muted/40 ${
-        selected ? "bg-primary/[0.08] dark:bg-primary/15" : ""
-      }`}
+      className={cn(
+        "transition-colors hover:bg-muted/40",
+        selected && "bg-primary/[0.08] dark:bg-primary/15",
+      )}
     >
       <td className="px-3 py-3">
         <Checkbox
@@ -526,19 +525,15 @@ function UserRow({
       </td>
       <td className="px-5 py-3">
         <div className="flex min-w-0 items-center gap-3">
-          {user.avatar_url ? (
-            <img
-              src={toProxyImage(user.avatar_url)}
-              alt={t("admin.users.avatarAltPrefix", { name: user.full_name ?? user.email })}
-              className="h-8 w-8 shrink-0 rounded-full object-cover"
-            />
-          ) : (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
-              {(user.full_name?.[0] ?? user.email[0] ?? "?").toUpperCase()}
-            </div>
-          )}
+          <UserAvatar
+            avatarUrl={user.avatar_url}
+            fullName={user.full_name}
+            email={user.email}
+            size="sm"
+            alt={t("admin.users.avatarAltPrefix", { name: displayName })}
+          />
           <span className="min-w-0 truncate font-medium" title={user.full_name ?? undefined}>
-            {user.full_name || t("admin.users.missingName")}
+            {user.full_name?.trim() || t("admin.users.missingName")}
           </span>
         </div>
       </td>

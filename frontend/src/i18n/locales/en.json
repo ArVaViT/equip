@@ -1701,6 +1701,8 @@
         "createFailed": "Failed to create cohort",
         "saved": "Saved",
         "saveFailed": "Failed to save",
+        "invalidMaxStudents": "Maximum students must be a whole number between 1 and 99,999.",
+        "invalidDateRange": "Start date must be before end date.",
         "loadFailed": "Failed to load cohort",
         "loadCoursesFailed": "Failed to load courses",
         "someCoursesFailed_one": "{{count}} attached course couldn't be loaded; it may be hidden from the list below.",

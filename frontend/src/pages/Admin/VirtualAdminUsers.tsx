@@ -4,7 +4,8 @@ import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { RoleSelector } from "@/components/admin/RoleSelector"
-import { toProxyImage } from "@/lib/images"
+import { UserAvatar } from "@/components/admin/UserAvatar"
+import { displayNameOf } from "@/lib/userDisplay"
 import type { UserRole } from "@/types"
 import { formatDate } from "@/i18n/format"
 
@@ -46,7 +47,7 @@ function UserRow({
   const u = users[index]
   if (!u) return null
   const selected = selectedIds.has(u.id)
-  const displayName = u.full_name || u.email
+  const displayName = displayNameOf(u.full_name, u.email)
   return (
     <div
       role="row"
@@ -63,20 +64,15 @@ function UserRow({
         />
       </div>
       <div role="cell" className="flex min-w-0 items-center gap-3 px-3">
-        {u.avatar_url ? (
-          <img
-            src={toProxyImage(u.avatar_url)}
-            alt={t("admin.users.avatarAltPrefix", { name: u.full_name ?? u.email })}
-            className="h-8 w-8 shrink-0 rounded-full object-cover"
-            loading="lazy"
-          />
-        ) : (
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
-            {(u.full_name?.[0] ?? u.email[0] ?? "?").toUpperCase()}
-          </div>
-        )}
+        <UserAvatar
+          avatarUrl={u.avatar_url}
+          fullName={u.full_name}
+          email={u.email}
+          size="sm"
+          alt={t("admin.users.avatarAltPrefix", { name: displayName })}
+        />
         <span className="truncate font-medium" title={u.full_name ?? undefined}>
-          {u.full_name || t("admin.users.missingName")}
+          {u.full_name?.trim() || t("admin.users.missingName")}
         </span>
       </div>
       <div role="cell" className="truncate px-3 text-muted-foreground" title={u.email}>
