@@ -476,6 +476,35 @@ def test_reorder_blocks_anon_unauthorized(anon_client: TestClient):
     assert resp.status_code == 401
 
 
+def test_reorder_blocks_unknown_id_returns_400(client: TestClient, db: Session):
+    # Previous behaviour: a payload referencing a block id that doesn't
+    # belong to this chapter (or no longer exists) silently dropped the
+    # offending item and committed a partial reorder. Now we reject the
+    # whole reorder so the teacher's drag-and-drop view stays in sync
+    # with what's persisted.
+    import uuid as _uuid
+
+    _seed_course(db)
+    b1 = ChapterBlock(chapter_id="ch-1", block_type="text", order_index=0, content="A")
+    db.add(b1)
+    db.commit()
+    db.refresh(b1)
+    bogus = str(_uuid.uuid4())
+    resp = client.put(
+        "/api/v1/blocks/chapter/ch-1/reorder",
+        json=[
+            {"id": str(b1.id), "order_index": 1},
+            {"id": bogus, "order_index": 0},
+        ],
+    )
+    assert resp.status_code == 400
+    assert bogus in resp.json()["detail"]
+    # And the existing block's order MUST NOT have shifted: the whole
+    # reorder is rejected, not partially applied.
+    db.refresh(b1)
+    assert b1.order_index == 0
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 #  QUIZ TESTS
 # ═══════════════════════════════════════════════════════════════════════════

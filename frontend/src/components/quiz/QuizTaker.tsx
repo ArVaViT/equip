@@ -6,6 +6,7 @@ import { StaggerChildren } from "@/components/motion"
 import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { toast } from "@/lib/toast"
+import { countWords } from "@/lib/text"
 import type { QuizAttempt } from "@/types"
 import { Loader2 } from "lucide-react"
 import {
@@ -78,8 +79,7 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
       // submit until that's reached so students don't accidentally submit
       // half-written work and burn an attempt on an exam.
       if (q.question_type === "essay" && q.min_words && q.min_words > 0) {
-        const words = text.split(/\s+/).filter(Boolean).length
-        if (words < q.min_words) return false
+        if (countWords(text) < q.min_words) return false
       }
       return true
     }

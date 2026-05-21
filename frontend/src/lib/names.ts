@@ -17,3 +17,25 @@ export function firstNameOf(fullName: string | null | undefined): string | null 
   const first = trimmed.split(/\s+/)[0]
   return first || null
 }
+
+/**
+ * Two-character initials for avatar fallbacks — "Vadym Arnaut" → "VA",
+ * "vadimarnaut78@gmail.com" → "VA", "Иван" → "И".
+ *
+ * Splits on whitespace AND ``@`` so an email handle yields a usable
+ * pair (the part before the first ``.`` of the local-part isn't worth
+ * the extra branching). Uppercase Unicode-aware so Cyrillic + Latin
+ * both look right against ``font-serif``.
+ *
+ * Returns an empty string for null/blank so the caller can decide
+ * between "no initials → render the User icon" and "have initials →
+ * render the letters" with a single truthy check.
+ */
+export function initialsOf(nameOrEmail: string | null | undefined): string {
+  if (!nameOrEmail) return ""
+  return nameOrEmail
+    .split(/[\s@]/)
+    .slice(0, 2)
+    .map((s) => s[0]?.toUpperCase() ?? "")
+    .join("")
+}
