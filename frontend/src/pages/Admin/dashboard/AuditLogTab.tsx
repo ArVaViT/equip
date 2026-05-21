@@ -92,7 +92,7 @@ export function AuditLogTab({
   return (
     <Card className="flex max-h-[calc(100dvh-240px)] flex-col md:max-h-[calc(100dvh-200px)] md:min-h-[420px]">
       <CardHeader className="shrink-0 gap-3 space-y-0 border-b">
-        <CardTitle className="flex items-center gap-2 text-xl">
+        <CardTitle className="flex items-center gap-2 font-serif text-xl font-semibold tracking-tight">
           <FileText className="h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden />
           {t("admin.audit.title")}
           <span className="ml-1.5 text-sm font-normal text-muted-foreground">
@@ -180,7 +180,7 @@ export function AuditLogTab({
         {loading ? (
           <AuditTableSkeleton />
         ) : logs.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center px-6 py-10">
+          <div className="flex flex-1 items-center justify-center px-5 py-10">
             <EmptyState
               variant="compact"
               icon={<FileText strokeWidth={1.75} aria-hidden />}

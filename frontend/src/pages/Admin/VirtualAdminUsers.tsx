@@ -51,8 +51,8 @@ function UserRow({
     <div
       role="row"
       style={style}
-      className={`grid grid-cols-[40px_2fr_2fr_2fr_1fr_40px] items-center border-b px-3 text-sm hover:bg-muted/50 transition-colors ${
-        selected ? "bg-primary/[0.03]" : ""
+      className={`grid grid-cols-[40px_2fr_2fr_2fr_1fr_40px] items-center border-b px-3 text-sm transition-colors hover:bg-muted/40 ${
+        selected ? "border-primary/40 bg-primary/[0.08] dark:bg-primary/15" : ""
       }`}
     >
       <div role="cell" className="flex items-center justify-center">
@@ -62,22 +62,24 @@ function UserRow({
           aria-label={t("admin.users.selectAriaPrefix", { name: displayName })}
         />
       </div>
-      <div role="cell" className="flex items-center gap-3 px-3 min-w-0">
+      <div role="cell" className="flex min-w-0 items-center gap-3 px-3">
         {u.avatar_url ? (
           <img
             src={toProxyImage(u.avatar_url)}
             alt={t("admin.users.avatarAltPrefix", { name: u.full_name ?? u.email })}
-            className="h-8 w-8 rounded-full object-cover shrink-0"
+            className="h-8 w-8 shrink-0 rounded-full object-cover"
             loading="lazy"
           />
         ) : (
-          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground shrink-0">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
             {(u.full_name?.[0] ?? u.email[0] ?? "?").toUpperCase()}
           </div>
         )}
-        <span className="font-medium truncate">{u.full_name || t("admin.users.missingName")}</span>
+        <span className="truncate font-medium" title={u.full_name ?? undefined}>
+          {u.full_name || t("admin.users.missingName")}
+        </span>
       </div>
-      <div role="cell" className="px-3 text-muted-foreground truncate">
+      <div role="cell" className="truncate px-3 text-muted-foreground" title={u.email}>
         {u.email}
       </div>
       <div role="cell" className="px-3 flex items-center gap-2">
@@ -101,7 +103,7 @@ function UserRow({
           aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
           title={u.id === currentUserId ? t("admin.users.deleteSelfTooltip") : t("admin.users.deleteTooltip")}
         >
-          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+          <Trash2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
         </Button>
       </div>
     </div>

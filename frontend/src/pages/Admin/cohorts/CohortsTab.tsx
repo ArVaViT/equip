@@ -189,7 +189,7 @@ export function CohortsTab() {
     <Card className="flex max-h-[calc(100dvh-240px)] flex-col md:max-h-[calc(100dvh-200px)] md:min-h-[420px]">
       <CardHeader className="shrink-0 gap-3 space-y-0 border-b">
         <div className="flex items-center justify-between gap-3">
-          <CardTitle className="text-xl">{t("admin.cohorts.title")}</CardTitle>
+          <CardTitle className="font-serif text-xl font-semibold tracking-tight">{t("admin.cohorts.title")}</CardTitle>
           <Button size="sm" onClick={() => setCreateOpen(true)} className="h-9 shrink-0">
             <Plus className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
             {t("admin.cohorts.createButton")}
@@ -278,7 +278,7 @@ export function CohortsTab() {
             }
           />
         ) : filtered.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center px-6 py-10">
+          <div className="flex flex-1 items-center justify-center px-5 py-10">
             <EmptyCohorts hasQuery={filtersActive} onCreate={() => setCreateOpen(true)} />
           </div>
         ) : (

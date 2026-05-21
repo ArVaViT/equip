@@ -239,7 +239,7 @@ export default function CohortDetailPage() {
         backLabel={t("admin.cohorts.backToList")}
         title={
           <div className="space-y-2">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
               {t("admin.cohorts.eyebrow")}
             </p>
             <div className="flex flex-wrap items-center gap-3">
@@ -276,7 +276,7 @@ export default function CohortDetailPage() {
 
       <Card className="mb-6">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex items-center gap-2 font-serif text-lg font-semibold tracking-tight">
             <Calendar className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             {t("admin.cohorts.detailsHeading")}
           </CardTitle>
@@ -337,7 +337,7 @@ export default function CohortDetailPage() {
 
       <Card className="mb-6">
         <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
-          <CardTitle className="text-lg">
+          <CardTitle className="font-serif text-lg font-semibold tracking-tight">
             {t("admin.cohorts.coursesHeading", { count: courses.length })}
           </CardTitle>
           <Button size="sm" className="h-9" onClick={() => setAttachOpen(true)}>
@@ -368,7 +368,7 @@ export default function CohortDetailPage() {
               {courses.map((c) => (
                 <li
                   key={c.id}
-                  className="flex items-center justify-between gap-3 rounded-md border border-border/80 bg-muted/10 px-3 py-2 transition-colors hover:border-primary/30 hover:bg-muted/25"
+                  className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/10 px-3 py-2 transition-colors hover:border-primary/30 hover:bg-muted/40"
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <Link
@@ -390,7 +390,7 @@ export default function CohortDetailPage() {
                     onClick={() => detachCourse(c.id)}
                     aria-label={t("admin.cohorts.detachAriaPrefix", { name: c.title })}
                   >
-                    <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                    <Trash2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                   </Button>
                 </li>
               ))}
@@ -600,7 +600,7 @@ function StudentsCard({
     <Card>
       <CardHeader className="gap-3 space-y-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex items-center gap-2 font-serif text-lg font-semibold tracking-tight">
             <Users className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             {t("admin.cohorts.studentsHeading", { count: students.length })}
           </CardTitle>
@@ -681,7 +681,7 @@ function StudentsCard({
                           name: s.full_name ?? s.email,
                         })}
                       >
-                        <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                        <Trash2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                       </Button>
                     </td>
                   </tr>

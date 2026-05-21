@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next"
 import { Users, GraduationCap, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { AdminTab } from "./constants"
+import { ADMIN_TAB_PANEL_ID, ADMIN_TAB_TRIGGER_ID, type AdminTab } from "./constants"
 
 interface Props {
   active: AdminTab
@@ -21,18 +21,21 @@ export function AdminTabs({ active, onChange }: Props) {
   return (
     <div className="mb-6 flex gap-1 border-b border-border sm:mb-8" role="tablist">
       <TabButton
+        name="overview"
         active={active === "overview"}
         onClick={() => onChange("overview")}
         icon={<Users className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
         label={t("admin.tabOverview")}
       />
       <TabButton
+        name="cohorts"
         active={active === "cohorts"}
         onClick={() => onChange("cohorts")}
         icon={<GraduationCap className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
         label={t("admin.tabCohorts")}
       />
       <TabButton
+        name="audit"
         active={active === "audit"}
         onClick={() => onChange("audit")}
         icon={<FileText className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
@@ -43,17 +46,20 @@ export function AdminTabs({ active, onChange }: Props) {
 }
 
 interface TabButtonProps {
+  name: AdminTab
   active: boolean
   onClick: () => void
   icon: React.ReactNode
   label: string
 }
 
-function TabButton({ active, onClick, icon, label }: TabButtonProps) {
+function TabButton({ name, active, onClick, icon, label }: TabButtonProps) {
   return (
     <button
       type="button"
       role="tab"
+      id={ADMIN_TAB_TRIGGER_ID[name]}
+      aria-controls={ADMIN_TAB_PANEL_ID[name]}
       aria-selected={active}
       onClick={onClick}
       className={cn(

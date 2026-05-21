@@ -6,7 +6,7 @@ import { useAuth } from "@/context/useAuth"
 import { Button } from "@/components/ui/button"
 import { ErrorState } from "@/components/patterns"
 import PageSpinner from "@/components/ui/PageSpinner"
-import { ADMIN_TABS, type AdminTab } from "./dashboard/constants"
+import { ADMIN_TAB_PANEL_ID, ADMIN_TAB_TRIGGER_ID, ADMIN_TABS, type AdminTab } from "./dashboard/constants"
 import { AdminTabs } from "./dashboard/AdminTabs"
 import { OverviewStats } from "./dashboard/OverviewStats"
 import { PendingTeachersCard } from "./dashboard/PendingTeachersCard"
@@ -71,12 +71,12 @@ export default function AdminDashboard() {
   return (
     <div className="animate-fade-in container mx-auto max-w-6xl px-4 py-6 sm:py-8">
       <header className="mb-6 space-y-2">
-        <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
           {t("admin.eyebrow")}
         </p>
         <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-primary/10 p-2">
-            <Shield className="h-6 w-6 text-primary" strokeWidth={1.75} />
+          <div className="rounded-md bg-primary/10 p-2">
+            <Shield className="h-6 w-6 text-primary" strokeWidth={1.75} aria-hidden />
           </div>
           <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">
             {t("admin.title")}
@@ -100,7 +100,11 @@ export default function AdminDashboard() {
       )}
 
       {!overview.error && tab === "overview" && (
-        <>
+        <div
+          role="tabpanel"
+          id={ADMIN_TAB_PANEL_ID.overview}
+          aria-labelledby={ADMIN_TAB_TRIGGER_ID.overview}
+        >
           <OverviewStats
             stats={overview.stats}
             loading={overview.loading}
@@ -142,36 +146,48 @@ export default function AdminDashboard() {
             onRoleChange={overview.handleRoleChange}
             onDeleteUser={overview.handleDeleteUser}
           />
-        </>
+        </div>
       )}
 
       {tab === "cohorts" && (
-        <Suspense fallback={<PageSpinner />}>
-          <CohortsTab />
-        </Suspense>
+        <div
+          role="tabpanel"
+          id={ADMIN_TAB_PANEL_ID.cohorts}
+          aria-labelledby={ADMIN_TAB_TRIGGER_ID.cohorts}
+        >
+          <Suspense fallback={<PageSpinner />}>
+            <CohortsTab />
+          </Suspense>
+        </div>
       )}
 
       {!overview.error && tab === "audit" && (
-        <Suspense fallback={<PageSpinner />}>
-          <AuditLogTab
-            logs={audit.logs}
-            total={audit.total}
-            loading={audit.loading}
-            page={audit.page}
-            pageSize={audit.pageSize}
-            userMap={overview.userMap}
-            action={audit.action}
-            resource={audit.resource}
-            dateFrom={audit.dateFrom}
-            dateTo={audit.dateTo}
-            onAction={audit.setAction}
-            onResource={audit.setResource}
-            onDateRange={audit.setDateRange}
-            onReset={audit.resetFilters}
-            onPageChange={audit.setPage}
-            onPageSizeChange={audit.setPageSize}
-          />
-        </Suspense>
+        <div
+          role="tabpanel"
+          id={ADMIN_TAB_PANEL_ID.audit}
+          aria-labelledby={ADMIN_TAB_TRIGGER_ID.audit}
+        >
+          <Suspense fallback={<PageSpinner />}>
+            <AuditLogTab
+              logs={audit.logs}
+              total={audit.total}
+              loading={audit.loading}
+              page={audit.page}
+              pageSize={audit.pageSize}
+              userMap={overview.userMap}
+              action={audit.action}
+              resource={audit.resource}
+              dateFrom={audit.dateFrom}
+              dateTo={audit.dateTo}
+              onAction={audit.setAction}
+              onResource={audit.setResource}
+              onDateRange={audit.setDateRange}
+              onReset={audit.resetFilters}
+              onPageChange={audit.setPage}
+              onPageSizeChange={audit.setPageSize}
+            />
+          </Suspense>
+        </div>
       )}
     </div>
   )

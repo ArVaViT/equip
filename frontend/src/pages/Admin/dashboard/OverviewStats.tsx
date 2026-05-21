@@ -108,7 +108,7 @@ export function OverviewStats({ stats, loading, pendingActions }: Props) {
           <CardContent className="flex items-start gap-4 p-5">
             <div
               className={cn(
-                "flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border/80 bg-card",
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border bg-card",
                 warningTint && "border-warning/40 bg-warning/10",
               )}
             >
