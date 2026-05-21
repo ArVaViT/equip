@@ -35,6 +35,11 @@ function toggleButtonClasses(active: boolean): string {
 }
 
 interface Props {
+  /** First name from the user's profile (when known). When present,
+   *  the heading uses the personalised "Make Equip yours, {{name}}"
+   *  variant; otherwise the un-named heading. ``null``/``undefined``
+   *  both fall back to the un-named title. */
+  firstName?: string | null
   /** Fires after the user clicks the primary CTA — whether saves
    *  succeeded or partially failed. The first-run gate must close
    *  either way; the orchestrator handles persistence of the
@@ -59,7 +64,7 @@ interface Props {
  * because the gate has to close so the user can use the app. The
  * profile page is available afterwards to retry.
  */
-export function SetupStep({ onComplete, onSkip }: Props) {
+export function SetupStep({ firstName, onComplete, onSkip }: Props) {
   const { t } = useTranslation()
   const { user, refreshUser } = useAuth()
   const { theme, toggleTheme } = useTheme()
@@ -214,7 +219,9 @@ export function SetupStep({ onComplete, onSkip }: Props) {
         {t("firstRun.setup.eyebrow")}
       </p>
       <h1 className="font-serif text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-3xl">
-        {t("firstRun.setup.title")}
+        {firstName
+          ? t("firstRun.setup.titleNamed", { name: firstName })
+          : t("firstRun.setup.title")}
       </h1>
       <p className="max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
         {t("firstRun.setup.intro")}

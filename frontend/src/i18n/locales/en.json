@@ -168,6 +168,7 @@
     "setup": {
       "eyebrow": "Quick setup",
       "title": "Make Equip yours",
+      "titleNamed": "Make Equip yours, {{name}}",
       "intro": "A few choices to set things up. You can change every one of these later from your profile.",
       "avatar": {
         "label": "Profile photo",
@@ -201,6 +202,7 @@
     "picker": {
       "eyebrow": "Your first course",
       "title": "Pick a course to begin with",
+      "titleNamed": "{{name}}, pick a course to begin with",
       "intro": "Tap any card to add it to your shelf. You can pick more than one. We'll open the first one for you so you can start right away.",
       "modulesCount_one": "{{count}} module",
       "modulesCount_other": "{{count}} modules",
@@ -211,6 +213,11 @@
       "loadFailed": "Couldn't load the catalog — check your connection and try again.",
       "enrollAllFailed": "Couldn't enroll — please try again, or browse the catalog manually.",
       "enrollSomeFailed": "Enrolled in part of your selection. Open the rest from the catalog."
+    },
+    "splash": {
+      "eyebrow": "Your shelf is ready",
+      "eyebrowNamed": "Your shelf is ready, {{name}}",
+      "body": "Take a breath. We're opening the first chapter."
     }
   },
   "grandTour": {

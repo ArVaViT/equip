@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import { AnimatePresence, motion, useReducedMotion } from "motion/react"
+import { useNavigate } from "react-router-dom"
 import { useAuth } from "@/context/useAuth"
 import { setFirstRunActive } from "@/lib/tourState"
+import type { Course } from "@/types"
 import { PrivacyPolicyStep } from "./PrivacyPolicyStep"
 import { SetupStep } from "./SetupStep"
 import { CoursePickerStep } from "./CoursePickerStep"
+import { EnrollSplash } from "./EnrollSplash"
+import { firstNameOf } from "@/lib/names"
+
+const EDITORIAL_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
 
 /** CSS selector for elements eligible for the focus trap. Mirrors
  *  the WAI-ARIA "tabbable elements" definition without depending on
@@ -58,7 +65,7 @@ function writeFlag(key: string): void {
   }
 }
 
-type Step = "privacy" | "setup" | "picker" | "done"
+type Step = "privacy" | "setup" | "picker" | "splash" | "done"
 
 function decideInitialStep(userId: string | undefined): Step {
   if (!userId) return "done"
@@ -87,11 +94,19 @@ function decideInitialStep(userId: string | undefined): Step {
  */
 export function FirstRunFlow() {
   const { user } = useAuth()
+  const navigate = useNavigate()
+  const prefersReducedMotion = useReducedMotion()
   const userId = user?.id
+  const firstName = firstNameOf(user?.full_name)
   const dialogRef = useRef<HTMLDivElement>(null)
   // ``useState`` initialiser runs once per mount; ``userId`` change
   // (sign-in, account switch) re-derives via the effect below.
   const [step, setStep] = useState<Step>(() => decideInitialStep(userId))
+  // The course the user enrolled in via the picker. Drives the
+  // EnrollSplash celebration and the post-splash navigation. We
+  // keep it as state (not a ref) so the splash re-renders on
+  // ``setStep("splash")`` with the freshest value.
+  const [enrolledCourse, setEnrolledCourse] = useState<Course | null>(null)
 
   useEffect(() => {
     setStep(decideInitialStep(userId))
@@ -194,10 +209,25 @@ export function FirstRunFlow() {
     writeFlag(grandTourSeenKey(userId))
   }, [userId])
 
-  const handlePickerEnrolled = useCallback(() => {
-    closePickerFlow()
+  const handlePickerEnrolled = useCallback(
+    (course: Course) => {
+      // Persist the gate-closing flags FIRST so a page refresh
+      // mid-splash doesn't loop the user back into the picker. The
+      // splash itself is a soft transition — losing it on refresh
+      // is fine; losing the enrolled state is not.
+      closePickerFlow()
+      setEnrolledCourse(course)
+      setStep("splash")
+    },
+    [closePickerFlow],
+  )
+
+  const handleSplashComplete = useCallback(() => {
     setStep("done")
-  }, [closePickerFlow])
+    if (enrolledCourse) {
+      navigate(`/courses/${enrolledCourse.id}`)
+    }
+  }, [navigate, enrolledCourse])
 
   const handlePickerBrowse = useCallback(() => {
     closePickerFlow()
@@ -211,6 +241,31 @@ export function FirstRunFlow() {
 
   if (!userId) return null
   if (step === "done") return null
+
+  // Splash has its own fullscreen layout (typographic celebration);
+  // skip the modal chrome so it's not constrained by overflow-y-auto
+  // + padding. Falls through to ``done`` after ~1.2s via
+  // ``handleSplashComplete`` which also fires the navigate.
+  if (step === "splash" && enrolledCourse) {
+    return (
+      <EnrollSplash
+        course={enrolledCourse}
+        firstName={firstName}
+        onComplete={handleSplashComplete}
+      />
+    )
+  }
+
+  // Editorial slide+fade between the three pre-splash steps so the
+  // transitions feel like scenes in a play rather than abrupt UI
+  // swaps. Cuts to instant for reduced-motion users.
+  const motionInitial = prefersReducedMotion
+    ? false
+    : { opacity: 0, y: 12, scale: 0.985 }
+  const motionAnimate = { opacity: 1, y: 0, scale: 1 }
+  const motionExit = prefersReducedMotion
+    ? { opacity: 0 }
+    : { opacity: 0, y: -8, scale: 0.99 }
 
   return (
     <div
@@ -227,17 +282,53 @@ export function FirstRunFlow() {
             ? "Quick setup"
             : "Pick your first course"}
       </h1>
-      {step === "privacy" && <PrivacyPolicyStep onAccept={handlePrivacyAccept} />}
-      {step === "setup" && (
-        <SetupStep onComplete={handleSetupComplete} onSkip={handleSetupSkip} />
-      )}
-      {step === "picker" && (
-        <CoursePickerStep
-          onEnrolled={handlePickerEnrolled}
-          onBrowse={handlePickerBrowse}
-          onSkip={handlePickerSkip}
-        />
-      )}
+      <AnimatePresence mode="wait" initial={false}>
+        {step === "privacy" && (
+          <motion.div
+            key="privacy"
+            initial={motionInitial}
+            animate={motionAnimate}
+            exit={motionExit}
+            transition={{ duration: 0.4, ease: EDITORIAL_EASE }}
+            className="flex w-full justify-center"
+          >
+            <PrivacyPolicyStep onAccept={handlePrivacyAccept} />
+          </motion.div>
+        )}
+        {step === "setup" && (
+          <motion.div
+            key="setup"
+            initial={motionInitial}
+            animate={motionAnimate}
+            exit={motionExit}
+            transition={{ duration: 0.4, ease: EDITORIAL_EASE }}
+            className="flex w-full justify-center"
+          >
+            <SetupStep
+              firstName={firstName}
+              onComplete={handleSetupComplete}
+              onSkip={handleSetupSkip}
+            />
+          </motion.div>
+        )}
+        {step === "picker" && (
+          <motion.div
+            key="picker"
+            initial={motionInitial}
+            animate={motionAnimate}
+            exit={motionExit}
+            transition={{ duration: 0.4, ease: EDITORIAL_EASE }}
+            className="flex w-full justify-center"
+          >
+            <CoursePickerStep
+              firstName={firstName}
+              onEnrolled={handlePickerEnrolled}
+              onBrowse={handlePickerBrowse}
+              onSkip={handlePickerSkip}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

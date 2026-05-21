@@ -12,10 +12,18 @@ import { cn } from "@/lib/utils"
 import type { Course } from "@/types"
 
 interface Props {
-  /** Fires after a successful enrollment of one or more picks. The
-   *  orchestrator marks the flow complete; this component handles
-   *  navigation to the first picked course's detail page. */
-  onEnrolled: () => void
+  /** First name from the user's profile (when known). When present,
+   *  the heading uses the personalised "{{name}}, pick a course"
+   *  variant. ``null``/``undefined`` both fall back to the un-named
+   *  title. */
+  firstName?: string | null
+  /** Fires with the FIRST successfully-enrolled course after the
+   *  user clicks "Enroll and open". The orchestrator drives the
+   *  EnrollSplash celebration on this course's title + cover, then
+   *  navigates to its detail page. We pass the whole ``Course``
+   *  (not just the id) so the splash has the title and cover
+   *  without an extra fetch. */
+  onEnrolled: (course: Course) => void
   /** Fires when the user explicitly chooses to browse instead — the
    *  orchestrator closes the flow and the user lands on the catalog
    *  with no enrollments. */
@@ -44,10 +52,15 @@ interface Props {
  * surfaces (course detail / chapter view) so the contextual
  * orientation arrives at the moment it matters.
  */
-export function CoursePickerStep({ onEnrolled, onBrowse, onSkip }: Props) {
+export function CoursePickerStep({ firstName, onEnrolled, onBrowse, onSkip }: Props) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const [courses, setCourses] = useState<Course[]>([])
+  // Keep an indexed map so ``handleEnroll`` can hand the
+  // orchestrator the actual ``Course`` object (title + cover) and
+  // not just the id — needed for the EnrollSplash that bridges the
+  // picker click and the navigation.
+  const coursesById = new Map(courses.map((c) => [c.id, c]))
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set())
@@ -117,8 +130,19 @@ export function CoursePickerStep({ onEnrolled, onBrowse, onSkip }: Props) {
     if (anyFailed) {
       toast({ title: t("firstRun.picker.enrollSomeFailed"), variant: "destructive" })
     }
-    onEnrolled()
-    navigate(`/courses/${firstSuccessId}`)
+    const firstCourse = coursesById.get(firstSuccessId)
+    if (!firstCourse) {
+      // Shouldn't happen — the ids in ``selectedIds`` come from this
+      // exact ``courses`` list. Defensive fallback: bypass the splash
+      // and navigate directly, same behaviour as the pre-splash code.
+      onEnrolled({ id: firstSuccessId } as Course)
+      navigate(`/courses/${firstSuccessId}`)
+      return
+    }
+    // Hand the course off to the orchestrator. ``onEnrolled`` is the
+    // one that drives the EnrollSplash transition AND eventually
+    // calls ``navigate``, so the picker bows out here.
+    onEnrolled(firstCourse)
   }
 
   const handleBrowse = () => {
@@ -133,7 +157,9 @@ export function CoursePickerStep({ onEnrolled, onBrowse, onSkip }: Props) {
         {t("firstRun.picker.eyebrow")}
       </p>
       <h1 className="font-serif text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-3xl">
-        {t("firstRun.picker.title")}
+        {firstName
+          ? t("firstRun.picker.titleNamed", { name: firstName })
+          : t("firstRun.picker.title")}
       </h1>
       <p className="max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
         {t("firstRun.picker.intro")}
