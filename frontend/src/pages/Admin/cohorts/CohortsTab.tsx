@@ -98,6 +98,16 @@ export function CohortsTab() {
     [setParams],
   )
 
+  // Effect-driven fetch with a request-id token. Without it, flipping
+  // the status filter quickly (All -> Upcoming -> Active) leaves three
+  // in-flight ``listCohorts`` calls; whichever resolves LAST writes
+  // its rows, so a slow "All" response can overwrite the freshly-
+  // loaded "Active" view. The token ensures only the latest request's
+  // result reaches state.
+  //
+  // ``load`` stays exposed for the retry button below, but the
+  // primary path is the effect so the cancellation token lives at
+  // the effect's scope where it's needed.
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -112,8 +122,27 @@ export function CohortsTab() {
   }, [statusFilter, t])
 
   useEffect(() => {
-    void load()
-  }, [load])
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    cohortsService
+      .listCohorts(statusFilter || undefined)
+      .then((data) => {
+        if (cancelled) return
+        setCohorts(data)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setError(t("admin.cohorts.loadError"))
+      })
+      .finally(() => {
+        if (cancelled) return
+        setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [statusFilter, t])
 
   // Client-side filter + paginate over the per-status fetch. Cohort
   // counts in production stay in the dozens, so we don't need a
@@ -142,7 +171,12 @@ export function CohortsTab() {
   const setSearch = (v: string) => updateCohorts({ cq: v || null }, { resetPage: true })
   const setStartRange = (range: { from: string; to: string }) =>
     updateCohorts({ cf: range.from || null, ct: range.to || null }, { resetPage: true })
-  const setPage = (n: number) => updateCohorts({ cp: n <= 1 ? null : String(n) })
+  const setPage = (n: number) => {
+    // Clamp into the valid window so a stale ?cp=999 from a previous
+    // filter doesn't survive in the URL after the row count shrinks.
+    const clamped = Math.max(1, Math.min(n, totalPages))
+    updateCohorts({ cp: clamped <= 1 ? null : String(clamped) })
+  }
   const setPageSize = (n: PageSize) =>
     updateCohorts(
       { cps: n === DEFAULT_PAGE_SIZE ? null : String(n) },

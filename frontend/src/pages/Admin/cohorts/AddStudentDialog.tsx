@@ -32,7 +32,10 @@ export function AddStudentDialog({ open, onClose, cohortId, onAdded }: Props) {
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
   const submit = async () => {
-    if (!isValid) return
+    // Re-check ``saving`` so a fast Enter+click can't fire the same
+    // POST twice. The button's ``disabled`` prevents the click path
+    // when re-rendered, but the keydown handler races the disable.
+    if (!isValid || saving) return
     setSaving(true)
     setError(null)
     try {
