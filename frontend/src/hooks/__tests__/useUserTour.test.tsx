@@ -141,6 +141,46 @@ describe("useUserTour", () => {
     expect(createTourMock).toHaveBeenCalledTimes(1)
   })
 
+  it("bails when the grand tour writes its suppression flag mid-mount (no 'another 5 steps' after grand-tour end)", async () => {
+    // Regression for the per-page-after-grand-tour bug: per-page
+    // hook for ``student-dashboard-v1`` mounts before grand tour
+    // ends. Grand tour's ``onDone`` writes the per-page seen flag
+    // to localStorage and flips ``grandTourActive`` false. Before
+    // this fix, the per-page hook kept its mount-time
+    // ``alreadySeen=false`` state and fired its own 5-step dashboard
+    // tour 350 ms after grand tour ended.
+    const { setGrandTourActive } = await import("@/lib/tourState")
+    vi.useFakeTimers()
+    try {
+      // 1. Grand tour starts → signal flips true
+      act(() => {
+        setGrandTourActive(true)
+      })
+      // 2. Per-page hook mounts during grand tour (alreadySeen=false
+      //    at this moment, no flag in localStorage yet)
+      renderWithUser("user-a", "student-dashboard-v1")
+      // 3. Grand tour ends: suppression flag IS written
+      //    BEFORE the signal flip — same order as in useGrandTour
+      window.localStorage.setItem(
+        "equip.tour.seen.user-a.student-dashboard-v1",
+        "1",
+      )
+      act(() => {
+        setGrandTourActive(false)
+      })
+      // 4. Advance past the auto-start delay
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(500)
+      })
+      // Per-page tour MUST NOT fire — alreadySeen got resynced from
+      // the freshly-written flag when grandTourActive flipped.
+      expect(driveMock).toHaveBeenCalledTimes(0)
+    } finally {
+      setGrandTourActive(false)
+      vi.useRealTimers()
+    }
+  })
+
   it("fires the auto-tour AFTER first-run flow closes (no firedRef poisoning)", async () => {
     // Regression for the firedRef bug: on initial mount,
     // firstRunActive=false (FirstRunFlow's effect hasn't run yet) so

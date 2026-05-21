@@ -116,29 +116,33 @@ export function useUserTour({
 
   const userId = user?.id
   const userRole = user?.role
-  // ``alreadySeen`` is read once into state on mount instead of every
-  // render. Without this, every keystroke / sort change on a
-  // tour-hosting page (gradebook, etc.) would hit
-  // ``window.localStorage.getItem`` synchronously on the render path.
-  // The ``userId`` change re-reads (different account, possibly
-  // different flag) via the effect below.
-  const [alreadySeen, setAlreadySeen] = useState(() => readSeen(userId, tourId))
-  useEffect(() => {
-    setAlreadySeen(readSeen(userId, tourId))
-  }, [userId, tourId])
-
-  // Reactive grand-tour signal: when the orchestrator decides to fire
-  // (or is already firing), per-page tours that the grand tour covers
-  // must bail their own auto-start so the user doesn't see two
-  // overlapping spotlights. Useful even after the grand tour has
-  // finished because the seen flag may not have been written yet
-  // when this hook's useState init ran on the same mount tick.
+  // Reactive grand-tour signal — declared first so it can feed the
+  // ``alreadySeen`` resync effect below.
   const grandTourActive = useSyncExternalStore(
     subscribeGrandTour,
     getGrandTourActive,
     () => false,
   )
   const isCovered = isCoveredByGrandTour(tourId)
+  // ``alreadySeen`` is read once into state on mount instead of every
+  // render. Without this, every keystroke / sort change on a
+  // tour-hosting page (gradebook, etc.) would hit
+  // ``window.localStorage.getItem`` synchronously on the render path.
+  // The ``userId``/``tourId`` change re-reads via the effect below.
+  const [alreadySeen, setAlreadySeen] = useState(() => readSeen(userId, tourId))
+  useEffect(() => {
+    setAlreadySeen(readSeen(userId, tourId))
+    // ``grandTourActive`` IS in the deps too: when the grand tour
+    // finishes (flips the signal false), its ``onDone``/``onSkipped``
+    // also writes per-page seen flags via
+    // ``suppressCoveredPerPageTours``. Without this resync, a
+    // dashboard hook that has been mounted through the whole grand
+    // tour keeps its stale ``alreadySeen=false`` state and fires its
+    // own 5-step tour 350 ms after the grand tour ends — which is
+    // exactly the "another 5 steps after 10" symptom the user
+    // reported. Re-reading on the signal flip picks up the fresh
+    // suppression flag.
+  }, [userId, tourId, grandTourActive])
 
   // Reactive first-run signal: while the Privacy Policy + Quick Setup
   // screens are up, EVERY per-page tour bails (covered or not). The
