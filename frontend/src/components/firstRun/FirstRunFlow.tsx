@@ -3,6 +3,7 @@ import { useAuth } from "@/context/useAuth"
 import { setFirstRunActive } from "@/lib/tourState"
 import { PrivacyPolicyStep } from "./PrivacyPolicyStep"
 import { SetupStep } from "./SetupStep"
+import { CoursePickerStep } from "./CoursePickerStep"
 
 /** CSS selector for elements eligible for the focus trap. Mirrors
  *  the WAI-ARIA "tabbable elements" definition without depending on
@@ -11,7 +12,17 @@ const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 const STORAGE_PREFIX_PRIVACY = "equip.privacy.accepted"
-const STORAGE_PREFIX_SETUP = "equip.first-run.completed"
+const STORAGE_PREFIX_SETUP = "equip.first-run.setup"
+// The picker flag CLOSES the first-run flow. Re-using the legacy
+// ``equip.first-run.completed`` key so users who already cleared
+// the pre-picker flow on prod don't see the picker pop up out of
+// nowhere on their next visit — they're past the first-run gate.
+const STORAGE_PREFIX_PICKER = "equip.first-run.completed"
+// The grand tour's seen-flag — we set it when the picker finishes
+// (or is skipped) so the cross-page tour doesn't auto-fire on top
+// of the user's brand-new enrollment. Manual "Take a tour" still
+// works via the WelcomeCard link.
+const STORAGE_PREFIX_GRAND_TOUR_SEEN = "equip.grand-tour.seen"
 
 function privacyKey(userId: string): string {
   return `${STORAGE_PREFIX_PRIVACY}.${userId}`
@@ -19,6 +30,14 @@ function privacyKey(userId: string): string {
 
 function setupKey(userId: string): string {
   return `${STORAGE_PREFIX_SETUP}.${userId}`
+}
+
+function pickerKey(userId: string): string {
+  return `${STORAGE_PREFIX_PICKER}.${userId}`
+}
+
+function grandTourSeenKey(userId: string): string {
+  return `${STORAGE_PREFIX_GRAND_TOUR_SEEN}.${userId}`
 }
 
 function readFlag(key: string): boolean {
@@ -39,12 +58,13 @@ function writeFlag(key: string): void {
   }
 }
 
-type Step = "privacy" | "setup" | "done"
+type Step = "privacy" | "setup" | "picker" | "done"
 
 function decideInitialStep(userId: string | undefined): Step {
   if (!userId) return "done"
   if (!readFlag(privacyKey(userId))) return "privacy"
   if (!readFlag(setupKey(userId))) return "setup"
+  if (!readFlag(pickerKey(userId))) return "picker"
   return "done"
 }
 
@@ -154,15 +174,40 @@ export function FirstRunFlow() {
 
   const handleSetupComplete = useCallback(() => {
     if (userId) writeFlag(setupKey(userId))
-    setStep("done")
+    setStep("picker")
   }, [userId])
 
   const handleSetupSkip = useCallback(() => {
     // Skip writes the flag too — the user has made the choice to
     // bypass setup; pestering them again next visit is wrong.
     if (userId) writeFlag(setupKey(userId))
-    setStep("done")
+    setStep("picker")
   }, [userId])
+
+  const closePickerFlow = useCallback(() => {
+    if (!userId) return
+    writeFlag(pickerKey(userId))
+    // Also tick the grand-tour-seen flag so the cross-page
+    // popover tour doesn't auto-fire on top of the user's brand-
+    // new enrollment / dashboard. Manual replay via the
+    // WelcomeCard "Take a tour" link still works.
+    writeFlag(grandTourSeenKey(userId))
+  }, [userId])
+
+  const handlePickerEnrolled = useCallback(() => {
+    closePickerFlow()
+    setStep("done")
+  }, [closePickerFlow])
+
+  const handlePickerBrowse = useCallback(() => {
+    closePickerFlow()
+    setStep("done")
+  }, [closePickerFlow])
+
+  const handlePickerSkip = useCallback(() => {
+    closePickerFlow()
+    setStep("done")
+  }, [closePickerFlow])
 
   if (!userId) return null
   if (step === "done") return null
@@ -176,11 +221,22 @@ export function FirstRunFlow() {
       className="fixed inset-0 z-[2147483646] flex items-start justify-center overflow-y-auto bg-background/95 px-4 py-10 backdrop-blur-sm sm:items-center sm:py-16"
     >
       <h1 id="first-run-heading" className="sr-only">
-        {step === "privacy" ? "Privacy policy" : "Quick setup"}
+        {step === "privacy"
+          ? "Privacy policy"
+          : step === "setup"
+            ? "Quick setup"
+            : "Pick your first course"}
       </h1>
       {step === "privacy" && <PrivacyPolicyStep onAccept={handlePrivacyAccept} />}
       {step === "setup" && (
         <SetupStep onComplete={handleSetupComplete} onSkip={handleSetupSkip} />
+      )}
+      {step === "picker" && (
+        <CoursePickerStep
+          onEnrolled={handlePickerEnrolled}
+          onBrowse={handlePickerBrowse}
+          onSkip={handlePickerSkip}
+        />
       )}
     </div>
   )

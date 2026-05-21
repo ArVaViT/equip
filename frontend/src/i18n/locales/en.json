@@ -197,6 +197,20 @@
       "skip": "Skip for now",
       "saveFailed": "Couldn't save your changes — they'll stay as the previous values. You can update from your profile.",
       "saveSuccess": "Your setup is saved."
+    },
+    "picker": {
+      "eyebrow": "Your first course",
+      "title": "Pick a course to begin with",
+      "intro": "Tap any card to add it to your shelf. You can pick more than one. We'll open the first one for you so you can start right away.",
+      "modulesCount_one": "{{count}} module",
+      "modulesCount_other": "{{count}} modules",
+      "enrollOne": "Enroll and open the course",
+      "enrollMany": "Enroll in {{count}} and open the first",
+      "browseAll": "Browse the full catalog",
+      "skip": "Maybe later",
+      "loadFailed": "Couldn't load the catalog — check your connection and try again.",
+      "enrollAllFailed": "Couldn't enroll — please try again, or browse the catalog manually.",
+      "enrollSomeFailed": "Enrolled in part of your selection. Open the rest from the catalog."
     }
   },
   "grandTour": {
