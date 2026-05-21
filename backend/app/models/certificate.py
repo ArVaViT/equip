@@ -43,7 +43,12 @@ class Certificate(Base):
     # ``20260516020225_certificates_course_set_null_with_archive.sql``.
     course_id: Mapped[str | None] = mapped_column(ForeignKey("courses.id", ondelete="SET NULL"), nullable=True)
     archived_course_title: Mapped[str | None] = mapped_column(Text, nullable=True)
-    issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # No server_default: the previous ``func.now()`` populated this column
+    # on certificate REQUEST (status='pending'), exposing a fake "issued"
+    # datetime months before ``admin_approve`` actually issues the cert.
+    # ``admin_approve`` is the only writer now; the column stays NULL for
+    # pending / teacher_approved / rejected rows.
+    issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     certificate_number: Mapped[str | None] = mapped_column(String(50), unique=True)
     status: Mapped[str] = mapped_column(String(20), default="pending")
     requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
