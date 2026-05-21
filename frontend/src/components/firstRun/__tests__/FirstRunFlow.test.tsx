@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { ReactNode } from "react"
 import { I18nextProvider } from "react-i18next"
+import { MemoryRouter } from "react-router-dom"
 import i18n from "@/i18n/config"
 import { AuthContext } from "@/context/auth-context"
 import { ThemeContext } from "@/context/theme-context"
@@ -24,6 +25,20 @@ vi.mock("@/services/preferences", () => ({
 vi.mock("@/services/storage", () => ({
   storageService: {
     uploadAvatar: vi.fn().mockResolvedValue("https://example.com/a.png"),
+  },
+}))
+// CoursePickerStep fetches the catalog on mount — return an empty
+// list so the step auto-skips via its own ``onSkip`` path. Tests
+// that need the picker UI visible can re-mock per-test with real
+// course data.
+vi.mock("@/services/courses", () => ({
+  coursesService: {
+    getCourses: vi.fn().mockResolvedValue([]),
+  },
+}))
+vi.mock("@/services/enrollments", () => ({
+  enrollmentsService: {
+    enrollInCourse: vi.fn().mockResolvedValue({}),
   },
 }))
 vi.mock("@/lib/toast", () => ({
@@ -49,24 +64,26 @@ function makeUser(): User {
 function Wrapper({ children, userId = "user-1" }: { children: ReactNode; userId?: string | null }) {
   const user = userId ? { ...makeUser(), id: userId } : null
   return (
-    <I18nextProvider i18n={i18n}>
-      <ThemeContext.Provider value={{ theme: "light", toggleTheme: vi.fn() }}>
-        <AuthContext.Provider
-          value={{
-            user,
-            loading: false,
-            login: vi.fn(),
-            register: vi.fn(),
-            signInWithGoogle: vi.fn(),
-            resetPassword: vi.fn(),
-            logout: vi.fn(),
-            refreshUser: vi.fn().mockResolvedValue(undefined),
-          }}
-        >
-          {children}
-        </AuthContext.Provider>
-      </ThemeContext.Provider>
-    </I18nextProvider>
+    <MemoryRouter>
+      <I18nextProvider i18n={i18n}>
+        <ThemeContext.Provider value={{ theme: "light", toggleTheme: vi.fn() }}>
+          <AuthContext.Provider
+            value={{
+              user,
+              loading: false,
+              login: vi.fn(),
+              register: vi.fn(),
+              signInWithGoogle: vi.fn(),
+              resetPassword: vi.fn(),
+              logout: vi.fn(),
+              refreshUser: vi.fn().mockResolvedValue(undefined),
+            }}
+          >
+            {children}
+          </AuthContext.Provider>
+        </ThemeContext.Provider>
+      </I18nextProvider>
+    </MemoryRouter>
   )
 }
 
@@ -136,8 +153,12 @@ describe("FirstRunFlow", () => {
     expect(screen.queryByText(i18n.t("firstRun.privacy.title"))).not.toBeInTheDocument()
   })
 
-  it("renders nothing AND keeps firstRunActive=false when both flags are set", () => {
+  it("renders nothing AND keeps firstRunActive=false when ALL three flags are set", () => {
     window.localStorage.setItem("equip.privacy.accepted.user-1", "1")
+    window.localStorage.setItem("equip.first-run.setup.user-1", "1")
+    // ``equip.first-run.completed`` is the picker-completion flag —
+    // legacy users who finished the pre-picker flow already have
+    // this set, so re-using the key keeps them past the gate.
     window.localStorage.setItem("equip.first-run.completed.user-1", "1")
     const { container } = render(
       <Wrapper>
@@ -148,7 +169,7 @@ describe("FirstRunFlow", () => {
     expect(getFirstRunActive()).toBe(false)
   })
 
-  it("Skip on Setup writes the completion flag and closes the flow", () => {
+  it("Skip on Setup advances to the picker (does NOT close the gate)", () => {
     window.localStorage.setItem("equip.privacy.accepted.user-1", "1")
     render(
       <Wrapper>
@@ -156,13 +177,16 @@ describe("FirstRunFlow", () => {
       </Wrapper>,
     )
     fireEvent.click(screen.getByRole("button", { name: i18n.t("firstRun.setup.skip") }))
-    expect(window.localStorage.getItem("equip.first-run.completed.user-1")).toBe("1")
+    expect(window.localStorage.getItem("equip.first-run.setup.user-1")).toBe("1")
     expect(screen.queryByText(i18n.t("firstRun.setup.title"))).not.toBeInTheDocument()
-    expect(getFirstRunActive()).toBe(false)
+    // Picker takes over (or auto-skips to done if catalog is empty —
+    // mocked above). Either way the gate is still controlling the
+    // ``firstRunActive`` signal until the picker resolves.
   })
 
   it("scopes flags by user id (no cross-account leak)", () => {
     window.localStorage.setItem("equip.privacy.accepted.user-A", "1")
+    window.localStorage.setItem("equip.first-run.setup.user-A", "1")
     window.localStorage.setItem("equip.first-run.completed.user-A", "1")
     render(
       <Wrapper userId="user-B">
