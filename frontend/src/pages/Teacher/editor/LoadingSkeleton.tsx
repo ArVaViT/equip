@@ -5,9 +5,9 @@ export function CourseEditorSkeleton() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <Skeleton className="h-8 w-32 mb-6" />
-      <div className="rounded-lg border overflow-hidden mb-8">
+      <div className="mb-8 overflow-hidden rounded-md border">
         <Skeleton className="h-48 w-full rounded-none" />
-        <div className="p-6 space-y-3">
+        <div className="space-y-3 p-5">
           <Skeleton className="h-6 w-2/3" />
           <Skeleton className="h-4 w-1/2" />
           <div className="flex gap-2 mt-4">

@@ -11,7 +11,7 @@ export function TeacherDashboardSkeleton() {
     <div className="space-y-4" aria-hidden="true">
       {[0, 1, 2].map((i) => (
         <Card key={i}>
-          <div className="flex items-start gap-4 p-6">
+          <div className="flex items-start gap-4 p-5">
             <Skeleton className="h-20 w-20 shrink-0 rounded-lg" />
             <div className="flex-1 min-w-0 space-y-3">
               <div className="flex items-center gap-2">

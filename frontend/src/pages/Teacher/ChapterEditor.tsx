@@ -327,7 +327,7 @@ export default function ChapterEditor() {
                 aria-pressed={selected}
                 className={`flex items-start gap-3 rounded-md border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                   selected
-                    ? "border-primary bg-primary/[0.04] ring-1 ring-primary/40"
+                    ? "border-primary bg-primary/[0.08] ring-1 ring-primary/40 dark:bg-primary/15"
                     : "border-border hover:border-primary/30 hover:bg-muted/40"
                 }`}
               >
@@ -358,7 +358,7 @@ export default function ChapterEditor() {
 
       {/* Type-specific editor */}
       <Card data-tour="chapter-editor-blocks" className="mb-6">
-        <CardContent className="p-6 space-y-4">
+        <CardContent className="space-y-4 p-5">
           {chapterType === "reading" && (
             <ChapterBlockEditor chapterId={chapter.id} />
           )}
