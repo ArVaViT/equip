@@ -42,7 +42,15 @@ export default function AdminDashboard() {
     ? (rawTab as AdminTab)
     : "overview"
 
-  const overview = useAdminOverview({ currentUserId: user?.id })
+  // Overview data is needed by the overview tab itself AND by the audit
+  // tab (audit rows show the user's name via ``userMap``, which is
+  // derived from the same users list). The cohorts tab needs neither,
+  // so we skip the whole overview fetch when the user opens that tab
+  // directly via ``?tab=cohorts``. Saves four service round-trips
+  // (users, courses count, enrollments count, pending certs) on every
+  // cold visit to the cohorts surface.
+  const overviewEnabled = tab === "overview" || tab === "audit"
+  const overview = useAdminOverview({ currentUserId: user?.id, enabled: overviewEnabled })
   const audit = useAdminAudit({ enabled: tab === "audit" })
 
   if (user?.role !== "admin") return <Navigate to="/" replace />
@@ -56,12 +64,19 @@ export default function AdminDashboard() {
 
   return (
     <div className="animate-fade-in container mx-auto max-w-6xl px-4 py-6 sm:py-8">
-      <div className="mb-6 flex items-center gap-3">
-        <div className="rounded-lg bg-primary/10 p-2">
-          <Shield className="h-6 w-6 text-primary" strokeWidth={1.75} />
+      <header className="mb-6 space-y-2">
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          {t("admin.eyebrow")}
+        </p>
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-primary/10 p-2">
+            <Shield className="h-6 w-6 text-primary" strokeWidth={1.75} />
+          </div>
+          <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">
+            {t("admin.title")}
+          </h1>
         </div>
-        <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">{t("admin.title")}</h1>
-      </div>
+      </header>
 
       <AdminTabs active={tab} onChange={setTab} />
 

@@ -100,88 +100,63 @@ export function UsersCard({
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between gap-4 space-y-0 flex-wrap">
-        <CardTitle className="text-xl">{t("admin.users.title")}</CardTitle>
-        <div className="flex items-center gap-3 flex-wrap">
-          {selectedIds.size > 0 && (
-            <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 sm:w-auto">
-              <span className="text-xs font-medium">{t("admin.users.selected", { count: selectedIds.size })}</span>
-              <Select
-                value={bulkRole}
-                onValueChange={(v) => onBulkRoleChange(v as UserRole)}
-              >
-                <SelectTrigger size="sm" className="w-auto">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="student">{t("roles.student")}</SelectItem>
-                  <SelectItem value="pending_teacher">{t("roles.pendingTeacher")}</SelectItem>
-                  <SelectItem value="teacher">{t("roles.teacher")}</SelectItem>
-                  <SelectItem value="admin">{t("roles.admin")}</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                size="sm"
-                className="h-9 text-xs sm:h-7"
-                onClick={onApplyBulkRole}
-                disabled={bulkUpdating}
-              >
-                {bulkUpdating ? t("admin.users.bulkUpdating") : t("admin.users.bulkApply")}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-9 text-xs sm:h-7"
-                onClick={onClearSelection}
-              >
-                {t("admin.users.bulkClear")}
-              </Button>
-            </div>
-          )}
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-            {/* Role filter — narrows the table to a single role.
-                ``"all"`` ↔ empty string in the URL; same wrapper trick
-                the cohort / audit Selects use. */}
-            <Select
-              value={roleFilter || "all"}
-              onValueChange={(v) =>
-                onRoleFilterChange((v === "all" ? "" : v) as RoleFilterValue)
-              }
+      <CardHeader className="space-y-4">
+        {/* Row 1: title only. Keeps the visual hierarchy honest --
+            previously the title competed with three controls in a
+            single flex-wrap row, and at laptop widths the chip strip
+            below would wrap up under the search input creating an
+            orphan visual that looked unfinished. */}
+        <CardTitle className="text-lg">{t("admin.users.title")}</CardTitle>
+
+        {/* Row 2: filter + search aligned right. ``items-center`` so
+            the search h-9 input and select line up; ``ml-auto`` pushes
+            the controls to the trailing edge on wide widths but stays
+            stackable on mobile via ``flex-wrap``. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            value={roleFilter || "all"}
+            onValueChange={(v) =>
+              onRoleFilterChange((v === "all" ? "" : v) as RoleFilterValue)
+            }
+          >
+            <SelectTrigger
+              size="sm"
+              aria-label={t("admin.users.roleFilterAria")}
+              className={cn(
+                "h-9 w-full sm:w-44",
+                roleFilter && "border-primary/40 ring-1 ring-primary/40",
+              )}
             >
-              <SelectTrigger
-                size="sm"
-                aria-label={t("admin.users.roleFilterAria")}
-                className={cn(
-                  "h-9 w-full sm:w-44",
-                  roleFilter && "border-primary/40 ring-1 ring-primary/40",
-                )}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("admin.users.roleFilterAll")}</SelectItem>
-                <SelectItem value="admin">{t("roles.admin")}</SelectItem>
-                <SelectItem value="teacher">{t("roles.teacher")}</SelectItem>
-                <SelectItem value="pending_teacher">{t("roles.pendingTeacher")}</SelectItem>
-                <SelectItem value="student">{t("roles.student")}</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="relative w-full max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
-              <Input
-                placeholder={t("admin.users.searchPlaceholder")}
-                value={searchInput}
-                onChange={(e) => onSearchInputChange(e.target.value.slice(0, searchMaxLength))}
-                maxLength={searchMaxLength}
-                className="pl-9"
-              />
-            </div>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("admin.users.roleFilterAll")}</SelectItem>
+              <SelectItem value="admin">{t("roles.admin")}</SelectItem>
+              <SelectItem value="teacher">{t("roles.teacher")}</SelectItem>
+              <SelectItem value="pending_teacher">{t("roles.pendingTeacher")}</SelectItem>
+              <SelectItem value="student">{t("roles.student")}</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="relative w-full sm:max-w-xs sm:flex-1">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+              strokeWidth={1.75}
+              aria-hidden="true"
+            />
+            <Input
+              placeholder={t("admin.users.searchPlaceholder")}
+              value={searchInput}
+              onChange={(e) => onSearchInputChange(e.target.value.slice(0, searchMaxLength))}
+              maxLength={searchMaxLength}
+              className="pl-9"
+            />
           </div>
         </div>
-        {/* Role distribution chip strip — clickable shortcuts for the
-            filter that double as a tenant-shape snapshot. Hides
-            zero-count roles so the strip stays meaningful on small
-            tenants. Active filter gets the primary fill. */}
+
+        {/* Row 3: role distribution chip strip — clickable shortcuts
+            for the filter that double as a tenant-shape snapshot.
+            Hides zero-count roles so the strip stays meaningful on
+            small tenants. Active filter gets the primary fill. */}
         <div className="flex flex-wrap items-center gap-1.5 text-xs">
           {(["admin", "teacher", "pending_teacher", "student"] as const).map((role) => {
             if (roleCounts[role] === 0) return null
@@ -199,16 +174,58 @@ export function UsersCard({
                 )}
               >
                 <span>{t(`roles.${role === "pending_teacher" ? "pendingTeacher" : role}`)}</span>
-                <span className={cn(
-                  "tabular-nums",
-                  active ? "opacity-90" : "text-muted-foreground"
-                )}>
+                <span
+                  className={cn(
+                    "tabular-nums",
+                    active ? "opacity-90" : "text-muted-foreground",
+                  )}
+                >
                   {roleCounts[role]}
                 </span>
               </button>
             )
           })}
         </div>
+
+        {/* Row 4 (conditional): bulk-action bar. Lives below the
+            distribution strip rather than competing with title +
+            filters above; appears only when at least one row is
+            selected. Full-width tinted card makes the "selection
+            mode" state obvious. */}
+        {selectedIds.size > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2">
+            <span className="text-xs font-medium">
+              {t("admin.users.selected", { count: selectedIds.size })}
+            </span>
+            <Select value={bulkRole} onValueChange={(v) => onBulkRoleChange(v as UserRole)}>
+              <SelectTrigger size="sm" className="w-auto">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="student">{t("roles.student")}</SelectItem>
+                <SelectItem value="pending_teacher">{t("roles.pendingTeacher")}</SelectItem>
+                <SelectItem value="teacher">{t("roles.teacher")}</SelectItem>
+                <SelectItem value="admin">{t("roles.admin")}</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              className="h-9 text-xs sm:h-7"
+              onClick={onApplyBulkRole}
+              disabled={bulkUpdating}
+            >
+              {bulkUpdating ? t("admin.users.bulkUpdating") : t("admin.users.bulkApply")}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-9 text-xs sm:h-7"
+              onClick={onClearSelection}
+            >
+              {t("admin.users.bulkClear")}
+            </Button>
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         {loading ? (

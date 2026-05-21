@@ -1294,6 +1294,7 @@
   },
   "admin": {
     "title": "Админ-панель",
+    "eyebrow": "Администрирование",
     "subtitle": "Пользователи, роли и активность платформы",
     "tabOverview": "Обзор",
     "tabCohorts": "Когорты",
@@ -1353,8 +1354,12 @@
       "adding": "Добавляем…",
       "errorUserNotFound": "Пользователя с таким email нет — попросите его зарегистрироваться.",
       "errorCohortFull": "Когорта достигла максимума мест.",
-      "noCoursesAttached": "Курсов пока нет. Нажмите «Добавить курс», чтобы привязать первый.",
-      "noStudents": "Студентов пока нет. Нажмите «Добавить студента», чтобы зачислить первого.",
+      "eyebrow": "Когорта",
+      "noCoursesAttachedTitle": "Курсы ещё не привязаны",
+      "noCoursesAttached": "Привяжите курс, чтобы он стал доступен студентам этой когорты.",
+      "noStudentsTitle": "Пока нет студентов",
+      "noStudents": "Добавьте студентов по email — они автоматически зачислятся на все привязанные курсы.",
+      "studentSearchNoMatchHint": "Попробуйте другое имя или email.",
       "deleteButton": "Удалить когорту",
       "completeConfirmTitle": "Отметить когорту как завершённую?",
       "completeConfirmDescription": "Зачисления и оценки сохранятся; когорта просто перестанет быть редактируемой.",
@@ -1495,6 +1500,13 @@
       "usersLast7Days_many": "+{{count}} за неделю",
       "usersLast7Days_other": "+{{count}} за неделю",
       "usersLast7Days_zero": "Новых регистраций нет"
+    },
+    "pagination": {
+      "pageSizeLabel": "Строк на странице",
+      "page": "Страница {{page}} из {{total}}",
+      "prevPageAria": "Предыдущая страница",
+      "nextPageAria": "Следующая страница",
+      "filterClear": "Сбросить фильтры"
     },
     "audit": {
       "filterAction": "Действие",

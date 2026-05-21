@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import {
-  ArrowLeft,
+  BookOpen,
   Calendar,
   Plus,
   Search,
@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label"
 import { useConfirm } from "@/components/ui/alert-dialog"
 import { useAuth } from "@/context/useAuth"
 import PageSpinner from "@/components/ui/PageSpinner"
-import { ErrorState } from "@/components/patterns"
+import { EmptyState, ErrorState, PageHeader } from "@/components/patterns"
 import { cohortsService, type CohortStudent } from "@/services/cohorts"
 import { coursesService } from "@/services/courses"
 import { toast } from "@/lib/toast"
@@ -43,7 +43,11 @@ export default function CohortDetailPage() {
   const [notFound, setNotFound] = useState(false)
   const [attachOpen, setAttachOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
-  const [savingField, setSavingField] = useState(false)
+  // Track which specific field is in-flight so saving "name" doesn't
+  // also disable the date pickers and capacity input. Previously a
+  // single boolean froze the whole Details card on each save which
+  // looked broken on slow networks. ``null`` = nothing saving.
+  const [savingField, setSavingField] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!cohortId) return
@@ -56,9 +60,18 @@ export default function CohortDetailPage() {
       setCohort(c)
       setStudents(s)
       if (c.course_ids.length) {
-        const all = await coursesService.getCourses()
-        const attached = all.filter((co) => c.course_ids.includes(co.id))
-        setCourses(attached)
+        // Fetch only the cohort's attached courses instead of the
+        // whole catalog. ``getCourse`` is cached for 3 minutes per
+        // id, so revisiting the same cohort or visiting overlapping
+        // cohorts is largely free; a single cold cohort with N
+        // courses costs N parallel requests instead of 1 request
+        // returning the entire tenant catalog.
+        const attached = await Promise.all(
+          c.course_ids.map((id) =>
+            coursesService.getCourse(id).catch(() => null),
+          ),
+        )
+        setCourses(attached.filter((co): co is Course => co !== null))
       } else {
         setCourses([])
       }
@@ -75,9 +88,12 @@ export default function CohortDetailPage() {
     void load()
   }, [load])
 
-  const patch = async (body: Parameters<typeof cohortsService.updateCohort>[1]) => {
+  const patch = async (
+    fieldName: string,
+    body: Parameters<typeof cohortsService.updateCohort>[1],
+  ) => {
     if (!cohortId) return
-    setSavingField(true)
+    setSavingField(fieldName)
     try {
       const updated = await cohortsService.updateCohort(cohortId, body)
       setCohort(updated)
@@ -85,7 +101,7 @@ export default function CohortDetailPage() {
     } catch {
       toast({ title: t("admin.cohorts.toast.saveFailed"), variant: "destructive" })
     } finally {
-      setSavingField(false)
+      setSavingField(null)
     }
   }
 
@@ -109,7 +125,7 @@ export default function CohortDetailPage() {
       })
       if (!ok) return
     }
-    await patch({ status: next })
+    await patch("status", { status: next })
   }
 
   const handleDelete = async () => {
@@ -190,39 +206,35 @@ export default function CohortDetailPage() {
   }
 
   return (
-    <div className="animate-fade-in container mx-auto px-4 py-8 max-w-5xl">
-      <Link to="/admin?tab=cohorts">
-        <Button variant="ghost" size="sm" className="mb-4 h-8 text-xs">
-          <ArrowLeft className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-          {t("admin.cohorts.backToList")}
-        </Button>
-      </Link>
-
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="mb-2 flex flex-wrap items-center gap-3">
-            <h1 className="font-serif text-3xl font-bold tracking-tight text-wrap-safe">
-              {cohort.name}
-            </h1>
-            <CohortStatusPicker
-              status={cohort.status}
-              disabled={savingField}
-              onChange={(next) => void handleStatusChange(next)}
-              ariaLabel={t("admin.cohorts.fieldStatus")}
-            />
+    <div className="animate-fade-in container mx-auto px-4 py-8 max-w-6xl">
+      <PageHeader
+        backTo="/admin?tab=cohorts"
+        backLabel={t("admin.cohorts.backToList")}
+        title={
+          <div className="space-y-2">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              {t("admin.cohorts.eyebrow")}
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="font-serif text-3xl font-bold tracking-tight text-wrap-safe">
+                {cohort.name}
+              </h1>
+              <CohortStatusPicker
+                status={cohort.status}
+                disabled={savingField === "status"}
+                onChange={(next) => void handleStatusChange(next)}
+                ariaLabel={t("admin.cohorts.fieldStatus")}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {formatDate(cohort.start_date)} &mdash; {formatDate(cohort.end_date)}
+            </p>
+            {cohort.max_students != null && (
+              <CapacityMeter current={cohort.student_count} cap={cohort.max_students} />
+            )}
           </div>
-          <p className="text-sm text-muted-foreground">
-            {formatDate(cohort.start_date)} &mdash; {formatDate(cohort.end_date)}
-          </p>
-          {/* Capacity meter — gives the admin an at-a-glance read of
-              how full the cohort is. Hidden when ``max_students`` is
-              null (unlimited) since the "X of unlimited" bar has no
-              meaningful fill state. */}
-          {cohort.max_students != null && (
-            <CapacityMeter current={cohort.student_count} cap={cohort.max_students} />
-          )}
-        </div>
-        <div className="flex items-center gap-2">
+        }
+        actions={
           <Button
             variant="outline"
             size="sm"
@@ -232,8 +244,8 @@ export default function CohortDetailPage() {
             <Trash2 className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
             {t("admin.cohorts.deleteButton")}
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <Card className="mb-6">
         <CardHeader className="pb-3">
@@ -246,18 +258,18 @@ export default function CohortDetailPage() {
           <Field
             label={t("admin.cohorts.fieldName")}
             value={cohort.name}
-            onBlurSave={(v) => v !== cohort.name && patch({ name: v })}
-            disabled={savingField}
+            onBlurSave={(v) => v !== cohort.name && patch("name", { name: v })}
+            disabled={savingField === "name"}
           />
           <Field
             label={t("admin.cohorts.fieldMaxStudents")}
             value={cohort.max_students == null ? "" : String(cohort.max_students)}
             placeholder={t("admin.cohorts.unlimited")}
-            disabled={savingField}
+            disabled={savingField === "max_students"}
             onBlurSave={(v) => {
               const n = v ? Number(v) : null
               if (n === cohort.max_students) return
-              void patch({ max_students: n })
+              void patch("max_students", { max_students: n })
             }}
             inputType="number"
           />
@@ -265,30 +277,30 @@ export default function CohortDetailPage() {
             label={t("admin.cohorts.fieldStart")}
             value={cohort.start_date}
             onSave={(iso) => {
-              if (iso) void patch({ start_date: iso })
+              if (iso) void patch("start_date", { start_date: iso })
             }}
-            disabled={savingField}
+            disabled={savingField === "start_date"}
           />
           <DateField
             label={t("admin.cohorts.fieldEnd")}
             value={cohort.end_date}
             onSave={(iso) => {
-              if (iso) void patch({ end_date: iso })
+              if (iso) void patch("end_date", { end_date: iso })
             }}
-            disabled={savingField}
+            disabled={savingField === "end_date"}
           />
           <DateField
             label={t("admin.cohorts.fieldEnrollStart")}
             value={cohort.enrollment_start}
-            onSave={(iso) => patch({ enrollment_start: iso })}
-            disabled={savingField}
+            onSave={(iso) => patch("enrollment_start", { enrollment_start: iso })}
+            disabled={savingField === "enrollment_start"}
             nullable
           />
           <DateField
             label={t("admin.cohorts.fieldEnrollEnd")}
             value={cohort.enrollment_end}
-            onSave={(iso) => patch({ enrollment_end: iso })}
-            disabled={savingField}
+            onSave={(iso) => patch("enrollment_end", { enrollment_end: iso })}
+            disabled={savingField === "enrollment_end"}
             nullable
           />
         </CardContent>
@@ -306,9 +318,17 @@ export default function CohortDetailPage() {
         </CardHeader>
         <CardContent className="pt-0">
           {courses.length === 0 ? (
-            <p className="py-4 text-sm text-muted-foreground">
-              {t("admin.cohorts.noCoursesAttached")}
-            </p>
+            <EmptyState
+              icon={<BookOpen strokeWidth={1.75} aria-hidden />}
+              title={t("admin.cohorts.noCoursesAttachedTitle")}
+              description={t("admin.cohorts.noCoursesAttached")}
+              action={
+                <Button size="sm" variant="outline" onClick={() => setAttachOpen(true)}>
+                  <Plus className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  {t("admin.cohorts.attachCourseButton")}
+                </Button>
+              }
+            />
           ) : (
             // Inline list of course chips — dense, visually consistent
             // with the rest of the admin row vocabulary (Vercel-style
@@ -527,13 +547,23 @@ function StudentsCard({
       </CardHeader>
       <CardContent className="p-0">
         {students.length === 0 ? (
-          <p className="px-6 py-6 text-sm text-muted-foreground">
-            {t("admin.cohorts.noStudents")}
-          </p>
+          <EmptyState
+            icon={<Users strokeWidth={1.75} aria-hidden />}
+            title={t("admin.cohorts.noStudentsTitle")}
+            description={t("admin.cohorts.noStudents")}
+            action={
+              <Button size="sm" variant="outline" onClick={onAdd}>
+                <Plus className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                {t("admin.cohorts.addStudentButton")}
+              </Button>
+            }
+          />
         ) : filtered.length === 0 ? (
-          <p className="px-6 py-6 text-sm text-muted-foreground">
-            {t("admin.cohorts.studentSearchNoMatch")}
-          </p>
+          <EmptyState
+            icon={<Search strokeWidth={1.75} aria-hidden />}
+            title={t("admin.cohorts.studentSearchNoMatch")}
+            description={t("admin.cohorts.studentSearchNoMatchHint")}
+          />
         ) : (
           <div className="max-h-[55vh] overflow-y-auto">
             <table className="w-full text-sm">
