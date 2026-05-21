@@ -8,7 +8,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_teacher, verify_course_owner
@@ -323,18 +323,55 @@ def upsert_student_grade(
             grade.comment = data.comment
         grade.graded_by = teacher.id
         grade.graded_at = datetime.now(UTC)
-    else:
-        grade = StudentGrade(
-            id=uuid.uuid4(),
-            student_id=student_id,
-            course_id=course_id,
-            cohort_id=cohort_id,
-            grade=data.grade,
-            comment=data.comment,
-            graded_by=teacher.id,
-        )
-        db.add(grade)
+        db.commit()
+        db.refresh(grade)
+        return grade
 
-    db.commit()
+    grade = StudentGrade(
+        id=uuid.uuid4(),
+        student_id=student_id,
+        course_id=course_id,
+        cohort_id=cohort_id,
+        grade=data.grade,
+        comment=data.comment,
+        graded_by=teacher.id,
+    )
+    db.add(grade)
+    try:
+        db.commit()
+    except IntegrityError:
+        # Concurrent upsert just inserted the same (student, course,
+        # cohort) row. The unique index in migration
+        # ``20260521172911_student_grades_unique_constraint`` is what
+        # surfaces the race as a clean IntegrityError instead of two
+        # duplicate rows. Re-read, apply the caller's update on top of
+        # the winner, return that.
+        db.rollback()
+        existing_query = db.query(StudentGrade).filter(
+            StudentGrade.student_id == student_id,
+            StudentGrade.course_id == course_id,
+        )
+        if cohort_id is not None:
+            existing_query = existing_query.filter(StudentGrade.cohort_id == cohort_id)
+        else:
+            existing_query = existing_query.filter(StudentGrade.cohort_id.is_(None))
+        existing = existing_query.first()
+        if not existing:
+            # IntegrityError without a matching row means a different
+            # constraint fired (FK violation, etc). Surface a clean 409
+            # instead of leaking via the generic SQLAlchemy 503 handler.
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Grade could not be saved due to a conflict; please retry.",
+            ) from None
+        if data.grade is not None:
+            existing.grade = data.grade
+        if data.comment is not None:
+            existing.comment = data.comment
+        existing.graded_by = teacher.id
+        existing.graded_at = datetime.now(UTC)
+        db.commit()
+        db.refresh(existing)
+        return existing
     db.refresh(grade)
     return grade

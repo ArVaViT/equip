@@ -9,8 +9,7 @@ import { SetupStep } from "./SetupStep"
 import { CoursePickerStep } from "./CoursePickerStep"
 import { EnrollSplash } from "./EnrollSplash"
 import { firstNameOf } from "@/lib/names"
-
-const EDITORIAL_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
+import { EDITORIAL_EASE } from "@/lib/motion"
 
 /** CSS selector for elements eligible for the focus trap. Mirrors
  *  the WAI-ARIA "tabbable elements" definition without depending on

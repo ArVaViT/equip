@@ -18,8 +18,7 @@ import { studentDashboardSteps } from "@/lib/tourSteps"
 import { firstNameOf } from "@/lib/names"
 import { PublicLanding } from "./PublicLanding"
 import { cn } from "@/lib/utils"
-
-const EDITORIAL_EASE = [0.22, 1, 0.36, 1] as const
+import { EDITORIAL_EASE } from "@/lib/motion"
 
 interface MyCoursesSectionProps {
   /** Click handler wired by ``DashboardPage`` to start the dashboard

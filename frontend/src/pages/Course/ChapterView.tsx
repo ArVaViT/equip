@@ -19,6 +19,7 @@ import {
   Download,
   File,
   Loader2,
+  RefreshCw,
 } from "lucide-react"
 import QuizTaker from "@/components/quiz/QuizTaker"
 import AssignmentPanel from "@/components/assignment/AssignmentPanel"
@@ -146,16 +147,38 @@ function FileBlockLink({
 function ChapterBodyBlocks({
   loading,
   blocks,
+  loadError,
+  onRetry,
   onProgressChanged,
   onAssignmentCountLoaded,
 }: {
   loading: boolean
   blocks: ChapterBlock[]
+  loadError: boolean
+  onRetry: () => void
   onProgressChanged?: () => void
   onAssignmentCountLoaded?: (count: number) => void
 }) {
   const { t } = useTranslation()
   if (loading) return <PageSpinner variant="section" />
+  if (loadError) {
+    // Reading a chapter whose blocks failed to load should NOT render
+    // as "this chapter is empty" — that's how a teacher discovers a
+    // network blip looks identical to deliberately empty content and
+    // emails support thinking their content vanished.
+    return (
+      <ErrorState
+        title={t("chapter.blocksLoadFailed")}
+        description={t("chapter.blocksLoadFailedDescription")}
+        action={
+          <Button size="sm" onClick={onRetry}>
+            <RefreshCw className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+            {t("common.tryAgain")}
+          </Button>
+        }
+      />
+    )
+  }
   if (blocks.length === 0) {
     return (
       <div className="rounded-md border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
@@ -321,6 +344,11 @@ export default function ChapterView() {
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
   const [chapterBlocks, setChapterBlocks] = useState<ChapterBlock[]>([])
   const [loadingBlocks, setLoadingBlocks] = useState(false)
+  const [blocksLoadError, setBlocksLoadError] = useState(false)
+  const [blocksReloadKey, setBlocksReloadKey] = useState(0)
+  const retryBlocks = useCallback(() => {
+    setBlocksReloadKey((k) => k + 1)
+  }, [])
   const [hasAssignments, setHasAssignments] = useState(false)
 
   useUserTour({
@@ -384,12 +412,22 @@ export default function ChapterView() {
     }
 
     setLoadingBlocks(true)
+    setBlocksLoadError(false)
     coursesService
       .getChapterBlocks(chapter.id)
-      .catch(() => [] as ChapterBlock[])
       .then((blocks) => {
         if (cancelled) return
         setChapterBlocks(blocks.sort((a, b) => a.order_index - b.order_index))
+        setLoadingBlocks(false)
+      })
+      .catch(() => {
+        if (cancelled) return
+        // Don't ``catch(() => [])`` silently — a failed fetch renders
+        // identically to a teacher-published-empty chapter and there's
+        // no way for the reader to tell the difference. Track an
+        // explicit error so ``ChapterBodyBlocks`` can surface a retry.
+        setChapterBlocks([])
+        setBlocksLoadError(true)
         setLoadingBlocks(false)
       })
 
@@ -399,7 +437,9 @@ export default function ChapterView() {
     // itself doesn't change, but its rendered content does. This was
     // the most visible "language switch doesn't update the page"
     // symptom: course title flipped, chapter body didn't.
-  }, [chapter, i18n.language])
+    // ``blocksReloadKey`` lets the retry button re-run this effect
+    // without a full route navigation.
+  }, [chapter, i18n.language, blocksReloadKey])
 
   const isChapterLocked = useCallback(
     (ch: Chapter, idx: number) => {
@@ -521,6 +561,8 @@ export default function ChapterView() {
           <ChapterBodyBlocks
             loading={loadingBlocks}
             blocks={chapterBlocks}
+            loadError={blocksLoadError}
+            onRetry={retryBlocks}
             onProgressChanged={refreshCompletion}
             onAssignmentCountLoaded={handleAssignmentCountLoaded}
           />
