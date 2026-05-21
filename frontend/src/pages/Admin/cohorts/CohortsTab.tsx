@@ -396,7 +396,17 @@ function CohortsTable({ items }: { items: Cohort[] }) {
           (between filter row above and pagination below) instead of
           sizing to content. */}
       <div className="hidden min-h-0 flex-1 overflow-y-auto sm:block">
-        <table className="w-full text-sm">
+        {/* ``table-fixed`` + colgroup so a 100-char cohort name can't
+            push the right-side columns off-screen. Mirrors the
+            UsersTable column-budget convention. */}
+        <table className="w-full table-fixed text-sm">
+          <colgroup>
+            <col className="w-[34%]" />
+            <col className="w-[16%]" />
+            <col className="w-[26%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
+          </colgroup>
           <thead className="sticky top-0 z-10 bg-card">
             <tr className="border-b text-left">
               <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.cohorts.thName")}</th>
@@ -410,7 +420,11 @@ function CohortsTable({ items }: { items: Cohort[] }) {
             {items.map((c) => (
               <tr key={c.id} className="transition-colors hover:bg-muted/40">
                 <td className="px-5 py-3">
-                  <Link to={`/admin/cohorts/${c.id}`} className="font-medium hover:text-primary">
+                  <Link
+                    to={`/admin/cohorts/${c.id}`}
+                    className="block truncate font-medium hover:text-primary"
+                    title={c.name}
+                  >
                     {c.name}
                   </Link>
                 </td>

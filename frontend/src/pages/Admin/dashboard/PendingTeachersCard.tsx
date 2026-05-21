@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, Clock, CheckCircle, Mail, XCircle } from "lucide-react"
-import { toProxyImage } from "@/lib/images"
+import { UserAvatar } from "@/components/admin/UserAvatar"
+import { displayNameOf } from "@/lib/userDisplay"
 import type { ProfileRow } from "./constants"
 import { formatDateTime, formatRelative } from "@/i18n/format"
 
@@ -80,20 +81,16 @@ export function PendingTeachersCard({ pending, updatingId, onApprove, onDeny }: 
                 className="flex flex-col gap-3 rounded-md border border-l-stripe border-l-warning/60 bg-warning/5 p-4 sm:flex-row sm:items-stretch sm:gap-4"
               >
                 <div className="flex min-w-0 flex-1 items-start gap-3">
-                  {u.avatar_url ? (
-                    <img
-                      src={toProxyImage(u.avatar_url)}
-                      alt={t("admin.users.avatarAltPrefix", { name: u.full_name ?? u.email })}
-                      className="h-10 w-10 shrink-0 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground">
-                      {(u.full_name?.[0] ?? u.email[0] ?? "?").toUpperCase()}
-                    </div>
-                  )}
+                  <UserAvatar
+                    avatarUrl={u.avatar_url}
+                    fullName={u.full_name}
+                    email={u.email}
+                    size="md"
+                    alt={t("admin.users.avatarAltPrefix", { name: displayNameOf(u.full_name, u.email) })}
+                  />
                   <div className="min-w-0 flex-1 space-y-1">
                     <p className="truncate text-sm font-semibold text-foreground">
-                      {u.full_name || t("admin.pendingTeachers.missingName")}
+                      {u.full_name?.trim() || t("admin.pendingTeachers.missingName")}
                     </p>
                     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Mail className="h-3 w-3 shrink-0" strokeWidth={1.75} aria-hidden />

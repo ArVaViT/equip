@@ -294,10 +294,23 @@ export default function CohortDetailPage() {
             placeholder={t("admin.cohorts.unlimited")}
             disabled={savingField === "max_students"}
             onSave={(v) => {
-              // Empty string -> ``null`` (unlimited). Number() trims
-              // whitespace; the input is ``type="number"`` so non-digit
-              // garbage is already filtered by the browser.
-              const n = v ? Number(v) : null
+              // Empty -> ``null`` (unlimited). Otherwise clamp into
+              // [1, 99999] and floor to an int so the API never sees
+              // ``-5``, ``0``, ``1.5``, ``1e9``, or ``NaN`` from a
+              // browser that accepts scientific notation in ``type=
+              // number`` inputs. Below-current-student-count values
+              // are accepted; the server's the right place to enforce
+              // "you can't shrink capacity below current enrolment".
+              if (!v.trim()) {
+                void patch("max_students", { max_students: null })
+                return
+              }
+              const parsed = Number(v)
+              if (!Number.isFinite(parsed)) {
+                toast({ title: t("admin.cohorts.toast.invalidMaxStudents"), variant: "destructive" })
+                return
+              }
+              const n = Math.max(1, Math.min(99999, Math.floor(parsed)))
               void patch("max_students", { max_students: n })
             }}
             inputType="number"
@@ -306,7 +319,15 @@ export default function CohortDetailPage() {
             label={t("admin.cohorts.fieldStart")}
             value={cohort.start_date}
             onSave={(iso) => {
-              if (iso) void patch("start_date", { start_date: iso })
+              if (!iso) return
+              // Reject start > end before sending. Otherwise the cohort
+              // ends up with a reversed range and the date header reads
+              // "May 21 — May 14"; the server doesn't enforce ordering.
+              if (cohort.end_date && new Date(iso) >= new Date(cohort.end_date)) {
+                toast({ title: t("admin.cohorts.toast.invalidDateRange"), variant: "destructive" })
+                return
+              }
+              void patch("start_date", { start_date: iso })
             }}
             disabled={savingField === "start_date"}
           />
@@ -314,7 +335,12 @@ export default function CohortDetailPage() {
             label={t("admin.cohorts.fieldEnd")}
             value={cohort.end_date}
             onSave={(iso) => {
-              if (iso) void patch("end_date", { end_date: iso })
+              if (!iso) return
+              if (cohort.start_date && new Date(iso) <= new Date(cohort.start_date)) {
+                toast({ title: t("admin.cohorts.toast.invalidDateRange"), variant: "destructive" })
+                return
+              }
+              void patch("end_date", { end_date: iso })
             }}
             disabled={savingField === "end_date"}
           />
@@ -648,7 +674,17 @@ function StudentsCard({
           />
         ) : (
           <div className="max-h-[55vh] overflow-y-auto">
-            <table className="w-full text-sm">
+            {/* ``table-fixed`` + colgroup so a 60-char student name +
+                60-char email don't push the actions button off-screen
+                horizontally. Same shape as the UsersTable column
+                budget. */}
+            <table className="w-full table-fixed text-sm">
+              <colgroup>
+                <col className="w-[38%]" />
+                <col className="w-[38%]" />
+                <col className="w-[14%]" />
+                <col className="w-[10%]" />
+              </colgroup>
               <thead className="sticky top-0 z-10 bg-card">
                 <tr className="border-b text-left">
                   <th className="px-5 py-3 font-medium text-muted-foreground">
@@ -660,14 +696,27 @@ function StudentsCard({
                   <th className="px-5 py-3 font-medium text-muted-foreground">
                     {t("admin.cohorts.thEnrolledCourses")}
                   </th>
-                  <th className="w-10 px-5 py-3" aria-label={t("admin.cohorts.thActions")} />
+                  <th className="px-5 py-3" aria-label={t("admin.cohorts.thActions")} />
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {filtered.map((s) => (
+                {filtered.map((s) => {
+                  // Whitespace-only ``full_name`` used to render three
+                  // blank glyphs; trim before checking.
+                  const trimmedName = s.full_name?.trim()
+                  const nameDisplay = trimmedName || "—"
+                  return (
                   <tr key={s.user_id} className="transition-colors hover:bg-muted/40">
-                    <td className="px-5 py-3 font-medium">{s.full_name ?? "—"}</td>
-                    <td className="px-5 py-3 text-xs text-muted-foreground">{s.email}</td>
+                    <td className="px-5 py-3 font-medium">
+                      <span className="block truncate" title={trimmedName ?? undefined}>
+                        {nameDisplay}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-xs text-muted-foreground">
+                      <span className="block truncate" title={s.email}>
+                        {s.email}
+                      </span>
+                    </td>
                     <td className="px-5 py-3 text-muted-foreground tabular-nums">
                       {Object.keys(s.per_course).length}
                     </td>
@@ -685,7 +734,8 @@ function StudentsCard({
                       </Button>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
