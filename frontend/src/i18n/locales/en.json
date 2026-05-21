@@ -204,6 +204,14 @@
       "title": "Welcome to Equip — let's take a quick look",
       "body": "We'll walk through the main parts of the app together. Each click on 'Next' moves to the next stop; you can leave the tour at any time."
     },
+    "headerNav": {
+      "title": "Your main sections",
+      "body": "Home, Courses, Calendar, Certificates — switch between them from this top bar at any time. Whatever you have open, the bar stays."
+    },
+    "headerProfile": {
+      "title": "Your account",
+      "body": "Picture, name, language, theme, sign out — all of it lives behind this button. We'll pass by it again at the end of the tour."
+    },
     "calendar": {
       "title": "Your calendar",
       "body": "Anything due or scheduled across all your enrolled courses — assignments, classes, events — appears here. If you don't have any courses yet, it'll be empty."

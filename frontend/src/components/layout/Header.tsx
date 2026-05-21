@@ -101,6 +101,7 @@ export default function Header() {
           {user ? (
             <LayoutGroup id="header-nav">
               <nav
+                data-tour="header-nav"
                 className="hidden min-w-0 flex-1 flex-wrap items-stretch justify-center md:flex"
                 aria-label={t("header.navAriaLabel")}
               >
@@ -146,7 +147,7 @@ export default function Header() {
                   </Suspense>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Link to="/profile" className="inline-flex">
+                      <Link to="/profile" data-tour="header-profile" className="inline-flex">
                         <PressFeedback className="inline-flex">
                           <Button
                             variant={isActive("/profile") ? "secondary" : "ghost"}
