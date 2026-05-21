@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import type { DropResult } from "@hello-pangea/dnd"
 import { coursesService } from "@/services/courses"
@@ -162,8 +162,17 @@ export function useCourseData(
     }
   }, [courseId, course, t])
 
+  const addingModuleRef = useRef(false)
   const addModule = useCallback(async () => {
     if (!courseId) return
+    // Lock: double-clicks before the optimistic ``setCourse`` lands used
+    // to compute the same ``order_index`` from the stale
+    // ``course?.modules?.length`` and the server then accepted two
+    // modules at the same ``order_index``, breaking the sortedModules
+    // contract until a page reload. The ref + early-return guarantees
+    // we never have two in-flight ``createModule`` calls.
+    if (addingModuleRef.current) return
+    addingModuleRef.current = true
     const order = course?.modules?.length ?? 0
     try {
       const m = await coursesService.createModule(courseId, {
@@ -180,6 +189,8 @@ export function useCourseData(
       toast({ title: t("teacherEditor.toast.moduleAdded"), variant: "success" })
     } catch {
       toast({ title: t("teacherEditor.toast.moduleAddFailed"), variant: "destructive" })
+    } finally {
+      addingModuleRef.current = false
     }
   }, [courseId, course?.modules?.length, t])
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { DropResult } from "@hello-pangea/dnd";
@@ -107,8 +107,16 @@ export function useModuleEditor(
     void saveDueDate("");
   };
 
+  const addingChapterRef = useRef(false);
   const addChapter = async () => {
     if (!courseId || !moduleId || !mod) return;
+    // Lock: a fast double-click before the optimistic ``setMod`` lands
+    // recomputes the same ``order_index`` from a stale
+    // ``mod.chapters?.length``, and the server then accepts two
+    // chapters at the same ``order_index`` -- breaking ``sortedChapters``
+    // until a refresh. Same shape as ``addModule``'s ref-based guard.
+    if (addingChapterRef.current) return;
+    addingChapterRef.current = true;
     const order = mod.chapters?.length ?? 0;
     try {
       const ch = await coursesService.createChapter(courseId, moduleId, {
@@ -127,6 +135,8 @@ export function useModuleEditor(
       );
     } catch {
       toast({ title: t("moduleEditor.toast.failedAddChapter"), variant: "destructive" });
+    } finally {
+      addingChapterRef.current = false;
     }
   };
 
