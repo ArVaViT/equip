@@ -130,7 +130,7 @@ function FileBlockLink({
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
           {t("chapter.attachmentEyebrow")}
         </p>
         <p className="mt-0.5 truncate text-sm font-medium text-foreground">{label}</p>
@@ -234,7 +234,7 @@ function ChapterNavLink({
   if (!chapter) {
     return (
       <div className={`${disabledClass} ${alignment}`} aria-hidden="true">
-        <span className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground ${justify}`}>
+        <span className={`flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground ${justify}`}>
           {side === "prev" && <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.75} />}
           {eyebrow}
           {side === "next" && <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />}
@@ -249,7 +249,7 @@ function ChapterNavLink({
   if (locked) {
     return (
       <div className={`${disabledClass} ${alignment}`} aria-label={fallbackLabel}>
-        <span className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground ${justify}`}>
+        <span className={`flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground ${justify}`}>
           <Lock className="h-3.5 w-3.5" strokeWidth={1.75} />
           {eyebrow}
         </span>
@@ -270,7 +270,7 @@ function ChapterNavLink({
         className={`${enabledClass} ${alignment}`}
         aria-label={`${eyebrow}: ${chapter.title}`}
       >
-        <span className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors group-hover:text-primary ${justify}`}>
+        <span className={`flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors group-hover:text-primary ${justify}`}>
           {side === "prev" && <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.75} />}
           {eyebrow}
           {side === "next" && <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />}
@@ -307,7 +307,7 @@ function ChapterNav({
       aria-label={t("chapter.navAriaLabel")}
       className="mt-10 border-t border-border pt-6"
     >
-      <p className="mb-3 text-center text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground tabular-nums">
+      <p className="mb-3 text-center text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground tabular-nums">
         {t("chapter.positionEyebrow", { current: currentIdx + 1, total })}
       </p>
       <div className="flex items-stretch gap-2 sm:gap-3">
@@ -533,7 +533,7 @@ export default function ChapterView() {
       </Link>
 
       <header data-tour="chapter-header" className="mb-10">
-        <p className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        <p className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <ChapterTypeIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
             {t(`chapterTypes.${chapterType}.label`)}
