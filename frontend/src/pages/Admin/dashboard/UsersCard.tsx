@@ -324,9 +324,12 @@ function UsersTable({
   return (
     <>
       {/* Mobile: stacked card list — the table doesn't fit a phone. Same
-          data, same controls, larger tap targets. */}
-      <div className="-mx-3 space-y-2 sm:hidden">
-        <label className="mx-3 flex min-h-[44px] items-center gap-2 text-xs text-muted-foreground">
+          data, same controls, larger tap targets. No negative margins
+          here -- the previous ``-mx-3``/``mx-3`` pair on the outer and
+          inner divs cancelled out (net 0) and just made the layout
+          harder to read. */}
+      <div className="space-y-2 sm:hidden">
+        <label className="flex min-h-[44px] items-center gap-2 text-xs text-muted-foreground">
           <Checkbox
             checked={selectAllState}
             onCheckedChange={onToggleSelectAll}
@@ -334,7 +337,7 @@ function UsersTable({
           />
           <span>{t("admin.users.selectAllN", { count: filtered.length })}</span>
         </label>
-        <div className="mx-3 space-y-2">
+        <div className="space-y-2">
           {filtered.map((u) => (
             <UserCard
               key={u.id}
@@ -356,8 +359,17 @@ function UsersTable({
           can't push the actions column off-screen. ``max-h-[60vh]``
           matches the audit log so the users panel doesn't push the
           admin overview off-screen when the tenant grows past 20-30
-          rows. */}
-      <div className="-mx-6 hidden max-h-[60vh] overflow-y-auto sm:block">
+          rows.
+
+          ``-mx-5`` MUST match ``CardContent``'s ``p-5`` padding token
+          exactly. The previous ``-mx-6`` (-24 px) against ``p-5``
+          (20 px) left the table jutting 4 px past the Card's
+          rounded border on each side -- the thead ``border-b`` and
+          tbody ``divide-y`` rules then visibly bled out under the
+          rounded corners as little stripes on the left + right
+          edges. This is the cleanest fix: zero math, zero risk of
+          drift if the Card token changes. */}
+      <div className="-mx-5 hidden max-h-[60vh] overflow-y-auto sm:block">
         <table className="w-full table-fixed text-sm">
           <colgroup>
             <col className="w-10" />
