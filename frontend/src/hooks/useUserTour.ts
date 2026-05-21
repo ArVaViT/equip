@@ -4,8 +4,10 @@ import type { Driver } from "driver.js"
 import { createEditorialTour, type TourStep } from "@/lib/tour"
 import { useAuth } from "@/context/useAuth"
 import {
+  getFirstRunActive,
   getGrandTourActive,
   isCoveredByGrandTour,
+  subscribeFirstRun,
   subscribeGrandTour,
 } from "@/lib/tourState"
 
@@ -138,6 +140,16 @@ export function useUserTour({
   )
   const isCovered = isCoveredByGrandTour(tourId)
 
+  // Reactive first-run signal: while the Privacy Policy + Quick Setup
+  // screens are up, EVERY per-page tour bails (covered or not). The
+  // user is in the middle of configuring their account; popping a
+  // spotlight underneath the modal would be confusing.
+  const firstRunActive = useSyncExternalStore(
+    subscribeFirstRun,
+    getFirstRunActive,
+    () => false,
+  )
+
   const buildDriver = useCallback((): Driver => {
     return createEditorialTour({
       steps: stepsRef.current,
@@ -184,35 +196,55 @@ export function useUserTour({
     // ``ready === false`` is the only blocking value. ``undefined``
     // means "no gate" and lets the tour fire immediately.
     if (ready === false) return
+    // First-run flow (Privacy + Setup) blocks every per-page tour
+    // unconditionally — the user is configuring their account, no
+    // spotlights underneath the modal.
+    if (firstRunActive) return
     // Grand tour wins races with its covered surfaces. If it's
     // pending (scheduled) or actively running, the per-page tour for
     // a covered surface stands down. Once the grand tour finishes,
     // ``alreadySeen`` will be true on the next mount.
     if (grandTourActive && isCovered) return
 
-    firedRef.current = true
-    timerRef.current = window.setTimeout(start, autoStartDelayMs)
+    // ``firedRef`` is set INSIDE the timer callback, not here. If we
+    // set it synchronously and a dep flips (e.g. ``firstRunActive``
+    // false → true mid-mount), the cleanup cancels the pending timer
+    // but ``firedRef`` would stay true forever — the tour would
+    // never re-fire when conditions become favourable again. By
+    // deferring the flag-set to the callback, a cancelled-and-never-
+    // fired timer leaves ``firedRef=false`` so the next dep change
+    // can re-schedule cleanly. The flag still flips synchronously
+    // inside manual ``start()``.
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null
+      firedRef.current = true
+      start()
+    }, autoStartDelayMs)
     return () => {
       if (timerRef.current !== null) {
         window.clearTimeout(timerRef.current)
         timerRef.current = null
       }
     }
-    // ``alreadySeen`` and ``grandTourActive`` IN deps so a mid-mount
-    // state change (e.g. grand tour fires after this hook has already
-    // run its first effect pass) re-runs the early-return chain and
-    // cancels any pending timer via the cleanup.
-  }, [autoStart, autoStartDelayMs, userId, userRole, ready, steps.length, alreadySeen, grandTourActive, isCovered, skipRoles, start])
+    // ``alreadySeen``, ``grandTourActive``, ``firstRunActive`` IN
+    // deps so a mid-mount state change (e.g. grand tour or first-run
+    // fires after this hook has already run its first effect pass)
+    // re-runs the early-return chain and cancels any pending timer
+    // via the cleanup.
+  }, [autoStart, autoStartDelayMs, userId, userRole, ready, steps.length, alreadySeen, grandTourActive, isCovered, firstRunActive, skipRoles, start])
 
-  // Defense in depth: if the grand tour activates while this hook's
-  // tour is already on screen, tear it down to make room. Doesn't
-  // fire on initial render thanks to the driverRef null-check.
+  // Defense in depth: if the grand tour or first-run flow activates
+  // while this hook's tour is already on screen, tear it down to
+  // make room. Doesn't fire on initial render thanks to the
+  // driverRef null-check.
   useEffect(() => {
-    if (grandTourActive && isCovered && driverRef.current) {
+    const shouldTearDown =
+      (grandTourActive && isCovered) || firstRunActive
+    if (shouldTearDown && driverRef.current) {
       driverRef.current.destroy()
       driverRef.current = null
     }
-  }, [grandTourActive, isCovered])
+  }, [grandTourActive, isCovered, firstRunActive])
 
   useEffect(() => {
     return () => {

@@ -140,4 +140,36 @@ describe("useUserTour", () => {
     // just never gets written because flagKey returns null.
     expect(createTourMock).toHaveBeenCalledTimes(1)
   })
+
+  it("fires the auto-tour AFTER first-run flow closes (no firedRef poisoning)", async () => {
+    // Regression for the firedRef bug: on initial mount,
+    // firstRunActive=false (FirstRunFlow's effect hasn't run yet) so
+    // the per-page hook scheduled its timer. Then firstRunActive
+    // flipped true (gate up) — cleanup cancelled the timer. The
+    // original code set firedRef=true synchronously and bailed
+    // forever; the tour never fired when the gate closed.
+    const { setFirstRunActive } = await import("@/lib/tourState")
+    vi.useFakeTimers()
+    try {
+      renderWithUser("user-a", "teacher-dashboard-v1")
+      // Flip the signal up (gate appears) THEN back down (gate
+      // closed) — same cycle the real FirstRunFlow drives.
+      act(() => {
+        setFirstRunActive(true)
+      })
+      act(() => {
+        setFirstRunActive(false)
+      })
+      // Advance past the auto-start delay (350 ms default).
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(500)
+      })
+      // Tour MUST have fired once after the gate closed. If firedRef
+      // had been poisoned by the first run, this would still be zero.
+      expect(driveMock).toHaveBeenCalledTimes(1)
+    } finally {
+      setFirstRunActive(false)
+      vi.useRealTimers()
+    }
+  })
 })
