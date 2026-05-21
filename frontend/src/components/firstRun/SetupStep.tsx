@@ -108,32 +108,34 @@ export function SetupStep({ onComplete, onSkip }: Props) {
       return
     }
     setSaving(true)
-    // Snapshot the user fields ONCE so a mid-flight ``refreshUser``
-    // race (e.g. a previous avatar upload returning) can't change
-    // the comparisons under us. We compare against ``initialFullName``
-    // and ``initialServerLocale`` instead of the live ``user`` object.
+    // Snapshot for accurate failure-rollback. We previously SKIPPED
+    // the PATCH when the value matched the snapshot — that turned out
+    // to silently lose changes the user thought they had made (e.g.
+    // re-typing the same name they see pre-filled, or confirming a
+    // locale that another effect had already PATCHed away). The fix
+    // is to always send the user's CURRENT chosen values on submit;
+    // the backend is idempotent and the extra PATCH costs nothing.
     const initialFullName = user.full_name ?? ""
     const initialServerLocale = user.preferred_locale
     let nameFailed = false
     let localeFailed = false
     try {
       const trimmed = name.trim()
-      if (trimmed && trimmed !== initialFullName) {
+      if (trimmed) {
         await usersService.updateProfile({ full_name: trimmed })
       }
     } catch {
       nameFailed = true
     }
     try {
-      if (locale !== initialServerLocale) {
-        await preferencesService.setPreferredLocale(locale)
-      }
+      await preferencesService.setPreferredLocale(locale)
     } catch {
       localeFailed = true
-      // Roll the live i18n bundle back so the user doesn't see a
-      // language they didn't manage to save. The next refresh of the
-      // app would otherwise jump back to the server value mid-session.
-      void i18n.changeLanguage(initialLocale)
+      // Roll the live i18n bundle back to whatever the server
+      // actually has so the user doesn't see a language they
+      // didn't manage to save. ``initialServerLocale`` is the
+      // pre-submit truth.
+      void i18n.changeLanguage(initialServerLocale)
     }
     try {
       await refreshUser()
@@ -142,6 +144,12 @@ export function SetupStep({ onComplete, onSkip }: Props) {
     }
     if (nameFailed || localeFailed) {
       toast({ title: t("firstRun.setup.saveFailed"), variant: "destructive" })
+    } else {
+      const nameChanged = name.trim() && name.trim() !== initialFullName
+      const localeChanged = locale !== initialServerLocale
+      if (nameChanged || localeChanged) {
+        toast({ title: t("firstRun.setup.saveSuccess"), variant: "success" })
+      }
     }
     setSaving(false)
     onComplete()
