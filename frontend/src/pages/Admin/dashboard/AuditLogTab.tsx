@@ -281,7 +281,7 @@ function AuditTable({
                 {formatRelative(log.created_at)}
               </td>
               <td className="max-w-[160px] truncate px-5 py-3 text-xs" title={log.user_id ?? ""}>
-                {log.user_id ? userMap[log.user_id] || `${log.user_id.slice(0, 8)}…` : "—"}
+                {log.user_id ? (userMap[log.user_id] ?? `${log.user_id.slice(0, 8)}…`) : "—"}
               </td>
               <td className="px-5 py-3">
                 <Badge variant={ACTION_BADGE_VARIANT[log.action] ?? "muted"}>

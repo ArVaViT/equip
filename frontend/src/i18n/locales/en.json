@@ -1615,6 +1615,7 @@
   },
   "admin": {
     "title": "Admin Dashboard",
+    "eyebrow": "Administration",
     "subtitle": "Manage users, roles, and monitor platform activity",
     "tabOverview": "Overview",
     "tabCohorts": "Cohorts",
@@ -1674,8 +1675,12 @@
       "adding": "Adding…",
       "errorUserNotFound": "No Equip user with that email — ask them to sign up first.",
       "errorCohortFull": "Cohort has reached its maximum capacity.",
-      "noCoursesAttached": "No courses attached. Click \"Attach course\" to add one.",
-      "noStudents": "No students yet. Click \"Add student\" to enroll one.",
+      "eyebrow": "Cohort",
+      "noCoursesAttachedTitle": "No courses attached yet",
+      "noCoursesAttached": "Attach a course to make it available to the students in this cohort.",
+      "noStudentsTitle": "No students yet",
+      "noStudents": "Add students by email to enroll them in every attached course.",
+      "studentSearchNoMatchHint": "Try a different name or email.",
       "deleteButton": "Delete cohort",
       "completeConfirmTitle": "Mark this cohort as completed?",
       "completeConfirmDescription": "Students keep their enrollments and grades; the cohort just stops being editable.",
@@ -1814,6 +1819,13 @@
       "usersLast7Days_one": "+{{count}} this week",
       "usersLast7Days_other": "+{{count}} this week",
       "usersLast7Days_zero": "No new signups this week"
+    },
+    "pagination": {
+      "pageSizeLabel": "Rows per page",
+      "page": "Page {{page}} of {{total}}",
+      "prevPageAria": "Previous page",
+      "nextPageAria": "Next page",
+      "filterClear": "Clear filters"
     },
     "audit": {
       "filterAction": "Action",

@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
-import { EmptyState } from "@/components/patterns/EmptyState"
+import { EmptyState, ErrorState } from "@/components/patterns"
 import { cohortsService } from "@/services/cohorts"
 import { formatDate } from "@/i18n/format"
 import type { Cohort } from "@/types"
@@ -226,7 +226,7 @@ export function CohortsTab() {
               className="h-9 self-end text-muted-foreground hover:text-foreground"
             >
               <X className="mr-1 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-              {t("admin.audit.filterClear")}
+              {t("admin.pagination.filterClear")}
             </Button>
           )}
         </div>
@@ -235,14 +235,14 @@ export function CohortsTab() {
         {loading ? (
           <CohortsTableSkeleton />
         ) : error ? (
-          <div className="flex flex-1 items-center justify-center px-6 py-10">
-            <div className="text-center">
-              <p className="text-sm text-destructive">{error}</p>
-              <Button size="sm" variant="outline" className="mt-3" onClick={() => void load()}>
+          <ErrorState
+            title={error}
+            action={
+              <Button size="sm" variant="outline" onClick={() => void load()}>
                 {t("common.tryAgain")}
               </Button>
-            </div>
-          </div>
+            }
+          />
         ) : filtered.length === 0 ? (
           <div className="flex flex-1 items-center justify-center px-6 py-10">
             <EmptyCohorts hasQuery={filtersActive} onCreate={() => setCreateOpen(true)} />
@@ -253,7 +253,7 @@ export function CohortsTab() {
 
         <div className="flex shrink-0 flex-col items-stretch gap-2 border-t border-border px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <label htmlFor="cohort-page-size">{t("admin.audit.pageSizeLabel")}</label>
+            <label htmlFor="cohort-page-size">{t("admin.pagination.pageSizeLabel")}</label>
             <Select
               value={String(pageSize)}
               onValueChange={(v) => setPageSize(Number(v) as PageSize)}
@@ -275,7 +275,7 @@ export function CohortsTab() {
           </div>
           <div className="flex items-center justify-between gap-3 sm:justify-end">
             <p className="text-xs text-muted-foreground">
-              {t("admin.audit.page", { page: safePage, total: totalPages })}
+              {t("admin.pagination.page", { page: safePage, total: totalPages })}
             </p>
             <div className="flex items-center gap-1.5">
               <Button
@@ -284,7 +284,7 @@ export function CohortsTab() {
                 disabled={safePage <= 1}
                 onClick={() => setPage(safePage - 1)}
                 className="h-9 w-9 p-0"
-                aria-label={t("admin.audit.prevPageAria")}
+                aria-label={t("admin.pagination.prevPageAria")}
               >
                 <ChevronLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
               </Button>
@@ -294,7 +294,7 @@ export function CohortsTab() {
                 disabled={safePage >= totalPages}
                 onClick={() => setPage(safePage + 1)}
                 className="h-9 w-9 p-0"
-                aria-label={t("admin.audit.nextPageAria")}
+                aria-label={t("admin.pagination.nextPageAria")}
               >
                 <ChevronRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
               </Button>

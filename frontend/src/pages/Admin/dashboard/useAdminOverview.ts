@@ -22,6 +22,11 @@ function isRoleFilter(v: string): v is (typeof ROLE_FILTER_VALUES)[number] {
 interface UseAdminOverviewArgs {
   /** Current signed-in user id — excluded from bulk operations and delete confirmations. */
   currentUserId: string | undefined
+  /** When false, the hook skips the data fetch entirely. Used by the
+   *  AdminDashboard to avoid pulling users / courses / enrollments
+   *  counts when the user opens a tab (cohorts) that needs none of
+   *  them. Defaults to true so existing callers don't change shape. */
+  enabled?: boolean
 }
 
 /**
@@ -31,7 +36,7 @@ interface UseAdminOverviewArgs {
  * handlers. Split out of `AdminDashboard` so the page component stays
  * focused on layout and tab routing.
  */
-export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
+export function useAdminOverview({ currentUserId, enabled = true }: UseAdminOverviewArgs) {
   const confirm = useConfirm()
   const { t } = useTranslation()
   const [params, setParams] = useSearchParams()
@@ -76,6 +81,10 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
 
   const { data: fetchedData, loading, error: fetchError } = useAsyncData(
     async (isCancelled) => {
+      // Hook is reused across tabs that don't all need this data; the
+      // ``enabled`` arg lets the parent skip the fetch (and the loading
+      // state) without unmounting the hook.
+      if (!enabled) return undefined
       const [allUsers, coursesCount, enrollmentsCount, certs] = await Promise.all([
         coursesService.getAllUsers(),
         supabase.from("courses").select("id", { count: "exact", head: true }),
@@ -85,7 +94,7 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
       if (isCancelled()) return undefined
       return { allUsers, coursesCount, enrollmentsCount, certs }
     },
-    [reloadKey],
+    [reloadKey, enabled],
   )
 
   // Sync fetched data into individual state (handlers still need setUsers/setAdminCerts)
