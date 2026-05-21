@@ -117,6 +117,23 @@ export function createGrandTour({
     navigate(firstRoute)
   }
 
+  /**
+   * Hide / restore the popover + overlay while we await the next
+   * route's target. Without this, the user sees the OLD step's
+   * card sitting on top of the NEW page for the duration of
+   * ``waitForSelector`` — the "page changed but the card didn't"
+   * visual hop the user reported between steps 5 and 6 of the
+   * student tour.
+   */
+  const setTransitionMaskVisible = (visible: boolean) => {
+    if (typeof document === "undefined") return
+    const popover = document.querySelector<HTMLElement>(".driver-popover")
+    const overlay = document.querySelector<SVGElement>(".driver-overlay")
+    const value = visible ? "" : "0"
+    if (popover) popover.style.opacity = value
+    if (overlay) overlay.style.opacity = value
+  }
+
   const advanceTo = async (
     targetIdx: number,
     d: Driver,
@@ -133,21 +150,38 @@ export function createGrandTour({
     const target = steps[targetIdx]
     if (!target) return
     const currentPath = window.location.pathname
-    if (target.route && target.route !== currentPath) {
+    const needsNav = !!(target.route && target.route !== currentPath)
+    if (needsNav && target.route) {
+      // Mask the popover BEFORE we navigate so the old card doesn't
+      // ride along to the new page. 1500 ms is a tighter cap than
+      // the default 5 s — top-level student routes render in ~50–
+      // 200 ms; anything past 1.5 s is a real problem we'd rather
+      // surface as the spotlight-less centered fallback than keep
+      // waiting on.
+      setTransitionMaskVisible(false)
       navigate(target.route)
       if (target.element) {
         const selector =
           typeof target.element === "string" ? target.element : null
-        if (selector) await waitForSelector(selector)
+        if (selector) await waitForSelector(selector, 1500)
       } else {
         // Centered popover step still needs a short tick so the
         // route's new tree exists before driver.js re-measures.
-        await new Promise<void>((r) => window.setTimeout(r, 80))
+        await new Promise<void>((r) => window.setTimeout(r, 100))
       }
     }
-    if (destroyed) return
+    if (destroyed) {
+      if (needsNav) setTransitionMaskVisible(true)
+      return
+    }
     if (move === "next") d.moveNext()
     else d.movePrevious()
+    if (needsNav) {
+      // Wait one frame so driver.js has positioned the popover at
+      // the new target before we un-mask. Without the rAF the user
+      // can see the un-masked old position for one paint.
+      window.requestAnimationFrame(() => setTransitionMaskVisible(true))
+    }
   }
 
   const config: Config = {

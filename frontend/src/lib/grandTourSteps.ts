@@ -61,6 +61,31 @@ export function studentGrandTourSteps(t: TFunction): GrandTourStep[] {
         align: "end",
       },
     },
+    // ─────── Header (still on /) ───────────────────────────────────
+    // Two header steps before we leave the dashboard so the user
+    // knows the global navigation + where to find their profile
+    // BEFORE the tour teleports them around. Stays on ``/`` so no
+    // route change between Streak and these.
+    {
+      route: "/",
+      element: '[data-tour="header-nav"]',
+      popover: {
+        title: t("grandTour.headerNav.title"),
+        description: t("grandTour.headerNav.body"),
+        side: "bottom",
+        align: "center",
+      },
+    },
+    {
+      route: "/",
+      element: '[data-tour="header-profile"]',
+      popover: {
+        title: t("grandTour.headerProfile.title"),
+        description: t("grandTour.headerProfile.body"),
+        side: "bottom",
+        align: "end",
+      },
+    },
     // ─────── Catalog ───────────────────────────────────────────────
     {
       route: "/courses",
