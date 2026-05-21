@@ -181,7 +181,17 @@ export default function TeacherAnalytics() {
             />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              {/* ``table-fixed`` + colgroup so a 60-char student email
+                  doesn't push the progress + enrolled columns off-
+                  screen. Same column-budget convention the admin
+                  UsersTable adopted. */}
+              <table className="w-full table-fixed text-sm">
+                <colgroup>
+                  <col className="w-[28%]" />
+                  <col className="w-[34%]" />
+                  <col className="w-[24%]" />
+                  <col className="w-[14%]" />
+                </colgroup>
                 <thead>
                   <tr className="border-b text-left">
                     <th className="pb-3 font-medium text-muted-foreground">{t("teacherAnalytics.enrollments.name")}</th>
@@ -191,23 +201,34 @@ export default function TeacherAnalytics() {
                   </tr>
                 </thead>
                 <tbody>
-                  {analytics.enrollments.map((e) => (
+                  {analytics.enrollments.map((e) => {
+                    // Trim before the truthy check so a whitespace-only
+                    // ``full_name`` falls through to the email instead
+                    // of rendering blank space.
+                    const trimmedName = (e.full_name ?? e.student?.full_name ?? "").trim()
+                    const trimmedEmail = (e.email ?? e.student?.email ?? "").trim()
+                    const name = trimmedName || trimmedEmail || t("teacherAnalytics.enrollments.unknown")
+                    return (
                     <tr key={e.user_id} className="border-b last:border-0">
                       <td className="py-3 font-medium">
-                        {e.full_name ?? e.student?.full_name ?? t("teacherAnalytics.enrollments.unknown")}
+                        <span className="block truncate" title={trimmedName || undefined}>
+                          {name}
+                        </span>
                       </td>
                       <td className="py-3 text-muted-foreground">
-                        {e.email ?? e.student?.email ?? "—"}
+                        <span className="block truncate" title={trimmedEmail || undefined}>
+                          {trimmedEmail || "—"}
+                        </span>
                       </td>
                       <td className="py-3">
                         <div className="flex items-center gap-3">
-                          <div className="flex-1 h-2 rounded-full bg-muted max-w-[140px]">
+                          <div className="h-2 max-w-[140px] flex-1 rounded-full bg-muted">
                             <div
                               className="h-full rounded-full bg-primary transition-all"
                               style={{ width: `${Math.min(e.progress, 100)}%` }}
                             />
                           </div>
-                          <span className="text-xs font-medium tabular-nums w-10 text-right">
+                          <span className="w-10 text-right text-xs font-medium tabular-nums">
                             {e.progress}%
                           </span>
                         </div>
@@ -216,7 +237,8 @@ export default function TeacherAnalytics() {
                         {e.enrolled_at ? formatDate(e.enrolled_at) : "—"}
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
