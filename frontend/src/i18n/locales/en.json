@@ -194,7 +194,8 @@
       },
       "submit": "Get started",
       "skip": "Skip for now",
-      "saveFailed": "Couldn't save your changes — they'll stay as the previous values. You can update from your profile."
+      "saveFailed": "Couldn't save your changes — they'll stay as the previous values. You can update from your profile.",
+      "saveSuccess": "Your setup is saved."
     }
   },
   "grandTour": {
