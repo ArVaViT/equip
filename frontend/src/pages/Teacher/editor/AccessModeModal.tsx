@@ -81,7 +81,7 @@ function Option({ checked, onSelect, icon, label, description }: OptionProps) {
       aria-pressed={checked}
       className={`w-full text-left rounded-md border p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
         checked
-          ? "border-primary bg-primary/5"
+          ? "border-primary bg-primary/[0.08] dark:bg-primary/15"
           : "border-border hover:border-primary/40"
       }`}
     >

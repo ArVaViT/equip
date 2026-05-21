@@ -49,7 +49,7 @@ export function GradingConfigCard({
         onClick={onToggle}
         aria-expanded={open}
         aria-controls={panelId}
-        className="flex w-full select-none items-center justify-between rounded-t-md px-6 py-4 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="flex w-full select-none items-center justify-between rounded-t-md p-5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <div className="flex items-center gap-2">
           <Settings2 className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} aria-hidden />
@@ -124,7 +124,21 @@ function WeightField({ label, value, onChange }: WeightFieldProps) {
         min={0}
         max={100}
         value={value}
-        onChange={(e) => onChange(Number(e.target.value) || 0)}
+        onChange={(e) => {
+          // ``Number(e.target.value) || 0`` masked invalid input by
+          // silently coercing -50, 1e10, NaN, "abc" to 0 or to garbage.
+          // ``min``/``max`` are HTML hints only -- the browser accepts
+          // any number-shaped string. Clamp into [0, 100] and floor to
+          // an int so a teacher pasting "-50" or "1e9" can't poison
+          // the weights and force a "must sum to 100" trap they can't
+          // see why.
+          const raw = Number(e.target.value)
+          if (!Number.isFinite(raw)) {
+            onChange(0)
+            return
+          }
+          onChange(Math.max(0, Math.min(100, Math.floor(raw))))
+        }}
         fieldSize="md"
       />
     </div>

@@ -54,7 +54,7 @@ export function CourseCard({
 
   return (
     <Card className="group transition-colors hover:border-primary/30">
-      <div className="flex items-start gap-3 p-4 sm:gap-4 sm:p-6">
+      <div className="flex items-start gap-3 p-4 sm:gap-4 sm:p-5">
         {course.image_url ? (
           <img
             src={toProxyImage(course.image_url)}
