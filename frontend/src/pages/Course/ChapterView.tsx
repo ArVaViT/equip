@@ -181,7 +181,7 @@ function ChapterBodyBlocks({
   }
   if (blocks.length === 0) {
     return (
-      <div className="rounded-md border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
+      <div className="rounded-md border border-dashed border-border bg-muted/20 px-5 py-12 text-center">
         <p className="text-sm text-muted-foreground">
           {t("chapter.emptyContent")}
         </p>

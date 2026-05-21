@@ -121,7 +121,7 @@ export default function CoursesPage() {
         </div>
       ) : error ? (
         <ErrorState
-          icon={<BookOpen />}
+          icon={<BookOpen strokeWidth={1.75} aria-hidden />}
           description={error}
           action={
             <Button variant="ghost" size="sm" onClick={() => setReloadKey((k) => k + 1)}>
@@ -131,7 +131,7 @@ export default function CoursesPage() {
         />
       ) : courses.length === 0 ? (
         <EmptyState
-          icon={<BookOpen />}
+          icon={<BookOpen strokeWidth={1.75} aria-hidden />}
           title={query ? t("courses.noCoursesFound") : t("courses.noCoursesYet")}
           description={query ? t("courses.tryDifferentSearch") : t("courses.checkBackSoon")}
           className="border-none bg-transparent py-20"
