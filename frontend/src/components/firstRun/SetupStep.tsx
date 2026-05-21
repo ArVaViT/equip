@@ -1,7 +1,7 @@
-import { useId, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import type { Theme } from "@/context/theme-context"
 import { useTranslation } from "react-i18next"
-import { Camera, Loader2, Moon, Sun, User as UserIcon } from "lucide-react"
+import { Camera, Check, Loader2, Moon, Sun, User as UserIcon } from "lucide-react"
 import i18n, { type SupportedLocale } from "@/i18n/config"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,6 +14,25 @@ import { preferencesService } from "@/services/preferences"
 import { toProxyImage } from "@/lib/images"
 import { toast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
+
+/**
+ * Selected vs unselected styling for the theme / locale toggle
+ * buttons in the setup form. We use a 2-px border for BOTH states
+ * (transparent on the inactive one) so toggling the selection
+ * doesn't shift sibling layout by a pixel. The selected variant
+ * gets a chunkier ring + tinted background + foreground text + a
+ * primary-coloured ``Check`` glyph (rendered by the caller). Prior
+ * 4 %-tint + 1-px ring read as "barely active" in dim conditions
+ * and the user couldn't tell which button was currently chosen.
+ */
+function toggleButtonClasses(active: boolean): string {
+  return cn(
+    "flex items-center rounded-md border-2 px-3 py-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+    active
+      ? "border-primary bg-primary/10 text-foreground"
+      : "border-transparent bg-muted/30 text-muted-foreground hover:border-primary/30 hover:bg-muted/50",
+  )
+}
 
 interface Props {
   /** Fires after the user clicks the primary CTA — whether saves
@@ -45,9 +64,29 @@ export function SetupStep({ onComplete, onSkip }: Props) {
   const { user, refreshUser } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const fileRef = useRef<HTMLInputElement>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   const nameId = useId()
   const emailId = useId()
+
+  // Autofocus the name field on mount so the user sees the input is
+  // editable and the pre-fill is a starting point, not a locked
+  // value. Without this people (verified, the user) interpret the
+  // pre-filled Google-profile name as "the system set this for me,
+  // I cannot change it" and click Submit without touching it. The
+  // ``requestAnimationFrame`` waits for the SetupStep's commit to
+  // settle so ``.focus()`` doesn't lose to the overlay's own focus
+  // handling. The full-text select makes "select-all + type to
+  // replace" the one-action path.
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => {
+      const input = nameInputRef.current
+      if (!input) return
+      input.focus()
+      input.select()
+    })
+    return () => window.cancelAnimationFrame(id)
+  }, [])
 
   const [name, setName] = useState(user?.full_name ?? "")
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url ?? null)
@@ -115,7 +154,6 @@ export function SetupStep({ onComplete, onSkip }: Props) {
     // locale that another effect had already PATCHed away). The fix
     // is to always send the user's CURRENT chosen values on submit;
     // the backend is idempotent and the extra PATCH costs nothing.
-    const initialFullName = user.full_name ?? ""
     const initialServerLocale = user.preferred_locale
     let nameFailed = false
     let localeFailed = false
@@ -145,11 +183,12 @@ export function SetupStep({ onComplete, onSkip }: Props) {
     if (nameFailed || localeFailed) {
       toast({ title: t("firstRun.setup.saveFailed"), variant: "destructive" })
     } else {
-      const nameChanged = name.trim() && name.trim() !== initialFullName
-      const localeChanged = locale !== initialServerLocale
-      if (nameChanged || localeChanged) {
-        toast({ title: t("firstRun.setup.saveSuccess"), variant: "success" })
-      }
+      // Always confirm — even when nothing visibly changed (user kept
+      // pre-filled values). Earlier silent-success had the side
+      // effect of "I clicked Submit, nothing happened, the gate just
+      // closed" which felt broken. Explicit toast removes the
+      // ambiguity.
+      toast({ title: t("firstRun.setup.saveSuccess"), variant: "success" })
     }
     setSaving(false)
     onComplete()
@@ -239,13 +278,18 @@ export function SetupStep({ onComplete, onSkip }: Props) {
             {t("firstRun.setup.name.label")}
           </Label>
           <Input
+            ref={nameInputRef}
             id={nameId}
             value={name}
             onChange={(e) => setName(e.target.value.slice(0, 100))}
             placeholder={t("firstRun.setup.name.placeholder")}
             maxLength={100}
+            aria-describedby={`${nameId}-hint`}
             className="mt-2"
           />
+          <p id={`${nameId}-hint`} className="mt-1.5 text-xs text-muted-foreground/80">
+            {t("firstRun.setup.name.hint")}
+          </p>
         </div>
 
         {/* Email (read-only) */}
@@ -281,29 +325,25 @@ export function SetupStep({ onComplete, onSkip }: Props) {
               type="button"
               onClick={() => theme !== "light" && toggleTheme()}
               aria-pressed={theme === "light"}
-              className={cn(
-                "flex items-center gap-2 rounded-md border p-3 text-sm transition-colors",
-                theme === "light"
-                  ? "border-primary bg-primary/[0.04] ring-1 ring-primary/40 text-foreground"
-                  : "border-border text-muted-foreground hover:border-primary/30 hover:bg-muted/40",
-              )}
+              className={cn(toggleButtonClasses(theme === "light"), "gap-2")}
             >
               <Sun className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-              {t("firstRun.setup.theme.light")}
+              <span className="flex-1 text-left">{t("firstRun.setup.theme.light")}</span>
+              {theme === "light" && (
+                <Check className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} aria-hidden />
+              )}
             </button>
             <button
               type="button"
               onClick={() => theme !== "dark" && toggleTheme()}
               aria-pressed={theme === "dark"}
-              className={cn(
-                "flex items-center gap-2 rounded-md border p-3 text-sm transition-colors",
-                theme === "dark"
-                  ? "border-primary bg-primary/[0.04] ring-1 ring-primary/40 text-foreground"
-                  : "border-border text-muted-foreground hover:border-primary/30 hover:bg-muted/40",
-              )}
+              className={cn(toggleButtonClasses(theme === "dark"), "gap-2")}
             >
               <Moon className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-              {t("firstRun.setup.theme.dark")}
+              <span className="flex-1 text-left">{t("firstRun.setup.theme.dark")}</span>
+              {theme === "dark" && (
+                <Check className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} aria-hidden />
+              )}
             </button>
           </div>
         </div>
@@ -318,27 +358,23 @@ export function SetupStep({ onComplete, onSkip }: Props) {
               type="button"
               onClick={() => handleLocaleChange("en")}
               aria-pressed={locale === "en"}
-              className={cn(
-                "rounded-md border p-3 text-sm transition-colors",
-                locale === "en"
-                  ? "border-primary bg-primary/[0.04] ring-1 ring-primary/40 text-foreground"
-                  : "border-border text-muted-foreground hover:border-primary/30 hover:bg-muted/40",
-              )}
+              className={toggleButtonClasses(locale === "en")}
             >
-              {t("firstRun.setup.language.en")}
+              <span className="flex-1 text-left">{t("firstRun.setup.language.en")}</span>
+              {locale === "en" && (
+                <Check className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} aria-hidden />
+              )}
             </button>
             <button
               type="button"
               onClick={() => handleLocaleChange("ru")}
               aria-pressed={locale === "ru"}
-              className={cn(
-                "rounded-md border p-3 text-sm transition-colors",
-                locale === "ru"
-                  ? "border-primary bg-primary/[0.04] ring-1 ring-primary/40 text-foreground"
-                  : "border-border text-muted-foreground hover:border-primary/30 hover:bg-muted/40",
-              )}
+              className={toggleButtonClasses(locale === "ru")}
             >
-              {t("firstRun.setup.language.ru")}
+              <span className="flex-1 text-left">{t("firstRun.setup.language.ru")}</span>
+              {locale === "ru" && (
+                <Check className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} aria-hidden />
+              )}
             </button>
           </div>
         </div>

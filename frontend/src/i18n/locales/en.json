@@ -176,7 +176,8 @@
       },
       "name": {
         "label": "Display name",
-        "placeholder": "Your name as others will see it"
+        "placeholder": "Type to change",
+        "hint": "Pre-filled from your sign-up — edit it if you want a different display name."
       },
       "email": {
         "label": "Email",
