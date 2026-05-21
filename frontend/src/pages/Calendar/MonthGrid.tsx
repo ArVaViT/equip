@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import type { CalendarEvent } from "@/types";
-import { DAY_NAMES, EVENT_COLORS, MONTH_NAMES, getEventColor } from "./constants";
+import { EVENT_COLORS, getDayShortName, getEventColor, getMonthName } from "./constants";
 import { calendarDayKey, isSameDay } from "./utils";
 
 interface MonthGridProps {
@@ -36,17 +36,23 @@ export function MonthGrid({
   onNextMonth,
   onGoToday,
 }: MonthGridProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = i18n.resolvedLanguage ?? i18n.language ?? "en";
+  // ``getMonthName`` / ``getDayShortName`` are locale-aware via Intl;
+  // previously this file read hard-coded English ``MONTH_NAMES`` /
+  // ``DAY_NAMES`` arrays, so the calendar grid rendered "January Sun
+  // Mon Tue" regardless of the user's language.
+  const dayLabels = Array.from({ length: 7 }, (_, i) => getDayShortName(i, locale));
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground tabular-nums">
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground tabular-nums">
               {year}
             </p>
-            <CardTitle className="font-serif text-xl font-semibold tracking-tight">
-              {MONTH_NAMES[month]}
+            <CardTitle className="font-serif text-lg font-semibold tracking-tight">
+              {getMonthName(month, locale)}
             </CardTitle>
           </div>
           <div className="flex items-center gap-1">
@@ -76,12 +82,12 @@ export function MonthGrid({
       </CardHeader>
       <CardContent className="pt-2">
         <div className="mb-1 grid grid-cols-7">
-          {DAY_NAMES.map((d, i) => {
+          {dayLabels.map((d, i) => {
             const isWeekend = i === 0 || i === 6;
             return (
               <div
-                key={d}
-                className={`py-1.5 text-center text-xs font-medium uppercase tracking-[0.18em] ${
+                key={i}
+                className={`py-1.5 text-center text-[11px] font-medium uppercase tracking-[0.18em] ${
                   isWeekend ? "text-muted-foreground/60" : "text-muted-foreground"
                 }`}
               >
