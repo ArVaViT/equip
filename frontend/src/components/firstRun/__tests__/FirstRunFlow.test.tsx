@@ -1,7 +1,8 @@
-import { act, fireEvent, render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitForElementToBeRemoved } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { ReactNode } from "react"
 import { I18nextProvider } from "react-i18next"
+import { MotionConfig } from "motion/react"
 import { MemoryRouter } from "react-router-dom"
 import i18n from "@/i18n/config"
 import { AuthContext } from "@/context/auth-context"
@@ -66,22 +67,28 @@ function Wrapper({ children, userId = "user-1" }: { children: ReactNode; userId?
   return (
     <MemoryRouter>
       <I18nextProvider i18n={i18n}>
-        <ThemeContext.Provider value={{ theme: "light", toggleTheme: vi.fn() }}>
-          <AuthContext.Provider
-            value={{
-              user,
-              loading: false,
-              login: vi.fn(),
-              register: vi.fn(),
-              signInWithGoogle: vi.fn(),
-              resetPassword: vi.fn(),
-              logout: vi.fn(),
-              refreshUser: vi.fn().mockResolvedValue(undefined),
-            }}
-          >
-            {children}
-          </AuthContext.Provider>
-        </ThemeContext.Provider>
+        {/* MotionConfig with reducedMotion="always" makes
+            ``AnimatePresence`` enter/exit animations resolve
+            synchronously in tests, so post-click queries land on the
+            new step without ``findBy``-polling. */}
+        <MotionConfig reducedMotion="always">
+          <ThemeContext.Provider value={{ theme: "light", toggleTheme: vi.fn() }}>
+            <AuthContext.Provider
+              value={{
+                user,
+                loading: false,
+                login: vi.fn(),
+                register: vi.fn(),
+                signInWithGoogle: vi.fn(),
+                resetPassword: vi.fn(),
+                logout: vi.fn(),
+                refreshUser: vi.fn().mockResolvedValue(undefined),
+              }}
+            >
+              {children}
+            </AuthContext.Provider>
+          </ThemeContext.Provider>
+        </MotionConfig>
       </I18nextProvider>
     </MemoryRouter>
   )
@@ -130,7 +137,7 @@ describe("FirstRunFlow", () => {
     expect(next).not.toBeDisabled()
   })
 
-  it("accepting Privacy writes the flag and advances to Setup", () => {
+  it("accepting Privacy writes the flag and advances to Setup", async () => {
     render(
       <Wrapper>
         <FirstRunFlow />
@@ -139,7 +146,13 @@ describe("FirstRunFlow", () => {
     fireEvent.click(screen.getByRole("checkbox"))
     fireEvent.click(screen.getByRole("button", { name: i18n.t("firstRun.privacy.next") }))
     expect(window.localStorage.getItem("equip.privacy.accepted.user-1")).toBe("1")
-    expect(screen.getByText(i18n.t("firstRun.setup.title"))).toBeInTheDocument()
+    // ``findByText`` (async) waits for AnimatePresence's exit-then-
+    // enter sequence to settle. ``mode="wait"`` makes the new
+    // step mount only AFTER the old one's exit resolves; even with
+    // reduced-motion that's one microtask. Regex covers both
+    // un-named and personalised heading shapes (wrapper's mocked
+    // user has full_name="Test User" → firstName="Test").
+    expect(await screen.findByText(/Make Equip yours/)).toBeInTheDocument()
   })
 
   it("skips straight to Setup when only Privacy flag is set", () => {
@@ -149,7 +162,11 @@ describe("FirstRunFlow", () => {
         <FirstRunFlow />
       </Wrapper>,
     )
-    expect(screen.getByText(i18n.t("firstRun.setup.title"))).toBeInTheDocument()
+    // Match the title with or without the personalised suffix —
+    // the wrapper's mocked user has ``full_name: "Test User"`` which
+    // makes ``firstNameOf`` return "Test", so the rendered heading
+    // is "Make Equip yours, Test". Regex covers both shapes.
+    expect(screen.getByText(/Make Equip yours/)).toBeInTheDocument()
     expect(screen.queryByText(i18n.t("firstRun.privacy.title"))).not.toBeInTheDocument()
   })
 
@@ -169,7 +186,7 @@ describe("FirstRunFlow", () => {
     expect(getFirstRunActive()).toBe(false)
   })
 
-  it("Skip on Setup advances to the picker (does NOT close the gate)", () => {
+  it("Skip on Setup advances to the picker (does NOT close the gate)", async () => {
     window.localStorage.setItem("equip.privacy.accepted.user-1", "1")
     render(
       <Wrapper>
@@ -178,7 +195,13 @@ describe("FirstRunFlow", () => {
     )
     fireEvent.click(screen.getByRole("button", { name: i18n.t("firstRun.setup.skip") }))
     expect(window.localStorage.getItem("equip.first-run.setup.user-1")).toBe("1")
-    expect(screen.queryByText(i18n.t("firstRun.setup.title"))).not.toBeInTheDocument()
+    // ``waitForElementToBeRemoved`` waits for the Setup heading to
+    // exit (AnimatePresence's exit animation, then unmount). Without
+    // this, the heading is still in the DOM at click-time + 0 ms
+    // because exit hasn't run yet — even with reduced-motion.
+    await waitForElementToBeRemoved(() =>
+      screen.queryByText(/Make Equip yours/),
+    )
     // Picker takes over (or auto-skips to done if catalog is empty —
     // mocked above). Either way the gate is still controlling the
     // ``firstRunActive`` signal until the picker resolves.

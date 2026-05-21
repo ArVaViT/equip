@@ -15,19 +15,9 @@ import { TodayCard } from "@/components/dashboard/TodayCard"
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard"
 import { useUserTour } from "@/hooks/useUserTour"
 import { studentDashboardSteps } from "@/lib/tourSteps"
+import { firstNameOf } from "@/lib/names"
 import { PublicLanding } from "./PublicLanding"
 import { cn } from "@/lib/utils"
-
-/** Strip the surname off a full name for personal greetings — "Vadym
- *  Arnaut" → "Vadym". Returns null when the input is null/blank so the
- *  caller can fall back to a name-less greeting. */
-function firstNameOf(fullName: string | null | undefined): string | null {
-  if (!fullName) return null
-  const trimmed = fullName.trim()
-  if (!trimmed) return null
-  const first = trimmed.split(/\s+/)[0]
-  return first || null
-}
 
 const EDITORIAL_EASE = [0.22, 1, 0.36, 1] as const
 
