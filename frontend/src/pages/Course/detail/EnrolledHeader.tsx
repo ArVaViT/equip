@@ -51,7 +51,7 @@ export function EnrolledHeader({
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <h1 className="mb-1 font-serif text-xl font-bold tracking-tight text-wrap-safe sm:text-2xl">
+          <h1 className="mb-1 font-serif text-xl font-semibold tracking-tight text-wrap-safe sm:text-2xl">
             {course.title}
           </h1>
           <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
