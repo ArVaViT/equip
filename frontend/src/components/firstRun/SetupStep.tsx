@@ -14,6 +14,7 @@ import { preferencesService } from "@/services/preferences"
 import { toProxyImage } from "@/lib/images"
 import { toast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
+import { initialsOf } from "@/lib/names"
 
 /**
  * Selected vs unselected styling for the theme / locale toggle
@@ -124,11 +125,7 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
 
   const isBusy = saving || uploading
 
-  const initials = (user?.full_name ?? user?.email ?? "")
-    .split(/[\s@]/)
-    .slice(0, 2)
-    .map((s) => s[0]?.toUpperCase())
-    .join("")
+  const initials = initialsOf(user?.full_name ?? user?.email)
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

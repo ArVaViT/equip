@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next"
 import { Textarea } from "@/components/ui/textarea"
+import { countWords } from "@/lib/text"
 
 interface Props {
   value: string
@@ -9,7 +10,7 @@ interface Props {
 
 export function EssayAnswer({ value, minWords, onChange }: Props) {
   const { t } = useTranslation()
-  const words = value.trim() ? value.trim().split(/\s+/).filter(Boolean).length : 0
+  const words = countWords(value)
   const minReached = !minWords || words >= minWords
   return (
     <div className="ml-9 space-y-1.5">

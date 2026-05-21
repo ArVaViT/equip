@@ -193,9 +193,21 @@ def reorder_blocks(
         )
         .all()
     }
+    # Reject the whole reorder if any submitted id doesn't belong to
+    # this chapter. The previous behaviour silently dropped unmatched
+    # ids and committed a partial reorder, leaving the visible order
+    # of the persisted blocks inconsistent with what the teacher saw
+    # in the DnD list -- and giving no signal that anything went wrong.
+    missing = [str(item.id) for item in items if item.id not in blocks_by_id]
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Cannot reorder: {len(missing)} block id(s) do not belong to this chapter "
+                f"(or no longer exist): {', '.join(missing[:5])}" + ("..." if len(missing) > 5 else "")
+            ),
+        )
     for item in items:
-        block = blocks_by_id.get(item.id)
-        if block:
-            block.order_index = item.order_index
+        blocks_by_id[item.id].order_index = item.order_index
     db.commit()
     return db.query(ChapterBlock).filter(ChapterBlock.chapter_id == chapter_id).order_by(ChapterBlock.order_index).all()

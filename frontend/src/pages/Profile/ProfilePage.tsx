@@ -24,6 +24,7 @@ import {
 import { useUserTour } from "@/hooks/useUserTour"
 import { profileSteps } from "@/lib/tourSteps"
 import { EDITORIAL_EASE } from "@/lib/motion"
+import { initialsOf } from "@/lib/names"
 
 function useCountUp(target: number, durationMs = 800) {
   const prefersReducedMotion = useReducedMotion()
@@ -134,11 +135,7 @@ export default function ProfilePage() {
     return <PageSpinner />
   }
 
-  const initials = (user.full_name ?? user.email)
-    .split(/[\s@]/)
-    .slice(0, 2)
-    .map((s) => s[0]?.toUpperCase())
-    .join("")
+  const initials = initialsOf(user.full_name ?? user.email)
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-8 md:px-6">

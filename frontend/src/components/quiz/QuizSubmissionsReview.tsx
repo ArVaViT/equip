@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { CheckCircle2, GraduationCap, Loader2, Save, Users } from "lucide-react"
 import { formatDateTime } from "@/i18n/format"
+import { countWords } from "@/lib/text"
 
 type EditableAnswer = PendingAnswer & {
   draftPoints: string
@@ -23,11 +24,6 @@ function toDraft(answer: PendingAnswer): EditableAnswer {
     draftComment: answer.grader_comment ?? "",
     savingState: "idle",
   }
-}
-
-function countWords(text: string | null | undefined): number {
-  if (!text) return 0
-  return text.trim().split(/\s+/).filter(Boolean).length
 }
 
 interface Props {

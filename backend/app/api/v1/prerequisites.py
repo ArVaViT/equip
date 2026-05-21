@@ -116,7 +116,8 @@ def set_prerequisites(
     # tripping the composite PK on commit and surfacing as a generic 409.
     prereq_ids: list[str] = list(dict.fromkeys(data.prerequisite_course_ids))
 
-    # Prevent circular: a course cannot be its own prerequisite
+    # Prevent self-cycle (A -> A) up front -- the multi-node check below
+    # would catch this too, but the targeted error message is friendlier.
     if course_id in prereq_ids:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -134,6 +135,43 @@ def set_prerequisites(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Prerequisite course '{pid}' not found",
                 )
+
+        # Multi-node cycle detection. Without this a teacher can wire
+        # A -> B and B -> A and any consumer that walks the prerequisite
+        # DAG (course-gate UI, topological-sort export) loops forever.
+        # Edge semantics: ``course_id -> prereq_id`` means
+        # "course_id requires prereq_id". A new edge ``course_id -> pid``
+        # closes a cycle iff there's already a path pid -> ... -> course_id
+        # (i.e. pid already transitively requires course_id, so adding
+        # course_id -> pid would loop back). We DFS forward through the
+        # existing "requires" edges starting at each proposed pid; if we
+        # ever land on course_id, reject.
+        existing_edges = db.query(
+            CoursePrerequisite.course_id,
+            CoursePrerequisite.prerequisite_course_id,
+        ).all()
+        # requires[X] = {courses that X currently requires}
+        requires: dict[str, set[str]] = {}
+        for src, dst in existing_edges:
+            requires.setdefault(str(src), set()).add(str(dst))
+
+        for pid in prereq_ids:
+            stack = [pid]
+            visited: set[str] = set()
+            while stack:
+                node = stack.pop()
+                if node in visited:
+                    continue
+                visited.add(node)
+                if node == course_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=(
+                            f"Adding '{pid}' as a prerequisite would create a "
+                            "circular dependency with the course's existing prerequisite chain."
+                        ),
+                    )
+                stack.extend(requires.get(node, set()) - visited)
 
     db.query(CoursePrerequisite).filter(CoursePrerequisite.course_id == course_id).delete()
 
