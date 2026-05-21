@@ -54,7 +54,7 @@ export function GradingConfigCard({
         <div className="flex items-center gap-2">
           <Settings2 className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} aria-hidden />
           <div>
-            <CardTitle className="text-base">{t("gradebook.config.title")}</CardTitle>
+            <CardTitle className="font-serif text-lg font-semibold tracking-tight">{t("gradebook.config.title")}</CardTitle>
             <CardDescription className="text-xs">
               {t("gradebook.config.description")}
             </CardDescription>

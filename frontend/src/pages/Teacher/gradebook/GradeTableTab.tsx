@@ -90,7 +90,7 @@ export function GradeTableTab({
     <div className="space-y-4">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">{t("gradebook.table.title")}</CardTitle>
+          <CardTitle className="font-serif text-lg font-semibold tracking-tight">{t("gradebook.table.title")}</CardTitle>
           <CardDescription className="text-xs">{t("gradebook.table.description")}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -231,7 +231,7 @@ const GradeTableRow = memo(function GradeTableRow({
   return (
     <Fragment>
       <tr
-        className="group hover:bg-muted/20 cursor-pointer transition-colors"
+        className="group cursor-pointer transition-colors hover:bg-muted/40"
         onClick={() => onToggleExpand(student.id)}
       >
         <td

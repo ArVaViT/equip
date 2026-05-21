@@ -36,7 +36,7 @@ export function AnnouncementsModal({
   return (
     <Modal open={open} onClose={onClose} title={t("teacherEditor.modals.announcements.title")}>
       <div className="space-y-4">
-        <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
+        <div className="space-y-3 rounded-md border bg-muted/30 p-3">
           <Input
             value={title}
             onChange={(e) => onTitleChange(e.target.value)}

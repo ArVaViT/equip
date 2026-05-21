@@ -85,7 +85,7 @@ export function MaterialsModal({
             {materials.map((m) => (
               <div
                 key={m.path}
-                className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                className="flex items-center gap-3 rounded-md border p-3 transition-colors hover:bg-muted/40"
               >
                 <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" strokeWidth={1.75} />
                 <span className="text-sm flex-1 truncate">{m.name}</span>
