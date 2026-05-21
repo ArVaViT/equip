@@ -229,7 +229,7 @@ function ChapterNavLink({
   const disabledClass =
     "flex min-w-0 flex-1 cursor-not-allowed flex-col rounded-md border border-border bg-muted/20 px-3 py-2 opacity-60"
   const enabledClass =
-    "group flex min-w-0 flex-1 flex-col rounded-md border border-border bg-card px-3 py-2 transition-colors hover:border-primary/40 hover:bg-muted/30"
+    "group flex min-w-0 flex-1 flex-col rounded-md border border-border bg-card px-3 py-2 transition-colors hover:border-primary/40 hover:bg-muted/40"
 
   if (!chapter) {
     return (
