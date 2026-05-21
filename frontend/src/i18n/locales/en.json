@@ -1703,6 +1703,8 @@
         "saveFailed": "Failed to save",
         "loadFailed": "Failed to load cohort",
         "loadCoursesFailed": "Failed to load courses",
+        "someCoursesFailed_one": "{{count}} attached course couldn't be loaded; it may be hidden from the list below.",
+        "someCoursesFailed_other": "{{count}} attached courses couldn't be loaded; they may be hidden from the list below.",
         "courseAttached": "Course attached",
         "attachFailed": "Failed to attach course",
         "detached": "Course detached",
@@ -1805,6 +1807,7 @@
         "roleUpdateFailed": "Failed to update role",
         "userDeleted": "User deleted",
         "deleteUserFailed": "Failed to delete user",
+        "cannotDeleteSelf": "You can't delete your own account from here.",
         "bulkUpdated": "Updated {{count}} user(s) to {{role}}",
         "bulkUpdateFailed": "Bulk update failed"
       },

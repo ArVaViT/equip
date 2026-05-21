@@ -49,9 +49,15 @@ export default function AdminDashboard() {
   // directly via ``?tab=cohorts``. Saves four service round-trips
   // (users, courses count, enrollments count, pending certs) on every
   // cold visit to the cohorts surface.
-  const overviewEnabled = tab === "overview" || tab === "audit"
+  //
+  // ``isAdmin`` gates BOTH hooks before they fire any requests --
+  // without this guard a teacher landing on /admin?tab=audit would
+  // trigger an admin-only audit-log query in the milliseconds before
+  // the <Navigate> below redirects them.
+  const isAdmin = user?.role === "admin"
+  const overviewEnabled = isAdmin && (tab === "overview" || tab === "audit")
   const overview = useAdminOverview({ currentUserId: user?.id, enabled: overviewEnabled })
-  const audit = useAdminAudit({ enabled: tab === "audit" })
+  const audit = useAdminAudit({ enabled: isAdmin && tab === "audit" })
 
   if (user?.role !== "admin") return <Navigate to="/" replace />
 

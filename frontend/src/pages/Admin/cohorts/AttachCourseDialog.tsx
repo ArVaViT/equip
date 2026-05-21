@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Modal } from "@/components/patterns"
 import { Button } from "@/components/ui/button"
@@ -37,6 +37,18 @@ export function AttachCourseDialog({
   const [selected, setSelected] = useState("")
   const [saving, setSaving] = useState(false)
 
+  // Stash the array in a ref so the effect's dep set is just ``open``
+  // (a bool) and ``t``. Previously ``attachedCourseIds`` was in the
+  // deps -- the parent passes ``cohort.course_ids`` which is a fresh
+  // reference on every parent re-render, so any unrelated re-render
+  // while this dialog is open would refire the effect, reload the
+  // course catalog, and silently reset ``selected`` to the first
+  // course -- discarding the admin's pick.
+  const attachedRef = useRef(attachedCourseIds)
+  useEffect(() => {
+    attachedRef.current = attachedCourseIds
+  }, [attachedCourseIds])
+
   useEffect(() => {
     if (!open) return
     let cancelled = false
@@ -45,7 +57,7 @@ export function AttachCourseDialog({
       .getCourses()
       .then((list) => {
         if (cancelled) return
-        const available = list.filter((c) => !attachedCourseIds.includes(c.id))
+        const available = list.filter((c) => !attachedRef.current.includes(c.id))
         setCourses(available)
         setSelected(available[0]?.id ?? "")
       })
@@ -58,10 +70,15 @@ export function AttachCourseDialog({
     return () => {
       cancelled = true
     }
-  }, [open, attachedCourseIds, t])
+  }, [open, t])
 
   const submit = async () => {
-    if (!selected) return
+    // Guard against rapid double-clicks / Enter+click races -- without
+    // this the same attach call fires twice and the second response
+    // either 409s or quietly succeeds on the next render's stale
+    // ``selected``. Toast on second response then reads "Failed"
+    // though the first call succeeded.
+    if (!selected || saving) return
     setSaving(true)
     try {
       await cohortsService.attachCourseToCohort(cohortId, selected)

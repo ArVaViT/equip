@@ -184,6 +184,18 @@ export function useAdminOverview({ currentUserId, enabled = true }: UseAdminOver
   }
 
   const handleDeleteUser = async (target: ProfileRow) => {
+    // Fence the self-delete path. The UI button is already disabled
+    // for the signed-in admin, but the hook is callable from any
+    // future surface (a keyboard shortcut, an API console) and the
+    // server-side check shouldn't be the only thing standing between
+    // an admin and locking themselves out of their tenant.
+    if (target.id === currentUserId) {
+      toast({
+        title: t("admin.overview.toast.cannotDeleteSelf"),
+        variant: "destructive",
+      })
+      return
+    }
     const ok = await confirm({
       title: t("admin.overview.confirm.deleteUserTitle", { name: target.full_name || target.email }),
       description: t("admin.overview.confirm.deleteUserDescription"),

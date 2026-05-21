@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import {
@@ -49,8 +49,15 @@ export default function CohortDetailPage() {
   // looked broken on slow networks. ``null`` = nothing saving.
   const [savingField, setSavingField] = useState<string | null>(null)
 
+  // Gate every backend call behind the admin check so a teacher or
+  // logged-out visitor landing on /admin/cohorts/:id doesn't leak a
+  // request out before the route-level <Navigate> redirects them.
+  // Resolves the "fetch fires before redirect" timing window the
+  // role-check return at the bottom of the file used to expose.
+  const isAdmin = user?.role === "admin"
+
   const load = useCallback(async () => {
-    if (!cohortId) return
+    if (!cohortId || !isAdmin) return
     setLoading(true)
     try {
       const [c, s] = await Promise.all([
@@ -66,12 +73,26 @@ export default function CohortDetailPage() {
         // cohorts is largely free; a single cold cohort with N
         // courses costs N parallel requests instead of 1 request
         // returning the entire tenant catalog.
-        const attached = await Promise.all(
-          c.course_ids.map((id) =>
-            coursesService.getCourse(id).catch(() => null),
-          ),
+        const settled = await Promise.allSettled(
+          c.course_ids.map((id) => coursesService.getCourse(id)),
         )
-        setCourses(attached.filter((co): co is Course => co !== null))
+        const attached: Course[] = []
+        let failed = 0
+        for (const r of settled) {
+          if (r.status === "fulfilled") attached.push(r.value)
+          else failed += 1
+        }
+        setCourses(attached)
+        // Surface partial failures instead of silently disappearing
+        // courses from the cohort's list -- otherwise a single 500
+        // on getCourse makes the admin think the course was detached
+        // and reach for the wrong fix.
+        if (failed > 0) {
+          toast({
+            title: t("admin.cohorts.toast.someCoursesFailed", { count: failed }),
+            variant: "destructive",
+          })
+        }
       } else {
         setCourses([])
       }
@@ -82,7 +103,13 @@ export default function CohortDetailPage() {
     } finally {
       setLoading(false)
     }
-  }, [cohortId, t])
+    // ``t`` deliberately excluded -- it was here for the toast string
+    // resolution, but its identity changes on every i18n language flip
+    // and would trigger a full refetch (cohort + students + N courses)
+    // each time the admin toggles the UI language. The toast resolves
+    // ``t`` lazily at the call site anyway.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cohortId, isAdmin])
 
   useEffect(() => {
     void load()
@@ -258,7 +285,7 @@ export default function CohortDetailPage() {
           <Field
             label={t("admin.cohorts.fieldName")}
             value={cohort.name}
-            onBlurSave={(v) => v !== cohort.name && patch("name", { name: v })}
+            onSave={(v) => patch("name", { name: v })}
             disabled={savingField === "name"}
           />
           <Field
@@ -266,9 +293,11 @@ export default function CohortDetailPage() {
             value={cohort.max_students == null ? "" : String(cohort.max_students)}
             placeholder={t("admin.cohorts.unlimited")}
             disabled={savingField === "max_students"}
-            onBlurSave={(v) => {
+            onSave={(v) => {
+              // Empty string -> ``null`` (unlimited). Number() trims
+              // whitespace; the input is ``type="number"`` so non-digit
+              // garbage is already filtered by the browser.
               const n = v ? Number(v) : null
-              if (n === cohort.max_students) return
               void patch("max_students", { max_students: n })
             }}
             inputType="number"
@@ -401,24 +430,60 @@ interface FieldProps {
   placeholder?: string
   inputType?: string
   disabled?: boolean
-  onBlurSave: (next: string) => void
+  /** Fires once on blur (or Enter) IF the value actually changed from
+   *  the last value we sync'd in from the parent. The field owns the
+   *  diff check so callers don't each rewrite it (and so the check
+   *  uses our ``lastSyncedRef`` baseline instead of a stale closure
+   *  over ``cohort.someField``). */
+  onSave: (next: string) => void
 }
 
-function Field({ label, value, placeholder, inputType = "text", disabled, onBlurSave }: FieldProps) {
+function Field({ label, value, placeholder, inputType = "text", disabled, onSave }: FieldProps) {
   const [local, setLocal] = useState(value)
-  useEffect(() => setLocal(value), [value])
+  const inputRef = useRef<HTMLInputElement>(null)
+  // Baseline of "what the server believes this value is" -- used both
+  // to skip no-op PATCHes and to know when an externally-changed prop
+  // should overwrite the local draft.
+  const lastSyncedRef = useRef(value)
+
+  useEffect(() => {
+    // Pull updates from the prop, but ONLY when the field isn't being
+    // edited AND the prop actually changed. Without the focus guard a
+    // sibling save (which causes the parent ``cohort`` to re-render
+    // even though THIS field's string is unchanged) would still run
+    // this effect on every render in some setups and could clobber a
+    // half-typed draft.
+    if (value === lastSyncedRef.current) return
+    const isEditing =
+      typeof document !== "undefined" && document.activeElement === inputRef.current
+    if (isEditing) return
+    setLocal(value)
+    lastSyncedRef.current = value
+  }, [value])
+
+  const commit = () => {
+    if (local === lastSyncedRef.current) return
+    lastSyncedRef.current = local
+    onSave(local)
+  }
+
   return (
     <div className="space-y-1.5">
       <Label className="text-xs">{label}</Label>
       <Input
+        ref={inputRef}
         type={inputType}
         value={local}
         placeholder={placeholder}
         disabled={disabled}
         onChange={(e) => setLocal(e.target.value)}
-        onBlur={() => onBlurSave(local)}
+        onBlur={commit}
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.target as HTMLInputElement).blur()
+          else if (e.key === "Escape") {
+            setLocal(lastSyncedRef.current)
+            ;(e.target as HTMLInputElement).blur()
+          }
         }}
       />
     </div>
@@ -435,6 +500,17 @@ interface DateFieldProps {
 
 function DateField({ label, value, disabled, nullable, onSave }: DateFieldProps) {
   const local = isoToLocalInput(value)
+  // Mirror the same baseline guard as ``Field``: don't PATCH when the
+  // picker fires onChange with a value equivalent to the current ISO.
+  // The picker re-fires on every internal state tick (clicking the
+  // calendar can produce multiple onChange events with the same iso),
+  // and without this guard each tick costs a network round-trip plus a
+  // toast.
+  const lastSyncedRef = useRef<string | null>(value)
+  useEffect(() => {
+    lastSyncedRef.current = value
+  }, [value])
+
   return (
     <div className="space-y-1.5">
       <Label className="text-xs">{label}</Label>
@@ -443,11 +519,17 @@ function DateField({ label, value, disabled, nullable, onSave }: DateFieldProps)
         disabled={disabled}
         onChange={(next) => {
           if (!next) {
-            if (nullable) void onSave(null)
+            if (nullable && lastSyncedRef.current !== null) {
+              lastSyncedRef.current = null
+              void onSave(null)
+            }
             return
           }
           const iso = localInputToIso(next)
-          if (iso) void onSave(iso)
+          if (!iso) return
+          if (iso === lastSyncedRef.current) return
+          lastSyncedRef.current = iso
+          void onSave(iso)
         }}
         className="w-full"
       />
