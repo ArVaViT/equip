@@ -15,8 +15,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const cssPath = resolve(__dirname, "../src/index.css")
 const css = readFileSync(cssPath, "utf8")
 
+function escapeRegExp(s) {
+  // CodeQL flagged the previous in-place ``.replace(/\./g, "\\.")`` as
+  // incomplete sanitization: it only escaped ``.`` and left other regex
+  // metacharacters (notably ``\``) live. Escape every special character
+  // so any blockName value is treated as literal.
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
 function parseBlock(blockName) {
-  const re = new RegExp(`${blockName.replace(/\./g, "\\.")}\\s*\\{([\\s\\S]*?)\\n\\s*\\}`, "m")
+  const re = new RegExp(`${escapeRegExp(blockName)}\\s*\\{([\\s\\S]*?)\\n\\s*\\}`, "m")
   const match = re.exec(css)
   if (!match) throw new Error(`Could not find block ${blockName}`)
   const body = match[1]
