@@ -118,7 +118,7 @@ export default function ModuleView() {
       </Link>
 
       <div className="mb-4">
-        <h1 className="mb-1 text-2xl font-bold tracking-tight text-wrap-safe">{module.title}</h1>
+        <h1 className="mb-1 font-serif text-2xl font-bold tracking-tight text-wrap-safe">{module.title}</h1>
         {module.description && (
           <p className="text-sm leading-relaxed text-muted-foreground text-wrap-safe whitespace-pre-line">
             {module.description}
@@ -184,7 +184,7 @@ export default function ModuleView() {
       )}
 
       <div>
-        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+        <h2 className="mb-3 flex items-center gap-2 font-serif text-lg font-semibold tracking-tight">
           <Book className="h-4 w-4" strokeWidth={1.75} aria-hidden />
           {t("module.chaptersHeading")}
           <span className="text-sm font-normal text-muted-foreground">
@@ -210,7 +210,7 @@ export default function ModuleView() {
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
                     <CardHeader className="pb-2">
-                      <CardTitle className="flex min-w-0 items-center gap-2 text-base">
+                      <CardTitle className="flex min-w-0 items-center gap-2 font-serif text-base font-semibold tracking-tight">
                         <Lock className="h-5 w-5 text-muted-foreground/50 shrink-0" strokeWidth={1.75} aria-hidden />
                         <span className="min-w-0 flex-1 truncate text-muted-foreground">
                           {chapter.title}
@@ -236,7 +236,7 @@ export default function ModuleView() {
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
                     <CardHeader className="pb-2">
-                      <CardTitle className="flex min-w-0 items-center gap-2 text-base">
+                      <CardTitle className="flex min-w-0 items-center gap-2 font-serif text-base font-semibold tracking-tight">
                         {isGradable ? (
                           isCompleted ? (
                             <CheckCircle className="h-5 w-5 shrink-0 text-success" strokeWidth={1.75} aria-hidden />
