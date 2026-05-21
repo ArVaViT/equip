@@ -449,6 +449,13 @@ def detach_course(
 @router.get("/{cohort_id}/students")
 def list_cohort_students(
     cohort_id: UUID,
+    skip: int = Query(0, ge=0, description="Pagination offset (student-level)."),
+    limit: int = Query(
+        100,
+        ge=1,
+        le=500,
+        description="Max students per page (default 100, max 500).",
+    ),
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> list[dict]:
@@ -457,12 +464,36 @@ def list_cohort_students(
     course_id so the cohort overview can show a matrix.
 
     Includes ``full_name`` + ``email`` from ``profiles`` so the admin
-    table renders identity without an N+1 follow-up fetch per row."""
+    table renders identity without an N+1 follow-up fetch per row.
+
+    Paginates at the **student** level (not the row level) so each page
+    returns whole student blocks — a 200-student cohort attached to 20
+    courses was previously emitting 4000 rows in a single unbounded
+    response. The default page returns 100 students; clients that need
+    more can request via ``?limit=500``.
+    """
     cohort = _get_or_404(db, cohort_id)
+    # Paginate user_ids first so the row-fetch never crosses page
+    # boundaries (a single student's enrollments stay together).
+    user_id_page = (
+        db.query(Enrollment.user_id)
+        .filter(Enrollment.cohort_id == cohort.id)
+        .distinct()
+        .order_by(Enrollment.user_id)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    page_user_ids = [row[0] for row in user_id_page]
+    if not page_user_ids:
+        return []
     rows = (
         db.query(Enrollment, User.full_name, User.email)
         .join(User, Enrollment.user_id == User.id)
-        .filter(Enrollment.cohort_id == cohort.id)
+        .filter(
+            Enrollment.cohort_id == cohort.id,
+            Enrollment.user_id.in_(page_user_ids),
+        )
         .order_by(Enrollment.user_id, Enrollment.course_id)
         .all()
     )

@@ -28,15 +28,25 @@ def list_pending_answers(
         False,
         description="If true, return already-graded open-ended answers too.",
     ),
+    skip: int = Query(0, ge=0, description="Pagination offset."),
+    limit: int = Query(
+        200,
+        ge=1,
+        le=500,
+        description="Max rows per page (caps response size; default 200, max 500).",
+    ),
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
     """Flat list of open-ended answers for the teacher's grading queue.
 
-    An answer is considered *pending* when it carries text but still
-    has ``points_earned == 0`` AND no ``grader_comment`` — that's our
-    proxy for "not graded yet", since a legitimate 0-point grade with
-    a comment is distinguishable from the untouched default.
+    Pagination is bounded — an essay-heavy course over a busy semester
+    can accumulate thousands of pending answers, and the previous
+    unbounded ``query.all()`` was an OOM hazard on a serverless worker.
+    Defaults preserve the unpaginated shape for any existing client that
+    omits the params.
+
+    An answer is considered *pending* when ``graded_at IS NULL``.
     """
     quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
     if not quiz:
@@ -65,7 +75,7 @@ def list_pending_answers(
         query = query.filter(QuizAnswer.graded_at.is_(None))
 
     results: list[PendingAnswerInfo] = []
-    for answer, question, attempt, student in query.all():
+    for answer, question, attempt, student in query.offset(skip).limit(limit).all():
         results.append(
             PendingAnswerInfo(
                 answer_id=answer.id,
