@@ -304,7 +304,7 @@ export default function ChapterEditor() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             aria-label={t("chapterEditor.editTitleAria")}
-            className="font-serif text-2xl font-bold border-none shadow-none hover:border-border/50 hover:shadow-sm focus-visible:ring-1 h-auto py-1 px-2 w-full"
+            className="h-auto w-full border-none px-2 py-1 font-serif text-2xl font-bold tracking-tight shadow-none hover:border-border hover:shadow-sm focus-visible:ring-1"
             placeholder={t("chapterEditor.titlePlaceholder")}
           />
         </h1>

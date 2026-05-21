@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import type { CourseFormData } from "@/lib/validations/course"
 
 interface Props {
@@ -46,9 +47,16 @@ export function CreateCourseForm({
             <Input
               id="title"
               autoFocus
+              maxLength={200}
               value={form.title}
               onChange={(e) => {
-                setForm((p) => ({ ...p, title: e.target.value }))
+                // Cap at 200 chars to match the server-side schema
+                // (``makeCourseSchema`` already enforces this, and so
+                // does CourseEditor's title field). Without ``maxLength``
+                // a paste of a 5000-char string was POSTed and rejected
+                // with a generic 400, costing one network round-trip
+                // and an opaque error.
+                setForm((p) => ({ ...p, title: e.target.value.slice(0, 200) }))
                 setErrors((p) => ({ ...p, title: undefined }))
               }}
               placeholder={t("teacherDashboard.createForm.titlePlaceholder")}
@@ -62,11 +70,15 @@ export function CreateCourseForm({
                 {t("teacherDashboard.createForm.optional")}
               </span>
             </Label>
-            <textarea
+            <Textarea
               id="desc"
-              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              fieldSize="default"
+              maxLength={2000}
+              className="min-h-[80px]"
               value={form.description}
-              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, description: e.target.value.slice(0, 2000) }))
+              }
               placeholder={t("teacherDashboard.createForm.descriptionPlaceholder")}
             />
           </div>
