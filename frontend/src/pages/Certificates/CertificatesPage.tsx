@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { ErrorState } from "@/components/patterns"
 import { coursesService } from "@/services/courses"
 import type { Certificate, Enrollment } from "@/types"
-import { toast } from "@/lib/toast"
-import { Award, ArrowLeft, ScrollText } from "lucide-react"
+import { Award, ArrowLeft, RefreshCw, ScrollText } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatDateLong } from "@/i18n/format"
 import { useUserTour } from "@/hooks/useUserTour"
@@ -17,11 +17,21 @@ export default function CertificatesPage() {
   const [certificates, setCertificates] = useState<Certificate[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [loading, setLoading] = useState(true)
+  // Distinguish load-failure from genuine empty so the user doesn't see
+  // "no certificates yet — start learning" when the request actually
+  // 500'd. The empty-state copy is a call to action that's wrong (and
+  // misleading) when we never knew whether they have any.
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   useUserTour({
     tourId: "certificates-v1",
     steps: certificatesSteps(t),
     ready: !loading,
   })
+
+  const retry = useCallback(() => {
+    setReloadKey((k) => k + 1)
+  }, [])
 
   // ``i18n.language`` in deps so a locale flip re-pulls the
   // localised course-title overlay without a hard reload. We
@@ -30,6 +40,8 @@ export default function CertificatesPage() {
   // it as a dep was the brittle pattern in this codebase.
   useEffect(() => {
     let cancelled = false
+    setLoading(true)
+    setLoadError(false)
     const load = async () => {
       try {
         const [certs, courses] = await Promise.all([
@@ -40,7 +52,7 @@ export default function CertificatesPage() {
         setCertificates(certs)
         setEnrollments(courses)
       } catch {
-        if (!cancelled) toast({ title: t("toast.certificatesLoadFailed"), variant: "destructive" })
+        if (!cancelled) setLoadError(true)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -49,8 +61,7 @@ export default function CertificatesPage() {
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [i18n.language])
+  }, [i18n.language, reloadKey])
 
   const courseTitle = (courseId: string | null) => {
     if (!courseId) return t("certificates.courseFallback", { id: "—" })
@@ -88,7 +99,18 @@ export default function CertificatesPage() {
         )}
       </header>
 
-      {certificates.length === 0 ? (
+      {loadError ? (
+        <ErrorState
+          title={t("toast.certificatesLoadFailed")}
+          description={t("certificates.loadErrorDescription")}
+          action={
+            <Button size="sm" onClick={retry}>
+              <RefreshCw className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+              {t("common.tryAgain")}
+            </Button>
+          }
+        />
+      ) : certificates.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-20 text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">

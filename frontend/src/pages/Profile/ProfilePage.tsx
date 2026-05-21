@@ -23,8 +23,7 @@ import {
 } from "lucide-react"
 import { useUserTour } from "@/hooks/useUserTour"
 import { profileSteps } from "@/lib/tourSteps"
-
-const EDITORIAL_EASE = [0.22, 1, 0.36, 1] as const
+import { EDITORIAL_EASE } from "@/lib/motion"
 
 function useCountUp(target: number, durationMs = 800) {
   const prefersReducedMotion = useReducedMotion()

@@ -162,6 +162,18 @@ def create_announcement(
             detail="You can only create announcements for your own courses",
         )
     else:
+        # Global announcements surface on every user's dashboard
+        # (``list_announcements`` returns ``course_id IS NULL`` rows to
+        # every authenticated caller). Restricting authorship to admins
+        # matches the docstring above and prevents any teacher from
+        # broadcasting site-wide. ``require_teacher`` accepts both
+        # teacher and admin, so the explicit role check is what enforces
+        # admin-only here.
+        if teacher.role != UserRole.ADMIN.value:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only administrators can create global announcements",
+            )
         course = None
 
     # Defence-in-depth: the React app sanitizes via DOMPurify before

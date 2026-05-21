@@ -124,10 +124,9 @@ export default function CalendarPage() {
           title={t("calendar.noEnrollmentsTitle")}
           description={t("calendar.noEnrollmentsDescription")}
           action={
-            // ``/courses`` (the catalog) since the home/courses split in
-            // PR #381; ``/`` is now the Dashboard, which is empty for a
-            // user with no enrollments and would just bounce them right
-            // back here.
+            // ``/`` is the Dashboard (empty for a user with no
+            // enrollments and would bounce them back here), so route
+            // them to the catalog instead.
             <Link to="/courses">
               <Button size="sm">{t("calendar.browseCourses")}</Button>
             </Link>

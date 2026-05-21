@@ -289,7 +289,18 @@ def update_course_event(
     )
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
-    for field, value in data.model_dump(exclude_unset=True).items():
+    # Defence-in-depth: title + description carry user-supplied markup
+    # and were already sanitized on create. The setattr loop below would
+    # otherwise let a direct API caller bypass DOMPurify on edit and
+    # plant stored XSS through the title bar or rich-text body. Same
+    # ``sanitize_string`` is used here as on the create path so the two
+    # behaviours stay symmetric.
+    updates = data.model_dump(exclude_unset=True)
+    if "title" in updates and updates["title"] is not None:
+        updates["title"] = sanitize_string(updates["title"])
+    if "description" in updates and updates["description"] is not None:
+        updates["description"] = sanitize_string(updates["description"])
+    for field, value in updates.items():
         setattr(event, field, value)
     db.commit()
     db.refresh(event)

@@ -1337,19 +1337,23 @@ class TestListAnnouncements:
         assert resp.status_code == 200
         assert resp.json() == []
 
-    def test_returns_all_announcements(self, client: TestClient):
-        client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload(title="A1"))
-        client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload(title="A2"))
+    def test_returns_all_announcements(self, admin_client: TestClient):
+        # Global announcements are admin-only since
+        # ``announcements_global_admin_only`` (see api/v1/announcements.py);
+        # use the admin client for these and any List* test that mixes
+        # global + course-scoped rows.
+        admin_client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload(title="A1"))
+        admin_client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload(title="A2"))
 
-        resp = client.get(ANNOUNCEMENT_PREFIX)
+        resp = admin_client.get(ANNOUNCEMENT_PREFIX)
         assert resp.status_code == 200
         assert len(resp.json()) == 2
 
-    def test_filter_by_course_id(self, client: TestClient):
+    def test_filter_by_course_id(self, client: TestClient, admin_client: TestClient):
         course = _create_course_via_api(client)
         cid = course["id"]
 
-        client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload(title="Global", course_id=None))
+        admin_client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload(title="Global", course_id=None))
         client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload(title="Course-specific", course_id=cid))
 
         resp = client.get(ANNOUNCEMENT_PREFIX, params={"course_id": cid})
@@ -1358,17 +1362,17 @@ class TestListAnnouncements:
         assert "Course-specific" in titles
         assert "Global" not in titles
 
-    def test_no_filter_returns_all(self, client: TestClient):
+    def test_no_filter_returns_all(self, client: TestClient, admin_client: TestClient):
         course = _create_course_via_api(client)
-        client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload(title="Global"))
+        admin_client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload(title="Global"))
         client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload(title="Specific", course_id=course["id"]))
 
         resp = client.get(ANNOUNCEMENT_PREFIX)
         assert len(resp.json()) == 2
 
-    def test_global_only_filters_out_course_scoped(self, client: TestClient):
+    def test_global_only_filters_out_course_scoped(self, client: TestClient, admin_client: TestClient):
         course = _create_course_via_api(client)
-        client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload(title="GlobalAnnouncement"))
+        admin_client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload(title="GlobalAnnouncement"))
         client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload(title="CourseAnnouncement", course_id=course["id"]))
 
         resp = client.get(ANNOUNCEMENT_PREFIX, params={"global_only": True})
@@ -1380,13 +1384,19 @@ class TestListAnnouncements:
 
 
 class TestCreateAnnouncement:
-    def test_create_global_returns_201(self, client: TestClient):
-        resp = client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload())
+    def test_create_global_as_admin_returns_201(self, admin_client: TestClient):
+        # Global announcements surface to every authenticated user, so
+        # authorship is admin-only — see api/v1/announcements.py.
+        resp = admin_client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload())
         assert resp.status_code == 201
         body = resp.json()
         assert body["title"] == "Welcome everyone!"
-        assert body["created_by"] == str(TEACHER_ID)
+        assert body["created_by"] == str(ADMIN_ID)
         assert body["course_id"] is None
+
+    def test_teacher_cannot_create_global_returns_403(self, client: TestClient):
+        resp = client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload())
+        assert resp.status_code == 403
 
     def test_create_course_specific(self, client: TestClient):
         course = _create_course_via_api(client)
@@ -1466,8 +1476,15 @@ class TestCreateAnnouncement:
 
 
 class TestUpdateAnnouncement:
-    def _create_announcement(self, client):
-        resp = client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload())
+    def _create_announcement(self, client_or_admin):
+        # Use a course-scoped announcement so the create call works
+        # under either the teacher or admin client. Update-path
+        # behaviour is identical regardless of scope.
+        course = _create_course_via_api(client_or_admin)
+        resp = client_or_admin.post(
+            ANNOUNCEMENT_PREFIX,
+            json=_announcement_payload(course_id=course["id"]),
+        )
         assert resp.status_code == 201
         return resp.json()
 
@@ -1516,7 +1533,13 @@ class TestUpdateAnnouncement:
 
 class TestDeleteAnnouncement:
     def test_delete_returns_204(self, client: TestClient):
-        resp = client.post(ANNOUNCEMENT_PREFIX, json=_announcement_payload())
+        # Course-scoped so the teacher client can create it directly;
+        # delete behaviour is identical regardless of scope.
+        course = _create_course_via_api(client)
+        resp = client.post(
+            ANNOUNCEMENT_PREFIX,
+            json=_announcement_payload(course_id=course["id"]),
+        )
         ann_id = resp.json()["id"]
 
         resp = client.delete(f"{ANNOUNCEMENT_PREFIX}/{ann_id}")

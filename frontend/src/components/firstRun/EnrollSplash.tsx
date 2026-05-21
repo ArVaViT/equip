@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "motion/react"
 import { BookOpen, Sparkles } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import type { Course } from "@/types"
+import { EDITORIAL_EASE } from "@/lib/motion"
 
 interface Props {
   /** The course the user just enrolled in. We use its title + cover
@@ -19,7 +20,6 @@ interface Props {
   onComplete: () => void
 }
 
-const EDITORIAL_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
 const VISIBLE_MS = 1200
 const VISIBLE_MS_REDUCED = 400
 
