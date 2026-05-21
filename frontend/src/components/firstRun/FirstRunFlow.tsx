@@ -86,7 +86,13 @@ export function FirstRunFlow() {
     if (!root) return
     // ``requestAnimationFrame`` instead of immediate query so React's
     // commit has settled and the focusable elements actually exist.
+    // We yield to a step-specific autofocus (e.g. ``SetupStep``
+    // focuses its name input) by skipping if focus is already
+    // inside the dialog — otherwise the parent's "first focusable"
+    // (the Avatar button) would steal focus from the child's
+    // intentional choice.
     const id = window.requestAnimationFrame(() => {
+      if (root.contains(document.activeElement)) return
       const focusable = root.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)
       focusable?.focus()
     })
