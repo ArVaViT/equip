@@ -102,7 +102,7 @@ function ModuleRow({
     <Card className={`group transition-colors ${isLocked ? "opacity-60" : "hover:border-primary/25"}`}>
       <CardHeader className="py-3 px-4">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="flex min-w-0 items-center gap-2 text-sm font-medium">
+          <CardTitle className="flex min-w-0 items-center gap-2 font-serif text-sm font-semibold tracking-tight">
             <span
               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                 isLocked

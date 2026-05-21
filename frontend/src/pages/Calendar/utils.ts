@@ -1,3 +1,4 @@
+import i18n from "@/i18n/config";
 import { formatDateLong } from "@/i18n/format";
 
 export function isSameDay(a: Date, b: Date): boolean {
@@ -9,10 +10,15 @@ export function isSameDay(a: Date, b: Date): boolean {
 }
 
 export function formatTime(dateStr: string): string {
-  // Time-only display uses the OS locale; the only callsites are the
-  // calendar agenda where the row is already grouped by day, so the date
-  // separator is implicit. Keep this Intl-direct.
-  return new Date(dateStr).toLocaleTimeString(undefined, {
+  // Locale-aware time display. The previous ``toLocaleTimeString(
+  // undefined, ...)`` deferred to the OS locale, so a Russian-UI
+  // user on an en-US Windows install saw AM/PM in their agenda
+  // while every other timestamp in the app rendered as ru-RU. Wire
+  // through the same i18n language the rest of the format helpers
+  // already use so the calendar reads as one app.
+  const lang = (i18n.resolvedLanguage ?? i18n.language ?? "en").toLowerCase();
+  const locale = lang.startsWith("ru") ? "ru-RU" : "en-US";
+  return new Date(dateStr).toLocaleTimeString(locale, {
     hour: "2-digit",
     minute: "2-digit",
   });

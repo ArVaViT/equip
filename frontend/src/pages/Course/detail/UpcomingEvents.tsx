@@ -24,7 +24,7 @@ export function UpcomingEvents({ events }: Props) {
 
   return (
     <div className="mb-5">
-      <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+      <h2 className="mb-2 flex items-center gap-2 font-serif text-sm font-semibold tracking-tight text-muted-foreground">
         <CalendarDays className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
         {t("courseDetail.upcoming.heading")}
       </h2>
