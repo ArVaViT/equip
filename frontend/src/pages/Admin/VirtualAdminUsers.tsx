@@ -123,7 +123,12 @@ export default function VirtualAdminUsers({
   const height = Math.min(users.length * ROW_HEIGHT, 640)
 
   return (
-    <div role="table" aria-rowcount={users.length} className="-mx-6">
+    // ``-mx-5`` matches ``CardContent``'s ``p-5`` padding -- previously
+    // ``-mx-6`` against ``p-5`` left this virtualised list bleeding
+    // 4 px past the Card border on each side, so the header row's
+    // ``border-b`` showed up as visible stripes outside the rounded
+    // corners. Same bug + same fix as the non-virtual ``UsersTable``.
+    <div role="table" aria-rowcount={users.length} className="-mx-5">
       <div
         role="row"
         className="grid grid-cols-[40px_2fr_2fr_2fr_1fr_40px] items-center border-b px-3 py-3 text-xs font-medium text-muted-foreground"
