@@ -519,7 +519,12 @@ def add_student(
     if body.user_id:
         user = db.query(User).filter(User.id == body.user_id).first()
     else:
-        user = db.query(User).filter(User.email == body.email).first()
+        # Email lookup must be case-insensitive. ``profiles.email`` is a plain
+        # ``text`` column with no normalization, so an admin who types
+        # ``Alice@Example.com`` when the stored row is ``alice@example.com``
+        # otherwise gets a 404. Lower-case both sides for the comparison.
+        email_lower = (body.email or "").lower()
+        user = db.query(User).filter(func.lower(User.email) == email_lower).first()
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

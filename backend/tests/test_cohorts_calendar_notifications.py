@@ -871,6 +871,44 @@ class TestCohortWriteActionsAreAudited:
         assert row is not None
 
 
+class TestAddStudentByEmail:
+    """``POST /cohorts/{id}/students`` accepts either user_id or email.
+    Email matching must be case-insensitive — ``profiles.email`` is plain
+    ``text``, so an admin who types ``Alice@Example.com`` against a row
+    stored as ``alice@example.com`` was getting a 404 before the fix."""
+
+    def test_add_by_email_case_insensitive(self, admin_client: TestClient, db: Session):
+        from app.models.user import User
+
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db, name="EmailCase")
+        student_id = uuid.uuid4()
+        db.add(
+            User(
+                id=student_id,
+                email="alice@example.com",
+                full_name="Alice",
+                role="student",
+            )
+        )
+        db.commit()
+
+        resp = admin_client.post(
+            f"{COHORT_PREFIX}/{cohort.id}/students",
+            json={"email": "Alice@Example.com"},
+        )
+        assert resp.status_code == 201, resp.text
+
+    def test_add_by_email_unknown_returns_404(self, admin_client: TestClient, db: Session):
+        _seed_course(db)
+        cohort = _seed_cohort_with_course(db, name="UnknownEmail")
+        resp = admin_client.post(
+            f"{COHORT_PREFIX}/{cohort.id}/students",
+            json={"email": "noone@example.com"},
+        )
+        assert resp.status_code == 404
+
+
 class TestSoloEnrollmentAccessMode:
     """ADR-010 §1: ``access_mode='institute'`` blocks the solo-enroll
     path (no cohort_id in the request body). Cohort-route enrollment

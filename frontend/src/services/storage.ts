@@ -11,8 +11,35 @@ const COURSE_MATERIALS_BUCKET = "course-materials"
 // breaking anything in the DB.
 const SIGNED_URL_TTL_SECONDS = 60 * 60
 
-function sanitizeFileName(name: string): string {
-  return name.replace(/[/\\:*?"<>|]/g, "_").replace(/\s+/g, "_").slice(0, 100)
+const MAX_SAFE_NAME_LEN = 100
+
+/**
+ * Strip path-illegal characters and collapse whitespace, then cap the
+ * result without losing the file extension. The previous version sliced
+ * to 100 chars *after* the special-char replacement, which silently
+ * dropped the trailing ``.pdf`` / ``.png`` on any name longer than 100
+ * chars and produced extensionless object keys (broken MIME sniffing /
+ * download UX). Truncate the stem, then re-append the extension.
+ *
+ * Exported only so the unit test can exercise the boundary case
+ * directly — runtime callers should use the upload functions below.
+ */
+export function sanitizeFileName(name: string): string {
+  const cleaned = name.replace(/[/\\:*?"<>|]/g, "_").replace(/\s+/g, "_")
+  if (cleaned.length <= MAX_SAFE_NAME_LEN) return cleaned
+
+  const dotIdx = cleaned.lastIndexOf(".")
+  // No extension to preserve (or trailing dot) → hard truncate.
+  if (dotIdx <= 0 || dotIdx === cleaned.length - 1) {
+    return cleaned.slice(0, MAX_SAFE_NAME_LEN)
+  }
+  const ext = cleaned.slice(dotIdx)
+  // Pathological case: extension itself is longer than the cap. Drop the
+  // extension rather than emit a zero-length stem.
+  if (ext.length >= MAX_SAFE_NAME_LEN) {
+    return cleaned.slice(0, MAX_SAFE_NAME_LEN)
+  }
+  return cleaned.slice(0, MAX_SAFE_NAME_LEN - ext.length) + ext
 }
 
 function fileExtension(name: string, fallback: string = "jpg"): string {
