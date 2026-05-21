@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 import { ArrowRight, BookOpen, Check, Loader2, RefreshCw } from "lucide-react"
@@ -59,8 +59,12 @@ export function CoursePickerStep({ firstName, onEnrolled, onBrowse, onSkip }: Pr
   // Keep an indexed map so ``handleEnroll`` can hand the
   // orchestrator the actual ``Course`` object (title + cover) and
   // not just the id — needed for the EnrollSplash that bridges the
-  // picker click and the navigation.
-  const coursesById = new Map(courses.map((c) => [c.id, c]))
+  // picker click and the navigation. Memoised on ``courses`` so we
+  // don't allocate a new Map on every keystroke / parent re-render.
+  const coursesById = useMemo(
+    () => new Map(courses.map((c) => [c.id, c])),
+    [courses],
+  )
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set())

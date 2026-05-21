@@ -99,12 +99,26 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
   // preview-clicks the user made. The theme and locale APIs apply
   // changes immediately so the user can see the preview; if they
   // skip without committing, the snapshots restore the prior state.
-  const initialLocale: SupportedLocale =
+  //
+  // ``initialLocale`` MUST be a ref, not a recomputed const — when
+  // an avatar upload triggers ``refreshUser`` mid-flow, the live
+  // ``user`` object updates and a plain ``const initialLocale =
+  // user.preferred_locale ?? ...`` would silently rebind to the
+  // refreshed value, defeating the snapshot semantics ``handleSkip``
+  // relies on.
+  const initialLocaleSnapshot: SupportedLocale =
     (user?.preferred_locale as SupportedLocale | undefined) ??
     (i18n.resolvedLanguage as SupportedLocale | undefined) ??
     "en"
+  // ``useRef(initialLocaleSnapshot)`` works because ``useRef``'s
+  // initial value is captured on first call only; subsequent renders
+  // ignore the argument. So even if ``user.preferred_locale``
+  // changes mid-flow (e.g. after an avatar ``refreshUser``), the ref
+  // keeps the mount-time value — that's the snapshot ``handleSkip``
+  // needs.
+  const initialLocaleRef = useRef<SupportedLocale>(initialLocaleSnapshot)
   const initialThemeRef = useRef<Theme>(theme)
-  const [locale, setLocale] = useState<SupportedLocale>(initialLocale)
+  const [locale, setLocale] = useState<SupportedLocale>(initialLocaleSnapshot)
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -203,8 +217,8 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
     // Undo any preview-only changes the user made but didn't commit:
     // locale via i18n (theme was persisted immediately by the
     // ThemeProvider, so we reverse it here too if it drifted).
-    if (i18n.resolvedLanguage !== initialLocale) {
-      void i18n.changeLanguage(initialLocale)
+    if (i18n.resolvedLanguage !== initialLocaleRef.current) {
+      void i18n.changeLanguage(initialLocaleRef.current)
     }
     if (theme !== initialThemeRef.current) {
       toggleTheme()
