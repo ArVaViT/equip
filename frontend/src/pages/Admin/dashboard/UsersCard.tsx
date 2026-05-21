@@ -106,7 +106,7 @@ export function UsersCard({
             single flex-wrap row, and at laptop widths the chip strip
             below would wrap up under the search input creating an
             orphan visual that looked unfinished. */}
-        <CardTitle className="text-lg">{t("admin.users.title")}</CardTitle>
+        <CardTitle className="font-serif text-lg font-semibold tracking-tight">{t("admin.users.title")}</CardTitle>
 
         {/* Row 2: filter + search aligned right. ``items-center`` so
             the search h-9 input and select line up; ``ml-auto`` pushes
@@ -139,9 +139,9 @@ export function UsersCard({
           </Select>
           <div className="relative w-full sm:max-w-xs sm:flex-1">
             <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
               strokeWidth={1.75}
-              aria-hidden="true"
+              aria-hidden
             />
             <Input
               placeholder={t("admin.users.searchPlaceholder")}
@@ -193,7 +193,7 @@ export function UsersCard({
             selected. Full-width tinted card makes the "selection
             mode" state obvious. */}
         {selectedIds.size > 0 && (
-          <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
             <span className="text-xs font-medium">
               {t("admin.users.selected", { count: selectedIds.size })}
             </span>
@@ -269,7 +269,7 @@ export function UsersCard({
           />
         )}
         {!loading && filtered.length > 0 && (
-          <p className="text-xs text-muted-foreground mt-4 px-6">
+          <p className="mt-4 text-xs text-muted-foreground">
             {t("admin.users.showing", { shown: filtered.length, total: users.length })}
           </p>
         )}
@@ -395,10 +395,10 @@ function UsersTable({
                   aria-label={t("admin.users.selectAllAria")}
                 />
               </th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thName")}</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thEmail")}</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thRole")}</th>
-              <th className="px-6 py-3 font-medium text-muted-foreground">{t("admin.users.thJoined")}</th>
+              <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.users.thName")}</th>
+              <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.users.thEmail")}</th>
+              <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.users.thRole")}</th>
+              <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.users.thJoined")}</th>
               <th className="px-3 py-3" aria-label={t("admin.users.thActions")} />
             </tr>
           </thead>
@@ -436,7 +436,7 @@ function UserCard({
   return (
     <div
       className={`rounded-md border border-border bg-card p-3 transition-colors ${
-        selected ? "border-primary/40 bg-primary/[0.03]" : ""
+        selected ? "border-primary/40 bg-primary/[0.08] dark:bg-primary/15" : ""
       }`}
     >
       <div className="flex items-start gap-3">
@@ -475,7 +475,7 @@ function UserCard({
           aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
           title={isSelf ? t("admin.users.deleteSelfTooltip") : t("admin.users.deleteTooltip")}
         >
-          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+          <Trash2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
         </Button>
       </div>
       <div className="mt-3 pl-7">
@@ -513,8 +513,8 @@ function UserRow({
   const displayName = user.full_name || user.email
   return (
     <tr
-      className={`hover:bg-muted/50 transition-colors ${
-        selected ? "bg-primary/[0.03]" : ""
+      className={`transition-colors hover:bg-muted/40 ${
+        selected ? "bg-primary/[0.08] dark:bg-primary/15" : ""
       }`}
     >
       <td className="px-3 py-3">
@@ -524,7 +524,7 @@ function UserRow({
           aria-label={t("admin.users.selectAriaPrefix", { name: displayName })}
         />
       </td>
-      <td className="px-6 py-3">
+      <td className="px-5 py-3">
         <div className="flex min-w-0 items-center gap-3">
           {user.avatar_url ? (
             <img
@@ -542,10 +542,10 @@ function UserRow({
           </span>
         </div>
       </td>
-      <td className="px-6 py-3 text-muted-foreground">
+      <td className="px-5 py-3 text-muted-foreground">
         <span className="block truncate" title={user.email}>{user.email}</span>
       </td>
-      <td className="px-6 py-3">
+      <td className="px-5 py-3">
         <RoleSelector
           role={user.role}
           disabled={updating || isSelf}
@@ -553,7 +553,7 @@ function UserRow({
           ariaLabel={t("admin.users.changeRoleAria", { name: displayName })}
         />
       </td>
-      <td className="whitespace-nowrap px-6 py-3 text-xs text-muted-foreground tabular-nums">
+      <td className="whitespace-nowrap px-5 py-3 text-xs text-muted-foreground tabular-nums">
         {formatDate(user.created_at)}
       </td>
       <td className="px-3 py-3 text-right">
@@ -566,7 +566,7 @@ function UserRow({
           aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
           title={isSelf ? t("admin.users.deleteSelfTooltip") : t("admin.users.deleteTooltip")}
         >
-          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+          <Trash2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
         </Button>
       </td>
     </tr>

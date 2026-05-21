@@ -7,6 +7,25 @@ export { ROLE_I18N_KEY } from "@/lib/roles"
 export type AdminTab = "overview" | "cohorts" | "audit"
 export const ADMIN_TABS: readonly AdminTab[] = ["overview", "cohorts", "audit"]
 
+/** Stable DOM ids for each admin tab's trigger button. Mirrors of these
+ *  live on the corresponding ``role="tabpanel"`` wrappers in
+ *  ``AdminDashboard.tsx`` via ``aria-labelledby``, so screen readers
+ *  hear "Cohorts, tab, selected" and the panel reads as belonging to
+ *  that tab. Kept in the constants module so AdminTabs.tsx stays a
+ *  pure component file (no shared constants → no Fast Refresh
+ *  invalidation when only the component changes). */
+export const ADMIN_TAB_TRIGGER_ID = {
+  overview: "admin-tab-overview",
+  cohorts: "admin-tab-cohorts",
+  audit: "admin-tab-audit",
+} as const
+
+export const ADMIN_TAB_PANEL_ID = {
+  overview: "admin-tabpanel-overview",
+  cohorts: "admin-tabpanel-cohorts",
+  audit: "admin-tabpanel-audit",
+} as const
+
 export const ACTION_OPTIONS = [
   "create",
   "update",

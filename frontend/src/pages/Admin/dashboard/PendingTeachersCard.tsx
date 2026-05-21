@@ -60,7 +60,7 @@ export function PendingTeachersCard({ pending, updatingId, onApprove, onDeny }: 
   return (
     <Card className="mb-6 border-l-stripe border-l-warning">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
+        <CardTitle className="flex items-center gap-2 font-serif text-lg font-semibold tracking-tight">
           <Clock className="h-4 w-4 text-warning" strokeWidth={1.75} aria-hidden />
           {t("admin.pendingTeachers.title")}
           <Badge variant="warning" className="font-normal">
@@ -100,7 +100,7 @@ export function PendingTeachersCard({ pending, updatingId, onApprove, onDeny }: 
                       <span className="truncate">{u.email}</span>
                       {disposable && (
                         <Badge variant="destructive" className="ml-1 h-4 px-1 text-[10px] font-medium">
-                          <AlertTriangle className="mr-0.5 h-2.5 w-2.5" strokeWidth={2} aria-hidden />
+                          <AlertTriangle className="mr-0.5 h-3 w-3" strokeWidth={1.75} aria-hidden />
                           {t("admin.pendingTeachers.disposableEmail")}
                         </Badge>
                       )}
