@@ -165,7 +165,9 @@ export default function TeacherAnalytics() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{t("teacherAnalytics.enrollments.heading")}</CardTitle>
+          <CardTitle className="font-serif text-lg font-semibold tracking-tight">
+            {t("teacherAnalytics.enrollments.heading")}
+          </CardTitle>
           <CardDescription>
             {t("teacherAnalytics.enrollments.subheadingCount", { count: analytics.totalStudents })}
           </CardDescription>
