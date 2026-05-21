@@ -47,15 +47,17 @@ export default function TeacherGradebook() {
   const sortDir: SortDir = params.get("dir") === "desc" ? "desc" : "asc"
 
   const setActiveTab = (next: ActiveTab) =>
-    setParams(
-      (p) => {
-        const n = new URLSearchParams(p)
-        if (next === "summary") n.delete("tab")
-        else n.set("tab", next)
-        return n
-      },
-      { replace: true },
-    )
+    // PUSH (not replace) -- summary ↔ table tab switching is primary
+    // navigation; back-button should undo it instead of dropping the
+    // user out of the gradebook entirely. Sort toggles below stay on
+    // ``replace`` since each column-click is a quick filter tweak,
+    // not a navigation step worth back-stop-ing.
+    setParams((p) => {
+      const n = new URLSearchParams(p)
+      if (next === "summary") n.delete("tab")
+      else n.set("tab", next)
+      return n
+    })
 
   const applySort = (field: SortField, dir: SortDir) =>
     setParams(

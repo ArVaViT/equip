@@ -215,7 +215,12 @@ export default function TeacherDashboard() {
     const next = new URLSearchParams(params)
     if (showTrash) next.delete("trash")
     else next.set("trash", "1")
-    setParams(next, { replace: true })
+    // PUSH (not replace) -- opening / closing the Trash drawer is a
+    // meaningful state change that the user can reasonably back-button
+    // out of. ``replace`` here used to drop the prior dashboard view
+    // from history; pressing back from the Trash drawer left the
+    // /teacher route entirely instead of just closing the drawer.
+    setParams(next)
   }
 
   return (
