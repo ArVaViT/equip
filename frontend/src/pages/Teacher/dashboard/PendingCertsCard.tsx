@@ -19,8 +19,8 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
   return (
     <Card data-tour="pending-certs" className="mb-8 border-l-stripe border-l-warning">
       <CardHeader>
-        <CardTitle className="text-xl flex items-center gap-2">
-          <Award className="h-5 w-5 text-warning" strokeWidth={1.75} />
+        <CardTitle className="flex items-center gap-2 font-serif text-lg font-semibold tracking-tight">
+          <Award className="h-5 w-5 text-warning" strokeWidth={1.75} aria-hidden />
           {t("teacherDashboard.pendingCerts.title")}
           <Badge variant="warning" className="font-normal">
             {certs.length}

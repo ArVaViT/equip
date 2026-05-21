@@ -112,7 +112,7 @@ export function StudentRow({
   return (
     <>
       <tr
-        className="border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors"
+        className="cursor-pointer border-b transition-colors last:border-0 hover:bg-muted/40"
         onClick={onToggle}
       >
         <td className="py-3 pr-2">

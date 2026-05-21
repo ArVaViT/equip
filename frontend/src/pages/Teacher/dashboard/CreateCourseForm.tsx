@@ -33,7 +33,7 @@ export function CreateCourseForm({
   return (
     <Card className="mb-8 border-dashed">
       <CardHeader>
-        <CardTitle className="text-lg">
+        <CardTitle className="font-serif text-lg font-semibold tracking-tight">
           {t("teacherDashboard.createForm.title")}
         </CardTitle>
       </CardHeader>

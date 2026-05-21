@@ -19,7 +19,7 @@ export function CourseEditorSkeleton() {
       </div>
       <div className="space-y-3">
         {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-16 rounded-lg border bg-muted/30" />
+          <Skeleton key={i} className="h-16 rounded-md border bg-muted/30" />
         ))}
       </div>
     </div>

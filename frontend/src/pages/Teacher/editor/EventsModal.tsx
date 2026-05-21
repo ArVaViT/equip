@@ -54,7 +54,7 @@ export function EventsModal({
   return (
     <Modal open={open} onClose={onClose} title={t("teacherEditor.modals.events.title")}>
       <div className="space-y-4">
-        <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
+        <div className="space-y-3 rounded-md border bg-muted/30 p-3">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             {editingId
               ? t("teacherEditor.modals.events.editEvent")

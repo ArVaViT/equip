@@ -227,7 +227,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
   return (
     <div>
       <div
-        className="grid grid-cols-[1fr_80px_80px_90px_80px_70px_70px] gap-3 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors items-center"
+        className="grid cursor-pointer grid-cols-[1fr_80px_80px_90px_80px_70px_70px] items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40"
         onClick={() => onToggleExpand(student.student_id)}
       >
         <div className="flex items-center gap-2 min-w-0">
