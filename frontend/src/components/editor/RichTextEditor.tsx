@@ -185,7 +185,7 @@ export default function RichTextEditor({
             type="button"
             aria-label={t("blockEditor.toolbar.dragHandle")}
             title={t("blockEditor.toolbar.dragHandle")}
-            className="flex h-6 w-5 cursor-grab items-center justify-center rounded text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-6 w-5 cursor-grab items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <GripVertical size={14} strokeWidth={1.75} aria-hidden="true" />
           </button>

@@ -55,7 +55,7 @@ function ToolbarButton({
       className={cn(
         "rounded p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         active
-          ? "bg-primary/15 text-primary"
+          ? "bg-primary/20 text-primary ring-1 ring-inset ring-primary/30"
           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
         disabled && "cursor-not-allowed opacity-40",
       )}

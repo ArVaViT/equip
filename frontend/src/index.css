@@ -567,7 +567,11 @@
    already written into existing chapter HTML. Only the visual language
    changes: a thin accent rule, a very light tinted surface, zero emoji. */
 .callout {
-  @apply my-6 rounded-md border border-border bg-muted/30 px-5 py-4;
+  /* ``bg-muted/30`` was too faint in dark mode (--muted: 240 5% 15%
+   * at 30% opacity over a 240 6% 12% card surface ≈ no visible
+   * tint). Bump to ``/60`` so the block reads as a distinct surface
+   * in both themes. */
+  @apply my-6 rounded-md border border-border bg-muted/60 px-5 py-4 text-foreground;
   border-left-width: 3px;
 }
 .callout > *:first-child {
@@ -578,22 +582,30 @@
 }
 .callout > h3:first-child,
 .callout > h4:first-child {
-  @apply mt-0 mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground;
+  /* Header was ``text-muted-foreground`` — washed out in dark mode
+   * against the now-stronger callout background. Use foreground so
+   * the heading reads clearly while staying compact + uppercase. */
+  @apply mt-0 mb-2 text-sm font-semibold uppercase tracking-wide text-foreground;
 }
 
+/* Variant tint opacities are tuned to read at >= AA contrast on
+ * BOTH light and dark surfaces. Token values flip via the .dark
+ * root selector — opacity is what determined visibility, not hue. */
 .callout-info {
   border-left-color: hsl(var(--info));
+  background-color: hsl(var(--info) / 0.1);
 }
 .callout-verse {
   border-left-color: hsl(var(--accent));
-  background-color: hsl(var(--accent) / 0.06);
+  background-color: hsl(var(--accent) / 0.12);
 }
 .callout-takeaway {
   border-left-color: hsl(var(--success));
+  background-color: hsl(var(--success) / 0.12);
 }
 .callout-warning {
   border-left-color: hsl(var(--warning));
-  background-color: hsl(var(--warning) / 0.08);
+  background-color: hsl(var(--warning) / 0.15);
 }
 
 /* ===== Toggle callout =====
@@ -604,7 +616,8 @@
    shapes share the same border + tint so the editor preview and the
    student view look identical. */
 .callout-toggle {
-  border-left-color: hsl(var(--muted-foreground) / 0.5);
+  border-left-color: hsl(var(--muted-foreground));
+  background-color: hsl(var(--muted) / 0.6);
 }
 details.callout-toggle {
   /* ``<details>`` doesn't inherit the ``.callout`` block's padding
@@ -676,18 +689,34 @@ details.callout-toggle > summary + * {
    without leaking into unrelated tables on the page. */
 .prose table.equip-table,
 .equip-table {
-  @apply my-6 w-full border-collapse text-sm;
+  @apply my-6 w-full border-collapse text-sm text-foreground;
 }
 .prose table.equip-table th,
 .prose table.equip-table td,
 .equip-table th,
 .equip-table td {
-  @apply border border-border px-3 py-2 align-top;
+  /* ``text-foreground`` is explicit because the bare ``td``
+   * inherits ``currentColor`` which, under some .prose wrappers,
+   * resolves to the parent's ``--muted-foreground`` — invisible
+   * against the cell's own muted background in dark mode. */
+  @apply border border-border px-3 py-2 align-top text-foreground;
   min-width: 4rem;
 }
 .prose table.equip-table th,
 .equip-table th {
-  @apply bg-muted/50 font-semibold text-left;
+  /* Header background bumped from ``/50`` → ``/80`` so the row
+   * reads as a distinct band against the cell surface in dark
+   * mode (where the gap between --card and --muted/50 is barely
+   * one step). */
+  @apply bg-muted/80 font-semibold text-left text-foreground;
+}
+/* Subtle row hover — only inside the editor's ProseMirror surface
+ * AND in the student-facing prose render. Helps teachers track a
+ * single row across wide tables (synoptic parallels, comparison
+ * grids) without being distracting. */
+.prose table.equip-table tbody tr:hover,
+.equip-table tbody tr:hover {
+  background-color: hsl(var(--muted) / 0.4);
 }
 /* Inside the editor: visual cue for the currently-selected cell + a
    slightly thicker focus ring for the resize handles. ProseMirror sets
@@ -697,7 +726,12 @@ details.callout-toggle > summary + * {
   @apply table-fixed;
 }
 .ProseMirror table.equip-table .selectedCell {
-  @apply bg-primary/10;
+  /* ``/10`` was invisible in dark mode against the --card surface;
+   * /25 + a ring inside the cell keeps the selection legible in
+   * both themes without bleeding into adjacent cells. */
+  @apply bg-primary/25;
+  outline: 1px solid hsl(var(--primary) / 0.6);
+  outline-offset: -1px;
 }
 .ProseMirror table.equip-table td,
 .ProseMirror table.equip-table th {
@@ -778,7 +812,15 @@ details.callout-toggle > summary + * {
  * defaults look fine in light mode but become low-contrast on a dark
  * background. Force the foreground colour from the semantic token so
  * formulas stay legible in both themes. ``.katex`` is namespaced —
- * scoping the override here doesn't touch surrounding prose. */
+ * scoping the override here doesn't touch surrounding prose.
+ *
+ * The list covers every leaf math-atom class KaTeX emits (mord,
+ * mbin, mrel, mopen, mclose, mpunct, minner, mop) plus ``.mtext``
+ * (``\text{...}`` regions inside formulas) and ``.mathnormal`` /
+ * ``.mathit`` / ``.mathbf`` / ``.mathsf`` / ``.mathtt`` (font-style
+ * variants — italic letters, bold operators, etc.). Missing any of
+ * these means a formula with that specific kind of glyph keeps
+ * KaTeX's hardcoded near-black colour. */
 .katex,
 .katex .mord,
 .katex .mbin,
@@ -787,6 +829,34 @@ details.callout-toggle > summary + * {
 .katex .mclose,
 .katex .mpunct,
 .katex .minner,
-.katex .mop {
+.katex .mop,
+.katex .mtext,
+.katex .mathnormal,
+.katex .mathit,
+.katex .mathbf,
+.katex .mathsf,
+.katex .mathtt,
+.katex .mathcal,
+.katex .mathfrak,
+.katex .mathbb,
+.katex .mathscr {
   color: hsl(var(--foreground));
+}
+
+/* Block math (``$$...$$`` or ``data-display="yes"``) should sit on
+ * its own line, centered, with breathing room above/below — the
+ * default ``.katex-display`` from the stylesheet is left-aligned
+ * with no margin and looks like a misplaced inline formula. */
+.katex-display {
+  margin: 1.25rem 0;
+  text-align: center;
+  /* Wide formulas overflow horizontally on mobile; allow the inner
+   * .katex element to scroll within its own row instead of pushing
+   * the chapter's body width past the viewport. */
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.katex-display > .katex {
+  display: inline-block;
+  white-space: nowrap;
 }
