@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { CalendarDays, Pencil, Plus } from "lucide-react";
+import { CalendarDays, Layers } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { EmptyState, ErrorState, InlineEdit, PageHeader } from "@/components/pat
 import { useUserTour } from "@/hooks/useUserTour";
 import { moduleEditorSteps } from "@/lib/tourSteps";
 
+import { AddChapterBar } from "./moduleEditor/AddChapterBar";
 import { ChapterList } from "./moduleEditor/ChapterList";
 import { ModuleEditorSkeleton } from "./moduleEditor/LoadingSkeleton";
 import { useModuleEditor } from "./moduleEditor/useModuleEditor";
@@ -136,37 +137,36 @@ export default function ModuleEditor() {
       <div data-tour="module-editor-chapters">
       {chapters.length === 0 ? (
         <EmptyState
-          icon={<Pencil strokeWidth={1.75} />}
+          icon={<Layers strokeWidth={1.75} />}
           title={t("moduleEditor.noChapters.title")}
           description={t("moduleEditor.noChapters.description")}
-          action={
-            <Button onClick={addChapter} size="sm">
-              <Plus className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
-              {t("moduleEditor.noChapters.action")}
-            </Button>
-          }
+          // The 4-card chooser replaces the old "+ Add Chapter"
+          // button. Teachers now pick the chapter shape (reading /
+          // quiz / exam / assignment) up-front instead of creating a
+          // default-typed chapter and switching its type inside the
+          // editor afterwards. One less step, one less surprise.
+          action={<AddChapterBar onAdd={addChapter} variant="empty" />}
           className="mb-6"
         />
       ) : (
-        <ChapterList
-          chapters={chapters}
-          onDragEnd={handleChapterDragEnd}
-          onTitleChange={(id, title) => updateChapterLocal(id, { title })}
-          onRename={renameChapter}
-          onToggleLock={toggleLock}
-          onEdit={(chId) =>
-            navigate(
-              `/teacher/courses/${courseId}/modules/${moduleId}/chapters/${chId}/edit`,
-            )
-          }
-          onDelete={deleteChapter}
-        />
-      )}
+        <>
+          <ChapterList
+            chapters={chapters}
+            onDragEnd={handleChapterDragEnd}
+            onTitleChange={(id, title) => updateChapterLocal(id, { title })}
+            onRename={renameChapter}
+            onToggleLock={toggleLock}
+            onEdit={(chId) =>
+              navigate(
+                `/teacher/courses/${courseId}/modules/${moduleId}/chapters/${chId}/edit`,
+              )
+            }
+            onDelete={deleteChapter}
+          />
 
-      <Button variant="outline" className="w-full border-dashed h-12" onClick={addChapter}>
-        <Plus className="h-4 w-4 mr-2" strokeWidth={1.75} />
-        {t("moduleEditor.addChapter")}
-      </Button>
+          <AddChapterBar onAdd={addChapter} variant="compact" />
+        </>
+      )}
       </div>
     </div>
   );

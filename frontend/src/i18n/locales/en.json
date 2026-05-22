@@ -1438,10 +1438,24 @@
     "clear": "Clear",
     "noChapters": {
       "title": "No chapters yet",
-      "description": "Add your first chapter to start building this module.",
+      "description": "Pick a chapter type below to start building this module. Reading lessons hold your written and visual content; quizzes, exams, and assignments each measure understanding differently.",
       "action": "Add chapter"
     },
     "addChapter": "Add chapter",
+    "addBar": {
+      "reading": {
+        "description": "Text, images, video, callouts, code, formulas."
+      },
+      "quiz": {
+        "description": "Multiple-choice + short-answer + essay questions."
+      },
+      "exam": {
+        "description": "Higher-stakes assessment, single attempt by default."
+      },
+      "assignment": {
+        "description": "Student submits work; you grade it manually."
+      }
+    },
     "lockChapterTooltip": "Lock chapter",
     "unlockChapterTooltip": "Unlock chapter",
     "editChapterAria": "Edit chapter {{title}}",

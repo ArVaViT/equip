@@ -10,6 +10,7 @@ import { isoToLocalInput, localInputToIso } from "@/i18n/format";
 import { makeChapterSchema, makeModuleSchema } from "@/lib/validations/course";
 import type { Chapter, Module } from "@/types";
 import type { useConfirm } from "@/components/ui/alert-dialog";
+import type { ChapterType } from "@/lib/chapterTypes";
 
 type ConfirmFn = ReturnType<typeof useConfirm>;
 
@@ -108,7 +109,7 @@ export function useModuleEditor(
   };
 
   const addingChapterRef = useRef(false);
-  const addChapter = async () => {
+  const addChapter = async (chapterType: ChapterType = "reading") => {
     if (!courseId || !moduleId || !mod) return;
     // Lock: a fast double-click before the optimistic ``setMod`` lands
     // recomputes the same ``order_index`` from a stale
@@ -125,6 +126,7 @@ export function useModuleEditor(
         // Russian-UI teacher's course tree until they renamed it.
         title: t("moduleEditor.defaults.chapterTitle", { n: order + 1 }),
         order_index: order,
+        chapter_type: chapterType,
       });
       setMod((prev) =>
         prev ? { ...prev, chapters: [...(prev.chapters ?? []), ch] } : prev,
