@@ -79,3 +79,29 @@ class TestTableAllowlist:
         # without leaking into other tables on the page.
         cleaned = sanitize_string('<table class="equip-table"><tr><td>x</td></tr></table>')
         assert 'class="equip-table"' in cleaned
+
+
+class TestCodeBlockAllowlist:
+    """The CodeBlockLowlight extension emits
+    ``<pre><code class="language-X">...</code></pre>`` with highlight.js
+    wrapping individual tokens in ``<span class="hljs-Y">``. ``pre`` /
+    ``code`` / ``span`` are already allowed tags; this pins ``class``
+    survival across the round-trip so a teacher's code samples don't
+    lose their syntax highlighting on first save.
+    """
+
+    def test_language_class_survives_on_code(self):
+        cleaned = sanitize_string('<pre><code class="language-python">print(1)</code></pre>')
+        assert 'class="language-python"' in cleaned
+        assert "<pre>" in cleaned
+
+    def test_highlight_token_spans_survive(self):
+        html = (
+            '<pre><code class="language-python">'
+            '<span class="hljs-built_in">print</span>'
+            '(<span class="hljs-number">1</span>)'
+            "</code></pre>"
+        )
+        cleaned = sanitize_string(html)
+        assert 'class="hljs-built_in"' in cleaned
+        assert 'class="hljs-number"' in cleaned
