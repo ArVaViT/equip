@@ -29,6 +29,15 @@ const STATUS_BADGE: Record<Cohort["status"], "success" | "info" | "muted"> = {
   completed: "muted",
 }
 
+// Static i18n key lookup so the keyCoverage check sees each literal;
+// the previous ``t(`admin.cohorts.status${capitalize(c.status)}`)``
+// hid the key from the static scan.
+const STATUS_LABEL_KEYS: Record<Cohort["status"], string> = {
+  upcoming: "admin.cohorts.statusUpcoming",
+  active: "admin.cohorts.statusActive",
+  completed: "admin.cohorts.statusCompleted",
+}
+
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const
 type PageSize = (typeof PAGE_SIZE_OPTIONS)[number]
 const DEFAULT_PAGE_SIZE: PageSize = 25
@@ -364,7 +373,7 @@ function CohortsTable({ items }: { items: Cohort[] }) {
                 </p>
               </div>
               <Badge variant={STATUS_BADGE[c.status]} className="shrink-0 capitalize">
-                {t(`admin.cohorts.status${capitalize(c.status)}`)}
+                {t(STATUS_LABEL_KEYS[c.status])}
               </Badge>
             </div>
             <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
@@ -423,7 +432,7 @@ function CohortsTable({ items }: { items: Cohort[] }) {
                 </td>
                 <td className="px-5 py-3">
                   <Badge variant={STATUS_BADGE[c.status]} className="capitalize">
-                    {t(`admin.cohorts.status${capitalize(c.status)}`)}
+                    {t(STATUS_LABEL_KEYS[c.status])}
                   </Badge>
                 </td>
                 <td className="px-5 py-3 text-xs text-muted-foreground">
@@ -441,10 +450,6 @@ function CohortsTable({ items }: { items: Cohort[] }) {
       </div>
     </>
   )
-}
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 function EmptyCohorts({ hasQuery, onCreate }: { hasQuery: boolean; onCreate: () => void }) {

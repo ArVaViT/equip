@@ -19,6 +19,8 @@ import {
 } from "lucide-react"
 import {
   CHAPTER_TYPES,
+  CHAPTER_TYPE_DESCRIPTION_KEYS,
+  CHAPTER_TYPE_LABEL_KEYS,
   CHAPTER_TYPE_META,
   normalizeChapterType,
   type ChapterType,
@@ -344,10 +346,10 @@ export default function ChapterEditor() {
                       selected ? "text-primary" : ""
                     }`}
                   >
-                    {t(`chapterTypes.${ct.value}.label`)}
+                    {t(CHAPTER_TYPE_LABEL_KEYS[ct.value])}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {t(`chapterTypes.${ct.value}.description`)}
+                    {t(CHAPTER_TYPE_DESCRIPTION_KEYS[ct.value])}
                   </div>
                 </div>
               </button>

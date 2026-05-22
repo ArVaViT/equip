@@ -68,6 +68,30 @@ export const ACTION_BADGE_VARIANT: Record<
   grade: "warningSubtle",
 }
 
+// Static i18n key lookups — callers use ``t(ACTION_LABEL_KEYS[o])``
+// instead of ``t(`admin.audit.actionValue.${o}`)`` so the keyCoverage
+// test can see each literal at scan time. Per docs/I18N.md.
+export const ACTION_LABEL_KEYS: Record<(typeof ACTION_OPTIONS)[number], string> = {
+  create: "admin.audit.actionValue.create",
+  update: "admin.audit.actionValue.update",
+  delete: "admin.audit.actionValue.delete",
+  publish: "admin.audit.actionValue.publish",
+  enroll: "admin.audit.actionValue.enroll",
+  approve: "admin.audit.actionValue.approve",
+  reject: "admin.audit.actionValue.reject",
+  grade: "admin.audit.actionValue.grade",
+}
+
+export const RESOURCE_LABEL_KEYS: Record<(typeof RESOURCE_OPTIONS)[number], string> = {
+  course: "admin.audit.resourceValue.course",
+  module: "admin.audit.resourceValue.module",
+  chapter: "admin.audit.resourceValue.chapter",
+  enrollment: "admin.audit.resourceValue.enrollment",
+  certificate: "admin.audit.resourceValue.certificate",
+  assignment_submission: "admin.audit.resourceValue.assignment_submission",
+  user: "admin.audit.resourceValue.user",
+}
+
 export interface ProfileRow {
   id: string
   email: string

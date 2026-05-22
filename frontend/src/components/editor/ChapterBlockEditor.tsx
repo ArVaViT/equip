@@ -8,6 +8,7 @@ import { toast } from "@/lib/toast"
 import type { ChapterBlock } from "@/types"
 import { useConfirm } from "@/components/ui/alert-dialog"
 import { AddBlockMenu, BlockRow, type BlockType } from "./blocks"
+import { BLOCK_TYPE_LABEL_KEYS } from "./blocks/types"
 
 interface Props {
   chapterId: string
@@ -74,7 +75,7 @@ export default function ChapterBlockEditor({ chapterId }: Props) {
       setBlocks((prev) => [...prev, newBlock])
       setExpandedId(newBlock.id)
       toast({
-        title: t("blockEditor.addedSuccess", { type: t(`blockEditor.types.${type}`) }),
+        title: t("blockEditor.addedSuccess", { type: t(BLOCK_TYPE_LABEL_KEYS[type]) }),
         variant: "success",
       })
     } catch (error: unknown) {

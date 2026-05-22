@@ -85,3 +85,21 @@ export function getChapterTypeMeta(raw: string | null | undefined): ChapterTypeM
 export function isGradableChapterType(raw: string | null | undefined): boolean {
   return GRADABLE_CHAPTER_TYPES.has(normalizeChapterType(raw))
 }
+
+// Static i18n key lookups so callers ``t(CHAPTER_TYPE_LABEL_KEYS[type])`` —
+// instead of ``t(`chapterTypes.${type}.label`)`` — and the keyCoverage
+// test can see every key as a literal at scan time. Per docs/I18N.md:
+// "Resist the temptation to write t(`prefix.${variable}`)".
+export const CHAPTER_TYPE_LABEL_KEYS: Record<ChapterType, string> = {
+  reading: "chapterTypes.reading.label",
+  quiz: "chapterTypes.quiz.label",
+  exam: "chapterTypes.exam.label",
+  assignment: "chapterTypes.assignment.label",
+}
+
+export const CHAPTER_TYPE_DESCRIPTION_KEYS: Record<ChapterType, string> = {
+  reading: "chapterTypes.reading.description",
+  quiz: "chapterTypes.quiz.description",
+  exam: "chapterTypes.exam.description",
+  assignment: "chapterTypes.assignment.description",
+}

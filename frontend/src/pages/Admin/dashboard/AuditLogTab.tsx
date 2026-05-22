@@ -17,9 +17,11 @@ import { EmptyState } from "@/components/patterns/EmptyState"
 import { FileText, ChevronLeft, ChevronRight, X } from "lucide-react"
 import type { AuditLogEntry } from "@/types"
 import {
-  ACTION_OPTIONS,
-  RESOURCE_OPTIONS,
   ACTION_BADGE_VARIANT,
+  ACTION_LABEL_KEYS,
+  ACTION_OPTIONS,
+  RESOURCE_LABEL_KEYS,
+  RESOURCE_OPTIONS,
 } from "./constants"
 import { AUDIT_PAGE_SIZE_OPTIONS, type AuditPageSize } from "./useAdminAudit"
 import { AuditDetailsCell } from "./AuditDetailsCell"
@@ -120,7 +122,7 @@ export function AuditLogTab({
                   <SelectItem value="all">{t("admin.audit.filterAllActions")}</SelectItem>
                   {ACTION_OPTIONS.map((o) => (
                     <SelectItem key={o} value={o}>
-                      {t(`admin.audit.actionValue.${o}`)}
+                      {t(ACTION_LABEL_KEYS[o])}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -147,7 +149,7 @@ export function AuditLogTab({
                   <SelectItem value="all">{t("admin.audit.filterAllResources")}</SelectItem>
                   {RESOURCE_OPTIONS.map((o) => (
                     <SelectItem key={o} value={o}>
-                      {t(`admin.audit.resourceValue.${o}`)}
+                      {t(RESOURCE_LABEL_KEYS[o])}
                     </SelectItem>
                   ))}
                 </SelectContent>

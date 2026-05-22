@@ -25,6 +25,15 @@ const CALLOUT_VARIANTS: CalloutChoice[] = [
   { value: "warning", icon: AlertTriangle, color: "text-warning" },
 ];
 
+// Static i18n key lookup — exposes each literal to the keyCoverage
+// static check that template-literal callsites silently bypass.
+const CALLOUT_LABEL_KEYS: Record<CalloutVariant, string> = {
+  info: "blockEditor.callout.info",
+  verse: "blockEditor.callout.verse",
+  takeaway: "blockEditor.callout.takeaway",
+  warning: "blockEditor.callout.warning",
+};
+
 /**
  * Dropdown menu for inserting or removing a Callout block. Lives next
  * to the formatting toolbar but owns its own open/close state and
@@ -107,7 +116,7 @@ export function CalloutDropdown({
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left focus-visible:outline-none focus-visible:bg-muted"
               >
                 <Icon size={16} className={v.color} aria-hidden="true" />
-                {t(`blockEditor.callout.${v.value}`)}
+                {t(CALLOUT_LABEL_KEYS[v.value])}
               </button>
             );
           })}
