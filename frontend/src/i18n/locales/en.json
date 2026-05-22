@@ -935,7 +935,10 @@
     },
     "codeBlock": {
       "insert": "Insert code block",
-      "changeLanguage": "Change language"
+      "changeLanguage": "Change language",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyAriaLabel": "Copy code to clipboard"
     },
     "deleteBlockAria": "Delete {{label}} block"
   },

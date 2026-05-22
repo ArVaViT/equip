@@ -559,13 +559,22 @@
   @apply my-8 border-border;
 }
 .prose code {
-  @apply px-1.5 py-0.5 rounded bg-muted text-[0.9em] font-mono;
+  /* Inline code (``<code>`` outside a ``<pre>``). The muted-foreground
+   * accent on the colour distinguishes it from regular text without
+   * shouting; the subtle border + thin background reads as a "code
+   * snippet" rather than just bolded prose. */
+  @apply rounded border border-border bg-muted px-1.5 py-0.5 text-[0.9em] font-mono text-foreground;
 }
 .prose pre {
-  @apply my-4 p-4 rounded-md bg-muted text-sm font-mono overflow-x-auto;
+  /* Block code. Stronger surface than inline (full bg-muted, not
+   * /70) so it reads as a distinct block in dark mode where the
+   * card surface and a 70%-opacity muted overlay are too close. */
+  @apply my-4 overflow-x-auto rounded-md border border-border bg-muted p-4 text-sm font-mono;
 }
 .prose pre code {
-  @apply p-0 bg-transparent;
+  /* Block-code's inner ``<code>`` shouldn't carry the inline pill
+   * styling; the parent ``<pre>`` already owns the surface. */
+  @apply border-0 bg-transparent p-0;
 }
 .prose img {
   @apply my-6 rounded-md;
@@ -760,7 +769,12 @@ details.callout-toggle > summary + * {
    contrast without bundling a third-party theme stylesheet. */
 .prose pre,
 .ProseMirror pre {
-  @apply my-4 overflow-x-auto rounded-md border border-border bg-muted/70 p-4;
+  /* Same surface treatment as ``.prose pre`` above so the editor
+   * preview matches the rendered chapter exactly. ``bg-muted`` (no
+   * opacity) gives strong contrast against the card surface in
+   * dark mode; ``border-border`` lifts the block visually without
+   * needing a drop shadow. */
+  @apply my-4 overflow-x-auto rounded-md border border-border bg-muted p-4;
 }
 .prose pre code,
 .ProseMirror pre code {
@@ -804,8 +818,19 @@ details.callout-toggle > summary + * {
 }
 .hljs-variable,
 .hljs-template-variable,
-.hljs-tag {
+.hljs-tag,
+.hljs-subst {
   color: hsl(var(--accent));
+}
+.hljs-function,
+.hljs-params,
+.hljs-class {
+  /* Function definitions and class names — most languages emit
+   * these for ``def``/``function``/``class`` blocks. Without an
+   * explicit colour they inherit the body foreground, which is
+   * fine but loses the ``this is the named entity`` cue that
+   * makes scan-reading code easier. */
+  color: hsl(var(--info));
 }
 .hljs-deletion {
   color: hsl(var(--destructive));

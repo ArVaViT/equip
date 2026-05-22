@@ -4,6 +4,7 @@ import { useParams, Link, useNavigate } from "react-router-dom"
 import { sanitizeHtml as sanitize } from "@/lib/sanitize"
 import { renderMathIn } from "@/lib/katex-render"
 import { renderToggleCalloutsIn } from "@/lib/callout-toggle"
+import { attachCopyButtonsIn } from "@/lib/codeblock-copy"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
@@ -44,6 +45,7 @@ import { chapterViewSteps } from "@/lib/tourSteps"
  * a stable host element to anchor against.
  */
 function TextBlockRender({ html }: { html: string }) {
+  const { t } = useTranslation()
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     // Order matters: ``renderToggleCalloutsIn`` rewrites parent
@@ -54,7 +56,12 @@ function TextBlockRender({ html }: { html: string }) {
     // toggle-first avoids extra DOM churn.
     renderToggleCalloutsIn(ref.current)
     renderMathIn(ref.current)
-  }, [html])
+    attachCopyButtonsIn(ref.current, {
+      copy: t("blockEditor.codeBlock.copy"),
+      copied: t("blockEditor.codeBlock.copied"),
+      ariaLabel: t("blockEditor.codeBlock.copyAriaLabel"),
+    })
+  }, [html, t])
   return (
     <div
       ref={ref}
