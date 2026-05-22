@@ -32,6 +32,7 @@ IP, NOT the user's real IP — so every user shares one bucket per worker
 and the limiter is effectively disabled. We now read `X-Forwarded-For` first.
 """
 
+import asyncio
 import time
 from collections import defaultdict
 
@@ -87,6 +88,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.window = window
         self._hits: dict[str, list[float]] = defaultdict(list)
         self._last_cleanup: float = time.time()
+        # Starlette BaseHTTPMiddleware runs ``dispatch`` concurrently for
+        # overlapping requests on the same worker. Without a lock, two
+        # requests can both read ``len(hits) < max_calls`` and both
+        # append, briefly exceeding the cap. The same window also makes
+        # ``X-RateLimit-Remaining`` racy. One asyncio.Lock around the
+        # read-prune-check-append section serializes the hot path while
+        # leaving the await on ``call_next`` outside the lock so
+        # downstream handlers stay fully concurrent.
+        self._lock = asyncio.Lock()
 
     def _resolve_limit(self, path: str) -> tuple[str | None, int, int]:
         """Return ``(matched_prefix, max_calls, window)``.
@@ -131,21 +141,26 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         now = time.time()
         cutoff = now - window
 
-        self._cleanup_stale_buckets(now)
+        async with self._lock:
+            self._cleanup_stale_buckets(now)
 
-        hits = self._hits[bucket_key]
-        self._hits[bucket_key] = [t for t in hits if t > cutoff]
+            pruned = [t for t in self._hits[bucket_key] if t > cutoff]
+            if len(pruned) >= max_calls:
+                # Reassign so the cleanup loop sees the pruned state too.
+                self._hits[bucket_key] = pruned
+                return Response(
+                    content='{"detail":"Too many requests"}',
+                    status_code=429,
+                    media_type="application/json",
+                    headers={"Retry-After": str(window)},
+                )
+            pruned.append(now)
+            self._hits[bucket_key] = pruned
+            # Capture the post-append count under the lock so the
+            # header value matches the same snapshot the gate used.
+            remaining = max(0, max_calls - len(pruned))
 
-        if len(self._hits[bucket_key]) >= max_calls:
-            return Response(
-                content='{"detail":"Too many requests"}',
-                status_code=429,
-                media_type="application/json",
-                headers={"Retry-After": str(window)},
-            )
-
-        self._hits[bucket_key].append(now)
         response = await call_next(request)
         response.headers["X-RateLimit-Limit"] = str(max_calls)
-        response.headers["X-RateLimit-Remaining"] = str(max(0, max_calls - len(self._hits[bucket_key])))
+        response.headers["X-RateLimit-Remaining"] = str(remaining)
         return response

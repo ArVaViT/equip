@@ -61,17 +61,15 @@ def submit_quiz(
     ``passing_score``. Exam attempts deliberately don't leak the
     ``correct_option_id`` back to the student.
     """
-    quiz = (
-        db.query(Quiz)
-        .options(selectinload(Quiz.questions).selectinload(QuizQuestion.options))
-        .filter(Quiz.id == quiz_id)
-        .with_for_update()
-        .first()
-    )
-    if not quiz:
+    # Cheap pre-check WITHOUT FOR UPDATE first — if the user isn't
+    # enrolled, we can 403 without serializing other students on the
+    # row lock. Holding the Quiz lock during the enrollment SELECT +
+    # 403-raise was making non-enrolled attempts contend with
+    # legitimate submitters under load.
+    pre_quiz = db.query(Quiz.chapter_id).filter(Quiz.id == quiz_id).first()
+    if not pre_quiz:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
-
-    course_id = resolve_chapter_course_id(db, quiz.chapter_id)
+    course_id = resolve_chapter_course_id(db, pre_quiz.chapter_id)
     enrolled = (
         db.query(Enrollment)
         .filter(
@@ -85,6 +83,18 @@ def submit_quiz(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You must be enrolled in this course to submit quizzes",
         )
+
+    quiz = (
+        db.query(Quiz)
+        .options(selectinload(Quiz.questions).selectinload(QuizQuestion.options))
+        .filter(Quiz.id == quiz_id)
+        .with_for_update()
+        .first()
+    )
+    if not quiz:
+        # Lost-race fallback: someone deleted the quiz between the
+        # pre-check and the lock. Same 404 the original flow returned.
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
 
     quiz_service.ensure_attempts_available(db, quiz, current_user.id)
 
