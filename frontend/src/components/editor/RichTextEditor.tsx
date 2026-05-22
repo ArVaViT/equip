@@ -11,6 +11,8 @@ import { TableHeader } from "@tiptap/extension-table-header";
 import { TableCell } from "@tiptap/extension-table-cell";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
+import DragHandle from "@tiptap/extension-drag-handle-react";
+import { GripVertical } from "lucide-react";
 
 import { Callout } from "./CalloutExtension";
 import { YoutubeEmbed } from "./YoutubeExtension";
@@ -146,7 +148,7 @@ export default function RichTextEditor({
   if (!editor) return null;
 
   return (
-    <div className="rounded-md border border-input bg-background">
+    <div className="relative rounded-md border border-input bg-background">
       {editable && (
         <EditorToolbar
           editor={editor}
@@ -156,6 +158,23 @@ export default function RichTextEditor({
           onAddAudio={addAudio}
           onSetLink={setLink}
         />
+      )}
+      {editable && (
+        // The Drag Handle extension positions itself relative to the
+        // block under the caret / hover. Floating-UI defaults give us
+        // a clean ``left``-of-block placement; nested=true so the
+        // handle also targets list items and table cells, not just
+        // top-level blocks.
+        <DragHandle editor={editor} nested>
+          <button
+            type="button"
+            aria-label={t("blockEditor.toolbar.dragHandle")}
+            title={t("blockEditor.toolbar.dragHandle")}
+            className="flex h-6 w-5 cursor-grab items-center justify-center rounded text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing"
+          >
+            <GripVertical size={14} strokeWidth={1.75} aria-hidden="true" />
+          </button>
+        </DragHandle>
       )}
       <EditorContent editor={editor} />
       {editable && characterLimit !== undefined && (

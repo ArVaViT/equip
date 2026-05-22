@@ -908,7 +908,8 @@
       "link": "Link",
       "undo": "Undo",
       "redo": "Redo",
-      "characters": "{{count}} / {{limit}} characters"
+      "characters": "{{count}} / {{limit}} characters",
+      "dragHandle": "Drag to reorder block"
     },
     "callout": {
       "trigger": "Callout Block",

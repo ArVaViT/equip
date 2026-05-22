@@ -563,7 +563,8 @@
       "link": "Ссылка",
       "undo": "Отменить",
       "redo": "Повторить",
-      "characters": "{{count}} / {{limit}} символов"
+      "characters": "{{count}} / {{limit}} символов",
+      "dragHandle": "Перетащите, чтобы переупорядочить"
     },
     "callout": {
       "trigger": "Блок-выноска",
