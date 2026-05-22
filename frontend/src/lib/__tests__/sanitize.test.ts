@@ -81,4 +81,33 @@ describe("sanitizeHtml", () => {
     )
     expect(output).not.toContain("style=")
   })
+
+  it("preserves math marker data attributes so KaTeX can render", () => {
+    // Without ``data-type`` / ``data-latex`` / ``data-display`` in the
+    // DOMPurify allowlist the marker would lose its identity and the
+    // student would see the raw ``$x^2$`` source. This pins the
+    // post-merge fix from PR #504.
+    const output = sanitizeHtml(
+      '<p>see: <span data-type="inlineMath" data-latex="x^2" ' +
+        'data-display="no">$x^2$</span>.</p>',
+    )
+    expect(output).toContain('data-type="inlineMath"')
+    expect(output).toContain('data-latex="x^2"')
+    expect(output).toContain('data-display="no"')
+  })
+
+  it("preserves <details> + <summary> for the toggle callout shape", () => {
+    // The toggle callout is stored as ``<div data-callout="toggle">``
+    // and rewritten to native ``<details>`` at view time. Both shapes
+    // need to round-trip through DOMPurify intact — div for the
+    // editor reload path, details for any case where the rewritten
+    // shape is re-sanitised (e.g. pasted into another chapter).
+    const output = sanitizeHtml(
+      '<details data-callout="toggle" class="callout callout-toggle">' +
+        "<summary>q</summary><p>a</p></details>",
+    )
+    expect(output).toContain("<details")
+    expect(output).toContain("<summary>q</summary>")
+    expect(output).toContain('data-callout="toggle"')
+  })
 })

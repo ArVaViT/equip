@@ -101,18 +101,19 @@ _ALLOWED_ATTRIBUTES: dict[str, list[str]] = {
     "th": ["colspan", "rowspan", "scope", "class", "id"],
     # Inline-math markers from ``@aarkue/tiptap-math-extension``. The
     # extension stores math as ``<span data-type="inlineMath"
-    # data-latex="..." data-display="..." data-evaluate="...">$x^2$</span>``
-    # and the BlockRenderer renders KaTeX into the marker at view time.
-    # Same per-tag-overrides-wildcard rule as the table cells —
-    # ``class`` / ``id`` are repeated so highlight.js token spans and
-    # any other span use still keeps its class.
+    # data-latex="..." data-display="...">$x^2$</span>`` and the
+    # chapter renderer feeds the LaTeX to KaTeX at view time. The
+    # extension is configured with ``evaluation: false`` so the symbolic
+    # ``data-evaluate`` attr it would otherwise emit never ships; we
+    # don't allowlist it. Same per-tag-overrides-wildcard rule as table
+    # cells — ``class`` / ``id`` are repeated so highlight.js token
+    # spans (and any other span use) keep their class.
     "span": [
         "class",
         "id",
         "data-type",
         "data-latex",
         "data-display",
-        "data-evaluate",
     ],
     # ``div`` and ``details`` both carry ``data-callout`` from the
     # TipTap Callout extension (info / verse / takeaway / warning go on

@@ -43,10 +43,21 @@ DOMPurify.addHook("uponSanitizeAttribute", (_node, data) => {
 })
 
 const SANITIZE_CONFIG = {
-  ADD_TAGS: ["iframe"],
+  // ``details`` + ``summary`` carry the chapter-renderer rewrite of the
+  // toggle-callout block (see ``frontend/src/lib/callout-toggle.ts``).
+  // Naming them explicitly keeps the dependency stable if a future
+  // DOMPurify upgrade tightens its built-in HTML5 allowlist.
+  ADD_TAGS: ["iframe", "details", "summary"],
+  // ``data-type`` / ``data-latex`` / ``data-display`` carry the math
+  // marker shape from ``@aarkue/tiptap-math-extension``; the renderer
+  // walks ``span[data-type="inlineMath"]`` and feeds the LaTeX to
+  // KaTeX. Without these attrs in ``ADD_ATTR`` DOMPurify drops them,
+  // leaving the literal ``$x^2$`` delimiter span behind instead of
+  // a rendered formula.
   ADD_ATTR: [
     "allow", "allowfullscreen", "frameborder", "src", "loading",
     "referrerpolicy", "data-callout", "data-youtube-embed",
+    "data-type", "data-latex", "data-display",
     "alt", "width", "height",
   ],
   // Explicitly whitelist safe URI schemes; anything else gets stripped.

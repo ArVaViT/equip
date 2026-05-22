@@ -772,3 +772,21 @@ details.callout-toggle > summary + * {
 .hljs-strong {
   font-weight: 700;
 }
+
+/* KaTeX ships its own stylesheet with hardcoded text colors on a few
+ * structural classes (notably ``.mord`` for ordinary math atoms). The
+ * defaults look fine in light mode but become low-contrast on a dark
+ * background. Force the foreground colour from the semantic token so
+ * formulas stay legible in both themes. ``.katex`` is namespaced —
+ * scoping the override here doesn't touch surrounding prose. */
+.katex,
+.katex .mord,
+.katex .mbin,
+.katex .mrel,
+.katex .mopen,
+.katex .mclose,
+.katex .mpunct,
+.katex .minner,
+.katex .mop {
+  color: hsl(var(--foreground));
+}

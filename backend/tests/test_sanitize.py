@@ -109,18 +109,22 @@ class TestCodeBlockAllowlist:
 
 class TestMathMarkerAllowlist:
     """The TipTap math extension stores math as
-    ``<span data-type="inlineMath" data-latex="..." data-display="..."
-    data-evaluate="...">$x^2$</span>``. The BlockRenderer re-runs
-    ``katex.render`` over each marker at view time, so the data-*
-    attributes must round-trip through bleach intact — otherwise the
-    chapter view shows the raw ``$x^2$`` delimiters instead of the
-    rendered formula.
+    ``<span data-type="inlineMath" data-latex="..." data-display="...">
+    $x^2$</span>``. The BlockRenderer re-runs ``katex.render`` over each
+    marker at view time, so the data-* attributes must round-trip
+    through bleach intact — otherwise the chapter view shows the raw
+    ``$x^2$`` delimiters instead of the rendered formula.
+
+    (The extension can also emit ``data-evaluate`` for symbolic-math
+    evaluation, but we configure ``evaluation: false`` on the frontend
+    so the attribute never ships. It is *not* in the sanitiser
+    allowlist — see ``test_data_evaluate_attr_is_stripped``.)
     """
 
     def test_inline_math_marker_survives(self):
         html = (
             '<p>Theorem: <span data-type="inlineMath" data-latex="a^2+b^2=c^2" '
-            'data-display="no" data-evaluate="no">$a^2+b^2=c^2$</span>.</p>'
+            'data-display="no">$a^2+b^2=c^2$</span>.</p>'
         )
         cleaned = sanitize_string(html)
         assert 'data-type="inlineMath"' in cleaned
@@ -130,11 +134,24 @@ class TestMathMarkerAllowlist:
     def test_block_math_marker_survives(self):
         html = (
             '<p><span data-type="inlineMath" data-latex="\\sum_{i=0}^n i" '
-            'data-display="yes" data-evaluate="no">$$\\sum_{i=0}^n i$$</span></p>'
+            'data-display="yes">$$\\sum_{i=0}^n i$$</span></p>'
         )
         cleaned = sanitize_string(html)
         assert 'data-display="yes"' in cleaned
         assert "\\sum_{i=0}^n i" in cleaned
+
+    def test_data_evaluate_attr_is_stripped(self):
+        # The math extension is configured ``evaluation: false`` so it
+        # never emits ``data-evaluate``. We don't allowlist it; assert
+        # it stays stripped so a future re-enable of the symbolic
+        # evaluator is a deliberate two-step decision (frontend config
+        # + sanitiser allowlist), not an accidental leak.
+        cleaned = sanitize_string(
+            '<span data-type="inlineMath" data-latex="1+2" data-display="no" data-evaluate="yes">$1+2$</span>'
+        )
+        assert "data-evaluate" not in cleaned
+        # The legitimate attrs still survive.
+        assert 'data-type="inlineMath"' in cleaned
 
     def test_other_span_attrs_still_stripped(self):
         # Defence-in-depth: a malicious span carrying a non-allowlisted
@@ -175,7 +192,17 @@ class TestToggleCalloutAllowlist:
         cleaned = sanitize_string(html)
         assert "<details" in cleaned
         assert "<summary>What is grace?</summary>" in cleaned
-        assert "open" in cleaned
+        # ``open`` is a boolean HTML attribute — bleach normalises it to
+        # ``open`` or ``open=""``; assert the attribute is present on the
+        # element itself rather than just somewhere in the string.
+        assert "<details" in cleaned and (" open>" in cleaned or 'open=""' in cleaned)
+
+    def test_details_without_open_attr_stays_collapsed(self):
+        # Teachers default to collapsed toggles; the ``open`` attr only
+        # appears when explicitly set. Make sure bleach doesn't inject
+        # it as a side effect of widening the allowlist.
+        cleaned = sanitize_string('<details data-callout="toggle"><summary>q</summary><p>a</p></details>')
+        assert "open" not in cleaned
 
     def test_details_strips_event_handlers(self):
         # Defence-in-depth — ``ontoggle`` would fire on every expand, so
