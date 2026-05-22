@@ -202,7 +202,12 @@ def create_announcement(
             recipients,
             type="new_announcement",
             title="New Announcement",
-            message=f'{data.title} — in "{course_title}"',
+            # Defence-in-depth: use the sanitised title in the fanned-out
+            # notification message too. The notification UI today renders
+            # the message as plain text (safe), but a future "render
+            # markdown in notifications" feature would silently inherit
+            # any unsanitised payload that lived in the message column.
+            message=f'{safe_title} — in "{course_title}"',
             link=f"/courses/{data.course_id}",
             metadata={"course_id": data.course_id, "announcement_id": str(announcement.id)},
         )
