@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react"
+import { useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams, Link } from "react-router-dom"
 import { formatDateLong } from "@/i18n/format"
@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
 import { useAuth } from "@/context/useAuth"
+import { useAsyncData } from "@/hooks/useAsyncData"
 import type { Module } from "@/types"
 import {
   ArrowLeft,
@@ -22,46 +23,49 @@ import ChapterTypeBadge from "@/components/course/ChapterTypeBadge"
 import { ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
 
+// Module ID + course ID come from the route, locale from i18n; bundle the
+// fetcher's deps in one tuple so useAsyncData re-runs at the right edges.
+interface ModuleFetchResult {
+  module: Module | null
+  completedIds: Set<string>
+  invalidLink: boolean
+}
+
 export default function ModuleView() {
   const { t, i18n } = useTranslation()
   const { courseId, moduleId } = useParams<{ courseId: string; moduleId: string }>()
   const { user } = useAuth()
-  const [module, setModule] = useState<Module | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
 
-  useEffect(() => {
-    let cancelled = false
-    const load = async () => {
+  const { data, loading, error: fetchError } = useAsyncData<ModuleFetchResult>(
+    async (isCancelled) => {
       if (!courseId || !moduleId) {
-        setLoading(false)
-        setError(t("errors.invalidCourseLink"))
-        return
+        return { module: null, completedIds: new Set(), invalidLink: true }
       }
-      setLoading(true)
-      setError(null)
-      try {
-        const [mod, completedChapterIds] = await Promise.all([
-          coursesService.getModule(courseId, moduleId),
-          coursesService.getMyChapterProgress(courseId).catch(() => [] as string[]),
-        ])
-        if (cancelled) return
-        setModule(mod)
-        setCompletedIds(new Set(completedChapterIds))
-      } catch {
-        if (!cancelled) setError(t("errors.loadModuleFailed"))
-      } finally {
-        if (!cancelled) setLoading(false)
+      const [mod, completedChapterIds] = await Promise.all([
+        coursesService.getModule(courseId, moduleId),
+        coursesService.getMyChapterProgress(courseId).catch(() => [] as string[]),
+      ])
+      if (isCancelled()) {
+        return { module: null, completedIds: new Set(), invalidLink: false }
       }
-    }
-    load()
-    return () => { cancelled = true }
+      return { module: mod, completedIds: new Set(completedChapterIds), invalidLink: false }
+    },
     // ``i18n.language`` so a locale flip re-pulls the localised module
-    // title / chapter list. ``t`` is intentionally not a dep — its
-    // reference-change behaviour is implementation-defined.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, moduleId, user?.id, i18n.language])
+    // title / chapter list. ``user?.id`` so a sign-in/sign-out re-pulls
+    // the progress overlay.
+    [courseId, moduleId, user?.id, i18n.language],
+  )
+
+  // Localised error string resolved at render time — using a token key
+  // instead of storing the localised text means a locale flip while an
+  // error is on screen updates the message without a refetch.
+  const error: string | null = data?.invalidLink
+    ? t("errors.invalidCourseLink")
+    : fetchError
+      ? t("errors.loadModuleFailed")
+      : null
+  const module = data?.module ?? null
+  const completedIds = data?.completedIds ?? new Set<string>()
 
   const sortedChapters = useMemo(
     () => [...(module?.chapters ?? [])].sort((a, b) => a.order_index - b.order_index),
