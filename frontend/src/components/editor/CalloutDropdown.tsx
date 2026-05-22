@@ -7,6 +7,7 @@ import {
   Lightbulb,
   AlertTriangle,
   ChevronDown,
+  ChevronsUpDown,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ const CALLOUT_VARIANTS: CalloutChoice[] = [
   { value: "verse", icon: BookOpen, color: "text-accent" },
   { value: "takeaway", icon: Lightbulb, color: "text-success" },
   { value: "warning", icon: AlertTriangle, color: "text-warning" },
+  { value: "toggle", icon: ChevronsUpDown, color: "text-muted-foreground" },
 ];
 
 // Static i18n key lookup — exposes each literal to the keyCoverage
@@ -32,6 +34,7 @@ const CALLOUT_LABEL_KEYS: Record<CalloutVariant, string> = {
   verse: "blockEditor.callout.verse",
   takeaway: "blockEditor.callout.takeaway",
   warning: "blockEditor.callout.warning",
+  toggle: "blockEditor.callout.toggle",
 };
 
 /**

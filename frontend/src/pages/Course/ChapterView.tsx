@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { sanitizeHtml as sanitize } from "@/lib/sanitize"
 import { renderMathIn } from "@/lib/katex-render"
+import { renderToggleCalloutsIn } from "@/lib/callout-toggle"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
@@ -45,6 +46,13 @@ import { chapterViewSteps } from "@/lib/tourSteps"
 function TextBlockRender({ html }: { html: string }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
+    // Order matters: ``renderToggleCalloutsIn`` rewrites parent
+    // elements (``div[data-callout="toggle"]`` → ``<details>``), so
+    // run it before KaTeX touches descendant spans. Running KaTeX
+    // first would still work — the rewrite copies child nodes into
+    // ``<summary>`` and the rendered spans go along intact — but
+    // toggle-first avoids extra DOM churn.
+    renderToggleCalloutsIn(ref.current)
     renderMathIn(ref.current)
   }, [html])
   return (

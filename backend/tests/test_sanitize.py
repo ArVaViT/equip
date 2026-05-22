@@ -143,3 +143,45 @@ class TestMathMarkerAllowlist:
         cleaned = sanitize_string('<span data-evil="payload" onclick="x">x</span>')
         assert "data-evil" not in cleaned
         assert "onclick" not in cleaned
+
+
+class TestToggleCalloutAllowlist:
+    """The TipTap Callout ``toggle`` variant stores as
+    ``<div data-callout="toggle">``; the chapter view rewrites that to a
+    native ``<details><summary>...`` at render time (see
+    ``frontend/src/lib/callout-toggle.ts``). Both shapes must round-trip
+    through bleach intact — the div shape so the editor can re-load
+    saved content, the ``<details>`` shape so a teacher who pastes the
+    rendered HTML back (or a future server-side renderer that pre-bakes
+    it) keeps the click-to-expand affordance.
+    """
+
+    def test_div_storage_shape_survives(self):
+        html = (
+            '<div data-callout="toggle" class="callout callout-toggle">'
+            "<p>What is grace?</p><p>Unmerited favor.</p></div>"
+        )
+        cleaned = sanitize_string(html)
+        assert 'data-callout="toggle"' in cleaned
+        assert 'class="callout callout-toggle"' in cleaned
+        assert "<p>What is grace?</p>" in cleaned
+
+    def test_details_summary_render_shape_survives(self):
+        html = (
+            '<details data-callout="toggle" class="callout callout-toggle" open>'
+            "<summary>What is grace?</summary>"
+            "<p>Unmerited favor.</p></details>"
+        )
+        cleaned = sanitize_string(html)
+        assert "<details" in cleaned
+        assert "<summary>What is grace?</summary>" in cleaned
+        assert "open" in cleaned
+
+    def test_details_strips_event_handlers(self):
+        # Defence-in-depth — ``ontoggle`` would fire on every expand, so
+        # widening the allowlist for ``details`` must not let it slip in.
+        cleaned = sanitize_string(
+            '<details data-callout="toggle" ontoggle="alert(1)" open><summary>x</summary><p>y</p></details>'
+        )
+        assert "ontoggle" not in cleaned
+        assert "alert" not in cleaned
