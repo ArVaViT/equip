@@ -36,11 +36,17 @@ function matchTitle(pathname: string): string {
   return ""
 }
 
-export function usePageTitle() {
+export function usePageTitle(title?: string) {
   const { pathname } = useLocation()
 
   useEffect(() => {
+
+    if (title) {
+      document.title = `${title} — ${BASE}`
+      return
+    }
+
     const sub = matchTitle(pathname)
     document.title = sub ? `${sub} — ${BASE}` : BASE
-  }, [pathname])
+  }, [pathname, title])
 }

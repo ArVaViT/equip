@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
 import { useAuth } from "@/context/useAuth"
 import type { Module } from "@/types"
+import { usePageTitle } from "@/hooks/usePageTitle"
 import {
   ArrowLeft,
   Book,
@@ -26,6 +27,10 @@ export default function ModuleView() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
+
+  usePageTitle(
+    module?.title ? `${module.title}` : undefined
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -124,21 +129,19 @@ export default function ModuleView() {
         const isOverdue = dueDate < now && !allComplete
         const isUpcoming = !isOverdue && dueDate.getTime() - now.getTime() < 3 * 24 * 60 * 60 * 1000
         return (
-          <div className={`mb-4 flex items-center gap-2 rounded-md border px-3 py-2 ${
-            isOverdue
-              ? "border-l-[3px] border-l-destructive border-border bg-destructive/5"
-              : isUpcoming
-                ? "border-l-[3px] border-l-warning border-border bg-warning/10"
-                : "border-border bg-muted/50"
-          }`}>
+          <div className={`mb-4 flex items-center gap-2 rounded-md border px-3 py-2 ${isOverdue
+            ? "border-l-[3px] border-l-destructive border-border bg-destructive/5"
+            : isUpcoming
+              ? "border-l-[3px] border-l-warning border-border bg-warning/10"
+              : "border-border bg-muted/50"
+            }`}>
             {isOverdue ? (
               <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
             ) : (
               <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
             )}
-            <span className={`text-sm font-medium ${
-              isOverdue ? "text-destructive" : isUpcoming ? "text-warning" : "text-foreground"
-            }`}>
+            <span className={`text-sm font-medium ${isOverdue ? "text-destructive" : isUpcoming ? "text-warning" : "text-foreground"
+              }`}>
               {isOverdue ? "Overdue" : "Due"}: {dueDate.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
               {" at "}{dueDate.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
             </span>

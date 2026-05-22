@@ -8,6 +8,7 @@ import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
 import { useAuth } from "@/context/useAuth"
 import type { Module, Chapter, ChapterBlock } from "@/types"
+import { usePageTitle } from "@/hooks/usePageTitle"
 import {
   ArrowLeft,
   ArrowRight,
@@ -106,6 +107,8 @@ function FileBlockLink({
       setOpening(false)
     }
   }, [bucket, path, opening])
+
+
 
   return (
     <button
@@ -245,6 +248,8 @@ export default function ChapterView() {
   const [loadingBlocks, setLoadingBlocks] = useState(false)
   const [hasAssignments, setHasAssignments] = useState(false)
 
+
+
   useEffect(() => {
     let cancelled = false
     const load = async () => {
@@ -282,6 +287,12 @@ export default function ChapterView() {
   const chapter = currentIdx >= 0 ? sortedChapters[currentIdx] : null
   const prevChapter = currentIdx > 0 ? sortedChapters[currentIdx - 1] ?? null : null
   const nextChapter = currentIdx < sortedChapters.length - 1 ? sortedChapters[currentIdx + 1] ?? null : null
+
+  usePageTitle(
+    chapter?.title && mod?.title
+      ? `${mod.title} - ${chapter.title}`
+      : chapter?.title
+  )
 
   useEffect(() => {
     if (!chapter) return

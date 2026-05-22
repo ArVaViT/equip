@@ -7,6 +7,7 @@ import { coursesService } from "@/services/courses"
 import { storageService } from "@/services/storage"
 import { useAuth } from "@/context/useAuth"
 import { toast } from "@/lib/toast"
+import { usePageTitle } from "@/hooks/usePageTitle"
 import type {
   CalendarEvent,
   Certificate,
@@ -35,6 +36,8 @@ export default function CourseDetail() {
   const [error, setError] = useState<string | null>(null)
   const [enrolling, setEnrolling] = useState(false)
 
+  usePageTitle(course?.title)
+
   useEffect(() => {
     let cancelled = false
     const load = async () => {
@@ -53,8 +56,8 @@ export default function CourseDetail() {
           coursesService.getCourse(id),
           user
             ? coursesService
-                .getEnrollmentStatus(id)
-                .catch(() => ({ enrolled: false, enrollment: null as Enrollment | null }))
+              .getEnrollmentStatus(id)
+              .catch(() => ({ enrolled: false, enrollment: null as Enrollment | null }))
             : Promise.resolve({ enrolled: false, enrollment: null as Enrollment | null }),
           coursesService.getCourseCohorts(id).catch(() => [] as Cohort[]),
         ])
