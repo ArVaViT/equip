@@ -239,32 +239,41 @@ class Localizer:
         )
 
 
-def get_course_source_locale_for_chapter(db: Session, chapter_id: str) -> LocaleCode:
-    """Return ``courses.source_locale`` for the chapter's course (fallback ``ru``)."""
-    row = (
-        db.query(Course.source_locale)
-        .join(Module, Module.course_id == Course.id)
-        .join(Chapter, Chapter.module_id == Module.id)
-        .filter(
-            Chapter.id == chapter_id,
-            Chapter.deleted_at.is_(None),
-            Module.deleted_at.is_(None),
-            Course.deleted_at.is_(None),
-        )
-        .first()
-    )
-    if not row:
-        return "ru"
-    return normalize_locale(row[0])
+@dataclass(frozen=True)
+class ChapterLocaleContext:
+    """Single-fetch resolution of every locale/access fact a chapter route needs.
+
+    Previously the three helpers below each ran their own chapter→module→course
+    join — every block / assignment / quiz GET paid 2-3 round-trips just to
+    decide which overlay path to take. ``resolve_chapter_locale_context`` joins
+    once and exposes every derived value, then the legacy helpers delegate
+    here so existing callers keep working.
+
+    Fields:
+        found:              True when the chapter (and its module + course) all
+                            exist and are not soft-deleted.
+        source_locale:      The chapter's course's source locale. Defaults to
+                            ``"ru"`` when ``found`` is False.
+        is_owner_or_admin:  True when ``current_user`` owns the course or is an
+                            admin — used by the editor ``?source=1`` gate.
+        apply_overlay:      True when the API should show localised metadata
+                            to this caller (matches
+                            ``should_apply_course_translation_overlay``).
+    """
+
+    found: bool
+    source_locale: LocaleCode
+    is_owner_or_admin: bool
+    apply_overlay: bool
 
 
-def should_apply_course_translation_overlay_for_chapter(
+def resolve_chapter_locale_context(
     db: Session,
     *,
     chapter_id: str,
     current_user: User | None,
-) -> bool:
-    """Mirror ``should_apply_course_translation_overlay`` using the chapter's course."""
+) -> ChapterLocaleContext:
+    """Run the chapter→course join once and derive every locale/access fact."""
     course = (
         db.query(Course)
         .join(Module, Module.course_id == Course.id)
@@ -278,8 +287,50 @@ def should_apply_course_translation_overlay_for_chapter(
         .first()
     )
     if course is None:
-        return True
-    return should_apply_course_translation_overlay(course=course, current_user=current_user)
+        # Match the legacy fall-throughs: missing chapter ⇒ ru source, no
+        # ownership, apply overlay (the safe default for unknown viewers).
+        return ChapterLocaleContext(
+            found=False,
+            source_locale="ru",
+            is_owner_or_admin=False,
+            apply_overlay=True,
+        )
+    is_admin = current_user is not None and current_user.role == UserRole.ADMIN.value
+    is_owner = (
+        current_user is not None
+        and course.created_by is not None
+        and _str_uuid(course.created_by) == _str_uuid(current_user.id)
+    )
+    return ChapterLocaleContext(
+        found=True,
+        source_locale=normalize_locale(course.source_locale),
+        is_owner_or_admin=is_owner or is_admin,
+        apply_overlay=should_apply_course_translation_overlay(course=course, current_user=current_user),
+    )
+
+
+def get_course_source_locale_for_chapter(db: Session, chapter_id: str) -> LocaleCode:
+    """Return ``courses.source_locale`` for the chapter's course (fallback ``ru``).
+
+    Legacy single-fact helper. Prefer ``resolve_chapter_locale_context`` when
+    a route already needs more than one fact about the chapter's course —
+    that single helper folds these three queries into one.
+    """
+    return resolve_chapter_locale_context(db, chapter_id=chapter_id, current_user=None).source_locale
+
+
+def should_apply_course_translation_overlay_for_chapter(
+    db: Session,
+    *,
+    chapter_id: str,
+    current_user: User | None,
+) -> bool:
+    """Mirror ``should_apply_course_translation_overlay`` using the chapter's course.
+
+    Legacy single-fact helper. Prefer ``resolve_chapter_locale_context``
+    when the same route also needs ``source_locale`` or ``is_owner_or_admin``.
+    """
+    return resolve_chapter_locale_context(db, chapter_id=chapter_id, current_user=current_user).apply_overlay
 
 
 def is_chapter_course_owner_or_admin(
@@ -294,26 +345,11 @@ def is_chapter_course_owner_or_admin(
     endpoints (``/quizzes/chapter/{id}``, ``/assignments/chapter/{id}``,
     ``/blocks/chapter/{id}``). Returning source content to a regular student
     would leak unredacted teacher drafts, so the param is gated.
+
+    Legacy single-fact helper. Prefer ``resolve_chapter_locale_context``
+    when the same route also needs ``source_locale`` or ``apply_overlay``.
     """
-    if current_user is None:
-        return False
-    if current_user.role == UserRole.ADMIN.value:
-        return True
-    row = (
-        db.query(Course.created_by)
-        .join(Module, Module.course_id == Course.id)
-        .join(Chapter, Chapter.module_id == Module.id)
-        .filter(
-            Chapter.id == chapter_id,
-            Chapter.deleted_at.is_(None),
-            Module.deleted_at.is_(None),
-            Course.deleted_at.is_(None),
-        )
-        .first()
-    )
-    if row is None:
-        return False
-    return _str_uuid(row[0]) == _str_uuid(current_user.id)
+    return resolve_chapter_locale_context(db, chapter_id=chapter_id, current_user=current_user).is_owner_or_admin
 
 
 def build_localized_course_response_with_tree(

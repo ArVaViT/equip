@@ -31,9 +31,7 @@ from app.services.translation.pipeline_hooks import (
 )
 from app.services.translation.resolve_for_display import (
     build_localized_quiz_student_response,
-    get_course_source_locale_for_chapter,
-    is_chapter_course_owner_or_admin,
-    should_apply_course_translation_overlay_for_chapter,
+    resolve_chapter_locale_context,
 )
 
 from ._deps import verify_quiz_owner
@@ -67,8 +65,12 @@ def get_chapter_quiz(
     if not quiz:
         return None
 
+    # One chapter→module→course join covers the locale + access decisions
+    # below. Previously source=true paid 1 round-trip and source=false
+    # paid 2, all to the same join.
+    ctx = resolve_chapter_locale_context(db, chapter_id=chapter_id, current_user=current_user)
     if source:
-        if not is_chapter_course_owner_or_admin(db, chapter_id=chapter_id, current_user=current_user):
+        if not ctx.is_owner_or_admin:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only the course owner or an admin can request source-language content",
@@ -76,9 +78,10 @@ def get_chapter_quiz(
         resp = QuizStudentResponse.model_validate(quiz)
     else:
         display_locale: LocaleCode = normalize_locale(accept_language)
-        src = get_course_source_locale_for_chapter(db, chapter_id)
-        if should_apply_course_translation_overlay_for_chapter(db, chapter_id=chapter_id, current_user=current_user):
-            resp = build_localized_quiz_student_response(db, quiz, display_locale=display_locale, source_locale=src)
+        if ctx.apply_overlay:
+            resp = build_localized_quiz_student_response(
+                db, quiz, display_locale=display_locale, source_locale=ctx.source_locale
+            )
         else:
             resp = QuizStudentResponse.model_validate(quiz)
     if resp.max_attempts is not None:
