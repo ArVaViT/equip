@@ -31,10 +31,8 @@ from app.services.course_service import sync_enrollment_progress
 from app.services.notification_service import create_notification
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import (
-    get_course_source_locale_for_chapter,
-    is_chapter_course_owner_or_admin,
     localize_assignment_rows,
-    should_apply_course_translation_overlay_for_chapter,
+    resolve_chapter_locale_context,
 )
 
 router = APIRouter(prefix="/assignments", tags=["assignments"])
@@ -59,17 +57,20 @@ def list_chapter_assignments(
     verify_chapter_access(db, chapter_id, current_user)
     response.headers["Vary"] = "Accept-Language"
     rows = db.query(Assignment).filter(Assignment.chapter_id == chapter_id).order_by(Assignment.created_at).all()
+    # One chapter→module→course join covers the locale + access decisions
+    # below. Previously this paid 2 round-trips for the common non-source
+    # path.
+    ctx = resolve_chapter_locale_context(db, chapter_id=chapter_id, current_user=current_user)
     if source:
-        if not is_chapter_course_owner_or_admin(db, chapter_id=chapter_id, current_user=current_user):
+        if not ctx.is_owner_or_admin:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only the course owner or an admin can request source-language content",
             )
         return rows
     display_locale: LocaleCode = normalize_locale(accept_language)
-    src = get_course_source_locale_for_chapter(db, chapter_id)
-    if should_apply_course_translation_overlay_for_chapter(db, chapter_id=chapter_id, current_user=current_user):
-        return localize_assignment_rows(db, rows, display_locale=display_locale, source_locale=src)
+    if ctx.apply_overlay:
+        return localize_assignment_rows(db, rows, display_locale=display_locale, source_locale=ctx.source_locale)
     return rows
 
 
