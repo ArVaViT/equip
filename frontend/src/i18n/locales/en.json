@@ -909,7 +909,8 @@
       "undo": "Undo",
       "redo": "Redo",
       "characters": "{{count}} / {{limit}} characters",
-      "insertMath": "Insert math expression"
+      "insertMath": "Insert math expression",
+      "dragHandle": "Drag to reorder block"
     },
     "callout": {
       "trigger": "Callout Block",

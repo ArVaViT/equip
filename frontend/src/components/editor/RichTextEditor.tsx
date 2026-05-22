@@ -12,6 +12,8 @@ import { TableCell } from "@tiptap/extension-table-cell";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
 import { MathExtension } from "@aarkue/tiptap-math-extension";
+import DragHandle from "@tiptap/extension-drag-handle-react";
+import { GripVertical } from "lucide-react";
 import "katex/dist/katex.min.css";
 
 import { Callout } from "./CalloutExtension";
@@ -160,7 +162,7 @@ export default function RichTextEditor({
   if (!editor) return null;
 
   return (
-    <div className="rounded-md border border-input bg-background">
+    <div className="relative rounded-md border border-input bg-background">
       {editable && (
         <EditorToolbar
           editor={editor}
@@ -171,6 +173,23 @@ export default function RichTextEditor({
           onAddMath={addMath}
           onSetLink={setLink}
         />
+      )}
+      {editable && (
+        // Floating drag-handle that follows the caret / hover. The
+        // extension uses floating-ui to anchor itself to the block
+        // under the cursor; ``nested`` widens the target set from
+        // top-level blocks only to also include list items and table
+        // cells, which is what teachers actually want to reorder.
+        <DragHandle editor={editor} nested>
+          <button
+            type="button"
+            aria-label={t("blockEditor.toolbar.dragHandle")}
+            title={t("blockEditor.toolbar.dragHandle")}
+            className="flex h-6 w-5 cursor-grab items-center justify-center rounded text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <GripVertical size={14} strokeWidth={1.75} aria-hidden="true" />
+          </button>
+        </DragHandle>
       )}
       <EditorContent editor={editor} />
       {editable && characterLimit !== undefined && (
