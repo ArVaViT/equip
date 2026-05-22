@@ -7,6 +7,39 @@ import { toast } from "@/lib/toast";
 import type { useImageUpload } from "./useImageUpload";
 
 /**
+ * Accept "naked" hostnames (``example.com/page``) by prepending
+ * ``https://`` when the user didn't include a scheme. Then validate
+ * the result parses as a real URL with an http(s) scheme. Returns
+ * the normalised URL string or ``null`` if the input is unusable.
+ *
+ * Without this, a teacher who types ``example.com`` ends up with a
+ * relative ``<a href="example.com">`` that resolves against the
+ * chapter URL — broken in production. We catch the common case here
+ * so the user sees an immediate toast instead of discovering it as
+ * a student.
+ */
+function normalizeAndValidateUrl(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const candidate =
+    /^[a-z][a-z0-9+.-]*:/i.test(trimmed) || trimmed.startsWith("//")
+      ? trimmed
+      : `https://${trimmed}`;
+  try {
+    const parsed = new URL(candidate);
+    // Only http(s) for chapter links — ``mailto:`` / ``tel:`` are
+    // valid URL schemes but we don't want them silently sneaking
+    // through this code path.
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Bundles the "media insert" handlers that all rely on a URL prompt:
  * link, image (with upload + URL fallback), YouTube, audio.
  *
@@ -37,7 +70,15 @@ export function useMediaPrompts(
       editor.chain().focus().extendMarkRange("link").unsetLink().run();
       return;
     }
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+    const normalized = normalizeAndValidateUrl(url);
+    if (!normalized) {
+      toast({
+        title: t("editor.toast.invalidUrl"),
+        variant: "destructive",
+      });
+      return;
+    }
+    editor.chain().focus().extendMarkRange("link").setLink({ href: normalized }).run();
   }, [editor, prompt, t]);
 
   const addImage = useCallback(() => {

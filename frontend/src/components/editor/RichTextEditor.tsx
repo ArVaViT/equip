@@ -200,9 +200,15 @@ export default function RichTextEditor({
 }
 
 /**
- * Footer counter showing ``N / LIMIT`` with editorial colour shifts as
- * the user nears the cap. Lives inside this module — purely
- * presentational, single caller, no need for its own file.
+ * Footer counter showing a slim progress bar + ``N / LIMIT`` label,
+ * with editorial colour shifts as the user nears the cap. The bar
+ * gives teachers an at-a-glance "how full is this block?" cue
+ * without needing to read the digits — useful when the limit is
+ * five-digit (``chapter_blocks.content`` is 500 000) and the absolute
+ * count is hard to feel.
+ *
+ * Single caller; lives in this module to keep the editor's
+ * presentational surface scoped to one file.
  */
 function CharacterCounter({
   count,
@@ -213,22 +219,47 @@ function CharacterCounter({
   limit: number;
   t: (k: string, opts?: Record<string, unknown>) => string;
 }) {
-  const ratio = count / limit;
+  const ratio = Math.min(count / limit, 1);
   const tone = ratio >= 1 ? "destructive" : ratio >= 0.9 ? "warning" : "muted";
+  // Convert to a 0–100 integer so the inline ``width`` style stays
+  // stable across renders; React would otherwise compare new float
+  // strings ("23.4%") each keystroke even when visually unchanged.
+  const percent = Math.round(ratio * 100);
   return (
-    <div
-      aria-live="polite"
-      className="flex justify-end border-t border-input px-3 py-1.5 text-xs tabular-nums"
-    >
-      <span
-        className={cn(
-          tone === "muted" && "text-muted-foreground",
-          tone === "warning" && "text-warning",
-          tone === "destructive" && "text-destructive font-medium",
-        )}
+    <div className="border-t border-input">
+      <div
+        className="h-0.5 w-full bg-muted/60"
+        role="presentation"
+        aria-hidden="true"
       >
-        {t("blockEditor.toolbar.characters", { count, limit })}
-      </span>
+        <div
+          className={cn(
+            "h-full transition-[width] duration-150 ease-out",
+            tone === "muted" && "bg-muted-foreground/40",
+            tone === "warning" && "bg-warning",
+            tone === "destructive" && "bg-destructive",
+          )}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+      <div
+        // ``aria-live: polite`` is intentional — at threshold crossings
+        // the assertive tone change in the label below tells the user
+        // they're nearing the cap without spamming every keystroke.
+        aria-live="polite"
+        className="flex items-center justify-between px-3 py-1.5 text-xs tabular-nums"
+      >
+        <span
+          className={cn(
+            "transition-colors",
+            tone === "muted" && "text-muted-foreground",
+            tone === "warning" && "text-warning font-medium",
+            tone === "destructive" && "text-destructive font-medium",
+          )}
+        >
+          {t("blockEditor.toolbar.characters", { count, limit })}
+        </span>
+      </div>
     </div>
   );
 }
