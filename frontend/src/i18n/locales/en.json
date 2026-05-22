@@ -907,7 +907,8 @@
       "insertAudio": "Insert Audio",
       "link": "Link",
       "undo": "Undo",
-      "redo": "Redo"
+      "redo": "Redo",
+      "characters": "{{count}} / {{limit}} characters"
     },
     "callout": {
       "trigger": "Callout Block",

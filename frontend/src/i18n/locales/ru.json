@@ -562,7 +562,8 @@
       "insertAudio": "Вставить аудио",
       "link": "Ссылка",
       "undo": "Отменить",
-      "redo": "Повторить"
+      "redo": "Повторить",
+      "characters": "{{count}} / {{limit}} символов"
     },
     "callout": {
       "trigger": "Блок-выноска",
