@@ -82,7 +82,7 @@ export function CodeBlockDropdown({
         className={cn(
           "flex items-center gap-0.5 rounded p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           isInCodeBlock
-            ? "bg-primary/15 text-primary"
+            ? "bg-primary/20 text-primary ring-1 ring-inset ring-primary/30"
             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
         )}
       >
