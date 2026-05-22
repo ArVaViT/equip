@@ -861,6 +861,7 @@
     "deleteFailed": "Failed to delete block",
     "confirmDelete": {
       "title": "Delete this block?",
+      "description": "The block and all its content will be permanently removed. This can't be undone.",
       "confirm": "Delete"
     },
     "reorderFailed": "Failed to reorder blocks",
@@ -868,7 +869,8 @@
     "contentBlocks": "Content Blocks",
     "blocksCount_one": "{{count}} block",
     "blocksCount_other": "{{count}} blocks",
-    "empty": "No blocks yet. Add your first content block below.",
+    "empty": "No blocks yet.",
+    "emptyHint": "Add text, a quiz, an assignment, or a file with the button below.",
     "addBlock": "Add Block",
     "types": {
       "text": "Text",

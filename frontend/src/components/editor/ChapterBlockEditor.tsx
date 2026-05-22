@@ -96,6 +96,11 @@ export default function ChapterBlockEditor({ chapterId }: Props) {
   const deleteBlock = async (id: string) => {
     const ok = await confirm({
       title: t("blockEditor.confirmDelete.title"),
+      // The block's content (text, quiz attempts, file references) is
+      // hard-deleted; teachers were getting the minimal dialog with
+      // no warning about irreversibility. Now matches the chapter +
+      // module delete tone.
+      description: t("blockEditor.confirmDelete.description"),
       confirmLabel: t("blockEditor.confirmDelete.confirm"),
       tone: "destructive",
     })
@@ -156,9 +161,18 @@ export default function ChapterBlockEditor({ chapterId }: Props) {
       </div>
 
       {blocks.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-md">
-          {t("blockEditor.empty")}
-        </p>
+        // Inviting empty state instead of a single flat line. The
+        // dashed border + soft surface communicates "drop zone /
+        // start-here" and reduces the "this UI is broken" reaction
+        // when a teacher first sees an empty chapter.
+        <div className="rounded-md border border-dashed border-border bg-muted/30 px-5 py-8 text-center">
+          <p className="text-sm font-medium text-foreground">
+            {t("blockEditor.empty")}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t("blockEditor.emptyHint")}
+          </p>
+        </div>
       )}
 
       <div className="space-y-2">
