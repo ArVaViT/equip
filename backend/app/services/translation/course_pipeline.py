@@ -111,6 +111,35 @@ def translate_course_content(
         .all()
     )
 
+    # Bulk-fetch every quiz + assignment in this course tree, both via
+    # the chapter_id FK (the live production shape) and via the
+    # block.{quiz,assignment}_id links (the aspirational shape).
+    # Previously the block walk issued one SELECT per block with a
+    # quiz_id and the chapter-bound query re-fetched them all — a
+    # 50-chapter course with 30 quizzes paid O(30) extra reloads on
+    # every publish. One ``OR`` query covers both paths with the same
+    # selectinload for questions + options.
+    block_quiz_ids = [b.quiz_id for b in blocks if b.quiz_id]
+    block_assignment_ids = [b.assignment_id for b in blocks if b.assignment_id]
+
+    all_quizzes = (
+        db.query(Quiz)
+        .options(selectinload(Quiz.questions).selectinload(QuizQuestion.options))
+        .filter((Quiz.chapter_id.in_(chapter_ids)) | (Quiz.id.in_(block_quiz_ids) if block_quiz_ids else False))
+        .all()
+    )
+    quizzes_by_id: dict[str, Quiz] = {str(q.id): q for q in all_quizzes}
+
+    all_assignments = (
+        db.query(Assignment)
+        .filter(
+            (Assignment.chapter_id.in_(chapter_ids))
+            | (Assignment.id.in_(block_assignment_ids) if block_assignment_ids else False)
+        )
+        .all()
+    )
+    assignments_by_id: dict[str, Assignment] = {str(a.id): a for a in all_assignments}
+
     seen_quiz: set[str] = set()
     seen_assignment: set[str] = set()
 
@@ -124,12 +153,7 @@ def translate_course_content(
         qid = str(block.quiz_id) if block.quiz_id else ""
         if qid and qid not in seen_quiz:
             seen_quiz.add(qid)
-            quiz = (
-                db.query(Quiz)
-                .options(selectinload(Quiz.questions).selectinload(QuizQuestion.options))
-                .filter(Quiz.id == block.quiz_id)
-                .first()
-            )
+            quiz = quizzes_by_id.get(qid)
             if quiz:
                 total = merge_orchestrator_reports(
                     total,
@@ -139,7 +163,7 @@ def translate_course_content(
         aid = str(block.assignment_id) if block.assignment_id else ""
         if aid and aid not in seen_assignment:
             seen_assignment.add(aid)
-            assignment = db.query(Assignment).filter(Assignment.id == block.assignment_id).first()
+            assignment = assignments_by_id.get(aid)
             if assignment:
                 total = merge_orchestrator_reports(
                     total,
@@ -149,21 +173,15 @@ def translate_course_content(
     # Production teacher flow attaches quizzes + assignments via the
     # ``chapter_id`` FK directly; the chapter-block-mediated walk above
     # is an aspirational shape that the create flows have never
-    # populated. Pick up anything the block walk missed by querying for
-    # quizzes / assignments bound to this course's chapters and
-    # reconcile any that ``seen_*`` hasn't already covered.
+    # populated. Pick up anything the block walk missed by iterating
+    # over the bulk fetch and reconciling rows that ``seen_*`` hasn't
+    # already covered.
     #
     # This is what makes the pipeline actually translate quiz text in
-    # production. See 2026-05-16 audit; without this query, every
-    # course in prod had zero ``content_translations`` rows for
-    # ``quiz`` / ``quiz_question`` / ``quiz_option`` / ``assignment``.
-    chapter_bound_quizzes = (
-        db.query(Quiz)
-        .options(selectinload(Quiz.questions).selectinload(QuizQuestion.options))
-        .filter(Quiz.chapter_id.in_(chapter_ids))
-        .all()
-    )
-    for quiz in chapter_bound_quizzes:
+    # production. See 2026-05-16 audit; without this pass, every course
+    # in prod had zero ``content_translations`` rows for ``quiz`` /
+    # ``quiz_question`` / ``quiz_option`` / ``assignment``.
+    for quiz in all_quizzes:
         qid = str(quiz.id)
         if qid in seen_quiz:
             continue
@@ -173,8 +191,7 @@ def translate_course_content(
             _walk_quiz_tree(db, quiz, provider=provider),
         )
 
-    chapter_bound_assignments = db.query(Assignment).filter(Assignment.chapter_id.in_(chapter_ids)).all()
-    for assignment in chapter_bound_assignments:
+    for assignment in all_assignments:
         aid = str(assignment.id)
         if aid in seen_assignment:
             continue
