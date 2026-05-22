@@ -654,3 +654,72 @@
 .ProseMirror table.equip-table th {
   @apply relative;
 }
+
+/* ===== Code blocks with syntax highlighting =====
+   highlight.js tokens are wrapped in ``<span class="hljs-X">`` by the
+   CodeBlockLowlight extension. We pick token colours from the existing
+   semantic-token palette so both light and dark themes get sensible
+   contrast without bundling a third-party theme stylesheet. */
+.prose pre,
+.ProseMirror pre {
+  @apply my-4 overflow-x-auto rounded-md border border-border bg-muted/70 p-4;
+}
+.prose pre code,
+.ProseMirror pre code {
+  @apply block bg-transparent p-0 font-mono text-[0.875em] leading-relaxed text-foreground;
+}
+.hljs-comment,
+.hljs-quote {
+  color: hsl(var(--muted-foreground));
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section,
+.hljs-link {
+  color: hsl(var(--primary));
+}
+.hljs-string,
+.hljs-attr,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-regexp,
+.hljs-meta-string {
+  color: hsl(var(--success));
+}
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-meta,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-attribute {
+  color: hsl(var(--warning));
+}
+.hljs-title,
+.hljs-name,
+.hljs-class .hljs-title,
+.hljs-type {
+  color: hsl(var(--info));
+  font-weight: 600;
+}
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag {
+  color: hsl(var(--accent));
+}
+.hljs-deletion {
+  color: hsl(var(--destructive));
+  background-color: hsl(var(--destructive) / 0.08);
+}
+.hljs-addition {
+  color: hsl(var(--success));
+  background-color: hsl(var(--success) / 0.08);
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 700;
+}

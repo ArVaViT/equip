@@ -585,6 +585,10 @@
       "deleteColumn": "Удалить столбец",
       "deleteTable": "Удалить таблицу"
     },
+    "codeBlock": {
+      "insert": "Вставить блок кода",
+      "changeLanguage": "Сменить язык"
+    },
     "deleteBlockAria": "Удалить блок «{{label}}»"
   },
   "assignmentEditor": {

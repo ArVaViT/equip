@@ -930,6 +930,10 @@
       "deleteColumn": "Delete column",
       "deleteTable": "Delete table"
     },
+    "codeBlock": {
+      "insert": "Insert code block",
+      "changeLanguage": "Change language"
+    },
     "deleteBlockAria": "Delete {{label}} block"
   },
   "assignmentEditor": {

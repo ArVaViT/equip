@@ -10,11 +10,13 @@ import { TableRow } from "@tiptap/extension-table-row";
 import { TableHeader } from "@tiptap/extension-table-header";
 import { TableCell } from "@tiptap/extension-table-cell";
 import { CharacterCount } from "@tiptap/extension-character-count";
+import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
 
 import { Callout } from "./CalloutExtension";
 import { YoutubeEmbed } from "./YoutubeExtension";
 import { AudioEmbed } from "./AudioExtension";
 import { EditorToolbar } from "./EditorToolbar";
+import { lowlight } from "./lowlight";
 import { useImageUpload } from "./useImageUpload";
 import { useMediaPrompts } from "./useMediaPrompts";
 import { cn } from "@/lib/utils";
@@ -46,6 +48,10 @@ export default function RichTextEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3] },
+        // Disable the bundled plain-text code block so the
+        // syntax-highlighted ``CodeBlockLowlight`` registered below
+        // owns the node name without a conflict.
+        codeBlock: false,
       }),
       Link.configure({
         openOnClick: false,
@@ -70,6 +76,14 @@ export default function RichTextEditor({
       TableRow,
       TableHeader,
       TableCell,
+      CodeBlockLowlight.configure({
+        lowlight,
+        defaultLanguage: "plaintext",
+        // ``language-X`` class on the inner ``<code>`` element is what
+        // highlight.js's themes target in CSS, matching the convention
+        // every Markdown renderer and docs theme uses.
+        languageClassPrefix: "language-",
+      }),
       // The extension is always loaded so ``editor.storage.characterCount.characters()``
       // is available for the footer. The ``limit`` option only enforces a
       // hard cap when ``characterLimit`` is set — passing ``null`` /
@@ -111,8 +125,7 @@ export default function RichTextEditor({
   // TipTap mutates the editor in place; reading
   // ``editor.storage.characterCount.characters()`` only refreshes on a
   // React re-render. Subscribing to the ``update`` event and bumping
-  // ``tick`` is the cheapest way to drive that re-render. Empty
-  // object value means equality always fails, forcing the bump.
+  // ``tick`` is the cheapest way to drive that re-render.
   const [tick, setTick] = useState(0);
   useEffect(() => {
     if (!editor) return;
