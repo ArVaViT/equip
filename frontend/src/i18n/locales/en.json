@@ -1971,7 +1971,8 @@
   "editor": {
     "toast": {
       "imageUploadFailed": "Image upload failed",
-      "audioUrlInvalid": "Audio URL must start with http(s)"
+      "audioUrlInvalid": "Audio URL must start with http(s)",
+      "invalidUrl": "That doesn't look like a valid URL. Use a full address like https://example.com/page."
     },
     "prompt": {
       "addLinkTitle": "Add link",
