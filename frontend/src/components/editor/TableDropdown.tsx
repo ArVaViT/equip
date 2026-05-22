@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useDropdownPosition } from "./useDropdownPosition";
 
 /**
  * Single dropdown for every table operation. Mirrors the
@@ -35,6 +36,9 @@ export function TableDropdown({
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  // Panel width matches the ``w-56`` tailwind class on the menu.
+  const { alignClass } = useDropdownPosition(open, triggerRef, 224);
 
   useEffect(() => {
     if (!open) return;
@@ -64,6 +68,7 @@ export function TableDropdown({
   return (
     <div className="relative" ref={containerRef}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         title={t("blockEditor.table.trigger")}
@@ -84,7 +89,10 @@ export function TableDropdown({
         <div
           role="menu"
           aria-label={t("blockEditor.table.trigger")}
-          className="absolute left-0 top-full z-20 mt-1 w-56 rounded-md border bg-background py-1 shadow-lg"
+          className={cn(
+            "absolute top-full z-20 mt-1 w-56 rounded-md border bg-background py-1 shadow-lg",
+            alignClass,
+          )}
         >
           {!isInTable && (
             <button

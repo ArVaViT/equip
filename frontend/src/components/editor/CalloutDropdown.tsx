@@ -12,6 +12,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import type { CalloutVariant } from "./CalloutExtension";
+import { useDropdownPosition } from "./useDropdownPosition";
 
 interface CalloutChoice {
   value: CalloutVariant;
@@ -52,6 +53,9 @@ export function CalloutDropdown({
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  // Panel width matches the ``w-52`` tailwind class on the menu.
+  const { alignClass } = useDropdownPosition(open, triggerRef, 208);
 
   useEffect(() => {
     if (!open) return;
@@ -86,6 +90,7 @@ export function CalloutDropdown({
   return (
     <div className="relative" ref={containerRef}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         title={t("blockEditor.callout.trigger")}
@@ -106,7 +111,10 @@ export function CalloutDropdown({
         <div
           role="menu"
           aria-label={t("blockEditor.callout.trigger")}
-          className="absolute left-0 top-full z-20 mt-1 w-52 rounded-md border bg-background py-1 shadow-lg"
+          className={cn(
+            "absolute top-full z-20 mt-1 w-52 rounded-md border bg-background py-1 shadow-lg",
+            alignClass,
+          )}
         >
           {CALLOUT_VARIANTS.map((v) => {
             const Icon = v.icon;

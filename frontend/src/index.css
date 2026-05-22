@@ -188,6 +188,21 @@
 }
 
 @layer utilities {
+  /* Suppress the visible scrollbar on horizontally-scrolling
+   * surfaces that already have a clear affordance (e.g. the
+   * editor toolbar on narrow viewports). Native touch scroll
+   * still works; mouse-wheel sideways scroll on track-pads also
+   * works. */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer utilities {
   @keyframes ambient-mesh {
     0% {
       transform: scale(1) translate3d(0, 0, 0);
