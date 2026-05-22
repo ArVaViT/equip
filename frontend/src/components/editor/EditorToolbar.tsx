@@ -20,6 +20,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import { CalloutDropdown } from "./CalloutDropdown";
+import { TableDropdown } from "./TableDropdown";
 
 const TOOLBAR_ICON_SIZE = 18;
 
@@ -175,6 +176,8 @@ export function EditorToolbar({
       <ToolbarDivider />
 
       <CalloutDropdown editor={editor} iconSize={TOOLBAR_ICON_SIZE} />
+
+      <TableDropdown editor={editor} iconSize={TOOLBAR_ICON_SIZE} />
 
       <ToolbarDivider />
 

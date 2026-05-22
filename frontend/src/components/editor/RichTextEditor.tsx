@@ -4,6 +4,10 @@ import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import Image from "@tiptap/extension-image";
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table-row";
+import { TableHeader } from "@tiptap/extension-table-header";
+import { TableCell } from "@tiptap/extension-table-cell";
 
 import { Callout } from "./CalloutExtension";
 import { YoutubeEmbed } from "./YoutubeExtension";
@@ -45,6 +49,14 @@ export default function RichTextEditor({
       Callout,
       YoutubeEmbed,
       AudioEmbed,
+      // ``Table`` configures the table node + injects the cell-resize
+      // handles. ``resizable: true`` exposes the drag-handles teachers
+      // expect from Notion / Coda. The remaining table-* extensions are
+      // peer nodes that must be registered alongside.
+      Table.configure({ resizable: true, HTMLAttributes: { class: "equip-table" } }),
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
     content,
     editable,

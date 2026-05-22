@@ -81,6 +81,14 @@ _ALLOWED_ATTRIBUTES: dict[str, list[str]] = {
         "width",
         "height",
     ],
+    # Table cells emit ``colspan`` / ``rowspan`` when a teacher merges
+    # cells in the TipTap editor. ``th`` also carries ``scope`` for the
+    # standard column / row header semantics screen readers rely on.
+    # Bleach's per-tag list OVERRIDES the wildcard ``*`` entry, so we
+    # repeat ``class`` and ``id`` here to keep the equip-table class
+    # round-tripping for the .prose-cascade CSS.
+    "td": ["colspan", "rowspan", "class", "id"],
+    "th": ["colspan", "rowspan", "scope", "class", "id"],
     "*": ["class", "id"],
 }
 
