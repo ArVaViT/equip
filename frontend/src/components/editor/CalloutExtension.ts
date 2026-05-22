@@ -1,6 +1,6 @@
 import { Node, mergeAttributes } from "@tiptap/core"
 
-export type CalloutVariant = "info" | "verse" | "takeaway" | "warning"
+export type CalloutVariant = "info" | "verse" | "takeaway" | "warning" | "toggle"
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {

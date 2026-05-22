@@ -917,7 +917,8 @@
       "info": "Information",
       "verse": "Bible Verse",
       "takeaway": "Key Takeaway",
-      "warning": "Warning"
+      "warning": "Warning",
+      "toggle": "Toggle (click to expand)"
     },
     "table": {
       "trigger": "Table",

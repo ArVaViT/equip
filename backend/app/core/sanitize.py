@@ -65,6 +65,16 @@ _ALLOWED_TAGS = frozenset(
         "sup",
         "sub",
         "iframe",
+        # ``details`` + ``summary`` are HTML5 click-to-expand primitives.
+        # The TipTap Callout extension's ``toggle`` variant is stored as
+        # ``<div data-callout="toggle">`` and rewritten at view time
+        # (``frontend/src/lib/callout-toggle.ts``) to the native
+        # ``<details>`` / ``<summary>`` shape — but if a teacher pastes
+        # the rewritten form directly (e.g. from another doc) or legacy
+        # imports include the native shape, the sanitiser keeps it
+        # intact instead of stripping it down to raw text.
+        "details",
+        "summary",
     }
 )
 
@@ -104,6 +114,13 @@ _ALLOWED_ATTRIBUTES: dict[str, list[str]] = {
         "data-display",
         "data-evaluate",
     ],
+    # ``div`` and ``details`` both carry ``data-callout`` from the
+    # TipTap Callout extension (info / verse / takeaway / warning go on
+    # the ``div``; the ``toggle`` variant rewrites to native
+    # ``<details>``). Per-tag overrides wildcard, so ``class`` / ``id``
+    # are repeated.
+    "div": ["class", "id", "data-callout"],
+    "details": ["class", "id", "data-callout", "open"],
     "*": ["class", "id"],
 }
 

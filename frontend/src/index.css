@@ -596,6 +596,55 @@
   background-color: hsl(var(--warning) / 0.08);
 }
 
+/* ===== Toggle callout =====
+   In stored HTML it's ``<div data-callout="toggle">``; the
+   ``renderToggleCalloutsIn`` helper rewrites it to
+   ``<details data-callout="toggle">`` at view time so the student
+   gets a real click-to-expand affordance via native HTML5. Both
+   shapes share the same border + tint so the editor preview and the
+   student view look identical. */
+.callout-toggle {
+  border-left-color: hsl(var(--muted-foreground) / 0.5);
+}
+details.callout-toggle {
+  /* ``<details>`` doesn't inherit the ``.callout`` block's padding
+     because we ``@apply``'d it via the parent selector; restate the
+     visual contract so the rendered toggle keeps the same visual
+     weight as a regular callout. */
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+details.callout-toggle > summary {
+  @apply cursor-pointer list-none font-medium text-foreground;
+}
+details.callout-toggle > summary::-webkit-details-marker {
+  display: none;
+}
+details.callout-toggle > summary::before {
+  content: "▸ ";
+  display: inline-block;
+  color: hsl(var(--muted-foreground));
+  margin-right: 0.25rem;
+  transition: transform 120ms ease;
+}
+details.callout-toggle[open] > summary::before {
+  transform: rotate(90deg);
+}
+details.callout-toggle > summary + * {
+  @apply mt-3;
+}
+/* Inside the editor the toggle is always visually expanded — the
+   teacher needs every paragraph accessible for editing. Show a
+   chevron hint on the first child so the variant is recognisable
+   without changing the schema. */
+.ProseMirror .callout-toggle > *:first-child::before {
+  content: "▾ ";
+  color: hsl(var(--muted-foreground));
+  margin-right: 0.25rem;
+}
+
 /* ===== YouTube Embed ===== */
 .youtube-embed-wrapper {
   @apply relative w-full overflow-hidden rounded-xl my-4;
