@@ -182,7 +182,14 @@ export const storageService = {
 
   async uploadContentImage(file: File): Promise<string> {
     const ext = fileExtension(file.name)
-    const random = Math.random().toString(36).slice(2, 10)
+    // ``Math.random()`` is non-cryptographic and worse:
+    // ``toString(36).slice(2, 10)`` shortens it to ~8 base-36 chars,
+    // so two simultaneous uploads in the same ms can collide. The
+    // bucket uses ``upsert: false`` so the second upload errors —
+    // visible as a confusing "upload failed" toast for the user.
+    // ``crypto.randomUUID().slice(0, 8)`` is the same byte budget,
+    // collision-resistant.
+    const random = crypto.randomUUID().slice(0, 8)
     const path = `content-images/${Date.now()}-${random}.${ext}`
 
     // Content images use upsert: false so the random suffix prevents
