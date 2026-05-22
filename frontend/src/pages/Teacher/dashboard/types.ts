@@ -1,6 +1,7 @@
 import type { Certificate } from "@/types"
 
-export type PendingCert = Certificate & {
-  student_name?: string
-  course_title?: string
-}
+// ``student_name`` / ``course_title`` / ``student_email`` now live on
+// ``Certificate`` itself (populated by the backend's pending-cert
+// listing endpoints). Kept as a type alias so existing imports stay
+// valid while the underlying shape converges.
+export type PendingCert = Certificate

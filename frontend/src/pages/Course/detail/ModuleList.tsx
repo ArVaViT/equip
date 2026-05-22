@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import {
   AlertTriangle,
   ArrowRight,
@@ -15,6 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { StaggerChildren } from "@/components/motion"
 import { isGradableChapterType } from "@/lib/chapterTypes"
 import type { Module } from "@/types"
 import { formatDate } from "./types"
@@ -26,16 +28,17 @@ interface Props {
 }
 
 export function ModuleList({ courseId, modules, completedChapterIds }: Props) {
+  const { t } = useTranslation()
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-        <BookOpen className="h-4 w-4" />
-        Modules
+      <h2 className="mb-3 flex items-center gap-2 font-serif text-lg font-semibold tracking-tight">
+        <BookOpen className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+        {t("courseDetail.modulesHeading")}
         <span className="text-sm font-normal text-muted-foreground">({modules.length})</span>
       </h2>
 
       {modules.length > 0 ? (
-        <div className="space-y-2">
+        <StaggerChildren className="space-y-2">
           {modules.map((module, idx) => (
             <ModuleRow
               key={module.id}
@@ -46,11 +49,11 @@ export function ModuleList({ courseId, modules, completedChapterIds }: Props) {
               completedChapterIds={completedChapterIds}
             />
           ))}
-        </div>
+        </StaggerChildren>
       ) : (
         <Card className="border-dashed">
           <CardContent className="py-8 text-center text-muted-foreground text-sm">
-            No modules added yet
+            {t("courseDetail.noModulesAddedYet")}
           </CardContent>
         </Card>
       )}
@@ -73,6 +76,7 @@ function ModuleRow({
   modules,
   completedChapterIds,
 }: ModuleRowProps) {
+  const { t } = useTranslation()
   const chapters = [...(module.chapters ?? [])].sort(
     (a, b) => a.order_index - b.order_index,
   )
@@ -95,10 +99,10 @@ function ModuleRow({
   const completedInModule = gradable.filter((ch) => completedChapterIds.has(ch.id)).length
 
   return (
-    <Card className={`group transition-all ${isLocked ? "opacity-60" : "hover:shadow-sm"}`}>
+    <Card className={`group transition-colors ${isLocked ? "opacity-60" : "hover:border-primary/25"}`}>
       <CardHeader className="py-3 px-4">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="flex min-w-0 items-center gap-2 text-sm font-medium">
+          <CardTitle className="flex min-w-0 items-center gap-2 font-serif text-sm font-semibold tracking-tight">
             <span
               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                 isLocked
@@ -109,9 +113,9 @@ function ModuleRow({
               }`}
             >
               {isLocked ? (
-                <Lock className="h-3 w-3" />
+                <Lock className="h-3 w-3" strokeWidth={1.75} aria-hidden />
               ) : allComplete ? (
-                <CheckCircle className="h-3 w-3" />
+                <CheckCircle className="h-3 w-3" strokeWidth={1.75} aria-hidden />
               ) : (
                 idx + 1
               )}
@@ -124,23 +128,26 @@ function ModuleRow({
             </span>
           </CardTitle>
           {!isLocked && (
-            <Link to={`/courses/${courseId}/modules/${module.id}`}>
-              <Button variant="ghost" size="sm" className="h-7 text-xs shrink-0">
-                Open
-                <ArrowRight className="h-3 w-3 ml-1" />
+            <Link
+              to={`/courses/${courseId}/modules/${module.id}`}
+              className="-my-2 inline-flex shrink-0 sm:my-0"
+            >
+              <Button variant="ghost" size="sm" className="h-11 text-xs sm:h-7">
+                {t("courseDetail.openModule")}
+                <ArrowRight className="ml-1 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
               </Button>
             </Link>
           )}
           {isLocked && (
             <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Lock className="h-3 w-3" />
-              Locked
+              <Lock className="h-3 w-3" strokeWidth={1.75} aria-hidden />
+              {t("courseDetail.moduleLocked")}
             </span>
           )}
         </div>
         {isLocked && (
           <p className="text-xs text-muted-foreground ml-8 mt-1">
-            Complete all assessments in the previous module to unlock.
+            {t("courseDetail.moduleLockHint")}
           </p>
         )}
         {module.description && (
@@ -154,17 +161,17 @@ function ModuleRow({
           const overdue = dueDate < now && !allComplete
           return (
             <div
-              className={`ml-8 mt-1 flex items-center gap-1 text-[11px] ${
+              className={`ml-8 mt-1 flex items-center gap-1 text-xs ${
                 overdue ? "text-destructive" : "text-muted-foreground"
               }`}
             >
               {overdue ? (
-                <AlertTriangle className="h-2.5 w-2.5" />
+                <AlertTriangle className="h-3 w-3" strokeWidth={1.75} aria-hidden />
               ) : (
-                <Clock className="h-2.5 w-2.5" />
+                <Clock className="h-3 w-3" strokeWidth={1.75} aria-hidden />
               )}
               <span>
-                {overdue ? "Overdue" : "Due"}: {formatDate(module.due_date)}
+                {overdue ? t("courseDetail.overdue") : t("courseDetail.due")}: {formatDate(module.due_date)}
               </span>
             </div>
           )

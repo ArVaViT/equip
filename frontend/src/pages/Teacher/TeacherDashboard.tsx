@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { BookOpen, Plus, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import PageSpinner from "@/components/ui/PageSpinner"
 import { useConfirm } from "@/components/ui/alert-dialog"
 import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
-import { courseSchema, type CourseFormData } from "@/lib/validations/course"
+import { makeCourseSchema, type CourseFormData } from "@/lib/validations/course"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { coursesService } from "@/services/courses"
 import { toast } from "@/lib/toast"
@@ -17,11 +17,15 @@ import {
   CreateCourseForm,
   EmptyCoursesCard,
   PendingCertsCard,
+  TeacherDashboardSkeleton,
   TrashSection,
   type PendingCert,
 } from "./dashboard"
+import { useUserTour } from "@/hooks/useUserTour"
+import { teacherDashboardSteps } from "@/lib/tourSteps"
 
 export default function TeacherDashboard() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const confirm = useConfirm()
   const [params, setParams] = useSearchParams()
@@ -39,7 +43,6 @@ export default function TeacherDashboard() {
   const [form, setForm] = useState<CourseFormData>({
     title: "",
     description: "",
-    image_url: "",
   })
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
   const [saving, setSaving] = useState(false)
@@ -47,6 +50,11 @@ export default function TeacherDashboard() {
   const [cloningId, setCloningId] = useState<string | null>(null)
   const [pendingCerts, setPendingCerts] = useState<PendingCert[]>([])
   const [certActionId, setCertActionId] = useState<string | null>(null)
+  const tourSteps = teacherDashboardSteps(t)
+  const { start: startTour } = useUserTour({
+    tourId: "teacher-dashboard-v1",
+    steps: tourSteps,
+  })
 
   const filteredCourses = useMemo(() => {
     const q = urlQuery.trim().toLowerCase()
@@ -54,7 +62,7 @@ export default function TeacherDashboard() {
     return courses.filter((c) => c.title.toLowerCase().includes(q))
   }, [courses, urlQuery])
 
-  const load = async (signal?: { cancelled: boolean }) => {
+  const load = useCallback(async (signal?: { cancelled: boolean }) => {
     setLoading(true)
     setError(null)
     try {
@@ -67,11 +75,11 @@ export default function TeacherDashboard() {
       setPendingCerts(certs)
     } catch {
       if (!signal?.cancelled)
-        setError("Failed to load your courses. Please try again.")
+        setError(t("errors.loadTeacherCoursesFailed"))
     } finally {
       if (!signal?.cancelled) setLoading(false)
     }
-  }
+  }, [t])
 
   useEffect(() => {
     const signal = { cancelled: false }
@@ -79,17 +87,17 @@ export default function TeacherDashboard() {
     return () => {
       signal.cancelled = true
     }
-  }, [])
+  }, [load])
 
   const handleApproveCert = async (certId: string) => {
     setCertActionId(certId)
     try {
       await coursesService.teacherApproveCert(certId)
       setPendingCerts((prev) => prev.filter((c) => c.id !== certId))
-      toast({ title: "Certificate approved", variant: "success" })
+      toast({ title: t("toast.certificateApproved"), variant: "success" })
     } catch (err) {
       toast({
-        title: getErrorDetail(err, "Failed to approve certificate"),
+        title: getErrorDetail(err, t("toast.certificateApproveFailed")),
         variant: "destructive",
       })
     } finally {
@@ -102,10 +110,10 @@ export default function TeacherDashboard() {
     try {
       await coursesService.rejectCert(certId)
       setPendingCerts((prev) => prev.filter((c) => c.id !== certId))
-      toast({ title: "Certificate request declined" })
+      toast({ title: t("toast.certificateDeclined") })
     } catch (err) {
       toast({
-        title: getErrorDetail(err, "Failed to reject certificate"),
+        title: getErrorDetail(err, t("toast.certificateRejectFailed")),
         variant: "destructive",
       })
     } finally {
@@ -122,12 +130,12 @@ export default function TeacherDashboard() {
         prev.map((c) => (c.id === course.id ? { ...c, status: newStatus } : c)),
       )
       toast({
-        title: `Course ${newStatus === "published" ? "published" : "unpublished"}`,
+        title: newStatus === "published" ? t("toast.coursePublished") : t("toast.courseUnpublished"),
         variant: "success",
       })
     } catch (err) {
       toast({
-        title: getErrorDetail(err, "Failed to update status"),
+        title: getErrorDetail(err, t("toast.statusUpdateFailed")),
         variant: "destructive",
       })
     } finally {
@@ -137,7 +145,9 @@ export default function TeacherDashboard() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    const result = courseSchema.safeParse(form)
+    // Build the schema inside the handler so error messages match
+    // the *current* locale, not the bootstrap snapshot.
+    const result = makeCourseSchema().safeParse(form)
     if (!result.success) {
       const fieldErrors: typeof errors = {}
       for (const issue of result.error.issues) {
@@ -152,15 +162,14 @@ export default function TeacherDashboard() {
       const newCourse = await coursesService.createCourse({
         title: result.data.title,
         description: result.data.description || undefined,
-        image_url: result.data.image_url || undefined,
       })
-      setForm({ title: "", description: "", image_url: "" })
+      setForm({ title: "", description: "" })
       setShowCreate(false)
       setErrors({})
-      toast({ title: "Course created", variant: "success" })
+      toast({ title: t("toast.courseCreated"), variant: "success" })
       navigate(`/teacher/courses/${newCourse.id}`)
     } catch {
-      toast({ title: "Failed to create course", variant: "destructive" })
+      toast({ title: t("toast.courseCreateFailed"), variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -168,19 +177,19 @@ export default function TeacherDashboard() {
 
   const handleDelete = async (id: string) => {
     const ok = await confirm({
-      title: "Move course to trash?",
-      description: "You can restore it from trash later.",
-      confirmLabel: "Move to trash",
+      title: t("teacher.confirmTrashTitle"),
+      description: t("teacher.confirmTrashDescription"),
+      confirmLabel: t("teacher.confirmTrashConfirm"),
       tone: "destructive",
     })
     if (!ok) return
     try {
       await coursesService.deleteCourse(id)
       setCourses((prev) => prev.filter((c) => c.id !== id))
-      toast({ title: "Course moved to trash", variant: "success" })
+      toast({ title: t("toast.courseMovedToTrash"), variant: "success" })
     } catch (err) {
       toast({
-        title: getErrorDetail(err, "Failed to delete course"),
+        title: getErrorDetail(err, t("toast.deleteCourseFailed")),
         variant: "destructive",
       })
     }
@@ -190,11 +199,11 @@ export default function TeacherDashboard() {
     setCloningId(id)
     try {
       const cloned = await coursesService.cloneCourse(id)
-      toast({ title: "Course cloned successfully", variant: "success" })
+      toast({ title: t("toast.courseCloned"), variant: "success" })
       navigate(`/teacher/courses/${cloned.id}`)
     } catch (err) {
       toast({
-        title: getErrorDetail(err, "Failed to clone course"),
+        title: getErrorDetail(err, t("toast.cloneFailed")),
         variant: "destructive",
       })
     } finally {
@@ -206,21 +215,26 @@ export default function TeacherDashboard() {
     const next = new URLSearchParams(params)
     if (showTrash) next.delete("trash")
     else next.set("trash", "1")
-    setParams(next, { replace: true })
+    // PUSH (not replace) -- opening / closing the Trash drawer is a
+    // meaningful state change that the user can reasonably back-button
+    // out of. ``replace`` here used to drop the prior dashboard view
+    // from history; pressing back from the Trash drawer left the
+    // /teacher route entirely instead of just closing the drawer.
+    setParams(next)
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Courses</h1>
-          <p className="text-muted-foreground mt-1">
-            Create and manage your course content
-          </p>
-        </div>
-        <Button onClick={() => setShowCreate(!showCreate)} size="sm">
-          <Plus className="h-4 w-4 mr-1.5" />
-          New Course
+    <div className="container mx-auto max-w-5xl px-4 py-6 sm:py-8">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 sm:mb-8">
+        <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">{t("teacher.dashboardTitle")}</h1>
+        <Button
+          data-tour="new-course"
+          onClick={() => setShowCreate(!showCreate)}
+          size="sm"
+          className="h-11 sm:h-9"
+        >
+          <Plus className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
+          {t("teacher.newCourse")}
         </Button>
       </div>
 
@@ -244,27 +258,32 @@ export default function TeacherDashboard() {
       />
 
       {loading ? (
-        <PageSpinner />
+        <TeacherDashboardSkeleton />
       ) : error ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <BookOpen className="h-12 w-12 text-destructive/40 mb-4" />
-            <h3 className="text-lg font-medium mb-1">Something went wrong</h3>
+            <BookOpen className="h-12 w-12 text-destructive/40 mb-4" strokeWidth={1.75} />
+            <h3 className="text-lg font-medium mb-1">{t("teacher.somethingWrong")}</h3>
             <p className="text-sm text-muted-foreground mb-4">{error}</p>
             <Button onClick={() => load()} size="sm" variant="outline">
-              Try again
+              {t("common.tryAgain")}
             </Button>
           </CardContent>
         </Card>
       ) : courses.length === 0 ? (
-        <EmptyCoursesCard onCreate={() => setShowCreate(true)} />
+        <EmptyCoursesCard
+          onCreate={() => setShowCreate(true)}
+          onTourStart={startTour}
+        />
       ) : (
         <>
           {courses.length > 3 && (
             <div className="mb-4 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
               <Input
-                placeholder="Search courses..."
+                type="search"
+                placeholder={t("teacher.searchPlaceholder")}
+                aria-label={t("teacher.searchPlaceholder")}
                 value={searchInput}
                 onChange={(e) =>
                   setSearchInput(e.target.value.slice(0, MAX_SEARCH_LEN))
@@ -274,7 +293,7 @@ export default function TeacherDashboard() {
               />
             </div>
           )}
-          <div className="space-y-4">
+          <div data-tour="courses-list" className="space-y-4">
             {filteredCourses.map((course) => (
               <CourseCard
                 key={course.id}

@@ -1,4 +1,5 @@
 import type { Editor } from "@tiptap/react";
+import { useTranslation } from "react-i18next";
 import {
   Bold,
   Italic,
@@ -8,6 +9,7 @@ import {
   ListOrdered,
   Quote,
   Link2,
+  Loader2,
   Undo2,
   Redo2,
   ImageIcon,
@@ -27,12 +29,17 @@ function ToolbarButton({
   disabled = false,
   children,
   title,
+  /** Toggle buttons (bold/italic/list/etc.) communicate their on/off
+   *  state via aria-pressed. One-shot buttons (insert image, undo) leave
+   *  this undefined so AT doesn't announce a pointless pressed state. */
+  pressable = false,
 }: {
   onClick: () => void;
   active?: boolean;
   disabled?: boolean;
   children: React.ReactNode;
   title: string;
+  pressable?: boolean;
 }) {
   return (
     <button
@@ -41,8 +48,9 @@ function ToolbarButton({
       disabled={disabled}
       title={title}
       aria-label={title}
+      aria-pressed={pressable ? active : undefined}
       className={cn(
-        "rounded p-1.5 transition-colors",
+        "rounded p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         active
           ? "bg-primary/15 text-primary"
           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
@@ -55,7 +63,9 @@ function ToolbarButton({
 }
 
 function ToolbarDivider() {
-  return <div className="mx-1 h-5 w-px bg-border" />;
+  // role="separator" so AT treats the divider as a group boundary rather
+  // than as a visible-but-unannounced element.
+  return <div role="separator" aria-orientation="vertical" className="mx-1 h-5 w-px bg-border" />;
 }
 
 interface EditorToolbarProps {
@@ -81,22 +91,29 @@ export function EditorToolbar({
   onAddAudio,
   onSetLink,
 }: EditorToolbarProps) {
+  const { t } = useTranslation();
   return (
-    <div className="flex flex-wrap items-center gap-0.5 border-b border-input px-2 py-1.5">
+    <div
+      role="toolbar"
+      aria-label={t("blockEditor.toolbar.ariaLabel")}
+      className="flex flex-wrap items-center gap-0.5 border-b border-input px-2 py-1.5"
+    >
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBold().run()}
         active={editor.isActive("bold")}
-        title="Bold"
+        pressable
+        title={t("blockEditor.toolbar.bold")}
       >
-        <Bold size={TOOLBAR_ICON_SIZE} />
+        <Bold size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} aria-hidden="true" />
       </ToolbarButton>
 
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleItalic().run()}
         active={editor.isActive("italic")}
-        title="Italic"
+        pressable
+        title={t("blockEditor.toolbar.italic")}
       >
-        <Italic size={TOOLBAR_ICON_SIZE} />
+        <Italic size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} aria-hidden="true" />
       </ToolbarButton>
 
       <ToolbarDivider />
@@ -104,17 +121,19 @@ export function EditorToolbar({
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         active={editor.isActive("heading", { level: 2 })}
-        title="Heading 2"
+        pressable
+        title={t("blockEditor.toolbar.heading2")}
       >
-        <Heading2 size={TOOLBAR_ICON_SIZE} />
+        <Heading2 size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} aria-hidden="true" />
       </ToolbarButton>
 
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
         active={editor.isActive("heading", { level: 3 })}
-        title="Heading 3"
+        pressable
+        title={t("blockEditor.toolbar.heading3")}
       >
-        <Heading3 size={TOOLBAR_ICON_SIZE} />
+        <Heading3 size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} aria-hidden="true" />
       </ToolbarButton>
 
       <ToolbarDivider />
@@ -122,32 +141,35 @@ export function EditorToolbar({
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBulletList().run()}
         active={editor.isActive("bulletList")}
-        title="Bullet List"
+        pressable
+        title={t("blockEditor.toolbar.bulletList")}
       >
-        <List size={TOOLBAR_ICON_SIZE} />
+        <List size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} aria-hidden="true" />
       </ToolbarButton>
 
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
         active={editor.isActive("orderedList")}
-        title="Numbered List"
+        pressable
+        title={t("blockEditor.toolbar.numberedList")}
       >
-        <ListOrdered size={TOOLBAR_ICON_SIZE} />
+        <ListOrdered size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} aria-hidden="true" />
       </ToolbarButton>
 
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
         active={editor.isActive("blockquote")}
-        title="Blockquote"
+        pressable
+        title={t("blockEditor.toolbar.blockquote")}
       >
-        <Quote size={TOOLBAR_ICON_SIZE} />
+        <Quote size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} aria-hidden="true" />
       </ToolbarButton>
 
       <ToolbarButton
         onClick={() => editor.chain().focus().setHorizontalRule().run()}
-        title="Horizontal Rule"
+        title={t("blockEditor.toolbar.horizontalRule")}
       >
-        <Minus size={TOOLBAR_ICON_SIZE} />
+        <Minus size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} aria-hidden="true" />
       </ToolbarButton>
 
       <ToolbarDivider />
@@ -156,28 +178,29 @@ export function EditorToolbar({
 
       <ToolbarDivider />
 
-      <ToolbarButton onClick={onAddImage} disabled={uploading} title="Insert Image">
+      <ToolbarButton onClick={onAddImage} disabled={uploading} title={t("blockEditor.toolbar.insertImage")}>
         {uploading ? (
-          <span className="inline-block h-[18px] w-[18px] animate-spin rounded-full border-2 border-current border-t-transparent" />
+          <Loader2 size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} className="animate-spin" aria-hidden="true" />
         ) : (
-          <ImageIcon size={TOOLBAR_ICON_SIZE} />
+          <ImageIcon size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} aria-hidden="true" />
         )}
       </ToolbarButton>
 
-      <ToolbarButton onClick={onAddYoutube} title="Insert YouTube Video">
-        <Youtube size={TOOLBAR_ICON_SIZE} />
+      <ToolbarButton onClick={onAddYoutube} title={t("blockEditor.toolbar.insertYoutube")}>
+        <Youtube size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} aria-hidden="true" />
       </ToolbarButton>
 
-      <ToolbarButton onClick={onAddAudio} title="Insert Audio">
-        <Headphones size={TOOLBAR_ICON_SIZE} />
+      <ToolbarButton onClick={onAddAudio} title={t("blockEditor.toolbar.insertAudio")}>
+        <Headphones size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} aria-hidden="true" />
       </ToolbarButton>
 
       <ToolbarButton
         onClick={onSetLink}
         active={editor.isActive("link")}
-        title="Link"
+        pressable
+        title={t("blockEditor.toolbar.link")}
       >
-        <Link2 size={TOOLBAR_ICON_SIZE} />
+        <Link2 size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} aria-hidden="true" />
       </ToolbarButton>
 
       <ToolbarDivider />
@@ -185,17 +208,17 @@ export function EditorToolbar({
       <ToolbarButton
         onClick={() => editor.chain().focus().undo().run()}
         disabled={!editor.can().undo()}
-        title="Undo"
+        title={t("blockEditor.toolbar.undo")}
       >
-        <Undo2 size={TOOLBAR_ICON_SIZE} />
+        <Undo2 size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} aria-hidden="true" />
       </ToolbarButton>
 
       <ToolbarButton
         onClick={() => editor.chain().focus().redo().run()}
         disabled={!editor.can().redo()}
-        title="Redo"
+        title={t("blockEditor.toolbar.redo")}
       >
-        <Redo2 size={TOOLBAR_ICON_SIZE} />
+        <Redo2 size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} aria-hidden="true" />
       </ToolbarButton>
     </div>
   );

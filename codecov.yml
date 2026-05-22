@@ -1,0 +1,59 @@
+# Codecov configuration.
+#
+# Goal: surface coverage as a public-facing signal without making it a hard
+# gate on PRs. Failing a build over a 0.5% coverage dip on an unrelated PR
+# costs more than it teaches; we keep the *informational* badge accurate
+# and let humans make the call.
+#
+# Two flags carry the split-monorepo split, so the dashboard at
+# https://app.codecov.io/gh/ArVaViT/equip can show backend vs frontend
+# trends independently.
+
+coverage:
+  status:
+    project:
+      default:
+        # Inform-only PR status. Set `informational: true` so a coverage
+        # regression posts a comment but never blocks merging.
+        informational: true
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        informational: true
+        target: 70%
+        threshold: 5%
+
+flags:
+  backend:
+    paths:
+      - backend/app/
+    carryforward: true
+  frontend:
+    paths:
+      - frontend/src/
+    carryforward: true
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: true
+  require_base: false
+  require_head: true
+
+# Don't fail Codecov runs themselves when sources are missing locally;
+# the report is what matters, not the file-by-file resolution.
+codecov:
+  require_ci_to_pass: false
+  notify:
+    wait_for_ci: false
+
+ignore:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.py"
+  - "**/tests/**"
+  - "**/__tests__/**"
+  - "backend/tests/**"
+  - "frontend/src/test/**"
+  - "**/migrations/**"

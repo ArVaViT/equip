@@ -1,7 +1,9 @@
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import type { CourseFormData } from "@/lib/validations/course"
 
 interface Props {
@@ -14,6 +16,11 @@ interface Props {
   onCancel: () => void
 }
 
+// Intentionally minimal: only ``title`` is required to land in the
+// editor. ``description`` is optional. Cover image, modules, calendar,
+// access mode, etc. all live in the editor — pushing every setting
+// into this gate scared first-time teachers off before they ever saw
+// the editor at all.
 export function CreateCourseForm({
   form,
   setForm,
@@ -23,56 +30,69 @@ export function CreateCourseForm({
   onSubmit,
   onCancel,
 }: Props) {
+  const { t } = useTranslation()
   return (
     <Card className="mb-8 border-dashed">
       <CardHeader>
-        <CardTitle className="text-lg">Create New Course</CardTitle>
+        <CardTitle className="font-serif text-lg font-semibold tracking-tight">
+          {t("teacherDashboard.createForm.title")}
+        </CardTitle>
       </CardHeader>
       <form onSubmit={onSubmit}>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
+            <Label htmlFor="title">
+              {t("teacherDashboard.createForm.titleLabel")}
+            </Label>
             <Input
               id="title"
+              autoFocus
+              maxLength={200}
               value={form.title}
               onChange={(e) => {
-                setForm((p) => ({ ...p, title: e.target.value }))
+                // Cap at 200 chars to match the server-side schema
+                // (``makeCourseSchema`` already enforces this, and so
+                // does CourseEditor's title field). Without ``maxLength``
+                // a paste of a 5000-char string was POSTed and rejected
+                // with a generic 400, costing one network round-trip
+                // and an opaque error.
+                setForm((p) => ({ ...p, title: e.target.value.slice(0, 200) }))
                 setErrors((p) => ({ ...p, title: undefined }))
               }}
-              placeholder="Introduction to Theology"
+              placeholder={t("teacherDashboard.createForm.titlePlaceholder")}
             />
             {errors.title && <p className="text-sm text-destructive">{errors.title}</p>}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="desc">Description</Label>
-            <textarea
-              id="desc"
-              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              value={form.description}
-              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-              placeholder="A brief description of the course..."
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="img">
-              Cover Image URL (optional — or upload after creating)
+            <Label htmlFor="desc">
+              {t("teacherDashboard.createForm.descriptionLabel")}
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                {t("teacherDashboard.createForm.optional")}
+              </span>
             </Label>
-            <Input
-              id="img"
-              value={form.image_url}
-              onChange={(e) => setForm((p) => ({ ...p, image_url: e.target.value }))}
-              placeholder="https://... (you can upload in the editor)"
+            <Textarea
+              id="desc"
+              fieldSize="default"
+              maxLength={2000}
+              className="min-h-[80px]"
+              value={form.description}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, description: e.target.value.slice(0, 2000) }))
+              }
+              placeholder={t("teacherDashboard.createForm.descriptionPlaceholder")}
             />
-            {errors.image_url && (
-              <p className="text-sm text-destructive">{errors.image_url}</p>
-            )}
           </div>
+          <p className="text-xs text-muted-foreground">
+            {t("teacherDashboard.createForm.editorHint")}
+          </p>
           <div className="flex gap-2 pt-2">
             <Button type="submit" disabled={saving}>
-              {saving ? "Creating..." : "Create Course"}
+              {saving
+                ? t("teacherDashboard.createForm.creating")
+                : t("teacherDashboard.createForm.submit")}
             </Button>
             <Button type="button" variant="ghost" onClick={onCancel}>
-              Cancel
+              {t("teacherDashboard.createForm.cancel")}
             </Button>
           </div>
         </CardContent>

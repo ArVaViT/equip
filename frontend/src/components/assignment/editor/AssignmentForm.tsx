@@ -1,5 +1,8 @@
+import { useTranslation } from "react-i18next"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Loader2, Save, X } from "lucide-react"
@@ -14,80 +17,90 @@ interface Props {
   mode: "create" | "edit"
 }
 
-const TEXTAREA_CLASS =
-  "flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
-
 /**
  * Shared form used for both creating a new assignment and editing an
  * existing one. The original file duplicated the markup twice — this
  * component collapses that into a single source of truth.
  */
 export function AssignmentForm({ value, onChange, onSubmit, onCancel, submitting, mode }: Props) {
+  const { t } = useTranslation()
   const patch = (p: Partial<AssignmentFormState>) => onChange({ ...value, ...p })
 
   const submitLabel =
     mode === "create"
       ? submitting
-        ? "Creating..."
-        : "Create Assignment"
+        ? t("assignmentEditor.form.creating")
+        : t("assignmentEditor.form.create")
       : submitting
-        ? "Updating..."
-        : "Update Assignment"
+        ? t("assignmentEditor.form.updating")
+        : t("assignmentEditor.form.update")
 
   return (
     <Card className="bg-muted/30">
       <CardContent className="p-4 space-y-3">
         <div className="space-y-1.5">
-          <Label className="text-xs">Title</Label>
+          <Label className="text-xs" htmlFor="assignment-title">
+            {t("assignmentEditor.form.title")}
+          </Label>
           <Input
+            id="assignment-title"
             value={value.title}
             onChange={(e) => patch({ title: e.target.value })}
-            placeholder="e.g. Chapter Reflection Essay"
-            className="h-8 text-sm"
+            placeholder={t("assignmentEditor.form.titlePlaceholder")}
+            fieldSize="sm"
           />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs">Description (optional)</Label>
-          <textarea
+          <Label className="text-xs" htmlFor="assignment-description">
+            {t("assignmentEditor.form.description")}
+          </Label>
+          <Textarea
+            id="assignment-description"
             value={value.description}
             onChange={(e) => patch({ description: e.target.value })}
-            placeholder="Assignment instructions..."
-            className={TEXTAREA_CLASS}
+            placeholder={t("assignmentEditor.form.descriptionPlaceholder")}
+            fieldSize="sm"
           />
         </div>
         <div className="flex gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">Max Score</Label>
+            <Label className="text-xs" htmlFor="assignment-max-score">
+              {t("assignmentEditor.form.maxScore")}
+            </Label>
             <Input
+              id="assignment-max-score"
               type="number"
               min={1}
               value={value.maxScore}
               onChange={(e) => patch({ maxScore: Number(e.target.value) || 100 })}
-              className="h-8 text-sm w-24"
+              fieldSize="sm"
+              className="w-24"
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Due Date (optional)</Label>
-            <Input
-              type="date"
+            <Label className="text-xs" htmlFor="assignment-due">
+              {t("assignmentEditor.form.dueDate")}
+            </Label>
+            <DatePicker
+              id="assignment-due"
               value={value.dueDate}
-              onChange={(e) => patch({ dueDate: e.target.value })}
-              className="h-8 text-sm"
+              onChange={(next) => patch({ dueDate: next })}
+              className="w-full"
             />
           </div>
         </div>
         <div className="flex gap-2">
           <Button size="sm" onClick={onSubmit} disabled={submitting}>
             {submitting ? (
-              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} />
             ) : (
-              <Save className="h-3.5 w-3.5 mr-1.5" />
+              <Save className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
             )}
             {submitLabel}
           </Button>
           <Button size="sm" variant="ghost" onClick={onCancel}>
-            {mode === "edit" && <X className="h-3.5 w-3.5 mr-1.5" />}
-            Cancel
+            {mode === "edit" && <X className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />}
+            {t("assignmentEditor.form.cancel")}
           </Button>
         </div>
       </CardContent>

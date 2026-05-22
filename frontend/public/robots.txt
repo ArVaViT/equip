@@ -1,0 +1,14 @@
+# Equip — public learning platform.
+# Crawl the public surface; do not crawl the API or authenticated
+# routes (they are gated server-side and return JSON, not HTML).
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /teacher
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /certificates
+Disallow: /calendar
+
+Sitemap: https://equipbible.com/sitemap.xml

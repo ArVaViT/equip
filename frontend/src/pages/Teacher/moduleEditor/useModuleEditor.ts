@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import type { DropResult } from "@hello-pangea/dnd";
 
 import { coursesService } from "@/services/courses";
 import { getErrorDetail } from "@/lib/errorDetail";
 import { toast } from "@/lib/toast";
-import { chapterSchema, moduleSchema } from "@/lib/validations/course";
+import { isoToLocalInput, localInputToIso } from "@/i18n/format";
+import { makeChapterSchema, makeModuleSchema } from "@/lib/validations/course";
 import type { Chapter, Module } from "@/types";
 import type { useConfirm } from "@/components/ui/alert-dialog";
 
@@ -25,6 +27,7 @@ export function useModuleEditor(
   confirm: ConfirmFn,
 ) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const [mod, setMod] = useState<Module | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,19 +39,23 @@ export function useModuleEditor(
       if (!courseId || !moduleId) return;
       setLoading(true);
       try {
-        const data = await coursesService.getModule(courseId, moduleId);
+        // `getModuleForEdit` forces ``?source=1`` so the editor binds to
+        // source-language `title` / `description` columns regardless of
+        // the viewer's UI locale. Without this an admin/owner in EN UI
+        // would type into the EN translation and overwrite the source.
+        const data = await coursesService.getModuleForEdit(courseId, moduleId);
         if (signal?.cancelled) return;
         setMod(data);
-        setModDueDate(data.due_date ? data.due_date.slice(0, 16) : "");
+        setModDueDate(isoToLocalInput(data.due_date));
       } catch {
         if (signal?.cancelled) return;
-        toast({ title: "Module not found", variant: "destructive" });
+        toast({ title: t("moduleEditor.toast.moduleNotFound"), variant: "destructive" });
         navigate(`/teacher/courses/${courseId}`);
       } finally {
         if (!signal?.cancelled) setLoading(false);
       }
     },
-    [courseId, moduleId, navigate],
+    [courseId, moduleId, navigate, t],
   );
 
   useEffect(() => {
@@ -61,13 +68,16 @@ export function useModuleEditor(
 
   const saveModuleField = async (field: "title" | "description", value: string) => {
     if (!courseId || !moduleId) return;
-    const check = moduleSchema
+    // Build inside the handler so error messages match the current
+    // locale, not the bootstrap snapshot.
+    const check = makeModuleSchema()
       .pick({ title: true, description: true })
       .partial()
       .safeParse({ [field]: value });
     if (!check.success) {
       toast({
-        title: check.error.issues[0]?.message ?? `Invalid ${field}`,
+        title:
+          check.error.issues[0]?.message ?? t("moduleEditor.invalidField", { field }),
         variant: "destructive",
       });
       throw new Error("validation");
@@ -76,7 +86,7 @@ export function useModuleEditor(
       await coursesService.updateModule(courseId, moduleId, { [field]: value });
       setMod((prev) => (prev ? { ...prev, [field]: value } : prev));
     } catch {
-      toast({ title: "Failed to save module", variant: "destructive" });
+      toast({ title: t("moduleEditor.toast.failedSaveModule"), variant: "destructive" });
       throw new Error("save failed");
     }
   };
@@ -84,11 +94,11 @@ export function useModuleEditor(
   const saveDueDate = async (value: string) => {
     if (!courseId || !moduleId) return;
     try {
-      const due = value ? new Date(value).toISOString() : null;
+      const due = localInputToIso(value);
       await coursesService.updateModule(courseId, moduleId, { due_date: due });
       setMod((prev) => (prev ? { ...prev, due_date: due } : prev));
     } catch {
-      toast({ title: "Failed to save due date", variant: "destructive" });
+      toast({ title: t("moduleEditor.toast.failedSaveDueDate"), variant: "destructive" });
     }
   };
 
@@ -97,23 +107,36 @@ export function useModuleEditor(
     void saveDueDate("");
   };
 
+  const addingChapterRef = useRef(false);
   const addChapter = async () => {
     if (!courseId || !moduleId || !mod) return;
+    // Lock: a fast double-click before the optimistic ``setMod`` lands
+    // recomputes the same ``order_index`` from a stale
+    // ``mod.chapters?.length``, and the server then accepts two
+    // chapters at the same ``order_index`` -- breaking ``sortedChapters``
+    // until a refresh. Same shape as ``addModule``'s ref-based guard.
+    if (addingChapterRef.current) return;
+    addingChapterRef.current = true;
     const order = mod.chapters?.length ?? 0;
     try {
       const ch = await coursesService.createChapter(courseId, moduleId, {
-        title: `Chapter ${order + 1}`,
+        // Seed in the teacher's UI locale. Persisted as-is, so the
+        // previous ``Chapter N`` literal stuck English into every
+        // Russian-UI teacher's course tree until they renamed it.
+        title: t("moduleEditor.defaults.chapterTitle", { n: order + 1 }),
         order_index: order,
       });
       setMod((prev) =>
         prev ? { ...prev, chapters: [...(prev.chapters ?? []), ch] } : prev,
       );
-      toast({ title: "Chapter added", variant: "success" });
+      toast({ title: t("moduleEditor.toast.chapterAdded"), variant: "success" });
       navigate(
         `/teacher/courses/${courseId}/modules/${moduleId}/chapters/${ch.id}/edit`,
       );
     } catch {
-      toast({ title: "Failed to add chapter", variant: "destructive" });
+      toast({ title: t("moduleEditor.toast.failedAddChapter"), variant: "destructive" });
+    } finally {
+      addingChapterRef.current = false;
     }
   };
 
@@ -133,10 +156,11 @@ export function useModuleEditor(
   const renameChapter = async (ch: Chapter, newTitle: string) => {
     if (!courseId || !moduleId || !newTitle.trim()) return;
     const trimmed = newTitle.trim();
-    const check = chapterSchema.pick({ title: true }).safeParse({ title: trimmed });
+    const check = makeChapterSchema().pick({ title: true }).safeParse({ title: trimmed });
     if (!check.success) {
       toast({
-        title: check.error.issues[0]?.message ?? "Invalid chapter title",
+        title:
+          check.error.issues[0]?.message ?? t("moduleEditor.invalidChapterTitle"),
         variant: "destructive",
       });
       return;
@@ -149,16 +173,19 @@ export function useModuleEditor(
       });
     } catch {
       updateChapterLocal(ch.id, { title: previousTitle });
-      toast({ title: "Failed to rename chapter", variant: "destructive" });
+      toast({
+        title: t("moduleEditor.toast.failedRenameChapter"),
+        variant: "destructive",
+      });
     }
   };
 
   const deleteChapter = async (chId: string) => {
     if (!courseId || !moduleId) return;
     const ok = await confirm({
-      title: "Delete this chapter?",
-      description: "The chapter and its content will be removed.",
-      confirmLabel: "Delete",
+      title: t("moduleEditor.confirmDelete.title"),
+      description: t("moduleEditor.confirmDelete.description"),
+      confirmLabel: t("moduleEditor.confirmDelete.confirm"),
       tone: "destructive",
     });
     if (!ok) return;
@@ -169,9 +196,12 @@ export function useModuleEditor(
           ? { ...prev, chapters: prev.chapters?.filter((c) => c.id !== chId) }
           : prev,
       );
-      toast({ title: "Chapter deleted", variant: "success" });
+      toast({ title: t("moduleEditor.toast.chapterDeleted"), variant: "success" });
     } catch {
-      toast({ title: "Failed to delete chapter", variant: "destructive" });
+      toast({
+        title: t("moduleEditor.toast.failedDeleteChapter"),
+        variant: "destructive",
+      });
     }
   };
 
@@ -184,14 +214,16 @@ export function useModuleEditor(
         is_locked: newLocked,
       });
       toast({
-        title: newLocked ? "Chapter locked" : "Chapter unlocked",
+        title: newLocked
+          ? t("moduleEditor.toast.chapterLocked")
+          : t("moduleEditor.toast.chapterUnlocked"),
         variant: "success",
       });
     } catch (error: unknown) {
       updateChapterLocal(ch.id, { is_locked: ch.is_locked });
-      const detail = getErrorDetail(error) || "Unknown error";
+      const detail = getErrorDetail(error) || t("moduleEditor.unknownError");
       toast({
-        title: `Failed to toggle lock: ${detail}`,
+        title: t("moduleEditor.toast.failedToggleLock", { detail }),
         variant: "destructive",
       });
     }
@@ -234,13 +266,16 @@ export function useModuleEditor(
             .filter(Boolean),
         );
       } catch {
-        toast({ title: "Failed to save chapter order", variant: "destructive" });
+        toast({
+          title: t("moduleEditor.toast.failedReorderChapters"),
+          variant: "destructive",
+        });
         load();
       } finally {
         setReordering(false);
       }
     },
-    [mod, courseId, moduleId, load, reordering],
+    [mod, courseId, moduleId, load, reordering, t],
   );
 
   return {

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user
 from app.core.database import get_db
 from app.models.certificate import Certificate
-from app.models.course import Course
+from app.models.course import Course, CourseStatus
 from app.models.review import CourseReview
 from app.models.user import User
 from app.schemas.review import ReviewCreate, ReviewResponse
@@ -23,7 +23,7 @@ def list_course_reviews(
     db: Session = Depends(get_db),
 ):
     course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
-    if not course or course.status != "published":
+    if not course or course.status != CourseStatus.PUBLISHED:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
     return (
         db.query(CourseReview)

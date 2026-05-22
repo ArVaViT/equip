@@ -2,16 +2,29 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
+// VERCEL_GIT_COMMIT_SHA is injected by Vercel at build time. Falls back to
+// 'dev' for local builds so Datadog RUM can still tag events with a version.
+const appVersion =
+  process.env.VITE_APP_VERSION ||
+  (process.env.VERCEL_GIT_COMMIT_SHA ? process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7) : 'dev')
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
   build: {
-    sourcemap: false,
+    // 'hidden' generates .map files alongside bundles but omits the
+    // //# sourceMappingURL trailer, so browsers don't auto-fetch them.
+    // Datadog RUM still resolves them server-side after upload via
+    // datadog-ci in the postbuild step.
+    sourcemap: 'hidden',
     rollupOptions: {
       output: {
         // Keep only the two chunks that genuinely benefit from manual

@@ -1,46 +1,128 @@
 import api from "./api"
-import { cacheGet, cacheSet, cacheInvalidate, cacheInvalidatePrefix } from "@/lib/cache"
+import { cached, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
 import type { Cohort } from "@/types"
 
-type CohortMutation = {
+export interface CohortStudent {
+  user_id: string
+  full_name: string | null
+  email: string
+  per_course: Record<
+    string,
+    {
+      enrollment_id: string
+      enrolled_at: string | null
+      progress: number
+    }
+  >
+}
+
+export interface CreateCohortBody {
   name: string
   start_date: string
   end_date: string
   enrollment_start?: string | null
   enrollment_end?: string | null
   max_students?: number | null
-  status?: Cohort["status"]
+}
+
+export interface UpdateCohortBody {
+  name?: string
+  start_date?: string
+  end_date?: string
+  enrollment_start?: string | null
+  enrollment_end?: string | null
+  status?: "upcoming" | "active" | "completed"
+  max_students?: number | null
+}
+
+/**
+ * Cohort service — read + admin write surfaces per ADR-010.
+ *
+ * The public-ish read (`getCourseCohorts`) is used by the catalog
+ * enroll dialog. Everything else (`listCohorts`, create/update/delete,
+ * attach/detach course, add/remove student, complete) is admin-only
+ * and consumed by `pages/Admin/cohorts/*`.
+ */
+function invalidateCourseLists() {
+  cacheInvalidatePrefix("cohorts:course:")
 }
 
 export const cohortsService = {
   async getCourseCohorts(courseId: string): Promise<Cohort[]> {
-    const key = `cohorts:course:${courseId}`
-    const cached = cacheGet<Cohort[]>(key)
-    if (cached) return cached
-    const response = await api.get<Cohort[]>(`/cohorts/course/${courseId}`)
-    cacheSet(key, response.data, 2 * 60 * 1000)
+    return cached(`cohorts:course:${courseId}`, CACHE_TTL.TWO_MINUTES, async () => {
+      const response = await api.get<Cohort[]>(`/cohorts/course/${courseId}`)
+      return response.data
+    })
+  },
+
+  // -------------------- admin: cohort CRUD --------------------
+
+  async listCohorts(statusFilter?: UpdateCohortBody["status"]): Promise<Cohort[]> {
+    const url = statusFilter ? `/cohorts?status=${statusFilter}` : "/cohorts"
+    const response = await api.get<Cohort[]>(url)
     return response.data
   },
 
-  async createCohort(courseId: string, data: CohortMutation): Promise<Cohort> {
-    const response = await api.post<Cohort>(`/cohorts/course/${courseId}`, data)
-    cacheInvalidate(`cohorts:course:${courseId}`)
+  async getCohort(cohortId: string): Promise<Cohort> {
+    const response = await api.get<Cohort>(`/cohorts/${cohortId}`)
     return response.data
   },
 
-  async updateCohort(cohortId: string, data: Partial<CohortMutation>): Promise<Cohort> {
-    const response = await api.put<Cohort>(`/cohorts/${cohortId}`, data)
-    cacheInvalidatePrefix("cohorts:course:")
+  async createCohort(body: CreateCohortBody): Promise<Cohort> {
+    const response = await api.post<Cohort>("/cohorts", body)
+    invalidateCourseLists()
+    return response.data
+  },
+
+  async updateCohort(cohortId: string, body: UpdateCohortBody): Promise<Cohort> {
+    const response = await api.patch<Cohort>(`/cohorts/${cohortId}`, body)
+    invalidateCourseLists()
     return response.data
   },
 
   async deleteCohort(cohortId: string): Promise<void> {
     await api.delete(`/cohorts/${cohortId}`)
-    cacheInvalidatePrefix("cohorts:course:")
+    invalidateCourseLists()
   },
 
-  async completeCohort(cohortId: string): Promise<void> {
-    await api.post(`/cohorts/${cohortId}/complete`)
-    cacheInvalidatePrefix("cohorts:course:")
+  async completeCohort(cohortId: string): Promise<Cohort> {
+    const response = await api.post<Cohort>(`/cohorts/${cohortId}/complete`)
+    invalidateCourseLists()
+    return response.data
+  },
+
+  // ----------------- admin: cohort x courses ------------------
+
+  async attachCourseToCohort(cohortId: string, courseId: string): Promise<Cohort> {
+    const response = await api.post<Cohort>(`/cohorts/${cohortId}/courses`, { course_id: courseId })
+    invalidateCourseLists()
+    return response.data
+  },
+
+  async detachCourseFromCohort(cohortId: string, courseId: string): Promise<void> {
+    await api.delete(`/cohorts/${cohortId}/courses/${courseId}`)
+    invalidateCourseLists()
+  },
+
+  // ----------------- admin: cohort x students -----------------
+
+  async listCohortStudents(cohortId: string): Promise<CohortStudent[]> {
+    const response = await api.get<CohortStudent[]>(`/cohorts/${cohortId}/students`)
+    return response.data
+  },
+
+  async addCohortStudent(
+    cohortId: string,
+    body: { user_id?: string; email?: string },
+  ): Promise<{ user_id: string; course_ids: string[] }> {
+    const response = await api.post<{ user_id: string; course_ids: string[] }>(
+      `/cohorts/${cohortId}/students`,
+      body,
+    )
+    return response.data
+  },
+
+  async removeCohortStudent(cohortId: string, userId: string): Promise<void> {
+    await api.delete(`/cohorts/${cohortId}/students/${userId}`)
   },
 }

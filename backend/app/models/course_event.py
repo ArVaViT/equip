@@ -9,10 +9,12 @@ from app.core.database import Base
 
 class CourseEvent(Base):
     __tablename__ = "course_events"
-    __table_args__ = (
-        Index("ix_course_events_course_id", "course_id"),
-        Index("ix_course_events_event_date", "event_date"),
-    )
+    # event_date intentionally has no index — the calendar API loads
+    # events by course_id (covered by ix_course_events_course_id) and
+    # sorts in Python (`events.sort(key=lambda e: e.event_date)` in
+    # calendar.py). No SQL ORDER BY event_date exists, so an index
+    # there does no work.
+    __table_args__ = (Index("ix_course_events_course_id", "course_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     course_id: Mapped[str] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))

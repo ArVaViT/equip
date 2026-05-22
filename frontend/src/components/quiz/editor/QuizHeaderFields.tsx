@@ -1,5 +1,7 @@
+import { useTranslation } from "react-i18next"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 interface Props {
   title: string
@@ -24,40 +26,50 @@ export function QuizHeaderFields({
   setMaxAttempts,
   chapterType,
 }: Props) {
+  const { t } = useTranslation()
   return (
     <div className="grid gap-3">
       <div className="space-y-1.5">
-        <Label className="text-xs">Quiz Title</Label>
+        <Label className="text-xs">{t("quizEditor.fields.quizTitle")}</Label>
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g. Chapter Review Quiz"
-          className="h-8 text-sm"
+          placeholder={t("quizEditor.fields.titlePlaceholder")}
+          fieldSize="sm"
+          className="text-sm"
         />
       </div>
       <div className="space-y-1.5">
-        <Label className="text-xs">Description (optional)</Label>
-        <textarea
+        <Label className="text-xs">{t("quizEditor.fields.description")}</Label>
+        <Textarea
+          fieldSize="sm"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Brief description of the quiz..."
-          className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
+          placeholder={t("quizEditor.fields.descriptionPlaceholder")}
+          className="text-sm"
         />
       </div>
       <div className="space-y-1.5">
-        <Label className="text-xs">Passing Score (%)</Label>
+        <Label className="text-xs">{t("quizEditor.fields.passingScore")}</Label>
         <Input
           type="number"
           min={0}
           max={100}
           value={passingScore}
-          onChange={(e) => setPassingScore(Number(e.target.value))}
-          className="h-8 text-sm w-28"
+          // Clamp to [0..100] and fall back to 0 on empty/NaN. Without
+          // this the field could land on NaN when the teacher clears it,
+          // which JSON-serialises to ``null`` and trips the backend's
+          // ``int`` schema on save.
+          onChange={(e) =>
+            setPassingScore(Math.min(100, Math.max(0, Number(e.target.value) || 0)))
+          }
+          fieldSize="sm"
+          className="w-28 text-sm"
         />
       </div>
       {chapterType === "exam" && (
         <div className="space-y-1.5">
-          <Label className="text-xs">Maximum Attempts</Label>
+          <Label className="text-xs">{t("quizEditor.fields.maxAttempts")}</Label>
           <Input
             type="number"
             min={1}
@@ -66,7 +78,8 @@ export function QuizHeaderFields({
             onChange={(e) =>
               setMaxAttempts(Math.min(10, Math.max(1, Number(e.target.value) || 1)))
             }
-            className="h-8 text-sm w-28"
+            fieldSize="sm"
+            className="w-28 text-sm"
           />
         </div>
       )}

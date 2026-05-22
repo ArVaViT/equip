@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import {
   BarChart3,
   BookOpen,
@@ -7,6 +8,8 @@ import {
   Eye,
   EyeOff,
   Layers,
+  Loader2,
+  MoreHorizontal,
   Pencil,
   Trash2,
   Users,
@@ -14,7 +17,15 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { toProxyImage } from "@/lib/images"
+import { formatDate } from "@/i18n/format"
 import type { Course } from "@/types"
 
 interface Props {
@@ -34,100 +45,189 @@ export function CourseCard({
   onClone,
   onDelete,
 }: Props) {
+  const { t } = useTranslation()
+  const moduleCount = course.modules?.length ?? 0
+  const isPublished = course.status === "published"
+  const togglePublishLabel = isPublished
+    ? t("teacherDashboard.courseCard.actionUnpublish")
+    : t("teacherDashboard.courseCard.actionPublish")
+
   return (
-    <Card className="group hover:shadow-md transition-shadow">
-      <div className="flex items-start gap-4 p-6">
+    <Card className="group transition-colors hover:border-primary/30">
+      <div className="flex items-start gap-3 p-4 sm:gap-4 sm:p-5">
         {course.image_url ? (
           <img
             src={toProxyImage(course.image_url)}
-            alt={`${course.title} thumbnail`}
+            alt={t("teacherDashboard.courseCard.thumbnailAlt", { title: course.title })}
             loading="lazy"
-            className="w-20 h-20 rounded-lg object-cover shrink-0"
+            className="h-16 w-16 shrink-0 rounded-lg object-cover sm:h-20 sm:w-20"
           />
         ) : (
-          <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center shrink-0">
-            <BookOpen className="h-8 w-8 text-muted-foreground/40" />
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-muted sm:h-20 sm:w-20">
+            <BookOpen className="h-7 w-7 text-muted-foreground/40 sm:h-8 sm:w-8" strokeWidth={1.75} aria-hidden />
           </div>
         )}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-lg truncate">{course.title}</h3>
-            <Badge variant={course.status === "published" ? "success" : "warning"}>
-              {course.status === "published" ? "Published" : "Draft"}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <h3 className="min-w-0 flex-1 truncate text-base font-semibold sm:text-lg">{course.title}</h3>
+            <Badge variant={isPublished ? "success" : "warning"} className="shrink-0">
+              {isPublished
+                ? t("teacherDashboard.courseCard.statusPublished")
+                : t("teacherDashboard.courseCard.statusDraft")}
             </Badge>
           </div>
           {course.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
               {course.description}
             </p>
           )}
-          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
-              <Layers className="h-3.5 w-3.5" />
-              {course.modules?.length ?? 0} modules
+              <Layers className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              {t("teacherDashboard.courseCard.modules", { count: moduleCount })}
             </span>
-            <span>Created {new Date(course.created_at).toLocaleDateString()}</span>
+            <span>
+              {t("teacherDashboard.courseCard.createdOn", {
+                date: formatDate(course.created_at),
+              })}
+            </span>
           </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <Link to={`/teacher/courses/${course.id}/analytics`}>
-            <Button variant="ghost" size="sm" title="Analytics">
-              <BarChart3 className="h-4 w-4" />
-              <span className="sr-only">Analytics</span>
+        <div className="flex shrink-0 items-center gap-1">
+          {/* Desktop: inline quick actions. Mobile: single overflow menu. */}
+          <Link to={`/teacher/courses/${course.id}/analytics`} className="hidden sm:inline-flex">
+            <Button
+              variant="ghost"
+              size="sm"
+              title={t("teacherDashboard.courseCard.actionAnalytics")}
+            >
+              <BarChart3 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              <span className="sr-only">
+                {t("teacherDashboard.courseCard.actionAnalytics")}
+              </span>
             </Button>
           </Link>
-          <Link to={`/teacher/courses/${course.id}/gradebook`}>
-            <Button variant="ghost" size="sm" title="Gradebook">
-              <ClipboardList className="h-4 w-4" />
-              <span className="sr-only">Gradebook</span>
+          <Link to={`/teacher/courses/${course.id}/gradebook`} className="hidden sm:inline-flex">
+            <Button
+              variant="ghost"
+              size="sm"
+              title={t("teacherDashboard.courseCard.actionGradebook")}
+            >
+              <ClipboardList className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              <span className="sr-only">
+                {t("teacherDashboard.courseCard.actionGradebook")}
+              </span>
             </Button>
           </Link>
-          <Link to={`/teacher/courses/${course.id}/progress`}>
-            <Button variant="ghost" size="sm" title="Student Progress">
-              <Users className="h-4 w-4" />
-              <span className="sr-only">Progress</span>
+          <Link to={`/teacher/courses/${course.id}/progress`} className="hidden sm:inline-flex">
+            <Button
+              variant="ghost"
+              size="sm"
+              title={t("teacherDashboard.courseCard.actionStudentProgress")}
+            >
+              <Users className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              <span className="sr-only">
+                {t("teacherDashboard.courseCard.actionStudentProgress")}
+              </span>
             </Button>
           </Link>
           <Button
             variant="ghost"
             size="sm"
-            title={course.status === "published" ? "Unpublish" : "Publish"}
+            className="hidden sm:inline-flex"
+            title={togglePublishLabel}
             disabled={togglingId === course.id}
             onClick={() => onToggleStatus(course)}
           >
-            {course.status === "published" ? (
-              <EyeOff className="h-4 w-4" />
+            {isPublished ? (
+              <EyeOff className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             ) : (
-              <Eye className="h-4 w-4" />
+              <Eye className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             )}
-            <span className="sr-only">
-              {course.status === "published" ? "Unpublish" : "Publish"}
-            </span>
+            <span className="sr-only">{togglePublishLabel}</span>
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            title="Clone course"
-            disabled={cloningId === course.id}
-            onClick={() => onClone(course.id)}
-          >
-            {cloningId === course.id ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
-            <span className="sr-only">Clone</span>
-          </Button>
-          <Link to={`/teacher/courses/${course.id}`}>
-            <Button variant="ghost" size="sm" aria-label="Edit course">
-              <Pencil className="h-4 w-4" />
-              <span className="hidden sm:inline">Edit</span>
+          <Link to={`/teacher/courses/${course.id}`} className="hidden sm:inline-flex">
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={t("teacherDashboard.courseCard.actionEditCourse")}
+              title={t("teacherDashboard.courseCard.actionEditCourse")}
+            >
+              <Pencil className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             </Button>
           </Link>
-          <Button variant="destructive" size="sm" onClick={() => onDelete(course.id)}>
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-11 w-11 p-0 sm:h-9 sm:w-9"
+                aria-label={t("teacherDashboard.courseCard.actionMore")}
+                title={t("teacherDashboard.courseCard.actionMore")}
+              >
+                <MoreHorizontal className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[14rem]">
+              {/* Mobile-only mirror of the inline actions */}
+              <DropdownMenuItem asChild className="sm:hidden">
+                <Link to={`/teacher/courses/${course.id}`}>
+                  <Pencil className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  {t("teacherDashboard.courseCard.actionEditCourse")}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => onToggleStatus(course)}
+                disabled={togglingId === course.id}
+                className="sm:hidden"
+              >
+                {isPublished ? (
+                  <EyeOff className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                ) : (
+                  <Eye className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                )}
+                {togglePublishLabel}
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="sm:hidden">
+                <Link to={`/teacher/courses/${course.id}/analytics`}>
+                  <BarChart3 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  {t("teacherDashboard.courseCard.actionAnalytics")}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="sm:hidden">
+                <Link to={`/teacher/courses/${course.id}/gradebook`}>
+                  <ClipboardList className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  {t("teacherDashboard.courseCard.actionGradebook")}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="sm:hidden">
+                <Link to={`/teacher/courses/${course.id}/progress`}>
+                  <Users className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  {t("teacherDashboard.courseCard.actionStudentProgress")}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="sm:hidden" />
+              <DropdownMenuItem
+                onSelect={() => onClone(course.id)}
+                disabled={cloningId === course.id}
+              >
+                {cloningId === course.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
+                ) : (
+                  <Copy className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                )}
+                {t("teacherDashboard.courseCard.actionClone")}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => onDelete(course.id)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                {t("teacherDashboard.courseCard.actionDelete")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </Card>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/lib/toast"
 import { coursesService } from "@/services/courses"
@@ -59,6 +60,7 @@ export function StudentRow({
   courseId,
   onChapterUpdate,
 }: Props) {
+  const { t } = useTranslation()
   const [togglingChapter, setTogglingChapter] = useState<string | null>(null)
   const [grantingQuiz, setGrantingQuiz] = useState<string | null>(null)
 
@@ -82,14 +84,14 @@ export function StudentRow({
       if (chapterInfo.completed) {
         await coursesService.teacherMarkIncomplete(chapterInfo.id, student.id)
         onChapterUpdate(student.id, chapterInfo.id, false, null)
-        toast({ title: "Marked as incomplete", variant: "success" })
+        toast({ title: t("studentProgress.row.markedIncomplete"), variant: "success" })
       } else {
         await coursesService.teacherMarkComplete(chapterInfo.id, student.id)
         onChapterUpdate(student.id, chapterInfo.id, true, "teacher")
-        toast({ title: "Marked as complete", variant: "success" })
+        toast({ title: t("studentProgress.row.markedComplete"), variant: "success" })
       }
     } catch {
-      toast({ title: "Failed to update completion", variant: "destructive" })
+      toast({ title: t("studentProgress.row.toggleFailed"), variant: "destructive" })
     } finally {
       setTogglingChapter(null)
     }
@@ -99,9 +101,9 @@ export function StudentRow({
     setGrantingQuiz(quizId)
     try {
       await coursesService.grantExtraAttempts(quizId, student.id, 1)
-      toast({ title: "Extra attempt granted", variant: "success" })
+      toast({ title: t("studentProgress.row.extraAttemptGranted"), variant: "success" })
     } catch {
-      toast({ title: "Failed to grant extra attempt", variant: "destructive" })
+      toast({ title: t("studentProgress.row.extraAttemptFailed"), variant: "destructive" })
     } finally {
       setGrantingQuiz(null)
     }
@@ -110,14 +112,14 @@ export function StudentRow({
   return (
     <>
       <tr
-        className="border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors"
+        className="cursor-pointer border-b transition-colors last:border-0 hover:bg-muted/40"
         onClick={onToggle}
       >
         <td className="py-3 pr-2">
           {isExpanded ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <ChevronDown className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
           ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
           )}
         </td>
         <td className="py-3 font-medium">{student.full_name}</td>
@@ -135,7 +137,7 @@ export function StudentRow({
           <ScoreBadge value={assignmentAvg} />
         </td>
         <td className="py-3 text-muted-foreground text-xs">
-          {relativeTime(student.last_activity)}
+          {relativeTime(student.last_activity, t)}
         </td>
       </tr>
       {isExpanded && (
@@ -143,20 +145,25 @@ export function StudentRow({
           <td colSpan={8} className="p-0">
             <div className="bg-muted/30 border-y px-6 py-5 space-y-5">
               <div className="flex flex-wrap gap-6">
-                <SummaryStat label="Overall Grade">
+                <SummaryStat label={t("studentProgress.row.overallGrade")}>
                   <p className="text-xl font-bold">
-                    {overallGrade !== null ? `${overallGrade}%` : "N/A"}
+                    {overallGrade !== null
+                      ? `${overallGrade}%`
+                      : t("studentProgress.row.overallGradeNa")}
                   </p>
                 </SummaryStat>
-                <SummaryStat label="Enrolled">
+                <SummaryStat label={t("studentProgress.row.enrolled")}>
                   <p className="text-sm font-medium">{formatDate(student.enrolled_at)}</p>
                 </SummaryStat>
-                <SummaryStat label="Chapters Completed">
+                <SummaryStat label={t("studentProgress.row.chaptersCompleted")}>
                   <p className="text-sm font-medium">
-                    {student.chapters_completed} of {student.total_chapters}
+                    {t("studentProgress.row.chaptersCompletedValue", {
+                      done: student.chapters_completed,
+                      total: student.total_chapters,
+                    })}
                   </p>
                 </SummaryStat>
-                <SummaryStat label="Progress">
+                <SummaryStat label={t("studentProgress.row.progress")}>
                   <ProgressBar value={student.progress} />
                 </SummaryStat>
               </div>
@@ -164,8 +171,8 @@ export function StudentRow({
               {allChapters.size > 0 && (
                 <div>
                   <h4 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
-                    <BookOpen className="h-4 w-4" />
-                    Chapter Breakdown
+                    <BookOpen className="h-4 w-4" strokeWidth={1.75} />
+                    {t("studentProgress.row.chapterBreakdown")}
                   </h4>
                   <div className="space-y-2">
                     {Array.from(allChapters.entries()).map(([id, entry]) => (
@@ -188,14 +195,14 @@ export function StudentRow({
               <div className="flex items-center gap-2 pt-1">
                 <Link to={`/teacher/courses/${courseId}/gradebook`}>
                   <Button size="sm" variant="outline">
-                    <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
-                    Gradebook
+                    <ClipboardList className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
+                    {t("studentProgress.row.gradebookButton")}
                   </Button>
                 </Link>
                 <Link to={`/teacher/courses/${courseId}/analytics`}>
                   <Button size="sm" variant="ghost">
-                    <FileText className="h-3.5 w-3.5 mr-1.5" />
-                    View Analytics
+                    <FileText className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
+                    {t("studentProgress.row.viewAnalytics")}
                   </Button>
                 </Link>
               </div>

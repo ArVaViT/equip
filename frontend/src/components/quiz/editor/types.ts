@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next"
 import type { QuizQuestionType } from "@/types"
 
 export interface DraftOption {
@@ -27,6 +28,21 @@ export function makeTrueFalseOptions(): DraftOption[] {
     { id: uid(), option_text: "True", is_correct: true, order_index: 0 },
     { id: uid(), option_text: "False", is_correct: false, order_index: 1 },
   ]
+}
+
+/**
+ * Map a True/False option's persisted English value to the localized
+ * display string. The DB stores ``"True"`` / ``"False"`` literally
+ * (legacy + keeps the schema locale-neutral); the UI renders the
+ * translation via the ``quizEditor.questions.trueFalseOption.*`` keys.
+ *
+ * Unknown values fall back to the raw text so nothing silently
+ * disappears if a future option type slips through.
+ */
+export function getTrueFalseLabel(optionText: string, t: TFunction): string {
+  if (optionText === "True") return t("quizEditor.questions.trueFalseOption.True")
+  if (optionText === "False") return t("quizEditor.questions.trueFalseOption.False")
+  return optionText
 }
 
 export function makeDefaultOption(order: number): DraftOption {

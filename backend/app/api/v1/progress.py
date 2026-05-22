@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_teacher, verify_chapter_owner, verify_course_owner
@@ -85,18 +86,50 @@ def teacher_complete_chapter(
             "student_id": str(student_id),
         }
 
+    created_new = False
     if not progress:
         progress = ChapterProgress(
             user_id=student_id,
             chapter_id=chapter_id,
         )
         db.add(progress)
+        created_new = True
     progress.completed = True
     progress.completed_at = datetime.now(UTC)
     progress.completed_by = teacher.id
     progress.completion_type = "teacher"
     sync_enrollment_progress(db, student_id, course_id)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Concurrent (teacher_complete + student-side autocomplete, or
+        # two co-teachers clicking together) just committed a row for
+        # the same (user, chapter). The unique constraint
+        # ``uq_progress_user_chapter`` raises here; treat it as
+        # idempotent rather than surfacing a 500.
+        if not created_new:
+            raise
+        db.rollback()
+        winner = (
+            db.query(ChapterProgress)
+            .filter(
+                ChapterProgress.user_id == student_id,
+                ChapterProgress.chapter_id == chapter_id,
+            )
+            .first()
+        )
+        if not winner:
+            raise
+        # If the winner is already complete just acknowledge it. If
+        # not (it raced but lost on a different field), reapply this
+        # teacher's intent — they explicitly asked for completion.
+        if not winner.completed:
+            winner.completed = True
+            winner.completed_at = datetime.now(UTC)
+            winner.completed_by = teacher.id
+            winner.completion_type = "teacher"
+            sync_enrollment_progress(db, student_id, course_id)
+            db.commit()
     return {
         "message": "Chapter marked as complete by teacher",
         "chapter_id": chapter_id,

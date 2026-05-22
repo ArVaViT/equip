@@ -24,24 +24,52 @@ from ._deps import verify_quiz_owner
 from ._router import router
 
 
-@router.post("/{quiz_id}/submit", response_model=QuizAttemptResponse)
+@router.post(
+    "/{quiz_id}/submit",
+    response_model=QuizAttemptResponse,
+    summary="Submit a quiz attempt (student)",
+    responses={
+        200: {"description": "Attempt persisted with per-answer feedback"},
+        403: {
+            "description": "Student is not enrolled, or has used all allowed attempts "
+            "(``max_attempts`` + any ``quiz_extra_attempts`` grant)."
+        },
+        404: {"description": "Quiz not found"},
+    },
+)
 def submit_quiz(
     quiz_id: UUID,
     data: QuizSubmitRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    quiz = (
-        db.query(Quiz)
-        .options(selectinload(Quiz.questions).selectinload(QuizQuestion.options))
-        .filter(Quiz.id == quiz_id)
-        .with_for_update()
-        .first()
-    )
-    if not quiz:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
+    """Submit one quiz attempt and persist the per-answer feedback.
 
-    course_id = resolve_chapter_course_id(db, quiz.chapter_id)
+    Concurrency: the ``Quiz`` row is locked ``FOR UPDATE`` so two
+    parallel submits from the same student serialize on the lock —
+    ``ensure_attempts_available`` re-counts inside the lock and the
+    second request gets 403 if the first one consumed the last
+    attempt.
+
+    Scoring: auto-gradable question types (``multiple_choice``,
+    ``true_false``) score immediately; manual types
+    (``short_answer``, ``essay``) persist with ``points_earned = 0``
+    and need a teacher to grade them later via
+    ``PATCH /quizzes/answers/{answer_id}``. The returned ``passed``
+    flag therefore stays ``False`` for any quiz with at least one
+    manual question until the teacher grades enough of them to clear
+    ``passing_score``. Exam attempts deliberately don't leak the
+    ``correct_option_id`` back to the student.
+    """
+    # Cheap pre-check WITHOUT FOR UPDATE first — if the user isn't
+    # enrolled, we can 403 without serializing other students on the
+    # row lock. Holding the Quiz lock during the enrollment SELECT +
+    # 403-raise was making non-enrolled attempts contend with
+    # legitimate submitters under load.
+    pre_quiz = db.query(Quiz.chapter_id).filter(Quiz.id == quiz_id).first()
+    if not pre_quiz:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
+    course_id = resolve_chapter_course_id(db, pre_quiz.chapter_id)
     enrolled = (
         db.query(Enrollment)
         .filter(
@@ -55,6 +83,18 @@ def submit_quiz(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You must be enrolled in this course to submit quizzes",
         )
+
+    quiz = (
+        db.query(Quiz)
+        .options(selectinload(Quiz.questions).selectinload(QuizQuestion.options))
+        .filter(Quiz.id == quiz_id)
+        .with_for_update()
+        .first()
+    )
+    if not quiz:
+        # Lost-race fallback: someone deleted the quiz between the
+        # pre-check and the lock. Same 404 the original flow returned.
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
 
     quiz_service.ensure_attempts_available(db, quiz, current_user.id)
 

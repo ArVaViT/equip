@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { ArrowLeft, CalendarDays, Clock, Users } from "lucide-react"
+import { useTranslation } from "react-i18next"
+import { ArrowLeft, CalendarDays, Clock, Layers, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -18,6 +19,18 @@ interface Props {
   onEnroll: (cohortId?: string) => Promise<void> | void
 }
 
+const COHORT_STATUS_BADGE: Record<Cohort["status"], "success" | "info" | "muted"> = {
+  upcoming: "info",
+  active: "success",
+  completed: "muted",
+}
+
+const COHORT_STATUS_KEY: Record<Cohort["status"], string> = {
+  upcoming: "admin.cohorts.statusUpcoming",
+  active: "admin.cohorts.statusActive",
+  completed: "admin.cohorts.statusCompleted",
+}
+
 export function NotEnrolledView({
   course,
   cohorts,
@@ -26,12 +39,29 @@ export function NotEnrolledView({
   enrolling,
   onEnroll,
 }: Props) {
+  const { t } = useTranslation()
   const [cohortSelectModal, setCohortSelectModal] = useState(false)
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null)
 
   const activeCohort = cohorts.find((c) => c.status === "active")
   const enrollableCohorts = cohorts.filter(isEnrollableCohort)
-  const canEnroll = enrollableCohorts.length > 0 || cohorts.length === 0
+  // Institute courses (ADR-010): students can't self-enroll. Directors
+  // add them via the admin cohort UI. Owners (teacher/admin viewing
+  // their own course) still get the normal flow so they can preview.
+  const isInstituteGate = course.access_mode === "institute" && !isOwner
+  const canEnroll =
+    !isInstituteGate && (enrollableCohorts.length > 0 || cohorts.length === 0)
+
+  // Course-at-a-glance counts. Memoised because `course.modules` is a
+  // fresh array each render and we'd otherwise reduce twice (once for
+  // module count, once for chapter total) on every keystroke / state.
+  const { moduleCount, chapterCount } = useMemo(() => {
+    const mods = course.modules ?? []
+    return {
+      moduleCount: mods.length,
+      chapterCount: mods.reduce((sum, m) => sum + (m.chapters?.length ?? 0), 0),
+    }
+  }, [course.modules])
 
   const handleEnrollClick = () => {
     if (enrollableCohorts.length === 0) {
@@ -55,11 +85,11 @@ export function NotEnrolledView({
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-3xl">
+    <div className="animate-fade-in container mx-auto px-4 py-6 max-w-3xl">
       <Link to="/">
         <Button variant="ghost" size="sm" className="mb-4 h-8 text-xs">
-          <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
-          All Courses
+          <ArrowLeft className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+          {t("courseDetail.allCourses")}
         </Button>
       </Link>
 
@@ -78,9 +108,28 @@ export function NotEnrolledView({
         </div>
       )}
 
-      <h1 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight mb-3 text-wrap-safe">
+      <h1 className="mb-3 font-serif text-3xl font-bold tracking-tight text-wrap-safe sm:text-4xl">
         {course.title}
       </h1>
+
+      {/* Course-at-a-glance: editorial eyebrow with module/chapter counts.
+          Renders only when the API returned modules (course.modules is the
+          eager-loaded list from /courses/:id). Keeps the surface honest
+          when a course is still a stub — no fake "0 modules" line. */}
+      {moduleCount > 0 && (
+        <p className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <Layers className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
+            {t("courseDetail.moduleCount", { count: moduleCount })}
+          </span>
+          {chapterCount > 0 && (
+            <>
+              <span aria-hidden className="text-muted-foreground/40">·</span>
+              <span>{t("courseDetail.chapterCount", { count: chapterCount })}</span>
+            </>
+          )}
+        </p>
+      )}
 
       {course.description && (
         <p className="text-muted-foreground leading-relaxed mb-6 whitespace-pre-line text-wrap-safe">
@@ -91,11 +140,11 @@ export function NotEnrolledView({
       {activeCohort && (
         <Card className="mb-6">
           <CardContent className="py-4">
-            <div className="flex items-center gap-2 mb-1">
-              <CalendarDays className="h-4 w-4 text-primary" />
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <CalendarDays className="h-4 w-4 text-primary" strokeWidth={1.75} aria-hidden />
               <span className="font-medium">{activeCohort.name}</span>
-              <Badge variant={activeCohort.status === "active" ? "success" : "info"}>
-                {activeCohort.status}
+              <Badge variant={COHORT_STATUS_BADGE[activeCohort.status]}>
+                {t(COHORT_STATUS_KEY[activeCohort.status])}
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">
@@ -103,14 +152,19 @@ export function NotEnrolledView({
             </p>
             {activeCohort.enrollment_start && activeCohort.enrollment_end && (
               <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                Enrollment: {formatDate(activeCohort.enrollment_start)} &mdash;{" "}
-                {formatDate(activeCohort.enrollment_end)}
+                <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
+                {t("courseDetail.enrollmentRangeLabel", {
+                  start: formatDate(activeCohort.enrollment_start),
+                  end: formatDate(activeCohort.enrollment_end),
+                })}
               </p>
             )}
             {activeCohort.max_students && (
               <p className="text-xs text-muted-foreground mt-1">
-                {activeCohort.student_count}/{activeCohort.max_students} students enrolled
+                {t("courseDetail.studentsEnrolledOfMax", {
+                  enrolled: activeCohort.student_count,
+                  max: activeCohort.max_students,
+                })}
               </p>
             )}
           </CardContent>
@@ -121,11 +175,13 @@ export function NotEnrolledView({
         cohorts.length === 0 &&
         (course.enrollment_start || course.enrollment_end) && (
           <div className="flex flex-wrap items-center gap-2 text-sm mb-6">
-            <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+            <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
             {course.enrollment_start && course.enrollment_end && (
               <span className="text-muted-foreground text-xs">
-                Enrollment: {formatDate(course.enrollment_start)} &mdash;{" "}
-                {formatDate(course.enrollment_end)}
+                {t("courseDetail.enrollmentRangeLabel", {
+                  start: formatDate(course.enrollment_start),
+                  end: formatDate(course.enrollment_end),
+                })}
               </span>
             )}
           </div>
@@ -133,32 +189,68 @@ export function NotEnrolledView({
 
       <div>
         {isOwner ? (
-          <Link to={`/teacher/courses/${course.id}`}>
-            <Button size="lg" variant="outline">
-              Manage Course
+          // Owner / admin: show BOTH "Manage Course" (primary, what they
+          // usually want) AND "Enroll in Course" so they can preview the
+          // course as a student or take their own quizzes. Issue #88
+          // surfaced the prior conditional that hid Enroll from owners.
+          <div className="flex flex-wrap items-center gap-3">
+            <Link to={`/teacher/courses/${course.id}`}>
+              <Button size="lg" className="bg-cta-glow">
+                {t("courseDetail.manageCourse")}
+              </Button>
+            </Link>
+            <Button
+              onClick={handleEnrollClick}
+              disabled={enrolling || !canEnroll}
+              size="lg"
+              variant="secondary"
+            >
+              <Users className="mr-2 h-4 w-4" strokeWidth={1.75} aria-hidden />
+              {!canEnroll
+                ? t("courseDetail.enrollmentNotAvailable")
+                : enrolling
+                  ? t("courseDetail.enrolling")
+                  : t("courseDetail.enrollInCourse")}
             </Button>
-          </Link>
+          </div>
+        ) : isInstituteGate ? (
+          <div>
+            <Button size="lg" disabled>
+              <Users className="mr-2 h-4 w-4" strokeWidth={1.75} aria-hidden />
+              {t("courseDetail.byInvitationOnly")}
+            </Button>
+            <p className="text-sm text-muted-foreground mt-2 max-w-prose">
+              {t("courseDetail.byInvitationOnlyHint")}
+            </p>
+          </div>
         ) : isSignedIn ? (
           <div>
-            <Button onClick={handleEnrollClick} disabled={enrolling || !canEnroll} size="lg">
-              <Users className="h-4 w-4 mr-2" />
+            <Button
+              onClick={handleEnrollClick}
+              disabled={enrolling || !canEnroll}
+              size="lg"
+              className={!canEnroll ? undefined : "bg-cta-glow"}
+            >
+              <Users className="mr-2 h-4 w-4" strokeWidth={1.75} aria-hidden />
               {!canEnroll
-                ? "Enrollment not available"
+                ? t("courseDetail.enrollmentNotAvailable")
                 : enrolling
-                  ? "Enrolling..."
-                  : "Enroll in Course"}
+                  ? t("courseDetail.enrolling")
+                  : t("courseDetail.enrollInCourse")}
             </Button>
             {!canEnroll && (
               <p className="text-sm text-muted-foreground mt-2">
                 {cohorts.length > 0
-                  ? "Enrollment window is closed for all available cohorts."
-                  : "No cohorts are currently available for this course."}
+                  ? t("courseDetail.enrollmentClosedAllCohorts")
+                  : t("courseDetail.noCohortsAvailable")}
               </p>
             )}
           </div>
         ) : (
           <Link to="/login">
-            <Button size="lg">Sign in to Enroll</Button>
+            <Button size="lg" className="bg-cta-glow">
+              {t("courseDetail.signInToEnroll")}
+            </Button>
           </Link>
         )}
       </div>

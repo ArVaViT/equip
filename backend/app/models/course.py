@@ -1,3 +1,4 @@
+import enum
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -10,6 +11,35 @@ from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models.enrollment import Enrollment
+
+
+class CourseStatus(enum.StrEnum):
+    """Publication state of a course.
+
+    ``draft`` — only the course owner + admins can see it. Self-enrollment
+    is blocked.
+    ``published`` — visible in the public catalog; students can enroll.
+
+    Stored as a raw string in Postgres (CHECK-constrained); the enum
+    just gives Python code a single source of truth so a typo in
+    ``"publshed"`` is caught at the call site instead of silently
+    excluding rows from queries.
+    """
+
+    DRAFT = "draft"
+    PUBLISHED = "published"
+
+
+class CourseAccessMode(enum.StrEnum):
+    """Whether a published course accepts solo self-enrollment.
+
+    ``public`` — anyone can enroll within the course's enrollment window.
+    ``institute`` — only admins add students via the cohort flow
+    (see ADR-010).
+    """
+
+    PUBLIC = "public"
+    INSTITUTE = "institute"
 
 
 class TSVector(TypeDecorator):
@@ -30,7 +60,13 @@ class Course(Base):
     __tablename__ = "courses"
     __table_args__ = (
         Index("ix_courses_created_by", "created_by"),
-        Index("ix_courses_status", "status"),
+        Index(
+            "ix_courses_status_created_at",
+            "status",
+            text("created_at DESC"),
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        Index("ix_courses_access_mode", "access_mode"),
         Index(
             "ix_courses_created_by_active",
             "created_by",
@@ -46,7 +82,12 @@ class Course(Base):
     title: Mapped[str] = mapped_column()
     description: Mapped[str | None] = mapped_column()
     image_url: Mapped[str | None] = mapped_column()
-    status: Mapped[str] = mapped_column(default="draft")
+    status: Mapped[str] = mapped_column(default=CourseStatus.DRAFT)
+    # Access mode controls who can ENROLL in the course (separate from
+    # status which controls whether it's published in the catalog at all).
+    # See ADR-010 in equipbible-docs/product/decisions/ — institute-mode
+    # courses are visible but solo-enrollment is gated to admin.
+    access_mode: Mapped[str] = mapped_column(default="public", server_default="public")
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("profiles.id", ondelete="SET NULL"))
     enrollment_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     enrollment_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -134,7 +175,7 @@ class Chapter(Base):
     module_id: Mapped[str] = mapped_column(ForeignKey("modules.id"))
     title: Mapped[str] = mapped_column()
     order_index: Mapped[int] = mapped_column(default=0)
-    chapter_type: Mapped[str] = mapped_column(default="reading")
+    chapter_type: Mapped[str] = mapped_column(default="reading", server_default="reading")
     requires_completion: Mapped[bool] = mapped_column(default=False)
     is_locked: Mapped[bool] = mapped_column(default=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -1,9 +1,10 @@
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import type { CalendarEvent } from "@/types";
-import { DAY_NAMES, EVENT_COLORS, MONTH_NAMES, getEventColor } from "./constants";
+import { EVENT_COLORS, getDayShortName, getEventColor, getMonthName } from "./constants";
 import { calendarDayKey, isSameDay } from "./utils";
 
 interface MonthGridProps {
@@ -35,70 +36,90 @@ export function MonthGrid({
   onNextMonth,
   onGoToday,
 }: MonthGridProps) {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.resolvedLanguage ?? i18n.language ?? "en";
+  // ``getMonthName`` / ``getDayShortName`` are locale-aware via Intl;
+  // previously this file read hard-coded English ``MONTH_NAMES`` /
+  // ``DAY_NAMES`` arrays, so the calendar grid rendered "January Sun
+  // Mon Tue" regardless of the user's language.
+  const dayLabels = Array.from({ length: 7 }, (_, i) => getDayShortName(i, locale));
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="font-serif text-lg">
-            {MONTH_NAMES[month]} {year}
-          </CardTitle>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground tabular-nums">
+              {year}
+            </p>
+            <CardTitle className="font-serif text-lg font-semibold tracking-tight">
+              {getMonthName(month, locale)}
+            </CardTitle>
+          </div>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0"
               onClick={onPrevMonth}
-              aria-label="Previous month"
+              aria-label={t("calendar.prevMonth")}
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             </Button>
             <Button variant="outline" size="sm" className="h-8 text-xs" onClick={onGoToday}>
-              Today
+              {t("calendar.today")}
             </Button>
             <Button
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0"
               onClick={onNextMonth}
-              aria-label="Next month"
+              aria-label={t("calendar.nextMonth")}
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             </Button>
           </div>
         </div>
       </CardHeader>
       <CardContent className="pt-2">
-        <div className="grid grid-cols-7 mb-1">
-          {DAY_NAMES.map((d) => (
-            <div
-              key={d}
-              className="text-center text-[10px] font-medium text-muted-foreground uppercase tracking-wider py-1"
-            >
-              {d}
-            </div>
-          ))}
+        <div className="mb-1 grid grid-cols-7">
+          {dayLabels.map((d, i) => {
+            const isWeekend = i === 0 || i === 6;
+            return (
+              <div
+                key={i}
+                className={`py-1.5 text-center text-[11px] font-medium uppercase tracking-[0.18em] ${
+                  isWeekend ? "text-muted-foreground/60" : "text-muted-foreground"
+                }`}
+              >
+                {d}
+              </div>
+            );
+          })}
         </div>
 
-        <div className="grid grid-cols-7 border-t border-l">
+        <div className="grid grid-cols-7 border-l border-t border-border">
           {calendarDays.map(({ date, inMonth }) => {
             const key = calendarDayKey(date);
             const dayEvents = eventsByDate.get(key) ?? [];
             const isToday = isSameDay(date, today);
             const isSelected = selectedDay != null && isSameDay(date, selectedDay);
+            const dayIndex = date.getDay();
+            const isWeekend = dayIndex === 0 || dayIndex === 6;
 
             return (
               <button
                 key={key}
                 onClick={() => onSelectDay(date)}
+                aria-pressed={isSelected}
                 className={`
-                  relative min-h-[72px] sm:min-h-[80px] p-1 border-r border-b text-left transition-colors
-                  ${inMonth ? "bg-background" : "bg-muted/30"}
-                  ${isSelected ? "ring-2 ring-primary ring-inset" : "hover:bg-muted/50"}
+                  relative min-h-[78px] border-b border-r border-border p-1.5 text-left transition-colors sm:min-h-[88px]
+                  ${inMonth ? (isWeekend ? "bg-muted/15" : "bg-background") : "bg-muted/30"}
+                  ${isSelected ? "ring-2 ring-primary ring-inset" : "hover:bg-muted/40"}
                 `}
               >
                 <span
                   className={`
-                    inline-flex items-center justify-center w-6 h-6 text-xs font-medium rounded-full
+                    inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium tabular-nums
                     ${isToday ? "bg-primary text-primary-foreground" : ""}
                     ${!inMonth ? "text-muted-foreground/40" : ""}
                   `}
@@ -107,13 +128,13 @@ export function MonthGrid({
                 </span>
 
                 {dayEvents.length > 0 && (
-                  <div className="flex flex-wrap gap-0.5 mt-0.5">
+                  <div className="mt-1 flex flex-wrap gap-0.5">
                     {dayEvents.slice(0, 3).map((evt) => {
                       const color = getEventColor(evt.event_type);
                       return (
                         <span
                           key={evt.id}
-                          className={`block w-full rounded px-1 py-0.5 text-[9px] leading-tight truncate ${color.bg} ${color.text}`}
+                          className={`block w-full truncate rounded px-1 py-0.5 text-xs leading-tight ${color.bg} ${color.text}`}
                           title={evt.title}
                         >
                           {evt.title}
@@ -121,8 +142,8 @@ export function MonthGrid({
                       );
                     })}
                     {dayEvents.length > 3 && (
-                      <span className="text-[9px] text-muted-foreground pl-1">
-                        +{dayEvents.length - 3} more
+                      <span className="pl-1 text-xs text-muted-foreground">
+                        {t("calendar.moreEvents", { count: dayEvents.length - 3 })}
                       </span>
                     )}
                   </div>
@@ -132,12 +153,12 @@ export function MonthGrid({
           })}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 mt-3 text-[10px]">
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
           {Object.entries(EVENT_COLORS).map(([type, color]) => (
-            <span key={type} className="flex items-center gap-1">
-              <span className={`w-2 h-2 rounded-full ${color.dot}`} />
-              <span className="capitalize text-muted-foreground">
-                {type.replace("_", " ")}
+            <span key={type} className="flex items-center gap-1.5">
+              <span className={`h-2 w-2 shrink-0 rounded-full ${color.dot}`} aria-hidden />
+              <span className="text-muted-foreground">
+                {t(`calendar.eventTypes.${type}`, { defaultValue: type.replace("_", " ") })}
               </span>
             </span>
           ))}

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from app.models.assignment import Assignment
 from app.models.chapter_block import ChapterBlock
-from app.models.course import Chapter, Course, Module
+from app.models.course import Chapter, Course, CourseStatus, Module
 from app.models.quiz import Quiz, QuizOption, QuizQuestion
 
 from ._queries import _COURSE_TREE
@@ -82,7 +82,7 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
         title=f"{original.title} (Copy)",
         description=original.description,
         image_url=original.image_url,
-        status="draft",
+        status=CourseStatus.DRAFT,
         created_by=uuid.UUID(teacher_id) if isinstance(teacher_id, str) else teacher_id,
         enrollment_start=None,
         enrollment_end=None,
@@ -113,13 +113,14 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
                 is_locked=chapter.is_locked,
             )
             db.add(new_chapter)
-            # Flush the chapter before its children (quizzes/assignments/blocks)
-            # so FK constraints see a parent row. The unit-of-work topological
-            # sort normally handles this, but ``ChapterBlock.chapter_id`` is a
-            # plain String FK (not wired through a ``relationship``), so some
-            # dialects — including SQLite with PRAGMA foreign_keys=ON — issue
-            # the block INSERT before the chapter INSERT and raise a FK error.
-            db.flush()
+            # Postgres' unit-of-work topological sort handles the chapter →
+            # block ordering correctly; SQLite (PRAGMA foreign_keys=ON, used
+            # by tests) does not because ``ChapterBlock.chapter_id`` is a
+            # plain String FK without a relationship wired through. Gate the
+            # flush to the SQLite path so prod clones don't take N
+            # round-trips for a cosmetic test-only safety net.
+            if db.bind is not None and db.bind.dialect.name == "sqlite":
+                db.flush()
 
             quiz_id_map: dict[str, uuid.UUID] = {}
             assignment_id_map: dict[str, uuid.UUID] = {}

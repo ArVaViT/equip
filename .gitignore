@@ -14,6 +14,11 @@ frontend/frontend/
 .tmp-commit-msg.txt
 .commit-msg.tmp
 
+# Cursor IDE local rules + settings — referenced by CLAUDE.md as canonical
+# conventions but deliberately kept out of git (decision reverted in 0aa5aef
+# back in 2026-04). Each contributor maintains their own.
+.cursor/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -55,7 +60,6 @@ frontend/.vite/
 .vscode/
 *.swp
 *.swo
-.cursor/
 
 # OS
 .DS_Store
@@ -77,10 +81,33 @@ credentials.json
 serviceAccountKey.json
 secrets/
 
-# Cursor IDE generated images
-assets/c__Users_*
+# Editor / assistant scratchpads — anyone is welcome to use whatever IDE
+# or AI helper they want, just keep its scratch files out of the repo.
+# Add tool-specific paths to your own ~/.gitignore_global instead of
+# polluting this list.
 
 .vercel
 
 # Local agent tooling scratchpad (MCP/automation helpers)
 agent-tools/
+
+# Ad-hoc one-shot scripts — keep out of source control to avoid drift;
+# the durable equivalent is the registry-driven hook. Use the
+# ``dev_run_*`` prefix or ``backend/scripts/_backfill_*.py`` for any
+# new one-shot work and they'll be auto-ignored.
+backend/scripts/backfill_one_course.py
+backend/scripts/_backfill_*.py
+backend/dev_run_*.py
+
+# Local REST Client (.http) scratch directory. Lives in the workspace
+# but is personal — never tracked. Pre-existing rule preserved for
+# the older `*.local.http` pattern.
+http/
+http/*.local.http
+
+# Per-Python-version venvs (e.g. backend/venv-312 for the project-target 3.12)
+backend/venv-*/
+
+# Supabase CLI local cache
+supabase/.temp/
+.claude/

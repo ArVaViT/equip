@@ -86,7 +86,13 @@ _ALLOWED_ATTRIBUTES: dict[str, list[str]] = {
 
 _ALLOWED_PROTOCOLS = frozenset({"http", "https", "mailto", "tel"})
 
-_TAG_RE = re.compile(r"<\s*/?\s*(script|object|embed|form|style|link|meta)[^>]*>", re.IGNORECASE)
+# CodeQL flagged the previous pattern ``<\s*/?\s*(...)[^>]*>`` as
+# polynomial-redos: the two ``\s*`` flanking ``/?`` can partition any
+# leading whitespace run in O(n) ways, triggering quadratic backtracking
+# on attacker-shaped input. Drop both — real HTML doesn't allow
+# whitespace between ``<`` / ``</`` and the tag name; bleach (the
+# primary path) handles the obfuscation cases properly anyway.
+_TAG_RE = re.compile(r"</?(?:script|object|embed|form|style|link|meta)\b[^>]*>", re.IGNORECASE)
 _EVENT_ATTR_RE = re.compile(r"\bon\w+\s*=", re.IGNORECASE)
 _JS_PROTO_RE = re.compile(r"javascript\s*:", re.IGNORECASE)
 

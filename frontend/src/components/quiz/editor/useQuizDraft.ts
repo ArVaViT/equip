@@ -58,7 +58,12 @@ export function useQuizDraft({
     const load = async () => {
       setLoading(true)
       try {
-        const q = await coursesService.getChapterQuiz(chapterId)
+        // Editor-only fetch so the form binds to source-language
+        // `question_text` / `option_text` columns regardless of UI locale.
+        // Without this a teacher in EN UI editing their RU quiz would
+        // see EN translations in the question editor and a PATCH would
+        // overwrite the source `question_text`.
+        const q = await coursesService.getChapterQuizForEdit(chapterId)
         if (cancelled) return
         if (q) {
           setExistingQuiz(q)

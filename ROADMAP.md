@@ -1,12 +1,12 @@
 # Roadmap
 
-This document outlines the planned direction for Bible School LMS. It is a
+This document outlines the planned direction for Equip. It is a
 living document — priorities may shift based on community feedback and
 contributor interest.
 
 Have an idea? Open a
-[feature request](https://github.com/ArVaViT/biblie-school/issues/new?template=feature_request.yml)
-or start a [discussion](https://github.com/ArVaViT/biblie-school/discussions).
+[feature request](https://github.com/ArVaViT/equip/issues/new?template=feature_request.yml)
+or start a [discussion](https://github.com/ArVaViT/equip/discussions).
 
 ## Legend
 
@@ -45,9 +45,12 @@ internally).
 :bulb: **Accessibility audit** — WCAG 2.1 AA compliance, screen reader
 testing, keyboard navigation for all interactive elements.
 
-:bulb: **i18n framework** — extract hardcoded Russian strings into a
-translation system (likely `react-i18next`) so the platform can serve
-English, Ukrainian, and other language communities.
+:white_check_mark: **Bilingual content (RU↔EN)** — `react-i18next` for
+the UI; Gemini-backed translation pipeline for all teacher-authored
+fields (registry-driven, cached per source hash); canonical KJV /
+Synodal substitution for `<blockquote>` Bible quotes; CI guard
+prevents endpoint regressions. See the [Unreleased] entry in the
+[CHANGELOG](CHANGELOG.md) for the full list of shipped pieces.
 
 :bulb: **Comprehensive test coverage** — push backend above 95%, add
 Playwright E2E tests for critical student and teacher flows.
@@ -96,8 +99,12 @@ block types, grading logic, or integrations without forking.
 :thought_balloon: **API v2** — GraphQL or tRPC for more efficient data
 fetching as the feature set grows.
 
-:thought_balloon: **Self-hosted installer** — one-command Docker Compose
-setup for organizations that want to run their own instance.
+:thought_balloon: **Self-hosted installer** — a one-command setup
+(scripted Vercel + Supabase provisioning, OR a packaged Docker
+Compose stack — to be decided when the demand is real) for
+organizations that want to run their own instance. _Note: until
+this is on the active roadmap, the project intentionally avoids
+container-based workflows everywhere else; see CONTRIBUTING._
 
 ---
 
@@ -112,5 +119,6 @@ setup for organizations that want to run their own instance.
 We especially welcome contributions from:
 - **Nonprofit Bible schools** who can share their real-world needs.
 - **Designers** who want to improve the student/teacher experience.
-- **Translators** who can help make the platform multilingual.
+- **Translators** who can review and refine the AI-translated RU↔EN
+  content (especially the canonical Bible-school terminology).
 - **QA testers** who can help us find and fix bugs.

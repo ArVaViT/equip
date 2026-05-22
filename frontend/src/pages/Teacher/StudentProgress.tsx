@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,6 +26,8 @@ import {
   type SortColumn,
   type SortDirection,
 } from "./progress"
+import { useUserTour } from "@/hooks/useUserTour"
+import { studentProgressSteps } from "@/lib/tourSteps"
 
 /**
  * Teacher view of every enrolled student in a course. Owns the fetch,
@@ -36,6 +39,7 @@ import {
  */
 export default function StudentProgress() {
   const { courseId } = useParams<{ courseId: string }>()
+  const { t } = useTranslation()
   const {
     input: searchInput,
     setInput: setSearchInput,
@@ -49,6 +53,12 @@ export default function StudentProgress() {
   const [sortBy, setSortBy] = useState<SortColumn>("name")
   const [sortDir, setSortDir] = useState<SortDirection>("asc")
 
+  useUserTour({
+    tourId: "student-progress-v1",
+    steps: studentProgressSteps(t),
+    ready: !loading && data !== null,
+  })
+
   const load = useCallback(
     async (signal?: { cancelled: boolean }) => {
       if (!courseId) return
@@ -61,14 +71,14 @@ export default function StudentProgress() {
       } catch (err) {
         if (signal?.cancelled) return
         toast({
-          title: getErrorDetail(err, "Failed to load student progress"),
+          title: getErrorDetail(err, t("studentProgress.loadFailed")),
           variant: "destructive",
         })
       } finally {
         if (!signal?.cancelled) setLoading(false)
       }
     },
-    [courseId],
+    [courseId, t],
   )
 
   useEffect(() => {
@@ -153,19 +163,19 @@ export default function StudentProgress() {
     return (
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <ErrorState
-          icon={<Users />}
-          title="Failed to load student progress"
-          description="The server may be temporarily unavailable. Please try again."
+          icon={<Users strokeWidth={1.75} />}
+          title={t("studentProgress.loadFailed")}
+          description={t("studentProgress.loadFailedDescription")}
           action={
             <Button variant="outline" onClick={() => load()}>
-              Retry
+              {t("studentProgress.retry")}
             </Button>
           }
           secondaryAction={
             <Link to="/teacher">
               <Button variant="ghost">
-                <ArrowLeft className="h-4 w-4 mr-1.5" />
-                Back to courses
+                <ArrowLeft className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
+                {t("studentProgress.backToCourses")}
               </Button>
             </Link>
           }
@@ -177,35 +187,35 @@ export default function StudentProgress() {
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
         <Link to="/teacher" className="hover:text-foreground transition-colors">
-          My Courses
+          {t("studentProgress.breadcrumb.myCourses")}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5" />
+        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
         <Link
           to={`/teacher/courses/${courseId}`}
           className="hover:text-foreground transition-colors"
         >
-          {data.course_title || "Course"}
+          {data.course_title || t("studentProgress.breadcrumb.courseFallback")}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span className="text-foreground font-medium">Student Progress</span>
+        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+        <span className="text-foreground font-medium">{t("studentProgress.heading")}</span>
       </div>
 
       <div className="flex items-center gap-3 mb-8">
         <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">Student Progress</h1>
+          <h1 className="text-3xl font-serif font-bold tracking-tight">{t("studentProgress.heading")}</h1>
           <p className="text-muted-foreground mt-1">{data.course_title}</p>
         </div>
         <div className="flex items-center gap-2">
           <Link to={`/teacher/courses/${courseId}/analytics`}>
             <Button size="sm" variant="outline">
-              <BarChart3 className="h-4 w-4 mr-1.5" />
-              Analytics
+              <BarChart3 className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
+              {t("studentProgress.analytics")}
             </Button>
           </Link>
           <Link to={`/teacher/courses/${courseId}/gradebook`}>
             <Button size="sm" variant="outline">
-              <ClipboardList className="h-4 w-4 mr-1.5" />
-              Gradebook
+              <ClipboardList className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
+              {t("studentProgress.gradebook")}
             </Button>
           </Link>
         </div>
@@ -218,9 +228,9 @@ export default function StudentProgress() {
       />
 
       <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
         <Input
-          placeholder="Search students by name or email..."
+          placeholder={t("studentProgress.searchPlaceholder")}
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value.slice(0, maxLength))}
           maxLength={maxLength}
@@ -228,17 +238,19 @@ export default function StudentProgress() {
         />
       </div>
 
-      <StudentTable
-        students={filtered}
-        courseId={courseId ?? ""}
-        hasSearch={Boolean(search)}
-        expandedId={expandedId}
-        onExpandToggle={(id) => setExpandedId((prev) => (prev === id ? null : id))}
-        sortBy={sortBy}
-        sortDir={sortDir}
-        onToggleSort={toggleSort}
-        onChapterUpdate={handleStudentChapterUpdate}
-      />
+      <div data-tour="progress-table">
+        <StudentTable
+          students={filtered}
+          courseId={courseId ?? ""}
+          hasSearch={Boolean(search)}
+          expandedId={expandedId}
+          onExpandToggle={(id) => setExpandedId((prev) => (prev === id ? null : id))}
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onToggleSort={toggleSort}
+          onChapterUpdate={handleStudentChapterUpdate}
+        />
+      </div>
     </div>
   )
 }

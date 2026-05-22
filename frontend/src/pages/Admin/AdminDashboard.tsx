@@ -1,17 +1,31 @@
+import { lazy, Suspense } from "react"
 import { Navigate, useSearchParams } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import { Shield } from "lucide-react"
 import { useAuth } from "@/context/useAuth"
 import { Button } from "@/components/ui/button"
 import { ErrorState } from "@/components/patterns"
-import { ADMIN_TABS, type AdminTab } from "./dashboard/constants"
+import PageSpinner from "@/components/ui/PageSpinner"
+import { ADMIN_TAB_PANEL_ID, ADMIN_TAB_TRIGGER_ID, ADMIN_TABS, type AdminTab } from "./dashboard/constants"
 import { AdminTabs } from "./dashboard/AdminTabs"
 import { OverviewStats } from "./dashboard/OverviewStats"
 import { PendingTeachersCard } from "./dashboard/PendingTeachersCard"
 import { PendingCertsCard } from "./dashboard/PendingCertsCard"
 import { UsersCard } from "./dashboard/UsersCard"
-import { AuditLogTab } from "./dashboard/AuditLogTab"
 import { useAdminOverview } from "./dashboard/useAdminOverview"
 import { useAdminAudit } from "./dashboard/useAdminAudit"
+
+// The audit log and cohorts tabs are rarely the entry point — most admins
+// land on Overview. Splitting them off keeps the initial AdminDashboard
+// chunk lean (no react-window for cohorts via VirtualAdminUsers is still in
+// UsersCard, but the audit table machinery and the cohorts list components
+// don't need to ship until the matching tab is selected).
+const AuditLogTab = lazy(() =>
+  import("./dashboard/AuditLogTab").then((m) => ({ default: m.AuditLogTab })),
+)
+const CohortsTab = lazy(() =>
+  import("./cohorts/CohortsTab").then((m) => ({ default: m.CohortsTab })),
+)
 
 /**
  * Admin dashboard orchestrator. Delegates every piece of state to
@@ -19,6 +33,7 @@ import { useAdminAudit } from "./dashboard/useAdminAudit"
  * the matching section for the active tab. This file is layout-only.
  */
 export default function AdminDashboard() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const [params, setParams] = useSearchParams()
 
@@ -27,8 +42,22 @@ export default function AdminDashboard() {
     ? (rawTab as AdminTab)
     : "overview"
 
-  const overview = useAdminOverview({ currentUserId: user?.id })
-  const audit = useAdminAudit({ enabled: tab === "audit" })
+  // Overview data is needed by the overview tab itself AND by the audit
+  // tab (audit rows show the user's name via ``userMap``, which is
+  // derived from the same users list). The cohorts tab needs neither,
+  // so we skip the whole overview fetch when the user opens that tab
+  // directly via ``?tab=cohorts``. Saves four service round-trips
+  // (users, courses count, enrollments count, pending certs) on every
+  // cold visit to the cohorts surface.
+  //
+  // ``isAdmin`` gates BOTH hooks before they fire any requests --
+  // without this guard a teacher landing on /admin?tab=audit would
+  // trigger an admin-only audit-log query in the milliseconds before
+  // the <Navigate> below redirects them.
+  const isAdmin = user?.role === "admin"
+  const overviewEnabled = isAdmin && (tab === "overview" || tab === "audit")
+  const overview = useAdminOverview({ currentUserId: user?.id, enabled: overviewEnabled })
+  const audit = useAdminAudit({ enabled: isAdmin && tab === "audit" })
 
   if (user?.role !== "admin") return <Navigate to="/" replace />
 
@@ -36,32 +65,39 @@ export default function AdminDashboard() {
     const next = new URLSearchParams(params)
     if (nextTab === "overview") next.delete("tab")
     else next.set("tab", nextTab)
-    setParams(next, { replace: true })
+    // PUSH not replace -- tab switching is primary navigation and the
+    // browser back button should return to the previously viewed tab.
+    // Previously this used ``replace: true`` and pressing back from
+    // Audit left the /admin route entirely instead of unwinding to
+    // Overview.
+    setParams(next)
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 rounded-lg bg-primary/10">
-          <Shield className="h-6 w-6 text-primary" />
+    <div className="animate-fade-in container mx-auto max-w-6xl px-4 py-6 sm:py-8">
+      <header className="mb-6 space-y-2">
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          {t("admin.eyebrow")}
+        </p>
+        <div className="flex items-center gap-3">
+          <div className="rounded-md bg-primary/10 p-2">
+            <Shield className="h-6 w-6 text-primary" strokeWidth={1.75} aria-hidden />
+          </div>
+          <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">
+            {t("admin.title")}
+          </h1>
         </div>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-          <p className="text-muted-foreground mt-0.5">
-            Manage users, roles, and monitor platform activity
-          </p>
-        </div>
-      </div>
+      </header>
 
       <AdminTabs active={tab} onChange={setTab} />
 
       {overview.error && (
         <ErrorState
-          icon={<Shield />}
+          icon={<Shield strokeWidth={1.75} />}
           description={overview.error}
           action={
             <Button onClick={overview.reload} size="sm" variant="outline">
-              Try again
+              {t("common.tryAgain")}
             </Button>
           }
           className="mb-8"
@@ -69,8 +105,16 @@ export default function AdminDashboard() {
       )}
 
       {!overview.error && tab === "overview" && (
-        <>
-          <OverviewStats stats={overview.stats} loading={overview.loading} />
+        <div
+          role="tabpanel"
+          id={ADMIN_TAB_PANEL_ID.overview}
+          aria-labelledby={ADMIN_TAB_TRIGGER_ID.overview}
+        >
+          <OverviewStats
+            stats={overview.stats}
+            loading={overview.loading}
+            pendingActions={overview.pendingTeachers.length + overview.adminCerts.length}
+          />
           <PendingTeachersCard
             pending={overview.pendingTeachers}
             updatingId={overview.updatingId}
@@ -95,6 +139,9 @@ export default function AdminDashboard() {
             bulkUpdating={overview.bulkUpdating}
             updatingId={overview.updatingId}
             currentUserId={user?.id}
+            roleFilter={overview.roleFilter}
+            roleCounts={overview.roleCounts}
+            onRoleFilterChange={overview.setRoleFilter}
             onSearchInputChange={overview.setSearchInput}
             onBulkRoleChange={overview.setBulkRole}
             onApplyBulkRole={overview.handleBulkRoleChange}
@@ -104,28 +151,48 @@ export default function AdminDashboard() {
             onRoleChange={overview.handleRoleChange}
             onDeleteUser={overview.handleDeleteUser}
           />
-        </>
+        </div>
+      )}
+
+      {tab === "cohorts" && (
+        <div
+          role="tabpanel"
+          id={ADMIN_TAB_PANEL_ID.cohorts}
+          aria-labelledby={ADMIN_TAB_TRIGGER_ID.cohorts}
+        >
+          <Suspense fallback={<PageSpinner />}>
+            <CohortsTab />
+          </Suspense>
+        </div>
       )}
 
       {!overview.error && tab === "audit" && (
-        <AuditLogTab
-          logs={audit.logs}
-          total={audit.total}
-          loading={audit.loading}
-          page={audit.page}
-          pageSize={audit.pageSize}
-          userMap={overview.userMap}
-          action={audit.action}
-          resource={audit.resource}
-          dateFrom={audit.dateFrom}
-          dateTo={audit.dateTo}
-          onAction={audit.setAction}
-          onResource={audit.setResource}
-          onDateFrom={audit.setDateFrom}
-          onDateTo={audit.setDateTo}
-          onReset={audit.resetFilters}
-          onPageChange={audit.setPage}
-        />
+        <div
+          role="tabpanel"
+          id={ADMIN_TAB_PANEL_ID.audit}
+          aria-labelledby={ADMIN_TAB_TRIGGER_ID.audit}
+        >
+          <Suspense fallback={<PageSpinner />}>
+            <AuditLogTab
+              logs={audit.logs}
+              total={audit.total}
+              loading={audit.loading}
+              page={audit.page}
+              pageSize={audit.pageSize}
+              userMap={overview.userMap}
+              action={audit.action}
+              resource={audit.resource}
+              dateFrom={audit.dateFrom}
+              dateTo={audit.dateTo}
+              onAction={audit.setAction}
+              onResource={audit.setResource}
+              onDateRange={audit.setDateRange}
+              onReset={audit.resetFilters}
+              onPageChange={audit.setPage}
+              onPageSizeChange={audit.setPageSize}
+            />
+          </Suspense>
+        </div>
       )}
     </div>
   )

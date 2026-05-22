@@ -28,16 +28,18 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.models.content_translation import (
+    TRANSLATION_MAX_ATTEMPTS,
     ContentTranslation,
     TranslationEntityType,
     TranslationField,
 )
-from app.schemas.locale import LOCALE_CODES, LocaleCode
+from app.schemas.locale import LOCALE_CODES, LocaleCode, normalize_locale
 from app.services.translation.hash import compute_source_hash
 from app.services.translation.protocol import (
+    ContentKind,
     TranslationError,
     TranslationProvider,
     TranslationRequest,
@@ -66,7 +68,7 @@ class TranslationFieldSpec:
     field: TranslationField
     text: str | None
     # See ``TranslationRequest.content_kind`` — chooses prompt nuances.
-    content_kind: str = "plain"
+    content_kind: ContentKind = "plain"
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,8 +131,10 @@ def translate_entity_fields(
         if not text:
             # Empty source has nothing to translate; we also actively avoid
             # creating empty translation rows that would later round-trip
-            # back into the UI as blanks.
-            skipped += len(targets)
+            # back into the UI as blanks. Empty-source fields are not
+            # counted in ``skipped`` — that counter tracks rows we
+            # *consciously* short-circuited (human override, hash match),
+            # not rows that never had work to do.
             continue
 
         source_hash = compute_source_hash(text, locale=source_locale)
@@ -180,15 +184,14 @@ def translate_course_metadata(
 ) -> OrchestratorReport:
     """Translate ``title`` + ``description`` for a course into every other locale.
 
-    Wave 2 will extend this to module/chapter titles and chapter blocks; the
-    course-level metadata is what the catalog and SEO snippets read, so it's
-    the highest-leverage subset to ship first.
+    Full-tree translation (modules, chapters, blocks, quizzes) lives in
+    ``course_pipeline.translate_course_content``, which calls this helper first.
     """
     fields: list[TranslationFieldSpec] = [
         TranslationFieldSpec(field="title", text=course.title, content_kind="title"),
         TranslationFieldSpec(field="description", text=course.description, content_kind="plain"),
     ]
-    source_locale: LocaleCode = _coerce_locale(course.source_locale)
+    source_locale: LocaleCode = normalize_locale(course.source_locale)
     return translate_entity_fields(
         db,
         entity_type="course",
@@ -209,7 +212,7 @@ def _translate_one_field(
     source_locale: LocaleCode,
     target_locale: LocaleCode,
     text: str,
-    content_kind: str,
+    content_kind: ContentKind,
     source_hash: str,
     context: str | None,
     provider: TranslationProvider,
@@ -238,6 +241,15 @@ def _translate_one_field(
     if existing is not None and existing.status == "ok" and existing.source_hash == source_hash:
         return "skipped"
 
+    # Rows that hit the retry cap (``failed_permanent``) are terminal as far
+    # as the auto-pipeline is concerned. They stay terminal even if the
+    # source text mutates — a row that fails for a permanent reason (safety
+    # filter, oversize input) won't suddenly succeed because the prompt
+    # changed by one word. An operator who wants to retry must explicitly
+    # reset ``status='pending'`` + ``attempts=0`` from admin tooling.
+    if existing is not None and existing.status == "failed_permanent":
+        return "skipped"
+
     request = TranslationRequest(
         text=text,
         source_locale=source_locale,
@@ -248,12 +260,20 @@ def _translate_one_field(
     try:
         result = provider.translate(request)
     except TranslationError as exc:
+        # Compute the new attempts count first: existing.attempts + 1 if a
+        # row is already on disk, else 1 for the fresh failure. When we cross
+        # the cap, promote the row to ``failed_permanent`` so reconcile stops
+        # paying for retries that will never succeed.
+        attempts = (existing.attempts if existing is not None else 0) + 1
+        failed_status = "failed_permanent" if attempts >= TRANSLATION_MAX_ATTEMPTS else "failed"
         logger.warning(
-            "Translation failed entity=%s:%s field=%s locale=%s err=%s",
+            "Translation failed entity=%s:%s field=%s locale=%s attempts=%d status=%s err=%s",
             entity_type,
             entity_id,
             field,
             target_locale,
+            attempts,
+            failed_status,
             exc,
         )
         _persist_translation(
@@ -265,7 +285,8 @@ def _translate_one_field(
             target_locale=target_locale,
             text=existing.text if existing is not None else text,
             source_hash=source_hash,
-            status="failed",
+            status=failed_status,
+            attempts=attempts,
         )
         return "failed"
 
@@ -279,6 +300,9 @@ def _translate_one_field(
         text=result.text,
         source_hash=source_hash,
         status="ok",
+        # Success clears the failure budget — a successful translate after
+        # a transient failure shouldn't carry the previous attempts forward.
+        attempts=0,
     )
     return "translated"
 
@@ -294,45 +318,69 @@ def _persist_translation(
     text: str,
     source_hash: str,
     status: str,
+    attempts: int = 0,
 ) -> None:
     """Insert or update one translation row.
 
-    Caller is responsible for committing — letting the orchestrator batch
-    the commit means a partially-failed batch still leaves a coherent set of
-    rows on disk (or none at all on rollback).
+    Wraps each insert in a SAVEPOINT so a concurrent writer that beats us to
+    the unique key (``content_translations_unique``) doesn't corrupt the
+    outer transaction — we catch the ``IntegrityError``, roll back the
+    savepoint, refetch the row a peer just inserted, and turn the operation
+    into an update instead. This mirrors the enrollment race fix in
+    ``app.services.course_service._enrollment``. The outer ``db.commit()``
+    happens later in ``translate_entity_fields``; per-row savepoints keep
+    that batch commit safe even when many course-publish hooks fire on the
+    same course at once.
     """
-    if existing is None:
-        row = ContentTranslation(
-            entity_type=entity_type,
-            entity_id=entity_id,
-            field=field,
-            locale=target_locale,
-            text=text,
-            source_hash=source_hash,
-            status=status,
-            origin="mt",
-        )
-        db.add(row)
+    if existing is not None:
+        existing.text = text
+        existing.source_hash = source_hash
+        existing.status = status
+        existing.attempts = attempts
         return
 
-    existing.text = text
-    existing.source_hash = source_hash
-    existing.status = status
-
-
-def _coerce_locale(value: str | None) -> LocaleCode:
-    """Narrow a runtime ``str`` to ``LocaleCode``.
-
-    ``Course.source_locale`` is a plain Postgres TEXT column (CHECK-constrained
-    to ``ru | en``), so SQLAlchemy hands us back ``str``. mypy needs help to
-    treat it as the literal type the rest of the pipeline expects.
-    """
-    for code in LOCALE_CODES:
-        if value == code:
-            return code
-    # Unknown locales fall back to Russian — matches ``DEFAULT_LOCALE`` and
-    # the server-default on ``courses.source_locale``.
-    return "ru"
+    row = ContentTranslation(
+        entity_type=entity_type,
+        entity_id=entity_id,
+        field=field,
+        locale=target_locale,
+        text=text,
+        source_hash=source_hash,
+        status=status,
+        origin="mt",
+        attempts=attempts,
+    )
+    try:
+        with db.begin_nested():
+            db.add(row)
+            db.flush()
+    except IntegrityError:
+        # A concurrent translator just inserted the same
+        # (entity_type, entity_id, field, locale) row. Re-fetch and
+        # convert to an in-place update so this batch still converges on
+        # the latest source_hash + text without a 500 to the caller.
+        winner = (
+            db.query(ContentTranslation)
+            .filter(
+                ContentTranslation.entity_type == entity_type,
+                ContentTranslation.entity_id == entity_id,
+                ContentTranslation.field == field,
+                ContentTranslation.locale == target_locale,
+            )
+            .one_or_none()
+        )
+        if winner is None:
+            # Race lost but row vanished — nothing we can do beyond
+            # surfacing the original failure on the next commit.
+            raise
+        # Don't clobber a human-edited row; the auto-pipeline never
+        # overwrites manual translations even under racing conditions.
+        if winner.origin == "human":
+            return
+        winner.text = text
+        winner.source_hash = source_hash
+        winner.status = status
+        winner.attempts = attempts
 
 
 __all__ = [

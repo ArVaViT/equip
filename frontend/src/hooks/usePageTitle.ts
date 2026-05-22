@@ -1,43 +1,48 @@
 import { useEffect } from "react"
 import { useLocation } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 
 const BASE = "Bible School LMS"
+function matchTitleKey(pathname: string): string | null {
+  const exact: Record<string, string> = {
+    "/login": "pageTitle.login",
+    "/register": "pageTitle.register",
+    "/forgot-password": "pageTitle.forgotPassword",
+    "/auth/reset-password": "pageTitle.resetPassword",
+    "/auth/callback": "pageTitle.authCallback",
+    "/auth/confirm": "pageTitle.authConfirm",
+    "/dashboard": "pageTitle.dashboard",
+    "/courses": "pageTitle.courses",
+    "/profile": "pageTitle.profile",
+    "/certificates": "pageTitle.certificates",
+    "/calendar": "pageTitle.calendar",
+    "/teacher": "pageTitle.teacher",
+    "/admin": "pageTitle.admin",
+    "/": "pageTitle.home",
+  }
+  if (exact[pathname]) return exact[pathname]
 
-const TITLES: Record<string, string> = {
-  "/login": "Sign In",
-  "/register": "Create Account",
-  "/forgot-password": "Forgot Password",
-  "/auth/reset-password": "Reset Password",
-  "/auth/callback": "Authenticating…",
-  "/auth/confirm": "Confirming Email…",
-  "/dashboard": "Courses",
-  "/profile": "My Profile",
-  "/certificates": "My Certificates",
-  "/calendar": "Calendar",
-  "/teacher": "Teacher Dashboard",
-  "/admin": "Admin Panel",
-  "/": "Home",
-}
+  if (/^\/teacher\/courses\/[^/]+\/modules\/[^/]+\/chapters\/[^/]+\/edit$/.test(pathname)) {
+    return "pageTitle.editChapter"
+  }
+  if (/^\/teacher\/courses\/[^/]+\/modules\/[^/]+\/edit$/.test(pathname)) {
+    return "pageTitle.editModule"
+  }
+  if (/^\/teacher\/courses\/[^/]+\/gradebook$/.test(pathname)) return "pageTitle.gradebook"
+  if (/^\/teacher\/courses\/[^/]+\/progress$/.test(pathname)) return "pageTitle.studentProgress"
+  if (/^\/teacher\/courses\/[^/]+\/analytics$/.test(pathname)) return "pageTitle.courseAnalytics"
+  if (pathname.startsWith("/teacher/courses/")) return "pageTitle.courseEditor"
+  if (/^\/courses\/[^/]+\/modules\/[^/]+\/chapters\/[^/]+$/.test(pathname)) return "pageTitle.chapter"
+  if (/^\/courses\/[^/]+\/modules\//.test(pathname)) return "pageTitle.module"
+  if (pathname.startsWith("/courses/")) return "pageTitle.course"
+  if (pathname.startsWith("/admin")) return "pageTitle.admin"
 
-function matchTitle(pathname: string): string {
-  if (TITLES[pathname]) return TITLES[pathname]
-
-  if (/^\/teacher\/courses\/[^/]+\/modules\/[^/]+\/chapters\/[^/]+\/edit$/.test(pathname)) return "Edit Chapter"
-  if (/^\/teacher\/courses\/[^/]+\/modules\/[^/]+\/edit$/.test(pathname)) return "Edit Module"
-  if (/^\/teacher\/courses\/[^/]+\/gradebook$/.test(pathname)) return "Gradebook"
-  if (/^\/teacher\/courses\/[^/]+\/progress$/.test(pathname)) return "Student Progress"
-  if (/^\/teacher\/courses\/[^/]+\/analytics$/.test(pathname)) return "Course Analytics"
-  if (pathname.startsWith("/teacher/courses/")) return "Course Editor"
-  if (/^\/courses\/[^/]+\/modules\/[^/]+\/chapters\/[^/]+$/.test(pathname)) return "Chapter"
-  if (/^\/courses\/[^/]+\/modules\//.test(pathname)) return "Module"
-  if (pathname.startsWith("/courses/")) return "Course"
-  if (pathname.startsWith("/admin")) return "Admin Panel"
-
-  return ""
+  return null
 }
 
 export function usePageTitle(title?: string) {
   const { pathname } = useLocation()
+  const { t } = useTranslation()
 
   useEffect(() => {
 
@@ -46,7 +51,7 @@ export function usePageTitle(title?: string) {
       return
     }
 
-    const sub = matchTitle(pathname)
-    document.title = sub ? `${sub} — ${BASE}` : BASE
-  }, [pathname, title])
+    const key = matchTitleKey(pathname)
+    document.title = key ? `${t(key)} — ${t("common.appName")}` : t("common.appName")
+  }, [pathname, t])
 }

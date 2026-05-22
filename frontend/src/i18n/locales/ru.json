@@ -1,20 +1,41 @@
 {
   "common": {
-    "appName": "Bible School",
-    "save": "Сохранить",
-    "saving": "Сохранение...",
-    "saved": "Сохранено",
+    "appName": "Equip",
     "cancel": "Отмена",
     "continue": "Продолжить",
     "tryAgain": "Повторить",
     "loading": "Загрузка...",
     "view": "Открыть",
-    "search": "Поиск",
     "signIn": "Войти",
     "signOut": "Выйти",
-    "register": "Регистрация"
+    "register": "Регистрация",
+    "close": "Закрыть",
+    "scrollToTop": "Наверх",
+    "skipToContent": "Перейти к содержимому",
+    "dismissAnnouncement": "Закрыть объявление"
+  },
+  "inlineEdit": {
+    "defaultPlaceholder": "Нажмите для редактирования",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "editAria": "Изменить {{what}}",
+    "cover": {
+      "replace": "Заменить",
+      "remove": "Удалить",
+      "empty": "Нажмите или перетащите изображение",
+      "disabled": "Без обложки",
+      "unsupportedTitle": "Неподдерживаемый файл",
+      "unsupportedDescription": "Выберите изображение.",
+      "tooLargeTitle": "Изображение слишком большое",
+      "tooLargeDescription": "Максимум {{max}} МБ.",
+      "uploadFailedTitle": "Загрузка не удалась",
+      "removeConfirmTitle": "Удалить обложку?",
+      "removeConfirmDescription": "Обложка курса будет очищена.",
+      "removeConfirmAction": "Удалить"
+    }
   },
   "header": {
+    "home": "Главная",
     "courses": "Курсы",
     "calendar": "Календарь",
     "certificates": "Сертификаты",
@@ -24,7 +45,98 @@
     "adminPanel": "Панель администратора",
     "profile": "Профиль",
     "profileAndSettings": "Профиль и настройки",
-    "menu": "Меню"
+    "menu": "Меню",
+    "navAriaLabel": "Основная навигация",
+    "mobileMenuTitle": "Навигация",
+    "mobileMenuDescription": "Разделы сайта, уведомления и аккаунт.",
+    "notifications": "Уведомления"
+  },
+  "footer": {
+    "tagline": "Системное изучение Библии для тех, кто относится к Писанию серьёзно.",
+    "support": "Связаться с поддержкой",
+    "rightsReserved": "Все права защищены."
+  },
+  "landing": {
+    "hero": {
+      "registerCta": "Создать аккаунт"
+    },
+    "features": {
+      "heading": "Что в Equip",
+      "subheading": "Инструменты для серьёзного изучения Писания — без отвлечения и без потери прогресса.",
+      "systematic": {
+        "title": "Системные курсы",
+        "body": "Курс делится на модули и главы — ты идёшь по структуре, а не выхватываешь куски."
+      },
+      "progress": {
+        "title": "Прогресс по главам",
+        "body": "Видно, что пройдено и что осталось. Кнопка «Готово» в каждой главе."
+      },
+      "certificates": {
+        "title": "Сертификаты",
+        "body": "После завершения курса — сертификат с публичной проверкой по номеру."
+      },
+      "bilingual": {
+        "title": "Двуязычность",
+        "body": "Русский и английский — переключение в один клик, без перезагрузки."
+      }
+    },
+    "how": {
+      "heading": "Как это работает",
+      "step1": "Зарегистрируйся — займёт минуту, нужен только e-mail или Google.",
+      "step2": "Открой каталог и запишись на курс, который тебе интересен.",
+      "step3": "Изучай главами, проходи тесты, забирай сертификат в конце."
+    },
+    "quicklinks": {
+      "heading": "Куда дальше",
+      "catalog": {
+        "title": "Каталог курсов",
+        "body": "Все опубликованные курсы — листай и записывайся."
+      },
+      "register": {
+        "title": "Создать аккаунт",
+        "body": "Бесплатная регистрация для студентов."
+      },
+      "signIn": {
+        "title": "Войти",
+        "body": "Уже есть аккаунт — продолжай с того места, где остановился."
+      },
+      "forgot": {
+        "title": "Восстановить пароль",
+        "body": "Если забыл — пришлём ссылку для сброса на почту."
+      }
+    },
+    "finalCta": {
+      "heading": "Готов начать?",
+      "body": "Создай аккаунт за минуту — курсы бесплатны, прогресс сохраняется автоматически.",
+      "primary": "Создать аккаунт"
+    }
+  },
+  "notifications": {
+    "menuAriaLabel": "Уведомления",
+    "panelAriaLabel": "Уведомления",
+    "title": "Уведомления",
+    "markAllRead": "Прочитать все",
+    "empty": "Пока нет уведомлений",
+    "loadFailed": "Не удалось загрузить уведомления.",
+    "tryAgain": "Повторить",
+    "loadMore": "Ещё",
+    "loadingMore": "Загрузка...",
+    "deleteAriaLabel": "Удалить уведомление",
+    "timeAgo": {
+      "justNow": "только что",
+      "minutesAgo_one": "{{count}} мин назад",
+      "minutesAgo_few": "{{count}} мин назад",
+      "minutesAgo_many": "{{count}} мин назад",
+      "minutesAgo_other": "{{count}} мин назад",
+      "hoursAgo_one": "{{count}} ч назад",
+      "hoursAgo_few": "{{count}} ч назад",
+      "hoursAgo_many": "{{count}} ч назад",
+      "hoursAgo_other": "{{count}} ч назад",
+      "daysAgo_one": "{{count}} д назад",
+      "daysAgo_few": "{{count}} д назад",
+      "daysAgo_many": "{{count}} д назад",
+      "daysAgo_other": "{{count}} д назад"
+    }
   },
   "language": {
     "label": "Язык",
@@ -41,16 +153,61 @@
     "email": "Email",
     "emailPlaceholder": "you@example.com",
     "password": "Пароль",
-    "forgotPassword": "Забыли пароль?",
+    "forgotPasswordLink": "Забыли пароль?",
     "signIn": "Войти",
     "signingIn": "Вход...",
     "noAccount": "Нет аккаунта?",
     "createOne": "Создать",
     "loginFailed": "Не удалось войти. Попробуйте снова.",
-    "googleLoginFailed": "Не удалось войти через Google."
+    "googleLoginFailed": "Не удалось войти через Google.",
+    "marketingQuote": "Постарайся представить себя пред Богом испытанным, работником без поругания, верно распределяющим слово истины.",
+    "marketingReference": "2 Тимофею 2:15",
+    "marketingPanelFooter": "© {{year}} {{appName}}",
+    "toggleColorTheme": "Переключить светлую или тёмную тему",
+    "errors": {
+      "registrationFailed": "Не удалось зарегистрироваться. Попробуйте снова.",
+      "googleSignUpFailed": "Не удалось зарегистрироваться через Google."
+    },
+    "callback": {
+      "completing": "Завершаем вход...",
+      "timedOut": "Не удалось завершить вход. Попробуйте ещё раз.",
+      "redirecting": "Перенаправление на вход..."
+    },
+    "forgotPassword": {
+      "heading": "Восстановление пароля",
+      "subheading": "Введите email — мы отправим ссылку для сброса",
+      "emailLabel": "Адрес email",
+      "submit": "Отправить ссылку",
+      "sending": "Отправка...",
+      "backToSignIn": "Вернуться ко входу",
+      "sentHeading": "Проверьте почту",
+      "sentSubheading": "Мы отправили ссылку для сброса пароля",
+      "sentBody": "Если аккаунт с адресом <strong>{{email}}</strong> существует, вы скоро получите ссылку. Проверьте входящие.",
+      "errors": {
+        "emailRequired": "Введите адрес email",
+        "emailInvalid": "Введите корректный email",
+        "sendFailed": "Не удалось отправить письмо. Попробуйте через минуту."
+      }
+    },
+    "resetPassword": {
+      "heading": "Новый пароль",
+      "subheading": "Выберите надёжный пароль для аккаунта",
+      "newPassword": "Новый пароль",
+      "confirmNewPassword": "Подтвердите новый пароль",
+      "submit": "Обновить пароль",
+      "submitting": "Обновление...",
+      "successHeading": "Пароль обновлён",
+      "successSubheading": "Готово",
+      "successBody": "Пароль успешно обновлён.",
+      "redirecting": "Переходим в личный кабинет...",
+      "errors": {
+        "passwordTooShort": "Пароль должен быть не менее 6 символов",
+        "passwordsDoNotMatch": "Пароли не совпадают",
+        "resetFailed": "Не удалось обновить пароль."
+      }
+    }
   },
   "profile": {
-    "title": "Профиль",
     "fullName": "Полное имя",
     "changeAvatar": "Изменить аватар",
     "uploadFailed": "Не удалось загрузить аватар",
@@ -63,35 +220,1862 @@
     "viewAllCertificates": "Все сертификаты",
     "accountDetails": "Сведения об аккаунте",
     "memberSince": "С нами с",
-    "role": "Роль",
     "preferences": "Настройки",
     "theme": "Тема",
     "themeDark": "Тёмная тема",
     "themeLight": "Светлая тема",
     "switchToLight": "Светлая",
-    "switchToDark": "Тёмная"
+    "switchToDark": "Тёмная",
+    "invalidInput": "Некорректный ввод",
+    "editName": "Изменить имя",
+    "avatarAlt": "Аватар {{name}}"
   },
-  "home": {
-    "myCourses": "Мои курсы",
-    "loadCoursesError": "Не удалось загрузить курсы. Обновите страницу.",
-    "noEnrollments": "Вы ещё не записаны ни на один курс. Выберите курс из каталога ниже.",
-    "course": "Курс",
-    "grade": "Оценка: {{grade}}",
-    "academicPrograms": "Учебные программы",
-    "browseCourses": "Каталог курсов",
-    "courseCatalog": "Каталог курсов",
-    "discoverMore": "Найдите новые курсы, чтобы расширить знания",
-    "browseSeminary": "Изучайте наши семинарские курсы и углубляйте знание Библии",
-    "searchPlaceholder": "Поиск курсов...",
-    "signInToEnroll": "чтобы записаться на курс",
-    "noCoursesFound": "Курсы не найдены",
-    "noCoursesYet": "Курсов пока нет",
-    "tryDifferentSearch": "Попробуйте другой запрос",
-    "checkBackSoon": "Заходите позже — скоро появятся новые курсы",
-    "loadFailed": "Не удалось загрузить курсы. Попробуйте позже."
+  "courseCard": {
+    "opensOn": "Набор с {{date}}",
+    "enrollmentClosed": "Набор закрыт",
+    "enrollingNow": "Идёт набор",
+    "byInvitation": "По приглашению",
+    "openCourse": "Открыть",
+    "modulesLabel_one": "{{count}} модуль",
+    "modulesLabel_few": "{{count}} модуля",
+    "modulesLabel_many": "{{count}} модулей",
+    "modulesLabel_other": "{{count}} модуля"
   },
   "pendingTeacher": {
     "banner": "Ваша заявка на учительский аккаунт ожидает одобрения администратора. Тем временем вы можете заниматься как студент.",
     "contactSupport": "Свяжитесь с <supportLink>поддержкой</supportLink>, если есть вопросы."
+  },
+  "pageTitle": {
+    "login": "Вход",
+    "register": "Регистрация",
+    "forgotPassword": "Восстановление пароля",
+    "resetPassword": "Новый пароль",
+    "authCallback": "Вход…",
+    "authConfirm": "Подтверждение email…",
+    "dashboard": "Курсы",
+    "profile": "Мой профиль",
+    "certificates": "Мои сертификаты",
+    "calendar": "Календарь",
+    "teacher": "Панель преподавателя",
+    "admin": "Админ-панель",
+    "home": "Главная",
+    "editChapter": "Редактирование главы",
+    "editModule": "Редактирование модуля",
+    "gradebook": "Журнал оценок",
+    "studentProgress": "Прогресс студентов",
+    "courseAnalytics": "Аналитика курса",
+    "courseEditor": "Редактор курса",
+    "chapter": "Глава",
+    "module": "Модуль",
+    "course": "Курс",
+    "courses": "Курсы"
+  },
+  "notFound": {
+    "title": "Страница не найдена",
+    "description": "Запрашиваемая страница не существует или была перенесена.",
+    "goHome": "На главную"
+  },
+  "errors": {
+    "invalidCourseLink": "Некорректная ссылка на курс или модуль.",
+    "loadChapterFailed": "Не удалось загрузить главу. Попробуйте снова.",
+    "loadModuleFailed": "Не удалось загрузить модуль. Попробуйте снова.",
+    "loadCourseFailed": "Не удалось загрузить курс. Попробуйте снова.",
+    "loadTeacherCoursesFailed": "Не удалось загрузить ваши курсы. Попробуйте снова.",
+    "boundary": {
+      "heading": "Что-то пошло не так",
+      "body": "Произошла непредвиденная ошибка. Попробуйте снова.",
+      "tryAgain": "Попробовать снова",
+      "refresh": "Перезагрузить страницу"
+    }
+  },
+  "toast": {
+    "enrolledSuccess": "Вы успешно записались",
+    "enrolledFailed": "Не удалось записаться. Попробуйте снова.",
+    "courseNotFound": "Курс не найден",
+    "chapterNotFound": "Глава не найдена",
+    "moduleNotFound": "Модуль не найден",
+    "certificateApproved": "Сертификат одобрен",
+    "certificateApproveFailed": "Не удалось одобрить сертификат",
+    "certificateDeclined": "Запрос на сертификат отклонён",
+    "certificateRejectFailed": "Не удалось отклонить запрос",
+    "coursePublished": "Курс опубликован",
+    "courseUnpublished": "Курс снят с публикации",
+    "statusUpdateFailed": "Не удалось обновить статус",
+    "courseCreated": "Курс создан",
+    "courseCreateFailed": "Не удалось создать курс",
+    "courseMovedToTrash": "Курс перемещён в корзину",
+    "deleteCourseFailed": "Не удалось удалить курс",
+    "courseCloned": "Курс успешно скопирован",
+    "cloneFailed": "Не удалось скопировать курс",
+    "gradingWeightsSaved": "Веса оценок сохранены",
+    "gradingConfigSaveFailed": "Не удалось сохранить настройки оценивания",
+    "gradeSaved": "Оценка сохранена",
+    "gradeSaveFailed": "Не удалось сохранить оценку",
+    "exportGradesFailed": "Не удалось экспортировать оценки",
+    "certificatesLoadFailed": "Не удалось загрузить сертификаты",
+    "openFileFailed": "Не удалось открыть файл. Попробуйте снова.",
+    "assignmentSubmitFailed": "Не удалось отправить задание",
+    "gradeFailed": "Не удалось выставить оценку",
+    "quizSaved": "Тест сохранён",
+    "quizSaveFailed": "Не удалось сохранить тест"
+  },
+  "module": {
+    "overdue": "Просрочено",
+    "due": "Срок",
+    "moduleComplete": "Модуль завершён — отлично!",
+    "completedProgress": "{{done}}/{{total}} завершено",
+    "chaptersHeading": "Главы",
+    "noChaptersYet": "Главы ещё не добавлены"
+  },
+  "course": {
+    "backToCourses": "Все курсы",
+    "backToCourse": "К курсу",
+    "backToModule": "К модулю",
+    "goHome": "На главную"
+  },
+  "chapter": {
+    "lockedTitle": "Глава заблокирована",
+    "lockedHint": "Завершите предыдущую главу, чтобы открыть эту.",
+    "goToPreviousChapter": "К предыдущей главе",
+    "chapterOf": "Глава {{current}} из {{total}}",
+    "positionEyebrow": "Глава {{current}} из {{total}}",
+    "emptyContent": "В этой главе пока нет материалов.",
+    "blocksLoadFailed": "Не удалось загрузить главу",
+    "blocksLoadFailedDescription": "Не удалось загрузить содержимое урока. Обычно это временная проблема сети — попробуйте ещё раз.",
+    "prevChapter": "Предыдущая глава",
+    "nextChapter": "Следующая глава",
+    "prevEyebrow": "Назад",
+    "nextEyebrow": "Далее",
+    "navAriaLabel": "Навигация по главам",
+    "completed": "Завершено",
+    "submitAssignmentToComplete": "Отправьте задание, чтобы завершить главу",
+    "downloadFile": "Скачать файл",
+    "downloadFileAria": "Скачать вложение: {{name}}",
+    "attachmentEyebrow": "Вложение"
+  },
+  "quiz": {
+    "exam": "Экзамен",
+    "quiz": "Тест",
+    "failedLoad": "Не удалось загрузить тест. Обновите страницу.",
+    "submitFailedQuiz": "Не удалось отправить тест",
+    "submitFailedExam": "Не удалось отправить экзамен",
+    "tryAgain": "Попробовать снова",
+    "maxAttemptsReached": "Исчерпан лимит попыток для: {{type}}.",
+    "submitting": "Отправка…",
+    "submitQuiz": "Отправить тест",
+    "submitExam": "Отправить экзамен",
+    "answerAll": "Ответьте на все вопросы, чтобы отправить",
+    "progressEyebrow": "{{current}} / {{total}} отвечено",
+    "passedTitle": "Зачёт!",
+    "notPassedTitle": "Почти",
+    "passingScoreLine": "{{percent}}% — проходной балл: {{passing}}%",
+    "pendingTeacherReview": "Развёрнутые ответы ждут проверки преподавателя",
+    "reviewAnswers": "Разбор ответов",
+    "gradedPoints_one": "Оценено · {{earned}}/{{max}} балл",
+    "gradedPoints_few": "Оценено · {{earned}}/{{max}} балла",
+    "gradedPoints_many": "Оценено · {{earned}}/{{max}} баллов",
+    "gradedPoints_other": "Оценено · {{earned}}/{{max}} балла",
+    "sentForReview": "Отправлено на проверку преподавателю",
+    "yourAnswer": "Ваш ответ:",
+    "previousAttempts": "Предыдущие попытки",
+    "questionPoints_one": "{{count}} балл",
+    "questionPoints_few": "{{count}} балла",
+    "questionPoints_many": "{{count}} баллов",
+    "questionPoints_other": "{{count}} балла",
+    "typeAnswerPlaceholder": "Введите ответ…",
+    "nQuestions_one": "{{count}} вопрос",
+    "nQuestions_few": "{{count}} вопроса",
+    "nQuestions_many": "{{count}} вопросов",
+    "nQuestions_other": "{{count}} вопроса",
+    "nPoints_one": "{{count}} балл",
+    "nPoints_few": "{{count}} балла",
+    "nPoints_many": "{{count}} баллов",
+    "nPoints_other": "{{count}} балла",
+    "pointsBreakdown": "({{auto}} авт. + {{manual}} на проверке)",
+    "passingShort": "Проходной балл: {{score}}%",
+    "attemptsShort": "Попытки: {{used}}/{{max}}",
+    "inProgress": "В процессе",
+    "attemptPoints": "{{score}}/{{max}} баллов",
+    "essayPlaceholder": "Напишите ответ-эссе…",
+    "essayPlaceholderMin": "Минимум {{count}} слов. Ответ будет проверен преподавателем.",
+    "essayHelper": "Эссе · проверяет преподаватель",
+    "wordsCount_one": "{{count}} слово",
+    "wordsCount_few": "{{count}} слова",
+    "wordsCount_many": "{{count}} слов",
+    "wordsCount_other": "{{count}} слов",
+    "wordsWithMin": "{{count}} / {{min}} требуется"
+  },
+  "quizEditor": {
+    "validation": {
+      "titleRequired": "Укажите название теста",
+      "addAtLeastOneQuestion": "Добавьте хотя бы один вопрос",
+      "validScoreRequired": "Введите корректный балл (0 или больше)",
+      "scoreCantExceed": "Балл не может превышать {{max}} за этот вопрос"
+    },
+    "toast": {
+      "quizSaved": "Тест сохранён",
+      "quizSaveFailed": "Не удалось сохранить тест",
+      "quizDeleted": "Тест удалён",
+      "quizDeleteFailed": "Не удалось удалить тест",
+      "gradeSaved": "Оценка сохранена",
+      "gradeSaveFailed": "Не удалось сохранить оценку"
+    },
+    "confirmDelete": {
+      "title": "Удалить этот тест?",
+      "description": "Студенты потеряют доступ к тесту и попыткам.",
+      "confirm": "Удалить тест"
+    },
+    "heading": {
+      "editQuiz": "Изменить тест",
+      "editExam": "Изменить экзамен",
+      "createQuiz": "Создать тест",
+      "createExam": "Создать экзамен"
+    },
+    "fields": {
+      "quizTitle": "Название теста",
+      "titlePlaceholder": "напр. Тест по главе",
+      "description": "Описание (необязательно)",
+      "descriptionPlaceholder": "Краткое описание теста...",
+      "passingScore": "Проходной балл (%)",
+      "maxAttempts": "Максимум попыток"
+    },
+    "questions": {
+      "heading": "Вопросы ({{count}})",
+      "addQuestion": "Добавить вопрос",
+      "empty": "Пока нет вопросов. Нажмите «Добавить вопрос», чтобы начать.",
+      "questionPrefix": "В{{n}}",
+      "questionPlaceholder": "Текст вопроса...",
+      "types": {
+        "multiple_choice": "Один из вариантов",
+        "true_false": "Верно / Неверно",
+        "short_answer": "Короткий ответ",
+        "essay": "Эссе"
+      },
+      "minWords": "Мин. слов:",
+      "points": "Баллы:",
+      "markCorrect": "Отметить как правильный",
+      "optionPlaceholder": "Вариант {{n}}",
+      "addOption": "Добавить вариант",
+      "shortAnswerHint": "Студенты введут свободный текст. Оценивается вручную.",
+      "essayHint": "Развёрнутый письменный ответ. Оценивается вручную во вкладке проверки.",
+      "removeQuestionAria": "Удалить вопрос {{n}}",
+      "removeOptionAria": "Удалить вариант {{n}}",
+      "questionTypeAria": "Тип вопроса",
+      "trueFalseOption": {
+        "True": "Истина",
+        "False": "Ложь"
+      }
+    },
+    "save": {
+      "saving": "Сохранение...",
+      "saveQuiz": "Сохранить тест",
+      "saveExam": "Сохранить экзамен",
+      "deleteQuiz": "Удалить тест",
+      "deleteExam": "Удалить экзамен"
+    },
+    "modeToggle": {
+      "edit": "Редактирование",
+      "submissions": "Ответы"
+    },
+    "review": {
+      "loadFailed": "Не удалось загрузить ответы. Попробуйте снова.",
+      "emptyAlready": "Пока нет открытых ответов.",
+      "emptyAllGraded": "Нет ответов на проверку — всё проверено.",
+      "openEndedCount_one": "{{count}} открытый ответ",
+      "openEndedCount_few": "{{count}} открытых ответа",
+      "openEndedCount_many": "{{count}} открытых ответов",
+      "openEndedCount_other": "{{count}} открытых ответа",
+      "showAlreadyGraded": "Показывать уже проверенные",
+      "essay": "Эссе",
+      "shortAnswer": "Короткий ответ",
+      "upToPoints_one": "до {{count}} балла",
+      "upToPoints_few": "до {{count}} баллов",
+      "upToPoints_many": "до {{count}} баллов",
+      "upToPoints_other": "до {{count}} баллов",
+      "wordsWithMin": "{{count}} / {{min}} слов",
+      "wordsCount": "{{count}} слов",
+      "emptyAnswer": "(пусто)",
+      "pointsLabel": "Баллы (0–{{max}})",
+      "commentLabel": "Комментарий (необязательно)",
+      "commentPlaceholder": "Отзыв, который увидит студент…",
+      "saved": "Сохранено",
+      "saveGrade": "Сохранить оценку"
+    }
+  },
+  "blockEditor": {
+    "loadFailed": "Не удалось загрузить блоки: {{detail}}",
+    "addedSuccess": "Блок «{{type}}» добавлен",
+    "addFailed": "Не удалось добавить блок: {{detail}}",
+    "deleted": "Блок удалён",
+    "deleteFailed": "Не удалось удалить блок",
+    "confirmDelete": {
+      "title": "Удалить этот блок?",
+      "confirm": "Удалить"
+    },
+    "reorderFailed": "Не удалось изменить порядок блоков",
+    "updateFailed": "Не удалось обновить блок",
+    "contentBlocks": "Блоки содержимого",
+    "blocksCount_one": "{{count}} блок",
+    "blocksCount_few": "{{count}} блока",
+    "blocksCount_many": "{{count}} блоков",
+    "blocksCount_other": "{{count}} блоков",
+    "empty": "Пока нет блоков. Добавьте первый блок ниже.",
+    "addBlock": "Добавить блок",
+    "types": {
+      "text": "Текст",
+      "quiz": "Тест",
+      "assignment": "Задание",
+      "file": "Файл"
+    },
+    "text": {
+      "autoSaveFailed": "Не удалось автосохранить",
+      "saved": "Блок сохранён",
+      "saveFailed": "Не удалось сохранить блок",
+      "placeholder": "Введите содержимое блока...",
+      "saveButton": "Сохранить текст",
+      "statusUnsaved": "Несохранённые изменения...",
+      "statusAutoSaving": "Автосохранение...",
+      "statusSaved": "Сохранено"
+    },
+    "file": {
+      "uploaded": "Файл загружен",
+      "uploadFailedDefault": "Не удалось загрузить",
+      "removeFailed": "Не удалось удалить файл",
+      "attachedFile": "Прикреплённый файл",
+      "replace": "Заменить",
+      "removeAria": "Удалить файл",
+      "uploading": "Загрузка...",
+      "uploadCta": "Загрузить файл"
+    },
+    "toolbar": {
+      "ariaLabel": "Форматирование текста",
+      "bold": "Жирный",
+      "italic": "Курсив",
+      "heading2": "Заголовок 2",
+      "heading3": "Заголовок 3",
+      "bulletList": "Маркированный список",
+      "numberedList": "Нумерованный список",
+      "blockquote": "Цитата",
+      "horizontalRule": "Горизонтальная линия",
+      "insertImage": "Вставить изображение",
+      "insertYoutube": "Вставить YouTube видео",
+      "insertAudio": "Вставить аудио",
+      "link": "Ссылка",
+      "undo": "Отменить",
+      "redo": "Повторить"
+    },
+    "callout": {
+      "trigger": "Блок-выноска",
+      "remove": "Удалить блок",
+      "info": "Информация",
+      "verse": "Библейский стих",
+      "takeaway": "Ключевая мысль",
+      "warning": "Предупреждение"
+    },
+    "deleteBlockAria": "Удалить блок «{{label}}»"
+  },
+  "assignmentEditor": {
+    "validation": {
+      "titleRequired": "Укажите название задания"
+    },
+    "toast": {
+      "created": "Задание создано",
+      "createFailed": "Не удалось создать задание",
+      "updated": "Задание обновлено",
+      "updateFailed": "Не удалось обновить задание",
+      "deleted": "Задание удалено",
+      "deleteFailed": "Не удалось удалить задание",
+      "graded": "Оценка сохранена",
+      "gradeFailed": "Не удалось сохранить оценку"
+    },
+    "confirmDelete": {
+      "title": "Удалить это задание?",
+      "description": "Также будут удалены все ответы студентов.",
+      "confirm": "Удалить задание"
+    },
+    "loadFailed": "Не удалось загрузить задания. Попробуйте обновить страницу.",
+    "heading": "Задания ({{count}})",
+    "newAssignment": "Новое задание",
+    "empty": "К этой главе нет заданий.",
+    "form": {
+      "title": "Название",
+      "titlePlaceholder": "напр. Размышление по главе",
+      "description": "Описание (необязательно)",
+      "descriptionPlaceholder": "Инструкции к заданию...",
+      "maxScore": "Макс. балл",
+      "dueDate": "Срок сдачи (необязательно)",
+      "creating": "Создание...",
+      "create": "Создать задание",
+      "updating": "Обновление...",
+      "update": "Обновить задание",
+      "cancel": "Отмена"
+    },
+    "item": {
+      "maxPts": "Макс.: {{max}} б.",
+      "due": "Сдать до: {{date}}",
+      "noSubmissions": "Пока нет ответов.",
+      "submissionsCount": "Ответы ({{count}})",
+      "editAria": "Редактировать задание «{{title}}»",
+      "deleteAria": "Удалить задание «{{title}}»"
+    },
+    "grader": {
+      "viewFile": "Открыть прикреплённый файл",
+      "statusGrade": "Оценить",
+      "statusReturn": "Вернуть на доработку",
+      "statusAria": "Действие проверки",
+      "feedback": "Отзыв",
+      "feedbackPlaceholder": "Необязательный отзыв студенту...",
+      "saving": "Сохранение...",
+      "save": "Сохранить оценку"
+    }
+  },
+  "assignment": {
+    "eyebrow": "Задание",
+    "loadFailed": "Не удалось загрузить задания. Обновите страницу.",
+    "statusSubmitted": "Отправлено — на проверке",
+    "statusGraded": "Оценено",
+    "statusReturned": "Возвращено — нужна повторная отправка",
+    "maxPoints": "Макс.: {{max}} б.",
+    "due": "Срок:",
+    "overdue": "Просрочено",
+    "submit": "Отправить задание",
+    "resubmit": "Отправить снова",
+    "points": "баллов",
+    "gradeEyebrow": "Оценка",
+    "instructorFeedback": "Комментарий преподавателя",
+    "yourSubmission": "Ваша работа",
+    "returnedHint": "Преподаватель вернул задание на доработку. Внесите правки и отправьте снова.",
+    "yourResponse": "Ваш ответ",
+    "responsePlaceholder": "Напишите ответ на задание...",
+    "fileLinkOptional": "Ссылка на файл (необязательно)",
+    "submitting": "Отправка...",
+    "fileLinkPlaceholder": "https://drive.google.com/...",
+    "statusValue": {
+      "pending": "Ожидает",
+      "submitted": "Сдано",
+      "graded": "Оценено",
+      "returned": "Возвращено"
+    }
+  },
+  "certificates": {
+    "backToCourses": "К курсам",
+    "title": "Мои сертификаты",
+    "eyebrow": "Достижения",
+    "subtitle_one": "{{count}} полученный сертификат",
+    "subtitle_few": "{{count}} полученных сертификата",
+    "subtitle_many": "{{count}} полученных сертификатов",
+    "subtitle_other": "{{count}} полученных сертификатов",
+    "emptyTitle": "Пока нет сертификатов",
+    "emptyDescription": "Завершите курс, чтобы получить первый сертификат. Продолжайте учиться!",
+    "loadErrorDescription": "Не удалось загрузить ваши сертификаты. Обычно это временная проблема — попробуйте ещё раз.",
+    "browseCourses": "Каталог курсов",
+    "badge": "Сертификат",
+    "courseFallback": "Курс {{id}}",
+    "certificateNo": "№ сертификата",
+    "issuedOrStatus": "Выдан",
+    "statusColumn": "Статус",
+    "pendingApproval": "На согласовании",
+    "awaitingAdmin": "Ожидает администратора",
+    "rejected": "Отклонён",
+    "pending": "В ожидании",
+    "card": {
+      "completedTitle": "Вы прошли этот курс",
+      "completedDescription": "Запросите сертификат об окончании для проверки.",
+      "requesting": "Отправка запроса...",
+      "request": "Запросить сертификат",
+      "requestSuccess": "Запрос на сертификат отправлен!",
+      "requestFailed": "Не удалось запросить сертификат",
+      "pendingTitle": "Ожидает одобрения преподавателя",
+      "pendingDescription": "Запрос на сертификат отправлен. Преподаватель скоро его рассмотрит.",
+      "adminPendingTitle": "Ожидает одобрения администратора",
+      "adminPendingDescription": "Преподаватель одобрил ваш сертификат. Ждёт финального одобрения администратора.",
+      "approvedEyebrow": "Получен",
+      "approvedTitle": "Сертификат выдан",
+      "approvedDescription": "Поздравляем! Ваш сертификат одобрен.",
+      "certificateNumber": "Номер сертификата",
+      "copyAria": "Скопировать номер сертификата",
+      "copyFailed": "Не удалось скопировать",
+      "issueDate": "Дата выдачи",
+      "issuePending": "Ожидает",
+      "rejectedTitle": "Запрос на сертификат отклонён",
+      "rejectedDescription": "К сожалению, запрос на сертификат отклонён. Вы можете подать его снова после устранения замечаний.",
+      "rerequest": "Запросить снова",
+      "review": {
+        "eyebrow": "Ваш отзыв",
+        "heading": "Как вам курс? Оставьте отзыв",
+        "starAria": "Оценить на {{value}} из 5",
+        "commentPlaceholder": "Поделитесь впечатлениями о курсе... (необязательно)",
+        "submitting": "Отправка...",
+        "submit": "Отправить отзыв",
+        "thanks": "Спасибо за отзыв!",
+        "missingRating": "Выберите оценку",
+        "submitted": "Отзыв отправлен!",
+        "submitFailed": "Не удалось отправить отзыв"
+      }
+    }
+  },
+  "studentProgress": {
+    "loadFailed": "Не удалось загрузить прогресс студентов",
+    "loadFailedDescription": "Сервер временно недоступен. Попробуйте позже.",
+    "retry": "Повторить",
+    "backToCourses": "К моим курсам",
+    "breadcrumb": {
+      "myCourses": "Мои курсы",
+      "courseFallback": "Курс"
+    },
+    "heading": "Прогресс студентов",
+    "analytics": "Аналитика",
+    "gradebook": "Журнал оценок",
+    "searchPlaceholder": "Поиск студентов по имени или email...",
+    "table": {
+      "heading": "Студенты",
+      "description": "Нажмите на строку, чтобы увидеть детали",
+      "name": "Имя",
+      "email": "Email",
+      "progress": "Прогресс",
+      "chapters": "Главы",
+      "quizAvg": "Сред. тест",
+      "assignAvg": "Сред. задание",
+      "lastActive": "Активность",
+      "emptyNoMatch": "Нет студентов по запросу",
+      "emptyNoStudents": "Пока нет записанных студентов"
+    },
+    "row": {
+      "markedIncomplete": "Отмечено как не выполнено",
+      "markedComplete": "Отмечено как выполнено",
+      "toggleFailed": "Не удалось обновить статус",
+      "extraAttemptGranted": "Дополнительная попытка выдана",
+      "extraAttemptFailed": "Не удалось выдать попытку",
+      "overallGrade": "Общая оценка",
+      "overallGradeNa": "—",
+      "enrolled": "Записан",
+      "chaptersCompleted": "Глав завершено",
+      "chaptersCompletedValue": "{{done}} из {{total}}",
+      "progress": "Прогресс",
+      "chapterBreakdown": "По главам",
+      "gradebookButton": "Журнал оценок",
+      "viewAnalytics": "Аналитика"
+    },
+    "chapterRow": {
+      "notCompleted": "Не завершено",
+      "quizScore": "Тест: {{score}}/{{max}}",
+      "extraAttemptTitle": "Выдать дополнительную попытку",
+      "completedByTeacher": "Засчитано преподавателем",
+      "completedByQuiz": "Завершено через тест",
+      "completedBySubmission": "Завершено через задание",
+      "undo": "Отменить",
+      "complete": "Засчитать"
+    },
+    "stats": {
+      "totalStudents": "Всего студентов",
+      "averageProgress": "Средний прогресс",
+      "completionRate": "Процент завершения"
+    },
+    "relative": {
+      "never": "Никогда",
+      "minutesAgo_one": "{{count}} мин назад",
+      "minutesAgo_few": "{{count}} мин назад",
+      "minutesAgo_many": "{{count}} мин назад",
+      "minutesAgo_other": "{{count}} мин назад",
+      "hoursAgo_one": "{{count}} ч назад",
+      "hoursAgo_few": "{{count}} ч назад",
+      "hoursAgo_many": "{{count}} ч назад",
+      "hoursAgo_other": "{{count}} ч назад",
+      "daysAgo_one": "{{count}} д назад",
+      "daysAgo_few": "{{count}} д назад",
+      "daysAgo_many": "{{count}} д назад",
+      "daysAgo_other": "{{count}} д назад"
+    }
+  },
+  "teacherAnalytics": {
+    "courseFallback": "Курс",
+    "loadFailed": "Не удалось загрузить аналитику",
+    "backToCourses": "К моим курсам",
+    "breadcrumb": {
+      "myCourses": "Мои курсы",
+      "courseFallback": "Курс"
+    },
+    "heading": "Аналитика курса",
+    "studentProgress": "Прогресс студентов",
+    "gradebook": "Журнал оценок",
+    "stats": {
+      "totalStudents": "Всего студентов",
+      "averageProgress": "Средний прогресс",
+      "completed": "Завершили (100%)",
+      "enrolledThisMonth": "Записались за месяц"
+    },
+    "enrollments": {
+      "heading": "Записи на курс",
+      "subheadingCount_one": "{{count}} студент записан",
+      "subheadingCount_few": "{{count}} студента записано",
+      "subheadingCount_many": "{{count}} студентов записано",
+      "subheadingCount_other": "{{count}} студентов записано",
+      "emptyText": "Пока никто не записался.",
+      "name": "Имя",
+      "email": "Email",
+      "progress": "Прогресс",
+      "enrolled": "Записан",
+      "unknown": "Неизвестно"
+    }
+  },
+  "reviews": {
+    "loadFailed": "Не удалось загрузить отзывы",
+    "deleted": "Отзыв удалён",
+    "deleteFailed": "Не удалось удалить отзыв",
+    "heading": "Отзывы",
+    "outOf5": "из 5",
+    "reviewCount_one": "{{count}} отзыв",
+    "reviewCount_few": "{{count}} отзыва",
+    "reviewCount_many": "{{count}} отзывов",
+    "reviewCount_other": "{{count}} отзывов",
+    "loadFailedInline": "Не удалось загрузить отзывы.",
+    "retry": "Повторить",
+    "empty": "Пока нет отзывов.",
+    "anonymous": "Анонимный",
+    "confirmDeletePrefix": "Удалить?",
+    "confirmDeleteLoading": "…",
+    "confirmDeleteYes": "Да",
+    "confirmDeleteNo": "Нет",
+    "deleteAria": "Удалить отзыв"
+  },
+  "calendar": {
+    "title": "Календарь",
+    "eyebrow": "Расписание",
+    "filterByCourse": "Фильтр по курсу",
+    "allCourses": "Все курсы",
+    "retry": "Повторить",
+    "prevMonth": "Предыдущий месяц",
+    "nextMonth": "Следующий месяц",
+    "today": "Сегодня",
+    "moreEvents": "+ещё {{count}}",
+    "selectedDayEmpty": "В этот день событий нет",
+    "eventCount_one": "{{count}} событие",
+    "eventCount_few": "{{count}} события",
+    "eventCount_many": "{{count}} событий",
+    "eventCount_other": "{{count}} событий",
+    "upcomingEyebrow": "Ближайшие 14 дней",
+    "upcomingTitle": "Предстоящие",
+    "upcomingEmpty": "Нет предстоящих событий",
+    "overdue": "Просрочено",
+    "loadError": "Не удалось загрузить события календаря. Попробуйте ещё раз.",
+    "noEnrollmentsTitle": "Календарь пуст",
+    "noEnrollmentsDescription": "Запишитесь на курс — и его дедлайны, экзамены и онлайн-встречи появятся в вашем календаре.",
+    "browseCourses": "К курсам",
+    "eventTypes": {
+      "deadline": "Дедлайн",
+      "live_session": "Прямая сессия",
+      "exam": "Экзамен",
+      "other": "Другое"
+    }
+  },
+  "teacher": {
+    "dashboardTitle": "Мои курсы",
+    "newCourse": "Новый курс",
+    "searchPlaceholder": "Поиск курсов...",
+    "somethingWrong": "Что-то пошло не так",
+    "confirmTrashTitle": "Переместить курс в корзину?",
+    "confirmTrashDescription": "Вы сможете восстановить его позже.",
+    "confirmTrashConfirm": "В корзину",
+    "backToCourses": "К курсам"
+  },
+  "teacherDashboard": {
+    "courseCard": {
+      "statusPublished": "Опубликован",
+      "statusDraft": "Черновик",
+      "modules_one": "{{count}} модуль",
+      "modules_few": "{{count}} модуля",
+      "modules_many": "{{count}} модулей",
+      "modules_other": "{{count}} модуля",
+      "createdOn": "Создан {{date}}",
+      "thumbnailAlt": "Обложка курса {{title}}",
+      "actionAnalytics": "Аналитика",
+      "actionGradebook": "Журнал оценок",
+      "actionStudentProgress": "Прогресс студентов",
+      "actionPublish": "Опубликовать",
+      "actionUnpublish": "Снять с публикации",
+      "actionClone": "Скопировать курс",
+      "actionEditCourse": "Редактировать курс",
+      "actionDelete": "Удалить",
+      "actionMore": "Ещё действия"
+    },
+    "createForm": {
+      "title": "Создать новый курс",
+      "titleLabel": "Название",
+      "titlePlaceholder": "Введение в богословие",
+      "descriptionLabel": "Описание",
+      "descriptionPlaceholder": "Краткое описание курса...",
+      "optional": "необязательно",
+      "editorHint": "Обложку, модули, календарь и всё остальное настроите в редакторе на следующем шаге.",
+      "creating": "Создание...",
+      "submit": "Создать курс",
+      "cancel": "Отмена"
+    },
+    "trash": {
+      "show": "Показать корзину",
+      "hide": "Скрыть корзину",
+      "empty": "Корзина пуста.",
+      "loadFailed": "Не удалось загрузить корзину",
+      "restored": "Курс восстановлен",
+      "restoreFailed": "Не удалось восстановить курс",
+      "confirmDelete": {
+        "title": "Удалить курс навсегда?",
+        "description": "Курс и все его данные (модули, главы, записи, оценки) будут удалены безвозвратно. Это действие нельзя отменить.",
+        "confirm": "Удалить навсегда"
+      },
+      "deleted": "Курс удалён навсегда",
+      "deleteFailed": "Не удалось удалить курс",
+      "deletedAt": "Удалён {{date}}",
+      "restore": "Восстановить",
+      "deleteForever": "Удалить навсегда"
+    },
+    "pendingCerts": {
+      "title": "Сертификаты на одобрение",
+      "studentFallback": "Студент",
+      "courseFallback": "Курс",
+      "requestedPrefix": "Запрошен {{date}}",
+      "requestedUnknown": "Запрошен (дата неизвестна)",
+      "approve": "Одобрить",
+      "reject": "Отклонить"
+    }
+  },
+  "teacherEditor": {
+    "badges": {
+      "notSet": "Не задано",
+      "upcoming": "Скоро",
+      "closed": "Закрыт",
+      "open": "Открыт"
+    },
+    "defaults": {
+      "moduleTitle": "Модуль {{n}}"
+    },
+    "modulesHeading": "Модули",
+    "addModule": "Добавить модуль",
+    "noModulesYet": "Пока нет модулей",
+    "noModulesYetDescription": "Добавьте первый модуль, чтобы начать создание курса.",
+    "chapterCount_one": "{{count}} глава",
+    "chapterCount_few": "{{count}} главы",
+    "chapterCount_many": "{{count}} глав",
+    "chapterCount_other": "{{count}} глав",
+    "dragModuleAria": "Переместить модуль «{{title}}»",
+    "deleteModuleAria": "Удалить модуль «{{title}}»",
+    "modals": {
+      "enrollment": {
+        "title": "Период записи",
+        "status": "Статус",
+        "start": "Начало",
+        "end": "Окончание",
+        "save": "Сохранить",
+        "saving": "Сохранение…"
+      },
+      "announcements": {
+        "title": "Объявления",
+        "titlePlaceholder": "Заголовок",
+        "contentPlaceholder": "Текст (необязательно)",
+        "post": "Опубликовать",
+        "posting": "Публикация…",
+        "empty": "Пока нет объявлений.",
+        "deleteAria": "Удалить объявление «{{title}}»",
+        "carouselRole": "карусель",
+        "prevAria": "Предыдущее объявление",
+        "nextAria": "Следующее объявление",
+        "position": "{{current}} / {{total}}"
+      },
+      "materials": {
+        "title": "Материалы курса",
+        "upload": "Загрузить файл",
+        "empty": "Пока нет загруженных материалов.",
+        "sizeBytes": "{{b}} Б",
+        "sizeKb": "{{kb}} КБ",
+        "sizeMb": "{{mb}} МБ",
+        "downloadAria": "Скачать «{{name}}»",
+        "deleteAria": "Удалить «{{name}}»"
+      },
+      "events": {
+        "title": "События курса",
+        "editEvent": "Редактировать событие",
+        "createEvent": "Создать событие",
+        "titlePlaceholder": "Название события",
+        "descriptionPlaceholder": "Описание (необязательно)",
+        "type": "Тип",
+        "dateTime": "Дата и время",
+        "saving": "Сохранение…",
+        "update": "Обновить событие",
+        "create": "Создать событие",
+        "cancel": "Отмена",
+        "empty": "Пока нет событий.",
+        "types": {
+          "deadline": "Дедлайн",
+          "live_session": "Прямая сессия",
+          "exam": "Экзамен",
+          "other": "Другое"
+        },
+        "editAria": "Редактировать событие «{{title}}»",
+        "deleteAria": "Удалить событие «{{title}}»"
+      }
+    },
+    "toast": {
+      "saved": "Сохранено",
+      "saveFailed": "Не удалось сохранить",
+      "coverUpdated": "Обложка обновлена",
+      "coverRemoved": "Обложка удалена",
+      "coverRemoveFailed": "Не удалось удалить обложку",
+      "enrollmentSaved": "Период записи сохранён",
+      "published": "Опубликовано",
+      "unpublished": "Снято с публикации",
+      "publishFailed": "Не удалось изменить статус публикации",
+      "moduleAdded": "Модуль добавлен",
+      "moduleAddFailed": "Не удалось добавить модуль",
+      "moduleRemoveFailed": "Не удалось удалить модуль",
+      "moduleOrderFailed": "Не удалось сохранить порядок модулей",
+      "announcementPostFailed": "Не удалось опубликовать объявление",
+      "announcementDeleteFailed": "Не удалось удалить объявление",
+      "eventCreated": "Событие создано",
+      "eventUpdated": "Событие обновлено",
+      "eventDeleted": "Событие удалено",
+      "eventSaveFailed": "Не удалось сохранить событие",
+      "eventDeleteFailed": "Не удалось удалить событие",
+      "materialUploadFailed": "Загрузка не удалась",
+      "materialDownloadFailed": "Скачивание не удалось",
+      "materialDeleteFailed": "Не удалось удалить материал"
+    },
+    "confirm": {
+      "deleteModuleTitle": "Удалить этот модуль?",
+      "deleteModuleDescription": "Все главы внутри модуля также будут удалены.",
+      "deleteModuleAction": "Удалить",
+      "deleteAnnouncementTitle": "Удалить это объявление?",
+      "deleteAnnouncementAction": "Удалить",
+      "deleteEventTitle": "Удалить это событие?",
+      "deleteEventAction": "Удалить",
+      "deleteMaterialTitle": "Удалить материал?",
+      "deleteMaterialDescription": "«{{name}}» будет удалён безвозвратно.",
+      "deleteMaterialAction": "Удалить"
+    }
+  },
+  "moduleEditor": {
+    "defaults": {
+      "chapterTitle": "Глава {{n}}"
+    },
+    "toast": {
+      "moduleNotFound": "Модуль не найден",
+      "failedSaveModule": "Не удалось сохранить модуль",
+      "failedSaveDueDate": "Не удалось сохранить срок сдачи",
+      "chapterAdded": "Глава добавлена",
+      "failedAddChapter": "Не удалось добавить главу",
+      "failedRenameChapter": "Не удалось переименовать главу",
+      "chapterDeleted": "Глава удалена",
+      "failedDeleteChapter": "Не удалось удалить главу",
+      "chapterLocked": "Глава заблокирована",
+      "chapterUnlocked": "Глава разблокирована",
+      "failedToggleLock": "Не удалось переключить блокировку: {{detail}}",
+      "failedReorderChapters": "Не удалось сохранить порядок глав"
+    },
+    "invalidField": "Некорректное поле {{field}}",
+    "invalidChapterTitle": "Некорректное название главы",
+    "unknownError": "Неизвестная ошибка",
+    "confirmDelete": {
+      "title": "Удалить главу?",
+      "description": "Глава и её содержимое будут удалены.",
+      "confirm": "Удалить"
+    },
+    "notFound": {
+      "title": "Модуль не найден",
+      "description": "Модуль мог быть удалён, или у вас нет доступа.",
+      "backToCourse": "К курсу"
+    },
+    "backToCourse": "К курсу",
+    "untitledModule": "Без названия",
+    "addDescription": "Добавьте описание модуля",
+    "editTitle": "Изменить название модуля",
+    "editDescription": "Изменить описание модуля",
+    "dueDate": "Срок сдачи",
+    "clear": "Очистить",
+    "noChapters": {
+      "title": "Пока нет глав",
+      "description": "Добавьте первую главу, чтобы начать наполнять модуль.",
+      "action": "Добавить главу"
+    },
+    "addChapter": "Добавить главу",
+    "lockChapterTooltip": "Заблокировать главу",
+    "unlockChapterTooltip": "Разблокировать главу",
+    "editChapterAria": "Редактировать главу {{title}}",
+    "deleteChapterAria": "Удалить главу {{title}}",
+    "dragChapterAria": "Переместить главу «{{title}}»"
+  },
+  "courseEditor": {
+    "notFound": {
+      "title": "Курс не найден",
+      "description": "Курс мог быть удалён, или у вас нет доступа.",
+      "backToCourses": "К моим курсам"
+    },
+    "myCourses": "Мои курсы",
+    "untitledCourse": "Без названия",
+    "addDescription": "Добавьте описание курса",
+    "editTitle": "Изменить название курса",
+    "editDescription": "Изменить описание курса",
+    "published": "Опубликован",
+    "draft": "Черновик",
+    "publish": "Опубликовать",
+    "unpublish": "Снять с публикации",
+    "moreActions": "Ещё действия",
+    "menu": {
+      "enrollment": "Запись",
+      "announcements": "Объявления",
+      "materials": "Материалы",
+      "events": "События",
+      "accessMode": "Режим доступа"
+    },
+    "accessMode": {
+      "title": "Режим доступа к курсу",
+      "publicLabel": "Открытый",
+      "publicDescription": "Любой зарегистрированный пользователь может записаться сам — в рамках окна записи.",
+      "instituteLabel": "Институтский (только по приглашению)",
+      "instituteDescription": "Студент не может записаться сам. Добавьте его через когорту в админ-панели.",
+      "save": "Сохранить",
+      "saving": "Сохраняем…"
+    }
+  },
+  "chapterEditor": {
+    "notFound": {
+      "title": "Глава не найдена",
+      "description": "Глава могла быть удалена, или у вас нет доступа.",
+      "backToModule": "К модулю"
+    },
+    "moduleFallback": "Модуль",
+    "chapterFallback": "Глава",
+    "breadcrumb": {
+      "myCourses": "Мои курсы",
+      "course": "Курс"
+    },
+    "toast": {
+      "chapterNotFound": "Глава не найдена",
+      "loadFailed": "Не удалось загрузить главу",
+      "invalidData": "Некорректные данные главы",
+      "saved": "Глава сохранена",
+      "saveFailed": "Не удалось сохранить: {{detail}}"
+    },
+    "unknownError": "Неизвестная ошибка",
+    "leaveConfirm": {
+      "title": "Выйти без сохранения?",
+      "description": "Есть несохранённые изменения. Они будут потеряны при выходе.",
+      "confirm": "Выйти"
+    },
+    "back": "Назад",
+    "titlePlaceholder": "Название главы",
+    "editTitleAria": "Изменить название главы",
+    "chapterType": "Тип главы",
+    "save": "Сохранить главу",
+    "saving": "Сохранение...",
+    "saveHint": "Ctrl+S для сохранения",
+    "unsavedChanges": "Есть несохранённые изменения"
+  },
+  "courseDetail": {
+    "allCourses": "Все курсы",
+    "manageCourse": "Управлять курсом",
+    "enrollInCourse": "Записаться на курс",
+    "enrolling": "Запись...",
+    "enrollmentNotAvailable": "Запись недоступна",
+    "signInToEnroll": "Войти для записи",
+    "byInvitationOnly": "Доступно только по приглашению",
+    "byInvitationOnlyHint": "Этот курс — часть институтской программы. Студентов добавляют руководители программы — свяжитесь с ними напрямую.",
+    "enrollmentClosedAllCohorts": "Окно записи закрыто для всех доступных групп.",
+    "noCohortsAvailable": "Сейчас нет доступных групп для этого курса.",
+    "enrollmentRangeLabel": "Запись: {{start}} — {{end}}",
+    "studentsEnrolledOfMax": "записано {{enrolled}}/{{max}} студентов",
+    "moduleCount_one": "{{count}} модуль",
+    "moduleCount_few": "{{count}} модуля",
+    "moduleCount_many": "{{count}} модулей",
+    "moduleCount_other": "{{count}} модулей",
+    "chapterCount_one": "{{count}} глава",
+    "chapterCount_few": "{{count}} главы",
+    "chapterCount_many": "{{count}} глав",
+    "chapterCount_other": "{{count}} глав",
+    "percentComplete": "{{percent}}% завершено",
+    "modulesHeading": "Модули",
+    "noModulesAddedYet": "Модули ещё не добавлены",
+    "openModule": "Открыть",
+    "moduleLocked": "Заблокировано",
+    "moduleLockHint": "Завершите все задания предыдущего модуля, чтобы разблокировать.",
+    "due": "Сдать до",
+    "overdue": "Просрочено",
+    "downloadFailed": "Не удалось скачать файл",
+    "materialsButton": "Материалы ({{count}})",
+    "reviewsButton": "Отзывы",
+    "reviewsModalTitle": "Отзывы о курсе",
+    "materialsModal": {
+      "title": "Материалы курса",
+      "empty": "Материалов пока нет."
+    },
+    "cohortSelect": {
+      "title": "Выберите когорту",
+      "intro": "Доступно несколько когорт. Выберите, в какую записаться:",
+      "spotsFilled": "{{enrolled}}/{{max}} мест занято",
+      "enrolling": "Запись...",
+      "enroll": "Записаться"
+    },
+    "upcoming": {
+      "heading": "Ближайшие дедлайны и события"
+    }
+  },
+  "gradebook": {
+    "summaryTab": "Сводка оценок",
+    "tableTab": "Таблица оценок",
+    "failedLoad": "Не удалось загрузить журнал. Попробуйте снова.",
+    "breadcrumbCourses": "Мои курсы",
+    "breadcrumbCourseFallback": "Курс",
+    "pageHeading": "Журнал оценок",
+    "exportCsv": "Экспорт CSV",
+    "exporting": "Экспорт…",
+    "stats": {
+      "students": "Студенты",
+      "classAverage": "Средний балл",
+      "manuallyGraded": "Оценено вручную",
+      "weights": "Веса Т/З/У"
+    },
+    "config": {
+      "title": "Настройка оценивания",
+      "description": "Укажите, как тесты, задания и участие влияют на итоговую оценку",
+      "quizWeight": "Вес тестов (%)",
+      "assignmentWeight": "Вес заданий (%)",
+      "participationWeight": "Вес участия (%)",
+      "totalValid": "Итого: {{total}}% ✓",
+      "totalInvalid": "Итого: {{total}}% (должно быть 100%)",
+      "saving": "Сохранение...",
+      "save": "Сохранить веса"
+    },
+    "summary": {
+      "title": "Оценки студентов",
+      "description": "Авторасчёт на основе баллов за тесты, задания и завершение глав. Нажмите на студента, чтобы поставить оценку вручную.",
+      "empty": "Пока нет записанных студентов.",
+      "thStudent": "Студент",
+      "thQuiz": "Тест",
+      "thAssignment": "Задание",
+      "thParticipation": "Участие",
+      "thFinal": "Итог",
+      "thGrade": "Оценка",
+      "thManual": "Ручная",
+      "unknownStudent": "Неизвестно",
+      "breakdownQuiz": "Среднее за тесты:",
+      "breakdownAssignment": "Среднее за задания:",
+      "breakdownParticipation": "Участие:",
+      "manualDiffers": "Ручная оценка <strong>{{manual}}</strong> отличается от расчётной <strong>{{calc}}</strong> ({{pct}}%)",
+      "overrideGrade": "Переопределить",
+      "overridePlaceholder": "A, B+, 95...",
+      "comment": "Комментарий",
+      "commentPlaceholder": "Заметка преподавателя...",
+      "savingManual": "Сохранение...",
+      "saveManual": "Сохранить оценку",
+      "classAverageRow_one": "Средний балл по классу ({{count}} студент)",
+      "classAverageRow_few": "Средний балл по классу ({{count}} студента)",
+      "classAverageRow_many": "Средний балл по классу ({{count}} студентов)",
+      "classAverageRow_other": "Средний балл по классу ({{count}} студентов)"
+    },
+    "table": {
+      "title": "Подробная таблица оценок",
+      "description": "Чтение/видео = 1 балл за завершение · Тест/экзамен = по баллам · Задание = баллы от преподавателя",
+      "thStudent": "Студент",
+      "thTotal": "Итого",
+      "overrideGrade": "Переопределить",
+      "overridePlaceholder": "A, B+, 95...",
+      "comment": "Комментарий",
+      "commentPlaceholder": "Заметка преподавателя...",
+      "saving": "Сохранение...",
+      "saveGrade": "Сохранить оценку",
+      "cellGraded": "оценено",
+      "cellSubmitted": "сдано",
+      "legend": {
+        "completed": "Пройдено (1 балл)",
+        "quizPassed": "Тест сдан",
+        "quizFailed": "Тест не сдан",
+        "assignmentGraded": "Задание оценено",
+        "assignmentSubmitted": "Задание сдано",
+        "notSubmitted": "Не сдано"
+      }
+    }
+  },
+  "admin": {
+    "title": "Админ-панель",
+    "eyebrow": "Администрирование",
+    "subtitle": "Пользователи, роли и активность платформы",
+    "tabOverview": "Обзор",
+    "tabCohorts": "Когорты",
+    "tabAudit": "Журнал аудита",
+    "cohorts": {
+      "title": "Когорты",
+      "loadError": "Не удалось загрузить когорты",
+      "searchPlaceholder": "Поиск по названию…",
+      "allStatuses": "Все статусы",
+      "statusUpcoming": "Скоро",
+      "statusActive": "Активная",
+      "statusCompleted": "Завершена",
+      "createButton": "Новая когорта",
+      "create": "Создать",
+      "creating": "Создаём…",
+      "createTitle": "Создать когорту",
+      "namePlaceholder": "Осень 2026 — Бытие",
+      "maxStudentsPlaceholder": "Пусто = без ограничения",
+      "unlimited": "Без ограничения",
+      "fieldName": "Название",
+      "fieldStatus": "Статус",
+      "fieldStart": "Начало",
+      "fieldEnd": "Окончание",
+      "fieldEnrollStart": "Запись открывается",
+      "fieldEnrollEnd": "Запись закрывается",
+      "fieldMaxStudents": "Макс. студентов",
+      "fieldEmail": "Email",
+      "emailPlaceholder": "student@example.com",
+      "thName": "Название",
+      "thStatus": "Статус",
+      "thDates": "Даты",
+      "thCourses": "Курсы",
+      "thStudents": "Студенты",
+      "thStudentName": "Студент",
+      "thStudentEmail": "Email",
+      "thEnrolledCourses": "Курсов",
+      "thActions": "Действия",
+      "emptyNoCohorts": "Когорт ещё нет. Создайте, чтобы зачислять студентов группами.",
+      "emptyNoMatch": "Ничего не нашлось по запросу.",
+      "backToList": "К списку когорт",
+      "notFoundTitle": "Когорта не найдена",
+      "notFoundDescription": "Возможно, она была удалена.",
+      "detailsHeading": "Параметры",
+      "coursesHeading": "Привязанные курсы ({{count}})",
+      "studentsHeading": "Студенты ({{count}})",
+      "attachCourseButton": "Добавить курс",
+      "attachCourseTitle": "Привязать курс",
+      "pickCourse": "Курс",
+      "noMoreCourses": "Все доступные курсы уже привязаны.",
+      "draftTag": "черновик",
+      "attach": "Привязать",
+      "attaching": "Привязываем…",
+      "addStudentButton": "Добавить студента",
+      "addStudentTitle": "Добавить студента",
+      "addStudentHint": "Введите email студента. У него уже должен быть аккаунт в Equip — попросите зарегистрироваться, если нет.",
+      "add": "Добавить",
+      "adding": "Добавляем…",
+      "errorUserNotFound": "Пользователя с таким email нет — попросите его зарегистрироваться.",
+      "errorCohortFull": "Когорта достигла максимума мест.",
+      "eyebrow": "Когорта",
+      "noCoursesAttachedTitle": "Курсы ещё не привязаны",
+      "noCoursesAttached": "Привяжите курс, чтобы он стал доступен студентам этой когорты.",
+      "noStudentsTitle": "Пока нет студентов",
+      "noStudents": "Добавьте студентов по email — они автоматически зачислятся на все привязанные курсы.",
+      "studentSearchNoMatchHint": "Попробуйте другое имя или email.",
+      "deleteButton": "Удалить когорту",
+      "completeConfirmTitle": "Отметить когорту как завершённую?",
+      "completeConfirmDescription": "Зачисления и оценки сохранятся; когорта просто перестанет быть редактируемой.",
+      "completeConfirmAction": "Завершить",
+      "deleteConfirmTitle": "Удалить эту когорту?",
+      "deleteConfirmDescription": "Зачисления и оценки студентов сохранятся (привязка к когорте обнулится). Действие необратимо.",
+      "deleteConfirmAction": "Удалить",
+      "detachConfirmTitle": "Отвязать «{{name}}» от когорты?",
+      "detachConfirmDescription": "Существующие зачисления в этот курс сохранятся (привязка к когорте обнулится) — оценки не потеряются.",
+      "detachConfirmAction": "Отвязать",
+      "detachAriaPrefix": "Отвязать {{name}}",
+      "removeStudentConfirmTitle": "Убрать {{name}} из когорты?",
+      "removeStudentConfirmDescription": "Зачисления и оценки сохранятся — только привязка к когорте обнулится.",
+      "removeStudentConfirmAction": "Убрать",
+      "removeStudentAriaPrefix": "Убрать {{name}}",
+      "toast": {
+        "created": "Когорта создана",
+        "createFailed": "Не удалось создать когорту",
+        "saved": "Сохранено",
+        "saveFailed": "Не удалось сохранить",
+        "invalidMaxStudents": "Максимум студентов — целое число от 1 до 99 999.",
+        "invalidDateRange": "Дата начала должна быть раньше даты окончания.",
+        "loadFailed": "Не удалось загрузить когорту",
+        "loadCoursesFailed": "Не удалось загрузить курсы",
+        "someCoursesFailed_one": "Не удалось загрузить {{count}} привязанный курс — он может отсутствовать в списке ниже.",
+        "someCoursesFailed_few": "Не удалось загрузить {{count}} привязанных курса — они могут отсутствовать в списке ниже.",
+        "someCoursesFailed_many": "Не удалось загрузить {{count}} привязанных курсов — они могут отсутствовать в списке ниже.",
+        "someCoursesFailed_other": "Не удалось загрузить {{count}} привязанных курсов — они могут отсутствовать в списке ниже.",
+        "courseAttached": "Курс привязан",
+        "attachFailed": "Не удалось привязать курс",
+        "detached": "Курс отвязан",
+        "detachFailed": "Не удалось отвязать курс",
+        "studentAdded": "Студент добавлен",
+        "addStudentFailed": "Не удалось добавить студента",
+        "studentRemoved": "Студент убран",
+        "removeFailed": "Не удалось убрать студента",
+        "deleted": "Когорта удалена",
+        "deleteFailed": "Не удалось удалить когорту"
+      },
+      "filterStatus": "Статус",
+      "filterStartRange": "Дата начала",
+      "searchLabel": "Поиск",
+      "totalShown": "Показано {{shown}} из {{total}}",
+      "capacityLabel": "{{pct}}% заполнено",
+      "studentSearchPlaceholder": "Поиск студентов…",
+      "studentSearchNoMatch": "Ничего не найдено."
+    },
+    "users": {
+      "title": "Пользователи",
+      "selectAllAria": "Выбрать всех пользователей",
+      "selectAriaPrefix": "Выбрать {{name}}",
+      "deleteAriaPrefix": "Удалить {{name}}",
+      "deleteSelfTooltip": "Нельзя удалить собственный аккаунт",
+      "deleteTooltip": "Удалить пользователя",
+      "avatarAltPrefix": "Аватар {{name}}",
+      "searchPlaceholder": "Поиск по имени или email…",
+      "roleFilterAria": "Фильтр по роли",
+      "roleFilterAll": "Все роли",
+      "thName": "Имя",
+      "thEmail": "Email",
+      "thRole": "Роль",
+      "thJoined": "Дата регистрации",
+      "thActions": "Действия",
+      "selectAllN": "Выбрать все {{count}}",
+      "selected": "Выбрано: {{count}}",
+      "bulkUpdating": "Обновление...",
+      "bulkApply": "Применить",
+      "bulkClear": "Очистить",
+      "emptyNoMatch": "Нет пользователей по запросу",
+      "emptyNoUsers": "Пользователи не найдены",
+      "showing": "Показано {{shown}} из {{total}} пользователей",
+      "missingName": "—",
+      "changeRoleAria": "Изменить роль для {{name}}"
+    },
+    "pendingTeachers": {
+      "title": "Заявки преподавателей",
+      "missingName": "Без имени",
+      "registered": "Зарегистрирован {{date}}",
+      "registeredRelative": "Зарегистрирован {{relative}}",
+      "disposableEmail": "одноразовая",
+      "freeEmail": "бесплатная почта",
+      "approveHint": "После одобрения сможет создавать и публиковать курсы.",
+      "approve": "Одобрить",
+      "deny": "Отклонить",
+      "toast": {
+        "approved": "Преподаватель одобрен",
+        "approveFailed": "Не удалось одобрить преподавателя",
+        "denied": "Преподаватель отклонён",
+        "denyFailed": "Не удалось отклонить преподавателя"
+      },
+      "confirm": {
+        "approveTitle": "Одобрить этого преподавателя?",
+        "approveDescription": "{{name}} получит доступ к функциям преподавателя.",
+        "approveAction": "Одобрить",
+        "denyTitle": "Отклонить этого преподавателя?",
+        "denyDescription": "Заявка пользователя {{name}} на роль преподавателя будет отклонена.",
+        "denyAction": "Отклонить"
+      }
+    },
+    "pendingCerts": {
+      "title": "Сертификаты на финальное одобрение",
+      "studentFallback": "Студент",
+      "courseFallback": "Курс",
+      "approvedBy": "Одобрено: {{name}}",
+      "teacherSignOff": "Преподаватель {{name}} подтвердил {{relative}}",
+      "requestedRelative": "Запрошен {{relative}}",
+      "requestedAtPrefix": "Запрошен: {{ts}}",
+      "approveHint": "После одобрения появится номер сертификата на /verify/<num>.",
+      "approve": "Одобрить",
+      "reject": "Отклонить",
+      "toast": {
+        "approved": "Сертификат одобрен",
+        "approveFailed": "Не удалось одобрить сертификат",
+        "rejected": "Сертификат отклонён",
+        "rejectFailed": "Не удалось отклонить сертификат"
+      }
+    },
+    "overview": {
+      "totalUsers": "Всего пользователей",
+      "totalCourses": "Всего курсов",
+      "totalEnrollments": "Всего записей",
+      "pendingActions": "Требует внимания",
+      "pendingHint": "Заявки преподавателей и сертификаты ждут решения",
+      "pendingClear": "Всё разобрано — ничего не ждёт",
+      "loadError": "Не удалось загрузить данные администратора. Попробуйте ещё раз.",
+      "toast": {
+        "roleUpdated": "Роль обновлена",
+        "roleUpdateFailed": "Не удалось обновить роль",
+        "userDeleted": "Пользователь удалён",
+        "deleteUserFailed": "Не удалось удалить пользователя",
+        "cannotDeleteSelf": "Вы не можете удалить свой собственный аккаунт отсюда.",
+        "bulkUpdated": "Обновлено пользователей: {{count}} — роль {{role}}",
+        "bulkUpdateFailed": "Массовое обновление не удалось"
+      },
+      "confirm": {
+        "deleteUserTitle": "Удалить {{name}}?",
+        "deleteUserDescription": "Это безвозвратно удалит аккаунт пользователя, его записи на курсы, работы, оценки, сертификаты и уведомления. Курсы, которые он создал, сохранятся без привязки. Это действие нельзя отменить.",
+        "deleteUserAction": "Удалить аккаунт",
+        "bulkRoleTitle": "Изменить роль для выбранных пользователей?",
+        "bulkRoleDescription": "Выбрано пользователей: {{count}}. Для них будет установлена роль «{{role}}».",
+        "bulkRoleAction": "Применить"
+      },
+      "usersLast7Days_one": "+{{count}} за неделю",
+      "usersLast7Days_few": "+{{count}} за неделю",
+      "usersLast7Days_many": "+{{count}} за неделю",
+      "usersLast7Days_other": "+{{count}} за неделю",
+      "usersLast7Days_zero": "Новых регистраций нет"
+    },
+    "pagination": {
+      "pageSizeLabel": "Строк на странице",
+      "page": "Страница {{page}} из {{total}}",
+      "prevPageAria": "Предыдущая страница",
+      "nextPageAria": "Следующая страница",
+      "filterClear": "Сбросить фильтры"
+    },
+    "audit": {
+      "filterAction": "Действие",
+      "filterResource": "Объект",
+      "filterClear": "Сбросить фильтры",
+      "filterAllActions": "Все действия",
+      "filterAllResources": "Все объекты",
+      "title": "Журнал аудита",
+      "entriesCount": "{{count}} записей",
+      "empty": "Записи журнала не найдены",
+      "page": "Стр. {{page}} из {{total}}",
+      "thDate": "Дата",
+      "thUser": "Пользователь",
+      "thAction": "Действие",
+      "thResource": "Объект",
+      "thIp": "IP",
+      "prevPageAria": "Предыдущая страница",
+      "nextPageAria": "Следующая страница",
+      "errorPrefix": "Ошибка журнала аудита",
+      "errorTableMissing": "Таблица audit_logs ещё не создана. Примените последнюю миграцию.",
+      "actionValue": {
+        "create": "Создание",
+        "update": "Обновление",
+        "delete": "Удаление",
+        "publish": "Публикация",
+        "enroll": "Запись",
+        "approve": "Одобрение",
+        "reject": "Отклонение",
+        "grade": "Оценка"
+      },
+      "resourceValue": {
+        "course": "Курс",
+        "module": "Модуль",
+        "chapter": "Глава",
+        "enrollment": "Запись",
+        "certificate": "Сертификат",
+        "assignment_submission": "Сданная работа",
+        "user": "Пользователь"
+      },
+      "filterRange": "Период",
+      "thDetails": "Что изменилось",
+      "pageSizeLabel": "Строк на странице",
+      "detailsEmpty": "Нет деталей",
+      "summaryLabel": "На этой странице"
+    }
+  },
+  "roles": {
+    "student": "Студент",
+    "pendingTeacher": "Преподаватель (ожидает)",
+    "teacher": "Преподаватель",
+    "admin": "Администратор"
+  },
+  "authRegister": {
+    "heading": "Создать аккаунт",
+    "subheading": "Выберите роль и начните обучение",
+    "roleStudent": "Студент",
+    "roleStudentDesc": "Запись на курсы и обучение",
+    "roleTeacher": "Преподаватель",
+    "roleTeacherDesc": "Создание и ведение курсов",
+    "iAmA": "Я",
+    "accountType": "Тип аккаунта",
+    "orRegisterEmail": "или регистрация по email",
+    "fullName": "Полное имя",
+    "fullNamePlaceholder": "Иван Иванов",
+    "confirmPasswordShort": "Подтверждение",
+    "alreadyHaveAccount": "Уже есть аккаунт?",
+    "creatingAccount": "Создание аккаунта...",
+    "createAccount": "Создать аккаунт",
+    "errors": {
+      "fullNameTooShort": "Имя должно содержать минимум 2 символа",
+      "emailInvalid": "Некорректный email",
+      "passwordTooShort": "Пароль должен быть не менее 6 символов",
+      "passwordsDoNotMatch": "Пароли не совпадают",
+      "roleRequired": "Выберите роль"
+    },
+    "duplicate": {
+      "heading": "Аккаунт уже может существовать",
+      "subheading": "Этот email возможно уже зарегистрирован",
+      "bodyExists": "Аккаунт с адресом <strong>{{email}}</strong> возможно уже существует.",
+      "bodyHint": "Попробуйте войти или воспользуйтесь функцией «Забыли пароль», если не помните данные.",
+      "goToSignIn": "Перейти ко входу",
+      "forgotPassword": "Забыли пароль?",
+      "contactSupport": "Связаться с поддержкой"
+    },
+    "success": {
+      "headingDefault": "Проверьте почту",
+      "headingTeacher": "Заявка отправлена",
+      "subheadingDefault": "Почти готово — остался один шаг",
+      "subheadingTeacher": "Ещё один шаг перед началом преподавания",
+      "body": "Мы отправили ссылку подтверждения на <strong>{{email}}</strong>.",
+      "clickLinkToActivate": "Перейдите по ссылке в письме, чтобы активировать аккаунт.",
+      "teacherApprovalBanner": "После подтверждения email ваш преподавательский аккаунт должен быть одобрен администратором. Вход будет доступен сразу, а инструменты создания курсов — после одобрения.",
+      "backToSignIn": "Вернуться ко входу"
+    }
+  },
+  "validation": {
+    "titleRequired": "Укажите название",
+    "titleTooLong": "Название не должно превышать 300 символов",
+    "nameTooShort": "Имя должно содержать минимум 2 символа"
+  },
+  "editor": {
+    "toast": {
+      "imageUploadFailed": "Не удалось загрузить изображение",
+      "audioUrlInvalid": "URL аудио должен начинаться с http(s)"
+    },
+    "prompt": {
+      "addLinkTitle": "Добавить ссылку",
+      "addLinkDescription": "Вставьте или введите URL для ссылки. Оставьте пустым, чтобы удалить существующую ссылку.",
+      "addLinkConfirm": "Применить",
+      "uploadFailedTitle": "Загрузка не удалась",
+      "uploadFailedDescription": "Не удалось загрузить файл. Вставьте URL изображения вручную или отмените.",
+      "uploadFailedConfirm": "Вставить",
+      "youtubeTitle": "Встроить видео YouTube",
+      "youtubeDescription": "Вставьте полный YouTube-URL (https://www.youtube.com/watch?v=…).",
+      "youtubePlaceholder": "https://www.youtube.com/watch?v=…",
+      "youtubeConfirm": "Встроить",
+      "audioTitle": "Встроить аудио",
+      "audioDescription": "Вставьте прямой https://-URL к аудиофайлу (mp3, m4a, ogg).",
+      "audioPlaceholder": "https://example.com/lesson.mp3",
+      "audioConfirm": "Встроить",
+      "imageUrlPlaceholder": "https://…"
+    }
+  },
+  "chapterTypes": {
+    "reading": {
+      "label": "Урок",
+      "description": "Текст, видео, аудио и файлы в одном уроке"
+    },
+    "quiz": {
+      "label": "Тест",
+      "description": "Проверка знаний студентов"
+    },
+    "exam": {
+      "label": "Экзамен",
+      "description": "Финальная аттестация с ограничением попыток"
+    },
+    "assignment": {
+      "label": "Задание",
+      "description": "Работа на проверку преподавателю"
+    }
+  },
+  "courseReadiness": {
+    "title": "Готовность курса",
+    "fix": "Исправить",
+    "allPassed": "Всё отлично — курс готов к публикации.",
+    "summary": "Готово {{passing}} из {{total}}",
+    "criticalCount_one": "Не хватает {{count}} критичного пункта",
+    "criticalCount_few": "Не хватает {{count}} критичных пунктов",
+    "criticalCount_many": "Не хватает {{count}} критичных пунктов",
+    "criticalCount_other": "Не хватает {{count}} критичных пунктов",
+    "severity": {
+      "critical": "Критично",
+      "recommended": "Рекомендуется",
+      "polish": "Полировка"
+    },
+    "publishConfirm": {
+      "title": "Опубликовать с недоработками?",
+      "description_one": "В курсе остался {{count}} критичный пункт, который студенты заметят. Можно опубликовать как есть, но обычно лучше сначала исправить.",
+      "description_few": "В курсе остались {{count}} критичных пункта, которые студенты заметят. Можно опубликовать как есть, но обычно лучше сначала исправить.",
+      "description_many": "В курсе остались {{count}} критичных пунктов, которые студенты заметят. Можно опубликовать как есть, но обычно лучше сначала исправить.",
+      "description_other": "В курсе остались {{count}} критичных пунктов, которые студенты заметят. Можно опубликовать как есть, но обычно лучше сначала исправить.",
+      "confirm": "Всё равно опубликовать"
+    },
+    "checks": {
+      "hasDescription": "У курса есть описание для каталога.",
+      "hasCoverImage": "У курса есть обложка.",
+      "hasEnrollmentWindow": "Установлены даты открытия и закрытия записи.",
+      "hasAtLeastOneModule": "В курсе есть хотя бы один модуль.",
+      "hasMultipleModules": "В курсе два модуля или больше.",
+      "moduleHasChapters": "В \"{{title}}\" есть хотя бы одна глава.",
+      "readingHasContent": "В \"{{title}}\" есть содержимое для чтения.",
+      "quizHasQuestion": "В тесте «{{title}}» есть хотя бы один вопрос.",
+      "examHasQuestion": "В экзамене «{{title}}» есть хотя бы один вопрос.",
+      "quizQuestionsComplete": "Все вопросы в «{{title}}» заполнены (варианты ответа, отметка правильного).",
+      "assignmentHasBrief": "У задания в «{{title}}» есть описание.",
+      "quizWeightNonzero": "Тесты учитываются в итоговой оценке.",
+      "assignmentWeightNonzero": "Задания учитываются в итоговой оценке."
+    }
+  },
+  "dashboard": {
+    "myCourses": "Мои курсы",
+    "myCoursesEmptyTitle": "Пока нет записей",
+    "loadCoursesError": "Не удалось загрузить ваши курсы. Попробуйте обновить страницу.",
+    "noEnrollments": "Вы пока не записаны ни на один курс. Откройте каталог чтобы начать.",
+    "course": "Курс",
+    "grade": "Оценка: {{grade}}",
+    "browseAllCta": "Открыть каталог",
+    "votd": {
+      "eyebrow": "Сегодня",
+      "title": "Стих дня"
+    },
+    "today": {
+      "eyebrow": "Сегодня",
+      "openFull": "Календарь",
+      "empty": "На сегодня нет событий."
+    }
+  },
+  "onboarding": {
+    "student": {
+      "eyebrow": "Добро пожаловать",
+      "title": "Добро пожаловать в Equip, {{name}}",
+      "titleNoName": "Добро пожаловать в Equip",
+      "body": "Тихое место для изучения Библии в собственном темпе. Каждый курс здесь написан живым преподавателем — выберите тему, которая вам близка, и начинайте.",
+      "primaryCta": "Открыть каталог"
+    },
+    "teacher": {
+      "eyebrow": "Добро пожаловать",
+      "title": "Ваш первый курс начинается здесь",
+      "body": "Equip — это ваша учебная площадка. Соберите курс по главам, напишите собственные тесты, выдавайте сертификаты при завершении — и сохраните авторские права на каждое слово.",
+      "primaryCta": "Создать первый курс"
+    }
+  },
+  "completion": {
+    "eyebrow": "Курс завершён",
+    "title": "Вы прошли «{{courseTitle}}»",
+    "body": "Уделите минуту. Когда будете готовы, вы можете запросить сертификат о завершении.",
+    "bodyHasCert": "Уделите минуту. Ваш сертификат — чуть ниже на этой странице, он будет рассмотрен в ближайшее время.",
+    "requestCta": "Запросить сертификат",
+    "continueCta": "Продолжить"
+  },
+  "firstRun": {
+    "privacy": {
+      "eyebrow": "Политика конфиденциальности",
+      "title": "Прежде чем начнём",
+      "intro": "Короткое чтение, чтобы вы знали что Equip хранит, а что нет. Полная версия всегда доступна из футера.",
+      "bullets": {
+        "collect": "Мы храним ваше имя, email, аватар и то что вы делаете на курсах (прогресс, ответы на тесты, сертификаты) — только то, что нужно для работы платформы.",
+        "share": "Мы не продаём ваши данные и не передаём их третьим лицам для рекламы. Анонимная телеметрия помогает нам ловить баги (Datadog).",
+        "control": "Вы можете отредактировать или удалить свой аккаунт в любой момент из профиля."
+      },
+      "checkbox": "Я прочитал(а) и принимаю Политику конфиденциальности и Условия использования",
+      "next": "Продолжить"
+    },
+    "setup": {
+      "eyebrow": "Быстрая настройка",
+      "title": "Сделайте Equip своим",
+      "titleNamed": "Сделайте Equip своим, {{name}}",
+      "intro": "Несколько настроек чтобы всё подготовить. Каждую можно изменить позже из профиля.",
+      "avatar": {
+        "label": "Фото профиля",
+        "change": "Выбрать фото",
+        "tooBig": "Изображение должно быть не больше 2 МБ."
+      },
+      "name": {
+        "label": "Отображаемое имя",
+        "placeholder": "Введите чтобы изменить",
+        "hint": "Подставлено из регистрации — отредактируйте, если хотите другое."
+      },
+      "email": {
+        "label": "Email",
+        "hint": "Чтобы изменить email, зайдите в профиль после настройки."
+      },
+      "theme": {
+        "label": "Тема",
+        "light": "Светлая",
+        "dark": "Тёмная"
+      },
+      "language": {
+        "label": "Язык",
+        "en": "English",
+        "ru": "Русский"
+      },
+      "submit": "Начать",
+      "skip": "Пропустить",
+      "saveFailed": "Не удалось сохранить — значения остались прежними. Можно обновить из профиля.",
+      "saveSuccess": "Настройки сохранены."
+    },
+    "picker": {
+      "eyebrow": "Ваш первый курс",
+      "title": "Выберите курс для старта",
+      "titleNamed": "{{name}}, выберите курс для старта",
+      "intro": "Нажмите на карточку, чтобы добавить её на свою полку. Можно выбрать несколько. Первый из выбранных мы откроем сразу, чтобы вы могли начать.",
+      "modulesCount_one": "{{count}} модуль",
+      "modulesCount_few": "{{count}} модуля",
+      "modulesCount_many": "{{count}} модулей",
+      "modulesCount_other": "{{count}} модулей",
+      "enrollOne": "Записаться и открыть курс",
+      "enrollMany": "Записаться на {{count}} и открыть первый",
+      "browseAll": "Открыть полный каталог",
+      "skip": "Может быть позже",
+      "loadFailed": "Не удалось загрузить каталог — проверьте соединение и попробуйте ещё раз.",
+      "enrollAllFailed": "Не удалось записаться — попробуйте ещё раз или откройте каталог вручную.",
+      "enrollSomeFailed": "Записались на часть выбранного. Остальное откройте из каталога."
+    },
+    "splash": {
+      "eyebrow": "Ваша полка готова",
+      "eyebrowNamed": "Ваша полка готова, {{name}}",
+      "body": "Сделайте вдох. Открываем первую главу."
+    }
+  },
+  "grandTour": {
+    "welcome": {
+      "title": "Добро пожаловать в Equip — давайте быстро всё посмотрим",
+      "body": "Мы вместе пройдёмся по основным частям приложения. Каждый клик «Дальше» переключает на следующий пункт; выйти из тура можно в любой момент."
+    },
+    "headerNav": {
+      "title": "Главные разделы",
+      "body": "Главная, Курсы, Календарь, Сертификаты — переключайтесь между ними отсюда в любой момент. Что бы вы ни открыли, эта панель остаётся."
+    },
+    "headerProfile": {
+      "title": "Ваш аккаунт",
+      "body": "Фото, имя, язык, тема, выход — всё за этой кнопкой. В конце тура мы ещё раз туда заглянем."
+    },
+    "calendar": {
+      "title": "Ваш календарь",
+      "body": "Всё что назначено или должно быть сделано по всем вашим курсам — задания, занятия, события — собирается здесь. Если курсов ещё нет, будет пусто."
+    },
+    "finale": {
+      "title": "Это и есть Equip",
+      "body": "Вы посмотрели основные разделы. Откройте курс из каталога когда будете готовы. На welcome-карточке dashboard'а есть ссылка «Пройти тур», если захочется вернуться к какой-то отдельной странице."
+    }
+  },
+  "tour": {
+    "next": "Дальше",
+    "previous": "Назад",
+    "done": "Готово",
+    "progress": "Шаг {{current}} из {{total}}",
+    "takeATour": "Пройти тур",
+    "student": {
+      "myCourses": {
+        "title": "Ваши курсы",
+        "body": "Каждый курс, на который вы записываетесь, появляется здесь. Откройте, чтобы продолжить с того места, где остановились."
+      },
+      "verse": {
+        "title": "Стих дня",
+        "body": "Новый отрывок каждое утро — тихий способ начать ещё до учебного плана."
+      },
+      "today": {
+        "title": "Календарь на сегодня",
+        "body": "Всё, что назначено или должно быть сделано сегодня — задания, занятия, события — появляется здесь."
+      },
+      "streak": {
+        "title": "Ежедневная практика",
+        "body": "Мягкая серия дней, когда вы занимались в Equip. Пропустить день — не страшно."
+      },
+      "finale": {
+        "title": "Это весь тур",
+        "body": "Открывайте каталог, когда будете готовы записаться. Повторить тур можно в любой момент из welcome-панели."
+      }
+    },
+    "catalog": {
+      "search": {
+        "title": "Найти курс",
+        "body": "Наберите слово из названия или описания — поиск срабатывает по мере ввода. Ничего не нашлось? Просмотрите сетку ниже по темам."
+      },
+      "grid": {
+        "title": "Просмотр по карточкам",
+        "body": "Каждый опубликованный курс — это карточка с названием, кратким описанием и кнопкой записи. Нажмите, чтобы открыть."
+      },
+      "finale": {
+        "title": "Хорошего просмотра",
+        "body": "Найдёте интересное — открывайте и записывайтесь. Ваш dashboard начнёт наполняться курсами."
+      }
+    },
+    "courseDetail": {
+      "header": {
+        "title": "Обзор курса",
+        "body": "Название, описание и кнопка записи — пока вы не записались. После записи здесь же ваш прогресс. Всё, что нужно для старта."
+      },
+      "modules": {
+        "title": "Модули и главы",
+        "body": "Курс разбит на модули, в каждом модуле — главы. Нажмите на главу, чтобы открыть. Заблокированные открываются по мере прохождения."
+      },
+      "finale": {
+        "title": "Готовы — начинайте",
+        "body": "Откройте первую главу. Мы будем следить за вашим прогрессом и автоматически подсказывать следующий шаг."
+      }
+    },
+    "chapter": {
+      "header": {
+        "title": "Где вы находитесь",
+        "body": "Eyebrow показывает на какой вы главе (например, «Глава 2 из 7») и какого она типа — чтение, тест, экзамен или задание."
+      },
+      "body": {
+        "title": "Содержимое главы",
+        "body": "Читайте, проходите тест или сдавайте задание в зависимости от типа главы. Прогресс сохраняется автоматически."
+      },
+      "nav": {
+        "title": "Между главами",
+        "body": "Используйте эти кнопки, чтобы перейти к предыдущей или следующей главе без возврата к списку модуля."
+      },
+      "finale": {
+        "title": "Не торопитесь",
+        "body": "Часов никаких нет. Изучайте главу в своём темпе и нажимайте «Дальше», когда будете готовы."
+      }
+    },
+    "certs": {
+      "header": {
+        "title": "Ваши сертификаты",
+        "body": "Каждый завершённый курс собирается здесь. Одобренные сертификаты имеют уникальный номер для проверки."
+      },
+      "finale": {
+        "title": "Заработайте первый",
+        "body": "Завершите курс и запросите сертификат со страницы курса. После одобрения преподавателем и админом он появится здесь."
+      }
+    },
+    "calendar": {
+      "grid": {
+        "title": "Месяц целиком",
+        "body": "Все события по всем вашим курсам — на одной сетке. Нажмите на день, чтобы увидеть что там запланировано."
+      },
+      "upcoming": {
+        "title": "Что впереди",
+        "body": "Список ближайших событий по порядку, чтобы не листать месяцы туда-сюда."
+      },
+      "finale": {
+        "title": "Будьте в курсе",
+        "body": "Фильтр по курсу сверху — если хотите смотреть только один. Всё остальное обновляется когда преподаватели публикуют события."
+      }
+    },
+    "profile": {
+      "form": {
+        "title": "Ваш профиль",
+        "body": "Здесь меняется имя, аватар и язык. Изменения сохраняются после клика вне поля."
+      },
+      "finale": {
+        "title": "Это всё ваше",
+        "body": "Имя и аватар появляются на сертификатах и видны преподавателям. Язык переключает весь интерфейс."
+      }
+    },
+    "teacher": {
+      "newCourse": {
+        "title": "Создать курс",
+        "body": "Откройте редактор здесь. Соберёте модули, напишете главы и тесты, опубликуете когда будете готовы."
+      },
+      "pendingCerts": {
+        "title": "Сертификаты на проверку",
+        "body": "Студенты, завершившие ваши курсы, запрашивают сертификаты здесь. Одобрить или отклонить — в два клика."
+      },
+      "coursesList": {
+        "title": "Ваши курсы",
+        "body": "Когда появятся материалы, каждый курс будет здесь — с быстрыми переключателями публикации, клонирования, редактирования и аналитики."
+      },
+      "finale": {
+        "title": "Это весь тур",
+        "body": "Повторить тур можно в любой момент из welcome-панели, если захочется освежить."
+      }
+    },
+    "courseEditor": {
+      "header": {
+        "title": "Настройки курса",
+        "body": "Название, описание, обложка, статус публикации — всё редактируется по клику. Сохранение происходит автоматически при клике вне поля."
+      },
+      "tabs": {
+        "title": "Доп. инструменты курса",
+        "body": "Объявления, материалы, события календаря, наборы студентов — все второстепенные инструменты редактирования находятся за этим меню."
+      },
+      "modules": {
+        "title": "Модули и главы",
+        "body": "Добавьте модуль, потом главы внутри него. Перетаскивайте для сортировки. Клик по главе открывает её редактор."
+      },
+      "finale": {
+        "title": "Стройте в своём темпе",
+        "body": "Сохраняйте черновик пораньше, публикуйте когда готовы. Студенты черновики не видят; вы сами в любой момент можете предпросмотреть."
+      }
+    },
+    "moduleEditor": {
+      "title": {
+        "title": "Детали модуля",
+        "body": "Редактируйте название модуля, описание и дедлайн прямо здесь. Изменения сохраняются при клике вне поля."
+      },
+      "chapters": {
+        "title": "Главы в этом модуле",
+        "body": "Добавляйте главы (чтение, тест, экзамен или задание), перетаскивайте для сортировки, кликайте для редактирования. Блокируйте главы, которые должны открываться по порядку."
+      },
+      "finale": {
+        "title": "Модуль в работе",
+        "body": "Когда закончите — возвращайтесь в редактор курса, чтобы увидеть как этот модуль вписывается в общую картину."
+      }
+    },
+    "chapterEditor": {
+      "header": {
+        "title": "Настройки главы",
+        "body": "Название, тип (чтение / тест / экзамен / задание), блокировка. Эти настройки определяют, что увидит студент при открытии."
+      },
+      "blocks": {
+        "title": "Контент-блоки",
+        "body": "Соберите главу из блоков: rich text, файлы, тест или задание. Перетаскивайте для сортировки. Каждый блок сохраняется отдельно."
+      },
+      "finale": {
+        "title": "Автор в своём темпе",
+        "body": "Предпросмотр глазами студента доступен в любой момент со страницы курса. Черновики скрыты пока вы не опубликуете курс."
+      }
+    },
+    "gradebook": {
+      "table": {
+        "title": "Журнал оценок",
+        "body": "Каждый записанный студент — строка; каждая оценочная глава — колонка. Кликните по ячейке, чтобы поставить или обновить оценку."
+      },
+      "finale": {
+        "title": "Оценки уходят к студентам",
+        "body": "Студенты видят оценки на странице курса и в своём dashboard. Обновления отсюда появляются у них сразу."
+      }
+    },
+    "analytics": {
+      "stats": {
+        "title": "Курс с высоты",
+        "body": "Количество записанных, средний прогресс, процент завершения, средняя оценка — главные цифры по этому курсу."
+      },
+      "finale": {
+        "title": "Следите как идёт",
+        "body": "Цифры обновляются в реальном времени по мере записи студентов, прохождения глав и сдачи работ. Обновлять страницу не нужно."
+      }
+    },
+    "studentProgress": {
+      "table": {
+        "title": "Прогресс по студентам",
+        "body": "Каждый записанный студент с его процентом прогресса и последней активностью. Кликните по студенту чтобы открыть детальный вид."
+      },
+      "finale": {
+        "title": "Тренерский вид",
+        "body": "Замечайте студентов которые давно не заходили, или застряли на какой-то главе. Маленький толчок от вас часто решает."
+      }
+    }
+  },
+  "courses": {
+    "academicPrograms": "Учебные программы",
+    "pageTitle": "Каталог курсов",
+    "pageTitleAuthed": "Каталог курсов",
+    "pageSubtitle": "Изучайте семинарские курсы и углубляйте знание Писания",
+    "pageSubtitleAuthed": "Откройте для себя новые курсы и расширьте знания",
+    "searchPlaceholder": "Поиск курсов...",
+    "signInLink": "Войти",
+    "signInToEnroll": "чтобы записаться на курсы",
+    "noCoursesFound": "Курсы не найдены",
+    "noCoursesYet": "Пока нет курсов",
+    "tryDifferentSearch": "Попробуйте другой запрос",
+    "checkBackSoon": "Скоро появятся новые курсы",
+    "loadFailed": "Не удалось загрузить курсы. Попробуйте позже."
+  },
+  "streak": {
+    "eyebrow": "Ежедневно",
+    "title": "Сегодняшняя практика",
+    "weekAriaLabel": "Дни текущей недели",
+    "comingSoon": "Ежедневные задания скоро появятся — это плейсхолдер.",
+    "days": {
+      "mon": "Пн",
+      "tue": "Вт",
+      "wed": "Ср",
+      "thu": "Чт",
+      "fri": "Пт",
+      "sat": "Сб",
+      "sun": "Вс"
+    },
+    "tasksPreview": {
+      "questionOfDay": "Ответить на вопрос дня",
+      "readChapter": "Прочитать сегодняшнюю главу",
+      "memoryVerse": "Повторить памятный стих"
+    }
+  },
+  "dateRangePicker": {
+    "placeholder": "Выберите диапазон",
+    "clear": "Очистить",
+    "prevMonth": "Предыдущий месяц",
+    "nextMonth": "Следующий месяц"
+  },
+  "datePicker": {
+    "placeholder": "Выберите дату"
+  },
+  "dateTimePicker": {
+    "placeholder": "Выберите дату и время",
+    "hourAria": "Часы",
+    "minuteAria": "Минуты"
   }
 }

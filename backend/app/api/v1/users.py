@@ -102,9 +102,11 @@ def update_my_preferences(
 
     previous = current_user.preferred_locale
     current_user.preferred_locale = body.preferred_locale
-    db.commit()
-    db.refresh(current_user)
 
+    # Audit log MUST share a transaction with the locale change. Writing
+    # the audit row before the commit means a single COMMIT either makes
+    # both visible or rolls both back — there is never a window in which
+    # the new locale is durable but the audit trail is missing.
     log_action(
         db,
         current_user.id,
@@ -114,6 +116,9 @@ def update_my_preferences(
         details={"preferred_locale": {"from": previous, "to": body.preferred_locale}},
         request=request,
     )
+
+    db.commit()
+    db.refresh(current_user)
 
     return current_user
 
@@ -130,9 +135,14 @@ def _purge_user(db: Session, uid: UUID) -> None:
     db.query(ChapterProgress).filter(ChapterProgress.user_id == uid).delete(synchronize_session=False)
     db.query(Notification).filter(Notification.user_id == uid).delete(synchronize_session=False)
 
-    attempt_ids = [a.id for a in db.query(QuizAttempt.id).filter(QuizAttempt.user_id == uid).all()]
-    if attempt_ids:
-        db.query(QuizAnswer).filter(QuizAnswer.attempt_id.in_(attempt_ids)).delete(synchronize_session=False)
+    # Delete every QuizAnswer whose parent QuizAttempt belongs to this user,
+    # then the QuizAttempts themselves. The answer delete is a single SQL
+    # round-trip (subquery against QuizAttempt) instead of pulling all
+    # attempt IDs into Python first — same result, one fewer query and no
+    # memory overhead proportional to attempt count.
+    db.query(QuizAnswer).filter(
+        QuizAnswer.attempt_id.in_(db.query(QuizAttempt.id).filter(QuizAttempt.user_id == uid))
+    ).delete(synchronize_session=False)
     db.query(QuizAttempt).filter(QuizAttempt.user_id == uid).delete(synchronize_session=False)
 
     db.query(AssignmentSubmission).filter(AssignmentSubmission.student_id == uid).delete(synchronize_session=False)
@@ -233,7 +243,9 @@ def bulk_update_user_roles(
 def update_user_role(
     user_id: str,
     request: Request,
-    role: str = Query(...),
+    # Validated against ``VALID_ROLES`` below; cap keeps Pydantic from
+    # parsing a multi-MB role string before that allow-list check runs.
+    role: str = Query(..., max_length=32),
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> dict:

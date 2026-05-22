@@ -1,4 +1,5 @@
 import { useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { FileText, Loader2, Paperclip, Upload, X } from "lucide-react"
@@ -20,6 +21,7 @@ interface Props {
  * affected by this block's upload.
  */
 export function FileBlockEditor({ block, chapterId, onUpdated }: Props) {
+  const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const hasFile = Boolean(block.file_bucket && block.file_path)
@@ -34,9 +36,9 @@ export function FileBlockEditor({ block, chapterId, onUpdated }: Props) {
         file_name: name,
       })
       onUpdated(updated)
-      toast({ title: "File uploaded", variant: "success" })
+      toast({ title: t("blockEditor.file.uploaded"), variant: "success" })
     } catch (error: unknown) {
-      const detail = getErrorDetail(error) || "Upload failed"
+      const detail = getErrorDetail(error) || t("blockEditor.file.uploadFailedDefault")
       toast({ title: detail, variant: "destructive" })
     } finally {
       setUploading(false)
@@ -52,19 +54,19 @@ export function FileBlockEditor({ block, chapterId, onUpdated }: Props) {
       })
       onUpdated(updated)
     } catch {
-      toast({ title: "Failed to remove file", variant: "destructive" })
+      toast({ title: t("blockEditor.file.removeFailed"), variant: "destructive" })
     }
   }
 
   return (
     <div className="space-y-2">
       <Label className="text-xs flex items-center gap-1.5">
-        <Paperclip className="h-3.5 w-3.5" />
-        Attached File
+        <Paperclip className="h-3.5 w-3.5" strokeWidth={1.75} />
+        {t("blockEditor.file.attachedFile")}
       </Label>
       {hasFile ? (
         <div className="flex items-center gap-2 rounded-md border px-3 py-2 bg-muted/30">
-          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+          <FileText className="h-4 w-4 text-muted-foreground shrink-0" strokeWidth={1.75} />
           <span className="text-sm flex-1 truncate">
             {block.file_name ?? block.file_path}
           </span>
@@ -75,7 +77,7 @@ export function FileBlockEditor({ block, chapterId, onUpdated }: Props) {
             disabled={uploading}
             className="h-7 text-xs"
           >
-            {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Replace"}
+            {uploading ? <Loader2 className="h-3 w-3 animate-spin" strokeWidth={1.75} /> : t("blockEditor.file.replace")}
           </Button>
           <Button
             size="sm"
@@ -83,9 +85,9 @@ export function FileBlockEditor({ block, chapterId, onUpdated }: Props) {
             onClick={clear}
             disabled={uploading}
             className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-            aria-label="Remove file"
+            aria-label={t("blockEditor.file.removeAria")}
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-3.5 w-3.5" strokeWidth={1.75} />
           </Button>
         </div>
       ) : (
@@ -97,11 +99,11 @@ export function FileBlockEditor({ block, chapterId, onUpdated }: Props) {
           className="w-full border-dashed"
         >
           {uploading ? (
-            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} />
           ) : (
-            <Upload className="h-3.5 w-3.5 mr-1.5" />
+            <Upload className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
           )}
-          {uploading ? "Uploading..." : "Upload a file"}
+          {uploading ? t("blockEditor.file.uploading") : t("blockEditor.file.uploadCta")}
         </Button>
       )}
       <input

@@ -33,10 +33,14 @@ const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0",
+      // `focus:` (not `focus-visible:`) is intentional — Radix moves visual
+      // focus to whichever item is hovered or arrow-keyed onto, so the bg
+      // tracks both mouse and keyboard. `active:` adds a quick press tint
+      // for tactile feedback on touch and mouse-down.
+      "relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground active:bg-accent/80 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0",
       inset && "pl-8",
       destructive &&
-        "text-destructive focus:bg-destructive focus:text-destructive-foreground",
+        "text-destructive focus:bg-destructive focus:text-destructive-foreground active:bg-destructive/85",
       className,
     )}
     {...props}

@@ -1,23 +1,65 @@
 name: Frontend CI
 
+# Triggers on every push to main and every PR targeting main, without a
+# top-level `paths:` filter. See backend-ci.yml for the full rationale —
+# the same always-run + detect-changes + aggregator pattern applies here.
+
 on:
   push:
     branches: [main]
-    paths: ['frontend/**', '.github/workflows/frontend-ci.yml']
   pull_request:
     branches: [main]
-    paths: ['frontend/**', '.github/workflows/frontend-ci.yml']
 
 permissions:
   contents: read
 
 concurrency:
-  group: frontend-ci-${{ github.workflow }}-${{ github.ref }}
+  group: frontend-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  lint-and-build:
+  detect-changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - name: Detect frontend-relevant changes
+        id: filter
+        run: |
+          set -e
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+            if [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+              BASE_SHA="$(git rev-parse "$HEAD_SHA^")"
+            fi
+          fi
+          echo "Comparing $BASE_SHA..$HEAD_SHA"
+          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
+          echo "Changed files:"
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -qE '^frontend/|^\.github/workflows/frontend-ci\.yml$'; then
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+            echo "Frontend changes detected — heavy jobs will run."
+          else
+            echo "frontend=false" >> "$GITHUB_OUTPUT"
+            echo "No frontend changes — heavy jobs will be skipped."
+          fi
+
+  lint-and-build:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: frontend
@@ -28,10 +70,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           # jsdom@>=28 and vitest@>=4 declare engines ^20.19.0 || ^22.12.0 || >=24.0.0,
           # so we need 22.12+ specifically (not just "22" which resolves to 22.0.0).
@@ -59,11 +101,68 @@ jobs:
       - name: Run ESLint (zero warnings)
         run: npx eslint . --report-unused-disable-directives --max-warnings 0
 
+      # Catches drift between en.json and ru.json — every English key must have
+      # a Russian counterpart (with Russian-only `_few`/`_many` plurals allowed).
+      - name: Check i18n locale parity
+        run: npm run i18n:check
+
       - name: Typecheck with TypeScript (strict)
         run: npx tsc --noEmit
 
       - name: Build production bundle
         run: npm run build
 
-      - name: Run unit tests
-        run: npm run test:run
+      - name: Run unit tests with coverage
+        run: npm run test:run -- --coverage
+
+      # Upload to Codecov. Public repos with branch protection require
+      # an explicit token (tokenless uploads are rejected by Codecov when
+      # the target branch is protected); we read it from the
+      # `CODECOV_TOKEN` repo secret. `fail_ci_if_error: false` keeps the
+      # gate stable if Codecov has an outage.
+      - name: Upload coverage to Codecov (frontend)
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6
+        with:
+          files: ./frontend/coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
+  # ---------------------------------------------------------------------------
+  # Required-check aggregator. See the matching block in backend-ci.yml for
+  # the full rationale.
+  # ---------------------------------------------------------------------------
+  frontend-ci-pass:
+    name: Frontend CI Pass
+    needs: [detect-changes, lint-and-build]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify frontend CI outcome
+        run: |
+          set -e
+          DC="${{ needs.detect-changes.result }}"
+          CHANGED="${{ needs.detect-changes.outputs.frontend }}"
+          LB="${{ needs.lint-and-build.result }}"
+          echo "detect-changes=$DC"
+          echo "frontend_changed=$CHANGED"
+          echo "lint-and-build=$LB"
+          # detect-changes is the gate. If it failed (network flake,
+          # checkout error, bad diff) we cannot conclude "no frontend
+          # change" — we'd silently auto-pass a PR that should have
+          # been gated. Fail loudly instead.
+          if [ "$DC" != "success" ]; then
+            echo "::error::detect-changes did not succeed (result=$DC); cannot auto-pass."
+            exit 1
+          fi
+          if [ "$CHANGED" != "true" ]; then
+            echo "No frontend changes — auto-pass."
+            exit 0
+          fi
+          if [ "$LB" != "success" ]; then
+            echo "::error::Frontend CI failed."
+            exit 1
+          fi
+          echo "Frontend CI succeeded."

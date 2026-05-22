@@ -1,9 +1,12 @@
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import PageSpinner from "@/components/ui/PageSpinner"
+import { StaggerChildren } from "@/components/motion"
 import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { toast } from "@/lib/toast"
+import { countWords } from "@/lib/text"
 import type { QuizAttempt } from "@/types"
 import { Loader2 } from "lucide-react"
 import {
@@ -32,6 +35,7 @@ interface QuizTakerProps {
 }
 
 export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerProps) {
+  const { t } = useTranslation()
   const { loading, fetchError, quiz, attempts, setAttempts } = useQuizTaker({
     chapterId,
     quizId,
@@ -47,7 +51,7 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
   if (fetchError) {
     return (
       <p className="text-sm text-destructive py-4 text-center">
-        Failed to load quiz. Please try refreshing the page.
+        {t("quiz.failedLoad")}
       </p>
     )
   }
@@ -59,7 +63,7 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
   const maxAttempts = quiz.max_attempts ?? null
   const attemptsUsed = attempts.filter((a) => !!a.completed_at).length
   const attemptsReached = maxAttempts !== null && attemptsUsed >= maxAttempts
-  const assessmentLabel = quiz.quiz_type === "exam" ? "Exam" : "Quiz"
+  const assessmentTypeKey = quiz.quiz_type === "exam" ? "quiz.exam" : "quiz.quiz"
 
   const setAnswer = (questionId: string, value: QuizAnswer) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }))
@@ -75,8 +79,7 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
       // submit until that's reached so students don't accidentally submit
       // half-written work and burn an attempt on an exam.
       if (q.question_type === "essay" && q.min_words && q.min_words > 0) {
-        const words = text.split(/\s+/).filter(Boolean).length
-        if (words < q.min_words) return false
+        if (countWords(text) < q.min_words) return false
       }
       return true
     }
@@ -112,7 +115,9 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
     } catch (error: unknown) {
       const detail = getErrorDetail(error)
       toast({
-        title: detail || `Failed to submit ${assessmentLabel.toLowerCase()}`,
+        title:
+          detail ||
+          (quiz.quiz_type === "exam" ? t("quiz.submitFailedExam") : t("quiz.submitFailedQuiz")),
         variant: "destructive",
       })
     } finally {
@@ -126,8 +131,20 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
     setResult(null)
   }
 
+  const answeredCount = sortedQuestions.reduce((count, q) => {
+    const a = answers[q.id]
+    if (!a) return count
+    if (q.question_type === "short_answer" || q.question_type === "essay") {
+      return a.text_answer?.trim() ? count + 1 : count
+    }
+    return a.selected_option_id ? count + 1 : count
+  }, 0)
+  const answerProgress = sortedQuestions.length
+    ? Math.round((answeredCount / sortedQuestions.length) * 100)
+    : 0
+
   return (
-    <div className="border rounded-lg bg-card mt-6">
+    <div className="mt-6 rounded-lg border border-border bg-card">
       <QuizHeader
         quiz={quiz}
         questionCount={sortedQuestions.length}
@@ -148,45 +165,67 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
           {!attemptsReached && (
             <div className="px-5 pb-5">
               <Button variant="outline" className="w-full" onClick={handleTryAgain}>
-                Try Again
+                {t("quiz.tryAgain")}
               </Button>
             </div>
           )}
         </>
       ) : (
-        <div className="p-5 space-y-6">
-          {attemptsReached && (
-            <div className="rounded-md border border-border border-l-[3px] border-l-warning bg-warning/10 px-3 py-2 text-xs text-foreground">
-              Maximum attempts reached for this {assessmentLabel.toLowerCase()}.
+        <div className="space-y-6 p-5">
+          {!attemptsReached && (
+            <div className="flex items-center gap-3" aria-hidden>
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground tabular-nums">
+                {t("quiz.progressEyebrow", { current: answeredCount, total: sortedQuestions.length })}
+              </p>
+              <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out"
+                  style={{ width: `${answerProgress}%` }}
+                />
+              </div>
             </div>
           )}
-          {sortedQuestions.map((question, idx) => (
-            <QuestionPrompt
-              key={question.id}
-              question={question}
-              index={idx}
-              answer={answers[question.id]}
-              onAnswer={(val) => setAnswer(question.id, val)}
-            />
-          ))}
+
+          {attemptsReached && (
+            <div className="rounded-md border border-border border-l-stripe border-l-warning bg-warning/10 px-3 py-2 text-xs text-foreground">
+              {t("quiz.maxAttemptsReached", { type: t(assessmentTypeKey).toLowerCase() })}
+            </div>
+          )}
+          <StaggerChildren className="space-y-6">
+            {sortedQuestions.map((question, idx) => (
+              <QuestionPrompt
+                key={question.id}
+                question={question}
+                index={idx}
+                answer={answers[question.id]}
+                onAnswer={(val) => setAnswer(question.id, val)}
+              />
+            ))}
+          </StaggerChildren>
 
           <Button
             onClick={handleSubmit}
             disabled={!allAnswered || submitting || attemptsReached}
-            className="w-full"
+            className={
+              !allAnswered || submitting || attemptsReached
+                ? "w-full"
+                : "w-full bg-cta-glow"
+            }
           >
             {submitting ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Submitting...
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />
+                {t("quiz.submitting")}
               </>
+            ) : quiz.quiz_type === "exam" ? (
+              t("quiz.submitExam")
             ) : (
-              `Submit ${assessmentLabel}`
+              t("quiz.submitQuiz")
             )}
           </Button>
           {!allAnswered && !attemptsReached && (
-            <p className="text-xs text-muted-foreground text-center">
-              Answer all questions to submit
+            <p className="text-center text-xs text-muted-foreground">
+              {t("quiz.answerAll")}
             </p>
           )}
         </div>

@@ -106,6 +106,10 @@ class CourseUpdate(BaseModel):
     description: str | None = Field(None, max_length=10_000)
     image_url: str | None = Field(None, max_length=2048)
     status: Literal["draft", "published"] | None = None
+    # ADR-010: course access mode controls who can ENROLL (public allows
+    # solo self-enroll; institute is admin-invite only). Only admins should
+    # PATCH this — the route's permission check enforces that.
+    access_mode: Literal["public", "institute"] | None = None
     enrollment_start: datetime | None = None
     enrollment_end: datetime | None = None
 
@@ -115,6 +119,9 @@ class CourseResponse(CourseBase):
 
     id: str
     status: str = "draft"
+    # Controls the enroll button on the catalog: ``public`` shows
+    # "Записаться", ``institute`` shows "Доступно только по приглашению".
+    access_mode: Literal["public", "institute"] = "public"
     created_by: UUID | None = None
     created_at: datetime
     updated_at: datetime | None = None
@@ -134,6 +141,7 @@ class CourseSummary(CourseBase):
 
     id: str
     status: str = "draft"
+    access_mode: Literal["public", "institute"] = "public"
     created_by: UUID | None = None
     created_at: datetime
     updated_at: datetime | None = None

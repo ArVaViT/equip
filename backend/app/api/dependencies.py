@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
-from app.models.course import Chapter, Course, Module
+from app.models.course import Chapter, Course, CourseStatus, Module
 from app.models.enrollment import Enrollment
 from app.models.user import User, UserRole
 
@@ -91,6 +91,26 @@ def _resolve_admin_flag(db: Session, teacher: User | str | UUID) -> bool:
     return bool(db.query(User.id).filter(User.id == teacher, User.role == UserRole.ADMIN.value).first())
 
 
+def is_owner_or_admin(entity: object, user: User | None) -> bool:
+    """Non-raising predicate: does ``user`` own ``entity`` (via
+    ``entity.created_by``) or have the admin role?
+
+    Use this when the access rule must influence flow control rather
+    than raise a 403 — listing surfaces that hide unpublished rows from
+    everyone except the owner / admin, branch on visibility. For the
+    raising form, use ``assert_course_owner`` instead.
+
+    ``entity`` is anything with a ``created_by`` attribute; works on
+    Course, Announcement, CourseEvent, etc.
+    """
+    if user is None:
+        return False
+    created_by = getattr(entity, "created_by", None)
+    if created_by is not None and str(created_by) == str(user.id):
+        return True
+    return user.role == UserRole.ADMIN.value
+
+
 def assert_course_owner(
     course: Course,
     user: User,
@@ -103,6 +123,9 @@ def assert_course_owner(
     Callers can override ``detail`` to return a more specific 403 message
     (e.g. "You can only approve certificates for your own courses"), which
     avoids wrapping this call in a ``try/except HTTPException`` block.
+
+    For the non-raising form (predicate that returns ``bool``), use
+    ``is_owner_or_admin``.
     """
     if str(course.created_by) == str(user.id):
         return
@@ -163,7 +186,7 @@ def verify_chapter_access(db: Session, chapter_id: str, user: User) -> Chapter:
         return chapter
     if str(course.created_by) == str(user.id):
         return chapter
-    if course.status != "published":
+    if course.status != CourseStatus.PUBLISHED:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chapter not found")
     enrolled = db.query(Enrollment).filter(Enrollment.user_id == user.id, Enrollment.course_id == course.id).first()
     if not enrolled:

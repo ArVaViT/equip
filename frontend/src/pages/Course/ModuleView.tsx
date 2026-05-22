@@ -1,9 +1,12 @@
-import { useEffect, useState, useMemo } from "react"
+import { useMemo } from "react"
+import { useTranslation } from "react-i18next"
 import { useParams, Link } from "react-router-dom"
+import { formatDateLong } from "@/i18n/format"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
 import { useAuth } from "@/context/useAuth"
+import { useAsyncData } from "@/hooks/useAsyncData"
 import type { Module } from "@/types"
 import { usePageTitle } from "@/hooks/usePageTitle"
 import {
@@ -19,15 +22,22 @@ import {
 import { isGradableChapterType } from "@/lib/chapterTypes"
 import ChapterTypeBadge from "@/components/course/ChapterTypeBadge"
 import { ErrorState } from "@/components/patterns"
+import { Skeleton } from "@/components/ui/skeleton"
+
+// Module ID + course ID come from the route, locale from i18n; bundle the
+// fetcher's deps in one tuple so useAsyncData re-runs at the right edges.
+interface ModuleFetchResult {
+  module: Module | null
+  completedIds: Set<string>
+  invalidLink: boolean
+}
 
 export default function ModuleView() {
+  const { t, i18n } = useTranslation()
   const { courseId, moduleId } = useParams<{ courseId: string; moduleId: string }>()
   const { user } = useAuth()
-  const [module, setModule] = useState<Module | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
 
+<<<<<<< HEAD
   usePageTitle(
     module?.title ? `${module.title}` : undefined
   )
@@ -35,30 +45,38 @@ export default function ModuleView() {
   useEffect(() => {
     let cancelled = false
     const load = async () => {
+=======
+  const { data, loading, error: fetchError } = useAsyncData<ModuleFetchResult>(
+    async (isCancelled) => {
+>>>>>>> upstream/main
       if (!courseId || !moduleId) {
-        setLoading(false)
-        setError("Invalid course or module link.")
-        return
+        return { module: null, completedIds: new Set(), invalidLink: true }
       }
-      setLoading(true)
-      setError(null)
-      try {
-        const [mod, completedChapterIds] = await Promise.all([
-          coursesService.getModule(courseId, moduleId),
-          coursesService.getMyChapterProgress(courseId).catch(() => [] as string[]),
-        ])
-        if (cancelled) return
-        setModule(mod)
-        setCompletedIds(new Set(completedChapterIds))
-      } catch {
-        if (!cancelled) setError("Failed to load module. Please try again.")
-      } finally {
-        if (!cancelled) setLoading(false)
+      const [mod, completedChapterIds] = await Promise.all([
+        coursesService.getModule(courseId, moduleId),
+        coursesService.getMyChapterProgress(courseId).catch(() => [] as string[]),
+      ])
+      if (isCancelled()) {
+        return { module: null, completedIds: new Set(), invalidLink: false }
       }
-    }
-    load()
-    return () => { cancelled = true }
-  }, [courseId, moduleId, user?.id])
+      return { module: mod, completedIds: new Set(completedChapterIds), invalidLink: false }
+    },
+    // ``i18n.language`` so a locale flip re-pulls the localised module
+    // title / chapter list. ``user?.id`` so a sign-in/sign-out re-pulls
+    // the progress overlay.
+    [courseId, moduleId, user?.id, i18n.language],
+  )
+
+  // Localised error string resolved at render time — using a token key
+  // instead of storing the localised text means a locale flip while an
+  // error is on screen updates the message without a refetch.
+  const error: string | null = data?.invalidLink
+    ? t("errors.invalidCourseLink")
+    : fetchError
+      ? t("errors.loadModuleFailed")
+      : null
+  const module = data?.module ?? null
+  const completedIds = data?.completedIds ?? new Set<string>()
 
   const sortedChapters = useMemo(
     () => [...(module?.chapters ?? [])].sort((a, b) => a.order_index - b.order_index),
@@ -71,15 +89,15 @@ export default function ModuleView() {
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-6 max-w-3xl">
-        <div className="h-8 w-28 animate-pulse bg-muted rounded mb-4" />
+        <Skeleton className="h-8 w-28 mb-4" />
         <div className="mb-4 space-y-2">
-          <div className="h-7 w-2/3 animate-pulse bg-muted rounded" />
-          <div className="h-4 w-full animate-pulse bg-muted rounded" />
+          <Skeleton className="h-7 w-2/3" />
+          <Skeleton className="h-4 w-full" />
         </div>
-        <div className="h-2 w-full animate-pulse bg-muted rounded-full mb-4" />
+        <Skeleton className="h-2 w-full rounded-full mb-4" />
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-14 animate-pulse bg-muted rounded-lg" />
+            <Skeleton key={i} className="h-14 rounded-lg" />
           ))}
         </div>
       </div>
@@ -90,11 +108,11 @@ export default function ModuleView() {
     return (
       <div className="container mx-auto px-4">
         <ErrorState
-          icon={<Book />}
-          title={error ?? "Module not found"}
+          icon={<Book strokeWidth={1.75} aria-hidden />}
+          title={error ?? t("toast.moduleNotFound")}
           action={
             <Link to={courseId ? `/courses/${courseId}` : "/"}>
-              <Button variant="outline" size="sm">Back to Course</Button>
+              <Button variant="outline" size="sm">{t("course.backToCourse")}</Button>
             </Link>
           }
         />
@@ -109,13 +127,13 @@ export default function ModuleView() {
     <div className="container mx-auto px-4 py-6 max-w-3xl">
       <Link to={`/courses/${courseId}`}>
         <Button variant="ghost" size="sm" className="mb-4 h-8 text-xs">
-          <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
-          Back to Course
+          <ArrowLeft className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} aria-hidden />
+          {t("course.backToCourse")}
         </Button>
       </Link>
 
       <div className="mb-4">
-        <h1 className="mb-1 text-2xl font-bold tracking-tight text-wrap-safe">{module.title}</h1>
+        <h1 className="mb-1 font-serif text-2xl font-bold tracking-tight text-wrap-safe">{module.title}</h1>
         {module.description && (
           <p className="text-sm leading-relaxed text-muted-foreground text-wrap-safe whitespace-pre-line">
             {module.description}
@@ -129,30 +147,53 @@ export default function ModuleView() {
         const isOverdue = dueDate < now && !allComplete
         const isUpcoming = !isOverdue && dueDate.getTime() - now.getTime() < 3 * 24 * 60 * 60 * 1000
         return (
+<<<<<<< HEAD
           <div className={`mb-4 flex items-center gap-2 rounded-md border px-3 py-2 ${isOverdue
             ? "border-l-[3px] border-l-destructive border-border bg-destructive/5"
             : isUpcoming
               ? "border-l-[3px] border-l-warning border-border bg-warning/10"
               : "border-border bg-muted/50"
             }`}>
+=======
+          <div className={`mb-4 flex items-center gap-2 rounded-md border px-3 py-2 ${
+            isOverdue
+              ? "border-l-stripe border-l-destructive border-border bg-destructive/5"
+              : isUpcoming
+                ? "border-l-stripe border-l-warning border-border bg-warning/10"
+                : "border-border bg-muted/50"
+          }`}>
+>>>>>>> upstream/main
             {isOverdue ? (
-              <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
+              <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" strokeWidth={1.75} aria-hidden />
             ) : (
-              <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
             )}
+<<<<<<< HEAD
             <span className={`text-sm font-medium ${isOverdue ? "text-destructive" : isUpcoming ? "text-warning" : "text-foreground"
               }`}>
               {isOverdue ? "Overdue" : "Due"}: {dueDate.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
               {" at "}{dueDate.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+=======
+            <span className={`text-sm font-medium ${
+              isOverdue ? "text-destructive" : isUpcoming ? "text-warning" : "text-foreground"
+            }`}>
+              {isOverdue ? t("module.overdue") : t("module.due")}:{" "}
+              {formatDateLong(dueDate, {
+                weekday: "short",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+>>>>>>> upstream/main
             </span>
           </div>
         )
       })()}
 
       {allComplete && (
-        <div className="mb-4 flex items-center gap-2 rounded-md border border-border border-l-[3px] border-l-success bg-success/10 px-3 py-2">
-          <CheckCircle className="h-4 w-4 shrink-0 text-success" />
-          <span className="text-sm font-medium text-success">Module complete — well done!</span>
+        <div className="mb-4 flex items-center gap-2 rounded-md border border-border border-l-stripe border-l-success bg-success/10 px-3 py-2">
+          <CheckCircle className="h-4 w-4 shrink-0 text-success" strokeWidth={1.75} aria-hidden />
+          <span className="text-sm font-medium text-success">{t("module.moduleComplete")}</span>
         </div>
       )}
 
@@ -160,7 +201,7 @@ export default function ModuleView() {
         <div className="mb-4">
           <div className="flex items-center justify-between text-xs mb-1">
             <span className="font-medium">
-              {completedCount}/{gradableChapters.length} completed
+              {t("module.completedProgress", { done: completedCount, total: gradableChapters.length })}
             </span>
             <span className="text-muted-foreground">{progressPercent}%</span>
           </div>
@@ -174,9 +215,9 @@ export default function ModuleView() {
       )}
 
       <div>
-        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <Book className="h-4 w-4" />
-          Chapters
+        <h2 className="mb-3 flex items-center gap-2 font-serif text-lg font-semibold tracking-tight">
+          <Book className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          {t("module.chaptersHeading")}
           <span className="text-sm font-normal text-muted-foreground">
             ({sortedChapters.length})
           </span>
@@ -200,15 +241,15 @@ export default function ModuleView() {
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
                     <CardHeader className="pb-2">
-                      <CardTitle className="flex min-w-0 items-center gap-2 text-base">
-                        <Lock className="h-5 w-5 text-muted-foreground/50 shrink-0" />
+                      <CardTitle className="flex min-w-0 items-center gap-2 font-serif text-base font-semibold tracking-tight">
+                        <Lock className="h-5 w-5 text-muted-foreground/50 shrink-0" strokeWidth={1.75} aria-hidden />
                         <span className="min-w-0 flex-1 truncate text-muted-foreground">
                           {chapter.title}
                         </span>
                         {chapter.chapter_type && (
                           <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
                         )}
-                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/30" />
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/30" strokeWidth={1.75} aria-hidden />
                       </CardTitle>
                     </CardHeader>
                   </Card>
@@ -226,14 +267,14 @@ export default function ModuleView() {
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
                     <CardHeader className="pb-2">
-                      <CardTitle className="flex min-w-0 items-center gap-2 text-base">
+                      <CardTitle className="flex min-w-0 items-center gap-2 font-serif text-base font-semibold tracking-tight">
                         {isGradable ? (
                           isCompleted ? (
-                            <CheckCircle className="h-5 w-5 shrink-0 text-success" />
+                            <CheckCircle className="h-5 w-5 shrink-0 text-success" strokeWidth={1.75} aria-hidden />
                           ) : requiresTeacher ? (
-                            <Lock className="h-5 w-5 shrink-0 text-warning" />
+                            <Lock className="h-5 w-5 shrink-0 text-warning" strokeWidth={1.75} aria-hidden />
                           ) : (
-                            <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" />
+                            <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" strokeWidth={1.75} aria-hidden />
                           )
                         ) : null}
                         <span className={`min-w-0 flex-1 truncate ${isCompleted ? "text-muted-foreground" : ""}`}>
@@ -242,7 +283,7 @@ export default function ModuleView() {
                         {chapter.chapter_type && (
                           <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
                         )}
-                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40" />
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40" strokeWidth={1.75} aria-hidden />
                       </CardTitle>
                     </CardHeader>
                   </Card>
@@ -253,7 +294,7 @@ export default function ModuleView() {
         ) : (
           <Card className="border-dashed">
             <CardContent className="py-12 text-center text-muted-foreground text-sm">
-              No chapters added yet
+              {t("module.noChaptersYet")}
             </CardContent>
           </Card>
         )}

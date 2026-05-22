@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
 import type { useConfirm } from "@/components/ui/alert-dialog"
@@ -24,6 +25,7 @@ export function useMaterialsSection(
   courseId: string | undefined,
   confirm: Confirm,
 ): MaterialsSection {
+  const { t } = useTranslation()
   const [materials, setMaterials] = useState<MaterialFile[]>([])
   const [uploading, setUploading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -57,33 +59,36 @@ export function useMaterialsSection(
         await storageService.uploadCourseMaterial(courseId, file)
         setMaterials(await storageService.listCourseMaterials(courseId))
       } catch {
-        toast({ title: "Upload failed", variant: "destructive" })
+        toast({ title: t("teacherEditor.toast.materialUploadFailed"), variant: "destructive" })
       } finally {
         setUploading(false)
         if (inputRef.current) inputRef.current.value = ""
       }
     },
-    [courseId],
+    [courseId, t],
   )
 
-  const download = useCallback(async (m: MaterialFile) => {
-    try {
-      window.open(
-        await storageService.getSignedMaterialUrl(m.path),
-        "_blank",
-        "noopener,noreferrer",
-      )
-    } catch {
-      toast({ title: "Download failed", variant: "destructive" })
-    }
-  }, [])
+  const download = useCallback(
+    async (m: MaterialFile) => {
+      try {
+        window.open(
+          await storageService.getSignedMaterialUrl(m.path),
+          "_blank",
+          "noopener,noreferrer",
+        )
+      } catch {
+        toast({ title: t("teacherEditor.toast.materialDownloadFailed"), variant: "destructive" })
+      }
+    },
+    [t],
+  )
 
   const remove = useCallback(
     async (m: MaterialFile) => {
       const ok = await confirm({
-        title: "Delete material?",
-        description: `"${m.name}" will be permanently removed.`,
-        confirmLabel: "Delete",
+        title: t("teacherEditor.confirm.deleteMaterialTitle"),
+        description: t("teacherEditor.confirm.deleteMaterialDescription", { name: m.name }),
+        confirmLabel: t("teacherEditor.confirm.deleteMaterialAction"),
         tone: "destructive",
       })
       if (!ok) return
@@ -91,10 +96,10 @@ export function useMaterialsSection(
         await storageService.deleteCourseMaterial(m.path)
         setMaterials((p) => p.filter((x) => x.path !== m.path))
       } catch {
-        toast({ title: "Failed", variant: "destructive" })
+        toast({ title: t("teacherEditor.toast.materialDeleteFailed"), variant: "destructive" })
       }
     },
-    [confirm],
+    [confirm, t],
   )
 
   return {

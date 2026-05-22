@@ -1,7 +1,8 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
@@ -24,9 +25,15 @@ from app.schemas.assignment import (
     SubmissionCreate,
     SubmissionResponse,
 )
+from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.audit_service import log_action
 from app.services.course_service import sync_enrollment_progress
 from app.services.notification_service import create_notification
+from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
+from app.services.translation.resolve_for_display import (
+    localize_assignment_rows,
+    resolve_chapter_locale_context,
+)
 
 router = APIRouter(prefix="/assignments", tags=["assignments"])
 
@@ -34,11 +41,37 @@ router = APIRouter(prefix="/assignments", tags=["assignments"])
 @router.get("/chapter/{chapter_id}", response_model=list[AssignmentResponse])
 def list_chapter_assignments(
     chapter_id: str,
+    response: Response,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    source: bool = Query(
+        False,
+        description=(
+            "Bypass the translation overlay and return source-language columns "
+            "(``title``, ``description``). Owner / admin only — used by the "
+            "assignment editor."
+        ),
+    ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     verify_chapter_access(db, chapter_id, current_user)
-    return db.query(Assignment).filter(Assignment.chapter_id == chapter_id).order_by(Assignment.created_at).all()
+    response.headers["Vary"] = "Accept-Language"
+    rows = db.query(Assignment).filter(Assignment.chapter_id == chapter_id).order_by(Assignment.created_at).all()
+    # One chapter→module→course join covers the locale + access decisions
+    # below. Previously this paid 2 round-trips for the common non-source
+    # path.
+    ctx = resolve_chapter_locale_context(db, chapter_id=chapter_id, current_user=current_user)
+    if source:
+        if not ctx.is_owner_or_admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the course owner or an admin can request source-language content",
+            )
+        return rows
+    display_locale: LocaleCode = normalize_locale(accept_language)
+    if ctx.apply_overlay:
+        return localize_assignment_rows(db, rows, display_locale=display_locale, source_locale=ctx.source_locale)
+    return rows
 
 
 @router.post("", response_model=AssignmentResponse, status_code=status.HTTP_201_CREATED)
@@ -52,6 +85,7 @@ def create_assignment(
     db.add(assignment)
     db.commit()
     db.refresh(assignment)
+    reconcile_entity_if_course_published(db, "assignment", assignment)
     return assignment
 
 
@@ -72,6 +106,7 @@ def update_assignment(
 
     db.commit()
     db.refresh(assignment)
+    reconcile_entity_if_course_published(db, "assignment", assignment)
     return assignment
 
 
@@ -89,13 +124,34 @@ def delete_assignment(
     db.commit()
 
 
-@router.post("/{assignment_id}/submit", response_model=SubmissionResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{assignment_id}/submit",
+    response_model=SubmissionResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Student submits an assignment response",
+    responses={
+        201: {
+            "description": "Submission persisted in ``pending`` state; chapter "
+            "progress flipped to completed; enrollment percent re-synced."
+        },
+        403: {"description": "Student is not enrolled in the assignment's course"},
+        404: {"description": "Assignment not found"},
+    },
+)
 def submit_assignment(
     assignment_id: UUID,
     data: SubmissionCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """Submit a response to an assignment.
+
+    Resubmissions are allowed (a student can submit multiple times
+    before the teacher grades). The chapter-progress side effect runs
+    on every submit so a student who later resubmits doesn't lose
+    their "this chapter is done" badge. Grading then happens through
+    ``grade_submission`` on the teacher side.
+    """
     assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
     if not assignment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
@@ -127,11 +183,33 @@ def submit_assignment(
         .first()
     )
     if not progress:
-        progress = ChapterProgress(
-            user_id=current_user.id,
-            chapter_id=assignment.chapter_id,
-        )
-        db.add(progress)
+        # Insert the new ChapterProgress inside a SAVEPOINT so a
+        # concurrent writer (teacher manually marking the chapter
+        # complete at the same instant, or another resubmit) racing us
+        # to the ``uq_progress_user_chapter`` unique key does not abort
+        # the whole submit and lose the AssignmentSubmission row. On
+        # collision we re-fetch the winner row and use it instead.
+        # Mirrors the race fix in ``teacher_complete_chapter`` (#301).
+        try:
+            with db.begin_nested():
+                progress = ChapterProgress(
+                    user_id=current_user.id,
+                    chapter_id=assignment.chapter_id,
+                )
+                db.add(progress)
+                db.flush()
+        except IntegrityError:
+            progress = (
+                db.query(ChapterProgress)
+                .filter(
+                    ChapterProgress.user_id == current_user.id,
+                    ChapterProgress.chapter_id == assignment.chapter_id,
+                )
+                .first()
+            )
+            if progress is None:
+                raise
+
     if not progress.completed:
         progress.completed = True
         progress.completed_at = datetime.now(UTC)

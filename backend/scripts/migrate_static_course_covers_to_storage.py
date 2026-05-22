@@ -82,8 +82,7 @@ def main() -> None:
     with eng.connect() as c:
         rows = c.execute(
             text(
-                "SELECT id::text, image_url FROM courses "
-                "WHERE deleted_at IS NULL AND image_url IS NOT NULL",
+                "SELECT id::text, image_url FROM courses WHERE deleted_at IS NULL AND image_url IS NOT NULL",
             ),
         ).fetchall()
 
@@ -94,7 +93,7 @@ def main() -> None:
             continue
         if not s.startswith("http"):
             # relative URL — need site origin; default to prod frontend
-            base = os.environ.get("LEGACY_COVERS_BASE", "https://biblie-school-frontend.vercel.app")
+            base = os.environ.get("LEGACY_COVERS_BASE", "https://equipbible.com")
             s = f"{base.rstrip('/')}{s if s.startswith('/') else '/' + s}"
 
         print(f"Migrate course {cid[:8]}…  {iurl!r} → Storage")

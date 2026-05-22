@@ -447,6 +447,44 @@ class TestSetPrerequisites:
         )
         assert resp.status_code == 400
 
+    def test_two_node_cycle_rejected(self, client: TestClient, db: Session):
+        # A -> B already exists; attempting to add B -> A would close a
+        # cycle. The self-cycle short-circuit doesn't catch this; only
+        # the DFS through the existing prerequisite graph does.
+        _seed_course(db, course_id="course-a")
+        _seed_course(db, course_id="course-b")
+        # A -> B
+        client.put(
+            "/api/v1/prerequisites/course/course-a",
+            json={"prerequisite_course_ids": ["course-b"]},
+        )
+        # B -> A would close the cycle
+        resp = client.put(
+            "/api/v1/prerequisites/course/course-b",
+            json={"prerequisite_course_ids": ["course-a"]},
+        )
+        assert resp.status_code == 400
+        assert "circular" in resp.json()["detail"].lower()
+
+    def test_three_node_cycle_rejected(self, client: TestClient, db: Session):
+        # A -> B -> C already exists; C -> A would close a 3-node cycle.
+        _seed_course(db, course_id="course-a")
+        _seed_course(db, course_id="course-b")
+        _seed_course(db, course_id="course-c")
+        client.put(
+            "/api/v1/prerequisites/course/course-a",
+            json={"prerequisite_course_ids": ["course-b"]},
+        )
+        client.put(
+            "/api/v1/prerequisites/course/course-b",
+            json={"prerequisite_course_ids": ["course-c"]},
+        )
+        resp = client.put(
+            "/api/v1/prerequisites/course/course-c",
+            json={"prerequisite_course_ids": ["course-a"]},
+        )
+        assert resp.status_code == 400
+
     def test_nonexistent_prerequisite_course(self, client: TestClient, db: Session):
         _seed_course(db, course_id="course-1")
         resp = client.put(
@@ -630,6 +668,14 @@ class TestAuditLog:
         resp = admin_client.get("/api/v1/audit?resource_type=course")
         assert resp.status_code == 200
         assert resp.json()["total"] >= 1
+
+    def test_invalid_user_id_returns_400(self, admin_client: TestClient):
+        # Used to surface a Postgres ``invalid input syntax for type uuid``
+        # 500. Validate up-front and 400 so a typo in the query string is
+        # a recoverable client error.
+        resp = admin_client.get("/api/v1/audit?user_id=not-a-uuid")
+        assert resp.status_code == 400
+        assert "uuid" in resp.json()["detail"].lower()
 
     def test_anon_rejected(self, anon_client: TestClient):
         resp = anon_client.get("/api/v1/audit")

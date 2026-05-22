@@ -1,6 +1,7 @@
 import { useEffect } from "react"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { DateTimePicker } from "@/components/ui/datetime-picker"
 import { Label } from "@/components/ui/label"
 import { Save } from "lucide-react"
 import { Modal } from "@/components/patterns"
@@ -28,6 +29,7 @@ export function EnrollmentModal({
   saving,
   onSave,
 }: Props) {
+  const { t } = useTranslation()
   useEffect(() => {
     if (!open) return
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -41,35 +43,35 @@ export function EnrollmentModal({
   }, [open, onSave])
 
   return (
-    <Modal open={open} onClose={onClose} title="Enrollment Period">
+    <Modal open={open} onClose={onClose} title={t("teacherEditor.modals.enrollment.title")}>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <Label className="font-medium">Status</Label>
+          <Label className="font-medium">{t("teacherEditor.modals.enrollment.status")}</Label>
           <EnrollmentStatusBadge start={start} end={end} />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label className="text-xs">Start</Label>
-            <Input
-              type="datetime-local"
+            <Label className="text-xs">{t("teacherEditor.modals.enrollment.start")}</Label>
+            <DateTimePicker
               value={start}
-              onChange={(e) => onStartChange(e.target.value)}
-              className="text-sm"
+              onChange={onStartChange}
+              className="w-full"
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">End</Label>
-            <Input
-              type="datetime-local"
+            <Label className="text-xs">{t("teacherEditor.modals.enrollment.end")}</Label>
+            <DateTimePicker
               value={end}
-              onChange={(e) => onEndChange(e.target.value)}
-              className="text-sm"
+              onChange={onEndChange}
+              className="w-full"
             />
           </div>
         </div>
         <Button onClick={onSave} disabled={saving} className="w-full">
-          <Save className="h-4 w-4 mr-1.5" />
-          {saving ? "Saving…" : "Save"}
+          <Save className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
+          {saving
+            ? t("teacherEditor.modals.enrollment.saving")
+            : t("teacherEditor.modals.enrollment.save")}
         </Button>
       </div>
     </Modal>

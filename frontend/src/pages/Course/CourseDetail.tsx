@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useParams, Link } from "react-router-dom"
 import { BookOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -7,7 +8,11 @@ import { coursesService } from "@/services/courses"
 import { storageService } from "@/services/storage"
 import { useAuth } from "@/context/useAuth"
 import { toast } from "@/lib/toast"
+<<<<<<< HEAD
 import { usePageTitle } from "@/hooks/usePageTitle"
+=======
+import { ROLES } from "@/types"
+>>>>>>> upstream/main
 import type {
   CalendarEvent,
   Certificate,
@@ -23,6 +28,7 @@ import {
 } from "./detail"
 
 export default function CourseDetail() {
+  const { t, i18n } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const [course, setCourse] = useState<Course | null>(null)
@@ -52,14 +58,51 @@ export default function CourseDetail() {
       setCalendarEvents([])
       setCohorts([])
       try {
-        const [courseData, enrollmentStatus, cohortsData] = await Promise.all([
+        // Speculatively kick off the enrollment-dependent fetches
+        // alongside the first batch when ``user`` is present, so the
+        // request round-trip only happens once. Previously this code
+        // awaited the enrollment-check result, THEN issued the second
+        // batch — a sequential waterfall that doubled the latency for
+        // every enrolled student loading a course page. The
+        // speculative calls cost 4 cheap GETs per non-enrolled
+        // logged-in user (still a single round-trip), but the
+        // enrolled-student path saves an entire RTT. Anonymous users
+        // pay nothing — the user-gated promises short-circuit to
+        // their empty defaults.
+        const enrolled = user
+          ? coursesService
+              .getEnrollmentStatus(id)
+              .catch(() => ({ enrolled: false, enrollment: null as Enrollment | null }))
+          : Promise.resolve({ enrolled: false, enrollment: null as Enrollment | null })
+        const certP = user
+          ? coursesService.getCourseCertificate(id).catch(() => null)
+          : Promise.resolve(null)
+        const progressP = user
+          ? coursesService.getMyChapterProgress(id).catch(() => [] as string[])
+          : Promise.resolve([] as string[])
+        const matsP = user
+          ? storageService.listCourseMaterials(id).catch(() => [] as CourseMaterial[])
+          : Promise.resolve([] as CourseMaterial[])
+        const evtsP = user
+          ? coursesService.getCalendarEvents(id).catch(() => [] as CalendarEvent[])
+          : Promise.resolve([] as CalendarEvent[])
+
+        const [courseData, enrollmentStatus, cohortsData, cert, progress, mats, evts] = await Promise.all([
           coursesService.getCourse(id),
+<<<<<<< HEAD
           user
             ? coursesService
               .getEnrollmentStatus(id)
               .catch(() => ({ enrolled: false, enrollment: null as Enrollment | null }))
             : Promise.resolve({ enrolled: false, enrollment: null as Enrollment | null }),
+=======
+          enrolled,
+>>>>>>> upstream/main
           coursesService.getCourseCohorts(id).catch(() => [] as Cohort[]),
+          certP,
+          progressP,
+          matsP,
+          evtsP,
         ])
         if (cancelled) return
         setCourse(courseData)
@@ -67,20 +110,13 @@ export default function CourseDetail() {
         const match = enrollmentStatus.enrolled ? enrollmentStatus.enrollment : null
         if (match) {
           setEnrollment(match)
-          const [cert, progress, mats, evts] = await Promise.all([
-            coursesService.getCourseCertificate(id).catch(() => null),
-            coursesService.getMyChapterProgress(id).catch(() => [] as string[]),
-            storageService.listCourseMaterials(id).catch(() => [] as CourseMaterial[]),
-            coursesService.getCalendarEvents(id).catch(() => [] as CalendarEvent[]),
-          ])
-          if (cancelled) return
           setCertificate(cert)
           setCompletedChapterIds(new Set(progress))
           setMaterials(mats)
           setCalendarEvents(evts)
         }
       } catch {
-        if (!cancelled) setError("Failed to load course. Please try again.")
+        if (!cancelled) setError(t("errors.loadCourseFailed"))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -89,10 +125,15 @@ export default function CourseDetail() {
     return () => {
       cancelled = true
     }
-    // Reload only when user identity changes — Supabase rewrites `user` on
-    // every TOKEN_REFRESHED tick, which would otherwise refetch mid-session.
+    // Reload only when course id, user identity, or active locale
+    // change. Plain ``user`` would refetch on every Supabase
+    // TOKEN_REFRESHED tick (the auth context rewrites the object);
+    // ``i18n.language`` covers the locale-flip case so the course
+    // title / module names / chapter list re-pull localised values
+    // without a hard reload. ``t`` is intentionally NOT in the dep
+    // list — its reference change is implementation-defined.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, user?.id])
+  }, [id, user?.id, i18n.language])
 
   const doEnroll = async (cohortId?: string) => {
     if (!id || !user) return
@@ -110,9 +151,9 @@ export default function CourseDetail() {
       setCompletedChapterIds(new Set(progress))
       setMaterials(mats)
       setCalendarEvents(evts)
-      toast({ title: "Enrolled successfully", variant: "success" })
+      toast({ title: t("toast.enrolledSuccess"), variant: "success" })
     } catch {
-      toast({ title: "Failed to enroll. Please try again.", variant: "destructive" })
+      toast({ title: t("toast.enrolledFailed"), variant: "destructive" })
     } finally {
       setEnrolling(false)
     }
@@ -126,12 +167,12 @@ export default function CourseDetail() {
     return (
       <div className="container mx-auto px-4">
         <ErrorState
-          icon={<BookOpen />}
-          title={error ?? "Course not found"}
+          icon={<BookOpen strokeWidth={1.75} />}
+          title={error ?? t("toast.courseNotFound")}
           action={
-            <Link to="/">
+            <Link to="/courses">
               <Button variant="outline" size="sm">
-                Back to Courses
+                {t("course.backToCourses")}
               </Button>
             </Link>
           }
@@ -140,7 +181,7 @@ export default function CourseDetail() {
     )
   }
 
-  const isOwner = user?.id === course.created_by || user?.role === "admin"
+  const isOwner = user?.id === course.created_by || user?.role === ROLES.ADMIN
   const sortedModules = [...(course.modules ?? [])].sort((a, b) => {
     const da = a.due_date ? new Date(a.due_date).getTime() : Infinity
     const db = b.due_date ? new Date(b.due_date).getTime() : Infinity

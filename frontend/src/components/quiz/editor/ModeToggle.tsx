@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { GraduationCap } from "lucide-react"
 
 export type QuizEditorMode = "edit" | "review"
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function ModeToggle({ mode, setMode }: Props) {
+  const { t } = useTranslation()
   return (
     <div className="flex items-center rounded-md border bg-background p-0.5 text-xs">
       <button
@@ -19,7 +21,7 @@ export function ModeToggle({ mode, setMode }: Props) {
             : "text-muted-foreground hover:text-foreground"
         }`}
       >
-        Edit
+        {t("quizEditor.modeToggle.edit")}
       </button>
       <button
         type="button"
@@ -30,8 +32,8 @@ export function ModeToggle({ mode, setMode }: Props) {
             : "text-muted-foreground hover:text-foreground"
         }`}
       >
-        <GraduationCap className="h-3.5 w-3.5" />
-        Submissions
+        <GraduationCap className="h-3.5 w-3.5" strokeWidth={1.75} />
+        {t("quizEditor.modeToggle.submissions")}
       </button>
     </div>
   )

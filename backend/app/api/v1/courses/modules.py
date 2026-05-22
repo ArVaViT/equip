@@ -14,6 +14,7 @@ from app.services.course_service import (
     get_module,
     update_module,
 )
+from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 
 from ._router import router
 
@@ -30,7 +31,9 @@ def create_new_module(
     db: Session = Depends(get_db),
 ) -> Module:
     verify_course_owner(db, course_id, teacher.id, allow_admin=False)
-    return create_module(db, course_id, data)
+    created = create_module(db, course_id, data)
+    reconcile_entity_if_course_published(db, "module", created)
+    return created
 
 
 @router.put("/{course_id}/modules/{module_id}", response_model=ModuleResponse)
@@ -48,7 +51,9 @@ def update_existing_module(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Module '{module_id}' not found in course '{course_id}'",
         )
-    return update_module(db, module, data)
+    updated = update_module(db, module, data)
+    reconcile_entity_if_course_published(db, "module", updated)
+    return updated
 
 
 @router.delete("/{course_id}/modules/{module_id}", status_code=status.HTTP_204_NO_CONTENT)

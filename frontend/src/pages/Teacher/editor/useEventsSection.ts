@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { coursesService } from "@/services/courses"
 import { toast } from "@/lib/toast"
+import { isoToLocalInput, localInputToIso } from "@/i18n/format"
 import type { CourseEvent } from "@/types"
 import type { useConfirm } from "@/components/ui/alert-dialog"
 import { EMPTY_EVENT_FORM, type EventFormState } from "./types"
@@ -27,6 +29,7 @@ export function useEventsSection(
   courseId: string | undefined,
   confirm: Confirm,
 ): EventsSection {
+  const { t } = useTranslation()
   const [events, setEvents] = useState<CourseEvent[]>([])
   const [form, setForm] = useState<EventFormState>(EMPTY_EVENT_FORM)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -58,7 +61,7 @@ export function useEventsSection(
       title: ev.title,
       description: ev.description ?? "",
       event_type: ev.event_type,
-      event_date: ev.event_date.slice(0, 16),
+      event_date: isoToLocalInput(ev.event_date),
     })
     setEditingId(ev.id)
   }, [])
@@ -66,48 +69,53 @@ export function useEventsSection(
   const save = useCallback(async () => {
     if (!courseId || !form.title.trim() || !form.event_date) return
     setSaving(true)
+    const isoDate = localInputToIso(form.event_date)
+    if (!isoDate) {
+      setSaving(false)
+      return
+    }
     const payload = {
       title: form.title.trim(),
       description: form.description.trim() || undefined,
       event_type: form.event_type,
-      event_date: new Date(form.event_date).toISOString(),
+      event_date: isoDate,
     }
     try {
       if (editingId) {
         const updated = await coursesService.updateCourseEvent(courseId, editingId, payload)
         setEvents((p) => p.map((ev) => (ev.id === editingId ? updated : ev)))
-        toast({ title: "Event updated", variant: "success" })
+        toast({ title: t("teacherEditor.toast.eventUpdated"), variant: "success" })
       } else {
         const created = await coursesService.createCourseEvent(courseId, payload)
         setEvents((p) => [...p, created])
-        toast({ title: "Event created", variant: "success" })
+        toast({ title: t("teacherEditor.toast.eventCreated"), variant: "success" })
       }
       resetForm()
     } catch {
-      toast({ title: "Failed to save event", variant: "destructive" })
+      toast({ title: t("teacherEditor.toast.eventSaveFailed"), variant: "destructive" })
     } finally {
       setSaving(false)
     }
-  }, [courseId, form, editingId, resetForm])
+  }, [courseId, form, editingId, resetForm, t])
 
   const remove = useCallback(
     async (id: string) => {
       if (!courseId) return
       const ok = await confirm({
-        title: "Delete this event?",
-        confirmLabel: "Delete",
+        title: t("teacherEditor.confirm.deleteEventTitle"),
+        confirmLabel: t("teacherEditor.confirm.deleteEventAction"),
         tone: "destructive",
       })
       if (!ok) return
       try {
         await coursesService.deleteCourseEvent(courseId, id)
         setEvents((p) => p.filter((e) => e.id !== id))
-        toast({ title: "Event deleted", variant: "success" })
+        toast({ title: t("teacherEditor.toast.eventDeleted"), variant: "success" })
       } catch {
-        toast({ title: "Failed", variant: "destructive" })
+        toast({ title: t("teacherEditor.toast.eventDeleteFailed"), variant: "destructive" })
       }
     },
-    [courseId, confirm],
+    [courseId, confirm, t],
   )
 
   return {

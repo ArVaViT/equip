@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import { BookOpenCheck, GraduationCap, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,14 +11,14 @@ import type { FormState } from "./useRegister"
 const ROLES = [
   {
     value: "student" as const,
-    label: "Student",
-    description: "Enroll in courses and learn",
+    labelKey: "authRegister.roleStudent",
+    descKey: "authRegister.roleStudentDesc",
     icon: GraduationCap,
   },
   {
     value: "teacher" as const,
-    label: "Teacher",
-    description: "Create and manage courses",
+    labelKey: "authRegister.roleTeacher",
+    descKey: "authRegister.roleTeacherDesc",
     icon: BookOpenCheck,
   },
 ]
@@ -48,10 +49,11 @@ export function RegisterForm({
   onSubmit,
   onGoogleSignUp,
 }: Props) {
+  const { t } = useTranslation()
   return (
     <AuthLayout
-      heading="Create an account"
-      subheading="Choose your role and start learning today"
+      heading={t("authRegister.heading")}
+      subheading={t("authRegister.subheading")}
     >
       <div className="space-y-6 animate-fade-in">
         {serverError && (
@@ -66,19 +68,20 @@ export function RegisterForm({
         <Button
           type="button"
           variant="outline"
-          className="w-full h-11 font-medium rounded-md"
+          size="lg"
+          className="w-full font-medium rounded-md"
           onClick={onGoogleSignUp}
           disabled={googleLoading || loading}
         >
           {googleLoading ? (
             <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Connecting...
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />
+              {t("auth.connecting")}
             </>
           ) : (
             <>
               <GoogleIcon className="h-4 w-4 mr-2.5" />
-              Continue with Google
+              {t("auth.continueWithGoogle")}
             </>
           )}
         </Button>
@@ -89,7 +92,7 @@ export function RegisterForm({
           </div>
           <div className="relative flex justify-center text-xs uppercase">
             <span className="bg-background px-3 text-muted-foreground">
-              or register with email
+              {t("authRegister.orRegisterEmail")}
             </span>
           </div>
         </div>
@@ -102,10 +105,10 @@ export function RegisterForm({
           className="space-y-4"
         >
           <div className="space-y-2">
-            <Label>I am a</Label>
+            <Label>{t("authRegister.iAmA")}</Label>
             <div
               role="radiogroup"
-              aria-label="Account type"
+              aria-label={t("authRegister.accountType")}
               className="grid grid-cols-2 gap-3"
             >
               {ROLES.map((r) => {
@@ -134,10 +137,10 @@ export function RegisterForm({
                         selected ? "text-primary" : ""
                       }`}
                     >
-                      {r.label}
+                      {t(r.labelKey)}
                     </span>
-                    <span className="text-[11px] text-muted-foreground text-center leading-tight">
-                      {r.description}
+                    <span className="text-xs text-muted-foreground text-center leading-tight">
+                      {t(r.descKey)}
                     </span>
                   </button>
                 )
@@ -147,12 +150,12 @@ export function RegisterForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="fullName">Full Name</Label>
+            <Label htmlFor="fullName">{t("authRegister.fullName")}</Label>
             <Input
               id="fullName"
-              placeholder="John Doe"
+              placeholder={t("authRegister.fullNamePlaceholder")}
               autoComplete="name"
-              className="h-11"
+              fieldSize="lg"
               value={form.full_name}
               onChange={(e) => onChange("full_name", e.target.value)}
               aria-invalid={!!errors.full_name}
@@ -171,13 +174,13 @@ export function RegisterForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("auth.email")}</Label>
             <Input
               id="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={t("auth.emailPlaceholder")}
               autoComplete="email"
-              className="h-11"
+              fieldSize="lg"
               value={form.email}
               onChange={(e) => onChange("email", e.target.value)}
               aria-invalid={!!errors.email}
@@ -196,12 +199,12 @@ export function RegisterForm({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("auth.password")}</Label>
               <Input
                 id="password"
                 type="password"
                 autoComplete="new-password"
-                className="h-11"
+                fieldSize="lg"
                 value={form.password}
                 onChange={(e) => onChange("password", e.target.value)}
                 aria-invalid={!!errors.password}
@@ -218,12 +221,12 @@ export function RegisterForm({
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm</Label>
+              <Label htmlFor="confirmPassword">{t("authRegister.confirmPasswordShort")}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 autoComplete="new-password"
-                className="h-11"
+                fieldSize="lg"
                 value={form.confirmPassword}
                 onChange={(e) => onChange("confirmPassword", e.target.value)}
                 aria-invalid={!!errors.confirmPassword}
@@ -245,27 +248,28 @@ export function RegisterForm({
 
           <Button
             type="submit"
-            className="w-full h-11 font-medium rounded-md"
+            size="lg"
+            className="bg-cta-glow w-full font-medium rounded-md"
             disabled={loading}
           >
             {loading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Creating account...
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />
+                {t("authRegister.creatingAccount")}
               </>
             ) : (
-              "Create Account"
+              t("authRegister.createAccount")
             )}
           </Button>
         </form>
 
         <p className="text-sm text-center text-muted-foreground">
-          Already have an account?{" "}
+          {t("authRegister.alreadyHaveAccount")}{" "}
           <Link
             to="/login"
             className="text-primary font-medium hover:text-primary/80 transition-colors"
           >
-            Sign in
+            {t("auth.signIn")}
           </Link>
         </p>
       </div>

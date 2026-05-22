@@ -27,8 +27,6 @@ export const CHAPTER_TYPES = [
 export type ChapterType = (typeof CHAPTER_TYPES)[number]
 
 type ChapterTypeMeta = {
-  label: string
-  description: string
   icon: LucideIcon
   /** Tailwind pill classes (editorial: muted surface, neutral text). */
   color: string
@@ -41,35 +39,15 @@ type ChapterTypeMeta = {
 // light/dark and matches the rest of the token-based design system.
 const PILL = "bg-muted text-muted-foreground"
 
+// ``label`` and ``description`` are NOT on this map — they're rendered via
+// the i18n keys under ``chapterTypes.{reading|quiz|exam|assignment}`` so
+// RU and EN stay in lockstep. The map is only the locale-neutral icon +
+// style metadata.
 export const CHAPTER_TYPE_META: Record<ChapterType, ChapterTypeMeta> = {
-  reading: {
-    label: "Lesson",
-    description: "Mix text, video, audio, files and more into a single lesson",
-    icon: FileText,
-    color: PILL,
-    badgeColor: PILL,
-  },
-  quiz: {
-    label: "Quiz",
-    description: "Test student knowledge",
-    icon: HelpCircle,
-    color: PILL,
-    badgeColor: PILL,
-  },
-  exam: {
-    label: "Exam",
-    description: "Final assessment with attempts limit",
-    icon: GraduationCap,
-    color: PILL,
-    badgeColor: PILL,
-  },
-  assignment: {
-    label: "Assignment",
-    description: "Submit work for grading",
-    icon: ClipboardList,
-    color: PILL,
-    badgeColor: PILL,
-  },
+  reading: { icon: FileText, color: PILL, badgeColor: PILL },
+  quiz: { icon: HelpCircle, color: PILL, badgeColor: PILL },
+  exam: { icon: GraduationCap, color: PILL, badgeColor: PILL },
+  assignment: { icon: ClipboardList, color: PILL, badgeColor: PILL },
 }
 
 /** Chapter types whose completion gates the next chapter when ``is_locked`` is on. */
@@ -106,4 +84,22 @@ export function getChapterTypeMeta(raw: string | null | undefined): ChapterTypeM
 
 export function isGradableChapterType(raw: string | null | undefined): boolean {
   return GRADABLE_CHAPTER_TYPES.has(normalizeChapterType(raw))
+}
+
+// Static i18n key lookups so callers ``t(CHAPTER_TYPE_LABEL_KEYS[type])`` —
+// instead of ``t(`chapterTypes.${type}.label`)`` — and the keyCoverage
+// test can see every key as a literal at scan time. Per docs/I18N.md:
+// "Resist the temptation to write t(`prefix.${variable}`)".
+export const CHAPTER_TYPE_LABEL_KEYS: Record<ChapterType, string> = {
+  reading: "chapterTypes.reading.label",
+  quiz: "chapterTypes.quiz.label",
+  exam: "chapterTypes.exam.label",
+  assignment: "chapterTypes.assignment.label",
+}
+
+export const CHAPTER_TYPE_DESCRIPTION_KEYS: Record<ChapterType, string> = {
+  reading: "chapterTypes.reading.description",
+  quiz: "chapterTypes.quiz.description",
+  exam: "chapterTypes.exam.description",
+  assignment: "chapterTypes.assignment.description",
 }

@@ -1,25 +1,21 @@
 import api from "./api"
-import { cacheGet, cacheSet, cacheInvalidate, cacheInvalidatePrefix } from "@/lib/cache"
+import { cached, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
 import type { CalendarEvent, CourseEvent } from "@/types"
 
 export const calendarService = {
   async getCalendarEvents(courseId?: string): Promise<CalendarEvent[]> {
-    const key = `calendar:events:${courseId ?? "all"}`
-    const cached = cacheGet<CalendarEvent[]>(key)
-    if (cached) return cached
-    const params = courseId ? { course_id: courseId } : undefined
-    const response = await api.get<CalendarEvent[]>("/calendar/events", { params })
-    cacheSet(key, response.data, 60 * 1000)
-    return response.data
+    return cached(`calendar:events:${courseId ?? "all"}`, CACHE_TTL.ONE_MINUTE, async () => {
+      const params = courseId ? { course_id: courseId } : undefined
+      const response = await api.get<CalendarEvent[]>("/calendar/events", { params })
+      return response.data
+    })
   },
 
   async getCourseEvents(courseId: string): Promise<CourseEvent[]> {
-    const key = `calendar:course-events:${courseId}`
-    const cached = cacheGet<CourseEvent[]>(key)
-    if (cached) return cached
-    const response = await api.get<CourseEvent[]>(`/courses/${courseId}/events`)
-    cacheSet(key, response.data, 2 * 60 * 1000)
-    return response.data
+    return cached(`calendar:course-events:${courseId}`, CACHE_TTL.TWO_MINUTES, async () => {
+      const response = await api.get<CourseEvent[]>(`/courses/${courseId}/events`)
+      return response.data
+    })
   },
 
   async createCourseEvent(

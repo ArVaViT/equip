@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ChevronDown, ChevronRight, Loader2, Pencil, Trash2 } from "lucide-react"
@@ -12,6 +13,7 @@ import {
   formStateToPayload,
   type AssignmentFormState,
 } from "./types"
+import { formatDate } from "@/i18n/format"
 
 interface Props {
   assignment: Assignment
@@ -24,6 +26,7 @@ interface Props {
  * list of student submissions (lazy-loaded on first expand).
  */
 export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const [submissions, setSubmissions] = useState<AssignmentSubmission[]>([])
   const [loadingSubs, setLoadingSubs] = useState(false)
@@ -54,7 +57,7 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
 
   const handleUpdate = async () => {
     if (!form.title.trim()) {
-      toast({ title: "Assignment title is required", variant: "destructive" })
+      toast({ title: t("assignmentEditor.validation.titleRequired"), variant: "destructive" })
       return
     }
     setUpdating(true)
@@ -65,9 +68,9 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
       )
       onUpdate(updated)
       setEditing(false)
-      toast({ title: "Assignment updated", variant: "success" })
+      toast({ title: t("assignmentEditor.toast.updated"), variant: "success" })
     } catch {
-      toast({ title: "Failed to update assignment", variant: "destructive" })
+      toast({ title: t("assignmentEditor.toast.updateFailed"), variant: "destructive" })
     } finally {
       setUpdating(false)
     }
@@ -88,16 +91,18 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
         }}
       >
         {expanded ? (
-          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" strokeWidth={1.75} />
         ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" strokeWidth={1.75} />
         )}
         <div className="flex-1 min-w-0">
           <span className="text-sm font-medium">{assignment.title}</span>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span>Max: {assignment.max_score} pts</span>
+            <span>{t("assignmentEditor.item.maxPts", { max: assignment.max_score })}</span>
             {assignment.due_date && (
-              <span>Due: {new Date(assignment.due_date).toLocaleDateString()}</span>
+              <span>
+                {t("assignmentEditor.item.due", { date: formatDate(assignment.due_date) })}
+              </span>
             )}
           </div>
         </div>
@@ -109,8 +114,9 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
             e.stopPropagation()
             startEdit()
           }}
+          aria-label={t("assignmentEditor.item.editAria", { title: assignment.title })}
         >
-          <Pencil className="h-3.5 w-3.5" />
+          <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />
         </Button>
         <Button
           variant="ghost"
@@ -120,8 +126,9 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
             e.stopPropagation()
             onDelete(assignment.id)
           }}
+          aria-label={t("assignmentEditor.item.deleteAria", { title: assignment.title })}
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
         </Button>
       </div>
 
@@ -146,16 +153,16 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
 
           {loadingSubs ? (
             <div className="flex items-center justify-center py-6">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" strokeWidth={1.75} />
             </div>
           ) : submissions.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
-              No submissions yet.
+              {t("assignmentEditor.item.noSubmissions")}
             </p>
           ) : (
             <div className="space-y-3 mt-3">
               <h4 className="text-xs font-semibold text-muted-foreground">
-                Submissions ({submissions.length})
+                {t("assignmentEditor.item.submissionsCount", { count: submissions.length })}
               </h4>
               {submissions.map((sub) => (
                 <SubmissionGrader

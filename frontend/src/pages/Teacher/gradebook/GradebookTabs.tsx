@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { TrendingUp, LayoutGrid } from "lucide-react"
 import type { ActiveTab } from "./types"
 
@@ -8,19 +9,20 @@ interface Props {
 
 /** Two-button tab switcher for "Summary Grades" vs "Grade Table". */
 export function GradebookTabs({ active, onChange }: Props) {
+  const { t } = useTranslation()
   return (
     <div className="flex gap-1 mb-6 border-b">
       <TabButton
         active={active === "summary"}
         onClick={() => onChange("summary")}
-        icon={<TrendingUp className="h-4 w-4" />}
-        label="Summary Grades"
+        icon={<TrendingUp className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
+        label={t("gradebook.summaryTab")}
       />
       <TabButton
         active={active === "table"}
         onClick={() => onChange("table")}
-        icon={<LayoutGrid className="h-4 w-4" />}
-        label="Grade Table"
+        icon={<LayoutGrid className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
+        label={t("gradebook.tableTab")}
       />
     </div>
   )

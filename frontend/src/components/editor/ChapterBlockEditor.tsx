@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
 import { coursesService } from "@/services/courses"
@@ -7,6 +8,7 @@ import { toast } from "@/lib/toast"
 import type { ChapterBlock } from "@/types"
 import { useConfirm } from "@/components/ui/alert-dialog"
 import { AddBlockMenu, BlockRow, type BlockType } from "./blocks"
+import { BLOCK_TYPE_LABEL_KEYS } from "./blocks/types"
 
 interface Props {
   chapterId: string
@@ -20,6 +22,7 @@ interface Props {
  */
 export default function ChapterBlockEditor({ chapterId }: Props) {
   const confirm = useConfirm()
+  const { t } = useTranslation()
   const [blocks, setBlocks] = useState<ChapterBlock[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -30,20 +33,28 @@ export default function ChapterBlockEditor({ chapterId }: Props) {
   const load = useCallback(
     async (signal?: { cancelled: boolean }) => {
       try {
-        const data = await coursesService.getChapterBlocks(chapterId)
+        // Editor-only fetch so the rich-text editor binds to the source
+        // `content` (TipTap HTML) regardless of UI locale. A teacher in
+        // EN UI editing their RU course would otherwise see the EN
+        // translation in the editor and a PATCH would overwrite the
+        // source `content` column with English HTML.
+        const data = await coursesService.getChapterBlocksForEdit(chapterId)
         if (signal?.cancelled) return
         setBlocks(data.sort((a, b) => a.order_index - b.order_index))
       } catch (error: unknown) {
         if (signal?.cancelled) return
         const detail = getErrorDetail(error)
         if (detail) {
-          toast({ title: `Failed to load blocks: ${detail}`, variant: "destructive" })
+          toast({
+            title: t("blockEditor.loadFailed", { detail }),
+            variant: "destructive",
+          })
         }
       } finally {
         if (!signal?.cancelled) setLoading(false)
       }
     },
-    [chapterId],
+    [chapterId, t],
   )
 
   useEffect(() => {
@@ -63,10 +74,16 @@ export default function ChapterBlockEditor({ chapterId }: Props) {
       })
       setBlocks((prev) => [...prev, newBlock])
       setExpandedId(newBlock.id)
-      toast({ title: `${type} block added`, variant: "success" })
+      toast({
+        title: t("blockEditor.addedSuccess", { type: t(BLOCK_TYPE_LABEL_KEYS[type]) }),
+        variant: "success",
+      })
     } catch (error: unknown) {
-      const detail = getErrorDetail(error) || "Unknown error"
-      toast({ title: `Failed to add block: ${detail}`, variant: "destructive" })
+      const detail = getErrorDetail(error) || t("chapterEditor.unknownError")
+      toast({
+        title: t("blockEditor.addFailed", { detail }),
+        variant: "destructive",
+      })
     } finally {
       setAdding(false)
     }
@@ -78,8 +95,8 @@ export default function ChapterBlockEditor({ chapterId }: Props) {
 
   const deleteBlock = async (id: string) => {
     const ok = await confirm({
-      title: "Delete this block?",
-      confirmLabel: "Delete",
+      title: t("blockEditor.confirmDelete.title"),
+      confirmLabel: t("blockEditor.confirmDelete.confirm"),
       tone: "destructive",
     })
     if (!ok) return
@@ -87,9 +104,9 @@ export default function ChapterBlockEditor({ chapterId }: Props) {
       await coursesService.deleteBlock(id)
       setBlocks((prev) => prev.filter((b) => b.id !== id))
       if (expandedId === id) setExpandedId(null)
-      toast({ title: "Block deleted", variant: "success" })
+      toast({ title: t("blockEditor.deleted"), variant: "success" })
     } catch {
-      toast({ title: "Failed to delete block", variant: "destructive" })
+      toast({ title: t("blockEditor.deleteFailed"), variant: "destructive" })
     }
   }
 
@@ -114,7 +131,7 @@ export default function ChapterBlockEditor({ chapterId }: Props) {
         withIndex.map((b) => ({ id: b.id, order_index: b.order_index })),
       )
     } catch {
-      toast({ title: "Failed to reorder blocks", variant: "destructive" })
+      toast({ title: t("blockEditor.reorderFailed"), variant: "destructive" })
       void load()
     }
   }
@@ -122,7 +139,7 @@ export default function ChapterBlockEditor({ chapterId }: Props) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-6">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" strokeWidth={1.75} />
       </div>
     )
   }
@@ -131,16 +148,16 @@ export default function ChapterBlockEditor({ chapterId }: Props) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          Content Blocks
+          {t("blockEditor.contentBlocks")}
         </Label>
         <span className="text-xs text-muted-foreground">
-          {blocks.length} block{blocks.length !== 1 ? "s" : ""}
+          {t("blockEditor.blocksCount", { count: blocks.length })}
         </span>
       </div>
 
       {blocks.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-md">
-          No blocks yet. Add your first content block below.
+          {t("blockEditor.empty")}
         </p>
       )}
 

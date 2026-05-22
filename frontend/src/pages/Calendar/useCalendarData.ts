@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
-
+import { useAsyncData } from "@/hooks/useAsyncData";
 import { coursesService } from "@/services/courses";
 import type { CalendarEvent, Enrollment } from "@/types";
 
@@ -22,10 +23,7 @@ interface CalendarData {
  * reload after a transient fetch failure.
  */
 export function useCalendarData(): CalendarData {
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const [retryCount, setRetryCount] = useState(0);
   const [params, setParams] = useSearchParams();
 
@@ -40,34 +38,26 @@ export function useCalendarData(): CalendarData {
     setParams(next, { replace: true });
   };
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setFetchError(null);
-    const load = async () => {
-      try {
-        const [evts, enrolls] = await Promise.all([
-          coursesService.getCalendarEvents(filterCourseId || undefined),
-          coursesService.getMyCourses().catch(() => []),
-        ]);
-        if (cancelled) return;
-        setEvents(evts);
-        setEnrollments(enrolls);
-      } catch {
-        if (!cancelled) setFetchError("Failed to load calendar events. Please try again.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [filterCourseId, retryCount]);
+  const { data: fetchedData, loading, error } = useAsyncData(
+    async (isCancelled) => {
+      const [evts, enrolls] = await Promise.all([
+        coursesService.getCalendarEvents(filterCourseId || undefined),
+        coursesService.getMyCourses().catch(() => []),
+      ]);
+      if (isCancelled()) return undefined;
+      return { events: evts, enrollments: enrolls };
+    },
+    [filterCourseId, retryCount],
+  );
+
+  // The CalendarData interface promises a `string | null` user-facing message.
+  // Always emit the curated fallback so a raw axios "Network Error" never
+  // leaks into the calendar page's error banner.
+  const fetchError = error ? t("calendar.loadError") : null;
 
   return {
-    events,
-    enrollments,
+    events: fetchedData?.events ?? [],
+    enrollments: fetchedData?.enrollments ?? [],
     loading,
     fetchError,
     retry: () => setRetryCount((c) => c + 1),

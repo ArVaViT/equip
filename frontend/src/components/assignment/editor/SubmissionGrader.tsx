@@ -1,8 +1,18 @@
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
 import { FileText, Loader2, MessageSquare, Save, Star, User } from "lucide-react"
 import { coursesService } from "@/services/courses"
 import { toast } from "@/lib/toast"
@@ -14,13 +24,16 @@ interface Props {
   onUpdate: (updated: AssignmentSubmission) => void
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  submitted: "bg-info/15 text-info",
-  graded: "bg-success/15 text-success",
-  returned: "bg-warning/15 text-warning",
+type StatusVariant = "infoSubtle" | "successSubtle" | "warningSubtle" | "muted"
+
+const STATUS_VARIANT: Record<string, StatusVariant> = {
+  submitted: "infoSubtle",
+  graded: "successSubtle",
+  returned: "warningSubtle",
 }
 
 export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
+  const { t } = useTranslation()
   const [grade, setGrade] = useState(submission.grade ?? 0)
   const [feedback, setFeedback] = useState(submission.feedback ?? "")
   const [status, setStatus] = useState(submission.status)
@@ -35,9 +48,9 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
         status,
       })
       onUpdate(updated)
-      toast({ title: "Submission graded", variant: "success" })
+      toast({ title: t("assignmentEditor.toast.graded"), variant: "success" })
     } catch {
-      toast({ title: "Failed to grade", variant: "destructive" })
+      toast({ title: t("assignmentEditor.toast.gradeFailed"), variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -48,16 +61,16 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
       <CardContent className="p-3 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm">
-            <User className="h-3.5 w-3.5 text-muted-foreground" />
+            <User className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
             <span className="text-xs text-muted-foreground">
               {submission.student_id.slice(0, 8)}...
             </span>
           </div>
-          <span
-            className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[submission.status]}`}
-          >
-            {submission.status}
-          </span>
+          <Badge variant={STATUS_VARIANT[submission.status] ?? "muted"}>
+            {t(`assignment.statusValue.${submission.status}`, {
+              defaultValue: submission.status,
+            })}
+          </Badge>
         </div>
 
         {submission.content && (
@@ -73,54 +86,70 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
             rel="noopener noreferrer"
             className="flex items-center gap-1 text-xs text-info hover:underline"
           >
-            <FileText className="h-3 w-3" />
-            View attached file
+            <FileText className="h-3 w-3" strokeWidth={1.75} />
+            {t("assignmentEditor.grader.viewFile")}
           </a>
         )}
 
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
-            <Star className="h-3.5 w-3.5 text-muted-foreground" />
+            <Star className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
             <Input
               type="number"
               min={0}
               max={maxScore}
               value={grade}
-              onChange={(e) => setGrade(Number(e.target.value))}
-              className="h-7 text-xs w-20"
+              // Clamp into [0..maxScore] and fall back to 0 on empty/NaN.
+              // Without this the teacher clearing the field lands NaN in
+              // state, which JSON-serialises to ``null`` and trips the
+              // backend's ``grade: int`` validation on save.
+              onChange={(e) =>
+                setGrade(Math.min(maxScore, Math.max(0, Number(e.target.value) || 0)))
+              }
+              fieldSize="sm"
+              className="w-20"
             />
             <span className="text-xs text-muted-foreground">/ {maxScore}</span>
           </div>
-          <select
+          <Select
             value={status}
-            onChange={(e) => setStatus(e.target.value as AssignmentSubmission["status"])}
-            className="h-7 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onValueChange={(v) => setStatus(v as AssignmentSubmission["status"])}
           >
-            <option value="graded">Grade</option>
-            <option value="returned">Return for revision</option>
-          </select>
+            <SelectTrigger
+              size="xs"
+              aria-label={t("assignmentEditor.grader.statusAria")}
+              className="w-auto"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="graded">{t("assignmentEditor.grader.statusGrade")}</SelectItem>
+              <SelectItem value="returned">{t("assignmentEditor.grader.statusReturn")}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-1">
           <Label className="text-xs flex items-center gap-1">
-            <MessageSquare className="h-3 w-3" />
-            Feedback
+            <MessageSquare className="h-3 w-3" strokeWidth={1.75} />
+            {t("assignmentEditor.grader.feedback")}
           </Label>
-          <textarea
+          <Textarea
+            fieldSize="sm"
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
-            placeholder="Optional feedback for the student..."
-            className="flex min-h-[50px] w-full rounded-md border border-input bg-background px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
+            placeholder={t("assignmentEditor.grader.feedbackPlaceholder")}
+            className="min-h-[50px] text-xs"
           />
         </div>
 
         <Button size="sm" className="h-7 text-xs" onClick={save} disabled={saving}>
           {saving ? (
-            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+            <Loader2 className="h-3 w-3 mr-1 animate-spin" strokeWidth={1.75} />
           ) : (
-            <Save className="h-3 w-3 mr-1" />
+            <Save className="h-3 w-3 mr-1" strokeWidth={1.75} />
           )}
-          {saving ? "Saving..." : "Save Grade"}
+          {saving ? t("assignmentEditor.grader.saving") : t("assignmentEditor.grader.save")}
         </Button>
       </CardContent>
     </Card>

@@ -1,5 +1,6 @@
 """Teacher grading of open-ended quiz answers (and their pending queue)."""
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Query, status
@@ -27,15 +28,25 @@ def list_pending_answers(
         False,
         description="If true, return already-graded open-ended answers too.",
     ),
+    skip: int = Query(0, ge=0, description="Pagination offset."),
+    limit: int = Query(
+        200,
+        ge=1,
+        le=500,
+        description="Max rows per page (caps response size; default 200, max 500).",
+    ),
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
     """Flat list of open-ended answers for the teacher's grading queue.
 
-    An answer is considered *pending* when it carries text but still
-    has ``points_earned == 0`` AND no ``grader_comment`` — that's our
-    proxy for "not graded yet", since a legitimate 0-point grade with
-    a comment is distinguishable from the untouched default.
+    Pagination is bounded — an essay-heavy course over a busy semester
+    can accumulate thousands of pending answers, and the previous
+    unbounded ``query.all()`` was an OOM hazard on a serverless worker.
+    Defaults preserve the unpaginated shape for any existing client that
+    omits the params.
+
+    An answer is considered *pending* when ``graded_at IS NULL``.
     """
     quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
     if not quiz:
@@ -56,13 +67,15 @@ def list_pending_answers(
         .order_by(QuizAttempt.completed_at.desc(), QuizQuestion.order_index.asc())
     )
     if not include_graded:
-        query = query.filter(
-            QuizAnswer.grader_comment.is_(None),
-            QuizAnswer.points_earned == 0,
-        )
+        # ``graded_at IS NULL`` is the authoritative "still pending"
+        # signal. The previous heuristic ``(grader_comment IS NULL AND
+        # points_earned == 0)`` silently kept rows in the queue when a
+        # teacher legitimately graded an open-ended answer as 0 with no
+        # comment — the row would re-appear on every page reload.
+        query = query.filter(QuizAnswer.graded_at.is_(None))
 
     results: list[PendingAnswerInfo] = []
-    for answer, question, attempt, student in query.all():
+    for answer, question, attempt, student in query.offset(skip).limit(limit).all():
         results.append(
             PendingAnswerInfo(
                 answer_id=answer.id,
@@ -115,7 +128,16 @@ def grade_answer(
             detail="Only open-ended answers (short_answer / essay) can be graded manually",
         )
 
-    attempt = db.query(QuizAttempt).filter(QuizAttempt.id == answer.attempt_id).first()
+    # ``FOR UPDATE`` on the attempt row so two teachers grading two
+    # different answers from the same attempt serialize on the lock.
+    # Without it, both teachers SELECT the attempt at the same score,
+    # ``recompute_attempt_grade`` sums the answer rows from each one's
+    # snapshot (missing the other's still-uncommitted update), and the
+    # second commit overwrites the first with a stale total. SQLite
+    # (test path) treats ``with_for_update`` as a no-op so single-test
+    # behaviour is unchanged; Postgres takes a row lock that serializes
+    # the recompute + write of ``attempt.score`` / ``attempt.passed``.
+    attempt = db.query(QuizAttempt).filter(QuizAttempt.id == answer.attempt_id).with_for_update().first()
     if not attempt:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attempt not found")
 
@@ -141,6 +163,9 @@ def grade_answer(
         answer.is_correct = False
     else:
         answer.is_correct = None
+    # Stamping ``graded_at`` is the one signal the pending-answer queue
+    # consults. Re-grading the same row simply refreshes the timestamp.
+    answer.graded_at = datetime.now(UTC)
 
     quiz_service.recompute_attempt_grade(db, attempt, quiz)
     db.commit()

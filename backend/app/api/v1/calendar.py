@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_teacher, verify_course_owner
 from app.core.database import get_db
+from app.core.sanitize import sanitize_string
 from app.models.assignment import Assignment
 from app.models.course import Chapter, Course, Module
 from app.models.course_event import CourseEvent
@@ -14,16 +15,28 @@ from app.schemas.calendar import (
     CourseEventResponse,
     CourseEventUpdate,
 )
+from app.schemas.locale import LocaleCode, normalize_locale
+from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
+from app.services.translation.resolve_for_display import (
+    fetch_overlay_triples_bulk,
+    localize_course_event_rows,
+    pick_overlay_value,
+)
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 
 
 @router.get("/events", response_model=list[CalendarEvent])
 def get_calendar_events(
-    course_id: str | None = Query(None),
+    response: Response,
+    # 36 = UUID length; matches the bound on every Create schema id.
+    course_id: str | None = Query(None, max_length=36),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[CalendarEvent]:
+    response.headers["Vary"] = "Accept-Language"
+    display_locale: LocaleCode = normalize_locale(accept_language)
     enrolled_q = db.query(Enrollment.course_id).filter(Enrollment.user_id == current_user.id)
     if course_id:
         enrolled_q = enrolled_q.filter(Enrollment.course_id == course_id)
@@ -34,13 +47,19 @@ def get_calendar_events(
 
     # Drop trashed courses — users may still have enrollments pointing to
     # deleted courses, but their calendar should not advertise deadlines
-    # from content that has been removed from the catalog.
+    # from content that has been removed from the catalog. We fetch title
+    # AND source_locale in the same query (previously two separate fetches);
+    # source_locale is needed below for the translation overlay.
     course_titles: dict[str, str] = {}
-    courses = (
-        db.query(Course.id, Course.title).filter(Course.id.in_(enrolled_course_ids), Course.deleted_at.is_(None)).all()
+    course_source_locales: dict[str, LocaleCode] = {}
+    course_rows = (
+        db.query(Course.id, Course.title, Course.source_locale)
+        .filter(Course.id.in_(enrolled_course_ids), Course.deleted_at.is_(None))
+        .all()
     )
-    for cid, ctitle in courses:
+    for cid, ctitle, csrc in course_rows:
         course_titles[cid] = ctitle
+        course_source_locales[cid] = normalize_locale(csrc)
     enrolled_course_ids = list(course_titles.keys())
     if not enrolled_course_ids:
         return []
@@ -117,12 +136,47 @@ def get_calendar_events(
             )
 
     course_events = db.query(CourseEvent).filter(CourseEvent.course_id.in_(enrolled_course_ids)).all()
+
+    # Bulk-fetch overlay rows for every course_event title + non-empty
+    # description. Locale wins for every reader, including admins — moderators
+    # who need raw source content use admin-only audit/edit surfaces.
+    overlay_event: dict[tuple[str, str, str], str] = {}
+    if course_events:
+        specs: list[tuple[str, str, str]] = []
+        for ce in course_events:
+            specs.append(("course_event", str(ce.id), "title"))
+            if ce.description and str(ce.description).strip():
+                specs.append(("course_event", str(ce.id), "description"))
+        overlay_event = fetch_overlay_triples_bulk(db, specs, display_locale)
+
     for ce in course_events:
+        course_src = course_source_locales.get(ce.course_id, normalize_locale(None))
+        title = (
+            pick_overlay_value(
+                overlay_event,
+                "course_event",
+                str(ce.id),
+                "title",
+                ce.title,
+                source_locale=course_src,
+                display_locale=display_locale,
+            )
+            or ce.title
+        )
+        description = pick_overlay_value(
+            overlay_event,
+            "course_event",
+            str(ce.id),
+            "description",
+            ce.description,
+            source_locale=course_src,
+            display_locale=display_locale,
+        )
         events.append(
             CalendarEvent(
                 id=str(ce.id),
-                title=ce.title,
-                description=ce.description,
+                title=title,
+                description=description,
                 event_type=ce.event_type,
                 event_date=ce.event_date,
                 course_id=ce.course_id,
@@ -150,10 +204,16 @@ def create_course_event(
     db: Session = Depends(get_db),
 ) -> CourseEvent:
     verify_course_owner(db, course_id, teacher)
+    # Defence-in-depth: the frontend strips HTML before submit, but a direct
+    # API caller can post arbitrary markup. Same shape as
+    # ``announcements.create`` and ``courses.create`` — title is a plain
+    # short string, description may carry rich content (TipTap output),
+    # both go through ``sanitize_string`` which keeps the allowlisted tags
+    # and drops anything that could turn into stored XSS at render time.
     event = CourseEvent(
         course_id=course_id,
-        title=data.title,
-        description=data.description,
+        title=sanitize_string(data.title),
+        description=sanitize_string(data.description) if data.description else data.description,
         event_type=data.event_type,
         event_date=data.event_date,
         created_by=teacher.id,
@@ -161,6 +221,7 @@ def create_course_event(
     db.add(event)
     db.commit()
     db.refresh(event)
+    reconcile_entity_if_course_published(db, "course_event", event)
     return event
 
 
@@ -169,12 +230,19 @@ def create_course_event(
     response_model=list[CourseEventResponse],
 )
 def list_course_events(
+    response: Response,
     course_id: str,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> list[CourseEvent]:
+) -> list[CourseEventResponse]:
+    response.headers["Vary"] = "Accept-Language"
     # Narrow probe: only the columns needed for ownership + soft-delete checks.
-    course_row = db.query(Course.created_by).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
+    course_row = (
+        db.query(Course.created_by, Course.source_locale)
+        .filter(Course.id == course_id, Course.deleted_at.is_(None))
+        .first()
+    )
     if not course_row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
     is_owner = str(course_row.created_by) == str(current_user.id)
@@ -190,7 +258,13 @@ def list_course_events(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You must be enrolled in this course to view events",
             )
-    return db.query(CourseEvent).filter(CourseEvent.course_id == course_id).order_by(CourseEvent.event_date).all()
+    rows = db.query(CourseEvent).filter(CourseEvent.course_id == course_id).order_by(CourseEvent.event_date).all()
+    # Locale wins. Every reader — students, owners, admins — gets the locale
+    # overlay when one exists. Editors that need raw source must use dedicated
+    # authoring endpoints (the PUT/POST routes below operate on raw columns).
+    display_locale: LocaleCode = normalize_locale(accept_language)
+    source_locale: LocaleCode = normalize_locale(course_row.source_locale)
+    return localize_course_event_rows(db, rows, display_locale=display_locale, source_locale=source_locale)
 
 
 @event_router.put(
@@ -215,10 +289,22 @@ def update_course_event(
     )
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
-    for field, value in data.model_dump(exclude_unset=True).items():
+    # Defence-in-depth: title + description carry user-supplied markup
+    # and were already sanitized on create. The setattr loop below would
+    # otherwise let a direct API caller bypass DOMPurify on edit and
+    # plant stored XSS through the title bar or rich-text body. Same
+    # ``sanitize_string`` is used here as on the create path so the two
+    # behaviours stay symmetric.
+    updates = data.model_dump(exclude_unset=True)
+    if "title" in updates and updates["title"] is not None:
+        updates["title"] = sanitize_string(updates["title"])
+    if "description" in updates and updates["description"] is not None:
+        updates["description"] = sanitize_string(updates["description"])
+    for field, value in updates.items():
         setattr(event, field, value)
     db.commit()
     db.refresh(event)
+    reconcile_entity_if_course_published(db, "course_event", event)
     return event
 
 

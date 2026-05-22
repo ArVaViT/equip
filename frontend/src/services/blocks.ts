@@ -1,5 +1,5 @@
 import api from "./api"
-import { cacheGet, cacheSet, cacheInvalidate, cacheInvalidatePrefix } from "@/lib/cache"
+import { cached, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
 import type { ChapterBlock, BlockType } from "@/types"
 
 type ChapterBlockCreateData = {
@@ -19,11 +19,28 @@ type ChapterBlockUpdateData = Partial<Omit<ChapterBlockCreateData, "block_type">
 
 export const blocksService = {
   async getChapterBlocks(chapterId: string): Promise<ChapterBlock[]> {
-    const key = `blocks:chapter:${chapterId}`
-    const cached = cacheGet<ChapterBlock[]>(key)
-    if (cached) return cached
-    const response = await api.get<ChapterBlock[]>(`/blocks/chapter/${chapterId}`)
-    cacheSet(key, response.data, 2 * 60 * 1000)
+    return cached(`blocks:chapter:${chapterId}`, CACHE_TTL.TWO_MINUTES, async () => {
+      const response = await api.get<ChapterBlock[]>(`/blocks/chapter/${chapterId}`)
+      return response.data
+    })
+  },
+
+  /**
+   * Editor-only fetch: forces source-language `content` (TipTap HTML)
+   * regardless of the viewer's `preferred_locale`. Use from
+   * `ChapterBlockEditor` so a teacher in EN UI editing their RU course
+   * doesn't see the EN translation in the rich-text editor (a PATCH would
+   * then overwrite the source `content` column with English HTML).
+   *
+   * Owner / admin only — the backend returns 403 for anyone else.
+   * Intentionally bypasses the `blocks:chapter:{id}` cache so the editor
+   * view and the student view don't share state.
+   */
+  async getChapterBlocksForEdit(chapterId: string): Promise<ChapterBlock[]> {
+    const response = await api.get<ChapterBlock[]>(
+      `/blocks/chapter/${chapterId}`,
+      { params: { source: 1 } },
+    )
     return response.data
   },
 

@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback, useMemo } from "react"
+import { useEffect, useState, useCallback, useMemo, useRef } from "react"
+import { useTranslation } from "react-i18next"
 import { useParams, useSearchParams, Link } from "react-router-dom"
-import PageSpinner from "@/components/ui/PageSpinner"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
 import type { GradingConfig, GradeSummaryResponse, StudentGrade } from "@/types"
@@ -22,6 +23,9 @@ import { GradebookTabs } from "./gradebook/GradebookTabs"
 import { GradingConfigCard } from "./gradebook/GradingConfigCard"
 import { SummaryTab } from "./gradebook/SummaryTab"
 import { GradeTableTab } from "./gradebook/GradeTableTab"
+import { EMPTY_FORM } from "./gradebook/helpers"
+import { useUserTour } from "@/hooks/useUserTour"
+import { gradebookSteps } from "@/lib/tourSteps"
 
 /**
  * Gradebook page: top-level composition of the summary view, the grade
@@ -30,6 +34,7 @@ import { GradeTableTab } from "./gradebook/GradeTableTab"
  * per-tab components are pure, prop-driven render layers.
  */
 export default function TeacherGradebook() {
+  const { t } = useTranslation()
   const { courseId } = useParams<{ courseId: string }>()
   const [params, setParams] = useSearchParams()
 
@@ -42,15 +47,17 @@ export default function TeacherGradebook() {
   const sortDir: SortDir = params.get("dir") === "desc" ? "desc" : "asc"
 
   const setActiveTab = (next: ActiveTab) =>
-    setParams(
-      (p) => {
-        const n = new URLSearchParams(p)
-        if (next === "summary") n.delete("tab")
-        else n.set("tab", next)
-        return n
-      },
-      { replace: true },
-    )
+    // PUSH (not replace) -- summary ↔ table tab switching is primary
+    // navigation; back-button should undo it instead of dropping the
+    // user out of the gradebook entirely. Sort toggles below stay on
+    // ``replace`` since each column-click is a quick filter tweak,
+    // not a navigation step worth back-stop-ing.
+    setParams((p) => {
+      const n = new URLSearchParams(p)
+      if (next === "summary") n.delete("tab")
+      else n.set("tab", next)
+      return n
+    })
 
   const applySort = (field: SortField, dir: SortDir) =>
     setParams(
@@ -84,11 +91,24 @@ export default function TeacherGradebook() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [forms, setForms] = useState<Map<string, GradeForm>>(new Map())
+  // Mirror of `forms` so memoised handlers (saveGrade) can read the
+  // current draft without taking `forms` as a dependency and busting
+  // their stable identity on every keystroke.
+  const formsRef = useRef(forms)
+  useEffect(() => {
+    formsRef.current = forms
+  }, [forms])
   const [saving, setSaving] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
 
   const [reloadKey, setReloadKey] = useState(0)
   const reload = useCallback(() => setReloadKey((k) => k + 1), [])
+
+  useUserTour({
+    tourId: "gradebook-v1",
+    steps: gradebookSteps(t),
+    ready: !loading && !error,
+  })
 
   useEffect(() => {
     if (!courseId) return
@@ -128,7 +148,7 @@ export default function TeacherGradebook() {
           setProgressData(progress as ProgressResponse)
         }
       } catch {
-        if (!cancelled) setError("Failed to load gradebook. Please try again.")
+        if (!cancelled) setError(t("gradebook.failedLoad"))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -136,7 +156,7 @@ export default function TeacherGradebook() {
     return () => {
       cancelled = true
     }
-  }, [courseId, reloadKey])
+  }, [courseId, reloadKey, t])
 
   const saveConfig = async () => {
     if (!courseId) return
@@ -147,53 +167,65 @@ export default function TeacherGradebook() {
     try {
       const updated = await coursesService.updateGradingConfig(courseId, configDraft)
       setConfig(updated)
-      toast({ title: "Grading weights saved", variant: "success" })
+      toast({ title: t("toast.gradingWeightsSaved"), variant: "success" })
       const gradeSummary = await coursesService.getGradeSummary(courseId)
       setSummary(gradeSummary)
     } catch {
-      toast({ title: "Failed to save grading config", variant: "destructive" })
+      toast({ title: t("toast.gradingConfigSaveFailed"), variant: "destructive" })
     } finally {
       setSavingConfig(false)
     }
   }
 
-  const toggleExpand = (userId: string) => {
-    if (expandedId === userId) {
-      setExpandedId(null)
-    } else {
-      setExpandedId(userId)
-      if (!forms.has(userId)) {
-        setForms((prev) => new Map(prev).set(userId, { grade: "", comment: "" }))
-      }
-    }
-  }
-
-  const updateForm = (userId: string, field: keyof GradeForm, value: string) => {
-    setForms((prev) => {
-      const next = new Map(prev)
-      const current = next.get(userId) ?? { grade: "", comment: "" }
-      next.set(userId, { ...current, [field]: value })
-      return next
-    })
-  }
-
-  const saveGrade = async (userId: string) => {
-    if (!courseId) return
-    setSaving(userId)
-    try {
-      const form = forms.get(userId) ?? { grade: "", comment: "" }
-      const data = await coursesService.upsertGrade(courseId, userId, {
-        grade: form.grade.trim() || undefined,
-        comment: form.comment.trim() || undefined,
+  // Stable identity for the row-level handlers so memoised row components
+  // (StudentSummaryRow / GradeTableRow) don't get a fresh prop on every
+  // keystroke in any unrelated row's override form.
+  const toggleExpand = useCallback((userId: string) => {
+    setExpandedId((prev) => {
+      if (prev === userId) return null
+      // Seed an empty draft for newly-expanded rows so the inputs are
+      // controlled from the first render. Skip the setForms call when the
+      // entry already exists to avoid an extra render on re-expand.
+      setForms((prevForms) => {
+        if (prevForms.has(userId)) return prevForms
+        return new Map(prevForms).set(userId, EMPTY_FORM)
       })
-      setManualGrades((prev) => new Map(prev).set(userId, data))
-      toast({ title: "Grade saved", variant: "success" })
-    } catch {
-      toast({ title: "Failed to save grade", variant: "destructive" })
-    } finally {
-      setSaving(null)
-    }
-  }
+      return userId
+    })
+  }, [])
+
+  const updateForm = useCallback(
+    (userId: string, field: keyof GradeForm, value: string) => {
+      setForms((prev) => {
+        const next = new Map(prev)
+        const current = next.get(userId) ?? EMPTY_FORM
+        next.set(userId, { ...current, [field]: value })
+        return next
+      })
+    },
+    [],
+  )
+
+  const saveGrade = useCallback(
+    async (userId: string) => {
+      if (!courseId) return
+      setSaving(userId)
+      try {
+        const form = formsRef.current.get(userId) ?? EMPTY_FORM
+        const data = await coursesService.upsertGrade(courseId, userId, {
+          grade: form.grade.trim() || undefined,
+          comment: form.comment.trim() || undefined,
+        })
+        setManualGrades((prev) => new Map(prev).set(userId, data))
+        toast({ title: t("toast.gradeSaved"), variant: "success" })
+      } catch {
+        toast({ title: t("toast.gradeSaveFailed"), variant: "destructive" })
+      } finally {
+        setSaving(null)
+      }
+    },
+    [courseId, t],
+  )
 
   const handleExportCSV = async () => {
     if (!courseId) return
@@ -211,7 +243,7 @@ export default function TeacherGradebook() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      toast({ title: "Failed to export grades", variant: "destructive" })
+      toast({ title: t("toast.exportGradesFailed"), variant: "destructive" })
     } finally {
       setExporting(false)
     }
@@ -255,24 +287,24 @@ export default function TeacherGradebook() {
     )
   }, [progressData])
 
-  if (loading) return <PageSpinner />
+  if (loading) return <TeacherGradebookSkeleton />
 
   if (error) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <ErrorState
-          icon={<Award />}
+          icon={<Award strokeWidth={1.75} aria-hidden />}
           description={error}
           action={
             <Button onClick={reload} size="sm" variant="outline">
-              Try again
+              {t("common.tryAgain")}
             </Button>
           }
           secondaryAction={
             <Link to="/teacher">
               <Button size="sm" variant="ghost">
-                <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
-                Back to courses
+                <ArrowLeft className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                {t("teacher.backToCourses")}
               </Button>
             </Link>
           }
@@ -288,24 +320,31 @@ export default function TeacherGradebook() {
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
         <Link to="/teacher" className="hover:text-foreground transition-colors">
-          My Courses
+          {t("gradebook.breadcrumbCourses")}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span className="text-foreground font-medium">Gradebook</span>
+        <ChevronRight className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} aria-hidden />
+        <Link
+          to={`/teacher/courses/${courseId}`}
+          className="hover:text-foreground transition-colors truncate"
+        >
+          {courseTitle || t("gradebook.breadcrumbCourseFallback")}
+        </Link>
+        <ChevronRight className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} aria-hidden />
+        <span className="text-foreground font-medium">{t("gradebook.pageHeading")}</span>
       </div>
 
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Award className="h-7 w-7 text-primary" />
-            Gradebook
+          <h1 className="flex items-center gap-2 font-serif text-3xl font-bold tracking-tight">
+            <Award className="h-6 w-6 shrink-0 text-primary" strokeWidth={1.75} aria-hidden />
+            {t("gradebook.pageHeading")}
           </h1>
           {courseTitle && <p className="text-muted-foreground mt-1">{courseTitle}</p>}
         </div>
         {studentCount > 0 && (
           <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={exporting}>
-            <Download className="h-4 w-4 mr-1.5" />
-            {exporting ? "Exporting..." : "Export CSV"}
+            <Download className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+            {exporting ? t("gradebook.exporting") : t("gradebook.exportCsv")}
           </Button>
         )}
       </div>
@@ -319,6 +358,7 @@ export default function TeacherGradebook() {
 
       <GradebookTabs active={activeTab} onChange={setActiveTab} />
 
+      <div data-tour="gradebook-table">
       {activeTab === "summary" && (
         <>
           <GradingConfigCard
@@ -362,6 +402,42 @@ export default function TeacherGradebook() {
           onToggleExpand={toggleExpand}
         />
       )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Shimmer placeholder for the gradebook page. Mirrors the real layout
+ * (breadcrumb, serif H1 with export button, stats row, tabs, summary
+ * card) so the page doesn't jump when data resolves.
+ */
+function TeacherGradebookSkeleton() {
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-7xl" aria-busy="true">
+      <div className="mb-6 flex items-center gap-2">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-4 rounded-full" />
+        <Skeleton className="h-4 w-32" />
+      </div>
+
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="space-y-2">
+          <Skeleton className="h-9 w-64 max-w-full" />
+          <Skeleton className="h-4 w-40 max-w-full" />
+        </div>
+        <Skeleton className="h-9 w-28" />
+      </div>
+
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 rounded-md" />
+        ))}
+      </div>
+
+      <Skeleton className="mb-6 h-10 w-72 max-w-full" />
+
+      <Skeleton className="h-96 rounded-md" />
     </div>
   )
 }

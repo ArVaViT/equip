@@ -4,9 +4,18 @@ Single source of truth for how this app looks and behaves. Short on purpose.
 
 ## Aesthetic
 
-**Editorial, not playful.** Think Linear / Stripe docs / The Atlantic, not Duolingo.
-High contrast, confident typography, minimal colour, tight spacing, zero gratuitous
-gradients or shadows.
+**Editorial, with expressive moments.** Think Linear / Stripe docs / The Atlantic
+as the baseline — high contrast, confident typography, tight spacing — but with a
+deliberate set of expressive surfaces where motion, gradients, and richer
+interactions earn their place: hero areas, CTA buttons, success states, page
+transitions, the auth marketing column. The default state of any view is still
+quiet and flat. Expressive moments are framed by quiet ones; they don't blanket
+the UI.
+
+The expressive direction was formalized on 2026-05-12 (see
+`docs/UI-DECISIONS.md`). Before that the rule was "zero gratuitous gradients or
+shadows" — that's now scoped to *static / dense* surfaces (forms, tables, data
+views). Expressive surfaces have their own rules in "Motion" below.
 
 ## Tokens
 
@@ -38,6 +47,12 @@ One scale, one serif, one sans.
 - **Sans (`Inter`):** everything else.
 - **Scale:** `32 / 24 / 18 / 16 / 14 / 13` px. No `text-[Npx]` arbitrary values.
 - **Weights:** 400 body, 500 UI, 600 emphasis, 700 display. No 800/900.
+- **Editorial eyebrow:** the tiny uppercase label that sits above a heading
+  (e.g. VerseOfTheDayCard, CourseReadinessCard) is `text-xs font-medium
+  uppercase tracking-[0.18em] text-muted-foreground`. The wide tracking is
+  load-bearing — that's what makes it read as an eyebrow rather than a
+  shrunk body line. Inline is fine; only worth extracting a component if it
+  appears more than ~4 times.
 
 ## Spacing, radius, elevation
 
@@ -49,11 +64,59 @@ One scale, one serif, one sans.
 - **Spacing:** Tailwind scale, multiples of 4. Page padding `p-6` desktop,
   `p-4` mobile. Cards `p-5`.
 
+## Motion
+
+Motion is part of the design language, not absent from it. Rules:
+
+- **Library:** `motion` (the package formerly known as `framer-motion`),
+  imported as `motion/react`. Documented exception to the 4-check rule in
+  "Adding a library" below.
+- **Primitives live in `frontend/src/components/motion/`:**
+  - `<FadeIn>` — opacity + small Y on mount
+  - `<StaggerChildren>` — orchestrated entrance for list/grid items
+  - `<Reveal>` — IntersectionObserver-based entrance for scroll-revealed content
+  - `<HoverLift>` — card-style hover translation (2px default)
+  - `<PressFeedback>` — button-style press scale (0.97 default)
+  - `<PageTransition>` — route-keyed `AnimatePresence` crossfade
+  - Reach for these before hand-rolling `motion.div` in a feature file.
+- **Easing:** `cubic-bezier(0.22, 1, 0.36, 1)` ("editorial ease") everywhere —
+  smooth, no bounce, no overshoot. Spring physics are banned outside drag
+  previews and toast slide-ins; both require sign-off.
+- **Duration scale:** 120ms (press feedback), 280ms (hover, page transitions),
+  480ms (mount fade-in), 550ms (scroll reveal). Nothing slower than 600ms,
+  nothing faster than 100ms.
+- **Reduced motion:** every primitive falls back to instant render under
+  `prefers-reduced-motion: reduce`. Hand-rolled motion must do the same — use
+  the `useReducedMotion` hook from `motion/react` as the single source of truth.
+- **Banned patterns:** auto-playing carousels, marquee, scroll-jacking,
+  parallax-on-everything, looping non-decorative animation, bouncy springs on
+  navigation, anything blocking interaction during entrance.
+
+The existing CSS animation system in `index.css` (`animate-fade-in`,
+`stagger-fade-in`, `motion-safe-hover-lift`, `skeleton-shimmer`, `ambient-mesh`,
+`hero-breathe`) stays in place for low-stakes / pre-React content and as a
+fallback in legacy callsites. Migration to motion primitives is gradual,
+page-by-page, not a big-bang rewrite.
+
 ## Icons
 
 - `lucide-react` is the **only** icon library.
-- Sizes: `16` (inline), `20` (buttons), `24` (headers). Nothing else.
-- `strokeWidth={1.75}`. Never emoji as UI.
+- Sizes: `14` (footnote / inline metadata), `16` (inline), `20` (buttons),
+  `24` (headers). Nothing else.
+  - `14` (`h-3.5 w-3.5`) — footnote tier. Use for inline metadata badges
+    (e.g. `CourseCard` ratings/duration), inline-text adornments (e.g. the
+    footer support `Mail` icon, status dots, dismiss `X` in compact banners,
+    and the avatar fallback in the `7×7` profile button). Don't use it on
+    primary action buttons or page-header icons.
+  - `16` (`h-4 w-4`) — default inline icon (next to body-size labels).
+  - `20` (`h-5 w-5`) — icon-only buttons + leading icons in primary actions.
+  - `24` (`h-6 w-6`) — section headers and empty-state hero icons.
+- `strokeWidth={1.75}` on every icon, every size — including the 14px tier.
+- Mark icons that are decoration-only with `aria-hidden="true"`. Icons that
+  are the sole content of a button must instead carry an `aria-label` on
+  the button (or an `<span class="sr-only">`) — never both `aria-hidden`
+  and no accessible name.
+- Never emoji as UI.
 
 ## One pattern per job
 
@@ -74,6 +137,7 @@ One scale, one serif, one sans.
 | Validation             | `zod` |
 | HTTP                   | `axios` |
 | Sanitise HTML          | `dompurify` |
+| Motion                 | `motion/react` via `components/motion/*` |
 
 If a job is missing from this table, add it here before installing anything.
 
@@ -119,7 +183,12 @@ Four-check rule:
 3. Actively maintained (release in last 6 months).
 4. Adds ≤ 20 KB gzip to initial bundle.
 
-If any check fails, don't add it.
+If any check fails, don't add it. **Documented exceptions:**
+
+- `motion` (~30 KB gzip, fails check 4) — approved 2026-05-12 for the expressive
+  direction. The orchestrated entrance, viewport reveal, and `AnimatePresence`
+  primitives are not achievable in pure CSS without re-implementing them, and
+  the expected migration spans every page across Waves 2-4 of the polish work.
 
 ## Dark mode
 
@@ -128,8 +197,68 @@ doesn't look right in one theme, fix the token — don't branch on `.dark`.
 
 ## Accessibility
 
-- Every icon-only button has `aria-label`.
-- Focus rings via `ring` token, never hidden.
-- Text contrast ≥ 4.5:1 for body, ≥ 3:1 for large.
+### Rules (the short list)
+
+- Every icon-only button has `aria-label`. Decorative icons get `aria-hidden="true"`.
+- Focus rings via `ring` token, never hidden. Use the standard set:
+  `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`.
+- Text contrast ≥ 4.5:1 for body, ≥ 3:1 for large. **Verified end-to-end** —
+  including translucent overlays — by `frontend/scripts/contrast-audit.mjs`.
+  See `docs/contrast-audit.md` for the full table (re-generate after touching
+  `index.css` with `node scripts/contrast-audit.mjs --markdown > ../docs/contrast-audit.md`).
 - Keyboard reachable: every action must be reachable without a pointer.
 - Run axe-core locally before a release.
+
+### Semantic HTML — choose the right element
+
+- **Clickable surfaces:** always `<button type="button">` for actions or
+  `<a href>` for navigation. Never `<div onClick>` or `role="button"` on a
+  div *if a real button would work*. The only acceptable `role="button" tabIndex={0}` is the dnd drag handle pattern (see `ChapterRow`, `AssignmentItem`,
+  `ModulesList`) where a real button would steal the drag.
+- **Headings:** every page must have one `<h1>` describing its primary subject.
+  Sub-sections use `<h2>` / `<h3>`. **Never** style a `<div>` or `<span>` to
+  look like a heading. `InlineEdit` ships an actual `<h1>` / `<h2>` when
+  `size="h1" | "h2"` — use it for editable titles.
+- **Landmarks:** the authenticated shell renders `<header>`, `<main id="main-content">`, `<footer>`. The first focusable element is a skip link
+  pointing at `#main-content`.
+
+### Live regions
+
+- **Toasts** (`sonner`) ship `role="status"` / `role="alert"` already.
+- **Loading spinners** (`PageSpinner`) ship `role="status" aria-live="polite"`
+  with an accessible label. Always prefer `PageSpinner` over hand-rolled rings.
+- **Banners** that may appear mid-session (announcements, error toasts) use
+  `role="status" aria-live="polite"`. Critical errors get `role="alert"`.
+
+### Dropdowns and dialogs
+
+- Radix Dialog / AlertDialog already handle focus trap, `role="dialog"`,
+  Escape-to-close, focus return. Do NOT rebuild these.
+- Custom dropdowns (e.g. `CalloutDropdown` in the editor) MUST wire:
+  - `aria-haspopup="menu"` + `aria-expanded` on the trigger
+  - `role="menu"` + `aria-label` on the menu container
+  - `role="menuitem"` on each entry
+  - Escape-to-close keyboard handler
+- Custom prompt inputs use the dialog title as the input's `aria-label` —
+  the input is the dialog's sole field, so the title IS its label.
+
+### Forms
+
+- Every input has either `<Label htmlFor>` (visible) or `aria-label`
+  (icon-only / search). Search inputs MUST set `type="search"`.
+- Validation errors are wired via `aria-invalid={!!err}` and
+  `aria-describedby={err ? "name-error" : undefined}`, with the error
+  rendered as `<p id="name-error" role="alert">`.
+
+### Color contrast — translucent surfaces
+
+The contrast-audit script composites alpha overlays against their base so we
+catch cases where the *effective* surface drops below AA. Currently checked:
+
+- `bg-muted/{15,30,40,60}` over page and over card
+- `bg-warning/10` (pending-teacher banner)
+- `bg-destructive/10` (form error banner)
+- `bg-primary/{5,15}` (selected cards, active toolbar buttons)
+
+All current combinations pass AA on both themes. If you add a new low-alpha
+overlay token combination, extend the `PAIRS` array in the script and re-run.

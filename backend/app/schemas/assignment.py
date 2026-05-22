@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Literal
+from urllib.parse import urlparse
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class AssignmentCreate(BaseModel):
@@ -36,6 +37,28 @@ class AssignmentResponse(BaseModel):
 class SubmissionCreate(BaseModel):
     content: str | None = Field(None, max_length=50_000)
     file_url: str | None = Field(None, max_length=2048)
+
+    @field_validator("file_url")
+    @classmethod
+    def _enforce_https_scheme(cls, value: str | None) -> str | None:
+        """Reject anything but a fully-qualified ``https://`` URL.
+
+        A student-supplied URL is rendered by the teacher as
+        ``<a href={file_url} target="_blank">`` in the grader UI.
+        Allowing ``javascript:`` / ``data:`` / ``vbscript:`` would
+        execute attacker-controlled code in the teacher's session the
+        moment they click; ``rel=noopener`` does not defuse
+        ``javascript:``. We also reject bare ``http://`` because
+        every legitimate storage origin in this stack is HTTPS, and
+        accepting mixed-content links would surface a browser warning
+        more often than it would help.
+        """
+        if value is None or not value.strip():
+            return None
+        parsed = urlparse(value.strip())
+        if parsed.scheme.lower() != "https" or not parsed.netloc:
+            raise ValueError("file_url must be an https:// URL")
+        return value
 
 
 class SubmissionResponse(BaseModel):

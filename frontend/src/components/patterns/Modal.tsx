@@ -16,7 +16,9 @@ interface ModalProps {
 export function Modal({ open, onClose, title, children }: ModalProps) {
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
-      <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
+      {/* Mobile uses the primitive's bottom-sheet defaults (full-width, slides
+          up, safe-area aware). sm+ keeps the centered card with a max-h cap. */}
+      <DialogContent className="sm:max-h-[85vh] sm:overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-serif">{title}</DialogTitle>
         </DialogHeader>

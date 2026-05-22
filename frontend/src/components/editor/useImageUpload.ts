@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { Editor } from "@tiptap/react";
 import type { EditorView } from "@tiptap/pm/view";
 
@@ -14,19 +15,23 @@ import { toast } from "@/lib/toast";
  * the user triggered.
  */
 export function useImageUpload() {
+  const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
 
-  const upload = useCallback(async (file: File): Promise<string | null> => {
-    setUploading(true);
-    try {
-      return await storageService.uploadContentImage(file);
-    } catch {
-      toast({ title: "Image upload failed", variant: "destructive" });
-      return null;
-    } finally {
-      setUploading(false);
-    }
-  }, []);
+  const upload = useCallback(
+    async (file: File): Promise<string | null> => {
+      setUploading(true);
+      try {
+        return await storageService.uploadContentImage(file);
+      } catch {
+        toast({ title: t("editor.toast.imageUploadFailed"), variant: "destructive" });
+        return null;
+      } finally {
+        setUploading(false);
+      }
+    },
+    [t],
+  );
 
   /**
    * Upload an image and insert it at the current editor cursor. Used by

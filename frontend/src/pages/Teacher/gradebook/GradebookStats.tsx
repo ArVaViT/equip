@@ -1,5 +1,6 @@
-import { Card, CardContent } from "@/components/ui/card"
+import { useTranslation } from "react-i18next"
 import { Users, Award, TrendingUp, Calculator } from "lucide-react"
+import { StatCard } from "@/components/patterns"
 import type { GradingConfig } from "@/types"
 
 interface Props {
@@ -11,52 +12,32 @@ interface Props {
 
 /** Four-card stats row shown at the top of the gradebook. */
 export function GradebookStats({ studentCount, classAverage, gradedCount, config }: Props) {
+  const { t } = useTranslation()
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
       <StatCard
-        label="Students"
-        value={String(studentCount)}
-        icon={<Users className="h-7 w-7 text-muted-foreground/60" />}
+        label={t("gradebook.stats.students")}
+        value={studentCount}
+        icon={Users}
       />
       <StatCard
-        label="Class Average"
+        label={t("gradebook.stats.classAverage")}
         value={`${classAverage.toFixed(1)}%`}
-        icon={<TrendingUp className="h-7 w-7 text-muted-foreground/60" />}
+        icon={TrendingUp}
       />
       <StatCard
-        label="Manually Graded"
+        label={t("gradebook.stats.manuallyGraded")}
         value={`${gradedCount}/${studentCount}`}
-        icon={<Award className="h-7 w-7 text-muted-foreground/60" />}
+        icon={Award}
       />
       <StatCard
-        label="Weights Q/A/P"
+        label={t("gradebook.stats.weights")}
+        // Composite triple like "30/50/20" would feel chunky at the
+        // default ``text-2xl font-bold`` — keep it readable.
         value={`${config.quiz_weight}/${config.assignment_weight}/${config.participation_weight}`}
-        valueClassName="text-sm font-medium mt-0.5"
-        icon={<Calculator className="h-7 w-7 text-muted-foreground/60" />}
+        valueClassName="text-base font-semibold"
+        icon={Calculator}
       />
     </div>
-  )
-}
-
-interface StatCardProps {
-  label: string
-  value: string
-  icon: React.ReactNode
-  valueClassName?: string
-}
-
-function StatCard({ label, value, icon, valueClassName }: StatCardProps) {
-  return (
-    <Card>
-      <CardContent className="pt-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className={valueClassName ?? "text-2xl font-bold mt-0.5"}>{value}</p>
-          </div>
-          {icon}
-        </div>
-      </CardContent>
-    </Card>
   )
 }

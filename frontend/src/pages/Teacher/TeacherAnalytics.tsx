@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react"
 import { useParams, Link } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import PageSpinner from "@/components/ui/PageSpinner"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
-import { ArrowLeft, Users, TrendingUp, Award, Calendar, BarChart3, ClipboardList, UserCheck } from "lucide-react"
-import { ErrorState } from "@/components/patterns"
+import { ArrowLeft, Users, TrendingUp, Award, Calendar, BarChart3, ChevronRight, ClipboardList, UserCheck } from "lucide-react"
+import { EmptyState, ErrorState, StatCard } from "@/components/patterns"
+import { formatDate } from "@/i18n/format"
+import { useUserTour } from "@/hooks/useUserTour"
+import { analyticsSteps } from "@/lib/tourSteps"
 
 interface AnalyticsEnrollment {
   user_id: string
@@ -36,9 +40,16 @@ interface Analytics {
 
 export default function TeacherAnalytics() {
   const { courseId } = useParams<{ courseId: string }>()
+  const { t } = useTranslation()
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
   const [courseTitle, setCourseTitle] = useState("")
   const [loading, setLoading] = useState(true)
+
+  useUserTour({
+    tourId: "analytics-v1",
+    steps: analyticsSteps(t),
+    ready: !loading && analytics !== null,
+  })
 
   useEffect(() => {
     if (!courseId) return
@@ -56,7 +67,7 @@ export default function TeacherAnalytics() {
           avgProgress: raw.avg_progress ?? raw.avgProgress ?? 0,
           completedCount: raw.completion_count ?? raw.completedCount ?? 0,
         })
-        setCourseTitle(raw.course_title ?? "Course")
+        setCourseTitle(raw.course_title ?? t("teacherAnalytics.courseFallback"))
       } catch {
         // analytics remains null — fallback UI handles this
       } finally {
@@ -65,7 +76,7 @@ export default function TeacherAnalytics() {
     }
     load()
     return () => { cancelled = true }
-  }, [courseId])
+  }, [courseId, t])
 
   const enrolledThisMonth = analytics?.enrollments.filter((e) => {
     if (!e.enrolled_at) return false
@@ -76,20 +87,20 @@ export default function TeacherAnalytics() {
   }).length ?? 0
 
   if (loading) {
-    return <PageSpinner />
+    return <TeacherAnalyticsSkeleton />
   }
 
   if (!analytics) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-5xl">
         <ErrorState
-          icon={<BarChart3 />}
-          title="Failed to load analytics"
+          icon={<BarChart3 strokeWidth={1.75} />}
+          title={t("teacherAnalytics.loadFailed")}
           action={
             <Link to="/teacher">
               <Button variant="ghost">
-                <ArrowLeft className="h-4 w-4 mr-1.5" />
-                Back to courses
+                <ArrowLeft className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
+                {t("teacherAnalytics.backToCourses")}
               </Button>
             </Link>
           }
@@ -99,24 +110,34 @@ export default function TeacherAnalytics() {
   }
 
   const stats = [
-    { label: "Total Students", value: analytics.totalStudents, icon: Users },
-    { label: "Average Progress", value: `${analytics.avgProgress}%`, icon: TrendingUp },
-    { label: "Completed (100%)", value: analytics.completedCount, icon: Award },
-    { label: "Enrolled This Month", value: enrolledThisMonth, icon: Calendar },
+    { label: t("teacherAnalytics.stats.totalStudents"), value: analytics.totalStudents, icon: Users },
+    { label: t("teacherAnalytics.stats.averageProgress"), value: `${analytics.avgProgress}%`, icon: TrendingUp },
+    { label: t("teacherAnalytics.stats.completed"), value: analytics.completedCount, icon: Award },
+    { label: t("teacherAnalytics.stats.enrolledThisMonth"), value: enrolledThisMonth, icon: Calendar },
   ]
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <div className="flex items-center gap-3 mb-8">
-        <Link to="/teacher">
-          <Button variant="ghost" size="icon" className="shrink-0" aria-label="Back to dashboard">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+        <Link to="/teacher" className="hover:text-foreground transition-colors">
+          {t("teacherAnalytics.breadcrumb.myCourses")}
         </Link>
+        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+        <Link
+          to={`/teacher/courses/${courseId}`}
+          className="hover:text-foreground transition-colors truncate"
+        >
+          {courseTitle || t("teacherAnalytics.breadcrumb.courseFallback")}
+        </Link>
+        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+        <span className="text-foreground font-medium">{t("teacherAnalytics.heading")}</span>
+      </div>
+
+      <div className="flex items-center gap-3 mb-8">
         <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <BarChart3 className="h-7 w-7 text-primary" />
-            Course Analytics
+          <h1 className="flex items-center gap-2 font-serif text-3xl font-bold tracking-tight">
+            <BarChart3 className="h-6 w-6 shrink-0 text-primary" strokeWidth={1.75} aria-hidden />
+            {t("teacherAnalytics.heading")}
           </h1>
           {courseTitle && (
             <p className="text-muted-foreground mt-1">{courseTitle}</p>
@@ -124,90 +145,135 @@ export default function TeacherAnalytics() {
         </div>
         <Link to={`/teacher/courses/${courseId}/progress`}>
           <Button size="sm" variant="outline">
-            <UserCheck className="h-4 w-4 mr-1.5" />
-            Student Progress
+            <UserCheck className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
+            {t("teacherAnalytics.studentProgress")}
           </Button>
         </Link>
         <Link to={`/teacher/courses/${courseId}/gradebook`}>
           <Button size="sm" variant="outline">
-            <ClipboardList className="h-4 w-4 mr-1.5" />
-            Gradebook
+            <ClipboardList className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
+            {t("teacherAnalytics.gradebook")}
           </Button>
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div data-tour="analytics-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {stats.map((s) => (
-          <Card key={s.label}>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{s.label}</p>
-                  <p className="text-2xl font-bold mt-1">{s.value}</p>
-                </div>
-                <s.icon className="h-8 w-8 text-muted-foreground/60" />
-              </div>
-            </CardContent>
-          </Card>
+          <StatCard key={s.label} label={s.label} value={s.value} icon={s.icon} />
         ))}
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Student Enrollments</CardTitle>
+          <CardTitle className="font-serif text-lg font-semibold tracking-tight">
+            {t("teacherAnalytics.enrollments.heading")}
+          </CardTitle>
           <CardDescription>
-            {analytics.totalStudents} student{analytics.totalStudents !== 1 && "s"} enrolled
+            {t("teacherAnalytics.enrollments.subheadingCount", { count: analytics.totalStudents })}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {analytics.enrollments.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              No students have enrolled yet.
-            </p>
+            <EmptyState
+              variant="compact"
+              icon={<Users strokeWidth={1.75} aria-hidden />}
+              title={t("teacherAnalytics.enrollments.emptyText")}
+            />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              {/* ``table-fixed`` + colgroup so a 60-char student email
+                  doesn't push the progress + enrolled columns off-
+                  screen. Same column-budget convention the admin
+                  UsersTable adopted. */}
+              <table className="w-full table-fixed text-sm">
+                <colgroup>
+                  <col className="w-[28%]" />
+                  <col className="w-[34%]" />
+                  <col className="w-[24%]" />
+                  <col className="w-[14%]" />
+                </colgroup>
                 <thead>
                   <tr className="border-b text-left">
-                    <th className="pb-3 font-medium text-muted-foreground">Name</th>
-                    <th className="pb-3 font-medium text-muted-foreground">Email</th>
-                    <th className="pb-3 font-medium text-muted-foreground">Progress</th>
-                    <th className="pb-3 font-medium text-muted-foreground">Enrolled</th>
+                    <th className="pb-3 font-medium text-muted-foreground">{t("teacherAnalytics.enrollments.name")}</th>
+                    <th className="pb-3 font-medium text-muted-foreground">{t("teacherAnalytics.enrollments.email")}</th>
+                    <th className="pb-3 font-medium text-muted-foreground">{t("teacherAnalytics.enrollments.progress")}</th>
+                    <th className="pb-3 font-medium text-muted-foreground">{t("teacherAnalytics.enrollments.enrolled")}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {analytics.enrollments.map((e) => (
+                  {analytics.enrollments.map((e) => {
+                    // Trim before the truthy check so a whitespace-only
+                    // ``full_name`` falls through to the email instead
+                    // of rendering blank space.
+                    const trimmedName = (e.full_name ?? e.student?.full_name ?? "").trim()
+                    const trimmedEmail = (e.email ?? e.student?.email ?? "").trim()
+                    const name = trimmedName || trimmedEmail || t("teacherAnalytics.enrollments.unknown")
+                    return (
                     <tr key={e.user_id} className="border-b last:border-0">
                       <td className="py-3 font-medium">
-                        {e.full_name ?? e.student?.full_name ?? "Unknown"}
+                        <span className="block truncate" title={trimmedName || undefined}>
+                          {name}
+                        </span>
                       </td>
                       <td className="py-3 text-muted-foreground">
-                        {e.email ?? e.student?.email ?? "—"}
+                        <span className="block truncate" title={trimmedEmail || undefined}>
+                          {trimmedEmail || "—"}
+                        </span>
                       </td>
                       <td className="py-3">
                         <div className="flex items-center gap-3">
-                          <div className="flex-1 h-2 rounded-full bg-muted max-w-[140px]">
+                          <div className="h-2 max-w-[140px] flex-1 rounded-full bg-muted">
                             <div
                               className="h-full rounded-full bg-primary transition-all"
                               style={{ width: `${Math.min(e.progress, 100)}%` }}
                             />
                           </div>
-                          <span className="text-xs font-medium tabular-nums w-10 text-right">
+                          <span className="w-10 text-right text-xs font-medium tabular-nums">
                             {e.progress}%
                           </span>
                         </div>
                       </td>
                       <td className="py-3 text-muted-foreground">
-                        {e.enrolled_at ? new Date(e.enrolled_at).toLocaleDateString() : "—"}
+                        {e.enrolled_at ? formatDate(e.enrolled_at) : "—"}
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
           )}
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+/**
+ * Shimmer placeholder for the analytics page. Mirrors the real layout
+ * (back button + serif H1, four stat cards, enrolments card) so the
+ * page doesn't jump when data resolves.
+ */
+function TeacherAnalyticsSkeleton() {
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-5xl" aria-busy="true">
+      <div className="flex items-center gap-3 mb-8">
+        <Skeleton className="h-8 w-8 shrink-0 rounded-md" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-8 w-64 max-w-full" />
+          <Skeleton className="h-4 w-40 max-w-full" />
+        </div>
+        <Skeleton className="hidden sm:block h-9 w-32" />
+        <Skeleton className="hidden sm:block h-9 w-28" />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 rounded-md" />
+        ))}
+      </div>
+
+      <Skeleton className="h-64 rounded-md" />
     </div>
   )
 }

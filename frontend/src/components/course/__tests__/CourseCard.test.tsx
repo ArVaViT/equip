@@ -1,6 +1,9 @@
+import type { ReactNode } from "react"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
+import { I18nextProvider } from "react-i18next"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import i18n from "@/i18n/config"
 import CourseCard from "../CourseCard"
 import type { Course } from "@/types"
 
@@ -11,6 +14,7 @@ function makeCourse(overrides: Partial<Course> = {}): Course {
     description: "Short course description",
     image_url: null,
     status: "published",
+    access_mode: "public",
     created_by: "teacher-1",
     created_at: "2025-01-01T00:00:00Z",
     updated_at: "2025-01-01T00:00:00Z",
@@ -22,12 +26,16 @@ function makeCourse(overrides: Partial<Course> = {}): Course {
   }
 }
 
-function renderCard(course: Course) {
-  return render(
-    <MemoryRouter>
-      <CourseCard course={course} />
-    </MemoryRouter>,
+function TestWrapper({ children }: { children: ReactNode }) {
+  return (
+    <I18nextProvider i18n={i18n}>
+      <MemoryRouter>{children}</MemoryRouter>
+    </I18nextProvider>
   )
+}
+
+function renderCard(course: Course) {
+  return render(<CourseCard course={course} />, { wrapper: TestWrapper })
 }
 
 describe("CourseCard", () => {
@@ -118,5 +126,18 @@ describe("CourseCard", () => {
       }),
     )
     expect(screen.getByText(/2 modules/i)).toBeInTheDocument()
+  })
+
+  it('shows the "By invitation" badge on institute courses instead of the enrollment-window badge', () => {
+    const futureEnd = new Date(Date.now() + 86_400_000).toISOString()
+    renderCard(
+      makeCourse({
+        access_mode: "institute",
+        enrollment_start: null,
+        enrollment_end: futureEnd,
+      }),
+    )
+    expect(screen.getByText(/by invitation/i)).toBeInTheDocument()
+    expect(screen.queryByText(/enrolling now/i)).not.toBeInTheDocument()
   })
 })

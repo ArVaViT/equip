@@ -1,6 +1,7 @@
-import { Modal } from "@/components/patterns"
+import { useTranslation } from "react-i18next"
+import { EmptyState, Modal } from "@/components/patterns"
 import { Button } from "@/components/ui/button"
-import { Download } from "lucide-react"
+import { Download, Loader2, Paperclip } from "lucide-react"
 import type { CourseMaterial } from "./types"
 
 interface Props {
@@ -18,18 +19,21 @@ export function MaterialsModal({
   downloadingPath,
   onDownload,
 }: Props) {
+  const { t } = useTranslation()
   return (
-    <Modal open={open} onClose={onClose} title="Course Materials">
+    <Modal open={open} onClose={onClose} title={t("courseDetail.materialsModal.title")}>
       {materials.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-6">
-          No materials available.
-        </p>
+        <EmptyState
+          variant="compact"
+          icon={<Paperclip strokeWidth={1.75} aria-hidden />}
+          title={t("courseDetail.materialsModal.empty")}
+        />
       ) : (
         <div className="divide-y rounded-md border text-sm">
           {materials.map((file) => (
             <div
               key={file.path}
-              className="flex items-center justify-between px-3 py-2 hover:bg-muted/50 transition-colors"
+              className="flex items-center justify-between px-3 py-2 transition-colors hover:bg-muted/40"
             >
               <span className="truncate mr-2">{file.name}</span>
               <Button
@@ -40,9 +44,9 @@ export function MaterialsModal({
                 onClick={() => onDownload(file.path)}
               >
                 {downloadingPath === file.path ? (
-                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
                 ) : (
-                  <Download className="h-3.5 w-3.5" />
+                  <Download className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                 )}
               </Button>
             </div>

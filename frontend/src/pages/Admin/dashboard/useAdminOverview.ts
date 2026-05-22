@@ -1,17 +1,33 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
+import { useSearchParams } from "react-router-dom"
 import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
+import { useAsyncData } from "@/hooks/useAsyncData"
 import { coursesService } from "@/services/courses"
 import { supabase } from "@/lib/supabase"
 import { toast } from "@/lib/toast"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { useConfirm } from "@/components/ui/alert-dialog"
-import type { UserRole } from "@/types"
+import { ROLES, type UserRole } from "@/types"
 import type { AdminCert } from "./PendingCertsCard"
-import type { AdminStats, ProfileRow } from "./constants"
+import { displayNameOf } from "@/lib/userDisplay"
+import { ROLE_I18N_KEY, type AdminStats, type ProfileRow } from "./constants"
+
+const ROLE_FILTER_VALUES = ["admin", "teacher", "pending_teacher", "student"] as const
+type RoleFilter = (typeof ROLE_FILTER_VALUES)[number] | ""
+
+function isRoleFilter(v: string): v is (typeof ROLE_FILTER_VALUES)[number] {
+  return (ROLE_FILTER_VALUES as readonly string[]).includes(v)
+}
 
 interface UseAdminOverviewArgs {
   /** Current signed-in user id — excluded from bulk operations and delete confirmations. */
   currentUserId: string | undefined
+  /** When false, the hook skips the data fetch entirely. Used by the
+   *  AdminDashboard to avoid pulling users / courses / enrollments
+   *  counts when the user opens a tab (cohorts) that needs none of
+   *  them. Defaults to true so existing callers don't change shape. */
+  enabled?: boolean
 }
 
 /**
@@ -21,8 +37,10 @@ interface UseAdminOverviewArgs {
  * handlers. Split out of `AdminDashboard` so the page component stays
  * focused on layout and tab routing.
  */
-export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
+export function useAdminOverview({ currentUserId, enabled = true }: UseAdminOverviewArgs) {
   const confirm = useConfirm()
+  const { t } = useTranslation()
+  const [params, setParams] = useSearchParams()
 
   const {
     input: searchInput,
@@ -31,11 +49,28 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
     maxLength: searchMaxLength,
   } = useDebouncedSearchParam()
 
+  // URL-state role filter so a bookmarked admin link round-trips with
+  // its filter. Reject any value not in the allow-list (defaults to "").
+  const rawRoleFilter = params.get("role") ?? ""
+  const roleFilter: RoleFilter = isRoleFilter(rawRoleFilter) ? rawRoleFilter : ""
+  const setRoleFilter = useCallback(
+    (next: RoleFilter) => {
+      setParams(
+        (prev) => {
+          const n = new URLSearchParams(prev)
+          if (next) n.set("role", next)
+          else n.delete("role")
+          return n
+        },
+        { replace: true },
+      )
+    },
+    [setParams],
+  )
+
   const [users, setUsers] = useState<ProfileRow[]>([])
   const [stats, setStats] = useState<AdminStats>({ users: 0, courses: 0, enrollments: 0 })
   const [adminCerts, setAdminCerts] = useState<AdminCert[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkRole, setBulkRole] = useState<UserRole>("student")
@@ -45,48 +80,86 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), [])
 
+  const { data: fetchedData, loading, error: fetchError } = useAsyncData(
+    async (isCancelled) => {
+      // Hook is reused across tabs that don't all need this data; the
+      // ``enabled`` arg lets the parent skip the fetch (and the loading
+      // state) without unmounting the hook.
+      if (!enabled) return undefined
+      const [allUsers, coursesCount, enrollmentsCount, certs] = await Promise.all([
+        coursesService.getAllUsers(),
+        supabase.from("courses").select("id", { count: "exact", head: true }),
+        supabase.from("enrollments").select("id", { count: "exact", head: true }),
+        coursesService.getAdminPendingCerts().catch(() => []),
+      ])
+      if (isCancelled()) return undefined
+      return { allUsers, coursesCount, enrollmentsCount, certs }
+    },
+    [reloadKey, enabled],
+  )
+
+  // Sync fetched data into individual state (handlers still need setUsers/setAdminCerts)
   useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    ;(async () => {
-      try {
-        const [allUsers, coursesCount, enrollmentsCount, certs] = await Promise.all([
-          coursesService.getAllUsers(),
-          supabase.from("courses").select("id", { count: "exact", head: true }),
-          supabase.from("enrollments").select("id", { count: "exact", head: true }),
-          coursesService.getAdminPendingCerts().catch(() => []),
-        ])
-        if (cancelled) return
-        setUsers(allUsers as ProfileRow[])
-        setStats({
-          users: allUsers.length,
-          courses: coursesCount.count ?? 0,
-          enrollments: enrollmentsCount.count ?? 0,
-        })
-        setAdminCerts(certs)
-      } catch {
-        if (!cancelled) setError("Failed to load admin data. Please try again.")
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [reloadKey])
+    if (!fetchedData) return
+    const { allUsers, coursesCount, enrollmentsCount, certs } = fetchedData
+    setUsers(allUsers as ProfileRow[])
+    // ``Last 7 days`` is a client-side roll-up of the already-loaded
+    // user list so the overview doesn't pay for an extra API call.
+    // The window anchors at "now - 7d" each render — good enough for
+    // a rough trend, and cheap.
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+    const usersLast7Days = (allUsers as ProfileRow[]).filter(
+      (u) => new Date(u.created_at).getTime() >= sevenDaysAgo,
+    ).length
+    setStats({
+      users: allUsers.length,
+      courses: coursesCount.count ?? 0,
+      enrollments: enrollmentsCount.count ?? 0,
+      usersLast7Days,
+    })
+    setAdminCerts(certs)
+  }, [fetchedData])
+
+  // Surface a friendly fallback to the rest of the hook's `error: string | null`
+  // contract — AdminDashboard renders this verbatim in <ErrorState>, so we
+  // never want a raw axios / supabase message bleeding into the UI.
+  const error = fetchError ? t("admin.overview.loadError") : null
 
   const filtered = useMemo(() => {
     const q = urlQuery.trim().toLowerCase()
-    if (!q) return users
-    return users.filter(
-      (u) => u.full_name?.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
-    )
-  }, [users, urlQuery])
+    return users.filter((u) => {
+      if (roleFilter && u.role !== roleFilter) return false
+      if (q && !u.full_name?.toLowerCase().includes(q) && !u.email.toLowerCase().includes(q)) {
+        return false
+      }
+      return true
+    })
+  }, [users, urlQuery, roleFilter])
+
+  /**
+   * Per-role counts across the whole user list (NOT filtered) — drives
+   * the chip strip above the search input so the admin sees the
+   * tenant's role distribution at a glance without flipping the
+   * filter through every value.
+   */
+  const roleCounts = useMemo(() => {
+    const counts: Record<UserRole, number> = {
+      admin: 0,
+      teacher: 0,
+      pending_teacher: 0,
+      student: 0,
+    }
+    for (const u of users) {
+      if (u.role in counts) counts[u.role as UserRole] += 1
+    }
+    return counts
+  }, [users])
 
   const userMap = useMemo(() => {
     const map: Record<string, string> = {}
-    for (const u of users) map[u.id] = u.full_name || u.email
+    // ``displayNameOf`` handles whitespace-only full_names so the audit
+    // log doesn't render three blank glyphs as the user attribution.
+    for (const u of users) map[u.id] = displayNameOf(u.full_name, u.email)
     return map
   }, [users])
 
@@ -105,20 +178,31 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
     try {
       await coursesService.updateUserRole(userId, newRole)
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)))
-      toast({ title: "Role updated", variant: "success" })
+      toast({ title: t("admin.overview.toast.roleUpdated"), variant: "success" })
     } catch {
-      toast({ title: "Failed to update role", variant: "destructive" })
+      toast({ title: t("admin.overview.toast.roleUpdateFailed"), variant: "destructive" })
     } finally {
       setUpdatingId(null)
     }
   }
 
   const handleDeleteUser = async (target: ProfileRow) => {
+    // Fence the self-delete path. The UI button is already disabled
+    // for the signed-in admin, but the hook is callable from any
+    // future surface (a keyboard shortcut, an API console) and the
+    // server-side check shouldn't be the only thing standing between
+    // an admin and locking themselves out of their tenant.
+    if (target.id === currentUserId) {
+      toast({
+        title: t("admin.overview.toast.cannotDeleteSelf"),
+        variant: "destructive",
+      })
+      return
+    }
     const ok = await confirm({
-      title: `Delete ${target.full_name || target.email}?`,
-      description:
-        "This permanently removes their account, enrollments, submissions, grades, certificates, and notifications. Courses they created will be kept but disassociated. This cannot be undone.",
-      confirmLabel: "Delete account",
+      title: t("admin.overview.confirm.deleteUserTitle", { name: displayNameOf(target.full_name, target.email) }),
+      description: t("admin.overview.confirm.deleteUserDescription"),
+      confirmLabel: t("admin.overview.confirm.deleteUserAction"),
       tone: "destructive",
     })
     if (!ok) return
@@ -132,9 +216,12 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
         next.delete(target.id)
         return next
       })
-      toast({ title: "User deleted", variant: "success" })
+      toast({ title: t("admin.overview.toast.userDeleted"), variant: "success" })
     } catch (err) {
-      toast({ title: getErrorDetail(err, "Failed to delete user"), variant: "destructive" })
+      toast({
+        title: getErrorDetail(err, t("admin.overview.toast.deleteUserFailed")),
+        variant: "destructive",
+      })
     } finally {
       setUpdatingId(null)
     }
@@ -166,10 +253,14 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
     // themselves mid-action would lock them out.
     const ids = [...selectedIds].filter((id) => id !== currentUserId)
     if (ids.length === 0) return
+    const localizedRole = t(ROLE_I18N_KEY[bulkRole])
     const ok = await confirm({
-      title: "Change role for selected users?",
-      description: `${ids.length} user(s) will be set to role "${bulkRole}".`,
-      confirmLabel: "Apply",
+      title: t("admin.overview.confirm.bulkRoleTitle"),
+      description: t("admin.overview.confirm.bulkRoleDescription", {
+        count: ids.length,
+        role: localizedRole,
+      }),
+      confirmLabel: t("admin.overview.confirm.bulkRoleAction"),
     })
     if (!ok) return
     setBulkUpdating(true)
@@ -179,16 +270,25 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
         prev.map((u) => (ids.includes(u.id) ? { ...u, role: bulkRole } : u)),
       )
       setSelectedIds(new Set())
-      toast({ title: `Updated ${result.updated} user(s) to ${bulkRole}`, variant: "success" })
+      toast({
+        title: t("admin.overview.toast.bulkUpdated", {
+          count: result.updated,
+          role: localizedRole,
+        }),
+        variant: "success",
+      })
     } catch (err) {
-      toast({ title: getErrorDetail(err, "Bulk update failed"), variant: "destructive" })
+      toast({
+        title: getErrorDetail(err, t("admin.overview.toast.bulkUpdateFailed")),
+        variant: "destructive",
+      })
     } finally {
       setBulkUpdating(false)
     }
   }
 
   const pendingTeachers = useMemo(
-    () => users.filter((u) => u.role === "pending_teacher"),
+    () => users.filter((u) => u.role === ROLES.PENDING_TEACHER),
     [users],
   )
 
@@ -208,22 +308,36 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
   }
 
   const approvePendingTeacher = async (u: ProfileRow) => {
+    const name = displayNameOf(u.full_name, u.email)
     const ok = await confirm({
-      title: "Approve this teacher?",
-      description: `${u.full_name || u.email} will gain access to teacher features.`,
-      confirmLabel: "Approve",
+      title: t("admin.pendingTeachers.confirm.approveTitle"),
+      description: t("admin.pendingTeachers.confirm.approveDescription", { name }),
+      confirmLabel: t("admin.pendingTeachers.confirm.approveAction"),
     })
-    if (ok) await setTeacherRole(u.id, "teacher", "Teacher approved", "Failed to approve teacher")
+    if (ok)
+      await setTeacherRole(
+        u.id,
+        "teacher",
+        t("admin.pendingTeachers.toast.approved"),
+        t("admin.pendingTeachers.toast.approveFailed"),
+      )
   }
 
   const denyPendingTeacher = async (u: ProfileRow) => {
+    const name = displayNameOf(u.full_name, u.email)
     const ok = await confirm({
-      title: "Deny this teacher?",
-      description: `${u.full_name || u.email}'s teacher request will be rejected.`,
-      confirmLabel: "Deny",
+      title: t("admin.pendingTeachers.confirm.denyTitle"),
+      description: t("admin.pendingTeachers.confirm.denyDescription", { name }),
+      confirmLabel: t("admin.pendingTeachers.confirm.denyAction"),
       tone: "destructive",
     })
-    if (ok) await setTeacherRole(u.id, "student", "Teacher denied", "Failed to deny teacher")
+    if (ok)
+      await setTeacherRole(
+        u.id,
+        "student",
+        t("admin.pendingTeachers.toast.denied"),
+        t("admin.pendingTeachers.toast.denyFailed"),
+      )
   }
 
   const handleCertDecision = async (
@@ -248,16 +362,16 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
     handleCertDecision(
       certId,
       () => coursesService.adminApproveCert(certId),
-      "Certificate approved",
-      "Failed to approve certificate",
+      t("admin.pendingCerts.toast.approved"),
+      t("admin.pendingCerts.toast.approveFailed"),
     )
 
   const handleRejectCert = (certId: string) =>
     handleCertDecision(
       certId,
       () => coursesService.rejectCert(certId),
-      "Certificate rejected",
-      "Failed to reject certificate",
+      t("admin.pendingCerts.toast.rejected"),
+      t("admin.pendingCerts.toast.rejectFailed"),
     )
 
   return {
@@ -278,6 +392,9 @@ export function useAdminOverview({ currentUserId }: UseAdminOverviewArgs) {
     setSearchInput,
     urlQuery,
     searchMaxLength,
+    roleFilter,
+    setRoleFilter,
+    roleCounts,
     reload,
     setBulkRole,
     handleRoleChange,

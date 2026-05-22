@@ -11,13 +11,16 @@ set. See ``app.services.translation.service.get_translation_provider``.
 
 from __future__ import annotations
 
-import contextlib
 import logging
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
+if TYPE_CHECKING:
+    from types import TracebackType
+
+from app.services.bible.substitution import post_substitute, pre_substitute
 from app.services.translation.prompt import build_system_prompt, build_user_prompt
 from app.services.translation.protocol import (
     TranslationError,
@@ -39,6 +42,13 @@ class GeminiTranslationProvider:
 
     Designed for short-lived FastAPI workers: one ``httpx.Client`` per
     instance, transports reused across calls, no global state.
+
+    Lifecycle: when the caller passes their own ``client``, we never close
+    it — that's the caller's responsibility. When we construct the client
+    ourselves, ``close()`` (or use as a context manager) releases the
+    transport. We deliberately do **not** define ``__del__``: GC ordering
+    on shutdown is unreliable, and silently closing a caller-owned client
+    in a finalizer is a footgun the test suite has tripped over.
     """
 
     name = "gemini"
@@ -51,6 +61,7 @@ class GeminiTranslationProvider:
         timeout_seconds: float,
         max_output_tokens: int,
         max_retries: int = 2,
+        min_interval_seconds: float = 0.0,
         client: httpx.Client | None = None,
     ) -> None:
         if not api_key:
@@ -61,21 +72,78 @@ class GeminiTranslationProvider:
         self._model = model
         self._max_output_tokens = max_output_tokens
         self._max_retries = max_retries
-        self._client = client or httpx.Client(timeout=timeout_seconds)
+        # Min wall-time between two successive ``translate()`` calls on this
+        # instance. Set to ``4.5`` (≈13 RPM) when running backfill scripts
+        # against the free-tier 15 RPM cap; left at ``0`` in production
+        # where natural request spacing keeps us well under the limit.
+        self._min_interval_seconds = min_interval_seconds
+        self._last_call_monotonic: float = 0.0
+        # Split timeout: a slow connect or a stuck pool checkout shouldn't
+        # eat the full read budget. Read uses the configured per-call cap
+        # (the actual generation latency); connect/write/pool stay short.
+        self._owns_client = client is None
+        self._client = client or httpx.Client(
+            timeout=httpx.Timeout(connect=5.0, read=timeout_seconds, write=10.0, pool=5.0),
+        )
 
-    def __del__(self) -> None:
-        # Best-effort cleanup; FastAPI workers usually outlive the provider
-        # but unit tests construct one per case.
-        with contextlib.suppress(Exception):
+    def close(self) -> None:
+        """Release the underlying HTTP client when we own it.
+
+        Idempotent; safe to call multiple times. No-op when the caller
+        injected the client (they retain ownership).
+        """
+        if self._owns_client:
             self._client.close()
+
+    def __enter__(self) -> GeminiTranslationProvider:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        self.close()
 
     def translate(self, request: TranslationRequest) -> TranslationResult:
         if request.source_locale == request.target_locale or not request.text.strip():
             return TranslationResult(text=request.text, model=self._model)
 
+        # For HTML content, swap canonical Bible quotes with sentinel
+        # markers BEFORE sending to Gemini, then restore them AFTER with
+        # the target-locale canonical text. This guarantees Bible quotes
+        # always come back as KJV / Synodal verbatim — never paraphrased
+        # by the model. Non-HTML content kinds (titles, descriptions,
+        # quiz options) skip this entirely. The system prompt's
+        # "preserve placeholders verbatim" rule covers the markers.
+        bible_subs: list = []
+        request_text = request.text
+        if request.content_kind == "html":
+            request_text, bible_subs = pre_substitute(request_text, request.source_locale)
+            if bible_subs:
+                request = TranslationRequest(
+                    text=request_text,
+                    source_locale=request.source_locale,
+                    target_locale=request.target_locale,
+                    content_kind=request.content_kind,
+                    context=request.context,
+                )
+
         payload = self._build_payload(request)
         url = f"{_API_BASE}/models/{self._model}:generateContent"
         headers = {"Content-Type": "application/json", "X-goog-api-key": self._api_key}
+
+        # Enforce the per-instance minimum interval before the first attempt
+        # of this translate() call. We only gate ``translate()`` entries —
+        # the bounded internal retry loop below should not be throttled too,
+        # since retries already back off on their own.
+        if self._min_interval_seconds > 0:
+            elapsed = time.monotonic() - self._last_call_monotonic
+            wait = self._min_interval_seconds - elapsed
+            if wait > 0:
+                time.sleep(wait)
+        self._last_call_monotonic = time.monotonic()
 
         last_error: Exception | None = None
         for attempt in range(self._max_retries + 1):
@@ -86,7 +154,18 @@ class GeminiTranslationProvider:
                 logger.warning("Gemini transport error attempt=%s err=%s", attempt, exc)
             else:
                 if response.status_code == 200:
-                    return self._parse_response(response.json())
+                    result = self._parse_response(response.json())
+                    if bible_subs:
+                        # Restore Bible quote markers with the canonical
+                        # target-locale text. Falls back to source if the
+                        # target-locale lookup misses (see ``post_substitute``).
+                        result = TranslationResult(
+                            text=post_substitute(result.text, bible_subs, request.target_locale),
+                            input_tokens=result.input_tokens,
+                            output_tokens=result.output_tokens,
+                            model=result.model,
+                        )
+                    return result
                 if response.status_code in _RETRYABLE_STATUSES:
                     last_error = TranslationError(f"Gemini returned {response.status_code}: {response.text[:200]}")
                     logger.warning(
@@ -99,10 +178,12 @@ class GeminiTranslationProvider:
                     raise TranslationError(f"Gemini returned {response.status_code}: {response.text[:200]}")
 
             if attempt < self._max_retries:
-                # Exponential back-off with a small floor: keeps us from
-                # hammering on a 429 burst but doesn't add noticeable latency
-                # to the happy path.
-                time.sleep(min(2.0, 0.25 * (2**attempt)))
+                # Exponential back-off, but capped so the *total* sleep
+                # budget across all retries is ≤ 1.5s. Combined with the
+                # per-call read timeout this bounds worst-case time on a
+                # bad batch instead of letting one stuck call pile retries
+                # on top of a 30s timeout.
+                time.sleep(min(0.5, 0.1 * (2**attempt)))
 
         raise TranslationError(f"Gemini call failed after retries: {last_error!r}")
 
@@ -139,8 +220,32 @@ class GeminiTranslationProvider:
         if not candidates:
             raise TranslationError(f"Gemini returned no candidates: {body!r}")
 
-        parts = candidates[0].get("content", {}).get("parts") or []
-        text = "".join(p.get("text", "") for p in parts).strip()
+        # Gemini occasionally returns malformed candidates (string entries,
+        # missing ``content``/``parts``, ``parts`` items that are not dicts).
+        # Treat any structural deviation as a typed translation error so the
+        # orchestrator can persist a ``status='failed'`` row instead of the
+        # raw ``AttributeError`` taking down the whole batch.
+        try:
+            content = candidates[0].get("content") or {}
+            parts = content.get("parts") or []
+            text = "".join(p.get("text", "") for p in parts).strip()
+            finish_reason = candidates[0].get("finishReason")
+        except (AttributeError, KeyError, TypeError, IndexError) as exc:
+            raise TranslationError(f"Gemini returned malformed candidate: {body!r}") from exc
+
+        # Only ``STOP`` represents a complete, voluntarily-terminated response.
+        # Anything else (``MAX_TOKENS``, ``SAFETY``, ``RECITATION``, ``OTHER``,
+        # …) means the model bailed mid-flight and we'd be persisting a
+        # truncated or refused output as if it were a real translation. Fail
+        # so the orchestrator records ``status='failed'`` and we can fix the
+        # cause (bump ``maxOutputTokens``, adjust the prompt, etc.).
+        # ``finish_reason`` is only allowed to be missing entirely; older
+        # Gemini API shapes occasionally omitted it for short responses.
+        if finish_reason is not None and finish_reason != "STOP":
+            raise TranslationError(
+                f"Gemini stopped with finishReason={finish_reason!r}; discarding partial output ({len(text)} chars)"
+            )
+
         if not text:
             raise TranslationError("Gemini returned an empty translation")
 

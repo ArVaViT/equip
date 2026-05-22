@@ -13,7 +13,7 @@ tagged releases with long-term support yet.
 
 **Please do NOT open a public GitHub issue for security vulnerabilities.**
 
-Instead, email **arvavitcorp@gmail.com** with:
+Instead, email **supportequip@gmail.com** with:
 
 1. A description of the vulnerability.
 2. Steps to reproduce (or a proof-of-concept).
@@ -61,4 +61,4 @@ The following are **out of scope**:
 - Production API docs (`/docs`, `/redoc`) are disabled.
 - `pip-audit` and `npm audit` run in CI on every push and PR.
 
-Thank you for helping keep Bible School LMS and its users safe.
+Thank you for helping keep Equip and its users safe.

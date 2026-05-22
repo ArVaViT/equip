@@ -84,8 +84,27 @@ export function useMonthGrid(events: CalendarEvent[]) {
     setSelectedDay,
     selectedDayEvents,
     upcomingEvents,
-    prevMonth: () => setCurrentDate(new Date(year, month - 1, 1)),
-    nextMonth: () => setCurrentDate(new Date(year, month + 1, 1)),
-    goToday: () => setCurrentDate(new Date()),
+    // ``selectedDay`` needs to follow the visible month -- otherwise
+    // navigating May -> June while May-15 was selected leaves the
+    // right-side panel claiming "events for May 15" while rendering
+    // an empty June grid. Anchor selectedDay to the 1st of the
+    // destination month so the panel reads the new month's data on
+    // navigation; ``goToday`` snaps both the grid AND selection back
+    // to today.
+    prevMonth: () => {
+      const nextMonthStart = new Date(year, month - 1, 1)
+      setCurrentDate(nextMonthStart)
+      setSelectedDay(nextMonthStart)
+    },
+    nextMonth: () => {
+      const nextMonthStart = new Date(year, month + 1, 1)
+      setCurrentDate(nextMonthStart)
+      setSelectedDay(nextMonthStart)
+    },
+    goToday: () => {
+      const today = new Date()
+      setCurrentDate(today)
+      setSelectedDay(today)
+    },
   };
 }

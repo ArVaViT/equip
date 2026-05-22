@@ -75,10 +75,15 @@ def _validate_via_supabase(token: str) -> dict | None:
 
 
 def decode_access_token(token: str) -> dict | None:
-    # Validated at app startup by Settings.model_post_init; this assert gives
-    # PyJWT (and mypy) a non-Optional secret without re-adding a runtime check.
+    # ``JWT_SECRET_KEY`` is optional at boot now (preview deployments may not
+    # have the full env-var set — see ``Settings.runtime_ready_errors()``).
+    # When it's missing we still attempt the Supabase fallback so a degraded
+    # deployment can prove a token at all if SUPABASE_URL happens to be set;
+    # otherwise the caller treats ``None`` as a 401, which is the correct
+    # response on an unconfigured environment.
     secret = settings.JWT_SECRET_KEY
-    assert secret is not None, "JWT_SECRET_KEY missing — Settings post-init should have raised"
+    if secret is None:
+        return _validate_via_supabase(token)
     try:
         return jwt.decode(
             token,

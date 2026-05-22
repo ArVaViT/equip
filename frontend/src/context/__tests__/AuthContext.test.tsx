@@ -19,9 +19,23 @@ vi.mock("@/lib/supabase", () => ({
         authHandler = cb
         return { data: { subscription: { unsubscribe } } }
       }),
-      getSession: vi.fn(),
+      // Resolve to "no session" — the AuthContext doesn't actually care
+      // about this value (it relies on the onAuthStateChange callback),
+      // but ``services/api.ts`` reads it at module load to prime its
+      // bearer-token cache and crashes if it's not thenable.
+      getSession: vi
+        .fn()
+        .mockResolvedValue({ data: { session: null }, error: null }),
     },
     from: (...args: unknown[]) => from(...args),
+  },
+}))
+
+// New dependency of ``AuthContext`` for post-OAuth locale reconciliation.
+// Tests in this file never exercise that path, so just stub the call.
+vi.mock("@/services/preferences", () => ({
+  preferencesService: {
+    setPreferredLocale: vi.fn().mockResolvedValue({}),
   },
 }))
 

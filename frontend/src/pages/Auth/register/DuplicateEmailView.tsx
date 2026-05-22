@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom"
 import { Mail } from "lucide-react"
+import { Trans, useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import AuthLayout from "@/components/layout/AuthLayout"
+import { SUPPORT_EMAIL } from "@/lib/brand"
 
 /**
  * Terminal state shown when the register endpoint reports a duplicate
@@ -10,38 +12,44 @@ import AuthLayout from "@/components/layout/AuthLayout"
  * instead of forcing one.
  */
 export function DuplicateEmailView({ email }: { email: string }) {
+  const { t } = useTranslation()
   return (
     <AuthLayout
-      heading="Account may exist"
-      subheading="This email might already be registered"
+      heading={t("authRegister.duplicate.heading")}
+      subheading={t("authRegister.duplicate.subheading")}
     >
       <div className="space-y-6 animate-fade-in">
         <div className="flex flex-col items-center text-center gap-4 py-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-md bg-warning/10">
-            <Mail className="h-8 w-8 text-warning" />
+            <Mail className="h-8 w-8 text-warning" strokeWidth={1.75} aria-hidden />
           </div>
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              An account with <strong className="text-foreground">{email}</strong> may already exist.
+              <Trans
+                i18nKey="authRegister.duplicate.bodyExists"
+                values={{ email }}
+                components={{ strong: <strong className="text-foreground" /> }}
+              />
             </p>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Please try signing in instead, or use the "Forgot password" option if you can't
-              remember your credentials.
+              {t("authRegister.duplicate.bodyHint")}
             </p>
           </div>
         </div>
         <div className="space-y-3">
           <Link to="/login" className="block">
-            <Button className="w-full h-11">Go to Sign In</Button>
-          </Link>
-          <Link to="/forgot-password" className="block">
-            <Button variant="outline" className="w-full h-11">
-              Forgot Password?
+            <Button size="lg" className="w-full">
+              {t("authRegister.duplicate.goToSignIn")}
             </Button>
           </Link>
-          <a href="mailto:support@bibleschool.com" className="block">
-            <Button variant="ghost" className="w-full h-11 text-muted-foreground">
-              Contact Support
+          <Link to="/forgot-password" className="block">
+            <Button variant="outline" size="lg" className="w-full">
+              {t("authRegister.duplicate.forgotPassword")}
+            </Button>
+          </Link>
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="block">
+            <Button variant="ghost" size="lg" className="w-full text-muted-foreground">
+              {t("authRegister.duplicate.contactSupport")}
             </Button>
           </a>
         </div>

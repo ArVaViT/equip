@@ -3,6 +3,23 @@ import type { ChapterType } from '@/lib/chapterTypes'
 export type UserRole = 'admin' | 'teacher' | 'pending_teacher' | 'student'
 export type PreferredLocale = 'ru' | 'en'
 
+/**
+ * Single source of truth for role string literals. Use ``ROLES.ADMIN``
+ * etc. instead of the bare ``"admin"`` everywhere — a typo in
+ * ``"adimn"`` is caught by TypeScript at the call site, whereas the
+ * bare string silently fails the role check.
+ *
+ * Mirrors the ``UserRole`` union (which mirrors the Pydantic
+ * Literal that mirrors the Postgres CHECK constraint on
+ * ``profiles.role``). All four representations stay in lockstep.
+ */
+export const ROLES = {
+  ADMIN: 'admin',
+  TEACHER: 'teacher',
+  PENDING_TEACHER: 'pending_teacher',
+  STUDENT: 'student',
+} as const satisfies Record<string, UserRole>
+
 export interface User {
   id: string
   email: string
@@ -20,6 +37,11 @@ export interface Course {
   description: string | null
   image_url: string | null
   status: 'draft' | 'published'
+  // Controls enrollment policy independently from `status` (ADR-010):
+  // - 'public'    catalog enroll button works (subject to enrollment_start/end)
+  // - 'institute' enroll button is shown disabled with the
+  //              'Доступно только по приглашению' label
+  access_mode: 'public' | 'institute'
   created_by: string
   created_at: string
   updated_at: string
@@ -212,11 +234,23 @@ export interface AssignmentSubmission {
 export interface Certificate {
   id: string
   user_id: string
-  course_id: string
-  issued_at: string
-  certificate_number: string
+  course_id: string | null
+  archived_course_title?: string | null
+  issued_at: string | null
+  certificate_number: string | null
   status: 'pending' | 'teacher_approved' | 'approved' | 'rejected'
-  requested_at: string
+  requested_at: string | null
+  teacher_approved_at?: string | null
+  teacher_approved_by?: string | null
+  admin_approved_at?: string | null
+  admin_approved_by?: string | null
+  // Enrichment populated by the pending-cert listing endpoints
+  // (teacher + admin panels); absent on the slim "/my" + course-detail
+  // payloads. Optional because every other consumer ignores them.
+  student_name?: string | null
+  student_email?: string | null
+  course_title?: string | null
+  teacher_approver_name?: string | null
 }
 
 export type BlockType = 'text' | 'quiz' | 'assignment' | 'file'
@@ -246,17 +280,19 @@ export interface CourseReview {
 
 export interface Cohort {
   id: string
-  course_id: string
   name: string
   start_date: string
   end_date: string
   enrollment_start: string | null
   enrollment_end: string | null
-  status: 'upcoming' | 'active' | 'completed' | 'archived'
+  status: 'upcoming' | 'active' | 'completed'
   max_students: number | null
-  student_count: number
+  created_by: string | null
   created_at: string
-  updated_at: string
+  updated_at: string | null
+  // Computed on the server from cohort_courses + enrollments — see ADR-010.
+  course_ids: string[]
+  student_count: number
 }
 
 export type NotificationType =

@@ -16,6 +16,23 @@ export const assignmentsService = {
     return response.data
   },
 
+  /**
+   * Editor-only fetch: forces source-language `title` / `description`
+   * columns regardless of the viewer's `preferred_locale`. Use from
+   * `AssignmentEditor` so a teacher in EN UI editing their RU assignment
+   * doesn't see the EN translation in the editable fields (a PATCH would
+   * then overwrite the source `title` column).
+   *
+   * Owner / admin only — the backend returns 403 for anyone else.
+   */
+  async getChapterAssignmentsForEdit(chapterId: string): Promise<Assignment[]> {
+    const response = await api.get<Assignment[]>(
+      `/assignments/chapter/${chapterId}`,
+      { params: { source: 1 } },
+    )
+    return response.data
+  },
+
   async createAssignment(data: AssignmentCreateData): Promise<Assignment> {
     const response = await api.post<Assignment>("/assignments", data)
     return response.data

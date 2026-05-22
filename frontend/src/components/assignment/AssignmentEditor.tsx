@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { FileText, Loader2, Plus } from "lucide-react"
 import { useConfirm } from "@/components/ui/alert-dialog"
@@ -28,6 +29,7 @@ export default function AssignmentEditor({
   onAssignmentCreated,
 }: AssignmentEditorProps) {
   const confirm = useConfirm()
+  const { t } = useTranslation()
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
@@ -40,8 +42,12 @@ export default function AssignmentEditor({
     let cancelled = false
     setLoading(true)
     setFetchError(false)
+    // Editor-only fetch so the form binds to source-language `title` /
+    // `description` columns regardless of UI locale. Without this a
+    // teacher in EN UI editing their RU assignment would see the EN
+    // translation in the form and a PATCH would overwrite the source.
     coursesService
-      .getChapterAssignments(chapterId)
+      .getChapterAssignmentsForEdit(chapterId)
       .then((data) => {
         if (!cancelled) setAssignments(data)
       })
@@ -58,7 +64,7 @@ export default function AssignmentEditor({
 
   const handleCreate = async () => {
     if (!form.title.trim()) {
-      toast({ title: "Assignment title is required", variant: "destructive" })
+      toast({ title: t("assignmentEditor.validation.titleRequired"), variant: "destructive" })
       return
     }
     setCreating(true)
@@ -71,9 +77,9 @@ export default function AssignmentEditor({
       onAssignmentCreated?.(a.id)
       setForm(EMPTY_ASSIGNMENT_FORM)
       setShowCreate(false)
-      toast({ title: "Assignment created", variant: "success" })
+      toast({ title: t("assignmentEditor.toast.created"), variant: "success" })
     } catch {
-      toast({ title: "Failed to create assignment", variant: "destructive" })
+      toast({ title: t("assignmentEditor.toast.createFailed"), variant: "destructive" })
     } finally {
       setCreating(false)
     }
@@ -81,25 +87,25 @@ export default function AssignmentEditor({
 
   const handleDelete = async (id: string) => {
     const ok = await confirm({
-      title: "Delete this assignment?",
-      description: "All student submissions will also be deleted.",
-      confirmLabel: "Delete assignment",
+      title: t("assignmentEditor.confirmDelete.title"),
+      description: t("assignmentEditor.confirmDelete.description"),
+      confirmLabel: t("assignmentEditor.confirmDelete.confirm"),
       tone: "destructive",
     })
     if (!ok) return
     try {
       await coursesService.deleteAssignment(id)
       setAssignments((prev) => prev.filter((a) => a.id !== id))
-      toast({ title: "Assignment deleted", variant: "success" })
+      toast({ title: t("assignmentEditor.toast.deleted"), variant: "success" })
     } catch {
-      toast({ title: "Failed to delete assignment", variant: "destructive" })
+      toast({ title: t("assignmentEditor.toast.deleteFailed"), variant: "destructive" })
     }
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" strokeWidth={1.75} />
       </div>
     )
   }
@@ -107,7 +113,7 @@ export default function AssignmentEditor({
   if (fetchError) {
     return (
       <p className="text-sm text-destructive py-4 text-center">
-        Failed to load assignments. Please try refreshing.
+        {t("assignmentEditor.loadFailed")}
       </p>
     )
   }
@@ -116,8 +122,10 @@ export default function AssignmentEditor({
     <div className="space-y-4 mt-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Assignments ({assignments.length})</span>
+          <FileText className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
+          <span className="text-sm font-medium">
+            {t("assignmentEditor.heading", { count: assignments.length })}
+          </span>
         </div>
         <Button
           variant="outline"
@@ -125,8 +133,8 @@ export default function AssignmentEditor({
           className="h-7 text-xs"
           onClick={() => setShowCreate((v) => !v)}
         >
-          <Plus className="h-3 w-3 mr-1" />
-          New Assignment
+          <Plus className="h-3 w-3 mr-1" strokeWidth={1.75} />
+          {t("assignmentEditor.newAssignment")}
         </Button>
       </div>
 
@@ -154,7 +162,7 @@ export default function AssignmentEditor({
 
       {assignments.length === 0 && !showCreate && (
         <div className="text-center py-6 border border-dashed rounded-md text-sm text-muted-foreground">
-          No assignments for this chapter.
+          {t("assignmentEditor.empty")}
         </div>
       )}
     </div>

@@ -10,7 +10,15 @@ from app.models.user import User
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
-@router.get("/course/{course_id}")
+@router.get(
+    "/course/{course_id}",
+    summary="Course-level analytics for the teacher dashboard",
+    responses={
+        200: {"description": "Course title + aggregate stats + paginated enrollment list"},
+        403: {"description": "Caller is not the course owner (or admin)"},
+        404: {"description": "Course not found"},
+    },
+)
 def get_course_analytics(
     course_id: str,
     skip: int = Query(0, ge=0),
@@ -18,6 +26,15 @@ def get_course_analytics(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
+    """Return aggregates + a paginated student list for one course.
+
+    Used by the Teacher Analytics page. The aggregate (``total_students``,
+    ``avg_progress``, ``completion_count``) is one SQL ``count``/``avg``
+    round-trip so a course with thousands of students still loads in
+    milliseconds; only the paginated ``enrollments`` slice fans out into
+    rows. ``skip`` / ``limit`` follow the same convention as the rest of
+    the API.
+    """
     course = verify_course_owner(db, course_id, teacher)
 
     # Aggregates in one round-trip instead of loading everything into Python.

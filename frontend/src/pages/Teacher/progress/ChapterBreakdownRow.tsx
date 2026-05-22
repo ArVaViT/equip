@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import {
   CheckCircle,
@@ -35,6 +36,7 @@ export function ChapterBreakdownRow({
   onToggleComplete,
   onGrantExtraAttempt,
 }: Props) {
+  const { t } = useTranslation()
   const title =
     chapterInfo?.title ?? quiz?.chapter_title ?? assignment?.chapter_title ?? chapterId
   const gradable = chapterInfo ? isGradableChapterType(chapterInfo.chapter_type) : false
@@ -51,7 +53,9 @@ export function ChapterBreakdownRow({
             {completed ? (
               <CompletionLabel completedBy={chapterInfo.completed_by} />
             ) : (
-              <span className="text-muted-foreground">Not completed</span>
+              <span className="text-muted-foreground">
+                {t("studentProgress.chapterRow.notCompleted")}
+              </span>
             )}
           </p>
         )}
@@ -60,29 +64,32 @@ export function ChapterBreakdownRow({
       {quiz && (
         <div className="flex items-center gap-1.5 text-xs">
           {quiz.passed ? (
-            <CheckCircle className="h-3.5 w-3.5 text-success" />
+            <CheckCircle className="h-3.5 w-3.5 text-success" strokeWidth={1.75} />
           ) : (
-            <XCircle className="h-3.5 w-3.5 text-destructive" />
+            <XCircle className="h-3.5 w-3.5 text-destructive" strokeWidth={1.75} />
           )}
           <span>
-            Quiz: {quiz.score}/{quiz.max_score}
+            {t("studentProgress.chapterRow.quizScore", {
+              score: quiz.score,
+              max: quiz.max_score,
+            })}
           </span>
           {quiz.quiz_id && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+              className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground"
               disabled={grantingQuizId === quiz.quiz_id}
               onClick={(e) => {
                 e.stopPropagation()
                 onGrantExtraAttempt(quiz.quiz_id!)
               }}
-              title="Grant extra attempt"
+              title={t("studentProgress.chapterRow.extraAttemptTitle")}
             >
               {grantingQuizId === quiz.quiz_id ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin" strokeWidth={1.75} />
               ) : (
-                <RotateCcw className="h-3 w-3" />
+                <RotateCcw className="h-3 w-3" strokeWidth={1.75} />
               )}
             </Button>
           )}
@@ -92,15 +99,15 @@ export function ChapterBreakdownRow({
       {assignment && (
         <div className="flex items-center gap-1.5 text-xs">
           {assignment.status === "graded" ? (
-            <CheckCircle className="h-3.5 w-3.5 text-success" />
+            <CheckCircle className="h-3.5 w-3.5 text-success" strokeWidth={1.75} />
           ) : (
-            <Clock className="h-3.5 w-3.5 text-warning" />
+            <Clock className="h-3.5 w-3.5 text-warning" strokeWidth={1.75} />
           )}
           <span>
             {assignment.title}:{" "}
             {assignment.grade !== null
               ? `${assignment.grade}/${assignment.max_score}`
-              : assignment.status}
+              : t(`assignment.statusValue.${assignment.status}`, { defaultValue: assignment.status })}
           </span>
         </div>
       )}
@@ -117,13 +124,15 @@ export function ChapterBreakdownRow({
           }}
         >
           {togglingChapterId === chapterInfo.id ? (
-            <Clock className="h-3 w-3 mr-1 animate-spin" />
+            <Clock className="h-3 w-3 mr-1 animate-spin" strokeWidth={1.75} />
           ) : completed ? (
-            <XCircle className="h-3 w-3 mr-1" />
+            <XCircle className="h-3 w-3 mr-1" strokeWidth={1.75} />
           ) : (
-            <CheckCircle className="h-3 w-3 mr-1" />
+            <CheckCircle className="h-3 w-3 mr-1" strokeWidth={1.75} />
           )}
-          {completed ? "Undo" : "Complete"}
+          {completed
+            ? t("studentProgress.chapterRow.undo")
+            : t("studentProgress.chapterRow.complete")}
         </Button>
       )}
     </div>
@@ -135,11 +144,12 @@ function CompletionLabel({
 }: {
   completedBy: ChapterInfo["completed_by"]
 }) {
+  const { t } = useTranslation()
   if (completedBy === "teacher") {
-    return <span className="text-info">Completed by teacher</span>
+    return <span className="text-info">{t("studentProgress.chapterRow.completedByTeacher")}</span>
   }
   if (completedBy === "quiz") {
-    return <span className="text-success">Completed via quiz</span>
+    return <span className="text-success">{t("studentProgress.chapterRow.completedByQuiz")}</span>
   }
-  return <span className="text-success">Completed via submission</span>
+  return <span className="text-success">{t("studentProgress.chapterRow.completedBySubmission")}</span>
 }

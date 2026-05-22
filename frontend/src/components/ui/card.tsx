@@ -8,7 +8,12 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-lg border bg-card text-card-foreground shadow-sm",
+      // `transition-[border-color,background-color]` (not just `transition-colors`)
+      // keeps the hover handoff smooth on cards that change border tint on hover
+      // — multiple call sites use `hover:border-primary/25..40`. Without this the
+      // border jumps; with it, the hue settles over ~200ms, which reads as the
+      // card "noticing" the cursor instead of toggling.
+      "rounded-md border border-border bg-card text-card-foreground shadow-none transition-[border-color,background-color] duration-200 ease-editorial",
       className
     )}
     {...props}
@@ -22,7 +27,7 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6", className)}
+    className={cn("flex flex-col space-y-1.5 p-5", className)}
     {...props}
   />
 ))
@@ -35,7 +40,7 @@ const CardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
+      "text-lg font-semibold leading-none tracking-tight",
       className
     )}
     {...props}
@@ -59,7 +64,7 @@ const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+  <div ref={ref} className={cn("p-5 pt-0", className)} {...props} />
 ))
 CardContent.displayName = "CardContent"
 

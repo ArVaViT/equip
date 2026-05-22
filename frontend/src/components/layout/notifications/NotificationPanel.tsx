@@ -1,7 +1,9 @@
 import { forwardRef } from "react"
+import { useTranslation } from "react-i18next"
 import { AlertCircle, Bell, CheckCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import PageSpinner from "@/components/ui/PageSpinner"
+import { cn } from "@/lib/utils"
 import type { Notification } from "@/types"
 import { NotificationItem } from "./NotificationItem"
 
@@ -17,6 +19,8 @@ interface Props {
   onMarkAllRead: () => void
   onLoadMore: () => void
   onRetry: () => void
+  /** Narrow sheet / drawer: full-width panel below the bell so it does not overflow horizontally. */
+  variant?: "popover" | "sheet"
 }
 
 /**
@@ -37,47 +41,68 @@ export const NotificationPanel = forwardRef<HTMLDivElement, Props>(
       onMarkAllRead,
       onLoadMore,
       onRetry,
+      variant = "popover",
     },
     ref,
   ) {
+    const { t } = useTranslation()
+    const isSheet = variant === "sheet"
+
     return (
       <div
         ref={ref}
         role="region"
-        aria-label="Notifications"
-        className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-lg border border-border bg-background shadow-lg z-50 overflow-hidden"
+        aria-label={t("notifications.panelAriaLabel")}
+        className={cn(
+          "absolute top-full z-50 mt-2 overflow-hidden rounded-lg border border-border shadow-lg",
+          // Glass effect on the desktop popover only: when the notification
+          // dropdown floats over a busy course/admin page, the frosted layer
+          // separates it from the content underneath without using a hard
+          // shadow alone. Stays solid on the mobile sheet variant — the
+          // sheet already has its own backdrop, doubling up reads as noise.
+          isSheet
+            ? "left-0 right-0 z-[60] w-full max-w-none bg-background"
+            : "right-0 w-80 sm:w-96 bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/75",
+        )}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("notifications.title")}</h3>
           {unreadCount > 0 && (
             <button
+              type="button"
               onClick={onMarkAllRead}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
-              <CheckCheck className="h-3.5 w-3.5" />
-              Mark all read
+              <CheckCheck className="h-3.5 w-3.5" strokeWidth={1.75} />
+              {t("notifications.markAllRead")}
             </button>
           )}
         </div>
 
-        <div className="max-h-[400px] overflow-y-auto">
+        <div
+          className={cn(
+            "overflow-y-auto",
+            isSheet ? "max-h-[min(380px,50dvh)]" : "max-h-[400px]",
+          )}
+        >
           {loading ? (
             <PageSpinner variant="section" />
           ) : loadError ? (
             <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
-              <AlertCircle className="h-8 w-8 text-destructive/70" />
-              <p className="text-sm text-destructive">Failed to load notifications.</p>
+              <AlertCircle className="h-8 w-8 text-destructive/70" strokeWidth={1.75} />
+              <p className="text-sm text-destructive">{t("notifications.loadFailed")}</p>
               <button
+                type="button"
                 onClick={onRetry}
                 className="text-xs text-primary hover:underline"
               >
-                Try again
+                {t("notifications.tryAgain")}
               </button>
             </div>
           ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
-              <Bell className="h-8 w-8 opacity-30" />
-              <p className="text-sm">No notifications yet</p>
+              <Bell className="h-8 w-8 opacity-30" strokeWidth={1.75} />
+              <p className="text-sm">{t("notifications.empty")}</p>
             </div>
           ) : (
             <>
@@ -99,7 +124,7 @@ export const NotificationPanel = forwardRef<HTMLDivElement, Props>(
                     disabled={loadingMore}
                     onClick={onLoadMore}
                   >
-                    {loadingMore ? "Loading..." : "Load more"}
+                    {loadingMore ? t("notifications.loadingMore") : t("notifications.loadMore")}
                   </Button>
                 </div>
               )}

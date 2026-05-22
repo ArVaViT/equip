@@ -149,8 +149,16 @@ def calculate_student_grade(
         )
         total_assignments = len(assignment_ids)
         if total_assignments > 0:
+            # Clamp at 100% defensively — assignment_submissions.grade
+            # is capped at ``assignment.max_score`` going forward (per the
+            # grade-submission route), but any pre-cap historical row
+            # with ``grade > max_score`` would inflate the average above
+            # 100% and distort the final course grade. ``min(100.0, ...)``
+            # is the cheap fix; the underlying CHECK constraint would be
+            # the durable one (separate PR).
             graded_pcts = [
-                (row.best_grade / row.max_score * 100.0) if row.max_score else 0.0 for row in best_per_assignment
+                min(100.0, row.best_grade / row.max_score * 100.0) if row.max_score else 0.0
+                for row in best_per_assignment
             ]
             assignment_avg = sum(graded_pcts) / total_assignments
 
@@ -236,7 +244,9 @@ def calculate_all_student_grades(db: Session, course: Course):
             .all()
         )
         for ar in asgn_rows:
-            pct = (float(ar.best_grade) / ar.max_score * 100.0) if ar.max_score else 0.0
+            # See same-named single-student site above — clamp at 100%
+            # so a historical over-cap grade doesn't distort the batch.
+            pct = min(100.0, float(ar.best_grade) / ar.max_score * 100.0) if ar.max_score else 0.0
             asgn_scores.setdefault(str(ar.student_id), []).append(pct)
 
     # Batch: chapter completion counts per student

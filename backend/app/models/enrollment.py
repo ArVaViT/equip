@@ -15,10 +15,14 @@ if TYPE_CHECKING:
 class Enrollment(Base):
     __tablename__ = "enrollments"
     __table_args__ = (
-        UniqueConstraint("user_id", "course_id", name="uq_enrollment_user_course"),
-        # The unique ``(user_id, course_id)`` already indexes ``user_id`` via
-        # its leading column, so we only need an explicit index for the
-        # access patterns it doesn't cover.
+        # Uniqueness is on (user, course, cohort) — ADR-010 §3. Retake in a
+        # later cohort writes a NEW row, preserving the historical attempt.
+        # The PROD partial UNIQUE INDEX (with COALESCE for the NULL cohort_id
+        # sentinel) lives in the migration; SQLAlchemy can't express that
+        # directly so we declare a plain three-column UniqueConstraint here
+        # which is enough for the SQLite test path (NULL is treated as a
+        # distinct value by SQLite UNIQUE, matching the COALESCE semantics).
+        UniqueConstraint("user_id", "course_id", "cohort_id", name="uq_enrollment_user_course_cohort"),
         Index("ix_enrollments_course_id", "course_id"),
         Index("ix_enrollments_cohort_id", "cohort_id"),
     )

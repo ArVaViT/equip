@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { coursesService } from "@/services/courses"
 import { toast } from "@/lib/toast"
 import type { Announcement } from "@/types"
@@ -26,6 +27,7 @@ export function useAnnouncementsSection(
   courseId: string | undefined,
   confirm: Confirm,
 ): AnnouncementsSection {
+  const { t } = useTranslation()
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
@@ -64,17 +66,17 @@ export function useAnnouncementsSection(
       setAnnouncements((p) => [a, ...p])
       resetForm()
     } catch {
-      toast({ title: "Failed", variant: "destructive" })
+      toast({ title: t("teacherEditor.toast.announcementPostFailed"), variant: "destructive" })
     } finally {
       setPosting(false)
     }
-  }, [courseId, title, content, resetForm])
+  }, [courseId, title, content, resetForm, t])
 
   const remove = useCallback(
     async (id: string) => {
       const ok = await confirm({
-        title: "Delete this announcement?",
-        confirmLabel: "Delete",
+        title: t("teacherEditor.confirm.deleteAnnouncementTitle"),
+        confirmLabel: t("teacherEditor.confirm.deleteAnnouncementAction"),
         tone: "destructive",
       })
       if (!ok) return
@@ -82,10 +84,10 @@ export function useAnnouncementsSection(
         await coursesService.deleteAnnouncement(id)
         setAnnouncements((p) => p.filter((a) => a.id !== id))
       } catch {
-        toast({ title: "Failed", variant: "destructive" })
+        toast({ title: t("teacherEditor.toast.announcementDeleteFailed"), variant: "destructive" })
       }
     },
-    [confirm],
+    [confirm, t],
   )
 
   return {

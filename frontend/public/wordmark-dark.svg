@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" fill="none">
+  <!-- Equip wordmark, dark-background variant.
+       Lighter violet for legibility on dark surfaces; sage accent unchanged.
+       Canonical source: equipbible-docs/design/assets/wordmark-dark.svg. -->
+  <text x="0" y="46" font-family="Fraunces, Georgia, Cambria, 'Times New Roman', serif" font-size="46" font-weight="600" fill="#A98FE3" letter-spacing="-0.5">Equip</text>
+  <rect x="0" y="56" width="124" height="2" fill="#67A982"/>
+</svg>

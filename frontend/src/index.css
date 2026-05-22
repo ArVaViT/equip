@@ -2,88 +2,106 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Theme: warm editorial paper (light) + zinc-depth dark (2025–2026 practice).
+ * Brand = deep violet ink (light) / soft violet glow (dark) — not generic “tech blue”.
+ * Accent = sage (heritage / calm). Mesh gradients + slow ambient motion on :before.
+ */
 @layer base {
   :root {
-    --background: 40 33% 98%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 224 71% 20%;
-    --primary-foreground: 40 33% 98%;
-    --secondary: 40 40% 94%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 40 20% 95%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 40 60% 50%;
-    --accent-foreground: 222 47% 11%;
-    --destructive: 0 84% 37%;
+    --background: 38 32% 97%;
+    --foreground: 265 28% 13%;
+    --card: 40 35% 99%;
+    --card-foreground: 265 28% 13%;
+    --popover: 40 35% 99%;
+    --popover-foreground: 265 28% 13%;
+    --primary: 262 56% 30%;
+    --primary-foreground: 40 40% 98%;
+    --secondary: 265 18% 93%;
+    --secondary-foreground: 265 28% 13%;
+    --muted: 38 22% 94%;
+    --muted-foreground: 265 12% 38%;
+    --accent: 146 28% 52%;
+    --accent-foreground: 265 28% 13%;
+    --destructive: 0 70% 42%;
     --destructive-foreground: 0 0% 98%;
-    --success: 152 54% 32%;
+    --success: 156 45% 34%;
     --success-foreground: 0 0% 98%;
-    --warning: 32 82% 42%;
-    --warning-foreground: 0 0% 98%;
-    --info: 210 70% 40%;
+    --warning: 30 85% 42%;
+    --warning-foreground: 265 28% 13%;
+    --info: 215 75% 42%;
     --info-foreground: 0 0% 98%;
-    --border: 220 13% 87%;
-    --input: 220 13% 87%;
-    --ring: 224 71% 20%;
+    --border: 265 12% 87%;
+    --input: 265 12% 87%;
+    --ring: 262 56% 38%;
     --radius: 0.5rem;
 
-    --sidebar: 40 33% 97%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-border: 220 13% 87%;
-    --sidebar-accent: 40 40% 94%;
-    --sidebar-accent-foreground: 224 71% 20%;
-    --sidebar-ring: 224 71% 20%;
+    --sidebar: 38 28% 96%;
+    --sidebar-foreground: 265 28% 13%;
+    --sidebar-border: 265 12% 88%;
+    --sidebar-accent: 265 18% 92%;
+    --sidebar-accent-foreground: 262 56% 30%;
+    --sidebar-ring: 262 56% 38%;
 
-    --chart-1: 224 71% 20%;
-    --chart-2: 40 60% 50%;
-    --chart-3: 152 54% 32%;
-    --chart-4: 32 82% 42%;
-    --chart-5: 280 50% 40%;
+    --chart-1: 262 56% 32%;
+    --chart-2: 146 28% 52%;
+    --chart-3: 156 45% 34%;
+    --chart-4: 30 85% 42%;
+    --chart-5: 215 75% 42%;
+
+    /* Auth marketing column — semantic only (no raw hsl() in components) */
+    --auth-panel-bg: 262 42% 17%;
+    --auth-panel-glow-warm: 38 48% 52%;
+    --auth-panel-accent-line: 38 42% 58%;
+    --auth-panel-text: 40 35% 96%;
+    --auth-panel-text-muted: 40 18% 70%;
   }
 
   .dark {
-    --background: 222 47% 8%;
-    --foreground: 40 20% 93%;
-    --card: 222 40% 12%;
-    --card-foreground: 40 20% 93%;
-    --popover: 222 40% 12%;
-    --popover-foreground: 40 20% 93%;
-    --primary: 40 60% 55%;
-    --primary-foreground: 222 47% 8%;
-    --secondary: 222 30% 18%;
-    --secondary-foreground: 40 20% 93%;
-    --muted: 222 30% 15%;
-    --muted-foreground: 215 20% 55%;
-    --accent: 40 60% 55%;
-    --accent-foreground: 222 47% 8%;
-    --destructive: 0 63% 45%;
+    --background: 240 7% 9%;
+    --foreground: 40 14% 96%;
+    --card: 240 6% 12%;
+    --card-foreground: 40 14% 96%;
+    --popover: 240 6% 12%;
+    --popover-foreground: 40 14% 96%;
+    --primary: 262 58% 72%;
+    --primary-foreground: 240 12% 10%;
+    --secondary: 240 5% 16%;
+    --secondary-foreground: 40 14% 96%;
+    --muted: 240 5% 15%;
+    --muted-foreground: 240 5% 58%;
+    --accent: 146 28% 52%;
+    --accent-foreground: 240 12% 10%;
+    --destructive: 0 58% 50%;
     --destructive-foreground: 0 0% 98%;
-    --success: 152 40% 45%;
-    --success-foreground: 0 0% 98%;
-    --warning: 32 75% 52%;
-    --warning-foreground: 222 47% 8%;
-    --info: 210 70% 55%;
-    --info-foreground: 0 0% 98%;
-    --border: 222 20% 22%;
-    --input: 222 20% 22%;
-    --ring: 40 60% 55%;
+    --success: 156 38% 46%;
+    --success-foreground: 240 12% 10%;
+    --warning: 32 78% 54%;
+    --warning-foreground: 240 12% 10%;
+    --info: 215 72% 58%;
+    --info-foreground: 240 12% 10%;
+    --border: 240 5% 19%;
+    --input: 240 5% 19%;
+    --ring: 262 58% 72%;
 
-    --sidebar: 222 45% 10%;
-    --sidebar-foreground: 40 20% 93%;
-    --sidebar-border: 222 20% 22%;
-    --sidebar-accent: 222 30% 18%;
-    --sidebar-accent-foreground: 40 60% 55%;
-    --sidebar-ring: 40 60% 55%;
+    --sidebar: 240 7% 8%;
+    --sidebar-foreground: 40 14% 96%;
+    --sidebar-border: 240 5% 19%;
+    --sidebar-accent: 240 5% 14%;
+    --sidebar-accent-foreground: 262 58% 72%;
+    --sidebar-ring: 262 58% 72%;
 
-    --chart-1: 40 60% 55%;
-    --chart-2: 210 70% 55%;
-    --chart-3: 152 40% 45%;
-    --chart-4: 32 75% 52%;
-    --chart-5: 280 55% 60%;
+    --chart-1: 262 58% 72%;
+    --chart-2: 146 28% 52%;
+    --chart-3: 156 38% 46%;
+    --chart-4: 32 78% 54%;
+    --chart-5: 215 72% 58%;
+
+    --auth-panel-bg: 262 38% 9%;
+    --auth-panel-glow-warm: 38 38% 48%;
+    --auth-panel-accent-line: 38 35% 45%;
+    --auth-panel-text: 40 25% 94%;
+    --auth-panel-text-muted: 40 12% 58%;
   }
 }
 
@@ -96,22 +114,240 @@
     -moz-osx-font-smoothing: grayscale;
   }
   body {
-    @apply bg-background text-foreground;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    @apply min-h-[100dvh] text-foreground antialiased;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease;
+    background-color: hsl(var(--background));
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      radial-gradient(ellipse 120% 90% at 10% -25%, hsl(var(--primary) / 0.11) 0%, transparent 55%),
+      radial-gradient(ellipse 90% 70% at 92% 5%, hsl(var(--accent) / 0.09) 0%, transparent 52%),
+      radial-gradient(ellipse 70% 50% at 50% 100%, hsl(var(--muted) / 0.85) 0%, transparent 58%),
+      linear-gradient(180deg, hsl(var(--background)) 0%, hsl(38 28% 96%) 100%);
+    animation: ambient-mesh 26s ease-in-out infinite alternate;
+  }
+  html.dark body::before {
+    background-image:
+      radial-gradient(ellipse 110% 85% at 12% -20%, hsl(var(--primary) / 0.18) 0%, transparent 58%),
+      radial-gradient(ellipse 85% 65% at 88% 8%, hsl(146 25% 35% / 0.12) 0%, transparent 52%),
+      radial-gradient(ellipse 80% 55% at 48% 105%, hsl(240 8% 14%) 0%, transparent 55%),
+      linear-gradient(195deg, hsl(var(--background)) 0%, hsl(240 8% 11%) 100%);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body::before {
+      animation: none;
+    }
+  }
+
+  /* ── Custom scrollbar ────────────────────────────────────────
+     Replace the OS-default scrollbar (chunky grey on Windows,
+     wide brown on Linux) with a thin, branded one that respects
+     the active theme. Two browser-engine paths share the same
+     visual contract:
+
+       1. Firefox & modern Edge — ``scrollbar-color`` + ``scrollbar-width``
+       2. WebKit / Blink (Chrome, Safari, Brave, in-app webviews) —
+          ``::-webkit-scrollbar*`` pseudo-elements.
+
+     Touch devices keep their native overlay behaviour — the
+     ``:not(:hover)`` track-trick keeps the thumb low-contrast
+     when the user isn't actively scrolling, mimicking macOS. */
+  :where(html) {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.28);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: background-color 0.15s ease;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.5);
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
   }
 }
 
 @layer utilities {
+  @keyframes ambient-mesh {
+    0% {
+      transform: scale(1) translate3d(0, 0, 0);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1.035) translate3d(-1.5%, 1.2%, 0);
+      opacity: 0.94;
+    }
+  }
   .animate-fade-in {
-    animation: fade-in 0.35s ease-out;
+    animation: fade-in 0.55s ease-out both;
+  }
+  .animate-delay-100 {
+    animation-delay: 100ms;
+  }
+  .animate-delay-200 {
+    animation-delay: 200ms;
+  }
+  .animate-delay-300 {
+    animation-delay: 300ms;
+  }
+  .animate-delay-400 {
+    animation-delay: 400ms;
   }
   @keyframes fade-in {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  /* Staggered entrance for list/grid children — editorial, short duration.
+     Unbounded: callers set `style={{ "--stagger-index": index }}` on each
+     direct child so any list length staggers correctly. If `--stagger-index`
+     is missing the child still animates (delay 0); a small bounded fallback
+     for the first eight children below preserves the staggered look on
+     legacy callers that don't yet set the custom property. */
+  .stagger-fade-in > * {
+    animation: fade-in 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--stagger-index, 0) * 45ms);
+  }
+  .stagger-fade-in > *:not([style*="--stagger-index"]):nth-child(2) {
+    animation-delay: 45ms;
+  }
+  .stagger-fade-in > *:not([style*="--stagger-index"]):nth-child(3) {
+    animation-delay: 90ms;
+  }
+  .stagger-fade-in > *:not([style*="--stagger-index"]):nth-child(4) {
+    animation-delay: 135ms;
+  }
+  .stagger-fade-in > *:not([style*="--stagger-index"]):nth-child(5) {
+    animation-delay: 180ms;
+  }
+  .stagger-fade-in > *:not([style*="--stagger-index"]):nth-child(6) {
+    animation-delay: 225ms;
+  }
+  .stagger-fade-in > *:not([style*="--stagger-index"]):nth-child(7) {
+    animation-delay: 270ms;
+  }
+  .stagger-fade-in > *:not([style*="--stagger-index"]):nth-child(8) {
+    animation-delay: 315ms;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .motion-safe-hover-lift {
+      transition:
+        transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+        border-color 0.2s ease,
+        background-color 0.2s ease;
+    }
+    .motion-safe-hover-lift:hover {
+      transform: translateY(-2px);
+    }
   }
   @keyframes grow {
-    from { width: 0; }
-    to { width: 100%; }
+    from {
+      width: 0;
+    }
+    to {
+      width: 100%;
+    }
+  }
+  /* Password-reset success rail — named alias for reduced-motion parity */
+  .animate-grow-bar {
+    width: 0;
+    animation: grow 2.5s ease-out forwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-grow-bar {
+      animation: none;
+      width: 100%;
+    }
+  }
+  @keyframes skeleton-shimmer-slide {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  /* Full-bleed hero glow — soft mesh, no box border needed */
+  .bg-home-hero-glow {
+    border-radius: 9999px;
+    background-image:
+      radial-gradient(closest-side at 50% 40%, hsl(var(--primary) / 0.2) 0%, transparent 85%),
+      radial-gradient(closest-side at 70% 30%, hsl(var(--accent) / 0.14) 0%, transparent 80%),
+      radial-gradient(closest-side at 25% 60%, hsl(265 45% 82% / 0.35) 0%, transparent 75%);
+    animation: hero-breathe 18s ease-in-out infinite alternate;
+  }
+  html.dark .bg-home-hero-glow {
+    background-image:
+      radial-gradient(closest-side at 50% 38%, hsl(var(--primary) / 0.28) 0%, transparent 85%),
+      radial-gradient(closest-side at 72% 28%, hsl(146 30% 40% / 0.12) 0%, transparent 80%),
+      radial-gradient(closest-side at 22% 58%, hsl(265 40% 46% / 0.14) 0%, transparent 78%);
+  }
+  @keyframes hero-breathe {
+    0% {
+      opacity: 0.85;
+      transform: scale(0.96);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-in {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+    .stagger-fade-in > * {
+      animation: none !important;
+      opacity: 1;
+      transform: none;
+    }
+    .bg-home-hero-glow {
+      animation: none;
+    }
+  }
+
+  /* Cards / panels — optional radial wash */
+  .bg-gradient-accent-subtle {
+    background-image: radial-gradient(
+      120% 80% at 50% -10%,
+      hsl(var(--accent) / 0.1) 0%,
+      transparent 55%
+    );
+  }
+  html.dark .bg-gradient-accent-subtle {
+    background-image: radial-gradient(
+      120% 80% at 50% -10%,
+      hsl(var(--accent) / 0.07) 0%,
+      transparent 55%
+    );
   }
   /* Safe wrapping for any user-entered text — breaks unbroken long
      strings (URLs, pasted tokens, keysmash) at ANY character rather
@@ -120,6 +356,133 @@
   .text-wrap-safe {
     overflow-wrap: anywhere;
     word-break: normal;
+  }
+  /* Accent stripe — a 3 px left border used as an editorial marker on
+     status cards and rows (pending items, errors, warnings). Replaces
+     the `border-l-[3px]` arbitrary value that was sprinkled across the
+     codebase; pair with `border-l-{semantic-color}` to set the hue.
+     Width-only utility so the color stays a separate concern. */
+  .border-l-stripe {
+    border-left-width: 3px;
+  }
+}
+
+@layer components {
+  /* Loading placeholders — directional shimmer (pulse feels generic). */
+  .skeleton-shimmer {
+    @apply relative overflow-hidden rounded-md bg-muted;
+  }
+  .skeleton-shimmer::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--foreground) / 0.07),
+      transparent
+    );
+    animation: skeleton-shimmer-slide 1.65s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton-shimmer::before {
+      animation: none;
+    }
+  }
+}
+
+/* ===== View Transitions API =====
+   Applies whenever document.startViewTransition() is called (typically wrapped
+   around a route or state update). No effect until a caller opts in. */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    animation: 180ms cubic-bezier(0.4, 0, 1, 1) both vt-fade-out;
+  }
+  ::view-transition-new(root) {
+    animation: 240ms cubic-bezier(0.22, 1, 0.36, 1) both vt-fade-in-up;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== Expressive utilities (opt-in only) =====
+   Off by default. Apply on hero headlines, CTA hovers, success states,
+   anywhere DESIGN.md sanctions as an "expressive moment". Do not blanket. */
+@layer utilities {
+  .text-gradient-primary {
+    background-image: linear-gradient(
+      120deg,
+      hsl(var(--primary)) 0%,
+      hsl(var(--accent)) 50%,
+      hsl(var(--primary)) 100%
+    );
+    background-size: 200% 100%;
+    background-clip: text;
+    color: transparent;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .text-gradient-primary {
+      animation: text-gradient-shift 8s ease-in-out infinite alternate;
+    }
+  }
+  @keyframes text-gradient-shift {
+    from {
+      background-position: 0% 0%;
+    }
+    to {
+      background-position: 100% 0%;
+    }
+  }
+
+  .bg-cta-glow {
+    position: relative;
+    isolation: isolate;
+  }
+  .bg-cta-glow::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    border-radius: inherit;
+    background: radial-gradient(
+      80% 120% at 50% 100%,
+      hsl(var(--primary) / 0.35) 0%,
+      transparent 70%
+    );
+    opacity: 0;
+    transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+  }
+  .bg-cta-glow:hover::after,
+  .bg-cta-glow:focus-visible::after {
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bg-cta-glow::after {
+      transition: none;
+    }
   }
 }
 
@@ -132,35 +495,72 @@
   max-width: 68ch;
   overflow-wrap: anywhere;
 }
-.prose h1 { @apply font-serif text-3xl font-semibold tracking-tight mt-10 mb-4; }
-.prose h2 { @apply font-serif text-2xl font-semibold tracking-tight mt-8 mb-3; }
-.prose h3 { @apply font-serif text-xl font-semibold mt-6 mb-2; }
-.prose h4 { @apply text-base font-semibold mt-5 mb-2; }
-.prose p  { @apply my-4; line-height: 1.7; }
-.prose ul { @apply my-4 pl-6; list-style: disc outside; }
-.prose ol { @apply my-4 pl-6; list-style: decimal outside; }
-.prose li { @apply my-1.5; }
-.prose li > p { @apply my-1; }
-.prose li::marker { @apply text-muted-foreground; }
-.prose strong { @apply font-semibold text-foreground; }
-.prose em { @apply italic; }
+.prose h1 {
+  @apply font-serif text-3xl font-semibold tracking-tight mt-10 mb-4;
+}
+.prose h2 {
+  @apply font-serif text-2xl font-semibold tracking-tight mt-8 mb-3;
+}
+.prose h3 {
+  @apply font-serif text-xl font-semibold mt-6 mb-2;
+}
+.prose h4 {
+  @apply text-base font-semibold mt-5 mb-2;
+}
+.prose p {
+  @apply my-4;
+  line-height: 1.7;
+}
+.prose ul {
+  @apply my-4 pl-6;
+  list-style: disc outside;
+}
+.prose ol {
+  @apply my-4 pl-6;
+  list-style: decimal outside;
+}
+.prose li {
+  @apply my-1.5;
+}
+.prose li > p {
+  @apply my-1;
+}
+.prose li::marker {
+  @apply text-muted-foreground;
+}
+.prose strong {
+  @apply font-semibold text-foreground;
+}
+.prose em {
+  @apply italic;
+}
 .prose blockquote {
   @apply my-6 pl-5 italic text-muted-foreground border-l-2 border-border;
 }
 .prose a {
   @apply text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary;
 }
-.prose hr { @apply my-8 border-border; }
+.prose hr {
+  @apply my-8 border-border;
+}
 .prose code {
   @apply px-1.5 py-0.5 rounded bg-muted text-[0.9em] font-mono;
 }
 .prose pre {
   @apply my-4 p-4 rounded-md bg-muted text-sm font-mono overflow-x-auto;
 }
-.prose pre code { @apply p-0 bg-transparent; }
-.prose img { @apply my-6 rounded-md; }
-.prose > *:first-child { @apply mt-0; }
-.prose > *:last-child { @apply mb-0; }
+.prose pre code {
+  @apply p-0 bg-transparent;
+}
+.prose img {
+  @apply my-6 rounded-md;
+}
+.prose > *:first-child {
+  @apply mt-0;
+}
+.prose > *:last-child {
+  @apply mb-0;
+}
 
 /* ===== Callouts — editorial, no emoji =====
    We keep the .callout + .callout-{variant} classes because they are
@@ -170,17 +570,31 @@
   @apply my-6 rounded-md border border-border bg-muted/30 px-5 py-4;
   border-left-width: 3px;
 }
-.callout > *:first-child { @apply mt-0; }
-.callout > *:last-child { @apply mb-0; }
+.callout > *:first-child {
+  @apply mt-0;
+}
+.callout > *:last-child {
+  @apply mb-0;
+}
 .callout > h3:first-child,
 .callout > h4:first-child {
   @apply mt-0 mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground;
 }
 
-.callout-info     { border-left-color: hsl(var(--info)); }
-.callout-verse    { border-left-color: hsl(var(--accent)); background-color: hsl(var(--accent) / 0.06); }
-.callout-takeaway { border-left-color: hsl(var(--success)); }
-.callout-warning  { border-left-color: hsl(var(--warning)); background-color: hsl(var(--warning) / 0.08); }
+.callout-info {
+  border-left-color: hsl(var(--info));
+}
+.callout-verse {
+  border-left-color: hsl(var(--accent));
+  background-color: hsl(var(--accent) / 0.06);
+}
+.callout-takeaway {
+  border-left-color: hsl(var(--success));
+}
+.callout-warning {
+  border-left-color: hsl(var(--warning));
+  background-color: hsl(var(--warning) / 0.08);
+}
 
 /* ===== YouTube Embed ===== */
 .youtube-embed-wrapper {

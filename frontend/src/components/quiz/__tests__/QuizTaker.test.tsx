@@ -1,7 +1,10 @@
+import React from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { I18nextProvider } from "react-i18next"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Quiz, QuizAttempt } from "@/types"
+import i18n from "@/i18n/config"
 
 const getChapterQuiz = vi.fn()
 const getMyQuizAttempts = vi.fn()
@@ -21,6 +24,12 @@ vi.mock("@/lib/toast", () => ({
 }))
 
 import QuizTaker from "../QuizTaker"
+
+function I18nWrapper({ children }: { children: React.ReactNode }) {
+  return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
+}
+
+const renderOpts = { wrapper: I18nWrapper }
 
 function makeQuiz(overrides: Partial<Quiz> = {}): Quiz {
   return {
@@ -113,7 +122,7 @@ describe("QuizTaker", () => {
     getChapterQuiz.mockResolvedValue(makeQuiz())
     getMyQuizAttempts.mockResolvedValue([])
 
-    render(<QuizTaker chapterId="chap-1" />)
+    render(<QuizTaker chapterId="chap-1" />, renderOpts)
 
     await waitFor(() => {
       expect(screen.getByText("Genesis 1 Quiz")).toBeInTheDocument()
@@ -123,7 +132,7 @@ describe("QuizTaker", () => {
 
   it("renders nothing when the chapter has no quiz", async () => {
     getChapterQuiz.mockResolvedValue(null)
-    const { container } = render(<QuizTaker chapterId="chap-1" />)
+    const { container } = render(<QuizTaker chapterId="chap-1" />, renderOpts)
     await waitFor(() => {
       expect(container.querySelector(".animate-spin")).toBeNull()
     })
@@ -132,7 +141,7 @@ describe("QuizTaker", () => {
 
   it("shows an error message when the fetch throws", async () => {
     getChapterQuiz.mockRejectedValue(new Error("network"))
-    render(<QuizTaker chapterId="chap-1" />)
+    render(<QuizTaker chapterId="chap-1" />, renderOpts)
     await waitFor(() => {
       expect(screen.getByText(/failed to load quiz/i)).toBeInTheDocument()
     })
@@ -143,7 +152,7 @@ describe("QuizTaker", () => {
     getMyQuizAttempts.mockResolvedValue([])
     const user = userEvent.setup()
 
-    render(<QuizTaker chapterId="chap-1" />)
+    render(<QuizTaker chapterId="chap-1" />, renderOpts)
     await waitFor(() => screen.getByText("Genesis 1 Quiz"))
 
     const submit = screen.getByRole("button", { name: /submit quiz/i })
@@ -164,7 +173,7 @@ describe("QuizTaker", () => {
     submitQuiz.mockResolvedValue(makeAttempt())
     const user = userEvent.setup()
 
-    render(<QuizTaker chapterId="chap-1" />)
+    render(<QuizTaker chapterId="chap-1" />, renderOpts)
     await waitFor(() => screen.getByText("Genesis 1 Quiz"))
 
     await user.click(screen.getByLabelText("6"))
@@ -189,7 +198,7 @@ describe("QuizTaker", () => {
     })
     const user = userEvent.setup()
 
-    render(<QuizTaker chapterId="chap-1" />)
+    render(<QuizTaker chapterId="chap-1" />, renderOpts)
     await waitFor(() => screen.getByText("Genesis 1 Quiz"))
     await user.click(screen.getByLabelText("6"))
     await user.click(screen.getByRole("button", { name: "True" }))
@@ -211,7 +220,7 @@ describe("QuizTaker", () => {
     getChapterQuiz.mockResolvedValue(makeQuiz({ max_attempts: 3 }))
     getMyQuizAttempts.mockResolvedValue(completed)
 
-    render(<QuizTaker chapterId="chap-1" />)
+    render(<QuizTaker chapterId="chap-1" />, renderOpts)
     await waitFor(() => screen.getByText("Genesis 1 Quiz"))
 
     expect(screen.getByText(/maximum attempts reached/i)).toBeInTheDocument()
@@ -223,7 +232,7 @@ describe("QuizTaker", () => {
     getChapterQuiz.mockResolvedValue(makeQuiz({ quiz_type: "exam" }))
     getMyQuizAttempts.mockResolvedValue([])
 
-    render(<QuizTaker chapterId="chap-1" />)
+    render(<QuizTaker chapterId="chap-1" />, renderOpts)
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /submit exam/i })).toBeInTheDocument(),
     )

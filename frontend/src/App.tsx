@@ -11,8 +11,15 @@ import ErrorBoundary from "./components/ErrorBoundary"
 import { Toaster } from "./components/ui/sonner"
 import { ConfirmProvider } from "./components/ui/alert-dialog"
 import Header from "./components/layout/Header"
+import Footer from "./components/layout/Footer"
 import AnnouncementBanner from "./components/announcements/AnnouncementBanner"
 import PageSpinner from "./components/ui/PageSpinner"
+import ScrollToTop from "./components/layout/ScrollToTop";
+import { TooltipProvider } from "@/components/ui/tooltip"
+import { SUPPORT_EMAIL } from "@/lib/brand"
+import { ROLES } from "@/types"
+import { useGrandTour } from "@/hooks/useGrandTour"
+import { FirstRunFlow } from "@/components/firstRun"
 
 const NotFound = lazy(() => import("./pages/NotFound"))
 
@@ -21,7 +28,8 @@ const Register = lazy(() => import("./pages/Auth/Register"))
 const ForgotPassword = lazy(() => import("./pages/Auth/ForgotPassword"))
 const ResetPassword = lazy(() => import("./pages/Auth/ResetPassword"))
 const AuthCallback = lazy(() => import("./pages/Auth/AuthCallback"))
-const HomePage = lazy(() => import("./pages/Home/HomePage"))
+const DashboardPage = lazy(() => import("./pages/Dashboard/DashboardPage"))
+const CoursesPage = lazy(() => import("./pages/Courses/CoursesPage"))
 const ProfilePage = lazy(() => import("./pages/Profile/ProfilePage"))
 const CourseDetail = lazy(() => import("./pages/Course/CourseDetail"))
 const ModuleView = lazy(() => import("./pages/Course/ModuleView"))
@@ -35,6 +43,7 @@ const StudentProgress = lazy(() => import("./pages/Teacher/StudentProgress"))
 const ChapterView = lazy(() => import("./pages/Course/ChapterView"))
 const ChapterEditor = lazy(() => import("./pages/Teacher/ChapterEditor"))
 const AdminDashboard = lazy(() => import("./pages/Admin/AdminDashboard"))
+const CohortDetailPage = lazy(() => import("./pages/Admin/cohorts/CohortDetailPage"))
 const CalendarPage = lazy(() => import("./pages/Calendar/CalendarPage"))
 
 type RouteMode = "private" | "public" | "teacher" | "admin"
@@ -58,7 +67,7 @@ function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }
 function PendingTeacherBanner() {
   const { t } = useTranslation()
   return (
-    <div className="border-b border-border border-l-[3px] border-l-warning bg-warning/10">
+    <div className="border-b border-border border-l-stripe border-l-warning bg-warning/10">
       <div className="container mx-auto px-4 py-3 text-center">
         <p className="text-sm text-foreground">
           {t("pendingTeacher.banner")}{" "}
@@ -67,7 +76,7 @@ function PendingTeacherBanner() {
             components={{
               supportLink: (
                 <a
-                  href="mailto:support@bibleschool.com"
+                  href={`mailto:${SUPPORT_EMAIL}`}
                   className="underline font-medium hover:no-underline"
                 />
               ),
@@ -88,6 +97,12 @@ function AppRoutes() {
   const isAuthPage = AUTH_PATHS.some((p) => location.pathname.startsWith(p))
   usePageTitle()
   useLocaleSync()
+  // Grand tour lives here so it has access to React Router (for
+  // programmatic navigation between steps) and AuthContext (for the
+  // role gate). Mounts after auth is resolved; the hook itself gates
+  // on userId so a logged-out render is a no-op. Don't mount it on
+  // auth pages — the user isn't signed in there.
+  useGrandTour()
 
   if (loading) {
     return <PageSpinner variant="screen" label={t("common.loading")} />
@@ -113,15 +128,39 @@ function AppRoutes() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
+      {/* Skip link — hidden until focused via Tab. First focusable element on
+          every authenticated page so keyboard / screen-reader users can jump
+          past the persistent Header + banners straight to page content. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        {t("common.skipToContent")}
+      </a>
       <Header />
-      {user?.role === "pending_teacher" && <PendingTeacherBanner />}
+      {user?.role === ROLES.PENDING_TEACHER && <PendingTeacherBanner />}
       <AnnouncementBanner />
-      <main className="flex-1">
+      {/* ``min-h-[calc(100dvh-header)]`` keeps the footer permanently below
+          the initial viewport on every authenticated page — you only see it
+          after deliberately scrolling. ``100dvh`` (not ``100vh``) so the
+          mobile browser chrome's collapsing toolbar doesn't shift the
+          footer into view mid-scroll. Header height: ``h-11`` (2.75rem)
+          on mobile, ``md:h-12`` (3rem) from md up. Optional
+          banners (PendingTeacher / Announcement) take their own space
+          above main, which means with a banner active the visible
+          main is slightly shorter — acceptable: the footer-below-fold
+          contract still holds. */}
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="flex-1 focus:outline-none min-h-[calc(100dvh-2.75rem)] md:min-h-[calc(100dvh-3rem)]"
+      >
         <ErrorBoundary>
           <Suspense fallback={<PageSpinner />}>
             <Routes>
-              <Route path="/" element={<HomePage />} />
+              <Route path="/" element={<DashboardPage />} />
               <Route path="/dashboard" element={<Navigate to="/" replace />} />
+              <Route path="/courses" element={<CoursesPage />} />
               <Route path="/profile" element={<Gate mode="private"><ProfilePage /></Gate>} />
               <Route path="/calendar" element={<Gate mode="private"><CalendarPage /></Gate>} />
               <Route path="/certificates" element={<Gate mode="private"><CertificatesPage /></Gate>} />
@@ -136,29 +175,33 @@ function AppRoutes() {
               <Route path="/teacher/courses/:courseId/gradebook" element={<Gate mode="teacher"><TeacherGradebook /></Gate>} />
               <Route path="/teacher/courses/:courseId/progress" element={<Gate mode="teacher"><StudentProgress /></Gate>} />
               <Route path="/admin" element={<Gate mode="admin"><AdminDashboard /></Gate>} />
+              <Route path="/admin/cohorts/:cohortId" element={<Gate mode="admin"><CohortDetailPage /></Gate>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
         </ErrorBoundary>
       </main>
-      <footer className="border-t border-border/60 bg-card/40 py-2">
-        <div className="container mx-auto px-4 flex items-center justify-between text-[11px] text-muted-foreground">
-          <span className="font-serif tracking-tight">{t("common.appName")}</span>
-          <span>&copy; {new Date().getFullYear()}</span>
-        </div>
-      </footer>
+      <Footer />
+      <ScrollToTop />
       <Toaster />
+      {/* First-run gate: Privacy Policy + Quick Setup, blocking until
+          the user accepts and finishes (or skips setup). Mounted
+          after the main tree so its overlay sits above everything in
+          DOM order; the explicit z-index in the component is the
+          actual stacking source of truth. */}
+      <FirstRunFlow />
     </div>
   )
 }
-
 export default function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
           <ConfirmProvider>
-            <AppRoutes />
+            <TooltipProvider>        
+              <AppRoutes />
+            </TooltipProvider>      
           </ConfirmProvider>
         </AuthProvider>
       </ThemeProvider>

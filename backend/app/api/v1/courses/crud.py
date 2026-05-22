@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import assert_course_owner, require_teacher
 from app.core.database import get_db
 from app.core.sanitize import sanitize_string
-from app.models.course import Course
-from app.models.user import User
+from app.models.course import Course, CourseStatus
+from app.models.user import User, UserRole
 from app.schemas.course import CourseCreate, CourseResponse, CourseUpdate
 from app.services.audit_service import log_action
 from app.services.course_service import (
@@ -21,7 +21,7 @@ from app.services.course_service import (
     restore_course,
     update_course,
 )
-from app.services.translation.orchestrator import translate_course_metadata
+from app.services.translation.course_pipeline import translate_course_content
 
 from ._router import router
 
@@ -37,7 +37,13 @@ def create_new_course(
 ) -> Course:
     if data.title:
         data.title = sanitize_string(data.title)
-    course = create_course(db, data, teacher.id)
+    # The teacher writes in their UI language by definition — derive the
+    # course's source_locale from their profile so they never have to pick
+    # it manually, and so RU↔EN translation is symmetric (a teacher who
+    # works in EN gets RU translations for their RU students; vice versa
+    # for an RU-authoring teacher). ``preferred_locale`` is itself
+    # CHECK-constrained to the supported locale set.
+    course = create_course(db, data, teacher.id, source_locale=teacher.preferred_locale)
     log_action(db, teacher.id, "create", "course", course.id, request=request)
     return course
 
@@ -57,6 +63,15 @@ def update_existing_course(
             detail=f"Course '{course_id}' not found",
         )
     assert_course_owner(course, teacher, allow_admin=False)
+    # ``access_mode`` (public vs institute) controls solo-enrollment
+    # access per ADR-010. Letting any course owner flip it would let a
+    # teacher promote their institute course to public, bypassing the
+    # invitation-only gate. Restrict the field to admins.
+    if data.access_mode is not None and teacher.role != UserRole.ADMIN.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can change course access mode",
+        )
     if data.title:
         data.title = sanitize_string(data.title)
     old_status = course.status
@@ -66,18 +81,18 @@ def update_existing_course(
         details = {"old_status": old_status, "new_status": data.status}
     # Special-case draft→published so the audit log distinguishes a
     # publication event from a generic update.
-    is_publish_event = data.status == "published" and old_status != "published"
+    is_publish_event = data.status == CourseStatus.PUBLISHED and old_status != CourseStatus.PUBLISHED
     action = "publish" if is_publish_event else "update"
     log_action(db, teacher.id, action, "course", course_id, details=details or None, request=request)
 
-    # Kick off the translation pipeline on first publish. We run it
-    # synchronously inside the request so the catalog has translated metadata
-    # by the time the teacher's "Publish" toast settles. Errors must NOT
-    # block the publish itself — the orchestrator already persists
-    # ``status='failed'`` rows for retries, so we just log and move on.
-    if is_publish_event:
+    # Full-course translation when published (initial publish or edits while live).
+    # Runs synchronously so the catalog and chapter surfaces stay consistent.
+    # Failures must NOT block the save — failed rows are persisted for retry.
+    # ``result`` is the same SQLAlchemy instance ``update_course`` mutated, so
+    # there's no need to re-load the full course tree just to translate it.
+    if result.status == CourseStatus.PUBLISHED:
         try:
-            translate_course_metadata(db, result)
+            translate_course_content(db, result)
         except Exception:
             logger.exception("Translation hook failed for course %s", course_id)
 
@@ -121,7 +136,7 @@ def clone_existing_course(
     # Drafts are only visible (and therefore clonable) to their owner,
     # regardless of admin status.
     is_owner = str(course.created_by) == str(teacher.id)
-    if course.status != "published" and not is_owner:
+    if course.status != CourseStatus.PUBLISHED and not is_owner:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the owner can clone a draft course",

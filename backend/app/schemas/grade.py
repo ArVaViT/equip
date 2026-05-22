@@ -18,7 +18,7 @@ class GradeResponse(BaseModel):
     cohort_id: UUID | None = None
     grade: str | None = None
     comment: str | None = None
-    graded_by: UUID
+    graded_by: UUID | None = None
     graded_at: datetime
     updated_at: datetime | None = None
 

@@ -1,19 +1,22 @@
 import { AlertTriangle, CalendarDays } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import type { CalendarEvent } from "@/types"
+import { formatDateLong } from "@/i18n/format"
 
 interface Props {
   events: CalendarEvent[]
 }
 
 export function UpcomingEvents({ events }: Props) {
+  const { t } = useTranslation()
   if (events.length === 0) return null
 
   const now = new Date()
   const upcoming = events
     .filter((e) => {
       if (!e.event_date) return false
-      const t = new Date(e.event_date).getTime()
-      return !Number.isNaN(t) && t > now.getTime() - 24 * 60 * 60 * 1000
+      const ts = new Date(e.event_date).getTime()
+      return !Number.isNaN(ts) && ts > now.getTime() - 24 * 60 * 60 * 1000
     })
     .slice(0, 5)
 
@@ -21,9 +24,9 @@ export function UpcomingEvents({ events }: Props) {
 
   return (
     <div className="mb-5">
-      <h2 className="text-sm font-semibold mb-2 flex items-center gap-2 text-muted-foreground">
-        <CalendarDays className="h-3.5 w-3.5" />
-        Upcoming Deadlines & Events
+      <h2 className="mb-2 flex items-center gap-2 font-serif text-sm font-semibold tracking-tight text-muted-foreground">
+        <CalendarDays className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+        {t("courseDetail.upcoming.heading")}
       </h2>
       <div className="space-y-1.5">
         {upcoming.map((evt) => {
@@ -34,12 +37,12 @@ export function UpcomingEvents({ events }: Props) {
               key={evt.id}
               className={`flex items-center gap-2 px-3 py-2 rounded-md border text-sm ${
                 overdue
-                  ? "border-l-[3px] border-l-destructive border-border bg-destructive/5"
-                  : "border-border hover:bg-muted/50"
+                  ? "border-l-stripe border-l-destructive border-border bg-destructive/5"
+                  : "border-border hover:bg-muted/40"
               }`}
             >
               {overdue ? (
-                <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" strokeWidth={1.75} aria-hidden />
               ) : (
                 <span
                   className={`h-2 w-2 shrink-0 rounded-full ${
@@ -57,7 +60,7 @@ export function UpcomingEvents({ events }: Props) {
                 {evt.title}
               </span>
               <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {evtDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                {formatDateLong(evtDate, { year: undefined, month: "short", day: "numeric" })}
               </span>
             </div>
           )

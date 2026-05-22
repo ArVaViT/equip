@@ -1,14 +1,11 @@
 """Manual translation backfill for already-published courses.
 
-The ``draft → published`` hook in ``crud.py`` covers every new publish, but
-courses that were already live before the translation pipeline shipped need
-a way to get their ``content_translations`` rows seeded after the fact. This
-endpoint exposes a teacher-only "Translate now" action for exactly that
-case.
+The publish/update hooks in ``crud.py`` and nested write endpoints already run
+``translate_course_content`` when Gemini is configured. This endpoint lets a
+teacher force a full pass (same logic as the hooks).
 
-Designed to be safe to call repeatedly: the orchestrator's
-``source_hash`` short-circuit means re-translating an unchanged course costs
-zero Gemini calls.
+Safe to call repeatedly: unchanged sources short-circuit via ``source_hash``
+(zero Gemini calls).
 """
 
 from __future__ import annotations
@@ -22,7 +19,7 @@ from app.api.dependencies import assert_course_owner, require_teacher
 from app.core.database import get_db
 from app.schemas.course import CourseTranslationResponse
 from app.services.course_service import get_course
-from app.services.translation.orchestrator import translate_course_metadata
+from app.services.translation.course_pipeline import translate_course_content
 from app.services.translation.service import is_translation_enabled
 
 from ._router import router
@@ -61,7 +58,7 @@ def trigger_course_translation(
         # silent no-op.
         return CourseTranslationResponse(enabled=False)
 
-    report = translate_course_metadata(db, course)
+    report = translate_course_content(db, course)
     return CourseTranslationResponse(
         translated=report.translated,
         skipped=report.skipped,

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/context/useAuth"
-import { loginSchema, type LoginFormData } from "@/lib/validations/auth"
+import { makeLoginSchema, type LoginFormData } from "@/lib/validations/auth"
 import AuthLayout from "@/components/layout/AuthLayout"
 import { Loader2 } from "lucide-react"
 
@@ -38,7 +38,7 @@ export default function Login() {
     e.preventDefault()
     setServerError("")
 
-    const result = loginSchema.safeParse(form)
+    const result = makeLoginSchema().safeParse(form)
     if (!result.success) {
       const fieldErrors: typeof errors = {}
       for (const issue of result.error.issues) {
@@ -84,12 +84,13 @@ export default function Login() {
         <Button
           type="button"
           variant="outline"
-          className="w-full h-11 font-medium rounded-md"
+          size="lg"
+          className="w-full font-medium rounded-md"
           onClick={handleGoogleLogin}
           disabled={googleLoading || loading}
         >
           {googleLoading ? (
-            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("auth.connecting")}</>
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />{t("auth.connecting")}</>
           ) : (
             <><GoogleIcon className="h-4 w-4 mr-2.5" />{t("auth.continueWithGoogle")}</>
           )}
@@ -110,9 +111,9 @@ export default function Login() {
             <Input
               id="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={t("auth.emailPlaceholder")}
               autoComplete="email"
-              className="h-11"
+              fieldSize="lg"
               value={form.email}
               onChange={(e) => handleChange("email", e.target.value)}
               aria-invalid={!!errors.email}
@@ -125,15 +126,18 @@ export default function Login() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">{t("auth.password")}</Label>
-              <Link to="/forgot-password" className="text-xs text-primary hover:text-primary/80 transition-colors">
-                {t("auth.forgotPassword")}
+              <Link
+                to="/forgot-password"
+                className="-my-2 inline-flex min-h-[44px] items-center px-1 text-sm text-primary transition-colors hover:text-primary/80 sm:min-h-0 sm:py-0 sm:text-xs"
+              >
+                {t("auth.forgotPasswordLink")}
               </Link>
             </div>
             <Input
               id="password"
               type="password"
               autoComplete="current-password"
-              className="h-11"
+              fieldSize="lg"
               value={form.password}
               onChange={(e) => handleChange("password", e.target.value)}
               aria-invalid={!!errors.password}
@@ -142,10 +146,10 @@ export default function Login() {
             {errors.password && <p id="password-error" role="alert" className="text-xs text-destructive mt-1">{errors.password}</p>}
           </div>
 
-          <Button type="submit" className="w-full h-11 font-medium rounded-md" disabled={loading}>
+          <Button type="submit" size="lg" className="bg-cta-glow w-full font-medium rounded-md" disabled={loading}>
             {loading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />
                 {t("auth.signingIn")}
               </>
             ) : (
