@@ -92,15 +92,29 @@ export function useMediaPrompts(
       const inserted = await imageUpload.uploadAndInsert(file, editor);
       if (inserted) return;
       // Upload failed: give the user an escape hatch so they can paste
-      // an existing URL instead of silently losing their action.
+      // an existing URL instead of silently losing their action. The
+      // dialog description shows the actual failure reason (file too
+      // big, wrong type, network error) when available so the teacher
+      // knows whether to try a different file or just use a URL.
+      const fallbackReason = imageUpload.lastError;
       const url = await prompt({
         title: t("editor.prompt.uploadFailedTitle"),
-        description: t("editor.prompt.uploadFailedDescription"),
+        description: fallbackReason ?? t("editor.prompt.uploadFailedDescription"),
         placeholder: t("editor.prompt.imageUrlPlaceholder"),
         inputType: "url",
         confirmLabel: t("editor.prompt.uploadFailedConfirm"),
       });
-      if (url) editor.chain().focus().setImage({ src: url }).run();
+      if (!url) return;
+      // The URL-fallback path benefits from the same scheme-validation
+      // the link prompt uses (#510). A teacher pasting ``example.com``
+      // wouldn't notice the relative URL until a student saw the
+      // broken image.
+      const normalized = normalizeAndValidateUrl(url);
+      if (!normalized) {
+        toast({ title: t("editor.toast.invalidUrl"), variant: "destructive" });
+        return;
+      }
+      editor.chain().focus().setImage({ src: normalized }).run();
     };
     input.click();
   }, [editor, imageUpload, prompt, t]);
