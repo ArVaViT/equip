@@ -577,7 +577,12 @@
   @apply border-0 bg-transparent p-0;
 }
 .prose img {
-  @apply my-6 rounded-md;
+  /* ``cursor-zoom-in`` advertises the click-to-enlarge affordance.
+   * Click handling lives in ``ChapterView.TextBlockRender`` and
+   * routes through ``<ImageLightbox>``; here we just give the
+   * visual hint. Hover lift is editorial polish — small but
+   * communicates "interactive". */
+  @apply my-6 rounded-md cursor-zoom-in transition-shadow hover:shadow-lg;
 }
 .prose > *:first-child {
   @apply mt-0;

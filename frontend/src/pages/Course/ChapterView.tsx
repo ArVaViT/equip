@@ -5,6 +5,7 @@ import { sanitizeHtml as sanitize } from "@/lib/sanitize"
 import { renderMathIn } from "@/lib/katex-render"
 import { renderToggleCalloutsIn } from "@/lib/callout-toggle"
 import { attachCopyButtonsIn } from "@/lib/codeblock-copy"
+import { ImageLightbox } from "@/components/chapter/ImageLightbox"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
@@ -47,6 +48,11 @@ import { chapterViewSteps } from "@/lib/tourSteps"
 function TextBlockRender({ html }: { html: string }) {
   const { t } = useTranslation()
   const ref = useRef<HTMLDivElement>(null)
+  // Image-lightbox state — the rendered chapter HTML is injected via
+  // ``dangerouslySetInnerHTML`` so we can't attach React onClick to
+  // each ``<img>``. Instead, delegate clicks at the wrapper div and
+  // open the lightbox with the clicked image's src + alt.
+  const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
   useEffect(() => {
     // Order matters: ``renderToggleCalloutsIn`` rewrites parent
     // elements (``div[data-callout="toggle"]`` → ``<details>``), so
@@ -62,12 +68,35 @@ function TextBlockRender({ html }: { html: string }) {
       ariaLabel: t("blockEditor.codeBlock.copyAriaLabel"),
     })
   }, [html, t])
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement
+    if (target.tagName !== "IMG") return
+    const img = target as HTMLImageElement
+    // Skip tiny / decorative images (icons, small thumbs inside a
+    // callout, an inline 16px badge): they shouldn't open a
+    // fullscreen modal that hides surrounding content. 100×100 px
+    // is the threshold modern editors converge on.
+    if (img.naturalWidth < 100 || img.naturalHeight < 100) return
+    setLightbox({ src: img.src, alt: img.alt })
+  }
+
   return (
-    <div
-      ref={ref}
-      className="prose max-w-none"
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <>
+      <div
+        ref={ref}
+        onClick={handleClick}
+        className="prose max-w-none"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+      {lightbox && (
+        <ImageLightbox
+          src={lightbox.src}
+          alt={lightbox.alt}
+          onClose={() => setLightbox(null)}
+        />
+      )}
+    </>
   )
 }
 

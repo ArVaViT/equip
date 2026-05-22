@@ -712,7 +712,11 @@
     "submitAssignmentToComplete": "Submit the assignment to complete this chapter",
     "downloadFile": "Download file",
     "downloadFileAria": "Download attachment: {{name}}",
-    "attachmentEyebrow": "Attachment"
+    "attachmentEyebrow": "Attachment",
+    "imageLightbox": {
+      "dialogAria": "Image preview",
+      "closeAria": "Close image preview"
+    }
   },
   "quiz": {
     "exam": "Exam",

@@ -351,7 +351,11 @@
     "submitAssignmentToComplete": "Отправьте задание, чтобы завершить главу",
     "downloadFile": "Скачать файл",
     "downloadFileAria": "Скачать вложение: {{name}}",
-    "attachmentEyebrow": "Вложение"
+    "attachmentEyebrow": "Вложение",
+    "imageLightbox": {
+      "dialogAria": "Предпросмотр изображения",
+      "closeAria": "Закрыть предпросмотр"
+    }
   },
   "quiz": {
     "exam": "Экзамен",
