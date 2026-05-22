@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
 import type { Course } from "@/types"
 import { useAuth } from "@/context/useAuth"
+import { useAsyncData } from "@/hooks/useAsyncData"
 import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
 import CourseCard from "@/components/course/CourseCard"
 import CourseCardSkeleton from "@/components/skeletons/CourseCardSkeleton"
@@ -32,34 +33,29 @@ export default function CoursesPage() {
   const { user } = useAuth()
   const { input, setInput, value: query, maxLength } = useDebouncedSearchParam()
   const [courses, setCourses] = useState<Course[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
+  const { data: fetchedCourses, loading, error: fetchError } = useAsyncData(
+    async () => coursesService.getCourses(query || undefined),
+    // ``i18n.language`` triggers a refetch on locale flip so localised
+    // titles/descriptions re-pull. ``t`` is intentionally not a dep —
+    // its reference-change behaviour is implementation-defined.
+    [query, reloadKey, i18n.language],
+  )
+  // Token-key error so a locale flip while the error is on screen
+  // updates the message without a refetch.
+  const error: string | null = fetchError ? t("courses.loadFailed") : null
   useUserTour({
     tourId: "courses-catalog-v1",
     steps: coursesCatalogSteps(t),
     ready: !loading && !error,
   })
 
+  // Sync the useAsyncData result into the existing courses state so the
+  // (search/filter) downstream logic can continue to read from a single
+  // source of truth without restructuring the rest of the file.
   useEffect(() => {
-    const signal = { cancelled: false }
-    setLoading(true)
-    setError(null)
-    coursesService
-      .getCourses(query || undefined)
-      .then((data) => {
-        if (!signal.cancelled) setCourses(data)
-      })
-      .catch(() => {
-        if (!signal.cancelled) setError(t("courses.loadFailed"))
-      })
-      .finally(() => {
-        if (!signal.cancelled) setLoading(false)
-      })
-    return () => {
-      signal.cancelled = true
-    }
-  }, [query, reloadKey, t, i18n.language])
+    if (fetchedCourses !== undefined) setCourses(fetchedCourses)
+  }, [fetchedCourses])
 
   return (
     <div className="container mx-auto px-4 py-6 sm:py-10">

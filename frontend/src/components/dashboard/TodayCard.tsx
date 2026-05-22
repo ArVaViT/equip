@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react"
+import { useMemo } from "react"
+import { useAsyncData } from "@/hooks/useAsyncData"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { ArrowRight, CalendarDays } from "lucide-react"
@@ -31,39 +32,25 @@ function ymdKey(d: Date): string {
 export function TodayCard() {
   const { t, i18n } = useTranslation()
   const { user } = useAuth()
-  const [events, setEvents] = useState<CalendarEvent[]>([])
-  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
-    let cancelled = false
-    setLoading(true)
-    coursesService
-      .getCalendarEvents()
-      .then((evts) => {
-        if (cancelled) return
-        setEvents(evts)
-      })
-      .catch(() => {
-        // Silent: the dashboard is more important than this card. The
-        // empty state below covers both "no events today" and "fetch
-        // failed" — both surface as "nothing to do, open the full
-        // calendar to look further".
-        if (!cancelled) setEvents([])
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
+  // Silent on error: the dashboard is more important than this card.
+  // The empty state below covers both "no events today" and "fetch
+  // failed" — both surface as "nothing to do, open the full calendar
+  // to look further". We catch inside the fetcher so useAsyncData's
+  // error stays null and never reaches the render branch.
+  const { data: events = [], loading } = useAsyncData<CalendarEvent[]>(
+    async () => {
+      if (!user) return []
+      try {
+        return await coursesService.getCalendarEvents()
+      } catch {
+        return []
+      }
+    },
     // user object identity changes on unrelated context refreshes, so
-    // we key the dep on ``id`` to avoid spurious re-fetches.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, i18n.language])
+    // key the dep on ``id`` to avoid spurious re-fetches.
+    [user?.id, i18n.language],
+  )
 
   const today = useMemo(() => new Date(), [])
   const todayKey = ymdKey(today)
