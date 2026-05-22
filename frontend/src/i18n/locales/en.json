@@ -1981,6 +1981,9 @@
   "editor": {
     "toast": {
       "imageUploadFailed": "Image upload failed",
+      "imageUploadFailedDetail": "Image upload failed: {{detail}}",
+      "imageWrongType": "That file isn't an image ({{type}}). Pick a JPG, PNG, WebP, or GIF.",
+      "imageTooLarge": "Image is too large. Maximum size is {{maxMb}} MB.",
       "audioUrlInvalid": "Audio URL must start with http(s)",
       "invalidUrl": "That doesn't look like a valid URL. Use a full address like https://example.com/page."
     },

@@ -1664,6 +1664,9 @@
   "editor": {
     "toast": {
       "imageUploadFailed": "Не удалось загрузить изображение",
+      "imageUploadFailedDetail": "Не удалось загрузить изображение: {{detail}}",
+      "imageWrongType": "Этот файл — не изображение ({{type}}). Выберите JPG, PNG, WebP или GIF.",
+      "imageTooLarge": "Изображение слишком большое. Максимальный размер — {{maxMb}} МБ.",
       "audioUrlInvalid": "URL аудио должен начинаться с http(s)",
       "invalidUrl": "Это не похоже на корректный URL. Используйте полный адрес, например https://example.com/page."
     },
