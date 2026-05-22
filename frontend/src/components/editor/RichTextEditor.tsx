@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
@@ -8,6 +9,7 @@ import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
 import { TableHeader } from "@tiptap/extension-table-header";
 import { TableCell } from "@tiptap/extension-table-cell";
+import { CharacterCount } from "@tiptap/extension-character-count";
 
 import { Callout } from "./CalloutExtension";
 import { YoutubeEmbed } from "./YoutubeExtension";
@@ -15,12 +17,19 @@ import { AudioEmbed } from "./AudioExtension";
 import { EditorToolbar } from "./EditorToolbar";
 import { useImageUpload } from "./useImageUpload";
 import { useMediaPrompts } from "./useMediaPrompts";
+import { cn } from "@/lib/utils";
 
 interface RichTextEditorProps {
   content: string;
   onChange: (html: string) => void;
   placeholder?: string;
   editable?: boolean;
+  /** Optional character cap. When set, displays a live count in the
+   *  editor footer and enforces the limit via the CharacterCount
+   *  extension's ``limit`` option (the cap matches the Pydantic
+   *  ``max_length`` on the backing field — currently 500 000 for
+   *  ``chapter_blocks.content``). Omit to show no counter at all. */
+  characterLimit?: number;
 }
 
 export default function RichTextEditor({
@@ -28,7 +37,9 @@ export default function RichTextEditor({
   onChange,
   placeholder = "Start writing…",
   editable = true,
+  characterLimit,
 }: RichTextEditorProps) {
+  const { t } = useTranslation();
   const imageUpload = useImageUpload();
 
   const editor = useEditor({
@@ -49,14 +60,21 @@ export default function RichTextEditor({
       Callout,
       YoutubeEmbed,
       AudioEmbed,
-      // ``Table`` configures the table node + injects the cell-resize
-      // handles. ``resizable: true`` exposes the drag-handles teachers
-      // expect from Notion / Coda. The remaining table-* extensions are
-      // peer nodes that must be registered alongside.
-      Table.configure({ resizable: true, HTMLAttributes: { class: "equip-table" } }),
+      // ``resizable: false`` deliberately. Cell-resize emits a
+      // ``<colgroup>`` with inline ``style="width: Npx"`` attrs that
+      // bleach strips on save, so a teacher who resizes a column
+      // would lose the width on the next reload — silently. Tables
+      // stay flexible-width by default until we extend the bleach
+      // allowlist to keep ``col[style]`` through round-trips.
+      Table.configure({ resizable: false, HTMLAttributes: { class: "equip-table" } }),
       TableRow,
       TableHeader,
       TableCell,
+      // The extension is always loaded so ``editor.storage.characterCount.characters()``
+      // is available for the footer. The ``limit`` option only enforces a
+      // hard cap when ``characterLimit`` is set — passing ``null`` /
+      // ``undefined`` keeps input unbounded.
+      CharacterCount.configure({ limit: characterLimit ?? null }),
     ],
     content,
     editable,
@@ -90,6 +108,28 @@ export default function RichTextEditor({
 
   const { setLink, addImage, addYoutube, addAudio } = useMediaPrompts(editor, imageUpload);
 
+  // TipTap mutates the editor in place; reading
+  // ``editor.storage.characterCount.characters()`` only refreshes on a
+  // React re-render. Subscribing to the ``update`` event and bumping
+  // ``tick`` is the cheapest way to drive that re-render. Empty
+  // object value means equality always fails, forcing the bump.
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!editor) return;
+    const handler = () => setTick((v) => v + 1);
+    editor.on("update", handler);
+    return () => {
+      editor.off("update", handler);
+    };
+  }, [editor]);
+
+  const count = useMemo(() => {
+    if (!editor) return 0;
+    return editor.storage.characterCount?.characters?.() ?? 0;
+    // ``tick`` is intentional: it drives the recompute. See above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor, tick]);
+
   if (!editor) return null;
 
   return (
@@ -105,6 +145,43 @@ export default function RichTextEditor({
         />
       )}
       <EditorContent editor={editor} />
+      {editable && characterLimit !== undefined && (
+        <CharacterCounter count={count} limit={characterLimit} t={t} />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Footer counter showing ``N / LIMIT`` with editorial colour shifts as
+ * the user nears the cap. Lives inside this module — purely
+ * presentational, single caller, no need for its own file.
+ */
+function CharacterCounter({
+  count,
+  limit,
+  t,
+}: {
+  count: number;
+  limit: number;
+  t: (k: string, opts?: Record<string, unknown>) => string;
+}) {
+  const ratio = count / limit;
+  const tone = ratio >= 1 ? "destructive" : ratio >= 0.9 ? "warning" : "muted";
+  return (
+    <div
+      aria-live="polite"
+      className="flex justify-end border-t border-input px-3 py-1.5 text-xs tabular-nums"
+    >
+      <span
+        className={cn(
+          tone === "muted" && "text-muted-foreground",
+          tone === "warning" && "text-warning",
+          tone === "destructive" && "text-destructive font-medium",
+        )}
+      >
+        {t("blockEditor.toolbar.characters", { count, limit })}
+      </span>
     </div>
   );
 }

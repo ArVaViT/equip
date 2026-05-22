@@ -96,6 +96,14 @@ export function TextBlockEditor({ block, onSaved }: Props) {
           scheduleAutoSave()
         }}
         placeholder={t("blockEditor.text.placeholder")}
+        // Mirrors ``ChapterBlock.content`` Pydantic ``max_length=500_000``.
+        // The TipTap CharacterCount extension counts the plain-text
+        // length (without HTML tags), but the backend cap is on the
+        // HTML payload — keeping them equal is a comfortable
+        // overestimate: with markup overhead the actual stored bytes
+        // can exceed plain-text-length but stays well under typical
+        // body-size limits.
+        characterLimit={500000}
       />
       <div className="flex items-center gap-3">
         <Button size="sm" onClick={saveExplicit} disabled={savingExplicit}>
