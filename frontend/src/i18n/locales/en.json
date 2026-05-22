@@ -917,6 +917,18 @@
       "takeaway": "Key Takeaway",
       "warning": "Warning"
     },
+    "table": {
+      "trigger": "Table",
+      "insert": "Insert 3×3 table",
+      "addRowBefore": "Add row above",
+      "addRowAfter": "Add row below",
+      "addColumnBefore": "Add column left",
+      "addColumnAfter": "Add column right",
+      "toggleHeaderRow": "Toggle header row",
+      "deleteRow": "Delete row",
+      "deleteColumn": "Delete column",
+      "deleteTable": "Delete table"
+    },
     "deleteBlockAria": "Delete {{label}} block"
   },
   "assignmentEditor": {

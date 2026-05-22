@@ -572,6 +572,18 @@
       "takeaway": "Ключевая мысль",
       "warning": "Предупреждение"
     },
+    "table": {
+      "trigger": "Таблица",
+      "insert": "Вставить таблицу 3×3",
+      "addRowBefore": "Добавить строку сверху",
+      "addRowAfter": "Добавить строку снизу",
+      "addColumnBefore": "Добавить столбец слева",
+      "addColumnAfter": "Добавить столбец справа",
+      "toggleHeaderRow": "Переключить заголовок",
+      "deleteRow": "Удалить строку",
+      "deleteColumn": "Удалить столбец",
+      "deleteTable": "Удалить таблицу"
+    },
     "deleteBlockAria": "Удалить блок «{{label}}»"
   },
   "assignmentEditor": {

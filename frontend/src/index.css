@@ -618,3 +618,39 @@
 .ProseMirror img.ProseMirror-selectednode {
   @apply ring-2 ring-primary ring-offset-2;
 }
+
+/* ===== Tables =====
+   Side-by-side comparison and reference grids (e.g. synoptic gospel
+   parallels). Styles apply to both the in-editor surface and the
+   read-only chapter render — the .equip-table class is emitted by the
+   TipTap Table extension so the .prose-cascade rules can target it
+   without leaking into unrelated tables on the page. */
+.prose table.equip-table,
+.equip-table {
+  @apply my-6 w-full border-collapse text-sm;
+}
+.prose table.equip-table th,
+.prose table.equip-table td,
+.equip-table th,
+.equip-table td {
+  @apply border border-border px-3 py-2 align-top;
+  min-width: 4rem;
+}
+.prose table.equip-table th,
+.equip-table th {
+  @apply bg-muted/50 font-semibold text-left;
+}
+/* Inside the editor: visual cue for the currently-selected cell + a
+   slightly thicker focus ring for the resize handles. ProseMirror sets
+   the ``.selectedCell`` class on cells inside the current selection
+   when the table-cell-selection plugin is active. */
+.ProseMirror table.equip-table {
+  @apply table-fixed;
+}
+.ProseMirror table.equip-table .selectedCell {
+  @apply bg-primary/10;
+}
+.ProseMirror table.equip-table td,
+.ProseMirror table.equip-table th {
+  @apply relative;
+}
