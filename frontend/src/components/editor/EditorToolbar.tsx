@@ -16,6 +16,7 @@ import {
   Video as Youtube,
   Headphones,
   Minus,
+  Sigma,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -76,6 +77,7 @@ interface EditorToolbarProps {
   onAddImage: () => void;
   onAddYoutube: () => void;
   onAddAudio: () => void;
+  onAddMath: () => void;
   onSetLink: () => void;
 }
 
@@ -91,6 +93,7 @@ export function EditorToolbar({
   onAddImage,
   onAddYoutube,
   onAddAudio,
+  onAddMath,
   onSetLink,
 }: EditorToolbarProps) {
   const { t } = useTranslation();
@@ -198,6 +201,10 @@ export function EditorToolbar({
 
       <ToolbarButton onClick={onAddAudio} title={t("blockEditor.toolbar.insertAudio")}>
         <Headphones size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} aria-hidden="true" />
+      </ToolbarButton>
+
+      <ToolbarButton onClick={onAddMath} title={t("blockEditor.toolbar.insertMath")}>
+        <Sigma size={TOOLBAR_ICON_SIZE} strokeWidth={1.75} aria-hidden="true" />
       </ToolbarButton>
 
       <ToolbarButton

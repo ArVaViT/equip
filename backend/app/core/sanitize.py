@@ -89,6 +89,21 @@ _ALLOWED_ATTRIBUTES: dict[str, list[str]] = {
     # round-tripping for the .prose-cascade CSS.
     "td": ["colspan", "rowspan", "class", "id"],
     "th": ["colspan", "rowspan", "scope", "class", "id"],
+    # Inline-math markers from ``@aarkue/tiptap-math-extension``. The
+    # extension stores math as ``<span data-type="inlineMath"
+    # data-latex="..." data-display="..." data-evaluate="...">$x^2$</span>``
+    # and the BlockRenderer renders KaTeX into the marker at view time.
+    # Same per-tag-overrides-wildcard rule as the table cells —
+    # ``class`` / ``id`` are repeated so highlight.js token spans and
+    # any other span use still keeps its class.
+    "span": [
+        "class",
+        "id",
+        "data-type",
+        "data-latex",
+        "data-display",
+        "data-evaluate",
+    ],
     "*": ["class", "id"],
 }
 

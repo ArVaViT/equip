@@ -17,6 +17,7 @@
     "test:run": "vitest run"
   },
   "dependencies": {
+    "@aarkue/tiptap-math-extension": "^1.4.0",
     "@datadog/browser-rum": "^7.1.0",
     "@datadog/browser-rum-react": "^7.1.0",
     "@fontsource-variable/fraunces": "^5.2.9",
@@ -54,6 +55,7 @@
     "highlight.js": "^11.11.1",
     "i18next": "^26.0.10",
     "i18next-browser-languagedetector": "^8.2.1",
+    "katex": "^0.17.0",
     "lowlight": "^3.3.0",
     "lucide-react": "^1.14.0",
     "motion": "^12.38.0",

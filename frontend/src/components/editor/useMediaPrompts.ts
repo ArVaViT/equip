@@ -91,5 +91,30 @@ export function useMediaPrompts(
     if (!ok) toast({ title: t("editor.toast.audioUrlInvalid"), variant: "destructive" });
   }, [editor, prompt, t]);
 
-  return { setLink, addImage, addYoutube, addAudio };
+  const addMath = useCallback(async () => {
+    if (!editor) return;
+    // Teachers can also auto-trigger inline math by typing ``$x^2$``
+    // directly — this prompt is the discoverability path for users
+    // who don't know the shortcut. Stored shape:
+    //   <span data-type="inlineMath" data-latex="x^2"></span>
+    // KaTeX renders the latex via the extension's NodeView in-editor
+    // and via the post-render hook on the chapter view.
+    const latex = await prompt({
+      title: t("editor.prompt.mathTitle"),
+      description: t("editor.prompt.mathDescription"),
+      placeholder: t("editor.prompt.mathPlaceholder"),
+      confirmLabel: t("editor.prompt.mathConfirm"),
+    });
+    if (!latex) return;
+    editor
+      .chain()
+      .focus()
+      .insertContent({
+        type: "inlineMath",
+        attrs: { latex, evaluate: "no", display: "no" },
+      })
+      .run();
+  }, [editor, prompt, t]);
+
+  return { setLink, addImage, addYoutube, addAudio, addMath };
 }
