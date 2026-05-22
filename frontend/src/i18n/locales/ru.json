@@ -590,7 +590,10 @@
     },
     "codeBlock": {
       "insert": "Вставить блок кода",
-      "changeLanguage": "Сменить язык"
+      "changeLanguage": "Сменить язык",
+      "copy": "Копировать",
+      "copied": "Скопировано",
+      "copyAriaLabel": "Скопировать код в буфер обмена"
     },
     "deleteBlockAria": "Удалить блок «{{label}}»"
   },
