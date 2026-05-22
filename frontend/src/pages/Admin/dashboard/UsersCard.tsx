@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/patterns/EmptyState"
 import { RoleSelector } from "@/components/admin/RoleSelector"
 import { UserAvatar } from "@/components/admin/UserAvatar"
 import { displayNameOf } from "@/lib/userDisplay"
+import { ROLE_I18N_KEY } from "@/lib/roles"
 import type { UserRole } from "@/types"
 import { formatDate } from "@/i18n/format"
 import { type ProfileRow } from "./constants"
@@ -174,7 +175,7 @@ export function UsersCard({
                     : "border-border hover:border-primary/40 hover:bg-muted",
                 )}
               >
-                <span>{t(`roles.${role === "pending_teacher" ? "pendingTeacher" : role}`)}</span>
+                <span>{t(ROLE_I18N_KEY[role])}</span>
                 <span
                   className={cn(
                     "tabular-nums",

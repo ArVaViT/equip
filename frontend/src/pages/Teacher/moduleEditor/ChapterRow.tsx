@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { normalizeChapterType } from "@/lib/chapterTypes";
+import { CHAPTER_TYPE_LABEL_KEYS, normalizeChapterType } from "@/lib/chapterTypes";
 import type { Chapter } from "@/types";
 
 interface ChapterRowProps {
@@ -85,7 +85,7 @@ export function ChapterRow({
             {/* Row 2 on mobile (badge + actions). Inline on sm+. */}
             <div className="flex items-center justify-end gap-1 sm:gap-2">
               <Badge variant="muted" className="mr-auto shrink-0 sm:mr-0">
-                {t(`chapterTypes.${type}.label`)}
+                {t(CHAPTER_TYPE_LABEL_KEYS[type])}
               </Badge>
 
               <Button

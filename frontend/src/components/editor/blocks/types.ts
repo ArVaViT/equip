@@ -26,3 +26,13 @@ export type BlockType = (typeof BLOCK_TYPES)[number]["value"]
 export function blockIcon(type: string): LucideIcon {
   return BLOCK_TYPES.find((bt) => bt.value === type)?.icon ?? FileText
 }
+
+// Static i18n key lookup so callers ``t(BLOCK_TYPE_LABEL_KEYS[type])``
+// instead of ``t(`blockEditor.types.${type}`)`` — keeps the keys
+// visible to the i18n keyCoverage static check.
+export const BLOCK_TYPE_LABEL_KEYS: Record<BlockType, string> = {
+  text: "blockEditor.types.text",
+  quiz: "blockEditor.types.quiz",
+  assignment: "blockEditor.types.assignment",
+  file: "blockEditor.types.file",
+}

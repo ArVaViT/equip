@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next"
-import { getChapterTypeMeta, normalizeChapterType } from "@/lib/chapterTypes"
+import { CHAPTER_TYPE_LABEL_KEYS, getChapterTypeMeta, normalizeChapterType } from "@/lib/chapterTypes"
 
 interface Props {
   type: string
@@ -19,7 +19,7 @@ export default function ChapterTypeBadge({ type, size = "md" }: Props) {
   return (
     <span className={`inline-flex items-center rounded-full font-medium ${sizing} ${meta.color}`}>
       <Icon className={iconSize} strokeWidth={1.75} aria-hidden />
-      {t(`chapterTypes.${normalized}.label`)}
+      {t(CHAPTER_TYPE_LABEL_KEYS[normalized])}
     </span>
   )
 }

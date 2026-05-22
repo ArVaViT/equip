@@ -32,6 +32,8 @@ interface Props {
   onDelete: (id: string) => void
 }
 
+import { EVENT_TYPE_LABEL_KEYS } from "./eventTypes"
+
 const EVENT_TYPE_VALUES = ["deadline", "live_session", "exam", "other"] as const
 
 export function EventsModal({
@@ -84,7 +86,7 @@ export function EventsModal({
                 <SelectContent>
                   {EVENT_TYPE_VALUES.map((value) => (
                     <SelectItem key={value} value={value}>
-                      {t(`teacherEditor.modals.events.types.${value}`)}
+                      {t(EVENT_TYPE_LABEL_KEYS[value])}
                     </SelectItem>
                   ))}
                 </SelectContent>

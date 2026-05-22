@@ -25,6 +25,7 @@ import QuizTaker from "@/components/quiz/QuizTaker"
 import AssignmentPanel from "@/components/assignment/AssignmentPanel"
 import { PressFeedback } from "@/components/motion"
 import {
+  CHAPTER_TYPE_LABEL_KEYS,
   getChapterTypeMeta,
   isGradableChapterType,
   normalizeChapterType,
@@ -536,7 +537,7 @@ export default function ChapterView() {
         <p className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <ChapterTypeIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-            {t(`chapterTypes.${chapterType}.label`)}
+            {t(CHAPTER_TYPE_LABEL_KEYS[chapterType])}
           </span>
           <span aria-hidden className="text-muted-foreground/40">·</span>
           <span className="tabular-nums">

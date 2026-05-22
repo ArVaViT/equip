@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
+import { EVENT_TYPE_LABEL_KEYS, type EventType } from "./eventTypes"
 
 /** Enrollment-window state derived from (start, end) strings. */
 export function EnrollmentStatusBadge({ start, end }: { start: string; end: string }) {
@@ -26,16 +27,14 @@ const EVENT_BADGE_VARIANT: Record<string, EventVariant> = {
   other: "muted",
 }
 
-const KNOWN_EVENT_TYPES = new Set(["deadline", "live_session", "exam", "other"])
-
 export function EventTypeBadge({ type }: { type: string }) {
   const { t } = useTranslation()
   // Fall back to "other" for unknown types so we still render a sensible
   // localized label (the i18n keys cover the four supported types).
-  const key = KNOWN_EVENT_TYPES.has(type) ? type : "other"
+  const key: EventType = (type in EVENT_TYPE_LABEL_KEYS ? type : "other") as EventType
   return (
     <Badge variant={EVENT_BADGE_VARIANT[type] ?? "muted"}>
-      {t(`teacherEditor.modals.events.types.${key}`)}
+      {t(EVENT_TYPE_LABEL_KEYS[key])}
     </Badge>
   )
 }
