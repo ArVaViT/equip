@@ -105,6 +105,8 @@ def get_prerequisites(
 def set_prerequisites(
     course_id: str,
     data: PrerequisiteSetRequest,
+    response: Response,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
@@ -183,9 +185,16 @@ def set_prerequisites(
 
     db.commit()
 
+    # Route the post-save title hydration through the same locale-aware
+    # overlay helper the GET handler uses. Previously we returned raw
+    # ``c.title`` here, so a teacher editing prereqs in EN UI on a RU
+    # course saw RU titles in the immediate save response (until the
+    # next GET refreshed). The header-driven locale matches what the
+    # client expects to render.
+    response.headers["Vary"] = "Accept-Language"
+    display_locale: LocaleCode = normalize_locale(accept_language)
     prereq_ids = [p.prerequisite_course_id for p in new_prereqs]
-    prereq_courses = db.query(Course).filter(Course.id.in_(prereq_ids)).all() if prereq_ids else []
-    title_map = {str(c.id): c.title for c in prereq_courses}
+    title_map = _localized_title_map(db, prereq_ids, display_locale=display_locale)
 
     return [
         PrerequisiteResponse(
