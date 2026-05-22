@@ -15,6 +15,7 @@ concurrency:
 jobs:
   pr-quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -70,20 +71,20 @@ jobs:
           # *modifying* secret files, not removing previously committed ones
           # (removal is strictly a cleanup action and must stay easy).
           CHANGED_FILES=$(git diff --name-only --diff-filter=d "$BASE_SHA" pr-head || true)
+          # The previous case statement only matched a handful of literal
+          # basenames (.env / .env.local / .env.<stage>) and missed common
+          # variants the audit flagged: my-app.env, prod.env, keys/prod.json,
+          # .envrc, files containing "credentials" anywhere in the path, etc.
+          # Switched to a regex on the full path so the matcher catches
+          # those without an explicit enumeration.
+          PATTERN='(^|/)(\.env(\..*)?|\.envrc|.*[Cc]redentials.*\.(json|ya?ml)|.*service[-_]?account.*\.json)$|.*\.(pem|key|p12|pfx|asc|crt)$'
           FOUND=0
           while IFS= read -r f; do
             [ -z "$f" ] && continue
-            bn=$(basename "$f")
-            case "$bn" in
-              .env|.env.local|.env.production|.env.development|credentials.json|serviceAccountKey.json)
-                echo "::error file=$f::Forbidden file in diff: $f"
-                FOUND=1
-                ;;
-              *.pem|*.key)
-                echo "::error file=$f::Forbidden credential-related file in diff: $f"
-                FOUND=1
-                ;;
-            esac
+            if echo "$f" | grep -qE "$PATTERN"; then
+              echo "::error file=$f::Forbidden secret/credential file in diff: $f"
+              FOUND=1
+            fi
           done <<< "$CHANGED_FILES"
           if [ "$FOUND" -eq 1 ]; then
             echo "::error::Remove secret or environment files from the pull request."
