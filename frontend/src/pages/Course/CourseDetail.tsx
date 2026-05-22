@@ -52,14 +52,43 @@ export default function CourseDetail() {
       setCalendarEvents([])
       setCohorts([])
       try {
-        const [courseData, enrollmentStatus, cohortsData] = await Promise.all([
+        // Speculatively kick off the enrollment-dependent fetches
+        // alongside the first batch when ``user`` is present, so the
+        // request round-trip only happens once. Previously this code
+        // awaited the enrollment-check result, THEN issued the second
+        // batch — a sequential waterfall that doubled the latency for
+        // every enrolled student loading a course page. The
+        // speculative calls cost 4 cheap GETs per non-enrolled
+        // logged-in user (still a single round-trip), but the
+        // enrolled-student path saves an entire RTT. Anonymous users
+        // pay nothing — the user-gated promises short-circuit to
+        // their empty defaults.
+        const enrolled = user
+          ? coursesService
+              .getEnrollmentStatus(id)
+              .catch(() => ({ enrolled: false, enrollment: null as Enrollment | null }))
+          : Promise.resolve({ enrolled: false, enrollment: null as Enrollment | null })
+        const certP = user
+          ? coursesService.getCourseCertificate(id).catch(() => null)
+          : Promise.resolve(null)
+        const progressP = user
+          ? coursesService.getMyChapterProgress(id).catch(() => [] as string[])
+          : Promise.resolve([] as string[])
+        const matsP = user
+          ? storageService.listCourseMaterials(id).catch(() => [] as CourseMaterial[])
+          : Promise.resolve([] as CourseMaterial[])
+        const evtsP = user
+          ? coursesService.getCalendarEvents(id).catch(() => [] as CalendarEvent[])
+          : Promise.resolve([] as CalendarEvent[])
+
+        const [courseData, enrollmentStatus, cohortsData, cert, progress, mats, evts] = await Promise.all([
           coursesService.getCourse(id),
-          user
-            ? coursesService
-                .getEnrollmentStatus(id)
-                .catch(() => ({ enrolled: false, enrollment: null as Enrollment | null }))
-            : Promise.resolve({ enrolled: false, enrollment: null as Enrollment | null }),
+          enrolled,
           coursesService.getCourseCohorts(id).catch(() => [] as Cohort[]),
+          certP,
+          progressP,
+          matsP,
+          evtsP,
         ])
         if (cancelled) return
         setCourse(courseData)
@@ -67,13 +96,6 @@ export default function CourseDetail() {
         const match = enrollmentStatus.enrolled ? enrollmentStatus.enrollment : null
         if (match) {
           setEnrollment(match)
-          const [cert, progress, mats, evts] = await Promise.all([
-            coursesService.getCourseCertificate(id).catch(() => null),
-            coursesService.getMyChapterProgress(id).catch(() => [] as string[]),
-            storageService.listCourseMaterials(id).catch(() => [] as CourseMaterial[]),
-            coursesService.getCalendarEvents(id).catch(() => [] as CalendarEvent[]),
-          ])
-          if (cancelled) return
           setCertificate(cert)
           setCompletedChapterIds(new Set(progress))
           setMaterials(mats)

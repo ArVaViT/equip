@@ -98,28 +98,21 @@ export function CohortsTab() {
     [setParams],
   )
 
-  // Effect-driven fetch with a request-id token. Without it, flipping
-  // the status filter quickly (All -> Upcoming -> Active) leaves three
-  // in-flight ``listCohorts`` calls; whichever resolves LAST writes
-  // its rows, so a slow "All" response can overwrite the freshly-
-  // loaded "Active" view. The token ensures only the latest request's
-  // result reaches state.
+  // Single effect-driven fetch with a per-render cancellation token.
+  // Without the token, flipping the status filter quickly
+  // (All → Upcoming → Active) leaves three in-flight ``listCohorts``
+  // calls; whichever resolves LAST writes its rows, so a slow "All"
+  // response can overwrite the freshly-loaded "Active" view. The
+  // token ensures only the latest request's result reaches state.
   //
-  // ``load`` stays exposed for the retry button below, but the
-  // primary path is the effect so the cancellation token lives at
-  // the effect's scope where it's needed.
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await cohortsService.listCohorts(statusFilter || undefined)
-      setCohorts(data)
-    } catch {
-      setError(t("admin.cohorts.loadError"))
-    } finally {
-      setLoading(false)
-    }
-  }, [statusFilter, t])
+  // ``reload`` increments ``reloadKey`` to re-trigger the effect for
+  // the retry button and post-create refresh. Previously there were
+  // TWO fetch paths (a ``load`` callback and a duplicate inline
+  // effect); the callback path lacked the cancellation token, so a
+  // retry mid-filter-flip could overwrite the latest result. One
+  // path means one set of semantics.
+  const [reloadKey, setReloadKey] = useState(0)
+  const reload = useCallback(() => setReloadKey((k) => k + 1), [])
 
   useEffect(() => {
     let cancelled = false
@@ -142,7 +135,7 @@ export function CohortsTab() {
     return () => {
       cancelled = true
     }
-  }, [statusFilter, t])
+  }, [statusFilter, t, reloadKey])
 
   // Client-side filter + paginate over the per-status fetch. Cohort
   // counts in production stay in the dozens, so we don't need a
@@ -272,7 +265,7 @@ export function CohortsTab() {
           <ErrorState
             title={error}
             action={
-              <Button size="sm" variant="outline" onClick={() => void load()}>
+              <Button size="sm" variant="outline" onClick={() => reload()}>
                 {t("common.tryAgain")}
               </Button>
             }
@@ -342,7 +335,7 @@ export function CohortsTab() {
         onClose={() => setCreateOpen(false)}
         onCreated={() => {
           setCreateOpen(false)
-          void load()
+          reload()
         }}
       />
     </Card>

@@ -28,22 +28,39 @@ import { initialsOf } from "@/lib/names"
 
 function useCountUp(target: number, durationMs = 800) {
   const prefersReducedMotion = useReducedMotion()
-  const [displayed, setDisplayed] = useState(0)
+  // Initialize to ``target`` (not 0) so the first render — and StrictMode's
+  // double-mount — never flashes through the animation. The effect only
+  // fires the count-up when the target genuinely changes from the last
+  // animated value, animating from the current display rather than from
+  // zero so a stat going 5→7 doesn't snap back to 0 first.
+  const [displayed, setDisplayed] = useState(target)
+  const lastAnimatedRef = useRef(target)
+
   useEffect(() => {
+    if (lastAnimatedRef.current === target) return
     if (prefersReducedMotion || target <= 0) {
       setDisplayed(target)
+      lastAnimatedRef.current = target
       return
     }
-    const steps = Math.min(24, Math.max(target, 6))
-    const stepMs = durationMs / steps
-    let i = 0
-    setDisplayed(0)
-    const id = window.setInterval(() => {
-      i++
-      setDisplayed(Math.min(target, Math.round((target * i) / steps)))
-      if (i >= steps) window.clearInterval(id)
-    }, stepMs)
-    return () => window.clearInterval(id)
+    // Animate from the previously-animated value (not from current
+    // ``displayed``, which would require a render-time ref read that
+    // the react-hooks/refs lint rule rightly forbids). On first
+    // genuine change ``lastAnimatedRef.current`` is the initial
+    // ``target`` the hook was mounted with (typically 0), so the
+    // animation behaves the same as the original interval-based
+    // implementation without any 0-flash on remount.
+    const from = lastAnimatedRef.current
+    lastAnimatedRef.current = target
+    let raf = 0
+    const startTime = performance.now()
+    const step = (now: number) => {
+      const progress = Math.min(1, (now - startTime) / durationMs)
+      setDisplayed(Math.round(from + (target - from) * progress))
+      if (progress < 1) raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
   }, [target, durationMs, prefersReducedMotion])
   return displayed
 }
@@ -108,8 +125,13 @@ export default function ProfilePage() {
     }
   }
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    // ``logout`` is async (it round-trips through supabase.auth.signOut);
+    // navigating before it resolves leaves a window where AuthContext
+    // still has the old user but the redirect has already fired,
+    // letting a stale "loading" flash through the login screen. Await
+    // the signOut explicitly.
+    await logout()
     navigate("/login", { replace: true })
   }
 
