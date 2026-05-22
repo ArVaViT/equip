@@ -101,7 +101,19 @@ export function EditorToolbar({
     <div
       role="toolbar"
       aria-label={t("blockEditor.toolbar.ariaLabel")}
-      className="flex flex-wrap items-center gap-0.5 border-b border-input px-2 py-1.5"
+      // ``sticky top-0`` keeps the toolbar visible while teachers
+      // scroll long chapters. ``z-20`` sits above prose content but
+      // below modal/dialog overlays (z-50). ``bg-background`` is
+      // required for sticky semi-transparent flicker over the
+      // ProseMirror surface below.
+      //
+      // Mobile responsiveness: at small widths the 17+ button row
+      // becomes a horizontal scroller (``flex-nowrap overflow-x-auto``)
+      // rather than wrapping to 2-3 lines. ``sm:flex-wrap`` restores
+      // the original wrap behaviour above the ``sm`` breakpoint where
+      // there's enough room. ``no-scrollbar`` (utility added in
+      // index.css) hides the visible bar — touch scroll still works.
+      className="sticky top-0 z-20 flex flex-nowrap items-center gap-0.5 overflow-x-auto border-b border-input bg-background px-2 py-1.5 no-scrollbar sm:flex-wrap sm:overflow-x-visible"
     >
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBold().run()}

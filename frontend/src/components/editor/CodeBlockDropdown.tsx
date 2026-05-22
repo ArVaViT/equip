@@ -5,6 +5,7 @@ import { Code2, ChevronDown, Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { CODE_LANGUAGES, CODE_LANGUAGE_LABELS, type CodeLanguage } from "./lowlight";
+import { useDropdownPosition } from "./useDropdownPosition";
 
 /**
  * Toolbar slot for code blocks. Mirrors the ``TableDropdown`` pattern:
@@ -26,6 +27,9 @@ export function CodeBlockDropdown({
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  // Panel width matches the ``w-44`` tailwind class on the menu.
+  const { alignClass } = useDropdownPosition(open, triggerRef, 176);
 
   useEffect(() => {
     if (!open) return;
@@ -65,6 +69,7 @@ export function CodeBlockDropdown({
   return (
     <div className="relative" ref={containerRef}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={triggerClick}
         title={
@@ -93,7 +98,10 @@ export function CodeBlockDropdown({
         <div
           role="menu"
           aria-label={t("blockEditor.codeBlock.changeLanguage")}
-          className="absolute left-0 top-full z-20 mt-1 w-44 rounded-md border bg-background py-1 shadow-lg"
+          className={cn(
+            "absolute top-full z-20 mt-1 w-44 rounded-md border bg-background py-1 shadow-lg",
+            alignClass,
+          )}
         >
           {CODE_LANGUAGES.map((lang) => (
             <button
