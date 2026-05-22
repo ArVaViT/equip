@@ -11,6 +11,8 @@ import { TableHeader } from "@tiptap/extension-table-header";
 import { TableCell } from "@tiptap/extension-table-cell";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
+import { MathExtension } from "@aarkue/tiptap-math-extension";
+import "katex/dist/katex.min.css";
 
 import { Callout } from "./CalloutExtension";
 import { YoutubeEmbed } from "./YoutubeExtension";
@@ -89,6 +91,18 @@ export default function RichTextEditor({
       // hard cap when ``characterLimit`` is set — passing ``null`` /
       // ``undefined`` keeps input unbounded.
       CharacterCount.configure({ limit: characterLimit ?? null }),
+      // ``MathExtension`` stores math as ``<span data-type="inlineMath"
+      // data-latex="x^2">...</span>`` markers — tiny, sanitizer-friendly,
+      // KaTeX renders them via NodeView at view time inside the editor.
+      // Outside the editor (``BlockRenderer``) we re-run ``katex.render``
+      // on each marker so the student sees the same math.
+      // ``evaluation: false`` disables the symbolic-math evaluator that
+      // ships with the extension — Bible-school context doesn't need
+      // "$1+2=$" auto-expanding to 3.
+      MathExtension.configure({
+        evaluation: false,
+        renderTextMode: "raw-latex",
+      }),
     ],
     content,
     editable,
@@ -120,7 +134,7 @@ export default function RichTextEditor({
     }
   }, [content, editor]);
 
-  const { setLink, addImage, addYoutube, addAudio } = useMediaPrompts(editor, imageUpload);
+  const { setLink, addImage, addYoutube, addAudio, addMath } = useMediaPrompts(editor, imageUpload);
 
   // TipTap mutates the editor in place; reading
   // ``editor.storage.characterCount.characters()`` only refreshes on a
@@ -154,6 +168,7 @@ export default function RichTextEditor({
           onAddImage={addImage}
           onAddYoutube={addYoutube}
           onAddAudio={addAudio}
+          onAddMath={addMath}
           onSetLink={setLink}
         />
       )}

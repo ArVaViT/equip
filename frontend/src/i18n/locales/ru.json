@@ -563,7 +563,8 @@
       "link": "Ссылка",
       "undo": "Отменить",
       "redo": "Повторить",
-      "characters": "{{count}} / {{limit}} символов"
+      "characters": "{{count}} / {{limit}} символов",
+      "insertMath": "Вставить формулу"
     },
     "callout": {
       "trigger": "Блок-выноска",
@@ -1651,6 +1652,10 @@
       "audioDescription": "Вставьте прямой https://-URL к аудиофайлу (mp3, m4a, ogg).",
       "audioPlaceholder": "https://example.com/lesson.mp3",
       "audioConfirm": "Встроить",
+      "mathTitle": "Вставить формулу",
+      "mathDescription": "Введите LaTeX-выражение (без $-разделителей). Пример: \\frac{1}{2}.",
+      "mathPlaceholder": "x^2 + y^2 = z^2",
+      "mathConfirm": "Вставить",
       "imageUrlPlaceholder": "https://…"
     }
   },

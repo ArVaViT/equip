@@ -105,3 +105,41 @@ class TestCodeBlockAllowlist:
         cleaned = sanitize_string(html)
         assert 'class="hljs-built_in"' in cleaned
         assert 'class="hljs-number"' in cleaned
+
+
+class TestMathMarkerAllowlist:
+    """The TipTap math extension stores math as
+    ``<span data-type="inlineMath" data-latex="..." data-display="..."
+    data-evaluate="...">$x^2$</span>``. The BlockRenderer re-runs
+    ``katex.render`` over each marker at view time, so the data-*
+    attributes must round-trip through bleach intact — otherwise the
+    chapter view shows the raw ``$x^2$`` delimiters instead of the
+    rendered formula.
+    """
+
+    def test_inline_math_marker_survives(self):
+        html = (
+            '<p>Theorem: <span data-type="inlineMath" data-latex="a^2+b^2=c^2" '
+            'data-display="no" data-evaluate="no">$a^2+b^2=c^2$</span>.</p>'
+        )
+        cleaned = sanitize_string(html)
+        assert 'data-type="inlineMath"' in cleaned
+        assert 'data-latex="a^2+b^2=c^2"' in cleaned
+        assert 'data-display="no"' in cleaned
+
+    def test_block_math_marker_survives(self):
+        html = (
+            '<p><span data-type="inlineMath" data-latex="\\sum_{i=0}^n i" '
+            'data-display="yes" data-evaluate="no">$$\\sum_{i=0}^n i$$</span></p>'
+        )
+        cleaned = sanitize_string(html)
+        assert 'data-display="yes"' in cleaned
+        assert "\\sum_{i=0}^n i" in cleaned
+
+    def test_other_span_attrs_still_stripped(self):
+        # Defence-in-depth: a malicious span carrying a non-allowlisted
+        # data-* attribute (or a real event handler) must still be
+        # scrubbed even after we widened the span allowlist for math.
+        cleaned = sanitize_string('<span data-evil="payload" onclick="x">x</span>')
+        assert "data-evil" not in cleaned
+        assert "onclick" not in cleaned

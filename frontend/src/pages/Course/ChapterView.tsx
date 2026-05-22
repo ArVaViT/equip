@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback, useMemo, memo } from "react"
+import { useEffect, useRef, useState, useCallback, useMemo, memo } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { sanitizeHtml as sanitize } from "@/lib/sanitize"
+import { renderMathIn } from "@/lib/katex-render"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
@@ -34,6 +35,27 @@ import { ErrorState } from "@/components/patterns"
 import { useUserTour } from "@/hooks/useUserTour"
 import { chapterViewSteps } from "@/lib/tourSteps"
 
+/**
+ * Renders a sanitised text-block via ``dangerouslySetInnerHTML`` and
+ * runs KaTeX over any ``<span data-type="inlineMath">`` markers the
+ * math extension stored in the source. Lives outside BlockRenderer so
+ * the ``useRef`` + ``useEffect`` for the post-render KaTeX pass have
+ * a stable host element to anchor against.
+ */
+function TextBlockRender({ html }: { html: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    renderMathIn(ref.current)
+  }, [html])
+  return (
+    <div
+      ref={ref}
+      className="prose max-w-none"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  )
+}
+
 const BlockRenderer = memo(function BlockRenderer({
   block,
   onProgressChanged,
@@ -52,10 +74,7 @@ const BlockRenderer = memo(function BlockRenderer({
   switch (block.block_type) {
     case "text":
       return sanitizedContent ? (
-        <div
-          className="prose max-w-none"
-          dangerouslySetInnerHTML={{ __html: sanitizedContent }}
-        />
+        <TextBlockRender html={sanitizedContent} />
       ) : null
 
     case "quiz":
