@@ -20,6 +20,7 @@ concurrency:
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
     steps:
@@ -58,6 +59,7 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: frontend
@@ -136,14 +138,25 @@ jobs:
     needs: [detect-changes, lint-and-build]
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Verify frontend CI outcome
         run: |
           set -e
+          DC="${{ needs.detect-changes.result }}"
           CHANGED="${{ needs.detect-changes.outputs.frontend }}"
           LB="${{ needs.lint-and-build.result }}"
+          echo "detect-changes=$DC"
           echo "frontend_changed=$CHANGED"
           echo "lint-and-build=$LB"
+          # detect-changes is the gate. If it failed (network flake,
+          # checkout error, bad diff) we cannot conclude "no frontend
+          # change" — we'd silently auto-pass a PR that should have
+          # been gated. Fail loudly instead.
+          if [ "$DC" != "success" ]; then
+            echo "::error::detect-changes did not succeed (result=$DC); cannot auto-pass."
+            exit 1
+          fi
           if [ "$CHANGED" != "true" ]; then
             echo "No frontend changes — auto-pass."
             exit 0

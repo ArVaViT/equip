@@ -28,6 +28,7 @@ jobs:
   # ---------------------------------------------------------------------------
   detect-changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
     steps:
@@ -68,6 +69,7 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: backend
@@ -163,6 +165,7 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: backend
@@ -271,16 +274,28 @@ jobs:
     needs: [detect-changes, lint-and-test, schema-smoke-postgres]
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Verify backend CI outcome
         run: |
           set -e
+          DC="${{ needs.detect-changes.result }}"
           CHANGED="${{ needs.detect-changes.outputs.backend }}"
           LT="${{ needs.lint-and-test.result }}"
           SS="${{ needs.schema-smoke-postgres.result }}"
+          echo "detect-changes=$DC"
           echo "backend_changed=$CHANGED"
           echo "lint-and-test=$LT"
           echo "schema-smoke-postgres=$SS"
+          # detect-changes is the gate that decides whether the heavy
+          # jobs run. If detect-changes itself failed (network flake,
+          # checkout error, bad diff) we cannot conclude "no backend
+          # change" — we'd silently auto-pass a PR that should have
+          # been gated. Fail loudly instead.
+          if [ "$DC" != "success" ]; then
+            echo "::error::detect-changes did not succeed (result=$DC); cannot auto-pass."
+            exit 1
+          fi
           if [ "$CHANGED" != "true" ]; then
             echo "No backend changes — auto-pass."
             exit 0
