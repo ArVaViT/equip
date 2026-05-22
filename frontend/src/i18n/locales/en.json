@@ -1403,7 +1403,11 @@
   },
   "moduleEditor": {
     "defaults": {
-      "chapterTitle": "Chapter {{n}}"
+      "chapterTitle": "Chapter {{n}}",
+      "readingTitle": "Lesson {{n}}",
+      "quizTitle": "Quiz {{n}}",
+      "examTitle": "Exam {{n}}",
+      "assignmentTitle": "Assignment {{n}}"
     },
     "toast": {
       "moduleNotFound": "Module not found",

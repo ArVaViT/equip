@@ -119,12 +119,26 @@ export function useModuleEditor(
     if (addingChapterRef.current) return;
     addingChapterRef.current = true;
     const order = mod.chapters?.length ?? 0;
+    // Default title counts existing chapters of the SAME type so
+    // teachers see "Quiz 2" rather than "Chapter 5" when adding their
+    // second quiz to a mostly-reading module. Falls back to the
+    // generic ``defaults.chapterTitle`` key when the type-specific
+    // key is missing (defensive for future chapter types).
+    const sameTypeCount =
+      (mod.chapters ?? []).filter((c) => c.chapter_type === chapterType).length;
+    const typeSpecificKey = `moduleEditor.defaults.${chapterType}Title`;
+    const fallbackKey = "moduleEditor.defaults.chapterTitle";
+    const typeSpecific = t(typeSpecificKey, { n: sameTypeCount + 1 });
+    const seededTitle =
+      typeSpecific === typeSpecificKey
+        ? t(fallbackKey, { n: order + 1 })
+        : typeSpecific;
     try {
       const ch = await coursesService.createChapter(courseId, moduleId, {
         // Seed in the teacher's UI locale. Persisted as-is, so the
         // previous ``Chapter N`` literal stuck English into every
         // Russian-UI teacher's course tree until they renamed it.
-        title: t("moduleEditor.defaults.chapterTitle", { n: order + 1 }),
+        title: seededTitle,
         order_index: order,
         chapter_type: chapterType,
       });

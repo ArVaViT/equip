@@ -1076,7 +1076,11 @@
   },
   "moduleEditor": {
     "defaults": {
-      "chapterTitle": "Глава {{n}}"
+      "chapterTitle": "Глава {{n}}",
+      "readingTitle": "Урок {{n}}",
+      "quizTitle": "Тест {{n}}",
+      "examTitle": "Экзамен {{n}}",
+      "assignmentTitle": "Задание {{n}}"
     },
     "toast": {
       "moduleNotFound": "Модуль не найден",
