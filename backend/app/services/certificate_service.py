@@ -24,11 +24,11 @@ from uuid import UUID
 
 from fastapi import HTTPException, Request, status
 
-from app.api.dependencies import assert_course_owner
 from app.models.certificate import Certificate
 from app.models.course import Course
 from app.models.user import UserRole
 from app.services.audit_service import log_action
+from app.services.domain_access import assert_course_owner
 from app.services.notification_service import create_notification
 
 if TYPE_CHECKING:
