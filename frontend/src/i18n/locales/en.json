@@ -1675,6 +1675,7 @@
       "statusUpcoming": "Upcoming",
       "statusActive": "Active",
       "statusCompleted": "Completed",
+      "statusArchived": "Archived",
       "createButton": "New cohort",
       "create": "Create",
       "creating": "Creating…",

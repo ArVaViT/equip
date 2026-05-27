@@ -285,7 +285,10 @@ export interface Cohort {
   end_date: string
   enrollment_start: string | null
   enrollment_end: string | null
-  status: 'upcoming' | 'active' | 'completed'
+  // Mirrors backend `CohortStatus` literal + Postgres `cohorts_status_check`.
+  // `archived` is in the type for completeness with the DB CHECK; no UX
+  // sets it today.
+  status: 'upcoming' | 'active' | 'completed' | 'archived'
   max_students: number | null
   created_by: string | null
   created_at: string

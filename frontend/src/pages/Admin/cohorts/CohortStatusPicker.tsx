@@ -19,18 +19,26 @@ interface Props {
   ariaLabel?: string
 }
 
+// ``archived`` is in the ``Cohort["status"]`` union for mirror parity
+// with the Postgres CHECK constraint (see backend ``CohortStatus``),
+// but no production write path emits it today. Excluding it from
+// ``STATUS_ORDER`` means the picker doesn't offer ``archived`` as a
+// transition; the badge + i18n maps still cover it so a cohort that
+// somehow ends up archived renders coherently.
 const STATUS_ORDER: Cohort["status"][] = ["upcoming", "active", "completed"]
 
 const STATUS_BADGE: Record<Cohort["status"], "success" | "info" | "muted"> = {
   upcoming: "info",
   active: "success",
   completed: "muted",
+  archived: "muted",
 }
 
 const STATUS_I18N_KEY: Record<Cohort["status"], string> = {
   upcoming: "admin.cohorts.statusUpcoming",
   active: "admin.cohorts.statusActive",
   completed: "admin.cohorts.statusCompleted",
+  archived: "admin.cohorts.statusArchived",
 }
 
 /**

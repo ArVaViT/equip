@@ -19,16 +19,22 @@ interface Props {
   onEnroll: (cohortId?: string) => Promise<void> | void
 }
 
+// Same mirror-completeness rule as ``CohortStatusPicker``: the
+// ``archived`` value exists in the ``Cohort["status"]`` union to match
+// the DB CHECK constraint, but no production code path writes it. The
+// maps include it so a defensively-archived cohort still renders.
 const COHORT_STATUS_BADGE: Record<Cohort["status"], "success" | "info" | "muted"> = {
   upcoming: "info",
   active: "success",
   completed: "muted",
+  archived: "muted",
 }
 
 const COHORT_STATUS_KEY: Record<Cohort["status"], string> = {
   upcoming: "admin.cohorts.statusUpcoming",
   active: "admin.cohorts.statusActive",
   completed: "admin.cohorts.statusCompleted",
+  archived: "admin.cohorts.statusArchived",
 }
 
 export function NotEnrolledView({

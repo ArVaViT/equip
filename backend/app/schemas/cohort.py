@@ -12,6 +12,12 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
+# Mirrors the Postgres ``cohorts_status_check`` CHECK constraint and the
+# SQLAlchemy ``CohortStatus`` enum + ``CheckConstraint`` in
+# ``app/models/cohort.py``. Single literal here keeps both write and read
+# schemas pointing at the same 4-tuple instead of repeating it inline.
+CohortStatus = Literal["upcoming", "active", "completed", "archived"]
+
 
 def _validate_cohort_dates(
     *,
@@ -67,8 +73,11 @@ class CohortUpdate(BaseModel):
     enrollment_end: datetime | None = None
     # ``upcoming → active → completed`` is the intended forward path.
     # Going back from ``completed`` is prevented at the route layer
-    # (see ``update_cohort`` in ``api/v1/cohorts.py``).
-    status: Literal["upcoming", "active", "completed"] | None = None
+    # (see ``update_cohort`` in ``api/v1/cohorts.py``). ``archived`` is in
+    # the type for mirror-completeness with the DB CHECK constraint, but
+    # the route layer should still reject it for a regular UPDATE — only
+    # a dedicated admin "archive cohort" endpoint should set it.
+    status: CohortStatus | None = None
     max_students: int | None = Field(None, ge=1)
 
     @model_validator(mode="after")
@@ -95,7 +104,7 @@ class CohortResponse(BaseModel):
     end_date: datetime
     enrollment_start: datetime | None = None
     enrollment_end: datetime | None = None
-    status: str
+    status: CohortStatus
     max_students: int | None = None
     created_by: UUID | None = None
     created_at: datetime
