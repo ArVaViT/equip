@@ -1,4 +1,3 @@
-# ruff: noqa: RUF001
 """TDD spec: per-entity source-language detection at RESOLVE time.
 
 Companion to PR #528 (per-entity detection at PIPELINE time). #528
