@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING, Any
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
-from app.api.dependencies import resolve_chapter_course_id
 from app.models.chapter_progress import ChapterProgress
 from app.models.quiz import (
     Quiz,
@@ -25,6 +24,7 @@ from app.models.quiz import (
     QuizQuestion,
 )
 from app.schemas.quiz import QuizAnswerResult
+from app.services.domain_access import resolve_chapter_course_id
 
 if TYPE_CHECKING:
     from uuid import UUID

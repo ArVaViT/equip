@@ -111,27 +111,12 @@ def is_owner_or_admin(entity: object, user: User | None) -> bool:
     return user.role == UserRole.ADMIN.value
 
 
-def assert_course_owner(
-    course: Course,
-    user: User,
-    *,
-    allow_admin: bool = True,
-    detail: str = "You do not own this course",
-) -> None:
-    """Raise 403 unless ``user`` owns ``course`` (or is admin and allowed).
-
-    Callers can override ``detail`` to return a more specific 403 message
-    (e.g. "You can only approve certificates for your own courses"), which
-    avoids wrapping this call in a ``try/except HTTPException`` block.
-
-    For the non-raising form (predicate that returns ``bool``), use
-    ``is_owner_or_admin``.
-    """
-    if str(course.created_by) == str(user.id):
-        return
-    if allow_admin and user.role == UserRole.ADMIN.value:
-        return
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+# ``assert_course_owner`` was moved to ``app.services.domain_access`` so
+# services that need the predicate don't have to import backwards from
+# the api layer. The canonical import path is now
+# ``from app.services.domain_access import assert_course_owner``.
+# The re-export below keeps the existing route code working unchanged.
+from app.services.domain_access import assert_course_owner  # noqa: E402, F401  (re-export)
 
 
 def verify_course_owner(
@@ -214,20 +199,7 @@ def verify_chapter_owner(db: Session, chapter_id: str, teacher: User | str) -> t
     return chapter, str(course.id)
 
 
-def resolve_chapter_course_id(db: Session, chapter_id: str) -> str:
-    """Return the course_id for a chapter (single joined query). Raises 404."""
-    row = (
-        db.query(Module.course_id)
-        .join(Chapter, Chapter.module_id == Module.id)
-        .join(Course, Module.course_id == Course.id)
-        .filter(
-            Chapter.id == chapter_id,
-            Chapter.deleted_at.is_(None),
-            Module.deleted_at.is_(None),
-            Course.deleted_at.is_(None),
-        )
-        .first()
-    )
-    if not row:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chapter not found")
-    return row[0]
+# Moved to ``app.services.domain_access`` for the same reason as
+# ``assert_course_owner`` above. The re-export keeps existing call sites
+# in this module working without churn.
+from app.services.domain_access import resolve_chapter_course_id  # noqa: E402, F401  (re-export)
