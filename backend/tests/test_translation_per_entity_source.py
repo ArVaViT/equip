@@ -1,4 +1,3 @@
-# ruff: noqa: RUF001
 """TDD spec: per-entity source-language detection.
 
 After PR #526 (course-level detection) and PR #527 (purge on locale
@@ -156,9 +155,7 @@ class TestReconcileEntityDetectsPerFieldLanguage:
 
     def test_english_chapter_in_russian_course_translates_en_to_ru(self, db: Session):
         course = _make_course(db, source_locale="ru")
-        chapter = _make_chapter(
-            db, course, title="Welcome to the chapter on Genesis"
-        )
+        chapter = _make_chapter(db, course, title="Welcome to the chapter on Genesis")
         provider = _RecordingProvider()
 
         reconcile_entity(db, "chapter", chapter, provider=provider)
@@ -174,9 +171,7 @@ class TestReconcileEntityDetectsPerFieldLanguage:
 
     def test_russian_chapter_in_english_course_translates_ru_to_en(self, db: Session):
         course = _make_course(db, source_locale="en")
-        chapter = _make_chapter(
-            db, course, title="Введение в книгу Бытия и её главы"
-        )
+        chapter = _make_chapter(db, course, title="Введение в книгу Бытия и её главы")
         provider = _RecordingProvider()
 
         reconcile_entity(db, "chapter", chapter, provider=provider)
@@ -189,9 +184,7 @@ class TestReconcileEntityDetectsPerFieldLanguage:
     def test_chapter_in_same_language_as_course_uses_course_source(self, db: Session):
         """No regression for the common case: chapter matches course."""
         course = _make_course(db, source_locale="ru")
-        chapter = _make_chapter(
-            db, course, title="Введение в книгу Бытия и её главы"
-        )
+        chapter = _make_chapter(db, course, title="Введение в книгу Бытия и её главы")
         provider = _RecordingProvider()
 
         reconcile_entity(db, "chapter", chapter, provider=provider)
@@ -201,9 +194,7 @@ class TestReconcileEntityDetectsPerFieldLanguage:
         assert provider.calls[0]["source_locale"] == "ru"
         assert provider.calls[0]["target_locale"] == "en"
 
-    def test_chapter_with_unintelligible_title_falls_back_to_course_source(
-        self, db: Session
-    ):
+    def test_chapter_with_unintelligible_title_falls_back_to_course_source(self, db: Session):
         """Too short / no signal: fall back to course.source_locale.
         Otherwise a 2-letter title silently flips translation direction."""
         course = _make_course(db, source_locale="ru")
@@ -225,9 +216,7 @@ class TestReconcileEntityHandlesMixedFieldLanguages:
     independently — the orchestrator's per-field translate call uses
     each field's own detected source."""
 
-    def test_module_with_mixed_field_languages_translates_each_separately(
-        self, db: Session
-    ):
+    def test_module_with_mixed_field_languages_translates_each_separately(self, db: Session):
         course = _make_course(db, source_locale="ru")
         module = Module(
             id=str(uuid.uuid4()),

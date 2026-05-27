@@ -63,12 +63,22 @@ class TranslationFieldSpec:
 
     ``text`` is allowed to be empty / ``None``; the orchestrator skips those
     rows so the caller can build the spec list naively without filtering.
+
+    ``source_locale`` is an OPTIONAL per-field override of the
+    entity-level source locale. When set, this field's translation
+    fires from this language into every OTHER supported locale —
+    regardless of the entity-level ``source_locale`` passed to
+    ``translate_entity_fields``. Callers populate it from a
+    per-field language detector (see ``reconcile_entity``) so an
+    entity whose title is in one language and description in another
+    gets each field translated in the correct direction.
     """
 
     field: TranslationField
     text: str | None
     # See ``TranslationRequest.content_kind`` — chooses prompt nuances.
     content_kind: ContentKind = "plain"
+    source_locale: LocaleCode | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,10 +127,11 @@ def translate_entity_fields(
         logger.info("Translation disabled; skipping %s:%s", entity_type, entity_id)
         return OrchestratorReport()
 
-    targets = target_locales if target_locales is not None else other_locales(source_locale)
-    if not targets:
-        return OrchestratorReport()
-
+    # ``target_locales`` is a caller override for the entire batch.
+    # When unset (the common case), each field computes its own targets
+    # from its own ``source_locale`` (per-field detection in
+    # ``reconcile_entity``) — that's what makes mixed-language entities
+    # translate in the correct direction per field.
     active_provider = provider or get_translation_provider()
     translated = 0
     skipped = 0
@@ -137,14 +148,23 @@ def translate_entity_fields(
             # not rows that never had work to do.
             continue
 
-        source_hash = compute_source_hash(text, locale=source_locale)
-        for target in targets:
+        # Per-field source-locale override (set by ``reconcile_entity``
+        # after running the language detector on this field's text).
+        # Falls back to the entity-level source_locale when unset, which
+        # preserves the existing single-language behaviour for callers
+        # that haven't opted into per-field detection.
+        field_source: LocaleCode = spec.source_locale or source_locale
+        field_targets = target_locales if target_locales is not None else other_locales(field_source)
+        if not field_targets:
+            continue
+        source_hash = compute_source_hash(text, locale=field_source)
+        for target in field_targets:
             outcome = _translate_one_field(
                 db,
                 entity_type=entity_type,
                 entity_id=entity_id,
                 field=spec.field,
-                source_locale=source_locale,
+                source_locale=field_source,
                 target_locale=target,
                 text=text,
                 content_kind=spec.content_kind,

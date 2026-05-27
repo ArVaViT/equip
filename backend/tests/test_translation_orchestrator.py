@@ -600,12 +600,18 @@ def test_walker_finds_quizzes_attached_via_chapter_id_only(db: Session):
     )
     db.add(chapter)
     db.flush()
-    quiz = Quiz(chapter_id=chapter.id, title="Pop quiz", description="Test")
+    # Russian content (course source_locale='ru'); per-entity language
+    # detection (PR B2) means each field is translated FROM its own
+    # detected language. To keep this test about *whether the walker
+    # finds the quiz* (not about translation direction), seed Russian
+    # text so the detector agrees with the course's source and the
+    # original ``[en]`` assertion stays meaningful.
+    quiz = Quiz(chapter_id=chapter.id, title="Контрольная работа", description="Проверка знаний")
     db.add(quiz)
     db.flush()
     question = QuizQuestion(
         quiz_id=quiz.id,
-        question_text="What is the answer?",
+        question_text="Какой правильный ответ на этот вопрос?",
         question_type="multiple_choice",
         order_index=0,
         points=1,
@@ -614,7 +620,7 @@ def test_walker_finds_quizzes_attached_via_chapter_id_only(db: Session):
     db.flush()
     option = QuizOption(
         question_id=question.id,
-        option_text="The answer",
+        option_text="Правильный ответ номер один",
         is_correct=True,
         order_index=0,
     )
