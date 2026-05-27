@@ -1,0 +1,31 @@
+-- =====================================================================
+-- ``certificates.issued_at`` was created NOT NULL with a server-default
+-- of ``func.now()``. Migration 20260521230154 dropped the default so
+-- the column would stop being silently populated on certificate
+-- REQUEST (when status='pending'), but it did NOT drop the NOT NULL
+-- constraint. That left the column in a contradictory state:
+--
+--   * The SQLAlchemy model declares ``Mapped[datetime | None]``
+--   * The certificate lifecycle expects ``issued_at`` to stay NULL
+--     for ``pending`` / ``teacher_approved`` / ``rejected`` rows
+--     (only ``admin_approve`` populates it)
+--   * Postgres still rejected any INSERT that didn't supply a value
+--
+-- The request endpoint was passing because the dropped default ran
+-- one last time on cached prepared statements; once those rotated
+-- the next ``POST /certificates`` would have hit a NOT NULL
+-- violation. This migration aligns the DB with the model + the
+-- documented lifecycle.
+--
+-- Pre-flight verification (run 2026-05-25):
+--   SELECT status, count(*), count(*) filter (where issued_at is null) as null_count
+--   FROM certificates GROUP BY status;
+--   → 2 rows, status='approved', 0 NULL — no rows to backfill,
+--     ALTER is catalog-only (instant, no table rewrite).
+--
+-- See: backend/app/models/certificate.py (model already correct);
+--      backend/app/services/certificate_service.py::admin_approve
+--      (the only writer that should populate ``issued_at``).
+-- =====================================================================
+
+ALTER TABLE certificates ALTER COLUMN issued_at DROP NOT NULL;
