@@ -27,6 +27,10 @@ const STATUS_BADGE: Record<Cohort["status"], "success" | "info" | "muted"> = {
   upcoming: "info",
   active: "success",
   completed: "muted",
+  // ``archived`` is in ``Cohort["status"]`` to match the DB CHECK
+  // (see backend ``CohortStatus``); no UX writes it today, but the
+  // map must cover every union member so a future archive flow renders.
+  archived: "muted",
 }
 
 // Static i18n key lookup so the keyCoverage check sees each literal;
@@ -36,6 +40,7 @@ const STATUS_LABEL_KEYS: Record<Cohort["status"], string> = {
   upcoming: "admin.cohorts.statusUpcoming",
   active: "admin.cohorts.statusActive",
   completed: "admin.cohorts.statusCompleted",
+  archived: "admin.cohorts.statusArchived",
 }
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const

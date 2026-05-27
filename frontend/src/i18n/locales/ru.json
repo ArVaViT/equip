@@ -1354,6 +1354,7 @@
       "statusUpcoming": "Скоро",
       "statusActive": "Активная",
       "statusCompleted": "Завершена",
+      "statusArchived": "В архиве",
       "createButton": "Новая когорта",
       "create": "Создать",
       "creating": "Создаём…",

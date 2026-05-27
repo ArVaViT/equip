@@ -14,7 +14,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -31,6 +31,15 @@ class CohortStatus(enum.StrEnum):
     UPCOMING = "upcoming"
     ACTIVE = "active"
     COMPLETED = "completed"
+    # ``archived`` is in the Postgres CHECK constraint
+    # (``cohorts_status_check``) since the table was created, but until
+    # this entry was added the Python enum stopped at ``completed`` —
+    # a service-role write that set ``status='archived'`` would pass
+    # the DB and then fail every Pydantic deserialisation, rendering
+    # the cohort invisible to the API. There is no active code path
+    # that writes ``archived`` today; the value is here so the 4-way
+    # mirror is honest, not because the UX uses it.
+    ARCHIVED = "archived"
 
 
 class Cohort(Base):
@@ -38,6 +47,14 @@ class Cohort(Base):
     __table_args__ = (
         Index("ix_cohorts_status", "status"),
         Index("ix_cohorts_created_by", "created_by"),
+        # Mirrors the Postgres ``cohorts_status_check`` CHECK constraint.
+        # Same 4-way-mirror discipline rule as ``ChapterBlock``: the
+        # constraint already exists in prod; this declaration lets the
+        # schema-smoke CI job see it.
+        CheckConstraint(
+            "status IN ('upcoming', 'active', 'completed', 'archived')",
+            name="cohorts_status_check",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)

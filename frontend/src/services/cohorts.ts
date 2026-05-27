@@ -31,7 +31,11 @@ export interface UpdateCohortBody {
   end_date?: string
   enrollment_start?: string | null
   enrollment_end?: string | null
-  status?: "upcoming" | "active" | "completed"
+  // Mirrors backend ``CohortStatus`` literal + Postgres ``cohorts_status_check``.
+  // ``archived`` is in the type for completeness with the DB CHECK; no UX
+  // sets it today, but the listCohorts filter (admin tab) needs to accept
+  // it so the same union flows through every cohort-related call.
+  status?: "upcoming" | "active" | "completed" | "archived"
   max_students?: number | null
 }
 

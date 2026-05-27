@@ -1293,7 +1293,12 @@ class TestDeleteCourseEvent:
 def _seed_notification(db: Session, *, user_id=TEACHER_ID, is_read=False, title="Test Notification") -> Notification:
     n = Notification(
         user_id=user_id,
-        type="info",
+        # ``new_announcement`` is one of the production notification kinds
+        # (emitted in ``api/v1/announcements.py``). The previous ``"info"``
+        # seed was a test-only literal that no real write path produces;
+        # tightening ``NotificationResponse.type`` to ``Literal[...]``
+        # exposed the divergence.
+        type="new_announcement",
         title=title,
         message="Test message body",
         is_read=is_read,
