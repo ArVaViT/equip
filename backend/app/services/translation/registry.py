@@ -36,6 +36,7 @@ from app.models.course import Chapter, Course, Module
 from app.models.course_event import CourseEvent
 from app.models.quiz import Quiz, QuizOption, QuizQuestion
 from app.schemas.locale import normalize_locale
+from app.services.language_detection import detect_locale
 from app.services.translation.orchestrator import (
     OrchestratorReport,
     TranslationFieldSpec,
@@ -297,14 +298,30 @@ def reconcile_entity(
     course = reg.resolve_course(db, entity)
     if course is None:
         return OrchestratorReport()
-    source_locale: LocaleCode = normalize_locale(course.source_locale)
+    course_source: LocaleCode = normalize_locale(course.source_locale)
 
     fields: list[TranslationFieldSpec] = []
     for fs in reg.fields:
         text = getattr(entity, fs.attr, None)
         if text is None or not str(text).strip():
             continue
-        fields.append(TranslationFieldSpec(field=fs.name, text=text, content_kind=fs.content_kind))
+        # Per-field language detection: the entity's actual content
+        # may be in a language different from the course's declared
+        # source (e.g. a teacher who pastes an English chapter title
+        # into a Russian-source course). The detector returns ``None``
+        # on sub-threshold or no-signal input; in that case we fall
+        # back to the course-level source so the existing behaviour
+        # is preserved for ambiguous fields.
+        detected = detect_locale(str(text))
+        field_source: LocaleCode = detected or course_source
+        fields.append(
+            TranslationFieldSpec(
+                field=fs.name,
+                text=text,
+                content_kind=fs.content_kind,
+                source_locale=field_source,
+            )
+        )
     if not fields:
         return OrchestratorReport()
 
@@ -316,7 +333,12 @@ def reconcile_entity(
         db,
         entity_type=entity_type,
         entity_id=str(entity.id),  # type: ignore[attr-defined]
-        source_locale=source_locale,
+        # ``source_locale`` here is the entity-level fallback for any
+        # field whose own ``source_locale`` is unset (couldn't be
+        # detected). Per-field overrides set above in ``fields`` are
+        # what actually drives the translation direction when the
+        # entity's content drifts from the course's declared source.
+        source_locale=course_source,
         fields=fields,
         context=context,
         provider=provider,
