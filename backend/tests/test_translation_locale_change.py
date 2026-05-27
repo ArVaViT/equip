@@ -1,4 +1,3 @@
-# ruff: noqa: RUF001
 """TDD spec: handling a course's ``source_locale`` flip.
 
 The bug this fixes: PR #526 made ``update_course`` re-detect
@@ -55,6 +54,12 @@ def db():
 
 
 def _make_teacher(db: Session) -> User:
+    # Idempotent: tests that create multiple courses on the same
+    # session expect a single, shared teacher row (matches the
+    # production reality where one teacher owns N courses).
+    existing = db.query(User).filter(User.id == TEACHER_ID).first()
+    if existing:
+        return existing
     user = User(
         id=TEACHER_ID,
         email=f"locale-change-{uuid.uuid4()}@test",
@@ -85,9 +90,9 @@ def _make_course(db: Session, **overrides: Any) -> Course:
     return course
 
 
-def _add_module_with_chapter_and_block(
-    db: Session, course: Course
-) -> tuple[Module, Chapter, ChapterBlock]:
+def _add_module_with_chapter_and_block(db: Session, course: Course) -> tuple[Module, Chapter, ChapterBlock]:
+    # Module + Chapter use string ids (Course.id is varchar in this
+    # codebase, and the FK is a string); ChapterBlock uses UUID.
     module = Module(
         id=str(uuid.uuid4()),
         course_id=course.id,
@@ -106,7 +111,7 @@ def _add_module_with_chapter_and_block(
     db.add(chapter)
     db.flush()
     block = ChapterBlock(
-        id=str(uuid.uuid4()),
+        id=uuid.uuid4(),
         chapter_id=chapter.id,
         block_type="text",
         order_index=0,
@@ -160,9 +165,7 @@ class TestPurgeCourseTranslationsCoverage:
 
     def test_purges_course_level_rows(self, db: Session):
         course = _make_course(db)
-        _seed_translation(
-            db, entity_type="course", entity_id=course.id, field="title", locale="en"
-        )
+        _seed_translation(db, entity_type="course", entity_id=course.id, field="title", locale="en")
         assert db.query(ContentTranslation).count() == 1
         deleted = purge_course_translations(db, course)
         assert deleted == 1
@@ -171,18 +174,14 @@ class TestPurgeCourseTranslationsCoverage:
     def test_purges_module_level_rows(self, db: Session):
         course = _make_course(db)
         module, _chapter, _block = _add_module_with_chapter_and_block(db, course)
-        _seed_translation(
-            db, entity_type="module", entity_id=str(module.id), field="title", locale="en"
-        )
+        _seed_translation(db, entity_type="module", entity_id=str(module.id), field="title", locale="en")
         deleted = purge_course_translations(db, course)
         assert deleted == 1
 
     def test_purges_chapter_level_rows(self, db: Session):
         course = _make_course(db)
         _module, chapter, _block = _add_module_with_chapter_and_block(db, course)
-        _seed_translation(
-            db, entity_type="chapter", entity_id=str(chapter.id), field="title", locale="en"
-        )
+        _seed_translation(db, entity_type="chapter", entity_id=str(chapter.id), field="title", locale="en")
         deleted = purge_course_translations(db, course)
         assert deleted == 1
 
@@ -202,7 +201,7 @@ class TestPurgeCourseTranslationsCoverage:
     def test_purges_announcement_rows_tied_to_course(self, db: Session):
         course = _make_course(db)
         ann = Announcement(
-            id=str(uuid.uuid4()),
+            id=uuid.uuid4(),
             course_id=course.id,
             title="Объявление",
             content="Текст",
@@ -210,9 +209,7 @@ class TestPurgeCourseTranslationsCoverage:
         )
         db.add(ann)
         db.commit()
-        _seed_translation(
-            db, entity_type="announcement", entity_id=str(ann.id), field="title", locale="en"
-        )
+        _seed_translation(db, entity_type="announcement", entity_id=str(ann.id), field="title", locale="en")
         deleted = purge_course_translations(db, course)
         assert deleted == 1
 
@@ -220,7 +217,7 @@ class TestPurgeCourseTranslationsCoverage:
         course = _make_course(db)
         module, chapter, block = _add_module_with_chapter_and_block(db, course)
         ann = Announcement(
-            id=str(uuid.uuid4()),
+            id=uuid.uuid4(),
             course_id=course.id,
             title="Объявление",
             content="Текст",
@@ -250,19 +247,11 @@ class TestPurgeCourseTranslationsIsolation:
     def test_does_not_touch_other_courses_translations(self, db: Session):
         course_a = _make_course(db, id=str(uuid.uuid4()))
         course_b = _make_course(db, id=str(uuid.uuid4()))
-        _seed_translation(
-            db, entity_type="course", entity_id=course_a.id, field="title", locale="en"
-        )
-        _seed_translation(
-            db, entity_type="course", entity_id=course_b.id, field="title", locale="en"
-        )
+        _seed_translation(db, entity_type="course", entity_id=course_a.id, field="title", locale="en")
+        _seed_translation(db, entity_type="course", entity_id=course_b.id, field="title", locale="en")
         deleted = purge_course_translations(db, course_a)
         assert deleted == 1
-        survivor = (
-            db.query(ContentTranslation)
-            .filter(ContentTranslation.entity_id == course_b.id)
-            .one()
-        )
+        survivor = db.query(ContentTranslation).filter(ContentTranslation.entity_id == course_b.id).one()
         assert survivor is not None
 
     def test_purges_all_locales_not_just_one(self, db: Session):
@@ -273,12 +262,8 @@ class TestPurgeCourseTranslationsIsolation:
         for the course's entities, regardless of locale."""
         course = _make_course(db)  # source ru
         # Hypothetical state: two ru rows + two en rows exist
-        _seed_translation(
-            db, entity_type="course", entity_id=course.id, field="title", locale="en"
-        )
-        _seed_translation(
-            db, entity_type="course", entity_id=course.id, field="title", locale="ru"
-        )
+        _seed_translation(db, entity_type="course", entity_id=course.id, field="title", locale="en")
+        _seed_translation(db, entity_type="course", entity_id=course.id, field="title", locale="ru")
         deleted = purge_course_translations(db, course)
         assert deleted == 2
 
@@ -294,43 +279,29 @@ class TestUpdateCoursePurgesOnSourceLocaleChange:
 
     def test_locale_change_via_title_rewrite_triggers_purge(self, db: Session):
         course = _make_course(db, source_locale="ru", title="Привет курс")
-        _seed_translation(
-            db, entity_type="course", entity_id=course.id, field="title", locale="en"
-        )
+        _seed_translation(db, entity_type="course", entity_id=course.id, field="title", locale="en")
         # Rewrite title to English — detector returns 'en', source_locale flips.
         update_course(db, course, CourseUpdate(title="Welcome to the course"))
         db.refresh(course)
         assert course.source_locale == "en"
         # The stale en-locale row must be gone.
-        remaining = db.query(ContentTranslation).filter(
-            ContentTranslation.entity_id == course.id
-        ).count()
+        remaining = db.query(ContentTranslation).filter(ContentTranslation.entity_id == course.id).count()
         assert remaining == 0
 
     def test_locale_unchanged_does_not_purge(self, db: Session):
         course = _make_course(db, source_locale="ru", title="Привет курс")
-        _seed_translation(
-            db, entity_type="course", entity_id=course.id, field="title", locale="en"
-        )
+        _seed_translation(db, entity_type="course", entity_id=course.id, field="title", locale="en")
         # Rewrite title but stay in Russian — detector returns 'ru',
         # source_locale stays 'ru', existing translations are still valid.
         update_course(db, course, CourseUpdate(title="Обновлённый курс на русском"))
         db.refresh(course)
         assert course.source_locale == "ru"
-        remaining = db.query(ContentTranslation).filter(
-            ContentTranslation.entity_id == course.id
-        ).count()
+        remaining = db.query(ContentTranslation).filter(ContentTranslation.entity_id == course.id).count()
         assert remaining == 1, "Translation should survive when source locale didn't flip"
 
     def test_unrelated_update_does_not_purge(self, db: Session):
         course = _make_course(db, source_locale="ru", title="Привет курс")
-        _seed_translation(
-            db, entity_type="course", entity_id=course.id, field="title", locale="en"
-        )
-        update_course(
-            db, course, CourseUpdate(image_url="https://example.com/cover.png")
-        )
-        remaining = db.query(ContentTranslation).filter(
-            ContentTranslation.entity_id == course.id
-        ).count()
+        _seed_translation(db, entity_type="course", entity_id=course.id, field="title", locale="en")
+        update_course(db, course, CourseUpdate(image_url="https://example.com/cover.png"))
+        remaining = db.query(ContentTranslation).filter(ContentTranslation.entity_id == course.id).count()
         assert remaining == 1
