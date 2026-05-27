@@ -1,3 +1,7 @@
+# ruff: noqa: RUF001
+# These tests EXIST to exercise Cyrillic-vs-Latin detection, so the
+# mixed-script literals (and any docstring describing them) are the
+# whole point.
 """TDD spec for the source-language detector.
 
 The bug this fixes: when a teacher with an English UI authors a
@@ -63,10 +67,7 @@ class TestDetectLocaleMixedContent:
 
     def test_majority_latin_with_russian_quote_returns_en(self):
         # English course that quotes a Russian source.
-        assert (
-            detect_locale("Genesis study — alongside the Russian Синодальный text")
-            == "en"
-        )
+        assert detect_locale("Genesis study — alongside the Russian Синодальный text") == "en"
 
     def test_with_numbers_and_punctuation_uses_letters_only(self):
         # Numbers + punctuation should not influence the decision; only

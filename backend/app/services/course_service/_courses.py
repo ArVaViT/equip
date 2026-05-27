@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import select
 
 from app.models.course import Chapter, Course, Module
+from app.services.language_detection import detect_locale
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -16,6 +17,33 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
     from app.schemas.course import CourseCreate, CourseUpdate
+
+
+def _resolve_source_locale(
+    *,
+    title: str | None,
+    description: str | None,
+    fallback: str | None,
+) -> str | None:
+    """Detect the actual content language from the title + description,
+    falling back to the teacher's UI locale only when there's no signal.
+
+    Previously the API used ``teacher.preferred_locale`` unconditionally,
+    which silently miscategorised every course a teacher authored in a
+    language different from their UI (Vadym-with-EN-UI writing a
+    Russian course → ``source_locale='en'`` → translation pipeline
+    refused to translate ``en→ru`` → Russian students saw Russian text
+    labelled as English while English students saw it un-translated).
+
+    The detector returns ``None`` for empty / too-short / non-letter
+    input; those callers get the original fallback behaviour so no
+    existing fixture or PATCH-without-title flow regresses.
+    """
+    combined = " ".join(part for part in (title, description) if part)
+    detected = detect_locale(combined) if combined else None
+    if detected is not None:
+        return detected
+    return fallback
 
 
 def create_course(
@@ -27,13 +55,16 @@ def create_course(
 ) -> Course:
     """Create a new course owned by ``user_id``.
 
-    ``source_locale`` is the language the teacher is authoring in. The API
-    layer derives it from the teacher's ``preferred_locale`` profile
-    setting so the teacher never sees a "what language are you writing in?"
-    prompt — the system already knows from their UI choice. Passing
-    ``None`` (legacy callers, scripts) falls back to the column's DB
-    default (``'ru'``) to keep migrations / fixtures working unchanged.
+    ``source_locale`` is the caller-supplied UI-locale fallback (the
+    route layer passes ``teacher.preferred_locale``); this function
+    runs the language detector on the actual title + description first
+    and only uses the fallback when detection has no signal.
     """
+    resolved_locale = _resolve_source_locale(
+        title=data.title,
+        description=data.description,
+        fallback=source_locale,
+    )
     course = Course(
         id=str(uuid.uuid4()),
         title=data.title,
@@ -41,8 +72,8 @@ def create_course(
         image_url=data.image_url,
         created_by=user_id,
     )
-    if source_locale is not None:
-        course.source_locale = source_locale
+    if resolved_locale is not None:
+        course.source_locale = resolved_locale
     db.add(course)
     db.commit()
     db.refresh(course)
@@ -50,8 +81,21 @@ def create_course(
 
 
 def update_course(db: Session, course: Course, data: CourseUpdate) -> Course:
-    for field, value in data.model_dump(exclude_unset=True).items():
+    patch = data.model_dump(exclude_unset=True)
+    for field, value in patch.items():
         setattr(course, field, value)
+    # Re-detect the source locale ONLY when the patch actually touched
+    # title or description. A PATCH that just changes the cover image
+    # or the weights must not rewrite ``source_locale`` — the existing
+    # value is authoritative until the teacher rewrites the text.
+    if "title" in patch or "description" in patch:
+        detected = _resolve_source_locale(
+            title=course.title,
+            description=course.description,
+            fallback=None,
+        )
+        if detected is not None:
+            course.source_locale = detected
     db.commit()
     db.refresh(course)
     return course

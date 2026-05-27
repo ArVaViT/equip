@@ -1,3 +1,4 @@
+# ruff: noqa: RUF001
 """TDD spec for course-creation source-locale resolution.
 
 Today (broken): the API derives ``courses.source_locale`` from
@@ -17,7 +18,6 @@ detection has no signal.
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
 
 import pytest
 from sqlalchemy.orm import Session
@@ -25,10 +25,6 @@ from sqlalchemy.orm import Session
 from app.models.user import User, UserRole
 from app.schemas.course import CourseCreate, CourseUpdate
 from app.services.course_service._courses import create_course, update_course
-
-if TYPE_CHECKING:
-    pass
-
 from tests.conftest import test_engine  # type: ignore[attr-defined]
 
 
