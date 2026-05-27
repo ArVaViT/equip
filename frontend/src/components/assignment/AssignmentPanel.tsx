@@ -8,26 +8,6 @@ import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { toast } from "@/lib/toast"
 import type { Assignment, AssignmentSubmission } from "@/types"
-
-// Per-chapter request dedup. A reading chapter with N assignment blocks
-// mounts N AssignmentPanel instances simultaneously, each one
-// requesting the same `/api/v1/chapters/{id}/assignments` list. Without
-// this map every block fires its own identical network call. The entry
-// is dropped once the promise settles so subsequent mounts refetch
-// fresh data.
-const inflightChapterAssignments = new Map<string, Promise<Assignment[]>>()
-
-function fetchChapterAssignmentsDeduped(chapterId: string): Promise<Assignment[]> {
-  const existing = inflightChapterAssignments.get(chapterId)
-  if (existing) return existing
-  const promise = coursesService.getChapterAssignments(chapterId).finally(() => {
-    if (inflightChapterAssignments.get(chapterId) === promise) {
-      inflightChapterAssignments.delete(chapterId)
-    }
-  })
-  inflightChapterAssignments.set(chapterId, promise)
-  return promise
-}
 import PageSpinner from "@/components/ui/PageSpinner"
 import { formatDate } from "@/i18n/format"
 import {
@@ -65,7 +45,14 @@ export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, 
       setLoading(true)
       setFetchError(false)
       try {
-        const all = await fetchChapterAssignmentsDeduped(chapterId)
+        // ``services/api.ts`` already dedups concurrent identical GETs
+        // via its ``dedupeKey`` machinery — a chapter that mounts N
+        // AssignmentPanel instances simultaneously will see N callers
+        // share one in-flight request automatically. The previous
+        // per-module ``inflightChapterAssignments`` Map duplicated
+        // that behaviour and would have diverged if the api-layer
+        // policy ever changed.
+        const all = await coursesService.getChapterAssignments(chapterId)
         if (cancelled) return
         const data = assignmentId ? all.filter((a) => a.id === assignmentId) : all
         setAssignments(data)
