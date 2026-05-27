@@ -36,6 +36,7 @@ from app.schemas.chapter_block import BlockResponse
 from app.schemas.course import ChapterResponse, CourseResponse, CourseSummary, ModuleResponse
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.schemas.quiz import QuizOptionStudentResponse, QuizQuestionStudentResponse, QuizStudentResponse
+from app.services.language_detection import detect_locale
 
 
 def _str_uuid(v: str | uuid.UUID) -> str:
@@ -181,13 +182,26 @@ def pick_overlay_value(
     source_locale: LocaleCode,
     display_locale: LocaleCode,
 ) -> str | None:
+    # Per-entity source-language detection: when the base text's
+    # actual language matches the display locale, return base and
+    # skip whatever overlay might exist for this key. The overlay
+    # might be a stale wrong-direction row left over from before
+    # per-entity detection in the pipeline (#528) — serving it
+    # would give the student text in the wrong language.
+    #
+    # When detection has no signal (short text, pure punctuation,
+    # None), it returns None and we fall through to the legacy rule
+    # that uses ``source_locale`` (the course's declared value) for
+    # the equality check.
+    detected_source = detect_locale(base) if base is not None else None
+    effective_source = detected_source or source_locale
+    if base is not None and effective_source == display_locale:
+        return base
     key = (entity_type, entity_id, field)
     if key in overlay:
         return overlay[key]
     if base is None:
         return None
-    if source_locale == display_locale:
-        return base
     return overlay.get(key, base)
 
 
