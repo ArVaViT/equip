@@ -7,15 +7,13 @@ silently leave one of the layers out of sync.
 
 from __future__ import annotations
 
-import re
 import typing
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
 from app.models.announcement import Announcement
-from app.models.content_translation import TranslationEntityType
+from app.models.content_version import ContentVersionEntityType as TranslationEntityType
 from app.models.course import Course, Module
 from app.models.course_event import CourseEvent
 from app.services.translation.protocol import EntityType
@@ -47,34 +45,12 @@ def test_registry_keys_match_model_literal():
     assert set(REGISTRY) == set(typing.get_args(TranslationEntityType))
 
 
-def test_registry_matches_check_constraint_in_latest_migration():
-    """The Postgres ``content_translations.entity_type`` CHECK constraint
-    must list exactly the same entity types as the registry. Drift means
-    a registered entity's INSERT will fail with a constraint violation,
-    or the constraint silently allows a value the code doesn't handle.
-
-    Walks every ``*_content_translations*.sql`` migration in publish
-    order to find the *latest* CHECK definition for ``entity_type``.
-    """
-    migrations_dir = Path(__file__).resolve().parents[2] / "supabase" / "migrations"
-    sql_files = sorted(migrations_dir.glob("*.sql"))
-    pattern = re.compile(
-        r"content_translations_entity_type_check[\s\S]*?CHECK\s*\(\s*entity_type\s+IN\s*\((?P<list>[^)]*)\)",
-        re.IGNORECASE,
-    )
-    latest_match: re.Match[str] | None = None
-    for sql_file in sql_files:
-        text = sql_file.read_text(encoding="utf-8")
-        for m in pattern.finditer(text):
-            latest_match = m
-    assert latest_match is not None, "No content_translations_entity_type_check definition found in any migration"
-    raw = latest_match.group("list")
-    constraint_values = {token.strip().strip("'\"") for token in raw.split(",")}
-    constraint_values = {v for v in constraint_values if v}
-    assert constraint_values == set(REGISTRY), (
-        f"Migration CHECK has {sorted(constraint_values)} but registry has {sorted(REGISTRY)}. "
-        "Add a migration that DROPs/RECREATEs the constraint with the registry's set."
-    )
+# Phase 5d removed the ``content_translations.entity_type`` CHECK
+# constraint test — the table itself is dropped. ``content_versions``
+# deliberately has no CHECK on ``entity_type`` (so a new entity type
+# is INSERT, not DDL); registry vs cv parity is enforced at the API
+# edge by the ``ContentVersionEntityType`` Literal, asserted in
+# ``test_registry_keys_match_model_literal`` above.
 
 
 def test_registry_has_model_class_for_every_entry():

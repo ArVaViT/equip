@@ -50,9 +50,11 @@ if TYPE_CHECKING:
 
     from sqlalchemy.orm import Session
 
-    from app.models.content_translation import (
-        TranslationEntityType,
-        TranslationField,
+    from app.models.content_version import (
+        ContentVersionEntityType as TranslationEntityType,
+    )
+    from app.models.content_version import (
+        ContentVersionField as TranslationField,
     )
     from app.models.course import Course
 
