@@ -165,6 +165,33 @@ def _resolve_course_via_question(db: Session, entity: Any) -> Course | None:
     return _resolve_course_via_quiz_chapter(db, quiz)
 
 
+def _resolve_course_via_cohort_courses(db: Session, entity: Any) -> Course | None:
+    """ADR-010: cohorts attach to courses via the ``cohort_courses``
+    junction table, not via a ``course_id`` FK column. Pick any course
+    the cohort is linked to so ``reconcile_entity`` can derive a
+    source_locale + build a prompt context. A cohort attached to
+    multiple courses with different source_locales is a rare edge —
+    the first-link choice is deterministic (created_at ordering on the
+    junction) and the cohort name is short, so re-translating against
+    a different locale costs little.
+    """
+    from app.models.cohort import CohortCourse
+
+    cohort_id = getattr(entity, "id", None)
+    if cohort_id is None:
+        return None
+    course_id = (
+        db.query(CohortCourse.course_id)
+        .filter(CohortCourse.cohort_id == cohort_id)
+        .order_by(CohortCourse.added_at)
+        .limit(1)
+        .scalar()
+    )
+    if not course_id:
+        return None
+    return db.query(Course).filter(Course.id == course_id).first()
+
+
 def _resolve_course_via_option(db: Session, entity: Any) -> Course | None:
     """QuizOption -> question -> quiz -> chapter -> ... -> course."""
     question_id = getattr(entity, "question_id", None)
@@ -245,7 +272,7 @@ REGISTRY: dict[EntityType, EntityRegistration] = {
     "cohort": EntityRegistration(
         entity_type="cohort",
         fields=(FieldSpec("title", "title", model_attr="name"),),
-        resolve_course=_resolve_course_via_attr("course_id"),
+        resolve_course=_resolve_course_via_cohort_courses,
         build_context=lambda _co, c: f"Student cohort name in course «{c.title}»",
     ),
 }
