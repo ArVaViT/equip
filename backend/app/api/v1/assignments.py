@@ -103,8 +103,12 @@ def list_chapter_assignments(
             )
         # Phase 5e3: title + description columns dropped — re-use the
         # localize path with display==source so the cv lookup populates
-        # the source-locale text.
-        return localize_assignment_rows(db, rows, display_locale=ctx.source_locale, source_locale=ctx.source_locale)
+        # the source-locale text. ``prefer_human=True`` makes the
+        # any-locale fallback skip MT rows so the editor never sees
+        # machine output as the "source" text.
+        return localize_assignment_rows(
+            db, rows, display_locale=ctx.source_locale, source_locale=ctx.source_locale, prefer_human=True
+        )
     display_locale: LocaleCode = normalize_locale(accept_language)
     return localize_assignment_rows(db, rows, display_locale=display_locale, source_locale=ctx.source_locale)
 

@@ -97,9 +97,11 @@ def get_chapter_quiz(
             )
         # Phase 5f: title / question_text / option_text columns dropped.
         # The student response is the same shape source==display surfaces,
-        # so re-use the localize path with display=source.
+        # so re-use the localize path with display=source. ``prefer_human``
+        # makes the any-locale fallback prefer human rows so the editor
+        # never shows an MT row as authoritative source content.
         resp = build_localized_quiz_student_response(
-            db, quiz, display_locale=ctx.source_locale, source_locale=ctx.source_locale
+            db, quiz, display_locale=ctx.source_locale, source_locale=ctx.source_locale, prefer_human=True
         )
     else:
         display_locale: LocaleCode = normalize_locale(accept_language)
