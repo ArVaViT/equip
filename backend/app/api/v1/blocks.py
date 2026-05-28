@@ -25,6 +25,50 @@ router = APIRouter(prefix="/blocks", tags=["blocks"])
 _TRANSLATABLE_BLOCK_FIELDS = ("content",)
 
 
+def _block_to_response(db: Session, block: ChapterBlock) -> BlockResponse:
+    """Phase 5e2: chapter_blocks.content column dropped — build the
+    response with content pulled from cv (source-locale row preferred).
+    Used by the single-block routes (create / update) which return one
+    block; the list/get routes use ``localize_chapter_block_rows``
+    which is locale-aware.
+    """
+    from app.models.content_version import ContentVersion
+
+    row = (
+        db.query(ContentVersion.text)
+        .filter(
+            ContentVersion.entity_type == "chapter_block",
+            ContentVersion.entity_id == str(block.id),
+            ContentVersion.field == "content",
+            ContentVersion.superseded_by.is_(None),
+            ContentVersion.status == "ok",
+        )
+        .order_by(ContentVersion.created_at)
+        .first()
+    )
+    content = row.text if row is not None else None
+    # ``model_validate(dict)`` so Pydantic handles the ``created_at``
+    # nullability coercion (the ORM column is ``Optional[datetime]``
+    # at type-time but server_default=now() means it's set by the time
+    # we read it back after refresh).
+    return BlockResponse.model_validate(
+        {
+            "id": block.id,
+            "chapter_id": block.chapter_id,
+            "block_type": block.block_type,
+            "order_index": block.order_index,
+            "content": content,
+            "quiz_id": block.quiz_id,
+            "assignment_id": block.assignment_id,
+            "file_bucket": block.file_bucket,
+            "file_path": block.file_path,
+            "file_name": block.file_name,
+            "created_at": block.created_at,
+            "updated_at": block.updated_at,
+        }
+    )
+
+
 def _course_source_locale_for_chapter(db: Session, chapter_id: str) -> str | None:
     """Walk ``ChapterBlock -> Chapter -> Module -> Course`` to find the
     parent course's source locale for use as the dual-write fallback
@@ -70,11 +114,13 @@ def list_blocks(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only the course owner or an admin can request source-language content",
             )
-        return rows
+        # Phase 5e2: chapter_blocks.content column dropped — build
+        # source-locale responses by re-using the resolve layer that
+        # already does the cv lookups (source==display when no
+        # localisation requested).
+        return localize_chapter_block_rows(db, rows, display_locale=ctx.source_locale, source_locale=ctx.source_locale)
     display_locale: LocaleCode = normalize_locale(accept_language)
-    if ctx.apply_overlay:
-        return localize_chapter_block_rows(db, rows, display_locale=display_locale, source_locale=ctx.source_locale)
-    return rows
+    return localize_chapter_block_rows(db, rows, display_locale=display_locale, source_locale=ctx.source_locale)
 
 
 @router.post(
@@ -107,12 +153,13 @@ def create_block(
     # direct API caller can bypass that. We re-sanitize here so stored block
     # HTML is safe to render for every downstream consumer (admin preview,
     # exports, emailed digests) — not only the main React app.
+    # Phase 5e2: ``content`` column dropped. Sanitization runs before
+    # the cv write so the stored text is clean.
     content = sanitize_string(data.content) if data.content else data.content
     block = ChapterBlock(
         chapter_id=chapter_id,
         block_type=data.block_type,
         order_index=data.order_index,
-        content=content,
         quiz_id=data.quiz_id,
         assignment_id=data.assignment_id,
         file_bucket=data.file_bucket,
@@ -126,10 +173,10 @@ def create_block(
             db,
             entity_type="chapter_block",
             entity_id=str(block.id),
-            entity=block,
             fields=_TRANSLATABLE_BLOCK_FIELDS,
             fallback_locale=_course_source_locale_for_chapter(db, chapter_id),
             authored_by=teacher.id,
+            texts={"content": content},
         )
         db.commit()
     except IntegrityError as exc:
@@ -143,7 +190,7 @@ def create_block(
         ) from exc
     db.refresh(block)
     reconcile_entity_if_course_published(db, "chapter_block", block)
-    return block
+    return _block_to_response(db, block)
 
 
 @router.put(
@@ -174,22 +221,25 @@ def update_block(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Block not found")
     verify_chapter_owner(db, block.chapter_id, teacher)
     patch = data.model_dump(exclude_unset=True)
+    # Phase 5e2: content column gone — route the (sanitised) content
+    # straight to cv; all other fields setattr as before.
+    content_patch = patch.pop("content", None) if "content" in patch else None
+    if content_patch is not None:
+        content_patch = sanitize_string(content_patch) if content_patch else content_patch
     for field, value in patch.items():
-        if field == "content" and value:
-            value = sanitize_string(value)
         setattr(block, field, value)
     try:
         db.flush()
-        dual_write_entity_content(
-            db,
-            entity_type="chapter_block",
-            entity_id=str(block.id),
-            entity=block,
-            fields=_TRANSLATABLE_BLOCK_FIELDS,
-            fallback_locale=_course_source_locale_for_chapter(db, block.chapter_id),
-            authored_by=teacher.id,
-            only_fields={f for f in _TRANSLATABLE_BLOCK_FIELDS if f in patch},
-        )
+        if content_patch is not None:
+            dual_write_entity_content(
+                db,
+                entity_type="chapter_block",
+                entity_id=str(block.id),
+                fields=_TRANSLATABLE_BLOCK_FIELDS,
+                fallback_locale=_course_source_locale_for_chapter(db, block.chapter_id),
+                authored_by=teacher.id,
+                texts={"content": content_patch},
+            )
         db.commit()
     except IntegrityError as exc:
         db.rollback()
@@ -199,7 +249,7 @@ def update_block(
         ) from exc
     db.refresh(block)
     reconcile_entity_if_course_published(db, "chapter_block", block)
-    return block
+    return _block_to_response(db, block)
 
 
 @router.delete("/{block_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -253,4 +303,9 @@ def reorder_blocks(
     for item in items:
         blocks_by_id[item.id].order_index = item.order_index
     db.commit()
-    return db.query(ChapterBlock).filter(ChapterBlock.chapter_id == chapter_id).order_by(ChapterBlock.order_index).all()
+    # Phase 5e2: content column dropped — must resolve via cv. Use the
+    # chapter's parent course source_locale; display=source is fine for
+    # this teacher-only endpoint (the editor reorders source blocks).
+    ctx = resolve_chapter_locale_context(db, chapter_id=chapter_id, current_user=teacher)
+    rows = db.query(ChapterBlock).filter(ChapterBlock.chapter_id == chapter_id).order_by(ChapterBlock.order_index).all()
+    return localize_chapter_block_rows(db, rows, display_locale=ctx.source_locale, source_locale=ctx.source_locale)

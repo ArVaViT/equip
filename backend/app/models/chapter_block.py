@@ -35,7 +35,10 @@ class ChapterBlock(Base):
     chapter_id: Mapped[str] = mapped_column(ForeignKey("chapters.id", ondelete="CASCADE"))
     block_type: Mapped[str] = mapped_column(String(20))
     order_index: Mapped[int] = mapped_column(default=0)
-    content: Mapped[str | None] = mapped_column(Text)
+    # Phase 5e2: ``content`` column dropped. Block content (HTML) lives
+    # in ``content_versions`` (entity_type='chapter_block', field='content').
+    # Read via the resolve layer's ``localize_chapter_block_rows``;
+    # write via ``dual_write_entity_content`` with explicit ``texts``.
     quiz_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("quizzes.id", ondelete="SET NULL"))
     assignment_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("assignments.id", ondelete="SET NULL"))
     # Persist only the bucket + object path. Signed URLs are minted on

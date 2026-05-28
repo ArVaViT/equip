@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session  # noqa: TC002
 from app.models.announcement import Announcement  # noqa: TC001
 from app.models.assignment import Assignment  # noqa: TC001
 from app.models.chapter_block import ChapterBlock  # noqa: TC001
+from app.models.content_version import ContentVersion
 from app.models.course import Chapter, Course, Module
 from app.models.course_event import CourseEvent  # noqa: TC001
 from app.models.quiz import Quiz  # noqa: TC001
@@ -461,22 +462,67 @@ def localize_chapter_block_rows(
     display_locale: LocaleCode,
     source_locale: LocaleCode,
 ) -> list[BlockResponse]:
-    """Apply stored translations to TipTap HTML stored on chapter blocks."""
+    """Apply stored translations to TipTap HTML stored on chapter blocks.
+
+    Phase 5e2: the legacy ``content`` column was dropped. Both the
+    source text and the localised overlay live in ``content_versions``
+    now. Build the response manually because ``model_validate(block)``
+    would try to read ``block.content`` (no longer an attribute).
+
+    Three-tier fallback: display_locale → source_locale → any-locale.
+    The any-locale tier rescues blocks whose content was authored in a
+    locale that's neither display nor course-declared source (an edge
+    case from the per-field-detection world).
+    """
     if not blocks:
         return []
-    specs: list[tuple[str, str, str]] = [
-        ("chapter_block", str(b.id), "content") for b in blocks if b.content and str(b.content).strip()
-    ]
-    loc = Localizer.build(db, specs, source_locale=source_locale, display_locale=display_locale)
+    block_ids = [str(b.id) for b in blocks]
+    # All-locale bulk fetch: one indexed query covers display + source
+    # + any-locale tiers. Ordered by created_at so we deterministically
+    # pick the earliest if multiple rows exist per block at a locale.
+    rows = (
+        db.query(ContentVersion.entity_id, ContentVersion.locale, ContentVersion.text)
+        .filter(
+            ContentVersion.entity_type == "chapter_block",
+            ContentVersion.entity_id.in_(block_ids),
+            ContentVersion.field == "content",
+            ContentVersion.superseded_by.is_(None),
+            ContentVersion.status == "ok",
+        )
+        .order_by(ContentVersion.entity_id, ContentVersion.created_at)
+        .all()
+    )
+    by_block_locale: dict[tuple[str, str], str] = {}
+    any_by_block: dict[str, str] = {}
+    for eid, locale, text in rows:
+        by_block_locale.setdefault((eid, locale), text)
+        any_by_block.setdefault(eid, text)
     out: list[BlockResponse] = []
     for b in blocks:
-        base = BlockResponse.model_validate(b, from_attributes=True)
-        content = b.content
-        if not content or not str(content).strip():
-            out.append(base)
-            continue
-        ct = loc.pick("chapter_block", str(b.id), "content", content) or content
-        out.append(base.model_copy(update={"content": ct}))
+        bid = str(b.id)
+        content = (
+            by_block_locale.get((bid, display_locale))
+            or by_block_locale.get((bid, source_locale))
+            or any_by_block.get(bid)
+        )
+        out.append(
+            BlockResponse.model_validate(
+                {
+                    "id": b.id,
+                    "chapter_id": b.chapter_id,
+                    "block_type": b.block_type,
+                    "order_index": b.order_index,
+                    "content": content,
+                    "quiz_id": b.quiz_id,
+                    "assignment_id": b.assignment_id,
+                    "file_bucket": b.file_bucket,
+                    "file_path": b.file_path,
+                    "file_name": b.file_name,
+                    "created_at": b.created_at,
+                    "updated_at": b.updated_at,
+                }
+            )
+        )
     return out
 
 

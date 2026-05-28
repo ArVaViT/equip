@@ -109,18 +109,21 @@ class ReadinessReport:
 # ─── Internal helpers ───────────────────────────────────────────────────
 
 
-def _has_meaningful_content(block: ChapterBlock) -> bool:
+def _has_meaningful_content(block: ChapterBlock, blocks_with_cv_content: set[str]) -> bool:
     """A reading block 'has content' if its body isn't blank. Quiz /
     assignment blocks aren't counted here — those chapters are validated
     by their own checks (``quiz has questions``, etc.) so a chapter
-    consisting only of a quiz block still passes the content rule."""
+    consisting only of a quiz block still passes the content rule.
+
+    Phase 5e2: the ``content`` column was dropped. The caller pre-fetches
+    a set of block ids that have an active cv content row at any locale
+    (``_fetch_blocks_with_cv_content``); we just consult the set here.
+    """
     if block.block_type not in {"text", "html", "video", "image", "file"}:
         return False
     if block.block_type == "file":
         return bool(block.file_path)
-    if block.block_type == "video":
-        return bool(block.content)
-    return bool((block.content or "").strip())
+    return str(block.id) in blocks_with_cv_content
 
 
 def _question_is_complete(question: QuizQuestion, options: list[QuizOption]) -> bool:
@@ -259,6 +262,33 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
         for block in db.query(ChapterBlock).filter(ChapterBlock.chapter_id.in_(all_chapter_ids)).all():
             blocks_by_chapter.setdefault(block.chapter_id, []).append(block)
 
+    # Phase 5e2: ``chapter_blocks.content`` column dropped. Pre-fetch the
+    # set of block ids that have at least one active+ok cv content row
+    # at any locale so the readiness check can answer "block has content?"
+    # in O(1) per block via ``_has_meaningful_content``.
+    all_block_ids = [str(b.id) for blocks in blocks_by_chapter.values() for b in blocks]
+    blocks_with_cv_content: set[str] = set()
+    if all_block_ids:
+        from app.models.content_version import ContentVersion
+
+        # Filter out blank/whitespace text in Python — keeps the SQL
+        # portable across SQLite (tests) and Postgres (prod). Pre-5e2
+        # behaviour treated whitespace-only ``content`` as missing, so
+        # we preserve that semantics on top of the cv backing store.
+        blocks_with_cv_content = {
+            eid
+            for (eid, text) in db.query(ContentVersion.entity_id, ContentVersion.text)
+            .filter(
+                ContentVersion.entity_type == "chapter_block",
+                ContentVersion.entity_id.in_(all_block_ids),
+                ContentVersion.field == "content",
+                ContentVersion.superseded_by.is_(None),
+                ContentVersion.status == "ok",
+            )
+            .all()
+            if text and text.strip()
+        }
+
     # Quizzes / assignments are looked up by chapter_id; eagerly load
     # quiz.questions + their options so we can validate each question.
     quizzes_by_chapter: dict[str, Quiz] = {}
@@ -289,7 +319,7 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
                     ReadinessCheck(
                         id=f"reading_has_content:{chapter.id}",
                         severity="critical",
-                        passed=any(_has_meaningful_content(b) for b in blocks),
+                        passed=any(_has_meaningful_content(b, blocks_with_cv_content) for b in blocks),
                         message_key="courseReadiness.checks.readingHasContent",
                         subject=_make_chapter_subject(chapter),
                         action=_open_chapter_action(chapter),

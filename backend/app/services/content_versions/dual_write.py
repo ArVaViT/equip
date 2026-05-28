@@ -35,20 +35,33 @@ def dual_write_entity_content(
     *,
     entity_type: str,
     entity_id: str,
-    entity: object,
+    entity: object | None = None,
     fields: Iterable[str],
     fallback_locale: str | None,
     authored_by: str | uuid.UUID | None = None,
     only_fields: set[str] | None = None,
+    texts: dict[str, str | None] | None = None,
 ) -> None:
     """Write a ``content_versions`` human row for every translatable
-    field on ``entity`` that the caller wrote.
+    field the caller wrote.
 
     Per-field detection: each field's locale is decided from its own
     text. Two fields on the same entity can land in different locales
     (an EN title and a RU description are normal). Detection falls
     back to ``fallback_locale`` when the field text is too short to
     classify or has no language signal.
+
+    Two ways to supply the text per field:
+
+    * ``texts={'title': 'Hello', 'description': None}`` — explicit
+      dict keyed by field name. Required for entities whose source
+      column has been dropped (Phase 5e+).
+    * ``entity=<orm instance>`` — fallback path that reads
+      ``getattr(entity, field)``. Backward-compat for entities whose
+      source columns still exist.
+
+    When both are set, ``texts`` wins per-field; ``entity`` fills in
+    keys missing from the dict.
 
     ``only_fields`` filters to the fields the caller actually wrote
     (used on UPDATE so a description-only PATCH doesn't supersede
@@ -68,10 +81,15 @@ def dual_write_entity_content(
     author_uuid = _coerce_uuid(authored_by)
 
     for field in target_fields:
-        text = getattr(entity, field, None)
-        if not text or not str(text).strip():
+        if texts is not None and field in texts:
+            raw = texts[field]
+        elif entity is not None:
+            raw = getattr(entity, field, None)
+        else:
+            raw = None
+        if not raw or not str(raw).strip():
             continue
-        text_str = str(text)
+        text_str = str(raw)
         detected = detect_locale(text_str)
         locale = detected or fallback_locale
         if locale is None:
