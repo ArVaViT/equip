@@ -109,12 +109,43 @@ def list_announcements(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    source: bool = Query(
+        False,
+        description=(
+            "Bypass the translation overlay and return source-language ``title`` "
+            "and ``content`` for the editor. Requires a ``course_id`` filter and "
+            "course ownership (or admin). Source-locale per row matches the row's "
+            "course ``source_locale``; ``prefer_human=True`` in the any-locale "
+            "fallback tier keeps MT rows out of the editor view."
+        ),
+    ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[AnnouncementResponse]:
     response.headers["Vary"] = "Accept-Language"
     query = db.query(Announcement)
     is_admin = current_user.role in (UserRole.ADMIN.value, "admin")
+    # ``?source=1`` is editor-only: it returns unredacted source text
+    # for the announcements of a specific course, so gate it to a
+    # course_id filter that the caller actually owns (or admin). A
+    # heterogeneous unfiltered list of source-locale rows would leak
+    # draft content across course boundaries.
+    if source:
+        if course_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="?source=1 requires a course_id filter",
+            )
+        if not is_admin:
+            owns = (
+                db.query(Course.id).filter(Course.id == course_id, Course.created_by == current_user.id).first()
+                is not None
+            )
+            if not owns:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only the course owner or an admin can request source-language content",
+                )
 
     if global_only:
         # AnnouncementBanner asks for site-wide-only rows; previously it
@@ -164,6 +195,9 @@ def list_announcements(
     # Locale wins. Every reader — students, teachers, admins — gets the
     # locale overlay when one exists. Moderators who need raw source
     # content use the admin-only audit/edit surfaces, not this list.
+    # When ``?source=1`` was requested (gated to course owner + admin
+    # above), display_locale collapses to source_locale per row so the
+    # editor sees the teacher's own text.
     display_locale: LocaleCode = normalize_locale(accept_language)
     course_ids = [str(a.course_id) for a in rows if a.course_id]
     source_locales = _course_source_locale_map(db, course_ids)
@@ -173,7 +207,15 @@ def list_announcements(
         bucket = [a for a in rows if source_locales.get(str(a.course_id), normalize_locale(None)) == src]
         if not bucket:
             continue
-        out.extend(localize_announcement_rows(db, bucket, display_locale=display_locale, source_locale=src))
+        out.extend(
+            localize_announcement_rows(
+                db,
+                bucket,
+                display_locale=src if source else display_locale,
+                source_locale=src,
+                prefer_human=source,
+            )
+        )
     return out
 
 

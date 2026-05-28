@@ -332,6 +332,15 @@ def list_course_events(
     response: Response,
     course_id: str,
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    source: bool = Query(
+        False,
+        description=(
+            "Bypass the translation overlay and return source-language ``title`` "
+            "+ ``description``. Owner / admin only — used by the calendar event "
+            "editor. ``prefer_human=True`` keeps MT rows out of the any-locale "
+            "fallback tier."
+        ),
+    ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[CourseEventResponse]:
@@ -357,13 +366,25 @@ def list_course_events(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You must be enrolled in this course to view events",
             )
+    if source and not (is_owner or is_admin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the course owner or an admin can request source-language content",
+        )
     rows = db.query(CourseEvent).filter(CourseEvent.course_id == course_id).order_by(CourseEvent.event_date).all()
     # Locale wins. Every reader — students, owners, admins — gets the locale
-    # overlay when one exists. Editors that need raw source must use dedicated
-    # authoring endpoints (the PUT/POST routes below operate on raw columns).
+    # overlay when one exists. ``?source=1`` collapses display_locale to
+    # source_locale and prefers human rows in the any-locale fallback tier
+    # so the editor never sees machine output as authoritative source.
     display_locale: LocaleCode = normalize_locale(accept_language)
     source_locale: LocaleCode = normalize_locale(course_row.source_locale)
-    return localize_course_event_rows(db, rows, display_locale=display_locale, source_locale=source_locale)
+    return localize_course_event_rows(
+        db,
+        rows,
+        display_locale=source_locale if source else display_locale,
+        source_locale=source_locale,
+        prefer_human=source,
+    )
 
 
 @event_router.put(
