@@ -37,7 +37,7 @@ export function useAnnouncementsSection(
     if (!courseId) return
     let cancelled = false
     coursesService
-      .getAnnouncements(courseId)
+      .getAnnouncementsForEdit(courseId)
       .then((a) => {
         if (!cancelled) setAnnouncements(a)
       })

@@ -18,6 +18,24 @@ export const calendarService = {
     })
   },
 
+  /**
+   * Teacher-only fetch returning source-language event titles +
+   * descriptions, used by the calendar event editor. Mirrors the
+   * `?source=1` pattern from `getCourseForEdit` /
+   * `getAnnouncementsForEdit`: bypass the locale overlay so the
+   * teacher edits their own typed text, not the MT version.
+   *
+   * Bypasses the `calendar:course-events:{id}` cache to keep the
+   * student-facing localized payload separate from the teacher-only
+   * source payload.
+   */
+  async getCourseEventsForEdit(courseId: string): Promise<CourseEvent[]> {
+    const response = await api.get<CourseEvent[]>(`/courses/${courseId}/events`, {
+      params: { source: 1 },
+    })
+    return response.data
+  },
+
   async createCourseEvent(
     courseId: string,
     data: {

@@ -39,7 +39,7 @@ export function useEventsSection(
     if (!courseId) return
     let cancelled = false
     coursesService
-      .getCourseEvents(courseId)
+      .getCourseEventsForEdit(courseId)
       .then((e) => {
         if (!cancelled) setEvents(e)
       })
