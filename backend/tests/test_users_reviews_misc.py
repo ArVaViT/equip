@@ -44,7 +44,6 @@ def _make_admin(db: Session) -> User:
 def _seed_course(
     db: Session, course_id: str = "course-1", *, owner=TEACHER_ID, status: str = "published", title: str = "Test Course"
 ) -> Course:
-    # Phase 5g: courses.title + description columns dropped — use the cv helper.
     from ._cv_helpers import make_course_with_text
 
     course = make_course_with_text(
@@ -63,7 +62,6 @@ def _seed_course(
 
 
 def _seed_module(db: Session, course_id: str = "course-1", module_id: str = "mod-1", title: str = "Module 1") -> Module:
-    # Phase 5g: modules.title + description columns dropped — use the cv helper.
     from ._cv_helpers import make_module_with_text
 
     module = make_module_with_text(db, module_id=module_id, course_id=course_id, title=title, order_index=0)

@@ -60,7 +60,6 @@ def create_module(db: Session, course_id: str, data: ModuleCreate) -> Module:
         db,
         entity_type="module",
         entity_id=str(module.id),
-        fields=_TRANSLATABLE_MODULE_FIELDS,
         fallback_locale=_course_source_locale(db, course_id),
         texts={"title": data.title, "description": data.description},
     )
@@ -89,7 +88,6 @@ def update_module(db: Session, module: Module, data: ModuleUpdate) -> Module:
             db,
             entity_type="module",
             entity_id=str(module.id),
-            fields=_TRANSLATABLE_MODULE_FIELDS,
             fallback_locale=_course_source_locale(db, module.course_id),
             only_fields=set(text_patch.keys()),
             texts=text_patch,

@@ -126,8 +126,6 @@ def chapter(db: Session, module: Module) -> Chapter:
 
 @pytest.fixture
 def quiz(db: Session, chapter: Chapter) -> Quiz:
-    # Phase 5f: title + description columns dropped. Structural row only —
-    # cv text rows are unnecessary for resolver tests (they only walk FKs).
     q = Quiz(id=uuid.uuid4(), chapter_id=chapter.id)
     db.add(q)
     db.flush()
@@ -136,7 +134,6 @@ def quiz(db: Session, chapter: Chapter) -> Quiz:
 
 @pytest.fixture
 def quiz_question(db: Session, quiz: Quiz) -> QuizQuestion:
-    # Phase 5f: question_text column dropped.
     qq = QuizQuestion(
         id=uuid.uuid4(),
         quiz_id=quiz.id,
@@ -151,7 +148,6 @@ def quiz_question(db: Session, quiz: Quiz) -> QuizQuestion:
 
 @pytest.fixture
 def quiz_option(db: Session, quiz_question: QuizQuestion) -> QuizOption:
-    # Phase 5f: option_text column dropped.
     qo = QuizOption(
         id=uuid.uuid4(),
         question_id=quiz_question.id,
@@ -201,7 +197,6 @@ class TestResolveCourseViaAttr:
         resolver = _resolve_course_via_attr("course_id")
         # Announcement without course_id is the canonical "orphan" — the
         # comment on the resolver explicitly says this returns None.
-        # Phase 5e5: title + content columns dropped.
         orphan = Announcement(course_id=None, created_by=TEACHER_ID)
         db.add(orphan)
         db.flush()
@@ -253,7 +248,6 @@ class TestResolveCourseViaModule:
 
 class TestResolveCourseViaChapter:
     def test_resolves_chapter_block_to_course(self, db: Session, course: Course, chapter: Chapter):
-        # Phase 5e2: ``chapter_blocks.content`` column dropped.
         block = ChapterBlock(
             id=uuid.uuid4(),
             chapter_id=chapter.id,
@@ -266,7 +260,6 @@ class TestResolveCourseViaChapter:
         assert _resolve_course_via_chapter(db, block).id == course.id
 
     def test_resolves_assignment_to_course(self, db: Session, course: Course, chapter: Chapter):
-        # Phase 5e3: title + description columns dropped.
         asgn = Assignment(
             id=uuid.uuid4(),
             chapter_id=chapter.id,
@@ -374,7 +367,6 @@ class TestRegistryWiring:
     def test_announcement_resolves_via_course_id_attr(self, db: Session, course: Course, teacher):
         from app.services.translation.registry import REGISTRY
 
-        # Phase 5e5: title + content columns dropped.
         ann = Announcement(
             id=uuid.uuid4(),
             course_id=course.id,
@@ -389,7 +381,6 @@ class TestRegistryWiring:
     def test_course_event_resolves_via_course_id_attr(self, db: Session, course: Course, teacher):
         from app.services.translation.registry import REGISTRY
 
-        # Phase 5e4: title + description columns dropped.
         ev = CourseEvent(
             id=uuid.uuid4(),
             course_id=course.id,

@@ -83,7 +83,6 @@ def _add_chapter(
 
 
 def _add_text_block(db: Session, chapter: Chapter, *, content: str = "Hello") -> ChapterBlock:
-    # Phase 5e2: chapter_blocks.content column dropped; content lives in cv.
     from app.services.content_versions.write import record_human_version
 
     block = ChapterBlock(chapter_id=chapter.id, block_type="text", order_index=0)
@@ -108,7 +107,6 @@ def _add_quiz_with_question(
     options: int = 2,
     correct: int = 1,
 ) -> Quiz:
-    # Phase 5f: quiz tree text columns dropped; use the cv helpers.
     from ._cv_helpers import make_quiz_option_with_text, make_quiz_question_with_text, make_quiz_with_text
 
     quiz = make_quiz_with_text(db, chapter_id=chapter.id, title="Quiz")
@@ -125,7 +123,6 @@ def _add_quiz_with_question(
 
 
 def _add_assignment(db: Session, chapter: Chapter, *, description: str | None = None) -> Assignment:
-    # Phase 5e3: assignments.title + description columns dropped; both live in cv.
     from ._cv_helpers import make_assignment_with_text
 
     return make_assignment_with_text(db, chapter_id=chapter.id, title="Assignment", description=description)

@@ -84,7 +84,6 @@ def create_course(
         db,
         entity_type="course",
         entity_id=str(course.id),
-        fields=_TRANSLATABLE_COURSE_FIELDS,
         fallback_locale=resolved_locale,
         authored_by=user_id,
         texts={"title": data.title, "description": data.description},
@@ -98,10 +97,13 @@ def create_course(
 
 
 def update_course(db: Session, course: Course, data: CourseUpdate) -> Course:
+    """Patch course fields. Title + description are split off the patch
+    and routed through cv via dual_write; structural fields setattr as
+    before. Re-detects source_locale when title/description changed so a
+    teacher who rewrites Russian text in an English course flips the
+    course's authoring direction automatically.
+    """
     patch = data.model_dump(exclude_unset=True)
-    previous_source_locale = course.source_locale
-    # Phase 5g: title + description live in cv. Pop them off the patch
-    # so they don't try to setattr on the (now-text-less) ORM row.
     text_patch: dict[str, str | None] = {}
     if "title" in patch:
         text_patch["title"] = patch.pop("title")
@@ -109,8 +111,6 @@ def update_course(db: Session, course: Course, data: CourseUpdate) -> Course:
         text_patch["description"] = patch.pop("description")
     for field, value in patch.items():
         setattr(course, field, value)
-    # Re-detect the source locale ONLY when the patch actually touched
-    # title or description.
     if text_patch:
         detected = _resolve_source_locale(
             title=text_patch.get("title"),
@@ -125,7 +125,6 @@ def update_course(db: Session, course: Course, data: CourseUpdate) -> Course:
             db,
             entity_type="course",
             entity_id=str(course.id),
-            fields=_TRANSLATABLE_COURSE_FIELDS,
             fallback_locale=course.source_locale,
             authored_by=course.created_by,
             only_fields=set(text_patch.keys()),
@@ -133,12 +132,9 @@ def update_course(db: Session, course: Course, data: CourseUpdate) -> Course:
         )
     db.commit()
     db.refresh(course)
-    # Hydrate runtime attrs from cv after the write so the caller's
-    # response serialization sees the new texts.
     from app.services.translation.resolve_for_display import populate_spine_texts
 
     populate_spine_texts(db, [course])
-    _ = previous_source_locale  # kept for future locale-flip telemetry
     return course
 
 
@@ -197,5 +193,20 @@ def restore_course(db: Session, course: Course) -> Course:
 
 
 def permanently_delete_course(db: Session, course: Course) -> None:
+    # Phase 5g dropped the ``snapshot_certificate_course_title`` Postgres
+    # trigger along with ``courses.title``. Stamp the title onto every
+    # certificate that still points at this course before the FK
+    # ``ON DELETE SET NULL`` nulls ``course_id`` and the title becomes
+    # unrecoverable. Mirrors the trigger's `WHERE archived_course_title
+    # IS NULL` clause so re-deletes don't overwrite an earlier snapshot.
+    from app.models.certificate import Certificate
+
+    db.query(Certificate).filter(
+        Certificate.course_id == course.id,
+        Certificate.archived_course_title.is_(None),
+    ).update(
+        {Certificate.archived_course_title: course.title},
+        synchronize_session=False,
+    )
     db.delete(course)
     db.commit()

@@ -65,7 +65,6 @@ class Course(Base):
     )
 
     id: Mapped[str] = mapped_column(primary_key=True)
-    # Phase 5g: title + description columns dropped — cv is the only store.
     image_url: Mapped[str | None] = mapped_column()
     status: Mapped[str] = mapped_column(default=CourseStatus.DRAFT)
     # Access mode controls who can ENROLL in the course (separate from
@@ -148,7 +147,6 @@ class Module(Base):
     # The composite ``ix_modules_course_id_order`` covers plain ``course_id``
     # lookups via its leading column, so no single-column FK index here.
     course_id: Mapped[str] = mapped_column(ForeignKey("courses.id"))
-    # Phase 5g: title + description columns dropped — cv is the only store.
     order_index: Mapped[int] = mapped_column(default=0)
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -250,11 +248,6 @@ def _course_loaded(target: "Course", _context):
     if target.__dict__.get("title"):
         return
     _lazy_populate_spine_text(target, "course")
-
-
-# Phase 5g: removed auto-flush hook — caused recursion via record_human_version.
-# Tests that need cv-seeded spine text should use the make_course_with_text /
-# make_module_with_text helpers in tests/_cv_helpers.py.
 
 
 @listens_for(Module, "load")

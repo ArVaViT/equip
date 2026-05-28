@@ -17,9 +17,6 @@ if TYPE_CHECKING:
     from app.schemas.course import ChapterCreate, ChapterUpdate
 
 
-_TRANSLATABLE_CHAPTER_FIELDS = ("title",)
-
-
 def _next_chapter_order(db: Session, module_id: str) -> int:
     """Return the tail ``order_index`` for a new chapter on this module."""
     current_max = (
@@ -62,8 +59,7 @@ def create_chapter(db: Session, module_id: str, data: ChapterCreate) -> Chapter:
         db,
         entity_type="chapter",
         entity_id=str(chapter.id),
-        entity=chapter,
-        fields=_TRANSLATABLE_CHAPTER_FIELDS,
+        texts={"title": data.title},
         fallback_locale=_course_source_locale_for_module(db, module_id),
     )
     db.commit()
@@ -76,15 +72,14 @@ def update_chapter(db: Session, chapter: Chapter, data: ChapterUpdate) -> Chapte
     for field, value in patch.items():
         setattr(chapter, field, value)
     db.flush()
-    dual_write_entity_content(
-        db,
-        entity_type="chapter",
-        entity_id=str(chapter.id),
-        entity=chapter,
-        fields=_TRANSLATABLE_CHAPTER_FIELDS,
-        fallback_locale=_course_source_locale_for_module(db, chapter.module_id),
-        only_fields={f for f in _TRANSLATABLE_CHAPTER_FIELDS if f in patch},
-    )
+    if "title" in patch:
+        dual_write_entity_content(
+            db,
+            entity_type="chapter",
+            entity_id=str(chapter.id),
+            texts={"title": patch["title"]},
+            fallback_locale=_course_source_locale_for_module(db, chapter.module_id),
+        )
     db.commit()
     db.refresh(chapter)
     return chapter

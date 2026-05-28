@@ -406,6 +406,30 @@ class TestTrashAndRestore:
         db.expire_all()
         assert db.query(Course).filter(Course.id == "gone-forever").first() is None
 
+    def test_permanent_delete_snapshots_certificate_title(self, client: TestClient, db: Session):
+        """Phase 5g: the Postgres trigger that stamped courses.title onto
+        ``certificates.archived_course_title`` before SET NULL was dropped
+        along with the title column. Verify the Python replacement in
+        ``permanently_delete_course`` writes the snapshot so a verify URL
+        for an issued cert still resolves a title after the course is gone.
+        """
+        from app.models.certificate import Certificate
+
+        course = _seed_course_direct(db, course_id="snap-test", title="Snapshot Me", deleted=True)
+        cert = Certificate(user_id=STUDENT_ID, course_id=course.id, status="issued")
+        db.add(cert)
+        db.commit()
+        cert_id = cert.id
+
+        resp = client.delete(f"{COURSES_PREFIX}/snap-test/permanent")
+        assert resp.status_code == 204
+        db.expire_all()
+
+        survivor = db.query(Certificate).filter(Certificate.id == cert_id).first()
+        assert survivor is not None
+        assert survivor.archived_course_title == "Snapshot Me"
+        assert survivor.course_id is None  # ON DELETE SET NULL fired
+
     def test_anon_cannot_access_trash(self, anon_client: TestClient):
         resp = anon_client.get(f"{COURSES_PREFIX}/my/trash")
         assert resp.status_code in (401, 403)

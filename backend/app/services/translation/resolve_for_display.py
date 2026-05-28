@@ -58,6 +58,44 @@ def should_apply_course_translation_overlay(*, course: Course, current_user: Use
     return not is_owner
 
 
+def fetch_course_titles_by_id(
+    db: Session,
+    course_ids: list[str],
+    *,
+    display_locale: LocaleCode,
+) -> dict[str, str]:
+    """Return ``{course_id -> course title}`` resolved against
+    ``content_versions`` with per-course source_locale fallback.
+
+    One bulk query per source_locale group; the caller's display_locale
+    is the preferred read tier, then the course's own ``source_locale``,
+    then any-locale. Empty when no course_ids supplied.
+
+    Used by every endpoint that needs to label a course in its title
+    column without paying the cost of loading the full Course ORM tree
+    + populate_spine_texts.
+    """
+    if not course_ids:
+        return {}
+    rows = db.query(Course.id, Course.source_locale).filter(Course.id.in_(course_ids)).all()
+    by_src: dict[str, list[str]] = {}
+    for cid, src in rows:
+        by_src.setdefault(normalize_locale(src), []).append(str(cid))
+    out: dict[str, str] = {}
+    for src_locale, ids in by_src.items():
+        texts = fetch_cv_entity_texts_with_fallback(
+            db,
+            entity_type="course",
+            entity_ids=ids,
+            fields=["title"],
+            display_locale=display_locale,
+            source_locale=src_locale,
+        )
+        for cid in ids:
+            out[cid] = texts.get((cid, "title")) or ""
+    return out
+
+
 def batch_fetch_course_translations(
     db: Session,
     *,
@@ -133,14 +171,6 @@ def build_localized_course_summary(
     display_locale: LocaleCode,
 ) -> CourseSummary:
     return _build_localized_course(CourseSummary, course, overlay, display_locale)
-
-
-def build_localized_course_response(
-    course: Course,
-    overlay: dict[tuple[str, str], str],
-    display_locale: LocaleCode,
-) -> CourseResponse:
-    return _build_localized_course(CourseResponse, course, overlay, display_locale)
 
 
 def populate_spine_texts(
@@ -879,11 +909,11 @@ def localize_course_event_rows(
 
 __all__ = [
     "batch_fetch_course_translations",
-    "build_localized_course_response",
     "build_localized_course_response_with_tree",
     "build_localized_course_summary",
     "build_localized_module_response",
     "build_localized_quiz_student_response",
+    "fetch_course_titles_by_id",
     "fetch_overlay_triples_bulk",
     "get_course_source_locale_for_chapter",
     "is_chapter_course_owner_or_admin",

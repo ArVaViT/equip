@@ -116,7 +116,6 @@ def published_course(db: Session, teacher) -> Course:
 def test_reconcile_orphan_announcement_is_noop(db: Session, teacher):
     """An announcement with no ``course_id`` has no source locale to
     translate from. Should silently no-op, not raise."""
-    # Phase 5e5: title + content columns dropped; use the helper.
     from ._cv_helpers import make_announcement_with_text
 
     ann = make_announcement_with_text(db, title="Orphan", content="No course", course_id=None, created_by=teacher.id)
@@ -133,8 +132,6 @@ def test_reconcile_event_with_empty_description_skips_that_field(
     reconcile the non-empty fields, not skip the whole entity."""
     from datetime import UTC, datetime
 
-    # Phase 5e4: title + description columns dropped; reconcile pulls
-    # from cv now. Use the helper to seed the source rows.
     from ._cv_helpers import make_course_event_with_text
 
     ev = make_course_event_with_text(

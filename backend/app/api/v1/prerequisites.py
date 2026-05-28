@@ -8,6 +8,7 @@ from app.models.course import Course, CourseStatus
 from app.models.prerequisite import CoursePrerequisite
 from app.models.user import User, UserRole
 from app.schemas.locale import LocaleCode, normalize_locale
+from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 
 router = APIRouter(prefix="/prerequisites", tags=["prerequisites"])
 
@@ -28,35 +29,16 @@ def _localized_title_map(
     *,
     display_locale: LocaleCode,
 ) -> dict[str, str]:
-    """Return ``{course_id -> course title in display_locale}`` for live
-    courses, falling back to the source title when no translation row
-    exists. Uses the same overlay machinery as the catalog endpoint so
-    behaviour stays identical to ``GET /courses``.
+    """Return ``{course_id -> live-course title}`` resolved against cv.
+
+    Live-only: dropped (``deleted_at IS NOT NULL``) courses are excluded
+    so a draft-prereq pointing at a trashed course gives a null label
+    instead of a stale title.
     """
     if not course_ids:
         return {}
-    # Phase 5g: courses.title column dropped — resolve from cv directly.
-    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
-
-    rows = (
-        db.query(Course.id, Course.source_locale).filter(Course.id.in_(course_ids), Course.deleted_at.is_(None)).all()
-    )
-    out: dict[str, str] = {}
-    by_src: dict[str, list[str]] = {}
-    for cid, src in rows:
-        by_src.setdefault(normalize_locale(src), []).append(str(cid))
-    for src_locale, ids in by_src.items():
-        texts = fetch_cv_entity_texts_with_fallback(
-            db,
-            entity_type="course",
-            entity_ids=ids,
-            fields=["title"],
-            display_locale=display_locale,
-            source_locale=src_locale,
-        )
-        for cid in ids:
-            out[cid] = texts.get((cid, "title")) or ""
-    return out
+    live_ids = [cid for (cid,) in db.query(Course.id).filter(Course.id.in_(course_ids), Course.deleted_at.is_(None))]
+    return fetch_course_titles_by_id(db, live_ids, display_locale=display_locale)
 
 
 @router.get("/course/{course_id}", response_model=list[PrerequisiteResponse])

@@ -135,7 +135,6 @@ def get_quiz_detail(
     if not quiz:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
     verify_quiz_owner(db, quiz, teacher.id)
-    # Phase 5f: text columns dropped — build response from cv.
     return build_quiz_response_from_cv(
         db, quiz, source_locale=normalize_locale(_course_source_locale_for_chapter(db, quiz.chapter_id))
     )
@@ -153,7 +152,6 @@ def create_quiz(
         max_attempts = 1
 
     quiz_id_val = uuid.uuid4()
-    # Phase 5f: title + description live in cv; only structural fields on the row.
     quiz = Quiz(
         id=quiz_id_val,
         chapter_id=data.chapter_id,
@@ -192,7 +190,6 @@ def create_quiz(
         db,
         entity_type="quiz",
         entity_id=str(quiz.id),
-        fields=_TRANSLATABLE_QUIZ_FIELDS,
         fallback_locale=fallback_locale,
         authored_by=teacher.id,
         texts={"title": data.title, "description": data.description},
@@ -202,7 +199,6 @@ def create_quiz(
             db,
             entity_type="quiz_question",
             entity_id=str(question.id),
-            fields=_TRANSLATABLE_QUESTION_FIELDS,
             fallback_locale=fallback_locale,
             authored_by=teacher.id,
             texts={"question_text": q_text},
@@ -212,7 +208,6 @@ def create_quiz(
                 db,
                 entity_type="quiz_option",
                 entity_id=str(opt.id),
-                fields=_TRANSLATABLE_OPTION_FIELDS,
                 fallback_locale=fallback_locale,
                 authored_by=teacher.id,
                 texts={"option_text": o_text},
@@ -263,7 +258,6 @@ def update_quiz(
             db,
             entity_type="quiz",
             entity_id=str(quiz.id),
-            fields=_TRANSLATABLE_QUIZ_FIELDS,
             fallback_locale=source_locale,
             authored_by=teacher.id,
             only_fields=set(text_patch.keys()),

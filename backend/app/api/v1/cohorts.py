@@ -143,7 +143,6 @@ def _serialize_many(db: Session, cohorts: list[Cohort]) -> list[CohortResponse]:
         .group_by(Enrollment.cohort_id)
     }
 
-    # Phase 5e1: cohort.name column dropped; pull name from cv.
     names_by_cohort = _fetch_cohort_names(db, cohort_ids)
 
     out: list[CohortResponse] = []
@@ -221,7 +220,6 @@ def create_cohort(
     """Create an empty cohort. Courses and students attach via the
     separate junction endpoints — keeps each step independently
     auditable."""
-    # Phase 5e1: cohorts.name column dropped; name lives in cv only.
     cohort = Cohort(
         start_date=data.start_date,
         end_date=data.end_date,
@@ -368,7 +366,6 @@ def complete_cohort(
         "complete",
         "cohort",
         str(cohort.id),
-        # Phase 5e1: name lives in cv.
         details={"name": _fetch_cohort_names(db, [cohort.id]).get(str(cohort.id), "")},
         request=request,
     )

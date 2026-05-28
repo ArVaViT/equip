@@ -58,7 +58,6 @@ def _dual_write_announcement(
         db,
         entity_type="announcement",
         entity_id=str(announcement.id),
-        fields=_TRANSLATABLE_ANNOUNCEMENT_FIELDS,
         fallback_locale=fallback,
         authored_by=teacher.id,
         only_fields=only_fields,

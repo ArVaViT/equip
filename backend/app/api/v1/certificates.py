@@ -13,10 +13,7 @@ from app.models.user import User
 from app.schemas.certificate import CertificateResponse, CertificateVerifyResponse
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services import certificate_service
-from app.services.translation.resolve_for_display import (
-    fetch_overlay_triples_bulk,
-    pick_overlay_value,
-)
+from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 
 router = APIRouter(prefix="/certificates", tags=["certificates"])
 
@@ -34,53 +31,12 @@ def _localize_cert_responses(
     if not certs:
         return []
     course_ids = sorted({str(c.course_id) for c in certs if c.course_id})
-    if not course_ids:
-        return [CertificateResponse.model_validate(c, from_attributes=True) for c in certs]
-    # Phase 5g: courses.title column dropped — fetch source titles from cv.
-    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
-
-    course_rows = db.query(Course.id, Course.source_locale).filter(Course.id.in_(course_ids)).all()
-    title_lookups: dict[str, str] = {}
-    rows_by_src: dict[str, list[str]] = {}
-    for cid, src in course_rows:
-        rows_by_src.setdefault(normalize_locale(src), []).append(str(cid))
-    for src_locale, ids in rows_by_src.items():
-        texts = fetch_cv_entity_texts_with_fallback(
-            db,
-            entity_type="course",
-            entity_ids=ids,
-            fields=["title"],
-            display_locale=src_locale,
-            source_locale=src_locale,
-        )
-        for cid in ids:
-            title_lookups[cid] = texts.get((cid, "title")) or ""
-    course_meta: dict[str, tuple[str, LocaleCode]] = {
-        str(cid): (title_lookups.get(str(cid), ""), normalize_locale(src)) for cid, src in course_rows
-    }
-    specs = [("course", cid, "title") for cid in course_meta]
-    overlay = fetch_overlay_triples_bulk(db, specs, display_locale)
+    title_by_course = fetch_course_titles_by_id(db, course_ids, display_locale=display_locale)
     out: list[CertificateResponse] = []
     for cert in certs:
         base = CertificateResponse.model_validate(cert, from_attributes=True)
-        meta = course_meta.get(str(cert.course_id))
-        if meta is None:
-            out.append(base)
-            continue
-        source_title, source_locale = meta
-        title = (
-            pick_overlay_value(
-                overlay,
-                "course",
-                str(cert.course_id),
-                "title",
-                source_title,
-                source_locale=source_locale,
-                display_locale=display_locale,
-            )
-            or source_title
-        )
-        out.append(base.model_copy(update={"course_title": title}))
+        title = title_by_course.get(str(cert.course_id)) if cert.course_id else None
+        out.append(base.model_copy(update={"course_title": title}) if title else base)
     return out
 
 
@@ -223,26 +179,9 @@ def _enrich_pending_certs(
             db.query(User.id, User.full_name, User.email).filter(User.id.in_(student_ids | approver_ids)).all()
         ):
             user_meta[str(uid)] = (full_name, email)
-    # Phase 5g: fetch course titles from cv.
-    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
-
-    course_titles: dict[str, str] = {}
-    if course_ids:
-        rows = db.query(Course.id, Course.source_locale).filter(Course.id.in_(list(course_ids))).all()
-        by_src: dict[str, list[str]] = {}
-        for cid, src in rows:
-            by_src.setdefault(normalize_locale(src), []).append(str(cid))
-        for src_locale, ids in by_src.items():
-            texts = fetch_cv_entity_texts_with_fallback(
-                db,
-                entity_type="course",
-                entity_ids=ids,
-                fields=["title"],
-                display_locale=src_locale,
-                source_locale=src_locale,
-            )
-            for cid in ids:
-                course_titles[cid] = texts.get((cid, "title")) or ""
+    # Pending-cert dashboard reads source-language titles for the moderator
+    # view (display==source). `display_locale="en"` because admins are EN.
+    course_titles = fetch_course_titles_by_id(db, sorted(course_ids), display_locale="en")
 
     out: list[CertificateResponse] = []
     for cert in certs:
