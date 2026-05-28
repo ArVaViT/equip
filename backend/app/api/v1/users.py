@@ -75,7 +75,7 @@ def get_my_courses(
             continue
         c = e.course
         if should_apply_course_translation_overlay(course=c, current_user=current_user):
-            summary = build_localized_course_summary(c, overlay, display_locale, db=db)
+            summary = build_localized_course_summary(c, overlay, display_locale)
         else:
             summary = CourseSummary.model_validate(c, from_attributes=True)
         base = EnrollmentSummaryResponse.model_validate(e, from_attributes=True)
