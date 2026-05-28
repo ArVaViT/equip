@@ -51,6 +51,9 @@ would otherwise dominate the mismatch counts.
 
 from __future__ import annotations
 
+import logging
+import os
+import random
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING
@@ -60,6 +63,36 @@ from app.services.translation.hash import _normalize as _normalize_whitespace
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
+
+# Sampling rate for the dual-read comparator, 0.0 to 1.0. The comparator
+# adds two single-row indexed SELECTs per call (active-at-display-locale
+# + any-active-for-field) so even at rate=1.0 the overhead is small,
+# but in prod we'll start at a low rate to confirm the wiring works
+# without risk of log spam.
+#
+# Read once at import time — the env var changes a deploy. Tests that
+# need to override use ``set_compare_sample_rate`` (a deliberate
+# escape hatch; production code must not call it).
+_DEFAULT_SAMPLE_RATE: float = float(os.environ.get("CONTENT_VERSIONS_COMPARE_RATE", "0.0") or "0.0")
+_sample_rate: float = max(0.0, min(1.0, _DEFAULT_SAMPLE_RATE))
+
+
+def set_compare_sample_rate(rate: float) -> None:
+    """Test-only: override the dual-read comparator sampling rate.
+
+    Production code reads ``CONTENT_VERSIONS_COMPARE_RATE`` from the
+    environment at import time. This hook exists so per-test fixtures
+    can flip the rate to 1.0 without monkey-patching the module
+    constant directly.
+    """
+    global _sample_rate
+    _sample_rate = max(0.0, min(1.0, rate))
+
+
+def get_compare_sample_rate() -> float:
+    return _sample_rate
 
 
 class MismatchReason(StrEnum):
@@ -418,3 +451,67 @@ def compare_resolved_text(
         new_status="ok",
         new_recorded_locale=new_recorded_locale,
     )
+
+
+def maybe_compare_and_log(
+    db: Session,
+    *,
+    entity_type: str,
+    entity_id: str,
+    field: str,
+    source_locale: str,
+    display_locale: str,
+    base_source_text: str | None,
+    legacy_text: str | None,
+    entity_deleted: bool = False,
+) -> None:
+    """Sample-gated wrapper around ``compare_resolved_text``.
+
+    Production read sites call THIS instead of the bare comparator.
+    Three responsibilities, in order:
+
+    1. Sampling — skip cleanly when the env-controlled sample rate
+       says this call shouldn't compare. Default rate is 0.0, so the
+       function is a no-op until ops flip the dial. Compared rows pay
+       two indexed SELECTs, so even at 1.0 the overhead is small, but
+       starting low gives us a safe rollout.
+    2. Comparator — call the pure ``compare_resolved_text`` with the
+       same args.
+    3. Logging — emit a structured ``warning`` for INTERESTING reasons.
+       Benign reasons (OK / no-backfill / fallback agreement / failed
+       status / locale at source) are silently dropped so we don't
+       drown the log feed during the unbackfilled-prod phase.
+
+    Wraps every call in a ``try / except`` because Phase 2's whole
+    contract is "comparison MUST NOT affect the user's response".
+    A bug in the comparator (or a flaky DB read) should never bubble
+    up to the read endpoint that called us.
+    """
+    if _sample_rate <= 0.0:
+        return
+    if _sample_rate < 1.0 and random.random() >= _sample_rate:
+        return
+    try:
+        report = compare_resolved_text(
+            db,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            field=field,
+            source_locale=source_locale,
+            display_locale=display_locale,
+            base_source_text=base_source_text,
+            legacy_text=legacy_text,
+            entity_deleted=entity_deleted,
+        )
+    except Exception:
+        # The comparator does only reads, but if a DB hiccup throws we
+        # silently swallow and move on. Phase 2 is observation, not a
+        # correctness path.
+        logger.exception("content_versions dual-read comparator raised; swallowing")
+        return
+    if report.is_interesting:
+        logger.warning(
+            "content_versions dual-read mismatch: %s",
+            report.reason.value,
+            extra=report.to_log_fields(),
+        )

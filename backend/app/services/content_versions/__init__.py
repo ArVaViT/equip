@@ -19,6 +19,9 @@ from app.services.content_versions.compare import (
     MismatchReason,
     MismatchReport,
     compare_resolved_text,
+    get_compare_sample_rate,
+    maybe_compare_and_log,
+    set_compare_sample_rate,
 )
 from app.services.content_versions.dual_write import dual_write_entity_content
 from app.services.content_versions.write import (
@@ -33,7 +36,10 @@ __all__ = [
     "MismatchReport",
     "compare_resolved_text",
     "dual_write_entity_content",
+    "get_compare_sample_rate",
+    "maybe_compare_and_log",
     "record_human_version",
     "record_mt_failure",
     "record_mt_version",
+    "set_compare_sample_rate",
 ]
