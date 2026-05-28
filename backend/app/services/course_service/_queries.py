@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from sqlalchemy import select
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.models.content_version import ContentVersion
@@ -70,15 +71,16 @@ def get_courses(
         .filter(Course.status == CourseStatus.PUBLISHED, Course.deleted_at.is_(None))
     )
     if search:
-        # Phase 5g: courses.search_vector (tsvector) + title + description
-        # columns dropped. Catalog search now runs against content_versions
-        # via ILIKE on the active title + description rows. Returns the
-        # set of course_ids that match in any locale; the outer query
-        # filters Course to that set.
+        # Catalog search runs ILIKE against ``content_versions`` text rows
+        # for course title + description (any locale matches → the course
+        # surfaces). The Phase 5g column drop removed the Postgres tsvector
+        # + GIN index that previously backed an FTS query here.
+        # TODO(@scale >= ~2000 courses): re-introduce FTS by materialising
+        # a tsvector column on ``content_versions``. ILIKE is fine while
+        # the active row count stays below ~50k (typical Bible-school
+        # catalog with handfuls of courses x {ru,en} x revision history).
         escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         term = f"%{escaped}%"
-        from sqlalchemy import select
-
         matching_ids_stmt = (
             select(ContentVersion.entity_id)
             .where(
