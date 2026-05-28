@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from typing import cast
 
 from sqlalchemy.orm import Session  # noqa: TC002
 
@@ -36,7 +35,6 @@ from app.schemas.course import ChapterResponse, CourseResponse, CourseSummary, M
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.schemas.quiz import QuizResponse, QuizStudentResponse
 from app.services.content_versions import (
-    fetch_cv_course_text_bulk,
     fetch_cv_entity_texts_with_fallback,
     fetch_cv_text_bulk,
 )
@@ -96,81 +94,44 @@ def fetch_course_titles_by_id(
     return out
 
 
-def batch_fetch_course_translations(
+def build_localized_course_summaries(
     db: Session,
-    *,
-    course_ids: list[str],
+    courses: list[Course],
     display_locale: LocaleCode,
-) -> dict[tuple[str, str], str]:
-    """Return a map ``(entity_id, field) -> text`` for ok course-level rows.
+) -> list[CourseSummary]:
+    """Build ``CourseSummary`` for every course, resolving title +
+    description against ``content_versions`` at the requested
+    ``display_locale`` with per-course source_locale fallback.
 
-    Sourced exclusively from ``content_versions`` (Phase 4 made cv the
-    primary read store; Phase 5a removed the legacy fallback branch).
+    One bulk cv read covers every course (grouped by source_locale).
+    Caller doesn't have to pre-populate spine texts — this function
+    drives its own hydration.
     """
-    return fetch_cv_course_text_bulk(db, course_ids=course_ids, display_locale=display_locale)
-
-
-def pick_localized_text(
-    course: Course,
-    field: str,
-    base: str,
-    overlay: dict[tuple[str, str], str],
-    display_locale: LocaleCode,
-) -> str:
-    key = (course.id, field)
-    if key in overlay:
-        return overlay[key]
-    if normalize_locale(course.source_locale) == display_locale:
-        return base
-    return overlay.get(key, base)
-
-
-def _localize_optional_description(
-    course: Course,
-    base: str | None,
-    overlay: dict[tuple[str, str], str],
-    display_locale: LocaleCode,
-) -> str | None:
-    dkey = (course.id, "description")
-    if dkey in overlay:
-        return overlay[dkey]
-    if base is not None:
-        return pick_localized_text(course, "description", base, overlay, display_locale)
-    if normalize_locale(course.source_locale) == display_locale:
-        return None
-    return overlay.get(dkey)
-
-
-def _build_localized_course[T: CourseSummary | CourseResponse](
-    schema_cls: type[T],
-    course: Course,
-    overlay: dict[tuple[str, str], str],
-    display_locale: LocaleCode,
-) -> T:
-    """Shared body for ``build_localized_course_summary`` /
-    ``_response``. The two were byte-for-byte identical except for the
-    return-type / ``model_validate`` target — this collapses them.
-
-    Phase 5g: ``course.title`` / ``course.description`` columns dropped.
-    Read path callers MUST call ``populate_spine_texts`` (or its bulk
-    cousin) on the course before invoking this — it sets ``.title`` and
-    ``.description`` as runtime attributes from cv, so the rest of the
-    serialization pipeline keeps working unchanged.
-    """
-    title = pick_localized_text(course, "title", course.title, overlay, display_locale)
-    desc = _localize_optional_description(course, course.description, overlay, display_locale)
-    base = schema_cls.model_validate(course, from_attributes=True)
-    if title == base.title and desc == base.description:
-        return cast("T", base)
-    return cast("T", base.model_copy(update={"title": title, "description": desc}))
-
-
-def build_localized_course_summary(
-    course: Course,
-    overlay: dict[tuple[str, str], str],
-    display_locale: LocaleCode,
-) -> CourseSummary:
-    return _build_localized_course(CourseSummary, course, overlay, display_locale)
+    if not courses:
+        return []
+    by_src: dict[str, list[str]] = {}
+    for c in courses:
+        by_src.setdefault(normalize_locale(c.source_locale), []).append(c.id)
+    texts: dict[tuple[str, str], str | None] = {}
+    for src_locale, ids in by_src.items():
+        texts.update(
+            fetch_cv_entity_texts_with_fallback(
+                db,
+                entity_type="course",
+                entity_ids=ids,
+                fields=["title", "description"],
+                display_locale=display_locale,
+                source_locale=src_locale,
+            )
+        )
+    out: list[CourseSummary] = []
+    for c in courses:
+        # Set runtime attrs so ``model_validate(course, from_attributes=True)``
+        # picks them up via Pydantic's attribute reader.
+        c.title = texts.get((c.id, "title")) or ""
+        c.description = texts.get((c.id, "description"))
+        out.append(CourseSummary.model_validate(c, from_attributes=True))
+    return out
 
 
 def populate_spine_texts(
@@ -930,9 +891,8 @@ def localize_course_event_rows(
 
 
 __all__ = [
-    "batch_fetch_course_translations",
     "build_localized_course_response_with_tree",
-    "build_localized_course_summary",
+    "build_localized_course_summaries",
     "build_localized_module_response",
     "build_localized_quiz_student_response",
     "fetch_course_titles_by_id",

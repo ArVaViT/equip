@@ -9,7 +9,6 @@ all funnel through these helpers.
 
 from app.services.content_versions.dual_write import dual_write_entity_content
 from app.services.content_versions.read import (
-    fetch_cv_course_text_bulk,
     fetch_cv_entity_texts_with_fallback,
     fetch_cv_text_bulk,
 )
@@ -21,7 +20,6 @@ from app.services.content_versions.write import (
 
 __all__ = [
     "dual_write_entity_content",
-    "fetch_cv_course_text_bulk",
     "fetch_cv_entity_texts_with_fallback",
     "fetch_cv_text_bulk",
     "record_human_version",
