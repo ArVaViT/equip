@@ -1,5 +1,23 @@
+import i18n from "@/i18n/config"
+
 const DEFAULT_TTL = 5 * 60 * 1000
 const MAX_ENTRIES = 200
+
+/**
+ * Translatable content read through the API depends on the current
+ * UI locale (Accept-Language). A cache key that's not scoped to the
+ * locale lets a user who switches RU → EN read the cached RU payload
+ * for up to the cache TTL (3 minutes for course details). Suffixing
+ * every key with the current locale keeps the two views in lockstep:
+ * switching the language naturally misses the cache and refetches.
+ *
+ * Lives here (not at each call site) so existing service code stays
+ * unchanged and so any future cache user inherits the same guarantee.
+ */
+function localeScoped(key: string): string {
+  const locale = i18n.language || "ru"
+  return `${key}::${locale}`
+}
 
 /**
  * Named TTLs used by service caches. Picking from this menu keeps the
@@ -46,25 +64,38 @@ function evictIfNeeded(): void {
 }
 
 export function cacheGet<T = unknown>(key: string): T | undefined {
-  const entry = store.get(key)
+  const scoped = localeScoped(key)
+  const entry = store.get(scoped)
   if (!entry) return undefined
   if (Date.now() > entry.expiresAt) {
-    store.delete(key)
+    store.delete(scoped)
     return undefined
   }
   return entry.value as T
 }
 
 export function cacheSet<T = unknown>(key: string, value: T, ttlMs: number = DEFAULT_TTL): void {
-  store.set(key, { value, expiresAt: Date.now() + ttlMs })
+  store.set(localeScoped(key), { value, expiresAt: Date.now() + ttlMs })
   evictIfNeeded()
 }
 
 export function cacheInvalidate(key: string): void {
-  store.delete(key)
+  // Invalidate the key across every locale variant — a write in one
+  // locale must clear the cached overlay in the other too. Cheap: the
+  // store is bounded at MAX_ENTRIES.
+  const tail = `::`
+  for (const stored of store.keys()) {
+    const sepIdx = stored.lastIndexOf(tail)
+    if (sepIdx > 0 && stored.slice(0, sepIdx) === key) {
+      store.delete(stored)
+    }
+  }
 }
 
 export function cacheInvalidatePrefix(prefix: string): void {
+  // Prefix invalidation must also span locale variants. Because we
+  // suffix with ``::<locale>``, a substring match against ``prefix``
+  // is still sound — the locale tail comes after the original key.
   for (const key of store.keys()) {
     if (key.startsWith(prefix)) store.delete(key)
   }

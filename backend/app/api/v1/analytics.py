@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,7 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 )
 def get_course_analytics(
     course_id: str,
+    response: Response,
     skip: int = Query(0, ge=0),
     limit: int = Query(500, ge=1, le=2000),
     teacher: User = Depends(require_teacher),
@@ -39,6 +40,9 @@ def get_course_analytics(
     course = verify_course_owner(db, course_id, teacher)
     # Phase 5g: courses.title moved to cv — hydrate before serialising.
     populate_spine_texts(db, [course])
+    # Course title is locale-resolved via populate_spine_texts; downstream
+    # caches must not conflate the EN and RU variants of the same payload.
+    response.headers["Vary"] = "Accept-Language"
 
     # Aggregates in one round-trip instead of loading everything into Python.
     agg = (
