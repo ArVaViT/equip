@@ -32,6 +32,19 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+@router.get("/_diag/translation-status")
+def translation_status() -> dict:
+    """Anonymous diagnostic: is the translation provider configured?
+
+    Returns ``{"enabled": true/false, "provider": "gemini"}``. Doesn't
+    expose the API key or any other secrets — only the boolean result of
+    the env-var check that gates every translation entry point. Used to
+    confirm prod has the env wired correctly after a deploy without
+    having to authenticate as a teacher and POST against a real course.
+    """
+    return {"enabled": is_translation_enabled(), "provider": "gemini"}
+
+
 @router.post("/{course_id}/translate", response_model=CourseTranslationResponse)
 def trigger_course_translation(
     course_id: str,
