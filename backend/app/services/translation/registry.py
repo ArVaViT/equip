@@ -49,7 +49,7 @@ if TYPE_CHECKING:
 
     from sqlalchemy.orm import Session
 
-    from app.models.content_translation import TranslationField
+    from app.models.content_version import ContentVersionField as TranslationField
     from app.schemas.locale import LocaleCode
     from app.services.translation.protocol import (
         ContentKind,

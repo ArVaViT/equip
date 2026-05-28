@@ -6,7 +6,6 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models.chapter_block import ChapterBlock
-from app.models.content_translation import ContentTranslation
 from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
 from app.models.quiz import Quiz, QuizAttempt, QuizOption, QuizQuestion
@@ -194,17 +193,18 @@ def _seed_block_with_en_translation(db: Session):
     )
     db.add(block)
     db.flush()
-    db.add(
-        ContentTranslation(
-            entity_type="chapter_block",
-            entity_id=str(block.id),
-            field="content",
-            locale="en",
-            text="<p>English content</p>",
-            source_hash="bh1",
-            status="ok",
-            origin="mt",
-        )
+    from app.services.content_versions.write import record_mt_version
+
+    # Phase 5d: cv is the only translation store.
+    record_mt_version(
+        db,
+        entity_type="chapter_block",
+        entity_id=str(block.id),
+        field="content",
+        locale="en",
+        text="<p>English content</p>",
+        source_locale="ru",
+        source_hash="bh1",
     )
     db.commit()
     return block
@@ -564,29 +564,28 @@ def _seed_quiz_with_en_translations(db: Session):
     quiz.description = "Описание"
     q1.question_text = "Вопрос 1"
     q2.question_text = "Вопрос 2"
-    db.add(
-        ContentTranslation(
-            entity_type="quiz",
-            entity_id=str(quiz.id),
-            field="title",
-            locale="en",
-            text="EN quiz title",
-            source_hash="qh1",
-            status="ok",
-            origin="mt",
-        )
+    from app.services.content_versions.write import record_mt_version
+
+    # Phase 5d: cv is the only translation store.
+    record_mt_version(
+        db,
+        entity_type="quiz",
+        entity_id=str(quiz.id),
+        field="title",
+        locale="en",
+        text="EN quiz title",
+        source_locale="ru",
+        source_hash="qh1",
     )
-    db.add(
-        ContentTranslation(
-            entity_type="quiz_question",
-            entity_id=str(q1.id),
-            field="question_text",
-            locale="en",
-            text="EN question 1",
-            source_hash="qh2",
-            status="ok",
-            origin="mt",
-        )
+    record_mt_version(
+        db,
+        entity_type="quiz_question",
+        entity_id=str(q1.id),
+        field="question_text",
+        locale="en",
+        text="EN question 1",
+        source_locale="ru",
+        source_hash="qh2",
     )
     db.commit()
     return quiz, q1, q2

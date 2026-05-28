@@ -1,0 +1,21 @@
+-- =====================================================================
+-- Phase 5d — drop the legacy ``content_translations`` table.
+--
+-- The table was the original MT overlay store, populated by the
+-- translation orchestrator and read by the resolve helpers. As of
+-- Phase 5a (cv-primary read), 5b (deleted comparator), 5c (deleted
+-- MT-pipeline writes), the table is read-nowhere AND write-nowhere.
+-- Safe to drop.
+--
+-- Irreversibility: the data is gone after this migration. Rollback
+-- requires a Supabase PITR restore. A logical dump should be taken
+-- pre-merge (``pg_dump --table=content_translations``) and stored in
+-- cold storage for the ~7-day PITR retention window.
+--
+-- Cascade behaviour: ``content_translations`` has no inbound FKs from
+-- other tables, so the DROP touches only the table itself + its own
+-- indexes + its row-security policies (if any). The 541 prod rows
+-- (incl. 12 orphans from deleted [SMOKE] test courses) all vanish.
+-- =====================================================================
+
+DROP TABLE IF EXISTS content_translations CASCADE;

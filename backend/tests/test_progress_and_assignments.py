@@ -143,7 +143,7 @@ class TestListChapterAssignmentsSourceParam:
     teacher drafts) never leaks to a student."""
 
     def _seed_with_translation(self, db: Session, chapter_id: str) -> str:
-        from app.models.content_translation import ContentTranslation
+        from app.services.content_versions.write import record_mt_version
 
         asg_id = uuid.uuid4()
         db.add(
@@ -155,17 +155,17 @@ class TestListChapterAssignmentsSourceParam:
                 max_score=10,
             )
         )
-        db.add(
-            ContentTranslation(
-                entity_type="assignment",
-                entity_id=str(asg_id),
-                field="title",
-                locale="en",
-                text="EN translation title",
-                source_hash="ah1",
-                status="ok",
-                origin="mt",
-            )
+        db.flush()
+        # Phase 5d: cv is the only translation store.
+        record_mt_version(
+            db,
+            entity_type="assignment",
+            entity_id=str(asg_id),
+            field="title",
+            locale="en",
+            text="EN translation title",
+            source_locale="ru",
+            source_hash="ah1",
         )
         db.commit()
         return str(asg_id)

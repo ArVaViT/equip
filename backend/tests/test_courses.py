@@ -4,7 +4,6 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.models.content_translation import ContentTranslation
 from app.models.course import Course
 from app.services.translation.orchestrator import OrchestratorReport
 from tests.conftest import TEACHER_ID
@@ -493,17 +492,18 @@ class TestCatalogLocalizedMetadata:
         assert mod_resp.status_code == 201, mod_resp.text
         mod_id = mod_resp.json()["id"]
 
-        db.add(
-            ContentTranslation(
-                entity_type="module",
-                entity_id=str(mod_id),
-                field="title",
-                locale="en",
-                text="Module title EN",
-                source_hash="m1",
-                status="ok",
-                origin="mt",
-            )
+        from app.services.content_versions.write import record_mt_version
+
+        # Phase 5d: cv is the only translation store.
+        record_mt_version(
+            db,
+            entity_type="module",
+            entity_id=str(mod_id),
+            field="title",
+            locale="en",
+            text="Module title EN",
+            source_locale="ru",
+            source_hash="m1",
         )
         db.commit()
 
