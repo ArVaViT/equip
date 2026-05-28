@@ -26,16 +26,37 @@ from fastapi import HTTPException, Request, status
 
 from app.models.certificate import Certificate
 from app.models.course import Course
-from app.models.user import UserRole
+from app.models.user import User, UserRole
+from app.schemas.locale import normalize_locale
 from app.services.audit_service import log_action
 from app.services.domain_access import assert_course_owner
 from app.services.notification_service import create_notification
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 
+
+# Phase 5v: backend-side i18n for cert notification text. See note on
+# the matching helpers in ``app/api/v1/announcements.py``.
+def _localize_cert_notification(locale: str, *, kind: str, course_title: str) -> tuple[str, str]:
+    if locale == "ru":
+        if kind == "approved":
+            return "Сертификат одобрен", f"Ваш сертификат за «{course_title}» одобрен!"
+        return "Сертификат отклонён", f"Ваша заявка на сертификат за «{course_title}» отклонена."
+    if kind == "approved":
+        return "Certificate Approved", f'Your certificate for "{course_title}" has been approved!'
+    return "Certificate Rejected", f'Your certificate request for "{course_title}" was rejected.'
+
+
+def _generic_course_fallback(locale: str) -> str:
+    return "ваш курс" if locale == "ru" else "your course"
+
+
+def _recipient_locale(db: Session, user_id: uuid.UUID | str) -> str:
+    raw = db.query(User.preferred_locale).filter(User.id == user_id).scalar()
+    return normalize_locale(raw)
+
+
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
-
-    from app.models.user import User
 
 
 def generate_certificate_number() -> str:
@@ -182,16 +203,23 @@ def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> 
 
     # Soft-deleted course is OK here — we still notify the student and issue
     # the cert since the course was live when approval started.
+    # Phase 5v: course title is resolved at the RECIPIENT's locale and the
+    # title/message strings come from the locale branch so a Russian
+    # student doesn't get English notification text.
     course = db.query(Course).filter(Course.id == cert.course_id, Course.deleted_at.is_(None)).first()
+    recipient_locale = normalize_locale(_recipient_locale(db, cert.user_id))
     course_title = (
-        fetch_course_titles_by_id(db, [course.id], display_locale="en").get(course.id) if course else None
-    ) or "a course"
+        fetch_course_titles_by_id(db, [course.id], display_locale=recipient_locale).get(course.id) if course else None
+    ) or _generic_course_fallback(recipient_locale)
+    notif_title, notif_message = _localize_cert_notification(
+        recipient_locale, kind="approved", course_title=course_title
+    )
     create_notification(
         db,
         user_id=cert.user_id,
         type="certificate_approved",
-        title="Certificate Approved",
-        message=f'Your certificate for "{course_title}" has been approved!',
+        title=notif_title,
+        message=notif_message,
         link="/certificates",
         metadata={"course_id": cert.course_id, "certificate_id": str(cert.id)},
     )
@@ -244,13 +272,20 @@ def reject(db: Session, cert_id: UUID, user: User, request: Request) -> Certific
 
     cert.status = "rejected"
 
-    course_title = fetch_course_titles_by_id(db, [course.id], display_locale="en").get(course.id) or "your course"
+    # Phase 5v: same locale-aware fan-out as the approval path.
+    recipient_locale = normalize_locale(_recipient_locale(db, cert.user_id))
+    course_title = fetch_course_titles_by_id(db, [course.id], display_locale=recipient_locale).get(
+        course.id
+    ) or _generic_course_fallback(recipient_locale)
+    notif_title, notif_message = _localize_cert_notification(
+        recipient_locale, kind="rejected", course_title=course_title
+    )
     create_notification(
         db,
         user_id=cert.user_id,
         type="certificate_rejected",
-        title="Certificate Rejected",
-        message=f'Your certificate request for "{course_title}" was rejected.',
+        title=notif_title,
+        message=notif_message,
         link="/certificates",
         metadata={"course_id": cert.course_id, "certificate_id": str(cert.id)},
     )
