@@ -104,6 +104,16 @@ def get_calendar_events(
         )
         .all()
     )
+    # Modules straddle multiple courses with potentially different
+    # source_locales; group + bulk-hydrate so each module's title /
+    # description land via cv.
+    from app.services.translation.resolve_for_display import populate_module_texts
+
+    modules_by_src: dict[LocaleCode, list[Module]] = {}
+    for m in modules:
+        modules_by_src.setdefault(course_source_locales.get(m.course_id, display_locale), []).append(m)
+    for src_locale, mods in modules_by_src.items():
+        populate_module_texts(db, mods, source_locale=src_locale)
     for m in modules:
         assert m.due_date is not None
         events.append(

@@ -178,7 +178,14 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
     The caller is responsible for permission gating; this function does
     no auth. It also assumes the caller eagerly loaded the modules
     (otherwise we'd run a fresh query for them here).
+
+    Hydrates ``course.title`` / ``course.description`` and each loaded
+    ``module.title`` from ``content_versions`` before running checks so
+    the rules can read them as plain attributes.
     """
+    from app.services.translation.resolve_for_display import populate_spine_texts
+
+    populate_spine_texts(db, [course])
     checks: list[ReadinessCheck] = []
 
     # ── Course-level checks (recommended / polish) ───────────────────

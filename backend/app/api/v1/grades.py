@@ -193,14 +193,20 @@ def export_grades_csv(
         )
 
     buf.seek(0)
+    # Phase 5g: course.title lives in cv now — fetch the source title for
+    # the filename. Empty string is fine; the ascii fallback covers it.
+    from app.services.translation.resolve_for_display import populate_spine_texts
+
+    populate_spine_texts(db, [course])
+    course_title = course.title or ""
     # ASCII-only fallback for the legacy ``filename=`` header. ``c.isalnum``
     # accepts non-ASCII code points (e.g. Cyrillic letters), which then break
     # starlette's latin-1 header encoding, so we gate on ASCII explicitly.
-    safe_title = "".join(c for c in course.title if c.isascii() and (c.isalnum() or c in " -_"))[:50].strip()
+    safe_title = "".join(c for c in course_title if c.isascii() and (c.isalnum() or c in " -_"))[:50].strip()
     if not safe_title:
         safe_title = str(course_id)[:8]
     ascii_filename = f"grades_{safe_title}.csv"
-    utf8_filename = quote(f"grades_{course.title[:50].strip()}.csv", safe="")
+    utf8_filename = quote(f"grades_{course_title[:50].strip()}.csv", safe="")
 
     return StreamingResponse(
         iter([buf.getvalue()]),

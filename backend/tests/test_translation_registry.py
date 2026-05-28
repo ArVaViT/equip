@@ -80,6 +80,8 @@ def test_registry_field_names_exist_on_models():
         "quiz",
         "quiz_question",
         "quiz_option",
+        "course",
+        "module",
     }
     for entity_type, reg in REGISTRY.items():
         if entity_type in cv_only_entities:

@@ -30,6 +30,7 @@ from app.models.user import UserRole
 from app.services.audit_service import log_action
 from app.services.domain_access import assert_course_owner
 from app.services.notification_service import create_notification
+from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -182,7 +183,9 @@ def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> 
     # Soft-deleted course is OK here — we still notify the student and issue
     # the cert since the course was live when approval started.
     course = db.query(Course).filter(Course.id == cert.course_id, Course.deleted_at.is_(None)).first()
-    course_title = course.title if course else "a course"
+    course_title = (
+        fetch_course_titles_by_id(db, [course.id], display_locale="en").get(course.id) if course else None
+    ) or "a course"
     create_notification(
         db,
         user_id=cert.user_id,
@@ -241,12 +244,13 @@ def reject(db: Session, cert_id: UUID, user: User, request: Request) -> Certific
 
     cert.status = "rejected"
 
+    course_title = fetch_course_titles_by_id(db, [course.id], display_locale="en").get(course.id) or "your course"
     create_notification(
         db,
         user_id=cert.user_id,
         type="certificate_rejected",
         title="Certificate Rejected",
-        message=f'Your certificate request for "{course.title}" was rejected.',
+        message=f'Your certificate request for "{course_title}" was rejected.',
         link="/certificates",
         metadata={"course_id": cert.course_id, "certificate_id": str(cert.id)},
     )

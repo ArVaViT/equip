@@ -22,6 +22,7 @@ from app.services.course_service import (
     update_course,
 )
 from app.services.translation.course_pipeline import translate_course_content
+from app.services.translation.resolve_for_display import populate_spine_texts
 
 from ._router import router
 
@@ -96,6 +97,11 @@ def update_existing_course(
         except Exception:
             logger.exception("Translation hook failed for course %s", course_id)
 
+    # Re-hydrate spine texts here: ``translate_course_content`` and the
+    # audit log writes both commit, expiring SQLAlchemy's attribute cache
+    # and re-loading modules as plain ORM instances with no runtime title.
+    # Without this, response serialisation fails Pydantic validation.
+    populate_spine_texts(db, [result])
     return result
 
 
