@@ -210,17 +210,31 @@ def populate_spine_texts(
             )
         )
     for c in courses:
-        c.title = course_texts.get((c.id, "title")) or ""
-        c.description = course_texts.get((c.id, "description"))
+        # Only overwrite an existing runtime value when cv actually has a
+        # row — keeps test fixtures that pre-attach title/description for
+        # entities they haven't seeded in cv from being silently wiped.
+        cv_title = course_texts.get((c.id, "title"))
+        if cv_title is not None:
+            c.title = cv_title
+        elif not hasattr(c, "title"):
+            c.title = ""
+        cv_desc = course_texts.get((c.id, "description"))
+        if cv_desc is not None:
+            c.description = cv_desc
+        elif not hasattr(c, "description"):
+            c.description = None
 
-    # ── modules (all modules across all courses, grouped by parent course's source_locale) ──
+    # ── modules (every module attached to every course, grouped by the
+    # parent course's source_locale so one bulk cv query covers each tier).
+    # ``c.modules`` triggers SA's lazy-load if the relationship hasn't been
+    # eager-fetched yet; the readiness service relies on that. ──
     modules_by_src: dict[str, list[Module]] = {}
     for c in courses:
-        loaded = getattr(c, "__dict__", {}).get("modules")
-        if not loaded:
+        mods = list(c.modules)
+        if not mods:
             continue
         src = normalize_locale(c.source_locale)
-        modules_by_src.setdefault(src, []).extend(loaded)
+        modules_by_src.setdefault(src, []).extend(mods)
     for src_locale, mods in modules_by_src.items():
         if not mods:
             continue
@@ -233,8 +247,16 @@ def populate_spine_texts(
             source_locale=src_locale,
         )
         for m in mods:
-            m.title = bulk.get((str(m.id), "title")) or ""
-            m.description = bulk.get((str(m.id), "description"))
+            cv_t = bulk.get((str(m.id), "title"))
+            if cv_t is not None:
+                m.title = cv_t
+            elif not hasattr(m, "title"):
+                m.title = ""
+            cv_d = bulk.get((str(m.id), "description"))
+            if cv_d is not None:
+                m.description = cv_d
+            elif not hasattr(m, "description"):
+                m.description = None
 
 
 def populate_module_texts(db: Session, modules: list[Module], *, source_locale: LocaleCode) -> None:
@@ -253,8 +275,16 @@ def populate_module_texts(db: Session, modules: list[Module], *, source_locale: 
         source_locale=source_locale,
     )
     for m in modules:
-        m.title = bulk.get((str(m.id), "title")) or ""
-        m.description = bulk.get((str(m.id), "description"))
+        cv_t = bulk.get((str(m.id), "title"))
+        if cv_t is not None:
+            m.title = cv_t
+        elif not hasattr(m, "title"):
+            m.title = ""
+        cv_d = bulk.get((str(m.id), "description"))
+        if cv_d is not None:
+            m.description = cv_d
+        elif not hasattr(m, "description"):
+            m.description = None
 
 
 def fetch_overlay_triples_bulk(

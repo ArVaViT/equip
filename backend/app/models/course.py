@@ -4,7 +4,6 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, func, text
-from sqlalchemy.event import listens_for
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -90,10 +89,6 @@ class Course(Base):
     # field. See supabase/migrations/...add_content_translations.
     source_locale: Mapped[str] = mapped_column(default="ru", server_default="ru")
 
-    # Phase 5g: search_vector column dropped along with title + description.
-    # Catalog search now runs against content_versions via ILIKE in the
-    # query layer; the FTS index + trigger are gone.
-
     # ``order_by`` guarantees deterministic ordering whenever the relationship is
     # accessed, including via ``joinedload`` in ``get_course``. Without it
     # Postgres returns rows in whatever order the query plan chose, which
@@ -106,17 +101,16 @@ class Course(Base):
     )
     enrollments: Mapped[list["Enrollment"]] = relationship(back_populates="course", cascade="all, delete-orphan")
 
-    # Phase 5g: ``title`` + ``description`` are runtime-only attributes
-    # populated either by ``__init__`` (write path) or by
-    # ``populate_spine_texts`` (read path). Class-level defaults ensure
-    # ``course.title`` / ``course.description`` never raise AttributeError
-    # even on a freshly-queried instance with no hydration step.
-    # No type annotation: ClassVar gets in the way of per-instance
-    # assignment (mypy), and a plain ``str`` annotation gets in the way
-    # of SQLAlchemy's declarative table builder. Untyped class-level
-    # defaults sidestep both: each instance can override via __dict__.
-    title = ""
-    description = None
+    # ``title`` and ``description`` live in ``content_versions`` (Phase 5g).
+    # Read paths attach the resolved text as runtime attributes via
+    # ``populate_spine_texts``; the ``__init__`` overload accepts the same
+    # kwargs so existing test fixtures and write paths keep their shape.
+    # Accessing ``course.title`` on an un-hydrated instance raises
+    # ``AttributeError`` — that's a feature, not a bug: it surfaces
+    # missing-hydration bugs at the call site instead of silently rendering
+    # an empty string into a response. Every route handler in
+    # ``app/api/v1`` either threads cv-aware response builders or invokes
+    # ``populate_spine_texts(db, [course])`` before serialising.
 
     def __init__(self, **kwargs):
         title = kwargs.pop("title", None)
@@ -158,13 +152,8 @@ class Module(Base):
         order_by="Chapter.order_index",
     )
 
-    # Phase 5g: runtime-only attributes — see Course.
-    # No type annotation: ClassVar gets in the way of per-instance
-    # assignment (mypy), and a plain ``str`` annotation gets in the way
-    # of SQLAlchemy's declarative table builder. Untyped class-level
-    # defaults sidestep both: each instance can override via __dict__.
-    title = ""
-    description = None
+    # See ``Course`` for the title/description contract: cv is the only
+    # store; un-hydrated access raises AttributeError on purpose.
 
     def __init__(self, **kwargs):
         title = kwargs.pop("title", None)
@@ -206,72 +195,3 @@ class Chapter(Base):
 
     def __repr__(self) -> str:
         return f"<Chapter id={self.id!r} title={self.title!r} module_id={self.module_id!r}>"
-
-
-# ---------------------------------------------------------------------------
-# Phase 5g: auto-hydrate Course / Module ``.title`` and ``.description``
-# from content_versions whenever an instance is loaded from the database.
-# This is N+1 per instance but it makes EVERY downstream consumer (route
-# handlers, services, tests, relationship lazy-loads) keep working without
-# scattering ``populate_spine_texts`` calls across the codebase.
-# Bulk paths (catalog list, course detail) still call
-# ``populate_spine_texts`` explicitly so they hit cv once for the whole
-# batch instead of N times.
-# ---------------------------------------------------------------------------
-
-
-def _lazy_populate_spine_text(target: "Course | Module", entity_type: str) -> None:
-    from sqlalchemy.orm import Session as SASession
-
-    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
-
-    session = SASession.object_session(target)
-    if session is None:
-        return
-    source = getattr(target, "source_locale", None) or "en"
-    texts = fetch_cv_entity_texts_with_fallback(
-        session,
-        entity_type=entity_type,
-        entity_ids=[str(target.id)],
-        fields=["title", "description"],
-        display_locale=source,
-        source_locale=source,
-    )
-    target.title = texts.get((str(target.id), "title")) or ""
-    target.description = texts.get((str(target.id), "description"))
-
-
-@listens_for(Course, "load")
-def _course_loaded(target: "Course", _context):
-    # Skip if hydration already populated the instance (e.g. via
-    # ``populate_spine_texts`` before this lazy-load fires).
-    if target.__dict__.get("title"):
-        return
-    _lazy_populate_spine_text(target, "course")
-
-
-@listens_for(Module, "load")
-def _module_loaded(target: "Module", _context):
-    if target.__dict__.get("title"):
-        return
-    # Modules need their parent course's source_locale; falling back to
-    # the module's own ``source_locale`` is not defined. Look up the
-    # parent on demand — cached because SA usually has it eager-loaded.
-    from sqlalchemy.orm import Session as SASession
-
-    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
-
-    session = SASession.object_session(target)
-    if session is None:
-        return
-    source = session.query(Course.source_locale).filter(Course.id == target.course_id).scalar() or "en"
-    texts = fetch_cv_entity_texts_with_fallback(
-        session,
-        entity_type="module",
-        entity_ids=[str(target.id)],
-        fields=["title", "description"],
-        display_locale=source,
-        source_locale=source,
-    )
-    target.title = texts.get((str(target.id), "title")) or ""
-    target.description = texts.get((str(target.id), "description"))

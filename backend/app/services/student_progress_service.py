@@ -19,15 +19,13 @@ from sqlalchemy import case, func
 from app.constants import GRADABLE_CHAPTER_TYPES
 from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
-from app.models.course import Chapter, Module
+from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
 from app.models.quiz import Quiz, QuizAttempt
 from app.models.user import User
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
-
-    from app.models.course import Course
 
 
 def _load_course_structure(
@@ -38,12 +36,18 @@ def _load_course_structure(
     Kept as a helper because both the aggregation pass and the per-student
     render pass need the same structural lookups.
     """
+    from app.schemas.locale import normalize_locale
+    from app.services.translation.resolve_for_display import populate_module_texts
+
     modules = (
         db.query(Module)
         .filter(Module.course_id == course_id, Module.deleted_at.is_(None))
         .order_by(Module.order_index)
         .all()
     )
+    if modules:
+        src = db.query(Course.source_locale).filter(Course.id == course_id).scalar() or "en"
+        populate_module_texts(db, modules, source_locale=normalize_locale(src))
     module_map = {m.id: {"id": m.id, "title": m.title, "order_index": m.order_index} for m in modules}
 
     chapters = (
@@ -240,6 +244,9 @@ def _load_completed_progress(db: Session, chapter_ids: list[str]) -> dict[str, d
 
 def build_course_student_progress(db: Session, course: Course, course_id: str) -> dict[str, Any]:
     """Return the full teacher-dashboard progress payload for a course."""
+    from app.services.translation.resolve_for_display import populate_spine_texts
+
+    populate_spine_texts(db, [course])
     chapters, module_map, chapter_title_map = _load_course_structure(db, course_id)
     chapter_ids = [c.id for c in chapters]
     gradable_chapter_ids = [c.id for c in chapters if c.chapter_type in GRADABLE_CHAPTER_TYPES]
