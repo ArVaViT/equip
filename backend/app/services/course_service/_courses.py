@@ -69,10 +69,10 @@ def create_course(
         description=data.description,
         fallback=source_locale,
     )
+    # Phase 5g: title + description columns dropped. Structural row only;
+    # texts go through dual_write via the explicit ``texts={...}`` dict.
     course = Course(
         id=str(uuid.uuid4()),
-        title=data.title,
-        description=data.description,
         image_url=data.image_url,
         created_by=user_id,
     )
@@ -84,54 +84,60 @@ def create_course(
         db,
         entity_type="course",
         entity_id=str(course.id),
-        entity=course,
         fields=_TRANSLATABLE_COURSE_FIELDS,
         fallback_locale=resolved_locale,
         authored_by=user_id,
+        texts={"title": data.title, "description": data.description},
     )
     db.commit()
     db.refresh(course)
+    # Hydrate runtime attrs so the caller's response serialization works.
+    course.title = data.title
+    course.description = data.description
     return course
 
 
 def update_course(db: Session, course: Course, data: CourseUpdate) -> Course:
     patch = data.model_dump(exclude_unset=True)
     previous_source_locale = course.source_locale
+    # Phase 5g: title + description live in cv. Pop them off the patch
+    # so they don't try to setattr on the (now-text-less) ORM row.
+    text_patch: dict[str, str | None] = {}
+    if "title" in patch:
+        text_patch["title"] = patch.pop("title")
+    if "description" in patch:
+        text_patch["description"] = patch.pop("description")
     for field, value in patch.items():
         setattr(course, field, value)
     # Re-detect the source locale ONLY when the patch actually touched
-    # title or description. A PATCH that just changes the cover image
-    # or the weights must not rewrite ``source_locale`` — the existing
-    # value is authoritative until the teacher rewrites the text.
-    if "title" in patch or "description" in patch:
+    # title or description.
+    if text_patch:
         detected = _resolve_source_locale(
-            title=course.title,
-            description=course.description,
+            title=text_patch.get("title"),
+            description=text_patch.get("description"),
             fallback=None,
         )
         if detected is not None:
             course.source_locale = detected
     db.flush()
-    # Dual-write to content_versions only for fields the caller actually
-    # touched — a PATCH that didn't include ``description`` mustn't
-    # supersede the existing description row.
-    dual_write_entity_content(
-        db,
-        entity_type="course",
-        entity_id=str(course.id),
-        entity=course,
-        fields=_TRANSLATABLE_COURSE_FIELDS,
-        fallback_locale=course.source_locale,
-        authored_by=course.created_by,
-        only_fields={f for f in _TRANSLATABLE_COURSE_FIELDS if f in patch},
-    )
+    if text_patch:
+        dual_write_entity_content(
+            db,
+            entity_type="course",
+            entity_id=str(course.id),
+            fields=_TRANSLATABLE_COURSE_FIELDS,
+            fallback_locale=course.source_locale,
+            authored_by=course.created_by,
+            only_fields=set(text_patch.keys()),
+            texts=text_patch,
+        )
     db.commit()
     db.refresh(course)
-    # Phase 5c: when the source locale flips, the orchestrator's next
-    # run naturally re-creates MT rows in the new direction via cv's
-    # supersession (record_mt_version sees mismatched source_hash and
-    # supersedes the stale rows). No explicit purge required — cv's
-    # supersession model is the invalidation mechanism.
+    # Hydrate runtime attrs from cv after the write so the caller's
+    # response serialization sees the new texts.
+    from app.services.translation.resolve_for_display import populate_spine_texts
+
+    populate_spine_texts(db, [course])
     _ = previous_source_locale  # kept for future locale-flip telemetry
     return course
 

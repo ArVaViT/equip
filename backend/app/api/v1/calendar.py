@@ -82,16 +82,31 @@ def get_calendar_events(
     # from content that has been removed from the catalog. We fetch title
     # AND source_locale in the same query (previously two separate fetches);
     # source_locale is needed below for the translation overlay.
+    # Phase 5g: courses.title column dropped — fetch titles from cv.
+    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+
     course_titles: dict[str, str] = {}
     course_source_locales: dict[str, LocaleCode] = {}
     course_rows = (
-        db.query(Course.id, Course.title, Course.source_locale)
+        db.query(Course.id, Course.source_locale)
         .filter(Course.id.in_(enrolled_course_ids), Course.deleted_at.is_(None))
         .all()
     )
-    for cid, ctitle, csrc in course_rows:
-        course_titles[cid] = ctitle
+    cids_by_src: dict[str, list[str]] = {}
+    for cid, csrc in course_rows:
         course_source_locales[cid] = normalize_locale(csrc)
+        cids_by_src.setdefault(normalize_locale(csrc), []).append(cid)
+    for src_locale, ids in cids_by_src.items():
+        texts = fetch_cv_entity_texts_with_fallback(
+            db,
+            entity_type="course",
+            entity_ids=ids,
+            fields=["title"],
+            display_locale=display_locale,
+            source_locale=src_locale,
+        )
+        for cid in ids:
+            course_titles[cid] = texts.get((cid, "title")) or ""
     enrolled_course_ids = list(course_titles.keys())
     if not enrolled_course_ids:
         return []

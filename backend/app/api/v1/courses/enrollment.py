@@ -173,4 +173,10 @@ def enroll_course(
         details={"course_id": course_id},
         request=request,
     )
+    # Phase 5g: hydrate the lazy-loaded course relationship so the
+    # response serializer sees title/description (no longer columns).
+    if enrollment.course is not None:
+        from app.services.translation.resolve_for_display import populate_spine_texts
+
+        populate_spine_texts(db, [enrollment.course])
     return enrollment

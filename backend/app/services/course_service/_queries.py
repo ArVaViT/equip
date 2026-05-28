@@ -3,16 +3,22 @@
 Every query uses the shared ``_COURSE_TREE`` loader to avoid the
 cartesian row explosion a chained ``joinedload`` would produce on
 large courses.
+
+Phase 5g: every getter that returns courses (or modules) hydrates their
+``.title`` / ``.description`` runtime attributes from
+``content_versions`` before returning, so downstream code that reads
+``course.title`` etc. keeps working unchanged after the column drop.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload, selectinload
 
+from app.models.content_version import ContentVersion
 from app.models.course import Chapter, Course, CourseStatus, Module
+from app.services.translation.resolve_for_display import populate_module_texts, populate_spine_texts
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -44,6 +50,13 @@ _COURSE_TREE: tuple = (
 _COURSE_LIST_TREE: tuple = (selectinload(Course.modules.and_(Module.deleted_at.is_(None))),)
 
 
+def _hydrate(db: Session, courses: list[Course]) -> list[Course]:
+    """Call ``populate_spine_texts`` and return the same list — convenience
+    so getters can ``return _hydrate(db, query.all())``."""
+    populate_spine_texts(db, courses)
+    return courses
+
+
 def get_courses(
     db: Session,
     *,
@@ -57,26 +70,38 @@ def get_courses(
         .filter(Course.status == CourseStatus.PUBLISHED, Course.deleted_at.is_(None))
     )
     if search:
-        ts_query = func.plainto_tsquery("russian", search)
-        ts_query_en = func.plainto_tsquery("english", search)
+        # Phase 5g: courses.search_vector (tsvector) + title + description
+        # columns dropped. Catalog search now runs against content_versions
+        # via ILIKE on the active title + description rows. Returns the
+        # set of course_ids that match in any locale; the outer query
+        # filters Course to that set.
         escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         term = f"%{escaped}%"
-        query = query.filter(
-            or_(
-                Course.search_vector.op("@@")(ts_query),
-                Course.search_vector.op("@@")(ts_query_en),
-                Course.title.ilike(term),
-                Course.description.ilike(term),
+        from sqlalchemy import select
+
+        matching_ids_stmt = (
+            select(ContentVersion.entity_id)
+            .where(
+                ContentVersion.entity_type == "course",
+                ContentVersion.field.in_(["title", "description"]),
+                ContentVersion.superseded_by.is_(None),
+                ContentVersion.status == "ok",
+                ContentVersion.text.ilike(term),
             )
+            .distinct()
         )
-    return query.order_by(Course.created_at.desc()).offset(skip).limit(limit).all()
+        query = query.filter(Course.id.in_(matching_ids_stmt))
+    return _hydrate(db, query.order_by(Course.created_at.desc()).offset(skip).limit(limit).all())
 
 
 def get_course(db: Session, course_id: str, include_deleted: bool = False) -> Course | None:
     query = db.query(Course).options(*_COURSE_TREE).filter(Course.id == course_id)
     if not include_deleted:
         query = query.filter(Course.deleted_at.is_(None))
-    return query.first()
+    course = query.first()
+    if course is not None:
+        _hydrate(db, [course])
+    return course
 
 
 def get_teacher_courses(
@@ -99,11 +124,11 @@ def get_teacher_courses(
         query = query.offset(skip)
     if limit is not None:
         query = query.limit(limit)
-    return query.all()
+    return _hydrate(db, query.all())
 
 
 def get_module(db: Session, course_id: str, module_id: str) -> Module | None:
-    return (
+    module = (
         db.query(Module)
         .options(joinedload(Module.chapters.and_(Chapter.deleted_at.is_(None))))
         .filter(
@@ -113,6 +138,13 @@ def get_module(db: Session, course_id: str, module_id: str) -> Module | None:
         )
         .first()
     )
+    if module is not None:
+        # Single module: look up the parent course's source_locale for fallback.
+        from app.schemas.locale import normalize_locale
+
+        src = db.query(Course.source_locale).filter(Course.id == course_id).scalar() or "en"
+        populate_module_texts(db, [module], source_locale=normalize_locale(src))
+    return module
 
 
 def get_chapter(db: Session, course_id: str, module_id: str, chapter_id: str) -> Chapter | None:

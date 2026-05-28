@@ -46,11 +46,11 @@ def create_module(db: Session, course_id: str, data: ModuleCreate) -> Module:
     # Clients that need a specific slot (e.g. drag-and-drop reorder) still
     # pass their explicit index and control the full layout themselves.
     order_index = data.order_index if data.order_index else _next_module_order(db, course_id)
+    # Phase 5g: title + description columns dropped. Structural row only;
+    # texts routed via the ``texts={...}`` dict variant of dual_write.
     module = Module(
         id=str(uuid.uuid4()),
         course_id=course_id,
-        title=data.title,
-        description=data.description,
         order_index=order_index,
         due_date=data.due_date,
     )
@@ -60,31 +60,49 @@ def create_module(db: Session, course_id: str, data: ModuleCreate) -> Module:
         db,
         entity_type="module",
         entity_id=str(module.id),
-        entity=module,
         fields=_TRANSLATABLE_MODULE_FIELDS,
         fallback_locale=_course_source_locale(db, course_id),
+        texts={"title": data.title, "description": data.description},
     )
     db.commit()
     db.refresh(module)
+    # Hydrate runtime attrs for response serialization.
+    module.title = data.title
+    module.description = data.description
     return module
 
 
 def update_module(db: Session, module: Module, data: ModuleUpdate) -> Module:
     patch = data.model_dump(exclude_unset=True)
+    # Phase 5g: text fields live in cv. Pop them off the patch before
+    # setattr-loop on the (now-text-less) ORM row.
+    text_patch: dict[str, str | None] = {}
+    if "title" in patch:
+        text_patch["title"] = patch.pop("title")
+    if "description" in patch:
+        text_patch["description"] = patch.pop("description")
     for field, value in patch.items():
         setattr(module, field, value)
     db.flush()
-    dual_write_entity_content(
-        db,
-        entity_type="module",
-        entity_id=str(module.id),
-        entity=module,
-        fields=_TRANSLATABLE_MODULE_FIELDS,
-        fallback_locale=_course_source_locale(db, module.course_id),
-        only_fields={f for f in _TRANSLATABLE_MODULE_FIELDS if f in patch},
-    )
+    if text_patch:
+        dual_write_entity_content(
+            db,
+            entity_type="module",
+            entity_id=str(module.id),
+            fields=_TRANSLATABLE_MODULE_FIELDS,
+            fallback_locale=_course_source_locale(db, module.course_id),
+            only_fields=set(text_patch.keys()),
+            texts=text_patch,
+        )
     db.commit()
     db.refresh(module)
+    # Hydrate runtime attrs from cv so the caller's serialization picks
+    # up the new text immediately.
+    from app.schemas.locale import normalize_locale
+    from app.services.translation.resolve_for_display import populate_module_texts
+
+    src = _course_source_locale(db, module.course_id) or "en"
+    populate_module_texts(db, [module], source_locale=normalize_locale(src))
     return module
 
 

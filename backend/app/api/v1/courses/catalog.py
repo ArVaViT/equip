@@ -182,6 +182,29 @@ def get_module_detail(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only the course owner or an admin can request source-language content",
             )
+        # Phase 5g: ``?source=1`` returns the earliest-authored cv row
+        # for the module (the source language, regardless of overlay)
+        # — bypasses the per-display-locale lookup.
+        from app.models.content_version import ContentVersion
+
+        rows = (
+            db.query(ContentVersion.field, ContentVersion.text)
+            .filter(
+                ContentVersion.entity_type == "module",
+                ContentVersion.entity_id == str(module.id),
+                ContentVersion.field.in_(["title", "description"]),
+                ContentVersion.superseded_by.is_(None),
+                ContentVersion.status == "ok",
+            )
+            .order_by(ContentVersion.created_at)
+            .all()
+        )
+        text_by_field: dict[str, str] = {}
+        for field, text in rows:
+            text_by_field.setdefault(field, text)
+        module.title = text_by_field.get("title") or module.title or ""
+        if "description" in text_by_field:
+            module.description = text_by_field["description"]
         return ModuleResponse.model_validate(module, from_attributes=True)
 
     # Owner + admin always see source for editorial accuracy (matches the

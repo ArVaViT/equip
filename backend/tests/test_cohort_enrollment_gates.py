@@ -50,7 +50,7 @@ from sqlalchemy.orm import Session  # noqa: TC002  (used at runtime by fixtures)
 
 from app.api.v1.courses.enrollment import _enforce_cohort_gates
 from app.models.cohort import Cohort, CohortCourse
-from app.models.course import Course
+from app.models.course import Course  # noqa: TC001  (used at runtime by helpers)
 from app.models.enrollment import Enrollment
 from tests.conftest import STUDENT_ID, TEACHER_ID
 
@@ -100,30 +100,34 @@ def _seed_public_course(
     course_id: str = "test-course-1",
     status: str = "published",
 ) -> Course:
-    course = Course(
-        id=course_id,
+    from ._cv_helpers import make_course_with_text
+
+    course = make_course_with_text(
+        db,
+        course_id=course_id,
         title="Test Course",
         description="A test course",
         status=status,
         access_mode="public",
         created_by=TEACHER_ID,
     )
-    db.add(course)
     db.commit()
     db.refresh(course)
     return course
 
 
 def _seed_institute_course(db: Session, *, course_id: str = "institute-course") -> Course:
-    course = Course(
-        id=course_id,
+    from ._cv_helpers import make_course_with_text
+
+    course = make_course_with_text(
+        db,
+        course_id=course_id,
         title="Greek I",
         description="Institute-only",
         status="published",
         access_mode="institute",
         created_by=TEACHER_ID,
     )
-    db.add(course)
     db.commit()
     db.refresh(course)
     return course
