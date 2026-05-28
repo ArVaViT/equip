@@ -83,9 +83,20 @@ def _add_chapter(
 
 
 def _add_text_block(db: Session, chapter: Chapter, *, content: str = "Hello") -> ChapterBlock:
-    block = ChapterBlock(chapter_id=chapter.id, block_type="text", order_index=0, content=content)
+    # Phase 5e2: chapter_blocks.content column dropped; content lives in cv.
+    from app.services.content_versions.write import record_human_version
+
+    block = ChapterBlock(chapter_id=chapter.id, block_type="text", order_index=0)
     db.add(block)
     db.flush()
+    record_human_version(
+        db,
+        entity_type="chapter_block",
+        entity_id=str(block.id),
+        field="content",
+        locale="en",
+        text=content,
+    )
     return block
 
 

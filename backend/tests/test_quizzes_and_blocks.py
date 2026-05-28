@@ -17,6 +17,40 @@ from tests.conftest import STUDENT_ID, TEACHER_ID
 # ---------------------------------------------------------------------------
 
 
+def _make_block_with_content(
+    db: Session,
+    *,
+    chapter_id: str = "ch-1",
+    block_type: str = "text",
+    order_index: int = 0,
+    content: str | None = None,
+    block_id: uuid.UUID | None = None,
+) -> ChapterBlock:
+    """Phase 5e2: chapter_blocks.content column is gone. This helper
+    creates the block row + records the content in content_versions
+    (en locale by default for test determinism)."""
+    from app.services.content_versions.write import record_human_version
+
+    block = ChapterBlock(
+        id=block_id or uuid.uuid4(),
+        chapter_id=chapter_id,
+        block_type=block_type,
+        order_index=order_index,
+    )
+    db.add(block)
+    db.flush()
+    if content is not None:
+        record_human_version(
+            db,
+            entity_type="chapter_block",
+            entity_id=str(block.id),
+            field="content",
+            locale="en",
+            text=content,
+        )
+    return block
+
+
 def _seed_course(db: Session):
     """Create a published course -> module -> chapter graph (no enrollment)."""
     course = Course(
@@ -127,7 +161,7 @@ def _seed_quiz_with_questions(db: Session, chapter_id: str = "ch-1"):
 
 def test_list_blocks_teacher_success(client: TestClient, db: Session):
     _seed_course(db)
-    db.add(ChapterBlock(chapter_id="ch-1", block_type="text", order_index=0, content="Hello"))
+    _make_block_with_content(db, content="Hello")
     db.commit()
 
     resp = client.get("/api/v1/blocks/chapter/ch-1")
@@ -140,7 +174,7 @@ def test_list_blocks_teacher_success(client: TestClient, db: Session):
 
 def test_list_blocks_enrolled_student(student_client: TestClient, db: Session):
     _seed_course_with_enrollment(db)
-    db.add(ChapterBlock(chapter_id="ch-1", block_type="text", order_index=0, content="Lesson"))
+    _make_block_with_content(db, content="Lesson")
     db.commit()
 
     resp = student_client.get("/api/v1/blocks/chapter/ch-1")
@@ -150,12 +184,8 @@ def test_list_blocks_enrolled_student(student_client: TestClient, db: Session):
 
 def test_list_blocks_returns_ordered(client: TestClient, db: Session):
     _seed_course(db)
-    db.add_all(
-        [
-            ChapterBlock(chapter_id="ch-1", block_type="text", order_index=2, content="Second"),
-            ChapterBlock(chapter_id="ch-1", block_type="text", order_index=0, content="First"),
-        ]
-    )
+    _make_block_with_content(db, order_index=2, content="Second")
+    _make_block_with_content(db, order_index=0, content="First")
     db.commit()
 
     data = client.get("/api/v1/blocks/chapter/ch-1").json()
@@ -184,18 +214,26 @@ def test_list_blocks_anon_unauthorized(anon_client: TestClient):
 
 
 def _seed_block_with_en_translation(db: Session):
-    """Seed a chapter block with RU content and an EN translation overlay."""
+    """Seed a chapter block with RU source content (in cv) and an EN
+    translation overlay (also in cv). Phase 5e2: the legacy
+    ``ChapterBlock.content`` column is gone — both rows live in cv."""
+    from app.services.content_versions.write import record_human_version, record_mt_version
+
     block = ChapterBlock(
         chapter_id="ch-1",
         block_type="text",
         order_index=0,
-        content="Русский контент",
     )
     db.add(block)
     db.flush()
-    from app.services.content_versions.write import record_mt_version
-
-    # Phase 5d: cv is the only translation store.
+    record_human_version(
+        db,
+        entity_type="chapter_block",
+        entity_id=str(block.id),
+        field="content",
+        locale="ru",
+        text="Русский контент",
+    )
     record_mt_version(
         db,
         entity_type="chapter_block",
@@ -331,8 +369,7 @@ def test_create_block_chapter_not_found(client: TestClient, db: Session):
 
 def test_update_block_success(client: TestClient, db: Session):
     _seed_course(db)
-    block = ChapterBlock(chapter_id="ch-1", block_type="text", order_index=0, content="Old")
-    db.add(block)
+    block = _make_block_with_content(db, content="Old")
     db.commit()
     db.refresh(block)
 
@@ -343,8 +380,7 @@ def test_update_block_success(client: TestClient, db: Session):
 
 def test_update_block_partial(client: TestClient, db: Session):
     _seed_course(db)
-    block = ChapterBlock(chapter_id="ch-1", block_type="text", order_index=0, content="Keep")
-    db.add(block)
+    block = _make_block_with_content(db, content="Keep")
     db.commit()
     db.refresh(block)
 
@@ -397,8 +433,7 @@ def test_create_block_sanitizes_html_server_side(client: TestClient, db: Session
 
 def test_delete_block_success(client: TestClient, db: Session):
     _seed_course(db)
-    block = ChapterBlock(chapter_id="ch-1", block_type="text", order_index=0, content="Bye")
-    db.add(block)
+    block = _make_block_with_content(db, content="Bye")
     db.commit()
     db.refresh(block)
 
@@ -433,9 +468,8 @@ def test_delete_block_anon_unauthorized(anon_client: TestClient):
 
 def test_reorder_blocks_success(client: TestClient, db: Session):
     _seed_course(db)
-    b1 = ChapterBlock(chapter_id="ch-1", block_type="text", order_index=0, content="A")
-    b2 = ChapterBlock(chapter_id="ch-1", block_type="text", order_index=1, content="B")
-    db.add_all([b1, b2])
+    b1 = _make_block_with_content(db, order_index=0, content="A")
+    b2 = _make_block_with_content(db, order_index=1, content="B")
     db.commit()
     db.refresh(b1)
     db.refresh(b2)
@@ -485,8 +519,7 @@ def test_reorder_blocks_unknown_id_returns_400(client: TestClient, db: Session):
     import uuid as _uuid
 
     _seed_course(db)
-    b1 = ChapterBlock(chapter_id="ch-1", block_type="text", order_index=0, content="A")
-    db.add(b1)
+    b1 = _make_block_with_content(db, order_index=0, content="A")
     db.commit()
     db.refresh(b1)
     bogus = str(_uuid.uuid4())

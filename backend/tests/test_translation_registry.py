@@ -66,11 +66,14 @@ def test_registry_field_names_exist_on_models():
     Phase 5e1: ``cohort`` is exempt — its source column (``name``) was
     dropped; the cohort's display text lives only in ``content_versions``
     and the dual-write path in ``api/v1/cohorts.py`` reads from cv.
-    The MT pipeline's ``reconcile_entity`` still iterates cohort's
-    FieldSpec but ``getattr(cohort, 'name', None)`` returns None, so it
-    cleanly no-ops — cohorts aren't MT-translated via the orchestrator.
+    Phase 5e2: ``chapter_block`` is exempt for the same reason — its
+    ``content`` column was dropped and the block routes pass an explicit
+    ``texts={"content": ...}`` dict to ``dual_write_entity_content``.
+    The MT pipeline's ``reconcile_entity`` still iterates each entity's
+    FieldSpec but ``getattr(entity, attr, None)`` returns None, so it
+    cleanly no-ops for cv-only entities.
     """
-    cv_only_entities = {"cohort"}
+    cv_only_entities = {"cohort", "chapter_block"}
     for entity_type, reg in REGISTRY.items():
         if entity_type in cv_only_entities:
             continue

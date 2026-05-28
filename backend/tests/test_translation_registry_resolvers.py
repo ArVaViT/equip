@@ -255,12 +255,12 @@ class TestResolveCourseViaModule:
 
 class TestResolveCourseViaChapter:
     def test_resolves_chapter_block_to_course(self, db: Session, course: Course, chapter: Chapter):
+        # Phase 5e2: ``chapter_blocks.content`` column dropped.
         block = ChapterBlock(
             id=uuid.uuid4(),
             chapter_id=chapter.id,
             block_type="text",
             order_index=0,
-            content="<p>Hi</p>",
         )
         db.add(block)
         db.flush()

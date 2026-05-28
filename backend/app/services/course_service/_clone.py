@@ -186,13 +186,16 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
                 )
 
             for block in sorted(blocks_by_chapter.get(chapter.id, []), key=lambda b: b.order_index):
+                # Phase 5e2: chapter_block.content column dropped. Clone
+                # copies entity structure; cv content rows are NOT yet
+                # cloned (clones land as drafts, the teacher edits content
+                # post-clone). A follow-up could wire cv-copy if needed.
                 db.add(
                     ChapterBlock(
                         id=uuid.uuid4(),
                         chapter_id=new_chapter_id,
                         block_type=block.block_type,
                         order_index=block.order_index,
-                        content=block.content,
                         quiz_id=quiz_id_map.get(str(block.quiz_id)) if block.quiz_id else None,
                         assignment_id=assignment_id_map.get(str(block.assignment_id)) if block.assignment_id else None,
                         file_bucket=block.file_bucket,

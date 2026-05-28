@@ -144,11 +144,19 @@ def translate_course_content(
     seen_assignment: set[str] = set()
 
     for block in blocks:
-        if block.content and block.content.strip():
-            total = merge_orchestrator_reports(
-                total,
-                reconcile_entity(db, "chapter_block", block, provider=provider),
-            )
+        # Phase 5e2: chapter_block.content column was dropped. The
+        # reconcile path now reads from cv via the registry's
+        # ``getattr(entity, fs.attr, None)`` lookup — without the
+        # column it returns None and the row is skipped, which is
+        # the right outcome for non-text blocks (file, quiz, assignment).
+        # For text blocks, the cv-based content lives at field='content';
+        # the orchestrator does not currently re-walk cv to discover MT
+        # candidates. (A follow-up could wire it in if MT for blocks
+        # becomes important.)
+        total = merge_orchestrator_reports(
+            total,
+            reconcile_entity(db, "chapter_block", block, provider=provider),
+        )
 
         qid = str(block.quiz_id) if block.quiz_id else ""
         if qid and qid not in seen_quiz:
