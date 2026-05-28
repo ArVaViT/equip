@@ -394,13 +394,13 @@ class TestRegistryWiring:
         assert resolved is not None
         assert resolved.id == course.id
 
-    def test_cohort_resolves_via_course_id_attr_and_is_none_for_top_level_cohort(self, db: Session):
-        """The cohort entry uses ``_resolve_course_via_attr('course_id')``
-        but Cohort is a top-level admin entity (ADR-010) that doesn't HAVE
-        a ``course_id`` column. The resolver therefore returns None for
-        every cohort — which is exactly what makes cohort name reconciliation
-        a no-op until ADR-010 evolves. Lock the current behavior in so a
-        future schema change is forced through this test."""
+    def test_cohort_resolves_via_cohort_courses_junction(self, db: Session, course: Course):
+        """ADR-010: cohorts attach to courses via ``cohort_courses``, not
+        a ``course_id`` column. The resolver walks the junction and
+        returns the first linked course so ``reconcile_entity`` can pull
+        a source_locale + run translation. A cohort with no junction
+        row is genuinely orphaned and returns None."""
+        from app.models.cohort import CohortCourse
         from app.services.translation.registry import REGISTRY
 
         cohort = Cohort(
@@ -411,7 +411,14 @@ class TestRegistryWiring:
         )
         db.add(cohort)
         db.flush()
+        # No linked course → None (orphan).
         assert REGISTRY["cohort"].resolve_course(db, cohort) is None
+        # Linked course → resolver returns it.
+        db.add(CohortCourse(cohort_id=cohort.id, course_id=course.id))
+        db.flush()
+        resolved = REGISTRY["cohort"].resolve_course(db, cohort)
+        assert resolved is not None
+        assert resolved.id == course.id
 
 
 # ---------------------------------------------------------------------------
