@@ -1620,6 +1620,42 @@ class TestCreateAnnouncement:
         )
         assert len(notifs) == 1
 
+    def test_notification_text_respects_recipient_preferred_locale(
+        self, client: TestClient, db: Session, student
+    ):
+        """Phase 5v: notification fan-out groups recipients by
+        preferred_locale and produces RU/EN message variants. A RU
+        student enrolled in an EN-default course gets Russian title
+        and message; an EN student gets English. The announcement
+        title itself stays in the source locale (the MT pass hasn't
+        fired at notification time)."""
+        from app.models.user import User
+
+        course = _create_course_via_api(client)
+        _seed_enrollment(db, user_id=STUDENT_ID, course_id=course["id"])
+        # Flip the seeded student to ru so we can assert per-locale
+        # selection without seeding a second student.
+        student_row = db.get(User, STUDENT_ID)
+        assert student_row is not None
+        student_row.preferred_locale = "ru"
+        db.commit()
+
+        client.post(
+            ANNOUNCEMENT_PREFIX,
+            json=_announcement_payload(course_id=course["id"]),
+        )
+
+        notif = (
+            db.query(Notification)
+            .filter(
+                Notification.user_id == STUDENT_ID,
+                Notification.type == "new_announcement",
+            )
+            .one()
+        )
+        assert notif.title == "Новое объявление"
+        assert " — в «" in notif.message
+
 
 class TestUpdateAnnouncement:
     def _create_announcement(self, client_or_admin):
