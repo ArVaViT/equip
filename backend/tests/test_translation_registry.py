@@ -15,7 +15,6 @@ import pytest
 from app.models.announcement import Announcement
 from app.models.content_version import ContentVersionEntityType as TranslationEntityType
 from app.models.course import Course, Module
-from app.models.course_event import CourseEvent
 from app.services.translation.protocol import EntityType
 from app.services.translation.registry import (
     ENTITY_MODEL,
@@ -73,7 +72,7 @@ def test_registry_field_names_exist_on_models():
     FieldSpec but ``getattr(entity, attr, None)`` returns None, so it
     cleanly no-ops for cv-only entities.
     """
-    cv_only_entities = {"cohort", "chapter_block", "assignment"}
+    cv_only_entities = {"cohort", "chapter_block", "assignment", "course_event"}
     for entity_type, reg in REGISTRY.items():
         if entity_type in cv_only_entities:
             continue
@@ -125,7 +124,12 @@ def test_reconcile_event_with_empty_description_skips_that_field(
     reconcile the non-empty fields, not skip the whole entity."""
     from datetime import UTC, datetime
 
-    ev = CourseEvent(
+    # Phase 5e4: title + description columns dropped; reconcile pulls
+    # from cv now. Use the helper to seed the source rows.
+    from ._cv_helpers import make_course_event_with_text
+
+    ev = make_course_event_with_text(
+        db,
         course_id=published_course.id,
         title="Final Exam",
         description="",
@@ -133,8 +137,6 @@ def test_reconcile_event_with_empty_description_skips_that_field(
         event_date=datetime(2026, 12, 1, 10, 0, tzinfo=UTC),
         created_by=teacher.id,
     )
-    db.add(ev)
-    db.flush()
     report = reconcile_entity(db, "course_event", ev)
     assert report.failed == 0
 

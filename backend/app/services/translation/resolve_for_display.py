@@ -608,21 +608,40 @@ def localize_course_event_rows(
     display_locale: LocaleCode,
     source_locale: LocaleCode,
 ) -> list[CourseEventResponse]:
-    """Apply stored translations to calendar event rows."""
+    """Phase 5e4: ``course_events.title`` + ``description`` columns dropped.
+    Both texts live in cv now. Resolve each via the three-tier
+    fallback (display → source → any-locale).
+    """
     if not events:
         return []
-    specs: list[tuple[str, str, str]] = []
-    for e in events:
-        specs.append(("course_event", str(e.id), "title"))
-        if e.description and str(e.description).strip():
-            specs.append(("course_event", str(e.id), "description"))
-    loc = Localizer.build(db, specs, source_locale=source_locale, display_locale=display_locale)
+    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+
+    ids = [str(e.id) for e in events]
+    texts = fetch_cv_entity_texts_with_fallback(
+        db,
+        entity_type="course_event",
+        entity_ids=ids,
+        fields=["title", "description"],
+        display_locale=display_locale,
+        source_locale=source_locale,
+    )
     out: list[CourseEventResponse] = []
     for e in events:
-        base = CourseEventResponse.model_validate(e, from_attributes=True)
-        title = loc.pick("course_event", str(e.id), "title", e.title) or e.title
-        description = loc.pick("course_event", str(e.id), "description", e.description)
-        out.append(base.model_copy(update={"title": title, "description": description}))
+        eid = str(e.id)
+        out.append(
+            CourseEventResponse.model_validate(
+                {
+                    "id": e.id,
+                    "course_id": e.course_id,
+                    "title": texts.get((eid, "title")) or "",
+                    "description": texts.get((eid, "description")),
+                    "event_type": e.event_type,
+                    "event_date": e.event_date,
+                    "created_by": e.created_by,
+                    "created_at": e.created_at,
+                }
+            )
+        )
     return out
 
 

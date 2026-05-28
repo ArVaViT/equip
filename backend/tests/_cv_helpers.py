@@ -66,6 +66,53 @@ def make_assignment_with_text(
     return assignment
 
 
+def make_course_event_with_text(
+    db: Session,
+    *,
+    course_id: str,
+    title: str = "Event",
+    description: str | None = None,
+    event_type: str = "other",
+    event_date=None,
+    created_by,
+    event_id: uuid.UUID | None = None,
+    locale: str = "en",
+):
+    """Phase 5e4: ``course_events.title`` + ``description`` columns dropped.
+    Builds the row plus records both texts in cv at ``locale``.
+    """
+    from datetime import UTC, datetime
+
+    from app.models.course_event import CourseEvent
+    from app.services.content_versions.write import record_human_version
+
+    event = CourseEvent(
+        id=event_id or uuid.uuid4(),
+        course_id=course_id,
+        event_type=event_type,
+        event_date=event_date or datetime.now(UTC),
+        created_by=created_by,
+    )
+    db.add(event)
+    db.flush()
+    record_human_version(
+        db, entity_type="course_event", entity_id=str(event.id), field="title", locale=locale, text=title
+    )
+    # Empty string ≡ missing for cv purposes — matches the create route
+    # which would store the value but the reconcile path skips blanks
+    # so we keep the parity here.
+    if description:
+        record_human_version(
+            db,
+            entity_type="course_event",
+            entity_id=str(event.id),
+            field="description",
+            locale=locale,
+            text=description,
+        )
+    return event
+
+
 def make_chapter_block_with_content(
     db: Session,
     *,

@@ -18,15 +18,44 @@ from app.schemas.calendar import (
     CourseEventUpdate,
 )
 from app.schemas.locale import LocaleCode, normalize_locale
-from app.services.content_versions import dual_write_entity_content
+from app.services.content_versions import dual_write_entity_content, fetch_cv_entity_texts_with_fallback
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
-from app.services.translation.resolve_for_display import (
-    fetch_overlay_triples_bulk,
-    localize_course_event_rows,
-    pick_overlay_value,
-)
+from app.services.translation.resolve_for_display import localize_course_event_rows
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
+
+
+_TRANSLATABLE_COURSE_EVENT_FIELDS = ("title", "description")
+
+
+def _course_event_to_response(db: Session, event: CourseEvent, *, source_locale: str = "en") -> CourseEventResponse:
+    """Phase 5e4: title + description columns dropped — pull both from
+    cv. Used by the single-entity create / update routes; the list /
+    calendar routes use ``localize_course_event_rows`` which is
+    locale-aware.
+    """
+    texts = fetch_cv_entity_texts_with_fallback(
+        db,
+        entity_type="course_event",
+        entity_ids=[str(event.id)],
+        fields=list(_TRANSLATABLE_COURSE_EVENT_FIELDS),
+        display_locale=source_locale,
+        source_locale=source_locale,
+    )
+    title = texts.get((str(event.id), "title")) or ""
+    description = texts.get((str(event.id), "description"))
+    return CourseEventResponse.model_validate(
+        {
+            "id": event.id,
+            "course_id": event.course_id,
+            "title": title,
+            "description": description,
+            "event_type": event.event_type,
+            "event_date": event.event_date,
+            "created_by": event.created_by,
+            "created_at": event.created_at,
+        }
+    )
 
 
 @router.get("/events", response_model=list[CalendarEvent])
@@ -182,40 +211,50 @@ def get_calendar_events(
 
     course_events = db.query(CourseEvent).filter(CourseEvent.course_id.in_(enrolled_course_ids)).all()
 
-    # Bulk-fetch overlay rows for every course_event title + non-empty
-    # description. Locale wins for every reader, including admins — moderators
-    # who need raw source content use admin-only audit/edit surfaces.
-    overlay_event: dict[tuple[str, str, str], str] = {}
+    # Phase 5e4: course_events.title + description columns dropped — one
+    # cv read covers every event, with the picker applying the
+    # per-event course-declared source_locale fallback in Python.
+    # Mirrors the assignment-deadline pattern above.
+    ce_rows_by_pair_locale: dict[tuple[str, str, str], str] = {}
+    ce_any_for_pair: dict[tuple[str, str], str] = {}
     if course_events:
-        specs: list[tuple[str, str, str]] = []
-        for ce in course_events:
-            specs.append(("course_event", str(ce.id), "title"))
-            if ce.description and str(ce.description).strip():
-                specs.append(("course_event", str(ce.id), "description"))
-        overlay_event = fetch_overlay_triples_bulk(db, specs, display_locale)
+        from app.models.content_version import ContentVersion
+
+        ce_ids = [str(ce.id) for ce in course_events]
+        cv_rows = (
+            db.query(
+                ContentVersion.entity_id,
+                ContentVersion.field,
+                ContentVersion.locale,
+                ContentVersion.text,
+            )
+            .filter(
+                ContentVersion.entity_type == "course_event",
+                ContentVersion.entity_id.in_(ce_ids),
+                ContentVersion.field.in_(["title", "description"]),
+                ContentVersion.superseded_by.is_(None),
+                ContentVersion.status == "ok",
+            )
+            .order_by(ContentVersion.entity_id, ContentVersion.field, ContentVersion.created_at)
+            .all()
+        )
+        for eid, fld, loc, txt in cv_rows:
+            ce_rows_by_pair_locale.setdefault((eid, fld, loc), txt)
+            ce_any_for_pair.setdefault((eid, fld), txt)
 
     for ce in course_events:
         course_src = course_source_locales.get(ce.course_id, normalize_locale(None))
+        ce_id = str(ce.id)
         title = (
-            pick_overlay_value(
-                overlay_event,
-                "course_event",
-                str(ce.id),
-                "title",
-                ce.title,
-                source_locale=course_src,
-                display_locale=display_locale,
-            )
-            or ce.title
+            ce_rows_by_pair_locale.get((ce_id, "title", display_locale))
+            or ce_rows_by_pair_locale.get((ce_id, "title", course_src))
+            or ce_any_for_pair.get((ce_id, "title"))
+            or ""
         )
-        description = pick_overlay_value(
-            overlay_event,
-            "course_event",
-            str(ce.id),
-            "description",
-            ce.description,
-            source_locale=course_src,
-            display_locale=display_locale,
+        description = (
+            ce_rows_by_pair_locale.get((ce_id, "description", display_locale))
+            or ce_rows_by_pair_locale.get((ce_id, "description", course_src))
+            or ce_any_for_pair.get((ce_id, "description"))
         )
         events.append(
             CalendarEvent(
@@ -247,37 +286,34 @@ def create_course_event(
     data: CourseEventCreate,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
-) -> CourseEvent:
+) -> CourseEventResponse:
     verify_course_owner(db, course_id, teacher)
-    # Defence-in-depth: the frontend strips HTML before submit, but a direct
-    # API caller can post arbitrary markup. Same shape as
-    # ``announcements.create`` and ``courses.create`` — title is a plain
-    # short string, description may carry rich content (TipTap output),
-    # both go through ``sanitize_string`` which keeps the allowlisted tags
-    # and drops anything that could turn into stored XSS at render time.
+    # Phase 5e4: title + description live in cv. Sanitisation runs
+    # before the cv write so stored text is safe to render.
+    title = sanitize_string(data.title)
+    description = sanitize_string(data.description) if data.description else data.description
     event = CourseEvent(
         course_id=course_id,
-        title=sanitize_string(data.title),
-        description=sanitize_string(data.description) if data.description else data.description,
         event_type=data.event_type,
         event_date=data.event_date,
         created_by=teacher.id,
     )
     db.add(event)
     db.flush()
+    source_locale = db.query(Course.source_locale).filter(Course.id == course_id).scalar()
     dual_write_entity_content(
         db,
         entity_type="course_event",
         entity_id=str(event.id),
-        entity=event,
-        fields=("title", "description"),
-        fallback_locale=db.query(Course.source_locale).filter(Course.id == course_id).scalar(),
+        fields=_TRANSLATABLE_COURSE_EVENT_FIELDS,
+        fallback_locale=source_locale,
         authored_by=teacher.id,
+        texts={"title": title, "description": description},
     )
     db.commit()
     db.refresh(event)
     reconcile_entity_if_course_published(db, "course_event", event)
-    return event
+    return _course_event_to_response(db, event, source_locale=source_locale or "en")
 
 
 @event_router.get(
@@ -332,7 +368,7 @@ def update_course_event(
     data: CourseEventUpdate,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
-) -> CourseEvent:
+) -> CourseEventResponse:
     verify_course_owner(db, course_id, teacher)
     event = (
         db.query(CourseEvent)
@@ -344,34 +380,35 @@ def update_course_event(
     )
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
-    # Defence-in-depth: title + description carry user-supplied markup
-    # and were already sanitized on create. The setattr loop below would
-    # otherwise let a direct API caller bypass DOMPurify on edit and
-    # plant stored XSS through the title bar or rich-text body. Same
-    # ``sanitize_string`` is used here as on the create path so the two
-    # behaviours stay symmetric.
+    # Phase 5e4: title + description live in cv. Pop them off the patch
+    # before the setattr loop and route through dual_write.
     updates = data.model_dump(exclude_unset=True)
-    if "title" in updates and updates["title"] is not None:
-        updates["title"] = sanitize_string(updates["title"])
-    if "description" in updates and updates["description"] is not None:
-        updates["description"] = sanitize_string(updates["description"])
+    text_patch: dict[str, str | None] = {}
+    if "title" in updates:
+        v = updates.pop("title")
+        text_patch["title"] = sanitize_string(v) if v is not None else None
+    if "description" in updates:
+        v = updates.pop("description")
+        text_patch["description"] = sanitize_string(v) if v is not None else None
     for field, value in updates.items():
         setattr(event, field, value)
     db.flush()
-    dual_write_entity_content(
-        db,
-        entity_type="course_event",
-        entity_id=str(event.id),
-        entity=event,
-        fields=("title", "description"),
-        fallback_locale=db.query(Course.source_locale).filter(Course.id == course_id).scalar(),
-        authored_by=teacher.id,
-        only_fields={f for f in ("title", "description") if f in updates},
-    )
+    source_locale = db.query(Course.source_locale).filter(Course.id == course_id).scalar()
+    if text_patch:
+        dual_write_entity_content(
+            db,
+            entity_type="course_event",
+            entity_id=str(event.id),
+            fields=_TRANSLATABLE_COURSE_EVENT_FIELDS,
+            fallback_locale=source_locale,
+            authored_by=teacher.id,
+            only_fields=set(text_patch.keys()),
+            texts=text_patch,
+        )
     db.commit()
     db.refresh(event)
     reconcile_entity_if_course_published(db, "course_event", event)
-    return event
+    return _course_event_to_response(db, event, source_locale=source_locale or "en")
 
 
 @event_router.delete(
