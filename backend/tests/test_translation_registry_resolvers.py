@@ -392,11 +392,10 @@ class TestRegistryWiring:
     def test_course_event_resolves_via_course_id_attr(self, db: Session, course: Course, teacher):
         from app.services.translation.registry import REGISTRY
 
+        # Phase 5e4: title + description columns dropped.
         ev = CourseEvent(
             id=uuid.uuid4(),
             course_id=course.id,
-            title="t",
-            description="d",
             event_type="exam",
             event_date=datetime(2026, 12, 1, 10, 0, tzinfo=UTC),
             created_by=teacher.id,

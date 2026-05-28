@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 from app.models.announcement import Announcement
 from app.models.cohort import Cohort, CohortCourse
 from app.models.course import Course, Module
-from app.models.course_event import CourseEvent
 from app.models.enrollment import Enrollment
 from app.models.notification import Notification
 from tests.conftest import ADMIN_ID, STUDENT_ID, TEACHER_ID
@@ -1170,17 +1169,19 @@ class TestListCourseEvents:
         assert len(resp.json()) == 2
 
     def test_enrolled_student_can_list(self, student_client: TestClient, db: Session):
+        from ._cv_helpers import make_course_event_with_text
+
         _seed_course(db)
         _seed_enrollment(db, user_id=STUDENT_ID, course_id="test-course-1")
 
-        ev = CourseEvent(
+        make_course_event_with_text(
+            db,
             course_id="test-course-1",
             title="Lecture",
             event_type="live_session",
             event_date=TOMORROW,
             created_by=TEACHER_ID,
         )
-        db.add(ev)
         db.commit()
 
         resp = student_client.get(f"{COURSES_PREFIX}/test-course-1/events")
@@ -1240,15 +1241,17 @@ class TestUpdateCourseEvent:
         assert resp.status_code == 404
 
     def test_student_cannot_update(self, student_client: TestClient, db: Session):
+        from ._cv_helpers import make_course_event_with_text
+
         _seed_course(db)
-        ev = CourseEvent(
+        ev = make_course_event_with_text(
+            db,
             course_id="test-course-1",
             title="Lecture",
             event_type="other",
             event_date=TOMORROW,
             created_by=TEACHER_ID,
         )
-        db.add(ev)
         db.commit()
         db.refresh(ev)
 
@@ -1280,15 +1283,17 @@ class TestDeleteCourseEvent:
         assert resp.status_code == 404
 
     def test_student_cannot_delete(self, student_client: TestClient, db: Session):
+        from ._cv_helpers import make_course_event_with_text
+
         _seed_course(db)
-        ev = CourseEvent(
+        ev = make_course_event_with_text(
+            db,
             course_id="test-course-1",
             title="Lecture",
             event_type="other",
             event_date=TOMORROW,
             created_by=TEACHER_ID,
         )
-        db.add(ev)
         db.commit()
         db.refresh(ev)
 
