@@ -73,7 +73,7 @@ def test_registry_field_names_exist_on_models():
     FieldSpec but ``getattr(entity, attr, None)`` returns None, so it
     cleanly no-ops for cv-only entities.
     """
-    cv_only_entities = {"cohort", "chapter_block"}
+    cv_only_entities = {"cohort", "chapter_block", "assignment"}
     for entity_type, reg in REGISTRY.items():
         if entity_type in cv_only_entities:
             continue

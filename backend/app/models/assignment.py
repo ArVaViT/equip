@@ -13,8 +13,9 @@ class Assignment(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     chapter_id: Mapped[str] = mapped_column(ForeignKey("chapters.id", ondelete="CASCADE"))
-    title: Mapped[str] = mapped_column(String(255))
-    description: Mapped[str | None] = mapped_column(Text)
+    # Phase 5e3: title + description columns dropped — cv is the only
+    # store. Reads go through fetch_cv_entity_texts_with_fallback;
+    # writes through dual_write_entity_content(texts={...}).
     max_score: Mapped[int] = mapped_column(default=100)
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())

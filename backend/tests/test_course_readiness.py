@@ -14,7 +14,7 @@ import uuid
 import pytest
 from sqlalchemy.orm import Session  # noqa: TC002  (used at runtime by fixtures)
 
-from app.models.assignment import Assignment
+from app.models.assignment import Assignment  # noqa: TC001  (used as return-type annotation)
 from app.models.chapter_block import ChapterBlock
 from app.models.course import Chapter, Course, CourseStatus, Module
 from app.models.quiz import Quiz, QuizOption, QuizQuestion
@@ -128,10 +128,10 @@ def _add_quiz_with_question(
 
 
 def _add_assignment(db: Session, chapter: Chapter, *, description: str | None = None) -> Assignment:
-    assignment = Assignment(chapter_id=chapter.id, title="Assignment", description=description)
-    db.add(assignment)
-    db.flush()
-    return assignment
+    # Phase 5e3: assignments.title + description columns dropped; both live in cv.
+    from ._cv_helpers import make_assignment_with_text
+
+    return make_assignment_with_text(db, chapter_id=chapter.id, title="Assignment", description=description)
 
 
 def _check(report: ReadinessReport, check_id_prefix: str):

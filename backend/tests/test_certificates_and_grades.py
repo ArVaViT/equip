@@ -1014,11 +1014,11 @@ def _seed_teacher_progress_dashboard(db: Session) -> tuple[str, uuid.UUID, uuid.
         completed_at=t1,
     )
     asg_id = uuid.uuid4()
+    # Phase 5e3: title + description moved to cv. Build the structural
+    # row here (so we can keep the explicit id) and seed cv after flush.
     assignment = Assignment(
         id=asg_id,
         chapter_id=ch_asg_id,
-        title="Essay",
-        description="Write",
         max_score=100,
     )
     sub = AssignmentSubmission(
@@ -1052,6 +1052,15 @@ def _seed_teacher_progress_dashboard(db: Session) -> tuple[str, uuid.UUID, uuid.
             enrollment,
             cp,
         ]
+    )
+    db.flush()
+    # Phase 5e3: seed the cv title + description for the assignment now
+    # that the structural row exists.
+    from app.services.content_versions.write import record_human_version
+
+    record_human_version(db, entity_type="assignment", entity_id=str(asg_id), field="title", locale="en", text="Essay")
+    record_human_version(
+        db, entity_type="assignment", entity_id=str(asg_id), field="description", locale="en", text="Write"
     )
     db.commit()
     return course_id, quiz_id, asg_id, ch_quiz_id, ch_asg_id, ch_read_id

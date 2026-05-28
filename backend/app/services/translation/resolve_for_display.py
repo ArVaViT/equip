@@ -435,23 +435,40 @@ def localize_assignment_rows(
     display_locale: LocaleCode,
     source_locale: LocaleCode,
 ) -> list[AssignmentResponse]:
+    """Phase 5e3: ``assignments.title`` + ``description`` columns dropped.
+    Both texts live in ``content_versions`` now. Resolve each via a
+    three-tier fallback (display → source → any-locale).
+    """
     if not assignments:
         return []
-    specs: list[tuple[str, str, str]] = []
-    for a in assignments:
-        specs.extend(
-            [
-                ("assignment", str(a.id), "title"),
-                ("assignment", str(a.id), "description"),
-            ]
-        )
-    loc = Localizer.build(db, specs, source_locale=source_locale, display_locale=display_locale)
+    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+
+    ids = [str(a.id) for a in assignments]
+    texts = fetch_cv_entity_texts_with_fallback(
+        db,
+        entity_type="assignment",
+        entity_ids=ids,
+        fields=["title", "description"],
+        display_locale=display_locale,
+        source_locale=source_locale,
+    )
     out: list[AssignmentResponse] = []
     for a in assignments:
-        base = AssignmentResponse.model_validate(a, from_attributes=True)
-        t = loc.pick("assignment", str(a.id), "title", a.title) or a.title
-        d = loc.pick("assignment", str(a.id), "description", a.description)
-        out.append(base.model_copy(update={"title": t, "description": d}))
+        aid = str(a.id)
+        out.append(
+            AssignmentResponse.model_validate(
+                {
+                    "id": a.id,
+                    "chapter_id": a.chapter_id,
+                    "title": texts.get((aid, "title")) or "",
+                    "description": texts.get((aid, "description")),
+                    "max_score": a.max_score,
+                    "due_date": a.due_date,
+                    "created_at": a.created_at,
+                    "updated_at": a.updated_at,
+                }
+            )
+        )
     return out
 
 

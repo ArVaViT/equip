@@ -28,7 +28,7 @@ from app.schemas.assignment import (
 )
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.audit_service import log_action
-from app.services.content_versions import dual_write_entity_content
+from app.services.content_versions import dual_write_entity_content, fetch_cv_entity_texts_with_fallback
 from app.services.course_service import sync_enrollment_progress
 from app.services.notification_service import create_notification
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
@@ -38,6 +38,39 @@ from app.services.translation.resolve_for_display import (
 )
 
 router = APIRouter(prefix="/assignments", tags=["assignments"])
+
+
+_TRANSLATABLE_ASSIGNMENT_FIELDS = ("title", "description")
+
+
+def _assignment_to_response(db: Session, assignment: Assignment, *, source_locale: str = "en") -> AssignmentResponse:
+    """Phase 5e3: title + description columns dropped — pull both from
+    cv (preferring source_locale, falling back to any active locale).
+    Used by the single-entity routes (create / update); list / source
+    routes use ``localize_assignment_rows`` which is locale-aware.
+    """
+    texts = fetch_cv_entity_texts_with_fallback(
+        db,
+        entity_type="assignment",
+        entity_ids=[str(assignment.id)],
+        fields=list(_TRANSLATABLE_ASSIGNMENT_FIELDS),
+        display_locale=source_locale,
+        source_locale=source_locale,
+    )
+    title = texts.get((str(assignment.id), "title")) or ""
+    description = texts.get((str(assignment.id), "description"))
+    return AssignmentResponse.model_validate(
+        {
+            "id": assignment.id,
+            "chapter_id": assignment.chapter_id,
+            "title": title,
+            "description": description,
+            "max_score": assignment.max_score,
+            "due_date": assignment.due_date,
+            "created_at": assignment.created_at,
+            "updated_at": assignment.updated_at,
+        }
+    )
 
 
 @router.get("/chapter/{chapter_id}", response_model=list[AssignmentResponse])
@@ -60,8 +93,7 @@ def list_chapter_assignments(
     response.headers["Vary"] = "Accept-Language"
     rows = db.query(Assignment).filter(Assignment.chapter_id == chapter_id).order_by(Assignment.created_at).all()
     # One chapter→module→course join covers the locale + access decisions
-    # below. Previously this paid 2 round-trips for the common non-source
-    # path.
+    # below.
     ctx = resolve_chapter_locale_context(db, chapter_id=chapter_id, current_user=current_user)
     if source:
         if not ctx.is_owner_or_admin:
@@ -69,14 +101,12 @@ def list_chapter_assignments(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only the course owner or an admin can request source-language content",
             )
-        return rows
+        # Phase 5e3: title + description columns dropped — re-use the
+        # localize path with display==source so the cv lookup populates
+        # the source-locale text.
+        return localize_assignment_rows(db, rows, display_locale=ctx.source_locale, source_locale=ctx.source_locale)
     display_locale: LocaleCode = normalize_locale(accept_language)
-    if ctx.apply_overlay:
-        return localize_assignment_rows(db, rows, display_locale=display_locale, source_locale=ctx.source_locale)
-    return rows
-
-
-_TRANSLATABLE_ASSIGNMENT_FIELDS = ("title", "description")
+    return localize_assignment_rows(db, rows, display_locale=display_locale, source_locale=ctx.source_locale)
 
 
 def _course_source_locale_for_chapter(db: Session, chapter_id: str) -> str | None:
@@ -97,22 +127,28 @@ def create_assignment(
     db: Session = Depends(get_db),
 ):
     verify_chapter_owner(db, data.chapter_id, teacher)
-    assignment = Assignment(**data.model_dump())
+    # Phase 5e3: title + description go to cv; only structural fields
+    # land on the Assignment row.
+    payload = data.model_dump()
+    title = payload.pop("title")
+    description = payload.pop("description", None)
+    assignment = Assignment(**payload)
     db.add(assignment)
     db.flush()
+    source_locale = _course_source_locale_for_chapter(db, data.chapter_id)
     dual_write_entity_content(
         db,
         entity_type="assignment",
         entity_id=str(assignment.id),
-        entity=assignment,
         fields=_TRANSLATABLE_ASSIGNMENT_FIELDS,
-        fallback_locale=_course_source_locale_for_chapter(db, data.chapter_id),
+        fallback_locale=source_locale,
         authored_by=teacher.id,
+        texts={"title": title, "description": description},
     )
     db.commit()
     db.refresh(assignment)
     reconcile_entity_if_course_published(db, "assignment", assignment)
-    return assignment
+    return _assignment_to_response(db, assignment, source_locale=source_locale or "en")
 
 
 @router.put("/{assignment_id}", response_model=AssignmentResponse)
@@ -128,24 +164,33 @@ def update_assignment(
     verify_chapter_owner(db, assignment.chapter_id, teacher)
 
     patch = data.model_dump(exclude_unset=True)
+    # Phase 5e3: title + description live in cv. Pop them off the patch
+    # so they don't try to setattr on the (now-text-less) ORM row.
+    text_patch: dict[str, str | None] = {}
+    if "title" in patch:
+        text_patch["title"] = patch.pop("title")
+    if "description" in patch:
+        text_patch["description"] = patch.pop("description")
     for field, value in patch.items():
         setattr(assignment, field, value)
 
     db.flush()
-    dual_write_entity_content(
-        db,
-        entity_type="assignment",
-        entity_id=str(assignment.id),
-        entity=assignment,
-        fields=_TRANSLATABLE_ASSIGNMENT_FIELDS,
-        fallback_locale=_course_source_locale_for_chapter(db, assignment.chapter_id),
-        authored_by=teacher.id,
-        only_fields={f for f in _TRANSLATABLE_ASSIGNMENT_FIELDS if f in patch},
-    )
+    source_locale = _course_source_locale_for_chapter(db, assignment.chapter_id)
+    if text_patch:
+        dual_write_entity_content(
+            db,
+            entity_type="assignment",
+            entity_id=str(assignment.id),
+            fields=_TRANSLATABLE_ASSIGNMENT_FIELDS,
+            fallback_locale=source_locale,
+            authored_by=teacher.id,
+            only_fields=set(text_patch.keys()),
+            texts=text_patch,
+        )
     db.commit()
     db.refresh(assignment)
     reconcile_entity_if_course_published(db, "assignment", assignment)
-    return assignment
+    return _assignment_to_response(db, assignment, source_locale=source_locale or "en")
 
 
 @router.delete("/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -343,12 +388,25 @@ def grade_submission(
     submission.graded_by = teacher.id
     submission.graded_at = datetime.now(UTC)
 
+    # Phase 5e3: assignment.title moved to cv — fetch the source-locale
+    # title for the notification message (any locale fallback covers
+    # edge cases where the source row hasn't been recorded yet).
+    source_locale_for_msg = _course_source_locale_for_chapter(db, assignment.chapter_id) or "en"
+    assignment_texts = fetch_cv_entity_texts_with_fallback(
+        db,
+        entity_type="assignment",
+        entity_ids=[str(assignment.id)],
+        fields=["title"],
+        display_locale=source_locale_for_msg,
+        source_locale=source_locale_for_msg,
+    )
+    assignment_title = assignment_texts.get((str(assignment.id), "title")) or "your assignment"
     create_notification(
         db,
         user_id=submission.student_id,
         type="assignment_graded",
         title="Assignment Graded",
-        message=f'Your submission for "{assignment.title}" has been graded: {data.grade}/{assignment.max_score}.',
+        message=f'Your submission for "{assignment_title}" has been graded: {data.grade}/{assignment.max_score}.',
         link=None,
         metadata={"assignment_id": str(assignment.id), "submission_id": str(submission.id)},
     )

@@ -268,11 +268,10 @@ class TestResolveCourseViaChapter:
         assert _resolve_course_via_chapter(db, block).id == course.id
 
     def test_resolves_assignment_to_course(self, db: Session, course: Course, chapter: Chapter):
+        # Phase 5e3: title + description columns dropped.
         asgn = Assignment(
             id=uuid.uuid4(),
             chapter_id=chapter.id,
-            title="A1",
-            description="d",
             max_score=10,
         )
         db.add(asgn)
