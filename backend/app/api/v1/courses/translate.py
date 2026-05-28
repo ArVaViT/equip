@@ -41,6 +41,13 @@ def translation_status() -> dict:
     the env-var check that gates every translation entry point. Used to
     confirm prod has the env wired correctly after a deploy without
     having to authenticate as a teacher and POST against a real course.
+
+    **Visibility decision (Phase 5t):** kept public. The response surface
+    is two static keys; an authenticated teacher can already infer the
+    same boolean from the ``enabled`` field of any ``POST /translate``
+    response, so gating this would not actually reduce information
+    disclosure and would only break the post-deploy smoke-test workflow
+    (``curl api.equipbible.com/...`` from any laptop).
     """
     return {"enabled": is_translation_enabled(), "provider": "gemini"}
 
