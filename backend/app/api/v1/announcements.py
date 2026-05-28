@@ -33,6 +33,21 @@ router = APIRouter(prefix="/announcements", tags=["announcements"])
 _TRANSLATABLE_ANNOUNCEMENT_FIELDS = ("title", "content")
 
 
+# Phase 5v: backend-side i18n for notification text. Backend has no
+# real i18n catalog (strings live on the frontend) but the
+# announcement / certificate notification fan-out runs on the server
+# before the frontend can localize, so the two locale variants live
+# here. Add a new locale → add a branch.
+def _localize_announcement_notification(locale: str, *, safe_title: str, course_title: str) -> tuple[str, str]:
+    if locale == "ru":
+        return "Новое объявление", f"{safe_title} — в «{course_title}»"
+    return "New Announcement", f"{safe_title} — in «{course_title}»"
+
+
+def _generic_course_fallback(locale: str) -> str:
+    return "курс" if locale == "ru" else "a course"
+
+
 def _dual_write_announcement(
     db: Session,
     announcement: Announcement,
@@ -299,28 +314,52 @@ def create_announcement(
     db.flush()
 
     if data.course_id:
-        enrolled_users = db.query(Enrollment.user_id).filter(Enrollment.course_id == data.course_id).all()
-        # Phase 5g: course title lives in cv — fetch for the notification message.
+        # Phase 5v: notification text now respects each recipient's
+        # preferred_locale. Pull (user_id, preferred_locale) from the
+        # enrollment join, group recipients by locale, fetch the
+        # course title at THAT locale, and build a localized
+        # (title, message) pair per group before fan-out. The
+        # announcement title itself stays in its authored source
+        # locale (the cv MT pass hasn't fired yet at this point in
+        # the request lifecycle); the locale-aware wrapper around it
+        # is what makes the EN user see "in «...»" and the RU user
+        # see "в «...»".
         from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 
-        course_title = (
-            fetch_course_titles_by_id(db, [course.id], display_locale="en").get(course.id) if course else None
-        ) or "a course"
-        recipients = [user_id for (user_id,) in enrolled_users if str(user_id) != str(teacher.id)]
-        create_notifications_bulk(
-            db,
-            recipients,
-            type="new_announcement",
-            title="New Announcement",
-            # Defence-in-depth: use the sanitised title in the fanned-out
-            # notification message too. The notification UI today renders
-            # the message as plain text (safe), but a future "render
-            # markdown in notifications" feature would silently inherit
-            # any unsanitised payload that lived in the message column.
-            message=f'{safe_title} — in "{course_title}"',
-            link=f"/courses/{data.course_id}",
-            metadata={"course_id": data.course_id, "announcement_id": str(announcement.id)},
+        enrolled_users = (
+            db.query(Enrollment.user_id, User.preferred_locale)
+            .join(User, User.id == Enrollment.user_id)
+            .filter(Enrollment.course_id == data.course_id)
+            .all()
         )
+        recipients_by_locale: dict[str, list[uuid.UUID | str]] = {}
+        for uid, raw_locale in enrolled_users:
+            if str(uid) == str(teacher.id):
+                continue
+            loc = normalize_locale(raw_locale)
+            recipients_by_locale.setdefault(loc, []).append(uid)
+        for locale, recipients in recipients_by_locale.items():
+            normalized: LocaleCode = normalize_locale(locale)
+            title_for_locale = (
+                fetch_course_titles_by_id(db, [course.id], display_locale=normalized).get(course.id) if course else None
+            ) or _generic_course_fallback(locale)
+            notif_title, notif_message = _localize_announcement_notification(
+                locale, safe_title=safe_title, course_title=title_for_locale
+            )
+            create_notifications_bulk(
+                db,
+                recipients,
+                type="new_announcement",
+                title=notif_title,
+                # Defence-in-depth: use the sanitised title in the fanned-out
+                # notification message too. The notification UI today renders
+                # the message as plain text (safe), but a future "render
+                # markdown in notifications" feature would silently inherit
+                # any unsanitised payload that lived in the message column.
+                message=notif_message,
+                link=f"/courses/{data.course_id}",
+                metadata={"course_id": data.course_id, "announcement_id": str(announcement.id)},
+            )
 
     # Dual-write to content_versions. Global announcements (no
     # course_id) fall back to the author's preferred_locale because
