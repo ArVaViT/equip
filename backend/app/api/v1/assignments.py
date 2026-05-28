@@ -15,6 +15,7 @@ from app.api.dependencies import (
 from app.core.database import get_db
 from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
+from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
 from app.models.user import User, UserRole
 from app.schemas.assignment import (
@@ -27,6 +28,7 @@ from app.schemas.assignment import (
 )
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.audit_service import log_action
+from app.services.content_versions import dual_write_entity_content
 from app.services.course_service import sync_enrollment_progress
 from app.services.notification_service import create_notification
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
@@ -74,6 +76,20 @@ def list_chapter_assignments(
     return rows
 
 
+_TRANSLATABLE_ASSIGNMENT_FIELDS = ("title", "description")
+
+
+def _course_source_locale_for_chapter(db: Session, chapter_id: str) -> str | None:
+    """Walk Assignment -> Chapter -> Module -> Course."""
+    return (
+        db.query(Course.source_locale)
+        .join(Module, Module.course_id == Course.id)
+        .join(Chapter, Chapter.module_id == Module.id)
+        .filter(Chapter.id == chapter_id)
+        .scalar()
+    )
+
+
 @router.post("", response_model=AssignmentResponse, status_code=status.HTTP_201_CREATED)
 def create_assignment(
     data: AssignmentCreate,
@@ -83,6 +99,16 @@ def create_assignment(
     verify_chapter_owner(db, data.chapter_id, teacher)
     assignment = Assignment(**data.model_dump())
     db.add(assignment)
+    db.flush()
+    dual_write_entity_content(
+        db,
+        entity_type="assignment",
+        entity_id=str(assignment.id),
+        entity=assignment,
+        fields=_TRANSLATABLE_ASSIGNMENT_FIELDS,
+        fallback_locale=_course_source_locale_for_chapter(db, data.chapter_id),
+        authored_by=teacher.id,
+    )
     db.commit()
     db.refresh(assignment)
     reconcile_entity_if_course_published(db, "assignment", assignment)
@@ -101,9 +127,21 @@ def update_assignment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
     verify_chapter_owner(db, assignment.chapter_id, teacher)
 
-    for field, value in data.model_dump(exclude_unset=True).items():
+    patch = data.model_dump(exclude_unset=True)
+    for field, value in patch.items():
         setattr(assignment, field, value)
 
+    db.flush()
+    dual_write_entity_content(
+        db,
+        entity_type="assignment",
+        entity_id=str(assignment.id),
+        entity=assignment,
+        fields=_TRANSLATABLE_ASSIGNMENT_FIELDS,
+        fallback_locale=_course_source_locale_for_chapter(db, assignment.chapter_id),
+        authored_by=teacher.id,
+        only_fields={f for f in _TRANSLATABLE_ASSIGNMENT_FIELDS if f in patch},
+    )
     db.commit()
     db.refresh(assignment)
     reconcile_entity_if_course_published(db, "assignment", assignment)

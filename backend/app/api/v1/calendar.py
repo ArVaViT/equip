@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
@@ -16,6 +18,7 @@ from app.schemas.calendar import (
     CourseEventUpdate,
 )
 from app.schemas.locale import LocaleCode, normalize_locale
+from app.services.content_versions import dual_write_entity_content
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import (
     fetch_overlay_triples_bulk,
@@ -219,6 +222,16 @@ def create_course_event(
         created_by=teacher.id,
     )
     db.add(event)
+    db.flush()
+    dual_write_entity_content(
+        db,
+        entity_type="course_event",
+        entity_id=str(event.id),
+        entity=event,
+        fields=("title", "description"),
+        fallback_locale=db.query(Course.source_locale).filter(Course.id == course_id).scalar(),
+        authored_by=teacher.id,
+    )
     db.commit()
     db.refresh(event)
     reconcile_entity_if_course_published(db, "course_event", event)
@@ -273,7 +286,7 @@ def list_course_events(
 )
 def update_course_event(
     course_id: str,
-    event_id: str,
+    event_id: UUID,
     data: CourseEventUpdate,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
@@ -302,6 +315,17 @@ def update_course_event(
         updates["description"] = sanitize_string(updates["description"])
     for field, value in updates.items():
         setattr(event, field, value)
+    db.flush()
+    dual_write_entity_content(
+        db,
+        entity_type="course_event",
+        entity_id=str(event.id),
+        entity=event,
+        fields=("title", "description"),
+        fallback_locale=db.query(Course.source_locale).filter(Course.id == course_id).scalar(),
+        authored_by=teacher.id,
+        only_fields={f for f in ("title", "description") if f in updates},
+    )
     db.commit()
     db.refresh(event)
     reconcile_entity_if_course_published(db, "course_event", event)
@@ -314,7 +338,7 @@ def update_course_event(
 )
 def delete_course_event(
     course_id: str,
-    event_id: str,
+    event_id: UUID,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> None:

@@ -44,10 +44,40 @@ from app.schemas.cohort import (
 )
 from app.schemas.locale import normalize_locale
 from app.services.audit_service import log_action
+from app.services.content_versions import record_human_version
+from app.services.language_detection import detect_locale
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import Localizer
 
 router = APIRouter(prefix="/cohorts", tags=["cohorts"])
+
+
+def _dual_write_cohort_name(db: Session, cohort: Cohort, *, admin: User) -> None:
+    """Dual-write Cohort.name to content_versions.field='title'.
+
+    Cohorts don't have an entity-level attribute named ``title`` —
+    the registry maps ``Cohort.name`` to ``field='title'`` so this
+    helper inlines the call rather than using the shared
+    ``dual_write_entity_content`` (which keys on attribute name).
+
+    Cohorts have no parent course (they're M2M with courses) so
+    the detector fallback is the admin's preferred_locale.
+    """
+    if not cohort.name or not cohort.name.strip():
+        return
+    detected = detect_locale(cohort.name)
+    locale = detected or admin.preferred_locale
+    if locale is None:
+        return
+    record_human_version(
+        db,
+        entity_type="cohort",
+        entity_id=str(cohort.id),
+        field="title",
+        locale=locale,
+        text=cohort.name,
+        authored_by=admin.id,
+    )
 
 
 # ----------------------------- helpers --------------------------------
@@ -159,6 +189,8 @@ def create_cohort(
         created_by=admin.id,
     )
     db.add(cohort)
+    db.flush()
+    _dual_write_cohort_name(db, cohort, admin=admin)
     db.commit()
     db.refresh(cohort)
     log_action(
@@ -210,11 +242,20 @@ def update_cohort(
     # flip like ``upcoming -> active`` is fully traceable: the row holds
     # both ends of the transition.
     changes: dict[str, dict[str, object]] = {}
+    name_changed = False
     for field, value in patch.items():
         before = getattr(cohort, field)
         if before != value:
             changes[field] = {"from": before, "to": value}
         setattr(cohort, field, value)
+        if field == "name":
+            name_changed = True
+    db.flush()
+    if name_changed:
+        # Cohort.name maps to content_versions.field='title' (see the
+        # translation registry). Re-record so the dual-write store
+        # stays in sync with the entity column.
+        _dual_write_cohort_name(db, cohort, admin=admin)
     db.commit()
     db.refresh(cohort)
     # Translation reconcile reads the attached-course set internally and

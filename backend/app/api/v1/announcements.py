@@ -1,4 +1,5 @@
 import uuid
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
@@ -21,11 +22,44 @@ from app.schemas.announcement import (
     AnnouncementUpdate,
 )
 from app.schemas.locale import LocaleCode, normalize_locale
+from app.services.content_versions import dual_write_entity_content
 from app.services.notification_service import create_notifications_bulk
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import localize_announcement_rows
 
 router = APIRouter(prefix="/announcements", tags=["announcements"])
+
+
+_TRANSLATABLE_ANNOUNCEMENT_FIELDS = ("title", "content")
+
+
+def _dual_write_announcement(
+    db: Session,
+    announcement: Announcement,
+    *,
+    teacher: User,
+    course: Course | None,
+    only_fields: set[str] | None = None,
+) -> None:
+    """Dual-write an announcement's title + content to content_versions.
+
+    Course-scoped announcements use the course's source_locale as the
+    detector fallback. Global announcements (no course context) fall
+    back to the author's preferred_locale — never a hard-coded default
+    so a Russian admin writing a Russian announcement from an English
+    UI still lands in 'ru'.
+    """
+    fallback = course.source_locale if course is not None else teacher.preferred_locale
+    dual_write_entity_content(
+        db,
+        entity_type="announcement",
+        entity_id=str(announcement.id),
+        entity=announcement,
+        fields=_TRANSLATABLE_ANNOUNCEMENT_FIELDS,
+        fallback_locale=fallback,
+        authored_by=teacher.id,
+        only_fields=only_fields,
+    )
 
 
 def _course_source_locale_map(db: Session, course_ids: list[str]) -> dict[str, LocaleCode]:
@@ -212,6 +246,13 @@ def create_announcement(
             metadata={"course_id": data.course_id, "announcement_id": str(announcement.id)},
         )
 
+    # Dual-write to content_versions. Global announcements (no
+    # course_id) fall back to the author's preferred_locale because
+    # they have no course context. The detector still runs per-field
+    # on the actual text so a Russian-authored announcement from an
+    # English-UI admin lands in 'ru'.
+    _dual_write_announcement(db, announcement, teacher=teacher, course=course)
+
     db.commit()
     db.refresh(announcement)
     if data.course_id:
@@ -221,7 +262,7 @@ def create_announcement(
 
 @router.put("/{announcement_id}", response_model=AnnouncementResponse)
 def update_announcement(
-    announcement_id: str,
+    announcement_id: UUID,
     data: AnnouncementUpdate,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
@@ -238,10 +279,17 @@ def update_announcement(
             detail="You can only edit your own announcements",
         )
 
+    touched: set[str] = set()
     if data.title is not None:
         announcement.title = sanitize_string(data.title)
+        touched.add("title")
     if data.content is not None:
         announcement.content = sanitize_string(data.content)
+        touched.add("content")
+
+    course = db.query(Course).filter(Course.id == announcement.course_id).first() if announcement.course_id else None
+    db.flush()
+    _dual_write_announcement(db, announcement, teacher=teacher, course=course, only_fields=touched)
 
     db.commit()
     db.refresh(announcement)
@@ -252,7 +300,7 @@ def update_announcement(
 
 @router.delete("/{announcement_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_announcement(
-    announcement_id: str,
+    announcement_id: UUID,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> None:
