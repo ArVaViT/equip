@@ -8,12 +8,16 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import func
 
-from app.models.course import Chapter, Module
+from app.models.course import Chapter, Course, Module
+from app.services.content_versions import dual_write_entity_content
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
     from app.schemas.course import ModuleCreate, ModuleUpdate
+
+
+_TRANSLATABLE_MODULE_FIELDS = ("title", "description")
 
 
 def _next_module_order(db: Session, course_id: str) -> int:
@@ -24,6 +28,16 @@ def _next_module_order(db: Session, course_id: str) -> int:
         .scalar()
     )
     return 0 if current_max is None else current_max + 1
+
+
+def _course_source_locale(db: Session, course_id: str) -> str | None:
+    """Cheap single-column lookup of the parent course's source locale.
+
+    Used as the per-field detection fallback when a module / chapter
+    title can't be classified on its own (short titles like "1" or
+    "Часть 1" often can't).
+    """
+    return db.query(Course.source_locale).filter(Course.id == course_id).scalar()
 
 
 def create_module(db: Session, course_id: str, data: ModuleCreate) -> Module:
@@ -41,14 +55,34 @@ def create_module(db: Session, course_id: str, data: ModuleCreate) -> Module:
         due_date=data.due_date,
     )
     db.add(module)
+    db.flush()
+    dual_write_entity_content(
+        db,
+        entity_type="module",
+        entity_id=str(module.id),
+        entity=module,
+        fields=_TRANSLATABLE_MODULE_FIELDS,
+        fallback_locale=_course_source_locale(db, course_id),
+    )
     db.commit()
     db.refresh(module)
     return module
 
 
 def update_module(db: Session, module: Module, data: ModuleUpdate) -> Module:
-    for field, value in data.model_dump(exclude_unset=True).items():
+    patch = data.model_dump(exclude_unset=True)
+    for field, value in patch.items():
         setattr(module, field, value)
+    db.flush()
+    dual_write_entity_content(
+        db,
+        entity_type="module",
+        entity_id=str(module.id),
+        entity=module,
+        fields=_TRANSLATABLE_MODULE_FIELDS,
+        fallback_locale=_course_source_locale(db, module.course_id),
+        only_fields={f for f in _TRANSLATABLE_MODULE_FIELDS if f in patch},
+    )
     db.commit()
     db.refresh(module)
     return module

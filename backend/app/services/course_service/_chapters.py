@@ -8,12 +8,16 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import func
 
-from app.models.course import Chapter
+from app.models.course import Chapter, Course, Module
+from app.services.content_versions import dual_write_entity_content
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
     from app.schemas.course import ChapterCreate, ChapterUpdate
+
+
+_TRANSLATABLE_CHAPTER_FIELDS = ("title",)
 
 
 def _next_chapter_order(db: Session, module_id: str) -> int:
@@ -24,6 +28,19 @@ def _next_chapter_order(db: Session, module_id: str) -> int:
         .scalar()
     )
     return 0 if current_max is None else current_max + 1
+
+
+def _course_source_locale_for_module(db: Session, module_id: str) -> str | None:
+    """Walk ``Chapter -> Module -> Course`` to find the parent course's
+    source locale. Used as the fallback when a chapter title alone
+    can't be classified by the language detector.
+    """
+    return (
+        db.query(Course.source_locale)
+        .join(Module, Module.course_id == Course.id)
+        .filter(Module.id == module_id)
+        .scalar()
+    )
 
 
 def create_chapter(db: Session, module_id: str, data: ChapterCreate) -> Chapter:
@@ -40,14 +57,34 @@ def create_chapter(db: Session, module_id: str, data: ChapterCreate) -> Chapter:
         is_locked=data.is_locked,
     )
     db.add(chapter)
+    db.flush()
+    dual_write_entity_content(
+        db,
+        entity_type="chapter",
+        entity_id=str(chapter.id),
+        entity=chapter,
+        fields=_TRANSLATABLE_CHAPTER_FIELDS,
+        fallback_locale=_course_source_locale_for_module(db, module_id),
+    )
     db.commit()
     db.refresh(chapter)
     return chapter
 
 
 def update_chapter(db: Session, chapter: Chapter, data: ChapterUpdate) -> Chapter:
-    for field, value in data.model_dump(exclude_unset=True).items():
+    patch = data.model_dump(exclude_unset=True)
+    for field, value in patch.items():
         setattr(chapter, field, value)
+    db.flush()
+    dual_write_entity_content(
+        db,
+        entity_type="chapter",
+        entity_id=str(chapter.id),
+        entity=chapter,
+        fields=_TRANSLATABLE_CHAPTER_FIELDS,
+        fallback_locale=_course_source_locale_for_module(db, chapter.module_id),
+        only_fields={f for f in _TRANSLATABLE_CHAPTER_FIELDS if f in patch},
+    )
     db.commit()
     db.refresh(chapter)
     return chapter

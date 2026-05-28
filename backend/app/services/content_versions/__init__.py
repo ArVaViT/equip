@@ -7,6 +7,7 @@ all funnel through ``record_human_version`` / ``record_mt_version``
 / ``record_mt_failure``.
 """
 
+from app.services.content_versions.dual_write import dual_write_entity_content
 from app.services.content_versions.write import (
     record_human_version,
     record_mt_failure,
@@ -14,6 +15,7 @@ from app.services.content_versions.write import (
 )
 
 __all__ = [
+    "dual_write_entity_content",
     "record_human_version",
     "record_mt_failure",
     "record_mt_version",
