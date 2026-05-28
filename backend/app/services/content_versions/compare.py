@@ -282,7 +282,16 @@ def compare_resolved_text(
 
     new_text: str | None
     new_status: str | None
-    new_recorded_locale = any_active_for_field.locale if any_active_for_field is not None else None
+    # ``new_recorded_locale`` reports the locale of the row that
+    # actually drove the new-store resolution. When the display-locale
+    # row exists it's that one (and equals display_locale by
+    # construction); when it doesn't, fall back to the first active
+    # row for the field — the "what locale did cv actually file this
+    # under?" signal.
+    if active_row_for_display_locale is not None:
+        new_recorded_locale: str | None = active_row_for_display_locale.locale
+    else:
+        new_recorded_locale = any_active_for_field.locale if any_active_for_field is not None else None
 
     if active_row_for_display_locale is None:
         # No content_versions row at display_locale — same fallback as
