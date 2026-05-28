@@ -583,21 +583,39 @@ def localize_announcement_rows(
     display_locale: LocaleCode,
     source_locale: LocaleCode,
 ) -> list[AnnouncementResponse]:
-    """Apply stored translations to teacher-authored announcement rows."""
+    """Phase 5e5: ``announcements.title`` + ``content`` columns dropped.
+    Both texts live in cv now. Resolve each via the three-tier fallback
+    (display → source → any-locale).
+    """
     if not announcements:
         return []
-    specs: list[tuple[str, str, str]] = []
-    for a in announcements:
-        specs.append(("announcement", str(a.id), "title"))
-        if a.content and str(a.content).strip():
-            specs.append(("announcement", str(a.id), "content"))
-    loc = Localizer.build(db, specs, source_locale=source_locale, display_locale=display_locale)
+    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+
+    ids = [str(a.id) for a in announcements]
+    texts = fetch_cv_entity_texts_with_fallback(
+        db,
+        entity_type="announcement",
+        entity_ids=ids,
+        fields=["title", "content"],
+        display_locale=display_locale,
+        source_locale=source_locale,
+    )
     out: list[AnnouncementResponse] = []
     for a in announcements:
-        base = AnnouncementResponse.model_validate(a, from_attributes=True)
-        title = loc.pick("announcement", str(a.id), "title", a.title) or a.title
-        content = loc.pick("announcement", str(a.id), "content", a.content) or a.content
-        out.append(base.model_copy(update={"title": title, "content": content}))
+        aid = str(a.id)
+        out.append(
+            AnnouncementResponse.model_validate(
+                {
+                    "id": a.id,
+                    "title": texts.get((aid, "title")) or "",
+                    "content": texts.get((aid, "content")) or "",
+                    "course_id": a.course_id,
+                    "created_by": a.created_by,
+                    "created_at": a.created_at,
+                    "updated_at": a.updated_at,
+                }
+            )
+        )
     return out
 
 

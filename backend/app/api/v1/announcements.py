@@ -22,7 +22,7 @@ from app.schemas.announcement import (
     AnnouncementUpdate,
 )
 from app.schemas.locale import LocaleCode, normalize_locale
-from app.services.content_versions import dual_write_entity_content
+from app.services.content_versions import dual_write_entity_content, fetch_cv_entity_texts_with_fallback
 from app.services.notification_service import create_notifications_bulk
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import localize_announcement_rows
@@ -39,9 +39,13 @@ def _dual_write_announcement(
     *,
     teacher: User,
     course: Course | None,
+    texts: dict[str, str | None],
     only_fields: set[str] | None = None,
 ) -> None:
     """Dual-write an announcement's title + content to content_versions.
+
+    Phase 5e5: title + content columns dropped — both texts live in cv
+    and arrive via the explicit ``texts`` dict.
 
     Course-scoped announcements use the course's source_locale as the
     detector fallback. Global announcements (no course context) fall
@@ -54,11 +58,39 @@ def _dual_write_announcement(
         db,
         entity_type="announcement",
         entity_id=str(announcement.id),
-        entity=announcement,
         fields=_TRANSLATABLE_ANNOUNCEMENT_FIELDS,
         fallback_locale=fallback,
         authored_by=teacher.id,
         only_fields=only_fields,
+        texts=texts,
+    )
+
+
+def _announcement_to_response(
+    db: Session, announcement: Announcement, *, source_locale: str = "en"
+) -> AnnouncementResponse:
+    """Phase 5e5: title + content columns dropped — pull both from cv.
+    Used by the single-entity routes (create / update); the list route
+    uses ``localize_announcement_rows`` which is locale-aware.
+    """
+    texts = fetch_cv_entity_texts_with_fallback(
+        db,
+        entity_type="announcement",
+        entity_ids=[str(announcement.id)],
+        fields=list(_TRANSLATABLE_ANNOUNCEMENT_FIELDS),
+        display_locale=source_locale,
+        source_locale=source_locale,
+    )
+    return AnnouncementResponse.model_validate(
+        {
+            "id": announcement.id,
+            "title": texts.get((str(announcement.id), "title")) or "",
+            "content": texts.get((str(announcement.id), "content")) or "",
+            "course_id": announcement.course_id,
+            "created_by": announcement.created_by,
+            "created_at": announcement.created_at,
+            "updated_at": announcement.updated_at,
+        }
     )
 
 
@@ -164,7 +196,7 @@ def create_announcement(
     data: AnnouncementCreate,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
-) -> Announcement:
+) -> AnnouncementResponse:
     """Two flavors, picked by ``data.course_id``:
 
     - **Course-scoped** (``course_id`` set): only the course owner can
@@ -219,8 +251,6 @@ def create_announcement(
     safe_content = sanitize_string(data.content)
     announcement = Announcement(
         id=uuid.uuid4(),
-        title=safe_title,
-        content=safe_content,
         course_id=data.course_id,
         created_by=teacher.id,
     )
@@ -251,13 +281,16 @@ def create_announcement(
     # they have no course context. The detector still runs per-field
     # on the actual text so a Russian-authored announcement from an
     # English-UI admin lands in 'ru'.
-    _dual_write_announcement(db, announcement, teacher=teacher, course=course)
+    _dual_write_announcement(
+        db, announcement, teacher=teacher, course=course, texts={"title": safe_title, "content": safe_content}
+    )
 
     db.commit()
     db.refresh(announcement)
     if data.course_id:
         reconcile_entity_if_course_published(db, "announcement", announcement)
-    return announcement
+    fallback = course.source_locale if course is not None else (teacher.preferred_locale or "en")
+    return _announcement_to_response(db, announcement, source_locale=fallback)
 
 
 @router.put("/{announcement_id}", response_model=AnnouncementResponse)
@@ -266,7 +299,7 @@ def update_announcement(
     data: AnnouncementUpdate,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
-) -> Announcement:
+) -> AnnouncementResponse:
     announcement = db.query(Announcement).filter(Announcement.id == announcement_id).first()
     if not announcement:
         raise HTTPException(
@@ -279,23 +312,30 @@ def update_announcement(
             detail="You can only edit your own announcements",
         )
 
-    touched: set[str] = set()
+    text_patch: dict[str, str | None] = {}
     if data.title is not None:
-        announcement.title = sanitize_string(data.title)
-        touched.add("title")
+        text_patch["title"] = sanitize_string(data.title)
     if data.content is not None:
-        announcement.content = sanitize_string(data.content)
-        touched.add("content")
+        text_patch["content"] = sanitize_string(data.content)
 
     course = db.query(Course).filter(Course.id == announcement.course_id).first() if announcement.course_id else None
     db.flush()
-    _dual_write_announcement(db, announcement, teacher=teacher, course=course, only_fields=touched)
+    if text_patch:
+        _dual_write_announcement(
+            db,
+            announcement,
+            teacher=teacher,
+            course=course,
+            only_fields=set(text_patch.keys()),
+            texts=text_patch,
+        )
 
     db.commit()
     db.refresh(announcement)
     if announcement.course_id:
         reconcile_entity_if_course_published(db, "announcement", announcement)
-    return announcement
+    fallback = course.source_locale if course is not None else (teacher.preferred_locale or "en")
+    return _announcement_to_response(db, announcement, source_locale=fallback)
 
 
 @router.delete("/{announcement_id}", status_code=status.HTTP_204_NO_CONTENT)
