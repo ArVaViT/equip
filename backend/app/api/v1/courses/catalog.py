@@ -182,13 +182,14 @@ def get_module_detail(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only the course owner or an admin can request source-language content",
             )
-        # Phase 5g: ``?source=1`` returns the earliest-authored cv row
-        # for the module (the source language, regardless of overlay)
-        # — bypasses the per-display-locale lookup.
+        # ``?source=1`` returns the teacher-authored source text regardless
+        # of overlay locale. Read the earliest active human-origin row
+        # per field; fall back to the earliest of any origin so a content
+        # row written by an importer still surfaces.
         from app.models.content_version import ContentVersion
 
-        rows = (
-            db.query(ContentVersion.field, ContentVersion.text)
+        cv_rows = (
+            db.query(ContentVersion.field, ContentVersion.text, ContentVersion.origin)
             .filter(
                 ContentVersion.entity_type == "module",
                 ContentVersion.entity_id == str(module.id),
@@ -199,12 +200,14 @@ def get_module_detail(
             .order_by(ContentVersion.created_at)
             .all()
         )
-        text_by_field: dict[str, str] = {}
-        for field, text in rows:
-            text_by_field.setdefault(field, text)
-        module.title = text_by_field.get("title") or module.title or ""
-        if "description" in text_by_field:
-            module.description = text_by_field["description"]
+        human_by_field: dict[str, str] = {}
+        any_by_field: dict[str, str] = {}
+        for field, text, origin in cv_rows:
+            any_by_field.setdefault(field, text)
+            if origin == "human":
+                human_by_field.setdefault(field, text)
+        module.title = human_by_field.get("title") or any_by_field.get("title") or ""
+        module.description = human_by_field.get("description") or any_by_field.get("description")
         return ModuleResponse.model_validate(module, from_attributes=True)
 
     # Owner + admin always see source for editorial accuracy (matches the
