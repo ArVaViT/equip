@@ -9,7 +9,9 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func
 
 from app.models.course import Chapter, Course, Module
+from app.schemas.locale import normalize_locale
 from app.services.content_versions import dual_write_entity_content
+from app.services.translation.resolve_for_display import populate_module_texts
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -96,9 +98,6 @@ def update_module(db: Session, module: Module, data: ModuleUpdate) -> Module:
     db.refresh(module)
     # Hydrate runtime attrs from cv so the caller's serialization picks
     # up the new text immediately.
-    from app.schemas.locale import normalize_locale
-    from app.services.translation.resolve_for_display import populate_module_texts
-
     src = _course_source_locale(db, module.course_id) or "en"
     populate_module_texts(db, [module], source_locale=normalize_locale(src))
     return module

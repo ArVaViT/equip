@@ -23,6 +23,8 @@ from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
 from app.models.quiz import Quiz, QuizAttempt
 from app.models.user import User
+from app.schemas.locale import normalize_locale
+from app.services.translation.resolve_for_display import populate_module_texts, populate_spine_texts
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -36,9 +38,6 @@ def _load_course_structure(
     Kept as a helper because both the aggregation pass and the per-student
     render pass need the same structural lookups.
     """
-    from app.schemas.locale import normalize_locale
-    from app.services.translation.resolve_for_display import populate_module_texts
-
     modules = (
         db.query(Module)
         .filter(Module.course_id == course_id, Module.deleted_at.is_(None))
@@ -244,8 +243,6 @@ def _load_completed_progress(db: Session, chapter_ids: list[str]) -> dict[str, d
 
 def build_course_student_progress(db: Session, course: Course, course_id: str) -> dict[str, Any]:
     """Return the full teacher-dashboard progress payload for a course."""
-    from app.services.translation.resolve_for_display import populate_spine_texts
-
     populate_spine_texts(db, [course])
     chapters, module_map, chapter_title_map = _load_course_structure(db, course_id)
     chapter_ids = [c.id for c in chapters]

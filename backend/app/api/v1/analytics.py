@@ -6,6 +6,7 @@ from app.api.dependencies import require_teacher, verify_course_owner
 from app.core.database import get_db
 from app.models.enrollment import Enrollment
 from app.models.user import User
+from app.services.translation.resolve_for_display import populate_spine_texts
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -37,8 +38,6 @@ def get_course_analytics(
     """
     course = verify_course_owner(db, course_id, teacher)
     # Phase 5g: courses.title moved to cv — hydrate before serialising.
-    from app.services.translation.resolve_for_display import populate_spine_texts
-
     populate_spine_texts(db, [course])
 
     # Aggregates in one round-trip instead of loading everything into Python.

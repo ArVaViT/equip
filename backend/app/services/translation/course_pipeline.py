@@ -20,7 +20,7 @@ from sqlalchemy.orm import selectinload
 from app.models.announcement import Announcement
 from app.models.assignment import Assignment
 from app.models.chapter_block import ChapterBlock
-from app.models.cohort import Cohort
+from app.models.cohort import Cohort, CohortCourse
 from app.models.course_event import CourseEvent
 from app.models.quiz import Quiz, QuizQuestion
 from app.services.translation.orchestrator import OrchestratorReport
@@ -238,8 +238,6 @@ def _translate_course_side_entities(
     # the ``cohort_courses`` junction. Reconcile every cohort that
     # currently includes this course — each course-locale pair gets its
     # own translation overlay row for the cohort name.
-    from app.models.cohort import CohortCourse
-
     for co in (
         db.query(Cohort)
         .join(CohortCourse, Cohort.id == CohortCourse.cohort_id)

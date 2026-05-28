@@ -465,12 +465,6 @@ class TestCatalogLocalizedMetadata:
         )
         assert resp.status_code == 403
 
-    @pytest.mark.skip(
-        reason="Phase 5g: ?source=1 semantics for modules with cv-only text "
-        "need a separate followup — when course.source_locale != module text "
-        "actual language, the earliest-created cv row may not match the "
-        "teacher's authored source. Tracked separately; not blocking the column drop."
-    )
     def test_get_module_detail_source_param_returns_raw_columns_for_owner(
         self,
         client: TestClient,

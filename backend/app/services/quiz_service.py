@@ -24,6 +24,7 @@ from app.models.quiz import (
     QuizQuestion,
 )
 from app.schemas.quiz import QuizAnswerResult
+from app.services.course_service import sync_enrollment_progress
 from app.services.domain_access import resolve_chapter_course_id
 
 if TYPE_CHECKING:
@@ -273,10 +274,6 @@ def recompute_attempt_grade(db: Session, attempt: QuizAttempt, quiz: Quiz) -> No
     ``passed`` flipped ``False`` → ``True`` the chapter is marked done
     and the enrollment progress is re-synced.
     """
-    # Imported lazily to avoid a service ↔ service import cycle at module
-    # load time.
-    from app.services.course_service import sync_enrollment_progress
-
     rows = db.query(QuizAnswer).filter(QuizAnswer.attempt_id == attempt.id).all()
     attempt.score = sum(int(r.points_earned or 0) for r in rows)
     # ``max_score`` is already the full potential from submit(); we don't

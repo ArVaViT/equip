@@ -43,6 +43,7 @@ from app.models.chapter_block import ChapterBlock
 # in annotations.
 from app.models.course import Chapter, Course  # noqa: TC001
 from app.models.quiz import Quiz, QuizOption, QuizQuestion
+from app.services.translation.resolve_for_display import populate_spine_texts
 
 Severity = Literal["critical", "recommended", "polish"]
 
@@ -183,8 +184,6 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
     ``module.title`` from ``content_versions`` before running checks so
     the rules can read them as plain attributes.
     """
-    from app.services.translation.resolve_for_display import populate_spine_texts
-
     populate_spine_texts(db, [course])
     checks: list[ReadinessCheck] = []
 

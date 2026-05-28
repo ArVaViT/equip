@@ -74,6 +74,7 @@ def fetch_cv_entity_texts_with_fallback(
     fields: list[str],
     display_locale: str,
     source_locale: str,
+    prefer_human: bool = False,
 ) -> dict[tuple[str, str], str | None]:
     """Read every active+ok ``content_versions`` row for the given
     entities + fields, then resolve each (entity, field) to a single
@@ -83,15 +84,29 @@ def fetch_cv_entity_texts_with_fallback(
     Returns a map ``(entity_id, field) -> text or None``. ``None`` only
     appears when no active+ok row exists at any locale.
 
+    When ``prefer_human`` is set, the any-locale tier prefers
+    human-authored rows (``origin='human'``) over MT ones. The
+    display-locale and source-locale tiers ignore the flag — the
+    overlay system intentionally serves MT text in those locales
+    when that's what's authoritative. The flag matters only for the
+    ``?source=1`` editor view, where a teacher wants to see THEIR
+    typed text in its source language even if an MT row at that
+    locale was created earlier.
+
     Phase 5e-series: entities whose source columns are dropped need
     one indexed lookup per request to materialise responses; this is
-    that lookup. Same code path for the locale-aware list endpoints
-    and the single-entity GET/POST/PUT returns.
+    that lookup.
     """
     if not entity_ids or not fields:
         return {}
     rows = (
-        db.query(ContentVersion.entity_id, ContentVersion.field, ContentVersion.locale, ContentVersion.text)
+        db.query(
+            ContentVersion.entity_id,
+            ContentVersion.field,
+            ContentVersion.locale,
+            ContentVersion.text,
+            ContentVersion.origin,
+        )
         .filter(
             ContentVersion.entity_type == entity_type,
             ContentVersion.entity_id.in_(entity_ids),
@@ -104,16 +119,22 @@ def fetch_cv_entity_texts_with_fallback(
     )
     by_locale: dict[tuple[str, str, str], str] = {}
     any_for_pair: dict[tuple[str, str], str] = {}
-    for eid, field, locale, text in rows:
+    human_for_pair: dict[tuple[str, str], str] = {}
+    for eid, field, locale, text, origin in rows:
         by_locale.setdefault((eid, field, locale), text)
         any_for_pair.setdefault((eid, field), text)
+        if origin == "human":
+            human_for_pair.setdefault((eid, field), text)
     resolved: dict[tuple[str, str], str | None] = {}
     for eid in entity_ids:
         for field in fields:
+            any_tier = (
+                human_for_pair.get((eid, field)) or any_for_pair.get((eid, field))
+                if prefer_human
+                else any_for_pair.get((eid, field))
+            )
             resolved[(eid, field)] = (
-                by_locale.get((eid, field, display_locale))
-                or by_locale.get((eid, field, source_locale))
-                or any_for_pair.get((eid, field))
+                by_locale.get((eid, field, display_locale)) or by_locale.get((eid, field, source_locale)) or any_tier
             )
     return resolved
 
