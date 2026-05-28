@@ -10,7 +10,6 @@ from app.api.v1 import (
     certificates,
     cohorts,
     courses,
-    dual_read_diag,
     grades,
     health,
     notifications,
@@ -44,4 +43,3 @@ api_router.include_router(audit.router)
 api_router.include_router(calendar_mod.router)
 api_router.include_router(calendar_mod.event_router)
 api_router.include_router(verse_of_the_day.router)
-api_router.include_router(dual_read_diag.router)
