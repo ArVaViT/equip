@@ -20,7 +20,11 @@ from app.schemas.calendar import (
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.content_versions import dual_write_entity_content, fetch_cv_entity_texts_with_fallback
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
-from app.services.translation.resolve_for_display import fetch_course_titles_by_id, localize_course_event_rows
+from app.services.translation.resolve_for_display import (
+    fetch_course_titles_by_id,
+    localize_course_event_rows,
+    populate_module_texts,
+)
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 
@@ -107,8 +111,6 @@ def get_calendar_events(
     # Modules straddle multiple courses with potentially different
     # source_locales; group + bulk-hydrate so each module's title /
     # description land via cv.
-    from app.services.translation.resolve_for_display import populate_module_texts
-
     modules_by_src: dict[LocaleCode, list[Module]] = {}
     for m in modules:
         modules_by_src.setdefault(course_source_locales.get(m.course_id, display_locale), []).append(m)

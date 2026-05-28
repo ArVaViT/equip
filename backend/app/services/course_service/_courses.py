@@ -8,9 +8,11 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
+from app.models.certificate import Certificate
 from app.models.course import Chapter, Course, Module
 from app.services.content_versions import dual_write_entity_content
 from app.services.language_detection import detect_locale
+from app.services.translation.resolve_for_display import populate_spine_texts
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -132,8 +134,6 @@ def update_course(db: Session, course: Course, data: CourseUpdate) -> Course:
         )
     db.commit()
     db.refresh(course)
-    from app.services.translation.resolve_for_display import populate_spine_texts
-
     populate_spine_texts(db, [course])
     return course
 
@@ -199,8 +199,6 @@ def permanently_delete_course(db: Session, course: Course) -> None:
     # ``ON DELETE SET NULL`` nulls ``course_id`` and the title becomes
     # unrecoverable. Mirrors the trigger's `WHERE archived_course_title
     # IS NULL` clause so re-deletes don't overwrite an earlier snapshot.
-    from app.models.certificate import Certificate
-
     db.query(Certificate).filter(
         Certificate.course_id == course.id,
         Certificate.archived_course_title.is_(None),

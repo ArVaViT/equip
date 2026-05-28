@@ -29,6 +29,7 @@ from app.services.grade_calculator import (
     calculate_all_student_grades,
     calculate_student_grade_for_course,
 )
+from app.services.translation.resolve_for_display import populate_spine_texts
 
 logger = logging.getLogger(__name__)
 
@@ -195,8 +196,6 @@ def export_grades_csv(
     buf.seek(0)
     # Phase 5g: course.title lives in cv now — fetch the source title for
     # the filename. Empty string is fine; the ascii fallback covers it.
-    from app.services.translation.resolve_for_display import populate_spine_texts
-
     populate_spine_texts(db, [course])
     course_title = course.title or ""
     # ASCII-only fallback for the legacy ``filename=`` header. ``c.isalnum``

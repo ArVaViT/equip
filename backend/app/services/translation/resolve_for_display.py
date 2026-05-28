@@ -557,8 +557,6 @@ def _fetch_quiz_tree_texts(
     entity_type) keeps the SQL tuple-IN clauses simple and lets each
     use its own ``fields=[]`` list.
     """
-    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
-
     quiz_texts = fetch_cv_entity_texts_with_fallback(
         db,
         entity_type="quiz",
@@ -715,8 +713,6 @@ def localize_assignment_rows(
     """
     if not assignments:
         return []
-    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
-
     ids = [str(a.id) for a in assignments]
     texts = fetch_cv_entity_texts_with_fallback(
         db,
@@ -863,8 +859,6 @@ def localize_announcement_rows(
     """
     if not announcements:
         return []
-    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
-
     ids = [str(a.id) for a in announcements]
     texts = fetch_cv_entity_texts_with_fallback(
         db,
@@ -906,8 +900,6 @@ def localize_course_event_rows(
     """
     if not events:
         return []
-    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
-
     ids = [str(e.id) for e in events]
     texts = fetch_cv_entity_texts_with_fallback(
         db,
