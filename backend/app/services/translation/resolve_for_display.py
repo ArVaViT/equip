@@ -507,6 +507,7 @@ def _fetch_quiz_tree_texts(
     *,
     display_locale: LocaleCode,
     source_locale: LocaleCode,
+    prefer_human: bool = False,
 ) -> tuple[dict[tuple[str, str], str | None], dict[tuple[str, str], str | None], dict[tuple[str, str], str | None]]:
     """Bulk-fetch every cv text for ``quiz`` + its questions + their options
     at display→source→any locale fallback. Returns three (entity_id, field)
@@ -517,6 +518,11 @@ def _fetch_quiz_tree_texts(
     were dropped, so cv is the only store. Three calls (one per
     entity_type) keeps the SQL tuple-IN clauses simple and lets each
     use its own ``fields=[]`` list.
+
+    ``prefer_human`` flows down into ``fetch_cv_entity_texts_with_fallback``
+    so the teacher editor (``?source=1``) prefers human rows in the
+    any-locale tier. See ``read.fetch_cv_entity_texts_with_fallback`` for
+    the semantics.
     """
     quiz_texts = fetch_cv_entity_texts_with_fallback(
         db,
@@ -525,6 +531,7 @@ def _fetch_quiz_tree_texts(
         fields=["title", "description"],
         display_locale=display_locale,
         source_locale=source_locale,
+        prefer_human=prefer_human,
     )
     question_ids = [str(qn.id) for qn in quiz.questions]
     question_texts = (
@@ -535,6 +542,7 @@ def _fetch_quiz_tree_texts(
             fields=["question_text"],
             display_locale=display_locale,
             source_locale=source_locale,
+            prefer_human=prefer_human,
         )
         if question_ids
         else {}
@@ -548,6 +556,7 @@ def _fetch_quiz_tree_texts(
             fields=["option_text"],
             display_locale=display_locale,
             source_locale=source_locale,
+            prefer_human=prefer_human,
         )
         if option_ids
         else {}
@@ -561,13 +570,14 @@ def build_localized_quiz_student_response(
     *,
     display_locale: LocaleCode,
     source_locale: LocaleCode,
+    prefer_human: bool = False,
 ) -> QuizStudentResponse:
     """Phase 5f: quiz tree text columns dropped — fetch every title /
     description / question_text / option_text from cv with three-tier
     fallback, then assemble the student-facing response.
     """
     quiz_texts, question_texts, option_texts = _fetch_quiz_tree_texts(
-        db, quiz, display_locale=display_locale, source_locale=source_locale
+        db, quiz, display_locale=display_locale, source_locale=source_locale, prefer_human=prefer_human
     )
     new_questions: list[dict] = []
     for qn in quiz.questions:
@@ -615,10 +625,12 @@ def build_quiz_response_from_cv(
 ) -> QuizResponse:
     """Teacher-facing quiz response with all texts pulled from cv at the
     course's source_locale (with any-locale fallback). Used by the
-    create / update / source=1 list routes.
+    create / update / source=1 list routes. Always prefers human-origin
+    rows in the any-locale tier — a teacher edit surface should never
+    surface MT output even if a localised MT row was created earlier.
     """
     quiz_texts, question_texts, option_texts = _fetch_quiz_tree_texts(
-        db, quiz, display_locale=source_locale, source_locale=source_locale
+        db, quiz, display_locale=source_locale, source_locale=source_locale, prefer_human=True
     )
     new_questions: list[dict] = []
     for qn in quiz.questions:
@@ -667,6 +679,7 @@ def localize_assignment_rows(
     *,
     display_locale: LocaleCode,
     source_locale: LocaleCode,
+    prefer_human: bool = False,
 ) -> list[AssignmentResponse]:
     """Phase 5e3: ``assignments.title`` + ``description`` columns dropped.
     Both texts live in ``content_versions`` now. Resolve each via a
@@ -682,6 +695,7 @@ def localize_assignment_rows(
         fields=["title", "description"],
         display_locale=display_locale,
         source_locale=source_locale,
+        prefer_human=prefer_human,
     )
     out: list[AssignmentResponse] = []
     for a in assignments:
@@ -709,6 +723,7 @@ def localize_chapter_block_rows(
     *,
     display_locale: LocaleCode,
     source_locale: LocaleCode,
+    prefer_human: bool = False,
 ) -> list[BlockResponse]:
     """Apply stored translations to TipTap HTML stored on chapter blocks.
 
@@ -720,7 +735,11 @@ def localize_chapter_block_rows(
     Three-tier fallback: display_locale → source_locale → any-locale.
     The any-locale tier rescues blocks whose content was authored in a
     locale that's neither display nor course-declared source (an edge
-    case from the per-field-detection world).
+    case from the per-field-detection world). When ``prefer_human`` is
+    set, the any-locale tier prefers human-authored rows over MT ones —
+    used by the ``?source=1`` editor view so a teacher never sees a
+    stale MT row as the "source" content for a block whose source-locale
+    row went missing.
     """
     if not blocks:
         return []
@@ -729,7 +748,7 @@ def localize_chapter_block_rows(
     # + any-locale tiers. Ordered by created_at so we deterministically
     # pick the earliest if multiple rows exist per block at a locale.
     rows = (
-        db.query(ContentVersion.entity_id, ContentVersion.locale, ContentVersion.text)
+        db.query(ContentVersion.entity_id, ContentVersion.locale, ContentVersion.text, ContentVersion.origin)
         .filter(
             ContentVersion.entity_type == "chapter_block",
             ContentVersion.entity_id.in_(block_ids),
@@ -742,17 +761,17 @@ def localize_chapter_block_rows(
     )
     by_block_locale: dict[tuple[str, str], str] = {}
     any_by_block: dict[str, str] = {}
-    for eid, locale, text in rows:
+    human_by_block: dict[str, str] = {}
+    for eid, locale, text, origin in rows:
         by_block_locale.setdefault((eid, locale), text)
         any_by_block.setdefault(eid, text)
+        if origin == "human":
+            human_by_block.setdefault(eid, text)
     out: list[BlockResponse] = []
     for b in blocks:
         bid = str(b.id)
-        content = (
-            by_block_locale.get((bid, display_locale))
-            or by_block_locale.get((bid, source_locale))
-            or any_by_block.get(bid)
-        )
+        any_tier = human_by_block.get(bid) or any_by_block.get(bid) if prefer_human else any_by_block.get(bid)
+        content = by_block_locale.get((bid, display_locale)) or by_block_locale.get((bid, source_locale)) or any_tier
         out.append(
             BlockResponse.model_validate(
                 {

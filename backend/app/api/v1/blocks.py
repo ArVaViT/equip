@@ -116,8 +116,12 @@ def list_blocks(
         # Phase 5e2: chapter_blocks.content column dropped — build
         # source-locale responses by re-using the resolve layer that
         # already does the cv lookups (source==display when no
-        # localisation requested).
-        return localize_chapter_block_rows(db, rows, display_locale=ctx.source_locale, source_locale=ctx.source_locale)
+        # localisation requested). ``prefer_human=True`` ensures the
+        # editor never surfaces an MT row in the any-locale fallback
+        # tier — teachers edit human text, not machine output.
+        return localize_chapter_block_rows(
+            db, rows, display_locale=ctx.source_locale, source_locale=ctx.source_locale, prefer_human=True
+        )
     display_locale: LocaleCode = normalize_locale(accept_language)
     return localize_chapter_block_rows(db, rows, display_locale=display_locale, source_locale=ctx.source_locale)
 
