@@ -832,6 +832,7 @@ def localize_announcement_rows(
     *,
     display_locale: LocaleCode,
     source_locale: LocaleCode,
+    prefer_human: bool = False,
 ) -> list[AnnouncementResponse]:
     """Phase 5e5: ``announcements.title`` + ``content`` columns dropped.
     Both texts live in cv now. Resolve each via the three-tier fallback
@@ -847,6 +848,7 @@ def localize_announcement_rows(
         fields=["title", "content"],
         display_locale=display_locale,
         source_locale=source_locale,
+        prefer_human=prefer_human,
     )
     out: list[AnnouncementResponse] = []
     for a in announcements:
@@ -873,6 +875,7 @@ def localize_course_event_rows(
     *,
     display_locale: LocaleCode,
     source_locale: LocaleCode,
+    prefer_human: bool = False,
 ) -> list[CourseEventResponse]:
     """Phase 5e4: ``course_events.title`` + ``description`` columns dropped.
     Both texts live in cv now. Resolve each via the three-tier
@@ -888,6 +891,7 @@ def localize_course_event_rows(
         fields=["title", "description"],
         display_locale=display_locale,
         source_locale=source_locale,
+        prefer_human=prefer_human,
     )
     out: list[CourseEventResponse] = []
     for e in events:
