@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import select
 
 from app.models.course import Chapter, Course, Module
+from app.services.content_versions import record_human_version
 from app.services.language_detection import detect_locale
 
 if TYPE_CHECKING:
@@ -17,6 +18,67 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
     from app.schemas.course import CourseCreate, CourseUpdate
+
+
+_TRANSLATABLE_COURSE_FIELDS = ("title", "description")
+
+
+def _dual_write_course_content(
+    db: Session,
+    course: Course,
+    *,
+    authored_by: str | UUID | None,
+    course_fallback: str | None,
+    only_fields: set[str] | None = None,
+) -> None:
+    """Write a ``content_versions`` row for every translatable field
+    on ``course`` that the caller wrote.
+
+    Each field's locale is detected from its own text (so a course
+    with an English title and Russian description gets two rows with
+    different ``locale`` values). Detection falls back to the course
+    source locale when the field's text is too short or has no
+    language signal.
+
+    ``only_fields`` is the set of fields the caller actually wrote;
+    ``None`` means "every translatable field" (used on create).
+    Filtering is important on PATCH so a description-only update
+    doesn't supersede the title row.
+
+    ``authored_by`` is the user id the route layer attributes the
+    write to (course owner on create, owner on update). Stored on
+    the row so the future preacher-style audit UI can show who
+    wrote what.
+    """
+    fields: tuple[str, ...]
+    if only_fields is None:
+        fields = _TRANSLATABLE_COURSE_FIELDS
+    else:
+        fields = tuple(f for f in _TRANSLATABLE_COURSE_FIELDS if f in only_fields)
+    author_uuid: UUID | None = None
+    if authored_by is not None:
+        author_uuid = authored_by if isinstance(authored_by, uuid.UUID) else uuid.UUID(str(authored_by))
+    for field in fields:
+        text = getattr(course, field, None)
+        if not text or not str(text).strip():
+            continue
+        detected = detect_locale(str(text))
+        locale = detected or course_fallback
+        if locale is None:
+            # No signal AND no course-level fallback — skip. Dual-write
+            # without a locale would be nonsensical and the field will
+            # come back through this path the next time the entity is
+            # saved with enough context.
+            continue
+        record_human_version(
+            db,
+            entity_type="course",
+            entity_id=str(course.id),
+            field=field,
+            locale=locale,
+            text=str(text),
+            authored_by=author_uuid,
+        )
 
 
 def _resolve_source_locale(
@@ -75,6 +137,8 @@ def create_course(
     if resolved_locale is not None:
         course.source_locale = resolved_locale
     db.add(course)
+    db.flush()
+    _dual_write_course_content(db, course, authored_by=user_id, course_fallback=resolved_locale)
     db.commit()
     db.refresh(course)
     return course
@@ -97,6 +161,17 @@ def update_course(db: Session, course: Course, data: CourseUpdate) -> Course:
         )
         if detected is not None:
             course.source_locale = detected
+    db.flush()
+    # Dual-write to content_versions only for fields the caller actually
+    # touched — a PATCH that didn't include ``description`` mustn't
+    # supersede the existing description row.
+    _dual_write_course_content(
+        db,
+        course,
+        authored_by=course.created_by,
+        course_fallback=course.source_locale,
+        only_fields={f for f in ("title", "description") if f in patch},
+    )
     db.commit()
     db.refresh(course)
     # When the source locale flips, every existing ``content_translations``
