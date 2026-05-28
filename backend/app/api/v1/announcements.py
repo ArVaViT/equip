@@ -313,17 +313,32 @@ def create_announcement(
     db.add(announcement)
     db.flush()
 
+    # Dual-write to content_versions BEFORE notification fan-out so the
+    # cv source row exists for the MT reconcile step below. Global
+    # announcements (no course_id) fall back to the author's
+    # preferred_locale because they have no course context. The
+    # detector still runs per-field on the actual text so a Russian-
+    # authored announcement from an English-UI admin lands in 'ru'.
+    _dual_write_announcement(
+        db, announcement, teacher=teacher, course=course, texts={"title": safe_title, "content": safe_content}
+    )
+    db.commit()
+    db.refresh(announcement)
+    # Phase 5x: reconcile (MT translate into every non-source locale)
+    # runs BEFORE the notification fan-out so per-recipient locale
+    # resolution can pick up the freshly-translated title instead of
+    # always seeing the source-locale text.
     if data.course_id:
-        # Phase 5v: notification text now respects each recipient's
-        # preferred_locale. Pull (user_id, preferred_locale) from the
-        # enrollment join, group recipients by locale, fetch the
-        # course title at THAT locale, and build a localized
-        # (title, message) pair per group before fan-out. The
-        # announcement title itself stays in its authored source
-        # locale (the cv MT pass hasn't fired yet at this point in
-        # the request lifecycle); the locale-aware wrapper around it
-        # is what makes the EN user see "in «...»" and the RU user
-        # see "в «...»".
+        reconcile_entity_if_course_published(db, "announcement", announcement)
+
+    if data.course_id:
+        # Phase 5v + 5x: notification text now respects each recipient's
+        # preferred_locale AND surfaces the locale-localized announcement
+        # title (not just the source-locale text). For each (user_id,
+        # preferred_locale) row in enrollments, resolve the announcement
+        # title at the recipient's locale via the cv read resolver, then
+        # produce a per-locale (title, message) pair before fan-out.
+        from app.services.content_versions import fetch_cv_entity_texts_with_fallback
         from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 
         enrolled_users = (
@@ -338,13 +353,28 @@ def create_announcement(
                 continue
             loc = normalize_locale(raw_locale)
             recipients_by_locale.setdefault(loc, []).append(uid)
+        ann_source_locale = course.source_locale if course is not None else (teacher.preferred_locale or "en")
         for locale, recipients in recipients_by_locale.items():
             normalized: LocaleCode = normalize_locale(locale)
             title_for_locale = (
                 fetch_course_titles_by_id(db, [course.id], display_locale=normalized).get(course.id) if course else None
             ) or _generic_course_fallback(locale)
+            # Resolve the announcement title at THIS recipient's locale.
+            # Reconcile ran above so MT rows are present; the resolver
+            # falls back to source-locale text if anything went wrong.
+            ann_title_for_locale = (
+                fetch_cv_entity_texts_with_fallback(
+                    db,
+                    entity_type="announcement",
+                    entity_ids=[str(announcement.id)],
+                    fields=["title"],
+                    display_locale=normalized,
+                    source_locale=normalize_locale(ann_source_locale),
+                ).get((str(announcement.id), "title"))
+                or safe_title
+            )
             notif_title, notif_message = _localize_announcement_notification(
-                locale, safe_title=safe_title, course_title=title_for_locale
+                locale, safe_title=ann_title_for_locale, course_title=title_for_locale
             )
             create_notifications_bulk(
                 db,
@@ -360,20 +390,8 @@ def create_announcement(
                 link=f"/courses/{data.course_id}",
                 metadata={"course_id": data.course_id, "announcement_id": str(announcement.id)},
             )
+        db.commit()
 
-    # Dual-write to content_versions. Global announcements (no
-    # course_id) fall back to the author's preferred_locale because
-    # they have no course context. The detector still runs per-field
-    # on the actual text so a Russian-authored announcement from an
-    # English-UI admin lands in 'ru'.
-    _dual_write_announcement(
-        db, announcement, teacher=teacher, course=course, texts={"title": safe_title, "content": safe_content}
-    )
-
-    db.commit()
-    db.refresh(announcement)
-    if data.course_id:
-        reconcile_entity_if_course_published(db, "announcement", announcement)
     fallback = course.source_locale if course is not None else (teacher.preferred_locale or "en")
     return _announcement_to_response(db, announcement, source_locale=fallback)
 
