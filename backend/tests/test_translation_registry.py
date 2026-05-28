@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from app.models.announcement import Announcement
 from app.models.content_version import ContentVersionEntityType as TranslationEntityType
 from app.models.course import Course, Module
 from app.services.translation.protocol import EntityType
@@ -72,7 +71,7 @@ def test_registry_field_names_exist_on_models():
     FieldSpec but ``getattr(entity, attr, None)`` returns None, so it
     cleanly no-ops for cv-only entities.
     """
-    cv_only_entities = {"cohort", "chapter_block", "assignment", "course_event"}
+    cv_only_entities = {"cohort", "chapter_block", "assignment", "course_event", "announcement"}
     for entity_type, reg in REGISTRY.items():
         if entity_type in cv_only_entities:
             continue
@@ -108,9 +107,10 @@ def published_course(db: Session, teacher) -> Course:
 def test_reconcile_orphan_announcement_is_noop(db: Session, teacher):
     """An announcement with no ``course_id`` has no source locale to
     translate from. Should silently no-op, not raise."""
-    ann = Announcement(title="Orphan", content="No course", course_id=None, created_by=teacher.id)
-    db.add(ann)
-    db.flush()
+    # Phase 5e5: title + content columns dropped; use the helper.
+    from ._cv_helpers import make_announcement_with_text
+
+    ann = make_announcement_with_text(db, title="Orphan", content="No course", course_id=None, created_by=teacher.id)
     report = reconcile_entity(db, "announcement", ann)
     assert (report.translated, report.skipped, report.failed) == (0, 0, 0)
 

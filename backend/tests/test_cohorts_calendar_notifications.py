@@ -8,7 +8,6 @@ import sqlalchemy.types as _sa_types
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.models.announcement import Announcement
 from app.models.cohort import Cohort, CohortCourse
 from app.models.course import Course, Module
 from app.models.enrollment import Enrollment
@@ -1658,13 +1657,9 @@ class TestUpdateAnnouncement:
         assert resp.status_code == 404
 
     def test_student_cannot_update(self, student_client: TestClient, db: Session):
-        ann = Announcement(
-            id=uuid.uuid4(),
-            title="Teacher Ann",
-            content="Some content",
-            created_by=TEACHER_ID,
-        )
-        db.add(ann)
+        from ._cv_helpers import make_announcement_with_text
+
+        ann = make_announcement_with_text(db, title="Teacher Ann", content="Some content", created_by=TEACHER_ID)
         db.commit()
         db.refresh(ann)
 
@@ -1697,13 +1692,9 @@ class TestDeleteAnnouncement:
         assert resp.status_code == 404
 
     def test_student_cannot_delete(self, student_client: TestClient, db: Session):
-        ann = Announcement(
-            id=uuid.uuid4(),
-            title="Teacher Ann",
-            content="Some content",
-            created_by=TEACHER_ID,
-        )
-        db.add(ann)
+        from ._cv_helpers import make_announcement_with_text
+
+        ann = make_announcement_with_text(db, title="Teacher Ann", content="Some content", created_by=TEACHER_ID)
         db.commit()
         db.refresh(ann)
 
@@ -1723,13 +1714,11 @@ class TestDeleteAnnouncement:
         db.add(other)
         db.commit()
 
-        ann = Announcement(
-            id=uuid.uuid4(),
-            title="Other's Announcement",
-            content="Other content",
-            created_by=other_teacher_id,
+        from ._cv_helpers import make_announcement_with_text
+
+        ann = make_announcement_with_text(
+            db, title="Other's Announcement", content="Other content", created_by=other_teacher_id
         )
-        db.add(ann)
         db.commit()
         db.refresh(ann)
 

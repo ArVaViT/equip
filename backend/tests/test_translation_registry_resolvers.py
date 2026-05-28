@@ -204,7 +204,8 @@ class TestResolveCourseViaAttr:
         resolver = _resolve_course_via_attr("course_id")
         # Announcement without course_id is the canonical "orphan" — the
         # comment on the resolver explicitly says this returns None.
-        orphan = Announcement(title="Orphan", content="x", course_id=None, created_by=TEACHER_ID)
+        # Phase 5e5: title + content columns dropped.
+        orphan = Announcement(course_id=None, created_by=TEACHER_ID)
         db.add(orphan)
         db.flush()
         assert resolver(db, orphan) is None
@@ -376,10 +377,9 @@ class TestRegistryWiring:
     def test_announcement_resolves_via_course_id_attr(self, db: Session, course: Course, teacher):
         from app.services.translation.registry import REGISTRY
 
+        # Phase 5e5: title + content columns dropped.
         ann = Announcement(
             id=uuid.uuid4(),
-            title="t",
-            content="c",
             course_id=course.id,
             created_by=teacher.id,
         )

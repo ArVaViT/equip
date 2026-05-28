@@ -113,6 +113,39 @@ def make_course_event_with_text(
     return event
 
 
+def make_announcement_with_text(
+    db: Session,
+    *,
+    title: str = "Announcement",
+    content: str = "Body",
+    course_id: str | None = None,
+    created_by,
+    announcement_id: uuid.UUID | None = None,
+    locale: str = "en",
+):
+    """Phase 5e5: ``announcements.title`` + ``content`` columns dropped.
+    Builds the row plus records both texts in cv at ``locale``.
+    """
+    from app.models.announcement import Announcement
+    from app.services.content_versions.write import record_human_version
+
+    ann = Announcement(
+        id=announcement_id or uuid.uuid4(),
+        course_id=course_id,
+        created_by=created_by,
+    )
+    db.add(ann)
+    db.flush()
+    record_human_version(
+        db, entity_type="announcement", entity_id=str(ann.id), field="title", locale=locale, text=title
+    )
+    if content:
+        record_human_version(
+            db, entity_type="announcement", entity_id=str(ann.id), field="content", locale=locale, text=content
+        )
+    return ann
+
+
 def make_chapter_block_with_content(
     db: Session,
     *,
