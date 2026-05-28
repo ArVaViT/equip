@@ -12,6 +12,26 @@ export const announcementsService = {
     })
   },
 
+  /**
+   * Teacher-only fetch that returns source-language announcement text
+   * regardless of the UI's Accept-Language. Required for the announcement
+   * editor so a teacher viewing their RU course in EN UI types into the
+   * original RU text, not the machine-translated EN overlay (which would
+   * silently overwrite the source on save).
+   *
+   * Backend requires a course_id filter for ?source=1 (course-scoped
+   * authorization gate), so this method takes courseId positionally.
+   * Bypasses the shared `announcements:course:{id}` cache for the same
+   * reason as `getCourseForEdit` — student and teacher views must not
+   * cross-contaminate.
+   */
+  async getAnnouncementsForEdit(courseId: string): Promise<Announcement[]> {
+    const response = await api.get<Announcement[]>("/announcements", {
+      params: { course_id: courseId, source: 1 },
+    })
+    return response.data
+  },
+
   // Banner-only feed. ``getAnnouncements()`` returns every row visible
   // to the user (enrolled + owned + site-wide), so the banner used to
   // pull dozens of course-scoped rows just to ``find`` the site-wide
