@@ -24,7 +24,6 @@ from typing import TYPE_CHECKING
 import pytest
 from pydantic import SecretStr
 
-from app.models.content_translation import ContentTranslation
 from app.models.content_version import ContentVersion
 from app.models.course import Course
 from app.models.user import User
@@ -123,26 +122,16 @@ class TestSuccessDualWrite:
             fields=[TranslationFieldSpec(field="title", text="Hello", content_kind="title")],
             provider=provider,
         )
-        # Legacy store still gets the row.
-        ct = (
-            db.query(ContentTranslation)
-            .filter(
-                ContentTranslation.entity_type == "course",
-                ContentTranslation.entity_id == str(course.id),
-                ContentTranslation.field == "title",
-                ContentTranslation.locale == "ru",
-            )
-            .one()
-        )
-        assert ct.text == "[ru]Hello"
-        # New store has a matching active row.
+        # Phase 5c: cv is now the only MT store; content_translations is
+        # not written. The active row at the target locale holds the
+        # translated text + provenance.
         cv = _active(db, entity_type="course", entity_id=str(course.id), locale="ru")
         assert cv is not None
         assert cv.origin == "mt"
         assert cv.status == "ok"
         assert cv.text == "[ru]Hello"
         assert cv.source_locale == "en"
-        assert cv.source_hash == ct.source_hash
+        assert cv.source_hash  # source_hash populated from compute_source_hash
 
     def test_mt_links_to_source_version_when_present(self, db: Session):
         course = _make_course(db)

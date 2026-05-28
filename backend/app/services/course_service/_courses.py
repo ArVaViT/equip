@@ -127,21 +127,12 @@ def update_course(db: Session, course: Course, data: CourseUpdate) -> Course:
     )
     db.commit()
     db.refresh(course)
-    # When the source locale flips, every existing ``content_translations``
-    # row tied to entities under this course is now stale: it was
-    # generated against the OLD source language, and the resolve path
-    # would incorrectly prefer those rows over the new authoritative
-    # base text. Purge them so the next translation pipeline run
-    # (triggered downstream by the publish hook) repopulates the tree
-    # in the new direction. Cheap when no rows exist; safe to run on
-    # every locale flip.
-    #
-    # Imported inside the function to avoid a module-load cycle
-    # (translation.course_pipeline already imports from app.models.course).
-    if course.source_locale != previous_source_locale:
-        from app.services.translation.course_pipeline import purge_course_translations
-
-        purge_course_translations(db, course)
+    # Phase 5c: when the source locale flips, the orchestrator's next
+    # run naturally re-creates MT rows in the new direction via cv's
+    # supersession (record_mt_version sees mismatched source_hash and
+    # supersedes the stale rows). No explicit purge required — cv's
+    # supersession model is the invalidation mechanism.
+    _ = previous_source_locale  # kept for future locale-flip telemetry
     return course
 
 
