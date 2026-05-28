@@ -378,6 +378,41 @@ def _translate_one_field(
     if existing is not None and existing.status == "failed_permanent":
         return "skipped"
 
+    # Phase 5s: duplicate-source dedupe. Gemini at temperature=0 is
+    # not strictly deterministic — identical RU source text can render
+    # to "Do not move..." 4x and "Don't move..." 1x across a quiz's
+    # answer options. Before paying a Gemini call, look for any other
+    # active+ok row with the same (target_locale, source_hash) and
+    # reuse its text. This costs one indexed query but eliminates an
+    # entire class of intra-question inconsistency (and one Gemini
+    # call per duplicate). Same-entity rows are excluded so we don't
+    # collide with the in-place ``existing`` branch above.
+    twin = (
+        db.query(ContentVersion.text)
+        .filter(
+            ContentVersion.locale == target_locale,
+            ContentVersion.source_hash == source_hash,
+            ContentVersion.status == "ok",
+            ContentVersion.superseded_by.is_(None),
+            ~((ContentVersion.entity_type == entity_type) & (ContentVersion.entity_id == entity_id)),
+        )
+        .order_by(ContentVersion.created_at)
+        .limit(1)
+        .scalar()
+    )
+    if twin is not None:
+        _dual_write_mt_success(
+            db,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            field=field,
+            target_locale=target_locale,
+            text=twin,
+            source_locale=source_locale,
+            source_hash=source_hash,
+        )
+        return "translated"
+
     request = TranslationRequest(
         text=text,
         source_locale=source_locale,

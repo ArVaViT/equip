@@ -168,6 +168,64 @@ def test_translate_course_metadata_skips_unchanged_source(db: Session):
     assert report.translated == 0
 
 
+def test_translate_entity_fields_reuses_existing_translation_for_identical_source(db: Session):
+    """Phase 5s: identical source text (same source_hash + target locale)
+    should reuse the first translation instead of calling the provider
+    again. Catches the Gemini-temperature-0 inconsistency where 5 quiz
+    options with the same RU source rendered 4 times to "Do not move"
+    and once to "Don't move" — once dedupe is in, every duplicate option
+    gets the same EN text and the provider is called only for the first.
+    """
+    from app.services.translation.orchestrator import TranslationFieldSpec, translate_entity_fields
+
+    _ensure_teacher(db)
+    # Two sibling "entities" (we use quiz_option in spirit but any
+    # entity_type works for the dedupe primitive — the rule is
+    # source_hash + target_locale, not entity_type).
+    eid_a = str(uuid.uuid4())
+    eid_b = str(uuid.uuid4())
+    shared_text = "Не двигай одну фигуру много раз"  # noqa: RUF001
+
+    provider = _RecordingProvider()
+    spec_a = [TranslationFieldSpec(field="option_text", text=shared_text, content_kind="quiz_option")]
+    spec_b = [TranslationFieldSpec(field="option_text", text=shared_text, content_kind="quiz_option")]
+
+    report_a = translate_entity_fields(
+        db,
+        entity_type="quiz_option",
+        entity_id=eid_a,
+        source_locale="ru",
+        fields=spec_a,
+        provider=provider,
+    )
+    report_b = translate_entity_fields(
+        db,
+        entity_type="quiz_option",
+        entity_id=eid_b,
+        source_locale="ru",
+        fields=spec_b,
+        provider=provider,
+    )
+    assert report_a.translated == 1
+    assert report_b.translated == 1
+    # The second call must NOT have invoked the provider — it found a
+    # twin row with the same source_hash and reused its text.
+    assert len(provider.calls) == 1
+    row_a = (
+        db.query(ContentVersion)
+        .filter_by(entity_type="quiz_option", entity_id=eid_a, field="option_text", locale="en", superseded_by=None)
+        .one()
+    )
+    row_b = (
+        db.query(ContentVersion)
+        .filter_by(entity_type="quiz_option", entity_id=eid_b, field="option_text", locale="en", superseded_by=None)
+        .one()
+    )
+    assert row_a.text == row_b.text, "identical RU source must produce identical EN text"
+    assert row_b.origin == "mt"
+    assert row_b.status == "ok"
+
+
 def test_translate_course_metadata_retranslates_when_source_changes(db: Session):
     course = _make_course(db)
     provider = _RecordingProvider()
