@@ -3,9 +3,9 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Text, func, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, func, text
+from sqlalchemy.event import listens_for
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.types import TypeDecorator
 
 from app.core.database import Base
 
@@ -42,20 +42,6 @@ class CourseAccessMode(enum.StrEnum):
     INSTITUTE = "institute"
 
 
-class TSVector(TypeDecorator):
-    """PostgreSQL TSVECTOR that falls back to TEXT on non-PG dialects (SQLite)."""
-
-    impl = Text
-    cache_ok = True
-
-    def load_dialect_impl(self, dialect):
-        if dialect.name == "postgresql":
-            from sqlalchemy.dialects.postgresql import TSVECTOR
-
-            return dialect.type_descriptor(TSVECTOR())
-        return dialect.type_descriptor(Text())
-
-
 class Course(Base):
     __tablename__ = "courses"
     __table_args__ = (
@@ -79,8 +65,7 @@ class Course(Base):
     )
 
     id: Mapped[str] = mapped_column(primary_key=True)
-    title: Mapped[str] = mapped_column()
-    description: Mapped[str | None] = mapped_column()
+    # Phase 5g: title + description columns dropped — cv is the only store.
     image_url: Mapped[str | None] = mapped_column()
     status: Mapped[str] = mapped_column(default=CourseStatus.DRAFT)
     # Access mode controls who can ENROLL in the course (separate from
@@ -106,7 +91,9 @@ class Course(Base):
     # field. See supabase/migrations/...add_content_translations.
     source_locale: Mapped[str] = mapped_column(default="ru", server_default="ru")
 
-    search_vector: Mapped[str | None] = mapped_column(TSVector())
+    # Phase 5g: search_vector column dropped along with title + description.
+    # Catalog search now runs against content_versions via ILIKE in the
+    # query layer; the FTS index + trigger are gone.
 
     # ``order_by`` guarantees deterministic ordering whenever the relationship is
     # accessed, including via ``joinedload`` in ``get_course``. Without it
@@ -120,8 +107,29 @@ class Course(Base):
     )
     enrollments: Mapped[list["Enrollment"]] = relationship(back_populates="course", cascade="all, delete-orphan")
 
+    # Phase 5g: ``title`` + ``description`` are runtime-only attributes
+    # populated either by ``__init__`` (write path) or by
+    # ``populate_spine_texts`` (read path). Class-level defaults ensure
+    # ``course.title`` / ``course.description`` never raise AttributeError
+    # even on a freshly-queried instance with no hydration step.
+    # No type annotation: ClassVar gets in the way of per-instance
+    # assignment (mypy), and a plain ``str`` annotation gets in the way
+    # of SQLAlchemy's declarative table builder. Untyped class-level
+    # defaults sidestep both: each instance can override via __dict__.
+    title = ""
+    description = None
+
+    def __init__(self, **kwargs):
+        title = kwargs.pop("title", None)
+        description = kwargs.pop("description", None)
+        super().__init__(**kwargs)
+        if title is not None:
+            self.title = title
+        if description is not None:
+            self.description = description
+
     def __repr__(self) -> str:
-        return f"<Course id={self.id!r} title={self.title!r}>"
+        return f"<Course id={self.id!r}>"
 
 
 class Module(Base):
@@ -140,8 +148,7 @@ class Module(Base):
     # The composite ``ix_modules_course_id_order`` covers plain ``course_id``
     # lookups via its leading column, so no single-column FK index here.
     course_id: Mapped[str] = mapped_column(ForeignKey("courses.id"))
-    title: Mapped[str] = mapped_column()
-    description: Mapped[str | None] = mapped_column()
+    # Phase 5g: title + description columns dropped — cv is the only store.
     order_index: Mapped[int] = mapped_column(default=0)
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -153,8 +160,25 @@ class Module(Base):
         order_by="Chapter.order_index",
     )
 
+    # Phase 5g: runtime-only attributes — see Course.
+    # No type annotation: ClassVar gets in the way of per-instance
+    # assignment (mypy), and a plain ``str`` annotation gets in the way
+    # of SQLAlchemy's declarative table builder. Untyped class-level
+    # defaults sidestep both: each instance can override via __dict__.
+    title = ""
+    description = None
+
+    def __init__(self, **kwargs):
+        title = kwargs.pop("title", None)
+        description = kwargs.pop("description", None)
+        super().__init__(**kwargs)
+        if title is not None:
+            self.title = title
+        if description is not None:
+            self.description = description
+
     def __repr__(self) -> str:
-        return f"<Module id={self.id!r} title={self.title!r} course_id={self.course_id!r}>"
+        return f"<Module id={self.id!r} course_id={self.course_id!r}>"
 
 
 class Chapter(Base):
@@ -184,3 +208,77 @@ class Chapter(Base):
 
     def __repr__(self) -> str:
         return f"<Chapter id={self.id!r} title={self.title!r} module_id={self.module_id!r}>"
+
+
+# ---------------------------------------------------------------------------
+# Phase 5g: auto-hydrate Course / Module ``.title`` and ``.description``
+# from content_versions whenever an instance is loaded from the database.
+# This is N+1 per instance but it makes EVERY downstream consumer (route
+# handlers, services, tests, relationship lazy-loads) keep working without
+# scattering ``populate_spine_texts`` calls across the codebase.
+# Bulk paths (catalog list, course detail) still call
+# ``populate_spine_texts`` explicitly so they hit cv once for the whole
+# batch instead of N times.
+# ---------------------------------------------------------------------------
+
+
+def _lazy_populate_spine_text(target: "Course | Module", entity_type: str) -> None:
+    from sqlalchemy.orm import Session as SASession
+
+    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+
+    session = SASession.object_session(target)
+    if session is None:
+        return
+    source = getattr(target, "source_locale", None) or "en"
+    texts = fetch_cv_entity_texts_with_fallback(
+        session,
+        entity_type=entity_type,
+        entity_ids=[str(target.id)],
+        fields=["title", "description"],
+        display_locale=source,
+        source_locale=source,
+    )
+    target.title = texts.get((str(target.id), "title")) or ""
+    target.description = texts.get((str(target.id), "description"))
+
+
+@listens_for(Course, "load")
+def _course_loaded(target: "Course", _context):
+    # Skip if hydration already populated the instance (e.g. via
+    # ``populate_spine_texts`` before this lazy-load fires).
+    if target.__dict__.get("title"):
+        return
+    _lazy_populate_spine_text(target, "course")
+
+
+# Phase 5g: removed auto-flush hook — caused recursion via record_human_version.
+# Tests that need cv-seeded spine text should use the make_course_with_text /
+# make_module_with_text helpers in tests/_cv_helpers.py.
+
+
+@listens_for(Module, "load")
+def _module_loaded(target: "Module", _context):
+    if target.__dict__.get("title"):
+        return
+    # Modules need their parent course's source_locale; falling back to
+    # the module's own ``source_locale`` is not defined. Look up the
+    # parent on demand — cached because SA usually has it eager-loaded.
+    from sqlalchemy.orm import Session as SASession
+
+    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+
+    session = SASession.object_session(target)
+    if session is None:
+        return
+    source = session.query(Course.source_locale).filter(Course.id == target.course_id).scalar() or "en"
+    texts = fetch_cv_entity_texts_with_fallback(
+        session,
+        entity_type="module",
+        entity_ids=[str(target.id)],
+        fields=["title", "description"],
+        display_locale=source,
+        source_locale=source,
+    )
+    target.title = texts.get((str(target.id), "title")) or ""
+    target.description = texts.get((str(target.id), "description"))

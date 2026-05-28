@@ -8,10 +8,6 @@ from app.models.course import Course, CourseStatus
 from app.models.prerequisite import CoursePrerequisite
 from app.models.user import User, UserRole
 from app.schemas.locale import LocaleCode, normalize_locale
-from app.services.translation.resolve_for_display import (
-    fetch_overlay_triples_bulk,
-    pick_overlay_value,
-)
 
 router = APIRouter(prefix="/prerequisites", tags=["prerequisites"])
 
@@ -39,29 +35,27 @@ def _localized_title_map(
     """
     if not course_ids:
         return {}
+    # Phase 5g: courses.title column dropped — resolve from cv directly.
+    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+
     rows = (
-        db.query(Course.id, Course.title, Course.source_locale)
-        .filter(Course.id.in_(course_ids), Course.deleted_at.is_(None))
-        .all()
+        db.query(Course.id, Course.source_locale).filter(Course.id.in_(course_ids), Course.deleted_at.is_(None)).all()
     )
-    specs = [("course", str(cid), "title") for cid, _, _ in rows]
-    overlay = fetch_overlay_triples_bulk(db, specs, display_locale)
     out: dict[str, str] = {}
-    for cid, source_title, source_locale in rows:
-        loc_source = normalize_locale(source_locale)
-        resolved = (
-            pick_overlay_value(
-                overlay,
-                "course",
-                str(cid),
-                "title",
-                source_title,
-                source_locale=loc_source,
-                display_locale=display_locale,
-            )
-            or source_title
+    by_src: dict[str, list[str]] = {}
+    for cid, src in rows:
+        by_src.setdefault(normalize_locale(src), []).append(str(cid))
+    for src_locale, ids in by_src.items():
+        texts = fetch_cv_entity_texts_with_fallback(
+            db,
+            entity_type="course",
+            entity_ids=ids,
+            fields=["title"],
+            display_locale=display_locale,
+            source_locale=src_locale,
         )
-        out[str(cid)] = resolved
+        for cid in ids:
+            out[cid] = texts.get((cid, "title")) or ""
     return out
 
 

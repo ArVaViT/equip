@@ -254,6 +254,118 @@ def make_quiz_option_with_text(
     return option
 
 
+def make_course_with_text(
+    db: Session,
+    *,
+    course_id: str | None = None,
+    title: str = "Course",
+    description: str | None = None,
+    image_url: str | None = None,
+    status: str = "draft",
+    source_locale: str = "en",
+    created_by=None,
+    access_mode: str = "public",
+    enrollment_start=None,
+    enrollment_end=None,
+    quiz_weight: int | None = None,
+    assignment_weight: int | None = None,
+    participation_weight: int | None = None,
+    locale: str | None = None,
+):
+    """Phase 5g: ``courses.title`` + ``courses.description`` columns dropped."""
+    from app.models.course import Course
+    from app.services.content_versions.write import record_human_version
+
+    extra: dict = {}
+    if quiz_weight is not None:
+        extra["quiz_weight"] = quiz_weight
+    if assignment_weight is not None:
+        extra["assignment_weight"] = assignment_weight
+    if participation_weight is not None:
+        extra["participation_weight"] = participation_weight
+
+    course = Course(
+        id=course_id or str(uuid.uuid4()),
+        image_url=image_url,
+        status=status,
+        source_locale=source_locale,
+        created_by=created_by,
+        access_mode=access_mode,
+        enrollment_start=enrollment_start,
+        enrollment_end=enrollment_end,
+        **extra,
+    )
+    db.add(course)
+    db.flush()
+    record_human_version(
+        db,
+        entity_type="course",
+        entity_id=course.id,
+        field="title",
+        locale=locale or source_locale,
+        text=title,
+    )
+    if description:
+        record_human_version(
+            db,
+            entity_type="course",
+            entity_id=course.id,
+            field="description",
+            locale=locale or source_locale,
+            text=description,
+        )
+    # Hydrate runtime attrs so tests reading course.title work immediately.
+    course.title = title  # type: ignore[assignment]
+    course.description = description  # type: ignore[assignment]
+    return course
+
+
+def make_module_with_text(
+    db: Session,
+    *,
+    module_id: str | None = None,
+    course_id: str,
+    title: str = "Module",
+    description: str | None = None,
+    order_index: int = 0,
+    due_date=None,
+    locale: str = "en",
+):
+    """Phase 5g: ``modules.title`` + ``modules.description`` columns dropped."""
+    from app.models.course import Module
+    from app.services.content_versions.write import record_human_version
+
+    module = Module(
+        id=module_id or str(uuid.uuid4()),
+        course_id=course_id,
+        order_index=order_index,
+        due_date=due_date,
+    )
+    db.add(module)
+    db.flush()
+    record_human_version(
+        db,
+        entity_type="module",
+        entity_id=str(module.id),
+        field="title",
+        locale=locale,
+        text=title,
+    )
+    if description:
+        record_human_version(
+            db,
+            entity_type="module",
+            entity_id=str(module.id),
+            field="description",
+            locale=locale,
+            text=description,
+        )
+    # Hydrate runtime attrs so tests reading module.title work immediately.
+    module.title = title  # type: ignore[assignment]
+    module.description = description  # type: ignore[assignment]
+    return module
+
+
 def make_chapter_block_with_content(
     db: Session,
     *,

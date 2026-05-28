@@ -37,6 +37,7 @@ from app.schemas.locale import LocaleCode, normalize_locale
 from app.schemas.quiz import QuizResponse, QuizStudentResponse
 from app.services.content_versions import (
     fetch_cv_course_text_bulk,
+    fetch_cv_entity_texts_with_fallback,
     fetch_cv_text_bulk,
 )
 from app.services.language_detection import detect_locale
@@ -112,10 +113,11 @@ def _build_localized_course[T: CourseSummary | CourseResponse](
     ``_response``. The two were byte-for-byte identical except for the
     return-type / ``model_validate`` target — this collapses them.
 
-    ``cast(T, …)`` is required because Pydantic's ``model_copy``
-    signature is ``Self`` and mypy can't narrow ``Self`` back to ``T``
-    through the bound union. The cast is sound: ``base`` was just
-    validated as ``T``, so ``base.model_copy(...)`` is also ``T``.
+    Phase 5g: ``course.title`` / ``course.description`` columns dropped.
+    Read path callers MUST call ``populate_spine_texts`` (or its bulk
+    cousin) on the course before invoking this — it sets ``.title`` and
+    ``.description`` as runtime attributes from cv, so the rest of the
+    serialization pipeline keeps working unchanged.
     """
     title = pick_localized_text(course, "title", course.title, overlay, display_locale)
     desc = _localize_optional_description(course, course.description, overlay, display_locale)
@@ -139,6 +141,90 @@ def build_localized_course_response(
     display_locale: LocaleCode,
 ) -> CourseResponse:
     return _build_localized_course(CourseResponse, course, overlay, display_locale)
+
+
+def populate_spine_texts(
+    db: Session,
+    courses: list[Course],
+) -> None:
+    """Phase 5g: ``courses.title|description`` and ``modules.title|description``
+    columns dropped. Hydrate each course (and every loaded module/chapter
+    title via the module list) with runtime attributes pulled from cv,
+    so downstream serialization that reads ``course.title`` / ``module.title``
+    keeps working unchanged.
+
+    Each entity's source_locale fallback is applied per-entity (a course
+    declared ``source_locale='ru'`` falls back to its RU row when the
+    display lookup is absent). Any-locale tier rescues content authored
+    in a locale that's neither the display nor course-declared source.
+
+    Idempotent: hydrating an already-hydrated entity overwrites with
+    the same value.
+    """
+    if not courses:
+        return
+    # ── courses ───────────────────────────────────────────────────────
+    by_src: dict[str, list[str]] = {}
+    for c in courses:
+        by_src.setdefault(normalize_locale(c.source_locale), []).append(c.id)
+    course_texts: dict[tuple[str, str], str | None] = {}
+    for src_locale, ids in by_src.items():
+        course_texts.update(
+            fetch_cv_entity_texts_with_fallback(
+                db,
+                entity_type="course",
+                entity_ids=ids,
+                fields=["title", "description"],
+                display_locale=src_locale,
+                source_locale=src_locale,
+            )
+        )
+    for c in courses:
+        c.title = course_texts.get((c.id, "title")) or ""
+        c.description = course_texts.get((c.id, "description"))
+
+    # ── modules (all modules across all courses, grouped by parent course's source_locale) ──
+    modules_by_src: dict[str, list[Module]] = {}
+    for c in courses:
+        loaded = getattr(c, "__dict__", {}).get("modules")
+        if not loaded:
+            continue
+        src = normalize_locale(c.source_locale)
+        modules_by_src.setdefault(src, []).extend(loaded)
+    for src_locale, mods in modules_by_src.items():
+        if not mods:
+            continue
+        bulk = fetch_cv_entity_texts_with_fallback(
+            db,
+            entity_type="module",
+            entity_ids=[str(m.id) for m in mods],
+            fields=["title", "description"],
+            display_locale=src_locale,
+            source_locale=src_locale,
+        )
+        for m in mods:
+            m.title = bulk.get((str(m.id), "title")) or ""
+            m.description = bulk.get((str(m.id), "description"))
+
+
+def populate_module_texts(db: Session, modules: list[Module], *, source_locale: LocaleCode) -> None:
+    """Like ``populate_spine_texts`` but for a flat list of modules where
+    the caller already knows the shared source_locale (e.g. when iterating
+    modules of one course).
+    """
+    if not modules:
+        return
+    bulk = fetch_cv_entity_texts_with_fallback(
+        db,
+        entity_type="module",
+        entity_ids=[str(m.id) for m in modules],
+        fields=["title", "description"],
+        display_locale=source_locale,
+        source_locale=source_locale,
+    )
+    for m in modules:
+        m.title = bulk.get((str(m.id), "title")) or ""
+        m.description = bulk.get((str(m.id), "description"))
 
 
 def fetch_overlay_triples_bulk(

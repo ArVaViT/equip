@@ -36,9 +36,27 @@ def _localize_cert_responses(
     course_ids = sorted({str(c.course_id) for c in certs if c.course_id})
     if not course_ids:
         return [CertificateResponse.model_validate(c, from_attributes=True) for c in certs]
-    courses = db.query(Course.id, Course.title, Course.source_locale).filter(Course.id.in_(course_ids)).all()
+    # Phase 5g: courses.title column dropped — fetch source titles from cv.
+    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+
+    course_rows = db.query(Course.id, Course.source_locale).filter(Course.id.in_(course_ids)).all()
+    title_lookups: dict[str, str] = {}
+    rows_by_src: dict[str, list[str]] = {}
+    for cid, src in course_rows:
+        rows_by_src.setdefault(normalize_locale(src), []).append(str(cid))
+    for src_locale, ids in rows_by_src.items():
+        texts = fetch_cv_entity_texts_with_fallback(
+            db,
+            entity_type="course",
+            entity_ids=ids,
+            fields=["title"],
+            display_locale=src_locale,
+            source_locale=src_locale,
+        )
+        for cid in ids:
+            title_lookups[cid] = texts.get((cid, "title")) or ""
     course_meta: dict[str, tuple[str, LocaleCode]] = {
-        str(cid): (title, normalize_locale(src)) for cid, title, src in courses
+        str(cid): (title_lookups.get(str(cid), ""), normalize_locale(src)) for cid, src in course_rows
     }
     specs = [("course", cid, "title") for cid in course_meta]
     overlay = fetch_overlay_triples_bulk(db, specs, display_locale)
@@ -205,10 +223,26 @@ def _enrich_pending_certs(
             db.query(User.id, User.full_name, User.email).filter(User.id.in_(student_ids | approver_ids)).all()
         ):
             user_meta[str(uid)] = (full_name, email)
+    # Phase 5g: fetch course titles from cv.
+    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+
     course_titles: dict[str, str] = {}
     if course_ids:
-        for cid, title in db.query(Course.id, Course.title).filter(Course.id.in_(course_ids)).all():
-            course_titles[str(cid)] = title
+        rows = db.query(Course.id, Course.source_locale).filter(Course.id.in_(list(course_ids))).all()
+        by_src: dict[str, list[str]] = {}
+        for cid, src in rows:
+            by_src.setdefault(normalize_locale(src), []).append(str(cid))
+        for src_locale, ids in by_src.items():
+            texts = fetch_cv_entity_texts_with_fallback(
+                db,
+                entity_type="course",
+                entity_ids=ids,
+                fields=["title"],
+                display_locale=src_locale,
+                source_locale=src_locale,
+            )
+            for cid in ids:
+                course_titles[cid] = texts.get((cid, "title")) or ""
 
     out: list[CertificateResponse] = []
     for cert in certs:

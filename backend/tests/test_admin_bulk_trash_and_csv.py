@@ -110,15 +110,18 @@ def _seed_course_direct(
     deleted: bool = False,
     title: str = "Test Course",
 ) -> Course:
-    course = Course(
-        id=course_id,
+    from ._cv_helpers import make_course_with_text
+
+    course = make_course_with_text(
+        db,
+        course_id=course_id,
         title=title,
         description="Testing",
         status="published",
         created_by=owner,
-        deleted_at=datetime.now(UTC) if deleted else None,
     )
-    db.add(course)
+    if deleted:
+        course.deleted_at = datetime.now(UTC)
     db.commit()
     db.refresh(course)
     return course
@@ -315,22 +318,20 @@ class TestTrashAndRestore:
         course.deleted_at = course_tombstone
 
         # Two modules, one trashed independently before the course was.
-        live_module = Module(
-            id="mod-live",
-            course_id="restore-mix",
-            title="Live Module",
-            order_index=0,
-            deleted_at=course_tombstone,  # cascaded with the course
+        from ._cv_helpers import make_module_with_text
+
+        live_module = make_module_with_text(
+            db, module_id="mod-live", course_id="restore-mix", title="Live Module", order_index=0
         )
-        orphan_module = Module(
-            id="mod-orphan",
+        live_module.deleted_at = course_tombstone
+        orphan_module = make_module_with_text(
+            db,
+            module_id="mod-orphan",
             course_id="restore-mix",
             title="Orphan Module (teacher deleted before course trash)",
             order_index=1,
-            deleted_at=earlier,
         )
-        db.add(live_module)
-        db.add(orphan_module)
+        orphan_module.deleted_at = earlier
         db.commit()
 
         # And one chapter that was also independently deleted.

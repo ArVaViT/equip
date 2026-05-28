@@ -55,8 +55,11 @@ NEXT_WEEK = NOW + timedelta(weeks=1)
 
 
 def _seed_course(db: Session, *, course_id: str = "test-course-1", owner_id=TEACHER_ID) -> Course:
-    course = Course(
-        id=course_id,
+    from ._cv_helpers import make_course_with_text
+
+    course = make_course_with_text(
+        db,
+        course_id=course_id,
         title="Test Course",
         description="A test course",
         status="published",
@@ -65,7 +68,6 @@ def _seed_course(db: Session, *, course_id: str = "test-course-1", owner_id=TEAC
         assignment_weight=50,
         participation_weight=20,
     )
-    db.add(course)
     db.commit()
     db.refresh(course)
     return course
@@ -1024,14 +1026,16 @@ class TestSoloEnrollmentAccessMode:
         assert "invitation" in resp.json()["detail"].lower()
 
     def test_solo_enroll_on_public_course_succeeds(self, student_client: TestClient, db: Session, student):
-        course = Course(
-            id="public-course",
+        from ._cv_helpers import make_course_with_text
+
+        course = make_course_with_text(
+            db,
+            course_id="public-course",
             title="Jubilee Overview",
             status="published",
             access_mode="public",
             created_by=TEACHER_ID,
         )
-        db.add(course)
         db.commit()
 
         resp = student_client.post(f"{COURSES_PREFIX}/{course.id}/enroll", json={})

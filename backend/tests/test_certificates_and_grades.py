@@ -84,8 +84,12 @@ def _seed_course(
     chapter_type: str = "assignment",
     owner: uuid.UUID = TEACHER_ID,
 ) -> tuple[Course, Module, Chapter]:
-    course = Course(
-        id=course_id,
+    # Phase 5g: courses + modules title/description live in cv.
+    from ._cv_helpers import make_course_with_text, make_module_with_text
+
+    course = make_course_with_text(
+        db,
+        course_id=course_id,
         title="Test Course",
         description="Test",
         status="published",
@@ -94,11 +98,8 @@ def _seed_course(
         assignment_weight=50,
         participation_weight=20,
     )
-    module = Module(
-        id=f"{course_id}-mod",
-        course_id=course_id,
-        title="Module 1",
-        order_index=1,
+    module = make_module_with_text(
+        db, module_id=f"{course_id}-mod", course_id=course_id, title="Module 1", order_index=1
     )
     chapter = Chapter(
         id=f"{course_id}-ch",
@@ -107,7 +108,7 @@ def _seed_course(
         order_index=1,
         chapter_type=chapter_type,
     )
-    db.add_all([course, module, chapter])
+    db.add(chapter)
     db.commit()
     return course, module, chapter
 
@@ -948,22 +949,20 @@ def _seed_teacher_progress_dashboard(db: Session) -> tuple[str, uuid.UUID, uuid.
     """Course with quiz + assignment + reading chapters, one enrolled student with activity."""
     _ensure_student(db)
     course_id = "course-dash-prog"
-    course = Course(
-        id=course_id,
+    # Phase 5g: courses + modules text columns dropped.
+    from ._cv_helpers import make_course_with_text, make_module_with_text
+
+    course = make_course_with_text(
+        db,
+        course_id=course_id,
         title="Dashboard Course",
-        description="",
         status="published",
         created_by=TEACHER_ID,
         quiz_weight=30,
         assignment_weight=50,
         participation_weight=20,
     )
-    module = Module(
-        id=f"{course_id}-mod",
-        course_id=course_id,
-        title="Mod 1",
-        order_index=1,
-    )
+    module = make_module_with_text(db, module_id=f"{course_id}-mod", course_id=course_id, title="Mod 1", order_index=1)
     ch_quiz_id = f"{course_id}-quiz"
     ch_asg_id = f"{course_id}-asg"
     ch_read_id = f"{course_id}-read"
