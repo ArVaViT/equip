@@ -128,12 +128,14 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
             for quiz in quizzes_by_chapter.get(chapter.id, []):
                 new_quiz_id = uuid.uuid4()
                 quiz_id_map[str(quiz.id)] = new_quiz_id
+                # Phase 5f: title + description + question_text + option_text
+                # columns dropped. Clone copies structural rows only; cv text
+                # rows are NOT cloned (clones land as drafts and the teacher
+                # edits text post-clone, same as 5e2 blocks / 5e3 assignments).
                 db.add(
                     Quiz(
                         id=new_quiz_id,
                         chapter_id=new_chapter_id,
-                        title=quiz.title,
-                        description=quiz.description,
                         quiz_type=quiz.quiz_type or "quiz",
                         max_attempts=quiz.max_attempts,
                         passing_score=quiz.passing_score,
@@ -149,7 +151,6 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
                         QuizQuestion(
                             id=new_question_id,
                             quiz_id=new_quiz_id,
-                            question_text=question.question_text,
                             question_type=question.question_type,
                             order_index=question.order_index,
                             points=question.points,
@@ -165,7 +166,6 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
                             QuizOption(
                                 id=uuid.uuid4(),
                                 question_id=new_question_id,
-                                option_text=option.option_text,
                                 is_correct=option.is_correct,
                                 order_index=option.order_index,
                             )

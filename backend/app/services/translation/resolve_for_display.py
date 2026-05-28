@@ -34,7 +34,7 @@ from app.schemas.calendar import CourseEventResponse
 from app.schemas.chapter_block import BlockResponse
 from app.schemas.course import ChapterResponse, CourseResponse, CourseSummary, ModuleResponse
 from app.schemas.locale import LocaleCode, normalize_locale
-from app.schemas.quiz import QuizOptionStudentResponse, QuizQuestionStudentResponse, QuizStudentResponse
+from app.schemas.quiz import QuizResponse, QuizStudentResponse
 from app.services.content_versions import (
     fetch_cv_course_text_bulk,
     fetch_cv_text_bulk,
@@ -394,6 +394,62 @@ def build_localized_course_response_with_tree(
     return base.model_copy(update={"title": ct, "description": cd, "modules": new_modules})
 
 
+def _fetch_quiz_tree_texts(
+    db: Session,
+    quiz: Quiz,
+    *,
+    display_locale: LocaleCode,
+    source_locale: LocaleCode,
+) -> tuple[dict[tuple[str, str], str | None], dict[tuple[str, str], str | None], dict[tuple[str, str], str | None]]:
+    """Bulk-fetch every cv text for ``quiz`` + its questions + their options
+    at display→source→any locale fallback. Returns three (entity_id, field)
+    → text dicts so callers can build whichever response shape they need.
+
+    Phase 5f: ``quizzes.title``, ``quizzes.description``,
+    ``quiz_questions.question_text`` and ``quiz_options.option_text``
+    were dropped, so cv is the only store. Three calls (one per
+    entity_type) keeps the SQL tuple-IN clauses simple and lets each
+    use its own ``fields=[]`` list.
+    """
+    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+
+    quiz_texts = fetch_cv_entity_texts_with_fallback(
+        db,
+        entity_type="quiz",
+        entity_ids=[str(quiz.id)],
+        fields=["title", "description"],
+        display_locale=display_locale,
+        source_locale=source_locale,
+    )
+    question_ids = [str(qn.id) for qn in quiz.questions]
+    question_texts = (
+        fetch_cv_entity_texts_with_fallback(
+            db,
+            entity_type="quiz_question",
+            entity_ids=question_ids,
+            fields=["question_text"],
+            display_locale=display_locale,
+            source_locale=source_locale,
+        )
+        if question_ids
+        else {}
+    )
+    option_ids = [str(opt.id) for qn in quiz.questions for opt in qn.options]
+    option_texts = (
+        fetch_cv_entity_texts_with_fallback(
+            db,
+            entity_type="quiz_option",
+            entity_ids=option_ids,
+            fields=["option_text"],
+            display_locale=display_locale,
+            source_locale=source_locale,
+        )
+        if option_ids
+        else {}
+    )
+    return quiz_texts, question_texts, option_texts
+
+
 def build_localized_quiz_student_response(
     db: Session,
     quiz: Quiz,
@@ -401,31 +457,103 @@ def build_localized_quiz_student_response(
     display_locale: LocaleCode,
     source_locale: LocaleCode,
 ) -> QuizStudentResponse:
-    """Apply ``content_translations`` to a quiz payload shown to students."""
-    specs: list[tuple[str, str, str]] = [
-        ("quiz", str(quiz.id), "title"),
-        ("quiz", str(quiz.id), "description"),
-    ]
+    """Phase 5f: quiz tree text columns dropped — fetch every title /
+    description / question_text / option_text from cv with three-tier
+    fallback, then assemble the student-facing response.
+    """
+    quiz_texts, question_texts, option_texts = _fetch_quiz_tree_texts(
+        db, quiz, display_locale=display_locale, source_locale=source_locale
+    )
+    new_questions: list[dict] = []
     for qn in quiz.questions:
-        specs.append(("quiz_question", str(qn.id), "question_text"))
+        qid = str(qn.id)
+        new_opts: list[dict] = []
         for opt in qn.options:
-            specs.append(("quiz_option", str(opt.id), "option_text"))
-    loc = Localizer.build(db, specs, source_locale=source_locale, display_locale=display_locale)
+            oid = str(opt.id)
+            new_opts.append(
+                {
+                    "id": opt.id,
+                    "option_text": option_texts.get((oid, "option_text")) or "",
+                    "order_index": opt.order_index,
+                }
+            )
+        new_questions.append(
+            {
+                "id": qn.id,
+                "question_text": question_texts.get((qid, "question_text")) or "",
+                "question_type": qn.question_type,
+                "order_index": qn.order_index,
+                "points": qn.points,
+                "min_words": qn.min_words,
+                "options": new_opts,
+            }
+        )
+    return QuizStudentResponse.model_validate(
+        {
+            "id": quiz.id,
+            "chapter_id": quiz.chapter_id,
+            "title": quiz_texts.get((str(quiz.id), "title")) or "",
+            "description": quiz_texts.get((str(quiz.id), "description")),
+            "quiz_type": quiz.quiz_type,
+            "max_attempts": quiz.max_attempts,
+            "passing_score": quiz.passing_score,
+            "questions": new_questions,
+        }
+    )
 
-    new_title = loc.pick("quiz", str(quiz.id), "title", quiz.title) or quiz.title
-    new_desc = loc.pick("quiz", str(quiz.id), "description", quiz.description)
-    new_questions: list[QuizQuestionStudentResponse] = []
+
+def build_quiz_response_from_cv(
+    db: Session,
+    quiz: Quiz,
+    *,
+    source_locale: LocaleCode,
+) -> QuizResponse:
+    """Teacher-facing quiz response with all texts pulled from cv at the
+    course's source_locale (with any-locale fallback). Used by the
+    create / update / source=1 list routes.
+    """
+    quiz_texts, question_texts, option_texts = _fetch_quiz_tree_texts(
+        db, quiz, display_locale=source_locale, source_locale=source_locale
+    )
+    new_questions: list[dict] = []
     for qn in quiz.questions:
-        qt = loc.pick("quiz_question", str(qn.id), "question_text", qn.question_text) or qn.question_text
-        new_opts: list[QuizOptionStudentResponse] = []
+        qid = str(qn.id)
+        new_opts: list[dict] = []
         for opt in qn.options:
-            ot = loc.pick("quiz_option", str(opt.id), "option_text", opt.option_text) or opt.option_text
-            ob = QuizOptionStudentResponse.model_validate(opt, from_attributes=True)
-            new_opts.append(ob.model_copy(update={"option_text": ot}))
-        qb = QuizQuestionStudentResponse.model_validate(qn, from_attributes=True)
-        new_questions.append(qb.model_copy(update={"question_text": qt, "options": new_opts}))
-    base = QuizStudentResponse.model_validate(quiz, from_attributes=True)
-    return base.model_copy(update={"title": new_title, "description": new_desc, "questions": new_questions})
+            oid = str(opt.id)
+            new_opts.append(
+                {
+                    "id": opt.id,
+                    "option_text": option_texts.get((oid, "option_text")) or "",
+                    "is_correct": opt.is_correct,
+                    "order_index": opt.order_index,
+                }
+            )
+        new_questions.append(
+            {
+                "id": qn.id,
+                "question_text": question_texts.get((qid, "question_text")) or "",
+                "question_type": qn.question_type,
+                "order_index": qn.order_index,
+                "points": qn.points,
+                "min_words": qn.min_words,
+                "options": new_opts,
+            }
+        )
+    return QuizResponse.model_validate(
+        {
+            "id": quiz.id,
+            "chapter_id": quiz.chapter_id,
+            "title": quiz_texts.get((str(quiz.id), "title")) or "",
+            "description": quiz_texts.get((str(quiz.id), "description")),
+            "quiz_type": quiz.quiz_type,
+            "max_attempts": quiz.max_attempts,
+            "passing_score": quiz.passing_score,
+            "created_at": quiz.created_at,
+            "updated_at": quiz.updated_at,
+            "questions": new_questions,
+        }
+    )
 
 
 def localize_assignment_rows(

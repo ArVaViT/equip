@@ -146,6 +146,114 @@ def make_announcement_with_text(
     return ann
 
 
+def make_quiz_with_text(
+    db: Session,
+    *,
+    chapter_id: str,
+    title: str = "Quiz",
+    description: str | None = None,
+    quiz_type: str = "quiz",
+    max_attempts: int | None = None,
+    passing_score: int = 70,
+    quiz_id: uuid.UUID | None = None,
+    locale: str = "en",
+):
+    """Phase 5f: ``quizzes.title`` + ``description`` columns dropped."""
+    from app.models.quiz import Quiz
+    from app.services.content_versions.write import record_human_version
+
+    quiz = Quiz(
+        id=quiz_id or uuid.uuid4(),
+        chapter_id=chapter_id,
+        quiz_type=quiz_type,
+        max_attempts=max_attempts,
+        passing_score=passing_score,
+    )
+    db.add(quiz)
+    db.flush()
+    record_human_version(db, entity_type="quiz", entity_id=str(quiz.id), field="title", locale=locale, text=title)
+    if description:
+        record_human_version(
+            db,
+            entity_type="quiz",
+            entity_id=str(quiz.id),
+            field="description",
+            locale=locale,
+            text=description,
+        )
+    return quiz
+
+
+def make_quiz_question_with_text(
+    db: Session,
+    *,
+    quiz_id,
+    question_text: str = "Q?",
+    question_type: str = "multiple_choice",
+    order_index: int = 0,
+    points: int = 1,
+    min_words: int | None = None,
+    question_id: uuid.UUID | None = None,
+    locale: str = "en",
+):
+    """Phase 5f: ``quiz_questions.question_text`` column dropped."""
+    from app.models.quiz import QuizQuestion
+    from app.services.content_versions.write import record_human_version
+
+    question = QuizQuestion(
+        id=question_id or uuid.uuid4(),
+        quiz_id=quiz_id,
+        question_type=question_type,
+        order_index=order_index,
+        points=points,
+        min_words=min_words,
+    )
+    db.add(question)
+    db.flush()
+    record_human_version(
+        db,
+        entity_type="quiz_question",
+        entity_id=str(question.id),
+        field="question_text",
+        locale=locale,
+        text=question_text,
+    )
+    return question
+
+
+def make_quiz_option_with_text(
+    db: Session,
+    *,
+    question_id,
+    option_text: str = "A",
+    is_correct: bool = False,
+    order_index: int = 0,
+    option_id: uuid.UUID | None = None,
+    locale: str = "en",
+):
+    """Phase 5f: ``quiz_options.option_text`` column dropped."""
+    from app.models.quiz import QuizOption
+    from app.services.content_versions.write import record_human_version
+
+    option = QuizOption(
+        id=option_id or uuid.uuid4(),
+        question_id=question_id,
+        is_correct=is_correct,
+        order_index=order_index,
+    )
+    db.add(option)
+    db.flush()
+    record_human_version(
+        db,
+        entity_type="quiz_option",
+        entity_id=str(option.id),
+        field="option_text",
+        locale=locale,
+        text=option_text,
+    )
+    return option
+
+
 def make_chapter_block_with_content(
     db: Session,
     *,

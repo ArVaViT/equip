@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.models.chapter_block import ChapterBlock
 from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
-from app.models.quiz import Quiz, QuizAttempt, QuizOption, QuizQuestion
+from app.models.quiz import Quiz, QuizAttempt
 from app.models.user import User, UserRole
 from tests.conftest import STUDENT_ID, TEACHER_ID
 
@@ -96,57 +96,30 @@ def _seed_course_with_enrollment(db: Session):
 
 
 def _seed_quiz_with_questions(db: Session, chapter_id: str = "ch-1"):
-    """Create a quiz with two MC questions, each with two options (one correct)."""
-    quiz_id = uuid.uuid4()
-    quiz = Quiz(
-        id=quiz_id,
+    """Phase 5f: quiz tree text columns dropped — use the cv helpers."""
+    from ._cv_helpers import make_quiz_option_with_text, make_quiz_question_with_text, make_quiz_with_text
+
+    quiz = make_quiz_with_text(
+        db,
         chapter_id=chapter_id,
         title="Test Quiz",
         description="A quiz for testing",
-        quiz_type="quiz",
         max_attempts=3,
         passing_score=50,
     )
-    db.add(quiz)
-    db.flush()
-
-    q1_id, q2_id = uuid.uuid4(), uuid.uuid4()
-    q1 = QuizQuestion(
-        id=q1_id,
-        quiz_id=quiz_id,
-        question_text="What is 2+2?",
-        question_type="multiple_choice",
-        order_index=0,
-        points=1,
-    )
-    q2 = QuizQuestion(
-        id=q2_id,
-        quiz_id=quiz_id,
-        question_text="Capital of France?",
-        question_type="multiple_choice",
-        order_index=1,
-        points=1,
-    )
-    db.add_all([q1, q2])
-    db.flush()
-
-    o1_wrong, o1_right = uuid.uuid4(), uuid.uuid4()
-    o2_wrong, o2_right = uuid.uuid4(), uuid.uuid4()
-    db.add_all(
-        [
-            QuizOption(id=o1_wrong, question_id=q1_id, option_text="3", is_correct=False, order_index=0),
-            QuizOption(id=o1_right, question_id=q1_id, option_text="4", is_correct=True, order_index=1),
-            QuizOption(id=o2_wrong, question_id=q2_id, option_text="London", is_correct=False, order_index=0),
-            QuizOption(id=o2_right, question_id=q2_id, option_text="Paris", is_correct=True, order_index=1),
-        ]
-    )
+    q1 = make_quiz_question_with_text(db, quiz_id=quiz.id, question_text="What is 2+2?", order_index=0, points=1)
+    q2 = make_quiz_question_with_text(db, quiz_id=quiz.id, question_text="Capital of France?", order_index=1, points=1)
+    o1_wrong = make_quiz_option_with_text(db, question_id=q1.id, option_text="3", is_correct=False, order_index=0)
+    o1_right = make_quiz_option_with_text(db, question_id=q1.id, option_text="4", is_correct=True, order_index=1)
+    o2_wrong = make_quiz_option_with_text(db, question_id=q2.id, option_text="London", is_correct=False, order_index=0)
+    o2_right = make_quiz_option_with_text(db, question_id=q2.id, option_text="Paris", is_correct=True, order_index=1)
     db.commit()
 
     opts = {
-        "q1_correct": o1_right,
-        "q1_wrong": o1_wrong,
-        "q2_correct": o2_right,
-        "q2_wrong": o2_wrong,
+        "q1_correct": o1_right.id,
+        "q1_wrong": o1_wrong.id,
+        "q2_correct": o2_right.id,
+        "q2_wrong": o2_wrong.id,
     }
     return quiz, [q1, q2], opts
 
@@ -590,16 +563,27 @@ def test_get_chapter_quiz_anon_unauthorized(anon_client: TestClient):
 
 
 def _seed_quiz_with_en_translations(db: Session):
-    """Seed an RU-source quiz plus an EN ``content_translations`` overlay."""
+    """Seed an RU-source quiz plus an EN cv overlay. Phase 5f: quiz tree
+    texts live in cv only, so the RU source rows go through record_human_version
+    and the EN overlay via record_mt_version (matching the orchestrator's
+    write shape)."""
     quiz, questions, _opts = _seed_quiz_with_questions(db)
     q1, q2 = questions
-    quiz.title = "RU тест"
-    quiz.description = "Описание"
-    q1.question_text = "Вопрос 1"
-    q2.question_text = "Вопрос 2"
-    from app.services.content_versions.write import record_mt_version
+    from app.services.content_versions.write import record_human_version, record_mt_version
 
-    # Phase 5d: cv is the only translation store.
+    # Overwrite the helper's default ``en`` source rows with the RU source
+    # text by recording a newer human version (record_human_version
+    # supersedes the previous active row).
+    record_human_version(db, entity_type="quiz", entity_id=str(quiz.id), field="title", locale="ru", text="RU тест")
+    record_human_version(
+        db, entity_type="quiz", entity_id=str(quiz.id), field="description", locale="ru", text="Описание"
+    )
+    record_human_version(
+        db, entity_type="quiz_question", entity_id=str(q1.id), field="question_text", locale="ru", text="Вопрос 1"
+    )
+    record_human_version(
+        db, entity_type="quiz_question", entity_id=str(q2.id), field="question_text", locale="ru", text="Вопрос 2"
+    )
     record_mt_version(
         db,
         entity_type="quiz",
@@ -1352,9 +1336,10 @@ def test_list_extra_attempts_anon_unauthorized(anon_client: TestClient):
 
 def _seed_essay_quiz(db: Session):
     """Seed a mixed quiz: one 1-point MCQ + one 20-point essay, passing=70."""
-    quiz_id = uuid.uuid4()
-    quiz = Quiz(
-        id=quiz_id,
+    from ._cv_helpers import make_quiz_option_with_text, make_quiz_question_with_text, make_quiz_with_text
+
+    quiz = make_quiz_with_text(
+        db,
         chapter_id="ch-1",
         title="Midterm",
         description="MCQ + essay",
@@ -1362,39 +1347,22 @@ def _seed_essay_quiz(db: Session):
         max_attempts=2,
         passing_score=70,
     )
-    db.add(quiz)
-    db.flush()
-
-    mcq_id, essay_id = uuid.uuid4(), uuid.uuid4()
-    mcq = QuizQuestion(
-        id=mcq_id,
-        quiz_id=quiz_id,
-        question_text="2+2?",
-        question_type="multiple_choice",
-        order_index=0,
-        points=1,
+    mcq = make_quiz_question_with_text(
+        db, quiz_id=quiz.id, question_text="2+2?", question_type="multiple_choice", order_index=0, points=1
     )
-    essay = QuizQuestion(
-        id=essay_id,
-        quiz_id=quiz_id,
+    essay = make_quiz_question_with_text(
+        db,
+        quiz_id=quiz.id,
         question_text="Reflect on the book of Acts (≥300 words).",
         question_type="essay",
         order_index=1,
         points=20,
         min_words=300,
     )
-    db.add_all([mcq, essay])
-    db.flush()
-
-    o_wrong, o_right = uuid.uuid4(), uuid.uuid4()
-    db.add_all(
-        [
-            QuizOption(id=o_wrong, question_id=mcq_id, option_text="3", is_correct=False, order_index=0),
-            QuizOption(id=o_right, question_id=mcq_id, option_text="4", is_correct=True, order_index=1),
-        ]
-    )
+    make_quiz_option_with_text(db, question_id=mcq.id, option_text="3", is_correct=False, order_index=0)
+    o_right = make_quiz_option_with_text(db, question_id=mcq.id, option_text="4", is_correct=True, order_index=1)
     db.commit()
-    return quiz, mcq, essay, o_right
+    return quiz, mcq, essay, o_right.id
 
 
 def test_create_essay_question_accepted(client: TestClient, db: Session):

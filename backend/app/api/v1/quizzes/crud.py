@@ -33,6 +33,7 @@ from app.services.translation.pipeline_hooks import (
 )
 from app.services.translation.resolve_for_display import (
     build_localized_quiz_student_response,
+    build_quiz_response_from_cv,
     resolve_chapter_locale_context,
 )
 
@@ -86,8 +87,7 @@ def get_chapter_quiz(
         return None
 
     # One chapter→module→course join covers the locale + access decisions
-    # below. Previously source=true paid 1 round-trip and source=false
-    # paid 2, all to the same join.
+    # below.
     ctx = resolve_chapter_locale_context(db, chapter_id=chapter_id, current_user=current_user)
     if source:
         if not ctx.is_owner_or_admin:
@@ -95,15 +95,17 @@ def get_chapter_quiz(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only the course owner or an admin can request source-language content",
             )
-        resp = QuizStudentResponse.model_validate(quiz)
+        # Phase 5f: title / question_text / option_text columns dropped.
+        # The student response is the same shape source==display surfaces,
+        # so re-use the localize path with display=source.
+        resp = build_localized_quiz_student_response(
+            db, quiz, display_locale=ctx.source_locale, source_locale=ctx.source_locale
+        )
     else:
         display_locale: LocaleCode = normalize_locale(accept_language)
-        if ctx.apply_overlay:
-            resp = build_localized_quiz_student_response(
-                db, quiz, display_locale=display_locale, source_locale=ctx.source_locale
-            )
-        else:
-            resp = QuizStudentResponse.model_validate(quiz)
+        resp = build_localized_quiz_student_response(
+            db, quiz, display_locale=display_locale, source_locale=ctx.source_locale
+        )
     if resp.max_attempts is not None:
         extra = (
             db.query(QuizExtraAttempt)
@@ -133,7 +135,10 @@ def get_quiz_detail(
     if not quiz:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
     verify_quiz_owner(db, quiz, teacher.id)
-    return quiz
+    # Phase 5f: text columns dropped — build response from cv.
+    return build_quiz_response_from_cv(
+        db, quiz, source_locale=normalize_locale(_course_source_locale_for_chapter(db, quiz.chapter_id))
+    )
 
 
 @router.post("", response_model=QuizResponse, status_code=status.HTTP_201_CREATED)
@@ -148,77 +153,69 @@ def create_quiz(
         max_attempts = 1
 
     quiz_id_val = uuid.uuid4()
+    # Phase 5f: title + description live in cv; only structural fields on the row.
     quiz = Quiz(
         id=quiz_id_val,
         chapter_id=data.chapter_id,
-        title=data.title,
-        description=data.description,
         quiz_type=data.quiz_type,
         max_attempts=max_attempts,
         passing_score=data.passing_score,
     )
     db.add(quiz)
 
-    questions_to_dual_write: list[tuple[QuizQuestion, list[QuizOption]]] = []
+    questions_with_options: list[tuple[QuizQuestion, str, list[tuple[QuizOption, str]]]] = []
     for q_data in data.questions:
         question_id = uuid.uuid4()
         question = QuizQuestion(
             id=question_id,
             quiz_id=quiz_id_val,
-            question_text=q_data.question_text,
             question_type=q_data.question_type,
             order_index=q_data.order_index,
             points=q_data.points,
-            # ``min_words`` is only meaningful for ``essay``; it's
-            # intentionally persisted as-is for every type so that
-            # switching a question to ``essay`` later keeps the hint.
             min_words=q_data.min_words,
         )
         db.add(question)
-        question_options: list[QuizOption] = []
+        question_options: list[tuple[QuizOption, str]] = []
         for o_data in q_data.options:
             opt = QuizOption(
                 question_id=question_id,
-                option_text=o_data.option_text,
                 is_correct=o_data.is_correct,
                 order_index=o_data.order_index,
             )
             db.add(opt)
-            question_options.append(opt)
-        questions_to_dual_write.append((question, question_options))
+            question_options.append((opt, o_data.option_text))
+        questions_with_options.append((question, q_data.question_text, question_options))
 
-    # Flush so child ids (options have server-side defaults) are
-    # populated before dual-write reads them.
     db.flush()
     fallback_locale = _course_source_locale_for_chapter(db, data.chapter_id)
     dual_write_entity_content(
         db,
         entity_type="quiz",
         entity_id=str(quiz.id),
-        entity=quiz,
         fields=_TRANSLATABLE_QUIZ_FIELDS,
         fallback_locale=fallback_locale,
         authored_by=teacher.id,
+        texts={"title": data.title, "description": data.description},
     )
-    for question, options in questions_to_dual_write:
+    for question, q_text, options in questions_with_options:
         dual_write_entity_content(
             db,
             entity_type="quiz_question",
             entity_id=str(question.id),
-            entity=question,
             fields=_TRANSLATABLE_QUESTION_FIELDS,
             fallback_locale=fallback_locale,
             authored_by=teacher.id,
+            texts={"question_text": q_text},
         )
-        for opt in options:
+        for opt, o_text in options:
             dual_write_entity_content(
                 db,
                 entity_type="quiz_option",
                 entity_id=str(opt.id),
-                entity=opt,
                 fields=_TRANSLATABLE_OPTION_FIELDS,
                 fallback_locale=fallback_locale,
                 authored_by=teacher.id,
+                texts={"option_text": o_text},
             )
     db.commit()
     reloaded = (
@@ -229,11 +226,8 @@ def create_quiz(
     )
     if reloaded is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
-    # Create flow seeds the quiz + every question + every option in one go.
-    # Full-tree pipeline is cheaper here than N+1 per-entity reconcile calls
-    # because the course gets loaded once and every child re-walks once.
     run_course_translation_pipeline_if_published(db, course_id)
-    return reloaded
+    return build_quiz_response_from_cv(db, reloaded, source_locale=normalize_locale(fallback_locale))
 
 
 @router.put("/{quiz_id}", response_model=QuizResponse)
@@ -249,6 +243,13 @@ def update_quiz(
     verify_quiz_owner(db, quiz, teacher.id)
 
     patch = data.model_dump(exclude_unset=True)
+    # Phase 5f: title + description live in cv. Pop them off the patch
+    # so they don't try to setattr on the (now-text-less) ORM row.
+    text_patch: dict[str, str | None] = {}
+    if "title" in patch:
+        text_patch["title"] = patch.pop("title")
+    if "description" in patch:
+        text_patch["description"] = patch.pop("description")
     for field, value in patch.items():
         setattr(quiz, field, value)
 
@@ -256,16 +257,18 @@ def update_quiz(
         quiz.max_attempts = 1
 
     db.flush()
-    dual_write_entity_content(
-        db,
-        entity_type="quiz",
-        entity_id=str(quiz.id),
-        entity=quiz,
-        fields=_TRANSLATABLE_QUIZ_FIELDS,
-        fallback_locale=_course_source_locale_for_chapter(db, quiz.chapter_id),
-        authored_by=teacher.id,
-        only_fields={f for f in _TRANSLATABLE_QUIZ_FIELDS if f in patch},
-    )
+    source_locale = _course_source_locale_for_chapter(db, quiz.chapter_id)
+    if text_patch:
+        dual_write_entity_content(
+            db,
+            entity_type="quiz",
+            entity_id=str(quiz.id),
+            fields=_TRANSLATABLE_QUIZ_FIELDS,
+            fallback_locale=source_locale,
+            authored_by=teacher.id,
+            only_fields=set(text_patch.keys()),
+            texts=text_patch,
+        )
     db.commit()
     reloaded = (
         db.query(Quiz)
@@ -275,10 +278,8 @@ def update_quiz(
     )
     if reloaded is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
-    # ``update_quiz`` only mutates the quiz row itself; questions + options
-    # have their own endpoints. Per-entity reconcile is enough.
     reconcile_entity_if_course_published(db, "quiz", reloaded)
-    return reloaded
+    return build_quiz_response_from_cv(db, reloaded, source_locale=normalize_locale(source_locale))
 
 
 @router.delete("/{quiz_id}", status_code=status.HTTP_204_NO_CONTENT)

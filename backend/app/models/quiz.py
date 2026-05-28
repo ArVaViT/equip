@@ -13,8 +13,7 @@ class Quiz(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     chapter_id: Mapped[str] = mapped_column(ForeignKey("chapters.id", ondelete="CASCADE"))
-    title: Mapped[str] = mapped_column(String(255))
-    description: Mapped[str | None] = mapped_column(Text)
+    # Phase 5f: title + description columns dropped — cv is the only store.
     quiz_type: Mapped[str] = mapped_column(String(20), default="quiz", server_default="quiz")
     max_attempts: Mapped[int | None] = mapped_column()
     passing_score: Mapped[int] = mapped_column(default=70)
@@ -36,7 +35,7 @@ class QuizQuestion(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     quiz_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("quizzes.id", ondelete="CASCADE"))
-    question_text: Mapped[str] = mapped_column(Text)
+    # Phase 5f: question_text column dropped — cv is the only store.
     question_type: Mapped[str] = mapped_column(String(20), default="multiple_choice")
     order_index: Mapped[int] = mapped_column(default=0)
     points: Mapped[int] = mapped_column(default=1)
@@ -58,7 +57,7 @@ class QuizOption(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     question_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("quiz_questions.id", ondelete="CASCADE"))
-    option_text: Mapped[str] = mapped_column(Text)
+    # Phase 5f: option_text column dropped — cv is the only store.
     is_correct: Mapped[bool] = mapped_column(default=False)
     order_index: Mapped[int] = mapped_column(default=0)
 

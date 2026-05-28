@@ -126,12 +126,9 @@ def chapter(db: Session, module: Module) -> Chapter:
 
 @pytest.fixture
 def quiz(db: Session, chapter: Chapter) -> Quiz:
-    q = Quiz(
-        id=uuid.uuid4(),
-        chapter_id=chapter.id,
-        title="Q1",
-        description="d",
-    )
+    # Phase 5f: title + description columns dropped. Structural row only —
+    # cv text rows are unnecessary for resolver tests (they only walk FKs).
+    q = Quiz(id=uuid.uuid4(), chapter_id=chapter.id)
     db.add(q)
     db.flush()
     return q
@@ -139,10 +136,10 @@ def quiz(db: Session, chapter: Chapter) -> Quiz:
 
 @pytest.fixture
 def quiz_question(db: Session, quiz: Quiz) -> QuizQuestion:
+    # Phase 5f: question_text column dropped.
     qq = QuizQuestion(
         id=uuid.uuid4(),
         quiz_id=quiz.id,
-        question_text="t?",
         question_type="multiple_choice",
         order_index=0,
         points=1,
@@ -154,10 +151,10 @@ def quiz_question(db: Session, quiz: Quiz) -> QuizQuestion:
 
 @pytest.fixture
 def quiz_option(db: Session, quiz_question: QuizQuestion) -> QuizOption:
+    # Phase 5f: option_text column dropped.
     qo = QuizOption(
         id=uuid.uuid4(),
         question_id=quiz_question.id,
-        option_text="A",
         is_correct=True,
         order_index=0,
     )

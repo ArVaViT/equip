@@ -300,9 +300,36 @@ def reconcile_entity(
         return OrchestratorReport()
     course_source: LocaleCode = normalize_locale(course.source_locale)
 
+    # Phase 5e/5f: source text columns are dropped on several entities
+    # (cohort, chapter_block, assignment, course_event, announcement,
+    # quiz, quiz_question, quiz_option). ``getattr`` returns None for
+    # those fields, so we fetch the source from cv as a fallback before
+    # falling back to "no source → skip". One bulk query covers every
+    # field on the entity at the course's declared source_locale (with
+    # any-locale fallback for entities authored in a non-default locale).
+    cv_source_texts: dict[str, str | None] = {}
+    field_names_needing_cv: list[str] = [fs.name for fs in reg.fields if getattr(entity, fs.attr, None) is None]
+    if field_names_needing_cv:
+        from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+
+        bulk = fetch_cv_entity_texts_with_fallback(
+            db,
+            entity_type=entity_type,
+            entity_ids=[str(entity.id)],  # type: ignore[attr-defined]
+            fields=field_names_needing_cv,
+            display_locale=course_source,
+            source_locale=course_source,
+        )
+        cv_source_texts = {
+            field: bulk.get((str(entity.id), field))  # type: ignore[attr-defined]
+            for field in field_names_needing_cv
+        }
+
     fields: list[TranslationFieldSpec] = []
     for fs in reg.fields:
         text = getattr(entity, fs.attr, None)
+        if text is None:
+            text = cv_source_texts.get(fs.name)
         if text is None or not str(text).strip():
             continue
         # Per-field language detection: the entity's actual content
