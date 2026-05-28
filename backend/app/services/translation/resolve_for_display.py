@@ -36,7 +36,12 @@ from app.schemas.chapter_block import BlockResponse
 from app.schemas.course import ChapterResponse, CourseResponse, CourseSummary, ModuleResponse
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.schemas.quiz import QuizOptionStudentResponse, QuizQuestionStudentResponse, QuizStudentResponse
-from app.services.content_versions import maybe_compare_and_log
+from app.services.content_versions import (
+    fetch_cv_course_text_bulk,
+    fetch_cv_text_bulk,
+    maybe_compare_and_log,
+    read_from_content_versions,
+)
 from app.services.language_detection import detect_locale
 
 
@@ -61,7 +66,14 @@ def batch_fetch_course_translations(
     course_ids: list[str],
     display_locale: LocaleCode,
 ) -> dict[tuple[str, str], str]:
-    """Return a map ``(entity_id, field) -> text`` for ok course-level rows."""
+    """Return a map ``(entity_id, field) -> text`` for ok course-level rows.
+
+    Phase 4: when ``CONTENT_VERSIONS_READ_PRIMARY=1``, sources rows from
+    ``content_versions`` instead of the legacy ``content_translations``
+    overlay. Same dict shape — call sites stay unchanged.
+    """
+    if read_from_content_versions():
+        return fetch_cv_course_text_bulk(db, course_ids=course_ids, display_locale=display_locale)
     if not course_ids:
         return {}
     rows = (
@@ -187,7 +199,14 @@ def fetch_overlay_triples_bulk(
     keys: list[tuple[str, str, str]],
     display_locale: LocaleCode,
 ) -> dict[tuple[str, str, str], str]:
-    """Bulk-fetch ``content_translations`` rows keyed by ``(entity_type, entity_id, field)``."""
+    """Bulk-fetch overlay rows keyed by ``(entity_type, entity_id, field)``.
+
+    Phase 4: when ``CONTENT_VERSIONS_READ_PRIMARY=1``, sources rows from
+    ``content_versions`` instead of the legacy ``content_translations``
+    table. Same dict shape — call sites stay unchanged.
+    """
+    if read_from_content_versions():
+        return fetch_cv_text_bulk(db, keys, display_locale)
     if not keys:
         return {}
     uniq = list(dict.fromkeys(keys))
