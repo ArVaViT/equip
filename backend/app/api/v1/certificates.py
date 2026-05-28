@@ -13,6 +13,7 @@ from app.models.user import User
 from app.schemas.certificate import CertificateResponse, CertificateVerifyResponse
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services import certificate_service
+from app.services.content_versions import maybe_compare_and_log
 from app.services.translation.resolve_for_display import (
     fetch_overlay_triples_bulk,
     pick_overlay_value,
@@ -61,6 +62,18 @@ def _localize_cert_responses(
                 display_locale=display_locale,
             )
             or source_title
+        )
+        # Phase 2 dual-read: each cert points at a course with its
+        # own source_locale, so we can't share a single Localizer.
+        maybe_compare_and_log(
+            db,
+            entity_type="course",
+            entity_id=str(cert.course_id),
+            field="title",
+            source_locale=source_locale,
+            display_locale=display_locale,
+            base_source_text=source_title,
+            legacy_text=title,
         )
         out.append(base.model_copy(update={"course_title": title}))
     return out

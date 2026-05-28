@@ -8,6 +8,7 @@ from app.models.course import Course, CourseStatus
 from app.models.prerequisite import CoursePrerequisite
 from app.models.user import User, UserRole
 from app.schemas.locale import LocaleCode, normalize_locale
+from app.services.content_versions import maybe_compare_and_log
 from app.services.translation.resolve_for_display import (
     fetch_overlay_triples_bulk,
     pick_overlay_value,
@@ -48,18 +49,33 @@ def _localized_title_map(
     overlay = fetch_overlay_triples_bulk(db, specs, display_locale)
     out: dict[str, str] = {}
     for cid, source_title, source_locale in rows:
-        out[str(cid)] = (
+        loc_source = normalize_locale(source_locale)
+        resolved = (
             pick_overlay_value(
                 overlay,
                 "course",
                 str(cid),
                 "title",
                 source_title,
-                source_locale=normalize_locale(source_locale),
+                source_locale=loc_source,
                 display_locale=display_locale,
             )
             or source_title
         )
+        # Phase 2 dual-read: per-row source_locale (each prerequisite
+        # course can have a different source), so we can't fold this
+        # into a single Localizer.
+        maybe_compare_and_log(
+            db,
+            entity_type="course",
+            entity_id=str(cid),
+            field="title",
+            source_locale=loc_source,
+            display_locale=display_locale,
+            base_source_text=source_title,
+            legacy_text=resolved,
+        )
+        out[str(cid)] = resolved
     return out
 
 

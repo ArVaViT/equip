@@ -53,7 +53,7 @@ def list_courses(
         course_ids=[c.id for c in courses],
         display_locale=display_locale,
     )
-    return [build_localized_course_summary(c, overlay, display_locale) for c in courses]
+    return [build_localized_course_summary(c, overlay, display_locale, db=db) for c in courses]
 
 
 @router.get("/my", response_model=list[CourseSummary])
