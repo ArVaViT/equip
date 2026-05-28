@@ -521,7 +521,6 @@ def test_walker_finds_quizzes_attached_via_chapter_id_only(db: Session):
     Regression for 2026-05-16: see commit message.
     """
     from app.models.course import Chapter, Module
-    from app.models.quiz import Quiz, QuizOption, QuizQuestion
 
     course = _make_course(db, status="published")
     module = Module(id=str(uuid.uuid4()), course_id=course.id, title="M1", order_index=0)
@@ -542,25 +541,34 @@ def test_walker_finds_quizzes_attached_via_chapter_id_only(db: Session):
     # finds the quiz* (not about translation direction), seed Russian
     # text so the detector agrees with the course's source and the
     # original ``[en]`` assertion stays meaningful.
-    quiz = Quiz(chapter_id=chapter.id, title="Контрольная работа", description="Проверка знаний")
-    db.add(quiz)
-    db.flush()
-    question = QuizQuestion(
+    # Phase 5f: quiz tree text columns dropped — use the cv helpers
+    # so the orchestrator finds source rows to translate.
+    from ._cv_helpers import make_quiz_option_with_text, make_quiz_question_with_text, make_quiz_with_text
+
+    quiz = make_quiz_with_text(
+        db,
+        chapter_id=chapter.id,
+        title="Контрольная работа",
+        description="Проверка знаний",
+        locale="ru",
+    )
+    question = make_quiz_question_with_text(
+        db,
         quiz_id=quiz.id,
         question_text="Какой правильный ответ на этот вопрос?",
         question_type="multiple_choice",
         order_index=0,
         points=1,
+        locale="ru",
     )
-    db.add(question)
-    db.flush()
-    option = QuizOption(
+    option = make_quiz_option_with_text(
+        db,
         question_id=question.id,
         option_text="Правильный ответ номер один",
         is_correct=True,
         order_index=0,
+        locale="ru",
     )
-    db.add(option)
     db.commit()
 
     provider = _RecordingProvider()

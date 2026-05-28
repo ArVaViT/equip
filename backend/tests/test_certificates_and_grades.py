@@ -989,11 +989,11 @@ def _seed_teacher_progress_dashboard(db: Session) -> tuple[str, uuid.UUID, uuid.
         chapter_type="reading",
     )
     quiz_id = uuid.uuid4()
+    # Phase 5f: title + description moved to cv. Structural row only here;
+    # cv text rows seeded after flush below.
     quiz = Quiz(
         id=quiz_id,
         chapter_id=ch_quiz_id,
-        title="Unit quiz",
-        description=None,
     )
     t0 = datetime(2024, 1, 10, 12, 0, tzinfo=UTC)
     t1 = datetime(2024, 1, 11, 12, 0, tzinfo=UTC)
@@ -1062,6 +1062,8 @@ def _seed_teacher_progress_dashboard(db: Session) -> tuple[str, uuid.UUID, uuid.
     record_human_version(
         db, entity_type="assignment", entity_id=str(asg_id), field="description", locale="en", text="Write"
     )
+    # Phase 5f: quiz title moved to cv.
+    record_human_version(db, entity_type="quiz", entity_id=str(quiz_id), field="title", locale="en", text="Unit quiz")
     db.commit()
     return course_id, quiz_id, asg_id, ch_quiz_id, ch_asg_id, ch_read_id
 

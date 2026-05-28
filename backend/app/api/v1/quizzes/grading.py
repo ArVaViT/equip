@@ -16,6 +16,7 @@ from app.schemas.quiz import (
     QuizAnswerResult,
 )
 from app.services import quiz_service
+from app.services.content_versions import fetch_cv_entity_texts_with_fallback
 
 from ._deps import verify_quiz_owner
 from ._router import router
@@ -74,14 +75,32 @@ def list_pending_answers(
         # comment — the row would re-appear on every page reload.
         query = query.filter(QuizAnswer.graded_at.is_(None))
 
+    pending_rows = query.offset(skip).limit(limit).all()
+    # Phase 5f: ``quiz_questions.question_text`` column dropped — bulk-fetch
+    # from cv for the rendering pass (any-locale fallback covers source-only
+    # rows from a non-default course locale).
+    question_ids = list({str(q.id) for _, q, _, _ in pending_rows})
+    question_texts = (
+        fetch_cv_entity_texts_with_fallback(
+            db,
+            entity_type="quiz_question",
+            entity_ids=question_ids,
+            fields=["question_text"],
+            display_locale="en",
+            source_locale="en",
+        )
+        if question_ids
+        else {}
+    )
+
     results: list[PendingAnswerInfo] = []
-    for answer, question, attempt, student in query.offset(skip).limit(limit).all():
+    for answer, question, attempt, student in pending_rows:
         results.append(
             PendingAnswerInfo(
                 answer_id=answer.id,
                 attempt_id=attempt.id,
                 question_id=question.id,
-                question_text=question.question_text,
+                question_text=question_texts.get((str(question.id), "question_text")) or "",
                 question_type=question.question_type,
                 max_points=int(question.points),
                 min_words=question.min_words,

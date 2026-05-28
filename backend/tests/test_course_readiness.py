@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session  # noqa: TC002  (used at runtime by fixtures)
 from app.models.assignment import Assignment  # noqa: TC001  (used as return-type annotation)
 from app.models.chapter_block import ChapterBlock
 from app.models.course import Chapter, Course, CourseStatus, Module
-from app.models.quiz import Quiz, QuizOption, QuizQuestion
+from app.models.quiz import Quiz  # noqa: TC001  (used as return-type annotation)
 from app.models.user import User
 from app.services.course_readiness import (
     ReadinessReport,
@@ -108,22 +108,19 @@ def _add_quiz_with_question(
     options: int = 2,
     correct: int = 1,
 ) -> Quiz:
-    quiz = Quiz(chapter_id=chapter.id, title="Quiz")
-    db.add(quiz)
-    db.flush()
-    question = QuizQuestion(quiz_id=quiz.id, question_text="Q?", question_type=qtype, order_index=0)
-    db.add(question)
-    db.flush()
+    # Phase 5f: quiz tree text columns dropped; use the cv helpers.
+    from ._cv_helpers import make_quiz_option_with_text, make_quiz_question_with_text, make_quiz_with_text
+
+    quiz = make_quiz_with_text(db, chapter_id=chapter.id, title="Quiz")
+    question = make_quiz_question_with_text(db, quiz_id=quiz.id, question_text="Q?", question_type=qtype, order_index=0)
     for i in range(options):
-        db.add(
-            QuizOption(
-                question_id=question.id,
-                option_text=f"Option {i}",
-                is_correct=(i < correct),
-                order_index=i,
-            )
+        make_quiz_option_with_text(
+            db,
+            question_id=question.id,
+            option_text=f"Option {i}",
+            is_correct=(i < correct),
+            order_index=i,
         )
-    db.flush()
     return quiz
 
 
