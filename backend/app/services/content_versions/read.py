@@ -66,6 +66,58 @@ def fetch_cv_text_bulk(
     return {(r.entity_type, r.entity_id, r.field): r.text for r in rows}
 
 
+def fetch_cv_entity_texts_with_fallback(
+    db: Session,
+    *,
+    entity_type: str,
+    entity_ids: list[str],
+    fields: list[str],
+    display_locale: str,
+    source_locale: str,
+) -> dict[tuple[str, str], str | None]:
+    """Read every active+ok ``content_versions`` row for the given
+    entities + fields, then resolve each (entity, field) to a single
+    text using a three-tier fallback: ``display_locale`` first, then
+    ``source_locale``, then any-locale-with-earliest-created_at.
+
+    Returns a map ``(entity_id, field) -> text or None``. ``None`` only
+    appears when no active+ok row exists at any locale.
+
+    Phase 5e-series: entities whose source columns are dropped need
+    one indexed lookup per request to materialise responses; this is
+    that lookup. Same code path for the locale-aware list endpoints
+    and the single-entity GET/POST/PUT returns.
+    """
+    if not entity_ids or not fields:
+        return {}
+    rows = (
+        db.query(ContentVersion.entity_id, ContentVersion.field, ContentVersion.locale, ContentVersion.text)
+        .filter(
+            ContentVersion.entity_type == entity_type,
+            ContentVersion.entity_id.in_(entity_ids),
+            ContentVersion.field.in_(fields),
+            ContentVersion.superseded_by.is_(None),
+            ContentVersion.status == "ok",
+        )
+        .order_by(ContentVersion.entity_id, ContentVersion.field, ContentVersion.created_at)
+        .all()
+    )
+    by_locale: dict[tuple[str, str, str], str] = {}
+    any_for_pair: dict[tuple[str, str], str] = {}
+    for eid, field, locale, text in rows:
+        by_locale.setdefault((eid, field, locale), text)
+        any_for_pair.setdefault((eid, field), text)
+    resolved: dict[tuple[str, str], str | None] = {}
+    for eid in entity_ids:
+        for field in fields:
+            resolved[(eid, field)] = (
+                by_locale.get((eid, field, display_locale))
+                or by_locale.get((eid, field, source_locale))
+                or any_for_pair.get((eid, field))
+            )
+    return resolved
+
+
 def fetch_cv_course_text_bulk(
     db: Session,
     *,

@@ -122,14 +122,56 @@ def get_calendar_events(
             )
             .all()
         )
+        # Phase 5e3: assignments.title + description columns dropped —
+        # one cv read covers every assignment, with the picker applying
+        # the per-assignment course-declared source_locale fallback.
+        asg_rows_by_pair_locale: dict[tuple[str, str, str], str] = {}
+        any_for_pair: dict[tuple[str, str], str] = {}
+        if assignments:
+            from app.models.content_version import ContentVersion
+
+            asg_ids = [str(a.id) for a in assignments]
+            cv_rows = (
+                db.query(
+                    ContentVersion.entity_id,
+                    ContentVersion.field,
+                    ContentVersion.locale,
+                    ContentVersion.text,
+                )
+                .filter(
+                    ContentVersion.entity_type == "assignment",
+                    ContentVersion.entity_id.in_(asg_ids),
+                    ContentVersion.field.in_(["title", "description"]),
+                    ContentVersion.superseded_by.is_(None),
+                    ContentVersion.status == "ok",
+                )
+                .order_by(ContentVersion.entity_id, ContentVersion.field, ContentVersion.created_at)
+                .all()
+            )
+            for eid, fld, loc, txt in cv_rows:
+                asg_rows_by_pair_locale.setdefault((eid, fld, loc), txt)
+                any_for_pair.setdefault((eid, fld), txt)
         for a in assignments:
             assert a.due_date is not None
             crs_id = ch_to_course.get(a.chapter_id, "")
+            aid = str(a.id)
+            asg_source = course_source_locales.get(crs_id, display_locale)
+            asg_title = (
+                asg_rows_by_pair_locale.get((aid, "title", display_locale))
+                or asg_rows_by_pair_locale.get((aid, "title", asg_source))
+                or any_for_pair.get((aid, "title"))
+                or ""
+            )
+            asg_description = (
+                asg_rows_by_pair_locale.get((aid, "description", display_locale))
+                or asg_rows_by_pair_locale.get((aid, "description", asg_source))
+                or any_for_pair.get((aid, "description"))
+            )
             events.append(
                 CalendarEvent(
                     id=f"assignment-{a.id}",
-                    title=a.title,
-                    description=a.description,
+                    title=asg_title,
+                    description=asg_description,
                     event_type="deadline",
                     event_date=a.due_date,
                     course_id=crs_id,

@@ -591,7 +591,6 @@ def test_walker_finds_quizzes_attached_via_chapter_id_only(db: Session):
 def test_walker_finds_assignments_attached_via_chapter_id_only(db: Session):
     """Same regression shape for assignments — they also attach via
     ``Assignment.chapter_id`` directly without a chapter_block bridge."""
-    from app.models.assignment import Assignment
     from app.models.course import Chapter, Module
 
     course = _make_course(db, status="published")
@@ -607,12 +606,16 @@ def test_walker_finds_assignments_attached_via_chapter_id_only(db: Session):
     )
     db.add(chapter)
     db.flush()
-    assignment = Assignment(
+    # Phase 5e3: title + description live in cv. Use the helper so the
+    # cv source rows are seeded for the orchestrator to translate.
+    from ._cv_helpers import make_assignment_with_text
+
+    assignment = make_assignment_with_text(
+        db,
         chapter_id=chapter.id,
         title="Reflection",
         description="Write 500 words on the chapter.",
     )
-    db.add(assignment)
     db.commit()
 
     provider = _RecordingProvider()

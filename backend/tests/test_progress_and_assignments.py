@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_optional_user
 from app.main import app
-from app.models.assignment import Assignment
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
@@ -145,22 +144,23 @@ class TestListChapterAssignmentsSourceParam:
     def _seed_with_translation(self, db: Session, chapter_id: str) -> str:
         from app.services.content_versions.write import record_mt_version
 
-        asg_id = uuid.uuid4()
-        db.add(
-            Assignment(
-                id=asg_id,
-                chapter_id=chapter_id,
-                title="RU задание",
-                description="Описание RU",
-                max_score=10,
-            )
+        from ._cv_helpers import make_assignment_with_text
+
+        # Phase 5e3: source row recorded in cv at the RU source locale.
+        assignment = make_assignment_with_text(
+            db,
+            chapter_id=chapter_id,
+            title="RU задание",
+            description="Описание RU",
+            max_score=10,
+            locale="ru",
         )
-        db.flush()
-        # Phase 5d: cv is the only translation store.
+        # EN translation overlay (the test verifies ?source=1 still
+        # serves the RU source even with an EN row present).
         record_mt_version(
             db,
             entity_type="assignment",
-            entity_id=str(asg_id),
+            entity_id=str(assignment.id),
             field="title",
             locale="en",
             text="EN translation title",
@@ -168,7 +168,7 @@ class TestListChapterAssignmentsSourceParam:
             source_hash="ah1",
         )
         db.commit()
-        return str(asg_id)
+        return str(assignment.id)
 
     def test_owner_with_source_param_gets_raw_columns(self, client: TestClient, db: Session):
         _course, _mod, chapter = _seed_course_graph(db)
@@ -270,14 +270,10 @@ class TestUpdateAssignment:
         assert r.status_code == 404
 
     def test_not_chapter_owner(self, client: TestClient, db: Session):
+        from ._cv_helpers import make_assignment_with_text
+
         foreign = _seed_foreign_teacher_chapter(db)
-        asg = Assignment(
-            id=uuid.uuid4(),
-            chapter_id=foreign.id,
-            title="Other",
-            max_score=10,
-        )
-        db.add(asg)
+        asg = make_assignment_with_text(db, chapter_id=foreign.id, title="Other", max_score=10)
         db.commit()
         r = client.put(
             f"/api/v1/assignments/{asg.id}",
@@ -316,16 +312,11 @@ class TestListAssignmentSubmissions:
         db: Session,
         teacher: User,
     ):
+        from ._cv_helpers import make_assignment_with_text
+
         _course, _mod, chapter = _seed_course_graph(db)
-        aid = uuid.uuid4()
-        db.add(
-            Assignment(
-                id=aid,
-                chapter_id=chapter.id,
-                title="Sub test",
-                max_score=10,
-            )
-        )
+        asg = make_assignment_with_text(db, chapter_id=chapter.id, title="Sub test", max_score=10)
+        aid = asg.id
         db.commit()
         sub = student_client.post(
             f"/api/v1/assignments/{aid}/submit",
@@ -345,11 +336,12 @@ class TestListAssignmentSubmissions:
         assert r.status_code == 404
 
     def test_student_forbidden(self, student_client: TestClient, db: Session):
+        from ._cv_helpers import make_assignment_with_text
+
         _course, _mod, chapter = _seed_course_graph(db)
-        aid = uuid.uuid4()
-        db.add(Assignment(id=aid, chapter_id=chapter.id, title="T", max_score=10))
+        asg = make_assignment_with_text(db, chapter_id=chapter.id, title="T", max_score=10)
         db.commit()
-        r = student_client.get(f"/api/v1/assignments/{aid}/submissions")
+        r = student_client.get(f"/api/v1/assignments/{asg.id}/submissions")
         assert r.status_code == 403
 
 
@@ -363,16 +355,11 @@ class TestGradeSubmission:
         db: Session,
         teacher: User,
     ):
+        from ._cv_helpers import make_assignment_with_text
+
         _course, _mod, chapter = _seed_course_graph(db)
-        aid = uuid.uuid4()
-        db.add(
-            Assignment(
-                id=aid,
-                chapter_id=chapter.id,
-                title="Grade me",
-                max_score=10,
-            )
-        )
+        asg = make_assignment_with_text(db, chapter_id=chapter.id, title="Grade me", max_score=10)
+        aid = asg.id
         db.commit()
         sub_resp = student_client.post(
             f"/api/v1/assignments/{aid}/submit",
@@ -399,9 +386,11 @@ class TestGradeSubmission:
         db: Session,
         teacher: User,
     ):
+        from ._cv_helpers import make_assignment_with_text
+
         _course, _mod, chapter = _seed_course_graph(db)
-        aid = uuid.uuid4()
-        db.add(Assignment(id=aid, chapter_id=chapter.id, title="Cap", max_score=10))
+        asg = make_assignment_with_text(db, chapter_id=chapter.id, title="Cap", max_score=10)
+        aid = asg.id
         db.commit()
         sub_resp = student_client.post(
             f"/api/v1/assignments/{aid}/submit",
@@ -476,14 +465,10 @@ def test_submit_assignment_survives_concurrent_chapter_progress_insert(student_c
     """
     from sqlalchemy.orm import Query
 
+    from ._cv_helpers import make_assignment_with_text
+
     _course, _module, chapter = _seed_course_graph(db)
-    assignment = Assignment(
-        id=uuid.uuid4(),
-        chapter_id=chapter.id,
-        title="Reflection",
-        max_score=10,
-    )
-    db.add(assignment)
+    assignment = make_assignment_with_text(db, chapter_id=chapter.id, title="Reflection", max_score=10)
     db.add(
         ChapterProgress(
             user_id=STUDENT_ID,
@@ -536,15 +521,16 @@ def test_submit_assignment_survives_concurrent_chapter_progress_insert(student_c
 
 
 def test_student_can_fetch_own_assignment_submissions(student_client: TestClient, db: Session):
+    from ._cv_helpers import make_assignment_with_text
+
     course, _module, chapter = _seed_course_graph(db)
-    assignment = Assignment(
-        id=uuid.uuid4(),
+    assignment = make_assignment_with_text(
+        db,
         chapter_id=chapter.id,
         title="Reflection",
         description="Write a reflection",
         max_score=10,
     )
-    db.add(assignment)
     db.commit()
 
     submit_response = student_client.post(

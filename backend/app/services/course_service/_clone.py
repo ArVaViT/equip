@@ -174,12 +174,14 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
             for assignment in assignments_by_chapter.get(chapter.id, []):
                 new_assignment_id = uuid.uuid4()
                 assignment_id_map[str(assignment.id)] = new_assignment_id
+                # Phase 5e3: assignment title + description columns
+                # dropped. The clone copies structural fields; cv text
+                # rows are NOT cloned (clones land as drafts and the
+                # teacher edits text post-clone, same as 5e2 blocks).
                 db.add(
                     Assignment(
                         id=new_assignment_id,
                         chapter_id=new_chapter_id,
-                        title=assignment.title,
-                        description=assignment.description,
                         max_score=assignment.max_score,
                         due_date=None,
                     )

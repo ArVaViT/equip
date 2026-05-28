@@ -252,6 +252,25 @@ def build_course_student_progress(db: Session, course: Course, course_id: str) -
         db, assignment_map
     )
 
+    # Phase 5e3: assignments.title column dropped — bulk-fetch the
+    # source-language title from cv for the dashboard rendering below.
+    # Any-locale fallback keeps the lookup defensive against missing
+    # rows (the dashboard prefers showing *something* over crashing).
+    assignment_title_by_id: dict[str, str] = {}
+    if assignment_by_id_str:
+        from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+
+        source_locale = course.source_locale or "en"
+        cv_titles = fetch_cv_entity_texts_with_fallback(
+            db,
+            entity_type="assignment",
+            entity_ids=list(assignment_by_id_str.keys()),
+            fields=["title"],
+            display_locale=source_locale,
+            source_locale=source_locale,
+        )
+        assignment_title_by_id = {aid: (cv_titles.get((aid, "title")) or "") for aid in assignment_by_id_str}
+
     progress_by_user = _load_completed_progress(db, chapter_ids)
 
     enrollments = (
@@ -300,7 +319,7 @@ def build_course_student_progress(db: Session, course: Course, course_id: str) -
                     {
                         "chapter_title": chapter_title_map.get(str(ch_id), ""),
                         "chapter_id": str(ch_id),
-                        "title": a.title,
+                        "title": assignment_title_by_id.get(str(a.id), ""),
                         "status": latest["status"],
                         "grade": latest["grade"],
                         "max_score": a.max_score or 0,

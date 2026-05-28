@@ -306,6 +306,29 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
         for loaded_assignment in db.query(Assignment).filter(Assignment.chapter_id.in_(all_chapter_ids)).all():
             assignments_by_chapter[loaded_assignment.chapter_id] = loaded_assignment
 
+    # Phase 5e3: ``assignments.description`` column dropped. Bulk-fetch
+    # the set of assignment ids with a non-blank cv description row at
+    # any locale (same pattern as ``blocks_with_cv_content`` above) so
+    # the per-chapter check can answer "has brief?" in O(1).
+    assignments_with_cv_brief: set[str] = set()
+    if assignments_by_chapter:
+        from app.models.content_version import ContentVersion
+
+        assignment_ids = [str(a.id) for a in assignments_by_chapter.values()]
+        assignments_with_cv_brief = {
+            eid
+            for (eid, text) in db.query(ContentVersion.entity_id, ContentVersion.text)
+            .filter(
+                ContentVersion.entity_type == "assignment",
+                ContentVersion.entity_id.in_(assignment_ids),
+                ContentVersion.field == "description",
+                ContentVersion.superseded_by.is_(None),
+                ContentVersion.status == "ok",
+            )
+            .all()
+            if text and text.strip()
+        }
+
     has_any_quiz_chapter = False
     has_any_assignment_chapter = False
 
@@ -360,11 +383,12 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
             elif ctype == "assignment":
                 has_any_assignment_chapter = True
                 assignment = assignments_by_chapter.get(chapter.id)
+                has_brief = assignment is not None and str(assignment.id) in assignments_with_cv_brief
                 checks.append(
                     ReadinessCheck(
                         id=f"assignment_has_brief:{chapter.id}",
                         severity="critical",
-                        passed=assignment is not None and bool((assignment.description or "").strip()),
+                        passed=has_brief,
                         message_key="courseReadiness.checks.assignmentHasBrief",
                         subject=_make_chapter_subject(chapter),
                         action=_open_assignment_action(chapter),
