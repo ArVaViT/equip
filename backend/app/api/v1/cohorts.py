@@ -32,6 +32,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_optional_user, is_owner_or_admin, require_admin
 from app.core.database import get_db
 from app.models.cohort import Cohort, CohortCourse, CohortStatus
+from app.models.content_version import ContentVersion
 from app.models.course import Course, CourseStatus
 from app.models.enrollment import Enrollment
 from app.models.user import User
@@ -52,32 +53,53 @@ from app.services.translation.resolve_for_display import Localizer
 router = APIRouter(prefix="/cohorts", tags=["cohorts"])
 
 
-def _dual_write_cohort_name(db: Session, cohort: Cohort, *, admin: User) -> None:
-    """Dual-write Cohort.name to content_versions.field='title'.
+def _write_cohort_name(db: Session, cohort_id: UUID, name: str, *, admin: User) -> None:
+    """Write the cohort name to content_versions.field='title'.
 
-    Cohorts don't have an entity-level attribute named ``title`` —
-    the registry maps ``Cohort.name`` to ``field='title'`` so this
-    helper inlines the call rather than using the shared
-    ``dual_write_entity_content`` (which keys on attribute name).
-
-    Cohorts have no parent course (they're M2M with courses) so
-    the detector fallback is the admin's preferred_locale.
+    Phase 5e1: ``cohorts.name`` column is gone. The cohort's display
+    name lives only in ``content_versions``. Cohorts have no parent
+    course (M2M), so the detector fallback is admin's preferred_locale.
     """
-    if not cohort.name or not cohort.name.strip():
+    if not name or not name.strip():
         return
-    detected = detect_locale(cohort.name)
+    detected = detect_locale(name)
     locale = detected or admin.preferred_locale
     if locale is None:
         return
     record_human_version(
         db,
         entity_type="cohort",
-        entity_id=str(cohort.id),
+        entity_id=str(cohort_id),
         field="title",
         locale=locale,
-        text=cohort.name,
+        text=name,
         authored_by=admin.id,
     )
+
+
+def _fetch_cohort_names(db: Session, cohort_ids: list[UUID]) -> dict[str, str]:
+    """Return ``{cohort_id_str: name}`` for every cohort that has an
+    active cv title row. When multiple locales exist, pick the earliest
+    by created_at — admin views aren't locale-scoped, we just need a
+    deterministic representative."""
+    if not cohort_ids:
+        return {}
+    rows = (
+        db.query(ContentVersion.entity_id, ContentVersion.text, ContentVersion.created_at)
+        .filter(
+            ContentVersion.entity_type == "cohort",
+            ContentVersion.entity_id.in_([str(cid) for cid in cohort_ids]),
+            ContentVersion.field == "title",
+            ContentVersion.superseded_by.is_(None),
+            ContentVersion.status == "ok",
+        )
+        .order_by(ContentVersion.entity_id, ContentVersion.created_at)
+        .all()
+    )
+    out: dict[str, str] = {}
+    for eid, text, _created_at in rows:
+        out.setdefault(eid, text)
+    return out
 
 
 # ----------------------------- helpers --------------------------------
@@ -121,11 +143,31 @@ def _serialize_many(db: Session, cohorts: list[Cohort]) -> list[CohortResponse]:
         .group_by(Enrollment.cohort_id)
     }
 
+    # Phase 5e1: cohort.name column dropped; pull name from cv.
+    names_by_cohort = _fetch_cohort_names(db, cohort_ids)
+
     out: list[CohortResponse] = []
     for c in cohorts:
-        resp = CohortResponse.model_validate(c)
-        resp.course_ids = courses_by_cohort.get(c.id, [])
-        resp.student_count = counts_by_cohort.get(c.id, 0)
+        # Build the response via model_validate to preserve type
+        # coercion (Literal status, datetime non-null defaults), then
+        # patch the cv-sourced name + computed fields on top.
+        resp = CohortResponse.model_validate(
+            {
+                "id": c.id,
+                "name": names_by_cohort.get(str(c.id), ""),
+                "start_date": c.start_date,
+                "end_date": c.end_date,
+                "enrollment_start": c.enrollment_start,
+                "enrollment_end": c.enrollment_end,
+                "status": c.status,
+                "max_students": c.max_students,
+                "created_by": c.created_by,
+                "created_at": c.created_at,
+                "updated_at": c.updated_at,
+                "course_ids": courses_by_cohort.get(c.id, []),
+                "student_count": counts_by_cohort.get(c.id, 0),
+            }
+        )
         out.append(resp)
     return out
 
@@ -179,8 +221,8 @@ def create_cohort(
     """Create an empty cohort. Courses and students attach via the
     separate junction endpoints — keeps each step independently
     auditable."""
+    # Phase 5e1: cohorts.name column dropped; name lives in cv only.
     cohort = Cohort(
-        name=data.name,
         start_date=data.start_date,
         end_date=data.end_date,
         enrollment_start=data.enrollment_start,
@@ -190,7 +232,7 @@ def create_cohort(
     )
     db.add(cohort)
     db.flush()
-    _dual_write_cohort_name(db, cohort, admin=admin)
+    _write_cohort_name(db, cohort.id, data.name, admin=admin)
     db.commit()
     db.refresh(cohort)
     log_action(
@@ -199,7 +241,7 @@ def create_cohort(
         "create",
         "cohort",
         str(cohort.id),
-        details={"name": cohort.name},
+        details={"name": data.name},
         request=request,
     )
     return _serialize(db, cohort)
@@ -241,21 +283,23 @@ def update_cohort(
     # same values) doesn't generate a noisy audit entry, and a status
     # flip like ``upcoming -> active`` is fully traceable: the row holds
     # both ends of the transition.
+    # Phase 5e1: name lives in cv; other fields stay on the entity.
     changes: dict[str, dict[str, object]] = {}
-    name_changed = False
+    new_name: str | None = None
     for field, value in patch.items():
+        if field == "name":
+            new_name = value
+            continue
         before = getattr(cohort, field)
         if before != value:
             changes[field] = {"from": before, "to": value}
         setattr(cohort, field, value)
-        if field == "name":
-            name_changed = True
+    if new_name is not None:
+        before = _fetch_cohort_names(db, [cohort.id]).get(str(cohort.id), "")
+        if before != new_name:
+            changes["name"] = {"from": before, "to": new_name}
+        _write_cohort_name(db, cohort.id, new_name, admin=admin)
     db.flush()
-    if name_changed:
-        # Cohort.name maps to content_versions.field='title' (see the
-        # translation registry). Re-record so the dual-write store
-        # stays in sync with the entity column.
-        _dual_write_cohort_name(db, cohort, admin=admin)
     db.commit()
     db.refresh(cohort)
     # Translation reconcile reads the attached-course set internally and
@@ -268,7 +312,7 @@ def update_cohort(
             "update",
             "cohort",
             str(cohort.id),
-            details={"changes": changes, "name": cohort.name},
+            details={"changes": changes},
             request=request,
         )
     return _serialize(db, cohort)
@@ -286,7 +330,9 @@ def delete_cohort(
     ``cohort_id`` set to NULL (``ON DELETE SET NULL`` on the FK) — that
     way historical grade data is preserved as orphaned solo enrollments."""
     cohort = _get_or_404(db, cohort_id)
-    cohort_name = cohort.name
+    # Phase 5e1: name lives in cv. Snapshot it for the audit row before
+    # the cv rows themselves go away (no cascade — they orphan harmlessly).
+    cohort_name = _fetch_cohort_names(db, [cohort_id]).get(str(cohort_id), "")
     db.delete(cohort)
     db.commit()
     log_action(
@@ -322,7 +368,8 @@ def complete_cohort(
         "complete",
         "cohort",
         str(cohort.id),
-        details={"name": cohort.name},
+        # Phase 5e1: name lives in cv.
+        details={"name": _fetch_cohort_names(db, [cohort.id]).get(str(cohort.id), "")},
         request=request,
     )
     return _serialize(db, cohort)
@@ -755,6 +802,9 @@ def list_cohorts_for_course(
     # Locale wins. Every reader — students, owners, admins — gets the locale
     # overlay when one exists. The admin cohort CRUD surface (``/cohorts`` and
     # ``/cohorts/{id}``) still returns source for moderation and editing.
+    # Phase 5e1: _serialize_many already pulls names from cv (locale-agnostic).
+    # Apply the locale-specific overlay on top so accept-language picks the
+    # right localization when one exists.
     loc = Localizer.build(
         db,
         [("cohort", str(c.id), "title") for c in cohorts],
@@ -762,6 +812,8 @@ def list_cohorts_for_course(
         display_locale=normalize_locale(accept_language),
     )
     serialized = _serialize_many(db, cohorts)
-    for resp, c in zip(serialized, cohorts, strict=True):
-        resp.name = loc.pick("cohort", str(c.id), "title", c.name) or c.name
+    for resp in serialized:
+        localized = loc.pick("cohort", str(resp.id), "title", resp.name)
+        if localized:
+            resp.name = localized
     return serialized

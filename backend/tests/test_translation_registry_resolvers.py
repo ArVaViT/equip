@@ -419,7 +419,6 @@ class TestRegistryWiring:
 
         cohort = Cohort(
             id=uuid.uuid4(),
-            name="Test Cohort",
             start_date=datetime(2026, 1, 1, tzinfo=UTC),
             end_date=datetime(2026, 6, 1, tzinfo=UTC),
             status="upcoming",

@@ -58,7 +58,10 @@ class Cohort(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    name: Mapped[str] = mapped_column(String(200))
+    # Phase 5e1: the ``name`` column was dropped. Cohort names live
+    # exclusively in ``content_versions`` (entity_type='cohort',
+    # field='title'). Read via ``api/v1/cohorts.py::_fetch_cohort_names``,
+    # write via ``_write_cohort_name``.
     start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     end_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     enrollment_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -79,7 +82,7 @@ class Cohort(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<Cohort id={self.id} name='{self.name}'>"
+        return f"<Cohort id={self.id}>"
 
 
 class CohortCourse(Base):
