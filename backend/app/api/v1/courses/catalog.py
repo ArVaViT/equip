@@ -16,9 +16,8 @@ from app.services.course_service import (
     get_teacher_courses,
 )
 from app.services.translation.resolve_for_display import (
-    batch_fetch_course_translations,
     build_localized_course_response_with_tree,
-    build_localized_course_summary,
+    build_localized_course_summaries,
     build_localized_module_response,
     should_apply_course_translation_overlay,
 )
@@ -48,12 +47,7 @@ def list_courses(
     courses = get_courses(db, skip=skip, limit=limit, search=search)
     if not courses:
         return []
-    overlay = batch_fetch_course_translations(
-        db,
-        course_ids=[c.id for c in courses],
-        display_locale=display_locale,
-    )
-    return [build_localized_course_summary(c, overlay, display_locale) for c in courses]
+    return build_localized_course_summaries(db, courses, display_locale)
 
 
 @router.get("/my", response_model=list[CourseSummary])

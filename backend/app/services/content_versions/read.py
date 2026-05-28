@@ -137,28 +137,3 @@ def fetch_cv_entity_texts_with_fallback(
                 by_locale.get((eid, field, display_locale)) or by_locale.get((eid, field, source_locale)) or any_tier
             )
     return resolved
-
-
-def fetch_cv_course_text_bulk(
-    db: Session,
-    *,
-    course_ids: list[str],
-    display_locale: str,
-) -> dict[tuple[str, str], str]:
-    """Course-catalog bulk variant: returns ``(course_id, field) -> text``
-    for the course title + description overlay at display_locale."""
-    if not course_ids:
-        return {}
-    rows = (
-        db.query(ContentVersion)
-        .filter(
-            ContentVersion.entity_type == "course",
-            ContentVersion.entity_id.in_(course_ids),
-            ContentVersion.locale == display_locale,
-            ContentVersion.field.in_(("title", "description")),
-            ContentVersion.superseded_by.is_(None),
-            ContentVersion.status == "ok",
-        )
-        .all()
-    )
-    return {(r.entity_id, r.field): r.text for r in rows}

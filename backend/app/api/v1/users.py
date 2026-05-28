@@ -25,8 +25,7 @@ from app.schemas.user import PreferredLocaleUpdate, UserResponse
 from app.services.audit_service import log_action
 from app.services.course_service import get_user_courses
 from app.services.translation.resolve_for_display import (
-    batch_fetch_course_translations,
-    build_localized_course_summary,
+    build_localized_course_summaries,
     populate_spine_texts,
     should_apply_course_translation_overlay,
 )
@@ -68,18 +67,29 @@ def get_my_courses(
     courses = [e.course for e in rows if e.course is not None]
     if not courses:
         return [EnrollmentSummaryResponse.model_validate(e, from_attributes=True) for e in rows]
+    # Pre-hydrate at the source locale for the owner / admin path. The
+    # student / non-owner path uses a localized summary; per-course
+    # overlay choice depends on the caller's role.
     populate_spine_texts(db, courses)
-    overlay = batch_fetch_course_translations(db, course_ids=[c.id for c in courses], display_locale=display_locale)
+    localized = {
+        c.id: s
+        for c, s in zip(
+            courses,
+            build_localized_course_summaries(db, courses, display_locale),
+            strict=True,
+        )
+    }
     out: list[EnrollmentSummaryResponse] = []
     for e in rows:
         if e.course is None:
             out.append(EnrollmentSummaryResponse.model_validate(e, from_attributes=True))
             continue
         c = e.course
-        if should_apply_course_translation_overlay(course=c, current_user=current_user):
-            summary = build_localized_course_summary(c, overlay, display_locale)
-        else:
-            summary = CourseSummary.model_validate(c, from_attributes=True)
+        summary = (
+            localized[c.id]
+            if should_apply_course_translation_overlay(course=c, current_user=current_user)
+            else CourseSummary.model_validate(c, from_attributes=True)
+        )
         base = EnrollmentSummaryResponse.model_validate(e, from_attributes=True)
         out.append(base.model_copy(update={"course": summary}))
     return out
