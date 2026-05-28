@@ -250,29 +250,30 @@ class TestCloneCourse:
 
 class TestCatalogLocalizedMetadata:
     def _seed_en_translations(self, db: Session, course_id: str) -> None:
-        db.add(
-            ContentTranslation(
-                entity_type="course",
-                entity_id=course_id,
-                field="title",
-                locale="en",
-                text="English catalog title",
-                source_hash="testhash",
-                status="ok",
-                origin="mt",
-            )
+        # Phase 5a: reads come from content_versions exclusively. Seed
+        # there. (Pre-5a this used content_translations; the dual-write
+        # still populates that table but reads no longer touch it.)
+        from app.services.content_versions.write import record_mt_version
+
+        record_mt_version(
+            db,
+            entity_type="course",
+            entity_id=course_id,
+            field="title",
+            locale="en",
+            text="English catalog title",
+            source_locale="ru",
+            source_hash="testhash",
         )
-        db.add(
-            ContentTranslation(
-                entity_type="course",
-                entity_id=course_id,
-                field="description",
-                locale="en",
-                text="English catalog description",
-                source_hash="testhash2",
-                status="ok",
-                origin="mt",
-            )
+        record_mt_version(
+            db,
+            entity_type="course",
+            entity_id=course_id,
+            field="description",
+            locale="en",
+            text="English catalog description",
+            source_locale="ru",
+            source_hash="testhash2",
         )
         db.commit()
 
@@ -570,33 +571,32 @@ class TestCatalogLocalizedMetadata:
         )
         cid = course["id"]
         client.put(f"{PREFIX}/{cid}", json={"status": "published"})
+        from app.services.content_versions.write import record_mt_version
+
         row = db.get(Course, cid)
         assert row is not None
         row.title = "EN title in DB not matching RU"
         row.description = "EN desc in DB"
-        db.add(
-            ContentTranslation(
-                entity_type="course",
-                entity_id=cid,
-                field="title",
-                locale="ru",
-                text="Правильный RU title",
-                source_hash="h1",
-                status="ok",
-                origin="mt",
-            )
+        # Phase 5a: reads come from content_versions only.
+        record_mt_version(
+            db,
+            entity_type="course",
+            entity_id=cid,
+            field="title",
+            locale="ru",
+            text="Правильный RU title",
+            source_locale="en",
+            source_hash="h1",
         )
-        db.add(
-            ContentTranslation(
-                entity_type="course",
-                entity_id=cid,
-                field="description",
-                locale="ru",
-                text="Правильный RU desc",
-                source_hash="h2",
-                status="ok",
-                origin="mt",
-            )
+        record_mt_version(
+            db,
+            entity_type="course",
+            entity_id=cid,
+            field="description",
+            locale="ru",
+            text="Правильный RU desc",
+            source_locale="en",
+            source_hash="h2",
         )
         db.commit()
 

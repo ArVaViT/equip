@@ -1,15 +1,11 @@
-"""Phase 4 cv-primary read helpers + env-flag gate.
+"""Cv-primary read helpers — Phase 4 is now the only path.
 
-When ``CONTENT_VERSIONS_READ_PRIMARY=1``, the canonical overlay
-fetchers in ``resolve_for_display.py`` route through these helpers
-instead of querying the legacy ``content_translations`` table.
-Same dict shape returned either way — call sites stay untouched.
+The Phase 4 feature flag (``CONTENT_VERSIONS_READ_PRIMARY``) was
+deleted in Phase 5a. Every overlay fetch comes from
+``content_versions``; the legacy ``content_translations`` branch in
+``resolve_for_display.py`` is gone.
 
-Default: flag is OFF. Phase 4's first PR ships the new path dark;
-ops bumps the env var to enable. Rollback is one env-var flip + a
-redeploy (no code revert needed).
-
-The cv query mirrors the legacy one but hits ``content_versions``:
+The cv query:
 
     SELECT entity_type, entity_id, field, text
     FROM content_versions
@@ -20,7 +16,7 @@ The cv query mirrors the legacy one but hits ``content_versions``:
 
 Uses ``uniq_content_versions_active`` directly (partial unique on
 ``superseded_by IS NULL``). Same number of round-trips as the legacy
-fetcher — Phase 4 has zero N+1 risk.
+fetcher — zero N+1 risk.
 
 We do NOT re-detect per-field language on the read path: cv already
 has the detected locale recorded at write time (Phase 1 dual-write +
@@ -29,7 +25,6 @@ Phase 3 backfill). The read trusts what's there.
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
 from sqlalchemy import tuple_
@@ -38,30 +33,6 @@ from app.models.content_version import ContentVersion
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
-
-# Read once at import time — flag changes require a redeploy / worker
-# restart, which is fine for a phased migration. Tests override via
-# ``set_read_primary`` to flip behavior per-test without monkey-
-# patching the module constant directly.
-_READ_PRIMARY: bool = os.environ.get("CONTENT_VERSIONS_READ_PRIMARY", "0").strip() in ("1", "true", "True")
-
-
-def set_read_primary(value: bool) -> None:
-    """Test-only override for the cv-primary read flag.
-
-    Production code reads ``CONTENT_VERSIONS_READ_PRIMARY`` from the
-    environment at import time. Tests use this hook to flip the flag
-    per-test without monkey-patching the constant directly.
-    """
-    global _READ_PRIMARY
-    _READ_PRIMARY = bool(value)
-
-
-def read_from_content_versions() -> bool:
-    """Return True when the resolver should source overlay rows from
-    ``content_versions``. False = read from the legacy
-    ``content_translations`` table (Phase 0-3 behaviour)."""
-    return _READ_PRIMARY
 
 
 def fetch_cv_text_bulk(
@@ -72,9 +43,8 @@ def fetch_cv_text_bulk(
     """Bulk-fetch ``content_versions`` active+ok rows keyed by
     ``(entity_type, entity_id, field)`` at the given display_locale.
 
-    Drop-in replacement for ``fetch_overlay_triples_bulk`` — returns
-    the same dict shape so the consumer (``pick_overlay_value``) is
-    locale- and store-agnostic.
+    Drop-in for the legacy ``fetch_overlay_triples_bulk`` — same dict
+    shape so the consumer (``pick_overlay_value``) is store-agnostic.
     """
     if not keys:
         return {}
@@ -103,10 +73,7 @@ def fetch_cv_course_text_bulk(
     display_locale: str,
 ) -> dict[tuple[str, str], str]:
     """Course-catalog bulk variant: returns ``(course_id, field) -> text``
-    for the course title + description overlay at display_locale.
-
-    Drop-in replacement for ``batch_fetch_course_translations``.
-    """
+    for the course title + description overlay at display_locale."""
     if not course_ids:
         return {}
     rows = (

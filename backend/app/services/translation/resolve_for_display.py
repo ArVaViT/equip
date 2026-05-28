@@ -18,13 +18,11 @@ import uuid
 from dataclasses import dataclass
 from typing import cast
 
-from sqlalchemy import tuple_
 from sqlalchemy.orm import Session  # noqa: TC002
 
 from app.models.announcement import Announcement  # noqa: TC001
 from app.models.assignment import Assignment  # noqa: TC001
 from app.models.chapter_block import ChapterBlock  # noqa: TC001
-from app.models.content_translation import ContentTranslation
 from app.models.course import Chapter, Course, Module
 from app.models.course_event import CourseEvent  # noqa: TC001
 from app.models.quiz import Quiz  # noqa: TC001
@@ -40,7 +38,6 @@ from app.services.content_versions import (
     fetch_cv_course_text_bulk,
     fetch_cv_text_bulk,
     maybe_compare_and_log,
-    read_from_content_versions,
 )
 from app.services.language_detection import detect_locale
 
@@ -68,26 +65,10 @@ def batch_fetch_course_translations(
 ) -> dict[tuple[str, str], str]:
     """Return a map ``(entity_id, field) -> text`` for ok course-level rows.
 
-    Phase 4: when ``CONTENT_VERSIONS_READ_PRIMARY=1``, sources rows from
-    ``content_versions`` instead of the legacy ``content_translations``
-    overlay. Same dict shape — call sites stay unchanged.
+    Sourced exclusively from ``content_versions`` (Phase 4 made cv the
+    primary read store; Phase 5a removed the legacy fallback branch).
     """
-    if read_from_content_versions():
-        return fetch_cv_course_text_bulk(db, course_ids=course_ids, display_locale=display_locale)
-    if not course_ids:
-        return {}
-    rows = (
-        db.query(ContentTranslation)
-        .filter(
-            ContentTranslation.entity_type == "course",
-            ContentTranslation.entity_id.in_(course_ids),
-            ContentTranslation.locale == display_locale,
-            ContentTranslation.field.in_(("title", "description")),
-            ContentTranslation.status == "ok",
-        )
-        .all()
-    )
-    return {(r.entity_id, r.field): r.text for r in rows}
+    return fetch_cv_course_text_bulk(db, course_ids=course_ids, display_locale=display_locale)
 
 
 def pick_localized_text(
@@ -201,29 +182,10 @@ def fetch_overlay_triples_bulk(
 ) -> dict[tuple[str, str, str], str]:
     """Bulk-fetch overlay rows keyed by ``(entity_type, entity_id, field)``.
 
-    Phase 4: when ``CONTENT_VERSIONS_READ_PRIMARY=1``, sources rows from
-    ``content_versions`` instead of the legacy ``content_translations``
-    table. Same dict shape — call sites stay unchanged.
+    Sourced exclusively from ``content_versions`` (Phase 4 made cv the
+    primary read store; Phase 5a removed the legacy fallback branch).
     """
-    if read_from_content_versions():
-        return fetch_cv_text_bulk(db, keys, display_locale)
-    if not keys:
-        return {}
-    uniq = list(dict.fromkeys(keys))
-    rows = (
-        db.query(ContentTranslation)
-        .filter(
-            tuple_(
-                ContentTranslation.entity_type,
-                ContentTranslation.entity_id,
-                ContentTranslation.field,
-            ).in_(uniq),
-            ContentTranslation.locale == display_locale,
-            ContentTranslation.status == "ok",
-        )
-        .all()
-    )
-    return {(r.entity_type, r.entity_id, r.field): r.text for r in rows}
+    return fetch_cv_text_bulk(db, keys, display_locale)
 
 
 def pick_overlay_value(
