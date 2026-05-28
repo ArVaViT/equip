@@ -8,9 +8,11 @@ from app.api.dependencies import get_current_user, require_teacher, verify_chapt
 from app.core.database import get_db
 from app.core.sanitize import sanitize_string
 from app.models.chapter_block import ChapterBlock
+from app.models.course import Chapter, Course, Module
 from app.models.user import User
 from app.schemas.chapter_block import BlockCreate, BlockReorderItem, BlockResponse, BlockUpdate
 from app.schemas.locale import LocaleCode, normalize_locale
+from app.services.content_versions import dual_write_entity_content
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import (
     localize_chapter_block_rows,
@@ -18,6 +20,24 @@ from app.services.translation.resolve_for_display import (
 )
 
 router = APIRouter(prefix="/blocks", tags=["blocks"])
+
+
+_TRANSLATABLE_BLOCK_FIELDS = ("content",)
+
+
+def _course_source_locale_for_chapter(db: Session, chapter_id: str) -> str | None:
+    """Walk ``ChapterBlock -> Chapter -> Module -> Course`` to find the
+    parent course's source locale for use as the dual-write fallback
+    when block ``content`` is too short or non-letter for the
+    detector to classify on its own.
+    """
+    return (
+        db.query(Course.source_locale)
+        .join(Module, Module.course_id == Course.id)
+        .join(Chapter, Chapter.module_id == Module.id)
+        .filter(Chapter.id == chapter_id)
+        .scalar()
+    )
 
 
 @router.get("/chapter/{chapter_id}", response_model=list[BlockResponse])
@@ -101,6 +121,16 @@ def create_block(
     )
     db.add(block)
     try:
+        db.flush()
+        dual_write_entity_content(
+            db,
+            entity_type="chapter_block",
+            entity_id=str(block.id),
+            entity=block,
+            fields=_TRANSLATABLE_BLOCK_FIELDS,
+            fallback_locale=_course_source_locale_for_chapter(db, chapter_id),
+            authored_by=teacher.id,
+        )
         db.commit()
     except IntegrityError as exc:
         # quiz_id / assignment_id are FKs — a stale client can pass an id
@@ -143,11 +173,23 @@ def update_block(
     if not block:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Block not found")
     verify_chapter_owner(db, block.chapter_id, teacher)
-    for field, value in data.model_dump(exclude_unset=True).items():
+    patch = data.model_dump(exclude_unset=True)
+    for field, value in patch.items():
         if field == "content" and value:
             value = sanitize_string(value)
         setattr(block, field, value)
     try:
+        db.flush()
+        dual_write_entity_content(
+            db,
+            entity_type="chapter_block",
+            entity_id=str(block.id),
+            entity=block,
+            fields=_TRANSLATABLE_BLOCK_FIELDS,
+            fallback_locale=_course_source_locale_for_chapter(db, block.chapter_id),
+            authored_by=teacher.id,
+            only_fields={f for f in _TRANSLATABLE_BLOCK_FIELDS if f in patch},
+        )
         db.commit()
     except IntegrityError as exc:
         db.rollback()
