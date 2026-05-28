@@ -18,7 +18,7 @@ from app.schemas.calendar import (
     CourseEventUpdate,
 )
 from app.schemas.locale import LocaleCode, normalize_locale
-from app.services.content_versions import dual_write_entity_content
+from app.services.content_versions import dual_write_entity_content, maybe_compare_and_log
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import (
     fetch_overlay_triples_bulk,
@@ -166,6 +166,21 @@ def get_calendar_events(
             )
             or ce.title
         )
+        # Phase 2 dual-read: this loop builds the overlay map by hand
+        # rather than going through Localizer (each course_event has
+        # its own parent-course source_locale, which Localizer doesn't
+        # support per-row). Fire the comparator inline so this path
+        # gets the same coverage as the Localizer-using helpers.
+        maybe_compare_and_log(
+            db,
+            entity_type="course_event",
+            entity_id=str(ce.id),
+            field="title",
+            source_locale=course_src,
+            display_locale=display_locale,
+            base_source_text=ce.title,
+            legacy_text=title,
+        )
         description = pick_overlay_value(
             overlay_event,
             "course_event",
@@ -174,6 +189,16 @@ def get_calendar_events(
             ce.description,
             source_locale=course_src,
             display_locale=display_locale,
+        )
+        maybe_compare_and_log(
+            db,
+            entity_type="course_event",
+            entity_id=str(ce.id),
+            field="description",
+            source_locale=course_src,
+            display_locale=display_locale,
+            base_source_text=ce.description,
+            legacy_text=description,
         )
         events.append(
             CalendarEvent(
