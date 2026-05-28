@@ -27,8 +27,6 @@ from app.services.content_versions.dual_write import dual_write_entity_content
 from app.services.content_versions.read import (
     fetch_cv_course_text_bulk,
     fetch_cv_text_bulk,
-    read_from_content_versions,
-    set_read_primary,
 )
 from app.services.content_versions.write import (
     record_human_version,
@@ -46,10 +44,8 @@ __all__ = [
     "fetch_cv_text_bulk",
     "get_compare_sample_rate",
     "maybe_compare_and_log",
-    "read_from_content_versions",
     "record_human_version",
     "record_mt_failure",
     "record_mt_version",
     "set_compare_sample_rate",
-    "set_read_primary",
 ]
