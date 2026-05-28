@@ -212,6 +212,10 @@ def export_grades_csv(
         media_type="text/csv; charset=utf-8",
         headers={
             "Content-Disposition": (f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{utf8_filename}"),
+            # Filename is derived from the locale-resolved course title, so
+            # an EN and RU caller see different downloads. Vary keeps the
+            # HTTP cache layers from conflating them.
+            "Vary": "Accept-Language",
         },
     )
 
