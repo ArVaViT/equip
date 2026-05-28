@@ -370,11 +370,15 @@ def verify_certificate(
         return CertificateVerifyResponse(valid=False, certificate_number=certificate_number)
 
     cert, user, course = row
-    # Fall back to ``archived_course_title`` (snapshotted by the
-    # BEFORE-DELETE trigger on ``courses``) when the source course has
-    # been deleted — the credential still has to verify even after the
-    # underlying course is gone.
-    course_title = course.title if course else cert.archived_course_title
+    # Fall back to ``archived_course_title`` (snapshotted in
+    # ``permanently_delete_course`` per Phase 5g, was a Postgres trigger
+    # before) when the source course has been deleted — the credential
+    # still has to verify even after the underlying course is gone.
+    course_title: str | None = None
+    if course is not None:
+        course_title = fetch_course_titles_by_id(db, [course.id], display_locale="en").get(course.id) or None
+    if course_title is None:
+        course_title = cert.archived_course_title
     return CertificateVerifyResponse(
         valid=True,
         certificate_number=cert.certificate_number,

@@ -27,6 +27,7 @@ from app.services.course_service import get_user_courses
 from app.services.translation.resolve_for_display import (
     batch_fetch_course_translations,
     build_localized_course_summary,
+    populate_spine_texts,
     should_apply_course_translation_overlay,
 )
 
@@ -67,6 +68,7 @@ def get_my_courses(
     courses = [e.course for e in rows if e.course is not None]
     if not courses:
         return [EnrollmentSummaryResponse.model_validate(e, from_attributes=True) for e in rows]
+    populate_spine_texts(db, courses)
     overlay = batch_fetch_course_translations(db, course_ids=[c.id for c in courses], display_locale=display_locale)
     out: list[EnrollmentSummaryResponse] = []
     for e in rows:

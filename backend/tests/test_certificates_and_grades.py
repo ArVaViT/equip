@@ -592,13 +592,14 @@ class TestCertificateSurvivesCourseDeletion:
         _seed_enrolled_course(db, progress=100)
         cert = _seed_certificate(db, "course-1", cert_status="approved")
         cert.certificate_number = "CERT-SURVIVES01"
-        # Simulate what the production trigger does atomically — snapshot the
-        # course title into the certificate before the course row is deleted.
-        # The SQLAlchemy model owns this column now, so the test path
-        # validates the model + endpoint contract without needing Postgres.
+        # Phase 5g: ``courses.title`` lives in cv. Simulate the Python
+        # snapshot logic in ``permanently_delete_course`` here so the
+        # archive column survives the cascade below.
+        from app.services.translation.resolve_for_display import fetch_course_titles_by_id
+
+        cert.archived_course_title = fetch_course_titles_by_id(db, ["course-1"], display_locale="en").get("course-1")
         course = db.query(Course).filter(Course.id == "course-1").first()
         assert course is not None
-        cert.archived_course_title = course.title
         db.commit()
 
         # Cascade by hand for the SQLite test path: delete the dependent rows

@@ -258,7 +258,12 @@ def create_announcement(
 
     if data.course_id:
         enrolled_users = db.query(Enrollment.user_id).filter(Enrollment.course_id == data.course_id).all()
-        course_title = course.title if course else "a course"
+        # Phase 5g: course title lives in cv — fetch for the notification message.
+        from app.services.translation.resolve_for_display import fetch_course_titles_by_id
+
+        course_title = (
+            fetch_course_titles_by_id(db, [course.id], display_locale="en").get(course.id) if course else None
+        ) or "a course"
         recipients = [user_id for (user_id,) in enrolled_users if str(user_id) != str(teacher.id)]
         create_notifications_bulk(
             db,

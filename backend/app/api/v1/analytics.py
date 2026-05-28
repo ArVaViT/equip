@@ -36,6 +36,10 @@ def get_course_analytics(
     the API.
     """
     course = verify_course_owner(db, course_id, teacher)
+    # Phase 5g: courses.title moved to cv — hydrate before serialising.
+    from app.services.translation.resolve_for_display import populate_spine_texts
+
+    populate_spine_texts(db, [course])
 
     # Aggregates in one round-trip instead of loading everything into Python.
     agg = (
