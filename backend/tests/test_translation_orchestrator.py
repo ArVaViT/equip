@@ -13,9 +13,10 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from pydantic import SecretStr
 
-from app.models.content_translation import ContentTranslation
+from app.models.content_version import ContentVersion
 from app.models.course import Course
 from app.models.user import User
+from app.services.content_versions.write import record_human_version
 from app.services.translation.course_pipeline import translate_course_content
 from app.services.translation.orchestrator import (
     TranslationFieldSpec,
@@ -145,7 +146,7 @@ def test_translate_course_metadata_writes_rows_for_each_target(db: Session):
     assert report.translated == 2
     assert report.failed == 0
 
-    rows = db.query(ContentTranslation).filter_by(entity_type="course", entity_id=course.id).all()
+    rows = db.query(ContentVersion).filter_by(entity_type="course", entity_id=course.id, superseded_by=None).all()
     assert {(r.field, r.locale) for r in rows} == {("title", "en"), ("description", "en")}
     assert all(r.status == "ok" for r in rows)
     assert all(r.origin == "mt" for r in rows)
@@ -181,8 +182,8 @@ def test_translate_course_metadata_retranslates_when_source_changes(db: Session)
     assert report.skipped == 1  # description unchanged
 
     title_row = (
-        db.query(ContentTranslation)
-        .filter_by(entity_type="course", entity_id=course.id, field="title", locale="en")
+        db.query(ContentVersion)
+        .filter_by(entity_type="course", entity_id=course.id, field="title", locale="en", superseded_by=None)
         .one()
     )
     assert title_row.text == "[en]Acts of the Apostles — Revised"
@@ -192,17 +193,15 @@ def test_translate_course_metadata_preserves_human_translations(db: Session):
     course = _make_course(db)
     provider = _RecordingProvider()
 
-    db.add(
-        ContentTranslation(
-            entity_type="course",
-            entity_id=course.id,
-            field="title",
-            locale="en",
-            text="Hand-crafted English title",
-            source_hash="0" * 32,  # intentionally stale
-            status="ok",
-            origin="human",
-        )
+    # Phase 5c: the orchestrator's "skip if human" check reads cv, not
+    # content_translations. Seed via record_human_version.
+    record_human_version(
+        db,
+        entity_type="course",
+        entity_id=course.id,
+        field="title",
+        locale="en",
+        text="Hand-crafted English title",
     )
     db.commit()
 
@@ -211,8 +210,8 @@ def test_translate_course_metadata_preserves_human_translations(db: Session):
     # Title was human-edited so the orchestrator must not touch it; the
     # description still lacks a row, so that one gets created.
     title_row = (
-        db.query(ContentTranslation)
-        .filter_by(entity_type="course", entity_id=course.id, field="title", locale="en")
+        db.query(ContentVersion)
+        .filter_by(entity_type="course", entity_id=course.id, field="title", locale="en", superseded_by=None)
         .one()
     )
     assert title_row.origin == "human"
@@ -241,8 +240,8 @@ def test_translate_entity_fields_records_failed_rows(db: Session):
     assert report.translated == 1
 
     title_row = (
-        db.query(ContentTranslation)
-        .filter_by(entity_type="course", entity_id=course.id, field="title", locale="en")
+        db.query(ContentVersion)
+        .filter_by(entity_type="course", entity_id=course.id, field="title", locale="en", superseded_by=None)
         .one()
     )
     assert title_row.status == "failed"
@@ -273,8 +272,8 @@ def test_translate_entity_fields_promotes_to_failed_permanent_after_cap(db: Sess
         )
 
     row = (
-        db.query(ContentTranslation)
-        .filter_by(entity_type="course", entity_id=course.id, field="title", locale="en")
+        db.query(ContentVersion)
+        .filter_by(entity_type="course", entity_id=course.id, field="title", locale="en", superseded_by=None)
         .one()
     )
     assert row.status == "failed_permanent"
@@ -315,8 +314,8 @@ def test_translate_entity_fields_resets_attempts_on_success(db: Session):
         )
 
     row = (
-        db.query(ContentTranslation)
-        .filter_by(entity_type="course", entity_id=course.id, field="title", locale="en")
+        db.query(ContentVersion)
+        .filter_by(entity_type="course", entity_id=course.id, field="title", locale="en", superseded_by=None)
         .one()
     )
     assert row.status == "failed"
@@ -332,9 +331,16 @@ def test_translate_entity_fields_resets_attempts_on_success(db: Session):
         provider=happy_provider,
     )
 
-    db.refresh(row)
-    assert row.status == "ok"
-    assert row.attempts == 0
+    # Phase 5c: record_mt_version supersedes the failed row instead of
+    # updating in place (CT did update-in-place; cv preserves history).
+    # Re-query the now-active row.
+    active = (
+        db.query(ContentVersion)
+        .filter_by(entity_type="course", entity_id=course.id, field="title", locale="en", superseded_by=None)
+        .one()
+    )
+    assert active.status == "ok"
+    assert active.attempts == 0
 
 
 def test_translate_entity_fields_skips_empty_text(db: Session):
@@ -356,78 +362,8 @@ def test_translate_entity_fields_skips_empty_text(db: Session):
     assert report.translated == 1
     # Empty description must NOT have called the provider.
     assert all(req.text != "" for req in provider.calls)
-    rows = db.query(ContentTranslation).filter_by(entity_type="course", entity_id=course.id).all()
+    rows = db.query(ContentVersion).filter_by(entity_type="course", entity_id=course.id, superseded_by=None).all()
     assert {r.field for r in rows} == {"title"}
-
-
-def test_translate_entity_fields_survives_concurrent_insert(monkeypatch, db: Session):
-    """Two concurrent translation hooks must not crash the orchestrator.
-
-    Simulates the race where ``_translate_one_field`` selects no existing
-    row (peer hasn't committed yet), the peer commits, and our INSERT then
-    hits ``content_translations_unique``. The savepoint pattern must catch
-    the ``IntegrityError`` and convert the work into an in-place update,
-    not propagate the 500.
-    """
-    course = _make_course(db)
-
-    # Pre-seed the row that "the other concurrent worker" already inserted.
-    db.add(
-        ContentTranslation(
-            entity_type="course",
-            entity_id=course.id,
-            field="title",
-            locale="en",
-            text="[en]preexisting",
-            source_hash="0" * 64,  # stale hash so the orchestrator wants to update
-            status="ok",
-            origin="mt",
-        )
-    )
-    db.commit()
-
-    # Make the orchestrator's first SELECT return None so it takes the
-    # "INSERT new row" branch — exactly the race window we worry about in
-    # production. Subsequent queries (notably the savepoint-recovery refetch)
-    # see the real data.
-    seen = {"calls": 0}
-    original_query = db.query
-
-    def patched_query(model, *args, **kwargs):
-        q = original_query(model, *args, **kwargs)
-        if model is ContentTranslation and seen["calls"] == 0:
-            seen["calls"] += 1
-            q.one_or_none = lambda: None  # type: ignore[method-assign]
-        return q
-
-    monkeypatch.setattr(db, "query", patched_query)
-    provider = _RecordingProvider()
-
-    report = translate_entity_fields(
-        db,
-        entity_type="course",
-        entity_id=str(course.id),
-        source_locale="ru",
-        fields=[TranslationFieldSpec(field="title", text=course.title)],
-        provider=provider,
-    )
-
-    # The orchestrator must survive — exactly one translation, no failure.
-    assert report.failed == 0
-    assert report.translated == 1
-
-    # Restore real query so the assertion below uses an unpatched session.
-    monkeypatch.setattr(db, "query", original_query)
-    rows = (
-        db.query(ContentTranslation)
-        .filter_by(entity_type="course", entity_id=course.id, field="title", locale="en")
-        .all()
-    )
-    # The unique constraint stays intact: still exactly one row.
-    assert len(rows) == 1
-    # And it carries the freshly translated text, not the pre-seeded value.
-    assert rows[0].text.startswith("[en]")
-    assert rows[0].text != "[en]preexisting"
 
 
 def test_translate_entity_fields_no_op_when_provider_disabled(monkeypatch, db: Session):
@@ -442,7 +378,7 @@ def test_translate_entity_fields_no_op_when_provider_disabled(monkeypatch, db: S
     report = translate_course_metadata(db, course)
 
     assert (report.translated, report.skipped, report.failed) == (0, 0, 0)
-    assert db.query(ContentTranslation).count() == 0
+    assert db.query(ContentVersion).filter_by(entity_type="course", superseded_by=None).count() == 0
 
 
 # ---------------------------------------------------------------------------
@@ -631,12 +567,18 @@ def test_walker_finds_quizzes_attached_via_chapter_id_only(db: Session):
     report = translate_course_content(db, course, provider=provider)
 
     assert report.failed == 0
-    quiz_translations = db.query(ContentTranslation).filter_by(entity_type="quiz", entity_id=str(quiz.id)).all()
+    quiz_translations = (
+        db.query(ContentVersion).filter_by(entity_type="quiz", entity_id=str(quiz.id), superseded_by=None).all()
+    )
     question_translations = (
-        db.query(ContentTranslation).filter_by(entity_type="quiz_question", entity_id=str(question.id)).all()
+        db.query(ContentVersion)
+        .filter_by(entity_type="quiz_question", entity_id=str(question.id), superseded_by=None)
+        .all()
     )
     option_translations = (
-        db.query(ContentTranslation).filter_by(entity_type="quiz_option", entity_id=str(option.id)).all()
+        db.query(ContentVersion)
+        .filter_by(entity_type="quiz_option", entity_id=str(option.id), superseded_by=None)
+        .all()
     )
     assert quiz_translations, "expected at least one translation row for the quiz"
     assert question_translations, "expected at least one translation row for the quiz_question"
@@ -677,5 +619,9 @@ def test_walker_finds_assignments_attached_via_chapter_id_only(db: Session):
     report = translate_course_content(db, course, provider=provider)
 
     assert report.failed == 0
-    rows = db.query(ContentTranslation).filter_by(entity_type="assignment", entity_id=str(assignment.id)).all()
+    rows = (
+        db.query(ContentVersion)
+        .filter_by(entity_type="assignment", entity_id=str(assignment.id), superseded_by=None)
+        .all()
+    )
     assert rows, "expected at least one translation row for the chapter-bound assignment"

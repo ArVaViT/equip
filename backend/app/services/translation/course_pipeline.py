@@ -21,10 +21,8 @@ from app.models.announcement import Announcement
 from app.models.assignment import Assignment
 from app.models.chapter_block import ChapterBlock
 from app.models.cohort import Cohort
-from app.models.content_translation import ContentTranslation
-from app.models.course import Chapter, Module
 from app.models.course_event import CourseEvent
-from app.models.quiz import Quiz, QuizOption, QuizQuestion
+from app.models.quiz import Quiz, QuizQuestion
 from app.services.translation.orchestrator import OrchestratorReport
 from app.services.translation.registry import reconcile_entity
 from app.services.translation.service import is_translation_enabled
@@ -44,131 +42,6 @@ def merge_orchestrator_reports(*parts: OrchestratorReport) -> OrchestratorReport
         skipped=sum(p.skipped for p in parts),
         failed=sum(p.failed for p in parts),
     )
-
-
-def _collect_course_entity_ids(db: Session, course: Course) -> dict[str, list[str]]:
-    """Return ``{entity_type: [entity_id, ...]}`` for every translatable
-    entity under ``course``.
-
-    Used by ``purge_course_translations`` when the course's
-    ``source_locale`` flips and every translation row tied to the tree
-    becomes suspect (the resolve path treats any ``status='ok'`` row
-    as canonical and would serve stale machine translations of the
-    OLD source over the new authoritative base text).
-
-    The walk mirrors ``translate_course_content``'s shape so additions
-    to the tree get covered both for writing AND for clearing: a
-    teacher who adds a new block type without extending both functions
-    will trigger CI-level regression (purge tests assert deletion counts).
-    """
-    ids: dict[str, list[str]] = {
-        "course": [course.id],
-        "module": [],
-        "chapter": [],
-        "chapter_block": [],
-        "quiz": [],
-        "quiz_question": [],
-        "quiz_option": [],
-        "assignment": [],
-        "announcement": [],
-        "course_event": [],
-        "cohort": [],
-    }
-
-    module_rows = db.query(Module.id).filter(Module.course_id == course.id).all()
-    module_ids = [str(m_id) for (m_id,) in module_rows]
-    ids["module"] = module_ids
-
-    if module_ids:
-        chapter_rows = db.query(Chapter.id).filter(Chapter.module_id.in_(module_ids)).all()
-        chapter_ids = [str(c_id) for (c_id,) in chapter_rows]
-        ids["chapter"] = chapter_ids
-
-        if chapter_ids:
-            block_rows = (
-                db.query(ChapterBlock.id, ChapterBlock.quiz_id, ChapterBlock.assignment_id)
-                .filter(ChapterBlock.chapter_id.in_(chapter_ids))
-                .all()
-            )
-            ids["chapter_block"] = [str(b_id) for (b_id, _, _) in block_rows]
-            block_quiz_ids = {str(qid) for (_, qid, _) in block_rows if qid}
-            block_assignment_ids = {str(aid) for (_, _, aid) in block_rows if aid}
-
-            # Quizzes / assignments attach to either ``chapter_id`` (the live
-            # production shape) or ``block.{quiz,assignment}_id`` (aspirational
-            # shape) — collect via two separate queries instead of a single
-            # ORed expression so the empty-block-set case doesn't pass a
-            # placeholder UUID through SQLAlchemy's type processor.
-            quiz_id_set: set[str] = set()
-            for (q_id,) in db.query(Quiz.id).filter(Quiz.chapter_id.in_(chapter_ids)).all():
-                quiz_id_set.add(str(q_id))
-            if block_quiz_ids:
-                for (q_id,) in db.query(Quiz.id).filter(Quiz.id.in_(block_quiz_ids)).all():
-                    quiz_id_set.add(str(q_id))
-            quiz_ids = sorted(quiz_id_set)
-            ids["quiz"] = quiz_ids
-
-            if quiz_ids:
-                question_rows = db.query(QuizQuestion.id).filter(QuizQuestion.quiz_id.in_(quiz_ids)).all()
-                question_ids = [str(q_id) for (q_id,) in question_rows]
-                ids["quiz_question"] = question_ids
-                if question_ids:
-                    option_rows = db.query(QuizOption.id).filter(QuizOption.question_id.in_(question_ids)).all()
-                    ids["quiz_option"] = [str(o_id) for (o_id,) in option_rows]
-
-            assignment_id_set: set[str] = set()
-            for (a_id,) in db.query(Assignment.id).filter(Assignment.chapter_id.in_(chapter_ids)).all():
-                assignment_id_set.add(str(a_id))
-            if block_assignment_ids:
-                for (a_id,) in db.query(Assignment.id).filter(Assignment.id.in_(block_assignment_ids)).all():
-                    assignment_id_set.add(str(a_id))
-            ids["assignment"] = sorted(assignment_id_set)
-
-    # Side entities.
-    ann_rows = db.query(Announcement.id).filter(Announcement.course_id == course.id).all()
-    ids["announcement"] = [str(a_id) for (a_id,) in ann_rows]
-
-    ev_rows = db.query(CourseEvent.id).filter(CourseEvent.course_id == course.id).all()
-    ids["course_event"] = [str(e_id) for (e_id,) in ev_rows]
-
-    # Cohorts live independently (ADR-010); skip them in the per-course
-    # purge — a cohort translation is shared across every course in the
-    # cohort and isn't invalidated when one course's source language
-    # changes.
-
-    return ids
-
-
-def purge_course_translations(db: Session, course: Course) -> int:
-    """Delete every ``content_translations`` row tied to an entity under
-    ``course``. Returns the number of rows deleted.
-
-    Called from ``update_course`` when the course's ``source_locale``
-    flips: every existing row is now suspect because it was generated
-    against the OLD source language, and the resolve path would
-    incorrectly prefer those stale rows over the new authoritative
-    base text. The pipeline's subsequent run re-creates rows in the
-    new direction (new source → new "other locales") from scratch.
-
-    Cohort translations are intentionally NOT purged — cohorts are
-    course-independent (ADR-010) and their text isn't affected when
-    one of the cohort's courses changes language.
-    """
-    entity_ids_by_type = _collect_course_entity_ids(db, course)
-    deleted = 0
-    for entity_type, entity_ids in entity_ids_by_type.items():
-        if not entity_ids:
-            continue
-        deleted += (
-            db.query(ContentTranslation)
-            .filter(
-                ContentTranslation.entity_type == entity_type,
-                ContentTranslation.entity_id.in_(entity_ids),
-            )
-            .delete(synchronize_session=False)
-        )
-    db.commit()
-    return deleted
 
 
 def _walk_quiz_tree(

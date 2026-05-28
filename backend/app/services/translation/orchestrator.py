@@ -28,14 +28,8 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError
 
-from app.models.content_translation import (
-    TRANSLATION_MAX_ATTEMPTS,
-    ContentTranslation,
-    TranslationEntityType,
-    TranslationField,
-)
 from app.models.content_version import ContentVersion
 from app.schemas.locale import LOCALE_CODES, LocaleCode, normalize_locale
 from app.services.content_versions import record_mt_failure, record_mt_version
@@ -56,6 +50,10 @@ if TYPE_CHECKING:
 
     from sqlalchemy.orm import Session
 
+    from app.models.content_translation import (
+        TranslationEntityType,
+        TranslationField,
+    )
     from app.models.course import Course
 
 logger = logging.getLogger(__name__)
@@ -344,13 +342,18 @@ def _translate_one_field(
     Returns ``"translated" | "skipped" | "failed"`` so the orchestrator can
     aggregate counters without inspecting the DB row again.
     """
+    # Phase 5c: skip-decisions now read from content_versions. The
+    # legacy content_translations table is no longer written by this
+    # function — record_mt_version / record_mt_failure are the only
+    # MT writers post-5c.
     existing = (
-        db.query(ContentTranslation)
+        db.query(ContentVersion)
         .filter(
-            ContentTranslation.entity_type == entity_type,
-            ContentTranslation.entity_id == entity_id,
-            ContentTranslation.field == field,
-            ContentTranslation.locale == target_locale,
+            ContentVersion.entity_type == entity_type,
+            ContentVersion.entity_id == entity_id,
+            ContentVersion.field == field,
+            ContentVersion.locale == target_locale,
+            ContentVersion.superseded_by.is_(None),
         )
         .one_or_none()
     )
@@ -368,7 +371,8 @@ def _translate_one_field(
     # source text mutates — a row that fails for a permanent reason (safety
     # filter, oversize input) won't suddenly succeed because the prompt
     # changed by one word. An operator who wants to retry must explicitly
-    # reset ``status='pending'`` + ``attempts=0`` from admin tooling.
+    # reset ``status='ok'`` / ``status='failed'`` + ``attempts=0`` from
+    # admin tooling.
     if existing is not None and existing.status == "failed_permanent":
         return "skipped"
 
@@ -382,37 +386,17 @@ def _translate_one_field(
     try:
         result = provider.translate(request)
     except TranslationError as exc:
-        # Compute the new attempts count first: existing.attempts + 1 if a
-        # row is already on disk, else 1 for the fresh failure. When we cross
-        # the cap, promote the row to ``failed_permanent`` so reconcile stops
-        # paying for retries that will never succeed.
-        attempts = (existing.attempts if existing is not None else 0) + 1
-        failed_status = "failed_permanent" if attempts >= TRANSLATION_MAX_ATTEMPTS else "failed"
         logger.warning(
-            "Translation failed entity=%s:%s field=%s locale=%s attempts=%d status=%s err=%s",
+            "Translation failed entity=%s:%s field=%s locale=%s err=%s",
             entity_type,
             entity_id,
             field,
             target_locale,
-            attempts,
-            failed_status,
             exc,
         )
-        _persist_translation(
-            db,
-            existing=existing,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            field=field,
-            target_locale=target_locale,
-            text=existing.text if existing is not None else text,
-            source_hash=source_hash,
-            status=failed_status,
-            attempts=attempts,
-        )
-        # Shadow the failure into content_versions. Phase 1 dual-write:
-        # both stores see every MT operation; Phase 2 starts reading
-        # from content_versions; Phase 4 cuts over fully.
+        # Phase 5c: cv is the only MT store. ``record_mt_failure``
+        # bumps attempts in place and promotes to failed_permanent
+        # at the threshold.
         _dual_write_mt_failure(
             db,
             entity_type=entity_type,
@@ -424,26 +408,9 @@ def _translate_one_field(
         )
         return "failed"
 
-    _persist_translation(
-        db,
-        existing=existing,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        field=field,
-        target_locale=target_locale,
-        text=result.text,
-        source_hash=source_hash,
-        status="ok",
-        # Success clears the failure budget — a successful translate after
-        # a transient failure shouldn't carry the previous attempts forward.
-        attempts=0,
-    )
-    # Mirror the successful row into content_versions. The
-    # source_version_id lookup is best-effort — if the human
-    # source hasn't been dual-written yet (Phase 3 backfill will
-    # cover legacy data), the MT row is still recorded and
-    # cascade invalidation becomes precise once the source row
-    # lands.
+    # Phase 5c: cv is the only MT store. record_mt_version inserts
+    # (or supersedes) the active row and resets attempts to 0 on
+    # success.
     _dual_write_mt_success(
         db,
         entity_type=entity_type,
@@ -455,82 +422,6 @@ def _translate_one_field(
         source_hash=source_hash,
     )
     return "translated"
-
-
-def _persist_translation(
-    db: Session,
-    *,
-    existing: ContentTranslation | None,
-    entity_type: TranslationEntityType,
-    entity_id: str,
-    field: TranslationField,
-    target_locale: LocaleCode,
-    text: str,
-    source_hash: str,
-    status: str,
-    attempts: int = 0,
-) -> None:
-    """Insert or update one translation row.
-
-    Wraps each insert in a SAVEPOINT so a concurrent writer that beats us to
-    the unique key (``content_translations_unique``) doesn't corrupt the
-    outer transaction — we catch the ``IntegrityError``, roll back the
-    savepoint, refetch the row a peer just inserted, and turn the operation
-    into an update instead. This mirrors the enrollment race fix in
-    ``app.services.course_service._enrollment``. The outer ``db.commit()``
-    happens later in ``translate_entity_fields``; per-row savepoints keep
-    that batch commit safe even when many course-publish hooks fire on the
-    same course at once.
-    """
-    if existing is not None:
-        existing.text = text
-        existing.source_hash = source_hash
-        existing.status = status
-        existing.attempts = attempts
-        return
-
-    row = ContentTranslation(
-        entity_type=entity_type,
-        entity_id=entity_id,
-        field=field,
-        locale=target_locale,
-        text=text,
-        source_hash=source_hash,
-        status=status,
-        origin="mt",
-        attempts=attempts,
-    )
-    try:
-        with db.begin_nested():
-            db.add(row)
-            db.flush()
-    except IntegrityError:
-        # A concurrent translator just inserted the same
-        # (entity_type, entity_id, field, locale) row. Re-fetch and
-        # convert to an in-place update so this batch still converges on
-        # the latest source_hash + text without a 500 to the caller.
-        winner = (
-            db.query(ContentTranslation)
-            .filter(
-                ContentTranslation.entity_type == entity_type,
-                ContentTranslation.entity_id == entity_id,
-                ContentTranslation.field == field,
-                ContentTranslation.locale == target_locale,
-            )
-            .one_or_none()
-        )
-        if winner is None:
-            # Race lost but row vanished — nothing we can do beyond
-            # surfacing the original failure on the next commit.
-            raise
-        # Don't clobber a human-edited row; the auto-pipeline never
-        # overwrites manual translations even under racing conditions.
-        if winner.origin == "human":
-            return
-        winner.text = text
-        winner.source_hash = source_hash
-        winner.status = status
-        winner.attempts = attempts
 
 
 __all__ = [
