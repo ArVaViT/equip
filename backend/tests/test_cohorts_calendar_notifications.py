@@ -156,7 +156,6 @@ def _seed_cohort_with_course(db: Session, *, course_id: str = "test-course-1", *
     )
     db.add(cohort)
     db.flush()
-    # Phase 5e1: cohort.name column dropped; the name lives in cv only.
     from app.services.content_versions.write import record_human_version
 
     record_human_version(

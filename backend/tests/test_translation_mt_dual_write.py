@@ -122,9 +122,6 @@ class TestSuccessDualWrite:
             fields=[TranslationFieldSpec(field="title", text="Hello", content_kind="title")],
             provider=provider,
         )
-        # Phase 5c: cv is now the only MT store; content_translations is
-        # not written. The active row at the target locale holds the
-        # translated text + provenance.
         cv = _active(db, entity_type="course", entity_id=str(course.id), locale="ru")
         assert cv is not None
         assert cv.origin == "mt"

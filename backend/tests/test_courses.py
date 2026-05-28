@@ -249,9 +249,6 @@ class TestCloneCourse:
 
 class TestCatalogLocalizedMetadata:
     def _seed_en_translations(self, db: Session, course_id: str) -> None:
-        # Phase 5a: reads come from content_versions exclusively. Seed
-        # there. (Pre-5a this used content_translations; the dual-write
-        # still populates that table but reads no longer touch it.)
         from app.services.content_versions.write import record_mt_version
 
         record_mt_version(
@@ -500,7 +497,6 @@ class TestCatalogLocalizedMetadata:
 
         from app.services.content_versions.write import record_mt_version
 
-        # Phase 5d: cv is the only translation store.
         record_mt_version(
             db,
             entity_type="module",
@@ -583,7 +579,6 @@ class TestCatalogLocalizedMetadata:
         assert row is not None
         row.title = "EN title in DB not matching RU"
         row.description = "EN desc in DB"
-        # Phase 5a: reads come from content_versions only.
         record_mt_version(
             db,
             entity_type="course",

@@ -146,7 +146,6 @@ class TestListChapterAssignmentsSourceParam:
 
         from ._cv_helpers import make_assignment_with_text
 
-        # Phase 5e3: source row recorded in cv at the RU source locale.
         assignment = make_assignment_with_text(
             db,
             chapter_id=chapter_id,

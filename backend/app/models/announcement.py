@@ -15,7 +15,6 @@ class Announcement(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    # Phase 5e5: title + content columns dropped — cv is the only store.
     course_id: Mapped[str | None] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
     created_by: Mapped[uuid.UUID] = mapped_column()
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())

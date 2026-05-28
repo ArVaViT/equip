@@ -541,8 +541,6 @@ def test_walker_finds_quizzes_attached_via_chapter_id_only(db: Session):
     # finds the quiz* (not about translation direction), seed Russian
     # text so the detector agrees with the course's source and the
     # original ``[en]`` assertion stays meaningful.
-    # Phase 5f: quiz tree text columns dropped — use the cv helpers
-    # so the orchestrator finds source rows to translate.
     from ._cv_helpers import make_quiz_option_with_text, make_quiz_question_with_text, make_quiz_with_text
 
     quiz = make_quiz_with_text(
@@ -614,8 +612,6 @@ def test_walker_finds_assignments_attached_via_chapter_id_only(db: Session):
     )
     db.add(chapter)
     db.flush()
-    # Phase 5e3: title + description live in cv. Use the helper so the
-    # cv source rows are seeded for the orchestrator to translate.
     from ._cv_helpers import make_assignment_with_text
 
     assignment = make_assignment_with_text(

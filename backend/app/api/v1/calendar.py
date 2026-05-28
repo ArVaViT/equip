@@ -20,7 +20,7 @@ from app.schemas.calendar import (
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.content_versions import dual_write_entity_content, fetch_cv_entity_texts_with_fallback
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
-from app.services.translation.resolve_for_display import localize_course_event_rows
+from app.services.translation.resolve_for_display import fetch_course_titles_by_id, localize_course_event_rows
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 
@@ -79,37 +79,19 @@ def get_calendar_events(
 
     # Drop trashed courses — users may still have enrollments pointing to
     # deleted courses, but their calendar should not advertise deadlines
-    # from content that has been removed from the catalog. We fetch title
-    # AND source_locale in the same query (previously two separate fetches);
-    # source_locale is needed below for the translation overlay.
-    # Phase 5g: courses.title column dropped — fetch titles from cv.
-    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
-
-    course_titles: dict[str, str] = {}
-    course_source_locales: dict[str, LocaleCode] = {}
-    course_rows = (
-        db.query(Course.id, Course.source_locale)
+    # from content that has been removed from the catalog. Live courses are
+    # title-resolved against cv (display→source→any) for the labels below;
+    # source_locale is also captured for per-course event-title fallback.
+    course_source_locales: dict[str, LocaleCode] = {
+        cid: normalize_locale(src)
+        for cid, src in db.query(Course.id, Course.source_locale)
         .filter(Course.id.in_(enrolled_course_ids), Course.deleted_at.is_(None))
         .all()
-    )
-    cids_by_src: dict[str, list[str]] = {}
-    for cid, csrc in course_rows:
-        course_source_locales[cid] = normalize_locale(csrc)
-        cids_by_src.setdefault(normalize_locale(csrc), []).append(cid)
-    for src_locale, ids in cids_by_src.items():
-        texts = fetch_cv_entity_texts_with_fallback(
-            db,
-            entity_type="course",
-            entity_ids=ids,
-            fields=["title"],
-            display_locale=display_locale,
-            source_locale=src_locale,
-        )
-        for cid in ids:
-            course_titles[cid] = texts.get((cid, "title")) or ""
-    enrolled_course_ids = list(course_titles.keys())
+    }
+    enrolled_course_ids = list(course_source_locales)
     if not enrolled_course_ids:
         return []
+    course_titles = fetch_course_titles_by_id(db, enrolled_course_ids, display_locale=display_locale)
 
     events: list[CalendarEvent] = []
 
@@ -320,7 +302,6 @@ def create_course_event(
         db,
         entity_type="course_event",
         entity_id=str(event.id),
-        fields=_TRANSLATABLE_COURSE_EVENT_FIELDS,
         fallback_locale=source_locale,
         authored_by=teacher.id,
         texts={"title": title, "description": description},
@@ -414,7 +395,6 @@ def update_course_event(
             db,
             entity_type="course_event",
             entity_id=str(event.id),
-            fields=_TRANSLATABLE_COURSE_EVENT_FIELDS,
             fallback_locale=source_locale,
             authored_by=teacher.id,
             only_fields=set(text_patch.keys()),

@@ -84,7 +84,6 @@ def _seed_course(
     chapter_type: str = "assignment",
     owner: uuid.UUID = TEACHER_ID,
 ) -> tuple[Course, Module, Chapter]:
-    # Phase 5g: courses + modules title/description live in cv.
     from ._cv_helpers import make_course_with_text, make_module_with_text
 
     course = make_course_with_text(
@@ -949,7 +948,6 @@ def _seed_teacher_progress_dashboard(db: Session) -> tuple[str, uuid.UUID, uuid.
     """Course with quiz + assignment + reading chapters, one enrolled student with activity."""
     _ensure_student(db)
     course_id = "course-dash-prog"
-    # Phase 5g: courses + modules text columns dropped.
     from ._cv_helpers import make_course_with_text, make_module_with_text
 
     course = make_course_with_text(
@@ -988,8 +986,6 @@ def _seed_teacher_progress_dashboard(db: Session) -> tuple[str, uuid.UUID, uuid.
         chapter_type="reading",
     )
     quiz_id = uuid.uuid4()
-    # Phase 5f: title + description moved to cv. Structural row only here;
-    # cv text rows seeded after flush below.
     quiz = Quiz(
         id=quiz_id,
         chapter_id=ch_quiz_id,
@@ -1013,8 +1009,6 @@ def _seed_teacher_progress_dashboard(db: Session) -> tuple[str, uuid.UUID, uuid.
         completed_at=t1,
     )
     asg_id = uuid.uuid4()
-    # Phase 5e3: title + description moved to cv. Build the structural
-    # row here (so we can keep the explicit id) and seed cv after flush.
     assignment = Assignment(
         id=asg_id,
         chapter_id=ch_asg_id,
@@ -1053,15 +1047,12 @@ def _seed_teacher_progress_dashboard(db: Session) -> tuple[str, uuid.UUID, uuid.
         ]
     )
     db.flush()
-    # Phase 5e3: seed the cv title + description for the assignment now
-    # that the structural row exists.
     from app.services.content_versions.write import record_human_version
 
     record_human_version(db, entity_type="assignment", entity_id=str(asg_id), field="title", locale="en", text="Essay")
     record_human_version(
         db, entity_type="assignment", entity_id=str(asg_id), field="description", locale="en", text="Write"
     )
-    # Phase 5f: quiz title moved to cv.
     record_human_version(db, entity_type="quiz", entity_id=str(quiz_id), field="title", locale="en", text="Unit quiz")
     db.commit()
     return course_id, quiz_id, asg_id, ch_quiz_id, ch_asg_id, ch_read_id

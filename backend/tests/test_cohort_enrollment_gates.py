@@ -142,7 +142,6 @@ def _seed_cohort(
     enrollment_start: datetime | None = None,
     enrollment_end: datetime | None = None,
 ) -> Cohort:
-    # Phase 5e1: cohort.name column dropped; name lives in cv.
     cohort = Cohort(
         start_date=NOW_NAIVE,
         end_date=FAR_FUTURE_NAIVE,
