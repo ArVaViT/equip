@@ -61,8 +61,19 @@ def test_registry_has_model_class_for_every_entry():
 
 def test_registry_field_names_exist_on_models():
     """A typo in ``FieldSpec.attr`` is silent at registration time —
-    catch it here by introspecting each registered model."""
+    catch it here by introspecting each registered model.
+
+    Phase 5e1: ``cohort`` is exempt — its source column (``name``) was
+    dropped; the cohort's display text lives only in ``content_versions``
+    and the dual-write path in ``api/v1/cohorts.py`` reads from cv.
+    The MT pipeline's ``reconcile_entity`` still iterates cohort's
+    FieldSpec but ``getattr(cohort, 'name', None)`` returns None, so it
+    cleanly no-ops — cohorts aren't MT-translated via the orchestrator.
+    """
+    cv_only_entities = {"cohort"}
     for entity_type, reg in REGISTRY.items():
+        if entity_type in cv_only_entities:
+            continue
         model = ENTITY_MODEL[entity_type]
         attrs = set(dir(model))
         for fs in reg.fields:

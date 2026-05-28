@@ -148,7 +148,6 @@ def _seed_cohort_with_course(db: Session, *, course_id: str = "test-course-1", *
     # that pull in the ``admin`` fixture. Otherwise the FK to profiles
     # would fail on tests that only seed teacher/student users.
     cohort = Cohort(
-        name=kw.get("name", "X"),
         start_date=kw.get("start_date", NOW),
         end_date=kw.get("end_date", NEXT_WEEK),
         status=kw.get("status", "upcoming"),
@@ -156,6 +155,18 @@ def _seed_cohort_with_course(db: Session, *, course_id: str = "test-course-1", *
         created_by=kw.get("created_by"),
     )
     db.add(cohort)
+    db.flush()
+    # Phase 5e1: cohort.name column dropped; the name lives in cv only.
+    from app.services.content_versions.write import record_human_version
+
+    record_human_version(
+        db,
+        entity_type="cohort",
+        entity_id=str(cohort.id),
+        field="title",
+        locale="en",
+        text=kw.get("name", "X"),
+    )
     db.commit()
     db.refresh(cohort)
     db.add(CohortCourse(cohort_id=cohort.id, course_id=course_id))
@@ -300,8 +311,8 @@ class TestListCohortCourses:
         assert set(resp.json()) == {"c-A", "c-B"}
 
     def test_empty_when_no_courses_attached(self, admin_client: TestClient, db: Session):
-        # Cohort with no junction rows
-        cohort = Cohort(name="Empty", start_date=NOW, end_date=NEXT_WEEK)
+        # Cohort with no junction rows. Phase 5e1: name lives in cv.
+        cohort = Cohort(start_date=NOW, end_date=NEXT_WEEK)
         db.add(cohort)
         db.commit()
         db.refresh(cohort)
