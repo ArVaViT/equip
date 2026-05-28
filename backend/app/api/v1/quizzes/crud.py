@@ -16,6 +16,7 @@ from app.api.dependencies import (
     verify_chapter_owner,
 )
 from app.core.database import get_db
+from app.models.course import Chapter, Course, Module
 from app.models.quiz import Quiz, QuizExtraAttempt, QuizOption, QuizQuestion
 from app.models.user import User
 from app.schemas.locale import LocaleCode, normalize_locale
@@ -25,6 +26,7 @@ from app.schemas.quiz import (
     QuizStudentResponse,
     QuizUpdate,
 )
+from app.services.content_versions import dual_write_entity_content
 from app.services.translation.pipeline_hooks import (
     reconcile_entity_if_course_published,
     run_course_translation_pipeline_if_published,
@@ -36,6 +38,24 @@ from app.services.translation.resolve_for_display import (
 
 from ._deps import verify_quiz_owner
 from ._router import router
+
+_TRANSLATABLE_QUIZ_FIELDS = ("title", "description")
+_TRANSLATABLE_QUESTION_FIELDS = ("question_text",)
+_TRANSLATABLE_OPTION_FIELDS = ("option_text",)
+
+
+def _course_source_locale_for_chapter(db: Session, chapter_id: str) -> str | None:
+    """Walk ``Quiz -> Chapter -> Module -> Course`` to find the parent
+    course's source locale for use as the dual-write fallback when a
+    short / non-letter field can't be classified by the detector.
+    """
+    return (
+        db.query(Course.source_locale)
+        .join(Module, Module.course_id == Course.id)
+        .join(Chapter, Chapter.module_id == Module.id)
+        .filter(Chapter.id == chapter_id)
+        .scalar()
+    )
 
 
 @router.get("/chapter/{chapter_id}", response_model=QuizStudentResponse | None)
@@ -139,32 +159,67 @@ def create_quiz(
     )
     db.add(quiz)
 
+    questions_to_dual_write: list[tuple[QuizQuestion, list[QuizOption]]] = []
     for q_data in data.questions:
         question_id = uuid.uuid4()
-        db.add(
-            QuizQuestion(
-                id=question_id,
-                quiz_id=quiz_id_val,
-                question_text=q_data.question_text,
-                question_type=q_data.question_type,
-                order_index=q_data.order_index,
-                points=q_data.points,
-                # ``min_words`` is only meaningful for ``essay``; it's
-                # intentionally persisted as-is for every type so that
-                # switching a question to ``essay`` later keeps the hint.
-                min_words=q_data.min_words,
-            )
+        question = QuizQuestion(
+            id=question_id,
+            quiz_id=quiz_id_val,
+            question_text=q_data.question_text,
+            question_type=q_data.question_type,
+            order_index=q_data.order_index,
+            points=q_data.points,
+            # ``min_words`` is only meaningful for ``essay``; it's
+            # intentionally persisted as-is for every type so that
+            # switching a question to ``essay`` later keeps the hint.
+            min_words=q_data.min_words,
         )
+        db.add(question)
+        question_options: list[QuizOption] = []
         for o_data in q_data.options:
-            db.add(
-                QuizOption(
-                    question_id=question_id,
-                    option_text=o_data.option_text,
-                    is_correct=o_data.is_correct,
-                    order_index=o_data.order_index,
-                )
+            opt = QuizOption(
+                question_id=question_id,
+                option_text=o_data.option_text,
+                is_correct=o_data.is_correct,
+                order_index=o_data.order_index,
             )
+            db.add(opt)
+            question_options.append(opt)
+        questions_to_dual_write.append((question, question_options))
 
+    # Flush so child ids (options have server-side defaults) are
+    # populated before dual-write reads them.
+    db.flush()
+    fallback_locale = _course_source_locale_for_chapter(db, data.chapter_id)
+    dual_write_entity_content(
+        db,
+        entity_type="quiz",
+        entity_id=str(quiz.id),
+        entity=quiz,
+        fields=_TRANSLATABLE_QUIZ_FIELDS,
+        fallback_locale=fallback_locale,
+        authored_by=teacher.id,
+    )
+    for question, options in questions_to_dual_write:
+        dual_write_entity_content(
+            db,
+            entity_type="quiz_question",
+            entity_id=str(question.id),
+            entity=question,
+            fields=_TRANSLATABLE_QUESTION_FIELDS,
+            fallback_locale=fallback_locale,
+            authored_by=teacher.id,
+        )
+        for opt in options:
+            dual_write_entity_content(
+                db,
+                entity_type="quiz_option",
+                entity_id=str(opt.id),
+                entity=opt,
+                fields=_TRANSLATABLE_OPTION_FIELDS,
+                fallback_locale=fallback_locale,
+                authored_by=teacher.id,
+            )
     db.commit()
     reloaded = (
         db.query(Quiz)
@@ -193,12 +248,24 @@ def update_quiz(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
     verify_quiz_owner(db, quiz, teacher.id)
 
-    for field, value in data.model_dump(exclude_unset=True).items():
+    patch = data.model_dump(exclude_unset=True)
+    for field, value in patch.items():
         setattr(quiz, field, value)
 
     if quiz.quiz_type == "exam" and quiz.max_attempts is None:
         quiz.max_attempts = 1
 
+    db.flush()
+    dual_write_entity_content(
+        db,
+        entity_type="quiz",
+        entity_id=str(quiz.id),
+        entity=quiz,
+        fields=_TRANSLATABLE_QUIZ_FIELDS,
+        fallback_locale=_course_source_locale_for_chapter(db, quiz.chapter_id),
+        authored_by=teacher.id,
+        only_fields={f for f in _TRANSLATABLE_QUIZ_FIELDS if f in patch},
+    )
     db.commit()
     reloaded = (
         db.query(Quiz)
