@@ -36,7 +36,9 @@ from app.models.content_translation import (
     TranslationEntityType,
     TranslationField,
 )
+from app.models.content_version import ContentVersion
 from app.schemas.locale import LOCALE_CODES, LocaleCode, normalize_locale
+from app.services.content_versions import record_mt_failure, record_mt_version
 from app.services.translation.hash import compute_source_hash
 from app.services.translation.protocol import (
     ContentKind,
@@ -50,6 +52,8 @@ from app.services.translation.service import (
 )
 
 if TYPE_CHECKING:
+    import uuid
+
     from sqlalchemy.orm import Session
 
     from app.models.course import Course
@@ -223,6 +227,104 @@ def translate_course_metadata(
     )
 
 
+def _find_active_source_version_id(
+    db: Session,
+    *,
+    entity_type: str,
+    entity_id: str,
+    field: str,
+    source_locale: str,
+) -> uuid.UUID | None:
+    """Return the id of the active ``content_versions`` row that
+    represents the human source this MT row is being derived from,
+    or ``None`` if no source row has been recorded yet (the dual-
+    write into content_versions for the entity hasn't fired yet —
+    expected during Phase 1 rollout because backfill comes later
+    in Phase 3). The MT row is still recorded so the cascade
+    invalidation path becomes precise once the source row exists.
+    """
+    return (
+        db.query(ContentVersion.id)
+        .filter(
+            ContentVersion.entity_type == entity_type,
+            ContentVersion.entity_id == entity_id,
+            ContentVersion.field == field,
+            ContentVersion.locale == source_locale,
+            ContentVersion.superseded_by.is_(None),
+        )
+        .scalar()
+    )
+
+
+def _dual_write_mt_success(
+    db: Session,
+    *,
+    entity_type: str,
+    entity_id: str,
+    field: str,
+    target_locale: str,
+    text: str,
+    source_locale: str,
+    source_hash: str,
+) -> None:
+    """Mirror a successful MT row into ``content_versions``.
+
+    No-op if the upstream call would fail (empty text); the legacy
+    ``content_translations`` write has already happened, so this
+    is purely additive shadow state during Phase 1.
+    """
+    if not text:
+        return
+    source_version_id = _find_active_source_version_id(
+        db,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        field=field,
+        source_locale=source_locale,
+    )
+    record_mt_version(
+        db,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        field=field,
+        locale=target_locale,
+        text=text,
+        source_locale=source_locale,
+        source_hash=source_hash,
+        source_version_id=source_version_id,
+    )
+
+
+def _dual_write_mt_failure(
+    db: Session,
+    *,
+    entity_type: str,
+    entity_id: str,
+    field: str,
+    target_locale: str,
+    source_locale: str,
+    source_hash: str,
+) -> None:
+    """Mirror an MT failure into ``content_versions``."""
+    source_version_id = _find_active_source_version_id(
+        db,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        field=field,
+        source_locale=source_locale,
+    )
+    record_mt_failure(
+        db,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        field=field,
+        locale=target_locale,
+        source_locale=source_locale,
+        source_hash=source_hash,
+        source_version_id=source_version_id,
+    )
+
+
 def _translate_one_field(
     db: Session,
     *,
@@ -308,6 +410,18 @@ def _translate_one_field(
             status=failed_status,
             attempts=attempts,
         )
+        # Shadow the failure into content_versions. Phase 1 dual-write:
+        # both stores see every MT operation; Phase 2 starts reading
+        # from content_versions; Phase 4 cuts over fully.
+        _dual_write_mt_failure(
+            db,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            field=field,
+            target_locale=target_locale,
+            source_locale=source_locale,
+            source_hash=source_hash,
+        )
         return "failed"
 
     _persist_translation(
@@ -323,6 +437,22 @@ def _translate_one_field(
         # Success clears the failure budget — a successful translate after
         # a transient failure shouldn't carry the previous attempts forward.
         attempts=0,
+    )
+    # Mirror the successful row into content_versions. The
+    # source_version_id lookup is best-effort — if the human
+    # source hasn't been dual-written yet (Phase 3 backfill will
+    # cover legacy data), the MT row is still recorded and
+    # cascade invalidation becomes precise once the source row
+    # lands.
+    _dual_write_mt_success(
+        db,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        field=field,
+        target_locale=target_locale,
+        text=result.text,
+        source_locale=source_locale,
+        source_hash=source_hash,
     )
     return "translated"
 
