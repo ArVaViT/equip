@@ -59,6 +59,9 @@ def test_enum_values_are_stable_strings():
         "translation.worker_unconfigured",
         "quiz.not_open",
         "quiz.attempts_exhausted",
+        "daily_challenge.not_scheduled",
+        "daily_challenge.already_attempted",
+        "daily_challenge.invalid_option",
         "validation.failed",
     }
     assert {member.value for member in ErrorCode} == expected

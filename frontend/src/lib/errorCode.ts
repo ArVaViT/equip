@@ -47,6 +47,10 @@ export type ErrorCode =
   // quiz / assignment
   | "quiz.not_open"
   | "quiz.attempts_exhausted"
+  // daily challenge
+  | "daily_challenge.not_scheduled"
+  | "daily_challenge.already_attempted"
+  | "daily_challenge.invalid_option"
   // validation
   | "validation.failed"
 

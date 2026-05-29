@@ -1314,6 +1314,47 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/daily-challenge/streak",
+    "params": [],
+    "responses": [
+      "200"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/daily-challenge/today",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ]
+    ],
+    "responses": [
+      "200",
+      "404",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/daily-challenge/today/attempt",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ]
+    ],
+    "responses": [
+      "201",
+      "404",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/grades/course/{course_id}",
     "params": [
       [
