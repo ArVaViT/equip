@@ -18,7 +18,11 @@ from app.schemas.calendar import (
     CourseEventUpdate,
 )
 from app.schemas.locale import LocaleCode, normalize_locale
-from app.services.content_versions import dual_write_entity_content, fetch_cv_entity_texts_with_fallback
+from app.services.content_versions import (
+    delete_entity_cv_rows,
+    dual_write_entity_content,
+    fetch_cv_entity_texts_with_fallback,
+)
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import (
     fetch_course_titles_by_id,
@@ -460,5 +464,7 @@ def delete_course_event(
     )
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+    # Phase 5ad: cv polymorphic — drop rows explicitly.
+    delete_entity_cv_rows(db, entity_type="course_event", entity_id=event.id)
     db.delete(event)
     db.commit()

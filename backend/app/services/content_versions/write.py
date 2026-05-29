@@ -296,3 +296,34 @@ def record_mt_failure(
     db.add(new_row)
     db.flush()
     return new_row
+
+
+def delete_entity_cv_rows(
+    db: Session,
+    *,
+    entity_type: str,
+    entity_id: str | uuid.UUID,
+) -> int:
+    """Delete every ``content_versions`` row (active + superseded) for one
+    entity. Returns the row count.
+
+    The cv table has no FK pointing back at the entity tables — the
+    ``(entity_type, entity_id)`` pair is polymorphic, so there's nothing
+    for Postgres to cascade. Hard-deletes on leaf entities (announcement,
+    assignment, quiz, quiz_question, quiz_option, course_event,
+    chapter_block) must call this helper explicitly to avoid orphan
+    rows.
+
+    Soft-delete entities (Course, Module, Chapter) MUST NOT call this:
+    their cv rows need to survive the soft-delete so restore_course can
+    bring back the original text. Only ``permanently_delete_course`` —
+    which walks the tree explicitly — is allowed to call this for
+    courses + modules + chapters.
+    """
+    eid_str = str(entity_id)
+    deleted = (
+        db.query(ContentVersion)
+        .filter(ContentVersion.entity_type == entity_type, ContentVersion.entity_id == eid_str)
+        .delete(synchronize_session=False)
+    )
+    return deleted

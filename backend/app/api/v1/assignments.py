@@ -28,7 +28,11 @@ from app.schemas.assignment import (
 )
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.audit_service import log_action
-from app.services.content_versions import dual_write_entity_content, fetch_cv_entity_texts_with_fallback
+from app.services.content_versions import (
+    delete_entity_cv_rows,
+    dual_write_entity_content,
+    fetch_cv_entity_texts_with_fallback,
+)
 from app.services.course_service import sync_enrollment_progress
 from app.services.notification_service import create_notification
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
@@ -205,6 +209,8 @@ def delete_assignment(
     if not assignment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
     verify_chapter_owner(db, assignment.chapter_id, teacher)
+    # Phase 5ad: cv has no FK back; drop its rows explicitly.
+    delete_entity_cv_rows(db, entity_type="assignment", entity_id=assignment.id)
     db.delete(assignment)
     db.commit()
 

@@ -1728,6 +1728,34 @@ class TestDeleteAnnouncement:
         resp = client.delete(f"{ANNOUNCEMENT_PREFIX}/{uuid.uuid4()}")
         assert resp.status_code == 404
 
+    def test_delete_sweeps_cv_rows_so_no_orphans_remain(self, client: TestClient, db: Session):
+        """Phase 5ad regression: hard-delete must drop cv rows. cv has
+        no FK back to announcements (polymorphic entity_id), so the
+        delete used to leave the title/content rows behind forever."""
+        from app.models.content_version import ContentVersion
+
+        course = _create_course_via_api(client)
+        resp = client.post(
+            ANNOUNCEMENT_PREFIX,
+            json=_announcement_payload(course_id=course["id"]),
+        )
+        ann_id = resp.json()["id"]
+        # Sanity check: cv rows exist before delete.
+        cv_before = (
+            db.query(ContentVersion)
+            .filter(ContentVersion.entity_type == "announcement", ContentVersion.entity_id == ann_id)
+            .count()
+        )
+        assert cv_before > 0
+
+        client.delete(f"{ANNOUNCEMENT_PREFIX}/{ann_id}")
+        cv_after = (
+            db.query(ContentVersion)
+            .filter(ContentVersion.entity_type == "announcement", ContentVersion.entity_id == ann_id)
+            .count()
+        )
+        assert cv_after == 0
+
     def test_student_cannot_delete(self, student_client: TestClient, db: Session):
         from ._cv_helpers import make_announcement_with_text
 
