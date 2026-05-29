@@ -34,6 +34,7 @@ from app.models.chapter_block import ChapterBlock
 from app.models.cohort import Cohort
 from app.models.course import Chapter, Course, Module
 from app.models.course_event import CourseEvent
+from app.models.daily_challenge import DailyChallengeOption, DailyChallengeQuestion
 from app.models.quiz import Quiz, QuizOption, QuizQuestion
 from app.schemas.locale import normalize_locale
 from app.services.language_detection import detect_locale
@@ -275,6 +276,37 @@ REGISTRY: dict[EntityType, EntityRegistration] = {
         resolve_course=_resolve_course_via_cohort_courses,
         build_context=lambda _co, c: f"Student cohort name in course «{c.title}»",
     ),
+    # Phase 5c — Daily Challenge platform surface. Questions are
+    # course-less by design (they're a platform-wide rotation, not
+    # course content). ``reconcile_entity`` skips orphans, so the
+    # standard "edit-triggers-translate" hook does NOT apply here —
+    # the Daily Challenge editorial pipeline invokes
+    # ``translate_entity_fields`` directly with ``source_locale``
+    # read off ``daily_challenge_questions.source_locale``.
+    #
+    # We still register so:
+    #   * the cv parity test passes (every entity_type referenced in
+    #     ``ContentVersionEntityType`` has a registry row),
+    #   * the ``ENTITY_MODEL`` table can route per-entity test
+    #     parametrization,
+    #   * ``resolve_for_display`` helpers that iterate the registry
+    #     for "what fields are translatable on entity X?" continue to
+    #     return correct answers for the daily challenge surfaces.
+    "daily_challenge_question": EntityRegistration(
+        entity_type="daily_challenge_question",
+        fields=(
+            FieldSpec("question_text", "quiz_question"),
+            FieldSpec("explanation", "plain"),
+        ),
+        resolve_course=lambda _db, _q: None,  # platform-wide; no course
+        build_context=lambda _q, _c: "Bible question for the Equip Daily Challenge.",
+    ),
+    "daily_challenge_option": EntityRegistration(
+        entity_type="daily_challenge_option",
+        fields=(FieldSpec("option_text", "quiz_option"),),
+        resolve_course=lambda _db, _o: None,  # platform-wide; no course
+        build_context=lambda _o, _c: "Answer option for an Equip Daily Challenge question.",
+    ),
 }
 
 
@@ -291,6 +323,8 @@ ENTITY_MODEL: dict[EntityType, type] = {
     "announcement": Announcement,
     "course_event": CourseEvent,
     "cohort": Cohort,
+    "daily_challenge_question": DailyChallengeQuestion,
+    "daily_challenge_option": DailyChallengeOption,
 }
 
 

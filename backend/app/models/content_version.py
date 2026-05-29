@@ -56,6 +56,8 @@ ContentVersionEntityType = Literal[
     "announcement",
     "course_event",
     "cohort",
+    "daily_challenge_question",
+    "daily_challenge_option",
 ]
 
 ContentVersionField = Literal[
@@ -65,6 +67,7 @@ ContentVersionField = Literal[
     "question_text",
     "option_text",
     "instructions",
+    "explanation",
 ]
 
 ContentVersionOrigin = Literal["human", "mt"]
