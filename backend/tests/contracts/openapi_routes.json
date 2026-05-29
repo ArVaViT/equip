@@ -1,0 +1,2024 @@
+[
+  {
+    "method": "GET",
+    "path": "/",
+    "params": [],
+    "responses": [
+      "200"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/analytics/course/{course_id}",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "403",
+      "404",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/announcements",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "course_id",
+        "query"
+      ],
+      [
+        "global_only",
+        "query"
+      ],
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ],
+      [
+        "source",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/announcements",
+    "params": [],
+    "responses": [
+      "201",
+      "403",
+      "404",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/announcements/{announcement_id}",
+    "params": [
+      [
+        "announcement_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/announcements/{announcement_id}",
+    "params": [
+      [
+        "announcement_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/assignments",
+    "params": [],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/assignments/chapter/{chapter_id}",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "chapter_id",
+        "path"
+      ],
+      [
+        "source",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/assignments/submissions/{submission_id}/grade",
+    "params": [
+      [
+        "submission_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/assignments/{assignment_id}",
+    "params": [
+      [
+        "assignment_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/assignments/{assignment_id}",
+    "params": [
+      [
+        "assignment_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/assignments/{assignment_id}/my-submissions",
+    "params": [
+      [
+        "assignment_id",
+        "path"
+      ],
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/assignments/{assignment_id}/submissions",
+    "params": [
+      [
+        "assignment_id",
+        "path"
+      ],
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/assignments/{assignment_id}/submit",
+    "params": [
+      [
+        "assignment_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "201",
+      "403",
+      "404",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/audit",
+    "params": [
+      [
+        "action",
+        "query"
+      ],
+      [
+        "date_from",
+        "query"
+      ],
+      [
+        "date_to",
+        "query"
+      ],
+      [
+        "page",
+        "query"
+      ],
+      [
+        "page_size",
+        "query"
+      ],
+      [
+        "resource_type",
+        "query"
+      ],
+      [
+        "user_id",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "400",
+      "403",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "params": [],
+    "responses": [
+      "200",
+      "401"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/blocks/chapter/{chapter_id}",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "chapter_id",
+        "path"
+      ],
+      [
+        "source",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/blocks/chapter/{chapter_id}",
+    "params": [
+      [
+        "chapter_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "201",
+      "403",
+      "404",
+      "409",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/blocks/chapter/{chapter_id}/reorder",
+    "params": [
+      [
+        "chapter_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/blocks/{block_id}",
+    "params": [
+      [
+        "block_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/blocks/{block_id}",
+    "params": [
+      [
+        "block_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "403",
+      "404",
+      "409",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/calendar/events",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "course_id",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/certificates/admin/pending",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/certificates/course/{course_id}",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/certificates/course/{course_id}",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/certificates/my",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/certificates/pending",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/certificates/verify/{certificate_number}",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "certificate_number",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/certificates/{cert_id}/admin-approve",
+    "params": [
+      [
+        "cert_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "400",
+      "403",
+      "404",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/certificates/{cert_id}/reject",
+    "params": [
+      [
+        "cert_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "400",
+      "403",
+      "404",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/certificates/{cert_id}/teacher-approve",
+    "params": [
+      [
+        "cert_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "400",
+      "403",
+      "404",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cohorts",
+    "params": [
+      [
+        "status",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cohorts",
+    "params": [],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cohorts/course/{course_id}",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/cohorts/{cohort_id}",
+    "params": [
+      [
+        "cohort_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cohorts/{cohort_id}",
+    "params": [
+      [
+        "cohort_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/cohorts/{cohort_id}",
+    "params": [
+      [
+        "cohort_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cohorts/{cohort_id}/complete",
+    "params": [
+      [
+        "cohort_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cohorts/{cohort_id}/courses",
+    "params": [
+      [
+        "cohort_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cohorts/{cohort_id}/courses",
+    "params": [
+      [
+        "cohort_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/cohorts/{cohort_id}/courses/{course_id}",
+    "params": [
+      [
+        "cohort_id",
+        "path"
+      ],
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cohorts/{cohort_id}/students",
+    "params": [
+      [
+        "cohort_id",
+        "path"
+      ],
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cohorts/{cohort_id}/students",
+    "params": [
+      [
+        "cohort_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/cohorts/{cohort_id}/students/{user_id}",
+    "params": [
+      [
+        "cohort_id",
+        "path"
+      ],
+      [
+        "user_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/courses",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "search",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/courses",
+    "params": [],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/courses/_diag/translation-status",
+    "params": [],
+    "responses": [
+      "200"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/courses/my",
+    "params": [
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/courses/my/trash",
+    "params": [
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/courses/{course_id}",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/courses/{course_id}",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "source",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/courses/{course_id}",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/courses/{course_id}/clone",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/courses/{course_id}/enroll",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/courses/{course_id}/enrollment-status",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/courses/{course_id}/events",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "source",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/courses/{course_id}/events",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/courses/{course_id}/events/{event_id}",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "event_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/courses/{course_id}/events/{event_id}",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "event_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/courses/{course_id}/modules",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/courses/{course_id}/modules/{module_id}",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "module_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/courses/{course_id}/modules/{module_id}",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "module_id",
+        "path"
+      ],
+      [
+        "source",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/courses/{course_id}/modules/{module_id}",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "module_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/courses/{course_id}/modules/{module_id}/chapters",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "module_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/courses/{course_id}/modules/{module_id}/chapters/{chapter_id}",
+    "params": [
+      [
+        "chapter_id",
+        "path"
+      ],
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "module_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/courses/{course_id}/modules/{module_id}/chapters/{chapter_id}",
+    "params": [
+      [
+        "chapter_id",
+        "path"
+      ],
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "module_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/courses/{course_id}/permanent",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/courses/{course_id}/readiness",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/courses/{course_id}/restore",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/courses/{course_id}/translate",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/grades/course/{course_id}",
+    "params": [
+      [
+        "cohort_id",
+        "query"
+      ],
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/grades/course/{course_id}/config",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/grades/course/{course_id}/config",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/grades/course/{course_id}/export-csv",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/grades/course/{course_id}/student/{student_id}",
+    "params": [
+      [
+        "cohort_id",
+        "query"
+      ],
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "student_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/grades/course/{course_id}/student/{student_id}",
+    "params": [
+      [
+        "cohort_id",
+        "query"
+      ],
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "student_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/grades/course/{course_id}/student/{student_id}/calculated",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "student_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/grades/course/{course_id}/summary",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/grades/my",
+    "params": [
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/grades/my/{course_id}",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/health/db",
+    "params": [],
+    "responses": [
+      "200"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notifications",
+    "params": [
+      [
+        "page",
+        "query"
+      ],
+      [
+        "page_size",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/notifications/read-all",
+    "params": [],
+    "responses": [
+      "200"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notifications/unread-count",
+    "params": [],
+    "responses": [
+      "200"
+    ],
+    "body": false
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/notifications/{notification_id}",
+    "params": [
+      [
+        "notification_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/notifications/{notification_id}/read",
+    "params": [
+      [
+        "notification_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/prerequisites/course/{course_id}",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/prerequisites/course/{course_id}",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/progress/chapter/{chapter_id}/student/{student_id}/complete",
+    "params": [
+      [
+        "chapter_id",
+        "path"
+      ],
+      [
+        "student_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/progress/chapter/{chapter_id}/student/{student_id}/incomplete",
+    "params": [
+      [
+        "chapter_id",
+        "path"
+      ],
+      [
+        "student_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/progress/course/{course_id}/my-progress",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/progress/course/{course_id}/students",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/quizzes",
+    "params": [],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/quizzes/answers/{answer_id}",
+    "params": [
+      [
+        "answer_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/quizzes/chapter/{chapter_id}",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "chapter_id",
+        "path"
+      ],
+      [
+        "source",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/quizzes/{quiz_id}",
+    "params": [
+      [
+        "quiz_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/quizzes/{quiz_id}",
+    "params": [
+      [
+        "quiz_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/quizzes/{quiz_id}",
+    "params": [
+      [
+        "quiz_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/quizzes/{quiz_id}/attempts",
+    "params": [
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "quiz_id",
+        "path"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/quizzes/{quiz_id}/extra-attempts",
+    "params": [
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "quiz_id",
+        "path"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/quizzes/{quiz_id}/extra-attempts",
+    "params": [
+      [
+        "quiz_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/quizzes/{quiz_id}/my-attempts",
+    "params": [
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "quiz_id",
+        "path"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/quizzes/{quiz_id}/pending-answers",
+    "params": [
+      [
+        "include_graded",
+        "query"
+      ],
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "quiz_id",
+        "path"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/quizzes/{quiz_id}/submit",
+    "params": [
+      [
+        "quiz_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "403",
+      "404",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reviews/course/{course_id}",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reviews/course/{course_id}",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/reviews/{review_id}",
+    "params": [
+      [
+        "review_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/users/admin/users",
+    "params": [
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/users/admin/users/bulk-role",
+    "params": [],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/users/admin/users/{user_id}",
+    "params": [
+      [
+        "user_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/users/admin/users/{user_id}/role",
+    "params": [
+      [
+        "role",
+        "query"
+      ],
+      [
+        "user_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/users/me/courses",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/users/me/preferences",
+    "params": [],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/verse-of-the-day",
+    "params": [
+      [
+        "locale",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/health",
+    "params": [],
+    "responses": [
+      "200"
+    ],
+    "body": false
+  }
+]
