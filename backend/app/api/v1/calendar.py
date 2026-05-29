@@ -1,10 +1,11 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Header, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_teacher, verify_course_owner
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.core.sanitize import sanitize_string
 from app.models.assignment import Assignment
 from app.models.course import Chapter, Course, Module
@@ -356,7 +357,12 @@ def list_course_events(
         .first()
     )
     if not course_row:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Course not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
     is_owner = str(course_row.created_by) == str(current_user.id)
     is_admin = current_user.role == UserRole.ADMIN.value
     if not is_owner and not is_admin:
@@ -366,14 +372,18 @@ def list_course_events(
             .first()
         )
         if not enrolled:
-            raise HTTPException(
+            raise equip_error(
+                ErrorCode.AUTH_FORBIDDEN,
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You must be enrolled in this course to view events",
+                message="You must be enrolled in this course to view events",
+                context={"resource_type": "course_event", "course_id": course_id},
             )
     if source and not (is_owner or is_admin):
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only the course owner or an admin can request source-language content",
+            message="Only the course owner or an admin can request source-language content",
+            context={"resource_type": "course_event", "course_id": course_id},
         )
     rows = db.query(CourseEvent).filter(CourseEvent.course_id == course_id).order_by(CourseEvent.event_date).all()
     # Locale wins. Every reader — students, owners, admins — gets the locale
@@ -412,7 +422,12 @@ def update_course_event(
         .first()
     )
     if not event:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Event not found",
+            context={"resource_type": "course_event", "resource_id": str(event_id), "course_id": course_id},
+        )
     # Phase 5e4: title + description live in cv. Pop them off the patch
     # before the setattr loop and route through dual_write.
     updates = data.model_dump(exclude_unset=True)
@@ -463,7 +478,12 @@ def delete_course_event(
         .first()
     )
     if not event:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Event not found",
+            context={"resource_type": "course_event", "resource_id": str(event_id), "course_id": course_id},
+        )
     # Phase 5ad: cv polymorphic — drop rows explicitly.
     delete_entity_cv_rows(db, entity_type="course_event", entity_id=event.id)
     db.delete(event)

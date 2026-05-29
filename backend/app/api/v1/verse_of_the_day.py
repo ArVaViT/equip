@@ -11,8 +11,9 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Query, status
 
+from app.core.errors import ErrorCode, equip_error
 from app.schemas.locale import normalize_locale
 from app.schemas.verse_of_the_day import VerseOfTheDayResponse
 from app.services.verse_of_the_day import (
@@ -44,9 +45,11 @@ def read_verse_of_the_day(
         # the card. Logging stays at INFO since the route can legitimately
         # serve 404 in CI / preview deployments without the API key.
         logger.info("Verse of the day unavailable: %s", exc)
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="verse_of_the_day_unavailable",
+            message="verse_of_the_day_unavailable",
+            context={"resource_type": "verse_of_the_day"},
         ) from None
 
     return VerseOfTheDayResponse(

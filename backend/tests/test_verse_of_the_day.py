@@ -136,4 +136,4 @@ def test_route_returns_404_when_apikey_missing(monkeypatch):
     with TestClient(app) as tc:
         resp = tc.get("/api/v1/verse-of-the-day?locale=en")
     assert resp.status_code == 404
-    assert resp.json()["detail"] == "verse_of_the_day_unavailable"
+    assert resp.json()["detail"]["message"] == "verse_of_the_day_unavailable"
