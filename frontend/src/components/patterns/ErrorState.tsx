@@ -1,11 +1,12 @@
 import type { ReactNode } from "react"
 import { AlertTriangle } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
 
 interface ErrorStateProps {
   /** Icon slot. Defaults to <AlertTriangle strokeWidth={1.75} />. */
   icon?: ReactNode
-  /** Short headline. Defaults to "Something went wrong". */
+  /** Short headline. Defaults to a localized "Something went wrong". */
   title?: string
   /** Optional longer explanation or retry hint. */
   description?: string
@@ -26,12 +27,14 @@ interface ErrorStateProps {
  */
 export function ErrorState({
   icon,
-  title = "Something went wrong",
+  title,
   description,
   action,
   secondaryAction,
   className,
 }: ErrorStateProps) {
+  const { t } = useTranslation()
+  const resolvedTitle = title ?? t("common.somethingWentWrong")
   return (
     <div
       role="alert"
@@ -44,7 +47,7 @@ export function ErrorState({
         {icon ?? <AlertTriangle strokeWidth={1.75} aria-hidden />}
       </span>
       <div className="space-y-1">
-        <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">{title}</h2>
+        <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">{resolvedTitle}</h2>
         {description && (
           <p className="max-w-md text-sm text-muted-foreground">{description}</p>
         )}

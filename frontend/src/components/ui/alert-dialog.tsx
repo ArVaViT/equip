@@ -1,5 +1,6 @@
 import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
+import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "./buttonVariants"
 
@@ -150,6 +151,7 @@ const PromptContext = React.createContext<(opts: PromptOptions) => Promise<strin
 )
 
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation()
   const [confirmState, setConfirmState] = React.useState<ConfirmState>({ open: false, title: "" })
   const [promptState, setPromptState] = React.useState<PromptState>({ open: false, title: "", value: "" })
 
@@ -216,13 +218,13 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => handleConfirmDone(false)}>
-                {confirmState.cancelLabel ?? "Cancel"}
+                {confirmState.cancelLabel ?? t("common.cancel")}
               </AlertDialogCancel>
               <AlertDialogAction
                 variant={confirmState.tone === "destructive" ? "destructive" : "default"}
                 onClick={() => handleConfirmDone(true)}
               >
-                {confirmState.confirmLabel ?? "Confirm"}
+                {confirmState.confirmLabel ?? t("common.confirm")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -260,10 +262,10 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               />
               <AlertDialogFooter className="mt-4">
                 <AlertDialogCancel type="button" onClick={() => handlePromptDone(null)}>
-                  {promptState.cancelLabel ?? "Cancel"}
+                  {promptState.cancelLabel ?? t("common.cancel")}
                 </AlertDialogCancel>
                 <AlertDialogAction type="submit">
-                  {promptState.confirmLabel ?? "OK"}
+                  {promptState.confirmLabel ?? t("common.ok")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </form>
