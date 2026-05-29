@@ -24,7 +24,7 @@ from uuid import UUID
 
 from fastapi import HTTPException, Request, status
 
-from app.models.certificate import Certificate
+from app.models.certificate import Certificate, CertificateStatus
 from app.models.course import Course
 from app.models.user import User, UserRole
 from app.schemas.locale import normalize_locale
@@ -140,23 +140,23 @@ def _assert_not_self_approval(cert: Certificate, approver: User) -> None:
 
 
 def _status_error_message(cert: Certificate, allowed: tuple[str, ...]) -> str:
-    if allowed == ("pending",):
+    if allowed == (CertificateStatus.PENDING,):
         return f"Certificate is not pending (current status: {cert.status})"
-    if allowed == ("teacher_approved",):
+    if allowed == (CertificateStatus.TEACHER_APPROVED,):
         return f"Certificate must be teacher-approved first (current status: {cert.status})"
     return f"Certificate cannot transition from status: {cert.status}"
 
 
 def teacher_approve(db: Session, cert_id: UUID, teacher: User, request: Request) -> Certificate:
     cert = _load_cert_or_404(db, cert_id, for_update=True)
-    _assert_status(cert, "pending")
+    _assert_status(cert, CertificateStatus.PENDING)
     _assert_not_self_approval(cert, teacher)
 
     ownership_detail = "You can only approve certificates for your own courses"
     course = _load_active_course_or_403(db, cert.course_id, ownership_detail=ownership_detail)
     assert_course_owner(course, teacher, allow_admin=False, detail=ownership_detail)
 
-    cert.status = "teacher_approved"
+    cert.status = CertificateStatus.TEACHER_APPROVED
     cert.teacher_approved_at = datetime.now(UTC)
     cert.teacher_approved_by = teacher.id
     db.commit()
@@ -176,7 +176,7 @@ def teacher_approve(db: Session, cert_id: UUID, teacher: User, request: Request)
 
 def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> Certificate:
     cert = _load_cert_or_404(db, cert_id, for_update=True)
-    _assert_status(cert, "teacher_approved")
+    _assert_status(cert, CertificateStatus.TEACHER_APPROVED)
     _assert_not_self_approval(cert, admin)
 
     # Two-eyes guard. An admin who is ALSO the course's teacher can land on
@@ -194,7 +194,7 @@ def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> 
             ),
         )
 
-    cert.status = "approved"
+    cert.status = CertificateStatus.APPROVED
     cert.certificate_number = generate_certificate_number()
     now = datetime.now(UTC)
     cert.admin_approved_at = now
@@ -241,7 +241,7 @@ def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> 
 
 def reject(db: Session, cert_id: UUID, user: User, request: Request) -> Certificate:
     cert = _load_cert_or_404(db, cert_id, for_update=True)
-    if cert.status in ("approved", "rejected"):
+    if cert.status in (CertificateStatus.APPROVED, CertificateStatus.REJECTED):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Certificate cannot be rejected (current status: {cert.status})",
@@ -256,7 +256,7 @@ def reject(db: Session, cert_id: UUID, user: User, request: Request) -> Certific
     # Without this gate, a course-owning teacher could teacher-approve a
     # cert, change their mind, and reject it after it reached the admin
     # queue -- effectively a one-person veto of their own prior approval.
-    if cert.status == "teacher_approved" and user.role != UserRole.ADMIN.value:
+    if cert.status == CertificateStatus.TEACHER_APPROVED and user.role != UserRole.ADMIN.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=("Only an administrator can reject a certificate that has already passed teacher approval."),
@@ -270,7 +270,7 @@ def reject(db: Session, cert_id: UUID, user: User, request: Request) -> Certific
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=ownership_detail)
     assert_course_owner(course, user, detail=ownership_detail)
 
-    cert.status = "rejected"
+    cert.status = CertificateStatus.REJECTED
 
     # Phase 5v: same locale-aware fan-out as the approval path.
     recipient_locale = normalize_locale(_recipient_locale(db, cert.user_id))
