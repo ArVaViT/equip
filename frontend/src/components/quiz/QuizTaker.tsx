@@ -209,7 +209,7 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
             className={
               !allAnswered || submitting || attemptsReached
                 ? "w-full"
-                : "w-full bg-cta-glow"
+                : "w-full cta-glow"
             }
           >
             {submitting ? (

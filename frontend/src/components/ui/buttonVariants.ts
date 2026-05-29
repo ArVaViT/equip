@@ -1,7 +1,13 @@
 import { cva } from "class-variance-authority"
 
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-[color,box-shadow,transform] duration-150 ease-editorial focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  // Disabled state uses explicit muted tokens instead of ``opacity-50``.
+  // ``opacity-50`` on a dark-mode primary button (lavender at 50%
+  // luminance on top of a near-black surface) collapses contrast to
+  // sub-AA and effectively makes the button — and any spinner / icon
+  // inside — invisible. The token-based approach gives a deliberate
+  // disabled colour that the design system controls per theme.
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-[color,box-shadow,transform] duration-150 ease-editorial focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:bg-muted disabled:text-muted-foreground disabled:hover:bg-muted",
   {
     variants: {
       variant: {

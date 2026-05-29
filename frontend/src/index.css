@@ -471,11 +471,11 @@
     }
   }
 
-  .bg-cta-glow {
+  .cta-glow {
     position: relative;
     isolation: isolate;
   }
-  .bg-cta-glow::after {
+  .cta-glow::after {
     content: "";
     position: absolute;
     inset: -1px;
@@ -490,12 +490,12 @@
     transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1);
     pointer-events: none;
   }
-  .bg-cta-glow:hover::after,
-  .bg-cta-glow:focus-visible::after {
+  .cta-glow:hover::after,
+  .cta-glow:focus-visible::after {
     opacity: 1;
   }
   @media (prefers-reduced-motion: reduce) {
-    .bg-cta-glow::after {
+    .cta-glow::after {
       transition: none;
     }
   }
