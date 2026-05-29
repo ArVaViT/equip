@@ -170,7 +170,7 @@ def get_calendar_events(
         asg_rows_by_pair_locale: dict[tuple[str, str, str], str] = {}
         any_for_pair: dict[tuple[str, str], str] = {}
         if assignments:
-            from app.models.content_version import ContentVersion
+            from app.models.content_version import ContentVersion, ContentVersionStatus
 
             asg_ids = [str(a.id) for a in assignments]
             cv_rows = (
@@ -185,7 +185,7 @@ def get_calendar_events(
                     ContentVersion.entity_id.in_(asg_ids),
                     ContentVersion.field.in_(["title", "description"]),
                     ContentVersion.superseded_by.is_(None),
-                    ContentVersion.status == "ok",
+                    ContentVersion.status == ContentVersionStatus.OK,
                 )
                 .order_by(ContentVersion.entity_id, ContentVersion.field, ContentVersion.created_at)
                 .all()
@@ -231,7 +231,7 @@ def get_calendar_events(
     ce_rows_by_pair_locale: dict[tuple[str, str, str], str] = {}
     ce_any_for_pair: dict[tuple[str, str], str] = {}
     if course_events:
-        from app.models.content_version import ContentVersion
+        from app.models.content_version import ContentVersion, ContentVersionStatus
 
         ce_ids = [str(ce.id) for ce in course_events]
         cv_rows = (
@@ -246,7 +246,7 @@ def get_calendar_events(
                 ContentVersion.entity_id.in_(ce_ids),
                 ContentVersion.field.in_(["title", "description"]),
                 ContentVersion.superseded_by.is_(None),
-                ContentVersion.status == "ok",
+                ContentVersion.status == ContentVersionStatus.OK,
             )
             .order_by(ContentVersion.entity_id, ContentVersion.field, ContentVersion.created_at)
             .all()

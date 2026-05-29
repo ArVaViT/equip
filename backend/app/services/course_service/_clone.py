@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from app.models.assignment import Assignment
 from app.models.chapter_block import ChapterBlock
-from app.models.content_version import ContentVersion
+from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.course import Chapter, Course, CourseStatus, Module
 from app.models.quiz import Quiz, QuizOption, QuizQuestion
 
@@ -57,7 +57,7 @@ def _clone_cv_rows(
             ContentVersion.entity_id.in_(list(id_map.keys())),
             ContentVersion.field.in_(fields),
             ContentVersion.superseded_by.is_(None),
-            ContentVersion.status == "ok",
+            ContentVersion.status == ContentVersionStatus.OK,
         )
         .all()
     )
