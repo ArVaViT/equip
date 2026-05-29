@@ -15,5 +15,11 @@
       "src": "/(.*)",
       "dest": "index.py"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/v1/internal/translation-worker",
+      "schedule": "*/1 * * * *"
+    }
   ]
 }

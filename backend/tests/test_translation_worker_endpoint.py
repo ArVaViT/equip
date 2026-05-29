@@ -63,6 +63,30 @@ def _make_course(db: Session, teacher_id) -> Course:
     return course
 
 
+def test_accepts_authorization_bearer_header(client: TestClient, configured_worker):
+    """Vercel Cron sends ``Authorization: Bearer <secret>`` automatically.
+    The worker accepts that shape so the same env var serves both
+    direct human access (``X-Worker-Secret``) and the Vercel-managed
+    cron auth."""
+    resp = client.post(
+        _WORKER_PATH,
+        headers={"Authorization": f"Bearer {_GOOD_SECRET}"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "idle"
+
+
+def test_get_alias_works_for_vercel_cron(client: TestClient, configured_worker):
+    """Vercel Cron sends GET — pin the alias so a refactor that drops
+    the GET method breaks CI instead of silently leaving the cron 405."""
+    resp = client.get(
+        _WORKER_PATH,
+        headers={"Authorization": f"Bearer {_GOOD_SECRET}"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "idle"
+
+
 def test_503_when_worker_secret_is_unset(client: TestClient):
     """Default state: TRANSLATION_WORKER_SECRET is unset → endpoint
     refuses every call so a dev env that hasn't configured the queue
