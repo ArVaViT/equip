@@ -20,6 +20,7 @@ admin role inherits.
 
 from __future__ import annotations
 
+from typing import cast
 from uuid import UUID  # noqa: TC003 — FastAPI runtime resolution
 
 from fastapi import APIRouter, Depends, status
@@ -34,9 +35,11 @@ from app.schemas.daily_challenge import (
     DailyChallengeOptionEditorial,
     DailyChallengeQuestionCreate,
     DailyChallengeQuestionEditorial,
+    DailyChallengeQuestionType,
     DailyChallengeRejectRequest,
     DailyChallengeScheduleCreate,
     DailyChallengeScheduleResponse,
+    DailyChallengeStatus,
 )
 from app.schemas.locale import normalize_locale
 from app.services.daily_challenge import (
@@ -84,8 +87,11 @@ def _serialize_editorial(db: Session, q: DailyChallengeQuestion) -> DailyChallen
     )
     return DailyChallengeQuestionEditorial(
         id=q.id,
-        question_type=q.question_type,
-        status=q.status,
+        # ORM columns are plain ``str``; cast to satisfy Pydantic
+        # Literals. CHECK constraints on the DB guarantee the runtime
+        # values are in the literal sets.
+        question_type=cast("DailyChallengeQuestionType", q.question_type),
+        status=cast("DailyChallengeStatus", q.status),
         rejected=q.rejected,
         rejection_reason=q.rejection_reason,
         published_at=q.published_at,
