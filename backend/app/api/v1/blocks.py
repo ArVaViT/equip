@@ -1,11 +1,12 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Header, Query, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_teacher, verify_chapter_access, verify_chapter_owner
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.core.sanitize import sanitize_string
 from app.models.chapter_block import ChapterBlock
 from app.models.content_version import ContentVersion, ContentVersionStatus
@@ -109,9 +110,11 @@ def list_blocks(
     ctx = resolve_chapter_locale_context(db, chapter_id=chapter_id, current_user=current_user)
     if source:
         if not ctx.is_owner_or_admin:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only the course owner or an admin can request source-language content",
+            raise equip_error(
+                ErrorCode.AUTH_FORBIDDEN,
+                status_code=403,
+                message="Only the course owner or an admin can request source-language content",
+                context={"resource_type": "chapter_block"},
             )
         # Phase 5e2: chapter_blocks.content column dropped — build
         # source-locale responses by re-using the resolve layer that
@@ -186,9 +189,11 @@ def create_block(
         # that was just deleted, tripping the FK constraint. Surface a 409
         # instead of letting SQLAlchemy raise a 500.
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Referenced quiz or assignment no longer exists",
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=409,
+            message="Referenced quiz or assignment no longer exists",
+            context={"resource_type": "chapter_block"},
         ) from exc
     db.refresh(block)
     reconcile_entity_if_course_published(db, "chapter_block", block)
@@ -220,7 +225,12 @@ def update_block(
     the editor never mix types in the same patch."""
     block = db.query(ChapterBlock).filter(ChapterBlock.id == block_id).first()
     if not block:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Block not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=404,
+            message="Block not found",
+            context={"resource_type": "chapter_block"},
+        )
     verify_chapter_owner(db, block.chapter_id, teacher)
     patch = data.model_dump(exclude_unset=True)
     # Phase 5e2: content column gone — route the (sanitised) content
@@ -244,9 +254,11 @@ def update_block(
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Referenced quiz or assignment no longer exists",
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=409,
+            message="Referenced quiz or assignment no longer exists",
+            context={"resource_type": "chapter_block"},
         ) from exc
     db.refresh(block)
     reconcile_entity_if_course_published(db, "chapter_block", block)
@@ -261,7 +273,12 @@ def delete_block(
 ):
     block = db.query(ChapterBlock).filter(ChapterBlock.id == block_id).first()
     if not block:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Block not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=404,
+            message="Block not found",
+            context={"resource_type": "chapter_block"},
+        )
     verify_chapter_owner(db, block.chapter_id, teacher)
     # Phase 5ad: content_versions has no FK back to chapter_blocks
     # (polymorphic entity_id), so the in-comment claim that "rows
@@ -297,12 +314,14 @@ def reorder_blocks(
     # in the DnD list -- and giving no signal that anything went wrong.
     missing = [str(item.id) for item in items if item.id not in blocks_by_id]
     if missing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=400,
+            message=(
                 f"Cannot reorder: {len(missing)} block id(s) do not belong to this chapter "
                 f"(or no longer exist): {', '.join(missing[:5])}" + ("..." if len(missing) > 5 else "")
             ),
+            context={"resource_type": "chapter_block", "missing_ids": missing[:20]},
         )
     for item in items:
         blocks_by_id[item.id].order_index = item.order_index

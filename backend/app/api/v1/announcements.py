@@ -1,7 +1,7 @@
 import uuid
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Header, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
@@ -11,6 +11,7 @@ from app.api.dependencies import (
     require_teacher,
 )
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.core.i18n import t
 from app.core.sanitize import sanitize_string
 from app.models.announcement import Announcement
@@ -138,9 +139,11 @@ def list_announcements(
     # draft content across course boundaries.
     if source:
         if course_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="?source=1 requires a course_id filter",
+            raise equip_error(
+                ErrorCode.VALIDATION_FAILED,
+                status_code=400,
+                message="?source=1 requires a course_id filter",
+                context={"resource_type": "announcement"},
             )
         if not is_admin:
             owns = (
@@ -148,9 +151,11 @@ def list_announcements(
                 is not None
             )
             if not owns:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Only the course owner or an admin can request source-language content",
+                raise equip_error(
+                    ErrorCode.AUTH_FORBIDDEN,
+                    status_code=403,
+                    message="Only the course owner or an admin can request source-language content",
+                    context={"resource_type": "announcement", "course_id": course_id},
                 )
 
     if global_only:
@@ -181,9 +186,11 @@ def list_announcements(
                 is not None
             )
             if not has_access:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You do not have access to this course's announcements",
+                raise equip_error(
+                    ErrorCode.AUTH_FORBIDDEN,
+                    status_code=403,
+                    message="You do not have access to this course's announcements",
+                    context={"resource_type": "announcement", "course_id": course_id},
                 )
         query = query.filter(Announcement.course_id == course_id)
     elif not is_admin:
@@ -265,9 +272,11 @@ def create_announcement(
         # no longer exists in the catalog.
         course = db.query(Course).filter(Course.id == data.course_id, Course.deleted_at.is_(None)).first()
         if not course:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Course '{data.course_id}' not found",
+            raise equip_error(
+                ErrorCode.RESOURCE_NOT_FOUND,
+                status_code=404,
+                message=f"Course '{data.course_id}' not found",
+                context={"resource_type": "course", "resource_id": data.course_id},
             )
         assert_course_owner(
             course,
@@ -283,9 +292,11 @@ def create_announcement(
         # teacher and admin, so the explicit role check is what enforces
         # admin-only here.
         if teacher.role != UserRole.ADMIN.value:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only administrators can create global announcements",
+            raise equip_error(
+                ErrorCode.AUTH_FORBIDDEN,
+                status_code=403,
+                message="Only administrators can create global announcements",
+                context={"resource_type": "announcement", "scope": "global"},
             )
         course = None
 
@@ -400,14 +411,18 @@ def update_announcement(
 ) -> AnnouncementResponse:
     announcement = db.query(Announcement).filter(Announcement.id == announcement_id).first()
     if not announcement:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Announcement not found",
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=404,
+            message="Announcement not found",
+            context={"resource_type": "announcement", "resource_id": str(announcement_id)},
         )
     if not is_owner_or_admin(announcement, teacher):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only edit your own announcements",
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=403,
+            message="You can only edit your own announcements",
+            context={"resource_type": "announcement", "resource_id": str(announcement_id)},
         )
 
     text_patch: dict[str, str | None] = {}
@@ -444,14 +459,18 @@ def delete_announcement(
 ) -> None:
     announcement = db.query(Announcement).filter(Announcement.id == announcement_id).first()
     if not announcement:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Announcement not found",
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=404,
+            message="Announcement not found",
+            context={"resource_type": "announcement", "resource_id": str(announcement_id)},
         )
     if not is_owner_or_admin(announcement, teacher):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only delete your own announcements",
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=403,
+            message="You can only delete your own announcements",
+            context={"resource_type": "announcement", "resource_id": str(announcement_id)},
         )
 
     # Phase 5ad: cv has no FK to announcements (polymorphic entity_id);
