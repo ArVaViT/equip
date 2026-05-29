@@ -27,9 +27,7 @@ def test_enum_values_mirror_the_check_constraint():
     ]
     assert len(check_strs) == 1
     for value in expected:
-        assert f"'{value}'" in check_strs[0], (
-            f"CHECK constraint missing {value!r}; sync the enum and the constraint."
-        )
+        assert f"'{value}'" in check_strs[0], f"CHECK constraint missing {value!r}; sync the enum and the constraint."
 
 
 def test_enum_is_str_subclass():
