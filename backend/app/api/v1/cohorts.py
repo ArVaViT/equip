@@ -209,6 +209,12 @@ def list_cohorts(
     # legal cohort statuses before the query runs. Matches the constraint
     # already on ``CohortUpdate.status`` and the DB ``CHECK``.
     status_filter: Literal["upcoming", "active", "completed"] | None = Query(None, alias="status"),
+    # Phase 5bn: defensive pagination. An admin panel scrolling cohort
+    # history shouldn't pull the full table on every keystroke; cap and
+    # paginate. Defaults match the other admin list endpoints
+    # (audit, users, queue-status).
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> list[CohortResponse]:
@@ -217,7 +223,7 @@ def list_cohorts(
     q = db.query(Cohort)
     if status_filter:
         q = q.filter(Cohort.status == status_filter)
-    cohorts = q.order_by(Cohort.start_date.desc()).all()
+    cohorts = q.order_by(Cohort.start_date.desc()).offset(skip).limit(limit).all()
     return _serialize_many(db, cohorts)
 
 
