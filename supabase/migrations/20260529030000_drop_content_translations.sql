@@ -1,0 +1,32 @@
+-- Phase 5aj: drop the legacy `content_translations` table.
+--
+-- Architecture context:
+-- ---------------------
+-- The original Phase 1-4 design used `content_translations` as an
+-- overlay sitting next to entity tables that still owned the source
+-- text in their own `title` / `description` / `content` columns.
+--
+-- Phase 5e-g (May 2026) inverted that: every translatable field moved
+-- INTO `content_versions` and the entity-table source columns were
+-- dropped. `content_translations` was kept as a no-op shadow during
+-- Phase 5c so a rollback was cheap.
+--
+-- Verification before this drop:
+-- ------------------------------
+-- * No live Python module imports anything resembling
+--   `ContentTranslation` or queries the `content_translations` table.
+--   Only doc-comments in `app/models/content_version.py`,
+--   `app/services/content_versions/read.py`,
+--   `app/services/translation/orchestrator.py`, etc reference it as
+--   historical context. The model file `content_translation.py` no
+--   longer exists; the only artifacts were stale `__pycache__` entries.
+-- * Last successful write to the table in prod was 2026-05-23, which
+--   matches the cutoff when Phase 5c stopped writing.
+-- * 541 stale rows are present at the moment of this migration. They
+--   are not read by anything; the cv table is the only live store.
+--
+-- This drop is reversible only via Supabase point-in-time recovery
+-- since the rows themselves are gone. The schema can be re-created
+-- from `20260507000000_add_content_translations.sql` if needed.
+
+DROP TABLE IF EXISTS content_translations;
