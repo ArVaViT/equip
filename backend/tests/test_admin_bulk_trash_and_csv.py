@@ -179,7 +179,7 @@ class TestBulkUpdateRoles:
             json={"user_ids": ids, "role": "student"},
         )
         assert resp.status_code == 400
-        assert "Maximum 100" in resp.json()["detail"]
+        assert "Maximum 100" in resp.json()["detail"]["message"]
 
     def test_invalid_uuids_are_ignored(self, admin_client: TestClient, db: Session):
         other = _make_other_student(db)

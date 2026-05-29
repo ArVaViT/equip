@@ -2,12 +2,13 @@ import logging
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_admin
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.assignment import AssignmentSubmission
 from app.models.audit_log import AuditLog
 from app.models.certificate import Certificate
@@ -46,7 +47,12 @@ def _parse_user_uuid(user_id: str) -> UUID:
     try:
         return UUID(user_id)
     except ValueError:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found") from None
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="User not found",
+            context={"resource_type": "user", "resource_id": user_id},
+        ) from None
 
 
 @router.get("/me/courses", response_model=list[EnrollmentSummaryResponse])
@@ -218,9 +224,19 @@ def bulk_update_user_roles(
     db: Session = Depends(get_db),
 ) -> dict:
     if body.role not in VALID_ROLES:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid role")
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="Invalid role",
+            context={"resource_type": "user", "role": body.role, "valid_roles": list(VALID_ROLES)},
+        )
     if len(body.user_ids) > 100:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Maximum 100 users per batch")
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="Maximum 100 users per batch",
+            context={"resource_type": "user", "submitted": len(body.user_ids), "max": 100},
+        )
 
     valid_uuids: list[UUID] = []
     for uid_str in body.user_ids:
@@ -230,7 +246,12 @@ def bulk_update_user_roles(
             continue
 
     if not valid_uuids:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No valid user IDs provided")
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="No valid user IDs provided",
+            context={"resource_type": "user"},
+        )
 
     # Admins must not demote themselves; silently skip their own id.
     safe_uuids = [u for u in valid_uuids if u != admin.id]
@@ -262,13 +283,28 @@ def update_user_role(
     db: Session = Depends(get_db),
 ) -> dict:
     if role not in VALID_ROLES:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid role")
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="Invalid role",
+            context={"resource_type": "user", "role": role, "valid_roles": list(VALID_ROLES)},
+        )
     uid = _parse_user_uuid(user_id)
     if uid == admin.id:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot change your own role")
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="Cannot change your own role",
+            context={"resource_type": "user", "user_id": str(uid)},
+        )
     user = db.query(User).filter(User.id == uid).first()
     if not user:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="User not found",
+            context={"resource_type": "user", "resource_id": str(uid)},
+        )
     old_role = user.role
     user.role = role
     db.commit()
@@ -296,11 +332,21 @@ def admin_delete_user(
     """
     uid = _parse_user_uuid(user_id)
     if uid == admin.id:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Admins cannot delete their own account")
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="Admins cannot delete their own account",
+            context={"resource_type": "user", "user_id": str(uid)},
+        )
 
     target = db.query(User).filter(User.id == uid).first()
     if not target:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="User not found",
+            context={"resource_type": "user", "resource_id": str(uid)},
+        )
 
     log_action(
         db,
@@ -318,9 +364,11 @@ def admin_delete_user(
     except Exception as exc:
         db.rollback()
         logger.exception("Admin-initiated deletion failed for user %s", uid)
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="User deletion failed. Please try again or contact support.",
+            message="User deletion failed. Please try again or contact support.",
+            context={"resource_type": "user", "user_id": str(uid)},
         ) from exc
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)

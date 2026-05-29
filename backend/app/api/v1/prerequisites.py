@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, Response, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_teacher, verify_course_owner
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.course import Course, CourseStatus
 from app.models.prerequisite import CoursePrerequisite
 from app.models.user import User, UserRole
@@ -56,13 +57,23 @@ def get_prerequisites(
     # treated as not found so deleted prerequisites don't leak either.
     course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
     if not course:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Course not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
 
     is_admin = current_user.role == UserRole.ADMIN.value
     is_owner = str(course.created_by) == str(current_user.id)
     is_published = getattr(course, "status", None) == CourseStatus.PUBLISHED
     if not (is_admin or is_owner or is_published):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Course not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
 
     prereqs = db.query(CoursePrerequisite).filter(CoursePrerequisite.course_id == course_id).all()
     prereq_ids = [p.prerequisite_course_id for p in prereqs]
@@ -99,9 +110,11 @@ def set_prerequisites(
     # Prevent self-cycle (A -> A) up front -- the multi-node check below
     # would catch this too, but the targeted error message is friendlier.
     if course_id in prereq_ids:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A course cannot be its own prerequisite",
+            message="A course cannot be its own prerequisite",
+            context={"resource_type": "prerequisite", "course_id": course_id},
         )
 
     if prereq_ids:
@@ -111,9 +124,11 @@ def set_prerequisites(
         existing_ids = {str(c.id) for c in existing_courses}
         for pid in prereq_ids:
             if pid not in existing_ids:
-                raise HTTPException(
+                raise equip_error(
+                    ErrorCode.RESOURCE_NOT_FOUND,
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Prerequisite course '{pid}' not found",
+                    message=f"Prerequisite course '{pid}' not found",
+                    context={"resource_type": "course", "resource_id": pid, "depending_on": course_id},
                 )
 
         # Multi-node cycle detection. Without this a teacher can wire
@@ -144,12 +159,18 @@ def set_prerequisites(
                     continue
                 visited.add(node)
                 if node == course_id:
-                    raise HTTPException(
+                    raise equip_error(
+                        ErrorCode.VALIDATION_FAILED,
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=(
+                        message=(
                             f"Adding '{pid}' as a prerequisite would create a "
                             "circular dependency with the course's existing prerequisite chain."
                         ),
+                        context={
+                            "resource_type": "prerequisite",
+                            "course_id": course_id,
+                            "prerequisite_course_id": pid,
+                        },
                     )
                 stack.extend(requires.get(node, set()) - visited)
 
