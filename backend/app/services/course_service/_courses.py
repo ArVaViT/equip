@@ -229,21 +229,18 @@ def permanently_delete_course(db: Session, course: Course) -> None:
     option_ids: list[str] = []
     assignment_ids: list[str] = []
     if chapter_ids:
-        block_ids = [str(bid) for bid, in db.query(ChapterBlock.id).filter(ChapterBlock.chapter_id.in_(chapter_ids))]
-        quiz_ids = [str(qid) for qid, in db.query(Quiz.id).filter(Quiz.chapter_id.in_(chapter_ids))]
-        assignment_ids = [
-            str(aid) for aid, in db.query(Assignment.id).filter(Assignment.chapter_id.in_(chapter_ids))
-        ]
+        block_ids = [str(bid) for (bid,) in db.query(ChapterBlock.id).filter(ChapterBlock.chapter_id.in_(chapter_ids))]
+        quiz_ids = [str(qid) for (qid,) in db.query(Quiz.id).filter(Quiz.chapter_id.in_(chapter_ids))]
+        assignment_ids = [str(aid) for (aid,) in db.query(Assignment.id).filter(Assignment.chapter_id.in_(chapter_ids))]
         if quiz_ids:
-            question_ids = [str(qid) for qid, in db.query(QuizQuestion.id).filter(QuizQuestion.quiz_id.in_(quiz_ids))]
+            question_ids = [str(qid) for (qid,) in db.query(QuizQuestion.id).filter(QuizQuestion.quiz_id.in_(quiz_ids))]
             if question_ids:
                 option_ids = [
-                    str(oid)
-                    for oid, in db.query(QuizOption.id).filter(QuizOption.question_id.in_(question_ids))
+                    str(oid) for (oid,) in db.query(QuizOption.id).filter(QuizOption.question_id.in_(question_ids))
                 ]
 
-    announcement_ids = [str(aid) for aid, in db.query(Announcement.id).filter(Announcement.course_id == course.id)]
-    event_ids = [str(eid) for eid, in db.query(CourseEvent.id).filter(CourseEvent.course_id == course.id)]
+    announcement_ids = [str(aid) for (aid,) in db.query(Announcement.id).filter(Announcement.course_id == course.id)]
+    event_ids = [str(eid) for (eid,) in db.query(CourseEvent.id).filter(CourseEvent.course_id == course.id)]
 
     def _sweep(entity_type: str, ids: list[str]) -> None:
         if not ids:
