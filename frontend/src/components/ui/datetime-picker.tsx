@@ -197,7 +197,10 @@ export function DateTimePicker({
           <span className="truncate text-xs sm:text-sm">{triggerLabel}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0" align="start">
+      <PopoverContent
+        className="w-[min(20rem,calc(100vw-2rem))] max-w-sm p-0"
+        align="start"
+      >
         <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
           <Button
             type="button"
