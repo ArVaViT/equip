@@ -171,6 +171,34 @@ class Module(Base):
 
 
 class Chapter(Base):
+    """Chapter belonging to a module.
+
+    Bilingual storage (Phase 5e/5g divergence): unlike ``courses.title`` and
+    ``modules.title`` — both dropped in Phase 5g and replaced with runtime
+    attributes hydrated from ``content_versions`` — ``chapters.title``
+    intentionally keeps its column. Every write path
+    (``create_chapter`` / ``update_chapter`` / ``_clone_cv_rows``) writes
+    the source-locale text to BOTH the column AND a ``content_versions``
+    row in the same transaction, so the invariant
+
+        ``chapter.title == cv.text WHERE entity_type='chapter' AND
+        field='title' AND locale=course.source_locale AND
+        superseded_by IS NULL``
+
+    holds at every commit boundary. Reading the column is therefore
+    equivalent to reading the source-locale cv row — used by editor /
+    readiness / progress paths that want source text directly without
+    paying for a cv lookup. Student-facing localized reads still go
+    through ``Localizer.build`` in
+    ``build_localized_course_response_with_tree`` (which queries the cv
+    overlay per-chapter) so the runtime attr is never used for non-source
+    locales.
+
+    The invariant is pinned by
+    ``tests/test_chapter_column_cv_invariant.py``. Any future code that
+    writes to one side without the other will break that test.
+    """
+
     __tablename__ = "chapters"
     __table_args__ = (
         Index("ix_chapters_module_id_order", "module_id", "order_index"),
