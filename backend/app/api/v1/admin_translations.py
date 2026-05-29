@@ -231,7 +231,7 @@ class QueueStatusResponse(BaseModel):
 )
 def get_queue_status(
     stuck_threshold_seconds: int = Query(300, ge=10, le=3600),
-    admin: User = Depends(require_admin),  # noqa: ARG001 — auth dependency
+    admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> QueueStatusResponse:
     """Snapshot of queue health. Used by the operator before flipping
