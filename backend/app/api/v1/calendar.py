@@ -72,6 +72,14 @@ def get_calendar_events(
     response: Response,
     # 36 = UUID length; matches the bound on every Create schema id.
     course_id: str | None = Query(None, max_length=36),
+    # Phase 5bn: defensive cap. A student enrolled in 10+ courses with
+    # years of module deadlines + assignment deadlines + course events
+    # could otherwise fan out into the thousands; on Vercel serverless
+    # the 10s function budget is the floor. 1000 covers any realistic
+    # workload (calendar UI typically shows < 100 events at a time);
+    # 2000 is the absolute ceiling. Applied AFTER the in-Python
+    # event_date sort so the cap drops the oldest items first.
+    limit: int = Query(1000, ge=1, le=2000),
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -284,7 +292,11 @@ def get_calendar_events(
         )
 
     events.sort(key=lambda e: e.event_date)
-    return events
+    # Phase 5bn: apply defensive cap AFTER sorting so the oldest events
+    # fall off the end first. Keeping the soonest ``limit`` events is the
+    # right shape for a calendar UI (upcoming deadlines matter more than
+    # ancient ones).
+    return events[-limit:]
 
 
 event_router = APIRouter(prefix="/courses", tags=["calendar"])

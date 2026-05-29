@@ -443,6 +443,10 @@
       [
         "course_id",
         "query"
+      ],
+      [
+        "limit",
+        "query"
       ]
     ],
     "responses": [
@@ -631,6 +635,14 @@
     "method": "GET",
     "path": "/api/v1/cohorts",
     "params": [
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ],
       [
         "status",
         "query"
