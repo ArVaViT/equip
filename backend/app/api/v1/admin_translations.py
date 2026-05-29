@@ -248,9 +248,7 @@ def get_queue_status(
 
     by_status: dict[str, int] = {
         row[0]: row[1]
-        for row in db.query(TranslationJob.status, func.count(TranslationJob.id))
-        .group_by(TranslationJob.status)
-        .all()
+        for row in db.query(TranslationJob.status, func.count(TranslationJob.id)).group_by(TranslationJob.status).all()
     }
 
     done_recent = (
