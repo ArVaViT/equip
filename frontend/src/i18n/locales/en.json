@@ -2,9 +2,13 @@
   "common": {
     "appName": "Equip",
     "cancel": "Cancel",
+    "confirm": "Confirm",
+    "ok": "OK",
     "continue": "Continue",
     "tryAgain": "Try again",
     "loading": "Loading...",
+    "loadingAccessible": "Loading",
+    "somethingWentWrong": "Something went wrong",
     "view": "View",
     "signIn": "Sign In",
     "signOut": "Sign Out",

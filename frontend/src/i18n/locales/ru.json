@@ -2,9 +2,13 @@
   "common": {
     "appName": "Equip",
     "cancel": "Отмена",
+    "confirm": "Подтвердить",
+    "ok": "ОК",
     "continue": "Продолжить",
     "tryAgain": "Повторить",
     "loading": "Загрузка...",
+    "loadingAccessible": "Загрузка",
+    "somethingWentWrong": "Что-то пошло не так",
     "view": "Открыть",
     "signIn": "Войти",
     "signOut": "Выйти",

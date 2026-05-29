@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next"
+
 interface PageSpinnerProps {
   /** Variants:
    *  - `page`: route-level fallback, centered with generous vertical padding
@@ -7,8 +9,9 @@ interface PageSpinnerProps {
   variant?: "page" | "screen" | "section" | "inline"
   /** Optional helper label shown under the spinner (screen variant only).
    *  Also used as the accessible name announced to screen readers — when
-   *  `label` is omitted we still announce a generic "Loading" so AT users
-   *  know a fetch is in progress instead of meeting an empty region. */
+   *  `label` is omitted we still announce a localized generic "Loading"
+   *  so AT users know a fetch is in progress instead of meeting an empty
+   *  region. */
   label?: string
 }
 
@@ -21,7 +24,8 @@ interface PageSpinnerProps {
 // rotating ring itself is decorative — meaning lives in the label, which
 // is always available to AT (via `aria-label`) even when it's not shown.
 export default function PageSpinner({ variant = "page", label }: PageSpinnerProps) {
-  const accessibleLabel = label ?? "Loading"
+  const { t } = useTranslation()
+  const accessibleLabel = label ?? t("common.loadingAccessible")
 
   if (variant === "screen") {
     return (
