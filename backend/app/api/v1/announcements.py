@@ -11,6 +11,7 @@ from app.api.dependencies import (
     require_teacher,
 )
 from app.core.database import get_db
+from app.core.i18n import t
 from app.core.sanitize import sanitize_string
 from app.models.announcement import Announcement
 from app.models.course import Course
@@ -36,21 +37,6 @@ router = APIRouter(prefix="/announcements", tags=["announcements"])
 
 
 _TRANSLATABLE_ANNOUNCEMENT_FIELDS = ("title", "content")
-
-
-# Phase 5v: backend-side i18n for notification text. Backend has no
-# real i18n catalog (strings live on the frontend) but the
-# announcement / certificate notification fan-out runs on the server
-# before the frontend can localize, so the two locale variants live
-# here. Add a new locale → add a branch.
-def _localize_announcement_notification(locale: str, *, safe_title: str, course_title: str) -> tuple[str, str]:
-    if locale == "ru":
-        return "Новое объявление", f"{safe_title} — в «{course_title}»"
-    return "New Announcement", f"{safe_title} — in «{course_title}»"
-
-
-def _generic_course_fallback(locale: str) -> str:
-    return "курс" if locale == "ru" else "a course"
 
 
 def _dual_write_announcement(
@@ -363,7 +349,7 @@ def create_announcement(
             normalized: LocaleCode = normalize_locale(locale)
             title_for_locale = (
                 fetch_course_titles_by_id(db, [course.id], display_locale=normalized).get(course.id) if course else None
-            ) or _generic_course_fallback(locale)
+            ) or t(locale, "fallback.course")
             # Resolve the announcement title at THIS recipient's locale.
             # Reconcile ran above so MT rows are present; the resolver
             # falls back to source-locale text if anything went wrong.
@@ -378,8 +364,12 @@ def create_announcement(
                 ).get((str(announcement.id), "title"))
                 or safe_title
             )
-            notif_title, notif_message = _localize_announcement_notification(
-                locale, safe_title=ann_title_for_locale, course_title=title_for_locale
+            notif_title = t(locale, "notif.new_announcement.title")
+            notif_message = t(
+                locale,
+                "notif.new_announcement.body",
+                title=ann_title_for_locale,
+                course=title_for_locale,
             )
             create_notifications_bulk(
                 db,
