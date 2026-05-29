@@ -6,7 +6,7 @@ Every route here attaches to the shared ``router`` in ``_router.py``.
 import uuid
 from uuid import UUID
 
-from fastapi import Depends, Header, HTTPException, Query, Response, status
+from fastapi import Depends, Header, Query, Response, status
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.dependencies import (
@@ -16,6 +16,7 @@ from app.api.dependencies import (
     verify_chapter_owner,
 )
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.course import Chapter, Course, Module
 from app.models.quiz import Quiz, QuizExtraAttempt, QuizOption, QuizQuestion
 from app.models.user import User
@@ -91,9 +92,11 @@ def get_chapter_quiz(
     ctx = resolve_chapter_locale_context(db, chapter_id=chapter_id, current_user=current_user)
     if source:
         if not ctx.is_owner_or_admin:
-            raise HTTPException(
+            raise equip_error(
+                ErrorCode.AUTH_FORBIDDEN,
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only the course owner or an admin can request source-language content",
+                message="Only the course owner or an admin can request source-language content",
+                context={"resource_type": "quiz", "chapter_id": chapter_id},
             )
         # Phase 5f: title / question_text / option_text columns dropped.
         # The student response is the same shape source==display surfaces,
@@ -135,7 +138,12 @@ def get_quiz_detail(
         .first()
     )
     if not quiz:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Quiz not found",
+            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
+        )
     verify_quiz_owner(db, quiz, teacher.id)
     return build_quiz_response_from_cv(
         db, quiz, source_locale=normalize_locale(_course_source_locale_for_chapter(db, quiz.chapter_id))
@@ -222,7 +230,12 @@ def create_quiz(
         .first()
     )
     if reloaded is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Quiz not found",
+            context={"resource_type": "quiz", "resource_id": str(quiz_id_val)},
+        )
     run_course_translation_pipeline_if_published(db, course_id)
     return build_quiz_response_from_cv(db, reloaded, source_locale=normalize_locale(fallback_locale))
 
@@ -236,7 +249,12 @@ def update_quiz(
 ):
     quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
     if not quiz:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Quiz not found",
+            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
+        )
     verify_quiz_owner(db, quiz, teacher.id)
 
     patch = data.model_dump(exclude_unset=True)
@@ -273,7 +291,12 @@ def update_quiz(
         .first()
     )
     if reloaded is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Quiz not found",
+            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
+        )
     reconcile_entity_if_course_published(db, "quiz", reloaded)
     return build_quiz_response_from_cv(db, reloaded, source_locale=normalize_locale(source_locale))
 
@@ -291,7 +314,12 @@ def delete_quiz(
         .first()
     )
     if not quiz:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Quiz not found",
+            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
+        )
     verify_quiz_owner(db, quiz, teacher.id)
     # Phase 5ad: cv has no FK back; the quiz tree (quiz → questions →
     # options) is hard-deleted via cascade on the entity tables but

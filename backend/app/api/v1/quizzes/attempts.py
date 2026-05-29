@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Query, status
+from fastapi import Depends, Query, status
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.dependencies import (
@@ -13,6 +13,7 @@ from app.api.dependencies import (
     verify_chapter_access,
 )
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.enrollment import Enrollment
 from app.models.quiz import Quiz, QuizAttempt, QuizQuestion
 from app.models.user import User
@@ -68,7 +69,12 @@ def submit_quiz(
     # legitimate submitters under load.
     pre_quiz = db.query(Quiz.chapter_id).filter(Quiz.id == quiz_id).first()
     if not pre_quiz:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Quiz not found",
+            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
+        )
     course_id = resolve_chapter_course_id(db, pre_quiz.chapter_id)
     enrolled = (
         db.query(Enrollment)
@@ -79,9 +85,11 @@ def submit_quiz(
         .first()
     )
     if not enrolled:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You must be enrolled in this course to submit quizzes",
+            message="You must be enrolled in this course to submit quizzes",
+            context={"resource_type": "quiz", "quiz_id": str(quiz_id), "course_id": course_id},
         )
 
     quiz = (
@@ -94,7 +102,12 @@ def submit_quiz(
     if not quiz:
         # Lost-race fallback: someone deleted the quiz between the
         # pre-check and the lock. Same 404 the original flow returned.
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Quiz not found",
+            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
+        )
 
     quiz_service.ensure_attempts_available(db, quiz, current_user.id)
 
@@ -156,7 +169,12 @@ def get_quiz_attempts(
 ):
     quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
     if not quiz:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Quiz not found",
+            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
+        )
     verify_quiz_owner(db, quiz, teacher.id)
     return (
         db.query(QuizAttempt)
@@ -179,7 +197,12 @@ def get_my_quiz_attempts(
 ):
     quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
     if not quiz:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Quiz not found",
+            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
+        )
     verify_chapter_access(db, quiz.chapter_id, current_user)
 
     return (

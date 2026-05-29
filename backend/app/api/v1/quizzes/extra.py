@@ -2,12 +2,13 @@
 
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Query, status
+from fastapi import Depends, Query, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import require_teacher, resolve_chapter_course_id
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.enrollment import Enrollment
 from app.models.quiz import Quiz, QuizExtraAttempt
 from app.models.user import User
@@ -26,7 +27,12 @@ def grant_extra_attempts(
 ):
     quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
     if not quiz:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Quiz not found",
+            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
+        )
     verify_quiz_owner(db, quiz, teacher.id)
 
     course_id = resolve_chapter_course_id(db, quiz.chapter_id)
@@ -39,9 +45,11 @@ def grant_extra_attempts(
         .first()
     )
     if not enrolled:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Student is not enrolled in this course",
+            message="Student is not enrolled in this course",
+            context={"resource_type": "enrollment", "quiz_id": str(quiz_id), "course_id": course_id},
         )
 
     existing = (
@@ -80,9 +88,11 @@ def grant_extra_attempts(
             .first()
         )
         if existing is None:
-            raise HTTPException(
+            raise equip_error(
+                ErrorCode.VALIDATION_FAILED,
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Could not grant extra attempts — please retry",
+                message="Could not grant extra attempts — please retry",
+                context={"resource_type": "quiz_extra_attempts", "quiz_id": str(quiz_id)},
             ) from None
         existing.extra_attempts = data.extra_attempts
         existing.granted_by = teacher.id
@@ -101,7 +111,12 @@ def list_extra_attempts(
 ):
     quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
     if not quiz:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Quiz not found",
+            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
+        )
     verify_quiz_owner(db, quiz, teacher.id)
 
     return (
