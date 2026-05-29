@@ -180,7 +180,7 @@ def get_module_detail(
         # of overlay locale. Read the earliest active human-origin row
         # per field; fall back to the earliest of any origin so a content
         # row written by an importer still surfaces.
-        from app.models.content_version import ContentVersion
+        from app.models.content_version import ContentVersion, ContentVersionStatus
 
         cv_rows = (
             db.query(ContentVersion.field, ContentVersion.text, ContentVersion.origin)
@@ -189,7 +189,7 @@ def get_module_detail(
                 ContentVersion.entity_id == str(module.id),
                 ContentVersion.field.in_(["title", "description"]),
                 ContentVersion.superseded_by.is_(None),
-                ContentVersion.status == "ok",
+                ContentVersion.status == ContentVersionStatus.OK,
             )
             .order_by(ContentVersion.created_at)
             .all()

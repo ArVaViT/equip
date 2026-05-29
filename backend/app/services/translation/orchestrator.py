@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.models.content_version import ContentVersion
+from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.schemas.locale import LOCALE_CODES, LocaleCode, normalize_locale
 from app.services.content_versions import record_mt_failure, record_mt_version
 from app.services.translation.hash import compute_source_hash
@@ -392,7 +392,7 @@ def _translate_one_field(
         .filter(
             ContentVersion.locale == target_locale,
             ContentVersion.source_hash == source_hash,
-            ContentVersion.status == "ok",
+            ContentVersion.status == ContentVersionStatus.OK,
             ContentVersion.superseded_by.is_(None),
             ~((ContentVersion.entity_type == entity_type) & (ContentVersion.entity_id == entity_id)),
         )

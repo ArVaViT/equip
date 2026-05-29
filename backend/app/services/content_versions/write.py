@@ -30,13 +30,14 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import text as _text
 
 from app.models.content_version import (
     CONTENT_VERSION_MAX_ATTEMPTS,
     ContentVersion,
+    ContentVersionStatus,
 )
 
 if TYPE_CHECKING:
@@ -134,7 +135,7 @@ def record_human_version(
         locale=locale,
         text=text,
         origin="human",
-        status="ok",
+        status=ContentVersionStatus.OK,
         authored_by=authored_by,
     )
     db.add(new_row)
@@ -211,7 +212,7 @@ def record_mt_version(
         locale=locale,
         text=text,
         origin="mt",
-        status="ok",
+        status=ContentVersionStatus.OK,
         source_locale=source_locale,
         source_hash=source_hash,
         source_version_id=source_version_id,
@@ -265,8 +266,10 @@ def record_mt_failure(
         return existing
     if existing is not None and existing.origin == "mt":
         existing.attempts += 1
-        new_status: Literal["failed", "failed_permanent"] = (
-            "failed_permanent" if existing.attempts >= CONTENT_VERSION_MAX_ATTEMPTS else "failed"
+        new_status = (
+            ContentVersionStatus.FAILED_PERMANENT
+            if existing.attempts >= CONTENT_VERSION_MAX_ATTEMPTS
+            else ContentVersionStatus.FAILED
         )
         existing.status = new_status
         existing.source_locale = source_locale
@@ -287,7 +290,7 @@ def record_mt_failure(
         # out non-ok rows so this is never read by students.
         text="",
         origin="mt",
-        status="failed",
+        status=ContentVersionStatus.FAILED,
         attempts=1,
         source_locale=source_locale,
         source_hash=source_hash,

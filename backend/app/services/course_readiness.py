@@ -275,7 +275,7 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
     all_block_ids = [str(b.id) for blocks in blocks_by_chapter.values() for b in blocks]
     blocks_with_cv_content: set[str] = set()
     if all_block_ids:
-        from app.models.content_version import ContentVersion
+        from app.models.content_version import ContentVersion, ContentVersionStatus
 
         # Filter out blank/whitespace text in Python — keeps the SQL
         # portable across SQLite (tests) and Postgres (prod). Pre-5e2
@@ -289,7 +289,7 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
                 ContentVersion.entity_id.in_(all_block_ids),
                 ContentVersion.field == "content",
                 ContentVersion.superseded_by.is_(None),
-                ContentVersion.status == "ok",
+                ContentVersion.status == ContentVersionStatus.OK,
             )
             .all()
             if text and text.strip()
@@ -318,7 +318,7 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
     # the per-chapter check can answer "has brief?" in O(1).
     assignments_with_cv_brief: set[str] = set()
     if assignments_by_chapter:
-        from app.models.content_version import ContentVersion
+        from app.models.content_version import ContentVersion, ContentVersionStatus
 
         assignment_ids = [str(a.id) for a in assignments_by_chapter.values()]
         assignments_with_cv_brief = {
@@ -329,7 +329,7 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
                 ContentVersion.entity_id.in_(assignment_ids),
                 ContentVersion.field == "description",
                 ContentVersion.superseded_by.is_(None),
-                ContentVersion.status == "ok",
+                ContentVersion.status == ContentVersionStatus.OK,
             )
             .all()
             if text and text.strip()

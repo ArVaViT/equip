@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload, selectinload
 
-from app.models.content_version import ContentVersion
+from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.course import Chapter, Course, CourseStatus, Module
 from app.services.translation.resolve_for_display import populate_module_texts, populate_spine_texts
 
@@ -87,7 +87,7 @@ def get_courses(
                 ContentVersion.entity_type == "course",
                 ContentVersion.field.in_(["title", "description"]),
                 ContentVersion.superseded_by.is_(None),
-                ContentVersion.status == "ok",
+                ContentVersion.status == ContentVersionStatus.OK,
                 ContentVersion.text.ilike(term),
             )
             .distinct()

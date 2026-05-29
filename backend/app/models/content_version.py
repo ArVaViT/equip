@@ -1,28 +1,10 @@
 """ORM mapping for ``content_versions`` — the single multi-locale text store.
 
-Replaces the dual-table model (entity text columns = source +
-``content_translations`` = overlay). Every ``(entity, field, locale)``
-is a first-class row with its own provenance, status, and version
-chain.
-
-Phase rollout
--------------
-
-Phase 0 (this file): table + model + Pydantic mirror. Zero behaviour
-change — nothing reads or writes from it yet.
-
-Phase 1: dual-writes from every entity write path + the MT
-pipeline. Reads still go to entity columns + ``content_translations``.
-
-Phase 2: dual-reads. Resolve tries this table first, falls back to
-the legacy stores. Mismatches logged.
-
-Phase 3: backfill existing data into here.
-
-Phase 4: switch reads exclusive.
-
-Phase 5: drop entity text columns + drop ``content_translations`` +
-delete dead overlay code.
+Every ``(entity, field, locale)`` is a first-class row with its own
+provenance, status, and version chain. Replaces the original
+dual-table model (entity text columns = source + the now-dropped
+``content_translations`` overlay) since Phase 5e-g. The legacy table
+itself was dropped in Phase 5aj.
 
 Design rules pinned by the schema
 ---------------------------------
@@ -40,10 +22,13 @@ Design rules pinned by the schema
   (constraint would be too restrictive — operators can override).
 * ``source_version_id`` lets MT rows point at the EXACT version they
   were translated from. When a human row is superseded, every MT
-  derivative is precisely invalidatable — no more blunderbuss
-  ``purge_course_translations``.
+  derivative is precisely invalidatable.
+* ``status`` is a typed enum (``ContentVersionStatus``) — every
+  Python comparison goes through the enum so a typo silently breaks
+  the build instead of silently mis-routing the orchestrator.
 """
 
+import enum
 import uuid
 from datetime import datetime
 from typing import Literal
@@ -83,7 +68,22 @@ ContentVersionField = Literal[
 ]
 
 ContentVersionOrigin = Literal["human", "mt"]
-ContentVersionStatus = Literal["ok", "failed", "failed_permanent"]
+
+
+class ContentVersionStatus(enum.StrEnum):
+    """Lifecycle of a single ``content_versions`` row.
+
+    The string values match the ``content_versions_status_check`` CHECK
+    constraint (see ``__table_args__`` below). Every Python comparison
+    against ``ContentVersion.status`` goes through the enum so a typo
+    surfaces at the type-check pass instead of at runtime as a quiet
+    "no rows matched".
+    """
+
+    OK = "ok"
+    FAILED = "failed"
+    FAILED_PERMANENT = "failed_permanent"
+
 
 # How many MT attempts we tolerate before promoting to
 # ``failed_permanent``. Centralised here so admin tooling that

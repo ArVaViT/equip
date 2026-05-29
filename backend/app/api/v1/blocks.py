@@ -8,7 +8,7 @@ from app.api.dependencies import get_current_user, require_teacher, verify_chapt
 from app.core.database import get_db
 from app.core.sanitize import sanitize_string
 from app.models.chapter_block import ChapterBlock
-from app.models.content_version import ContentVersion
+from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.course import Chapter, Course, Module
 from app.models.user import User
 from app.schemas.chapter_block import BlockCreate, BlockReorderItem, BlockResponse, BlockUpdate
@@ -40,7 +40,7 @@ def _block_to_response(db: Session, block: ChapterBlock) -> BlockResponse:
             ContentVersion.entity_id == str(block.id),
             ContentVersion.field == "content",
             ContentVersion.superseded_by.is_(None),
-            ContentVersion.status == "ok",
+            ContentVersion.status == ContentVersionStatus.OK,
         )
         .order_by(ContentVersion.created_at)
         .first()

@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import tuple_
 
-from app.models.content_version import ContentVersion
+from app.models.content_version import ContentVersion, ContentVersionStatus
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -59,7 +59,7 @@ def fetch_cv_text_bulk(
             ).in_(uniq),
             ContentVersion.locale == display_locale,
             ContentVersion.superseded_by.is_(None),
-            ContentVersion.status == "ok",
+            ContentVersion.status == ContentVersionStatus.OK,
         )
         .all()
     )
@@ -112,7 +112,7 @@ def fetch_cv_entity_texts_with_fallback(
             ContentVersion.entity_id.in_(entity_ids),
             ContentVersion.field.in_(fields),
             ContentVersion.superseded_by.is_(None),
-            ContentVersion.status == "ok",
+            ContentVersion.status == ContentVersionStatus.OK,
         )
         .order_by(ContentVersion.entity_id, ContentVersion.field, ContentVersion.created_at)
         .all()

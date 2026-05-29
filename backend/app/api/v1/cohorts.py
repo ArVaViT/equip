@@ -32,7 +32,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_optional_user, is_owner_or_admin, require_admin
 from app.core.database import get_db
 from app.models.cohort import Cohort, CohortCourse, CohortStatus
-from app.models.content_version import ContentVersion
+from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.course import Course, CourseStatus
 from app.models.enrollment import Enrollment
 from app.models.user import User
@@ -91,7 +91,7 @@ def _fetch_cohort_names(db: Session, cohort_ids: list[UUID]) -> dict[str, str]:
             ContentVersion.entity_id.in_([str(cid) for cid in cohort_ids]),
             ContentVersion.field == "title",
             ContentVersion.superseded_by.is_(None),
-            ContentVersion.status == "ok",
+            ContentVersion.status == ContentVersionStatus.OK,
         )
         .order_by(ContentVersion.entity_id, ContentVersion.created_at)
         .all()

@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session  # noqa: TC002
 from app.models.announcement import Announcement  # noqa: TC001
 from app.models.assignment import Assignment  # noqa: TC001
 from app.models.chapter_block import ChapterBlock  # noqa: TC001
-from app.models.content_version import ContentVersion
+from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.course import Chapter, Course, Module
 from app.models.course_event import CourseEvent  # noqa: TC001
 from app.models.quiz import Quiz  # noqa: TC001
@@ -754,7 +754,7 @@ def localize_chapter_block_rows(
             ContentVersion.entity_id.in_(block_ids),
             ContentVersion.field == "content",
             ContentVersion.superseded_by.is_(None),
-            ContentVersion.status == "ok",
+            ContentVersion.status == ContentVersionStatus.OK,
         )
         .order_by(ContentVersion.entity_id, ContentVersion.created_at)
         .all()
