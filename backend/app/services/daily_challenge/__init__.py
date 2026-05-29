@@ -9,6 +9,17 @@ The Daily Challenge architecture is documented in
 touching anything here.
 """
 
+from app.services.daily_challenge.admin import (
+    NotPublishableError,
+    OptionDraft,
+    QuestionRejectedError,
+    StatusTransitionError,
+    create_question,
+    promote_status,
+    publish_question,
+    reject_question,
+    schedule_for_date,
+)
 from app.services.daily_challenge.attempt import (
     DailyChallengeAttemptOutcome,
     InvalidOptionError,
@@ -26,10 +37,19 @@ __all__ = [
     "DailyChallengeAttemptOutcome",
     "InvalidOptionError",
     "NoScheduleError",
+    "NotPublishableError",
+    "OptionDraft",
+    "QuestionRejectedError",
     "QuestionTextBundle",
+    "StatusTransitionError",
     "apply_streak_for_attempt",
+    "create_question",
     "fetch_question_text_bundle",
     "get_today_question",
     "get_user_streak",
+    "promote_status",
+    "publish_question",
+    "reject_question",
+    "schedule_for_date",
     "submit_today_attempt",
 ]

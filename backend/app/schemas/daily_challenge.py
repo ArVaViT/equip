@@ -101,3 +101,91 @@ class DailyChallengeStreakResponse(BaseModel):
     current_streak: int = Field(..., ge=0)
     longest_streak: int = Field(..., ge=0)
     last_engaged_date: date | None
+
+
+# ---------------------------------------------------------------------------
+# Editorial / admin schemas (Sprint 3)
+# ---------------------------------------------------------------------------
+
+DailyChallengeStatus = Literal[
+    "draft",
+    "scripture_validated",
+    "doctrinally_reviewed",
+    "bilingually_reviewed",
+    "pilot_passed",
+    "published",
+    "archived",
+]
+
+
+class DailyChallengeOptionDraft(BaseModel):
+    """Author-supplied option for ``POST /admin/daily-challenge/questions``."""
+
+    text: str = Field(..., min_length=1, max_length=500)
+    is_correct: bool = False
+
+
+class DailyChallengeQuestionCreate(BaseModel):
+    """``POST /admin/daily-challenge/questions`` body."""
+
+    question_type: DailyChallengeQuestionType = "multiple_choice"
+    bible_book: str = Field(..., min_length=1, max_length=64)
+    bible_chapter: int = Field(..., gt=0)
+    bible_verse_from: int | None = Field(None, gt=0)
+    bible_verse_to: int | None = Field(None, gt=0)
+    question_text: str = Field(..., min_length=1, max_length=2000)
+    explanation: str | None = Field(None, max_length=4000)
+    category: str | None = Field(None, max_length=64)
+    options: list[DailyChallengeOptionDraft] = Field(..., min_length=2, max_length=6)
+
+
+class DailyChallengeOptionEditorial(BaseModel):
+    """Editorial view of an option — INCLUDES ``is_correct``."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    option_text: str
+    is_correct: bool
+    order_index: int = Field(..., ge=0, le=5)
+
+
+class DailyChallengeQuestionEditorial(BaseModel):
+    """Full editorial view of a question — answer key + status + audit."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    question_type: DailyChallengeQuestionType
+    status: DailyChallengeStatus
+    rejected: bool
+    rejection_reason: str | None
+    published_at: datetime | None
+    bible_book: str
+    bible_chapter: int
+    bible_verse_from: int | None
+    bible_verse_to: int | None
+    category: str | None
+    source_locale: str | None
+    question_text: str
+    explanation: str | None
+    options: list[DailyChallengeOptionEditorial]
+    created_at: datetime
+    updated_at: datetime
+
+
+class DailyChallengeRejectRequest(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=500)
+
+
+class DailyChallengeScheduleCreate(BaseModel):
+    challenge_date: date
+    question_id: UUID
+
+
+class DailyChallengeScheduleResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    challenge_date: date
+    question_id: UUID
+    scheduled_at: datetime
