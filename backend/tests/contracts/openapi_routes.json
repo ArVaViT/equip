@@ -9,6 +9,21 @@
     "body": false
   },
   {
+    "method": "GET",
+    "path": "/api/v1/admin/translations/queue-status",
+    "params": [
+      [
+        "stuck_threshold_seconds",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
     "method": "POST",
     "path": "/api/v1/admin/translations/reset-by-entity",
     "params": [],

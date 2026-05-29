@@ -1,10 +1,11 @@
 """Course catalog read endpoints (listings + detail views)."""
 
-from fastapi import Depends, Header, HTTPException, Query, Response, status
+from fastapi import Depends, Header, Query, Response
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_optional_user, is_owner_or_admin, require_teacher
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.course import Course, CourseStatus
 from app.models.user import User, UserRole
 from app.schemas.course import CourseResponse, CourseSummary, ModuleResponse
@@ -90,23 +91,29 @@ def get_course_detail(
     display_locale: LocaleCode = normalize_locale(accept_language)
     course = get_course(db, course_id)
     if not course:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Course '{course_id}' not found",
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=404,
+            message=f"Course '{course_id}' not found",
+            context={"resource_type": "course", "resource_id": course_id},
         )
     if course.status != CourseStatus.PUBLISHED and not is_owner_or_admin(course, current_user):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Course '{course_id}' not found",
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=404,
+            message=f"Course '{course_id}' not found",
+            context={"resource_type": "course", "resource_id": course_id},
         )
     if source:
         # Explicit "give me source columns" path for editor surfaces. Gated to
         # owner + admin: returning unredacted source text to a regular student
         # is an information leak (typos, draft notes, unreleased material).
         if not is_owner_or_admin(course, current_user):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only the course owner or an admin can request source-language content",
+            raise equip_error(
+                ErrorCode.AUTH_FORBIDDEN,
+                status_code=403,
+                message="Only the course owner or an admin can request source-language content",
+                context={"resource_type": "course", "resource_id": course_id},
             )
         response.headers["Vary"] = "Accept-Language"
         return CourseResponse.model_validate(course, from_attributes=True)
@@ -141,24 +148,30 @@ def get_module_detail(
         .first()
     )
     if not course_row:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Course '{course_id}' not found",
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=404,
+            message=f"Course '{course_id}' not found",
+            context={"resource_type": "course", "resource_id": course_id},
         )
     course_status, course_owner_id, course_source_locale = course_row
     if course_status != CourseStatus.PUBLISHED:
         if not current_user or (
             str(course_owner_id) != str(current_user.id) and current_user.role != UserRole.ADMIN.value
         ):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Course '{course_id}' not found",
+            raise equip_error(
+                ErrorCode.RESOURCE_NOT_FOUND,
+                status_code=404,
+                message=f"Course '{course_id}' not found",
+                context={"resource_type": "course", "resource_id": course_id},
             )
     module = get_module(db, course_id, module_id)
     if not module:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Module '{module_id}' not found in course '{course_id}'",
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=404,
+            message=f"Module '{module_id}' not found in course '{course_id}'",
+            context={"resource_type": "module", "resource_id": module_id, "course_id": course_id},
         )
 
     response.headers["Vary"] = "Accept-Language"
@@ -172,9 +185,11 @@ def get_module_detail(
     # survives once that implicit skip is removed (see PR #340).
     if source:
         if not (is_owner or is_admin):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only the course owner or an admin can request source-language content",
+            raise equip_error(
+                ErrorCode.AUTH_FORBIDDEN,
+                status_code=403,
+                message="Only the course owner or an admin can request source-language content",
+                context={"resource_type": "course", "resource_id": course_id},
             )
         # ``?source=1`` returns the teacher-authored source text regardless
         # of overlay locale. Read the earliest active human-origin row
