@@ -379,6 +379,17 @@ def reconcile_entity(
     if not fields:
         return OrchestratorReport()
 
+    # Phase 5g: courses.title lives in cv. The fresh Course returned by
+    # ``resolve_course`` is not guaranteed to have its runtime title
+    # attribute attached — and every entity's ``build_context`` lambda
+    # below reads ``c.title``. Without the hydration here, the lambda
+    # raises AttributeError, the outer ``reconcile_entity_if_course_published``
+    # try/except swallows it, and the entity silently stays
+    # untranslated. Hydrate once so every lambda below is safe.
+    from app.services.translation.resolve_for_display import populate_spine_texts
+
+    populate_spine_texts(db, [course])
+
     context: str | None = None
     if reg.build_context is not None:
         context = reg.build_context(entity, course)
