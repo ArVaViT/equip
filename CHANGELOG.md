@@ -18,8 +18,10 @@ will adopt it starting with v1.0.0.
   (course title/description, module, chapter title, chapter_block content,
   quiz / question / option, assignment, announcement, course_event,
   cohort name) is auto-translated to the other locale via the Google
-  Gemini API. Results cached in `public.content_translations` so
-  re-publish is free; `source_hash` short-circuits unchanged text.
+  Gemini API. Results stored in `public.content_versions` (the Phase 5e
+  series replaced the earlier `content_translations` cache table with a
+  polymorphic versioned store keyed on `(entity_type, entity_id, field,
+  locale)`); `source_hash` short-circuits unchanged text.
 - **Bidirectional, no "main" language** — a course's `source_locale`
   derives from the teacher's `preferred_locale` at create time. Author
   in EN, RU students get RU. Author in RU, EN students get EN. No UI
@@ -57,6 +59,98 @@ will adopt it starting with v1.0.0.
   thinking-token consumption — full Flash silently truncated long
   blocks).
 
+### Added — translation queue (Phase 5av-5ax + 5ba)
+
+- **`translation_jobs` queue table.** Publishing a course used to fan
+  out 100 Gemini calls synchronously in the POST handler; Vercel's
+  serverless function budget made this fragile. The queue moves it
+  out-of-band — publish enqueues ONE row (~1ms) instead of running
+  `translate_course_content` inline.
+- **Cron-driven worker.** Vercel Cron hits
+  `POST /api/v1/internal/translation-worker` every minute with
+  `Authorization: Bearer <TRANSLATION_WORKER_SECRET>`. Worker claims one
+  job via `SELECT ... FOR UPDATE SKIP LOCKED` (concurrent crons never
+  grab the same row), runs the orchestrator, marks done / failed /
+  failed_permanent (5-attempt budget), returns a small JSON payload the
+  driver logs.
+- **Operator surfaces.** `GET /api/v1/admin/translations/queue-status`
+  returns per-state counts + oldest-queued age + stuck-job summary.
+  `POST /api/v1/admin/translations/reset-by-ids` and `/reset-by-entity`
+  unstick `failed_permanent` rows when an operator needs to retry.
+- **RLS hardening (Phase 5bo).** The queue table now has RLS enabled
+  with a blanket-deny policy for `authenticated` + `anon` — service_role
+  bypasses RLS so the cron worker is unaffected. Closes the
+  "RLS by default" architectural invariant gap.
+
+### Added — typed error envelope (Phase 5ay-5bg)
+
+- **Structured error responses.** Every backend route raises
+  `equip_error(code, status_code, message, context)` instead of
+  `HTTPException`. Detail shape is now:
+
+  ```json
+  {
+    "detail": {
+      "code": "course.enrolment_closed",
+      "message": "Cohort enrollment period has ended",
+      "context": { "cohort_id": "...", "enrollment_end": "..." }
+    }
+  }
+  ```
+
+  ~140 raise sites migrated across every route module in `app/api/v1/`.
+- **Typed ErrorCode enum.** Backend `StrEnum` in `app/core/errors.py`
+  (`auth.required`, `auth.forbidden`, `resource.not_found`,
+  `course.not_published`, `course.already_enrolled`,
+  `course.enrolment_closed`, `translation.disabled`,
+  `translation.worker_unauthorized`,
+  `translation.worker_unconfigured`, `quiz.not_open`,
+  `quiz.attempts_exhausted`, `validation.failed`). Frontend mirror in
+  `frontend/src/lib/errorCode.ts` keeps the union typed end-to-end.
+- **Frontend `getErrorCode(err)`** returns the typed `ErrorCode` from
+  an Axios error, or `null` for legacy string-detail responses.
+  Backwards-compatible — routes still emitting the old shape work
+  unchanged.
+
+### Added — defensive infrastructure
+
+- **OpenAPI route snapshot test (Phase 5at).** CI now fails when the
+  set of routes / methods / parameters / responses changes without an
+  intentional snapshot update. Catches contract drift before it
+  reaches the frontend.
+- **Admin "reset failed-permanent" endpoints (Phase 5au).** Operator
+  can unstick translation-pipeline rows that hit the 5-attempt budget
+  due to a transient outage (vs a true permanent failure like a safety
+  filter).
+- **ContentVersionStatus StrEnum (Phase 5ar).** The `status` column on
+  `content_versions` now flows through a typed enum end-to-end
+  (Postgres CHECK ↔ SQLAlchemy ORM ↔ Pydantic schema ↔ frontend
+  type).
+- **Chapter column / cv invariant test (Phase 5bm).** Unlike Course
+  and Module, `chapters.title` deliberately keeps a real column dual-
+  written to the source-locale cv row in the same transaction.
+  `tests/test_chapter_column_cv_invariant.py` pins this invariant so a
+  future refactor that forgets one side breaks CI. Docstring on the
+  `Chapter` model documents the architectural decision.
+- **Defensive pagination caps (Phase 5bn).** `GET /calendar/events`
+  gained a `limit: Query(1000, ge=1, le=2000)` cap (oldest items drop
+  off first — upcoming-events shape for the calendar UI) so a power
+  user enrolled in 10+ courses with years of history can't blow the
+  Vercel function budget. `GET /cohorts` (admin) gained standard
+  `skip` + `limit: Query(100, ge=1, le=500)` pagination.
+
+### Added — frontend refactors
+
+- **Header.tsx component split (Phase 5bb).** The 322-line monolith
+  became 6 focused files (composer + 5 sub-components: NavLink,
+  ProfileMenu, NotificationBell wrapper, MobileSheet, role-aware nav).
+  No behaviour changes; refactor only.
+- **Localized fallback labels in shared UI primitives (Phase 5bj).**
+  The `ConfirmProvider` / `PromptProvider` in `alert-dialog.tsx` now
+  use `t("common.cancel")` / `t("common.confirm")` / `t("common.ok")`
+  for fallback labels. `ErrorState` default title localized.
+  `PageSpinner` default `aria-label` localized.
+
 ### Changed
 
 - **Default Bible-quote prompt rule reframed** — the LLM is no longer
@@ -69,6 +163,32 @@ will adopt it starting with v1.0.0.
   teacher-authored text into the requested locale (course title on a
   certificate, cohort name in the student-facing list, prerequisite
   course title in the catalog).
+- **Analytics endpoint now respects Accept-Language (Phase 5bi).**
+  `GET /analytics/course/{course_id}` declared `Vary: Accept-Language`
+  but called `populate_spine_texts(db, [course])` without a
+  display_locale, so Russian teachers always saw the source-locale
+  title regardless of their UI preference. Fixed by threading
+  `Accept-Language` through; `populate_spine_texts` gained an optional
+  `display_locale=None` kwarg that preserves source-locale behaviour
+  for all other callers by default.
+- **`Certificate.archived_course_title` archive (Phase 5bi).**
+  `permanently_delete_course` was reading `course.title` (a runtime
+  attribute that the caller may not have hydrated) when stamping the
+  archive snapshot onto certs before the FK nulls. Replaced with a
+  direct `fetch_cv_entity_texts_with_fallback` call so the service is
+  self-sufficient and certs always end up with a readable archived
+  name.
+
+### Fixed
+
+- **Audit-log titles after course delete (Phase 5bi).** `remove_course`
+  + `permanently_remove_course` stamped `course.title` into the audit
+  row without first calling `populate_spine_texts`, leaving the audit
+  log with `None` (or an `AttributeError` depending on session state).
+  Both routes now hydrate before logging.
+- **Hardcoded English fallbacks in shared UI primitives (Phase 5bj).**
+  Five strings localized: 4× `alert-dialog.tsx` fallback labels and
+  `ErrorState` default title.
 
 ## [0.1.0] - 2026-04-24
 
