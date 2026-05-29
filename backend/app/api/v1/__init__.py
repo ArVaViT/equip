@@ -13,6 +13,7 @@ from app.api.v1 import (
     courses,
     grades,
     health,
+    internal_translation_worker,
     notifications,
     prerequisites,
     progress,
@@ -45,3 +46,4 @@ api_router.include_router(calendar_mod.router)
 api_router.include_router(calendar_mod.event_router)
 api_router.include_router(verse_of_the_day.router)
 api_router.include_router(admin_translations.router)
+api_router.include_router(internal_translation_worker.router)
