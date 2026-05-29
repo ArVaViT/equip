@@ -101,6 +101,22 @@ class ErrorCode(enum.StrEnum):
     QUIZ_ATTEMPTS_EXHAUSTED = "quiz.attempts_exhausted"
     """Student has hit the per-quiz attempt cap."""
 
+    # ── Daily Challenge ─────────────────────────────────────────────────
+    DAILY_CHALLENGE_NOT_SCHEDULED = "daily_challenge.not_scheduled"
+    """No question is scheduled for the requested UTC date — usually
+    means today's question hasn't been published yet, or the editorial
+    team has gaps in the schedule. Frontend should hide the daily card
+    instead of showing an error toast."""
+
+    DAILY_CHALLENGE_ALREADY_ATTEMPTED = "daily_challenge.already_attempted"
+    """User already submitted a live attempt for the current UTC date.
+    Frontend re-renders the post-submit state from the returned
+    ``context.existing_attempt``."""
+
+    DAILY_CHALLENGE_INVALID_OPTION = "daily_challenge.invalid_option"
+    """The submitted ``selected_option_id`` does not belong to today's
+    question. Either a stale frontend cache or a tampered request."""
+
     # ── Validation ──────────────────────────────────────────────────────
     VALIDATION_FAILED = "validation.failed"
     """Request body / params failed semantic validation beyond the
