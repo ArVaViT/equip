@@ -13,10 +13,11 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, status
 
 from app.api.dependencies import assert_course_owner, require_teacher
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.schemas.course import CourseTranslationResponse
 from app.services.course_service import get_course
 from app.services.translation.course_pipeline import translate_course_content
@@ -66,9 +67,11 @@ def trigger_course_translation(
     """
     course = get_course(db, course_id)
     if not course:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Course '{course_id}' not found",
+            message=f"Course '{course_id}' not found",
+            context={"resource_type": "course", "resource_id": course_id},
         )
     assert_course_owner(course, teacher, allow_admin=True)
 

@@ -2,13 +2,14 @@
 
 from datetime import UTC, datetime
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, Request, status
 from pydantic import BaseModel
 from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.cohort import Cohort, CohortCourse
 from app.models.course import Course, CourseAccessMode, CourseStatus
 from app.models.enrollment import Enrollment
@@ -65,29 +66,50 @@ def _enforce_cohort_gates(db: Session, course_id: str, cohort_id: str, now: date
     """
     cohort = db.query(Cohort).filter(Cohort.id == cohort_id).with_for_update().first()
     if not cohort:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cohort not found",
+            message="Cohort not found",
+            context={"resource_type": "cohort", "resource_id": cohort_id},
         )
     junction = (
         db.query(CohortCourse).filter(CohortCourse.cohort_id == cohort.id, CohortCourse.course_id == course_id).first()
     )
     if junction is None:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cohort does not include this course",
+            message="Cohort does not include this course",
+            context={"resource_type": "cohort_course", "cohort_id": cohort_id, "course_id": course_id},
         )
     if cohort.status != "active":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cohort is not active")
-    if cohort.enrollment_start and now < cohort.enrollment_start:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.COURSE_ENROLMENT_CLOSED,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cohort enrollment has not started yet",
+            message="Cohort is not active",
+            context={"resource_type": "cohort", "cohort_id": cohort_id, "current_status": cohort.status},
+        )
+    if cohort.enrollment_start and now < cohort.enrollment_start:
+        raise equip_error(
+            ErrorCode.COURSE_ENROLMENT_CLOSED,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="Cohort enrollment has not started yet",
+            context={
+                "resource_type": "cohort",
+                "cohort_id": cohort_id,
+                "enrollment_start": cohort.enrollment_start.isoformat(),
+            },
         )
     if cohort.enrollment_end and now > cohort.enrollment_end:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.COURSE_ENROLMENT_CLOSED,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cohort enrollment period has ended",
+            message="Cohort enrollment period has ended",
+            context={
+                "resource_type": "cohort",
+                "cohort_id": cohort_id,
+                "enrollment_end": cohort.enrollment_end.isoformat(),
+            },
         )
     if cohort.max_students:
         current_count = (
@@ -97,9 +119,16 @@ def _enforce_cohort_gates(db: Session, course_id: str, cohort_id: str, now: date
             or 0
         )
         if current_count >= cohort.max_students:
-            raise HTTPException(
+            raise equip_error(
+                ErrorCode.COURSE_ENROLMENT_CLOSED,
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Cohort has reached maximum capacity",
+                message="Cohort has reached maximum capacity",
+                context={
+                    "resource_type": "cohort",
+                    "cohort_id": cohort_id,
+                    "max_students": cohort.max_students,
+                    "current_count": current_count,
+                },
             )
 
 
@@ -124,15 +153,19 @@ def enroll_course(
         .first()
     )
     if course_row is None:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Course '{course_id}' not found",
+            message=f"Course '{course_id}' not found",
+            context={"resource_type": "course", "resource_id": course_id},
         )
     course_status, access_mode, enrollment_start, enrollment_end = course_row
     if course_status != CourseStatus.PUBLISHED:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.COURSE_NOT_PUBLISHED,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cannot enroll in an unpublished course",
+            message="Cannot enroll in an unpublished course",
+            context={"resource_type": "course", "course_id": course_id, "current_status": course_status},
         )
     now = datetime.now(UTC)
 
@@ -148,20 +181,34 @@ def enroll_course(
         # entirely (ADR-010): admin must add the student directly via
         # the cohort endpoints or the admin-direct enrollment endpoint.
         if access_mode == CourseAccessMode.INSTITUTE:
-            raise HTTPException(
+            raise equip_error(
+                ErrorCode.COURSE_ENROLMENT_CLOSED,
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="This course is available only by invitation from the institute",
+                message="This course is available only by invitation from the institute",
+                context={"resource_type": "course", "course_id": course_id, "access_mode": "institute"},
             )
         # Public courses are gated by the course-level enrollment window.
         if enrollment_start and now < enrollment_start:
-            raise HTTPException(
+            raise equip_error(
+                ErrorCode.COURSE_ENROLMENT_CLOSED,
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Enrollment has not started yet",
+                message="Enrollment has not started yet",
+                context={
+                    "resource_type": "course",
+                    "course_id": course_id,
+                    "enrollment_start": enrollment_start.isoformat(),
+                },
             )
         if enrollment_end and now > enrollment_end:
-            raise HTTPException(
+            raise equip_error(
+                ErrorCode.COURSE_ENROLMENT_CLOSED,
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Enrollment period has ended",
+                message="Enrollment period has ended",
+                context={
+                    "resource_type": "course",
+                    "course_id": course_id,
+                    "enrollment_end": enrollment_end.isoformat(),
+                },
             )
 
     enrollment = enroll_user_in_course(db, current_user.id, course_id, cohort_id=cohort_id)

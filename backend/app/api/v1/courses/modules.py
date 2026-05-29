@@ -1,10 +1,11 @@
 """Module write endpoints nested under a course."""
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import require_teacher, verify_course_owner
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.course import Module
 from app.models.user import User
 from app.schemas.course import ModuleCreate, ModuleResponse, ModuleUpdate
@@ -47,9 +48,11 @@ def update_existing_module(
     verify_course_owner(db, course_id, teacher.id, allow_admin=False)
     module = get_module(db, course_id, module_id)
     if not module:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Module '{module_id}' not found in course '{course_id}'",
+            message=f"Module '{module_id}' not found in course '{course_id}'",
+            context={"resource_type": "module", "module_id": module_id, "course_id": course_id},
         )
     updated = update_module(db, module, data)
     reconcile_entity_if_course_published(db, "module", updated)
@@ -66,8 +69,10 @@ def remove_module(
     verify_course_owner(db, course_id, teacher.id, allow_admin=False)
     module = get_module(db, course_id, module_id)
     if not module:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Module '{module_id}' not found in course '{course_id}'",
+            message=f"Module '{module_id}' not found in course '{course_id}'",
+            context={"resource_type": "module", "module_id": module_id, "course_id": course_id},
         )
     delete_module(db, module)

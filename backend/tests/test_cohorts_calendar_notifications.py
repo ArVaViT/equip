@@ -1022,7 +1022,7 @@ class TestSoloEnrollmentAccessMode:
 
         resp = student_client.post(f"{COURSES_PREFIX}/{course.id}/enroll", json={})
         assert resp.status_code == 403
-        assert "invitation" in resp.json()["detail"].lower()
+        assert "invitation" in resp.json()["detail"]["message"].lower()
 
     def test_solo_enroll_on_public_course_succeeds(self, student_client: TestClient, db: Session, student):
         from ._cv_helpers import make_course_with_text
