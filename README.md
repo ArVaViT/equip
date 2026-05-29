@@ -100,8 +100,8 @@ technical expertise that volunteer-run organizations simply don't have.
 | **Teacher tools** | Gradebook, analytics dashboard, cohort management, calendar, announcements |
 | **Admin tools** | User management, bulk operations, CSV export, course cloning, soft delete |
 | **Design** | Editorial aesthetic, dark/light theme, responsive (360px+), OKLCH semantic tokens |
-| **Bilingual content (RU↔EN)** | Auto-translation of all teacher-authored text via Gemini, cached per (entity, field, locale); canonical KJV / Synodal substitution for Bible quotes; symmetric — author writes in their language, students read in theirs |
-| **Security** | RLS on every table, server-side HTML sanitization, CORS lockdown, audit pipeline |
+| **Bilingual content (RU↔EN)** | Auto-translation of all teacher-authored text via Gemini, stored per (entity, field, locale) in the `content_versions` table; canonical KJV / Synodal substitution for Bible quotes; symmetric — author writes in their language, students read in theirs; off-the-request-path via a cron-driven worker queue so publishing stays instant even on 100-block courses |
+| **Security** | RLS on every table, server-side HTML sanitization, CORS lockdown, audit pipeline, typed error envelope (`{code, message, context}`) for structured client + Sentry handling |
 
 ---
 
@@ -163,7 +163,7 @@ cd frontend && npm run dev                      # http://localhost:5173
 ### 4. Run tests
 
 ```bash
-cd backend  && python -m pytest tests/    # 540+ tests (SQLite in-memory)
+cd backend  && python -m pytest tests/    # 970+ tests (SQLite in-memory)
 cd frontend && npm run test:run           # Vitest + jsdom
 cd frontend && npm run i18n:check         # bilingual locale parity (en.json ↔ ru.json)
 ```
