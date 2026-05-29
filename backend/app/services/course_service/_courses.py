@@ -10,7 +10,11 @@ from sqlalchemy import select
 
 from app.models.certificate import Certificate
 from app.models.course import Chapter, Course, Module
-from app.services.content_versions import delete_entity_cv_rows, dual_write_entity_content
+from app.services.content_versions import (
+    delete_entity_cv_rows,
+    dual_write_entity_content,
+    fetch_cv_entity_texts_with_fallback,
+)
 from app.services.language_detection import detect_locale
 from app.services.translation.resolve_for_display import populate_spine_texts
 
@@ -199,11 +203,27 @@ def permanently_delete_course(db: Session, course: Course) -> None:
     # ``ON DELETE SET NULL`` nulls ``course_id`` and the title becomes
     # unrecoverable. Mirrors the trigger's `WHERE archived_course_title
     # IS NULL` clause so re-deletes don't overwrite an earlier snapshot.
+    #
+    # Phase 5bi: read the title from content_versions instead of the
+    # ``course.title`` runtime attribute. Callers that didn't go through
+    # ``populate_spine_texts`` (admin permanent-delete from a list view)
+    # otherwise stamp ``None`` and the certificate loses its title for
+    # good once the FK nulls.
+    cv_texts = fetch_cv_entity_texts_with_fallback(
+        db,
+        entity_type="course",
+        entity_ids=[course.id],
+        fields=["title"],
+        display_locale=course.source_locale or "en",
+        source_locale=course.source_locale or "en",
+        prefer_human=True,
+    )
+    archived_title = cv_texts.get((course.id, "title")) or ""
     db.query(Certificate).filter(
         Certificate.course_id == course.id,
         Certificate.archived_course_title.is_(None),
     ).update(
-        {Certificate.archived_course_title: course.title},
+        {Certificate.archived_course_title: archived_title},
         synchronize_session=False,
     )
     # Phase 5ad: content_versions has no FK back to entity tables

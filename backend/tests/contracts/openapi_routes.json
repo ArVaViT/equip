@@ -50,6 +50,10 @@
     "path": "/api/v1/analytics/course/{course_id}",
     "params": [
       [
+        "Accept-Language",
+        "header"
+      ],
+      [
         "course_id",
         "path"
       ],
