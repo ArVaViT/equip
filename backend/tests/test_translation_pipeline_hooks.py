@@ -3,6 +3,11 @@
 The hooks have one job: never propagate an error to the caller and
 never leave the SQLAlchemy session in a broken state, no matter what
 the orchestrator or provider does.
+
+Phase 5ax adds a second delivery mode behind
+``settings.TRANSLATION_QUEUE_ENABLED``: instead of calling
+``translate_course_content`` synchronously, the publish hook
+enqueues a job for the cron-driven worker. Both modes are tested.
 """
 
 from __future__ import annotations
@@ -16,6 +21,7 @@ from sqlalchemy.orm import Session  # noqa: TC002 — pytest needs runtime types
 
 from app.models.announcement import Announcement
 from app.models.course import Course
+from app.models.translation_job import TranslationJob, TranslationJobStatus
 from app.services.translation.pipeline_hooks import (
     reconcile_entity_if_course_published,
     run_course_translation_pipeline_if_published,
@@ -175,3 +181,91 @@ def test_course_pipeline_skips_draft(db: Session, teacher):
     ):
         run_course_translation_pipeline_if_published(db, course.id)
     translate.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Phase 5ax: queue-mode publish path
+# ---------------------------------------------------------------------------
+
+
+def test_queue_mode_enqueues_job_instead_of_calling_orchestrator(db: Session, teacher, monkeypatch):
+    """When TRANSLATION_QUEUE_ENABLED=True the hook MUST NOT call the
+    sync orchestrator. It enqueues one job and returns; the worker
+    cron drains it out-of-band."""
+    monkeypatch.setattr(
+        "app.services.translation.pipeline_hooks.settings.TRANSLATION_QUEUE_ENABLED",
+        True,
+        raising=False,
+    )
+    course = _seed_published_course(db, teacher.id)
+    with (
+        patch("app.services.translation.pipeline_hooks.translate_course_content") as orchestrator,
+        patch("app.services.translation.pipeline_hooks.is_translation_enabled", return_value=True),
+    ):
+        run_course_translation_pipeline_if_published(db, course.id)
+    orchestrator.assert_not_called()
+
+    queued = db.query(TranslationJob).filter_by(course_id=course.id).all()
+    assert len(queued) == 1
+    assert queued[0].status == TranslationJobStatus.QUEUED
+
+
+def test_queue_mode_is_idempotent_on_repeated_saves(db: Session, teacher, monkeypatch):
+    """A teacher mashing Save five times in a row must enqueue exactly
+    one pending job — the enqueue helper short-circuits on existing
+    queued/processing rows."""
+    monkeypatch.setattr(
+        "app.services.translation.pipeline_hooks.settings.TRANSLATION_QUEUE_ENABLED",
+        True,
+        raising=False,
+    )
+    course = _seed_published_course(db, teacher.id)
+    with patch("app.services.translation.pipeline_hooks.is_translation_enabled", return_value=True):
+        for _ in range(5):
+            run_course_translation_pipeline_if_published(db, course.id)
+
+    queued = db.query(TranslationJob).filter_by(course_id=course.id).all()
+    assert len(queued) == 1
+
+
+def test_queue_mode_no_op_on_draft_course(db: Session, teacher, monkeypatch):
+    """Draft course publish-hook fires during course building — must
+    not enqueue (no work to do) and must not blow up."""
+    monkeypatch.setattr(
+        "app.services.translation.pipeline_hooks.settings.TRANSLATION_QUEUE_ENABLED",
+        True,
+        raising=False,
+    )
+    course = Course(
+        id=f"hook-draft-{uuid.uuid4().hex[:8]}",
+        status="draft",
+        source_locale="ru",
+        created_by=teacher.id,
+    )
+    db.add(course)
+    db.commit()
+    with patch("app.services.translation.pipeline_hooks.is_translation_enabled", return_value=True):
+        run_course_translation_pipeline_if_published(db, course.id)
+    queued = db.query(TranslationJob).filter_by(course_id=course.id).count()
+    assert queued == 0
+
+
+def test_sync_mode_still_works_when_flag_is_off(db: Session, teacher, monkeypatch):
+    """The legacy sync path is the deploy-time default until the cron
+    worker is verified running. Make sure flipping the flag off keeps
+    the orchestrator wired."""
+    monkeypatch.setattr(
+        "app.services.translation.pipeline_hooks.settings.TRANSLATION_QUEUE_ENABLED",
+        False,
+        raising=False,
+    )
+    course = _seed_published_course(db, teacher.id)
+    with (
+        patch("app.services.translation.pipeline_hooks.translate_course_content") as orchestrator,
+        patch("app.services.translation.pipeline_hooks.is_translation_enabled", return_value=True),
+    ):
+        run_course_translation_pipeline_if_published(db, course.id)
+    orchestrator.assert_called_once()
+
+    queued = db.query(TranslationJob).filter_by(course_id=course.id).count()
+    assert queued == 0

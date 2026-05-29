@@ -24,10 +24,12 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.core.config import settings
 from app.models.course import Course, CourseStatus
 from app.services.course_service import get_course
 from app.services.translation.course_pipeline import translate_course_content
 from app.services.translation.protocol import TranslationError
+from app.services.translation.queue import enqueue_course_translation
 from app.services.translation.registry import REGISTRY, reconcile_entity
 from app.services.translation.service import is_translation_enabled
 
@@ -86,6 +88,18 @@ def _log_pipeline_failure(
 def run_course_translation_pipeline_if_published(db: Session, course_id: str) -> None:
     """Re-run the full course tree pipeline when a published course mutates.
 
+    Two delivery modes, selected by ``settings.TRANSLATION_QUEUE_ENABLED``:
+
+    * **Queue mode** (Phase 5ax+, the production path going forward):
+      enqueue ONE row in ``translation_jobs`` and return. The cron-
+      driven worker from Phase 5aw drains the queue out-of-band, so a
+      100-block course publish takes one INSERT instead of 100
+      synchronous Gemini round-trips.
+    * **Sync mode** (legacy): call ``translate_course_content``
+      directly inside the teacher's request. Kept behind the feature
+      flag so a deploy without the worker cron configured stays on the
+      working old path.
+
     No-ops when the course is a draft, Gemini is disabled, or the load
     fails. Errors never propagate — teachers must never lose a save
     because MT lagged. The session is rolled back on SQLAlchemy errors
@@ -101,6 +115,30 @@ def run_course_translation_pipeline_if_published(db: Session, course_id: str) ->
     course_status = db.query(Course.status).filter(Course.id == course_id, Course.deleted_at.is_(None)).scalar()
     if course_status != CourseStatus.PUBLISHED:
         return
+
+    if settings.TRANSLATION_QUEUE_ENABLED:
+        # Queue-mode publish path. ``enqueue_course_translation`` is
+        # idempotent on pending jobs so a teacher mashing Save doesn't
+        # multiply the work the worker has to do.
+        try:
+            enqueue_course_translation(db, course_id)
+        except SQLAlchemyError as exc:
+            _safe_rollback(db)
+            _log_pipeline_failure(
+                scope="course-pipeline-enqueue",
+                entity_type="course",
+                entity_id=course_id,
+                exc=exc,
+            )
+        except Exception as exc:
+            _log_pipeline_failure(
+                scope="course-pipeline-enqueue",
+                entity_type="course",
+                entity_id=course_id,
+                exc=exc,
+            )
+        return
+
     course = get_course(db, course_id)
     if not course:
         return

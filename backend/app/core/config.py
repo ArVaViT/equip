@@ -103,6 +103,17 @@ class Settings(BaseSettings):
         default=None,
         description="Shared secret the cron driver presents to drain the translation queue",
     )
+    # Feature flag that swaps the publish path from sync orchestrator
+    # calls (one Gemini call per cv field, up to 100+ for a chapter-
+    # heavy course, all inside the teacher's request) to a queue
+    # enqueue (one DB insert). The cron driver from Phase 5aw drains
+    # the queue out-of-band. Off by default so a deploy without the
+    # cron configured stays on the legacy sync path; flip ON after
+    # confirming the worker is running.
+    TRANSLATION_QUEUE_ENABLED: bool = Field(
+        default=False,
+        description="Use the queue-based publish path instead of sync orchestrator calls",
+    )
 
     @model_validator(mode="after")
     def load_alternative_env_vars(self):
