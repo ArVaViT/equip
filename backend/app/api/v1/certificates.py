@@ -159,6 +159,8 @@ def list_my_certificates(
 def _enrich_pending_certs(
     db: Session,
     certs: list[Certificate],
+    *,
+    display_locale: LocaleCode = "en",
 ) -> list[CertificateResponse]:
     """Resolve the contextual labels (student name/email, course title,
     teacher approver name) for a list of pending Certificate rows.
@@ -167,6 +169,12 @@ def _enrich_pending_certs(
     both student and approver in a single IN-list) and one ``courses``
     query. Empty input short-circuits so the common no-pending case
     stays free.
+
+    ``display_locale`` (Phase 5ak): the viewer's preferred locale. A
+    Russian-speaking teacher / admin opening the pending-cert dashboard
+    sees course titles in Russian; an English-speaking one sees
+    English. Defaults to ``"en"`` for the rare caller that doesn't
+    plumb Accept-Language through.
     """
     if not certs:
         return []
@@ -179,9 +187,7 @@ def _enrich_pending_certs(
             db.query(User.id, User.full_name, User.email).filter(User.id.in_(student_ids | approver_ids)).all()
         ):
             user_meta[str(uid)] = (full_name, email)
-    # Pending-cert dashboard reads source-language titles for the moderator
-    # view (display==source). `display_locale="en"` because admins are EN.
-    course_titles = fetch_course_titles_by_id(db, sorted(course_ids), display_locale="en")
+    course_titles = fetch_course_titles_by_id(db, sorted(course_ids), display_locale=display_locale)
 
     out: list[CertificateResponse] = []
     for cert in certs:
@@ -205,8 +211,10 @@ def _enrich_pending_certs(
 
 @router.get("/pending", response_model=list[CertificateResponse])
 def list_pending_certificates(
+    response: Response,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> list[CertificateResponse]:
@@ -214,7 +222,8 @@ def list_pending_certificates(
 
     Returns enriched rows (student name + email, course title) so the
     teacher dashboard's pending-certs panel can render context without
-    a per-row follow-up call.
+    a per-row follow-up call. Course titles localize to the teacher's
+    Accept-Language (Phase 5ak — was hardcoded EN before).
     """
     certs = (
         db.query(Certificate)
@@ -229,13 +238,16 @@ def list_pending_certificates(
         .limit(limit)
         .all()
     )
-    return _enrich_pending_certs(db, certs)
+    response.headers["Vary"] = "Accept-Language"
+    return _enrich_pending_certs(db, certs, display_locale=normalize_locale(accept_language))
 
 
 @router.get("/admin/pending", response_model=list[CertificateResponse])
 def list_admin_pending_certificates(
+    response: Response,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> list[CertificateResponse]:
@@ -244,6 +256,8 @@ def list_admin_pending_certificates(
     Returns enriched rows (student name + email, course title, name of
     the teacher who signed off) so the admin overview panel can render
     a real \"who / what / when\" context without per-row follow-up calls.
+    Course titles localize to the admin's Accept-Language (Phase 5ak —
+    was hardcoded EN before).
     """
     certs = (
         db.query(Certificate)
@@ -253,7 +267,8 @@ def list_admin_pending_certificates(
         .limit(limit)
         .all()
     )
-    return _enrich_pending_certs(db, certs)
+    response.headers["Vary"] = "Accept-Language"
+    return _enrich_pending_certs(db, certs, display_locale=normalize_locale(accept_language))
 
 
 @router.put(
@@ -343,11 +358,13 @@ def reject_certificate(
     },
 )
 def verify_certificate(
+    response: Response,
     # Real certificate numbers are ~17 chars (``CERT-`` + 12 hex). The
     # column is ``String(50)``; cap the path param at 50 so a crafted
     # multi-KB URL is rejected by FastAPI before the public unauth
     # rate-limit bucket and the DB scan run.
     certificate_number: str = Path(..., max_length=50),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     db: Session = Depends(get_db),
 ) -> CertificateVerifyResponse:
     """Unauthenticated certificate verification.
@@ -374,9 +391,17 @@ def verify_certificate(
     # ``permanently_delete_course`` per Phase 5g, was a Postgres trigger
     # before) when the source course has been deleted — the credential
     # still has to verify even after the underlying course is gone.
+    # Phase 5ak: course title is resolved at the verifier's locale (an
+    # English-speaking employer hits ``Accept-Language: en`` and sees
+    # "Genesis Overview"; a Russian student verifying their own cert
+    # gets "Обзор Бытия"). Previously hardcoded ``display_locale="en"``,
+    # which broke verification for the recipient's own locale and for
+    # any non-English employer.
+    display_locale = normalize_locale(accept_language)
+    response.headers["Vary"] = "Accept-Language"
     course_title: str | None = None
     if course is not None:
-        course_title = fetch_course_titles_by_id(db, [course.id], display_locale="en").get(course.id) or None
+        course_title = fetch_course_titles_by_id(db, [course.id], display_locale=display_locale).get(course.id) or None
     if course_title is None:
         course_title = cert.archived_course_title
     return CertificateVerifyResponse(
