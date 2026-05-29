@@ -504,7 +504,12 @@ def test_reorder_blocks_unknown_id_returns_400(client: TestClient, db: Session):
         ],
     )
     assert resp.status_code == 400
-    assert bogus in resp.json()["detail"]
+    detail = resp.json()["detail"]
+    # Phase 5bc: typed error envelope. The bogus id surfaces in both
+    # the human ``message`` and the machine-readable ``context.missing_ids``.
+    assert detail["code"] == "validation.failed"
+    assert bogus in detail["message"]
+    assert bogus in detail["context"]["missing_ids"]
     # And the existing block's order MUST NOT have shifted: the whole
     # reorder is rejected, not partially applied.
     db.refresh(b1)

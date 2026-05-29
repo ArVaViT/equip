@@ -396,7 +396,7 @@ class TestCohortStateMachine:
         cohort = _seed_cohort_with_course(db, status="completed")
         resp = admin_client.patch(f"{COHORT_PREFIX}/{cohort.id}", json={"status": "active"})
         assert resp.status_code == 400
-        assert "completed" in resp.json()["detail"].lower()
+        assert "completed" in resp.json()["detail"]["message"].lower()
 
     def test_cannot_revert_completed_to_upcoming(self, admin_client: TestClient, db: Session):
         _seed_course(db)
@@ -633,7 +633,7 @@ class TestAddStudent:
 
         resp = admin_client.post(f"{COHORT_PREFIX}/{cohort.id}/students", json={"user_id": str(STUDENT_ID)})
         assert resp.status_code == 403
-        assert "capacity" in resp.json()["detail"].lower()
+        assert "capacity" in resp.json()["detail"]["message"].lower()
 
 
 class TestRemoveStudent:

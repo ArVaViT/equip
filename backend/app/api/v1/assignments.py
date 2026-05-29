@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -13,6 +13,7 @@ from app.api.dependencies import (
     verify_chapter_owner,
 )
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Course, Module
@@ -101,9 +102,11 @@ def list_chapter_assignments(
     ctx = resolve_chapter_locale_context(db, chapter_id=chapter_id, current_user=current_user)
     if source:
         if not ctx.is_owner_or_admin:
-            raise HTTPException(
+            raise equip_error(
+                ErrorCode.AUTH_FORBIDDEN,
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only the course owner or an admin can request source-language content",
+                message="Only the course owner or an admin can request source-language content",
+                context={"resource_type": "assignment", "chapter_id": chapter_id},
             )
         # Phase 5e3: title + description columns dropped — re-use the
         # localize path with display==source so the cv lookup populates
@@ -167,7 +170,12 @@ def update_assignment(
 ):
     assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
     if not assignment:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Assignment not found",
+            context={"resource_type": "assignment", "resource_id": str(assignment_id)},
+        )
     verify_chapter_owner(db, assignment.chapter_id, teacher)
 
     patch = data.model_dump(exclude_unset=True)
@@ -207,7 +215,12 @@ def delete_assignment(
 ):
     assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
     if not assignment:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Assignment not found",
+            context={"resource_type": "assignment", "resource_id": str(assignment_id)},
+        )
     verify_chapter_owner(db, assignment.chapter_id, teacher)
     # Phase 5ad: cv has no FK back; drop its rows explicitly.
     delete_entity_cv_rows(db, entity_type="assignment", entity_id=assignment.id)
@@ -245,16 +258,23 @@ def submit_assignment(
     """
     assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
     if not assignment:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Assignment not found",
+            context={"resource_type": "assignment", "resource_id": str(assignment_id)},
+        )
 
     course_id = resolve_chapter_course_id(db, assignment.chapter_id)
     enrolled = (
         db.query(Enrollment).filter(Enrollment.user_id == current_user.id, Enrollment.course_id == course_id).first()
     )
     if not enrolled:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You must be enrolled in this course to submit assignments",
+            message="You must be enrolled in this course to submit assignments",
+            context={"resource_type": "assignment", "assignment_id": str(assignment_id), "course_id": course_id},
         )
 
     submission = AssignmentSubmission(
@@ -322,7 +342,12 @@ def list_submissions(
 ):
     assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
     if not assignment:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Assignment not found",
+            context={"resource_type": "assignment", "resource_id": str(assignment_id)},
+        )
     verify_chapter_owner(db, assignment.chapter_id, teacher)
     return (
         db.query(AssignmentSubmission)
@@ -344,14 +369,24 @@ def list_my_submissions(
 ):
     assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
     if not assignment:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Assignment not found",
+            context={"resource_type": "assignment", "resource_id": str(assignment_id)},
+        )
 
     course_id = resolve_chapter_course_id(db, assignment.chapter_id)
     enrolled = (
         db.query(Enrollment).filter(Enrollment.user_id == current_user.id, Enrollment.course_id == course_id).first()
     )
     if not enrolled and current_user.role not in (UserRole.TEACHER.value, UserRole.ADMIN.value):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enrolled in this course")
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="Not enrolled in this course",
+            context={"resource_type": "assignment", "assignment_id": str(assignment_id), "course_id": course_id},
+        )
 
     # Same pagination envelope as the teacher-facing list above so
     # unbounded resubmission history cannot balloon the response.
@@ -378,16 +413,33 @@ def grade_submission(
 ):
     submission = db.query(AssignmentSubmission).filter(AssignmentSubmission.id == submission_id).first()
     if not submission:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Submission not found",
+            context={"resource_type": "submission", "resource_id": str(submission_id)},
+        )
     assignment = db.query(Assignment).filter(Assignment.id == submission.assignment_id).first()
     if not assignment:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Assignment not found",
+            context={"resource_type": "assignment", "resource_id": str(submission.assignment_id)},
+        )
     verify_chapter_owner(db, assignment.chapter_id, teacher)
 
     if data.grade > assignment.max_score:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=f"Grade ({data.grade}) cannot exceed max score ({assignment.max_score})",
+            message=f"Grade ({data.grade}) cannot exceed max score ({assignment.max_score})",
+            context={
+                "resource_type": "submission",
+                "submission_id": str(submission_id),
+                "grade": data.grade,
+                "max_score": assignment.max_score,
+            },
         )
 
     submission.grade = data.grade

@@ -24,13 +24,14 @@ the top-level admin UI.
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_optional_user, is_owner_or_admin, require_admin
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.cohort import Cohort, CohortCourse, CohortStatus
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.course import Course, CourseStatus
@@ -178,14 +179,24 @@ def _serialize(db: Session, cohort: Cohort) -> CohortResponse:
 def _get_or_404(db: Session, cohort_id: UUID) -> Cohort:
     cohort = db.query(Cohort).filter(Cohort.id == cohort_id).first()
     if not cohort:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cohort not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Cohort not found",
+            context={"resource_type": "cohort", "resource_id": str(cohort_id)},
+        )
     return cohort
 
 
 def _course_or_404(db: Session, course_id: str) -> Course:
     course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
     if not course:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Course not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
     return course
 
 
@@ -272,9 +283,11 @@ def update_cohort(
     # endpoint where ``completed`` is the legitimate target.
     patch = data.model_dump(exclude_unset=True)
     if "status" in patch and cohort.status == CohortStatus.COMPLETED and patch["status"] != CohortStatus.COMPLETED:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot reopen a completed cohort",
+            message="Cannot reopen a completed cohort",
+            context={"resource_type": "cohort", "resource_id": str(cohort_id), "current_status": cohort.status},
         )
     # Snapshot the fields the admin is actually changing for the audit
     # row. Comparing pre/post values means a no-op PATCH (same fields,
@@ -353,9 +366,11 @@ def complete_cohort(
 ) -> CohortResponse:
     cohort = _get_or_404(db, cohort_id)
     if cohort.status == CohortStatus.COMPLETED:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cohort is already completed",
+            message="Cohort is already completed",
+            context={"resource_type": "cohort", "resource_id": str(cohort_id)},
         )
     cohort.status = CohortStatus.COMPLETED
     db.commit()
@@ -473,9 +488,11 @@ def attach_course(
             .first()
         )
         if still_linked is None:
-            raise HTTPException(
+            raise equip_error(
+                ErrorCode.VALIDATION_FAILED,
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Could not attach course due to a conflict; please retry.",
+                message="Could not attach course due to a conflict; please retry.",
+                context={"resource_type": "cohort_course", "cohort_id": str(cohort_id), "course_id": course.id},
             ) from None
     db.refresh(cohort)
     log_action(
@@ -618,9 +635,11 @@ def add_student(
     rows for every course already attached to this cohort. Idempotent —
     re-adding the same student is a no-op."""
     if not body.user_id and not body.email:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Provide user_id or email",
+            message="Provide user_id or email",
+            context={"resource_type": "cohort_student", "missing_fields": ["user_id", "email"]},
         )
 
     # FOR UPDATE on the Cohort row so the capacity check below and the
@@ -630,7 +649,12 @@ def add_student(
     # SQLite (test path) treats ``with_for_update`` as a no-op.
     cohort = db.query(Cohort).filter(Cohort.id == cohort_id).with_for_update().first()
     if not cohort:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cohort not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Cohort not found",
+            context={"resource_type": "cohort", "resource_id": str(cohort_id)},
+        )
 
     if body.user_id:
         user = db.query(User).filter(User.id == body.user_id).first()
@@ -642,9 +666,11 @@ def add_student(
         email_lower = (body.email or "").lower()
         user = db.query(User).filter(func.lower(User.email) == email_lower).first()
     if user is None:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found — ask them to sign up first",
+            message="User not found — ask them to sign up first",
+            context={"resource_type": "user"},
         )
 
     # One bounded query: every course this user is already enrolled in
@@ -661,9 +687,16 @@ def add_student(
     if cohort.max_students:
         current_count = _student_count(db, cohort.id)
         if not already_enrolled_courses and current_count >= cohort.max_students:
-            raise HTTPException(
+            raise equip_error(
+                ErrorCode.VALIDATION_FAILED,
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Cohort has reached maximum capacity",
+                message="Cohort has reached maximum capacity",
+                context={
+                    "resource_type": "cohort",
+                    "resource_id": str(cohort_id),
+                    "max_students": cohort.max_students,
+                    "current_count": current_count,
+                },
             )
 
     course_ids = _course_ids_for_cohort(db, cohort.id)
@@ -715,9 +748,11 @@ def add_student(
             .first()
         )
         if landed is None and missing_course_ids:
-            raise HTTPException(
+            raise equip_error(
+                ErrorCode.VALIDATION_FAILED,
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Could not add student due to a conflict; please retry.",
+                message="Could not add student due to a conflict; please retry.",
+                context={"resource_type": "cohort_student", "cohort_id": str(cohort_id)},
             ) from None
     log_action(
         db,
@@ -782,9 +817,21 @@ def list_cohorts_for_course(
     response.headers["Vary"] = "Accept-Language"
     course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
     if not course:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Course not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
     if course.status != CourseStatus.PUBLISHED and not is_owner_or_admin(course, current_user):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+        # Unpublished course leaks 404 to non-owners by design so the
+        # response is indistinguishable from a missing course id.
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Course not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
 
     cohorts = (
         db.query(Cohort)
