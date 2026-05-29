@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Header, Query, Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -6,6 +6,7 @@ from app.api.dependencies import require_teacher, verify_course_owner
 from app.core.database import get_db
 from app.models.enrollment import Enrollment
 from app.models.user import User
+from app.schemas.locale import normalize_locale
 from app.services.translation.resolve_for_display import populate_spine_texts
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -25,6 +26,7 @@ def get_course_analytics(
     response: Response,
     skip: int = Query(0, ge=0),
     limit: int = Query(500, ge=1, le=2000),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
@@ -39,7 +41,11 @@ def get_course_analytics(
     """
     course = verify_course_owner(db, course_id, teacher)
     # Phase 5g: courses.title moved to cv — hydrate before serialising.
-    populate_spine_texts(db, [course])
+    # Phase 5bi: respect Accept-Language so a Russian teacher viewing an
+    # EN-source course sees the localized title (matching the editor
+    # overlay) instead of always the source. Tier order:
+    # display_locale → source_locale → any-locale.
+    populate_spine_texts(db, [course], display_locale=normalize_locale(accept_language))
     # Course title is locale-resolved via populate_spine_texts; downstream
     # caches must not conflate the EN and RU variants of the same payload.
     response.headers["Vary"] = "Accept-Language"

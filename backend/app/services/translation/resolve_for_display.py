@@ -137,12 +137,21 @@ def build_localized_course_summaries(
 def populate_spine_texts(
     db: Session,
     courses: list[Course],
+    *,
+    display_locale: LocaleCode | None = None,
 ) -> None:
     """Phase 5g: ``courses.title|description`` and ``modules.title|description``
     columns dropped. Hydrate each course (and every loaded module/chapter
     title via the module list) with runtime attributes pulled from cv,
     so downstream serialization that reads ``course.title`` / ``module.title``
     keeps working unchanged.
+
+    By default the hydration uses each course's declared ``source_locale``
+    as the display_locale — that's the right choice for write paths (audit
+    logs, archive snapshots, clone) and for editor surfaces that want
+    source text. Pass ``display_locale`` explicitly when the caller wants
+    a locale overlay (e.g. ``Accept-Language`` on a student or
+    teacher-analytics read).
 
     Each entity's source_locale fallback is applied per-entity (a course
     declared ``source_locale='ru'`` falls back to its RU row when the
@@ -166,7 +175,7 @@ def populate_spine_texts(
                 entity_type="course",
                 entity_ids=ids,
                 fields=["title", "description"],
-                display_locale=src_locale,
+                display_locale=display_locale or src_locale,
                 source_locale=src_locale,
             )
         )
@@ -204,7 +213,7 @@ def populate_spine_texts(
             entity_type="module",
             entity_ids=[str(m.id) for m in mods],
             fields=["title", "description"],
-            display_locale=src_locale,
+            display_locale=display_locale or src_locale,
             source_locale=src_locale,
         )
         for m in mods:
