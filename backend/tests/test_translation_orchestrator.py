@@ -290,7 +290,24 @@ def test_translate_course_metadata_retranslates_when_source_changes(db: Session)
 
     translate_course_metadata(db, course, provider=provider)
 
-    course.title = "Acts of the Apostles — Revised"
+    # Phase 5g: ``courses.title`` column is gone. The orchestrator reads
+    # the source text from ``course.title`` (a runtime attribute) but
+    # the source-of-truth for "did the human edit?" lives in cv. Record
+    # a new human version FIRST so the change persists, then sync the
+    # runtime attribute so the orchestrator picks the new text up on its
+    # next pass. Previously this test only mutated the runtime attr,
+    # which silently masked any future regression that started reading
+    # the source from cv directly.
+    new_title = "Acts of the Apostles — Revised"
+    record_human_version(
+        db,
+        entity_type="course",
+        entity_id=course.id,
+        field="title",
+        locale=course.source_locale,
+        text=new_title,
+    )
+    course.title = new_title
     db.commit()
 
     report = translate_course_metadata(db, course, provider=provider)
