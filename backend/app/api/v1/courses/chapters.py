@@ -1,10 +1,11 @@
 """Chapter write endpoints nested under ``/courses/{id}/modules/{id}``."""
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import require_teacher, verify_course_owner
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.core.sanitize import sanitize_string
 from app.models.course import Chapter
 from app.models.user import User
@@ -36,9 +37,11 @@ def create_new_chapter(
     verify_course_owner(db, course_id, teacher.id, allow_admin=False)
     module = get_module(db, course_id, module_id)
     if not module:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Module '{module_id}' not found in course '{course_id}'",
+            message=f"Module '{module_id}' not found in course '{course_id}'",
+            context={"resource_type": "module", "module_id": module_id, "course_id": course_id},
         )
     if data.title:
         data.title = sanitize_string(data.title)
@@ -62,9 +65,16 @@ def update_existing_chapter(
     verify_course_owner(db, course_id, teacher.id, allow_admin=False)
     chapter = get_chapter(db, course_id, module_id, chapter_id)
     if not chapter:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Chapter '{chapter_id}' not found in module '{module_id}'",
+            message=f"Chapter '{chapter_id}' not found in module '{module_id}'",
+            context={
+                "resource_type": "chapter",
+                "chapter_id": chapter_id,
+                "module_id": module_id,
+                "course_id": course_id,
+            },
         )
     if data.title:
         data.title = sanitize_string(data.title)
@@ -87,8 +97,15 @@ def remove_chapter(
     verify_course_owner(db, course_id, teacher.id, allow_admin=False)
     chapter = get_chapter(db, course_id, module_id, chapter_id)
     if not chapter:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Chapter '{chapter_id}' not found in module '{module_id}'",
+            message=f"Chapter '{chapter_id}' not found in module '{module_id}'",
+            context={
+                "resource_type": "chapter",
+                "chapter_id": chapter_id,
+                "module_id": module_id,
+                "course_id": course_id,
+            },
         )
     delete_chapter(db, chapter)

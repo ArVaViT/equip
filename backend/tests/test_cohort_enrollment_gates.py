@@ -188,7 +188,7 @@ class TestCohortGateCohortLookup:
         with pytest.raises(HTTPException) as exc:
             _enforce_cohort_gates(db, "test-course-1", str(uuid.uuid4()), NOW_NAIVE)
         assert exc.value.status_code == 404
-        assert exc.value.detail == "Cohort not found"
+        assert exc.value.detail["message"] == "Cohort not found"
 
     def test_cohort_not_linked_to_course_raises_404(self, db: Session, teacher):
         _seed_public_course(db, course_id="course-a")
@@ -197,7 +197,7 @@ class TestCohortGateCohortLookup:
         with pytest.raises(HTTPException) as exc:
             _enforce_cohort_gates(db, "course-b", str(cohort.id), NOW_NAIVE)
         assert exc.value.status_code == 404
-        assert exc.value.detail == "Cohort does not include this course"
+        assert exc.value.detail["message"] == "Cohort does not include this course"
 
 
 class TestCohortGateStatus:
@@ -207,7 +207,7 @@ class TestCohortGateStatus:
         with pytest.raises(HTTPException) as exc:
             _enforce_cohort_gates(db, "test-course-1", str(cohort.id), NOW_NAIVE)
         assert exc.value.status_code == 403
-        assert exc.value.detail == "Cohort is not active"
+        assert exc.value.detail["message"] == "Cohort is not active"
 
     def test_completed_cohort_raises_403(self, db: Session, teacher):
         _seed_public_course(db)
@@ -215,7 +215,7 @@ class TestCohortGateStatus:
         with pytest.raises(HTTPException) as exc:
             _enforce_cohort_gates(db, "test-course-1", str(cohort.id), NOW_NAIVE)
         assert exc.value.status_code == 403
-        assert exc.value.detail == "Cohort is not active"
+        assert exc.value.detail["message"] == "Cohort is not active"
 
 
 class TestCohortGateWindow:
@@ -225,7 +225,7 @@ class TestCohortGateWindow:
         with pytest.raises(HTTPException) as exc:
             _enforce_cohort_gates(db, "test-course-1", str(cohort.id), NOW_NAIVE)
         assert exc.value.status_code == 403
-        assert "not started yet" in exc.value.detail.lower()
+        assert "not started yet" in exc.value.detail["message"].lower()
 
     def test_window_already_closed_raises_403(self, db: Session, teacher):
         _seed_public_course(db)
@@ -233,7 +233,7 @@ class TestCohortGateWindow:
         with pytest.raises(HTTPException) as exc:
             _enforce_cohort_gates(db, "test-course-1", str(cohort.id), NOW_NAIVE)
         assert exc.value.status_code == 403
-        assert "ended" in exc.value.detail.lower()
+        assert "ended" in exc.value.detail["message"].lower()
 
     def test_window_open_now_passes_silently(self, db: Session, teacher):
         _seed_public_course(db)
@@ -255,7 +255,7 @@ class TestCohortGateCapacity:
         with pytest.raises(HTTPException) as exc:
             _enforce_cohort_gates(db, "test-course-1", str(cohort.id), NOW_NAIVE)
         assert exc.value.status_code == 403
-        assert "capacity" in exc.value.detail.lower()
+        assert "capacity" in exc.value.detail["message"].lower()
 
     def test_capacity_counts_distinct_users_only(self, db: Session, teacher, student):
         """Two enrollment rows for the same user (one cohort, multiple
@@ -304,7 +304,8 @@ class TestEnrollRouteCohortStatusPath:
             json={"cohort_id": str(cohort.id)},
         )
         assert resp.status_code == 403
-        assert resp.json()["detail"] == "Cohort is not active"
+        assert resp.json()["detail"]["message"] == "Cohort is not active"
+        assert resp.json()["detail"]["code"] == "course.enrolment_closed"
 
     def test_nonexistent_cohort_returns_404(self, student_client: TestClient, db: Session, student):
         _seed_public_course(db)
@@ -313,7 +314,8 @@ class TestEnrollRouteCohortStatusPath:
             json={"cohort_id": str(uuid.uuid4())},
         )
         assert resp.status_code == 404
-        assert resp.json()["detail"] == "Cohort not found"
+        assert resp.json()["detail"]["message"] == "Cohort not found"
+        assert resp.json()["detail"]["code"] == "resource.not_found"
 
     def test_no_partial_enrollment_when_gate_fails(self, student_client: TestClient, db: Session, student):
         """Negative-path side-effect check: a failed gate must not leak
@@ -409,7 +411,7 @@ class TestSoloEnrollRouteStatusGates:
             json={},
         )
         assert resp.status_code == 403
-        assert "unpublished" in resp.json()["detail"].lower()
+        assert "unpublished" in resp.json()["detail"]["message"].lower()
 
     def test_solo_enroll_on_archived_course_returns_403(self, student_client: TestClient, db: Session, student):
         _seed_public_course(db, status="archived")
@@ -418,7 +420,7 @@ class TestSoloEnrollRouteStatusGates:
             json={},
         )
         assert resp.status_code == 403
-        assert "unpublished" in resp.json()["detail"].lower()
+        assert "unpublished" in resp.json()["detail"]["message"].lower()
 
     def test_solo_enroll_on_nonexistent_course_returns_404(self, student_client: TestClient, db: Session, student):
         resp = student_client.post(
@@ -426,4 +428,4 @@ class TestSoloEnrollRouteStatusGates:
             json={},
         )
         assert resp.status_code == 404
-        assert "not found" in resp.json()["detail"].lower()
+        assert "not found" in resp.json()["detail"]["message"].lower()

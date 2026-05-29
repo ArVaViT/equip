@@ -2,11 +2,12 @@
 
 import logging
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import assert_course_owner, require_teacher
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.core.sanitize import sanitize_string
 from app.models.course import Course, CourseStatus
 from app.models.user import User, UserRole
@@ -59,9 +60,11 @@ def update_existing_course(
 ) -> Course:
     course = get_course(db, course_id)
     if not course:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Course '{course_id}' not found",
+            message=f"Course '{course_id}' not found",
+            context={"resource_type": "course", "resource_id": course_id},
         )
     assert_course_owner(course, teacher, allow_admin=False)
     # ``access_mode`` (public vs institute) controls solo-enrollment
@@ -69,9 +72,11 @@ def update_existing_course(
     # teacher promote their institute course to public, bypassing the
     # invitation-only gate. Restrict the field to admins.
     if data.access_mode is not None and teacher.role != UserRole.ADMIN.value:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can change course access mode",
+            message="Only admins can change course access mode",
+            context={"resource_type": "course", "course_id": course_id, "field": "access_mode"},
         )
     if data.title:
         data.title = sanitize_string(data.title)
@@ -114,9 +119,11 @@ def remove_course(
 ) -> None:
     course = get_course(db, course_id)
     if not course:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Course '{course_id}' not found",
+            message=f"Course '{course_id}' not found",
+            context={"resource_type": "course", "resource_id": course_id},
         )
     assert_course_owner(course, teacher, allow_admin=False)
     log_action(db, teacher.id, "delete", "course", course_id, details={"title": course.title}, request=request)
@@ -135,23 +142,29 @@ def clone_existing_course(
 ) -> Course:
     course = get_course(db, course_id)
     if not course:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Course '{course_id}' not found",
+            message=f"Course '{course_id}' not found",
+            context={"resource_type": "course", "resource_id": course_id},
         )
     # Drafts are only visible (and therefore clonable) to their owner,
     # regardless of admin status.
     is_owner = str(course.created_by) == str(teacher.id)
     if course.status != CourseStatus.PUBLISHED and not is_owner:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only the owner can clone a draft course",
+            message="Only the owner can clone a draft course",
+            context={"resource_type": "course", "course_id": course_id},
         )
     new_course = clone_course(db, course_id, str(teacher.id))
     if not new_course:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to clone course",
+            message="Failed to clone course",
+            context={"resource_type": "course", "course_id": course_id},
         )
     return new_course
 
@@ -165,9 +178,19 @@ def restore_deleted_course(
 ) -> Course:
     course = get_course(db, course_id, include_deleted=True)
     if not course:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Course not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
     if course.deleted_at is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Course is not deleted")
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="Course is not deleted",
+            context={"resource_type": "course", "course_id": course_id},
+        )
     assert_course_owner(course, teacher, allow_admin=False)
     result = restore_course(db, course)
     log_action(db, teacher.id, "restore", "course", course_id, request=request)
@@ -183,12 +206,19 @@ def permanently_remove_course(
 ) -> None:
     course = get_course(db, course_id, include_deleted=True)
     if not course:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Course not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
     assert_course_owner(course, teacher, allow_admin=False)
     if course.deleted_at is None:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Course must be soft-deleted before permanent deletion",
+            message="Course must be soft-deleted before permanent deletion",
+            context={"resource_type": "course", "course_id": course_id},
         )
     log_action(
         db,
