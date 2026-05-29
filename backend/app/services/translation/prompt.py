@@ -25,11 +25,11 @@ from __future__ import annotations
 import secrets
 from typing import TYPE_CHECKING
 
+from app.schemas.locale import LOCALE_DISPLAY_NAMES
+
 if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
     from app.services.translation.protocol import ContentKind
-
-_LANGUAGE_NAMES: dict[LocaleCode, str] = {"ru": "Russian", "en": "English"}
 
 
 def build_system_prompt(*, source_locale: LocaleCode, target_locale: LocaleCode) -> str:
@@ -39,8 +39,8 @@ def build_system_prompt(*, source_locale: LocaleCode, target_locale: LocaleCode)
     cleanly in code review. (The user-prompt fence is randomized — see
     ``build_user_prompt`` — which is where prompt-injection defence lives.)
     """
-    src = _LANGUAGE_NAMES[source_locale]
-    tgt = _LANGUAGE_NAMES[target_locale]
+    src = LOCALE_DISPLAY_NAMES[source_locale]
+    tgt = LOCALE_DISPLAY_NAMES[target_locale]
 
     return (
         f"You are a professional translator working from {src} to {tgt} for a "

@@ -1,13 +1,30 @@
 """Locale primitives shared across schemas, services, and the translation
 pipeline.
 
-Adding a new language is a three-step change:
-    1. Append the code to ``LOCALE_CODES`` and the ``LocaleCode`` literal.
-    2. Update the ``CHECK`` constraints in the related Supabase migrations
-       (``profiles.preferred_locale``, ``courses.source_locale``,
-       ``content_translations.locale``).
-    3. Ship a frontend bundle (``frontend/src/i18n/locales/<code>.json``)
-       and add it to ``i18n.ts``.
+Adding a new language is a **five-step change** — all in this order:
+
+  1. Append the code to ``LOCALE_CODES`` and the ``LocaleCode`` literal
+     below. Add the human-readable name to ``LOCALE_DISPLAY_NAMES``
+     (used by the translation prompt builder to address the model in
+     a natural form: "translate from Russian to French").
+  2. Add a key block for the new locale to
+     ``app/core/i18n.py::_CATALOG`` with translations for every key.
+     The ``test_i18n_catalog_covers_every_locale`` test would fail CI
+     otherwise — so this step is enforced, not optional.
+  3. Ship a Supabase migration that extends every ``CHECK`` constraint
+     covering a locale column:
+     * ``profiles.preferred_locale``
+     * ``courses.source_locale``
+     * ``content_versions.locale``  (the post Phase 5c store; the
+       legacy ``content_translations`` table was dropped in 5aj)
+  4. Add the frontend bundle ``frontend/src/i18n/locales/<code>.json``
+     with full key coverage (the ``keyCoverage`` test enforces parity).
+     Wire it into ``frontend/src/i18n/config.ts::SUPPORTED_LOCALES``.
+  5. Re-translate existing content into the new locale by triggering
+     ``POST /api/v1/courses/{id}/translate`` on every published course
+     (or wait for the next teacher save — the orchestrator will run
+     the new target automatically because ``other_locales`` derives
+     from ``LOCALE_CODES``).
 """
 
 from __future__ import annotations
@@ -18,6 +35,16 @@ LocaleCode = Literal["ru", "en"]
 
 LOCALE_CODES: Final[tuple[LocaleCode, ...]] = ("ru", "en")
 DEFAULT_LOCALE: Final[LocaleCode] = "ru"
+
+# Human-readable language names used by the translation prompt builder
+# to address the upstream model ("translate from Russian to English").
+# Keep keys aligned with ``LOCALE_CODES`` — the
+# ``test_locale_display_names_cover_every_locale`` regression test
+# catches drift.
+LOCALE_DISPLAY_NAMES: Final[dict[LocaleCode, str]] = {
+    "ru": "Russian",
+    "en": "English",
+}
 
 
 def normalize_locale(value: str | None, *, fallback: LocaleCode = DEFAULT_LOCALE) -> LocaleCode:
