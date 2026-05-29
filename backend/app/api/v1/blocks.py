@@ -13,7 +13,7 @@ from app.models.course import Chapter, Course, Module
 from app.models.user import User
 from app.schemas.chapter_block import BlockCreate, BlockReorderItem, BlockResponse, BlockUpdate
 from app.schemas.locale import LocaleCode, normalize_locale
-from app.services.content_versions import dual_write_entity_content
+from app.services.content_versions import delete_entity_cv_rows, dual_write_entity_content
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import (
     localize_chapter_block_rows,
@@ -263,10 +263,13 @@ def delete_block(
     if not block:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Block not found")
     verify_chapter_owner(db, block.chapter_id, teacher)
+    # Phase 5ad: content_versions has no FK back to chapter_blocks
+    # (polymorphic entity_id), so the in-comment claim that "rows
+    # cascade out via FK" is wrong post-Phase-5e2. Drop the cv rows
+    # explicitly to keep prod orphan-free.
+    delete_entity_cv_rows(db, entity_type="chapter_block", entity_id=block.id)
     db.delete(block)
     db.commit()
-    # No reconcile after delete — the entity is gone; translation rows
-    # cascade out via FK ON DELETE on content_translations.
 
 
 @router.put("/chapter/{chapter_id}/reorder", response_model=list[BlockResponse])

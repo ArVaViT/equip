@@ -22,7 +22,11 @@ from app.schemas.announcement import (
     AnnouncementUpdate,
 )
 from app.schemas.locale import LocaleCode, normalize_locale
-from app.services.content_versions import dual_write_entity_content, fetch_cv_entity_texts_with_fallback
+from app.services.content_versions import (
+    delete_entity_cv_rows,
+    dual_write_entity_content,
+    fetch_cv_entity_texts_with_fallback,
+)
 from app.services.notification_service import create_notifications_bulk
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import localize_announcement_rows
@@ -459,5 +463,9 @@ def delete_announcement(
             detail="You can only delete your own announcements",
         )
 
+    # Phase 5ad: cv has no FK to announcements (polymorphic entity_id);
+    # nothing for Postgres to cascade. Drop the rows explicitly so a
+    # hard-delete doesn't leave orphan cv text behind.
+    delete_entity_cv_rows(db, entity_type="announcement", entity_id=announcement.id)
     db.delete(announcement)
     db.commit()

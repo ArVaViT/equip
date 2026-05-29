@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from app.models.certificate import Certificate
 from app.models.course import Chapter, Course, Module
-from app.services.content_versions import dual_write_entity_content
+from app.services.content_versions import delete_entity_cv_rows, dual_write_entity_content
 from app.services.language_detection import detect_locale
 from app.services.translation.resolve_for_display import populate_spine_texts
 
@@ -206,5 +206,66 @@ def permanently_delete_course(db: Session, course: Course) -> None:
         {Certificate.archived_course_title: course.title},
         synchronize_session=False,
     )
+    # Phase 5ad: content_versions has no FK back to entity tables
+    # (polymorphic entity_id), so the entity-table CASCADE that takes
+    # out modules / chapters / blocks / quizzes / assignments /
+    # announcements / events when the course row goes will NOT touch
+    # cv. Walk the tree and drop cv rows for every translatable entity
+    # before the entity row is deleted. Bulk-DELETE per entity_type so
+    # the sweep stays O(few queries) regardless of course size.
+    from app.models.announcement import Announcement
+    from app.models.assignment import Assignment
+    from app.models.chapter_block import ChapterBlock
+    from app.models.content_version import ContentVersion
+    from app.models.course_event import CourseEvent
+    from app.models.quiz import Quiz, QuizOption, QuizQuestion
+
+    chapter_ids = [str(ch.id) for m in course.modules for ch in m.chapters]
+    module_ids = [str(m.id) for m in course.modules]
+
+    block_ids: list[str] = []
+    quiz_ids: list[str] = []
+    question_ids: list[str] = []
+    option_ids: list[str] = []
+    assignment_ids: list[str] = []
+    if chapter_ids:
+        block_ids = [str(bid) for bid, in db.query(ChapterBlock.id).filter(ChapterBlock.chapter_id.in_(chapter_ids))]
+        quiz_ids = [str(qid) for qid, in db.query(Quiz.id).filter(Quiz.chapter_id.in_(chapter_ids))]
+        assignment_ids = [
+            str(aid) for aid, in db.query(Assignment.id).filter(Assignment.chapter_id.in_(chapter_ids))
+        ]
+        if quiz_ids:
+            question_ids = [str(qid) for qid, in db.query(QuizQuestion.id).filter(QuizQuestion.quiz_id.in_(quiz_ids))]
+            if question_ids:
+                option_ids = [
+                    str(oid)
+                    for oid, in db.query(QuizOption.id).filter(QuizOption.question_id.in_(question_ids))
+                ]
+
+    announcement_ids = [str(aid) for aid, in db.query(Announcement.id).filter(Announcement.course_id == course.id)]
+    event_ids = [str(eid) for eid, in db.query(CourseEvent.id).filter(CourseEvent.course_id == course.id)]
+
+    def _sweep(entity_type: str, ids: list[str]) -> None:
+        if not ids:
+            return
+        db.query(ContentVersion).filter(
+            ContentVersion.entity_type == entity_type,
+            ContentVersion.entity_id.in_(ids),
+        ).delete(synchronize_session=False)
+
+    _sweep("course", [course.id])
+    _sweep("module", module_ids)
+    _sweep("chapter", chapter_ids)
+    _sweep("chapter_block", block_ids)
+    _sweep("quiz", quiz_ids)
+    _sweep("quiz_question", question_ids)
+    _sweep("quiz_option", option_ids)
+    _sweep("assignment", assignment_ids)
+    _sweep("announcement", announcement_ids)
+    _sweep("course_event", event_ids)
+    # Silence the unused-import warning when the explicit helper isn't
+    # invoked above — the bulk _sweep path is the actual hot path.
+    _ = delete_entity_cv_rows
+
     db.delete(course)
     db.commit()

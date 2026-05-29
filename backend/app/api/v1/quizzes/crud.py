@@ -26,7 +26,7 @@ from app.schemas.quiz import (
     QuizStudentResponse,
     QuizUpdate,
 )
-from app.services.content_versions import dual_write_entity_content
+from app.services.content_versions import delete_entity_cv_rows, dual_write_entity_content
 from app.services.translation.pipeline_hooks import (
     reconcile_entity_if_course_published,
     run_course_translation_pipeline_if_published,
@@ -284,10 +284,23 @@ def delete_quiz(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
-    quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
+    quiz = (
+        db.query(Quiz)
+        .options(selectinload(Quiz.questions).selectinload(QuizQuestion.options))
+        .filter(Quiz.id == quiz_id)
+        .first()
+    )
     if not quiz:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
     verify_quiz_owner(db, quiz, teacher.id)
+    # Phase 5ad: cv has no FK back; the quiz tree (quiz → questions →
+    # options) is hard-deleted via cascade on the entity tables but
+    # nothing cascades on cv. Drop the cv rows for every level
+    # before db.delete(quiz) so the cascade leaves zero orphans.
+    for question in quiz.questions:
+        for option in question.options:
+            delete_entity_cv_rows(db, entity_type="quiz_option", entity_id=option.id)
+        delete_entity_cv_rows(db, entity_type="quiz_question", entity_id=question.id)
+    delete_entity_cv_rows(db, entity_type="quiz", entity_id=quiz.id)
     db.delete(quiz)
     db.commit()
-    # No reconcile after delete — content_translations rows cascade via FK.
