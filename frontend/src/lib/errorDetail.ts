@@ -26,6 +26,17 @@ export function getErrorDetail(err: unknown, fallback = "An error occurred"): st
   if (isAxiosError(err)) {
     const detail: unknown = err.response?.data?.detail
     if (typeof detail === "string") return detail
+    // Phase 5ay: structured envelope ``{code, message, context}``.
+    // Render ``message`` for the toast; ``getErrorCode`` extracts
+    // the typed code for switch logic separately.
+    if (
+      detail &&
+      typeof detail === "object" &&
+      "message" in detail &&
+      typeof (detail as { message: unknown }).message === "string"
+    ) {
+      return (detail as { message: string }).message
+    }
     if (detail) {
       const pretty = safeStringify(detail)
       if (pretty) return pretty
