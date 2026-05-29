@@ -1,11 +1,12 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.certificate import Certificate
 from app.models.course import Course, CourseStatus
 from app.models.review import CourseReview
@@ -24,7 +25,12 @@ def list_course_reviews(
 ):
     course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
     if not course or course.status != CourseStatus.PUBLISHED:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Course not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
     return (
         db.query(CourseReview)
         .filter(CourseReview.course_id == course_id)
@@ -53,9 +59,11 @@ def create_or_update_review(
         .first()
     )
     if not cert:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You must complete the course and receive a certificate before reviewing",
+            message="You must complete the course and receive a certificate before reviewing",
+            context={"resource_type": "review", "course_id": course_id},
         )
 
     existing = (
@@ -98,9 +106,11 @@ def create_or_update_review(
         # Concurrent delete between the duplicate insert and this read, or a
         # different constraint fired. Return a clean 409 instead of leaking the
         # raw IntegrityError to the generic DB handler (which would report 503).
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
             status_code=status.HTTP_409_CONFLICT,
-            detail="Review could not be saved due to a conflict; please retry.",
+            message="Review could not be saved due to a conflict; please retry.",
+            context={"resource_type": "review", "course_id": course_id},
         ) from None
     db.refresh(review)
     response.status_code = status.HTTP_201_CREATED
@@ -115,8 +125,18 @@ def delete_review(
 ):
     review = db.query(CourseReview).filter(CourseReview.id == review_id).first()
     if not review:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Review not found",
+            context={"resource_type": "review", "resource_id": str(review_id)},
+        )
     if review.user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only delete your own reviews")
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="You can only delete your own reviews",
+            context={"resource_type": "review", "resource_id": str(review_id)},
+        )
     db.delete(review)
     db.commit()

@@ -470,7 +470,7 @@ class TestSetPrerequisites:
             json={"prerequisite_course_ids": ["course-a"]},
         )
         assert resp.status_code == 400
-        assert "circular" in resp.json()["detail"].lower()
+        assert "circular" in resp.json()["detail"]["message"].lower()
 
     def test_three_node_cycle_rejected(self, client: TestClient, db: Session):
         # A -> B -> C already exists; C -> A would close a 3-node cycle.

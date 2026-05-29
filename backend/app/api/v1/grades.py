@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_teacher, verify_course_owner
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.course import Course
 from app.models.enrollment import Enrollment
 from app.models.student_grade import StudentGrade
@@ -44,7 +45,12 @@ def get_grading_config(
 ):
     course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
     if not course:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Course not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
 
     is_owner = str(course.created_by) == str(current_user.id)
     is_admin = current_user.role == UserRole.ADMIN.value
@@ -53,7 +59,12 @@ def get_grading_config(
         is not None
     )
     if not (is_owner or is_admin or is_enrolled):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="Access denied",
+            context={"resource_type": "grading_config", "course_id": course_id},
+        )
 
     return GradingConfigResponse.model_validate(course)
 
@@ -90,14 +101,21 @@ def get_calculated_grade(
         db.query(Enrollment).filter(Enrollment.user_id == str(student_id), Enrollment.course_id == course_id).first()
     )
     if not enrolled:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Student not enrolled in this course",
+            message="Student not enrolled in this course",
+            context={"resource_type": "enrollment", "student_id": str(student_id), "course_id": course_id},
         )
 
     user = db.query(User).filter(User.id == str(student_id)).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Student not found",
+            context={"resource_type": "user", "resource_id": str(student_id)},
+        )
 
     breakdown = calculate_student_grade_for_course(db, course, student_id)
 
@@ -139,9 +157,11 @@ def get_grade_summary(
         raise
     except SQLAlchemyError as exc:
         logger.exception("Grade summary DB error for course %s", course_id)
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Grade calculation failed",
+            message="Grade calculation failed",
+            context={"resource_type": "grade_summary", "course_id": course_id},
         ) from exc
 
 
@@ -255,9 +275,11 @@ def get_my_grade_for_course(
         .first()
     )
     if not grade:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No grade found for course '{course_id}'",
+            message=f"No grade found for course '{course_id}'",
+            context={"resource_type": "grade", "course_id": course_id},
         )
     return grade
 
@@ -295,9 +317,11 @@ def get_student_grade(
         query = query.filter(StudentGrade.cohort_id == cohort_id)
     grade = query.first()
     if not grade:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No grade found for student '{student_id}' in course '{course_id}'",
+            message=f"No grade found for student '{student_id}' in course '{course_id}'",
+            context={"resource_type": "grade", "student_id": student_id, "course_id": course_id},
         )
     return grade
 
@@ -315,7 +339,12 @@ def upsert_student_grade(
 
     enrolled = db.query(Enrollment).filter(Enrollment.user_id == student_id, Enrollment.course_id == course_id).first()
     if not enrolled:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student is not enrolled in this course")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Student is not enrolled in this course",
+            context={"resource_type": "enrollment", "student_id": student_id, "course_id": course_id},
+        )
 
     query = db.query(StudentGrade).filter(
         StudentGrade.student_id == student_id,
@@ -369,9 +398,11 @@ def upsert_student_grade(
             # IntegrityError without a matching row means a different
             # constraint fired (FK violation, etc). Surface a clean 409
             # instead of leaking via the generic SQLAlchemy 503 handler.
-            raise HTTPException(
+            raise equip_error(
+                ErrorCode.VALIDATION_FAILED,
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Grade could not be saved due to a conflict; please retry.",
+                message="Grade could not be saved due to a conflict; please retry.",
+                context={"resource_type": "grade", "student_id": student_id, "course_id": course_id},
             ) from None
         if data.grade is not None:
             existing.grade = data.grade
