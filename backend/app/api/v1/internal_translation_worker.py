@@ -26,13 +26,14 @@ import logging
 import secrets
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, status
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session  # noqa: TC002 — used by FastAPI Depends at runtime
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.services.course_service import get_course
 from app.services.translation.course_pipeline import translate_course_content
 from app.services.translation.queue import (
@@ -82,9 +83,11 @@ def _require_worker_secret(
     """
     expected = settings.TRANSLATION_WORKER_SECRET
     if expected is None or not expected.get_secret_value():
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.TRANSLATION_WORKER_UNCONFIGURED,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Translation worker is not configured on this deployment.",
+            message="Translation worker is not configured on this deployment.",
+            context={"resource_type": "translation_worker"},
         )
     expected_value = expected.get_secret_value()
 
@@ -95,9 +98,11 @@ def _require_worker_secret(
     if not hmac.compare_digest(presented, expected_value):
         # 401 with a generic message so a probing attacker can't
         # distinguish 'wrong secret' from 'no secret header'.
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.TRANSLATION_WORKER_UNAUTHORIZED,
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Worker authentication failed.",
+            message="Worker authentication failed.",
+            context={"resource_type": "translation_worker"},
         )
 
 

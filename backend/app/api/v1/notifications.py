@@ -1,11 +1,12 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.notification import Notification
 from app.models.user import User
 from app.schemas.notification import (
@@ -75,7 +76,12 @@ def mark_as_read(
         .first()
     )
     if not notification:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Notification not found",
+            context={"resource_type": "notification", "resource_id": str(notification_id)},
+        )
 
     notification.is_read = True
     db.commit()
@@ -108,7 +114,12 @@ def delete_notification(
         .first()
     )
     if not notification:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Notification not found",
+            context={"resource_type": "notification", "resource_id": str(notification_id)},
+        )
 
     db.delete(notification)
     db.commit()

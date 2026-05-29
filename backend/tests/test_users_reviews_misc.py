@@ -681,7 +681,7 @@ class TestAuditLog:
         # a recoverable client error.
         resp = admin_client.get("/api/v1/audit?user_id=not-a-uuid")
         assert resp.status_code == 400
-        assert "uuid" in resp.json()["detail"].lower()
+        assert "uuid" in resp.json()["detail"]["message"].lower()
 
     def test_anon_rejected(self, anon_client: TestClient):
         resp = anon_client.get("/api/v1/audit")

@@ -1,11 +1,12 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_admin, require_teacher
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.certificate import Certificate, CertificateStatus
 from app.models.course import Course
 from app.models.enrollment import Enrollment
@@ -59,17 +60,29 @@ def request_certificate(
     # Soft-deleted courses must not accept new certificate requests.
     course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
     if not course:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Course not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
 
     enrollment = (
         db.query(Enrollment).filter(Enrollment.user_id == current_user.id, Enrollment.course_id == course_id).first()
     )
     if not enrollment:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not enrolled in this course")
-    if enrollment.progress < 100:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Course not completed. Current progress: {enrollment.progress}%",
+            message="Not enrolled in this course",
+            context={"resource_type": "certificate", "course_id": course_id},
+        )
+    if enrollment.progress < 100:
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message=f"Course not completed. Current progress: {enrollment.progress}%",
+            context={"resource_type": "certificate", "course_id": course_id, "progress": enrollment.progress},
         )
 
     existing = (
@@ -110,7 +123,12 @@ def request_certificate(
                 db.commit()
                 db.refresh(existing)
             return existing
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Certificate already requested") from exc
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_409_CONFLICT,
+            message="Certificate already requested",
+            context={"resource_type": "certificate", "course_id": course_id},
+        ) from exc
     db.refresh(cert)
     return cert
 
@@ -129,7 +147,12 @@ def get_course_certificate(
         db.query(Certificate).filter(Certificate.user_id == current_user.id, Certificate.course_id == course_id).first()
     )
     if not cert:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No certificate found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="No certificate found",
+            context={"resource_type": "certificate", "course_id": course_id},
+        )
     display_locale: LocaleCode = normalize_locale(accept_language)
     return _localize_cert_responses(db, [cert], display_locale=display_locale)[0]
 

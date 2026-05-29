@@ -1,12 +1,13 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import require_admin
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,9 @@ def check_database(
         return {"status": "ok", "database": "connected"}
     except SQLAlchemyError:
         logger.exception("Database health check failed")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database connection failed"
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            message="Database connection failed",
+            context={"resource_type": "health"},
         ) from None

@@ -1,12 +1,13 @@
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import require_admin
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.audit_log import AuditLog
 from app.models.user import User
 
@@ -80,9 +81,11 @@ def list_audit_logs(
         try:
             parsed_user_id = UUID(user_id)
         except ValueError as exc:
-            raise HTTPException(
+            raise equip_error(
+                ErrorCode.VALIDATION_FAILED,
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="user_id must be a valid UUID",
+                message="user_id must be a valid UUID",
+                context={"resource_type": "audit_log", "field": "user_id", "value": user_id},
             ) from exc
         q = q.filter(AuditLog.user_id == parsed_user_id)
     if resource_type:

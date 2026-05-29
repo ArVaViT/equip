@@ -209,13 +209,13 @@ class TestRequestCertificate:
         _seed_course(db)
         r = student_client.post("/api/v1/certificates/course/course-1")
         assert r.status_code == 400
-        assert "Not enrolled" in r.json()["detail"]
+        assert "Not enrolled" in r.json()["detail"]["message"]
 
     def test_progress_incomplete(self, student_client: TestClient, db: Session):
         _seed_enrolled_course(db, progress=50)
         r = student_client.post("/api/v1/certificates/course/course-1")
         assert r.status_code == 400
-        assert "50%" in r.json()["detail"]
+        assert "50%" in r.json()["detail"]["message"]
 
     def test_course_not_found(self, student_client: TestClient, db: Session):
         r = student_client.post("/api/v1/certificates/course/nonexistent")

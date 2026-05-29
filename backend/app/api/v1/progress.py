@@ -1,12 +1,13 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_teacher, verify_chapter_owner, verify_course_owner
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Module
 from app.models.enrollment import Enrollment
@@ -27,9 +28,11 @@ def get_my_chapter_progress(
         db.query(Enrollment).filter(Enrollment.user_id == current_user.id, Enrollment.course_id == course_id).first()
     )
     if not enrolled:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enrolled in this course",
+            message="Not enrolled in this course",
+            context={"resource_type": "progress", "course_id": course_id},
         )
 
     completed = (
@@ -69,9 +72,11 @@ def teacher_complete_chapter(
 
     enrolled = db.query(Enrollment).filter(Enrollment.user_id == student_id, Enrollment.course_id == course_id).first()
     if not enrolled:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Student is not enrolled in this course",
+            message="Student is not enrolled in this course",
+            context={"resource_type": "progress"},
         )
 
     progress = (
@@ -148,9 +153,11 @@ def teacher_uncomplete_chapter(
 
     enrolled = db.query(Enrollment).filter(Enrollment.user_id == student_id, Enrollment.course_id == course_id).first()
     if not enrolled:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Student is not enrolled in this course",
+            message="Student is not enrolled in this course",
+            context={"resource_type": "progress"},
         )
 
     progress = (
@@ -159,9 +166,11 @@ def teacher_uncomplete_chapter(
         .first()
     )
     if not progress or not progress.completed:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Chapter is not completed",
+            message="Chapter is not completed",
+            context={"resource_type": "chapter_progress"},
         )
     progress.completed = False
     progress.completed_at = None
