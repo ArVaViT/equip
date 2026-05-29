@@ -25,6 +25,7 @@ import uuid
 from datetime import date, datetime  # noqa: TC003 — Mapped[] runtime resolution
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     CheckConstraint,
     Date,
@@ -33,12 +34,17 @@ from sqlalchemy import (
     Index,
     Integer,
     Text,
+    UniqueConstraint,
     func,
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+# SQLite uses JSON; Postgres uses JSONB. SQLAlchemy's generic ``JSON``
+# type renders as JSONB on Postgres and TEXT-encoded JSON on SQLite,
+# so the same model definition works on both backends without a
+# dialect dance.
 from app.core.database import Base
 
 
@@ -293,3 +299,92 @@ class DailyChallengeStreak(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class DailyChallengeQuestionEvent(Base):
+    """Append-only audit trail for editorial transitions + AI rounds.
+
+    Sprint 3 adds this so the editorial team can answer "why was this
+    question moved from doctrinally_reviewed to rejected?" without
+    log-diving. The AI generation orchestrator (future sprint) writes
+    here too — every cross-critique, every synthesis, every validation
+    check leaves a row keyed by ``generation_run_id``.
+
+    The schema is the index; the payload lives in the JSON column.
+    Adding a new event type is an additive migration on the CHECK
+    constraint; adding a new field on an existing event_type is no
+    migration at all (the service layer decides the shape).
+    """
+
+    __tablename__ = "daily_challenge_question_events"
+    __table_args__ = (
+        CheckConstraint(
+            "event_type IN ('status_change', 'rejected', 'published', "
+            "'scheduled', 'unscheduled', 'ai_generated', 'ai_critique', "
+            "'ai_synthesis', 'scripture_validated', 'doctrinally_reviewed', "
+            "'bilingually_reviewed', 'pilot_summary')",
+            name="dc_q_events_type_check",
+        ),
+        Index(
+            "ix_dc_q_events_question_created",
+            "question_id",
+            "created_at",
+        ),
+        Index(
+            "ix_dc_q_events_generation_run",
+            "generation_run_id",
+            "created_at",
+            postgresql_where="generation_run_id IS NOT NULL",
+            sqlite_where=text("generation_run_id IS NOT NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    question_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("daily_challenge_questions.id", ondelete="CASCADE"),
+    )
+    event_type: Mapped[str] = mapped_column(Text)
+    generation_run_id: Mapped[uuid.UUID | None] = mapped_column(PgUUID(as_uuid=True))
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("profiles.id", ondelete="SET NULL")
+    )
+    details: Mapped[dict] = mapped_column(JSON, default=dict, server_default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DailyChallengePilotReview(Base):
+    """Stage 5 pilot answers + engagement ratings.
+
+    One row per (question, reviewer). The promotion threshold (≥80%
+    correct rate + ≥3.5/5 mean engagement, n≥5) is computed in the
+    service layer rather than persisted as a denormalised column,
+    because the threshold is an editorial knob we may tune.
+
+    Updating a review re-uses the same row — the service layer does
+    an upsert; the unique constraint enforces uniqueness.
+    """
+
+    __tablename__ = "daily_challenge_pilot_reviews"
+    __table_args__ = (
+        UniqueConstraint("question_id", "reviewer_id", name="uq_dc_pilot_reviews_pair"),
+        CheckConstraint(
+            "engagement_rating BETWEEN 1 AND 5",
+            name="dc_pilot_reviews_rating_check",
+        ),
+        Index("ix_dc_pilot_reviews_question", "question_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    question_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("daily_challenge_questions.id", ondelete="CASCADE"),
+    )
+    reviewer_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("profiles.id", ondelete="SET NULL"),
+    )
+    answered_correctly: Mapped[bool] = mapped_column(Boolean)
+    engagement_rating: Mapped[int] = mapped_column(Integer)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
