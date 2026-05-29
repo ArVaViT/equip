@@ -10,6 +10,8 @@ today's question, submit an attempt, and check their streak.
 
 from __future__ import annotations
 
+from typing import cast
+
 from fastapi import APIRouter, Depends, Header, Response, status
 from sqlalchemy.orm import Session  # noqa: TC002 — FastAPI Depends runtime use
 
@@ -23,6 +25,7 @@ from app.schemas.daily_challenge import (
     DailyChallengeAttemptResponse,
     DailyChallengeAttemptSummary,
     DailyChallengeOptionStudentView,
+    DailyChallengeQuestionType,
     DailyChallengeStreakResponse,
     DailyChallengeTodayResponse,
 )
@@ -111,7 +114,10 @@ def get_today(
     return DailyChallengeTodayResponse(
         challenge_date=schedule.challenge_date,
         question_id=question.id,
-        question_type=question.question_type,
+        # ORM column is plain ``str`` (enum lives only in Python land);
+        # cast to satisfy the Pydantic Literal. CHECK constraint on the
+        # DB guarantees the runtime value is in the literal set.
+        question_type=cast("DailyChallengeQuestionType", question.question_type),
         question_text=bundle.question_text,
         options=options_view,
         bible_book=question.bible_book,
@@ -186,10 +192,16 @@ def submit_attempt(
         display_locale=display_locale,
     )
 
+    # ``selected_option_id`` is nullable on the ORM (ON DELETE SET NULL
+    # for archival safety), but a freshly-created attempt always has it
+    # set — we wrote it in this same transaction. Fall back to the
+    # caller's submitted id rather than risking a Pydantic None.
+    selected_id = outcome.attempt.selected_option_id or data.selected_option_id
+
     return DailyChallengeAttemptResponse(
         id=outcome.attempt.id,
         challenge_date=outcome.attempt.challenge_date,
-        selected_option_id=outcome.attempt.selected_option_id,
+        selected_option_id=selected_id,
         correct_option_id=outcome.correct_option_id,
         is_correct=outcome.attempt.is_correct,
         explanation=bundle.explanation,
