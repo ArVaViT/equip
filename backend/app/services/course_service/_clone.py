@@ -298,10 +298,10 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
     _clone_cv_rows(
         db, entity_type="quiz_question", id_map=question_id_map_cv, fields=_CLONABLE_TEXT_FIELDS["quiz_question"]
     )
+    _clone_cv_rows(db, entity_type="quiz_option", id_map=option_id_map_cv, fields=_CLONABLE_TEXT_FIELDS["quiz_option"])
     _clone_cv_rows(
-        db, entity_type="quiz_option", id_map=option_id_map_cv, fields=_CLONABLE_TEXT_FIELDS["quiz_option"]
+        db, entity_type="assignment", id_map=assignment_id_map_cv, fields=_CLONABLE_TEXT_FIELDS["assignment"]
     )
-    _clone_cv_rows(db, entity_type="assignment", id_map=assignment_id_map_cv, fields=_CLONABLE_TEXT_FIELDS["assignment"])
 
     # Append " (Copy)" to the course title so the catalog stays
     # distinguishable. Try the source-locale row first; fall back to
