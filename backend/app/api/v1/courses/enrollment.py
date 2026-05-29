@@ -16,6 +16,7 @@ from app.models.user import User
 from app.schemas.course import EnrollmentResponse
 from app.services.audit_service import log_action
 from app.services.course_service import enroll_user_in_course
+from app.services.translation.resolve_for_display import populate_spine_texts
 
 from ._router import router
 
@@ -176,7 +177,5 @@ def enroll_course(
     # Phase 5g: hydrate the lazy-loaded course relationship so the
     # response serializer sees title/description (no longer columns).
     if enrollment.course is not None:
-        from app.services.translation.resolve_for_display import populate_spine_texts
-
         populate_spine_texts(db, [enrollment.course])
     return enrollment

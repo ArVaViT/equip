@@ -82,11 +82,13 @@ class Course(Base):
     assignment_weight: Mapped[int] = mapped_column(default=50, server_default="50")
     participation_weight: Mapped[int] = mapped_column(default=20, server_default="20")
 
-    # Authoring language for this course's content. The original text always
-    # lives on the source rows (this table, ``modules``, ``chapters``,
-    # ``chapter_blocks``, ``quizzes`` …). Translations to *other* locales are
-    # stored in ``content_translations`` and are looked up by entity_id +
-    # field. See supabase/migrations/...add_content_translations.
+    # Authoring language for this course's content. Phase 5e-g moved
+    # every translatable string into ``content_versions`` keyed by
+    # ``(entity_type, entity_id, field, locale)``; the legacy
+    # ``content_translations`` overlay table was dropped in 5aj. The
+    # ``source_locale`` here is what the read resolver uses as the
+    # display→source→any-locale fallback target so a student in EN
+    # never sees a blank screen when only the RU row exists yet.
     source_locale: Mapped[str] = mapped_column(default="ru", server_default="ru")
 
     # ``order_by`` guarantees deterministic ordering whenever the relationship is
