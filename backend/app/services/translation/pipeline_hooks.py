@@ -22,9 +22,12 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from sqlalchemy.exc import SQLAlchemyError
+
 from app.models.course import Course, CourseStatus
 from app.services.course_service import get_course
 from app.services.translation.course_pipeline import translate_course_content
+from app.services.translation.protocol import TranslationError
 from app.services.translation.registry import REGISTRY, reconcile_entity
 from app.services.translation.service import is_translation_enabled
 
@@ -36,11 +39,58 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _safe_rollback(db: Session) -> None:
+    """Roll the session back without ever raising — pipeline hooks must
+    return cleanly even if the rollback itself fails. Any inner failure
+    here is logged at critical because it leaves the session in an
+    unrecoverable state for the caller's next operation."""
+    try:
+        db.rollback()
+    except Exception:
+        logger.critical("Translation pipeline session rollback failed", exc_info=True)
+
+
+def _log_pipeline_failure(
+    *,
+    scope: str,
+    entity_type: str | None,
+    entity_id: object,
+    exc: BaseException,
+) -> None:
+    """Single structured logging point for every pipeline-hook
+    swallowed exception. Goes to the standard logger at the right
+    severity, with a ``failure_class`` extra so log aggregation can
+    cleanly filter expected vs unexpected failures.
+    """
+    failure_class = type(exc).__name__
+    # ``TranslationError`` (from the provider) is the expected sad
+    # path — the failed row is already persisted by the orchestrator
+    # via ``_dual_write_mt_failure``, so this is an INFO-level event,
+    # not a wake-the-oncall ERROR.
+    severity = logging.INFO if isinstance(exc, TranslationError) else logging.ERROR
+    logger.log(
+        severity,
+        "Translation %s failed: %s",
+        scope,
+        exc,
+        extra={
+            "failure_class": failure_class,
+            "scope": scope,
+            "entity_type": entity_type,
+            "entity_id": str(entity_id) if entity_id is not None else None,
+        },
+        exc_info=severity == logging.ERROR,
+    )
+
+
 def run_course_translation_pipeline_if_published(db: Session, course_id: str) -> None:
     """Re-run the full course tree pipeline when a published course mutates.
 
-    No-ops when the course is a draft, Gemini is disabled, or the load fails.
-    Errors never propagate — teachers must never lose a save because MT lagged.
+    No-ops when the course is a draft, Gemini is disabled, or the load
+    fails. Errors never propagate — teachers must never lose a save
+    because MT lagged. The session is rolled back on SQLAlchemy errors
+    so a follow-up query in the same request does not inherit a poisoned
+    transaction state.
     """
     if not is_translation_enabled():
         return
@@ -56,8 +106,11 @@ def run_course_translation_pipeline_if_published(db: Session, course_id: str) ->
         return
     try:
         translate_course_content(db, course)
-    except Exception:
-        logger.exception("Translation pipeline failed after mutation (course_id=%s)", course_id)
+    except SQLAlchemyError as exc:
+        _safe_rollback(db)
+        _log_pipeline_failure(scope="course-pipeline", entity_type="course", entity_id=course_id, exc=exc)
+    except Exception as exc:
+        _log_pipeline_failure(scope="course-pipeline", entity_type="course", entity_id=course_id, exc=exc)
 
 
 def reconcile_entity_if_course_published(
@@ -75,7 +128,8 @@ def reconcile_entity_if_course_published(
     against duplicate work if the field happens to equal a prior value.
 
     Errors are logged but never raised — teachers must never lose a
-    save because the MT path stumbled.
+    save because the MT path stumbled. ``SQLAlchemyError`` rolls the
+    session back so the caller's next query is not poisoned.
     """
     if not is_translation_enabled():
         return
@@ -83,11 +137,21 @@ def reconcile_entity_if_course_published(
     course = reg.resolve_course(db, entity)
     if not course or course.status != CourseStatus.PUBLISHED:
         return
+    entity_id = getattr(entity, "id", None)
     try:
         reconcile_entity(db, entity_type, entity)
-    except Exception:
-        logger.exception(
-            "Per-entity translation failed (entity_type=%s id=%s)",
-            entity_type,
-            getattr(entity, "id", "?"),
+    except SQLAlchemyError as exc:
+        _safe_rollback(db)
+        _log_pipeline_failure(
+            scope="entity-reconcile",
+            entity_type=str(entity_type),
+            entity_id=entity_id,
+            exc=exc,
+        )
+    except Exception as exc:
+        _log_pipeline_failure(
+            scope="entity-reconcile",
+            entity_type=str(entity_type),
+            entity_id=entity_id,
+            exc=exc,
         )
