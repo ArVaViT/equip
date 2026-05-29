@@ -582,10 +582,18 @@ class TestCatalogLocalizedMetadata:
         anon_client: TestClient,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """``content_translations`` for the active UI locale should win over
-        course rows when both exist, so a Russian CT row is shown for RU UI
-        even if the course row is still in English and ``source_locale`` is ru
-        (legacy / mixed authoring)."""
+        """``content_versions`` for the active UI locale should win over the
+        source-locale row when both exist, so a Russian RU row is shown for
+        RU UI even when the source row carries English text (legacy / mixed
+        authoring).
+
+        Phase 5g: ``courses.title|description`` columns are gone. The
+        "source" here is the EN cv row laid down by ``_create_course``;
+        the overlay is the RU MT row added below. The previous
+        ``row.title = ...`` runtime-attribute writes were dead under
+        the new architecture (no column to persist to) and have been
+        removed so the test only mutates state that actually exists.
+        """
         monkeypatch.setattr(
             "app.api.v1.courses.crud.translate_course_content",
             lambda *args, **kwargs: OrchestratorReport(),
@@ -599,10 +607,6 @@ class TestCatalogLocalizedMetadata:
         client.put(f"{PREFIX}/{cid}", json={"status": "published"})
         from app.services.content_versions.write import record_mt_version
 
-        row = db.get(Course, cid)
-        assert row is not None
-        row.title = "EN title in DB not matching RU"
-        row.description = "EN desc in DB"
         record_mt_version(
             db,
             entity_type="course",
