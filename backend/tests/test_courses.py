@@ -241,6 +241,36 @@ class TestCloneCourse:
         assert cloned_quiz["questions"][0]["question_type"] == "essay"
         assert cloned_quiz["questions"][0]["min_words"] == 150
 
+    def test_clone_copies_cv_text_rows_so_clone_is_not_empty(self, client: TestClient):
+        """Phase 5z regression: the clone path used to copy only structural
+        rows; cv text rows were left untouched. Result: every cloned
+        title / description / content / question_text / option_text came
+        back empty even though the entities existed. Now the clone
+        duplicates cv rows per entity_type so the new course is a real
+        forkable copy, not an empty shell."""
+        course = _create_course(client, title="Bilingual Source", description="Some description text")
+        mod_resp = client.post(
+            f"{PREFIX}/{course['id']}/modules",
+            json={"title": "M1 Title", "order_index": 1, "description": "M1 description"},
+        )
+        module_id = mod_resp.json()["id"]
+        client.post(
+            f"{PREFIX}/{course['id']}/modules/{module_id}/chapters",
+            json={"title": "Chapter One", "chapter_type": "reading", "order_index": 1},
+        )
+
+        clone_resp = client.post(f"{PREFIX}/{course['id']}/clone")
+        clone = clone_resp.json()
+        # Course title surfaces with " (Copy)" appended.
+        assert clone["title"].endswith("(Copy)")
+        assert clone["description"] == "Some description text"
+        # Module text round-trips intact, NOT empty.
+        cloned_module = clone["modules"][0]
+        assert cloned_module["title"] == "M1 Title"
+        assert cloned_module["description"] == "M1 description"
+        # Chapter title (still a spine column) carries through.
+        assert cloned_module["chapters"][0]["title"] == "Chapter One"
+
 
 # ---------------------------------------------------------------------------
 # Localized catalog (content_translations read path)

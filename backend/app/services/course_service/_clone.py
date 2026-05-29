@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from app.models.assignment import Assignment
 from app.models.chapter_block import ChapterBlock
+from app.models.content_version import ContentVersion
 from app.models.course import Chapter, Course, CourseStatus, Module
 from app.models.quiz import Quiz, QuizOption, QuizQuestion
 
@@ -15,6 +16,73 @@ from ._queries import _COURSE_TREE
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
+
+
+# Per-entity fields whose cv text rows the clone copies across. Mirrors
+# the ``REGISTRY`` translatable-fields list in
+# ``app/services/translation/registry.py`` — adding a translatable field
+# means adding it here too, otherwise clones land text-less in that
+# field. The CI registry-drift guard would catch a missed addition.
+_CLONABLE_TEXT_FIELDS: dict[str, tuple[str, ...]] = {
+    "course": ("title", "description"),
+    "module": ("title", "description"),
+    "chapter": ("title",),
+    "chapter_block": ("content",),
+    "quiz": ("title", "description"),
+    "quiz_question": ("question_text",),
+    "quiz_option": ("option_text",),
+    "assignment": ("title", "description"),
+}
+
+
+def _clone_cv_rows(
+    db: Session,
+    *,
+    entity_type: str,
+    id_map: dict[str, str],
+    fields: tuple[str, ...],
+) -> None:
+    """Copy every active+ok ``content_versions`` row from the old entity
+    ids to the new ones, preserving locale + origin so the clone keeps
+    its bilingual coverage. ``id_map`` maps ``str(old_entity_id) ->
+    str(new_entity_id)``. Failed / failed_permanent rows are skipped —
+    a clone deserves a fresh retry, not the prior failure's blocker.
+    """
+    if not id_map:
+        return
+    rows = (
+        db.query(ContentVersion)
+        .filter(
+            ContentVersion.entity_type == entity_type,
+            ContentVersion.entity_id.in_(list(id_map.keys())),
+            ContentVersion.field.in_(fields),
+            ContentVersion.superseded_by.is_(None),
+            ContentVersion.status == "ok",
+        )
+        .all()
+    )
+    for r in rows:
+        new_eid = id_map.get(str(r.entity_id))
+        if new_eid is None:
+            continue
+        db.add(
+            ContentVersion(
+                id=uuid.uuid4(),
+                entity_type=entity_type,
+                entity_id=new_eid,
+                field=r.field,
+                locale=r.locale,
+                text=r.text,
+                origin=r.origin,
+                status="ok",
+                source_locale=r.source_locale,
+                source_hash=r.source_hash,
+                # source_version_id intentionally NOT carried — pointing
+                # the clone's MT row at the original's source row would
+                # cascade-invalidate the clone when the original
+                # changes; clones should be independent post-fork.
+            )
+        )
 
 
 def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Course | None:
@@ -76,13 +144,26 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
     for b in all_blocks:
         blocks_by_chapter[b.chapter_id].append(b)
 
+    # Phase 5z: track every (old_id -> new_id) so the cv-row copy at
+    # the end of this function can fan a single bulk SELECT + bulk
+    # INSERT per entity_type across the whole clone, rather than
+    # touching cv inline at each model instantiation.
+    course_id_map: dict[str, str] = {}
+    module_id_map: dict[str, str] = {}
+    chapter_id_map: dict[str, str] = {}
+    block_id_map: dict[str, str] = {}
+    quiz_id_map_cv: dict[str, str] = {}
+    question_id_map_cv: dict[str, str] = {}
+    option_id_map_cv: dict[str, str] = {}
+    assignment_id_map_cv: dict[str, str] = {}
+
     new_course_id = str(uuid.uuid4())
+    course_id_map[str(original.id)] = new_course_id
     new_course = Course(
         id=new_course_id,
-        title=f"{original.title} (Copy)",
-        description=original.description,
         image_url=original.image_url,
         status=CourseStatus.DRAFT,
+        source_locale=original.source_locale,
         created_by=uuid.UUID(teacher_id) if isinstance(teacher_id, str) else teacher_id,
         enrollment_start=None,
         enrollment_end=None,
@@ -91,11 +172,10 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
 
     for module in sorted(original.modules, key=lambda m: m.order_index):
         new_module_id = str(uuid.uuid4())
+        module_id_map[str(module.id)] = new_module_id
         new_module = Module(
             id=new_module_id,
             course_id=new_course_id,
-            title=module.title,
-            description=module.description,
             order_index=module.order_index,
             due_date=module.due_date,
         )
@@ -103,9 +183,14 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
 
         for chapter in sorted(module.chapters, key=lambda c: c.order_index):
             new_chapter_id = str(uuid.uuid4())
+            chapter_id_map[str(chapter.id)] = new_chapter_id
             new_chapter = Chapter(
                 id=new_chapter_id,
                 module_id=new_module_id,
+                # ``chapters.title`` is still a spine column (not yet
+                # moved to cv-only); copy it verbatim. The cv row at
+                # the same locale also gets cloned below so the bilingual
+                # overlay is preserved.
                 title=chapter.title,
                 order_index=chapter.order_index,
                 chapter_type=chapter.chapter_type,
@@ -128,10 +213,7 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
             for quiz in quizzes_by_chapter.get(chapter.id, []):
                 new_quiz_id = uuid.uuid4()
                 quiz_id_map[str(quiz.id)] = new_quiz_id
-                # Phase 5f: title + description + question_text + option_text
-                # columns dropped. Clone copies structural rows only; cv text
-                # rows are NOT cloned (clones land as drafts and the teacher
-                # edits text post-clone, same as 5e2 blocks / 5e3 assignments).
+                quiz_id_map_cv[str(quiz.id)] = str(new_quiz_id)
                 db.add(
                     Quiz(
                         id=new_quiz_id,
@@ -147,6 +229,7 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
                     key=lambda q: q.order_index,
                 ):
                     new_question_id = uuid.uuid4()
+                    question_id_map_cv[str(question.id)] = str(new_question_id)
                     db.add(
                         QuizQuestion(
                             id=new_question_id,
@@ -162,9 +245,11 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
                         options_by_question.get(str(question.id), []),
                         key=lambda o: o.order_index,
                     ):
+                        new_option_id = uuid.uuid4()
+                        option_id_map_cv[str(option.id)] = str(new_option_id)
                         db.add(
                             QuizOption(
-                                id=uuid.uuid4(),
+                                id=new_option_id,
                                 question_id=new_question_id,
                                 is_correct=option.is_correct,
                                 order_index=option.order_index,
@@ -174,10 +259,7 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
             for assignment in assignments_by_chapter.get(chapter.id, []):
                 new_assignment_id = uuid.uuid4()
                 assignment_id_map[str(assignment.id)] = new_assignment_id
-                # Phase 5e3: assignment title + description columns
-                # dropped. The clone copies structural fields; cv text
-                # rows are NOT cloned (clones land as drafts and the
-                # teacher edits text post-clone, same as 5e2 blocks).
+                assignment_id_map_cv[str(assignment.id)] = str(new_assignment_id)
                 db.add(
                     Assignment(
                         id=new_assignment_id,
@@ -188,13 +270,11 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
                 )
 
             for block in sorted(blocks_by_chapter.get(chapter.id, []), key=lambda b: b.order_index):
-                # Phase 5e2: chapter_block.content column dropped. Clone
-                # copies entity structure; cv content rows are NOT yet
-                # cloned (clones land as drafts, the teacher edits content
-                # post-clone). A follow-up could wire cv-copy if needed.
+                new_block_id = uuid.uuid4()
+                block_id_map[str(block.id)] = str(new_block_id)
                 db.add(
                     ChapterBlock(
-                        id=uuid.uuid4(),
+                        id=new_block_id,
                         chapter_id=new_chapter_id,
                         block_type=block.block_type,
                         order_index=block.order_index,
@@ -206,6 +286,61 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
                     )
                 )
 
+    # Phase 5z: fan a single bulk SELECT + INSERT per entity_type across
+    # the whole clone tree so the new course inherits its bilingual
+    # text from the original instead of landing as an empty draft.
+    db.flush()
+    _clone_cv_rows(db, entity_type="course", id_map=course_id_map, fields=_CLONABLE_TEXT_FIELDS["course"])
+    _clone_cv_rows(db, entity_type="module", id_map=module_id_map, fields=_CLONABLE_TEXT_FIELDS["module"])
+    _clone_cv_rows(db, entity_type="chapter", id_map=chapter_id_map, fields=_CLONABLE_TEXT_FIELDS["chapter"])
+    _clone_cv_rows(db, entity_type="chapter_block", id_map=block_id_map, fields=_CLONABLE_TEXT_FIELDS["chapter_block"])
+    _clone_cv_rows(db, entity_type="quiz", id_map=quiz_id_map_cv, fields=_CLONABLE_TEXT_FIELDS["quiz"])
+    _clone_cv_rows(
+        db, entity_type="quiz_question", id_map=question_id_map_cv, fields=_CLONABLE_TEXT_FIELDS["quiz_question"]
+    )
+    _clone_cv_rows(db, entity_type="quiz_option", id_map=option_id_map_cv, fields=_CLONABLE_TEXT_FIELDS["quiz_option"])
+    _clone_cv_rows(
+        db, entity_type="assignment", id_map=assignment_id_map_cv, fields=_CLONABLE_TEXT_FIELDS["assignment"]
+    )
+
+    # Append " (Copy)" to the course title so the catalog stays
+    # distinguishable. Try the source-locale row first; fall back to
+    # any active title row on the clone if the source locale row
+    # didn't exist (draft courses that never went through the
+    # publish-time MT pass may only have one locale present).
+    db.flush()
+    candidate = (
+        db.query(ContentVersion)
+        .filter(
+            ContentVersion.entity_type == "course",
+            ContentVersion.entity_id == new_course_id,
+            ContentVersion.field == "title",
+            ContentVersion.locale == original.source_locale,
+            ContentVersion.superseded_by.is_(None),
+        )
+        .one_or_none()
+        or db.query(ContentVersion)
+        .filter(
+            ContentVersion.entity_type == "course",
+            ContentVersion.entity_id == new_course_id,
+            ContentVersion.field == "title",
+            ContentVersion.superseded_by.is_(None),
+        )
+        .order_by(ContentVersion.created_at)
+        .first()
+    )
+    if candidate is not None:
+        candidate.text = f"{candidate.text} (Copy)"
+
     db.commit()
 
-    return db.query(Course).options(*_COURSE_TREE).filter(Course.id == new_course_id).first()
+    cloned = db.query(Course).options(*_COURSE_TREE).filter(Course.id == new_course_id).first()
+    if cloned is not None:
+        # Phase 5g/5z: ``courses.title|description`` and
+        # ``modules.title|description`` live in cv. Hydrate runtime
+        # attrs so the response serializer sees a real title instead
+        # of failing the Pydantic ``title`` field check.
+        from app.services.translation.resolve_for_display import populate_spine_texts
+
+        populate_spine_texts(db, [cloned])
+    return cloned
