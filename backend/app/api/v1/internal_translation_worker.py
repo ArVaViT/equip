@@ -66,10 +66,19 @@ class WorkerTickResponse(BaseModel):
 
 def _require_worker_secret(
     x_worker_secret: str | None = Header(default=None, alias="X-Worker-Secret"),
+    authorization: str | None = Header(default=None, alias="Authorization"),
 ) -> None:
     """Constant-time shared-secret check. Refuses every request when
     the env var is unset — opt-in by design so dev environments without
     the queue cron don't accidentally expose the endpoint.
+
+    Accepts two header shapes so a single env var serves both flows:
+
+    * ``X-Worker-Secret: <secret>`` — direct human / test access.
+    * ``Authorization: Bearer <secret>`` — what Vercel Cron Jobs send
+      automatically (Vercel signs each cron request with the
+      ``CRON_SECRET`` env var; we map ``TRANSLATION_WORKER_SECRET`` to
+      that value at deploy so the auth scheme matches).
     """
     expected = settings.TRANSLATION_WORKER_SECRET
     if expected is None or not expected.get_secret_value():
@@ -77,8 +86,13 @@ def _require_worker_secret(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Translation worker is not configured on this deployment.",
         )
+    expected_value = expected.get_secret_value()
+
     presented = x_worker_secret or ""
-    if not hmac.compare_digest(presented, expected.get_secret_value()):
+    if not presented and authorization and authorization.startswith("Bearer "):
+        presented = authorization.removeprefix("Bearer ").strip()
+
+    if not hmac.compare_digest(presented, expected_value):
         # 401 with a generic message so a probing attacker can't
         # distinguish 'wrong secret' from 'no secret header'.
         raise HTTPException(
@@ -165,6 +179,27 @@ def drain_one_job(
     _: None = Depends(_require_worker_secret),
 ) -> WorkerTickResponse:
     """Cron-callable. Claims one job and runs the orchestrator."""
+    return _run_one_tick(db)
+
+
+@router.get(
+    "/translation-worker",
+    response_model=WorkerTickResponse,
+    summary="Drain one translation job (GET alias for Vercel Cron)",
+    responses={
+        200: {"description": "Same payload as the POST variant."},
+        401: {"description": "Worker secret missing or wrong"},
+        503: {"description": "TRANSLATION_WORKER_SECRET is not configured on this deployment"},
+    },
+)
+def drain_one_job_get(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_worker_secret),
+) -> WorkerTickResponse:
+    """Vercel Cron Jobs send GET — same body as the POST handler. Kept
+    as a thin alias instead of changing the canonical method so test
+    drivers and admin tools that already use POST stay working.
+    """
     return _run_one_tick(db)
 
 
