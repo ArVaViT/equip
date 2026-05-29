@@ -3,11 +3,12 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Query, status
+from fastapi import Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import require_teacher
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.quiz import Quiz, QuizAnswer, QuizAttempt, QuizQuestion
 from app.models.user import User
 from app.schemas.quiz import (
@@ -51,7 +52,12 @@ def list_pending_answers(
     """
     quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
     if not quiz:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Quiz not found",
+            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
+        )
     verify_quiz_owner(db, quiz, teacher.id)
 
     query = (
@@ -136,15 +142,31 @@ def grade_answer(
     """
     answer = db.query(QuizAnswer).filter(QuizAnswer.id == answer_id).first()
     if not answer:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Answer not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Answer not found",
+            context={"resource_type": "quiz_answer", "resource_id": str(answer_id)},
+        )
 
     question = db.query(QuizQuestion).filter(QuizQuestion.id == answer.question_id).first()
     if not question:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Question not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Question not found",
+            context={"resource_type": "quiz_question", "resource_id": str(answer.question_id)},
+        )
     if question.question_type not in quiz_service.MANUAL_GRADED_QUESTION_TYPES:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only open-ended answers (short_answer / essay) can be graded manually",
+            message="Only open-ended answers (short_answer / essay) can be graded manually",
+            context={
+                "resource_type": "quiz_answer",
+                "answer_id": str(answer_id),
+                "question_type": question.question_type,
+            },
         )
 
     # ``FOR UPDATE`` on the attempt row so two teachers grading two
@@ -158,17 +180,34 @@ def grade_answer(
     # the recompute + write of ``attempt.score`` / ``attempt.passed``.
     attempt = db.query(QuizAttempt).filter(QuizAttempt.id == answer.attempt_id).with_for_update().first()
     if not attempt:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attempt not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Attempt not found",
+            context={"resource_type": "quiz_attempt", "resource_id": str(answer.attempt_id)},
+        )
 
     quiz = db.query(Quiz).filter(Quiz.id == attempt.quiz_id).first()
     if not quiz:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Quiz not found",
+            context={"resource_type": "quiz", "resource_id": str(attempt.quiz_id)},
+        )
     verify_quiz_owner(db, quiz, teacher.id)
 
     if data.points_earned > int(question.points):
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"points_earned ({data.points_earned}) exceeds question cap ({question.points})",
+            message=f"points_earned ({data.points_earned}) exceeds question cap ({question.points})",
+            context={
+                "resource_type": "quiz_answer",
+                "answer_id": str(answer_id),
+                "points_earned": data.points_earned,
+                "max_points": int(question.points),
+            },
         )
 
     answer.points_earned = data.points_earned

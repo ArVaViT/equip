@@ -1027,7 +1027,7 @@ def test_submit_quiz_not_enrolled(client: TestClient, db: Session):
         },
     )
     assert resp.status_code == 403
-    assert "enrolled" in resp.json()["detail"].lower()
+    assert "enrolled" in resp.json()["detail"]["message"].lower()
 
 
 def test_submit_quiz_not_found(student_client: TestClient, db: Session):
@@ -1590,7 +1590,7 @@ def test_grade_answer_rejects_points_above_cap(client: TestClient, student, db: 
         json={"points_earned": 99},
     )
     assert resp.status_code == 400
-    assert "exceeds" in resp.json()["detail"].lower()
+    assert "exceeds" in resp.json()["detail"]["message"].lower()
 
 
 def test_grade_answer_rejects_auto_graded_question(student_client: TestClient, db: Session):
@@ -1624,7 +1624,7 @@ def test_grade_answer_rejects_auto_graded_question(student_client: TestClient, d
         if original is not None:
             app.dependency_overrides[get_current_user] = original
     assert resp.status_code == 400
-    assert "open-ended" in resp.json()["detail"].lower()
+    assert "open-ended" in resp.json()["detail"]["message"].lower()
 
 
 def test_grade_answer_student_forbidden(student_client: TestClient, db: Session):
