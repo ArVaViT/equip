@@ -9,6 +9,28 @@
     "body": false
   },
   {
+    "method": "POST",
+    "path": "/api/v1/admin/translations/reset-by-entity",
+    "params": [],
+    "responses": [
+      "200",
+      "404",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/translations/reset-by-ids",
+    "params": [],
+    "responses": [
+      "200",
+      "404",
+      "422"
+    ],
+    "body": true
+  },
+  {
     "method": "GET",
     "path": "/api/v1/analytics/course/{course_id}",
     "params": [
