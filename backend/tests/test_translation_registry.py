@@ -82,6 +82,11 @@ def test_registry_field_names_exist_on_models():
         "quiz_option",
         "course",
         "module",
+        # Phase 5c: daily challenge questions + options are bilingual
+        # surfaces by design and have no source text columns. Their
+        # text lives only in content_versions.
+        "daily_challenge_question",
+        "daily_challenge_option",
     }
     for entity_type, reg in REGISTRY.items():
         if entity_type in cv_only_entities:
