@@ -7,6 +7,7 @@ are made and how the resulting ``content_translations`` rows look.
 
 from __future__ import annotations
 
+import contextlib
 import uuid
 from typing import TYPE_CHECKING, Any
 
@@ -224,6 +225,63 @@ def test_translate_entity_fields_reuses_existing_translation_for_identical_sourc
     assert row_a.text == row_b.text, "identical RU source must produce identical EN text"
     assert row_b.origin == "mt"
     assert row_b.status == "ok"
+
+
+def test_reconcile_entity_hydrates_course_before_build_context(db: Session):
+    """Phase 5g + 5x regression: every entity's ``build_context`` lambda in
+    ``REGISTRY`` reads ``c.title``. The fresh Course returned by the
+    per-entity ``resolve_course`` is NOT hydrated by default — so without
+    a pre-call to ``populate_spine_texts``, the lambda raises
+    AttributeError and the outer try/except in
+    ``reconcile_entity_if_course_published`` swallows the failure.
+
+    Reproduces the prod-observed bug where a freshly POSTed announcement
+    never got its EN translation row even though the orchestrator was
+    enabled, the source row existed, and Gemini was reachable.
+    """
+    from app.models.announcement import Announcement
+    from app.services.content_versions.write import record_human_version
+    from app.services.translation.registry import reconcile_entity
+
+    _ensure_teacher(db)
+    course = _make_course(db, status="published")
+    course_id = course.id
+    # Evict the hydrated Course from the identity map and clear any
+    # runtime title attr so the resolver inside reconcile re-issues a
+    # fresh query and gets an un-hydrated Course, matching prod where
+    # the announcement-create route queries Course without
+    # ``populate_spine_texts``.
+    with contextlib.suppress(AttributeError):
+        delattr(course, "title")
+    with contextlib.suppress(AttributeError):
+        delattr(course, "description")
+    db.expunge(course)
+    # Refetch so the test holds a reference but the inner resolver's
+    # query path is the production path.
+    course = db.get(Course, course_id)
+    assert course is not None
+    ann = Announcement(
+        id=uuid.uuid4(),
+        course_id=course.id,
+        created_by=TEACHER_ID,
+    )
+    db.add(ann)
+    db.flush()
+    record_human_version(
+        db, entity_type="announcement", entity_id=str(ann.id), field="title", locale="ru", text="Тестовое объявление"
+    )
+    record_human_version(
+        db, entity_type="announcement", entity_id=str(ann.id), field="content", locale="ru", text="Тестовое содержимое"
+    )
+    db.commit()
+
+    # Must NOT raise AttributeError on ``c.title`` inside build_context.
+    provider = _RecordingProvider()
+    report = reconcile_entity(db, "announcement", ann, provider=provider)
+    db.commit()
+    # Provider must have been called once per translatable field.
+    assert len(provider.calls) >= 1
+    assert report.translated >= 1
 
 
 def test_translate_course_metadata_retranslates_when_source_changes(db: Session):
