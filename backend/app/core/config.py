@@ -92,6 +92,17 @@ class Settings(BaseSettings):
         default=0.0,
         description="Min seconds between two Gemini calls from the same worker (RPM throttle)",
     )
+    # Shared-secret auth for the translation worker endpoint
+    # (``POST /api/v1/internal/translation-worker``). The cron driver
+    # — Vercel Cron, Supabase Edge Function, or anything else hitting
+    # the route — signs its request with this value in the
+    # ``X-Worker-Secret`` header. When the secret is unset the
+    # endpoint refuses every request, which is what you want in dev
+    # environments that don't run the queue yet.
+    TRANSLATION_WORKER_SECRET: SecretStr | None = Field(
+        default=None,
+        description="Shared secret the cron driver presents to drain the translation queue",
+    )
 
     @model_validator(mode="after")
     def load_alternative_env_vars(self):
