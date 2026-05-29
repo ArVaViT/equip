@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_admin, require_teacher
 from app.core.database import get_db
-from app.models.certificate import Certificate
+from app.models.certificate import Certificate, CertificateStatus
 from app.models.course import Course
 from app.models.enrollment import Enrollment
 from app.models.user import User
@@ -76,11 +76,11 @@ def request_certificate(
         db.query(Certificate).filter(Certificate.user_id == current_user.id, Certificate.course_id == course_id).first()
     )
     if existing is not None:
-        if existing.status == "rejected":
+        if existing.status == CertificateStatus.REJECTED:
             # Reopen the request rather than silently returning the
             # rejected row (which previously made the "request" button a
             # no-op for any student who had been rejected once).
-            existing.status = "pending"
+            existing.status = CertificateStatus.PENDING
             existing.teacher_approved_at = None
             existing.teacher_approved_by = None
             existing.admin_approved_at = None
@@ -89,7 +89,7 @@ def request_certificate(
             db.refresh(existing)
         return existing
 
-    cert = Certificate(user_id=current_user.id, course_id=course_id, status="pending")
+    cert = Certificate(user_id=current_user.id, course_id=course_id, status=CertificateStatus.PENDING)
     db.add(cert)
     try:
         db.commit()
@@ -101,8 +101,8 @@ def request_certificate(
             .first()
         )
         if existing is not None:
-            if existing.status == "rejected":
-                existing.status = "pending"
+            if existing.status == CertificateStatus.REJECTED:
+                existing.status = CertificateStatus.PENDING
                 existing.teacher_approved_at = None
                 existing.teacher_approved_by = None
                 existing.admin_approved_at = None
@@ -222,7 +222,7 @@ def list_pending_certificates(
         .filter(
             Course.created_by == teacher.id,
             Course.deleted_at.is_(None),
-            Certificate.status == "pending",
+            Certificate.status == CertificateStatus.PENDING,
         )
         .order_by(Certificate.requested_at.asc())
         .offset(skip)
@@ -247,7 +247,7 @@ def list_admin_pending_certificates(
     """
     certs = (
         db.query(Certificate)
-        .filter(Certificate.status == "teacher_approved")
+        .filter(Certificate.status == CertificateStatus.TEACHER_APPROVED)
         .order_by(Certificate.teacher_approved_at.asc())
         .offset(skip)
         .limit(limit)
