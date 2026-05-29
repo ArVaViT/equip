@@ -1756,6 +1756,35 @@ class TestDeleteAnnouncement:
         )
         assert cv_after == 0
 
+    def test_delete_sweeps_associated_notifications(self, client: TestClient, db: Session, student):
+        """Phase 5ae regression: hard-delete must drop the
+        ``new_announcement`` notifications fanned out to enrolled
+        students. The notification's only link to the announcement is
+        ``meta->>'announcement_id'`` (no FK), so without an explicit
+        sweep the rows stay forever showing stale text."""
+        course = _create_course_via_api(client)
+        _seed_enrollment(db, user_id=STUDENT_ID, course_id=course["id"])
+
+        resp = client.post(
+            ANNOUNCEMENT_PREFIX,
+            json=_announcement_payload(course_id=course["id"]),
+        )
+        ann_id = resp.json()["id"]
+        notif_before = (
+            db.query(Notification)
+            .filter(Notification.type == "new_announcement", Notification.user_id == STUDENT_ID)
+            .count()
+        )
+        assert notif_before == 1
+
+        client.delete(f"{ANNOUNCEMENT_PREFIX}/{ann_id}")
+        notif_after = (
+            db.query(Notification)
+            .filter(Notification.type == "new_announcement", Notification.user_id == STUDENT_ID)
+            .count()
+        )
+        assert notif_after == 0
+
     def test_student_cannot_delete(self, student_client: TestClient, db: Session):
         from ._cv_helpers import make_announcement_with_text
 

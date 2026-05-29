@@ -15,6 +15,7 @@ from app.core.sanitize import sanitize_string
 from app.models.announcement import Announcement
 from app.models.course import Course
 from app.models.enrollment import Enrollment
+from app.models.notification import Notification
 from app.models.user import User, UserRole
 from app.schemas.announcement import (
     AnnouncementCreate,
@@ -467,5 +468,26 @@ def delete_announcement(
     # nothing for Postgres to cascade. Drop the rows explicitly so a
     # hard-delete doesn't leave orphan cv text behind.
     delete_entity_cv_rows(db, entity_type="announcement", entity_id=announcement.id)
+    # Phase 5ae: every enrolled student got a ``new_announcement``
+    # notification via ``create_notifications_bulk`` (see
+    # ``create_announcement``) — those rows reference this announcement
+    # only through ``meta->>'announcement_id'``, which Postgres has no
+    # way to follow on its own. Without this sweep the notification
+    # card stays in every recipient's panel showing stale text long
+    # after the announcement is gone. ``Notification.link`` was set to
+    # ``/courses/{course_id}`` in the fan-out, so we narrow the candidate
+    # set by type + link in SQL and then Python-filter on the
+    # ``meta`` dict — sidesteps the dialect-specific ``->>`` /
+    # ``json_extract`` split while keeping the candidate count bounded
+    # by the enrollment size of one course.
+    target_id = str(announcement.id)
+    candidates = (
+        db.query(Notification)
+        .filter(Notification.type == "new_announcement", Notification.link == f"/courses/{announcement.course_id}")
+        .all()
+    )
+    stale_ids = [n.id for n in candidates if isinstance(n.meta, dict) and n.meta.get("announcement_id") == target_id]
+    if stale_ids:
+        db.query(Notification).filter(Notification.id.in_(stale_ids)).delete(synchronize_session=False)
     db.delete(announcement)
     db.commit()
