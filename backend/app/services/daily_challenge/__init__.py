@@ -26,6 +26,12 @@ from app.services.daily_challenge.attempt import (
     NoScheduleError,
     submit_today_attempt,
 )
+from app.services.daily_challenge.llm import GeminiPromptClient, LLMError
+from app.services.daily_challenge.orchestrator import (
+    GenerationOutcome,
+    GenerationRequest,
+    run_generation,
+)
 from app.services.daily_challenge.schedule import get_today_question
 from app.services.daily_challenge.streak import apply_streak_for_attempt, get_user_streak
 from app.services.daily_challenge.text import (
@@ -35,7 +41,11 @@ from app.services.daily_challenge.text import (
 
 __all__ = [
     "DailyChallengeAttemptOutcome",
+    "GeminiPromptClient",
+    "GenerationOutcome",
+    "GenerationRequest",
     "InvalidOptionError",
+    "LLMError",
     "NoScheduleError",
     "NotPublishableError",
     "OptionDraft",
@@ -50,6 +60,7 @@ __all__ = [
     "promote_status",
     "publish_question",
     "reject_question",
+    "run_generation",
     "schedule_for_date",
     "submit_today_attempt",
 ]

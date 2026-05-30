@@ -32,6 +32,8 @@ from app.core.errors import ErrorCode, equip_error
 from app.models.daily_challenge import DailyChallengeQuestion
 from app.models.user import User  # noqa: TC001 — FastAPI Depends
 from app.schemas.daily_challenge import (
+    DailyChallengeGenerateRequest,
+    DailyChallengeGenerateResponse,
     DailyChallengeOptionEditorial,
     DailyChallengeQuestionCreate,
     DailyChallengeQuestionEditorial,
@@ -43,6 +45,8 @@ from app.schemas.daily_challenge import (
 )
 from app.schemas.locale import normalize_locale
 from app.services.daily_challenge import (
+    GeminiPromptClient,
+    GenerationRequest,
     NotPublishableError,
     OptionDraft,
     QuestionRejectedError,
@@ -52,6 +56,7 @@ from app.services.daily_challenge import (
     promote_status,
     publish_question,
     reject_question,
+    run_generation,
     schedule_for_date,
 )
 
@@ -297,4 +302,58 @@ def schedule_route(
         challenge_date=schedule.challenge_date,
         question_id=schedule.question_id,
         scheduled_at=schedule.scheduled_at,
+    )
+
+
+@router.post(
+    "/generate",
+    response_model=DailyChallengeGenerateResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Run the 6-round AI orchestrator for one passage; persists drafts",
+    responses={
+        201: {"description": "Generation complete; survivors persisted as DRAFT rows."},
+        503: {"description": "GEMINI_API_KEY not configured on this deployment."},
+    },
+)
+def generate_route(
+    data: DailyChallengeGenerateRequest,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+) -> DailyChallengeGenerateResponse:
+    """Kick off the 6-round confrontation flow on a single passage.
+
+    Synchronous because each run is short (~7 LLM round-trips, well
+    under the Vercel function budget) and the editor wants the
+    result immediately. Heavy-volume batch seeding (Sprint 6) should
+    invoke ``run_generation`` from a script, not this endpoint."""
+    from app.core.config import settings
+
+    api_key = settings.GEMINI_API_KEY.get_secret_value() if settings.GEMINI_API_KEY else ""
+    if not api_key:
+        raise equip_error(
+            ErrorCode.TRANSLATION_WORKER_UNCONFIGURED,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            message="GEMINI_API_KEY is not configured on this deployment",
+            context={"resource_type": "daily_challenge_generate"},
+        )
+
+    request = GenerationRequest(
+        book=data.bible_book,
+        chapter=data.bible_chapter,
+        verse_from=data.bible_verse_from,
+        verse_to=data.bible_verse_to,
+        n_candidates_per_agent=data.n_candidates_per_agent,
+        max_survivors=data.max_survivors,
+        created_by=teacher.id,
+    )
+    with GeminiPromptClient(api_key=api_key) as client:
+        outcome = run_generation(db, client=client, request=request)
+    return DailyChallengeGenerateResponse(
+        generation_run_id=outcome.generation_run_id,
+        created_question_ids=outcome.created_question_ids,
+        rejected_at_scripture=outcome.rejected_at_scripture,
+        rejected_at_doctrinal=outcome.rejected_at_doctrinal,
+        rejected_at_bilingual=outcome.rejected_at_bilingual,
+        rounds_executed=outcome.rounds_executed,
+        errors=outcome.errors,
     )
