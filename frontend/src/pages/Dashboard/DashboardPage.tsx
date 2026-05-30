@@ -10,7 +10,7 @@ import { ArrowRight, BookOpen, CheckCircle } from "lucide-react"
 import { ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
 import { VerseOfTheDayCard } from "@/components/home/VerseOfTheDayCard"
-import { StreakCard } from "@/components/dashboard/StreakCard"
+import { DailyChallengeCard } from "@/components/dashboard/DailyChallengeCard"
 import { TodayCard } from "@/components/dashboard/TodayCard"
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard"
 import { useUserTour } from "@/hooks/useUserTour"
@@ -290,8 +290,8 @@ export default function DashboardPage() {
           <div data-tour="today" className="lg:min-h-0 lg:overflow-hidden">
             <TodayCard />
           </div>
-          <div data-tour="streak" className="lg:min-h-0 lg:overflow-hidden">
-            <StreakCard />
+          <div data-tour="daily-challenge" className="lg:min-h-0 lg:overflow-hidden">
+            <DailyChallengeCard />
           </div>
         </div>
       </div>

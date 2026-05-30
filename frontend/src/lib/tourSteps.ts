@@ -51,7 +51,7 @@ export function studentDashboardSteps(t: TFunction): TourStep[] {
       },
     },
     {
-      element: '[data-tour="streak"]',
+      element: '[data-tour="daily-challenge"]',
       popover: {
         title: t("tour.student.streak.title"),
         description: t("tour.student.streak.body"),
