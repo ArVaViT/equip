@@ -484,6 +484,26 @@
       "memoryVerse": "Recite the memory verse"
     }
   },
+  "dailyChallenge": {
+    "eyebrow": "Daily Challenge",
+    "title": "Today's question",
+    "streakAriaLabel": "{{count}}-day streak",
+    "loadError": "Couldn't load today's challenge",
+    "notScheduled": {
+      "title": "No question today",
+      "body": "Tomorrow's challenge unlocks at midnight UTC."
+    },
+    "reveal": {
+      "correct": "Correct",
+      "wrong": "Not quite"
+    },
+    "toast": {
+      "correct": "Nice — that's the one.",
+      "wrong": "Close, but not today.",
+      "invalidOption": "That choice doesn't belong to today's question.",
+      "submitError": "Couldn't submit — please try again."
+    }
+  },
   "notifications": {
     "menuAriaLabel": "Notifications",
     "panelAriaLabel": "Notifications",

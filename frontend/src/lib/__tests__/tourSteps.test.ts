@@ -15,7 +15,7 @@ describe("tourSteps", () => {
       '[data-tour="my-courses"]',
       '[data-tour="verse-of-day"]',
       '[data-tour="today"]',
-      '[data-tour="streak"]',
+      '[data-tour="daily-challenge"]',
       undefined,
     ])
 

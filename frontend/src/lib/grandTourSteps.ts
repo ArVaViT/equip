@@ -53,7 +53,7 @@ export function studentGrandTourSteps(t: TFunction): GrandTourStep[] {
     },
     {
       route: "/",
-      element: '[data-tour="streak"]',
+      element: '[data-tour="daily-challenge"]',
       popover: {
         title: t("tour.student.streak.title"),
         description: t("tour.student.streak.body"),
