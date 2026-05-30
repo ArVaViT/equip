@@ -73,9 +73,9 @@ function OptionButton({ option, reveal, disabled, onClick }: OptionButtonProps) 
         )}
       >
         {showAsCorrect ? (
-          <Check className="h-3 w-3" strokeWidth={2} />
+          <Check className="h-3 w-3" strokeWidth={1.75} />
         ) : showAsWrong ? (
-          <X className="h-3 w-3" strokeWidth={2} />
+          <X className="h-3 w-3" strokeWidth={1.75} />
         ) : (
           String.fromCharCode(65 + option.order_index)
         )}
