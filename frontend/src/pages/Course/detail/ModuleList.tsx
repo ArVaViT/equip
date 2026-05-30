@@ -11,11 +11,11 @@ import {
 import { Button } from "@/components/ui/button"
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { EmptyState } from "@/components/patterns"
 import { StaggerChildren } from "@/components/motion"
 import { isGradableChapterType } from "@/lib/chapterTypes"
 import type { Module } from "@/types"
@@ -51,11 +51,11 @@ export function ModuleList({ courseId, modules, completedChapterIds }: Props) {
           ))}
         </StaggerChildren>
       ) : (
-        <Card className="border-dashed">
-          <CardContent className="py-8 text-center text-muted-foreground text-sm">
-            {t("courseDetail.noModulesAddedYet")}
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<BookOpen strokeWidth={1.75} aria-hidden />}
+          title={t("courseDetail.noModulesAddedYet")}
+          description={t("courseDetail.noModulesAddedYetDescription")}
+        />
       )}
     </div>
   )

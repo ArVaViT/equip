@@ -1243,6 +1243,7 @@
     "percentComplete": "{{percent}}% завершено",
     "modulesHeading": "Модули",
     "noModulesAddedYet": "Модули ещё не добавлены",
+    "noModulesAddedYetDescription": "Преподаватель пока не опубликовал ни одного модуля. Загляните позже — они появятся здесь.",
     "openModule": "Открыть",
     "moduleLocked": "Заблокировано",
     "moduleLockHint": "Завершите все задания предыдущего модуля, чтобы разблокировать.",
