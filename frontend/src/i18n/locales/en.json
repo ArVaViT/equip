@@ -1591,6 +1591,7 @@
     "percentComplete": "{{percent}}% complete",
     "modulesHeading": "Modules",
     "noModulesAddedYet": "No modules added yet",
+    "noModulesAddedYetDescription": "The teacher hasn't published any modules for this course. Check back soon — they'll appear here as they're added.",
     "openModule": "Open",
     "moduleLocked": "Locked",
     "moduleLockHint": "Complete all assessments in the previous module to unlock.",

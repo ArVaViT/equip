@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ErrorState } from "@/components/patterns"
+import { EmptyState, ErrorState } from "@/components/patterns"
 import { coursesService } from "@/services/courses"
 import type { Certificate, Enrollment } from "@/types"
 import { Award, ArrowLeft, RefreshCw, ScrollText } from "lucide-react"
@@ -111,20 +111,16 @@ export default function CertificatesPage() {
           }
         />
       ) : certificates.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-              <ScrollText className="h-8 w-8 text-muted-foreground/50" strokeWidth={1.75} />
-            </div>
-            <h3 className="mb-1 text-lg font-medium">{t("certificates.emptyTitle")}</h3>
-            <p className="mb-6 max-w-sm text-sm text-muted-foreground">
-              {t("certificates.emptyDescription")}
-            </p>
+        <EmptyState
+          icon={<ScrollText strokeWidth={1.75} aria-hidden />}
+          title={t("certificates.emptyTitle")}
+          description={t("certificates.emptyDescription")}
+          action={
             <Link to="/courses">
               <Button size="sm">{t("certificates.browseCourses")}</Button>
             </Link>
-          </CardContent>
-        </Card>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {certificates.map((cert) => {
