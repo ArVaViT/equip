@@ -378,6 +378,7 @@ class DailyChallengePilotReview(Base):
             name="dc_pilot_reviews_rating_check",
         ),
         Index("ix_dc_pilot_reviews_question", "question_id"),
+        Index("ix_dc_pilot_reviews_reviewer", "reviewer_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
