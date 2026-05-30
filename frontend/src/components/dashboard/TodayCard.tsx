@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { ArrowRight, CalendarDays } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState } from "@/components/patterns"
 import { coursesService } from "@/services/courses"
 import { useAuth } from "@/context/useAuth"
 import type { CalendarEvent } from "@/types"
@@ -112,7 +113,12 @@ export function TodayCard() {
             <Skeleton className="h-3.5 w-3/4" />
           </div>
         ) : todayEvents.length === 0 ? (
-          <p className="text-xs text-muted-foreground">{t("dashboard.today.empty")}</p>
+          <EmptyState
+            variant="compact"
+            icon={<CalendarDays strokeWidth={1.75} aria-hidden />}
+            title={t("dashboard.today.empty")}
+            description={t("dashboard.today.emptyDescription")}
+          />
         ) : (
           <ul className="space-y-2">
             {todayEvents.map((e) => (

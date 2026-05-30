@@ -1,6 +1,7 @@
-import { Loader2, Plus, Save, Trash2 } from "lucide-react"
+import { ListPlus, Loader2, Plus, Save, Trash2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/patterns"
 import type { Quiz } from "@/types"
 import { QuestionCard } from "./QuestionCard"
 import { QuizHeaderFields } from "./QuizHeaderFields"
@@ -97,9 +98,11 @@ export function QuizEditView({
         ))}
 
         {questions.length === 0 && (
-          <div className="text-center py-6 border border-dashed rounded-md text-sm text-muted-foreground">
-            {t("quizEditor.questions.empty")}
-          </div>
+          <EmptyState
+            icon={<ListPlus strokeWidth={1.75} aria-hidden />}
+            title={t("quizEditor.questions.emptyTitle")}
+            description={t("quizEditor.questions.empty")}
+          />
         )}
       </div>
 

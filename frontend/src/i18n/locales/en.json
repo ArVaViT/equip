@@ -130,7 +130,8 @@
     "today": {
       "eyebrow": "Today",
       "openFull": "Full calendar",
-      "empty": "No events scheduled for today."
+      "empty": "No events scheduled for today.",
+      "emptyDescription": "Open the full calendar to see what's coming up this week."
     }
   },
   "onboarding": {
@@ -821,7 +822,8 @@
     "questions": {
       "heading": "Questions ({{count}})",
       "addQuestion": "Add Question",
-      "empty": "No questions yet. Click \"Add Question\" to start.",
+      "emptyTitle": "No questions yet",
+      "empty": "Click \"Add Question\" to start building this quiz.",
       "questionPrefix": "Q{{n}}",
       "questionPlaceholder": "Question text...",
       "types": {
@@ -859,7 +861,9 @@
     "review": {
       "loadFailed": "Failed to load submissions. Please try again.",
       "emptyAlready": "No open-ended answers yet.",
+      "emptyAlreadyDescription": "Once students submit short-answer or essay questions, they'll show up here for grading.",
       "emptyAllGraded": "Nothing to grade — you're all caught up.",
+      "emptyAllGradedDescription": "New submissions land here as students complete the quiz. Toggle 'Show already graded' to revisit past grades.",
       "openEndedCount_one": "{{count}} open-ended answer",
       "openEndedCount_other": "{{count}} open-ended answers",
       "showAlreadyGraded": "Show already graded",
@@ -1217,6 +1221,7 @@
     "loadFailedInline": "Couldn't load reviews.",
     "retry": "Retry",
     "empty": "No reviews yet.",
+    "emptyDescription": "Be the first to share what you took away from this course.",
     "anonymous": "Anonymous",
     "confirmDeletePrefix": "Delete?",
     "confirmDeleteLoading": "…",

@@ -8,6 +8,7 @@ import { toast } from "@/lib/toast"
 import type { CourseReview } from "@/types"
 import { Star, Trash2, MessageSquare } from "lucide-react"
 import PageSpinner from "@/components/ui/PageSpinner"
+import { EmptyState } from "@/components/patterns"
 import { formatDate } from "@/i18n/format"
 
 interface Props {
@@ -98,9 +99,12 @@ export default function CourseReviews({ courseId }: Props) {
             </Button>
           </div>
         ) : reviews.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">
-            {t("reviews.empty")}
-          </p>
+          <EmptyState
+            variant="compact"
+            icon={<MessageSquare strokeWidth={1.75} aria-hidden />}
+            title={t("reviews.empty")}
+            description={t("reviews.emptyDescription")}
+          />
         ) : (
           <div className="space-y-4">
             {reviews.map((review) => (
