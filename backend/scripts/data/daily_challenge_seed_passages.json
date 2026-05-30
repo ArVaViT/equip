@@ -1,0 +1,76 @@
+{
+  "_meta": {
+    "purpose": "Seed manifest for Daily Challenge initial bank.",
+    "composition_target": {
+      "narrative_recall": 0.40,
+      "passage_exegesis": 0.35,
+      "cross_reference": 0.15,
+      "historical_cultural": 0.10
+    },
+    "yield_estimate": "45 passages × ~2 survivors/run ≈ 90 DRAFT questions before editorial review.",
+    "selection_criteria": [
+      "Verified: every cited verse exists in BOTH bundled KJV (1769) and Synodal (1876) (pre-flighted via app/services/bible/store.lookup).",
+      "Spans Old and New Testament, narrative and epistolary.",
+      "Doctrinally neutral or central (avoids divisive secondary issues like end-times timing, mode of baptism, charismatic gifts).",
+      "Passages familiar across Protestant, Catholic, and Orthodox traditions to keep questions defensible bilingually."
+    ],
+    "bundled_book_constraints": "Synodal bundle only includes Romans 1-5; later epistle chapters were excluded. Gospels + Acts are full coverage."
+  },
+  "passages": [
+    {"book": "John",     "chapter":  3, "verse_from": 14, "verse_to": 17, "category": "passage_exegesis"},
+    {"book": "John",     "chapter":  1, "verse_from":  1, "verse_to":  5, "category": "passage_exegesis"},
+    {"book": "John",     "chapter": 14, "verse_from":  1, "verse_to":  6, "category": "passage_exegesis"},
+    {"book": "John",     "chapter": 10, "verse_from": 11, "verse_to": 15, "category": "passage_exegesis"},
+    {"book": "John",     "chapter": 11, "verse_from": 25, "verse_to": 26, "category": "passage_exegesis"},
+    {"book": "John",     "chapter":  4, "verse_from": 13, "verse_to": 14, "category": "passage_exegesis"},
+    {"book": "John",     "chapter":  6, "verse_from": 35, "verse_to": 40, "category": "passage_exegesis"},
+    {"book": "John",     "chapter":  8, "verse_from": 31, "verse_to": 36, "category": "passage_exegesis"},
+
+    {"book": "Matthew",  "chapter":  5, "verse_from":  3, "verse_to": 12, "category": "passage_exegesis"},
+    {"book": "Matthew",  "chapter":  6, "verse_from":  9, "verse_to": 13, "category": "narrative_recall"},
+    {"book": "Matthew",  "chapter": 28, "verse_from": 18, "verse_to": 20, "category": "passage_exegesis"},
+    {"book": "Matthew",  "chapter":  1, "verse_from": 21, "verse_to": 23, "category": "historical_cultural"},
+    {"book": "Matthew",  "chapter": 11, "verse_from": 28, "verse_to": 30, "category": "passage_exegesis"},
+    {"book": "Matthew",  "chapter":  7, "verse_from":  7, "verse_to":  8, "category": "passage_exegesis"},
+    {"book": "Matthew",  "chapter": 22, "verse_from": 36, "verse_to": 40, "category": "passage_exegesis"},
+
+    {"book": "Mark",     "chapter": 10, "verse_from": 17, "verse_to": 22, "category": "narrative_recall"},
+    {"book": "Mark",     "chapter": 12, "verse_from": 28, "verse_to": 31, "category": "passage_exegesis"},
+    {"book": "Mark",     "chapter":  8, "verse_from": 34, "verse_to": 38, "category": "passage_exegesis"},
+    {"book": "Mark",     "chapter": 16, "verse_from": 15, "verse_to": 16, "category": "narrative_recall"},
+
+    {"book": "Luke",     "chapter":  2, "verse_from":  8, "verse_to": 14, "category": "narrative_recall"},
+    {"book": "Luke",     "chapter": 15, "verse_from": 11, "verse_to": 24, "category": "narrative_recall"},
+    {"book": "Luke",     "chapter": 23, "verse_from": 39, "verse_to": 43, "category": "narrative_recall"},
+    {"book": "Luke",     "chapter": 19, "verse_from":  1, "verse_to": 10, "category": "narrative_recall"},
+    {"book": "Luke",     "chapter":  4, "verse_from": 16, "verse_to": 21, "category": "narrative_recall"},
+    {"book": "Luke",     "chapter": 10, "verse_from": 25, "verse_to": 28, "category": "cross_reference"},
+
+    {"book": "Acts",     "chapter":  2, "verse_from": 38, "verse_to": 42, "category": "passage_exegesis"},
+    {"book": "Acts",     "chapter":  4, "verse_from":  8, "verse_to": 12, "category": "passage_exegesis"},
+    {"book": "Acts",     "chapter": 16, "verse_from": 25, "verse_to": 31, "category": "narrative_recall"},
+    {"book": "Acts",     "chapter":  1, "verse_from":  8, "verse_to":  8, "category": "passage_exegesis"},
+    {"book": "Acts",     "chapter": 17, "verse_from": 24, "verse_to": 28, "category": "historical_cultural"},
+
+    {"book": "Romans",   "chapter":  5, "verse_from":  1, "verse_to":  5, "category": "passage_exegesis"},
+    {"book": "Romans",   "chapter":  1, "verse_from": 16, "verse_to": 17, "category": "passage_exegesis"},
+
+    {"book": "Genesis",  "chapter":  1, "verse_from":  1, "verse_to":  5, "category": "narrative_recall"},
+    {"book": "Genesis",  "chapter": 12, "verse_from":  1, "verse_to":  3, "category": "historical_cultural"},
+    {"book": "Genesis",  "chapter": 22, "verse_from":  1, "verse_to":  5, "category": "narrative_recall"},
+
+    {"book": "Exodus",   "chapter": 20, "verse_from":  1, "verse_to": 17, "category": "narrative_recall"},
+    {"book": "Exodus",   "chapter": 14, "verse_from": 13, "verse_to": 14, "category": "narrative_recall"},
+
+    {"book": "Psalms",   "chapter": 23, "verse_from":  1, "verse_to":  6, "category": "passage_exegesis"},
+    {"book": "Psalms",   "chapter":  1, "verse_from":  1, "verse_to":  3, "category": "passage_exegesis"},
+    {"book": "Psalms",   "chapter": 51, "verse_from": 10, "verse_to": 12, "category": "passage_exegesis"},
+
+    {"book": "Isaiah",   "chapter": 53, "verse_from":  4, "verse_to":  6, "category": "cross_reference"},
+    {"book": "Isaiah",   "chapter":  9, "verse_from":  6, "verse_to":  7, "category": "cross_reference"},
+    {"book": "Isaiah",   "chapter": 40, "verse_from": 28, "verse_to": 31, "category": "passage_exegesis"},
+
+    {"book": "Daniel",   "chapter":  3, "verse_from": 16, "verse_to": 18, "category": "narrative_recall"},
+    {"book": "Daniel",   "chapter":  6, "verse_from": 10, "verse_to": 12, "category": "narrative_recall"}
+  ]
+}
