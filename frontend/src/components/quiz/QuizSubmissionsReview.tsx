@@ -7,7 +7,8 @@ import type { PendingAnswer } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { CheckCircle2, GraduationCap, Loader2, Save, Users } from "lucide-react"
+import { EmptyState } from "@/components/patterns"
+import { CheckCheck, CheckCircle2, GraduationCap, Inbox, Loader2, Save, Users } from "lucide-react"
 import { formatDateTime } from "@/i18n/format"
 import { countWords } from "@/lib/text"
 
@@ -132,6 +133,28 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
           {t("quizEditor.review.showAlreadyGraded")}
         </label>
       </div>
+
+      {items.length === 0 && (
+        <EmptyState
+          icon={
+            showGraded ? (
+              <Inbox strokeWidth={1.75} aria-hidden />
+            ) : (
+              <CheckCheck strokeWidth={1.75} aria-hidden />
+            )
+          }
+          title={
+            showGraded
+              ? t("quizEditor.review.emptyAlready")
+              : t("quizEditor.review.emptyAllGraded")
+          }
+          description={
+            showGraded
+              ? t("quizEditor.review.emptyAlreadyDescription")
+              : t("quizEditor.review.emptyAllGradedDescription")
+          }
+        />
+      )}
 
       {items.map((item) => {
         const wordCount = countWords(item.text_answer)
