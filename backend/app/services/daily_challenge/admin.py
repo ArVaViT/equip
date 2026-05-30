@@ -88,7 +88,7 @@ class OptionDraft:
 def _log_event(
     db: Session,
     *,
-    question_id: uuid.UUID,
+    question_id: uuid.UUID | None,
     event_type: str,
     actor_id: uuid.UUID | None,
     details: dict | None = None,
@@ -96,7 +96,10 @@ def _log_event(
 ) -> None:
     """Append to the audit trail. The schema is the index; the payload
     lives in ``details``. Service callers pass typed dicts per
-    event_type; ``details`` is opaque to the schema."""
+    event_type; ``details`` is opaque to the schema.
+
+    ``question_id`` is nullable so the AI orchestrator can log
+    pre-persistence rounds keyed only by ``generation_run_id``."""
     db.add(
         DailyChallengeQuestionEvent(
             question_id=question_id,

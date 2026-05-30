@@ -189,3 +189,32 @@ class DailyChallengeScheduleResponse(BaseModel):
     challenge_date: date
     question_id: UUID
     scheduled_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# AI orchestrator schemas (Sprint 5)
+# ---------------------------------------------------------------------------
+
+
+class DailyChallengeGenerateRequest(BaseModel):
+    """``POST /admin/daily-challenge/generate`` body."""
+
+    bible_book: str = Field(..., min_length=1, max_length=64)
+    bible_chapter: int = Field(..., gt=0)
+    bible_verse_from: int | None = Field(None, gt=0)
+    bible_verse_to: int | None = Field(None, gt=0)
+    # Bounded so a runaway call can't spawn thousands of LLM round-trips.
+    n_candidates_per_agent: int = Field(10, ge=1, le=20)
+    max_survivors: int = Field(6, ge=1, le=12)
+
+
+class DailyChallengeGenerateResponse(BaseModel):
+    """``POST /admin/daily-challenge/generate`` response."""
+
+    generation_run_id: UUID
+    created_question_ids: list[UUID]
+    rejected_at_scripture: int
+    rejected_at_doctrinal: int
+    rejected_at_bilingual: int
+    rounds_executed: int
+    errors: list[str]

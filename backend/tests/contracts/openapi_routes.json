@@ -10,6 +10,17 @@
   },
   {
     "method": "POST",
+    "path": "/api/v1/admin/daily-challenge/generate",
+    "params": [],
+    "responses": [
+      "201",
+      "422",
+      "503"
+    ],
+    "body": true
+  },
+  {
+    "method": "POST",
     "path": "/api/v1/admin/daily-challenge/questions",
     "params": [],
     "responses": [
