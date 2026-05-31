@@ -155,35 +155,45 @@ class TestArchiveList:
     def test_prefers_live_over_archive_attempt(
         self, db: Session, author: User, student: User, student_client: TestClient
     ):
+        """The picker's ORDER BY ``is_archive ASC`` must win over
+        insertion order. We insert the ARCHIVE attempt FIRST with a
+        LATER ``submitted_at``, and the LIVE attempt SECOND with an
+        EARLIER ``submitted_at``. If the picker used insertion order or
+        ``submitted_at DESC`` alone, the archive (correct) would win.
+        ``is_archive ASC`` is what guarantees the (wrong) live attempt
+        is reported."""
         today = utc_today()
         q = _seed_q(db, author_id=author.id)
         d = today - timedelta(days=4)
         _schedule(db, q, d, author.id)
         correct = next(o for o in q.options if o.is_correct)
         wrong = next(o for o in q.options if not o.is_correct)
-        # Live wrong, then archive replay correct → list should report
-        # the LIVE result (wrong) and ``archive_only_attempt=False``.
-        db.add(
-            DailyChallengeAttempt(
-                user_id=student.id,
-                question_id=q.id,
-                challenge_date=d,
-                is_archive=False,
-                selected_option_id=wrong.id,
-                is_correct=False,
-                streak_after=1,
-            )
+
+        archive_attempt = DailyChallengeAttempt(
+            user_id=student.id,
+            question_id=q.id,
+            challenge_date=d,
+            is_archive=True,
+            selected_option_id=correct.id,
+            is_correct=True,
         )
-        db.add(
-            DailyChallengeAttempt(
-                user_id=student.id,
-                question_id=q.id,
-                challenge_date=d,
-                is_archive=True,
-                selected_option_id=correct.id,
-                is_correct=True,
-            )
+        archive_attempt.submitted_at = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
+        db.add(archive_attempt)
+        db.flush()
+
+        live_attempt = DailyChallengeAttempt(
+            user_id=student.id,
+            question_id=q.id,
+            challenge_date=d,
+            is_archive=False,
+            selected_option_id=wrong.id,
+            is_correct=False,
+            streak_after=1,
         )
+        # Older than the archive attempt — only ``is_archive ASC``
+        # can make the live attempt win.
+        live_attempt.submitted_at = datetime(2026, 5, 28, 12, 0, tzinfo=UTC)
+        db.add(live_attempt)
         db.commit()
 
         resp = student_client.get("/api/v1/daily-challenge/archive")

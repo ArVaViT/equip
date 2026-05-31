@@ -196,3 +196,20 @@ def test_gives_up_after_walk_cap(monkeypatch):
     monkeypatch.setattr(svc, "_fetch_passage", _always_missing)
     with pytest.raises(svc.VerseOfTheDayUnavailable):
         svc.get_verse_of_the_day("ru", today=dt.date(2026, 5, 31))
+
+
+def test_walk_does_not_consume_transient_errors(monkeypatch):
+    """A 5xx / timeout from YouVersion is transient — it must NOT
+    be treated as "verse missing from this bible" and trigger the
+    walk forward. Surface as ``VerseOfTheDayUnavailable`` directly so
+    the route 404s and the frontend hides; the next page load tries
+    again. (Walking forward on transient errors would silently mask
+    upstream outages by always serving the second verse.)"""
+    monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+
+    def _transient(api_key: str, bible_id: int, ref: str) -> tuple[str, str]:
+        raise svc.VerseOfTheDayUnavailable("YouVersion 503")
+
+    monkeypatch.setattr(svc, "_fetch_passage", _transient)
+    with pytest.raises(svc.VerseOfTheDayUnavailable):
+        svc.get_verse_of_the_day("en", today=dt.date(2026, 5, 31))

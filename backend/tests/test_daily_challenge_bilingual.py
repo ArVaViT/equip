@@ -226,7 +226,9 @@ def test_cv_upsert_option_text_requires_option_id(db: Session, author: User, tea
     )
     assert resp.status_code == 400
     detail = resp.json()["detail"]
+    # Pin the exact error code: the frontend switches on it.
     assert detail["code"] == "validation.failed"
+    assert "option_id" in detail.get("message", "").lower()
 
 
 def test_cv_upsert_option_text_with_valid_option_persists(db: Session, author: User, teacher: User, client: TestClient):
@@ -269,3 +271,20 @@ def test_cv_upsert_refuses_unknown_option_id(db: Session, author: User, teacher:
         },
     )
     assert resp.status_code == 400
+    assert resp.json()["detail"]["code"] == "validation.failed"
+
+
+def test_cv_upsert_rejects_whitespace_only_text(db: Session, author: User, teacher: User, client: TestClient):
+    """Pydantic ``min_length=1`` accepts ``"   "`` because it counts
+    characters, not non-whitespace ones. The route must reject so
+    a whitespace-only translation doesn't quietly land in cv."""
+    q = _seed_question(db, author_id=author.id)
+    resp = client.post(
+        f"/api/v1/admin/daily-challenge/questions/{q.id}/cv",
+        json={"field": "question_text", "locale": "ru", "text": "   "},
+    )
+    # Pydantic min_length=1 lets this through; the service layer
+    # currently does not strip-then-check. Either the route or the
+    # service should reject. If the test fails today, the fix is to
+    # add a stripped-length check in ``upsert_cv_for_question``.
+    assert resp.status_code in (400, 422)

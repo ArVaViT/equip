@@ -3,19 +3,28 @@
 Two routes:
 
 * ``POST /calendar/ical/token`` (auth) — issues a long-lived
-  HMAC-signed token bound to the calling user, and returns the
-  subscribe URL. Rotation is implicit: a fresh call updates ``iat``,
-  invalidating any earlier token in case the user accidentally shared
-  the link.
+  HMAC-signed token bound to the calling user, returns the subscribe
+  URL, and stamps ``profiles.calendar_ical_min_iat`` to the new
+  token's ``iat``. That stamp is the actual rotation gate: the feed
+  verifier refuses tokens whose ``iat`` is older than it.
 * ``GET /calendar/ical/feed`` (no session auth) — validates the
-  token and returns RFC 5545 text/calendar. Designed so a calendar
-  client can subscribe without sending a Bearer header.
+  token (signature + scope + audience + expiry + iat-floor) and
+  returns RFC 5545 text/calendar. Designed so a calendar client can
+  subscribe without sending a Bearer header.
 
 Auth model: standalone signed token, not Supabase JWTs. We don't
 want to expose a fully-privileged JWT in a calendar subscription URL
 because calendar clients sometimes log the URL plain. The iCal token
 carries only ``{sub, scope=ical}``; the route refuses tokens with
 any other scope.
+
+Rotation gate (``calendar_ical_min_iat``)
+PyJWT's ``decode`` does NOT validate the ``iat`` claim by default,
+so without a server-side floor a leaked subscribe URL would stay
+valid for the full 365-day TTL even after the user rotated. The
+``calendar_ical_min_iat`` column on ``profiles`` is the floor: the
+``/token`` route updates it on every issue; the ``/feed`` route
+refuses ``payload.iat < user.calendar_ical_min_iat``.
 """
 
 from __future__ import annotations
@@ -49,38 +58,44 @@ _TOKEN_SCOPE = "ical"
 # periodically without prompting the user, so a 7-day expiry would
 # silently fall off the user's calendar after a week. A year is the
 # usual sweet spot — long enough to forget about, short enough that a
-# leaked token has a bounded blast radius. Rotation invalidates earlier
-# tokens by changing ``iat``.
+# leaked token has a bounded blast radius. Rotation tightens this via
+# the ``calendar_ical_min_iat`` floor on profiles.
 _TOKEN_TTL = timedelta(days=365)
 
 
-def _sign_token(*, user_id: str) -> tuple[str, datetime]:
-    """Issue a fresh iCal token. Returns ``(token, expires_at)``.
+def _sign_token(*, user_id: str) -> tuple[str, datetime, int]:
+    """Issue a fresh iCal token. Returns ``(token, expires_at, iat)``.
 
-    Raises ``RuntimeError`` if ``JWT_SECRET_KEY`` is not configured —
-    a deployment without it is misconfigured and we don't want to
-    silently issue valid-looking but unverifiable tokens.
+    The caller is responsible for stamping ``iat`` onto the user row's
+    ``calendar_ical_min_iat`` so the rotation gate actually invalidates
+    prior tokens. Raises ``RuntimeError`` if ``JWT_SECRET_KEY`` is not
+    configured — a deployment without it is misconfigured and we don't
+    want to silently issue valid-looking but unverifiable tokens.
     """
     if not settings.JWT_SECRET_KEY:
         raise RuntimeError("JWT_SECRET_KEY is not configured")
     now = datetime.now(UTC)
     expires_at = now + _TOKEN_TTL
+    iat = int(now.timestamp())
     payload = {
         "sub": user_id,
         "scope": _TOKEN_SCOPE,
-        "iat": int(now.timestamp()),
+        "iat": iat,
         "exp": int(expires_at.timestamp()),
         # Use a private audience so the standard Supabase JWT decode
         # path elsewhere won't accidentally accept this token.
         "aud": "equip-ical",
     }
     token = jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
-    return token, expires_at
+    return token, expires_at, iat
 
 
-def _verify_token(token: str) -> str | None:
-    """Return the ``sub`` (user id) if the token is valid and scoped
-    to ``ical``. Returns ``None`` on any failure — never raises."""
+def _verify_token(token: str) -> tuple[str, int] | None:
+    """Decode the iCal token and return ``(sub, iat)`` when the
+    signature, scope, audience, and expiry are valid; ``None`` on any
+    failure. The caller MUST cross-check ``iat`` against the user
+    row's ``calendar_ical_min_iat`` floor before serving the feed —
+    that's what makes rotation actually invalidate the old token."""
     if not settings.JWT_SECRET_KEY:
         return None
     try:
@@ -96,7 +111,10 @@ def _verify_token(token: str) -> str | None:
     if payload.get("scope") != _TOKEN_SCOPE:
         return None
     sub = payload.get("sub")
-    return str(sub) if sub else None
+    iat = payload.get("iat")
+    if not sub or not isinstance(iat, int):
+        return None
+    return str(sub), iat
 
 
 @router.post(
@@ -110,12 +128,17 @@ def _verify_token(token: str) -> str | None:
 def issue_token(
     request: Request,
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> dict[str, str]:
-    """Issue a fresh iCal token. Each call invalidates the previous
-    token via the changed ``iat`` claim, so users who suspect their
-    subscribe URL was leaked just call this again to rotate."""
+    """Issue a fresh iCal token and stamp the rotation floor.
+
+    Each call advances ``profiles.calendar_ical_min_iat`` to the new
+    token's ``iat``. The feed verifier refuses any token whose ``iat``
+    is older — that's what makes rotation actually invalidate a
+    previously-issued URL.
+    """
     try:
-        token, expires_at = _sign_token(user_id=str(current_user.id))
+        token, expires_at, iat = _sign_token(user_id=str(current_user.id))
     except RuntimeError:
         raise equip_error(
             ErrorCode.TRANSLATION_WORKER_UNCONFIGURED,
@@ -123,6 +146,10 @@ def issue_token(
             message="iCal export is not configured on this deployment",
             context={"resource_type": "calendar_ical"},
         ) from None
+
+    current_user.calendar_ical_min_iat = iat
+    db.commit()
+
     # Build the feed URL against the request's own scheme/host so the
     # client always sees the same origin it just authenticated with —
     # no need for a static "public base url" config.
@@ -152,14 +179,15 @@ def serve_feed(
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
     db: Session = Depends(get_db),
 ) -> Response:
-    user_id = _verify_token(token)
-    if user_id is None:
+    decoded = _verify_token(token)
+    if decoded is None:
         raise equip_error(
             ErrorCode.AUTH_REQUIRED,
             status_code=status.HTTP_401_UNAUTHORIZED,
             message="Invalid or expired iCal token",
             context={"resource_type": "calendar_ical"},
         )
+    user_id, iat = decoded
     try:
         user_uuid = uuid.UUID(user_id)
     except ValueError:
@@ -178,6 +206,20 @@ def serve_feed(
             ErrorCode.AUTH_REQUIRED,
             status_code=status.HTTP_401_UNAUTHORIZED,
             message="iCal token references a deleted account",
+            context={"resource_type": "calendar_ical"},
+        )
+
+    # Rotation gate: refuse tokens issued before the user's last
+    # ``/token`` call. ``calendar_ical_min_iat`` is NULL only when the
+    # user has never issued a token via this surface (defensive — no
+    # token should have a valid sub for a user who hasn't issued one,
+    # but verifying defensively here means rotation works even if a
+    # future migration backfills tokens out-of-band).
+    if user.calendar_ical_min_iat is not None and iat < user.calendar_ical_min_iat:
+        raise equip_error(
+            ErrorCode.AUTH_REQUIRED,
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            message="iCal token was superseded by a newer issue",
             context={"resource_type": "calendar_ical"},
         )
 

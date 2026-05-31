@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, func
+from sqlalchemy import BigInteger, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -32,6 +32,13 @@ class User(Base):
     # The CHECK constraint in supabase/migrations/...add_profile_preferred_locale
     # restricts this to ('ru', 'en'); keep the schema Literal in sync.
     preferred_locale: Mapped[str] = mapped_column(default="ru")
+    # Floor for iCal token ``iat`` claims. When a user rotates their
+    # subscription token via ``POST /calendar/ical/token``, we stamp
+    # this to the new ``iat``; the feed verifier refuses tokens whose
+    # ``iat`` is older. Without this, JWT's default decode does NOT
+    # validate ``iat``, so a leaked subscribe URL would stay valid for
+    # the full 365-day TTL even after the user "rotated".
+    calendar_ical_min_iat: Mapped[int | None] = mapped_column(BigInteger)
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), onupdate=func.now())
     avatar_url: Mapped[str | None] = mapped_column()

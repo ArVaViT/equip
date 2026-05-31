@@ -199,3 +199,97 @@ def test_feed_rejects_garbage_token(secret: str) -> None:
     with TestClient(app) as tc:
         resp = tc.get("/api/v1/calendar/ical/feed?token=not-a-jwt")
     assert resp.status_code == 401
+
+
+def test_feed_rejects_token_signed_with_different_secret(secret: str) -> None:
+    """A token with a valid JWT structure but signed with the wrong
+    secret must be rejected. This is the core auth guarantee — without
+    it, an attacker who can sign tokens with their own key would
+    bypass auth entirely."""
+    now = int(dt.datetime.now(dt.UTC).timestamp())
+    token = jwt.encode(
+        {
+            "sub": "abc",
+            "scope": "ical",
+            "iat": now,
+            "exp": now + 3600,
+            "aud": "equip-ical",
+        },
+        "attacker-signed-with-a-totally-different-secret",
+        algorithm="HS256",
+    )
+    with TestClient(app) as tc:
+        resp = tc.get(f"/api/v1/calendar/ical/feed?token={token}")
+    assert resp.status_code == 401
+
+
+def test_feed_rejects_token_issued_before_rotation_floor(
+    student: User, secret: str, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When the user calls /token, ``calendar_ical_min_iat`` advances
+    to the new token's iat. Any previously issued token must be
+    refused — without that floor, JWT's default decode never validates
+    iat and a leaked URL stays valid for the full TTL."""
+    from app.api.v1 import calendar_ical as route_mod
+
+    def _stub_events(**kwargs: object) -> list[CalendarEvent]:
+        return [_calendar_event()]
+
+    monkeypatch.setattr(route_mod, "get_calendar_events", _stub_events)
+
+    def _override_db() -> object:
+        yield db
+
+    app.dependency_overrides[get_db] = _override_db
+
+    now = int(dt.datetime.now(dt.UTC).timestamp())
+    # Simulate that the user rotated their token a minute ago; this
+    # token was issued earlier and is now below the floor.
+    student.calendar_ical_min_iat = now
+    db.commit()
+
+    old_token = jwt.encode(
+        {
+            "sub": str(student.id),
+            "scope": "ical",
+            "iat": now - 60,
+            "exp": now + 3600,
+            "aud": "equip-ical",
+        },
+        secret,
+        algorithm="HS256",
+    )
+    try:
+        with TestClient(app, raise_server_exceptions=False) as tc:
+            resp = tc.get(f"/api/v1/calendar/ical/feed?token={old_token}")
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+    assert resp.status_code == 401
+
+
+def test_post_token_stamps_calendar_ical_min_iat(student: User, secret: str, db: Session) -> None:
+    """The /token route must update the user's rotation floor so a
+    subsequent feed call refuses old tokens. Without the DB write,
+    rotation is purely cosmetic."""
+    from app.api import dependencies as deps
+
+    app.dependency_overrides[deps.get_current_user] = lambda: student
+
+    def _override_db() -> object:
+        yield db
+
+    app.dependency_overrides[get_db] = _override_db
+    try:
+        before = student.calendar_ical_min_iat
+        with TestClient(app) as tc:
+            resp = tc.post("/api/v1/calendar/ical/token")
+        assert resp.status_code == 200
+        body = resp.json()
+        decoded = jwt.decode(body["token"], secret, algorithms=["HS256"], audience="equip-ical")
+        db.refresh(student)
+        assert student.calendar_ical_min_iat == decoded["iat"]
+        # And the stored floor is freshly advanced.
+        assert before is None or student.calendar_ical_min_iat >= before
+    finally:
+        app.dependency_overrides.pop(deps.get_current_user, None)
+        app.dependency_overrides.pop(get_db, None)
