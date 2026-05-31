@@ -319,6 +319,28 @@ class TestDailyChallengeEndpoints:
             assert "option_text" in opt
         assert body["already_attempted"] is False
         assert body["user_attempt"] is None
+        # Book label localized for EN locale (canonical English).
+        assert body["bible_book"] == "Romans"
+        assert body["bible_book_label"] == "Rom."
+
+    def test_today_book_label_localizes_to_russian_under_ru_locale(
+        self,
+        db: Session,
+        author: User,
+        student_client: TestClient,
+    ):
+        q = _seed_question_with_options(db, author_id=author.id)
+        _schedule_for_today(db, q, author.id)
+        resp = student_client.get(
+            "/api/v1/daily-challenge/today",
+            headers={"Accept-Language": "ru"},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        # ``bible_book`` stays the canonical English (for analytics/joins);
+        # ``bible_book_label`` is the localized short-form.
+        assert body["bible_book"] == "Romans"
+        assert body["bible_book_label"] == "Рим."
 
     def test_post_attempt_reveals_explanation_and_correct_id(
         self,

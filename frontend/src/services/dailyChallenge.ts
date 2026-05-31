@@ -23,6 +23,8 @@ export interface DailyChallengeTodayResponse {
   question_text: string
   options: DailyChallengeOption[]
   bible_book: string
+  /** Localized short-form book label (e.g. "Ин." for ru, "John" for en). */
+  bible_book_label: string
   bible_chapter: number
   bible_verse_from: number | null
   bible_verse_to: number | null

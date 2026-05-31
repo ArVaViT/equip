@@ -44,6 +44,7 @@ function todayPayload(overrides: Partial<Parameters<typeof Object.assign>[0]> = 
       { id: "o-4", option_text: "A new covenant", order_index: 3 },
     ],
     bible_book: "John",
+    bible_book_label: "John",
     bible_chapter: 3,
     bible_verse_from: 16,
     bible_verse_to: null,

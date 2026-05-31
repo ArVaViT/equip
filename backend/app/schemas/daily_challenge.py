@@ -63,6 +63,11 @@ class DailyChallengeTodayResponse(BaseModel):
     options: list[DailyChallengeOptionStudentView]
     # Bible reference for "open this passage" link on the card.
     bible_book: str
+    # Localized short-form book label (e.g. "Ин." for ru, "John" for en)
+    # rendered straight into the card heading so the client doesn't have
+    # to ship the book vocabulary. Falls back to ``bible_book`` (the raw
+    # canonical English) when the locale isn't bundled.
+    bible_book_label: str
     bible_chapter: int
     bible_verse_from: int | None
     bible_verse_to: int | None
