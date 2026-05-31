@@ -32,10 +32,10 @@ def test_handle_new_user_never_trusts_raw_role_claim() -> None:
     straight into ``profiles.role``. That pattern lets an attacker pass
     ``role: 'admin'`` to ``supabase.auth.signUp`` and self-promote.
 
-    The safe pattern whitelists the value with a CASE expression
-    (downgrading ``teacher`` to ``pending_teacher`` and rejecting
-    ``admin``). The dangerous pattern uses ``COALESCE`` over the raw
-    metadata.
+    The safe pattern whitelists the value with a CASE expression so
+    only ``student`` (a non-privileged role) can land via signup; any
+    other claim falls back to ``student``. Admin / teacher promotion
+    is admin-only.
     """
     sql = _read_latest_handle_new_user_definition()
     # The unsafe pattern from the original trigger:
@@ -53,24 +53,39 @@ def test_handle_new_user_never_trusts_raw_role_claim() -> None:
     )
 
 
-def test_handle_new_user_downgrades_teacher_claim() -> None:
-    """A self-claimed ``teacher`` role must be downgraded to
-    ``pending_teacher`` so the admin-approval flow actually gates
-    teacher creation. The check is structural: we look for the
-    whitelist CASE that maps ``teacher`` -> ``pending_teacher``.
+def test_handle_new_user_only_self_assigns_student() -> None:
+    """Self-service signup may only land users at ``student``. Any
+    other claim — including ``teacher``, ``pending_teacher`` (a
+    deprecated role), and ``admin`` — must fall back to ``student``.
+    Teacher promotion is admin-only via the role-change endpoint.
     """
     sql = _read_latest_handle_new_user_definition()
-    # Match across whitespace/newlines — the CASE can be formatted
-    # several ways. We just need the two literals to appear in the
-    # same WHEN clause.
-    pattern = re.compile(
-        r"WHEN\s+claimed_role\s+IN\s*\([^)]*'teacher'[^)]*\)\s*THEN\s*'pending_teacher'",
-        re.IGNORECASE | re.DOTALL,
+    # The safe whitelist should contain a 'student' THEN branch and
+    # an ELSE 'student' fallback (or an equivalent shape). Verify both.
+    student_branch = re.search(
+        r"WHEN\s+claimed_role\s*=\s*'student'\s+THEN\s+'student'",
+        sql,
+        re.IGNORECASE,
     )
-    assert pattern.search(sql), (
-        "handle_new_user must downgrade a 'teacher' metadata claim to "
-        "'pending_teacher'. Found neither the WHEN ... 'teacher' ... "
-        "THEN 'pending_teacher' branch nor an equivalent guard."
+    else_student = re.search(
+        r"ELSE\s+'student'",
+        sql,
+        re.IGNORECASE,
+    )
+    assert student_branch and else_student, (
+        "handle_new_user must whitelist self-service signup to "
+        "'student' only — every other branch should ELSE 'student'."
+    )
+    # And nothing else should be assignable. A teacher / pending_teacher
+    # mention in a THEN clause means the gate is leaky.
+    leaky = re.search(
+        r"THEN\s+'(?:teacher|pending_teacher)'",
+        sql,
+        re.IGNORECASE,
+    )
+    assert leaky is None, (
+        "handle_new_user must not let signup land at 'teacher' or "
+        "'pending_teacher' — those roles are admin-assigned only."
     )
 
 

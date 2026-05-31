@@ -157,10 +157,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: string,
       password: string,
       fullName: string,
-      role: "teacher" | "student",
       preferredLocale: "en" | "ru",
     ) => {
-      await authService.register(email, password, fullName, role, preferredLocale)
+      await authService.register(email, password, fullName, preferredLocale)
     },
     [],
   )

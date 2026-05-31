@@ -1,4 +1,3 @@
-import { ROLES } from "@/types"
 import { DuplicateEmailView } from "./register/DuplicateEmailView"
 import { RegisterForm } from "./register/RegisterForm"
 import { SuccessView } from "./register/SuccessView"
@@ -28,7 +27,7 @@ export default function Register() {
   }
 
   if (success) {
-    return <SuccessView email={form.email} isTeacher={form.role === ROLES.TEACHER} />
+    return <SuccessView email={form.email} />
   }
 
   return (

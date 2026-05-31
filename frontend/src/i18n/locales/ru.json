@@ -245,10 +245,6 @@
     "modulesLabel_many": "{{count}} модулей",
     "modulesLabel_other": "{{count}} модуля"
   },
-  "pendingTeacher": {
-    "banner": "Ваша заявка на учительский аккаунт ожидает одобрения администратора. Тем временем вы можете заниматься как студент.",
-    "contactSupport": "Свяжитесь с <supportLink>поддержкой</supportLink>, если есть вопросы."
-  },
   "pageTitle": {
     "login": "Вход",
     "register": "Регистрация",
@@ -1491,31 +1487,6 @@
       "missingName": "—",
       "changeRoleAria": "Изменить роль для {{name}}"
     },
-    "pendingTeachers": {
-      "title": "Заявки преподавателей",
-      "missingName": "Без имени",
-      "registered": "Зарегистрирован {{date}}",
-      "registeredRelative": "Зарегистрирован {{relative}}",
-      "disposableEmail": "одноразовая",
-      "freeEmail": "бесплатная почта",
-      "approveHint": "После одобрения сможет создавать и публиковать курсы.",
-      "approve": "Одобрить",
-      "deny": "Отклонить",
-      "toast": {
-        "approved": "Преподаватель одобрен",
-        "approveFailed": "Не удалось одобрить преподавателя",
-        "denied": "Преподаватель отклонён",
-        "denyFailed": "Не удалось отклонить преподавателя"
-      },
-      "confirm": {
-        "approveTitle": "Одобрить этого преподавателя?",
-        "approveDescription": "{{name}} получит доступ к функциям преподавателя.",
-        "approveAction": "Одобрить",
-        "denyTitle": "Отклонить этого преподавателя?",
-        "denyDescription": "Заявка пользователя {{name}} на роль преподавателя будет отклонена.",
-        "denyAction": "Отклонить"
-      }
-    },
     "pendingCerts": {
       "title": "Сертификаты на финальное одобрение",
       "studentFallback": "Студент",
@@ -1619,19 +1590,12 @@
   },
   "roles": {
     "student": "Студент",
-    "pendingTeacher": "Преподаватель (ожидает)",
     "teacher": "Преподаватель",
     "admin": "Администратор"
   },
   "authRegister": {
     "heading": "Создать аккаунт",
-    "subheading": "Выберите роль и начните обучение",
-    "roleStudent": "Студент",
-    "roleStudentDesc": "Запись на курсы и обучение",
-    "roleTeacher": "Преподаватель",
-    "roleTeacherDesc": "Создание и ведение курсов",
-    "iAmA": "Я",
-    "accountType": "Тип аккаунта",
+    "subheading": "Начните обучение",
     "orRegisterEmail": "или регистрация по email",
     "fullName": "Полное имя",
     "fullNamePlaceholder": "Иван Иванов",
@@ -1643,8 +1607,7 @@
       "fullNameTooShort": "Имя должно содержать минимум 2 символа",
       "emailInvalid": "Некорректный email",
       "passwordTooShort": "Пароль должен быть не менее 6 символов",
-      "passwordsDoNotMatch": "Пароли не совпадают",
-      "roleRequired": "Выберите роль"
+      "passwordsDoNotMatch": "Пароли не совпадают"
     },
     "duplicate": {
       "heading": "Аккаунт уже может существовать",
@@ -1657,12 +1620,9 @@
     },
     "success": {
       "headingDefault": "Проверьте почту",
-      "headingTeacher": "Заявка отправлена",
       "subheadingDefault": "Почти готово — остался один шаг",
-      "subheadingTeacher": "Ещё один шаг перед началом преподавания",
       "body": "Мы отправили ссылку подтверждения на <strong>{{email}}</strong>.",
       "clickLinkToActivate": "Перейдите по ссылке в письме, чтобы активировать аккаунт.",
-      "teacherApprovalBanner": "После подтверждения email ваш преподавательский аккаунт должен быть одобрен администратором. Вход будет доступен сразу, а инструменты создания курсов — после одобрения.",
       "backToSignIn": "Вернуться ко входу"
     }
   },

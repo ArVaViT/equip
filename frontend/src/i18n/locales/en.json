@@ -627,10 +627,6 @@
     "modulesLabel_one": "{{count}} module",
     "modulesLabel_other": "{{count}} modules"
   },
-  "pendingTeacher": {
-    "banner": "Your teacher account is pending administrator approval. You can browse courses as a student in the meantime.",
-    "contactSupport": "Contact <supportLink>support</supportLink> if you have questions."
-  },
   "pageTitle": {
     "login": "Sign In",
     "register": "Create Account",
@@ -1831,31 +1827,6 @@
       "missingName": "—",
       "changeRoleAria": "Change role for {{name}}"
     },
-    "pendingTeachers": {
-      "title": "Pending Teacher Approvals",
-      "missingName": "No name",
-      "registered": "Registered {{date}}",
-      "registeredRelative": "Registered {{relative}}",
-      "disposableEmail": "throwaway",
-      "freeEmail": "free webmail",
-      "approveHint": "Approving lets them create + publish courses on the platform.",
-      "approve": "Approve",
-      "deny": "Deny",
-      "toast": {
-        "approved": "Teacher approved",
-        "approveFailed": "Failed to approve teacher",
-        "denied": "Teacher denied",
-        "denyFailed": "Failed to deny teacher"
-      },
-      "confirm": {
-        "approveTitle": "Approve this teacher?",
-        "approveDescription": "{{name}} will gain access to teacher features.",
-        "approveAction": "Approve",
-        "denyTitle": "Deny this teacher?",
-        "denyDescription": "{{name}}'s teacher request will be rejected.",
-        "denyAction": "Deny"
-      }
-    },
     "pendingCerts": {
       "title": "Certificate Approvals",
       "studentFallback": "Student",
@@ -1957,19 +1928,12 @@
   },
   "roles": {
     "student": "Student",
-    "pendingTeacher": "Pending Teacher",
     "teacher": "Teacher",
     "admin": "Admin"
   },
   "authRegister": {
     "heading": "Create an account",
-    "subheading": "Choose your role and start learning today",
-    "roleStudent": "Student",
-    "roleStudentDesc": "Enroll in courses and learn",
-    "roleTeacher": "Teacher",
-    "roleTeacherDesc": "Create and manage courses",
-    "iAmA": "I am a",
-    "accountType": "Account type",
+    "subheading": "Start learning today",
     "orRegisterEmail": "or register with email",
     "fullName": "Full name",
     "fullNamePlaceholder": "John Doe",
@@ -1981,8 +1945,7 @@
       "fullNameTooShort": "Name must be at least 2 characters",
       "emailInvalid": "Invalid email address",
       "passwordTooShort": "Password must be at least 6 characters",
-      "passwordsDoNotMatch": "Passwords do not match",
-      "roleRequired": "Please select a role"
+      "passwordsDoNotMatch": "Passwords do not match"
     },
     "duplicate": {
       "heading": "Account may exist",
@@ -1995,12 +1958,9 @@
     },
     "success": {
       "headingDefault": "Check your email",
-      "headingTeacher": "Application submitted",
       "subheadingDefault": "Almost there — just one more step",
-      "subheadingTeacher": "One more step before you can start teaching",
       "body": "We sent a confirmation link to <strong>{{email}}</strong>.",
       "clickLinkToActivate": "Click the link in the email to activate your account.",
-      "teacherApprovalBanner": "After confirming your email, your teacher account will need to be approved by an administrator. You'll be able to log in, but course creation tools will be available once approved.",
       "backToSignIn": "Back to Sign In"
     }
   },

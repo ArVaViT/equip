@@ -15,7 +15,6 @@ if TYPE_CHECKING:
 class UserRole(enum.StrEnum):
     ADMIN = "admin"
     TEACHER = "teacher"
-    PENDING_TEACHER = "pending_teacher"
     STUDENT = "student"
 
 

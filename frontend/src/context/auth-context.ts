@@ -9,7 +9,6 @@ export interface AuthContextValue {
     email: string,
     password: string,
     fullName: string,
-    role: "teacher" | "student",
     preferredLocale: "en" | "ru",
   ) => Promise<void>
   signInWithGoogle: () => Promise<void>

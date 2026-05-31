@@ -16,8 +16,8 @@ import { ROLE_BADGE_VARIANT, ROLE_I18N_KEY } from "@/lib/roles"
  *      ``i18n/locales/{en,ru}.json``).
  *   3. Every backend role has a Badge variant.
  *   4. Variant assignments match the design contract: admin =
- *      destructive (most authority), teacher = primary, pending =
- *      warning (action needed), student = info (default state).
+ *      destructive (most authority), teacher = primary, student = info
+ *      (default state).
  *
  * If a new role lands in ``UserRole`` and these maps don't get
  * updated, TypeScript will reject the missing key in the
@@ -25,7 +25,7 @@ import { ROLE_BADGE_VARIANT, ROLE_I18N_KEY } from "@/lib/roles"
  * complementary case where the *value* is wrong.
  */
 
-const ALL_ROLES = ["student", "pending_teacher", "teacher", "admin"] as const
+const ALL_ROLES = ["student", "teacher", "admin"] as const
 
 describe("ROLE_I18N_KEY", () => {
   it("covers every UserRole", () => {
@@ -40,15 +40,9 @@ describe("ROLE_I18N_KEY", () => {
     }
   })
 
-  it("uses camelCase for the i18n suffix (matches i18next conventions)", () => {
-    // snake_case role value → camelCase i18n suffix
-    expect(ROLE_I18N_KEY.pending_teacher).toBe("roles.pendingTeacher")
-  })
-
   it("locks in the exact mapping (regression guard against silent rename)", () => {
     expect(ROLE_I18N_KEY).toEqual({
       student: "roles.student",
-      pending_teacher: "roles.pendingTeacher",
       teacher: "roles.teacher",
       admin: "roles.admin",
     })
@@ -67,8 +61,6 @@ describe("ROLE_BADGE_VARIANT", () => {
     expect(ROLE_BADGE_VARIANT.admin).toBe("destructiveSubtle")
     // Teacher is the platform's primary brand role
     expect(ROLE_BADGE_VARIANT.teacher).toBe("primarySubtle")
-    // Pending teacher needs admin attention → warning tone
-    expect(ROLE_BADGE_VARIANT.pending_teacher).toBe("warningSubtle")
     // Student is the default state → info tone
     expect(ROLE_BADGE_VARIANT.student).toBe("infoSubtle")
   })

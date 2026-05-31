@@ -6,7 +6,6 @@ export const authService = {
     email: string,
     password: string,
     fullName: string,
-    role: "teacher" | "student" = "student",
     /**
      * Locale the user registered in. Carried into Supabase's
      * ``raw_user_meta_data.preferred_locale`` so the
@@ -17,13 +16,15 @@ export const authService = {
      */
     preferredLocale: "en" | "ru" = "ru",
   ): Promise<void> {
+    // Self-service signup always lands as student. Teacher / admin
+    // promotion is admin-only via the role-change endpoint.
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: fullName,
-          role,
+          role: "student",
           preferred_locale: preferredLocale,
         },
       },
