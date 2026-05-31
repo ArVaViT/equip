@@ -548,6 +548,36 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/calendar/ical/feed",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "token",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "401",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/calendar/ical/token",
+    "params": [],
+    "responses": [
+      "200",
+      "503"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/certificates/admin/pending",
     "params": [
       [
