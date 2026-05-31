@@ -322,7 +322,7 @@ class DailyChallengeQuestionEvent(Base):
             "event_type IN ('status_change', 'rejected', 'published', "
             "'scheduled', 'unscheduled', 'ai_generated', 'ai_critique', "
             "'ai_synthesis', 'scripture_validated', 'doctrinally_reviewed', "
-            "'bilingually_reviewed', 'pilot_summary')",
+            "'bilingually_reviewed', 'pilot_summary', 'bilingual_edit')",
             name="dc_q_events_type_check",
         ),
         Index(

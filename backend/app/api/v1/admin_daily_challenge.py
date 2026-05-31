@@ -20,10 +20,10 @@ admin role inherits.
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Literal, cast
 from uuid import UUID  # noqa: TC003 — FastAPI runtime resolution
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.dependencies import require_teacher
@@ -32,11 +32,17 @@ from app.core.errors import ErrorCode, equip_error
 from app.models.daily_challenge import DailyChallengeQuestion
 from app.models.user import User  # noqa: TC001 — FastAPI Depends
 from app.schemas.daily_challenge import (
+    DailyChallengeBilingualOption,
+    DailyChallengeBilingualView,
+    DailyChallengeCvCell,
+    DailyChallengeCvUpsertRequest,
     DailyChallengeGenerateRequest,
     DailyChallengeGenerateResponse,
     DailyChallengeOptionEditorial,
     DailyChallengeQuestionCreate,
     DailyChallengeQuestionEditorial,
+    DailyChallengeQuestionQueueItem,
+    DailyChallengeQuestionQueueResponse,
     DailyChallengeQuestionType,
     DailyChallengeRejectRequest,
     DailyChallengeScheduleCreate,
@@ -45,6 +51,7 @@ from app.schemas.daily_challenge import (
 )
 from app.schemas.locale import normalize_locale
 from app.services.daily_challenge import (
+    CvCellView,
     GeminiPromptClient,
     GenerationRequest,
     NotPublishableError,
@@ -52,13 +59,17 @@ from app.services.daily_challenge import (
     QuestionRejectedError,
     StatusTransitionError,
     create_question,
+    fetch_bilingual_view,
     fetch_question_text_bundle,
+    list_review_queue,
     promote_status,
     publish_question,
     reject_question,
     run_generation,
     schedule_for_date,
+    upsert_cv_for_question,
 )
+from app.services.daily_challenge.admin import QuestionRejectedError as _QRRejectedError
 
 router = APIRouter(prefix="/admin/daily-challenge", tags=["admin-daily-challenge"])
 
@@ -356,4 +367,145 @@ def generate_route(
         rejected_at_bilingual=outcome.rejected_at_bilingual,
         rounds_executed=outcome.rounds_executed,
         errors=outcome.errors,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Bilingual review surface (Sprint 7)
+# ---------------------------------------------------------------------------
+
+
+def _cv_cell(view: CvCellView) -> DailyChallengeCvCell:
+    return DailyChallengeCvCell(
+        cv_id=view.cv_id,
+        text=view.text,
+        origin=cast("Literal['human','mt'] | None", view.origin),
+        locale=cast("Literal['en','ru']", view.locale),
+        updated_at=view.updated_at,
+    )
+
+
+@router.get(
+    "/questions",
+    response_model=DailyChallengeQuestionQueueResponse,
+    summary="List questions for the editorial review queue",
+)
+def list_questions_route(
+    status_filter: DailyChallengeStatus | None = Query(default=None, alias="status"),
+    only_missing_ru: bool = Query(default=False),
+    rejected: bool = Query(default=False),
+    limit: int = Query(default=25, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+) -> DailyChallengeQuestionQueueResponse:
+    items, total = list_review_queue(
+        db,
+        status_filter=status_filter,
+        only_missing_ru=only_missing_ru,
+        rejected=rejected,
+        limit=limit,
+        offset=offset,
+    )
+    return DailyChallengeQuestionQueueResponse(
+        items=[
+            DailyChallengeQuestionQueueItem(
+                id=i.question.id,
+                status=cast("DailyChallengeStatus", i.question.status),
+                rejected=i.question.rejected,
+                bible_book=i.question.bible_book,
+                bible_chapter=i.question.bible_chapter,
+                bible_verse_from=i.question.bible_verse_from,
+                bible_verse_to=i.question.bible_verse_to,
+                source_locale=i.question.source_locale,
+                has_en=i.has_en,
+                has_ru=i.has_ru,
+                created_at=i.question.created_at,
+                updated_at=i.question.updated_at,
+            )
+            for i in items
+        ],
+        total=total,
+    )
+
+
+@router.get(
+    "/questions/{question_id}/bilingual",
+    response_model=DailyChallengeBilingualView,
+    summary="Bilingual view (parallel EN/RU cv cells) for editor side-by-side editing",
+)
+def get_bilingual_view_route(
+    question_id: UUID,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+) -> DailyChallengeBilingualView:
+    q = _question_or_404(db, question_id)
+    view = fetch_bilingual_view(db, question=q)
+    return DailyChallengeBilingualView(
+        id=q.id,
+        status=cast("DailyChallengeStatus", q.status),
+        rejected=q.rejected,
+        rejection_reason=q.rejection_reason,
+        bible_book=q.bible_book,
+        bible_chapter=q.bible_chapter,
+        bible_verse_from=q.bible_verse_from,
+        bible_verse_to=q.bible_verse_to,
+        source_locale=q.source_locale,
+        question_text={"en": _cv_cell(view.question_text["en"]), "ru": _cv_cell(view.question_text["ru"])},
+        explanation={"en": _cv_cell(view.explanation["en"]), "ru": _cv_cell(view.explanation["ru"])},
+        options=[
+            DailyChallengeBilingualOption(
+                id=o.id,
+                order_index=o.order_index,
+                is_correct=o.is_correct,
+                en=_cv_cell(o.en),
+                ru=_cv_cell(o.ru),
+            )
+            for o in view.options
+        ],
+    )
+
+
+@router.post(
+    "/questions/{question_id}/cv",
+    response_model=DailyChallengeCvCell,
+    summary="Upsert a single cv field/locale value for the question or one of its options",
+)
+def upsert_cv_route(
+    question_id: UUID,
+    data: DailyChallengeCvUpsertRequest,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+) -> DailyChallengeCvCell:
+    q = _question_or_404(db, question_id)
+    try:
+        cv = upsert_cv_for_question(
+            db,
+            question=q,
+            field=data.field,
+            locale=data.locale,
+            text=data.text,
+            option_id=data.option_id,
+            actor_id=teacher.id,
+        )
+    except _QRRejectedError as exc:
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_409_CONFLICT,
+            message=str(exc),
+            context={"resource_type": "daily_challenge_question", "resource_id": str(question_id)},
+        ) from None
+    except ValueError as exc:
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message=str(exc),
+            context={"resource_type": "daily_challenge_cv"},
+        ) from None
+    return DailyChallengeCvCell(
+        cv_id=cv.id,
+        text=cv.text,
+        origin=cast("Literal['human','mt']", cv.origin),
+        locale=cast("Literal['en','ru']", cv.locale),
+        updated_at=cv.updated_at,
     )

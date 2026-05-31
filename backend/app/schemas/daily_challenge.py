@@ -301,3 +301,83 @@ class DailyChallengeGenerateResponse(BaseModel):
     rejected_at_bilingual: int
     rounds_executed: int
     errors: list[str]
+
+
+# ---------------------------------------------------------------------------
+# Bilingual review queue (Sprint 7)
+# ---------------------------------------------------------------------------
+
+
+class DailyChallengeQuestionQueueItem(BaseModel):
+    """One row in the bilingual review queue list."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    status: DailyChallengeStatus
+    rejected: bool
+    bible_book: str
+    bible_chapter: int
+    bible_verse_from: int | None
+    bible_verse_to: int | None
+    source_locale: str | None
+    # Quick "does each locale have any cv row" indicator so the editor
+    # can filter the queue without opening every item.
+    has_en: bool
+    has_ru: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class DailyChallengeQuestionQueueResponse(BaseModel):
+    items: list[DailyChallengeQuestionQueueItem]
+    total: int
+
+
+class DailyChallengeCvCell(BaseModel):
+    """A single cv row reduced to what the editor needs to see."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    cv_id: UUID | None
+    text: str
+    origin: Literal["human", "mt"] | None
+    locale: Literal["en", "ru"]
+    updated_at: datetime | None
+
+
+class DailyChallengeBilingualOption(BaseModel):
+    """One option viewed bilingually."""
+
+    id: UUID
+    order_index: int = Field(..., ge=0, le=5)
+    is_correct: bool
+    en: DailyChallengeCvCell
+    ru: DailyChallengeCvCell
+
+
+class DailyChallengeBilingualView(BaseModel):
+    """GET /admin/daily-challenge/questions/{id}/bilingual payload."""
+
+    id: UUID
+    status: DailyChallengeStatus
+    rejected: bool
+    rejection_reason: str | None
+    bible_book: str
+    bible_chapter: int
+    bible_verse_from: int | None
+    bible_verse_to: int | None
+    source_locale: str | None
+    question_text: dict[Literal["en", "ru"], DailyChallengeCvCell]
+    explanation: dict[Literal["en", "ru"], DailyChallengeCvCell]
+    options: list[DailyChallengeBilingualOption]
+
+
+class DailyChallengeCvUpsertRequest(BaseModel):
+    """POST /admin/daily-challenge/questions/{id}/cv body."""
+
+    field: Literal["question_text", "explanation", "option_text"]
+    locale: Literal["en", "ru"]
+    text: str = Field(..., min_length=1, max_length=4000)
+    # Required iff field == "option_text"; ignored otherwise.
+    option_id: UUID | None = None
