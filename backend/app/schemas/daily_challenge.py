@@ -104,6 +104,84 @@ class DailyChallengeStreakResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Archive
+# ---------------------------------------------------------------------------
+
+
+class DailyChallengeArchiveEntry(BaseModel):
+    """One row in the archive calendar grid."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    challenge_date: date
+    question_id: UUID
+    bible_book: str
+    bible_book_label: str
+    bible_chapter: int
+    bible_verse_from: int | None
+    bible_verse_to: int | None
+    # None = never attempted, True = correct, False = wrong.
+    attempted_is_correct: bool | None
+    # True when the only attempt on this date is an archive replay
+    # (no live attempt happened that day). Drives the "Replay" badge
+    # in the detail panel; live attempts get the full streak weight.
+    archive_only_attempt: bool
+
+
+class DailyChallengeArchiveListResponse(BaseModel):
+    """``GET /daily-challenge/archive`` payload."""
+
+    entries: list[DailyChallengeArchiveEntry]
+    # Pass back to fetch the next page; ``None`` = no more rows.
+    next_cursor: date | None
+
+
+class DailyChallengeArchiveRevealView(BaseModel):
+    """Reveal block embedded in an archive question response when the
+    user has previously attempted (live or archive)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    correct_option_id: UUID
+    explanation: str | None
+    last_attempt_was_correct: bool
+
+
+class DailyChallengeArchiveQuestionResponse(BaseModel):
+    """``GET /daily-challenge/archive/{challenge_date}`` payload."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    challenge_date: date
+    question_id: UUID
+    question_type: DailyChallengeQuestionType
+    question_text: str
+    options: list[DailyChallengeOptionStudentView]
+    bible_book: str
+    bible_book_label: str
+    bible_chapter: int
+    bible_verse_from: int | None
+    bible_verse_to: int | None
+    # Non-null when the user has attempted this date before; carries
+    # answer key + explanation for the reveal-mode render.
+    reveal: DailyChallengeArchiveRevealView | None
+
+
+class DailyChallengeArchiveAttemptResponse(BaseModel):
+    """``POST /daily-challenge/archive/{challenge_date}/attempt`` reveal."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    challenge_date: date
+    selected_option_id: UUID
+    correct_option_id: UUID
+    is_correct: bool
+    explanation: str | None
+    submitted_at: datetime
+
+
+# ---------------------------------------------------------------------------
 # Editorial / admin schemas (Sprint 3)
 # ---------------------------------------------------------------------------
 

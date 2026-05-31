@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Check, Flame, Sparkles, X } from "lucide-react"
+import { Link } from "react-router-dom"
+import { ArrowRight, Check, Flame, Sparkles, X } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { getErrorCode } from "@/lib/errorCode"
@@ -247,9 +248,18 @@ export function DailyChallengeCard() {
             </h2>
           </div>
         </div>
-        {streakAfter != null && (
-          <CandleStreak count={streakAfter} label={t("dailyChallenge.streakAriaLabel", { count: streakAfter })} />
-        )}
+        <div className="flex items-center gap-2">
+          {streakAfter != null && (
+            <CandleStreak count={streakAfter} label={t("dailyChallenge.streakAriaLabel", { count: streakAfter })} />
+          )}
+          <Link
+            to="/daily-challenge/archive"
+            className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-primary transition-opacity hover:opacity-80"
+          >
+            {t("dailyChallenge.openArchive")}
+            <ArrowRight className="h-3 w-3" strokeWidth={1.75} aria-hidden />
+          </Link>
+        </div>
       </header>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">

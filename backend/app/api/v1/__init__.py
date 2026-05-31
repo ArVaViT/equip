@@ -14,6 +14,7 @@ from app.api.v1 import (
     cohorts,
     courses,
     daily_challenge,
+    daily_challenge_archive,
     grades,
     health,
     internal_translation_worker,
@@ -52,4 +53,5 @@ api_router.include_router(verse_of_the_day.router)
 api_router.include_router(admin_translations.router)
 api_router.include_router(internal_translation_worker.router)
 api_router.include_router(daily_challenge.router)
+api_router.include_router(daily_challenge_archive.router)
 api_router.include_router(admin_daily_challenge.router)

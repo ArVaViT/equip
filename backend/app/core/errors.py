@@ -117,6 +117,11 @@ class ErrorCode(enum.StrEnum):
     """The submitted ``selected_option_id`` does not belong to today's
     question. Either a stale frontend cache or a tampered request."""
 
+    DAILY_CHALLENGE_ARCHIVE_DATE_NOT_ALLOWED = "daily_challenge.archive_date_not_allowed"
+    """Archive endpoints refuse today's date or any future date —
+    those are owned by the live ``/today`` surface. Frontend should
+    redirect the user back to today's card."""
+
     # ── Validation ──────────────────────────────────────────────────────
     VALIDATION_FAILED = "validation.failed"
     """Request body / params failed semantic validation beyond the

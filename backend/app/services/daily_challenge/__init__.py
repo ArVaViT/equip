@@ -20,6 +20,15 @@ from app.services.daily_challenge.admin import (
     reject_question,
     schedule_for_date,
 )
+from app.services.daily_challenge.archive import (
+    ArchiveAttemptOutcome,
+    ArchiveDateNotAllowedError,
+    ArchiveEntry,
+    ArchiveNotScheduledError,
+    get_archive_question,
+    list_archive_entries,
+    submit_archive_attempt,
+)
 from app.services.daily_challenge.attempt import (
     DailyChallengeAttemptOutcome,
     InvalidOptionError,
@@ -40,6 +49,10 @@ from app.services.daily_challenge.text import (
 )
 
 __all__ = [
+    "ArchiveAttemptOutcome",
+    "ArchiveDateNotAllowedError",
+    "ArchiveEntry",
+    "ArchiveNotScheduledError",
     "DailyChallengeAttemptOutcome",
     "GeminiPromptClient",
     "GenerationOutcome",
@@ -55,12 +68,15 @@ __all__ = [
     "apply_streak_for_attempt",
     "create_question",
     "fetch_question_text_bundle",
+    "get_archive_question",
     "get_today_question",
     "get_user_streak",
+    "list_archive_entries",
     "promote_status",
     "publish_question",
     "reject_question",
     "run_generation",
     "schedule_for_date",
+    "submit_archive_attempt",
     "submit_today_attempt",
 ]
