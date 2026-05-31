@@ -331,6 +331,13 @@ class VerseOfTheDayUnavailable(Exception):
     """
 
 
+class VerseNotInBible(Exception):
+    """Distinct from ``VerseOfTheDayUnavailable``: the upstream Bible
+    simply doesn't carry this reference. Used to drive the
+    Septuagint/Masoretic fallback walk for locales whose Psalm
+    numbering doesn't match our catalog's (NRT in particular)."""
+
+
 @dataclass(frozen=True)
 class VerseOfTheDay:
     reference: str
@@ -365,6 +372,22 @@ def _pick_reference(date: dt.date) -> str:
     return _VERSES[date.toordinal() % len(_VERSES)]
 
 
+# Cap on how far we walk forward when a verse is missing in the target
+# bible. Eight is plenty: a contiguous run of eight missing references
+# across the curated catalog would mean something far worse than a
+# Septuagint/Masoretic mismatch (more like the bible itself is dead),
+# and at that point silent-hide is the right behaviour anyway.
+_FALLBACK_WALK_CAP = 8
+
+
+def _pick_reference_offset(date: dt.date, offset: int) -> str:
+    """Pick the ``offset``-th-after-today reference. Wraps via modulo
+    so the walk-forward fallback can't run off the end of the
+    catalog. Together with ``_FALLBACK_WALK_CAP`` this makes the
+    fallback bounded and deterministic for a given (date, locale)."""
+    return _VERSES[(date.toordinal() + offset) % len(_VERSES)]
+
+
 def _strip_html(html: str) -> str:
     """YouVersion ``content`` may include a single ``<p>`` wrapper and
     occasional ``<span>`` markers. We render scripture as plain prose in
@@ -383,10 +406,19 @@ def _fetch_passage(api_key: str, bible_id: int, ref: str) -> tuple[str, str]:
     """Return ``(localized_reference, plain_text)`` from YouVersion.
 
     Wrapped here so tests can monkeypatch this single function.
+
+    Raises ``VerseNotInBible`` when YouVersion returns 404 — the bible
+    is fine, the reference just doesn't exist in this translation
+    (typically a Psalm versification difference). Callers can walk
+    forward in the catalog to find the next valid ref. Any other
+    non-200 status raises ``VerseOfTheDayUnavailable`` (treated as a
+    transient outage, not a content gap).
     """
     url = f"{YOUVERSION_API_BASE}/bibles/{bible_id}/passages/{ref}"
     with httpx.Client(timeout=8.0) as client:
         response = client.get(url, headers={"X-YVP-App-Key": api_key})
+    if response.status_code == 404:
+        raise VerseNotInBible(f"YouVersion has no {ref} for bible {bible_id}")
     if response.status_code != 200:
         raise VerseOfTheDayUnavailable(f"YouVersion responded {response.status_code} for {ref} (bible {bible_id})")
     payload = response.json()
@@ -426,14 +458,33 @@ def get_verse_of_the_day(locale: LocaleCode, *, today: dt.date | None = None) ->
     if cached is not None:
         return cached
 
-    ref = _pick_reference(today)
-    try:
-        localized_ref, text = _fetch_passage(api_key, bible_id, ref)
-    except httpx.HTTPError as exc:
-        # Don't pollute logs with a stack trace on the happy path of
-        # "YouVersion blipped"; the route already maps this to 404.
-        logger.warning("YouVersion request failed: %s", exc)
-        raise VerseOfTheDayUnavailable("YouVersion request failed") from exc
+    # Septuagint/Masoretic Psalm numbering differs between Russian
+    # NRT and our canonical-English catalog: e.g. PSA.27.14 (catalog)
+    # has no NRT counterpart because NRT uses Hebrew numbering. Walk
+    # forward through the catalog when the chosen ref is genuinely
+    # absent from the bible; the deterministic offset means every
+    # client lands on the same fallback verse for the same UTC day.
+    last_not_in_bible: VerseNotInBible | None = None
+    localized_ref: str | None = None
+    text: str | None = None
+    for offset in range(_FALLBACK_WALK_CAP):
+        ref = _pick_reference_offset(today, offset)
+        try:
+            localized_ref, text = _fetch_passage(api_key, bible_id, ref)
+            break
+        except VerseNotInBible as exc:
+            last_not_in_bible = exc
+            continue
+        except httpx.HTTPError as exc:
+            # Don't pollute logs with a stack trace on the happy path of
+            # "YouVersion blipped"; the route already maps this to 404.
+            logger.warning("YouVersion request failed: %s", exc)
+            raise VerseOfTheDayUnavailable("YouVersion request failed") from exc
+    if localized_ref is None or text is None:
+        # Catalog exhausted — every ref in the walk was missing. Logging
+        # the last seen 404 helps spot catalog rot if it ever happens.
+        logger.warning("VOTD walk cap exceeded for locale %s: %s", locale, last_not_in_bible)
+        raise VerseOfTheDayUnavailable(f"No reference in catalog available in bible {bible_id}; last attempted: {ref}")
 
     verse = VerseOfTheDay(
         reference=localized_ref,

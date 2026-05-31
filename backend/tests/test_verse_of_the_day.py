@@ -137,3 +137,62 @@ def test_route_returns_404_when_apikey_missing(monkeypatch):
         resp = tc.get("/api/v1/verse-of-the-day?locale=en")
     assert resp.status_code == 404
     assert resp.json()["detail"]["message"] == "verse_of_the_day_unavailable"
+
+
+def test_walks_forward_on_verse_not_in_bible(monkeypatch):
+    """NRT lacks some Psalm verses due to Septuagint/Masoretic
+    numbering differences. The service must walk forward in the
+    catalog until a present reference is found, and the chosen
+    fallback must be deterministic for (date, locale)."""
+    monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+    today = dt.date(2026, 5, 31)
+    primary = svc._pick_reference(today)
+    fallback = svc._pick_reference_offset(today, 1)
+    seen: list[str] = []
+
+    def _selective(api_key: str, bible_id: int, ref: str) -> tuple[str, str]:
+        seen.append(ref)
+        if ref == primary:
+            raise svc.VerseNotInBible(f"no {ref} in {bible_id}")
+        return f"{ref} ru-ref", "RU body"
+
+    monkeypatch.setattr(svc, "_fetch_passage", _selective)
+    verse = svc.get_verse_of_the_day("ru", today=today)
+    assert verse.reference == f"{fallback} ru-ref"
+    assert seen == [primary, fallback]
+
+
+def test_walks_forward_then_caches_the_fallback(monkeypatch):
+    """A successful walk-forward fallback must cache so the second
+    call on the same UTC date does NOT walk again."""
+    monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+    today = dt.date(2026, 5, 31)
+    primary = svc._pick_reference(today)
+    calls = {"n": 0}
+
+    def _selective(api_key: str, bible_id: int, ref: str) -> tuple[str, str]:
+        calls["n"] += 1
+        if ref == primary:
+            raise svc.VerseNotInBible(f"no {ref} in {bible_id}")
+        return "fallback-ref", "fallback body"
+
+    monkeypatch.setattr(svc, "_fetch_passage", _selective)
+    svc.get_verse_of_the_day("ru", today=today)
+    svc.get_verse_of_the_day("ru", today=today)
+    # First call: 2 fetches (primary 404 → fallback ok). Second call:
+    # 0 fetches (cache hit). Total: 2.
+    assert calls["n"] == 2
+
+
+def test_gives_up_after_walk_cap(monkeypatch):
+    """If every reference in the walk window is absent, surface the
+    standard ``VerseOfTheDayUnavailable`` so the frontend hides the
+    card silently — never expose a partial / broken state."""
+    monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+
+    def _always_missing(api_key: str, bible_id: int, ref: str) -> tuple[str, str]:
+        raise svc.VerseNotInBible(f"no {ref} in {bible_id}")
+
+    monkeypatch.setattr(svc, "_fetch_passage", _always_missing)
+    with pytest.raises(svc.VerseOfTheDayUnavailable):
+        svc.get_verse_of_the_day("ru", today=dt.date(2026, 5, 31))
