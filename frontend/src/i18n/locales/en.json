@@ -503,6 +503,42 @@
       "wrong": "Close, but not today.",
       "invalidOption": "That choice doesn't belong to today's question.",
       "submitError": "Couldn't submit — please try again."
+    },
+    "openArchive": "Archive",
+    "archive": {
+      "title": "Daily Challenge archive",
+      "description": "Past questions, with the days you played highlighted. Replays don't change your streak.",
+      "gridHeading": "Past 90 days",
+      "gridStats": "{{correct}} correct of {{attempted}} attempted",
+      "cellAriaLabel": "{{date}} — {{status}}",
+      "cellStatus": {
+        "correct": "correct",
+        "wrong": "incorrect",
+        "notAttempted": "not attempted"
+      },
+      "loadError": "Couldn't load the archive — please try again.",
+      "loadEarlier": "Load earlier",
+      "empty": {
+        "title": "Nothing here yet",
+        "body": "Past questions will appear here as soon as a few days have been scheduled."
+      },
+      "notScheduled": {
+        "title": "No question for this date",
+        "body": "Pick another date from the calendar."
+      },
+      "detail": {
+        "pickDate": "Pick a date",
+        "pickDateHint": "Tap a day on the calendar to view that question.",
+        "back": "Back to calendar",
+        "replayBadge": "Replay"
+      },
+      "toast": {
+        "correct": "Nice replay — still the right answer.",
+        "wrong": "Not the right answer this time.",
+        "invalidOption": "That choice doesn't belong to this question.",
+        "submitError": "Couldn't submit replay — please try again.",
+        "dateNotAllowed": "That date is owned by today's challenge — use the dashboard card."
+      }
     }
   },
   "notifications": {

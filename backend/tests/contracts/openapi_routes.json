@@ -1405,6 +1405,68 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/daily-challenge/archive",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "before",
+        "query"
+      ],
+      [
+        "limit",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/daily-challenge/archive/{challenge_date}",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "challenge_date",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "404",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/daily-challenge/archive/{challenge_date}/attempt",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "challenge_date",
+        "path"
+      ]
+    ],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/daily-challenge/streak",
     "params": [],
     "responses": [

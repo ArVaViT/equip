@@ -43,6 +43,7 @@ const ChapterEditor = lazy(() => import("./pages/Teacher/ChapterEditor"))
 const AdminDashboard = lazy(() => import("./pages/Admin/AdminDashboard"))
 const CohortDetailPage = lazy(() => import("./pages/Admin/cohorts/CohortDetailPage"))
 const CalendarPage = lazy(() => import("./pages/Calendar/CalendarPage"))
+const DailyChallengeArchivePage = lazy(() => import("./pages/DailyChallengeArchive/DailyChallengeArchivePage"))
 
 type RouteMode = "private" | "public" | "teacher" | "admin"
 
@@ -136,6 +137,7 @@ function AppRoutes() {
               <Route path="/courses" element={<CoursesPage />} />
               <Route path="/profile" element={<Gate mode="private"><ProfilePage /></Gate>} />
               <Route path="/calendar" element={<Gate mode="private"><CalendarPage /></Gate>} />
+              <Route path="/daily-challenge/archive" element={<Gate mode="private"><DailyChallengeArchivePage /></Gate>} />
               <Route path="/certificates" element={<Gate mode="private"><CertificatesPage /></Gate>} />
               <Route path="/courses/:id" element={<Gate mode="private"><CourseDetail /></Gate>} />
               <Route path="/courses/:courseId/modules/:moduleId" element={<Gate mode="private"><ModuleView /></Gate>} />
