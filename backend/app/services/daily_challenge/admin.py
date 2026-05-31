@@ -34,6 +34,9 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 
+from sqlalchemy import select
+
+from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.daily_challenge import (
     DailyChallengeOption,
     DailyChallengeQuestion,
@@ -353,3 +356,238 @@ def schedule_for_date(
     db.commit()
     db.refresh(schedule)
     return schedule
+
+
+# ---------------------------------------------------------------------------
+# Bilingual review queue (Sprint 7)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class CvCellView:
+    """One cv row reduced to what the editor UI needs."""
+
+    cv_id: uuid.UUID | None
+    text: str
+    origin: str | None
+    locale: str
+    updated_at: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
+class BilingualOption:
+    id: uuid.UUID
+    order_index: int
+    is_correct: bool
+    en: CvCellView
+    ru: CvCellView
+
+
+@dataclass(frozen=True, slots=True)
+class BilingualView:
+    question: DailyChallengeQuestion
+    question_text: dict[str, CvCellView]
+    explanation: dict[str, CvCellView]
+    options: list[BilingualOption]
+
+
+def _empty_cell(locale: str) -> CvCellView:
+    return CvCellView(cv_id=None, text="", origin=None, locale=locale, updated_at=None)
+
+
+def _active_cv_rows(
+    db: Session,
+    *,
+    entity_type: str,
+    entity_ids: list[str],
+    fields: list[str],
+) -> dict[tuple[str, str, str], ContentVersion]:
+    """Map (entity_id, field, locale) → the latest active cv row."""
+    if not entity_ids:
+        return {}
+    rows = (
+        db.execute(
+            select(ContentVersion).where(
+                ContentVersion.entity_type == entity_type,
+                ContentVersion.entity_id.in_(entity_ids),
+                ContentVersion.field.in_(fields),
+                ContentVersion.locale.in_(("en", "ru")),
+                ContentVersion.superseded_by.is_(None),
+                ContentVersion.status == ContentVersionStatus.OK,
+            )
+        )
+        .scalars()
+        .all()
+    )
+    by_key: dict[tuple[str, str, str], ContentVersion] = {}
+    for row in rows:
+        key = (row.entity_id, row.field, row.locale)
+        existing = by_key.get(key)
+        if existing is None or (row.updated_at or row.created_at) > (existing.updated_at or existing.created_at):
+            by_key[key] = row
+    return by_key
+
+
+def fetch_bilingual_view(db: Session, *, question: DailyChallengeQuestion) -> BilingualView:
+    """Return parallel EN + RU cv cells for a question's translatable
+    fields. Cells are ``empty`` (cv_id=None, text="") when the locale
+    has no row yet — the UI renders these as "MISSING" placeholders."""
+    q_id = str(question.id)
+    option_ids = [str(o.id) for o in question.options]
+
+    q_rows = _active_cv_rows(
+        db,
+        entity_type="daily_challenge_question",
+        entity_ids=[q_id],
+        fields=["question_text", "explanation"],
+    )
+    o_rows = _active_cv_rows(
+        db,
+        entity_type="daily_challenge_option",
+        entity_ids=option_ids,
+        fields=["option_text"],
+    )
+
+    def cell(rows: dict[tuple[str, str, str], ContentVersion], *, eid: str, field: str, locale: str) -> CvCellView:
+        row = rows.get((eid, field, locale))
+        if row is None:
+            return _empty_cell(locale)
+        return CvCellView(
+            cv_id=row.id,
+            text=row.text,
+            origin=row.origin,
+            locale=locale,
+            updated_at=row.updated_at,
+        )
+
+    return BilingualView(
+        question=question,
+        question_text={
+            "en": cell(q_rows, eid=q_id, field="question_text", locale="en"),
+            "ru": cell(q_rows, eid=q_id, field="question_text", locale="ru"),
+        },
+        explanation={
+            "en": cell(q_rows, eid=q_id, field="explanation", locale="en"),
+            "ru": cell(q_rows, eid=q_id, field="explanation", locale="ru"),
+        },
+        options=[
+            BilingualOption(
+                id=o.id,
+                order_index=o.order_index,
+                is_correct=o.is_correct,
+                en=cell(o_rows, eid=str(o.id), field="option_text", locale="en"),
+                ru=cell(o_rows, eid=str(o.id), field="option_text", locale="ru"),
+            )
+            for o in sorted(question.options, key=lambda o: o.order_index)
+        ],
+    )
+
+
+def upsert_cv_for_question(
+    db: Session,
+    *,
+    question: DailyChallengeQuestion,
+    field: str,
+    locale: str,
+    text: str,
+    option_id: uuid.UUID | None,
+    actor_id: uuid.UUID,
+) -> ContentVersion:
+    """Write/supersede a cv row from the bilingual review UI.
+
+    Refuses when the question is rejected (the editor must un-reject
+    or clone first). ``field == 'option_text'`` requires ``option_id``
+    pointing at a child option of ``question``.
+    """
+    if question.rejected:
+        raise QuestionRejectedError(f"question {question.id} is rejected; cannot edit")
+
+    if field == "option_text":
+        if option_id is None:
+            raise ValueError("option_id is required for field='option_text'")
+        option = next((o for o in question.options if o.id == option_id), None)
+        if option is None:
+            raise ValueError(f"option {option_id} does not belong to question {question.id}")
+        entity_type = "daily_challenge_option"
+        entity_id = str(option.id)
+    else:
+        entity_type = "daily_challenge_question"
+        entity_id = str(question.id)
+
+    cv = record_human_version(
+        db,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        field=field,
+        locale=locale,
+        text=text,
+        authored_by=actor_id,
+    )
+    _log_event(
+        db,
+        question_id=question.id,
+        event_type="bilingual_edit",
+        actor_id=actor_id,
+        details={
+            "field": field,
+            "locale": locale,
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+            "cv_id": str(cv.id),
+        },
+    )
+    db.commit()
+    db.refresh(cv)
+    return cv
+
+
+@dataclass(frozen=True, slots=True)
+class QueueItem:
+    """One row in the bilingual review queue list. ``has_en``/``has_ru``
+    are precomputed booleans over the question_text + explanation cv
+    rows so a "needs RU" filter on the UI doesn't have to fan out into
+    N+1 cv queries."""
+
+    question: DailyChallengeQuestion
+    has_en: bool
+    has_ru: bool
+
+
+def list_review_queue(
+    db: Session,
+    *,
+    status_filter: str | None = None,
+    only_missing_ru: bool = False,
+    rejected: bool = False,
+    limit: int = 25,
+    offset: int = 0,
+) -> tuple[list[QueueItem], int]:
+    """Paginated list of editorial questions, with EN/RU presence
+    annotation per row. ``only_missing_ru`` filters in Python rather
+    than via SQL so the helper stays simple — the queue size is
+    capped at ~hundreds, the join cost is trivial."""
+    q = db.query(DailyChallengeQuestion).filter(
+        DailyChallengeQuestion.rejected.is_(rejected),
+    )
+    if status_filter:
+        q = q.filter(DailyChallengeQuestion.status == status_filter)
+    total = q.count()
+    rows = q.order_by(DailyChallengeQuestion.updated_at.desc()).offset(offset).limit(limit).all()
+    if not rows:
+        return [], total
+
+    q_ids = [str(r.id) for r in rows]
+    cv_rows = _active_cv_rows(
+        db,
+        entity_type="daily_challenge_question",
+        entity_ids=q_ids,
+        fields=["question_text", "explanation"],
+    )
+    items: list[QueueItem] = []
+    for r in rows:
+        has_en = (str(r.id), "question_text", "en") in cv_rows
+        has_ru = (str(r.id), "question_text", "ru") in cv_rows
+        if only_missing_ru and has_ru:
+            continue
+        items.append(QueueItem(question=r, has_en=has_en, has_ru=has_ru))
+    return items, total
