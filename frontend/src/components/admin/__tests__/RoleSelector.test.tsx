@@ -15,8 +15,8 @@ import { RoleSelector } from "@/components/admin/RoleSelector"
  *   1. The current role's i18n label is always visible (badge text).
  *   2. ``disabled`` collapses the affordance to a read-only badge —
  *      no dropdown trigger, no chevron.
- *   3. Opening the menu reveals all four roles in canonical order:
- *      student → pending_teacher → teacher → admin.
+ *   3. Opening the menu reveals all three roles in canonical order:
+ *      student → teacher → admin.
  *   4. Picking a different role fires ``onChange(nextRole)``.
  *   5. Picking the already-selected role does NOT fire ``onChange``
  *      (matches the ``if (!selected) onChange(value)`` guard).
@@ -71,7 +71,7 @@ describe("RoleSelector", () => {
     ).toBeInTheDocument()
   })
 
-  it("opens the menu showing all four roles in canonical order", async () => {
+  it("opens the menu showing all three roles in canonical order", async () => {
     const user = userEvent.setup()
     await i18n.changeLanguage("en")
     render(<RoleSelector role="student" onChange={vi.fn()} />, renderOpts)
@@ -81,7 +81,6 @@ describe("RoleSelector", () => {
     const items = await screen.findAllByRole("menuitem")
     expect(items.map((i) => i.textContent?.trim())).toEqual([
       "Student",
-      "Pending Teacher",
       "Teacher",
       "Admin",
     ])
@@ -116,13 +115,13 @@ describe("RoleSelector", () => {
 
   it("renders the localized label under RU as well as EN", async () => {
     await i18n.changeLanguage("ru")
-    render(<RoleSelector role="pending_teacher" onChange={vi.fn()} />, renderOpts)
-    // The RU label is "Преподаватель на проверке" / "Ожидающий…" —
-    // we don't pin the exact string (translation may evolve), just
-    // assert it's NOT the English one and is non-empty.
+    render(<RoleSelector role="teacher" onChange={vi.fn()} />, renderOpts)
+    // The RU label is "Преподаватель"; we don't pin the exact string
+    // (translation may evolve), just assert it's NOT the English one
+    // and is non-empty.
     const buttons = screen.queryAllByRole("button")
     const text = buttons[0]?.textContent ?? ""
-    expect(text).not.toMatch(/Pending Teacher/i)
+    expect(text).not.toMatch(/Teacher/i)
     expect(text.trim().length).toBeGreaterThan(0)
   })
 })

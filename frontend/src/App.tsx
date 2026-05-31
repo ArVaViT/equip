@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react"
 import { BrowserRouter, Route, Navigate, useLocation } from "react-router-dom"
-import { Trans, useTranslation } from "react-i18next"
+import { useTranslation } from "react-i18next"
 import { Routes } from "@datadog/browser-rum-react/react-router-v6"
 import { AuthProvider } from "./context/AuthContext"
 import { ThemeProvider } from "./context/ThemeContext"
@@ -16,8 +16,6 @@ import AnnouncementBanner from "./components/announcements/AnnouncementBanner"
 import PageSpinner from "./components/ui/PageSpinner"
 import ScrollToTop from "./components/layout/ScrollToTop";
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { SUPPORT_EMAIL } from "@/lib/brand"
-import { ROLES } from "@/types"
 import { useGrandTour } from "@/hooks/useGrandTour"
 import { FirstRunFlow } from "@/components/firstRun"
 
@@ -64,34 +62,10 @@ function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }
   return <>{children}</>
 }
 
-function PendingTeacherBanner() {
-  const { t } = useTranslation()
-  return (
-    <div className="border-b border-border border-l-stripe border-l-warning bg-warning/10">
-      <div className="container mx-auto px-4 py-3 text-center">
-        <p className="text-sm text-foreground">
-          {t("pendingTeacher.banner")}{" "}
-          <Trans
-            i18nKey="pendingTeacher.contactSupport"
-            components={{
-              supportLink: (
-                <a
-                  href={`mailto:${SUPPORT_EMAIL}`}
-                  className="underline font-medium hover:no-underline"
-                />
-              ),
-            }}
-          />
-        </p>
-      </div>
-    </div>
-  )
-}
-
 const AUTH_PATHS = ["/login", "/register", "/forgot-password", "/auth/reset-password", "/auth/callback", "/auth/confirm"]
 
 function AppRoutes() {
-  const { user, loading } = useAuth()
+  const { loading } = useAuth()
   const location = useLocation()
   const { t } = useTranslation()
   const isAuthPage = AUTH_PATHS.some((p) => location.pathname.startsWith(p))
@@ -138,7 +112,6 @@ function AppRoutes() {
         {t("common.skipToContent")}
       </a>
       <Header />
-      {user?.role === ROLES.PENDING_TEACHER && <PendingTeacherBanner />}
       <AnnouncementBanner />
       {/* ``min-h-[calc(100dvh-header)]`` keeps the footer permanently below
           the initial viewport on every authenticated page — you only see it
@@ -146,7 +119,7 @@ function AppRoutes() {
           mobile browser chrome's collapsing toolbar doesn't shift the
           footer into view mid-scroll. Header height: ``h-11`` (2.75rem)
           on mobile, ``md:h-12`` (3rem) from md up. Optional
-          banners (PendingTeacher / Announcement) take their own space
+          banners (Announcement) take their own space
           above main, which means with a banner active the visible
           main is slightly shorter — acceptable: the footer-below-fold
           contract still holds. */}

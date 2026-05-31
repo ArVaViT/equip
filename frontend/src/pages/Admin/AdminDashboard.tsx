@@ -9,7 +9,6 @@ import PageSpinner from "@/components/ui/PageSpinner"
 import { ADMIN_TAB_PANEL_ID, ADMIN_TAB_TRIGGER_ID, ADMIN_TABS, type AdminTab } from "./dashboard/constants"
 import { AdminTabs } from "./dashboard/AdminTabs"
 import { OverviewStats } from "./dashboard/OverviewStats"
-import { PendingTeachersCard } from "./dashboard/PendingTeachersCard"
 import { PendingCertsCard } from "./dashboard/PendingCertsCard"
 import { UsersCard } from "./dashboard/UsersCard"
 import { useAdminOverview } from "./dashboard/useAdminOverview"
@@ -113,13 +112,7 @@ export default function AdminDashboard() {
           <OverviewStats
             stats={overview.stats}
             loading={overview.loading}
-            pendingActions={overview.pendingTeachers.length + overview.adminCerts.length}
-          />
-          <PendingTeachersCard
-            pending={overview.pendingTeachers}
-            updatingId={overview.updatingId}
-            onApprove={overview.approvePendingTeacher}
-            onDeny={overview.denyPendingTeacher}
+            pendingActions={overview.adminCerts.length}
           />
           <PendingCertsCard
             certs={overview.adminCerts}

@@ -1,27 +1,12 @@
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import { BookOpenCheck, GraduationCap, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import AuthLayout from "@/components/layout/AuthLayout"
 import { GoogleIcon } from "./GoogleIcon"
 import type { FormState } from "./useRegister"
-
-const ROLES = [
-  {
-    value: "student" as const,
-    labelKey: "authRegister.roleStudent",
-    descKey: "authRegister.roleStudentDesc",
-    icon: GraduationCap,
-  },
-  {
-    value: "teacher" as const,
-    labelKey: "authRegister.roleTeacher",
-    descKey: "authRegister.roleTeacherDesc",
-    icon: BookOpenCheck,
-  },
-]
 
 interface Props {
   form: FormState
@@ -104,51 +89,6 @@ export function RegisterForm({
           }}
           className="space-y-4"
         >
-          <div className="space-y-2">
-            <Label>{t("authRegister.iAmA")}</Label>
-            <div
-              role="radiogroup"
-              aria-label={t("authRegister.accountType")}
-              className="grid grid-cols-2 gap-3"
-            >
-              {ROLES.map((r) => {
-                const Icon = r.icon
-                const selected = form.role === r.value
-                return (
-                  <button
-                    key={r.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    onClick={() => onChange("role", r.value)}
-                    className={`relative flex flex-col items-center gap-1.5 rounded-md border-2 p-4 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                      selected
-                        ? "border-primary bg-primary/5 shadow-sm"
-                        : "border-border hover:border-muted-foreground/30 hover:bg-muted/50"
-                    }`}
-                  >
-                    <Icon
-                      className={`h-6 w-6 transition-colors ${
-                        selected ? "text-primary" : "text-muted-foreground"
-                      }`}
-                    />
-                    <span
-                      className={`text-sm font-medium transition-colors ${
-                        selected ? "text-primary" : ""
-                      }`}
-                    >
-                      {t(r.labelKey)}
-                    </span>
-                    <span className="text-xs text-muted-foreground text-center leading-tight">
-                      {t(r.descKey)}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-            {errors.role && <p className="text-xs text-destructive">{errors.role}</p>}
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="fullName">{t("authRegister.fullName")}</Label>
             <Input

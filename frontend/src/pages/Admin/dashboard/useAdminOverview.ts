@@ -8,12 +8,12 @@ import { supabase } from "@/lib/supabase"
 import { toast } from "@/lib/toast"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { useConfirm } from "@/components/ui/alert-dialog"
-import { ROLES, type UserRole } from "@/types"
+import { type UserRole } from "@/types"
 import type { AdminCert } from "./PendingCertsCard"
 import { displayNameOf } from "@/lib/userDisplay"
 import { ROLE_I18N_KEY, type AdminStats, type ProfileRow } from "./constants"
 
-const ROLE_FILTER_VALUES = ["admin", "teacher", "pending_teacher", "student"] as const
+const ROLE_FILTER_VALUES = ["admin", "teacher", "student"] as const
 type RoleFilter = (typeof ROLE_FILTER_VALUES)[number] | ""
 
 function isRoleFilter(v: string): v is (typeof ROLE_FILTER_VALUES)[number] {
@@ -146,7 +146,6 @@ export function useAdminOverview({ currentUserId, enabled = true }: UseAdminOver
     const counts: Record<UserRole, number> = {
       admin: 0,
       teacher: 0,
-      pending_teacher: 0,
       student: 0,
     }
     for (const u of users) {
@@ -287,59 +286,6 @@ export function useAdminOverview({ currentUserId, enabled = true }: UseAdminOver
     }
   }
 
-  const pendingTeachers = useMemo(
-    () => users.filter((u) => u.role === ROLES.PENDING_TEACHER),
-    [users],
-  )
-
-  const setTeacherRole = async (userId: string, nextRole: UserRole, okMsg: string, failMsg: string) => {
-    setUpdatingId(userId)
-    try {
-      await coursesService.updateUserRole(userId, nextRole)
-      setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, role: nextRole } : u)),
-      )
-      toast({ title: okMsg, variant: "success" })
-    } catch {
-      toast({ title: failMsg, variant: "destructive" })
-    } finally {
-      setUpdatingId(null)
-    }
-  }
-
-  const approvePendingTeacher = async (u: ProfileRow) => {
-    const name = displayNameOf(u.full_name, u.email)
-    const ok = await confirm({
-      title: t("admin.pendingTeachers.confirm.approveTitle"),
-      description: t("admin.pendingTeachers.confirm.approveDescription", { name }),
-      confirmLabel: t("admin.pendingTeachers.confirm.approveAction"),
-    })
-    if (ok)
-      await setTeacherRole(
-        u.id,
-        "teacher",
-        t("admin.pendingTeachers.toast.approved"),
-        t("admin.pendingTeachers.toast.approveFailed"),
-      )
-  }
-
-  const denyPendingTeacher = async (u: ProfileRow) => {
-    const name = displayNameOf(u.full_name, u.email)
-    const ok = await confirm({
-      title: t("admin.pendingTeachers.confirm.denyTitle"),
-      description: t("admin.pendingTeachers.confirm.denyDescription", { name }),
-      confirmLabel: t("admin.pendingTeachers.confirm.denyAction"),
-      tone: "destructive",
-    })
-    if (ok)
-      await setTeacherRole(
-        u.id,
-        "student",
-        t("admin.pendingTeachers.toast.denied"),
-        t("admin.pendingTeachers.toast.denyFailed"),
-      )
-  }
-
   const handleCertDecision = async (
     certId: string,
     call: () => Promise<unknown>,
@@ -380,7 +326,6 @@ export function useAdminOverview({ currentUserId, enabled = true }: UseAdminOver
     userMap,
     stats,
     adminCerts,
-    pendingTeachers,
     loading,
     error,
     updatingId,
@@ -403,8 +348,6 @@ export function useAdminOverview({ currentUserId, enabled = true }: UseAdminOver
     toggleSelectAll,
     clearSelection,
     handleBulkRoleChange,
-    approvePendingTeacher,
-    denyPendingTeacher,
     handleFinalApproveCert,
     handleRejectCert,
   }

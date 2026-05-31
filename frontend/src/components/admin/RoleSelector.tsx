@@ -20,7 +20,7 @@ interface Props {
   ariaLabel?: string
 }
 
-const ROLE_ORDER: UserRole[] = ["student", "pending_teacher", "teacher", "admin"]
+const ROLE_ORDER: UserRole[] = ["student", "teacher", "admin"]
 
 /**
  * The role badge IS the role picker — no separate select alongside.

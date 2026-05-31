@@ -20,15 +20,14 @@ export function makeLoginSchema() {
 }
 
 export function makeRegisterSchema() {
+  // Self-service signup is student-only — role isn't part of the form
+  // since 2026-05-31. Teacher promotion is admin-only.
   return z
     .object({
       full_name: z.string().min(2, t("authRegister.errors.fullNameTooShort")),
       email: z.string().email(t("authRegister.errors.emailInvalid")),
       password: z.string().min(6, t("authRegister.errors.passwordTooShort")),
       confirmPassword: z.string(),
-      role: z.enum(["teacher", "student"], {
-        message: t("authRegister.errors.roleRequired"),
-      }),
     })
     .refine((data) => data.password === data.confirmPassword, {
       message: t("authRegister.errors.passwordsDoNotMatch"),

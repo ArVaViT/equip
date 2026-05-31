@@ -33,7 +33,7 @@ from app.services.translation.resolve_for_display import (
 
 logger = logging.getLogger(__name__)
 
-VALID_ROLES = ("admin", "teacher", "pending_teacher", "student")
+VALID_ROLES = ("admin", "teacher", "student")
 
 router = APIRouter(prefix="/users", tags=["users"])
 

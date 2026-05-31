@@ -8,7 +8,6 @@ export type FormState = {
   email: string
   password: string
   confirmPassword: string
-  role: "teacher" | "student"
 }
 
 const EMPTY_FORM: FormState = {
@@ -16,7 +15,6 @@ const EMPTY_FORM: FormState = {
   email: "",
   password: "",
   confirmPassword: "",
-  role: "student",
 }
 
 /**
@@ -74,7 +72,6 @@ export function useRegister() {
         result.data.email,
         result.data.password,
         result.data.full_name,
-        result.data.role,
         preferredLocale,
       )
       setSuccess(true)

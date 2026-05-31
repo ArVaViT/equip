@@ -36,7 +36,7 @@ const VirtualAdminUsers = lazy(() => import("../VirtualAdminUsers"))
 const USERS_VIRTUAL_THRESHOLD = 50
 
 /** Empty string = "all roles" (no filter). */
-export type RoleFilterValue = "" | "admin" | "teacher" | "pending_teacher" | "student"
+export type RoleFilterValue = "" | "admin" | "teacher" | "student"
 
 interface Props {
   users: ProfileRow[]
@@ -135,7 +135,6 @@ export function UsersCard({
               <SelectItem value="all">{t("admin.users.roleFilterAll")}</SelectItem>
               <SelectItem value="admin">{t("roles.admin")}</SelectItem>
               <SelectItem value="teacher">{t("roles.teacher")}</SelectItem>
-              <SelectItem value="pending_teacher">{t("roles.pendingTeacher")}</SelectItem>
               <SelectItem value="student">{t("roles.student")}</SelectItem>
             </SelectContent>
           </Select>
@@ -160,7 +159,7 @@ export function UsersCard({
             Hides zero-count roles so the strip stays meaningful on
             small tenants. Active filter gets the primary fill. */}
         <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          {(["admin", "teacher", "pending_teacher", "student"] as const).map((role) => {
+          {(["admin", "teacher", "student"] as const).map((role) => {
             if (roleCounts[role] === 0) return null
             const active = roleFilter === role
             return (
@@ -205,7 +204,6 @@ export function UsersCard({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="student">{t("roles.student")}</SelectItem>
-                <SelectItem value="pending_teacher">{t("roles.pendingTeacher")}</SelectItem>
                 <SelectItem value="teacher">{t("roles.teacher")}</SelectItem>
                 <SelectItem value="admin">{t("roles.admin")}</SelectItem>
               </SelectContent>

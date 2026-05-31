@@ -24,9 +24,9 @@ interface Props {
 
 /**
  * Single source of truth for the user-avatar surface across the admin
- * section. Previously this logic was duplicated in 4 places
- * (UsersCard mobile + desktop, VirtualAdminUsers, PendingTeachersCard)
- * with subtly different bugs in each copy:
+ * section. Previously this logic was duplicated across the admin
+ * tables (UsersCard mobile + desktop, VirtualAdminUsers) with subtly
+ * different bugs in each copy:
  *
  *   - Whitespace-only ``full_name`` rendered a blank initials bubble.
  *   - Broken upstream avatar URLs (Google profile pic deleted,

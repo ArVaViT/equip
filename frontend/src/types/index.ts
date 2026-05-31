@@ -1,6 +1,6 @@
 import type { ChapterType } from '@/lib/chapterTypes'
 
-export type UserRole = 'admin' | 'teacher' | 'pending_teacher' | 'student'
+export type UserRole = 'admin' | 'teacher' | 'student'
 export type PreferredLocale = 'ru' | 'en'
 
 /**
@@ -16,7 +16,6 @@ export type PreferredLocale = 'ru' | 'en'
 export const ROLES = {
   ADMIN: 'admin',
   TEACHER: 'teacher',
-  PENDING_TEACHER: 'pending_teacher',
   STUDENT: 'student',
 } as const satisfies Record<string, UserRole>
 
