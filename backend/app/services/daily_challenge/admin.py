@@ -502,6 +502,12 @@ def upsert_cv_for_question(
     if question.rejected:
         raise QuestionRejectedError(f"question {question.id} is rejected; cannot edit")
 
+    # Pydantic's ``min_length=1`` counts characters, not non-whitespace
+    # ones, so ``"   "`` slips past the schema. Strip-check here so a
+    # whitespace-only "translation" can't quietly land in cv.
+    if not text.strip():
+        raise ValueError("text must not be empty or whitespace-only")
+
     if field == "option_text":
         if option_id is None:
             raise ValueError("option_id is required for field='option_text'")

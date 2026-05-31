@@ -70,6 +70,15 @@ describe("DailyChallengeCard", () => {
     expect(screen.getByText("A new covenant")).toBeInTheDocument()
   })
 
+  it("renders the archive link in the header regardless of the day state", async () => {
+    stub({ getToday: vi.fn().mockResolvedValue(todayPayload()) })
+    render(<DailyChallengeCard />, { wrapper: Wrapper })
+    // Archive link is always present so users can reach the archive
+    // from the dashboard even when today has no scheduled question.
+    const link = await screen.findByRole("link", { name: /archive|архив/i })
+    expect(link).toHaveAttribute("href", "/daily-challenge/archive")
+  })
+
   it("hides the question and shows an empty state on 404 not_scheduled", async () => {
     const err = new AxiosError("not scheduled", "ERR_BAD_REQUEST")
     // axios populates `response` post-construction; replicate that here.
