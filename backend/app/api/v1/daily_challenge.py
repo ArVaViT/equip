@@ -30,6 +30,7 @@ from app.schemas.daily_challenge import (
     DailyChallengeTodayResponse,
 )
 from app.schemas.locale import normalize_locale
+from app.services.bible.books import display_book_name, find_book
 from app.services.daily_challenge import (
     InvalidOptionError,
     NoScheduleError,
@@ -111,6 +112,14 @@ def get_today(
             submitted_at=existing.submitted_at,
         )
 
+    # Localize the book name server-side so the client doesn't need
+    # to ship a 66-entry vocabulary. Fall back to the canonical English
+    # book name when the locale isn't bundled or the slug is unknown
+    # (defensive — the editorial pipeline only accepts canonical
+    # references, but a future ingest path might not).
+    slug = find_book(question.bible_book)
+    bible_book_label = (display_book_name(slug, display_locale) if slug is not None else None) or question.bible_book
+
     return DailyChallengeTodayResponse(
         challenge_date=schedule.challenge_date,
         question_id=question.id,
@@ -121,6 +130,7 @@ def get_today(
         question_text=bundle.question_text,
         options=options_view,
         bible_book=question.bible_book,
+        bible_book_label=bible_book_label,
         bible_chapter=question.bible_chapter,
         bible_verse_from=question.bible_verse_from,
         bible_verse_to=question.bible_verse_to,

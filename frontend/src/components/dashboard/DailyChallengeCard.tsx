@@ -217,14 +217,11 @@ export function DailyChallengeCard() {
           ? `${data.bible_verse_from}-${data.bible_verse_to}`
           : `${data.bible_verse_from}`
         : ""
-    // Bilingual book-name rendering is a backend concern — the server
-    // already returns the book in the caller's Accept-Language locale
-    // for cv-backed fields. For now the API ships the canonical English
-    // slug; a follow-up will localise it server-side rather than
-    // duplicating the book table on the client.
+    // The backend returns ``bible_book_label`` already localized per the
+    // caller's ``Accept-Language`` (e.g. "Ин." for ru, "John" for en).
     return range
-      ? `${data.bible_book} ${data.bible_chapter}:${range}`
-      : `${data.bible_book} ${data.bible_chapter}`
+      ? `${data.bible_book_label} ${data.bible_chapter}:${range}`
+      : `${data.bible_book_label} ${data.bible_chapter}`
   }, [data])
 
   return (
