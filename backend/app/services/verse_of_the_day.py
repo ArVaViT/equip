@@ -338,6 +338,46 @@ class VerseNotInBible(Exception):
     numbering doesn't match our catalog's (NRT in particular)."""
 
 
+# Hebrew Psalm chapter → Septuagint chapter for the simple-offset
+# range. Outside this range the mapping is non-injective (chapters
+# 9-10, 114-116, 147 either combine or split), so we refuse those
+# rather than serve a different verse. Catalog references in the
+# "complex" range raise ``VerseNotInBible`` for Septuagint-numbered
+# bibles, which triggers the walk-forward to the next clean entry.
+_SEPTUAGINT_PSALM_OFFSET_RANGE = (11, 113, 117, 146)
+_SEPTUAGINT_LOCALES = frozenset({"ru"})
+
+
+def _remap_ref_for_locale(ref: str, locale: LocaleCode) -> str | None:
+    """Translate a catalog (Hebrew-numbered) reference into the
+    upstream-bible's numbering for the given locale.
+
+    Returns ``None`` when the reference falls in a chapter where
+    Hebrew↔Septuagint psalm splits/combines (Hebrew 9, 10, 114, 115,
+    116, 147) — the caller treats that as "not in this bible" and
+    advances. Everything else maps cleanly: 1-8 and 148-150 are
+    identical across both numbering systems; 11-113 and 117-146 take
+    a -1 offset for Septuagint-numbered bibles like NRT.
+    """
+    if locale not in _SEPTUAGINT_LOCALES:
+        return ref
+    if not ref.startswith("PSA."):
+        return ref
+    try:
+        _, chapter_str, verse_str = ref.split(".", 2)
+        chapter = int(chapter_str)
+    except (ValueError, IndexError):
+        return ref
+    low_a, high_a, low_b, high_b = _SEPTUAGINT_PSALM_OFFSET_RANGE
+    if 1 <= chapter <= 8 or 148 <= chapter <= 150:
+        return ref
+    if low_a <= chapter <= high_a or low_b <= chapter <= high_b:
+        return f"PSA.{chapter - 1}.{verse_str}"
+    # Complex chapters (Hebrew 9, 10, 114, 115, 116, 147) where the
+    # split/combine boundary makes a clean per-verse remap impossible.
+    return None
+
+
 @dataclass(frozen=True)
 class VerseOfTheDay:
     reference: str
@@ -459,18 +499,27 @@ def get_verse_of_the_day(locale: LocaleCode, *, today: dt.date | None = None) ->
         return cached
 
     # Septuagint/Masoretic Psalm numbering differs between Russian
-    # NRT and our canonical-English catalog: e.g. PSA.27.14 (catalog)
-    # has no NRT counterpart because NRT uses Hebrew numbering. Walk
-    # forward through the catalog when the chosen ref is genuinely
-    # absent from the bible; the deterministic offset means every
-    # client lands on the same fallback verse for the same UTC day.
+    # NRT and our canonical-English (Hebrew-numbered) catalog. For the
+    # simple-offset range we remap chapter X → X-1 so the content
+    # matches what BSB returns for the same catalog reference;
+    # complex split/combine boundaries (Hebrew 9-10, 114-116, 147)
+    # raise ``VerseNotInBible`` so the walk advances to a clean entry.
+    # The walk also fires on genuine 404s (verse missing from the
+    # bible entirely). The deterministic offset means every client
+    # lands on the same fallback for the same UTC day.
     last_not_in_bible: VerseNotInBible | None = None
     localized_ref: str | None = None
     text: str | None = None
     for offset in range(_FALLBACK_WALK_CAP):
-        ref = _pick_reference_offset(today, offset)
+        catalog_ref = _pick_reference_offset(today, offset)
+        upstream_ref = _remap_ref_for_locale(catalog_ref, locale)
+        if upstream_ref is None:
+            last_not_in_bible = VerseNotInBible(
+                f"{catalog_ref} falls in the complex Septuagint/Masoretic boundary for locale {locale!r}"
+            )
+            continue
         try:
-            localized_ref, text = _fetch_passage(api_key, bible_id, ref)
+            localized_ref, text = _fetch_passage(api_key, bible_id, upstream_ref)
             break
         except VerseNotInBible as exc:
             last_not_in_bible = exc
@@ -484,7 +533,9 @@ def get_verse_of_the_day(locale: LocaleCode, *, today: dt.date | None = None) ->
         # Catalog exhausted — every ref in the walk was missing. Logging
         # the last seen 404 helps spot catalog rot if it ever happens.
         logger.warning("VOTD walk cap exceeded for locale %s: %s", locale, last_not_in_bible)
-        raise VerseOfTheDayUnavailable(f"No reference in catalog available in bible {bible_id}; last attempted: {ref}")
+        raise VerseOfTheDayUnavailable(
+            f"No reference in catalog available in bible {bible_id}; last error: {last_not_in_bible}"
+        )
 
     verse = VerseOfTheDay(
         reference=localized_ref,

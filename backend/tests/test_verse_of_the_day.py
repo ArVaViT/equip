@@ -157,7 +157,10 @@ def test_walks_forward_on_verse_not_in_bible(monkeypatch):
         return f"{ref} ru-ref", "RU body"
 
     monkeypatch.setattr(svc, "_fetch_passage", _selective)
-    verse = svc.get_verse_of_the_day("ru", today=today)
+    # Use EN locale so the catalog ref reaches ``_fetch_passage`` without
+    # the Psalms Septuagint remap; the locale-specific remap behaviour
+    # is covered by dedicated tests below.
+    verse = svc.get_verse_of_the_day("en", today=today)
     assert verse.reference == f"{fallback} ru-ref"
     assert seen == [primary, fallback]
 
@@ -177,8 +180,8 @@ def test_walks_forward_then_caches_the_fallback(monkeypatch):
         return "fallback-ref", "fallback body"
 
     monkeypatch.setattr(svc, "_fetch_passage", _selective)
-    svc.get_verse_of_the_day("ru", today=today)
-    svc.get_verse_of_the_day("ru", today=today)
+    svc.get_verse_of_the_day("en", today=today)
+    svc.get_verse_of_the_day("en", today=today)
     # First call: 2 fetches (primary 404 → fallback ok). Second call:
     # 0 fetches (cache hit). Total: 2.
     assert calls["n"] == 2
@@ -195,7 +198,9 @@ def test_gives_up_after_walk_cap(monkeypatch):
 
     monkeypatch.setattr(svc, "_fetch_passage", _always_missing)
     with pytest.raises(svc.VerseOfTheDayUnavailable):
-        svc.get_verse_of_the_day("ru", today=dt.date(2026, 5, 31))
+        # EN locale to avoid the Psalms Septuagint remap shadowing
+        # this cap-exhaustion path; the RU remap has its own tests.
+        svc.get_verse_of_the_day("en", today=dt.date(2026, 5, 31))
 
 
 def test_walk_does_not_consume_transient_errors(monkeypatch):
@@ -213,3 +218,83 @@ def test_walk_does_not_consume_transient_errors(monkeypatch):
     monkeypatch.setattr(svc, "_fetch_passage", _transient)
     with pytest.raises(svc.VerseOfTheDayUnavailable):
         svc.get_verse_of_the_day("en", today=dt.date(2026, 5, 31))
+
+
+def test_remap_psalm_for_ru_simple_offset_range() -> None:
+    """For the simple offset range (Hebrew 11-113, 117-146), NRT
+    references should be one chapter lower than the catalog."""
+    assert svc._remap_ref_for_locale("PSA.23.1", "ru") == "PSA.22.1"
+    assert svc._remap_ref_for_locale("PSA.28.7", "ru") == "PSA.27.7"
+    assert svc._remap_ref_for_locale("PSA.119.105", "ru") == "PSA.118.105"
+    assert svc._remap_ref_for_locale("PSA.121.1", "ru") == "PSA.120.1"
+
+
+def test_remap_psalm_for_ru_identical_range() -> None:
+    """Hebrew Psalms 1-8 and 148-150 match Septuagint numbering."""
+    assert svc._remap_ref_for_locale("PSA.1.1", "ru") == "PSA.1.1"
+    assert svc._remap_ref_for_locale("PSA.4.8", "ru") == "PSA.4.8"
+    assert svc._remap_ref_for_locale("PSA.148.1", "ru") == "PSA.148.1"
+
+
+def test_remap_psalm_for_ru_complex_boundary_refuses() -> None:
+    """Hebrew Psalms 9, 10, 114, 115, 116, 147 split/combine across
+    the boundary — remap returns None so the walk advances."""
+    for ch in (9, 10, 114, 115, 116, 147):
+        assert svc._remap_ref_for_locale(f"PSA.{ch}.1", "ru") is None
+
+
+def test_remap_non_psalm_or_non_ru_is_identity() -> None:
+    """Only the RU (NRT) locale + Psalms book needs remapping."""
+    assert svc._remap_ref_for_locale("JHN.3.16", "ru") == "JHN.3.16"
+    assert svc._remap_ref_for_locale("PSA.23.1", "en") == "PSA.23.1"
+
+
+def test_walk_skips_complex_psalm_chapters_for_ru(monkeypatch) -> None:
+    """When today's catalog ref falls on a complex psalm boundary
+    for RU, the walk must advance to the next catalog entry rather
+    than serving wrong content."""
+    monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+    today = dt.date(2026, 5, 31)
+    # Find an offset where the catalog hits a complex chapter; fall
+    # back to monkey-stubbing the picker so the test is deterministic.
+    seen_refs: list[str] = []
+
+    def _picker(d: dt.date, offset: int) -> str:
+        # offset 0 returns a complex psalm; offset 1 returns a clean one.
+        return ["PSA.9.1", "JHN.3.16"][offset]
+
+    def _stub_fetch(api_key: str, bible_id: int, ref: str) -> tuple[str, str]:
+        seen_refs.append(ref)
+        return "От Иоанна 3:16", "Ведь Бог так полюбил мир..."
+
+    monkeypatch.setattr(svc, "_pick_reference_offset", _picker)
+    monkeypatch.setattr(svc, "_fetch_passage", _stub_fetch)
+    verse = svc.get_verse_of_the_day("ru", today=today)
+    assert verse.reference == "От Иоанна 3:16"
+    # The complex PSA.9.1 was skipped without even hitting the API.
+    assert seen_refs == ["JHN.3.16"]
+
+
+def test_psalm_for_ru_uses_remapped_chapter(monkeypatch) -> None:
+    """For an RU Psalm in the simple-offset range, the route must
+    call the upstream API with chapter-1 so the returned content
+    matches the catalog's intent (the Hebrew-numbered verse)."""
+    monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+    today = dt.date(2026, 6, 1)
+    requested: list[str] = []
+
+    def _picker(d: dt.date, offset: int) -> str:
+        # offset 0 is the day's verse; only one offset needed.
+        return "PSA.28.7" if offset == 0 else "JHN.1.1"
+
+    def _stub_fetch(api_key: str, bible_id: int, ref: str) -> tuple[str, str]:
+        requested.append(ref)
+        return "Псалтирь 27:7", "Господь — моя сила и щит"
+
+    monkeypatch.setattr(svc, "_pick_reference_offset", _picker)
+    monkeypatch.setattr(svc, "_fetch_passage", _stub_fetch)
+    verse = svc.get_verse_of_the_day("ru", today=today)
+    assert "сила и щит" in verse.text
+    # Pinned: the upstream request used the SEPTUAGINT reference,
+    # not the Hebrew one the catalog stores.
+    assert requested == ["PSA.27.7"]
