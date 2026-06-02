@@ -32,29 +32,47 @@ sync with prod is the fastest way for dashboards to silently rot.
 ## Required metrics
 
 Both dashboards reference custom metrics with the `equip.*` namespace.
-They're emitted by:
+They're emitted via **log-based metrics** — structured INFO lines
+under the `equip.metric` logger that Datadog parses into time series.
+See `app/core/metrics.py` for the emitter contract.
 
-* **`equip.grading.*`** — `app/api/v1/grades.py` and the manual-
-  grading flow in `app/api/v1/quizzes/grading.py` push a Datadog
-  StatsD metric every time a pending item enters or leaves the queue.
-* **`equip.questions.*`** — the course Q&A surface (when it lands)
-  will emit these; for now the panels render "no data" gracefully.
-* **`equip.activity.*`** — the request-logging middleware in
-  `app/main.py` tags every request with `course_id` and `locale`
-  when available; the DAU metric is derived from unique
-  `user_id` per day.
-* **`equip.completion.*`** — `app/services/student_progress_service.py`
-  updates a per-course/per-chapter completion rate on each
-  `mark_chapter_complete` call.
-* **`equip.engagement.first_dropoff.*`** — `dropoff_count` is the
-  count of enrollments where activity stopped without completion;
-  computed by a scheduled Datadog query.
+Live emission today (sites tagged with the route file that wires them):
 
-The teacher-load dashboard's grading queue tile + the course-
-engagement DAU tile are both live as of this PR; the others need
-the metric emission to be wired in subsequent PRs. The dashboards
-ship now so we can see the no-data tiles + know which metrics are
-still TODO.
+* **`equip.grading.graded_total`** + **`equip.grading.time_to_grade.p50`**
+  — `app/api/v1/quizzes/grading.py` fires on the
+  `pending → graded` transition (guarded against re-grade
+  double-count).
+* **`equip.activity.requests_total`** + **`equip.activity.duration_ms`**
+  — the request-logging middleware in `app/main.py` tags every
+  request with `course_id`, `locale`, `status_code`.
+* **`equip.completion.course_avg_pct`** — `app/services/course_service/
+  _enrollment.py::sync_enrollment_progress` emits a gauge on every
+  progress recompute.
+* **`equip.engagement.chapter_completed_total`** — emitted by all
+  three chapter-completion paths (teacher-mark / quiz-pass /
+  assignment-submit), tagged with `completion_type`, idempotent on
+  no-op re-completion.
+* **`equip.enrollments.created_total`** — `app/services/
+  course_service/_enrollment.py::enroll_user_in_course` emits once
+  per *new* row (idempotent on re-enroll).
+* **`equip.reviews.rating_latest`** — `app/api/v1/reviews.py` emits
+  per (user, course) on review create/update; the dashboard takes
+  `avg` to produce the rating tile.
+
+Drop-off rate is computed in the dashboard query as:
+
+```
+100 * (1 - (chapter_completed_total / enrollments.created_total))
+```
+
+over the chosen window — no separate emitter required.
+
+Still TODO (panels render "no data" gracefully):
+
+* `equip.questions.*` — course Q&A surface when it lands.
+* `equip.completion.chapter_avg_pct` — per-chapter aggregate.
+* `equip.engagement.first_dropoff.p50` — needs session-window
+  computation; deferred until session_id tagging lands.
 
 ## See also
 
