@@ -84,7 +84,10 @@ describe("ADR-0011 — no v1 vocabulary anywhere in src/ source code", () => {
   it("every src/*.tsx / src/*.ts (outside __tests__) is on v2", () => {
     const offenders: { file: string; cls: string }[] = [];
     for (const path of walk(SRC)) {
-      const rel = relative(SRC, path).replaceAll("\\", "/");
+      // ``String.prototype.replaceAll`` needs lib >= ES2021; the project's
+      // tsconfig targets a lower lib for runtime breadth. Use a regex to
+      // normalize Windows path separators without needing ES2021 lib.
+      const rel = relative(SRC, path).replace(/\\/g, "/");
       if (ALLOW.has(rel)) continue;
       const code = readNonComment(path);
       for (const cls of V1_LOCKED_OUT) {
