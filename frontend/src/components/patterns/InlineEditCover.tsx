@@ -98,9 +98,9 @@ export function InlineEditCover({
   return (
     <div
       className={cn(
-        "relative w-full overflow-hidden rounded-lg border border-border bg-muted",
+        "relative w-full overflow-hidden rounded-lg border border-edge bg-muted",
         aspectClasses[aspect],
-        dragOver && "ring-2 ring-ring ring-offset-2",
+        dragOver && "ring-2 ring-brand ring-offset-2",
         className,
       )}
       onDragOver={(e) => {
@@ -116,7 +116,7 @@ export function InlineEditCover({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={disabled || busy}
-          className="group flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="group flex h-full w-full flex-col items-center justify-center gap-2 text-ink-muted transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         >
           {busy ? (
             <Loader2 className="h-6 w-6 animate-spin" strokeWidth={1.75} />
@@ -144,7 +144,7 @@ export function InlineEditCover({
                 type="button"
                 onClick={() => inputRef.current?.click()}
                 disabled={busy}
-                className="inline-flex items-center gap-1.5 rounded-md bg-background/90 px-2.5 py-1 text-xs font-medium text-foreground shadow-sm ring-1 ring-border hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="inline-flex items-center gap-1.5 rounded-md bg-surface/90 px-2.5 py-1 text-xs font-medium text-ink shadow-sm ring-1 ring-border hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
               >
                 {busy ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.75} />
@@ -158,7 +158,7 @@ export function InlineEditCover({
                   type="button"
                   onClick={remove}
                   disabled={busy}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-background/90 px-2.5 py-1 text-xs font-medium text-foreground shadow-sm ring-1 ring-border hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-surface/90 px-2.5 py-1 text-xs font-medium text-ink shadow-sm ring-1 ring-border hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                 >
                   <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
                   {t("inlineEdit.cover.remove")}

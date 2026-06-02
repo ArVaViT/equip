@@ -73,7 +73,7 @@ export default function CourseReviews({ courseId }: Props) {
           <MessageSquare className="h-5 w-5" strokeWidth={1.75} />
           {t("reviews.heading")}
           {reviews.length > 0 && (
-            <span className="text-sm font-normal text-muted-foreground ml-1">
+            <span className="text-sm font-normal text-ink-muted ml-1">
               ({reviews.length})
             </span>
           )}
@@ -82,7 +82,7 @@ export default function CourseReviews({ courseId }: Props) {
           <div className="flex items-center gap-2 mt-2">
             <StarDisplay rating={avgRating} size="lg" />
             <span className="text-sm font-medium">{avgRating.toFixed(1)}</span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-ink-muted">
               {t("reviews.outOf5")} · {t("reviews.reviewCount", { count: reviews.length })}
             </span>
           </div>
@@ -93,7 +93,7 @@ export default function CourseReviews({ courseId }: Props) {
           <PageSpinner variant="section" />
         ) : loadError ? (
           <div className="flex flex-col items-center gap-2 py-8">
-            <p className="text-sm text-muted-foreground">{t("reviews.loadFailedInline")}</p>
+            <p className="text-sm text-ink-muted">{t("reviews.loadFailedInline")}</p>
             <Button variant="outline" size="sm" onClick={() => loadReviews()}>
               {t("reviews.retry")}
             </Button>
@@ -117,13 +117,13 @@ export default function CourseReviews({ courseId }: Props) {
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-ink-muted">
                       {formatDate(review.created_at)}
                     </span>
                     {review.user_id === user?.id && (
                       confirmDeleteId === review.id ? (
                         <div className="flex items-center gap-1">
-                          <span className="text-xs text-muted-foreground">{t("reviews.confirmDeletePrefix")}</span>
+                          <span className="text-xs text-ink-muted">{t("reviews.confirmDeletePrefix")}</span>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -158,7 +158,7 @@ export default function CourseReviews({ courseId }: Props) {
                   </div>
                 </div>
                 {review.comment && (
-                  <p className="text-sm leading-relaxed text-muted-foreground text-wrap-safe whitespace-pre-line">
+                  <p className="text-sm leading-relaxed text-ink-muted text-wrap-safe whitespace-pre-line">
                     {review.comment}
                   </p>
                 )}
@@ -184,7 +184,7 @@ function StarDisplay({ rating, size = "sm" }: { rating: number; size?: "sm" | "l
             className={`${iconClass} ${
               filled
                 ? "fill-warning text-warning"
-                : "text-muted-foreground/30"
+                : "text-ink-muted/30"
             }`}
           strokeWidth={1.75} />
         )

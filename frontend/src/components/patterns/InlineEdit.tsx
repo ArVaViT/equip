@@ -142,7 +142,7 @@ export function InlineEdit({
       disabled: saving,
       "aria-label": ariaLabel,
       className: cn(
-        "w-full rounded-md border border-input bg-background px-2 py-1 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        "w-full rounded-md border border-edge-strong bg-surface px-2 py-1 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
         sizeClasses[size],
         textClassName,
       ),
@@ -165,12 +165,12 @@ export function InlineEdit({
         )}
         <span className="flex shrink-0 items-center gap-1 pt-1">
           {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" strokeWidth={1.75} />
+            <Loader2 className="h-4 w-4 animate-spin text-ink-muted" strokeWidth={1.75} />
           ) : (
             <>
               <button
                 type="button"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-heritage hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => void commit()}
                 aria-label={t("inlineEdit.save")}
@@ -179,7 +179,7 @@ export function InlineEdit({
               </button>
               <button
                 type="button"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-heritage hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={cancel}
                 aria-label={t("inlineEdit.cancel")}
@@ -211,7 +211,7 @@ export function InlineEdit({
             "text-wrap-safe",
             multiline && "whitespace-pre-line",
             sizeClasses[size],
-            isEmpty && "text-muted-foreground italic",
+            isEmpty && "text-ink-muted italic",
             textClassName,
           )}
         >
@@ -238,17 +238,17 @@ export function InlineEdit({
         onClick={start}
         aria-label={ariaLabel ?? t("inlineEdit.editAria", { what: resolvedPlaceholder.toLowerCase() })}
         className={cn(
-          "flex-1 min-w-0 cursor-text rounded-md px-2 py-1 text-left transition-colors text-wrap-safe hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "flex-1 min-w-0 cursor-text rounded-md px-2 py-1 text-left transition-colors text-wrap-safe hover:bg-heritage/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
           multiline && "whitespace-pre-line",
           sizeClasses[size],
-          isEmpty && "text-muted-foreground italic",
+          isEmpty && "text-ink-muted italic",
           textClassName,
         )}
       >
         {displayText}
       </button>
       <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover/edit:opacity-100 group-focus-within/edit:opacity-100">
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-background/80 text-muted-foreground shadow-sm ring-1 ring-border">
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-surface/80 text-ink-muted shadow-sm ring-1 ring-border">
           <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />
         </span>
       </span>
