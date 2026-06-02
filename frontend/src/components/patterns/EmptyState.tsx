@@ -34,13 +34,13 @@ export function EmptyState({
         )}
       >
         {icon && (
-          <span className="text-muted-foreground/80 [&_svg]:h-5 [&_svg]:w-5">
+          <span className="text-ink-muted/80 [&_svg]:h-5 [&_svg]:w-5">
             {icon}
           </span>
         )}
-        <p className="text-sm text-muted-foreground">{title}</p>
+        <p className="text-sm text-ink-muted">{title}</p>
         {description && (
-          <p className="max-w-md text-xs text-muted-foreground/80">
+          <p className="max-w-md text-xs text-ink-muted/80">
             {description}
           </p>
         )}
@@ -52,19 +52,19 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "animate-fade-in flex flex-col items-center justify-center gap-3 rounded-md border border-dashed border-border bg-background px-6 py-12 text-center",
+        "animate-fade-in flex flex-col items-center justify-center gap-3 rounded-md border border-dashed border-edge bg-surface px-6 py-12 text-center",
         className,
       )}
     >
       {icon && (
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground [&_svg]:h-5 [&_svg]:w-5">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-ink-muted [&_svg]:h-5 [&_svg]:w-5">
           {icon}
         </span>
       )}
       <div className="space-y-1">
-        <p className="font-serif text-base font-semibold text-foreground">{title}</p>
+        <p className="font-serif text-base font-semibold text-ink">{title}</p>
         {description && (
-          <p className="max-w-md text-sm text-muted-foreground">{description}</p>
+          <p className="max-w-md text-sm text-ink-muted">{description}</p>
         )}
       </div>
       {action && <div className="pt-1">{action}</div>}

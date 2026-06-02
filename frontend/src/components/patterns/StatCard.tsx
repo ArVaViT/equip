@@ -38,10 +38,10 @@ export function StatCard({
       <Card>
         <CardContent className="flex items-center gap-4 p-5">
           <div className="rounded-md bg-muted p-3">
-            <Icon className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+            <Icon className="h-6 w-6 text-ink-muted" strokeWidth={1.75} aria-hidden />
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">{label}</p>
+            <p className="text-sm text-ink-muted">{label}</p>
             <p className={cn("text-2xl font-bold tabular-nums", valueClassName)}>{value}</p>
           </div>
         </CardContent>
@@ -54,10 +54,10 @@ export function StatCard({
       <CardContent className="pt-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-muted-foreground">{label}</p>
+            <p className="text-sm text-ink-muted">{label}</p>
             <p className={cn("text-2xl font-bold tabular-nums mt-1", valueClassName)}>{value}</p>
           </div>
-          <Icon className="h-6 w-6 text-muted-foreground/60" strokeWidth={1.75} aria-hidden />
+          <Icon className="h-6 w-6 text-ink-muted/60" strokeWidth={1.75} aria-hidden />
         </div>
       </CardContent>
     </Card>
