@@ -116,4 +116,21 @@ def sync_enrollment_progress(db: Session, user_id: str | UUID, course_id: str | 
     else:
         enrollment.progress = round((completed_gradable / total_gradable) * 100)
     db.flush()
+
+    # ``equip.completion.course_avg_pct`` is read by the Course
+    # Engagement dashboard. We emit one event per progress recompute;
+    # Datadog rolls them up to course-wide averages on the chart side.
+    # Wrapped in try/except so a metric failure cannot break the
+    # progress recompute itself.
+    try:
+        from app.core.metrics import gauge
+
+        gauge(
+            "equip.completion.course_avg_pct",
+            float(enrollment.progress),
+            course_id=str(course_id),
+        )
+    except Exception:
+        pass
+
     return enrollment
