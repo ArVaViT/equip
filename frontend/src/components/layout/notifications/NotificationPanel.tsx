@@ -54,7 +54,7 @@ export const NotificationPanel = forwardRef<HTMLDivElement, Props>(
         role="region"
         aria-label={t("notifications.panelAriaLabel")}
         className={cn(
-          "mt-2 overflow-hidden rounded-lg border border-border shadow-lg",
+          "mt-2 overflow-hidden rounded-lg border border-edge shadow-lg",
           // Sheet variant: live in the flex flow so it pushes the
           // "Profile" link below it instead of floating over the next
           // nav row as a phantom overlay (the original
@@ -67,17 +67,17 @@ export const NotificationPanel = forwardRef<HTMLDivElement, Props>(
           // content. The frosted layer separates the dropdown from the
           // busy course/admin pages it floats over.
           isSheet
-            ? "w-full bg-background"
-            : "absolute right-0 top-full z-50 w-80 bg-background/85 backdrop-blur-md sm:w-96 supports-[backdrop-filter]:bg-background/75",
+            ? "w-full bg-surface"
+            : "absolute right-0 top-full z-50 w-80 bg-surface/85 backdrop-blur-md sm:w-96 supports-[backdrop-filter]:bg-surface/75",
         )}
       >
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h3 className="text-sm font-semibold text-foreground">{t("notifications.title")}</h3>
+        <div className="flex items-center justify-between border-b border-edge px-4 py-3">
+          <h3 className="text-sm font-semibold text-ink">{t("notifications.title")}</h3>
           {unreadCount > 0 && (
             <button
               type="button"
               onClick={onMarkAllRead}
-              className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+              className="flex items-center gap-1 text-xs text-ink-muted transition-colors hover:text-ink"
             >
               <CheckCheck className="h-3.5 w-3.5" strokeWidth={1.75} />
               {t("notifications.markAllRead")}
@@ -94,19 +94,19 @@ export const NotificationPanel = forwardRef<HTMLDivElement, Props>(
           {loading ? (
             <PageSpinner variant="section" />
           ) : loadError ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
+            <div className="flex flex-col items-center gap-2 py-10 text-ink-muted">
               <AlertCircle className="h-8 w-8 text-destructive/70" strokeWidth={1.75} />
               <p className="text-sm text-destructive">{t("notifications.loadFailed")}</p>
               <button
                 type="button"
                 onClick={onRetry}
-                className="text-xs text-primary hover:underline"
+                className="text-xs text-brand hover:underline"
               >
                 {t("notifications.tryAgain")}
               </button>
             </div>
           ) : notifications.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
+            <div className="flex flex-col items-center gap-2 py-10 text-ink-muted">
               <Bell className="h-8 w-8 opacity-30" strokeWidth={1.75} />
               <p className="text-sm">{t("notifications.empty")}</p>
             </div>
@@ -121,7 +121,7 @@ export const NotificationPanel = forwardRef<HTMLDivElement, Props>(
                 />
               ))}
               {hasMore && (
-                <div className="border-t border-border/50 p-2">
+                <div className="border-t border-edge/50 p-2">
                   <Button
                     type="button"
                     variant="ghost"

@@ -57,10 +57,10 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
 
       {/* Form panel */}
       <div className="flex flex-1 flex-col">
-        <div className="flex items-center justify-between border-b border-border/60 bg-background/90 px-4 py-2 backdrop-blur-sm lg:hidden">
+        <div className="flex items-center justify-between border-b border-edge/60 bg-surface/90 px-4 py-2 backdrop-blur-sm lg:hidden">
           <Link
             to="/"
-            className="-mx-1 inline-flex min-h-[44px] items-center gap-2.5 px-1 text-foreground transition-opacity hover:opacity-80"
+            className="-mx-1 inline-flex min-h-[44px] items-center gap-2.5 px-1 text-ink transition-opacity hover:opacity-80"
           >
             <BookOpen className="h-5 w-5 shrink-0 text-accent" strokeWidth={1.75} aria-hidden />
             <span className="font-serif text-base font-bold leading-none tracking-tight">{t("common.appName")}</span>
@@ -102,7 +102,7 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
           <div className="w-full max-w-[420px] space-y-8">
             <div className="space-y-2 text-center lg:text-left">
               <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">{heading}</h1>
-              {subheading && <p className="font-sans text-sm text-muted-foreground">{subheading}</p>}
+              {subheading && <p className="font-sans text-sm text-ink-muted">{subheading}</p>}
             </div>
             {children}
           </div>

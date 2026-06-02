@@ -17,32 +17,32 @@ export default function Footer() {
   const year = new Date().getFullYear()
 
   const linkClass =
-    "text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+    "text-ink-muted transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 rounded-sm"
 
   return (
-    <footer className="mt-auto border-t border-border bg-background/95">
+    <footer className="mt-auto border-t border-edge bg-surface/95">
       <div className="container mx-auto max-w-[1400px] px-4 py-5 md:px-6">
         <div className="flex flex-col items-start justify-between gap-3 text-xs sm:flex-row sm:items-center sm:gap-x-6 sm:text-sm">
           <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2">
             <Link
               to="/"
-              className="shrink-0 font-serif text-sm font-semibold tracking-tight text-foreground transition-opacity hover:opacity-85"
+              className="shrink-0 font-serif text-sm font-semibold tracking-tight text-ink transition-opacity hover:opacity-85"
             >
               {t("common.appName")}
             </Link>
-            <span className="hidden text-muted-foreground/50 sm:inline" aria-hidden>
+            <span className="hidden text-ink-muted/50 sm:inline" aria-hidden>
               ·
             </span>
-            <p className="max-w-prose text-xs leading-snug text-muted-foreground sm:truncate">
+            <p className="max-w-prose text-xs leading-snug text-ink-muted sm:truncate">
               {t("footer.tagline")}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
             <a href={`mailto:${SUPPORT_EMAIL}`} className={linkClass}>
               {t("footer.support")}
             </a>
-            <span aria-hidden className="text-muted-foreground/40">
+            <span aria-hidden className="text-ink-muted/40">
               ·
             </span>
             <span>

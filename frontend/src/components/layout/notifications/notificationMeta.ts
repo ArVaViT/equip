@@ -32,7 +32,7 @@ export const NOTIFICATION_COLORS: Record<NotificationType, string> = {
   certificate_rejected: "text-destructive",
   assignment_graded: "text-info",
   new_announcement: "text-warning",
-  course_update: "text-muted-foreground",
+  course_update: "text-ink-muted",
   enrollment_confirmed: "text-success",
 }
 

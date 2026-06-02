@@ -44,10 +44,10 @@ export function HeaderNavLink({
           : "relative flex h-full items-center px-3 text-sm",
         isSheet &&
           (active
-            ? "border-primary bg-muted/25 font-medium text-foreground"
-            : "text-foreground hover:border-border hover:bg-muted/40"),
+            ? "border-brand bg-muted/25 font-medium text-ink"
+            : "text-ink hover:border-edge hover:bg-muted/40"),
         !isSheet &&
-          (active ? "text-foreground" : "text-muted-foreground hover:text-foreground"),
+          (active ? "text-ink" : "text-ink-muted hover:text-ink"),
       )}
     >
       {children}
@@ -55,13 +55,13 @@ export function HeaderNavLink({
         active &&
         (prefersReducedMotion ? (
           <span
-            className="pointer-events-none absolute inset-x-3 bottom-0 h-0.5 rounded-sm bg-primary"
+            className="pointer-events-none absolute inset-x-3 bottom-0 h-0.5 rounded-sm bg-brand"
             aria-hidden
           />
         ) : (
           <motion.span
             layoutId={HEADER_UNDERLINE_LAYOUT_ID}
-            className="pointer-events-none absolute inset-x-3 bottom-0 h-0.5 rounded-sm bg-primary"
+            className="pointer-events-none absolute inset-x-3 bottom-0 h-0.5 rounded-sm bg-brand"
             transition={{ duration: 0.32, ease: EDITORIAL_EASE }}
             aria-hidden
           />

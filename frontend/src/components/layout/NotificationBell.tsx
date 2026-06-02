@@ -98,7 +98,7 @@ export default function NotificationBell({
     >
       {isNavRow ? (
         <>
-          <span className="text-sm font-medium text-foreground">{t("notifications.title")}</span>
+          <span className="text-sm font-medium text-ink">{t("notifications.title")}</span>
           <span className="flex min-w-[1.25rem] items-center justify-end">
             {unreadCount > 0 ? (
               <span className="rounded-full bg-destructive px-2 py-0.5 text-xs font-semibold tabular-nums text-destructive-foreground">

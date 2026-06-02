@@ -27,7 +27,7 @@ export function HeaderMobileMenuTrigger({ onOpen, isOpen }: Props) {
               type="button"
               variant="ghost"
               size="sm"
-              className="h-8 min-w-8 px-1 text-muted-foreground hover:text-foreground"
+              className="h-8 min-w-8 px-1 text-ink-muted hover:text-ink"
               onClick={onOpen}
               aria-label={t("header.menu")}
               aria-expanded={isOpen}

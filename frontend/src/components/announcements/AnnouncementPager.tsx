@@ -97,11 +97,11 @@ export function AnnouncementPager({ announcements, onDelete }: AnnouncementPager
             {current.title}
           </p>
           {current.content && (
-            <p className="mt-0.5 text-xs text-muted-foreground text-wrap-safe whitespace-pre-line">
+            <p className="mt-0.5 text-xs text-ink-muted text-wrap-safe whitespace-pre-line">
               {current.content}
             </p>
           )}
-          <time className="mt-1 block text-xs text-muted-foreground/60">
+          <time className="mt-1 block text-xs text-ink-muted/60">
             {formatDateTime(current.created_at)}
           </time>
         </div>
@@ -136,14 +136,14 @@ export function AnnouncementPager({ announcements, onDelete }: AnnouncementPager
                   key={a.id}
                   className={cn(
                     "h-1.5 w-1.5 rounded-full transition-colors duration-150",
-                    i === index ? "bg-primary" : "bg-muted-foreground/30",
+                    i === index ? "bg-brand" : "bg-ink-muted/30",
                   )}
                 />
               ))}
             </div>
           ) : (
             <span
-              className="text-[10px] leading-none tabular-nums text-muted-foreground"
+              className="text-[10px] leading-none tabular-nums text-ink-muted"
               aria-hidden
             >
               {t("teacherEditor.modals.announcements.position", {
