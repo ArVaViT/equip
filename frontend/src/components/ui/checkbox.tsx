@@ -19,13 +19,18 @@ const Checkbox = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <CheckboxPrimitive.Root
     ref={ref}
+    // ADR-0011 Wave 4 — migrated to v2 semantic vocabulary.
+    // border-input / bg-background -> border-edge-strong / bg-surface
+    // ring-ring -> ring-brand
+    // checked: border-primary bg-primary text-primary-foreground ->
+    //          border-brand bg-brand text-brand-foreground
     className={cn(
-      "peer h-4 w-4 shrink-0 rounded-sm border border-input bg-background shadow-sm",
+      "peer h-4 w-4 shrink-0 rounded-sm border border-edge-strong bg-surface shadow-sm",
       "ring-offset-background transition-colors",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
       "disabled:cursor-not-allowed disabled:opacity-50",
-      "data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
-      "data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground",
+      "data-[state=checked]:border-brand data-[state=checked]:bg-brand data-[state=checked]:text-brand-foreground",
+      "data-[state=indeterminate]:border-brand data-[state=indeterminate]:bg-brand data-[state=indeterminate]:text-brand-foreground",
       className,
     )}
     {...props}

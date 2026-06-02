@@ -1,7 +1,13 @@
 import { cva } from "class-variance-authority"
 
+// ADR-0011 Wave 4 — migrated to v2 vocabulary.
+// border-input -> border-edge-strong, bg-background -> bg-surface,
+// placeholder text-muted-foreground -> text-ink-muted,
+// ring-ring -> ring-brand. Disabled state still reaches for v1
+// `muted` — a dedicated `--color-disabled` token will land in a
+// later wave once the design has it specified.
 export const inputVariants = cva(
-  "flex w-full rounded-md border border-input bg-background shadow-sm ring-offset-background transition-[color,box-shadow,border-color] duration-200 ease-editorial file:border-0 file:bg-transparent file:font-medium placeholder:text-muted-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-muted/40 aria-[invalid=true]:border-destructive focus-visible:aria-[invalid=true]:ring-destructive/35 dark:shadow-none",
+  "flex w-full rounded-md border border-edge-strong bg-surface shadow-sm ring-offset-background transition-[color,box-shadow,border-color] duration-200 ease-editorial file:border-0 file:bg-transparent file:font-medium placeholder:text-ink-muted/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/80 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-muted/40 aria-[invalid=true]:border-destructive focus-visible:aria-[invalid=true]:ring-destructive/35 dark:shadow-none",
   {
     variants: {
       fieldSize: {
