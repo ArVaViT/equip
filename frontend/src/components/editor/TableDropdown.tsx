@@ -75,11 +75,12 @@ export function TableDropdown({
         aria-label={t("blockEditor.table.trigger")}
         aria-haspopup="menu"
         aria-expanded={open}
+        // ADR-0011 Wave 7 — toolbar-button vocabulary.
         className={cn(
-          "flex items-center gap-0.5 rounded p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "flex items-center gap-0.5 rounded p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
           isInTable
-            ? "bg-primary/20 text-primary ring-1 ring-inset ring-primary/30"
-            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+            ? "bg-brand/20 text-brand ring-1 ring-inset ring-brand/30"
+            : "text-ink-muted hover:bg-heritage hover:text-ink",
         )}
       >
         <TableIcon size={iconSize} strokeWidth={1.75} aria-hidden="true" />
@@ -90,7 +91,7 @@ export function TableDropdown({
           role="menu"
           aria-label={t("blockEditor.table.trigger")}
           className={cn(
-            "absolute top-full z-20 mt-1 w-56 rounded-md border bg-background py-1 shadow-lg",
+            "absolute top-full z-20 mt-1 w-56 rounded-md border bg-surface-elevated py-1 shadow-lg",
             alignClass,
           )}
         >
@@ -107,9 +108,9 @@ export function TableDropdown({
                     .run(),
                 )
               }
-              className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left focus-visible:outline-none focus-visible:bg-muted"
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-heritage transition-colors text-left focus-visible:outline-none focus-visible:bg-heritage"
             >
-              <TableIcon size={16} strokeWidth={1.75} aria-hidden="true" className="text-muted-foreground" />
+              <TableIcon size={16} strokeWidth={1.75} aria-hidden="true" className="text-ink-muted" />
               {t("blockEditor.table.insert")}
             </button>
           )}
@@ -119,36 +120,36 @@ export function TableDropdown({
                 type="button"
                 role="menuitem"
                 onClick={() => run(() => editor.chain().focus().addRowBefore().run())}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left focus-visible:outline-none focus-visible:bg-muted"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-heritage transition-colors text-left focus-visible:outline-none focus-visible:bg-heritage"
               >
-                <ArrowUpToLine size={16} strokeWidth={1.75} aria-hidden="true" className="text-muted-foreground" />
+                <ArrowUpToLine size={16} strokeWidth={1.75} aria-hidden="true" className="text-ink-muted" />
                 {t("blockEditor.table.addRowBefore")}
               </button>
               <button
                 type="button"
                 role="menuitem"
                 onClick={() => run(() => editor.chain().focus().addRowAfter().run())}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left focus-visible:outline-none focus-visible:bg-muted"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-heritage transition-colors text-left focus-visible:outline-none focus-visible:bg-heritage"
               >
-                <ArrowDownToLine size={16} strokeWidth={1.75} aria-hidden="true" className="text-muted-foreground" />
+                <ArrowDownToLine size={16} strokeWidth={1.75} aria-hidden="true" className="text-ink-muted" />
                 {t("blockEditor.table.addRowAfter")}
               </button>
               <button
                 type="button"
                 role="menuitem"
                 onClick={() => run(() => editor.chain().focus().addColumnBefore().run())}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left focus-visible:outline-none focus-visible:bg-muted"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-heritage transition-colors text-left focus-visible:outline-none focus-visible:bg-heritage"
               >
-                <ArrowLeftToLine size={16} strokeWidth={1.75} aria-hidden="true" className="text-muted-foreground" />
+                <ArrowLeftToLine size={16} strokeWidth={1.75} aria-hidden="true" className="text-ink-muted" />
                 {t("blockEditor.table.addColumnBefore")}
               </button>
               <button
                 type="button"
                 role="menuitem"
                 onClick={() => run(() => editor.chain().focus().addColumnAfter().run())}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left focus-visible:outline-none focus-visible:bg-muted"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-heritage transition-colors text-left focus-visible:outline-none focus-visible:bg-heritage"
               >
-                <ArrowRightToLine size={16} strokeWidth={1.75} aria-hidden="true" className="text-muted-foreground" />
+                <ArrowRightToLine size={16} strokeWidth={1.75} aria-hidden="true" className="text-ink-muted" />
                 {t("blockEditor.table.addColumnAfter")}
               </button>
               <div className="my-1 border-t" role="separator" />
@@ -156,9 +157,9 @@ export function TableDropdown({
                 type="button"
                 role="menuitem"
                 onClick={() => run(() => editor.chain().focus().toggleHeaderRow().run())}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left focus-visible:outline-none focus-visible:bg-muted"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-heritage transition-colors text-left focus-visible:outline-none focus-visible:bg-heritage"
               >
-                <Columns3 size={16} strokeWidth={1.75} aria-hidden="true" className="text-muted-foreground" />
+                <Columns3 size={16} strokeWidth={1.75} aria-hidden="true" className="text-ink-muted" />
                 {t("blockEditor.table.toggleHeaderRow")}
               </button>
               <div className="my-1 border-t" role="separator" />
@@ -166,18 +167,18 @@ export function TableDropdown({
                 type="button"
                 role="menuitem"
                 onClick={() => run(() => editor.chain().focus().deleteRow().run())}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left focus-visible:outline-none focus-visible:bg-muted"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-heritage transition-colors text-left focus-visible:outline-none focus-visible:bg-heritage"
               >
-                <Rows3 size={16} strokeWidth={1.75} aria-hidden="true" className="text-muted-foreground" />
+                <Rows3 size={16} strokeWidth={1.75} aria-hidden="true" className="text-ink-muted" />
                 {t("blockEditor.table.deleteRow")}
               </button>
               <button
                 type="button"
                 role="menuitem"
                 onClick={() => run(() => editor.chain().focus().deleteColumn().run())}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left focus-visible:outline-none focus-visible:bg-muted"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-heritage transition-colors text-left focus-visible:outline-none focus-visible:bg-heritage"
               >
-                <Columns3 size={16} strokeWidth={1.75} aria-hidden="true" className="text-muted-foreground" />
+                <Columns3 size={16} strokeWidth={1.75} aria-hidden="true" className="text-ink-muted" />
                 {t("blockEditor.table.deleteColumn")}
               </button>
               <div className="my-1 border-t" role="separator" />
@@ -185,7 +186,7 @@ export function TableDropdown({
                 type="button"
                 role="menuitem"
                 onClick={() => run(() => editor.chain().focus().deleteTable().run())}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-muted transition-colors text-left focus-visible:outline-none focus-visible:bg-muted"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-heritage transition-colors text-left focus-visible:outline-none focus-visible:bg-heritage"
               >
                 <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" />
                 {t("blockEditor.table.deleteTable")}

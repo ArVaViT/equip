@@ -25,7 +25,7 @@ const CALLOUT_VARIANTS: CalloutChoice[] = [
   { value: "verse", icon: BookOpen, color: "text-accent" },
   { value: "takeaway", icon: Lightbulb, color: "text-success" },
   { value: "warning", icon: AlertTriangle, color: "text-warning" },
-  { value: "toggle", icon: ChevronsUpDown, color: "text-muted-foreground" },
+  { value: "toggle", icon: ChevronsUpDown, color: "text-ink-muted" },
 ];
 
 // Static i18n key lookup — exposes each literal to the keyCoverage
@@ -97,11 +97,12 @@ export function CalloutDropdown({
         aria-label={t("blockEditor.callout.trigger")}
         aria-haspopup="menu"
         aria-expanded={open}
+        // ADR-0011 Wave 7 — toolbar-button vocabulary migrated to v2.
         className={cn(
-          "flex items-center gap-0.5 rounded p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "flex items-center gap-0.5 rounded p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
           isActive
-            ? "bg-primary/20 text-primary ring-1 ring-inset ring-primary/30"
-            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+            ? "bg-brand/20 text-brand ring-1 ring-inset ring-brand/30"
+            : "text-ink-muted hover:bg-heritage hover:text-ink",
         )}
       >
         <Info size={iconSize} strokeWidth={1.75} aria-hidden="true" />
@@ -112,7 +113,8 @@ export function CalloutDropdown({
           role="menu"
           aria-label={t("blockEditor.callout.trigger")}
           className={cn(
-            "absolute top-full z-20 mt-1 w-52 rounded-md border bg-background py-1 shadow-lg",
+            // ADR-0011 Wave 7 — bg-background -> bg-surface-elevated.
+            "absolute top-full z-20 mt-1 w-52 rounded-md border bg-surface-elevated py-1 shadow-lg",
             alignClass,
           )}
         >
@@ -124,7 +126,7 @@ export function CalloutDropdown({
                 type="button"
                 role="menuitem"
                 onClick={() => insertCallout(v.value)}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left focus-visible:outline-none focus-visible:bg-muted"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-heritage transition-colors text-left focus-visible:outline-none focus-visible:bg-heritage"
               >
                 <Icon size={16} className={v.color} aria-hidden="true" />
                 {t(CALLOUT_LABEL_KEYS[v.value])}
@@ -138,7 +140,7 @@ export function CalloutDropdown({
                 type="button"
                 role="menuitem"
                 onClick={removeCallout}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-muted transition-colors text-left focus-visible:outline-none focus-visible:bg-muted"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-heritage transition-colors text-left focus-visible:outline-none focus-visible:bg-heritage"
               >
                 {t("blockEditor.callout.remove")}
               </button>

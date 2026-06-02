@@ -52,11 +52,16 @@ function ToolbarButton({
       title={title}
       aria-label={title}
       aria-pressed={pressable ? active : undefined}
+      // ADR-0011 Wave 7 — migrated to v2 vocabulary.
+      // ring-ring -> ring-brand, bg-primary/20 -> bg-brand/20,
+      // text-primary -> text-brand, ring-primary/30 -> ring-brand/30,
+      // text-muted-foreground -> text-ink-muted, hover:bg-accent ->
+      // hover:bg-heritage, hover:text-accent-foreground -> hover:text-ink.
       className={cn(
-        "rounded p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        "rounded p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
         active
-          ? "bg-primary/20 text-primary ring-1 ring-inset ring-primary/30"
-          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+          ? "bg-brand/20 text-brand ring-1 ring-inset ring-brand/30"
+          : "text-ink-muted hover:bg-heritage hover:text-ink",
         disabled && "cursor-not-allowed opacity-40",
       )}
     >
@@ -68,7 +73,8 @@ function ToolbarButton({
 function ToolbarDivider() {
   // role="separator" so AT treats the divider as a group boundary rather
   // than as a visible-but-unannounced element.
-  return <div role="separator" aria-orientation="vertical" className="mx-1 h-5 w-px bg-border" />;
+  // ADR-0011 Wave 7 — bg-border -> bg-edge.
+  return <div role="separator" aria-orientation="vertical" className="mx-1 h-5 w-px bg-edge" />;
 }
 
 interface EditorToolbarProps {
@@ -113,7 +119,8 @@ export function EditorToolbar({
       // the original wrap behaviour above the ``sm`` breakpoint where
       // there's enough room. ``no-scrollbar`` (utility added in
       // index.css) hides the visible bar — touch scroll still works.
-      className="sticky top-0 z-20 flex flex-nowrap items-center gap-0.5 overflow-x-auto border-b border-input bg-background px-2 py-1.5 no-scrollbar sm:flex-wrap sm:overflow-x-visible"
+      // ADR-0011 Wave 7 — border-input -> border-edge-strong, bg-background -> bg-surface.
+      className="sticky top-0 z-20 flex flex-nowrap items-center gap-0.5 overflow-x-auto border-b border-edge-strong bg-surface px-2 py-1.5 no-scrollbar sm:flex-wrap sm:overflow-x-visible"
     >
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBold().run()}
