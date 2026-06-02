@@ -28,8 +28,8 @@ export function QuizHeader({
   const pointsLabel = t("quiz.nPoints", { count: totalMaxScore })
 
   return (
-    <div className="border-b border-border px-5 py-5">
-      <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+    <div className="border-b border-edge px-5 py-5">
+      <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
         <TypeIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
         {typeLabel}
       </p>
@@ -37,13 +37,13 @@ export function QuizHeader({
         {quiz.title}
       </h3>
       {quiz.description && (
-        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground text-wrap-safe whitespace-pre-line">
+        <p className="mt-1.5 text-sm leading-relaxed text-ink-muted text-wrap-safe whitespace-pre-line">
           {quiz.description}
         </p>
       )}
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
         <span className="tabular-nums">{questionsLabel}</span>
-        <span aria-hidden className="text-muted-foreground/40">·</span>
+        <span aria-hidden className="text-ink-muted/40">·</span>
         <span className="tabular-nums">
           {pointsLabel}
           {manualMaxScore > 0 && autoMaxScore > 0 && (
@@ -53,11 +53,11 @@ export function QuizHeader({
             </>
           )}
         </span>
-        <span aria-hidden className="text-muted-foreground/40">·</span>
+        <span aria-hidden className="text-ink-muted/40">·</span>
         <span className="tabular-nums">{t("quiz.passingShort", { score: quiz.passing_score })}</span>
         {maxAttempts !== null && (
           <>
-            <span aria-hidden className="text-muted-foreground/40">·</span>
+            <span aria-hidden className="text-ink-muted/40">·</span>
             <span className="tabular-nums">{t("quiz.attemptsShort", { used: attemptsUsed, max: maxAttempts })}</span>
           </>
         )}

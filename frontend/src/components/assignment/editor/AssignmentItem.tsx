@@ -91,13 +91,13 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
         }}
       >
         {expanded ? (
-          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" strokeWidth={1.75} />
+          <ChevronDown className="h-4 w-4 text-ink-muted shrink-0" strokeWidth={1.75} />
         ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" strokeWidth={1.75} />
+          <ChevronRight className="h-4 w-4 text-ink-muted shrink-0" strokeWidth={1.75} />
         )}
         <div className="flex-1 min-w-0">
           <span className="text-sm font-medium">{assignment.title}</span>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-3 text-xs text-ink-muted">
             <span>{t("assignmentEditor.item.maxPts", { max: assignment.max_score })}</span>
             {assignment.due_date && (
               <span>
@@ -148,20 +148,20 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
       {expanded && (
         <div className="border-t px-4 pb-4">
           {assignment.description && (
-            <p className="text-xs text-muted-foreground py-2">{assignment.description}</p>
+            <p className="text-xs text-ink-muted py-2">{assignment.description}</p>
           )}
 
           {loadingSubs ? (
             <div className="flex items-center justify-center py-6">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" strokeWidth={1.75} />
+              <Loader2 className="h-4 w-4 animate-spin text-ink-muted" strokeWidth={1.75} />
             </div>
           ) : submissions.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">
+            <p className="text-sm text-ink-muted py-4 text-center">
               {t("assignmentEditor.item.noSubmissions")}
             </p>
           ) : (
             <div className="space-y-3 mt-3">
-              <h4 className="text-xs font-semibold text-muted-foreground">
+              <h4 className="text-xs font-semibold text-ink-muted">
                 {t("assignmentEditor.item.submissionsCount", { count: submissions.length })}
               </h4>
               {submissions.map((sub) => (

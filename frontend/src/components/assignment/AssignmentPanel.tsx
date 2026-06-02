@@ -164,9 +164,9 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
   )
 
   return (
-    <div className="rounded-lg border border-border bg-card">
-      <div className="border-b border-border px-5 py-5">
-        <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+    <div className="rounded-lg border border-edge bg-card">
+      <div className="border-b border-edge px-5 py-5">
+        <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
           <FileText className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
           {t("assignment.eyebrow")}
         </p>
@@ -174,18 +174,18 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
           {assignment.title}
         </h3>
         {assignment.description && (
-          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground text-wrap-safe whitespace-pre-line">
+          <p className="mt-1.5 text-sm leading-relaxed text-ink-muted text-wrap-safe whitespace-pre-line">
             {assignment.description}
           </p>
         )}
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
           <span className="flex items-center gap-1 tabular-nums">
             <Star className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
             {t("assignment.maxPoints", { max: assignment.max_score })}
           </span>
           {assignment.due_date && (
             <>
-              <span aria-hidden className="text-muted-foreground/40">·</span>
+              <span aria-hidden className="text-ink-muted/40">·</span>
               <span className={`flex items-center gap-1 tabular-nums ${isOverdue ? "font-medium text-destructive" : ""}`}>
                 <Calendar className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
                 {t("assignment.due")}{" "}
@@ -222,8 +222,8 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
             )}
 
             {submission.feedback && (
-              <div className="rounded-md border border-border bg-muted/20 p-4">
-                <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              <div className="rounded-md border border-edge bg-muted/20 p-4">
+                <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
                   <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
                   {t("assignment.instructorFeedback")}
                 </p>
@@ -232,8 +232,8 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
             )}
 
             {submission.content && (
-              <div className="rounded-md border border-border bg-muted/20 p-4">
-                <p className="mb-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              <div className="rounded-md border border-edge bg-muted/20 p-4">
+                <p className="mb-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
                   {t("assignment.yourSubmission")}
                 </p>
                 <p className="text-sm leading-relaxed text-wrap-safe whitespace-pre-wrap">{submission.content}</p>
@@ -250,7 +250,7 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
               </div>
             )}
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              <Label className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
                 {t("assignment.yourResponse")}
               </Label>
               <Textarea
@@ -262,7 +262,7 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              <Label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
                 <LinkIcon className="h-3 w-3" strokeWidth={1.75} aria-hidden />
                 {t("assignment.fileLinkOptional")}
               </Label>

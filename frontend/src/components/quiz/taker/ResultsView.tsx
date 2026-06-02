@@ -56,9 +56,9 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
           </p>
           <p className="font-serif text-3xl font-semibold tabular-nums tracking-tight">
             {result.score ?? 0}
-            <span className="text-muted-foreground/60"> / {result.max_score ?? 0}</span>
+            <span className="text-ink-muted/60"> / {result.max_score ?? 0}</span>
           </p>
-          <p className="mt-2 text-sm text-muted-foreground tabular-nums">
+          <p className="mt-2 text-sm text-ink-muted tabular-nums">
             {t("quiz.passingScoreLine", { percent: scorePercent, passing: quiz.passing_score })}
           </p>
           {hasOpenEnded && (
@@ -70,7 +70,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
       </Card>
 
       <div className="space-y-4">
-        <h4 className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        <h4 className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
           {t("quiz.reviewAnswers")}
         </h4>
         <StaggerChildren className="space-y-4">
@@ -97,7 +97,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
               key={q.id}
               className={`rounded-md border p-3 ${
                 isCorrect === null
-                  ? "border-border"
+                  ? "border-edge"
                   : isCorrect
                     ? "border-success/30 bg-success/5"
                     : "border-destructive/30 bg-destructive/5"
@@ -106,7 +106,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
               <div className="flex items-start gap-3 mb-2">
                 <span
                   aria-hidden
-                  className="inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded border border-border bg-background px-1 text-xs font-medium tabular-nums text-muted-foreground"
+                  className="inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded border border-edge bg-surface px-1 text-xs font-medium tabular-nums text-ink-muted"
                 >
                   {idx + 1}
                 </span>
@@ -142,7 +142,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                               ? "bg-success/15 font-medium text-success"
                               : isSelected
                                 ? "bg-destructive/15 text-destructive"
-                                : "text-muted-foreground"
+                                : "text-ink-muted"
                           }`}
                         >
                           {isSelected && !isRight ? "✗ " : ""}
@@ -166,7 +166,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                         })}
                       </span>
                       {answerResult?.grader_comment && (
-                        <span className="text-muted-foreground">
+                        <span className="text-ink-muted">
                           “{answerResult.grader_comment}”
                         </span>
                       )}
@@ -178,7 +178,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                     </div>
                   )}
                   {userAnswer?.text_answer && (
-                    <p className="text-xs text-muted-foreground italic whitespace-pre-wrap">
+                    <p className="text-xs text-ink-muted italic whitespace-pre-wrap">
                       {t("quiz.yourAnswer")} {userAnswer.text_answer}
                     </p>
                   )}

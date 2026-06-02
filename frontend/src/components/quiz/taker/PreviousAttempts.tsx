@@ -14,14 +14,14 @@ export function PreviousAttempts({ attempts, autoMaxScore }: Props) {
   return (
     <div className="border-t p-5">
       <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-        <Clock className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
+        <Clock className="h-4 w-4 text-ink-muted" strokeWidth={1.75} />
         {t("quiz.previousAttempts")}
       </h4>
       <div className="space-y-2">
         {attempts.map((att) => {
           const inProgress = !att.completed_at
           const style = inProgress
-            ? "bg-muted/30 border border-border"
+            ? "bg-muted/30 border border-edge"
             : att.passed
               ? "border border-success/30 bg-success/10"
               : "border border-destructive/30 bg-destructive/10"
@@ -32,7 +32,7 @@ export function PreviousAttempts({ attempts, autoMaxScore }: Props) {
             >
               <div className="flex items-center gap-2">
                 {inProgress ? (
-                  <Clock className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
+                  <Clock className="h-4 w-4 text-ink-muted" strokeWidth={1.75} />
                 ) : att.passed ? (
                   <CheckCircle className="h-4 w-4 text-success" strokeWidth={1.75} />
                 ) : (
@@ -45,7 +45,7 @@ export function PreviousAttempts({ attempts, autoMaxScore }: Props) {
                   })}
                 </span>
               </div>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-ink-muted">
                 {att.completed_at ? formatDate(att.completed_at) : t("quiz.inProgress")}
               </span>
             </div>
