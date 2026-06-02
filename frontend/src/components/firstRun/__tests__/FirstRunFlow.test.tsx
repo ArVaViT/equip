@@ -5,6 +5,7 @@ import { I18nextProvider } from "react-i18next"
 import { MotionConfig } from "motion/react"
 import { MemoryRouter } from "react-router-dom"
 import i18n from "@/i18n/config"
+import { axe } from "@/test/a11y"
 import { AuthContext } from "@/context/auth-context"
 import { ThemeContext } from "@/context/theme-context"
 import { FirstRunFlow } from "../FirstRunFlow"
@@ -231,5 +232,18 @@ describe("FirstRunFlow", () => {
       unmount()
     })
     expect(getFirstRunActive()).toBe(false)
+  })
+
+  it("renders the initial Privacy step without a11y violations", async () => {
+    // The first-run flow is the first thing a newly-registered user
+    // sees; an a11y failure here is the literal worst first
+    // impression. Pin the entry-state axe scan.
+    const { container } = render(
+      <Wrapper>
+        <FirstRunFlow />
+      </Wrapper>,
+    )
+    expect(screen.getByText(i18n.t("firstRun.privacy.title"))).toBeInTheDocument()
+    expect(await axe(container)).toHaveNoViolations()
   })
 })
