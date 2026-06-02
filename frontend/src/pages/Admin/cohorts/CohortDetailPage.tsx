@@ -239,7 +239,7 @@ export default function CohortDetailPage() {
         backLabel={t("admin.cohorts.backToList")}
         title={
           <div className="space-y-2">
-            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
               {t("admin.cohorts.eyebrow")}
             </p>
             <div className="flex flex-wrap items-center gap-3">
@@ -253,7 +253,7 @@ export default function CohortDetailPage() {
                 ariaLabel={t("admin.cohorts.fieldStatus")}
               />
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-ink-muted">
               {formatDate(cohort.start_date)} &mdash; {formatDate(cohort.end_date)}
             </p>
             {cohort.max_students != null && (
@@ -394,12 +394,12 @@ export default function CohortDetailPage() {
               {courses.map((c) => (
                 <li
                   key={c.id}
-                  className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/10 px-3 py-2 transition-colors hover:border-primary/30 hover:bg-muted/40"
+                  className="flex items-center justify-between gap-3 rounded-md border border-edge bg-muted/10 px-3 py-2 transition-colors hover:border-brand/30 hover:bg-muted/40"
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <Link
                       to={`/teacher/courses/${c.id}`}
-                      className="truncate text-sm font-medium text-foreground hover:text-primary"
+                      className="truncate text-sm font-medium text-ink hover:text-brand"
                     >
                       {c.title}
                     </Link>
@@ -412,7 +412,7 @@ export default function CohortDetailPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+                    className="h-8 w-8 shrink-0 p-0 text-ink-muted hover:text-destructive"
                     onClick={() => detachCourse(c.id)}
                     aria-label={t("admin.cohorts.detachAriaPrefix", { name: c.title })}
                   >
@@ -573,14 +573,14 @@ function CapacityMeter({ current, cap }: { current: number; cap: number }) {
   const { t } = useTranslation()
   const safeCap = Math.max(cap, 1)
   const pct = Math.min(100, Math.round((current / safeCap) * 100))
-  const tone = pct >= 95 ? "bg-destructive" : pct >= 75 ? "bg-warning" : "bg-primary"
+  const tone = pct >= 95 ? "bg-destructive" : pct >= 75 ? "bg-warning" : "bg-brand"
   return (
     <div className="mt-3 max-w-xs">
       <div className="flex items-baseline justify-between gap-3 text-xs">
-        <span className="font-medium tabular-nums text-foreground">
+        <span className="font-medium tabular-nums text-ink">
           {current} / {cap}
         </span>
-        <span className="text-muted-foreground">
+        <span className="text-ink-muted">
           {t("admin.cohorts.capacityLabel", { pct })}
         </span>
       </div>
@@ -638,7 +638,7 @@ function StudentsCard({
         {students.length > 0 && (
           <div className="relative">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted"
               strokeWidth={1.75}
               aria-hidden
             />
@@ -687,13 +687,13 @@ function StudentsCard({
               </colgroup>
               <thead className="sticky top-0 z-10 bg-card">
                 <tr className="border-b text-left">
-                  <th className="px-5 py-3 font-medium text-muted-foreground">
+                  <th className="px-5 py-3 font-medium text-ink-muted">
                     {t("admin.cohorts.thStudentName")}
                   </th>
-                  <th className="px-5 py-3 font-medium text-muted-foreground">
+                  <th className="px-5 py-3 font-medium text-ink-muted">
                     {t("admin.cohorts.thStudentEmail")}
                   </th>
-                  <th className="px-5 py-3 font-medium text-muted-foreground">
+                  <th className="px-5 py-3 font-medium text-ink-muted">
                     {t("admin.cohorts.thEnrolledCourses")}
                   </th>
                   <th className="px-5 py-3" aria-label={t("admin.cohorts.thActions")} />
@@ -712,19 +712,19 @@ function StudentsCard({
                         {nameDisplay}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-xs text-muted-foreground">
+                    <td className="px-5 py-3 text-xs text-ink-muted">
                       <span className="block truncate" title={s.email}>
                         {s.email}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-muted-foreground tabular-nums">
+                    <td className="px-5 py-3 text-ink-muted tabular-nums">
                       {Object.keys(s.per_course).length}
                     </td>
                     <td className="px-3 py-3">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                        className="h-8 w-8 p-0 text-ink-muted hover:text-destructive"
                         onClick={() => onRemove(s)}
                         aria-label={t("admin.cohorts.removeStudentAriaPrefix", {
                           name: s.full_name ?? s.email,

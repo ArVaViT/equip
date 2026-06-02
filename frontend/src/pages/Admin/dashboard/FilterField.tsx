@@ -43,7 +43,7 @@ export function FilterField({ label, children, hideLabel = false, className }: P
       <label
         htmlFor={id}
         className={cn(
-          "text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground",
+          "text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted",
           hideLabel && "sr-only",
         )}
       >

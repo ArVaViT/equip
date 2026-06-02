@@ -95,9 +95,9 @@ export function AttachCourseDialog({
     <Modal open={open} onClose={onClose} title={t("admin.cohorts.attachCourseTitle")}>
       <div className="space-y-4">
         {loading ? (
-          <p className="text-sm text-muted-foreground py-4">{t("common.loading")}</p>
+          <p className="text-sm text-ink-muted py-4">{t("common.loading")}</p>
         ) : courses.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4">
+          <p className="text-sm text-ink-muted py-4">
             {t("admin.cohorts.noMoreCourses")}
           </p>
         ) : (

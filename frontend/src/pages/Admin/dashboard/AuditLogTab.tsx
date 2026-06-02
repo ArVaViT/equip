@@ -97,7 +97,7 @@ export function AuditLogTab({
         <CardTitle className="flex items-center gap-2 font-serif text-xl font-semibold tracking-tight">
           <FileText className="h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden />
           {t("admin.audit.title")}
-          <span className="ml-1.5 text-sm font-normal text-muted-foreground">
+          <span className="ml-1.5 text-sm font-normal text-ink-muted">
             {t("admin.audit.entriesCount", { count: total })}
           </span>
         </CardTitle>
@@ -113,7 +113,7 @@ export function AuditLogTab({
                   size="sm"
                   className={cn(
                     "h-9 w-full sm:w-44",
-                    action && "border-primary/40 ring-1 ring-primary/40",
+                    action && "border-brand/40 ring-1 ring-primary/40",
                   )}
                 >
                   <SelectValue />
@@ -140,7 +140,7 @@ export function AuditLogTab({
                   size="sm"
                   className={cn(
                     "h-9 w-full sm:w-44",
-                    resource && "border-primary/40 ring-1 ring-primary/40",
+                    resource && "border-brand/40 ring-1 ring-primary/40",
                   )}
                 >
                   <SelectValue />
@@ -170,7 +170,7 @@ export function AuditLogTab({
               variant="ghost"
               size="sm"
               onClick={onReset}
-              className="h-9 self-end text-muted-foreground hover:text-foreground"
+              className="h-9 self-end text-ink-muted hover:text-ink"
             >
               <X className="mr-1 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
               {t("admin.audit.filterClear")}
@@ -196,8 +196,8 @@ export function AuditLogTab({
           </>
         )}
 
-        <div className="flex shrink-0 flex-col items-stretch gap-2 border-t border-border px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex shrink-0 flex-col items-stretch gap-2 border-t border-edge px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-xs text-ink-muted">
             <label htmlFor="audit-page-size">{t("admin.audit.pageSizeLabel")}</label>
             <Select
               value={String(pageSize)}
@@ -216,7 +216,7 @@ export function AuditLogTab({
             </Select>
           </div>
           <div className="flex items-center justify-between gap-3 sm:justify-end">
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-ink-muted">
               {t("admin.audit.page", { page, total: totalPages })}
             </p>
             <div className="flex items-center gap-1.5">
@@ -265,19 +265,19 @@ function AuditTable({
       <table className="w-full text-sm">
         <thead className="sticky top-0 z-10 bg-card">
           <tr className="border-b text-left">
-            <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.audit.thDate")}</th>
-            <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.audit.thUser")}</th>
-            <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.audit.thAction")}</th>
-            <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.audit.thResource")}</th>
-            <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.audit.thDetails")}</th>
-            <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.audit.thIp")}</th>
+            <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.audit.thDate")}</th>
+            <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.audit.thUser")}</th>
+            <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.audit.thAction")}</th>
+            <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.audit.thResource")}</th>
+            <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.audit.thDetails")}</th>
+            <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.audit.thIp")}</th>
           </tr>
         </thead>
         <tbody className="divide-y">
           {logs.map((log) => (
             <tr key={log.id} className="align-top transition-colors hover:bg-muted/40">
               <td
-                className="whitespace-nowrap px-5 py-3 text-xs text-muted-foreground"
+                className="whitespace-nowrap px-5 py-3 text-xs text-ink-muted"
                 title={formatDateTime(log.created_at)}
               >
                 {formatRelative(log.created_at)}
@@ -296,7 +296,7 @@ function AuditTable({
               <td className="max-w-[320px] px-5 py-3">
                 <AuditDetailsCell details={log.details} />
               </td>
-              <td className="px-5 py-3 text-xs text-muted-foreground">{log.ip_address || "—"}</td>
+              <td className="px-5 py-3 text-xs text-ink-muted">{log.ip_address || "—"}</td>
             </tr>
           ))}
         </tbody>
@@ -319,18 +319,18 @@ function AuditResourceCell({ type, id }: { type: string; id: string }) {
   const href = resourceHref(type, id)
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-muted-foreground">{label}</span>
+      <span className="text-ink-muted">{label}</span>
       {href ? (
         <Link
           to={href}
-          className="max-w-[160px] truncate font-mono text-[10px] text-primary hover:underline"
+          className="max-w-[160px] truncate font-mono text-[10px] text-brand hover:underline"
           title={id}
         >
           {shortId}
         </Link>
       ) : (
         <span
-          className="max-w-[160px] truncate font-mono text-[10px] text-muted-foreground/70"
+          className="max-w-[160px] truncate font-mono text-[10px] text-ink-muted/70"
           title={id}
         >
           {shortId}

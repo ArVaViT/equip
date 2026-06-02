@@ -60,7 +60,7 @@ export function AddStudentDialog({ open, onClose, cohortId, onAdded }: Props) {
   return (
     <Modal open={open} onClose={handleClose} title={t("admin.cohorts.addStudentTitle")}>
       <div className="space-y-4">
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-ink-muted">
           {t("admin.cohorts.addStudentHint")}
         </p>
         <div className="space-y-1.5">

@@ -53,7 +53,7 @@ function UserRow({
       role="row"
       style={style}
       className={`grid grid-cols-[40px_2fr_2fr_2fr_1fr_40px] items-center border-b px-3 text-sm transition-colors hover:bg-muted/40 ${
-        selected ? "border-primary/40 bg-primary/[0.08] dark:bg-primary/15" : ""
+        selected ? "border-brand/40 bg-brand/[0.08] dark:bg-brand/15" : ""
       }`}
     >
       <div role="cell" className="flex items-center justify-center">
@@ -75,7 +75,7 @@ function UserRow({
           {u.full_name?.trim() || t("admin.users.missingName")}
         </span>
       </div>
-      <div role="cell" className="truncate px-3 text-muted-foreground" title={u.email}>
+      <div role="cell" className="truncate px-3 text-ink-muted" title={u.email}>
         {u.email}
       </div>
       <div role="cell" className="px-3 flex items-center gap-2">
@@ -86,14 +86,14 @@ function UserRow({
           ariaLabel={t("admin.users.changeRoleAria", { name: displayName })}
         />
       </div>
-      <div role="cell" className="px-3 text-muted-foreground">
+      <div role="cell" className="px-3 text-ink-muted">
         {formatDate(u.created_at)}
       </div>
       <div role="cell" className="flex items-center justify-center">
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+          className="h-8 w-8 p-0 text-ink-muted hover:text-destructive"
           disabled={updatingId === u.id || u.id === currentUserId}
           onClick={() => onDeleteUser(u)}
           aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
@@ -129,7 +129,7 @@ export default function VirtualAdminUsers({
     <div role="table" aria-rowcount={users.length} className="-mx-5">
       <div
         role="row"
-        className="grid grid-cols-[40px_2fr_2fr_2fr_1fr_40px] items-center border-b px-3 py-3 text-xs font-medium text-muted-foreground"
+        className="grid grid-cols-[40px_2fr_2fr_2fr_1fr_40px] items-center border-b px-3 py-3 text-xs font-medium text-ink-muted"
       >
         <div role="columnheader" />
         <div role="columnheader" className="px-3">{t("admin.users.thName")}</div>

@@ -22,7 +22,7 @@ interface Props {
 export function AuditDetailsCell({ details }: Props) {
   const { t } = useTranslation()
   if (!details || typeof details !== "object" || Object.keys(details).length === 0) {
-    return <span className="text-muted-foreground/60">—</span>
+    return <span className="text-ink-muted/60">—</span>
   }
 
   const entries = Object.entries(details)
@@ -43,10 +43,10 @@ export function AuditDetailsCell({ details }: Props) {
     const newVal = formatValue(details.new ?? details.after)
     return (
       <div className="flex flex-wrap items-baseline gap-1.5 text-xs">
-        <span className="font-medium text-foreground">{field}:</span>
-        <span className="font-mono text-muted-foreground line-through">{oldVal}</span>
-        <span aria-hidden className="text-muted-foreground/60">→</span>
-        <span className="font-mono text-foreground">{newVal}</span>
+        <span className="font-medium text-ink">{field}:</span>
+        <span className="font-mono text-ink-muted line-through">{oldVal}</span>
+        <span aria-hidden className="text-ink-muted/60">→</span>
+        <span className="font-mono text-ink">{newVal}</span>
       </div>
     )
   }
@@ -55,12 +55,12 @@ export function AuditDetailsCell({ details }: Props) {
     <ul className="space-y-0.5 text-xs">
       {entries.map(([key, raw]) => (
         <li key={key} className="flex flex-wrap items-baseline gap-1.5">
-          <span className="font-medium text-foreground">{key}:</span>
-          <span className="font-mono text-muted-foreground">{formatValue(raw)}</span>
+          <span className="font-medium text-ink">{key}:</span>
+          <span className="font-mono text-ink-muted">{formatValue(raw)}</span>
         </li>
       ))}
       {entries.length === 0 && (
-        <li className="text-muted-foreground/60">{t("admin.audit.detailsEmpty")}</li>
+        <li className="text-ink-muted/60">{t("admin.audit.detailsEmpty")}</li>
       )}
     </ul>
   )

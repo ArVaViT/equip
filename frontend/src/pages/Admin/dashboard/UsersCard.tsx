@@ -126,7 +126,7 @@ export function UsersCard({
               aria-label={t("admin.users.roleFilterAria")}
               className={cn(
                 "h-9 w-full sm:w-44",
-                roleFilter && "border-primary/40 ring-1 ring-primary/40",
+                roleFilter && "border-brand/40 ring-1 ring-primary/40",
               )}
             >
               <SelectValue />
@@ -140,7 +140,7 @@ export function UsersCard({
           </Select>
           <div className="relative w-full sm:max-w-xs sm:flex-1">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted"
               strokeWidth={1.75}
               aria-hidden
             />
@@ -170,15 +170,15 @@ export function UsersCard({
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 transition-colors",
                   active
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border hover:border-primary/40 hover:bg-muted",
+                    ? "border-brand bg-brand text-brand-foreground"
+                    : "border-edge hover:border-brand/40 hover:bg-muted",
                 )}
               >
                 <span>{t(ROLE_I18N_KEY[role])}</span>
                 <span
                   className={cn(
                     "tabular-nums",
-                    active ? "opacity-90" : "text-muted-foreground",
+                    active ? "opacity-90" : "text-ink-muted",
                   )}
                 >
                   {roleCounts[role]}
@@ -194,7 +194,7 @@ export function UsersCard({
             selected. Full-width tinted card makes the "selection
             mode" state obvious. */}
         {selectedIds.size > 0 && (
-          <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-brand/30 bg-brand/5 px-3 py-2">
             <span className="text-xs font-medium">
               {t("admin.users.selected", { count: selectedIds.size })}
             </span>
@@ -240,7 +240,7 @@ export function UsersCard({
                 onCheckedChange={onToggleSelectAll}
                 aria-label={t("admin.users.selectAllAria")}
               />
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-ink-muted">
                 {t("admin.users.selectAllN", { count: filtered.length })}
               </span>
             </div>
@@ -269,7 +269,7 @@ export function UsersCard({
           />
         )}
         {!loading && filtered.length > 0 && (
-          <p className="mt-4 text-xs text-muted-foreground">
+          <p className="mt-4 text-xs text-ink-muted">
             {t("admin.users.showing", { shown: filtered.length, total: users.length })}
           </p>
         )}
@@ -329,7 +329,7 @@ function UsersTable({
           inner divs cancelled out (net 0) and just made the layout
           harder to read. */}
       <div className="space-y-2 sm:hidden">
-        <label className="flex min-h-[44px] items-center gap-2 text-xs text-muted-foreground">
+        <label className="flex min-h-[44px] items-center gap-2 text-xs text-ink-muted">
           <Checkbox
             checked={selectAllState}
             onCheckedChange={onToggleSelectAll}
@@ -395,10 +395,10 @@ function UsersTable({
                   aria-label={t("admin.users.selectAllAria")}
                 />
               </th>
-              <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.users.thName")}</th>
-              <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.users.thEmail")}</th>
-              <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.users.thRole")}</th>
-              <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.users.thJoined")}</th>
+              <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.users.thName")}</th>
+              <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.users.thEmail")}</th>
+              <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.users.thRole")}</th>
+              <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.users.thJoined")}</th>
               <th className="px-3 py-3" aria-label={t("admin.users.thActions")} />
             </tr>
           </thead>
@@ -436,8 +436,8 @@ function UserCard({
   return (
     <div
       className={cn(
-        "rounded-md border border-border bg-card p-3 transition-colors",
-        selected && "border-primary/40 bg-primary/[0.08] dark:bg-primary/15",
+        "rounded-md border border-edge bg-card p-3 transition-colors",
+        selected && "border-brand/40 bg-brand/[0.08] dark:bg-brand/15",
       )}
     >
       <div className="flex items-start gap-3">
@@ -455,18 +455,18 @@ function UserCard({
           alt={t("admin.users.avatarAltPrefix", { name: displayName })}
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-foreground">
+          <p className="truncate text-sm font-medium text-ink">
             {user.full_name?.trim() || t("admin.users.missingName")}
           </p>
-          <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="truncate text-xs text-ink-muted">{user.email}</p>
+          <p className="mt-1 text-xs text-ink-muted">
             {formatDate(user.created_at)}
           </p>
         </div>
         <Button
           variant="ghost"
           size="sm"
-          className="h-11 w-11 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+          className="h-11 w-11 shrink-0 p-0 text-ink-muted hover:text-destructive"
           disabled={updating || isSelf}
           onClick={() => onDeleteUser(user)}
           aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
@@ -512,7 +512,7 @@ function UserRow({
     <tr
       className={cn(
         "transition-colors hover:bg-muted/40",
-        selected && "bg-primary/[0.08] dark:bg-primary/15",
+        selected && "bg-brand/[0.08] dark:bg-brand/15",
       )}
     >
       <td className="px-3 py-3">
@@ -536,7 +536,7 @@ function UserRow({
           </span>
         </div>
       </td>
-      <td className="px-5 py-3 text-muted-foreground">
+      <td className="px-5 py-3 text-ink-muted">
         <span className="block truncate" title={user.email}>{user.email}</span>
       </td>
       <td className="px-5 py-3">
@@ -547,14 +547,14 @@ function UserRow({
           ariaLabel={t("admin.users.changeRoleAria", { name: displayName })}
         />
       </td>
-      <td className="whitespace-nowrap px-5 py-3 text-xs text-muted-foreground tabular-nums">
+      <td className="whitespace-nowrap px-5 py-3 text-xs text-ink-muted tabular-nums">
         {formatDate(user.created_at)}
       </td>
       <td className="px-3 py-3 text-right">
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+          className="h-8 w-8 p-0 text-ink-muted hover:text-destructive"
           disabled={updating || isSelf}
           onClick={() => onDeleteUser(user)}
           aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
