@@ -15,12 +15,13 @@ const PopoverContent = React.forwardRef<
       ref={ref}
       align={align}
       sideOffset={sideOffset}
-      // Matches the existing dropdown-menu surface treatment: bg-popover
-      // with text-popover-foreground from the semantic token set, soft
-      // shadow (overlays-only is in our shadow rules), 1px border, and
-      // rounded-md per the radius rule in DESIGN.md.
+      // ADR-0011 Wave 5 — migrated to v2 vocabulary.
+      // border-border -> border-edge, bg-popover -> bg-surface-elevated,
+      // text-popover-foreground -> text-ink. v1's --popover and --card
+      // are the same HSL value so bg-surface-elevated (which the
+      // bridge maps to --card) renders identically.
       className={cn(
-        "z-50 rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-md outline-none",
+        "z-50 rounded-md border border-edge bg-surface-elevated p-3 text-ink shadow-md outline-none",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
