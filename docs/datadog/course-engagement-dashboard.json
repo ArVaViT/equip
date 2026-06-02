@@ -1,0 +1,182 @@
+{
+  "title": "Equip — Course Engagement",
+  "description": "Per-course health: DAU, completion rate, time-to-first-drop-off, locale split.\n\nUseful when:\n* Deciding which courses are pilot-ready vs. need more material.\n* Spotting the chapter where students consistently abandon.\n* Showing a school director the impact data after a cohort wraps.\n\nFilter by `course_id:<id>` to scope. The default view aggregates across all courses for a quick \"is anything obviously off\" scan.\n\nDeploy: Datadog UI -> Dashboards -> New Dashboard -> Import JSON.",
+  "layout_type": "ordered",
+  "reflow_type": "auto",
+  "template_variables": [
+    {
+      "name": "course_id",
+      "prefix": "course_id",
+      "default": "*"
+    },
+    {
+      "name": "env",
+      "prefix": "env",
+      "available_values": ["prod", "preview"],
+      "default": "prod"
+    }
+  ],
+  "widgets": [
+    {
+      "definition": {
+        "type": "note",
+        "content": "## How to read this\n\n- **DAU** (daily active users) — students who hit any course-scoped route today.\n- **Completion rate** — `completed_chapters / total_chapters` per enrollment, averaged across the course.\n- **Time-to-first-drop-off** — median time from first chapter open to last activity, for students who never completed.\n- **Locale split** — RU vs EN traffic; if one drops to 0, the i18n pipeline may have broken.",
+        "background_color": "blue",
+        "font_size": "14",
+        "text_align": "left"
+      }
+    },
+    {
+      "definition": {
+        "type": "group",
+        "title": "Active usage",
+        "layout_type": "ordered",
+        "widgets": [
+          {
+            "definition": {
+              "type": "query_value",
+              "title": "DAU (today)",
+              "requests": [
+                {
+                  "q": "sum:equip.activity.daily_active_users{env:$env.value,course_id:$course_id.value}",
+                  "aggregator": "last"
+                }
+              ],
+              "precision": 0
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "DAU over time",
+              "requests": [
+                {
+                  "q": "sum:equip.activity.daily_active_users{env:$env.value,course_id:$course_id.value} by {course_id}",
+                  "display_type": "area"
+                }
+              ],
+              "yaxis": { "min": "0", "include_zero": true }
+            }
+          },
+          {
+            "definition": {
+              "type": "query_value",
+              "title": "Active enrollments (7d)",
+              "requests": [
+                {
+                  "q": "sum:equip.enrollments.active_7d{env:$env.value,course_id:$course_id.value}",
+                  "aggregator": "last"
+                }
+              ],
+              "precision": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "type": "group",
+        "title": "Completion + drop-off",
+        "layout_type": "ordered",
+        "widgets": [
+          {
+            "definition": {
+              "type": "query_value",
+              "title": "Completion rate (avg %)",
+              "requests": [
+                {
+                  "q": "avg:equip.completion.course_avg_pct{env:$env.value,course_id:$course_id.value}",
+                  "aggregator": "avg",
+                  "conditional_formats": [
+                    { "comparator": ">", "value": 70, "palette": "white_on_green" },
+                    { "comparator": ">", "value": 40, "palette": "white_on_yellow" },
+                    { "comparator": "<=", "value": 40, "palette": "white_on_red" }
+                  ]
+                }
+              ],
+              "custom_unit": "%",
+              "precision": 1
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Per-chapter completion (heatmap)",
+              "requests": [
+                {
+                  "q": "avg:equip.completion.chapter_avg_pct{env:$env.value,course_id:$course_id.value} by {chapter_id}",
+                  "display_type": "line"
+                }
+              ],
+              "yaxis": { "min": "0", "max": "100", "include_zero": true }
+            }
+          },
+          {
+            "definition": {
+              "type": "query_value",
+              "title": "Median time to first drop-off",
+              "requests": [
+                {
+                  "q": "avg:equip.engagement.first_dropoff.p50{env:$env.value,course_id:$course_id.value}",
+                  "aggregator": "avg"
+                }
+              ],
+              "custom_unit": "s"
+            }
+          },
+          {
+            "definition": {
+              "type": "toplist",
+              "title": "Drop-off chapters (top 10)",
+              "requests": [
+                {
+                  "q": "top(sum:equip.engagement.dropoff_count{env:$env.value,course_id:$course_id.value} by {chapter_id}.rollup(last_7d), 10, 'sum', 'desc')"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "type": "group",
+        "title": "Quality signals",
+        "layout_type": "ordered",
+        "widgets": [
+          {
+            "definition": {
+              "type": "query_value",
+              "title": "Average rating (out of 5)",
+              "requests": [
+                {
+                  "q": "avg:equip.reviews.rating_avg{env:$env.value,course_id:$course_id.value}",
+                  "aggregator": "avg",
+                  "conditional_formats": [
+                    { "comparator": ">", "value": 4, "palette": "white_on_green" },
+                    { "comparator": ">", "value": 3, "palette": "white_on_yellow" },
+                    { "comparator": "<=", "value": 3, "palette": "white_on_red" }
+                  ]
+                }
+              ],
+              "precision": 2
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Locale split (RU vs EN)",
+              "requests": [
+                {
+                  "q": "sum:equip.activity.requests_total{env:$env.value,course_id:$course_id.value} by {locale}",
+                  "display_type": "area"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
