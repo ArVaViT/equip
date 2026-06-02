@@ -1,0 +1,93 @@
+/*
+ * Visual overhaul v2 — Wave 2 bridge layer (ADR-0011).
+ *
+ * Defines the v2 semantic token NAMES (--color-surface, --color-ink,
+ * etc.) backed by the existing v1 HSL palette via ``hsl(var(--*))``
+ * pass-throughs. This way:
+ *
+ * 1. Component code can start using the new names immediately
+ *    (``bg-[hsl(var(--color-surface))]``), and the rendered result
+ *    matches the v1 palette today.
+ * 2. When Wave 9 swaps the backing palette over to the OKLCH values
+ *    in ``tokens-v2.css``, every consumer flips at once with no
+ *    component-level edit.
+ * 3. The OKLCH layer (``tokens-v2.css``) stays unused until then —
+ *    it's the future-state preview the design team iterates on
+ *    without touching production.
+ *
+ * Imported by ``index.css`` after the v1 token block so the v1 tokens
+ * are already declared by the time these references resolve.
+ *
+ * The names mirror ``tokens-v2.css`` exactly (the OKLCH future-state).
+ * Anything missing here is intentional — it means that token isn't
+ * usable yet and a component using it would fail visually, which is
+ * the signal a wave hasn't covered that surface.
+ */
+
+:root,
+.light {
+  /* Page surfaces — back into v1 ``--background`` / ``--card`` etc. */
+  --color-surface: var(--background);
+  --color-surface-elevated: var(--card);
+  --color-surface-sunken: var(--muted);
+
+  /* Ink — back into v1 ``--foreground`` / ``--muted-foreground``. */
+  --color-ink: var(--foreground);
+  --color-ink-muted: var(--muted-foreground);
+  --color-ink-inverted: var(--primary-foreground);
+
+  /* Accents. */
+  --color-accent: var(--primary);
+  --color-accent-quiet: var(--secondary);
+  --color-accent-strong: var(--ring);
+
+  --color-heritage: var(--accent);
+  --color-heritage-quiet: var(--sidebar-accent);
+
+  /* Edges. */
+  --color-edge: var(--border);
+  --color-edge-strong: var(--input);
+
+  /* Status semantics. */
+  --color-success: var(--success);
+  --color-success-quiet: var(--secondary);
+  --color-warning: var(--warning);
+  --color-warning-quiet: var(--secondary);
+  --color-danger: var(--destructive);
+  --color-danger-quiet: var(--secondary);
+  --color-info: var(--info);
+  --color-info-quiet: var(--secondary);
+
+  --color-focus-ring: var(--ring);
+}
+
+.dark {
+  --color-surface: var(--background);
+  --color-surface-elevated: var(--card);
+  --color-surface-sunken: var(--muted);
+
+  --color-ink: var(--foreground);
+  --color-ink-muted: var(--muted-foreground);
+  --color-ink-inverted: var(--primary-foreground);
+
+  --color-accent: var(--primary);
+  --color-accent-quiet: var(--secondary);
+  --color-accent-strong: var(--ring);
+
+  --color-heritage: var(--accent);
+  --color-heritage-quiet: var(--sidebar-accent);
+
+  --color-edge: var(--border);
+  --color-edge-strong: var(--input);
+
+  --color-success: var(--success);
+  --color-success-quiet: var(--secondary);
+  --color-warning: var(--warning);
+  --color-warning-quiet: var(--secondary);
+  --color-danger: var(--destructive);
+  --color-danger-quiet: var(--secondary);
+  --color-info: var(--info);
+  --color-info-quiet: var(--secondary);
+
+  --color-focus-ring: var(--ring);
+}
