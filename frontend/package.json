@@ -73,12 +73,14 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.3",
     "@datadog/datadog-ci": "^5.18.0",
     "@eslint/js": "^10.0.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
+    "@types/jest-axe": "^3.5.9",
     "@types/node": "^25.8.0",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
@@ -90,6 +92,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.5.0",
+    "jest-axe": "^10.0.0",
     "jsdom": "^29.1.0",
     "postcss": "^8.5.12",
     "tailwindcss": "^3.3.6",
