@@ -1,0 +1,80 @@
+name: Frontend E2E
+
+on:
+  pull_request:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-e2e.yml"
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-e2e.yml"
+
+# E2E is single-job because Playwright handles parallelism itself.
+# We pin Node to the same minor as the rest of the CI matrix
+# (frontend-ci.yml uses 22.18.0) so a bundler / browser-runtime mismatch
+# can't introduce flakiness here that doesn't reproduce in dev.
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.18.0
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        # ``--with-deps`` pulls the system libs (libnss, libxss, etc.)
+        # the headless browser needs on Ubuntu. The browser archive
+        # itself is cached by the action below.
+        run: npx playwright install --with-deps chromium
+
+      - name: Start preview server
+        # Build + serve so the e2e suite runs against the production
+        # bundle, not the dev HMR pipeline. Catches build-time issues
+        # (missing tree-shake-safe markers, env wiring) the same way
+        # a real prod deploy would.
+        env:
+          # Smoke tests don't need real backend env vars; the public
+          # routes degrade gracefully when ``VITE_API_URL`` is unset.
+          VITE_API_URL: http://localhost:8000
+        run: |
+          npm run build
+          npx vite preview --host 127.0.0.1 --port 5173 &
+          # Wait for the server to accept connections before launching
+          # the test runner.
+          npx wait-on http://127.0.0.1:5173 --timeout 60000
+
+      - name: Run Playwright tests
+        env:
+          CI: "true"
+          E2E_BASE_URL: http://127.0.0.1:5173
+        run: npx playwright test
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
+
+      - name: Upload traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: frontend/test-results/
+          retention-days: 7

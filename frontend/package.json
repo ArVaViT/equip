@@ -14,7 +14,10 @@
     "i18n:check": "node scripts/i18n-check.mjs",
     "preview": "vite preview",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {
     "@aarkue/tiptap-math-extension": "^1.4.0",
@@ -76,6 +79,7 @@
     "@axe-core/playwright": "^4.11.3",
     "@datadog/datadog-ci": "^5.18.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.60.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -99,6 +103,7 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.0",
     "vite": "^8.0.12",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.5",
+    "wait-on": "^9.0.10"
   }
 }
