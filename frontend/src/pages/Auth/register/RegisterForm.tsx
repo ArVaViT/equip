@@ -76,7 +76,7 @@ export function RegisterForm({
             <div className="w-full border-t" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-3 text-muted-foreground">
+            <span className="bg-surface px-3 text-ink-muted">
               {t("authRegister.orRegisterEmail")}
             </span>
           </div>
@@ -203,11 +203,11 @@ export function RegisterForm({
           </Button>
         </form>
 
-        <p className="text-sm text-center text-muted-foreground">
+        <p className="text-sm text-center text-ink-muted">
           {t("authRegister.alreadyHaveAccount")}{" "}
           <Link
             to="/login"
-            className="text-primary font-medium hover:text-primary/80 transition-colors"
+            className="text-brand font-medium hover:text-brand/80 transition-colors"
           >
             {t("auth.signIn")}
           </Link>

@@ -101,7 +101,7 @@ export default function Login() {
             <div className="w-full border-t" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-3 text-muted-foreground">{t("auth.orContinueWithEmail")}</span>
+            <span className="bg-surface px-3 text-ink-muted">{t("auth.orContinueWithEmail")}</span>
           </div>
         </div>
 
@@ -128,7 +128,7 @@ export default function Login() {
               <Label htmlFor="password">{t("auth.password")}</Label>
               <Link
                 to="/forgot-password"
-                className="-my-2 inline-flex min-h-[44px] items-center px-1 text-sm text-primary transition-colors hover:text-primary/80 sm:min-h-0 sm:py-0 sm:text-xs"
+                className="-my-2 inline-flex min-h-[44px] items-center px-1 text-sm text-brand transition-colors hover:text-brand/80 sm:min-h-0 sm:py-0 sm:text-xs"
               >
                 {t("auth.forgotPasswordLink")}
               </Link>
@@ -158,9 +158,9 @@ export default function Login() {
           </Button>
         </form>
 
-        <p className="text-sm text-center text-muted-foreground">
+        <p className="text-sm text-center text-ink-muted">
           {t("auth.noAccount")}{" "}
-          <Link to="/register" className="text-primary font-medium hover:text-primary/80 transition-colors">
+          <Link to="/register" className="text-brand font-medium hover:text-brand/80 transition-colors">
             {t("auth.createOne")}
           </Link>
         </p>

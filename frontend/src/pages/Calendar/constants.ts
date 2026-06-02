@@ -25,18 +25,18 @@ export const EVENT_COLORS: Record<string, EventColorPalette> = {
     border: "border-warning/30",
   },
   other: {
-    dot: "bg-muted-foreground/50",
+    dot: "bg-ink-muted/50",
     bg: "bg-muted",
-    text: "text-muted-foreground",
-    border: "border-border",
+    text: "text-ink-muted",
+    border: "border-edge",
   },
 };
 
 const FALLBACK_EVENT_COLOR: EventColorPalette = {
-  dot: "bg-muted-foreground/50",
+  dot: "bg-ink-muted/50",
   bg: "bg-muted",
-  text: "text-muted-foreground",
-  border: "border-border",
+  text: "text-ink-muted",
+  border: "border-edge",
 };
 
 export function getEventColor(type: string): EventColorPalette {

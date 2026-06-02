@@ -31,7 +31,7 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
   return (
     <Card>
       <CardHeader className="pb-3">
-        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
           <CalendarDays className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
           {weekday}
         </p>
@@ -39,7 +39,7 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
           {dateLine}
         </CardTitle>
         {events.length > 0 && (
-          <p className="text-xs text-muted-foreground tabular-nums">
+          <p className="text-xs text-ink-muted tabular-nums">
             {t("calendar.eventCount", { count: events.length })}
           </p>
         )}
@@ -64,25 +64,25 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
                     <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${color.dot}`} aria-hidden />
                     <div className="min-w-0 flex-1">
                       <p className={`text-sm font-medium text-wrap-safe ${color.text}`}>{evt.title}</p>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-ink-muted">
                         <span className="flex items-center gap-1 tabular-nums">
                           <Clock className="h-3 w-3" strokeWidth={1.75} aria-hidden />
                           {formatTime(evt.event_date)}
                         </span>
-                        <span aria-hidden className="text-muted-foreground/40">·</span>
+                        <span aria-hidden className="text-ink-muted/40">·</span>
                         <span>{t(`calendar.eventTypes.${evt.event_type}`, { defaultValue: evt.event_type.replace("_", " ") })}</span>
                       </div>
                       {evt.course_title && (
                         <Link
                           to={`/courses/${evt.course_id}`}
-                          className="mt-1.5 inline-flex items-center gap-1 text-xs text-primary underline-offset-4 hover:underline"
+                          className="mt-1.5 inline-flex items-center gap-1 text-xs text-brand underline-offset-4 hover:underline"
                         >
                           <BookOpen className="h-3 w-3" strokeWidth={1.75} aria-hidden />
                           {evt.course_title}
                         </Link>
                       )}
                       {evt.description && (
-                        <p className="mt-1.5 text-xs text-muted-foreground line-clamp-3">
+                        <p className="mt-1.5 text-xs text-ink-muted line-clamp-3">
                           {evt.description}
                         </p>
                       )}

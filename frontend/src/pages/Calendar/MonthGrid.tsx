@@ -48,7 +48,7 @@ export function MonthGrid({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground tabular-nums">
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted tabular-nums">
               {year}
             </p>
             <CardTitle className="font-serif text-lg font-semibold tracking-tight">
@@ -88,7 +88,7 @@ export function MonthGrid({
               <div
                 key={i}
                 className={`py-1.5 text-center text-[11px] font-medium uppercase tracking-[0.18em] ${
-                  isWeekend ? "text-muted-foreground/60" : "text-muted-foreground"
+                  isWeekend ? "text-ink-muted/60" : "text-ink-muted"
                 }`}
               >
                 {d}
@@ -97,7 +97,7 @@ export function MonthGrid({
           })}
         </div>
 
-        <div className="grid grid-cols-7 border-l border-t border-border">
+        <div className="grid grid-cols-7 border-l border-t border-edge">
           {calendarDays.map(({ date, inMonth }) => {
             const key = calendarDayKey(date);
             const dayEvents = eventsByDate.get(key) ?? [];
@@ -112,16 +112,16 @@ export function MonthGrid({
                 onClick={() => onSelectDay(date)}
                 aria-pressed={isSelected}
                 className={`
-                  relative min-h-[78px] border-b border-r border-border p-1.5 text-left transition-colors sm:min-h-[88px]
-                  ${inMonth ? (isWeekend ? "bg-muted/15" : "bg-background") : "bg-muted/30"}
+                  relative min-h-[78px] border-b border-r border-edge p-1.5 text-left transition-colors sm:min-h-[88px]
+                  ${inMonth ? (isWeekend ? "bg-muted/15" : "bg-surface") : "bg-muted/30"}
                   ${isSelected ? "ring-2 ring-primary ring-inset" : "hover:bg-muted/40"}
                 `}
               >
                 <span
                   className={`
                     inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium tabular-nums
-                    ${isToday ? "bg-primary text-primary-foreground" : ""}
-                    ${!inMonth ? "text-muted-foreground/40" : ""}
+                    ${isToday ? "bg-brand text-brand-foreground" : ""}
+                    ${!inMonth ? "text-ink-muted/40" : ""}
                   `}
                 >
                   {date.getDate()}
@@ -142,7 +142,7 @@ export function MonthGrid({
                       );
                     })}
                     {dayEvents.length > 3 && (
-                      <span className="pl-1 text-xs text-muted-foreground">
+                      <span className="pl-1 text-xs text-ink-muted">
                         {t("calendar.moreEvents", { count: dayEvents.length - 3 })}
                       </span>
                     )}
@@ -157,7 +157,7 @@ export function MonthGrid({
           {Object.entries(EVENT_COLORS).map(([type, color]) => (
             <span key={type} className="flex items-center gap-1.5">
               <span className={`h-2 w-2 shrink-0 rounded-full ${color.dot}`} aria-hidden />
-              <span className="text-muted-foreground">
+              <span className="text-ink-muted">
                 {t(`calendar.eventTypes.${type}`, { defaultValue: type.replace("_", " ") })}
               </span>
             </span>

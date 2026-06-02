@@ -24,14 +24,14 @@ export function DuplicateEmailView({ email }: { email: string }) {
             <Mail className="h-8 w-8 text-warning" strokeWidth={1.75} aria-hidden />
           </div>
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm text-ink-muted leading-relaxed">
               <Trans
                 i18nKey="authRegister.duplicate.bodyExists"
                 values={{ email }}
-                components={{ strong: <strong className="text-foreground" /> }}
+                components={{ strong: <strong className="text-ink" /> }}
               />
             </p>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm text-ink-muted leading-relaxed">
               {t("authRegister.duplicate.bodyHint")}
             </p>
           </div>
@@ -48,7 +48,7 @@ export function DuplicateEmailView({ email }: { email: string }) {
             </Button>
           </Link>
           <a href={`mailto:${SUPPORT_EMAIL}`} className="block">
-            <Button variant="ghost" size="lg" className="w-full text-muted-foreground">
+            <Button variant="ghost" size="lg" className="w-full text-ink-muted">
               {t("authRegister.duplicate.contactSupport")}
             </Button>
           </a>

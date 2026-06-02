@@ -51,12 +51,12 @@ export default function AuthCallback() {
               <span className="text-destructive text-lg font-bold">!</span>
             </div>
             <span className="text-sm text-destructive font-medium">{t("auth.callback.timedOut")}</span>
-            <span className="text-xs text-muted-foreground">{t("auth.callback.redirecting")}</span>
+            <span className="text-xs text-ink-muted">{t("auth.callback.redirecting")}</span>
           </>
         ) : (
           <>
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-            <span className="text-sm text-muted-foreground">{t("auth.callback.completing")}</span>
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
+            <span className="text-sm text-ink-muted">{t("auth.callback.completing")}</span>
           </>
         )}
       </div>

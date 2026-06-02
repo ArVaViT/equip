@@ -83,7 +83,7 @@ export default function CalendarPage() {
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
             {t("calendar.eyebrow")}
           </p>
           <h1 className="font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
@@ -93,7 +93,7 @@ export default function CalendarPage() {
 
         {enrollments.length > 0 && (
           <div className="flex items-center gap-2">
-            <Filter className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+            <Filter className="h-3.5 w-3.5 text-ink-muted" strokeWidth={1.75} aria-hidden />
             <Select
               value={filterCourseId || "all"}
               onValueChange={(v) => setFilterCourseId(v === "all" ? "" : v)}

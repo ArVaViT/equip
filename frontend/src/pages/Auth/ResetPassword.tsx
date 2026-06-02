@@ -83,13 +83,13 @@ export default function ResetPassword() {
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
             <CheckCircle2 className="h-8 w-8 text-success" strokeWidth={1.75} aria-hidden />
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-ink-muted">
             {t("auth.resetPassword.successBody")}
             <br />
             {t("auth.resetPassword.redirecting")}
           </p>
           <div className="h-1 w-24 rounded-full bg-muted overflow-hidden">
-            <div className="animate-grow-bar h-full rounded-full bg-primary" />
+            <div className="animate-grow-bar h-full rounded-full bg-brand" />
           </div>
         </div>
       </AuthLayout>
