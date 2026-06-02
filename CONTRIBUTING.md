@@ -7,6 +7,7 @@ makes a real difference.
 
 ## Table of contents
 
+- [What contributing gives you (and what it doesn't)](#what-contributing-gives-you-and-what-it-doesnt)
 - [Quick start](#quick-start)
 - [Project structure](#project-structure)
 - [Development workflow](#development-workflow)
@@ -15,6 +16,31 @@ makes a real difference.
 - [Finding work to do](#finding-work-to-do)
 - [Style guides](#style-guides)
 - [Getting help](#getting-help)
+
+## What contributing gives you (and what it doesn't)
+
+Equip is two things at once:
+
+1. **The open-source codebase** (`github.com/ArVaViT/equip`, MIT) — anyone
+   can read, fork, self-host, or contribute.
+2. **The hosted instance at [equipbible.com](https://equipbible.com)** —
+   operated by the Equip team. Same code, separately managed brand,
+   moderation, and teacher roster.
+
+Contributing lands your work in (1). It does **not** automatically grant
+you teaching privileges on equipbible.com, admin access to the hosted
+instance, paid roles, or the right to publish courses under the Equip
+brand.
+
+Teaching on equipbible.com requires a separate application covering
+doctrinal alignment and educational background — see
+[`GOVERNANCE.md`](GOVERNANCE.md). Contributors are welcome to apply
+through that channel; writing code is not a shortcut around it.
+
+**If you want full autonomy** — your own teachers, your own doctrinal
+standard, your own brand — that is exactly what the open-source license
+is for. Self-host your own instance and run it under your own name (see
+[`GOVERNANCE.md`](GOVERNANCE.md) for trademark notes).
 
 ## Quick start
 
