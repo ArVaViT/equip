@@ -144,7 +144,7 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
     : 0
 
   return (
-    <div className="mt-6 rounded-lg border border-border bg-card">
+    <div className="mt-6 rounded-lg border border-edge bg-card">
       <QuizHeader
         quiz={quiz}
         questionCount={sortedQuestions.length}
@@ -174,12 +174,12 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
         <div className="space-y-6 p-5">
           {!attemptsReached && (
             <div className="flex items-center gap-3" aria-hidden>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground tabular-nums">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted tabular-nums">
                 {t("quiz.progressEyebrow", { current: answeredCount, total: sortedQuestions.length })}
               </p>
               <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
                 <div
-                  className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out"
+                  className="h-full rounded-full bg-brand transition-[width] duration-300 ease-out"
                   style={{ width: `${answerProgress}%` }}
                 />
               </div>
@@ -187,7 +187,7 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
           )}
 
           {attemptsReached && (
-            <div className="rounded-md border border-border border-l-stripe border-l-warning bg-warning/10 px-3 py-2 text-xs text-foreground">
+            <div className="rounded-md border border-edge border-l-stripe border-l-warning bg-warning/10 px-3 py-2 text-xs text-ink">
               {t("quiz.maxAttemptsReached", { type: t(assessmentTypeKey).toLowerCase() })}
             </div>
           )}
@@ -224,7 +224,7 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
             )}
           </Button>
           {!allAnswered && !attemptsReached && (
-            <p className="text-center text-xs text-muted-foreground">
+            <p className="text-center text-xs text-ink-muted">
               {t("quiz.answerAll")}
             </p>
           )}

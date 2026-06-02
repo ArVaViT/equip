@@ -47,7 +47,7 @@ export function QuestionCard({
               type="button"
               onClick={() => onMove("up")}
               disabled={qIdx === 0}
-              className="p-0.5 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed text-muted-foreground"
+              className="p-0.5 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed text-ink-muted"
             >
               <ArrowUp className="h-3.5 w-3.5" strokeWidth={1.75} />
             </button>
@@ -55,14 +55,14 @@ export function QuestionCard({
               type="button"
               onClick={() => onMove("down")}
               disabled={qIdx === total - 1}
-              className="p-0.5 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed text-muted-foreground"
+              className="p-0.5 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed text-ink-muted"
             >
               <ArrowDown className="h-3.5 w-3.5" strokeWidth={1.75} />
             </button>
           </div>
           <div className="flex-1 space-y-3">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-muted-foreground">
+              <span className="text-xs font-semibold text-ink-muted">
                 {t("quizEditor.questions.questionPrefix", { n: qIdx + 1 })}
               </span>
               <Input
@@ -105,7 +105,7 @@ export function QuestionCard({
               </Select>
               {q.question_type === "essay" && (
                 <div className="flex items-center gap-1">
-                  <Label className="text-xs text-muted-foreground">
+                  <Label className="text-xs text-ink-muted">
                     {t("quizEditor.questions.minWords")}
                   </Label>
                   <Input
@@ -126,7 +126,7 @@ export function QuestionCard({
                 </div>
               )}
               <div className="flex items-center gap-1">
-                <Label className="text-xs text-muted-foreground">
+                <Label className="text-xs text-ink-muted">
                   {t("quizEditor.questions.points")}
                 </Label>
                 <Input
@@ -167,7 +167,7 @@ export function QuestionCard({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive shrink-0"
+                        className="h-6 w-6 p-0 text-ink-muted hover:text-destructive shrink-0"
                         onClick={() => onRemoveOption(oIdx)}
                         aria-label={t("quizEditor.questions.removeOptionAria", { n: oIdx + 1 })}
                       >
@@ -199,7 +199,7 @@ export function QuestionCard({
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs cursor-pointer ${
                       opt.is_correct
                         ? "border-success/50 bg-success/10"
-                        : "border-border"
+                        : "border-edge"
                     }`}
                   >
                     <RadioGroupItem id={`tf-${q.id}-${opt.id}`} value={opt.id} />
@@ -210,13 +210,13 @@ export function QuestionCard({
             )}
 
             {q.question_type === "short_answer" && (
-              <p className="text-xs text-muted-foreground italic">
+              <p className="text-xs text-ink-muted italic">
                 {t("quizEditor.questions.shortAnswerHint")}
               </p>
             )}
 
             {q.question_type === "essay" && (
-              <p className="text-xs text-muted-foreground italic">
+              <p className="text-xs text-ink-muted italic">
                 {t("quizEditor.questions.essayHint")}
               </p>
             )}

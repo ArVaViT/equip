@@ -24,7 +24,7 @@ export function QuestionPrompt({ question, index, answer, onAnswer }: Props) {
       <div className="flex items-start gap-3">
         <span
           aria-hidden
-          className="mt-0.5 inline-flex h-6 min-w-[1.5rem] shrink-0 items-center justify-center rounded-md border border-border bg-muted/60 px-1.5 text-xs font-medium tabular-nums text-muted-foreground"
+          className="mt-0.5 inline-flex h-6 min-w-[1.5rem] shrink-0 items-center justify-center rounded-md border border-edge bg-muted/60 px-1.5 text-xs font-medium tabular-nums text-ink-muted"
         >
           {index + 1}
         </span>
@@ -32,7 +32,7 @@ export function QuestionPrompt({ question, index, answer, onAnswer }: Props) {
           <p className="text-sm font-medium leading-relaxed whitespace-pre-line">
             {question.question_text}
           </p>
-          <span className="mt-1 inline-block text-xs text-muted-foreground tabular-nums">
+          <span className="mt-1 inline-block text-xs text-ink-muted tabular-nums">
             {t("quiz.questionPoints", { count: question.points })}
           </span>
         </div>
@@ -50,8 +50,8 @@ export function QuestionPrompt({ question, index, answer, onAnswer }: Props) {
               htmlFor={`q-${question.id}-${opt.id}`}
               className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 transition-colors ${
                 answer?.selected_option_id === opt.id
-                  ? "border-primary/60 bg-primary/5 ring-1 ring-primary/30"
-                  : "border-border hover:bg-muted/40"
+                  ? "border-brand/60 bg-brand/5 ring-1 ring-primary/30"
+                  : "border-edge hover:bg-muted/40"
               }`}
             >
               <RadioGroupItem id={`q-${question.id}-${opt.id}`} value={opt.id} />
@@ -70,8 +70,8 @@ export function QuestionPrompt({ question, index, answer, onAnswer }: Props) {
               onClick={() => onAnswer({ selected_option_id: opt.id })}
               className={`rounded-md border px-3 py-2.5 text-sm font-medium transition-colors ${
                 answer?.selected_option_id === opt.id
-                  ? "border-primary/60 bg-primary/10 text-primary ring-1 ring-primary/30"
-                  : "border-border hover:bg-muted/40"
+                  ? "border-brand/60 bg-brand/10 text-brand ring-1 ring-primary/30"
+                  : "border-edge hover:bg-muted/40"
               }`}
             >
               {getTrueFalseLabel(opt.option_text, t)}

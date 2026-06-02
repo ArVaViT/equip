@@ -101,7 +101,7 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" strokeWidth={1.75} />
+        <Loader2 className="h-5 w-5 animate-spin text-ink-muted" strokeWidth={1.75} />
       </div>
     )
   }
@@ -117,7 +117,7 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-ink-muted">
           <Users className="h-4 w-4" strokeWidth={1.75} />
           {items.length === 0
             ? showGraded
@@ -125,7 +125,7 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
               : t("quizEditor.review.emptyAllGraded")
             : t("quizEditor.review.openEndedCount", { count: items.length })}
         </div>
-        <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+        <label className="flex items-center gap-2 text-xs text-ink-muted cursor-pointer select-none">
           <Checkbox
             checked={showGraded}
             onCheckedChange={(v) => setShowGraded(v === true)}
@@ -168,7 +168,7 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
                 <p className="text-sm font-medium text-wrap-safe whitespace-pre-line">
                   {item.question_text}
                 </p>
-                <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
                   <span className="inline-flex items-center gap-1">
                     <GraduationCap className="h-3.5 w-3.5" strokeWidth={1.75} />
                     {item.question_type === "essay"
@@ -187,8 +187,8 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
                   )}
                 </div>
               </div>
-              <div className="text-right text-xs text-muted-foreground shrink-0">
-                <div className="font-medium text-foreground">
+              <div className="text-right text-xs text-ink-muted shrink-0">
+                <div className="font-medium text-ink">
                   {item.student_name || item.student_email}
                 </div>
                 {item.submitted_at && (
@@ -199,7 +199,7 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
 
             <div className="rounded-md border border-dashed bg-muted/30 p-3 text-sm whitespace-pre-wrap text-wrap-safe">
               {item.text_answer || (
-                <span className="text-muted-foreground italic">
+                <span className="text-ink-muted italic">
                   {t("quizEditor.review.emptyAnswer")}
                 </span>
               )}
@@ -207,7 +207,7 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
 
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">
+                <label className="text-xs text-ink-muted">
                   {t("quizEditor.review.pointsLabel", { max: item.max_points })}
                 </label>
                 <Input
@@ -220,7 +220,7 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
                 />
               </div>
               <div className="flex-1 min-w-[220px] space-y-1">
-                <label className="text-xs text-muted-foreground">
+                <label className="text-xs text-ink-muted">
                   {t("quizEditor.review.commentLabel")}
                 </label>
                 <Input

@@ -26,8 +26,8 @@ export function EssayAnswer({ value, minWords, onChange }: Props) {
         className="min-h-[220px]"
       />
       <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">{t("quiz.essayHelper")}</span>
-        <span className={minReached ? "text-muted-foreground" : "text-warning font-medium"}>
+        <span className="text-ink-muted">{t("quiz.essayHelper")}</span>
+        <span className={minReached ? "text-ink-muted" : "text-warning font-medium"}>
           {minWords
             ? t("quiz.wordsWithMin", { count: words, min: minWords })
             : t("quiz.wordsCount", { count: words })}

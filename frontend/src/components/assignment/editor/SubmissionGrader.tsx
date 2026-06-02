@@ -61,8 +61,8 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
       <CardContent className="p-3 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm">
-            <User className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
-            <span className="text-xs text-muted-foreground">
+            <User className="h-3.5 w-3.5 text-ink-muted" strokeWidth={1.75} />
+            <span className="text-xs text-ink-muted">
               {submission.student_id.slice(0, 8)}...
             </span>
           </div>
@@ -74,7 +74,7 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
         </div>
 
         {submission.content && (
-          <div className="rounded border bg-background p-2 text-sm whitespace-pre-wrap text-wrap-safe">
+          <div className="rounded border bg-surface p-2 text-sm whitespace-pre-wrap text-wrap-safe">
             {submission.content}
           </div>
         )}
@@ -93,7 +93,7 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
 
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
-            <Star className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
+            <Star className="h-3.5 w-3.5 text-ink-muted" strokeWidth={1.75} />
             <Input
               type="number"
               min={0}
@@ -109,7 +109,7 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
               fieldSize="sm"
               className="w-20"
             />
-            <span className="text-xs text-muted-foreground">/ {maxScore}</span>
+            <span className="text-xs text-ink-muted">/ {maxScore}</span>
           </div>
           <Select
             value={status}

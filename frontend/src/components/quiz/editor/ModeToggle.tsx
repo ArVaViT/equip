@@ -11,14 +11,14 @@ interface Props {
 export function ModeToggle({ mode, setMode }: Props) {
   const { t } = useTranslation()
   return (
-    <div className="flex items-center rounded-md border bg-background p-0.5 text-xs">
+    <div className="flex items-center rounded-md border bg-surface p-0.5 text-xs">
       <button
         type="button"
         onClick={() => setMode("edit")}
         className={`px-2.5 py-1 rounded-sm transition-colors ${
           mode === "edit"
             ? "bg-muted font-medium"
-            : "text-muted-foreground hover:text-foreground"
+            : "text-ink-muted hover:text-ink"
         }`}
       >
         {t("quizEditor.modeToggle.edit")}
@@ -29,7 +29,7 @@ export function ModeToggle({ mode, setMode }: Props) {
         className={`flex items-center gap-1 px-2.5 py-1 rounded-sm transition-colors ${
           mode === "review"
             ? "bg-muted font-medium"
-            : "text-muted-foreground hover:text-foreground"
+            : "text-ink-muted hover:text-ink"
         }`}
       >
         <GraduationCap className="h-3.5 w-3.5" strokeWidth={1.75} />
