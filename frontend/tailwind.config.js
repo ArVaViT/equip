@@ -77,6 +77,40 @@ export default {
           4: "hsl(var(--chart-4))",
           5: "hsl(var(--chart-5))",
         },
+        // Visual overhaul v2 — Wave 3. Adds the v2 semantic palette
+        // alongside the v1 names so components can opt into the new
+        // vocabulary one-by-one. Resolved via tokens-bridge.css today
+        // (v1 HSL values); will flip to OKLCH in Wave 9 without
+        // touching component code.
+        //
+        // Naming note: v1 already owns ``accent`` (sage heritage) and
+        // ``primary`` (violet). v2's semantic accent (violet, the
+        // brand) lands as ``brand`` to avoid the collision. v2's
+        // heritage (sage) lands as ``heritage``. ADR-0011.
+        surface: {
+          DEFAULT: "hsl(var(--color-surface))",
+          elevated: "hsl(var(--color-surface-elevated))",
+          sunken: "hsl(var(--color-surface-sunken))",
+        },
+        ink: {
+          DEFAULT: "hsl(var(--color-ink))",
+          muted: "hsl(var(--color-ink-muted))",
+          inverted: "hsl(var(--color-ink-inverted))",
+        },
+        edge: {
+          DEFAULT: "hsl(var(--color-edge))",
+          strong: "hsl(var(--color-edge-strong))",
+        },
+        brand: {
+          DEFAULT: "hsl(var(--color-accent))",
+          quiet: "hsl(var(--color-accent-quiet))",
+          strong: "hsl(var(--color-accent-strong))",
+          foreground: "hsl(var(--color-ink-inverted))",
+        },
+        heritage: {
+          DEFAULT: "hsl(var(--color-heritage))",
+          quiet: "hsl(var(--color-heritage-quiet))",
+        },
       },
       fontFamily: {
         serif: ['"Fraunces Variable"', 'Fraunces', 'Georgia', 'Cambria', '"Times New Roman"', 'Times', 'serif'],
