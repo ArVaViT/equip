@@ -18,6 +18,17 @@ import { expect } from "vitest";
 
 expect.extend(toHaveNoViolations);
 
+// Augment Vitest's Assertion shape so ``expect(...).toHaveNoViolations()``
+// type-checks alongside ``.toBe`` / ``.toEqual``.
+declare module "vitest" {
+  interface Assertion {
+    toHaveNoViolations(): void;
+  }
+  interface AsymmetricMatchersContaining {
+    toHaveNoViolations(): void;
+  }
+}
+
 export const axe = configureAxe({
   rules: {
     // ``region`` flags any page that lacks a landmark; the unit-test
