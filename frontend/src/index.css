@@ -3,6 +3,19 @@
 @tailwind utilities;
 
 /*
+ * Visual overhaul v2 — Wave 2 bridge. Defines the v2 semantic token
+ * names backed by the v1 HSL palette, so components can opt into the
+ * new vocabulary today and the rest of the migration is invisible.
+ * Imported AFTER the v1 ``@layer base`` block (below) so v1 vars
+ * are declared by the time the bridge resolves them.
+ *
+ * Until Wave 3 starts swapping component code, this import is a
+ * no-op at the rendered-pixel level — every bridge token resolves to
+ * the same v1 color. See ADR-0011.
+ */
+@import "./styles/tokens-bridge.css";
+
+/*
  * Theme: warm editorial paper (light) + zinc-depth dark (2025–2026 practice).
  * Brand = deep violet ink (light) / soft violet glow (dark) — not generic “tech blue”.
  * Accent = sage (heritage / calm). Mesh gradients + slow ambient motion on :before.
