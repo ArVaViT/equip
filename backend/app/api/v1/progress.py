@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, require_teacher, verify_chapter_owner, verify_course_owner
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
+from app.core.metrics import increment
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Module
 from app.models.enrollment import Enrollment
@@ -104,6 +105,12 @@ def teacher_complete_chapter(
     progress.completed_by = teacher.id
     progress.completion_type = "teacher"
     sync_enrollment_progress(db, student_id, course_id)
+    increment(
+        "equip.engagement.chapter_completed_total",
+        chapter_id=str(chapter_id),
+        course_id=str(course_id),
+        completion_type="teacher",
+    )
     try:
         db.commit()
     except IntegrityError:

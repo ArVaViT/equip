@@ -14,6 +14,7 @@ from app.api.dependencies import (
 )
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
+from app.core.metrics import increment
 from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Course, Module
@@ -321,14 +322,23 @@ def submit_assignment(
             if progress is None:
                 raise
 
+    newly_completed = False
     if not progress.completed:
         progress.completed = True
         progress.completed_at = datetime.now(UTC)
         progress.completion_type = "self"
+        newly_completed = True
 
     sync_enrollment_progress(db, current_user.id, course_id)
     db.commit()
     db.refresh(submission)
+    if newly_completed:
+        increment(
+            "equip.engagement.chapter_completed_total",
+            chapter_id=str(assignment.chapter_id),
+            course_id=str(course_id),
+            completion_type="assignment",
+        )
     return submission
 
 
