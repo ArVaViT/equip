@@ -106,8 +106,8 @@ export default function ModuleEditor() {
               {t("teacherEditor.chapterCount", { count: chapters.length })}
             </Badge>
             <div className="flex items-center gap-2">
-              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
-              <Label className="text-xs text-muted-foreground">
+              <CalendarDays className="h-3.5 w-3.5 text-ink-muted" strokeWidth={1.75} />
+              <Label className="text-xs text-ink-muted">
                 {t("moduleEditor.dueDate")}
               </Label>
               <DateTimePicker
@@ -122,7 +122,7 @@ export default function ModuleEditor() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-9 text-xs text-muted-foreground sm:h-6"
+                  className="h-9 text-xs text-ink-muted sm:h-6"
                   onClick={clearDueDate}
                 >
                   {t("moduleEditor.clear")}

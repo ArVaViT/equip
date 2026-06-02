@@ -38,10 +38,10 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
                 <p className="font-medium truncate">
                   {cert.student_name || t("teacherDashboard.pendingCerts.studentFallback")}
                 </p>
-                <p className="text-sm text-muted-foreground truncate">
+                <p className="text-sm text-ink-muted truncate">
                   {cert.course_title || t("teacherDashboard.pendingCerts.courseFallback")}
                 </p>
-                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                <p className="text-xs text-ink-muted flex items-center gap-1 mt-0.5">
                   <Clock className="h-3 w-3" strokeWidth={1.75} />
                   {cert.requested_at
                     ? t("teacherDashboard.pendingCerts.requestedPrefix", {

@@ -250,11 +250,11 @@ export default function ChapterEditor() {
           confirm fires before navigation; Ctrl/Cmd/Shift/middle-click
           fall through to the browser default (open-in-new-tab etc.)
           unchanged. */}
-      <div className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="mb-6 flex items-center gap-2 text-sm text-ink-muted">
         <Link
           to="/teacher"
           onClick={(e) => handleNavClick(e, "/teacher")}
-          className="hidden transition-colors hover:text-foreground sm:inline"
+          className="hidden transition-colors hover:text-ink sm:inline"
         >
           {t("chapterEditor.breadcrumb.myCourses")}
         </Link>
@@ -262,7 +262,7 @@ export default function ChapterEditor() {
         <Link
           to={`/teacher/courses/${courseId}`}
           onClick={(e) => handleNavClick(e, `/teacher/courses/${courseId}`)}
-          className="hidden transition-colors hover:text-foreground sm:inline"
+          className="hidden transition-colors hover:text-ink sm:inline"
         >
           {t("chapterEditor.breadcrumb.course")}
         </Link>
@@ -272,12 +272,12 @@ export default function ChapterEditor() {
           onClick={(e) =>
             handleNavClick(e, `/teacher/courses/${courseId}/modules/${moduleId}/edit`)
           }
-          className="min-w-0 truncate transition-colors hover:text-foreground"
+          className="min-w-0 truncate transition-colors hover:text-ink"
         >
           {moduleName}
         </Link>
         <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-        <span className="min-w-0 truncate font-medium text-foreground sm:max-w-[200px]">
+        <span className="min-w-0 truncate font-medium text-ink sm:max-w-[200px]">
           {title || t("chapterEditor.chapterFallback")}
         </span>
       </div>
@@ -306,7 +306,7 @@ export default function ChapterEditor() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             aria-label={t("chapterEditor.editTitleAria")}
-            className="h-auto w-full border-none px-2 py-1 font-serif text-2xl font-bold tracking-tight shadow-none hover:border-border hover:shadow-sm focus-visible:ring-1"
+            className="h-auto w-full border-none px-2 py-1 font-serif text-2xl font-bold tracking-tight shadow-none hover:border-edge hover:shadow-sm focus-visible:ring-1"
             placeholder={t("chapterEditor.titlePlaceholder")}
           />
         </h1>
@@ -327,15 +327,15 @@ export default function ChapterEditor() {
                 type="button"
                 onClick={() => setChapterType(ct.value)}
                 aria-pressed={selected}
-                className={`flex items-start gap-3 rounded-md border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                className={`flex items-start gap-3 rounded-md border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
                   selected
-                    ? "border-primary bg-primary/[0.08] ring-1 ring-primary/40 dark:bg-primary/15"
-                    : "border-border hover:border-primary/30 hover:bg-muted/40"
+                    ? "border-brand bg-brand/[0.08] ring-1 ring-primary/40 dark:bg-brand/15"
+                    : "border-edge hover:border-brand/30 hover:bg-muted/40"
                 }`}
               >
                 <Icon
                   className={`h-5 w-5 mt-0.5 shrink-0 ${
-                    selected ? "text-primary" : "text-muted-foreground"
+                    selected ? "text-brand" : "text-ink-muted"
                   }`}
                   strokeWidth={1.75}
                   aria-hidden
@@ -343,12 +343,12 @@ export default function ChapterEditor() {
                 <div>
                   <div
                     className={`text-sm font-medium ${
-                      selected ? "text-primary" : ""
+                      selected ? "text-brand" : ""
                     }`}
                   >
                     {t(CHAPTER_TYPE_LABEL_KEYS[ct.value])}
                   </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
+                  <div className="text-xs text-ink-muted mt-0.5">
                     {t(CHAPTER_TYPE_DESCRIPTION_KEYS[ct.value])}
                   </div>
                 </div>
@@ -386,7 +386,7 @@ export default function ChapterEditor() {
           )}
           {saving ? t("chapterEditor.saving") : t("chapterEditor.save")}
         </Button>
-        <span className="text-xs text-muted-foreground">{t("chapterEditor.saveHint")}</span>
+        <span className="text-xs text-ink-muted">{t("chapterEditor.saveHint")}</span>
       </div>
 
       {/* Sticky save bar — only renders while there are unsaved
@@ -410,8 +410,8 @@ export default function ChapterEditor() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warning/60" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-warning" />
               </span>
-              <span className="flex-1 text-xs text-muted-foreground sm:text-sm">
-                <span className="font-medium text-foreground">
+              <span className="flex-1 text-xs text-ink-muted sm:text-sm">
+                <span className="font-medium text-ink">
                   {t("chapterEditor.unsavedChanges")}
                 </span>
                 <span className="mx-1.5 opacity-40">·</span>

@@ -79,10 +79,10 @@ function Option({ checked, onSelect, icon, label, description }: OptionProps) {
       type="button"
       onClick={onSelect}
       aria-pressed={checked}
-      className={`w-full text-left rounded-md border p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+      className={`w-full text-left rounded-md border p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
         checked
-          ? "border-primary bg-primary/[0.08] dark:bg-primary/15"
-          : "border-border hover:border-primary/40"
+          ? "border-brand bg-brand/[0.08] dark:bg-brand/15"
+          : "border-edge hover:border-brand/40"
       }`}
     >
       <div className="flex items-center gap-2 mb-1">
@@ -90,13 +90,13 @@ function Option({ checked, onSelect, icon, label, description }: OptionProps) {
         <span className="font-medium text-sm">{label}</span>
         {checked && (
           <Check
-            className="ml-auto h-4 w-4 text-primary"
+            className="ml-auto h-4 w-4 text-brand"
             strokeWidth={1.75}
             aria-hidden
           />
         )}
       </div>
-      <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
+      <p className="text-xs text-ink-muted leading-relaxed">{description}</p>
     </button>
   )
 }

@@ -177,11 +177,11 @@ function GradeTableHead({
         {allChapters.map((ch) => (
           <th
             key={ch.id}
-            className="border-b border-r px-1 py-1.5 text-center font-normal text-muted-foreground bg-muted/20 w-16"
+            className="border-b border-r px-1 py-1.5 text-center font-normal text-ink-muted bg-muted/20 w-16"
             title={ch.title}
           >
             <div className="flex flex-col items-center gap-0.5">
-              <span className="text-muted-foreground">{chapterTypeIcon(ch.chapter_type)}</span>
+              <span className="text-ink-muted">{chapterTypeIcon(ch.chapter_type)}</span>
               <span className="truncate max-w-[52px] text-xs">{ch.title}</span>
             </div>
           </th>
@@ -239,15 +239,15 @@ const GradeTableRow = memo(function GradeTableRow({
         >
           <div className="flex items-center gap-1.5 min-w-0">
             {expanded ? (
-              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-ink-muted" strokeWidth={1.75} />
             ) : (
-              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-ink-muted" strokeWidth={1.75} />
             )}
             <div className="min-w-0">
               <p className="truncate text-xs font-semibold max-w-[140px]">
                 {student.full_name || student.email}
               </p>
-              <p className="truncate text-xs text-muted-foreground max-w-[140px]">
+              <p className="truncate text-xs text-ink-muted max-w-[140px]">
                 {student.email}
               </p>
             </div>
@@ -265,7 +265,7 @@ const GradeTableRow = memo(function GradeTableRow({
         <td className="border-b px-2 py-2 text-center">
           <div className="flex flex-col items-center">
             <span className="font-semibold text-sm">{earned}</span>
-            <span className="text-xs text-muted-foreground">/{total}</span>
+            <span className="text-xs text-ink-muted">/{total}</span>
             {manualGrade?.grade && (
               <span
                 className={`mt-0.5 rounded-full px-1.5 py-0.5 text-xs font-bold ${letterColor(
@@ -331,7 +331,7 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
   const { t } = useTranslation()
   if (!chapter) {
     return (
-      <div className="flex items-center justify-center h-9 rounded bg-muted/30 text-muted-foreground/40 text-xs">
+      <div className="flex items-center justify-center h-9 rounded bg-muted/30 text-ink-muted/40 text-xs">
         —
       </div>
     )
@@ -389,7 +389,7 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
   }
 
   return (
-    <div className="flex items-center justify-center h-9 rounded bg-muted/20 text-muted-foreground/30 text-xs">
+    <div className="flex items-center justify-center h-9 rounded bg-muted/20 text-ink-muted/30 text-xs">
       —
     </div>
   )
@@ -397,7 +397,7 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
 
 function EmptyCell() {
   return (
-    <div className="flex items-center justify-center h-9 rounded bg-muted/30 text-muted-foreground/50 text-xs">
+    <div className="flex items-center justify-center h-9 rounded bg-muted/30 text-ink-muted/50 text-xs">
       <Circle className="h-3.5 w-3.5" strokeWidth={1.75} />
     </div>
   )
@@ -447,7 +447,7 @@ function computeStudentTotals(
 function GradeTableLegend() {
   const { t } = useTranslation()
   return (
-    <div className="mt-4 flex flex-wrap gap-4 border-t pt-4 text-xs text-muted-foreground">
+    <div className="mt-4 flex flex-wrap gap-4 border-t pt-4 text-xs text-ink-muted">
       <div className="flex items-center gap-1.5">
         <div className="flex h-5 w-5 items-center justify-center rounded border border-success/30 bg-success/10">
           <CheckCircle2 className="h-3 w-3 text-success" strokeWidth={1.75} />
@@ -480,7 +480,7 @@ function GradeTableLegend() {
       </div>
       <div className="flex items-center gap-1.5">
         <div className="flex h-5 w-5 items-center justify-center rounded border bg-muted/30">
-          <Circle className="h-3 w-3 text-muted-foreground/40" strokeWidth={1.75} />
+          <Circle className="h-3 w-3 text-ink-muted/40" strokeWidth={1.75} />
         </div>
         {t("gradebook.table.legend.notSubmitted")}
       </div>

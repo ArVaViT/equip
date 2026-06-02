@@ -49,10 +49,10 @@ export function GradingConfigCard({
         onClick={onToggle}
         aria-expanded={open}
         aria-controls={panelId}
-        className="flex w-full select-none items-center justify-between rounded-t-md p-5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="flex w-full select-none items-center justify-between rounded-t-md p-5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
       >
         <div className="flex items-center gap-2">
-          <Settings2 className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+          <Settings2 className="h-5 w-5 text-ink-muted" strokeWidth={1.75} aria-hidden />
           <div>
             <CardTitle className="font-serif text-lg font-semibold tracking-tight">{t("gradebook.config.title")}</CardTitle>
             <CardDescription className="text-xs">
@@ -62,7 +62,7 @@ export function GradingConfigCard({
         </div>
         <ChevronDown
           className={cn(
-            "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+            "h-4 w-4 shrink-0 text-ink-muted transition-transform duration-200",
             open ? "rotate-0" : "-rotate-90",
           )}
           strokeWidth={1.75}

@@ -49,7 +49,7 @@ export function ChapterRow({
         <Card
           ref={dragProvided.innerRef}
           {...dragProvided.draggableProps}
-          className={`border-border/60 ${
+          className={`border-edge/60 ${
             snapshot.isDragging ? "shadow-lg ring-2 ring-primary/20" : ""
           }`}
         >
@@ -58,7 +58,7 @@ export function ChapterRow({
             <div className="flex items-center gap-2 sm:gap-3">
               <div
                 {...dragProvided.dragHandleProps}
-                className="-ml-1 flex h-11 w-8 shrink-0 cursor-grab items-center justify-center text-muted-foreground/40 transition-colors hover:text-muted-foreground active:cursor-grabbing sm:ml-0 sm:h-9"
+                className="-ml-1 flex h-11 w-8 shrink-0 cursor-grab items-center justify-center text-ink-muted/40 transition-colors hover:text-ink-muted active:cursor-grabbing sm:ml-0 sm:h-9"
                 role="button"
                 tabIndex={0}
                 aria-label={t("moduleEditor.dragChapterAria", { title: chapter.title })}
@@ -92,7 +92,7 @@ export function ChapterRow({
                 variant="ghost"
                 size="sm"
                 className={`h-11 w-11 shrink-0 p-0 sm:h-8 sm:w-8 ${
-                  chapter.is_locked ? "text-warning hover:text-warning" : "text-muted-foreground"
+                  chapter.is_locked ? "text-warning hover:text-warning" : "text-ink-muted"
                 }`}
                 onClick={onToggleLock}
                 title={chapter.is_locked ? t("moduleEditor.unlockChapterTooltip") : t("moduleEditor.lockChapterTooltip")}

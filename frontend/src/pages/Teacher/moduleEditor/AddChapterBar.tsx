@@ -43,16 +43,16 @@ export function AddChapterBar({ onAdd, variant }: AddChapterBarProps) {
               key={type}
               type="button"
               onClick={() => onAdd(type)}
-              className="group flex flex-col items-start gap-2 rounded-lg border border-dashed border-border bg-card px-4 py-4 text-left transition-colors hover:border-primary/40 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="group flex flex-col items-start gap-2 rounded-lg border border-dashed border-edge bg-card px-4 py-4 text-left transition-colors hover:border-brand/40 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted text-ink-muted transition-colors group-hover:bg-brand/10 group-hover:text-brand">
                 <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-sm font-medium text-ink">
                   {t(CHAPTER_TYPE_LABEL_KEYS[type])}
                 </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
+                <p className="mt-0.5 text-xs text-ink-muted">
                   {t(`moduleEditor.addBar.${type}.description`)}
                 </p>
               </div>
@@ -79,7 +79,7 @@ export function AddChapterBar({ onAdd, variant }: AddChapterBarProps) {
             )}
           >
             <Plus className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} aria-hidden="true" />
-            <Icon className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
+            <Icon className="h-3.5 w-3.5 mr-1.5 text-ink-muted" strokeWidth={1.75} aria-hidden="true" />
             {t(CHAPTER_TYPE_LABEL_KEYS[type])}
           </Button>
         )

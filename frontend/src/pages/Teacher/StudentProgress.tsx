@@ -185,25 +185,25 @@ export default function StudentProgress() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-        <Link to="/teacher" className="hover:text-foreground transition-colors">
+      <div className="flex items-center gap-2 text-sm text-ink-muted mb-6">
+        <Link to="/teacher" className="hover:text-ink transition-colors">
           {t("studentProgress.breadcrumb.myCourses")}
         </Link>
         <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
         <Link
           to={`/teacher/courses/${courseId}`}
-          className="hover:text-foreground transition-colors"
+          className="hover:text-ink transition-colors"
         >
           {data.course_title || t("studentProgress.breadcrumb.courseFallback")}
         </Link>
         <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
-        <span className="text-foreground font-medium">{t("studentProgress.heading")}</span>
+        <span className="text-ink font-medium">{t("studentProgress.heading")}</span>
       </div>
 
       <div className="flex items-center gap-3 mb-8">
         <div className="flex-1">
           <h1 className="text-3xl font-serif font-bold tracking-tight">{t("studentProgress.heading")}</h1>
-          <p className="text-muted-foreground mt-1">{data.course_title}</p>
+          <p className="text-ink-muted mt-1">{data.course_title}</p>
         </div>
         <div className="flex items-center gap-2">
           <Link to={`/teacher/courses/${courseId}/analytics`}>
@@ -228,7 +228,7 @@ export default function StudentProgress() {
       />
 
       <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted" strokeWidth={1.75} aria-hidden="true" />
         <Input
           placeholder={t("studentProgress.searchPlaceholder")}
           value={searchInput}

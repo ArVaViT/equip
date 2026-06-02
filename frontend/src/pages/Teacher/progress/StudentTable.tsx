@@ -53,7 +53,7 @@ export function StudentTable({
         <CardTitle className="flex items-center gap-2 font-serif text-lg font-semibold tracking-tight">
           <Users className="h-5 w-5" strokeWidth={1.75} aria-hidden />
           {t("studentProgress.table.heading")}
-          <span className="text-sm font-normal text-muted-foreground">
+          <span className="text-sm font-normal text-ink-muted">
             ({students.length})
           </span>
         </CardTitle>
@@ -75,7 +75,7 @@ export function StudentTable({
                     sortDir={sortDir}
                     onToggle={onToggleSort}
                   />
-                  <th className="pb-3 font-medium text-muted-foreground">{t("studentProgress.table.email")}</th>
+                  <th className="pb-3 font-medium text-ink-muted">{t("studentProgress.table.email")}</th>
                   <SortableHeader
                     label={t("studentProgress.table.progress")}
                     col="progress"
@@ -83,9 +83,9 @@ export function StudentTable({
                     sortDir={sortDir}
                     onToggle={onToggleSort}
                   />
-                  <th className="pb-3 font-medium text-muted-foreground">{t("studentProgress.table.chapters")}</th>
-                  <th className="pb-3 font-medium text-muted-foreground">{t("studentProgress.table.quizAvg")}</th>
-                  <th className="pb-3 font-medium text-muted-foreground">{t("studentProgress.table.assignAvg")}</th>
+                  <th className="pb-3 font-medium text-ink-muted">{t("studentProgress.table.chapters")}</th>
+                  <th className="pb-3 font-medium text-ink-muted">{t("studentProgress.table.quizAvg")}</th>
+                  <th className="pb-3 font-medium text-ink-muted">{t("studentProgress.table.assignAvg")}</th>
                   <SortableHeader
                     label={t("studentProgress.table.lastActive")}
                     col="last_activity"
@@ -144,7 +144,7 @@ interface SortableHeaderProps {
 function SortableHeader({ label, col, sortBy, sortDir, onToggle }: SortableHeaderProps) {
   return (
     <th
-      className="pb-3 font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
+      className="pb-3 font-medium text-ink-muted cursor-pointer select-none hover:text-ink transition-colors"
       onClick={() => onToggle(col)}
     >
       {label}

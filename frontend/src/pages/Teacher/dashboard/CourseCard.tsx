@@ -53,7 +53,7 @@ export function CourseCard({
     : t("teacherDashboard.courseCard.actionPublish")
 
   return (
-    <Card className="group transition-colors hover:border-primary/30">
+    <Card className="group transition-colors hover:border-brand/30">
       <div className="flex items-start gap-3 p-4 sm:gap-4 sm:p-5">
         {course.image_url ? (
           <img
@@ -64,7 +64,7 @@ export function CourseCard({
           />
         ) : (
           <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-muted sm:h-20 sm:w-20">
-            <BookOpen className="h-7 w-7 text-muted-foreground/40 sm:h-8 sm:w-8" strokeWidth={1.75} aria-hidden />
+            <BookOpen className="h-7 w-7 text-ink-muted/40 sm:h-8 sm:w-8" strokeWidth={1.75} aria-hidden />
           </div>
         )}
         <div className="min-w-0 flex-1">
@@ -77,11 +77,11 @@ export function CourseCard({
             </Badge>
           </div>
           {course.description && (
-            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+            <p className="mt-1 line-clamp-2 text-sm text-ink-muted">
               {course.description}
             </p>
           )}
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
             <span className="flex items-center gap-1">
               <Layers className="h-4 w-4" strokeWidth={1.75} aria-hidden />
               {t("teacherDashboard.courseCard.modules", { count: moduleCount })}

@@ -66,7 +66,7 @@ export function CreateCourseForm({
           <div className="space-y-2">
             <Label htmlFor="desc">
               {t("teacherDashboard.createForm.descriptionLabel")}
-              <span className="ml-2 text-xs font-normal text-muted-foreground">
+              <span className="ml-2 text-xs font-normal text-ink-muted">
                 {t("teacherDashboard.createForm.optional")}
               </span>
             </Label>
@@ -82,7 +82,7 @@ export function CreateCourseForm({
               placeholder={t("teacherDashboard.createForm.descriptionPlaceholder")}
             />
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-ink-muted">
             {t("teacherDashboard.createForm.editorHint")}
           </p>
           <div className="flex gap-2 pt-2">

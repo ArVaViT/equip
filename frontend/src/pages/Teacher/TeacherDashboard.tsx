@@ -264,7 +264,7 @@ export default function TeacherDashboard() {
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <BookOpen className="h-12 w-12 text-destructive/40 mb-4" strokeWidth={1.75} />
             <h3 className="text-lg font-medium mb-1">{t("teacher.somethingWrong")}</h3>
-            <p className="text-sm text-muted-foreground mb-4">{error}</p>
+            <p className="text-sm text-ink-muted mb-4">{error}</p>
             <Button onClick={() => load()} size="sm" variant="outline">
               {t("common.tryAgain")}
             </Button>
@@ -279,7 +279,7 @@ export default function TeacherDashboard() {
         <>
           {courses.length > 3 && (
             <div className="mb-4 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted" strokeWidth={1.75} aria-hidden="true" />
               <Input
                 type="search"
                 placeholder={t("teacher.searchPlaceholder")}

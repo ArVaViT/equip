@@ -41,7 +41,7 @@ const SEVERITY_META: Record<
 const TONE_CLASS: Record<"destructive" | "warning" | "muted", string> = {
   destructive: "text-destructive",
   warning: "text-warning",
-  muted: "text-muted-foreground",
+  muted: "text-ink-muted",
 }
 
 /**
@@ -61,7 +61,7 @@ export function CourseReadinessCard({ report, loading, onFix }: Props) {
   if (loading) {
     return (
       <section
-        className="mb-6 overflow-hidden rounded-md border border-border bg-card"
+        className="mb-6 overflow-hidden rounded-md border border-edge bg-card"
         aria-busy="true"
       >
         <div className="flex items-center gap-4 px-5 py-4">
@@ -110,7 +110,7 @@ export function CourseReadinessCard({ report, loading, onFix }: Props) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
       >
         <ScoreRing
           score={report.score}
@@ -119,10 +119,10 @@ export function CourseReadinessCard({ report, loading, onFix }: Props) {
           prefersReducedMotion={Boolean(prefersReducedMotion)}
         />
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
             {t("courseReadiness.title")}
           </p>
-          <p className="mt-0.5 font-serif text-base font-semibold tracking-tight text-foreground">
+          <p className="mt-0.5 font-serif text-base font-semibold tracking-tight text-ink">
             {allPass
               ? t("courseReadiness.allPassed")
               : t("courseReadiness.summary", {
@@ -138,7 +138,7 @@ export function CourseReadinessCard({ report, loading, onFix }: Props) {
         </div>
         <ChevronDown
           className={cn(
-            "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+            "h-4 w-4 shrink-0 text-ink-muted transition-transform",
             open && "rotate-180",
           )}
           strokeWidth={1.75}
@@ -147,7 +147,7 @@ export function CourseReadinessCard({ report, loading, onFix }: Props) {
       </button>
 
       {open && (
-        <div className="border-t border-border bg-card px-5 py-5">
+        <div className="border-t border-edge bg-card px-5 py-5">
           {SEVERITY_ORDER.map((severity) => {
             const groupChecks = report.checks.filter((c) => c.severity === severity)
             if (groupChecks.length === 0) return null
@@ -240,7 +240,7 @@ function CheckGroup({
           strokeWidth={1.75}
           aria-hidden
         />
-        <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">
           {t(meta.labelKey)}
         </h3>
       </div>
@@ -278,7 +278,7 @@ function CheckRow({
         />
       ) : (
         <Circle
-          className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50"
+          className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted/50"
           strokeWidth={1.75}
           aria-hidden
         />
@@ -286,8 +286,8 @@ function CheckRow({
       <div className="min-w-0 flex-1">
         <p
           className={cn(
-            "text-foreground text-wrap-safe",
-            check.passed && "text-muted-foreground line-through decoration-muted-foreground/40",
+            "text-ink text-wrap-safe",
+            check.passed && "text-ink-muted line-through decoration-muted-foreground/40",
           )}
         >
           {message}
