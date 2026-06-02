@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
+from app.core.metrics import increment
 from app.models.chapter_progress import ChapterProgress
 from app.models.quiz import (
     Quiz,
@@ -264,6 +265,11 @@ def upsert_passed_chapter_progress(db: Session, user_id: UUID, chapter_id: str) 
         cp.completed = True
         cp.completed_at = datetime.now(UTC)
         cp.completion_type = "quiz"
+        increment(
+            "equip.engagement.chapter_completed_total",
+            chapter_id=str(chapter_id),
+            completion_type="quiz",
+        )
 
 
 def recompute_attempt_grade(db: Session, attempt: QuizAttempt, quiz: Quiz) -> None:
