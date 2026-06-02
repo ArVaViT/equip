@@ -90,12 +90,12 @@ export default function DailyChallengeArchivePage() {
       <PageHeader
         title={
           <h1 className="flex items-center gap-2 font-serif text-2xl font-bold tracking-tight sm:text-3xl">
-            <Sparkles className="h-6 w-6 text-primary" strokeWidth={1.75} aria-hidden />
+            <Sparkles className="h-6 w-6 text-brand" strokeWidth={1.75} aria-hidden />
             {t("dailyChallenge.archive.title")}
           </h1>
         }
         description={
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-ink-muted">
             {t("dailyChallenge.archive.description")}
           </p>
         }
@@ -104,24 +104,24 @@ export default function DailyChallengeArchivePage() {
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)]">
         <section
           aria-labelledby="dc-archive-grid-heading"
-          className="rounded-md border border-border bg-card"
+          className="rounded-md border border-edge bg-card"
         >
-          <header className="flex items-center justify-between gap-3 border-b border-border bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
+          <header className="flex items-center justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
             <div className="flex items-center gap-2.5">
               <Calendar
-                className="h-4 w-4 shrink-0 text-muted-foreground"
+                className="h-4 w-4 shrink-0 text-ink-muted"
                 strokeWidth={1.75}
                 aria-hidden
               />
               <h2
                 id="dc-archive-grid-heading"
-                className="font-serif text-sm font-semibold tracking-tight text-foreground"
+                className="font-serif text-sm font-semibold tracking-tight text-ink"
               >
                 {t("dailyChallenge.archive.gridHeading")}
               </h2>
             </div>
             {!loading && !loadError && entries.length > 0 && (
-              <div className="text-xs tabular-nums text-muted-foreground">
+              <div className="text-xs tabular-nums text-ink-muted">
                 {t("dailyChallenge.archive.gridStats", {
                   correct: correctCount,
                   attempted: attemptedCount,
@@ -220,7 +220,7 @@ function CalendarGrid({ entries, selectedDate, onSelect, t }: CalendarGridProps)
         )
         return (
           <div key={monthKey} className="space-y-2">
-            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
               {monthLabel}
             </p>
             <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
@@ -274,11 +274,11 @@ function DayCell({ entry, selected, onSelect, t }: DayCellProps) {
       className={cn(
         "group relative flex h-10 flex-col items-center justify-center rounded-md border text-[11px] font-medium tabular-nums transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-        correct && !replay && "border-success/50 bg-success/15 text-foreground",
-        correct && replay && "border-success/30 bg-success/5 text-foreground",
-        wrong && !replay && "border-destructive/40 bg-destructive/10 text-foreground",
-        wrong && replay && "border-destructive/30 bg-destructive/5 text-foreground",
-        !correct && !wrong && "border-border bg-muted/30 text-muted-foreground",
+        correct && !replay && "border-success/50 bg-success/15 text-ink",
+        correct && replay && "border-success/30 bg-success/5 text-ink",
+        wrong && !replay && "border-destructive/40 bg-destructive/10 text-ink",
+        wrong && replay && "border-destructive/30 bg-destructive/5 text-ink",
+        !correct && !wrong && "border-edge bg-muted/30 text-ink-muted",
         selected && "ring-2 ring-primary ring-offset-1 ring-offset-card",
       )}
     >
@@ -388,7 +388,7 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
 
   if (!challengeDate) {
     return (
-      <section className="rounded-md border border-border bg-card p-6 text-center">
+      <section className="rounded-md border border-edge bg-card p-6 text-center">
         <EmptyState
           variant="compact"
           title={t("dailyChallenge.archive.detail.pickDate")}
@@ -401,9 +401,9 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
   return (
     <section
       aria-labelledby="dc-archive-detail-heading"
-      className="rounded-md border border-border bg-card"
+      className="rounded-md border border-edge bg-card"
     >
-      <header className="flex items-center gap-2.5 border-b border-border bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
+      <header className="flex items-center gap-2.5 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
         <Button
           type="button"
           variant="ghost"
@@ -416,7 +416,7 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
         </Button>
         <h2
           id="dc-archive-detail-heading"
-          className="font-serif text-sm font-semibold tracking-tight text-foreground"
+          className="font-serif text-sm font-semibold tracking-tight text-ink"
         >
           {data
             ? `${data.bible_book_label} ${data.bible_chapter}${
@@ -430,7 +430,7 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
               }`
             : challengeDate}
         </h2>
-        <span className="ml-auto text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+        <span className="ml-auto text-[11px] uppercase tracking-[0.14em] text-ink-muted">
           {t("dailyChallenge.archive.detail.replayBadge")}
         </span>
       </header>
@@ -453,7 +453,7 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
           />
         ) : data ? (
           <>
-            <p className="text-sm font-medium leading-snug text-foreground">{data.question_text}</p>
+            <p className="text-sm font-medium leading-snug text-ink">{data.question_text}</p>
             <ul className="space-y-1.5">
               {[...data.options]
                 .sort((a, b) => a.order_index - b.order_index)
@@ -472,10 +472,10 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
                         className={cn(
                           "flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-left text-xs transition-colors",
                           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-                          reveal === null && "border-border bg-background hover:border-primary/30 hover:bg-muted/30",
-                          showCorrect && "border-success/40 bg-success/10 text-foreground",
-                          showWrong && "border-destructive/40 bg-destructive/10 text-foreground",
-                          reveal !== null && !showCorrect && !showWrong && "border-border bg-background text-muted-foreground",
+                          reveal === null && "border-edge bg-surface hover:border-brand/30 hover:bg-muted/30",
+                          showCorrect && "border-success/40 bg-success/10 text-ink",
+                          showWrong && "border-destructive/40 bg-destructive/10 text-ink",
+                          reveal !== null && !showCorrect && !showWrong && "border-edge bg-surface text-ink-muted",
                           (reveal !== null || submitting) && "cursor-default",
                         )}
                       >
@@ -483,10 +483,10 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
                           aria-hidden
                           className={cn(
                             "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold",
-                            reveal === null && "border-border text-muted-foreground",
+                            reveal === null && "border-edge text-ink-muted",
                             showCorrect && "border-success bg-success text-success-foreground",
                             showWrong && "border-destructive bg-destructive text-destructive-foreground",
-                            reveal !== null && !showCorrect && !showWrong && "border-border text-muted-foreground",
+                            reveal !== null && !showCorrect && !showWrong && "border-edge text-ink-muted",
                           )}
                         >
                           {showCorrect ? (
@@ -504,11 +504,11 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
                 })}
             </ul>
             {reveal !== null && (
-              <div className="space-y-1.5 rounded-md border border-border/80 bg-muted/20 px-3 py-2.5">
+              <div className="space-y-1.5 rounded-md border border-edge/80 bg-muted/20 px-3 py-2.5">
                 <p
                   className={cn(
                     "text-[11px] font-semibold uppercase tracking-[0.14em]",
-                    reveal.is_correct ? "text-success" : "text-muted-foreground",
+                    reveal.is_correct ? "text-success" : "text-ink-muted",
                   )}
                 >
                   {reveal.is_correct
@@ -516,7 +516,7 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
                     : t("dailyChallenge.reveal.wrong")}
                 </p>
                 {reveal.explanation && (
-                  <p className="text-xs leading-snug text-foreground">{reveal.explanation}</p>
+                  <p className="text-xs leading-snug text-ink">{reveal.explanation}</p>
                 )}
               </div>
             )}

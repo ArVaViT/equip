@@ -34,7 +34,7 @@ export function ModuleList({ courseId, modules, completedChapterIds }: Props) {
       <h2 className="mb-3 flex items-center gap-2 font-serif text-lg font-semibold tracking-tight">
         <BookOpen className="h-4 w-4" strokeWidth={1.75} aria-hidden />
         {t("courseDetail.modulesHeading")}
-        <span className="text-sm font-normal text-muted-foreground">({modules.length})</span>
+        <span className="text-sm font-normal text-ink-muted">({modules.length})</span>
       </h2>
 
       {modules.length > 0 ? (
@@ -99,17 +99,17 @@ function ModuleRow({
   const completedInModule = gradable.filter((ch) => completedChapterIds.has(ch.id)).length
 
   return (
-    <Card className={`group transition-colors ${isLocked ? "opacity-60" : "hover:border-primary/25"}`}>
+    <Card className={`group transition-colors ${isLocked ? "opacity-60" : "hover:border-brand/25"}`}>
       <CardHeader className="py-3 px-4">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="flex min-w-0 items-center gap-2 font-serif text-sm font-semibold tracking-tight">
             <span
               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                 isLocked
-                  ? "bg-muted text-muted-foreground"
+                  ? "bg-muted text-ink-muted"
                   : allComplete
                     ? "bg-success/15 text-success"
-                    : "bg-primary/10 text-primary"
+                    : "bg-brand/10 text-brand"
               }`}
             >
               {isLocked ? (
@@ -121,7 +121,7 @@ function ModuleRow({
               )}
             </span>
             <span className="min-w-0 flex-1 truncate">{module.title}</span>
-            <span className="shrink-0 whitespace-nowrap text-xs font-normal text-muted-foreground">
+            <span className="shrink-0 whitespace-nowrap text-xs font-normal text-ink-muted">
               {gradableCount > 0
                 ? `${completedInModule}/${gradableCount}`
                 : `${chapters.length} ch.`}
@@ -139,14 +139,14 @@ function ModuleRow({
             </Link>
           )}
           {isLocked && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <span className="text-xs text-ink-muted flex items-center gap-1">
               <Lock className="h-3 w-3" strokeWidth={1.75} aria-hidden />
               {t("courseDetail.moduleLocked")}
             </span>
           )}
         </div>
         {isLocked && (
-          <p className="text-xs text-muted-foreground ml-8 mt-1">
+          <p className="text-xs text-ink-muted ml-8 mt-1">
             {t("courseDetail.moduleLockHint")}
           </p>
         )}
@@ -162,7 +162,7 @@ function ModuleRow({
           return (
             <div
               className={`ml-8 mt-1 flex items-center gap-1 text-xs ${
-                overdue ? "text-destructive" : "text-muted-foreground"
+                overdue ? "text-destructive" : "text-ink-muted"
               }`}
             >
               {overdue ? (

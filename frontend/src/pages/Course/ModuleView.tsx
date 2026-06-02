@@ -124,7 +124,7 @@ export default function ModuleView() {
       <div className="mb-4">
         <h1 className="mb-1 font-serif text-2xl font-bold tracking-tight text-wrap-safe">{module.title}</h1>
         {module.description && (
-          <p className="text-sm leading-relaxed text-muted-foreground text-wrap-safe whitespace-pre-line">
+          <p className="text-sm leading-relaxed text-ink-muted text-wrap-safe whitespace-pre-line">
             {module.description}
           </p>
         )}
@@ -138,18 +138,18 @@ export default function ModuleView() {
         return (
           <div className={`mb-4 flex items-center gap-2 rounded-md border px-3 py-2 ${
             isOverdue
-              ? "border-l-stripe border-l-destructive border-border bg-destructive/5"
+              ? "border-l-stripe border-l-destructive border-edge bg-destructive/5"
               : isUpcoming
-                ? "border-l-stripe border-l-warning border-border bg-warning/10"
-                : "border-border bg-muted/50"
+                ? "border-l-stripe border-l-warning border-edge bg-warning/10"
+                : "border-edge bg-muted/50"
           }`}>
             {isOverdue ? (
               <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" strokeWidth={1.75} aria-hidden />
             ) : (
-              <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+              <CalendarDays className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
             )}
             <span className={`text-sm font-medium ${
-              isOverdue ? "text-destructive" : isUpcoming ? "text-warning" : "text-foreground"
+              isOverdue ? "text-destructive" : isUpcoming ? "text-warning" : "text-ink"
             }`}>
               {isOverdue ? t("module.overdue") : t("module.due")}:{" "}
               {formatDateLong(dueDate, {
@@ -164,7 +164,7 @@ export default function ModuleView() {
       })()}
 
       {allComplete && (
-        <div className="mb-4 flex items-center gap-2 rounded-md border border-border border-l-stripe border-l-success bg-success/10 px-3 py-2">
+        <div className="mb-4 flex items-center gap-2 rounded-md border border-edge border-l-stripe border-l-success bg-success/10 px-3 py-2">
           <CheckCircle className="h-4 w-4 shrink-0 text-success" strokeWidth={1.75} aria-hidden />
           <span className="text-sm font-medium text-success">{t("module.moduleComplete")}</span>
         </div>
@@ -176,11 +176,11 @@ export default function ModuleView() {
             <span className="font-medium">
               {t("module.completedProgress", { done: completedCount, total: gradableChapters.length })}
             </span>
-            <span className="text-muted-foreground">{progressPercent}%</span>
+            <span className="text-ink-muted">{progressPercent}%</span>
           </div>
           <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
             <div
-              className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+              className="h-full rounded-full bg-brand transition-all duration-500 ease-out"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -191,7 +191,7 @@ export default function ModuleView() {
         <h2 className="mb-3 flex items-center gap-2 font-serif text-lg font-semibold tracking-tight">
           <Book className="h-4 w-4" strokeWidth={1.75} aria-hidden />
           {t("module.chaptersHeading")}
-          <span className="text-sm font-normal text-muted-foreground">
+          <span className="text-sm font-normal text-ink-muted">
             ({sortedChapters.length})
           </span>
         </h2>
@@ -215,14 +215,14 @@ export default function ModuleView() {
                   >
                     <CardHeader className="pb-2">
                       <CardTitle className="flex min-w-0 items-center gap-2 font-serif text-base font-semibold tracking-tight">
-                        <Lock className="h-5 w-5 text-muted-foreground/50 shrink-0" strokeWidth={1.75} aria-hidden />
-                        <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                        <Lock className="h-5 w-5 text-ink-muted/50 shrink-0" strokeWidth={1.75} aria-hidden />
+                        <span className="min-w-0 flex-1 truncate text-ink-muted">
                           {chapter.title}
                         </span>
                         {chapter.chapter_type && (
                           <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
                         )}
-                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/30" strokeWidth={1.75} aria-hidden />
+                        <ChevronRight className="h-4 w-4 shrink-0 text-ink-muted/30" strokeWidth={1.75} aria-hidden />
                       </CardTitle>
                     </CardHeader>
                   </Card>
@@ -236,7 +236,7 @@ export default function ModuleView() {
                   className="block"
                 >
                   <Card
-                    className={`animate-fade-in transition-colors hover:border-primary/40 ${isCompleted ? "border-success/40 bg-success/5" : ""}`}
+                    className={`animate-fade-in transition-colors hover:border-brand/40 ${isCompleted ? "border-success/40 bg-success/5" : ""}`}
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
                     <CardHeader className="pb-2">
@@ -247,16 +247,16 @@ export default function ModuleView() {
                           ) : requiresTeacher ? (
                             <Lock className="h-5 w-5 shrink-0 text-warning" strokeWidth={1.75} aria-hidden />
                           ) : (
-                            <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" strokeWidth={1.75} aria-hidden />
+                            <Circle className="h-5 w-5 shrink-0 text-ink-muted/40" strokeWidth={1.75} aria-hidden />
                           )
                         ) : null}
-                        <span className={`min-w-0 flex-1 truncate ${isCompleted ? "text-muted-foreground" : ""}`}>
+                        <span className={`min-w-0 flex-1 truncate ${isCompleted ? "text-ink-muted" : ""}`}>
                           {chapter.title}
                         </span>
                         {chapter.chapter_type && (
                           <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
                         )}
-                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40" strokeWidth={1.75} aria-hidden />
+                        <ChevronRight className="h-4 w-4 shrink-0 text-ink-muted/40" strokeWidth={1.75} aria-hidden />
                       </CardTitle>
                     </CardHeader>
                   </Card>
@@ -266,7 +266,7 @@ export default function ModuleView() {
           </div>
         ) : (
           <Card className="border-dashed">
-            <CardContent className="py-12 text-center text-muted-foreground text-sm">
+            <CardContent className="py-12 text-center text-ink-muted text-sm">
               {t("module.noChaptersYet")}
             </CardContent>
           </Card>

@@ -43,10 +43,10 @@ export function PublicLanding() {
     <div className="container mx-auto max-w-5xl px-4 pb-24">
       {/* ── Hero ────────────────────────────────────────────────── */}
       <section className="flex flex-col items-center pt-16 text-center sm:pt-24">
-        <h1 className="font-serif text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl">
+        <h1 className="font-serif text-4xl font-bold tracking-tight text-ink sm:text-5xl md:text-6xl">
           {t("common.appName")}
         </h1>
-        <p className="mt-4 max-w-2xl text-balance text-base leading-relaxed text-muted-foreground sm:text-lg">
+        <p className="mt-4 max-w-2xl text-balance text-base leading-relaxed text-ink-muted sm:text-lg">
           {t("footer.tagline")}
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -80,7 +80,7 @@ export function PublicLanding() {
         >
           {t("landing.features.heading")}
         </h2>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+        <p className="mt-2 max-w-2xl text-sm text-ink-muted">
           {t("landing.features.subheading")}
         </p>
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -169,7 +169,7 @@ export function PublicLanding() {
         <h2 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
           {t("landing.finalCta.heading")}
         </h2>
-        <p className="mt-3 max-w-xl text-balance text-sm text-muted-foreground sm:text-base">
+        <p className="mt-3 max-w-xl text-balance text-sm text-ink-muted sm:text-base">
           {t("landing.finalCta.body")}
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
@@ -199,11 +199,11 @@ interface FeatureCardProps {
 function FeatureCard({ icon, title, body }: FeatureCardProps) {
   return (
     <div className="flex flex-col rounded-lg border bg-card p-5">
-      <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+      <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-brand/10 text-brand">
         {icon}
       </span>
-      <h3 className="mt-4 text-base font-semibold text-foreground">{title}</h3>
-      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{body}</p>
+      <h3 className="mt-4 text-base font-semibold text-ink">{title}</h3>
+      <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">{body}</p>
     </div>
   )
 }
@@ -216,10 +216,10 @@ interface StepProps {
 function Step({ n, text }: StepProps) {
   return (
     <li className="flex items-start gap-3">
-      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-foreground">
         {n}
       </span>
-      <p className="pt-0.5 text-sm leading-relaxed text-foreground">{text}</p>
+      <p className="pt-0.5 text-sm leading-relaxed text-ink">{text}</p>
     </li>
   )
 }
@@ -236,14 +236,14 @@ function QuickLink({ to, icon, title, body }: QuickLinkProps) {
     <li>
       <Link
         to={to}
-        className="group flex items-start gap-3 rounded-md border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="group flex items-start gap-3 rounded-md border bg-card p-4 transition-colors hover:border-brand/40 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
       >
-        <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+        <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-ink-muted transition-colors group-hover:bg-brand/10 group-hover:text-brand">
           {icon}
         </span>
         <span className="min-w-0">
-          <span className="block text-sm font-medium text-foreground">{title}</span>
-          <span className="mt-0.5 block text-xs text-muted-foreground">{body}</span>
+          <span className="block text-sm font-medium text-ink">{title}</span>
+          <span className="mt-0.5 block text-xs text-ink-muted">{body}</span>
         </span>
       </Link>
     </li>
