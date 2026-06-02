@@ -9,7 +9,13 @@ diagnose. These unit tests pin the sanitizer's behaviour directly.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+from app.core import sanitize as sanitize_mod
 from app.core.sanitize import sanitize_string
+
+if TYPE_CHECKING:
+    import pytest
 
 
 class TestBaseAllowlist:
@@ -212,3 +218,118 @@ class TestToggleCalloutAllowlist:
         )
         assert "ontoggle" not in cleaned
         assert "alert" not in cleaned
+
+
+class TestIframeAllowlist:
+    """Iframes are dangerous by default — only YouTube embeds get
+    through. Bleach treats ``iframe`` as a normal allowed tag (it
+    doesn't know which ``src`` values are safe), so the post-filter in
+    ``_strip_dangerous_iframes`` is what actually enforces the embed
+    policy. These tests pin both halves of the decision.
+    """
+
+    def test_youtube_embed_iframe_survives(self):
+        html = (
+            '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" width="560" height="315" allowfullscreen></iframe>'
+        )
+        cleaned = sanitize_string(html)
+        assert "<iframe" in cleaned
+        assert "youtube.com/embed/dQw4w9WgXcQ" in cleaned
+
+    def test_youtube_nocookie_embed_survives(self):
+        # The privacy-enhanced YouTube embed domain (``youtube-nocookie.com``)
+        # is the recommended embed form for cookie-conscious sites. The
+        # allowlist must accept it alongside the canonical domain.
+        html = '<iframe src="https://www.youtube-nocookie.com/embed/abcDEF12345"></iframe>'
+        cleaned = sanitize_string(html)
+        assert "<iframe" in cleaned
+        assert "youtube-nocookie.com/embed/" in cleaned
+
+    def test_non_youtube_iframe_is_stripped(self):
+        # The iframe wrapper is removed but the surrounding text stays
+        # intact — we strip the dangerous element, we don't blow up the
+        # whole block.
+        cleaned = sanitize_string('<p>before</p><iframe src="https://evil.example.com/track"></iframe><p>after</p>')
+        assert "<iframe" not in cleaned
+        assert "evil.example.com" not in cleaned
+        assert "<p>before</p>" in cleaned
+        assert "<p>after</p>" in cleaned
+
+    def test_iframe_with_no_src_is_stripped(self):
+        # An iframe without ``src`` cannot be a YouTube embed by
+        # construction — the post-filter treats "no src" as the
+        # untrusted case and strips it.
+        cleaned = sanitize_string("<iframe></iframe>")
+        assert "<iframe" not in cleaned
+
+    def test_iframe_with_single_quoted_src_handled(self):
+        # Bleach normalises attribute quoting, but a teacher pasting raw
+        # HTML can produce single-quoted attrs. The regex used by the
+        # post-filter accepts both quote styles.
+        cleaned = sanitize_string("<iframe src='https://www.youtube.com/embed/abc123'></iframe>")
+        # After bleach + post-filter the iframe should survive in some
+        # canonical form (quotes may be normalised).
+        assert "youtube.com/embed/abc123" in cleaned
+
+
+class TestEarlyReturns:
+    """Two zero-cost short-circuit paths in ``sanitize_string`` — both
+    skip the whole bleach + regex pipeline. Pin them so a future
+    refactor that drops the guard surfaces in CI rather than silently
+    starting to allocate per empty-string call.
+    """
+
+    def test_empty_string_returns_empty(self):
+        assert sanitize_string("") == ""
+
+    def test_none_passes_through_unchanged(self):
+        # ``sanitize_string`` is called on Pydantic-validated fields;
+        # an explicit ``None`` shouldn't crash on the ``not value``
+        # truthiness check — it returns the input as-is.
+        assert sanitize_string(None) is None  # type: ignore[arg-type]
+
+
+class TestRegexFallback:
+    """When ``bleach`` is not importable we fall back to a regex strip
+    of the worst offenders (scripts, event handlers, javascript: URLs).
+    This is the path that runs on bare deploys without the optional
+    sanitiser package; the production deploys all ship bleach, but the
+    fallback is the safety net.
+
+    The branch is gated on a module-level ``_HAS_BLEACH`` constant set
+    at import time, so we monkeypatch the flag directly rather than
+    trying to fight the optional dependency at runtime.
+    """
+
+    def test_regex_strips_script_tag(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(sanitize_mod, "_HAS_BLEACH", False)
+        cleaned = sanitize_string("<p>hi</p><script>alert(1)</script>")
+        assert "<script" not in cleaned
+        # The non-dangerous markup is left alone — regex fallback is a
+        # blacklist, not the bleach allowlist, so unrelated tags pass
+        # through. That's intentional: it's defence-in-depth on top of
+        # DOMPurify, not a primary sanitiser.
+        assert "<p>hi</p>" in cleaned
+
+    def test_regex_strips_event_handler_attr(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(sanitize_mod, "_HAS_BLEACH", False)
+        cleaned = sanitize_string('<a href="/x" onclick="evil()">x</a>')
+        assert "onclick" not in cleaned
+
+    def test_regex_strips_javascript_scheme(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(sanitize_mod, "_HAS_BLEACH", False)
+        cleaned = sanitize_string('<a href="javascript:alert(1)">x</a>')
+        assert "javascript:" not in cleaned
+
+    def test_regex_strips_iframe_meta_link(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(sanitize_mod, "_HAS_BLEACH", False)
+        cleaned = sanitize_string(
+            "<meta http-equiv='refresh' content='0'><link rel='stylesheet' href='evil.css'><style>body{}</style>"
+        )
+        assert "<meta" not in cleaned
+        assert "<link" not in cleaned
+        assert "<style" not in cleaned
+
+    def test_regex_path_strips_surrounding_whitespace(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(sanitize_mod, "_HAS_BLEACH", False)
+        assert sanitize_string("   hello   ") == "hello"
