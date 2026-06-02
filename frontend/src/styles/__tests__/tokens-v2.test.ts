@@ -57,7 +57,7 @@ describe("tokens-v2.css (ADR-0011 Wave 1 foundation)", () => {
   });
 
   it("declares all canonical tokens in :root / .light scope", () => {
-    const lightScope = content.split(".dark")[0];
+    const lightScope = content.split(".dark")[0] ?? "";
     for (const token of REQUIRED_TOKENS) {
       expect(
         lightScope.includes(token),
