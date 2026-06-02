@@ -43,12 +43,12 @@ export default function Header() {
   }, [location.pathname])
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/90 bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/75">
+    <header className="sticky top-0 z-50 border-b border-edge/90 bg-surface/90 backdrop-blur-md supports-[backdrop-filter]:bg-surface/75">
       <div className="container mx-auto max-w-[1400px] px-4">
         <div className="flex h-11 items-stretch justify-between gap-2 md:h-12 md:gap-4">
           <Link
             to="/"
-            className="flex shrink-0 items-center font-serif text-sm font-semibold leading-none tracking-tight text-foreground transition-opacity hover:opacity-85 md:text-base"
+            className="flex shrink-0 items-center font-serif text-sm font-semibold leading-none tracking-tight text-ink transition-opacity hover:opacity-85 md:text-base"
           >
             {t("common.appName")}
           </Link>

@@ -50,13 +50,13 @@ export default function AnnouncementBanner() {
     // banner mounts mid-session whenever the user finishes loading or a new
     // announcement is published, and a screen-reader user shouldn't have to
     // re-Tab past the page just to discover it.
-    <div role="status" aria-live="polite" className="border-b border-border bg-muted/40">
+    <div role="status" aria-live="polite" className="border-b border-edge bg-muted/40">
       <div className="container mx-auto flex items-center gap-3 px-4 py-2.5">
-        <Megaphone className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
+        <Megaphone className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden="true" />
         <div className="min-w-0 flex-1 text-wrap-safe">
-          <span className="text-sm font-medium text-foreground">{announcement.title}</span>
+          <span className="text-sm font-medium text-ink">{announcement.title}</span>
           {announcement.content && (
-            <span className="ml-2 text-sm text-muted-foreground">
+            <span className="ml-2 text-sm text-ink-muted">
               {announcement.content.length > 150
                 ? `${announcement.content.slice(0, 150).trimEnd()}…`
                 : announcement.content}
@@ -66,7 +66,7 @@ export default function AnnouncementBanner() {
         <button
           type="button"
           onClick={() => setDismissedId(announcement.id)}
-          className="rounded p-1 text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="rounded p-1 text-ink-muted hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
           aria-label={t("common.dismissAnnouncement")}
         >
           <X className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />

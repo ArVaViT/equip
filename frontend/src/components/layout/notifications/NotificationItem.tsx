@@ -21,13 +21,13 @@ interface Props {
 export function NotificationItem({ notification, onActivate, onDelete }: Props) {
   const { t } = useTranslation()
   const Icon = NOTIFICATION_ICONS[notification.type] ?? Bell
-  const color = NOTIFICATION_COLORS[notification.type] ?? "text-muted-foreground"
+  const color = NOTIFICATION_COLORS[notification.type] ?? "text-ink-muted"
 
   return (
     <div
       className={cn(
-        "flex gap-3 px-4 py-3 transition-colors hover:bg-muted/50 group border-b border-border/50 last:border-0",
-        !notification.is_read && "bg-primary/[0.03]",
+        "flex gap-3 px-4 py-3 transition-colors hover:bg-muted/50 group border-b border-edge/50 last:border-0",
+        !notification.is_read && "bg-brand/[0.03]",
       )}
     >
       <button
@@ -44,20 +44,20 @@ export function NotificationItem({ notification, onActivate, onDelete }: Props) 
               className={cn(
                 "text-sm leading-snug",
                 !notification.is_read
-                  ? "font-medium text-foreground"
-                  : "text-muted-foreground",
+                  ? "font-medium text-ink"
+                  : "text-ink-muted",
               )}
             >
               {notification.title}
             </p>
             {!notification.is_read && (
-              <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+              <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />
             )}
           </div>
-          <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
+          <p className="mt-0.5 text-xs text-ink-muted line-clamp-2">
             {notification.message}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground/70">
+          <p className="mt-1 text-xs text-ink-muted/70">
             {timeAgo(notification.created_at, t)}
           </p>
         </div>
@@ -67,7 +67,7 @@ export function NotificationItem({ notification, onActivate, onDelete }: Props) 
           e.stopPropagation()
           onDelete(notification.id)
         }}
-        className="mt-0.5 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+        className="mt-0.5 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity text-ink-muted hover:text-destructive"
         aria-label={t("notifications.deleteAriaLabel")}
       >
         <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />

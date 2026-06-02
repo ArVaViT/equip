@@ -103,19 +103,19 @@ export default class ErrorBoundary extends Component<Props, State> {
             </svg>
           </div>
           <h2 className="text-xl font-semibold mb-2">{i18n.t("errors.boundary.heading")}</h2>
-          <p className="text-sm text-muted-foreground mb-4 max-w-md">
+          <p className="text-sm text-ink-muted mb-4 max-w-md">
             {i18n.t("errors.boundary.body")}
           </p>
           <div className="flex gap-3">
             <button
               onClick={this.handleReset}
-              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
+              className="inline-flex items-center justify-center rounded-md border border-edge-strong bg-surface px-4 py-2 text-sm font-medium hover:bg-heritage hover:text-ink transition-colors"
             >
               {i18n.t("errors.boundary.tryAgain")}
             </button>
             <button
               onClick={() => window.location.reload()}
-              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              className="inline-flex items-center justify-center rounded-md bg-brand px-4 py-2 text-sm font-medium text-brand-foreground hover:bg-brand/90 transition-colors"
             >
               {i18n.t("errors.boundary.refresh")}
             </button>

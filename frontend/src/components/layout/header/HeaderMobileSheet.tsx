@@ -35,7 +35,7 @@ export function HeaderMobileSheet({ open, onOpenChange, user, isTeacher }: Props
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="flex max-h-[100dvh] flex-col gap-0 overflow-hidden p-0">
         <SheetHeader className="shrink-0 px-5 pb-3 pt-5">
-          <SheetTitle className="font-sans text-sm font-semibold tracking-normal text-foreground">
+          <SheetTitle className="font-sans text-sm font-semibold tracking-normal text-ink">
             {t("header.mobileMenuTitle")}
           </SheetTitle>
           <SheetDescription className="sr-only">{t("header.mobileMenuDescription")}</SheetDescription>
@@ -74,7 +74,7 @@ export function HeaderMobileSheet({ open, onOpenChange, user, isTeacher }: Props
                     {t("header.adminPanel")}
                   </HeaderNavLink>
                 )}
-                <div className="mt-2 border-t border-border/80 pt-2">
+                <div className="mt-2 border-t border-edge/80 pt-2">
                   <Suspense fallback={null}>
                     <NotificationBell
                       triggerVariant="navRow"
@@ -87,7 +87,7 @@ export function HeaderMobileSheet({ open, onOpenChange, user, isTeacher }: Props
                   to="/profile"
                   className={cn(
                     "flex min-h-10 w-full items-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-muted active:bg-muted/80",
-                    isActive("/profile") ? "bg-muted/60 text-foreground" : "text-foreground",
+                    isActive("/profile") ? "bg-muted/60 text-ink" : "text-ink",
                   )}
                   aria-current={isActive("/profile") ? "page" : undefined}
                   onClick={closeMobile}
@@ -105,7 +105,7 @@ export function HeaderMobileSheet({ open, onOpenChange, user, isTeacher }: Props
                 </HeaderNavLink>
                 <Link
                   to="/register"
-                  className="flex min-h-10 w-full items-center rounded-md px-3 text-sm font-semibold text-primary transition-colors hover:bg-muted active:bg-muted/80"
+                  className="flex min-h-10 w-full items-center rounded-md px-3 text-sm font-semibold text-brand transition-colors hover:bg-muted active:bg-muted/80"
                   onClick={closeMobile}
                 >
                   {t("common.register")}
@@ -113,8 +113,8 @@ export function HeaderMobileSheet({ open, onOpenChange, user, isTeacher }: Props
               </>
             )}
           </nav>
-          <div className="mt-auto border-t border-border/80 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
-            <p className="text-xs text-muted-foreground">{t("common.appName")}</p>
+          <div className="mt-auto border-t border-edge/80 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
+            <p className="text-xs text-ink-muted">{t("common.appName")}</p>
           </div>
         </div>
       </SheetContent>
