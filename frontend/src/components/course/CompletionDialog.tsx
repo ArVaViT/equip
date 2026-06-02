@@ -86,10 +86,10 @@ export default function CompletionDialog({
               styles with the editorial vocabulary used on
               ``<WelcomeCard>`` so the two first-time moments share a
               voice. */}
-          <DialogTitle className="max-w-md text-balance font-serif text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-3xl">
+          <DialogTitle className="max-w-md text-balance font-serif text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-3xl">
             {t("completion.title", { courseTitle })}
           </DialogTitle>
-          <p className="max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <p className="max-w-md text-sm leading-relaxed text-ink-muted sm:text-base">
             {hasCertificate ? t("completion.bodyHasCert") : t("completion.body")}
           </p>
           <div className="flex flex-col gap-2 pt-2 sm:flex-row">

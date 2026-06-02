@@ -113,7 +113,7 @@ export function CalloutDropdown({
           role="menu"
           aria-label={t("blockEditor.callout.trigger")}
           className={cn(
-            // ADR-0011 Wave 7 — bg-background -> bg-surface-elevated.
+            // ADR-0011 Wave 7 — bg-surface -> bg-surface-elevated.
             "absolute top-full z-20 mt-1 w-52 rounded-md border bg-surface-elevated py-1 shadow-lg",
             alignClass,
           )}

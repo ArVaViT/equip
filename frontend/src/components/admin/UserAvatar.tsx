@@ -76,7 +76,7 @@ export function UserAvatar({
     <div
       className={cn(
         dimensionClass,
-        "flex shrink-0 items-center justify-center rounded-full bg-muted font-medium text-muted-foreground",
+        "flex shrink-0 items-center justify-center rounded-full bg-muted font-medium text-ink-muted",
         size === "md" ? "text-sm" : "text-xs",
         className,
       )}

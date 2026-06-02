@@ -87,13 +87,13 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
         <CardContent className="py-6">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted">
-              <Award className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+              <Award className="h-6 w-6 text-ink-muted" strokeWidth={1.75} />
             </div>
             <div className="flex-1">
               <h3 className="font-serif text-base font-semibold">
                 {t("certificates.card.completedTitle")}
               </h3>
-              <p className="mt-0.5 text-sm text-muted-foreground">
+              <p className="mt-0.5 text-sm text-ink-muted">
                 {t("certificates.card.completedDescription")}
               </p>
             </div>
@@ -117,7 +117,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
             </div>
             <div className="flex-1">
               <h3 className="font-serif text-base font-semibold">{t("certificates.card.pendingTitle")}</h3>
-              <p className="mt-0.5 text-sm text-muted-foreground">
+              <p className="mt-0.5 text-sm text-ink-muted">
                 {t("certificates.card.pendingDescription")}
               </p>
             </div>
@@ -137,7 +137,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
             </div>
             <div className="flex-1">
               <h3 className="font-serif text-base font-semibold">{t("certificates.card.adminPendingTitle")}</h3>
-              <p className="mt-0.5 text-sm text-muted-foreground">
+              <p className="mt-0.5 text-sm text-ink-muted">
                 {t("certificates.card.adminPendingDescription")}
               </p>
             </div>
@@ -164,18 +164,18 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
                 <h3 className="font-serif text-xl font-semibold tracking-tight">
                   {t("certificates.card.approvedTitle")}
                 </h3>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-sm text-ink-muted">
                   {t("certificates.card.approvedDescription")}
                 </p>
               </div>
 
-              <div className="grid gap-4 rounded-md border border-border bg-muted/20 p-4 sm:grid-cols-2">
+              <div className="grid gap-4 rounded-md border border-edge bg-muted/20 p-4 sm:grid-cols-2">
                 <div>
-                  <p className="mb-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  <p className="mb-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
                     {t("certificates.card.certificateNumber")}
                   </p>
                   <div className="flex items-center gap-2">
-                    <code className="select-all rounded border border-border bg-background px-2.5 py-1 font-mono text-sm">
+                    <code className="select-all rounded border border-edge bg-surface px-2.5 py-1 font-mono text-sm">
                       {certificate.certificate_number}
                     </code>
                     <Button
@@ -194,7 +194,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
                   </div>
                 </div>
                 <div>
-                  <p className="mb-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  <p className="mb-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
                     {t("certificates.card.issueDate")}
                   </p>
                   <p className="text-sm font-medium">
@@ -208,8 +208,8 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
           </div>
 
           {user && !reviewDone && (
-            <div className="space-y-3 border-t border-border pt-5">
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            <div className="space-y-3 border-t border-edge pt-5">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
                 {t("certificates.card.review.eyebrow")}
               </p>
               <h4 className="font-serif text-base font-semibold tracking-tight">{t("certificates.card.review.heading")}</h4>
@@ -228,13 +228,13 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
                       className={`h-6 w-6 transition-colors ${
                         value <= (reviewHover || reviewRating)
                           ? "fill-warning text-warning"
-                          : "text-muted-foreground/30"
+                          : "text-ink-muted/30"
                       }`}
                     strokeWidth={1.75} />
                   </button>
                 ))}
                 {reviewRating > 0 && (
-                  <span className="ml-2 text-sm text-muted-foreground">
+                  <span className="ml-2 text-sm text-ink-muted">
                     {reviewRating}/5
                   </span>
                 )}
@@ -244,7 +244,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
                 onChange={(e) => setReviewComment(e.target.value)}
                 placeholder={t("certificates.card.review.commentPlaceholder")}
                 rows={3}
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex min-h-[80px] w-full rounded-md border border-edge-strong bg-surface px-3 py-2 text-sm placeholder:text-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               />
               <Button onClick={handleReviewSubmit} disabled={reviewSubmitting} size="sm">
                 {reviewSubmitting ? t("certificates.card.review.submitting") : t("certificates.card.review.submit")}
@@ -253,7 +253,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
           )}
 
           {reviewDone && (
-            <div className="flex items-center gap-2 border-t border-border pt-4 text-sm text-success">
+            <div className="flex items-center gap-2 border-t border-edge pt-4 text-sm text-success">
               <CheckCircle className="h-4 w-4" strokeWidth={1.75} />
               {t("certificates.card.review.thanks")}
             </div>
@@ -275,7 +275,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
               <h3 className="font-serif text-base font-semibold">
                 {t("certificates.card.rejectedTitle")}
               </h3>
-              <p className="mt-0.5 text-sm text-muted-foreground">
+              <p className="mt-0.5 text-sm text-ink-muted">
                 {t("certificates.card.rejectedDescription")}
               </p>
             </div>

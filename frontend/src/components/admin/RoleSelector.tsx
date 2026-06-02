@@ -45,7 +45,7 @@ export function RoleSelector({ role, disabled = false, onChange, ariaLabel }: Pr
         "gap-1.5 select-none",
         disabled && "cursor-default",
         !disabled &&
-          "cursor-pointer transition-shadow hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "cursor-pointer transition-shadow hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
       )}
     >
       {t(ROLE_I18N_KEY[role])}
@@ -62,7 +62,7 @@ export function RoleSelector({ role, disabled = false, onChange, ariaLabel }: Pr
       <DropdownMenuTrigger asChild aria-label={ariaLabel}>
         <button
           type="button"
-          className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         >
           {badge}
         </button>
@@ -78,12 +78,12 @@ export function RoleSelector({ role, disabled = false, onChange, ariaLabel }: Pr
               }}
               className={cn(
                 "justify-between",
-                selected && "font-medium text-foreground",
+                selected && "font-medium text-ink",
               )}
             >
               <span>{t(ROLE_I18N_KEY[value])}</span>
               {selected && (
-                <Check className="h-3.5 w-3.5 text-primary" strokeWidth={1.75} aria-hidden />
+                <Check className="h-3.5 w-3.5 text-brand" strokeWidth={1.75} aria-hidden />
               )}
             </DropdownMenuItem>
           )

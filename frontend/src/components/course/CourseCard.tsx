@@ -60,7 +60,7 @@ function CourseCard({ course, style }: CourseCardProps) {
   const moduleCount = course.modules?.length ?? 0
 
   const cardInner = (
-    <Card className="flex h-full flex-col overflow-hidden border-border/60 transition-colors hover:border-primary/40">
+    <Card className="flex h-full flex-col overflow-hidden border-edge/60 transition-colors hover:border-brand/40">
       <div className="relative">
         {course.access_mode === "institute" ? (
           <Badge variant="muted" className="absolute right-3 top-3 z-10">
@@ -82,7 +82,7 @@ function CourseCard({ course, style }: CourseCardProps) {
           </div>
         ) : (
           <div className="flex aspect-[16/10] w-full items-center justify-center bg-muted">
-            <BookOpen className="h-10 w-10 text-muted-foreground/30" strokeWidth={1.75} aria-hidden />
+            <BookOpen className="h-10 w-10 text-ink-muted/30" strokeWidth={1.75} aria-hidden />
           </div>
         )}
       </div>
@@ -96,9 +96,9 @@ function CourseCard({ course, style }: CourseCardProps) {
           </CardDescription>
         )}
       </CardHeader>
-      <CardContent className="mt-auto flex items-center justify-between pt-2 text-xs text-muted-foreground">
+      <CardContent className="mt-auto flex items-center justify-between pt-2 text-xs text-ink-muted">
         <span className="uppercase tracking-wide">{t("courseCard.modulesLabel", { count: moduleCount })}</span>
-        <span className="inline-flex items-center gap-1 text-foreground/80 transition-colors group-hover:text-primary">
+        <span className="inline-flex items-center gap-1 text-ink/80 transition-colors group-hover:text-brand">
           {t("courseCard.openCourse")}
           <ArrowRight
             className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
@@ -114,7 +114,7 @@ function CourseCard({ course, style }: CourseCardProps) {
     <Link
       to={`/courses/${course.id}`}
       style={style}
-      className="group block rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="group block rounded-md outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       {prefersReducedMotion ? (
         cardInner
