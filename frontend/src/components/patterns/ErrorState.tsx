@@ -47,9 +47,9 @@ export function ErrorState({
         {icon ?? <AlertTriangle strokeWidth={1.75} aria-hidden />}
       </span>
       <div className="space-y-1">
-        <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">{resolvedTitle}</h2>
+        <h2 className="font-serif text-base font-semibold tracking-tight text-ink">{resolvedTitle}</h2>
         {description && (
-          <p className="max-w-md text-sm text-muted-foreground">{description}</p>
+          <p className="max-w-md text-sm text-ink-muted">{description}</p>
         )}
       </div>
       {(action || secondaryAction) && (

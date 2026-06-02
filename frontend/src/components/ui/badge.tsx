@@ -2,16 +2,24 @@ import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
+// ADR-0011 Wave 6 — editorial primitives migration.
+// Migrated to v2 vocabulary: primary -> brand, secondary -> brand-quiet,
+// accent -> heritage, foreground -> ink, ring-ring -> ring-brand.
+// destructive / success / warning / info / muted stay on v1 — no v2
+// equivalents are in the bridge or tailwind config yet (the tokens-v2
+// CSS has --color-{success,warning,danger,info} but they aren't aliased
+// in tailwind.config.js, so the v1 classes are still the only working
+// path for those semantic tones).
 const badgeVariants = cva(
-  "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+  "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
   {
     variants: {
       variant: {
         default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/90",
+          "border-transparent bg-brand text-brand-foreground hover:bg-brand/90",
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        outline: "text-foreground",
+          "border-transparent bg-brand-quiet text-ink hover:bg-brand-quiet/80",
+        outline: "text-ink",
         destructive:
           "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90",
         success:
@@ -22,13 +30,13 @@ const badgeVariants = cva(
         muted:
           "border-transparent bg-muted text-muted-foreground hover:bg-muted/80",
         accent:
-          "border-transparent bg-accent text-accent-foreground hover:bg-accent/80",
+          "border-transparent bg-heritage text-ink hover:bg-heritage/80",
         successSubtle: "border-transparent bg-success/15 text-success",
         warningSubtle: "border-transparent bg-warning/15 text-warning",
         infoSubtle: "border-transparent bg-info/15 text-info",
         destructiveSubtle:
           "border-transparent bg-destructive/15 text-destructive",
-        primarySubtle: "border-transparent bg-primary/15 text-primary",
+        primarySubtle: "border-transparent bg-brand/15 text-brand",
       },
     },
     defaultVariants: { variant: "default" },
