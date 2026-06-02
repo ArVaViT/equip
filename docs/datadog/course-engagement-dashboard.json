@@ -61,14 +61,27 @@
           {
             "definition": {
               "type": "query_value",
-              "title": "Active enrollments (7d)",
+              "title": "New enrollments (7d)",
               "requests": [
                 {
-                  "q": "sum:equip.enrollments.active_7d{env:$env.value,course_id:$course_id.value}",
+                  "q": "sum:equip.enrollments.created_total{env:$env.value,course_id:$course_id.value}.rollup(sum, 604800)",
                   "aggregator": "last"
                 }
               ],
               "precision": 0
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Enrollments per day (by course)",
+              "requests": [
+                {
+                  "q": "sum:equip.enrollments.created_total{env:$env.value,course_id:$course_id.value} by {course_id}.rollup(sum, 86400)",
+                  "display_type": "bars"
+                }
+              ],
+              "yaxis": { "min": "0", "include_zero": true }
             }
           }
         ]
@@ -115,25 +128,44 @@
           {
             "definition": {
               "type": "query_value",
-              "title": "Median time to first drop-off",
+              "title": "Chapter completions (7d)",
               "requests": [
                 {
-                  "q": "avg:equip.engagement.first_dropoff.p50{env:$env.value,course_id:$course_id.value}",
-                  "aggregator": "avg"
+                  "q": "sum:equip.engagement.chapter_completed_total{env:$env.value,course_id:$course_id.value}.rollup(sum, 604800)",
+                  "aggregator": "last"
                 }
               ],
-              "custom_unit": "s"
+              "precision": 0
             }
           },
           {
             "definition": {
               "type": "toplist",
-              "title": "Drop-off chapters (top 10)",
+              "title": "Completion paths (by type, last 7d)",
               "requests": [
                 {
-                  "q": "top(sum:equip.engagement.dropoff_count{env:$env.value,course_id:$course_id.value} by {chapter_id}.rollup(last_7d), 10, 'sum', 'desc')"
+                  "q": "top(sum:equip.engagement.chapter_completed_total{env:$env.value,course_id:$course_id.value} by {completion_type}.rollup(sum, 604800), 5, 'sum', 'desc')"
                 }
               ]
+            }
+          },
+          {
+            "definition": {
+              "type": "query_value",
+              "title": "Drop-off rate (7d, derived)",
+              "requests": [
+                {
+                  "q": "100 * (1 - (sum:equip.engagement.chapter_completed_total{env:$env.value,course_id:$course_id.value}.rollup(sum, 604800) / sum:equip.enrollments.created_total{env:$env.value,course_id:$course_id.value}.rollup(sum, 604800)))",
+                  "aggregator": "last",
+                  "conditional_formats": [
+                    { "comparator": "<", "value": 30, "palette": "white_on_green" },
+                    { "comparator": "<", "value": 60, "palette": "white_on_yellow" },
+                    { "comparator": ">=", "value": 60, "palette": "white_on_red" }
+                  ]
+                }
+              ],
+              "custom_unit": "%",
+              "precision": 1
             }
           }
         ]
@@ -151,7 +183,7 @@
               "title": "Average rating (out of 5)",
               "requests": [
                 {
-                  "q": "avg:equip.reviews.rating_avg{env:$env.value,course_id:$course_id.value}",
+                  "q": "avg:equip.reviews.rating_latest{env:$env.value,course_id:$course_id.value}",
                   "aggregator": "avg",
                   "conditional_formats": [
                     { "comparator": ">", "value": 4, "palette": "white_on_green" },
