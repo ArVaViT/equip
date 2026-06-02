@@ -65,7 +65,7 @@ export function CohortStatusPicker({ status, disabled = false, onChange, ariaLab
         "gap-1.5 select-none capitalize",
         disabled && "cursor-default",
         !disabled &&
-          "cursor-pointer transition-shadow hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "cursor-pointer transition-shadow hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
       )}
     >
       {t(STATUS_I18N_KEY[status])}
@@ -82,7 +82,7 @@ export function CohortStatusPicker({ status, disabled = false, onChange, ariaLab
       <DropdownMenuTrigger asChild aria-label={ariaLabel}>
         <button
           type="button"
-          className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         >
           {badge}
         </button>
@@ -98,12 +98,12 @@ export function CohortStatusPicker({ status, disabled = false, onChange, ariaLab
               }}
               className={cn(
                 "justify-between",
-                selected && "font-medium text-foreground",
+                selected && "font-medium text-ink",
               )}
             >
               <span>{t(STATUS_I18N_KEY[value])}</span>
               {selected && (
-                <Check className="h-3.5 w-3.5 text-primary" strokeWidth={1.75} aria-hidden />
+                <Check className="h-3.5 w-3.5 text-brand" strokeWidth={1.75} aria-hidden />
               )}
             </DropdownMenuItem>
           )

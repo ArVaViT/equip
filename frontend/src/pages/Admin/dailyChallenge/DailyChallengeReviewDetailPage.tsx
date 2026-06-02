@@ -109,7 +109,7 @@ export default function DailyChallengeReviewDetailPage() {
         backLabel={t("admin.dailyChallenge.review.backToQueue")}
         title={
           <h1 className="flex items-center gap-2 font-serif text-xl font-bold tracking-tight sm:text-2xl">
-            <Languages className="h-5 w-5 text-primary" strokeWidth={1.75} aria-hidden />
+            <Languages className="h-5 w-5 text-brand" strokeWidth={1.75} aria-hidden />
             {view
               ? `${view.bible_book} ${view.bible_chapter}${
                   view.bible_verse_from != null ? `:${view.bible_verse_from}` : ""
@@ -174,7 +174,7 @@ export default function DailyChallengeReviewDetailPage() {
             onSave={saveCv}
           />
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-ink-muted">
               {t("admin.dailyChallenge.review.options")}
             </h3>
             {view.options.map((opt) => (
@@ -221,8 +221,8 @@ interface FieldEditorProps {
 
 function FieldEditor({ label, field, cells, optionId, saving, onSave }: FieldEditorProps) {
   return (
-    <div className="rounded-md border border-border bg-card p-4">
-      <div className="mb-3 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
+    <div className="rounded-md border border-edge bg-card p-4">
+      <div className="mb-3 text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">{label}</div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <LocaleCellEditor
           locale="en"
@@ -264,7 +264,7 @@ function LocaleCellEditor({ locale, cell, saving, onSave }: LocaleCellEditorProp
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
           {locale.toUpperCase()}
         </span>
         {missing ? (
@@ -286,7 +286,7 @@ function LocaleCellEditor({ locale, cell, saving, onSave }: LocaleCellEditorProp
         }}
         rows={3}
         placeholder={missing ? t("admin.dailyChallenge.review.fillPlaceholder") : undefined}
-        className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        className="w-full rounded-md border border-edge bg-surface px-2 py-1.5 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
       />
       {(editing || dirty) && (
         <div className="flex justify-end gap-2">

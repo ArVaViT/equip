@@ -216,7 +216,7 @@ export function CohortsTab() {
                   size="sm"
                   className={cn(
                     "h-9 w-full sm:w-44",
-                    statusFilter && "border-primary/40 ring-1 ring-primary/40",
+                    statusFilter && "border-brand/40 ring-1 ring-primary/40",
                   )}
                 >
                   <SelectValue />
@@ -243,7 +243,7 @@ export function CohortsTab() {
             {({ id }) => (
               <div className="relative">
                 <Search
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted"
                   strokeWidth={1.75}
                   aria-hidden
                 />
@@ -264,7 +264,7 @@ export function CohortsTab() {
               variant="ghost"
               size="sm"
               onClick={resetFilters}
-              className="h-9 self-end text-muted-foreground hover:text-foreground"
+              className="h-9 self-end text-ink-muted hover:text-ink"
             >
               <X className="mr-1 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
               {t("admin.pagination.filterClear")}
@@ -292,8 +292,8 @@ export function CohortsTab() {
           <CohortsTable items={pageItems} />
         )}
 
-        <div className="flex shrink-0 flex-col items-stretch gap-2 border-t border-border px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex shrink-0 flex-col items-stretch gap-2 border-t border-edge px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-xs text-ink-muted">
             <label htmlFor="cohort-page-size">{t("admin.pagination.pageSizeLabel")}</label>
             <Select
               value={String(pageSize)}
@@ -315,7 +315,7 @@ export function CohortsTab() {
             </span>
           </div>
           <div className="flex items-center justify-between gap-3 sm:justify-end">
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-ink-muted">
               {t("admin.pagination.page", { page: safePage, total: totalPages })}
             </p>
             <div className="flex items-center gap-1.5">
@@ -368,12 +368,12 @@ function CohortsTable({ items }: { items: Cohort[] }) {
           <Link
             key={c.id}
             to={`/admin/cohorts/${c.id}`}
-            className="block rounded-md border border-border bg-card p-3 transition-colors hover:border-primary/30 hover:bg-muted/40"
+            className="block rounded-md border border-edge bg-card p-3 transition-colors hover:border-brand/30 hover:bg-muted/40"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">{c.name}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="truncate text-sm font-medium text-ink">{c.name}</p>
+                <p className="mt-1 text-xs text-ink-muted">
                   {formatDate(c.start_date)} &mdash; {formatDate(c.end_date)}
                 </p>
               </div>
@@ -381,14 +381,14 @@ function CohortsTable({ items }: { items: Cohort[] }) {
                 {t(STATUS_LABEL_KEYS[c.status])}
               </Badge>
             </div>
-            <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+            <div className="mt-3 flex items-center gap-4 text-xs text-ink-muted">
               <span>
                 {t("admin.cohorts.thCourses")}:{" "}
-                <span className="text-foreground">{c.course_ids.length}</span>
+                <span className="text-ink">{c.course_ids.length}</span>
               </span>
               <span>
                 {t("admin.cohorts.thStudents")}:{" "}
-                <span className="text-foreground">
+                <span className="text-ink">
                   {c.student_count}
                   {c.max_students ? ` / ${c.max_students}` : ""}
                 </span>
@@ -416,11 +416,11 @@ function CohortsTable({ items }: { items: Cohort[] }) {
           </colgroup>
           <thead className="sticky top-0 z-10 bg-card">
             <tr className="border-b text-left">
-              <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.cohorts.thName")}</th>
-              <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.cohorts.thStatus")}</th>
-              <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.cohorts.thDates")}</th>
-              <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.cohorts.thCourses")}</th>
-              <th className="px-5 py-3 font-medium text-muted-foreground">{t("admin.cohorts.thStudents")}</th>
+              <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.cohorts.thName")}</th>
+              <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.cohorts.thStatus")}</th>
+              <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.cohorts.thDates")}</th>
+              <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.cohorts.thCourses")}</th>
+              <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.cohorts.thStudents")}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -429,7 +429,7 @@ function CohortsTable({ items }: { items: Cohort[] }) {
                 <td className="px-5 py-3">
                   <Link
                     to={`/admin/cohorts/${c.id}`}
-                    className="block truncate font-medium hover:text-primary"
+                    className="block truncate font-medium hover:text-brand"
                     title={c.name}
                   >
                     {c.name}
@@ -440,11 +440,11 @@ function CohortsTable({ items }: { items: Cohort[] }) {
                     {t(STATUS_LABEL_KEYS[c.status])}
                   </Badge>
                 </td>
-                <td className="px-5 py-3 text-xs text-muted-foreground">
+                <td className="px-5 py-3 text-xs text-ink-muted">
                   {formatDate(c.start_date)} &mdash; {formatDate(c.end_date)}
                 </td>
-                <td className="px-5 py-3 text-muted-foreground">{c.course_ids.length}</td>
-                <td className="px-5 py-3 text-muted-foreground">
+                <td className="px-5 py-3 text-ink-muted">{c.course_ids.length}</td>
+                <td className="px-5 py-3 text-ink-muted">
                   {c.student_count}
                   {c.max_students ? ` / ${c.max_students}` : ""}
                 </td>
@@ -482,7 +482,7 @@ function CohortsTableSkeleton() {
     <div aria-busy="true">
       <div className="space-y-2 px-4 py-3 sm:hidden">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-md border border-border bg-card p-3">
+          <div key={i} className="rounded-md border border-edge bg-card p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1 space-y-2">
                 <Skeleton className="h-4 w-2/3" />

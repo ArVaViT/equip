@@ -108,21 +108,21 @@ export function OverviewStats({ stats, loading, pendingActions }: Props) {
           <CardContent className="flex items-start gap-4 p-5">
             <div
               className={cn(
-                "flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border bg-card",
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-edge bg-card",
                 warningTint && "border-warning/40 bg-warning/10",
               )}
             >
               <Icon
                 className={cn(
                   "h-5 w-5",
-                  warningTint ? "text-warning" : "text-muted-foreground",
+                  warningTint ? "text-warning" : "text-ink-muted",
                 )}
                 strokeWidth={1.75}
                 aria-hidden
               />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
                 {label}
               </p>
               {loading ? (
@@ -131,7 +131,7 @@ export function OverviewStats({ stats, loading, pendingActions }: Props) {
                 <p
                   className={cn(
                     "mt-0.5 font-serif text-3xl font-semibold tabular-nums leading-tight",
-                    warningTint ? "text-warning" : "text-foreground",
+                    warningTint ? "text-warning" : "text-ink",
                   )}
                 >
                   {value.toLocaleString()}
@@ -141,7 +141,7 @@ export function OverviewStats({ stats, loading, pendingActions }: Props) {
                 <p
                   className={cn(
                     "mt-1.5 inline-flex items-center gap-1 text-xs",
-                    warningTint ? "text-warning/90" : "text-muted-foreground",
+                    warningTint ? "text-warning/90" : "text-ink-muted",
                   )}
                 >
                   {trending && (

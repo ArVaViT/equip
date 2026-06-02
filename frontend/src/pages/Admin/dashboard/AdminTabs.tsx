@@ -19,7 +19,7 @@ interface Props {
 export function AdminTabs({ active, onChange }: Props) {
   const { t } = useTranslation()
   return (
-    <div className="mb-6 flex gap-1 border-b border-border sm:mb-8" role="tablist">
+    <div className="mb-6 flex gap-1 border-b border-edge sm:mb-8" role="tablist">
       <TabButton
         name="overview"
         active={active === "overview"}
@@ -64,10 +64,10 @@ function TabButton({ name, active, onClick, icon, label }: TabButtonProps) {
       onClick={onClick}
       className={cn(
         "relative min-h-[44px] px-3 py-2.5 text-sm font-medium transition-colors sm:min-h-0 sm:px-4",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-t-sm",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 rounded-t-sm",
         active
-          ? "text-primary"
-          : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+          ? "text-brand"
+          : "text-ink-muted hover:bg-muted/40 hover:text-ink",
       )}
     >
       <div className="flex items-center gap-2">
@@ -79,7 +79,7 @@ function TabButton({ name, active, onClick, icon, label }: TabButtonProps) {
         // of the ``border-b`` of the parent strip — without it, the
         // underline floats one pixel above the border and the active
         // tab reads as detached from the content card below.
-        <div className="absolute -bottom-px left-0 right-0 h-0.5 rounded-t bg-primary" />
+        <div className="absolute -bottom-px left-0 right-0 h-0.5 rounded-t bg-brand" />
       )}
     </button>
   )

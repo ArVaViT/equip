@@ -80,12 +80,12 @@ export default function DailyChallengeReviewPage() {
       <PageHeader
         title={
           <h1 className="flex items-center gap-2 font-serif text-2xl font-bold tracking-tight sm:text-3xl">
-            <Languages className="h-6 w-6 text-primary" strokeWidth={1.75} aria-hidden />
+            <Languages className="h-6 w-6 text-brand" strokeWidth={1.75} aria-hidden />
             {t("admin.dailyChallenge.review.title")}
           </h1>
         }
         description={
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-ink-muted">
             {t("admin.dailyChallenge.review.description")}
           </p>
         }
@@ -97,16 +97,16 @@ export default function DailyChallengeReviewPage() {
         }
       />
 
-      <section className="mt-6 rounded-md border border-border bg-card">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
+      <section className="mt-6 rounded-md border border-edge bg-card">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
               {t("admin.dailyChallenge.review.filterStatus")}
             </span>
             <select
               value={status}
               onChange={(e) => setStatusFilter(e.target.value as DailyChallengeStatus)}
-              className="h-7 rounded-md border border-border bg-background px-2 text-xs"
+              className="h-7 rounded-md border border-edge bg-surface px-2 text-xs"
             >
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
@@ -114,7 +114,7 @@ export default function DailyChallengeReviewPage() {
                 </option>
               ))}
             </select>
-            <label className="ml-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <label className="ml-3 flex items-center gap-1.5 text-xs text-ink-muted">
               <input
                 type="checkbox"
                 checked={missingRu}
@@ -124,7 +124,7 @@ export default function DailyChallengeReviewPage() {
             </label>
           </div>
           {!loading && !loadError && (
-            <span className="text-xs tabular-nums text-muted-foreground">
+            <span className="text-xs tabular-nums text-ink-muted">
               {t("admin.dailyChallenge.review.totalCount", { count: total })}
             </span>
           )}
@@ -163,7 +163,7 @@ export default function DailyChallengeReviewPage() {
                 className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:bg-muted/40"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-serif text-sm font-semibold tracking-tight text-foreground">
+                  <p className="truncate font-serif text-sm font-semibold tracking-tight text-ink">
                     {item.bible_book} {item.bible_chapter}
                     {item.bible_verse_from != null
                       ? `:${item.bible_verse_from}${
@@ -173,12 +173,12 @@ export default function DailyChallengeReviewPage() {
                         }`
                       : ""}
                   </p>
-                  <p className="mt-0.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                  <p className="mt-0.5 text-[11px] uppercase tracking-[0.14em] text-ink-muted">
                     {t(`admin.dailyChallenge.review.status.${item.status}`)}
                   </p>
                 </div>
                 <CvBadges item={item} t={t} />
-                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+                <ArrowRight className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
               </button>
             ))
           )}
