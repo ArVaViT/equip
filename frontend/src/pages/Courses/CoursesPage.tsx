@@ -64,7 +64,7 @@ export default function CoursesPage() {
           <div className="bg-home-hero-glow h-full w-full blur-3xl" aria-hidden />
         </div>
         <div className="relative z-10 mx-auto max-w-2xl px-4 pb-2 pt-6 text-center md:pt-10">
-          <p className="animate-fade-in text-xs font-medium uppercase tracking-[0.22em] text-primary/90 mb-3">
+          <p className="animate-fade-in text-xs font-medium uppercase tracking-[0.22em] text-brand/90 mb-3">
             {t("courses.academicPrograms")}
           </p>
           <h1
@@ -73,12 +73,12 @@ export default function CoursesPage() {
           >
             {user ? t("courses.pageTitleAuthed") : t("courses.pageTitle")}
           </h1>
-          <p className="animate-fade-in animate-delay-200 mt-3 text-balance text-sm leading-relaxed text-muted-foreground md:text-base">
+          <p className="animate-fade-in animate-delay-200 mt-3 text-balance text-sm leading-relaxed text-ink-muted md:text-base">
             {user ? t("courses.pageSubtitleAuthed") : t("courses.pageSubtitle")}
           </p>
           <div data-tour="catalog-search" className="animate-fade-in animate-delay-300 relative mx-auto mt-8 max-w-md">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted"
               strokeWidth={1.75}
               aria-hidden
             />
@@ -87,7 +87,7 @@ export default function CoursesPage() {
               onChange={(e) => setInput(e.target.value.slice(0, maxLength))}
               maxLength={maxLength}
               placeholder={t("courses.searchPlaceholder")}
-              className="rounded-md border-border/80 bg-background/85 pl-9 backdrop-blur-sm focus-visible:ring-2"
+              className="rounded-md border-edge/80 bg-surface/85 pl-9 backdrop-blur-sm focus-visible:ring-2"
               aria-label={t("courses.searchPlaceholder")}
             />
           </div>
@@ -95,9 +95,9 @@ export default function CoursesPage() {
       </section>
 
       {!user && (
-        <div className="mb-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-md border border-border border-l-[3px] border-l-info bg-info/5 px-4 py-3 text-center sm:text-left">
+        <div className="mb-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-md border border-edge border-l-[3px] border-l-info bg-info/5 px-4 py-3 text-center sm:text-left">
           <LogIn className="h-4 w-4 shrink-0 text-info" strokeWidth={1.75} aria-hidden="true" />
-          <p className="text-sm text-foreground">
+          <p className="text-sm text-ink">
             <Link
               to="/login"
               className="-my-2 inline-flex min-h-[44px] items-center font-medium underline underline-offset-2 hover:no-underline sm:my-0 sm:min-h-0"

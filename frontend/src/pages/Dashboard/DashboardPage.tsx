@@ -83,18 +83,18 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
   const shell = (body: React.ReactNode, centered = false) => (
     <section
       data-tour="my-courses"
-      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md border border-border bg-card transition-[border-color] duration-300 hover:border-primary/25"
+      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md border border-edge bg-card transition-[border-color] duration-300 hover:border-brand/25"
     >
-      <header className="flex items-center justify-between gap-3 border-b border-border bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
+      <header className="flex items-center justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex min-w-0 items-center gap-2.5">
-          <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
-          <h2 className="truncate font-serif text-sm font-semibold tracking-tight text-foreground">
+          <BookOpen className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
+          <h2 className="truncate font-serif text-sm font-semibold tracking-tight text-ink">
             {headerLabel}
           </h2>
         </div>
         <Link
           to="/courses"
-          className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary transition-opacity hover:opacity-80"
+          className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand transition-opacity hover:opacity-80"
         >
           {t("dashboard.browseAllCta")}
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
@@ -119,7 +119,7 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
     return shell(
       <div className="w-full space-y-3">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="rounded-md border border-border/80 bg-muted/10 px-3 py-3">
+          <div key={i} className="rounded-md border border-edge/80 bg-muted/10 px-3 py-3">
             <Skeleton className="h-4 w-3/5" />
             <Skeleton className="mt-2.5 h-1.5 w-2/3 rounded-full" />
           </div>
@@ -164,7 +164,7 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
               size="sm"
               variant="ghost"
               onClick={onTourStart}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-ink-muted hover:text-ink"
             >
               {t("tour.takeATour")}
             </Button>
@@ -181,7 +181,7 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
         .filter((e) => e.course?.id)
         .map((enrollment, index) => {
           const grade = grades.find((g) => g.course_id === enrollment.course_id)
-          const progressColor = enrollment.progress >= 100 ? "bg-success" : "bg-primary"
+          const progressColor = enrollment.progress >= 100 ? "bg-success" : "bg-brand"
           const courseId = enrollment.course!.id
 
           return (
@@ -189,12 +189,12 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
               key={enrollment.id}
               to={`/courses/${courseId}`}
               style={{ "--stagger-index": index } as React.CSSProperties}
-              className="group block rounded-md border border-border bg-muted/10 px-3 py-2.5 transition-colors hover:border-primary/30 hover:bg-muted/40"
+              className="group block rounded-md border border-edge bg-muted/10 px-3 py-2.5 transition-colors hover:border-brand/30 hover:bg-muted/40"
             >
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start gap-2">
-                    <h3 className="min-w-0 flex-1 truncate font-serif text-sm font-medium leading-tight text-foreground transition-colors duration-200 group-hover:text-primary">
+                    <h3 className="min-w-0 flex-1 truncate font-serif text-sm font-medium leading-tight text-ink transition-colors duration-200 group-hover:text-brand">
                       {enrollment.course?.title || t("dashboard.course")}
                     </h3>
                     {enrollment.progress >= 100 && (
@@ -221,18 +221,18 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
                         />
                       )}
                     </div>
-                    <span className="shrink-0 text-[11px] font-medium tabular-nums text-muted-foreground">
+                    <span className="shrink-0 text-[11px] font-medium tabular-nums text-ink-muted">
                       {enrollment.progress}%
                     </span>
                     {grade?.grade ? (
-                      <span className="rounded-sm border border-border bg-background/80 px-1.5 py-0 text-[10px] font-medium text-foreground">
+                      <span className="rounded-sm border border-edge bg-surface/80 px-1.5 py-0 text-[10px] font-medium text-ink">
                         {grade.grade}
                       </span>
                     ) : null}
                   </div>
                 </div>
                 <ArrowRight
-                  className="h-4 w-4 shrink-0 text-primary transition-transform duration-200 group-hover:translate-x-1"
+                  className="h-4 w-4 shrink-0 text-brand transition-transform duration-200 group-hover:translate-x-1"
                   strokeWidth={1.75}
                   aria-hidden
                 />

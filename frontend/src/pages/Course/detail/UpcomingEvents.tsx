@@ -24,7 +24,7 @@ export function UpcomingEvents({ events }: Props) {
 
   return (
     <div className="mb-5">
-      <h2 className="mb-2 flex items-center gap-2 font-serif text-sm font-semibold tracking-tight text-muted-foreground">
+      <h2 className="mb-2 flex items-center gap-2 font-serif text-sm font-semibold tracking-tight text-ink-muted">
         <CalendarDays className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
         {t("courseDetail.upcoming.heading")}
       </h2>
@@ -37,8 +37,8 @@ export function UpcomingEvents({ events }: Props) {
               key={evt.id}
               className={`flex items-center gap-2 px-3 py-2 rounded-md border text-sm ${
                 overdue
-                  ? "border-l-stripe border-l-destructive border-border bg-destructive/5"
-                  : "border-border hover:bg-muted/40"
+                  ? "border-l-stripe border-l-destructive border-edge bg-destructive/5"
+                  : "border-edge hover:bg-muted/40"
               }`}
             >
               {overdue ? (
@@ -52,14 +52,14 @@ export function UpcomingEvents({ events }: Props) {
                         ? "bg-info"
                         : evt.event_type === "exam"
                           ? "bg-warning"
-                          : "bg-muted-foreground/50"
+                          : "bg-ink-muted/50"
                   }`}
                 />
               )}
               <span className={`flex-1 truncate ${overdue ? "text-destructive" : ""}`}>
                 {evt.title}
               </span>
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
+              <span className="text-xs text-ink-muted whitespace-nowrap">
                 {formatDateLong(evtDate, { year: undefined, month: "short", day: "numeric" })}
               </span>
             </div>

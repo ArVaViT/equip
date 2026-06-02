@@ -27,7 +27,7 @@ export function CohortSelectModal({
   return (
     <Modal open={open} onClose={onClose} title={t("courseDetail.cohortSelect.title")}>
       <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-ink-muted">
           {t("courseDetail.cohortSelect.intro")}
         </p>
         {cohorts.map((cohort) => (
@@ -35,7 +35,7 @@ export function CohortSelectModal({
             key={cohort.id}
             className={`flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors ${
               selectedCohortId === cohort.id
-                ? "border-primary bg-primary/[0.08] dark:bg-primary/15"
+                ? "border-brand bg-brand/[0.08] dark:bg-brand/15"
                 : "hover:bg-muted/40"
             }`}
           >
@@ -48,11 +48,11 @@ export function CohortSelectModal({
             />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium">{cohort.name}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-ink-muted">
                 {formatDate(cohort.start_date)} &mdash; {formatDate(cohort.end_date)}
               </p>
               {cohort.max_students && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-ink-muted">
                   {t("courseDetail.cohortSelect.spotsFilled", {
                     enrolled: cohort.student_count,
                     max: cohort.max_students,

@@ -54,9 +54,9 @@ export function EnrolledHeader({
           <h1 className="mb-1 font-serif text-xl font-semibold tracking-tight text-wrap-safe sm:text-2xl">
             {course.title}
           </h1>
-          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-ink-muted">
             {enrolledCohort && (
-              <span className="flex items-center gap-1 font-medium text-primary">
+              <span className="flex items-center gap-1 font-medium text-brand">
                 <CalendarDays className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
                 {enrolledCohort.name}
               </span>

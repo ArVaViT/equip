@@ -123,14 +123,14 @@ export function NotEnrolledView({
           eager-loaded list from /courses/:id). Keeps the surface honest
           when a course is still a stub — no fake "0 modules" line. */}
       {moduleCount > 0 && (
-        <p className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        <p className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
           <span className="inline-flex items-center gap-1.5">
             <Layers className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
             {t("courseDetail.moduleCount", { count: moduleCount })}
           </span>
           {chapterCount > 0 && (
             <>
-              <span aria-hidden className="text-muted-foreground/40">·</span>
+              <span aria-hidden className="text-ink-muted/40">·</span>
               <span>{t("courseDetail.chapterCount", { count: chapterCount })}</span>
             </>
           )}
@@ -138,7 +138,7 @@ export function NotEnrolledView({
       )}
 
       {course.description && (
-        <p className="text-muted-foreground leading-relaxed mb-6 whitespace-pre-line text-wrap-safe">
+        <p className="text-ink-muted leading-relaxed mb-6 whitespace-pre-line text-wrap-safe">
           {course.description}
         </p>
       )}
@@ -147,17 +147,17 @@ export function NotEnrolledView({
         <Card className="mb-6">
           <CardContent className="py-4">
             <div className="flex flex-wrap items-center gap-2 mb-1">
-              <CalendarDays className="h-4 w-4 text-primary" strokeWidth={1.75} aria-hidden />
+              <CalendarDays className="h-4 w-4 text-brand" strokeWidth={1.75} aria-hidden />
               <span className="font-medium">{activeCohort.name}</span>
               <Badge variant={COHORT_STATUS_BADGE[activeCohort.status]}>
                 {t(COHORT_STATUS_KEY[activeCohort.status])}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-ink-muted">
               {formatDate(activeCohort.start_date)} &mdash; {formatDate(activeCohort.end_date)}
             </p>
             {activeCohort.enrollment_start && activeCohort.enrollment_end && (
-              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <p className="text-xs text-ink-muted mt-1 flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
                 {t("courseDetail.enrollmentRangeLabel", {
                   start: formatDate(activeCohort.enrollment_start),
@@ -166,7 +166,7 @@ export function NotEnrolledView({
               </p>
             )}
             {activeCohort.max_students && (
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-ink-muted mt-1">
                 {t("courseDetail.studentsEnrolledOfMax", {
                   enrolled: activeCohort.student_count,
                   max: activeCohort.max_students,
@@ -181,9 +181,9 @@ export function NotEnrolledView({
         cohorts.length === 0 &&
         (course.enrollment_start || course.enrollment_end) && (
           <div className="flex flex-wrap items-center gap-2 text-sm mb-6">
-            <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+            <CalendarDays className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
             {course.enrollment_start && course.enrollment_end && (
-              <span className="text-muted-foreground text-xs">
+              <span className="text-ink-muted text-xs">
                 {t("courseDetail.enrollmentRangeLabel", {
                   start: formatDate(course.enrollment_start),
                   end: formatDate(course.enrollment_end),
@@ -225,7 +225,7 @@ export function NotEnrolledView({
               <Users className="mr-2 h-4 w-4" strokeWidth={1.75} aria-hidden />
               {t("courseDetail.byInvitationOnly")}
             </Button>
-            <p className="text-sm text-muted-foreground mt-2 max-w-prose">
+            <p className="text-sm text-ink-muted mt-2 max-w-prose">
               {t("courseDetail.byInvitationOnlyHint")}
             </p>
           </div>
@@ -245,7 +245,7 @@ export function NotEnrolledView({
                   : t("courseDetail.enrollInCourse")}
             </Button>
             {!canEnroll && (
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-sm text-ink-muted mt-2">
                 {cohorts.length > 0
                   ? t("courseDetail.enrollmentClosedAllCohorts")
                   : t("courseDetail.noCohortsAvailable")}
