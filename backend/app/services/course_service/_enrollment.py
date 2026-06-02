@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 
 from app.constants import GRADABLE_CHAPTER_TYPES
+from app.core.metrics import increment
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
@@ -51,6 +52,17 @@ def enroll_user_in_course(
             return existing
         raise
     db.refresh(enrollment)
+    # equip.enrollments.created_total feeds the Course Engagement
+    # dashboard's enrollment-rate tile + the dropoff_count derived
+    # metric (denominator = sum(enrollments.created_total) - sum(
+    # chapter_completed_total{first_chapter}) over the same window).
+    # Counter fires once per *new* enrollment — the existing-row early
+    # return above guarantees idempotency for re-enroll attempts.
+    increment(
+        "equip.enrollments.created_total",
+        course_id=str(course_id),
+        cohort_id=str(cohort_id) if cohort_id else "",
+    )
     return enrollment
 
 
