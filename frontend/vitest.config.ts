@@ -14,6 +14,13 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: false,
+    // Scope Vitest to ``src/`` so Playwright's ``e2e/*.spec.ts``
+    // files don't get sucked in — Playwright's ``test.describe`` API
+    // throws when run under Vitest's runner. The default vitest
+    // include is ``**/*.{test,spec}...`` which is too broad once we
+    // have e2e tests alongside the unit suite.
+    include: ['src/**/*.{test,spec}.{js,ts,jsx,tsx}'],
+    exclude: ['node_modules/**', 'dist/**', 'e2e/**'],
     // Coverage is opt-in via `npm run test:run -- --coverage`. The defaults
     // here only kick in when that flag is passed (CI), so day-to-day
     // `npm test` watch sessions stay fast.
