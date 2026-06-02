@@ -162,9 +162,75 @@ async def log_requests(request: Request, call_next):
             response.status_code,
             duration,
         )
+        # ``equip.activity.*`` feeds the Course Engagement dashboard.
+        # We emit one ``requests_total`` per request, tagged with the
+        # locale we resolved (Accept-Language header) and the
+        # course_id when the path carries one. Anonymous + non-course
+        # requests still count toward the global request rate but
+        # carry empty tags (the emitter drops empty values so
+        # Datadog parses cleanly).
+        _emit_activity_metric(request, response, duration)
         return response
     finally:
         vercel_request_id.reset(token)
+
+
+def _extract_course_id(path: str) -> str | None:
+    """Best-effort course_id extraction from the request path.
+
+    Matches the shapes the catalog + detail routes use:
+    * ``/api/v1/courses/{id}``
+    * ``/api/v1/courses/{id}/...``
+    * ``/api/v1/grades/course/{id}/...``
+    * ``/api/v1/calendar/course/{id}/...``
+    * ``/api/v1/progress/course/{id}/...``
+
+    Returns ``None`` for non-course paths so the emitter drops the
+    tag rather than tagging every health check with an empty value.
+    """
+    parts = path.strip("/").split("/")
+    # Look for ``courses/{id}`` or ``course/{id}`` token sequence.
+    for needle in ("courses", "course"):
+        if needle in parts:
+            idx = parts.index(needle)
+            if idx + 1 < len(parts):
+                candidate = parts[idx + 1]
+                # Skip the literal ``my`` / ``students`` / etc. that show
+                # up immediately after ``courses`` on some routes.
+                reserved = {"my", "my-progress", "students", "config", "summary"}
+                if candidate not in reserved and candidate:
+                    return candidate
+    return None
+
+
+def _emit_activity_metric(request: Request, response: object, duration_ms: float) -> None:
+    """Emit ``equip.activity.requests_total`` + ``equip.activity.duration_ms``.
+
+    Wrapped in a try/except + delegated to the non-raising
+    ``metrics.increment`` so a metric problem can never destabilise
+    a request response.
+    """
+    try:
+        from app.core import metrics  # local import keeps cold-start cheap
+
+        accept_language = request.headers.get("accept-language") or ""
+        locale = "ru" if accept_language.lower().startswith("ru") else "en"
+        course_id = _extract_course_id(request.url.path)
+        status_code = getattr(response, "status_code", 0)
+        metrics.increment(
+            "equip.activity.requests_total",
+            locale=locale,
+            course_id=course_id or "",
+            status_code=str(status_code),
+        )
+        metrics.timing(
+            "equip.activity.duration_ms",
+            duration_ms,
+            locale=locale,
+            course_id=course_id or "",
+        )
+    except Exception:
+        return
 
 
 _ROOT_HTML = """<!doctype html>
