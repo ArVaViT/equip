@@ -7,19 +7,26 @@ export const buttonVariants = cva(
   // sub-AA and effectively makes the button — and any spinner / icon
   // inside — invisible. The token-based approach gives a deliberate
   // disabled colour that the design system controls per theme.
+  //
+  // ADR-0011 Wave 3 — migrated to the v2 semantic palette via the
+  // tokens-bridge layer. Primary CTA → ``brand`` (the v2 name for
+  // the violet brand color; v1's ``accent`` is sage and stays
+  // available under that legacy name). Outline / ghost reach for the
+  // sage ``heritage`` palette. Disabled keeps ``muted`` (no v2
+  // equivalent yet — that's wave 4's form-primitives surface).
   "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-[color,box-shadow,transform] duration-150 ease-editorial focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:bg-muted disabled:text-muted-foreground disabled:hover:bg-muted",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default: "bg-brand text-brand-foreground hover:bg-brand/90",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+          "border border-edge-strong bg-surface hover:bg-heritage hover:text-ink",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+          "bg-brand-quiet text-ink hover:bg-brand-quiet/80",
+        ghost: "hover:bg-heritage hover:text-ink",
+        link: "text-brand underline-offset-4 hover:underline",
       },
       size: {
         default: "h-10 px-4 py-2",

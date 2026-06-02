@@ -13,7 +13,12 @@ const Card = React.forwardRef<
       // — multiple call sites use `hover:border-primary/25..40`. Without this the
       // border jumps; with it, the hue settles over ~200ms, which reads as the
       // card "noticing" the cursor instead of toggling.
-      "rounded-md border border-border bg-card text-card-foreground shadow-none transition-[border-color,background-color] duration-200 ease-editorial",
+      //
+      // ADR-0011 Wave 3 — migrated from `border-border bg-card
+      // text-card-foreground` to the v2 semantic vocabulary (`border-edge
+      // bg-surface-elevated text-ink`). Identical pixels today via the
+      // tokens-bridge layer; flips to OKLCH in Wave 9 with no code change.
+      "rounded-md border border-edge bg-surface-elevated text-ink shadow-none transition-[border-color,background-color] duration-200 ease-editorial",
       className
     )}
     {...props}
@@ -54,7 +59,8 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    // Wave 3 — text-muted-foreground -> text-ink-muted (semantic v2).
+    className={cn("text-sm text-ink-muted", className)}
     {...props}
   />
 ))
