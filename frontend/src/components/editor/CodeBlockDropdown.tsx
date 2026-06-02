@@ -84,11 +84,12 @@ export function CodeBlockDropdown({
         }
         aria-haspopup={isInCodeBlock ? "menu" : undefined}
         aria-expanded={isInCodeBlock ? open : undefined}
+        // ADR-0011 Wave 7 — same toolbar-button vocabulary as Callout/Table dropdowns.
         className={cn(
-          "flex items-center gap-0.5 rounded p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "flex items-center gap-0.5 rounded p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
           isInCodeBlock
-            ? "bg-primary/20 text-primary ring-1 ring-inset ring-primary/30"
-            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+            ? "bg-brand/20 text-brand ring-1 ring-inset ring-brand/30"
+            : "text-ink-muted hover:bg-heritage hover:text-ink",
         )}
       >
         <Code2 size={iconSize} strokeWidth={1.75} aria-hidden="true" />
@@ -99,7 +100,7 @@ export function CodeBlockDropdown({
           role="menu"
           aria-label={t("blockEditor.codeBlock.changeLanguage")}
           className={cn(
-            "absolute top-full z-20 mt-1 w-44 rounded-md border bg-background py-1 shadow-lg",
+            "absolute top-full z-20 mt-1 w-44 rounded-md border bg-surface-elevated py-1 shadow-lg",
             alignClass,
           )}
         >
@@ -111,13 +112,13 @@ export function CodeBlockDropdown({
               aria-checked={lang === currentLanguage}
               onClick={() => pickLanguage(lang)}
               className={cn(
-                "flex w-full items-center justify-between gap-2 px-3 py-1.5 text-sm hover:bg-muted transition-colors text-left focus-visible:outline-none focus-visible:bg-muted",
+                "flex w-full items-center justify-between gap-2 px-3 py-1.5 text-sm hover:bg-heritage transition-colors text-left focus-visible:outline-none focus-visible:bg-heritage",
                 lang === currentLanguage && "font-medium",
               )}
             >
               <span>{CODE_LANGUAGE_LABELS[lang]}</span>
               {lang === currentLanguage && (
-                <Check size={14} strokeWidth={1.75} aria-hidden="true" className="text-primary" />
+                <Check size={14} strokeWidth={1.75} aria-hidden="true" className="text-brand" />
               )}
             </button>
           ))}
