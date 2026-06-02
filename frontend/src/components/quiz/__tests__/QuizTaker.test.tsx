@@ -5,6 +5,7 @@ import { I18nextProvider } from "react-i18next"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Quiz, QuizAttempt } from "@/types"
 import i18n from "@/i18n/config"
+import { axe } from "@/test/a11y"
 
 const getChapterQuiz = vi.fn()
 const getMyQuizAttempts = vi.fn()
@@ -236,5 +237,19 @@ describe("QuizTaker", () => {
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /submit exam/i })).toBeInTheDocument(),
     )
+  })
+
+  it("renders without a11y violations in the unanswered active-attempt state", async () => {
+    // QuizTaker is the highest-stakes student surface — wrong a11y
+    // here means a student literally can't complete a graded module.
+    // Pin axe-clean for the post-load, all-options-rendered state.
+    getChapterQuiz.mockResolvedValue(makeQuiz())
+    getMyQuizAttempts.mockResolvedValue([])
+
+    const { container } = render(<QuizTaker chapterId="chap-1" />, renderOpts)
+    await waitFor(() => {
+      expect(screen.getByText("Genesis 1 Quiz")).toBeInTheDocument()
+    })
+    expect(await axe(container)).toHaveNoViolations()
   })
 })
