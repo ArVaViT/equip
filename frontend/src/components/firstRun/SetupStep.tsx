@@ -28,10 +28,10 @@ import { initialsOf } from "@/lib/names"
  */
 function toggleButtonClasses(active: boolean): string {
   return cn(
-    "flex items-center rounded-md border-2 px-3 py-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+    "flex items-center rounded-md border-2 px-3 py-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
     active
-      ? "border-primary bg-primary/10 text-foreground"
-      : "border-transparent bg-muted/30 text-muted-foreground hover:border-primary/30 hover:bg-muted/50",
+      ? "border-brand bg-brand/10 text-ink"
+      : "border-transparent bg-muted/30 text-ink-muted hover:border-brand/30 hover:bg-muted/50",
   )
 }
 
@@ -229,12 +229,12 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
       <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-accent">
         {t("firstRun.setup.eyebrow")}
       </p>
-      <h1 className="font-serif text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-3xl">
+      <h1 className="font-serif text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-3xl">
         {firstName
           ? t("firstRun.setup.titleNamed", { name: firstName })
           : t("firstRun.setup.title")}
       </h1>
-      <p className="max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
+      <p className="max-w-md text-sm leading-relaxed text-ink-muted sm:text-base">
         {t("firstRun.setup.intro")}
       </p>
 
@@ -246,18 +246,18 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
               <img
                 src={toProxyImage(avatarUrl)}
                 alt=""
-                className="h-16 w-16 rounded-full border border-border object-cover"
+                className="h-16 w-16 rounded-full border border-edge object-cover"
               />
             ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border bg-muted font-serif text-base font-semibold text-foreground">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full border border-edge bg-muted font-serif text-base font-semibold text-ink">
                 {initials || (
-                  <UserIcon className="h-7 w-7 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+                  <UserIcon className="h-7 w-7 text-ink-muted" strokeWidth={1.75} aria-hidden />
                 )}
               </div>
             )}
           </div>
           <div className="flex-1">
-            <Label className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            <Label className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
               {t("firstRun.setup.avatar.label")}
             </Label>
             <div className="mt-2">
@@ -291,7 +291,7 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
         <div>
           <Label
             htmlFor={nameId}
-            className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground"
+            className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted"
           >
             {t("firstRun.setup.name.label")}
           </Label>
@@ -305,7 +305,7 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
             aria-describedby={`${nameId}-hint`}
             className="mt-2"
           />
-          <p id={`${nameId}-hint`} className="mt-1.5 text-xs text-muted-foreground/80">
+          <p id={`${nameId}-hint`} className="mt-1.5 text-xs text-ink-muted/80">
             {t("firstRun.setup.name.hint")}
           </p>
         </div>
@@ -314,7 +314,7 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
         <div>
           <Label
             htmlFor={emailId}
-            className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground"
+            className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted"
           >
             {t("firstRun.setup.email.label")}
           </Label>
@@ -325,9 +325,9 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
             // Skipped by the focus trap — typing is impossible, so
             // landing a Tab cursor here just confuses keyboard users.
             tabIndex={-1}
-            className="mt-2 cursor-not-allowed bg-muted/40 text-muted-foreground"
+            className="mt-2 cursor-not-allowed bg-muted/40 text-ink-muted"
           />
-          <p className="mt-1.5 text-xs text-muted-foreground/80">
+          <p className="mt-1.5 text-xs text-ink-muted/80">
             {t("firstRun.setup.email.hint")}
           </p>
         </div>
@@ -335,7 +335,7 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
         {/* Theme — visual toggle, preview-on-click via the live
             useTheme hook (same context that powers the header toggle). */}
         <div>
-          <Label className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          <Label className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
             {t("firstRun.setup.theme.label")}
           </Label>
           <div className="mt-2 grid grid-cols-2 gap-2">
@@ -348,7 +348,7 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
               <Sun className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
               <span className="flex-1 text-left">{t("firstRun.setup.theme.light")}</span>
               {theme === "light" && (
-                <Check className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} aria-hidden />
+                <Check className="h-4 w-4 shrink-0 text-brand" strokeWidth={2.25} aria-hidden />
               )}
             </button>
             <button
@@ -360,7 +360,7 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
               <Moon className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
               <span className="flex-1 text-left">{t("firstRun.setup.theme.dark")}</span>
               {theme === "dark" && (
-                <Check className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} aria-hidden />
+                <Check className="h-4 w-4 shrink-0 text-brand" strokeWidth={2.25} aria-hidden />
               )}
             </button>
           </div>
@@ -368,7 +368,7 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
 
         {/* Language — same preview pattern */}
         <div>
-          <Label className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          <Label className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
             {t("firstRun.setup.language.label")}
           </Label>
           <div className="mt-2 grid grid-cols-2 gap-2">
@@ -380,7 +380,7 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
             >
               <span className="flex-1 text-left">{t("firstRun.setup.language.en")}</span>
               {locale === "en" && (
-                <Check className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} aria-hidden />
+                <Check className="h-4 w-4 shrink-0 text-brand" strokeWidth={2.25} aria-hidden />
               )}
             </button>
             <button
@@ -391,7 +391,7 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
             >
               <span className="flex-1 text-left">{t("firstRun.setup.language.ru")}</span>
               {locale === "ru" && (
-                <Check className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.25} aria-hidden />
+                <Check className="h-4 w-4 shrink-0 text-brand" strokeWidth={2.25} aria-hidden />
               )}
             </button>
           </div>
@@ -415,7 +415,7 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
           size="sm"
           onClick={handleSkip}
           disabled={isBusy}
-          className="text-muted-foreground hover:text-foreground"
+          className="text-ink-muted hover:text-ink"
         >
           {t("firstRun.setup.skip")}
         </Button>

@@ -60,7 +60,7 @@ export function EnrollSplash({ course, firstName, onComplete }: Props) {
       // unmounts a moment before this mounts, so there's no
       // overlap, but using the same z-index keeps the splash above
       // any latent driver.js overlay just in case.
-      className="fixed inset-0 z-[2147483646] flex flex-col items-center justify-center gap-6 overflow-hidden bg-background px-6 text-center"
+      className="fixed inset-0 z-[2147483646] flex flex-col items-center justify-center gap-6 overflow-hidden bg-surface px-6 text-center"
     >
       <motion.span
         className="block h-px w-12 bg-accent/70"
@@ -90,19 +90,19 @@ export function EnrollSplash({ course, firstName, onComplete }: Props) {
           <img
             src={cover}
             alt=""
-            className="h-28 w-28 rounded-md border border-border object-cover shadow-[0_18px_45px_hsl(var(--foreground)/0.18)] sm:h-32 sm:w-32"
+            className="h-28 w-28 rounded-md border border-edge object-cover shadow-[0_18px_45px_hsl(var(--foreground)/0.18)] sm:h-32 sm:w-32"
           />
         ) : (
-          <div className="flex h-28 w-28 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground shadow-[0_18px_45px_hsl(var(--foreground)/0.12)] sm:h-32 sm:w-32">
+          <div className="flex h-28 w-28 items-center justify-center rounded-md border border-edge bg-muted text-ink-muted shadow-[0_18px_45px_hsl(var(--foreground)/0.12)] sm:h-32 sm:w-32">
             <BookOpen className="h-10 w-10" strokeWidth={1.5} aria-hidden />
           </div>
         )}
-        <h1 className="max-w-2xl text-balance font-serif text-3xl font-semibold leading-tight tracking-tight text-foreground sm:text-4xl">
+        <h1 className="max-w-2xl text-balance font-serif text-3xl font-semibold leading-tight tracking-tight text-ink sm:text-4xl">
           {course.title}
         </h1>
       </motion.div>
       <motion.p
-        className="max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base"
+        className="max-w-md text-sm leading-relaxed text-ink-muted sm:text-base"
         initial={prefersReducedMotion ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.55, delay: 0.45, ease: EDITORIAL_EASE }}

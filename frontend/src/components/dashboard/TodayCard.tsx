@@ -80,18 +80,18 @@ export function TodayCard() {
   return (
     <section
       aria-labelledby="today-card-heading"
-      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md border border-border bg-card transition-[border-color] duration-300 hover:border-primary/25"
+      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md border border-edge bg-card transition-[border-color] duration-300 hover:border-brand/25"
     >
-      <header className="flex items-center justify-between gap-3 border-b border-border bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
+      <header className="flex items-center justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex min-w-0 items-center gap-2.5">
-          <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+          <CalendarDays className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
           <div className="min-w-0">
-            <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
               {t("dashboard.today.eyebrow")}
             </p>
             <h2
               id="today-card-heading"
-              className="truncate font-serif text-sm font-semibold capitalize tracking-tight text-foreground"
+              className="truncate font-serif text-sm font-semibold capitalize tracking-tight text-ink"
             >
               {dateLabel}
             </h2>
@@ -99,7 +99,7 @@ export function TodayCard() {
         </div>
         <Link
           to="/calendar"
-          className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary transition-opacity hover:opacity-80"
+          className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand transition-opacity hover:opacity-80"
         >
           {t("dashboard.today.openFull")}
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
@@ -125,12 +125,12 @@ export function TodayCard() {
               <li key={e.id} className="flex items-start gap-2.5 text-xs">
                 <span
                   aria-hidden
-                  className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
+                  className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand"
                 />
                 <div className="min-w-0">
-                  <p className="truncate font-medium text-foreground">{e.title}</p>
+                  <p className="truncate font-medium text-ink">{e.title}</p>
                   {e.course_title && (
-                    <p className="truncate text-muted-foreground">{e.course_title}</p>
+                    <p className="truncate text-ink-muted">{e.course_title}</p>
                   )}
                 </div>
               </li>

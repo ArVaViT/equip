@@ -56,10 +56,10 @@ function OptionButton({ option, reveal, disabled, onClick }: OptionButtonProps) 
       className={cn(
         "group flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-left text-xs transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-        reveal === null && "border-border bg-background hover:border-primary/30 hover:bg-muted/30",
-        showAsCorrect && "border-success/40 bg-success/10 text-foreground",
-        showAsWrong && "border-destructive/40 bg-destructive/10 text-foreground",
-        reveal !== null && !showAsCorrect && !showAsWrong && "border-border bg-background text-muted-foreground",
+        reveal === null && "border-edge bg-surface hover:border-brand/30 hover:bg-muted/30",
+        showAsCorrect && "border-success/40 bg-success/10 text-ink",
+        showAsWrong && "border-destructive/40 bg-destructive/10 text-ink",
+        reveal !== null && !showAsCorrect && !showAsWrong && "border-edge bg-surface text-ink-muted",
         disabled && "cursor-default",
       )}
     >
@@ -67,10 +67,10 @@ function OptionButton({ option, reveal, disabled, onClick }: OptionButtonProps) 
         aria-hidden
         className={cn(
           "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold",
-          reveal === null && "border-border text-muted-foreground group-hover:border-primary/40",
+          reveal === null && "border-edge text-ink-muted group-hover:border-brand/40",
           showAsCorrect && "border-success bg-success text-success-foreground",
           showAsWrong && "border-destructive bg-destructive text-destructive-foreground",
-          reveal !== null && !showAsCorrect && !showAsWrong && "border-border text-muted-foreground",
+          reveal !== null && !showAsCorrect && !showAsWrong && "border-edge text-ink-muted",
         )}
       >
         {showAsCorrect ? (
@@ -94,10 +94,10 @@ interface CandleStreakProps {
 function CandleStreak({ count, label }: CandleStreakProps) {
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full border border-border bg-background/80 px-2 py-0.5 text-[11px] font-medium text-foreground"
+      className="inline-flex items-center gap-1 rounded-full border border-edge bg-surface/80 px-2 py-0.5 text-[11px] font-medium text-ink"
       aria-label={label}
     >
-      <Flame className="h-3 w-3 text-primary" strokeWidth={1.75} aria-hidden />
+      <Flame className="h-3 w-3 text-brand" strokeWidth={1.75} aria-hidden />
       <span className="tabular-nums">{count}</span>
     </span>
   )
@@ -228,18 +228,18 @@ export function DailyChallengeCard() {
   return (
     <section
       aria-labelledby="dc-card-heading"
-      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md border border-border bg-card transition-[border-color] duration-300 hover:border-primary/25"
+      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md border border-edge bg-card transition-[border-color] duration-300 hover:border-brand/25"
     >
-      <header className="flex items-center justify-between gap-3 border-b border-border bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
+      <header className="flex items-center justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex min-w-0 items-center gap-2.5">
-          <Sparkles className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+          <Sparkles className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
           <div className="min-w-0">
-            <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
               {t("dailyChallenge.eyebrow")}
             </p>
             <h2
               id="dc-card-heading"
-              className="truncate font-serif text-sm font-semibold tracking-tight text-foreground"
+              className="truncate font-serif text-sm font-semibold tracking-tight text-ink"
             >
               {data ? verseLabel : t("dailyChallenge.title")}
             </h2>
@@ -251,7 +251,7 @@ export function DailyChallengeCard() {
           )}
           <Link
             to="/daily-challenge/archive"
-            className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-primary transition-opacity hover:opacity-80"
+            className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-brand transition-opacity hover:opacity-80"
           >
             {t("dailyChallenge.openArchive")}
             <ArrowRight className="h-3 w-3" strokeWidth={1.75} aria-hidden />
@@ -277,7 +277,7 @@ export function DailyChallengeCard() {
           />
         ) : data ? (
           <>
-            <p className="text-sm font-medium leading-snug text-foreground">{data.question_text}</p>
+            <p className="text-sm font-medium leading-snug text-ink">{data.question_text}</p>
             <ul className="space-y-1.5">
               {[...data.options]
                 .sort((a, b) => a.order_index - b.order_index)
@@ -293,11 +293,11 @@ export function DailyChallengeCard() {
                 ))}
             </ul>
             {reveal !== null && (
-              <div className="space-y-1.5 rounded-md border border-border/80 bg-muted/20 px-3 py-2.5">
+              <div className="space-y-1.5 rounded-md border border-edge/80 bg-muted/20 px-3 py-2.5">
                 <p
                   className={cn(
                     "text-[11px] font-semibold uppercase tracking-[0.14em]",
-                    reveal.is_correct ? "text-success" : "text-muted-foreground",
+                    reveal.is_correct ? "text-success" : "text-ink-muted",
                   )}
                 >
                   {reveal.is_correct
@@ -305,7 +305,7 @@ export function DailyChallengeCard() {
                     : t("dailyChallenge.reveal.wrong")}
                 </p>
                 {reveal.explanation && (
-                  <p className="text-xs leading-snug text-foreground">{reveal.explanation}</p>
+                  <p className="text-xs leading-snug text-ink">{reveal.explanation}</p>
                 )}
               </div>
             )}

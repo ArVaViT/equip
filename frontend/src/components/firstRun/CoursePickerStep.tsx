@@ -160,12 +160,12 @@ export function CoursePickerStep({ firstName, onEnrolled, onBrowse, onSkip }: Pr
       <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-accent">
         {t("firstRun.picker.eyebrow")}
       </p>
-      <h1 className="font-serif text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-3xl">
+      <h1 className="font-serif text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-3xl">
         {firstName
           ? t("firstRun.picker.titleNamed", { name: firstName })
           : t("firstRun.picker.title")}
       </h1>
-      <p className="max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
+      <p className="max-w-md text-sm leading-relaxed text-ink-muted sm:text-base">
         {t("firstRun.picker.intro")}
       </p>
 
@@ -177,8 +177,8 @@ export function CoursePickerStep({ firstName, onEnrolled, onBrowse, onSkip }: Pr
             ))}
           </div>
         ) : error ? (
-          <div className="flex flex-col items-center gap-3 rounded-md border border-dashed border-border bg-muted/20 p-6 text-center">
-            <p className="text-sm text-muted-foreground">
+          <div className="flex flex-col items-center gap-3 rounded-md border border-dashed border-edge bg-muted/20 p-6 text-center">
+            <p className="text-sm text-ink-muted">
               {t("firstRun.picker.loadFailed")}
             </p>
             <Button
@@ -204,10 +204,10 @@ export function CoursePickerStep({ firstName, onEnrolled, onBrowse, onSkip }: Pr
                     aria-pressed={selected}
                     disabled={enrolling}
                     className={cn(
-                      "group relative flex h-full w-full items-start gap-3 rounded-md border-2 p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      "group relative flex h-full w-full items-start gap-3 rounded-md border-2 p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
                       selected
-                        ? "border-primary bg-primary/[0.06]"
-                        : "border-transparent bg-muted/30 hover:border-primary/30 hover:bg-muted/50",
+                        ? "border-brand bg-brand/[0.06]"
+                        : "border-transparent bg-muted/30 hover:border-brand/30 hover:bg-muted/50",
                       enrolling && "opacity-60",
                     )}
                   >
@@ -216,28 +216,28 @@ export function CoursePickerStep({ firstName, onEnrolled, onBrowse, onSkip }: Pr
                         src={cover}
                         alt=""
                         loading="lazy"
-                        className="h-16 w-16 shrink-0 rounded-sm border border-border object-cover"
+                        className="h-16 w-16 shrink-0 rounded-sm border border-edge object-cover"
                       />
                     ) : (
-                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-sm border border-border bg-muted text-muted-foreground">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-sm border border-edge bg-muted text-ink-muted">
                         <BookOpen className="h-5 w-5" strokeWidth={1.75} aria-hidden />
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <h2 className="line-clamp-2 font-serif text-base font-semibold leading-tight tracking-tight text-foreground">
+                      <h2 className="line-clamp-2 font-serif text-base font-semibold leading-tight tracking-tight text-ink">
                         {course.title}
                       </h2>
                       {course.description && (
-                        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-ink-muted">
                           {course.description}
                         </p>
                       )}
-                      <p className="mt-2 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground/80">
+                      <p className="mt-2 text-[10px] font-medium uppercase tracking-[0.14em] text-ink-muted/80">
                         {t("firstRun.picker.modulesCount", { count: moduleCount })}
                       </p>
                     </div>
                     {selected && (
-                      <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-brand-foreground">
                         <Check className="h-3 w-3" strokeWidth={3} aria-hidden />
                       </span>
                     )}
@@ -274,7 +274,7 @@ export function CoursePickerStep({ firstName, onEnrolled, onBrowse, onSkip }: Pr
               size="sm"
               onClick={handleBrowse}
               disabled={enrolling}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-ink-muted hover:text-ink"
             >
               {t("firstRun.picker.browseAll")}
             </Button>
@@ -284,7 +284,7 @@ export function CoursePickerStep({ firstName, onEnrolled, onBrowse, onSkip }: Pr
               size="sm"
               onClick={onSkip}
               disabled={enrolling}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-ink-muted hover:text-ink"
             >
               {t("firstRun.picker.skip")}
             </Button>
