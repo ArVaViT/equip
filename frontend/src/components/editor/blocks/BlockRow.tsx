@@ -64,22 +64,22 @@ export function BlockRow({
       onDrop={onDrop}
       onDragEnd={onDragEnd}
       className={`rounded-md border transition-colors ${
-        isDragOver ? "border-primary bg-primary/5" : "bg-background"
+        isDragOver ? "border-brand bg-brand/5" : "bg-surface"
       }`}
     >
       <div
         className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none"
         onClick={onExpandToggle}
       >
-        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0 cursor-grab" strokeWidth={1.75} />
+        <GripVertical className="h-3.5 w-3.5 text-ink-muted/40 shrink-0 cursor-grab" strokeWidth={1.75} />
         {expanded ? (
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" strokeWidth={1.75} />
+          <ChevronDown className="h-3.5 w-3.5 text-ink-muted shrink-0" strokeWidth={1.75} />
         ) : (
-          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" strokeWidth={1.75} />
+          <ChevronRight className="h-3.5 w-3.5 text-ink-muted shrink-0" strokeWidth={1.75} />
         )}
-        <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <Icon className="h-3.5 w-3.5 text-ink-muted shrink-0" />
         <span className="text-sm font-medium flex-1">{label}</span>
-        <span className="text-xs text-muted-foreground">#{index + 1}</span>
+        <span className="text-xs text-ink-muted">#{index + 1}</span>
         <Button
           variant="ghost"
           size="sm"

@@ -66,7 +66,7 @@ export function FileBlockEditor({ block, chapterId, onUpdated }: Props) {
       </Label>
       {hasFile ? (
         <div className="flex items-center gap-2 rounded-md border px-3 py-2 bg-muted/30">
-          <FileText className="h-4 w-4 text-muted-foreground shrink-0" strokeWidth={1.75} />
+          <FileText className="h-4 w-4 text-ink-muted shrink-0" strokeWidth={1.75} />
           <span className="text-sm flex-1 truncate">
             {block.file_name ?? block.file_path}
           </span>
@@ -84,7 +84,7 @@ export function FileBlockEditor({ block, chapterId, onUpdated }: Props) {
             variant="ghost"
             onClick={clear}
             disabled={uploading}
-            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+            className="h-7 w-7 p-0 text-ink-muted hover:text-destructive"
             aria-label={t("blockEditor.file.removeAria")}
           >
             <X className="h-3.5 w-3.5" strokeWidth={1.75} />

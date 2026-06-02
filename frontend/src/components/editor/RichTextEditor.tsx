@@ -59,7 +59,7 @@ export default function RichTextEditor({
       }),
       Link.configure({
         openOnClick: false,
-        HTMLAttributes: { class: "text-primary underline cursor-pointer" },
+        HTMLAttributes: { class: "text-brand underline cursor-pointer" },
       }),
       Placeholder.configure({ placeholder }),
       Image.configure({
@@ -162,7 +162,7 @@ export default function RichTextEditor({
   if (!editor) return null;
 
   return (
-    <div className="relative rounded-md border border-input bg-background">
+    <div className="relative rounded-md border border-edge-strong bg-surface">
       {editable && (
         <EditorToolbar
           editor={editor}
@@ -185,7 +185,7 @@ export default function RichTextEditor({
             type="button"
             aria-label={t("blockEditor.toolbar.dragHandle")}
             title={t("blockEditor.toolbar.dragHandle")}
-            className="flex h-6 w-5 cursor-grab items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="flex h-6 w-5 cursor-grab items-center justify-center rounded text-ink-muted transition-colors hover:bg-muted hover:text-ink active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <GripVertical size={14} strokeWidth={1.75} aria-hidden="true" />
           </button>
@@ -226,7 +226,7 @@ function CharacterCounter({
   // strings ("23.4%") each keystroke even when visually unchanged.
   const percent = Math.round(ratio * 100);
   return (
-    <div className="border-t border-input">
+    <div className="border-t border-edge-strong">
       <div
         className="h-0.5 w-full bg-muted/60"
         role="presentation"
@@ -235,7 +235,7 @@ function CharacterCounter({
         <div
           className={cn(
             "h-full transition-[width] duration-150 ease-out",
-            tone === "muted" && "bg-muted-foreground/40",
+            tone === "muted" && "bg-ink-muted/40",
             tone === "warning" && "bg-warning",
             tone === "destructive" && "bg-destructive",
           )}
@@ -252,7 +252,7 @@ function CharacterCounter({
         <span
           className={cn(
             "transition-colors",
-            tone === "muted" && "text-muted-foreground",
+            tone === "muted" && "text-ink-muted",
             tone === "warning" && "text-warning font-medium",
             tone === "destructive" && "text-destructive font-medium",
           )}
