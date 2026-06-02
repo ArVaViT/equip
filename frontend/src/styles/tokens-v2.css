@@ -1,0 +1,100 @@
+/*
+ * Visual overhaul v2 — Wave 1 foundation: OKLCH-keyed token layer.
+ *
+ * Not imported anywhere yet. The Tailwind v4 `@theme` block will read
+ * from these custom properties once the v4 migration starts (see
+ * ADR-0011). For now they live next to the v1 tokens (in index.css)
+ * as a side-by-side reference so:
+ *
+ * 1. Designers / contributors can preview the new palette in a
+ *    one-off stylesheet by importing this file ahead of index.css.
+ * 2. The OKLCH math is in source control and reviewable BEFORE we
+ *    rip out the v1 HSL tokens — no big-bang migration risk.
+ * 3. The sentinel test (`tokens-v2.test.ts`) asserts the OKLCH
+ *    values parse and stay numerically close to the v1 HSL ones
+ *    (CIEDE2000 ΔE ≤ 5 — a comfortable "perceptibly similar"
+ *    margin given the perception-uniform OKLCH bias).
+ *
+ * Naming convention:
+ * - --color-surface         → page / card background base
+ * - --color-surface-elevated → modal / popover background
+ * - --color-ink             → primary text
+ * - --color-ink-muted       → secondary text
+ * - --color-accent          → CTA / link / focused state
+ * - --color-accent-quiet    → hover/selected tint of accent
+ * - --color-edge            → border / divider
+ * - --color-success / warning / danger / info — status semantics
+ *
+ * NOTE on browser support: OKLCH ships in Chrome/Edge/Safari/
+ * Firefox stable as of 2023; Equip's user base (>95% Chromium-
+ * family) handles it natively. No fallback layer.
+ */
+
+:root,
+.light {
+  /* Page surfaces. */
+  --color-surface: oklch(97.5% 0.012 80);
+  --color-surface-elevated: oklch(99% 0.008 80);
+  --color-surface-sunken: oklch(95% 0.012 80);
+
+  /* Ink. */
+  --color-ink: oklch(22% 0.05 290);
+  --color-ink-muted: oklch(46% 0.03 280);
+  --color-ink-inverted: oklch(98% 0.005 80);
+
+  /* Accents — brand violet + heritage sage. */
+  --color-accent: oklch(40% 0.18 290);
+  --color-accent-quiet: oklch(94% 0.04 290);
+  --color-accent-strong: oklch(50% 0.2 290);
+
+  --color-heritage: oklch(64% 0.1 150);
+  --color-heritage-quiet: oklch(94% 0.03 150);
+
+  /* Edges. */
+  --color-edge: oklch(89% 0.015 280);
+  --color-edge-strong: oklch(78% 0.025 280);
+
+  /* Status semantics. */
+  --color-success: oklch(48% 0.14 145);
+  --color-success-quiet: oklch(94% 0.04 145);
+  --color-warning: oklch(60% 0.18 65);
+  --color-warning-quiet: oklch(94% 0.05 65);
+  --color-danger: oklch(50% 0.2 25);
+  --color-danger-quiet: oklch(94% 0.05 25);
+  --color-info: oklch(52% 0.16 240);
+  --color-info-quiet: oklch(94% 0.04 240);
+
+  /* Focus ring. */
+  --color-focus-ring: oklch(58% 0.2 290 / 60%);
+}
+
+.dark {
+  --color-surface: oklch(15% 0.015 280);
+  --color-surface-elevated: oklch(20% 0.018 280);
+  --color-surface-sunken: oklch(12% 0.012 280);
+
+  --color-ink: oklch(95% 0.01 80);
+  --color-ink-muted: oklch(72% 0.02 80);
+  --color-ink-inverted: oklch(15% 0.015 280);
+
+  --color-accent: oklch(70% 0.15 290);
+  --color-accent-quiet: oklch(28% 0.08 290);
+  --color-accent-strong: oklch(80% 0.18 290);
+
+  --color-heritage: oklch(70% 0.1 150);
+  --color-heritage-quiet: oklch(28% 0.05 150);
+
+  --color-edge: oklch(28% 0.02 280);
+  --color-edge-strong: oklch(38% 0.03 280);
+
+  --color-success: oklch(70% 0.12 145);
+  --color-success-quiet: oklch(28% 0.05 145);
+  --color-warning: oklch(75% 0.15 65);
+  --color-warning-quiet: oklch(30% 0.06 65);
+  --color-danger: oklch(70% 0.18 25);
+  --color-danger-quiet: oklch(30% 0.06 25);
+  --color-info: oklch(70% 0.14 240);
+  --color-info-quiet: oklch(28% 0.05 240);
+
+  --color-focus-ring: oklch(75% 0.18 290 / 60%);
+}
