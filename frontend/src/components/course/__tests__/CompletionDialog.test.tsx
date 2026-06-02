@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { I18nextProvider } from "react-i18next"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import i18n from "@/i18n/config"
+import { axe } from "@/test/a11y"
 import CompletionDialog from "../CompletionDialog"
 import type { Certificate } from "@/types"
 
@@ -119,5 +120,16 @@ describe("CompletionDialog", () => {
     await waitFor(() => {
       expect(onClose).toHaveBeenCalled()
     })
+  })
+
+  it("renders without a11y violations in the open / unrequested state", async () => {
+    // Dialog is a high-stakes moment (course completion) — a labeling
+    // regression here is more visible than on a side card. Pin the
+    // open-state axe scan against baseElement since Radix portals
+    // the content outside the test container.
+    const { baseElement } = render(<CompletionDialog {...baseProps} />, {
+      wrapper: Wrapper,
+    })
+    expect(await axe(baseElement)).toHaveNoViolations()
   })
 })
