@@ -1290,6 +1290,27 @@
     "body": true
   },
   {
+    "method": "GET",
+    "path": "/api/v1/courses/{course_id}/export.pdf",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "403",
+      "404",
+      "422"
+    ],
+    "body": false
+  },
+  {
     "method": "POST",
     "path": "/api/v1/courses/{course_id}/modules",
     "params": [
