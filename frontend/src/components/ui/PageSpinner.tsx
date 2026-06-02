@@ -16,7 +16,7 @@ interface PageSpinnerProps {
 }
 
 // One shared spinner used everywhere we'd previously hand-rolled
-// `animate-spin rounded-full border-* border-primary border-t-transparent`.
+// `animate-spin rounded-full border-* border-brand border-t-transparent`.
 // Consolidating means theme tweaks (color, size) only need to land in one file.
 //
 // `role="status"` + `aria-live="polite"` lets screen readers announce
@@ -29,7 +29,7 @@ export default function PageSpinner({ variant = "page", label }: PageSpinnerProp
 
   if (variant === "screen") {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="flex items-center justify-center min-h-screen bg-surface">
         <div
           role="status"
           aria-live="polite"
@@ -38,9 +38,9 @@ export default function PageSpinner({ variant = "page", label }: PageSpinnerProp
         >
           <div
             aria-hidden="true"
-            className="h-10 w-10 animate-spin rounded-full border-[3px] border-primary border-t-transparent"
+            className="h-10 w-10 animate-spin rounded-full border-[3px] border-brand border-t-transparent"
           />
-          {label && <span className="text-sm text-muted-foreground">{label}</span>}
+          {label && <span className="text-sm text-ink-muted">{label}</span>}
         </div>
       </div>
     )
@@ -56,7 +56,7 @@ export default function PageSpinner({ variant = "page", label }: PageSpinnerProp
       >
         <div
           aria-hidden="true"
-          className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"
+          className="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent"
         />
       </div>
     )
@@ -70,7 +70,7 @@ export default function PageSpinner({ variant = "page", label }: PageSpinnerProp
     return (
       <div
         aria-hidden="true"
-        className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"
+        className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent"
       />
     )
   }
@@ -84,7 +84,7 @@ export default function PageSpinner({ variant = "page", label }: PageSpinnerProp
     >
       <div
         aria-hidden="true"
-        className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"
+        className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent"
       />
     </div>
   )

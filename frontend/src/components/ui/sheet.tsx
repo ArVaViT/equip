@@ -29,7 +29,7 @@ const SheetOverlay = React.forwardRef<
 ))
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
 
-// ADR-0011 Wave 5 — bg-background -> bg-surface, border-border -> border-edge.
+// ADR-0011 Wave 5 — bg-surface -> bg-surface, border-edge -> border-edge.
 const sheetVariants = cva(
   "fixed z-50 gap-4 bg-surface shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-200 data-[state=open]:duration-300",
   {
@@ -59,7 +59,7 @@ const SheetContent = React.forwardRef<
       <SheetOverlay />
       <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
         {children}
-        {/* ADR-0011 Wave 5 — ring-ring -> ring-brand. */}
+        {/* ADR-0011 Wave 5 — ring-brand -> ring-brand. */}
         <SheetPrimitive.Close className="absolute right-3 top-3 rounded-md p-2 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
           <X className="h-4 w-4" strokeWidth={1.75} aria-hidden />
           <span className="sr-only">{t("common.close")}</span>
@@ -70,7 +70,7 @@ const SheetContent = React.forwardRef<
 })
 SheetContent.displayName = SheetPrimitive.Content.displayName
 
-// ADR-0011 Wave 5 — border-border -> border-edge.
+// ADR-0011 Wave 5 — border-edge -> border-edge.
 const SheetHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={cn("flex flex-col gap-1 border-b border-edge px-6 pb-4 pt-6 text-left", className)} {...props} />
 )
@@ -82,7 +82,7 @@ const SheetTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Title
     ref={ref}
-    // ADR-0011 Wave 5 — text-foreground -> text-ink.
+    // ADR-0011 Wave 5 — text-ink -> text-ink.
     className={cn("font-serif text-lg font-semibold tracking-tight text-ink", className)}
     {...props}
   />
@@ -95,7 +95,7 @@ const SheetDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Description
     ref={ref}
-    // ADR-0011 Wave 5 — text-muted-foreground -> text-ink-muted.
+    // ADR-0011 Wave 5 — text-ink-muted -> text-ink-muted.
     className={cn("text-sm text-ink-muted", className)}
     {...props}
   />

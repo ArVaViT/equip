@@ -142,8 +142,8 @@ export function DatePicker({
           aria-label={ariaLabel}
           className={cn(
             "h-9 justify-start gap-2 px-3 font-normal",
-            !value && "text-muted-foreground",
-            active && "border-primary/40 ring-1 ring-primary/40",
+            !value && "text-ink-muted",
+            active && "border-brand/40 ring-1 ring-primary/40",
             className,
           )}
         >
@@ -155,7 +155,7 @@ export function DatePicker({
         className="w-[min(20rem,calc(100vw-2rem))] max-w-sm p-0"
         align="start"
       >
-        <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+        <div className="flex items-center justify-between gap-2 border-b border-edge px-3 py-2">
           <Button
             type="button"
             variant="ghost"
@@ -166,7 +166,7 @@ export function DatePicker({
           >
             <ChevronLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
           </Button>
-          <p className="text-sm font-medium capitalize text-foreground">{monthLabel}</p>
+          <p className="text-sm font-medium capitalize text-ink">{monthLabel}</p>
           <Button
             type="button"
             variant="ghost"
@@ -184,7 +184,7 @@ export function DatePicker({
             {weekdayHeads.map((d, i) => (
               <div
                 key={i}
-                className="pb-1 text-center text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground"
+                className="pb-1 text-center text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted"
               >
                 {d}
               </div>
@@ -200,9 +200,9 @@ export function DatePicker({
                 className={cn(
                   "relative flex h-8 w-full items-center justify-center rounded-sm text-xs tabular-nums",
                   "transition-colors hover:bg-muted",
-                  c.inCurrentMonth ? "text-foreground" : "text-muted-foreground/40",
+                  c.inCurrentMonth ? "text-ink" : "text-ink-muted/40",
                   c.isToday && !c.isSelected && "ring-1 ring-primary/60",
-                  c.isSelected && "bg-primary font-medium text-primary-foreground hover:bg-primary/90",
+                  c.isSelected && "bg-brand font-medium text-brand-foreground hover:bg-brand/90",
                 )}
                 aria-label={c.date.toLocaleDateString(i18n.language, {
                   weekday: "long",
@@ -218,14 +218,14 @@ export function DatePicker({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-border px-2 py-1.5">
+        <div className="flex items-center justify-end gap-2 border-t border-edge px-2 py-1.5">
           <Button
             type="button"
             variant="ghost"
             size="sm"
             onClick={() => onChange("")}
             disabled={!value}
-            className="h-7 text-xs text-muted-foreground hover:text-foreground"
+            className="h-7 text-xs text-ink-muted hover:text-ink"
           >
             <X className="mr-1 h-3 w-3" strokeWidth={1.75} aria-hidden />
             {t("dateRangePicker.clear")}

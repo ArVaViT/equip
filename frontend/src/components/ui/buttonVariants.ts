@@ -14,7 +14,7 @@ export const buttonVariants = cva(
   // available under that legacy name). Outline / ghost reach for the
   // sage ``heritage`` palette. Disabled keeps ``muted`` (no v2
   // equivalent yet — that's wave 4's form-primitives surface).
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-[color,box-shadow,transform] duration-150 ease-editorial focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:bg-muted disabled:text-muted-foreground disabled:hover:bg-muted",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-[color,box-shadow,transform] duration-150 ease-editorial focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:pointer-events-none disabled:bg-muted disabled:text-ink-muted disabled:hover:bg-muted",
   {
     variants: {
       variant: {
