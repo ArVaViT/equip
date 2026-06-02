@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
+from app.core.metrics import gauge
 from app.models.certificate import Certificate
 from app.models.course import Course, CourseStatus
 from app.models.review import CourseReview
@@ -77,6 +78,14 @@ def create_or_update_review(
         existing.comment = data.comment
         db.commit()
         db.refresh(existing)
+        # equip.reviews.rating_latest gauges the most recent rating
+        # per (user, course). Datadog aggregates by ``avg`` per course
+        # to drive the Course Engagement dashboard's rating tile.
+        gauge(
+            "equip.reviews.rating_latest",
+            float(data.rating),
+            course_id=str(course_id),
+        )
         response.status_code = status.HTTP_200_OK
         return existing
 
@@ -101,6 +110,11 @@ def create_or_update_review(
             existing.comment = data.comment
             db.commit()
             db.refresh(existing)
+            gauge(
+                "equip.reviews.rating_latest",
+                float(data.rating),
+                course_id=str(course_id),
+            )
             response.status_code = status.HTTP_200_OK
             return existing
         # Concurrent delete between the duplicate insert and this read, or a
@@ -113,6 +127,11 @@ def create_or_update_review(
             context={"resource_type": "review", "course_id": course_id},
         ) from None
     db.refresh(review)
+    gauge(
+        "equip.reviews.rating_latest",
+        float(data.rating),
+        course_id=str(course_id),
+    )
     response.status_code = status.HTTP_201_CREATED
     return review
 
