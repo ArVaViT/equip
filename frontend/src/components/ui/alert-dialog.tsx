@@ -35,8 +35,9 @@ const AlertDialogContent = React.forwardRef<
     <AlertDialogOverlay />
     <AlertDialogPrimitive.Content
       ref={ref}
+      // ADR-0011 Wave 5 — border-border -> border-edge, bg-background -> bg-surface.
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border border-border bg-background p-6 shadow-lg sm:rounded-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border border-edge bg-surface p-6 shadow-lg sm:rounded-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         className,
       )}
       {...props}
@@ -76,7 +77,8 @@ const AlertDialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    // ADR-0011 Wave 5 — text-muted-foreground -> text-ink-muted.
+    className={cn("text-sm text-ink-muted", className)}
     {...props}
   />
 ))
@@ -206,10 +208,10 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 </AlertDialogDescription>
               )}
               {confirmState.bulletList && confirmState.bulletList.length > 0 && (
-                <ul className="mt-3 space-y-1 rounded-md border border-border bg-muted/30 px-4 py-3 text-sm text-foreground">
+                <ul className="mt-3 space-y-1 rounded-md border border-edge bg-muted/30 px-4 py-3 text-sm text-ink">
                   {confirmState.bulletList.map((item, i) => (
                     <li key={i} className="flex items-start gap-2 text-wrap-safe">
-                      <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-muted-foreground" />
+                      <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-ink-muted" />
                       <span>{item}</span>
                     </li>
                   ))}
@@ -258,7 +260,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 // Use the dialog title as the accessible name — the prompt
                 // input is the dialog's sole field, so the title IS its label.
                 aria-label={promptState.title}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="flex h-10 w-full rounded-md border border-edge-strong bg-surface px-3 py-2 text-sm ring-offset-background placeholder:text-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
               />
               <AlertDialogFooter className="mt-4">
                 <AlertDialogCancel type="button" onClick={() => handlePromptDone(null)}>
