@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom"
 import { I18nextProvider } from "react-i18next"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import i18n from "@/i18n/config"
+import { axe } from "@/test/a11y"
 import CourseCard from "../CourseCard"
 import type { Course } from "@/types"
 
@@ -139,5 +140,26 @@ describe("CourseCard", () => {
     )
     expect(screen.getByText(/by invitation/i)).toBeInTheDocument()
     expect(screen.queryByText(/enrolling now/i)).not.toBeInTheDocument()
+  })
+
+  it("renders without any a11y violations (open enrollment + cover image)", async () => {
+    // CourseCard is rendered up to ~50 times in the catalog grid; a
+    // violation here is a violation 50x. Pin axe-clean rendering for
+    // the representative state.
+    const futureEnd = new Date(Date.now() + 86_400_000).toISOString()
+    const { container } = renderCard(
+      makeCourse({
+        title: "Genesis Foundations",
+        description: "A 12-lesson intro to the book of Genesis.",
+        image_url: "https://abc.supabase.co/storage/v1/object/public/covers/g.jpg",
+        enrollment_start: new Date(Date.now() - 86_400_000).toISOString(),
+        enrollment_end: futureEnd,
+        modules: [
+          { id: "m1", course_id: "c-1", title: "A", description: null, order_index: 0, due_date: null },
+          { id: "m2", course_id: "c-1", title: "B", description: null, order_index: 1, due_date: null },
+        ],
+      }),
+    )
+    expect(await axe(container)).toHaveNoViolations()
   })
 })

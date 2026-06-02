@@ -6,6 +6,7 @@ import { MemoryRouter } from "react-router-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { AxiosError } from "axios"
 import i18n from "@/i18n/config"
+import { axe } from "@/test/a11y"
 import { DailyChallengeCard } from "../DailyChallengeCard"
 import { dailyChallengeService } from "@/services/dailyChallenge"
 
@@ -159,5 +160,35 @@ describe("DailyChallengeCard", () => {
     const button = screen.getByRole("button", { name: /the law/i })
     await userEvent.click(button)
     expect(submitAttempt).not.toHaveBeenCalled()
+  })
+
+  it("renders without a11y violations in the answered/reveal state", async () => {
+    // The daily challenge card sits on the dashboard for every
+    // logged-in student, every day. A WCAG violation here is the
+    // highest-traffic regression we can ship; pin axe-clean for the
+    // representative "already answered" state which renders the
+    // most components (option list + streak chip + archive link).
+    stub({
+      getToday: vi.fn().mockResolvedValue(
+        todayPayload({
+          user_attempt: {
+            id: "att-1",
+            question_id: "q-1",
+            selected_option_id: "o-1",
+            is_correct: true,
+            attempted_at: new Date().toISOString(),
+            current_streak: 3,
+          },
+        }),
+      ),
+      getStreak: vi.fn().mockResolvedValue({
+        current_streak: 3,
+        longest_streak: 10,
+        last_engaged_date: new Date().toISOString().slice(0, 10),
+      }),
+    })
+    const { container } = render(<DailyChallengeCard />, { wrapper: Wrapper })
+    await screen.findByLabelText(/3-day streak/i)
+    expect(await axe(container)).toHaveNoViolations()
   })
 })
