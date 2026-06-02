@@ -250,7 +250,7 @@ export function FirstRunFlow() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="first-run-heading"
-      className="fixed inset-0 z-[2147483646] flex items-start justify-center overflow-y-auto bg-background/95 px-4 py-10 backdrop-blur-sm sm:items-center sm:py-16"
+      className="fixed inset-0 z-[2147483646] flex items-start justify-center overflow-y-auto bg-surface/95 px-4 py-10 backdrop-blur-sm sm:items-center sm:py-16"
     >
       <h1 id="first-run-heading" className="sr-only">
         {step === "privacy"

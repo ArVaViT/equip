@@ -42,11 +42,11 @@ export function WelcomeCard({ eyebrow, title, description, action, className }: 
           {eyebrow}
         </p>
       )}
-      <h2 className="max-w-md font-serif text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-3xl">
+      <h2 className="max-w-md font-serif text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-3xl">
         {title}
       </h2>
       {description && (
-        <p className="max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
+        <p className="max-w-md text-sm leading-relaxed text-ink-muted sm:text-base">
           {description}
         </p>
       )}
