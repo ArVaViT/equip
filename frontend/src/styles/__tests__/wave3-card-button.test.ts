@@ -7,9 +7,10 @@
  * HSL values; this sentinel is the regression net for a refactor
  * that accidentally reverts a class to the v1 name.
  *
- * NOT a visual diff — that's the human reviewer's job per the ADR's
- * per-wave gate ("light + dark screenshots in PR body"). This is just
- * the "did we actually do the swap" check.
+ * Retrofitted to use the word-boundary ``containsClass`` lock-out
+ * (mirrors Waves 5/6). The original `code.includes("bg-primary ")`
+ * shape missed suffixed forms like `bg-primary/90` and
+ * `hover:bg-accent/40` — a real risk the audit on 2026-06-02 caught.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -28,6 +29,18 @@ const BUTTON_VARIANTS_FILE = resolve(
 );
 const TW_CONFIG = resolve(HERE, "..", "..", "..", "tailwind.config.js");
 
+function readNonComment(path: string): string {
+  return readFileSync(path, "utf-8")
+    .replace(/\/\/[^\n]*\n/g, "\n")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+}
+
+function containsClass(code: string, className: string): boolean {
+  const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\b${escaped}\\b`).test(code);
+}
+
 describe("ADR-0011 Wave 3 — Card + Button migration", () => {
   it("tailwind.config exposes the v2 palette (surface, ink, edge, brand, heritage)", () => {
     const cfg = readFileSync(TW_CONFIG, "utf-8");
@@ -37,25 +50,21 @@ describe("ADR-0011 Wave 3 — Card + Button migration", () => {
   });
 
   it("Card uses v2 classes (bg-surface-elevated / border-edge / text-ink)", () => {
-    const raw = readFileSync(CARD_FILE, "utf-8");
-    // Strip comments before lock-out checks — the migration log
-    // mentions the v1 names in a comment we want to keep.
-    const code = raw.replace(/\/\/[^\n]*\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, "");
+    const code = readNonComment(CARD_FILE);
     expect(code.includes("bg-surface-elevated")).toBe(true);
     expect(code.includes("border-edge")).toBe(true);
     expect(code.includes("text-ink")).toBe(true);
     expect(code.includes("text-ink-muted")).toBe(true);
-    // v1 names removed from the Card source (they would silently
-    // resolve to the same colors, so we lock them out by class name).
-    expect(code.includes("bg-card")).toBe(false);
-    expect(code.includes("text-card-foreground")).toBe(false);
-    expect(code.includes("border-border")).toBe(false);
-    expect(code.includes("text-muted-foreground")).toBe(false);
+    // v1 names removed (word-boundary lock-out so suffix forms like
+    // `bg-card/40` are also caught).
+    expect(containsClass(code, "bg-card")).toBe(false);
+    expect(containsClass(code, "text-card-foreground")).toBe(false);
+    expect(containsClass(code, "border-border")).toBe(false);
+    expect(containsClass(code, "text-muted-foreground")).toBe(false);
   });
 
   it("Button variants use v2 brand / heritage / edge / surface names", () => {
-    const raw = readFileSync(BUTTON_VARIANTS_FILE, "utf-8");
-    const code = raw.replace(/\/\/[^\n]*\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, "");
+    const code = readNonComment(BUTTON_VARIANTS_FILE);
     // Primary CTA = brand.
     expect(code.includes("bg-brand text-brand-foreground")).toBe(true);
     expect(code.includes("bg-brand-quiet")).toBe(true);
@@ -67,10 +76,12 @@ describe("ADR-0011 Wave 3 — Card + Button migration", () => {
     expect(code.includes("text-brand")).toBe(true);
     // Old v1 names retired from the variants (disabled stays muted —
     // that's wave 4's surface and intentionally still v1 here).
-    expect(code.includes("bg-primary ")).toBe(false);
-    expect(code.includes("text-primary-foreground")).toBe(false);
-    expect(code.includes("border-input")).toBe(false);
-    expect(code.includes("bg-background")).toBe(false);
-    expect(code.includes("hover:bg-accent ")).toBe(false);
+    expect(containsClass(code, "bg-primary")).toBe(false);
+    expect(containsClass(code, "text-primary-foreground")).toBe(false);
+    expect(containsClass(code, "border-input")).toBe(false);
+    expect(containsClass(code, "bg-background")).toBe(false);
+    expect(containsClass(code, "hover:bg-accent")).toBe(false);
+    // Background + accent in any prefix form (hover:bg-accent/40 etc.)
+    expect(containsClass(code, "bg-accent")).toBe(false);
   });
 });
