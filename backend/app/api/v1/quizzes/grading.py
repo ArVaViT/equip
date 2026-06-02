@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import require_teacher
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
+from app.core.metrics import increment, timing
 from app.models.quiz import Quiz, QuizAnswer, QuizAttempt, QuizQuestion
 from app.models.user import User
 from app.schemas.quiz import (
@@ -223,11 +224,33 @@ def grade_answer(
         answer.is_correct = None
     # Stamping ``graded_at`` is the one signal the pending-answer queue
     # consults. Re-grading the same row simply refreshes the timestamp.
+    was_pending = answer.graded_at is None
     answer.graded_at = datetime.now(UTC)
 
     quiz_service.recompute_attempt_grade(db, attempt, quiz)
     db.commit()
     db.refresh(answer)
+
+    # ``equip.grading.*`` metrics feed the Teacher Load dashboard.
+    # Only counts the first time this answer transitioned out of the
+    # pending state — re-grades don't double-count toward throughput.
+    if was_pending:
+        increment(
+            "equip.grading.graded_total",
+            teacher_id=str(teacher.id),
+            quiz_id=str(quiz.id),
+        )
+        # ``attempt.completed_at`` is the closest signal we have to
+        # "when the student submitted this answer" — QuizAnswer rows
+        # share a single timestamp with the attempt as a whole.
+        if attempt.completed_at is not None:
+            time_to_grade_ms = (answer.graded_at - attempt.completed_at).total_seconds() * 1000.0
+            timing(
+                "equip.grading.time_to_grade.p50",
+                time_to_grade_ms,
+                teacher_id=str(teacher.id),
+                quiz_id=str(quiz.id),
+            )
 
     return QuizAnswerResult(
         id=answer.id,
