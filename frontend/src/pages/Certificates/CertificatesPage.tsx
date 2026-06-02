@@ -86,14 +86,14 @@ export default function CertificatesPage() {
       </Link>
 
       <header data-tour="certs-header" className="mb-10">
-        <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
           {t("certificates.eyebrow")}
         </p>
         <h1 className="font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
           {t("certificates.title")}
         </h1>
         {certificates.length > 0 && (
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm text-ink-muted">
             {t("certificates.subtitle", { count: certificates.length })}
           </p>
         )}
@@ -139,7 +139,7 @@ export default function CertificatesPage() {
                 key={cert.id}
                 className={`group relative flex flex-col overflow-hidden border-l-stripe transition-colors ${
                   isApproved
-                    ? "border-l-accent hover:border-primary/40"
+                    ? "border-l-accent hover:border-brand/40"
                     : "border-l-muted-foreground/30"
                 }`}
               >
@@ -149,36 +149,36 @@ export default function CertificatesPage() {
                       isApproved ? "bg-accent/15" : "bg-muted"
                     }`}>
                       <Award
-                        className={`h-5 w-5 ${isApproved ? "text-accent" : "text-muted-foreground"}`}
+                        className={`h-5 w-5 ${isApproved ? "text-accent" : "text-ink-muted"}`}
                         strokeWidth={1.75}
                         aria-hidden
                       />
                     </div>
-                    <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
+                    <span className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted/80">
                       {t("certificates.badge")}
                     </span>
                   </div>
 
-                  <h3 className="mb-4 line-clamp-2 font-serif text-lg font-semibold leading-snug tracking-tight transition-colors group-hover:text-primary">
+                  <h3 className="mb-4 line-clamp-2 font-serif text-lg font-semibold leading-snug tracking-tight transition-colors group-hover:text-brand">
                     {courseTitle(cert.course_id)}
                   </h3>
 
-                  <div className="mt-auto space-y-3 border-t border-border pt-3 text-xs">
+                  <div className="mt-auto space-y-3 border-t border-edge pt-3 text-xs">
                     {cert.certificate_number && (
                       <div>
-                        <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                        <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
                           {t("certificates.certificateNo")}
                         </p>
-                        <p className="mt-0.5 select-all font-mono text-sm font-medium text-foreground">
+                        <p className="mt-0.5 select-all font-mono text-sm font-medium text-ink">
                           {cert.certificate_number}
                         </p>
                       </div>
                     )}
                     <div>
-                      <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
                         {isApproved ? t("certificates.issuedOrStatus") : t("certificates.statusColumn")}
                       </p>
-                      <p className={`mt-0.5 text-sm font-medium ${isApproved ? "text-foreground" : "text-muted-foreground"}`}>
+                      <p className={`mt-0.5 text-sm font-medium ${isApproved ? "text-ink" : "text-ink-muted"}`}>
                         {statusLabel}
                       </p>
                     </div>
@@ -216,7 +216,7 @@ function CertificatesPageSkeleton() {
               </div>
               <Skeleton className="mb-2 h-5 w-3/4" />
               <Skeleton className="mb-5 h-5 w-1/2" />
-              <div className="space-y-2 border-t border-border pt-3">
+              <div className="space-y-2 border-t border-edge pt-3">
                 <Skeleton className="h-3 w-20" />
                 <Skeleton className="h-4 w-2/3" />
                 <Skeleton className="h-3 w-20 mt-2" />

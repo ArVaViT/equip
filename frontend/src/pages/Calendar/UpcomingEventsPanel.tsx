@@ -20,7 +20,7 @@ export function UpcomingEventsPanel({ events }: UpcomingEventsPanelProps) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
           {t("calendar.upcomingEyebrow")}
         </p>
         <CardTitle className="font-serif text-lg font-semibold tracking-tight">
@@ -45,7 +45,7 @@ export function UpcomingEventsPanel({ events }: UpcomingEventsPanelProps) {
                   className={`flex items-start gap-2.5 rounded-md border p-2.5 transition-colors ${
                     overdue
                       ? "border-destructive/30 bg-destructive/5"
-                      : "border-border hover:bg-muted/40"
+                      : "border-edge hover:bg-muted/40"
                   }`}
                 >
                   <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${color.dot}`} aria-hidden />
@@ -57,9 +57,9 @@ export function UpcomingEventsPanel({ events }: UpcomingEventsPanelProps) {
                     >
                       {evt.title}
                     </p>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground tabular-nums">
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-ink-muted tabular-nums">
                       <span>{formatShortDate(evt.event_date)}</span>
-                      <span aria-hidden className="text-muted-foreground/40">·</span>
+                      <span aria-hidden className="text-ink-muted/40">·</span>
                       <span>{formatTime(evt.event_date)}</span>
                       {overdue && (
                         <span className="rounded bg-destructive/10 px-1.5 py-0.5 font-medium text-destructive">
@@ -68,7 +68,7 @@ export function UpcomingEventsPanel({ events }: UpcomingEventsPanelProps) {
                       )}
                     </div>
                     {evt.course_title && (
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground/70">
+                      <p className="mt-0.5 truncate text-xs text-ink-muted/70">
                         {evt.course_title}
                       </p>
                     )}

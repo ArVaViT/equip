@@ -50,14 +50,14 @@ export default function ForgotPassword() {
       >
         <div className="space-y-6 animate-fade-in">
           <div className="flex flex-col items-center text-center gap-4 py-4">
-            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-              <MailCheck className="h-8 w-8 text-primary" strokeWidth={1.75} aria-hidden />
+            <div className="h-16 w-16 rounded-full bg-brand/10 flex items-center justify-center">
+              <MailCheck className="h-8 w-8 text-brand" strokeWidth={1.75} aria-hidden />
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm text-ink-muted leading-relaxed">
               <Trans
                 i18nKey="auth.forgotPassword.sentBody"
                 values={{ email }}
-                components={{ strong: <strong className="text-foreground" /> }}
+                components={{ strong: <strong className="text-ink" /> }}
               />
             </p>
           </div>
@@ -113,7 +113,7 @@ export default function ForgotPassword() {
 
         <Link
           to="/login"
-          className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+          className="flex items-center justify-center gap-1.5 text-sm text-ink-muted hover:text-brand transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
           {t("auth.forgotPassword.backToSignIn")}

@@ -22,15 +22,15 @@ export function SuccessView({ email }: Props) {
     >
       <div className="space-y-6 animate-fade-in">
         <div className="flex flex-col items-center text-center gap-4 py-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-md bg-primary/10">
-            <MailCheck className="h-8 w-8 text-primary" strokeWidth={1.75} aria-hidden />
+          <div className="flex h-16 w-16 items-center justify-center rounded-md bg-brand/10">
+            <MailCheck className="h-8 w-8 text-brand" strokeWidth={1.75} aria-hidden />
           </div>
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm text-ink-muted leading-relaxed">
               <Trans
                 i18nKey="authRegister.success.body"
                 values={{ email }}
-                components={{ strong: <strong className="text-foreground" /> }}
+                components={{ strong: <strong className="text-ink" /> }}
               />
               <br />
               {t("authRegister.success.clickLinkToActivate")}
