@@ -132,6 +132,11 @@ export const test = base.extend<{
   // For each role, return a page with the role's storage state
   // already loaded. Wired here as a stub; the global setup will fill
   // the storageState files in a follow-up.
+  // The ``use`` callback is Playwright's fixture lifecycle hook, not a
+  // React hook — ESLint's ``react-hooks/rules-of-hooks`` mis-identifies
+  // it. Disable the rule for the file rather than scattering inline
+  // exceptions on every fixture.
+  /* eslint-disable react-hooks/rules-of-hooks */
   studentPage: async ({ browser }, use) => {
     const ctx = await browser.newContext({
       storageState: "playwright/.auth/student.json",
@@ -156,6 +161,7 @@ export const test = base.extend<{
     await use(page);
     await ctx.close();
   },
+  /* eslint-enable react-hooks/rules-of-hooks */
 });
 
 export { expect } from "@playwright/test";
