@@ -13,6 +13,7 @@ simpler shape was rejected.
 | # | Title | Status |
 |---|-------|--------|
 | [010](0010-cohorts-as-top-level-entities.md) | Cohorts as top-level admin entities | Accepted (2026-05-13) |
+| [011](0011-visual-overhaul-v2-tailwind-v4-oklch.md) | Visual overhaul v2 — Tailwind v4 + OKLCH tokens | Proposed (2026-06-02) |
 
 ## Format
 
