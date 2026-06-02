@@ -36,9 +36,17 @@ export default defineConfig({
   },
 
   projects: [
+    // Global setup project — mints storage-state files for the
+    // role-bound fixtures in ``fixtures/auth.ts``. No-ops cleanly
+    // when the E2E_*_EMAIL env vars are unset (current CI state).
+    {
+      name: "setup",
+      testMatch: /global\.setup\.ts/,
+    },
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      dependencies: ["setup"],
     },
   ],
 });
