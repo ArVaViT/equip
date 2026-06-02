@@ -87,7 +87,7 @@ export function AddBlockMenu({ onAdd, adding }: Props) {
           role="menu"
           aria-label={t("blockEditor.addBlock")}
           className={cn(
-            "absolute top-full z-20 mt-1 w-full min-w-[240px] rounded-md border bg-background py-1 shadow-lg",
+            "absolute top-full z-20 mt-1 w-full min-w-[240px] rounded-md border bg-surface py-1 shadow-lg",
             alignClass,
           )}
         >
@@ -101,7 +101,7 @@ export function AddBlockMenu({ onAdd, adding }: Props) {
                 onClick={() => pick(bt.value)}
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-muted text-left focus-visible:outline-none focus-visible:bg-muted"
               >
-                <Icon className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />
+                <Icon className="h-4 w-4 text-ink-muted" strokeWidth={1.75} aria-hidden="true" />
                 {t(BLOCK_TYPE_LABEL_KEYS[bt.value])}
               </button>
             )

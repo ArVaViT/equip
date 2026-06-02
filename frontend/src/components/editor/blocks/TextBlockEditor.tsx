@@ -115,12 +115,12 @@ export function TextBlockEditor({ block, onSaved }: Props) {
           {t("blockEditor.text.saveButton")}
         </Button>
         {autoSaveStatus === "pending" && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-ink-muted">
             {t("blockEditor.text.statusUnsaved")}
           </span>
         )}
         {autoSaveStatus === "saving" && (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1 text-xs text-ink-muted">
             <Loader2 className="h-3 w-3 animate-spin" strokeWidth={1.75} />
             {t("blockEditor.text.statusAutoSaving")}
           </span>

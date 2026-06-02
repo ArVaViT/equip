@@ -144,7 +144,7 @@ export default function ChapterBlockEditor({ chapterId }: Props) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-6">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" strokeWidth={1.75} />
+        <Loader2 className="h-5 w-5 animate-spin text-ink-muted" strokeWidth={1.75} />
       </div>
     )
   }
@@ -152,10 +152,10 @@ export default function ChapterBlockEditor({ chapterId }: Props) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+        <Label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
           {t("blockEditor.contentBlocks")}
         </Label>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-ink-muted">
           {t("blockEditor.blocksCount", { count: blocks.length })}
         </span>
       </div>
@@ -165,11 +165,11 @@ export default function ChapterBlockEditor({ chapterId }: Props) {
         // dashed border + soft surface communicates "drop zone /
         // start-here" and reduces the "this UI is broken" reaction
         // when a teacher first sees an empty chapter.
-        <div className="rounded-md border border-dashed border-border bg-muted/30 px-5 py-8 text-center">
-          <p className="text-sm font-medium text-foreground">
+        <div className="rounded-md border border-dashed border-edge bg-muted/30 px-5 py-8 text-center">
+          <p className="text-sm font-medium text-ink">
             {t("blockEditor.empty")}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs text-ink-muted">
             {t("blockEditor.emptyHint")}
           </p>
         </div>
