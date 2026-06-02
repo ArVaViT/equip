@@ -318,28 +318,28 @@ export default function TeacherGradebook() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-        <Link to="/teacher" className="hover:text-foreground transition-colors">
+      <div className="flex items-center gap-2 text-sm text-ink-muted mb-6">
+        <Link to="/teacher" className="hover:text-ink transition-colors">
           {t("gradebook.breadcrumbCourses")}
         </Link>
         <ChevronRight className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} aria-hidden />
         <Link
           to={`/teacher/courses/${courseId}`}
-          className="hover:text-foreground transition-colors truncate"
+          className="hover:text-ink transition-colors truncate"
         >
           {courseTitle || t("gradebook.breadcrumbCourseFallback")}
         </Link>
         <ChevronRight className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} aria-hidden />
-        <span className="text-foreground font-medium">{t("gradebook.pageHeading")}</span>
+        <span className="text-ink font-medium">{t("gradebook.pageHeading")}</span>
       </div>
 
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 font-serif text-3xl font-bold tracking-tight">
-            <Award className="h-6 w-6 shrink-0 text-primary" strokeWidth={1.75} aria-hidden />
+            <Award className="h-6 w-6 shrink-0 text-brand" strokeWidth={1.75} aria-hidden />
             {t("gradebook.pageHeading")}
           </h1>
-          {courseTitle && <p className="text-muted-foreground mt-1">{courseTitle}</p>}
+          {courseTitle && <p className="text-ink-muted mt-1">{courseTitle}</p>}
         </div>
         {studentCount > 0 && (
           <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={exporting}>

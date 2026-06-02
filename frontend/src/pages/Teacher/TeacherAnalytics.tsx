@@ -118,29 +118,29 @@ export default function TeacherAnalytics() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-        <Link to="/teacher" className="hover:text-foreground transition-colors">
+      <div className="flex items-center gap-2 text-sm text-ink-muted mb-6">
+        <Link to="/teacher" className="hover:text-ink transition-colors">
           {t("teacherAnalytics.breadcrumb.myCourses")}
         </Link>
         <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
         <Link
           to={`/teacher/courses/${courseId}`}
-          className="hover:text-foreground transition-colors truncate"
+          className="hover:text-ink transition-colors truncate"
         >
           {courseTitle || t("teacherAnalytics.breadcrumb.courseFallback")}
         </Link>
         <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-        <span className="text-foreground font-medium">{t("teacherAnalytics.heading")}</span>
+        <span className="text-ink font-medium">{t("teacherAnalytics.heading")}</span>
       </div>
 
       <div className="flex items-center gap-3 mb-8">
         <div className="flex-1">
           <h1 className="flex items-center gap-2 font-serif text-3xl font-bold tracking-tight">
-            <BarChart3 className="h-6 w-6 shrink-0 text-primary" strokeWidth={1.75} aria-hidden />
+            <BarChart3 className="h-6 w-6 shrink-0 text-brand" strokeWidth={1.75} aria-hidden />
             {t("teacherAnalytics.heading")}
           </h1>
           {courseTitle && (
-            <p className="text-muted-foreground mt-1">{courseTitle}</p>
+            <p className="text-ink-muted mt-1">{courseTitle}</p>
           )}
         </div>
         <Link to={`/teacher/courses/${courseId}/progress`}>
@@ -194,10 +194,10 @@ export default function TeacherAnalytics() {
                 </colgroup>
                 <thead>
                   <tr className="border-b text-left">
-                    <th className="pb-3 font-medium text-muted-foreground">{t("teacherAnalytics.enrollments.name")}</th>
-                    <th className="pb-3 font-medium text-muted-foreground">{t("teacherAnalytics.enrollments.email")}</th>
-                    <th className="pb-3 font-medium text-muted-foreground">{t("teacherAnalytics.enrollments.progress")}</th>
-                    <th className="pb-3 font-medium text-muted-foreground">{t("teacherAnalytics.enrollments.enrolled")}</th>
+                    <th className="pb-3 font-medium text-ink-muted">{t("teacherAnalytics.enrollments.name")}</th>
+                    <th className="pb-3 font-medium text-ink-muted">{t("teacherAnalytics.enrollments.email")}</th>
+                    <th className="pb-3 font-medium text-ink-muted">{t("teacherAnalytics.enrollments.progress")}</th>
+                    <th className="pb-3 font-medium text-ink-muted">{t("teacherAnalytics.enrollments.enrolled")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -215,7 +215,7 @@ export default function TeacherAnalytics() {
                           {name}
                         </span>
                       </td>
-                      <td className="py-3 text-muted-foreground">
+                      <td className="py-3 text-ink-muted">
                         <span className="block truncate" title={trimmedEmail || undefined}>
                           {trimmedEmail || "—"}
                         </span>
@@ -224,7 +224,7 @@ export default function TeacherAnalytics() {
                         <div className="flex items-center gap-3">
                           <div className="h-2 max-w-[140px] flex-1 rounded-full bg-muted">
                             <div
-                              className="h-full rounded-full bg-primary transition-all"
+                              className="h-full rounded-full bg-brand transition-all"
                               style={{ width: `${Math.min(e.progress, 100)}%` }}
                             />
                           </div>
@@ -233,7 +233,7 @@ export default function TeacherAnalytics() {
                           </span>
                         </div>
                       </td>
-                      <td className="py-3 text-muted-foreground">
+                      <td className="py-3 text-ink-muted">
                         {e.enrolled_at ? formatDate(e.enrolled_at) : "—"}
                       </td>
                     </tr>

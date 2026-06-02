@@ -43,7 +43,7 @@ export function ChapterBreakdownRow({
   const completed = chapterInfo?.completed ?? false
 
   return (
-    <div className="flex items-center gap-4 bg-background rounded-lg px-4 py-3 border text-sm">
+    <div className="flex items-center gap-4 bg-surface rounded-lg px-4 py-3 border text-sm">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="font-medium truncate">{title}</p>
@@ -53,7 +53,7 @@ export function ChapterBreakdownRow({
             {completed ? (
               <CompletionLabel completedBy={chapterInfo.completed_by} />
             ) : (
-              <span className="text-muted-foreground">
+              <span className="text-ink-muted">
                 {t("studentProgress.chapterRow.notCompleted")}
               </span>
             )}
@@ -78,7 +78,7 @@ export function ChapterBreakdownRow({
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground"
+              className="h-6 px-1.5 text-xs text-ink-muted hover:text-ink"
               disabled={grantingQuizId === quiz.quiz_id}
               onClick={(e) => {
                 e.stopPropagation()

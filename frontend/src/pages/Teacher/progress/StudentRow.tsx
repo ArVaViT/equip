@@ -117,13 +117,13 @@ export function StudentRow({
       >
         <td className="py-3 pr-2">
           {isExpanded ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
+            <ChevronDown className="h-4 w-4 text-ink-muted" strokeWidth={1.75} />
           ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
+            <ChevronRight className="h-4 w-4 text-ink-muted" strokeWidth={1.75} />
           )}
         </td>
         <td className="py-3 font-medium">{student.full_name}</td>
-        <td className="py-3 text-muted-foreground">{student.email}</td>
+        <td className="py-3 text-ink-muted">{student.email}</td>
         <td className="py-3">
           <ProgressBar value={student.progress} />
         </td>
@@ -136,7 +136,7 @@ export function StudentRow({
         <td className="py-3">
           <ScoreBadge value={assignmentAvg} />
         </td>
-        <td className="py-3 text-muted-foreground text-xs">
+        <td className="py-3 text-ink-muted text-xs">
           {relativeTime(student.last_activity, t)}
         </td>
       </tr>
@@ -223,7 +223,7 @@ function SummaryStat({
 }) {
   return (
     <div>
-      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      <p className="text-xs text-ink-muted mb-1">{label}</p>
       {children}
     </div>
   )

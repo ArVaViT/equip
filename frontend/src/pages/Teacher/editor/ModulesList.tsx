@@ -29,7 +29,7 @@ export function ModulesList({ courseId, modules, onDragEnd, onAdd, onRemove }: P
     <>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="font-serif text-xl font-semibold flex items-center gap-2">
-          <Layers className="h-5 w-5 text-primary/60" strokeWidth={1.75} />
+          <Layers className="h-5 w-5 text-brand/60" strokeWidth={1.75} />
           {t("teacherEditor.modulesHeading")}
         </h2>
         <Button onClick={onAdd} size="sm" variant="outline">
@@ -74,7 +74,7 @@ export function ModulesList({ courseId, modules, onDragEnd, onAdd, onRemove }: P
                       >
                         <div
                           {...dragProvided.dragHandleProps}
-                          className="-ml-2 flex h-11 w-8 shrink-0 cursor-grab items-center justify-center text-muted-foreground/40 transition-colors hover:text-muted-foreground active:cursor-grabbing sm:h-9"
+                          className="-ml-2 flex h-11 w-8 shrink-0 cursor-grab items-center justify-center text-ink-muted/40 transition-colors hover:text-ink-muted active:cursor-grabbing sm:h-9"
                           onClick={(e) => e.stopPropagation()}
                           role="button"
                           tabIndex={0}
@@ -82,12 +82,12 @@ export function ModulesList({ courseId, modules, onDragEnd, onAdd, onRemove }: P
                         >
                           <GripVertical className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                         </div>
-                        <span className="text-xs font-mono text-muted-foreground/50 w-6 text-right shrink-0">
+                        <span className="text-xs font-mono text-ink-muted/50 w-6 text-right shrink-0">
                           {i + 1}
                         </span>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium truncate">{mod.title}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
+                          <p className="text-xs text-ink-muted mt-0.5">
                             {t("teacherEditor.chapterCount", {
                               count: mod.chapters?.length ?? 0,
                             })}

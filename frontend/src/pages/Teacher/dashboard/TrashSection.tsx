@@ -86,7 +86,7 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
     <div className="mt-12 border-t pt-8">
       <button
         onClick={onToggle}
-        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        className="flex items-center gap-2 text-sm text-ink-muted hover:text-ink transition-colors"
       >
         <Archive className="h-4 w-4" strokeWidth={1.75} />
         {visible
@@ -99,7 +99,7 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
           {loading ? (
             <PageSpinner variant="section" />
           ) : trashedCourses.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">
+            <p className="text-sm text-ink-muted py-4">
               {t("teacherDashboard.trash.empty")}
             </p>
           ) : (
@@ -110,7 +110,7 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
                     <div className="flex-1 min-w-0">
                       <h4 className="text-sm font-medium truncate">{course.title}</h4>
                       {course.deleted_at && (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-ink-muted">
                           {t("teacherDashboard.trash.deletedAt", {
                             date: formatDate(course.deleted_at),
                           })}

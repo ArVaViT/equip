@@ -57,7 +57,7 @@ export function EventsModal({
     <Modal open={open} onClose={onClose} title={t("teacherEditor.modals.events.title")}>
       <div className="space-y-4">
         <div className="space-y-3 rounded-md border bg-muted/30 p-3">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <p className="text-xs font-medium text-ink-muted uppercase tracking-wide">
             {editingId
               ? t("teacherEditor.modals.events.editEvent")
               : t("teacherEditor.modals.events.createEvent")}
@@ -153,11 +153,11 @@ function EventRow({
           <p className="text-sm font-medium truncate">{event.title}</p>
           <EventTypeBadge type={event.event_type} />
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-ink-muted">
           {formatDateTime(event.event_date)}
         </p>
         {event.description && (
-          <p className="text-xs text-muted-foreground/70 mt-0.5 line-clamp-1">
+          <p className="text-xs text-ink-muted/70 mt-0.5 line-clamp-1">
             {event.description}
           </p>
         )}

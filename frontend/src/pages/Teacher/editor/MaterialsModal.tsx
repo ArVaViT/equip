@@ -87,10 +87,10 @@ export function MaterialsModal({
                 key={m.path}
                 className="flex items-center gap-3 rounded-md border p-3 transition-colors hover:bg-muted/40"
               >
-                <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" strokeWidth={1.75} />
+                <Paperclip className="h-4 w-4 text-ink-muted shrink-0" strokeWidth={1.75} />
                 <span className="text-sm flex-1 truncate">{m.name}</span>
                 {m.size && (
-                  <span className="text-xs text-muted-foreground shrink-0">
+                  <span className="text-xs text-ink-muted shrink-0">
                     {formatFileSize(m.size, t)}
                   </span>
                 )}

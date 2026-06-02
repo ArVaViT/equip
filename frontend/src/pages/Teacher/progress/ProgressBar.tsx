@@ -10,7 +10,7 @@ export function ProgressBar({
     value >= 100
       ? "bg-success"
       : value >= 60
-        ? "bg-primary"
+        ? "bg-brand"
         : value >= 30
           ? "bg-warning"
           : "bg-destructive"
@@ -32,7 +32,7 @@ export function ProgressBar({
 
 /** Small percentage pill with tone based on score. `null` renders an em-dash. */
 export function ScoreBadge({ value }: { value: number | null }) {
-  if (value === null) return <span className="text-xs text-muted-foreground">—</span>
+  if (value === null) return <span className="text-xs text-ink-muted">—</span>
   const color =
     value >= 90
       ? "bg-success/15 text-success"

@@ -28,13 +28,13 @@ export function letterColor(letter: string): string {
     case "B":
       return "bg-info/15 text-info"
     case "C":
-      return "bg-accent/20 text-foreground"
+      return "bg-accent/20 text-ink"
     case "D":
       return "bg-warning/15 text-warning"
     case "F":
       return "bg-destructive/15 text-destructive"
     default:
-      return "bg-muted text-muted-foreground"
+      return "bg-muted text-ink-muted"
   }
 }
 

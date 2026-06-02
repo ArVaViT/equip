@@ -43,7 +43,7 @@ export function EmptyCoursesCard({ onCreate, onTourStart }: Props) {
                   size="sm"
                   variant="ghost"
                   onClick={onTourStart}
-                  className="text-muted-foreground hover:text-foreground"
+                  className="text-ink-muted hover:text-ink"
                 >
                   {t("tour.takeATour")}
                 </Button>
