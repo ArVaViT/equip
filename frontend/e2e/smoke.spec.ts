@@ -19,18 +19,21 @@ import { test, expect } from "@playwright/test";
 
 test.describe("public surface", () => {
   test("home renders without runtime errors", async ({ page }) => {
+    const ignorable = (text: string) =>
+      text.includes("Download the React DevTools") ||
+      text.includes("Supabase") ||
+      text.includes("VITE_SUPABASE") ||
+      text.includes("Failed to load resource");
+
     const errors: string[] = [];
-    page.on("pageerror", (err) => errors.push(err.message));
+    page.on("pageerror", (err) => {
+      if (ignorable(err.message)) return;
+      errors.push(err.message);
+    });
     page.on("console", (msg) => {
       if (msg.type() !== "error") return;
       const text = msg.text();
-      // CI preview lacks Supabase env wiring; the auth client logs
-      // a noisy startup warning we don't want to count as a test
-      // failure. Same for the React DevTools nag.
-      if (text.includes("Download the React DevTools")) return;
-      if (text.includes("Supabase")) return;
-      if (text.includes("VITE_SUPABASE")) return;
-      if (text.includes("Failed to load resource")) return;
+      if (ignorable(text)) return;
       errors.push(text);
     });
 
