@@ -37,7 +37,7 @@ type ChapterTypeMeta = {
 // Editorial palette: chapter type is communicated through label + icon, not
 // colour. Using a single muted token keeps the UI calm and consistent across
 // light/dark and matches the rest of the token-based design system.
-const PILL = "bg-muted text-muted-foreground"
+const PILL = "bg-muted text-ink-muted"
 
 // ``label`` and ``description`` are NOT on this map — they're rendered via
 // the i18n keys under ``chapterTypes.{reading|quiz|exam|assignment}`` so

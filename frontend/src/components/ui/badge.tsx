@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 
 // ADR-0011 Wave 6 — editorial primitives migration.
 // Migrated to v2 vocabulary: primary -> brand, secondary -> brand-quiet,
-// accent -> heritage, foreground -> ink, ring-ring -> ring-brand.
+// accent -> heritage, foreground -> ink, ring-brand -> ring-brand.
 // destructive / success / warning / info / muted stay on v1 — no v2
 // equivalents are in the bridge or tailwind config yet (the tokens-v2
 // CSS has --color-{success,warning,danger,info} but they aren't aliased
@@ -28,7 +28,7 @@ const badgeVariants = cva(
           "border-transparent bg-warning text-warning-foreground hover:bg-warning/90",
         info: "border-transparent bg-info text-info-foreground hover:bg-info/90",
         muted:
-          "border-transparent bg-muted text-muted-foreground hover:bg-muted/80",
+          "border-transparent bg-muted text-ink-muted hover:bg-muted/80",
         accent:
           "border-transparent bg-heritage text-ink hover:bg-heritage/80",
         successSubtle: "border-transparent bg-success/15 text-success",
