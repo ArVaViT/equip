@@ -176,29 +176,31 @@ These are deliberate omissions; revisit when traffic or budget grows.
   tier is 3 000 / month; current volume is < 5. Revisit at ~1 000 /
   month when accidental loops or compromised templates become plausible.
 
-## Recommended monitors to add (not auto-created)
+## Source-controlled monitor JSONs
 
-Per project policy, we don't auto-create Datadog monitors from agent
-sessions. The following are useful additions when Vadym wants to enable
-them manually. Each one is a one-API-call away once approved.
+Per project policy we never auto-create Datadog monitors from agent
+sessions, but we DO ship importable JSON specs under
+[`docs/datadog/monitors/`](datadog/monitors/) so the next regression
+has a paging gate ready. See that directory's README for the import
+flow (Datadog UI → Monitors → New → Import) and the editing
+convention (tweak in UI, re-export JSON to git in the same PR).
 
-1. **Backend P95 latency** -- alert on
-   `avg:trace.fastapi.request.duration{service:equip-backend}.percentile(95)`
-   > 1 500 ms over 15 min (warn 800 ms). Requires APM enabled first;
-   skip until then.
-2. **5xx response rate** -- log query
-   `service:equip-backend @http.status_code:[500 TO 599]`; alert at
-   ≥ 1 in 5 min. Catches issues that don't always raise an exception
-   (e.g. a misconfigured rewrite returning 503).
-3. **Datadog daily ingest** -- forecast monitor on the `main` index
-   warning at 85 % of the 10 000 / day cap, alerting at 95 %.
-   Earlier-warning version of the current Datadog-side soft limit.
-4. **Synthetic latency drift** -- on top of the existing pass/fail
-   synthetic monitors, add a warn if the median response time on
-   `/health` exceeds 2 s for 30 min. Cold-start latency creep is the
-   first visible sign of Vercel runtime regression.
-5. **Resend bounce rate** -- requires Resend webhooks (see gap above).
-   Alert at ≥ 5 % bounces over a 6 h rolling window.
+Shipped JSON specs (each one Vadym imports manually):
+
+| File | What it catches | Priority |
+|---|---|---|
+| `backend-5xx-rate.json` | Backend 5xx rate > 5% over 10 min | P1 |
+| `backend-unhandled-exception-rate.json` | `equip.errors.unhandled_total` count > 10 / 10 min — distinct from 5xx-rate (this catches uncategorised exceptions, the "a real bug just shipped" signal) | P1 |
+| `translation-worker-401-rate.json` | Cron is firing but auth fails (≥ 5 401s in 15 min) | P2 |
+| `worker-cron-silent.json` | Cron is NOT firing at all (≥ 15 min with no log line) | P2 |
+| `translation-queue-backlog.json` | `equip.translation.queue_depth > 50` for > 1 h | P3 |
+
+Still useful to add manually when Vadym has time:
+
+1. **Backend P95 latency** — `avg:trace.fastapi.request.duration{service:equip-backend}.percentile(95) > 1500 ms over 15 min`. Requires APM enabled first; skip until then.
+2. **Datadog daily ingest** — forecast monitor on the `main` index warning at 85 % of the 10 000 / day cap, alerting at 95 %.
+3. **Synthetic latency drift** — on top of the existing pass/fail synthetic monitors, warn if the median response time on `/health` exceeds 2 s for 30 min. Cold-start latency creep is the first visible sign of Vercel runtime regression.
+4. **Resend bounce rate** — requires Resend webhooks (see gap above). Alert at ≥ 5 % bounces over a 6 h rolling window.
 
 To enable any of these, see the `Memory/datadog-equip.md` "Check
 Datadog" PowerShell recipe and adapt the monitor JSON; do not let the
