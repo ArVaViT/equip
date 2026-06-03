@@ -128,6 +128,23 @@ async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     logger.error("Unhandled error on %s %s: %s", request.method, request.url.path, exc, exc_info=True)
+    # Counter for the Datadog "backend unhandled exception rate" monitor.
+    # Tagged with method + url-path-prefix + exception_type so a spike
+    # can be triaged without grepping logs. exception_type is the
+    # class name only (no message) — message could carry PII like
+    # uuids / emails from validation errors.
+    try:
+        from app.core.metrics import increment
+
+        path_prefix = "/".join(request.url.path.split("/", 4)[:4]) or "/"
+        increment(
+            "equip.errors.unhandled_total",
+            method=request.method,
+            path_prefix=path_prefix,
+            exception_type=type(exc).__name__,
+        )
+    except Exception:
+        pass
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal server error"},
