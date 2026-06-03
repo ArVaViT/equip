@@ -49,10 +49,13 @@ describe("ADR-0011 Wave 3 — Card + Button migration", () => {
     }
   });
 
-  it("Card uses v2 classes (bg-surface-elevated / border-edge / text-ink)", () => {
+  it("Card uses v2 classes (bg-surface-elevated / text-ink) — no resting border by default", () => {
+    // 2026-06-02 UX call (Vadym): Card dropped its resting
+    // ``border border-edge``; the bg-surface-elevated tone alone
+    // separates the card from the page. Call sites that want a
+    // frame opt back in explicitly.
     const code = readNonComment(CARD_FILE);
     expect(code.includes("bg-surface-elevated")).toBe(true);
-    expect(code.includes("border-edge")).toBe(true);
     expect(code.includes("text-ink")).toBe(true);
     expect(code.includes("text-ink-muted")).toBe(true);
     // v1 names removed (word-boundary lock-out so suffix forms like
