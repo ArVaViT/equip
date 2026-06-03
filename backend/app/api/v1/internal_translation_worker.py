@@ -24,6 +24,7 @@ from __future__ import annotations
 import hmac
 import logging
 import secrets
+import time
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, Header, status
@@ -34,7 +35,7 @@ from sqlalchemy.orm import Session  # noqa: TC002 — used by FastAPI Depends at
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
-from app.core.metrics import gauge
+from app.core.metrics import gauge, timing
 from app.services.course_service import get_course
 from app.services.translation.course_pipeline import translate_course_content
 from app.services.translation.queue import (
@@ -125,6 +126,23 @@ def _emit_queue_gauges(db: Session) -> None:
         return
 
 
+def _emit_translation_duration(start_monotonic: float, *, outcome: str) -> None:
+    """Emit ``equip.translation.duration_ms`` keyed by outcome.
+
+    Tagged with ``outcome={done,failed}`` so the dashboard can split
+    the latency curve by success vs failure — a sustained gap between
+    the two distributions usually means the failure path is timing
+    out on an upstream call.
+
+    Wrapped in try/except so a metric failure cannot break the worker.
+    """
+    try:
+        elapsed_ms = (time.monotonic() - start_monotonic) * 1000.0
+        timing("equip.translation.duration_ms", elapsed_ms, outcome=outcome)
+    except Exception:
+        return
+
+
 def _run_one_tick(db: Session) -> WorkerTickResponse:
     """One claim → process → mark cycle. Extracted so tests can drive
     it directly without going through the FastAPI dependency stack."""
@@ -154,6 +172,10 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
             attempts=attempts,
         )
 
+    # Measure end-to-end translate_course_content time. ``time.monotonic``
+    # is correct here (not affected by NTP / system clock jumps); we want
+    # elapsed wall time, not absolute timestamps.
+    tick_start = time.monotonic()
     try:
         translate_course_content(db, course)
     except SQLAlchemyError as exc:
@@ -162,6 +184,10 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
         # commit would itself raise on the still-poisoned session.
         db.rollback()
         mark_job_failed(db, job, error=f"sqlalchemy: {exc}")
+        # Emit duration even on failure so the dashboard's p50/p95
+        # tile includes the cost of failed work (the operator needs
+        # to see if failures are also slow → upstream timeout).
+        _emit_translation_duration(tick_start, outcome="failed")
         logger.exception("translation_worker: SQLAlchemyError on job %s course %s", job_id, course_id)
         return WorkerTickResponse(
             status="failed",
@@ -171,6 +197,7 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
         )
     except Exception as exc:
         mark_job_failed(db, job, error=f"{type(exc).__name__}: {exc}")
+        _emit_translation_duration(tick_start, outcome="failed")
         logger.exception(
             "translation_worker: unexpected error on job %s course %s",
             job_id,
@@ -183,6 +210,7 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
             attempts=attempts,
         )
 
+    _emit_translation_duration(tick_start, outcome="done")
     mark_job_done(db, job)
     return WorkerTickResponse(
         status="done",
@@ -276,7 +304,13 @@ def queue_health(
 
 
 # Public surface for tests + future admin tooling.
-__all__ = ["_emit_queue_gauges", "_require_worker_secret", "_run_one_tick", "router"]
+__all__ = [
+    "_emit_queue_gauges",
+    "_emit_translation_duration",
+    "_require_worker_secret",
+    "_run_one_tick",
+    "router",
+]
 
 
 def generate_worker_secret() -> str:
