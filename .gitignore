@@ -14,6 +14,24 @@ frontend/frontend/
 .tmp-commit-msg.txt
 .commit-msg.tmp
 
+# Dev.to article cover images — generated locally for each blog post,
+# uploaded to dev.to's own CDN; not referenced by the app or any
+# tracked doc. Keeping them out of git stops ``git add -A`` from
+# surprise-committing 200 KB binaries.
+.github/assets/devto-*
+
+# Locale-variant screenshot drafts (login-en-desktop.png /
+# register-ru-desktop.png etc.) — work-in-progress reference shots
+# Vadym takes during UI review. The canonical tracked screenshots
+# (login-desktop.png / login-mobile.png / register-desktop.png /
+# login-desktop-dark.png) stay versioned; the *-en-* / *-ru-* / *-v2
+# variants don't until they replace one of the canonical names.
+.github/assets/screenshots/login-en-*
+.github/assets/screenshots/login-ru-*
+.github/assets/screenshots/register-en-*
+.github/assets/screenshots/register-ru-*
+.github/assets/equip-bilingual-register-comparison.png
+
 # Cursor IDE local rules + settings — referenced by CLAUDE.md as canonical
 # conventions but deliberately kept out of git (decision reverted in 0aa5aef
 # back in 2026-04). Each contributor maintains their own.
