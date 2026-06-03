@@ -457,6 +457,25 @@ def _fetch_passage(api_key: str, bible_id: int, ref: str) -> tuple[str, str]:
     url = f"{YOUVERSION_API_BASE}/bibles/{bible_id}/passages/{ref}"
     with httpx.Client(timeout=8.0) as client:
         response = client.get(url, headers={"X-YVP-App-Key": api_key})
+    # Emit per-call API metric BEFORE the status branches so the dashboard
+    # sees every call, not just the 200s. Tagged with bible_id (which
+    # locale) + outcome (which budget bucket: 200 = ok, 404 = not_in_bible
+    # which we walk past in the caller, 5xx = outage). Wrapped in
+    # try/except so a metric failure cannot break VOD rendering.
+    try:
+        from app.core.metrics import increment
+
+        outcome = (
+            "success" if response.status_code == 200 else ("not_in_bible" if response.status_code == 404 else "fatal")
+        )
+        increment(
+            "equip.youversion.api_calls_total",
+            bible_id=str(bible_id),
+            outcome=outcome,
+            status_code=str(response.status_code),
+        )
+    except Exception:
+        pass
     if response.status_code == 404:
         raise VerseNotInBible(f"YouVersion has no {ref} for bible {bible_id}")
     if response.status_code != 200:
