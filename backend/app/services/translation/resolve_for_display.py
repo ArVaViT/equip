@@ -421,49 +421,6 @@ def resolve_chapter_locale_context(
     )
 
 
-def get_course_source_locale_for_chapter(db: Session, chapter_id: str) -> LocaleCode:
-    """Return ``courses.source_locale`` for the chapter's course (fallback ``ru``).
-
-    Legacy single-fact helper. Prefer ``resolve_chapter_locale_context`` when
-    a route already needs more than one fact about the chapter's course —
-    that single helper folds these three queries into one.
-    """
-    return resolve_chapter_locale_context(db, chapter_id=chapter_id, current_user=None).source_locale
-
-
-def should_apply_course_translation_overlay_for_chapter(
-    db: Session,
-    *,
-    chapter_id: str,
-    current_user: User | None,
-) -> bool:
-    """Mirror ``should_apply_course_translation_overlay`` using the chapter's course.
-
-    Legacy single-fact helper. Prefer ``resolve_chapter_locale_context``
-    when the same route also needs ``source_locale`` or ``is_owner_or_admin``.
-    """
-    return resolve_chapter_locale_context(db, chapter_id=chapter_id, current_user=current_user).apply_overlay
-
-
-def is_chapter_course_owner_or_admin(
-    db: Session,
-    *,
-    chapter_id: str,
-    current_user: User | None,
-) -> bool:
-    """Return True when ``current_user`` owns the chapter's course or is admin.
-
-    Used by the editor-only ``?source=1`` gate on the chapter-scoped read
-    endpoints (``/quizzes/chapter/{id}``, ``/assignments/chapter/{id}``,
-    ``/blocks/chapter/{id}``). Returning source content to a regular student
-    would leak unredacted teacher drafts, so the param is gated.
-
-    Legacy single-fact helper. Prefer ``resolve_chapter_locale_context``
-    when the same route also needs ``source_locale`` or ``apply_overlay``.
-    """
-    return resolve_chapter_locale_context(db, chapter_id=chapter_id, current_user=current_user).is_owner_or_admin
-
-
 def build_localized_course_response_with_tree(
     db: Session,
     course: Course,
@@ -929,13 +886,10 @@ __all__ = [
     "build_localized_quiz_student_response",
     "fetch_course_titles_by_id",
     "fetch_overlay_triples_bulk",
-    "get_course_source_locale_for_chapter",
-    "is_chapter_course_owner_or_admin",
     "localize_announcement_rows",
     "localize_assignment_rows",
     "localize_chapter_block_rows",
     "localize_course_event_rows",
     "pick_overlay_value",
     "should_apply_course_translation_overlay",
-    "should_apply_course_translation_overlay_for_chapter",
 ]
