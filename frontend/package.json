@@ -9,7 +9,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && node scripts/upload-sourcemaps.mjs",
+    "build": "tsc && vite build && node scripts/check-bundle-size.mjs && node scripts/upload-sourcemaps.mjs",
+    "bundle:check": "node scripts/check-bundle-size.mjs",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
     "i18n:check": "node scripts/i18n-check.mjs",
     "preview": "vite preview",
