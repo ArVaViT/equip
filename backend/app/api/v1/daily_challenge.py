@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session  # noqa: TC002 — FastAPI Depends runtime us
 from app.api.dependencies import get_current_user
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
+from app.core.metrics import increment
 from app.models.daily_challenge import DailyChallengeAttempt
 from app.models.user import User  # noqa: TC001 — FastAPI Depends runtime use
 from app.schemas.daily_challenge import (
@@ -207,6 +208,23 @@ def submit_attempt(
     # set — we wrote it in this same transaction. Fall back to the
     # caller's submitted id rather than risking a Pydantic None.
     selected_id = outcome.attempt.selected_option_id or data.selected_option_id
+
+    # ``equip.daily_challenge.attempt_total`` — counts unique attempts
+    # only (``is_new_attempt=True``). The idempotent re-submit path
+    # still returns 201 to the client but does NOT increment, so the
+    # dashboard's "attempts per day" tile matches the actual student
+    # count even if a student clicks twice. Tagged with
+    # ``is_correct={true,false}`` so the dashboard can derive a
+    # correct-rate without a second metric.
+    if outcome.is_new_attempt:
+        import contextlib
+
+        with contextlib.suppress(Exception):
+            increment(
+                "equip.daily_challenge.attempt_total",
+                challenge_date=outcome.schedule.challenge_date.isoformat(),
+                is_correct=str(outcome.attempt.is_correct).lower(),
+            )
 
     return DailyChallengeAttemptResponse(
         id=outcome.attempt.id,
