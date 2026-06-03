@@ -95,7 +95,7 @@ export default function CoursesPage() {
       </section>
 
       {!user && (
-        <div className="mb-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-md border border-edge border-l-[3px] border-l-info bg-info/5 px-4 py-3 text-center sm:text-left">
+        <div className="mb-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-md border-l-[3px] border-l-info bg-info/5 px-4 py-3 text-center sm:text-left">
           <LogIn className="h-4 w-4 shrink-0 text-info" strokeWidth={1.75} aria-hidden="true" />
           <p className="text-sm text-ink">
             <Link

@@ -164,7 +164,7 @@ export default function ModuleView() {
       })()}
 
       {allComplete && (
-        <div className="mb-4 flex items-center gap-2 rounded-md border border-edge border-l-stripe border-l-success bg-success/10 px-3 py-2">
+        <div className="mb-4 flex items-center gap-2 rounded-md border-l-stripe border-l-success bg-success/10 px-3 py-2">
           <CheckCircle className="h-4 w-4 shrink-0 text-success" strokeWidth={1.75} aria-hidden />
           <span className="text-sm font-medium text-success">{t("module.moduleComplete")}</span>
         </div>

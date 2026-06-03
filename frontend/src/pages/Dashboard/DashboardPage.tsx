@@ -83,7 +83,7 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
   const shell = (body: React.ReactNode, centered = false) => (
     <section
       data-tour="my-courses"
-      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md border border-edge bg-card transition-[border-color] duration-300 hover:border-brand/25"
+      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md bg-card transition-[border-color] duration-300 hover:border-brand/25"
     >
       <header className="flex items-center justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex min-w-0 items-center gap-2.5">
@@ -119,7 +119,7 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
     return shell(
       <div className="w-full space-y-3">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="rounded-md border border-edge/80 bg-muted/10 px-3 py-3">
+          <div key={i} className="rounded-md bg-muted/10 px-3 py-3">
             <Skeleton className="h-4 w-3/5" />
             <Skeleton className="mt-2.5 h-1.5 w-2/3 rounded-full" />
           </div>
@@ -189,7 +189,7 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
               key={enrollment.id}
               to={`/courses/${courseId}`}
               style={{ "--stagger-index": index } as React.CSSProperties}
-              className="group block rounded-md border border-edge bg-muted/10 px-3 py-2.5 transition-colors hover:border-brand/30 hover:bg-muted/40"
+              className="group block rounded-md bg-muted/10 px-3 py-2.5 transition-colors hover:border-brand/30 hover:bg-muted/40"
             >
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
@@ -225,7 +225,7 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
                       {enrollment.progress}%
                     </span>
                     {grade?.grade ? (
-                      <span className="rounded-sm border border-edge bg-surface/80 px-1.5 py-0 text-[10px] font-medium text-ink">
+                      <span className="rounded-sm bg-surface/80 px-1.5 py-0 text-[10px] font-medium text-ink">
                         {grade.grade}
                       </span>
                     ) : null}

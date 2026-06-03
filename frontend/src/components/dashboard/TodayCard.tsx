@@ -80,7 +80,7 @@ export function TodayCard() {
   return (
     <section
       aria-labelledby="today-card-heading"
-      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md border border-edge bg-card transition-[border-color] duration-300 hover:border-brand/25"
+      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md bg-card transition-[border-color] duration-300 hover:border-brand/25"
     >
       <header className="flex items-center justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex min-w-0 items-center gap-2.5">

@@ -39,3 +39,4 @@ venv.bak/
 htmlcov/
 
 .vercel
+coverage.json

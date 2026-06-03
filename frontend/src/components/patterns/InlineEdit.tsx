@@ -142,7 +142,7 @@ export function InlineEdit({
       disabled: saving,
       "aria-label": ariaLabel,
       className: cn(
-        "w-full rounded-md border border-edge-strong bg-surface px-2 py-1 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
+        "w-full rounded-md -strong bg-surface px-2 py-1 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
         sizeClasses[size],
         textClassName,
       ),

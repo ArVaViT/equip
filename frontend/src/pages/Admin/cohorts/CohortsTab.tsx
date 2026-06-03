@@ -368,7 +368,7 @@ function CohortsTable({ items }: { items: Cohort[] }) {
           <Link
             key={c.id}
             to={`/admin/cohorts/${c.id}`}
-            className="block rounded-md border border-edge bg-card p-3 transition-colors hover:border-brand/30 hover:bg-muted/40"
+            className="block rounded-md bg-card p-3 transition-colors hover:border-brand/30 hover:bg-muted/40"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
@@ -482,7 +482,7 @@ function CohortsTableSkeleton() {
     <div aria-busy="true">
       <div className="space-y-2 px-4 py-3 sm:hidden">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-md border border-edge bg-card p-3">
+          <div key={i} className="rounded-md bg-card p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1 space-y-2">
                 <Skeleton className="h-4 w-2/3" />

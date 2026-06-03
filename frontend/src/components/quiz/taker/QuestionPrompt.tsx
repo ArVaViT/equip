@@ -24,7 +24,7 @@ export function QuestionPrompt({ question, index, answer, onAnswer }: Props) {
       <div className="flex items-start gap-3">
         <span
           aria-hidden
-          className="mt-0.5 inline-flex h-6 min-w-[1.5rem] shrink-0 items-center justify-center rounded-md border border-edge bg-muted/60 px-1.5 text-xs font-medium tabular-nums text-ink-muted"
+          className="mt-0.5 inline-flex h-6 min-w-[1.5rem] shrink-0 items-center justify-center rounded-md bg-muted/60 px-1.5 text-xs font-medium tabular-nums text-ink-muted"
         >
           {index + 1}
         </span>

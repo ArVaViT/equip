@@ -54,7 +54,7 @@ export function VerseOfTheDayCard() {
   return (
     <section
       aria-labelledby="verse-of-the-day-heading"
-      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md border border-edge bg-card transition-[border-color] duration-300 hover:border-brand/25"
+      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md bg-card transition-[border-color] duration-300 hover:border-brand/25"
     >
       {/* Compact header to match MiniCalendar / MyCoursesSection rhythm on
           the dashboard side rail. Icon dropped from a framed 10×10 box to

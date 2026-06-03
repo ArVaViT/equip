@@ -216,10 +216,10 @@ export function CoursePickerStep({ firstName, onEnrolled, onBrowse, onSkip }: Pr
                         src={cover}
                         alt=""
                         loading="lazy"
-                        className="h-16 w-16 shrink-0 rounded-sm border border-edge object-cover"
+                        className="h-16 w-16 shrink-0 rounded-sm object-cover"
                       />
                     ) : (
-                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-sm border border-edge bg-muted text-ink-muted">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-sm bg-muted text-ink-muted">
                         <BookOpen className="h-5 w-5" strokeWidth={1.75} aria-hidden />
                       </div>
                     )}

@@ -21,7 +21,7 @@ export function PreviousAttempts({ attempts, autoMaxScore }: Props) {
         {attempts.map((att) => {
           const inProgress = !att.completed_at
           const style = inProgress
-            ? "bg-muted/30 border border-edge"
+            ? "bg-muted/30 "
             : att.passed
               ? "border border-success/30 bg-success/10"
               : "border border-destructive/30 bg-destructive/10"

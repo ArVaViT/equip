@@ -45,7 +45,7 @@ export function attachCopyButtonsIn(
     // ``.prose pre`` semantic-token palette so the button looks
     // native in both themes.
     button.className =
-      "absolute right-2 top-2 z-10 rounded border border-edge bg-surface/90 px-2 py-1 text-xs font-medium text-ink-muted opacity-0 transition-opacity hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group-hover:opacity-100 focus:opacity-100"
+      "absolute right-2 top-2 z-10 rounded bg-surface/90 px-2 py-1 text-xs font-medium text-ink-muted opacity-0 transition-opacity hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group-hover:opacity-100 focus:opacity-100"
 
     // Make the button appear on hover by promoting the parent to a
     // tailwind ``group``. Idempotent: ``classList.add`` doesn't

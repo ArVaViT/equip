@@ -162,7 +162,7 @@ export default function RichTextEditor({
   if (!editor) return null;
 
   return (
-    <div className="relative rounded-md border border-edge-strong bg-surface">
+    <div className="relative rounded-md -strong bg-surface">
       {editable && (
         <EditorToolbar
           editor={editor}

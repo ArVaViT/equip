@@ -90,10 +90,10 @@ export function EnrollSplash({ course, firstName, onComplete }: Props) {
           <img
             src={cover}
             alt=""
-            className="h-28 w-28 rounded-md border border-edge object-cover shadow-[0_18px_45px_hsl(var(--foreground)/0.18)] sm:h-32 sm:w-32"
+            className="h-28 w-28 rounded-md object-cover shadow-[0_18px_45px_hsl(var(--foreground)/0.18)] sm:h-32 sm:w-32"
           />
         ) : (
-          <div className="flex h-28 w-28 items-center justify-center rounded-md border border-edge bg-muted text-ink-muted shadow-[0_18px_45px_hsl(var(--foreground)/0.12)] sm:h-32 sm:w-32">
+          <div className="flex h-28 w-28 items-center justify-center rounded-md bg-muted text-ink-muted shadow-[0_18px_45px_hsl(var(--foreground)/0.12)] sm:h-32 sm:w-32">
             <BookOpen className="h-10 w-10" strokeWidth={1.5} aria-hidden />
           </div>
         )}

@@ -109,7 +109,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           <div className="flex gap-3">
             <button
               onClick={this.handleReset}
-              className="inline-flex items-center justify-center rounded-md border border-edge-strong bg-surface px-4 py-2 text-sm font-medium hover:bg-heritage hover:text-ink transition-colors"
+              className="inline-flex items-center justify-center rounded-md -strong bg-surface px-4 py-2 text-sm font-medium hover:bg-heritage hover:text-ink transition-colors"
             >
               {i18n.t("errors.boundary.tryAgain")}
             </button>

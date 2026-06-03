@@ -106,7 +106,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
               <div className="flex items-start gap-3 mb-2">
                 <span
                   aria-hidden
-                  className="inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded border border-edge bg-surface px-1 text-xs font-medium tabular-nums text-ink-muted"
+                  className="inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded bg-surface px-1 text-xs font-medium tabular-nums text-ink-muted"
                 >
                   {idx + 1}
                 </span>

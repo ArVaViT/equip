@@ -169,13 +169,13 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
                 </p>
               </div>
 
-              <div className="grid gap-4 rounded-md border border-edge bg-muted/20 p-4 sm:grid-cols-2">
+              <div className="grid gap-4 rounded-md bg-muted/20 p-4 sm:grid-cols-2">
                 <div>
                   <p className="mb-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
                     {t("certificates.card.certificateNumber")}
                   </p>
                   <div className="flex items-center gap-2">
-                    <code className="select-all rounded border border-edge bg-surface px-2.5 py-1 font-mono text-sm">
+                    <code className="select-all rounded bg-surface px-2.5 py-1 font-mono text-sm">
                       {certificate.certificate_number}
                     </code>
                     <Button
@@ -244,7 +244,7 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
                 onChange={(e) => setReviewComment(e.target.value)}
                 placeholder={t("certificates.card.review.commentPlaceholder")}
                 rows={3}
-                className="flex min-h-[80px] w-full rounded-md border border-edge-strong bg-surface px-3 py-2 text-sm placeholder:text-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="flex min-h-[80px] w-full rounded-md -strong bg-surface px-3 py-2 text-sm placeholder:text-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               />
               <Button onClick={handleReviewSubmit} disabled={reviewSubmitting} size="sm">
                 {reviewSubmitting ? t("certificates.card.review.submitting") : t("certificates.card.review.submit")}
