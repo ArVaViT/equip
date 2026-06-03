@@ -58,6 +58,12 @@ Live emission today (sites tagged with the route file that wires them):
 * **`equip.reviews.rating_latest`** — `app/api/v1/reviews.py` emits
   per (user, course) on review create/update; the dashboard takes
   `avg` to produce the rating tile.
+* **`equip.translation.queue_depth`** + **`queue_processing`** +
+  **`queue_failed_permanent`** — `app/api/v1/
+  internal_translation_worker.py::_emit_queue_gauges` fires three
+  per-status gauges on every cron tick. Drives the Course
+  Engagement dashboard's *Translation queue health* group and the
+  `translation-queue-backlog` monitor.
 
 Drop-off rate is computed in the dashboard query as:
 
