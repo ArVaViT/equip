@@ -98,7 +98,7 @@ export function InlineEditCover({
   return (
     <div
       className={cn(
-        "relative w-full overflow-hidden rounded-lg border border-edge bg-muted",
+        "relative w-full overflow-hidden rounded-lg bg-muted",
         aspectClasses[aspect],
         dragOver && "ring-2 ring-brand ring-offset-2",
         className,

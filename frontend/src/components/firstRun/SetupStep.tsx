@@ -246,10 +246,10 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
               <img
                 src={toProxyImage(avatarUrl)}
                 alt=""
-                className="h-16 w-16 rounded-full border border-edge object-cover"
+                className="h-16 w-16 rounded-full object-cover"
               />
             ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-full border border-edge bg-muted font-serif text-base font-semibold text-ink">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted font-serif text-base font-semibold text-ink">
                 {initials || (
                   <UserIcon className="h-7 w-7 text-ink-muted" strokeWidth={1.75} aria-hidden />
                 )}

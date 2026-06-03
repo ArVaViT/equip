@@ -394,7 +394,7 @@ export default function CohortDetailPage() {
               {courses.map((c) => (
                 <li
                   key={c.id}
-                  className="flex items-center justify-between gap-3 rounded-md border border-edge bg-muted/10 px-3 py-2 transition-colors hover:border-brand/30 hover:bg-muted/40"
+                  className="flex items-center justify-between gap-3 rounded-md bg-muted/10 px-3 py-2 transition-colors hover:border-brand/30 hover:bg-muted/40"
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <Link

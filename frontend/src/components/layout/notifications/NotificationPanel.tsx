@@ -54,7 +54,7 @@ export const NotificationPanel = forwardRef<HTMLDivElement, Props>(
         role="region"
         aria-label={t("notifications.panelAriaLabel")}
         className={cn(
-          "mt-2 overflow-hidden rounded-lg border border-edge shadow-lg",
+          "mt-2 overflow-hidden rounded-lg shadow-lg",
           // Sheet variant: live in the flex flow so it pushes the
           // "Profile" link below it instead of floating over the next
           // nav row as a phantom overlay (the original

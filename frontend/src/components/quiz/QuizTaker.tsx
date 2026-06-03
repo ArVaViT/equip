@@ -144,7 +144,7 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
     : 0
 
   return (
-    <div className="mt-6 rounded-lg border border-edge bg-card">
+    <div className="mt-6 rounded-lg bg-card">
       <QuizHeader
         quiz={quiz}
         questionCount={sortedQuestions.length}
@@ -187,7 +187,7 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
           )}
 
           {attemptsReached && (
-            <div className="rounded-md border border-edge border-l-stripe border-l-warning bg-warning/10 px-3 py-2 text-xs text-ink">
+            <div className="rounded-md border-l-stripe border-l-warning bg-warning/10 px-3 py-2 text-xs text-ink">
               {t("quiz.maxAttemptsReached", { type: t(assessmentTypeKey).toLowerCase() })}
             </div>
           )}

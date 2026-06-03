@@ -291,7 +291,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
           </div>
 
           {hasDifferentManual && (
-            <div className="rounded border border-edge border-l-stripe border-l-warning bg-warning/10 px-3 py-2 text-xs text-ink">
+            <div className="rounded border-l-stripe border-l-warning bg-warning/10 px-3 py-2 text-xs text-ink">
               <Trans
                 i18nKey="gradebook.summary.manualDiffers"
                 values={{

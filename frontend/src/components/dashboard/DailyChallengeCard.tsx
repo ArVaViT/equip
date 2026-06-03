@@ -94,7 +94,7 @@ interface CandleStreakProps {
 function CandleStreak({ count, label }: CandleStreakProps) {
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full border border-edge bg-surface/80 px-2 py-0.5 text-[11px] font-medium text-ink"
+      className="inline-flex items-center gap-1 rounded-full bg-surface/80 px-2 py-0.5 text-[11px] font-medium text-ink"
       aria-label={label}
     >
       <Flame className="h-3 w-3 text-brand" strokeWidth={1.75} aria-hidden />
@@ -228,7 +228,7 @@ export function DailyChallengeCard() {
   return (
     <section
       aria-labelledby="dc-card-heading"
-      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md border border-edge bg-card transition-[border-color] duration-300 hover:border-brand/25"
+      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md bg-card transition-[border-color] duration-300 hover:border-brand/25"
     >
       <header className="flex items-center justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex min-w-0 items-center gap-2.5">
@@ -293,7 +293,7 @@ export function DailyChallengeCard() {
                 ))}
             </ul>
             {reveal !== null && (
-              <div className="space-y-1.5 rounded-md border border-edge/80 bg-muted/20 px-3 py-2.5">
+              <div className="space-y-1.5 rounded-md bg-muted/20 px-3 py-2.5">
                 <p
                   className={cn(
                     "text-[11px] font-semibold uppercase tracking-[0.14em]",

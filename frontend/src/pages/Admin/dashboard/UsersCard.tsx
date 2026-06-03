@@ -436,7 +436,7 @@ function UserCard({
   return (
     <div
       className={cn(
-        "rounded-md border border-edge bg-card p-3 transition-colors",
+        "rounded-md bg-card p-3 transition-colors",
         selected && "border-brand/40 bg-brand/[0.08] dark:bg-brand/15",
       )}
     >

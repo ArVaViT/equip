@@ -38,21 +38,21 @@ export function PrivacyPolicyStep({ onAccept }: Props) {
       </p>
 
       <ul className="mt-2 w-full space-y-3 text-left text-sm leading-relaxed text-ink-muted">
-        <li className="flex gap-3 rounded-md border border-edge/60 bg-muted/20 p-3">
+        <li className="flex gap-3 rounded-md bg-muted/20 p-3">
           <span aria-hidden className="mt-1.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
           <span>{t("firstRun.privacy.bullets.collect")}</span>
         </li>
-        <li className="flex gap-3 rounded-md border border-edge/60 bg-muted/20 p-3">
+        <li className="flex gap-3 rounded-md bg-muted/20 p-3">
           <span aria-hidden className="mt-1.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
           <span>{t("firstRun.privacy.bullets.share")}</span>
         </li>
-        <li className="flex gap-3 rounded-md border border-edge/60 bg-muted/20 p-3">
+        <li className="flex gap-3 rounded-md bg-muted/20 p-3">
           <span aria-hidden className="mt-1.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
           <span>{t("firstRun.privacy.bullets.control")}</span>
         </li>
       </ul>
 
-      <div className="mt-2 flex w-full items-start gap-3 rounded-md border border-edge bg-surface p-3 text-left">
+      <div className="mt-2 flex w-full items-start gap-3 rounded-md bg-surface p-3 text-left">
         <Checkbox
           id={checkboxId}
           checked={accepted}

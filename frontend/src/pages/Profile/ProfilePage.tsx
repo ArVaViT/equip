@@ -171,10 +171,10 @@ export default function ProfilePage() {
                     src={toProxyImage(user.avatar_url)}
                     alt={t("profile.avatarAlt", { name: user.full_name ?? user.email })}
                     loading="lazy"
-                    className="h-20 w-20 rounded-full border border-edge object-cover ring-2 ring-background"
+                    className="h-20 w-20 rounded-full object-cover ring-2 ring-background"
                   />
                 ) : (
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full border border-edge bg-muted font-serif text-xl font-semibold text-ink">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted font-serif text-xl font-semibold text-ink">
                     {initials || <UserIcon className="h-9 w-9 text-ink-muted" strokeWidth={1.75} aria-hidden />}
                   </div>
                 )}
@@ -183,7 +183,7 @@ export default function ProfilePage() {
                   onClick={() => fileRef.current?.click()}
                   disabled={uploading}
                   aria-label={t("profile.changeAvatar")}
-                  className="absolute -bottom-0.5 -right-0.5 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-edge bg-card text-ink shadow-none transition-colors hover:bg-muted disabled:pointer-events-none"
+                  className="absolute -bottom-0.5 -right-0.5 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-card text-ink shadow-none transition-colors hover:bg-muted disabled:pointer-events-none"
                 >
                   {uploading ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.75} aria-hidden />
@@ -233,7 +233,7 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="flex items-center gap-3 rounded-md border border-edge bg-muted/15 p-4">
+              <div className="flex items-center gap-3 rounded-md bg-muted/15 p-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
                   <BookOpen className="h-5 w-5 text-ink-muted" strokeWidth={1.75} aria-hidden />
                 </div>
@@ -242,7 +242,7 @@ export default function ProfilePage() {
                   <p className="mt-1 text-xs text-ink-muted">{t("profile.coursesCompleted")}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 rounded-md border border-edge bg-muted/15 p-4">
+              <div className="flex items-center gap-3 rounded-md bg-muted/15 p-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
                   <Award className="h-5 w-5 text-ink-muted" strokeWidth={1.75} aria-hidden />
                 </div>
@@ -269,7 +269,7 @@ export default function ProfilePage() {
             <CardTitle className="font-serif text-lg font-semibold tracking-tight">{t("profile.accountDetails")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="divide-y divide-border rounded-md border border-edge">
+            <dl className="divide-y divide-border rounded-md ">
               <div className="flex items-start gap-3 px-4 py-3">
                 <Mail className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
                 <div className="min-w-0">
@@ -296,7 +296,7 @@ export default function ProfilePage() {
           <CardHeader>
             <CardTitle className="font-serif text-lg font-semibold tracking-tight">{t("profile.preferences")}</CardTitle>
           </CardHeader>
-          <CardContent className="divide-y divide-border rounded-md border border-edge px-0">
+          <CardContent className="divide-y divide-border rounded-md px-0">
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4">
               <div className="flex min-w-0 items-center gap-3">
                 {theme === "dark" ? (

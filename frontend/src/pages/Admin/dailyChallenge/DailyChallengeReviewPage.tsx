@@ -97,7 +97,7 @@ export default function DailyChallengeReviewPage() {
         }
       />
 
-      <section className="mt-6 rounded-md border border-edge bg-card">
+      <section className="mt-6 rounded-md bg-card">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
@@ -106,7 +106,7 @@ export default function DailyChallengeReviewPage() {
             <select
               value={status}
               onChange={(e) => setStatusFilter(e.target.value as DailyChallengeStatus)}
-              className="h-7 rounded-md border border-edge bg-surface px-2 text-xs"
+              className="h-7 rounded-md bg-surface px-2 text-xs"
             >
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
