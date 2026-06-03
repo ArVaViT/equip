@@ -1815,6 +1815,27 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/internal/translation-queue/health",
+    "params": [
+      [
+        "Authorization",
+        "header"
+      ],
+      [
+        "X-Worker-Secret",
+        "header"
+      ]
+    ],
+    "responses": [
+      "200",
+      "401",
+      "422",
+      "503"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/internal/translation-worker",
     "params": [
       [

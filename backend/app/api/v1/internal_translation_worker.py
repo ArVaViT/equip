@@ -34,10 +34,12 @@ from sqlalchemy.orm import Session  # noqa: TC002 — used by FastAPI Depends at
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
+from app.core.metrics import gauge
 from app.services.course_service import get_course
 from app.services.translation.course_pipeline import translate_course_content
 from app.services.translation.queue import (
     claim_next_job,
+    get_queue_status,
     mark_job_done,
     mark_job_failed,
 )
@@ -106,9 +108,30 @@ def _require_worker_secret(
         )
 
 
+def _emit_queue_gauges(db: Session) -> None:
+    """Emit per-status queue depth gauges so the Datadog dashboard +
+    backlog monitor have something to plot.
+
+    Wrapped in try/except: a metric failure must NEVER break the
+    worker tick. If Datadog goes dark for a few minutes that's fine;
+    the queue itself drains regardless.
+    """
+    try:
+        counts = get_queue_status(db)
+        gauge("equip.translation.queue_depth", float(counts.get("queued", 0) + counts.get("failed", 0)))
+        gauge("equip.translation.queue_processing", float(counts.get("processing", 0)))
+        gauge("equip.translation.queue_failed_permanent", float(counts.get("failed_permanent", 0)))
+    except Exception:
+        return
+
+
 def _run_one_tick(db: Session) -> WorkerTickResponse:
     """One claim → process → mark cycle. Extracted so tests can drive
     it directly without going through the FastAPI dependency stack."""
+    # Emit queue gauges BEFORE the claim so the timeseries shows the
+    # backlog at tick start (post-claim values would be off-by-one for
+    # the row we're about to grab).
+    _emit_queue_gauges(db)
     job: TranslationJob | None = claim_next_job(db)
     if job is None:
         return WorkerTickResponse(status="idle")
@@ -208,8 +231,52 @@ def drain_one_job_get(
     return _run_one_tick(db)
 
 
+class QueueHealthResponse(BaseModel):
+    """Per-status counts for the ``translation_jobs`` queue."""
+
+    queued: int
+    processing: int
+    done: int
+    failed: int
+    failed_permanent: int
+
+
+@router.get(
+    "/translation-queue/health",
+    response_model=QueueHealthResponse,
+    summary="Per-status counts on the translation_jobs queue",
+    responses={
+        200: {"description": "Current queue depth + in-flight + failure counts."},
+        401: {"description": "Worker secret missing or wrong"},
+        503: {"description": "TRANSLATION_WORKER_SECRET is not configured on this deployment"},
+    },
+)
+def queue_health(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_worker_secret),
+) -> QueueHealthResponse:
+    """Authenticated health probe — same secret as the worker.
+
+    Lets an operator curl-check backlog without poking the database:
+
+        curl -H "X-Worker-Secret: <secret>" \\
+             https://api.equipbible.com/api/v1/internal/translation-queue/health
+
+    Same secret intentionally — anyone allowed to drive the worker is
+    allowed to read the queue shape.
+    """
+    counts = get_queue_status(db)
+    return QueueHealthResponse(
+        queued=counts.get("queued", 0),
+        processing=counts.get("processing", 0),
+        done=counts.get("done", 0),
+        failed=counts.get("failed", 0),
+        failed_permanent=counts.get("failed_permanent", 0),
+    )
+
+
 # Public surface for tests + future admin tooling.
-__all__ = ["_require_worker_secret", "_run_one_tick", "router"]
+__all__ = ["_emit_queue_gauges", "_require_worker_secret", "_run_one_tick", "router"]
 
 
 def generate_worker_secret() -> str:

@@ -30,7 +30,7 @@ import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.models.translation_job import (
     TRANSLATION_JOB_MAX_ATTEMPTS,
@@ -148,6 +148,33 @@ def mark_job_done(db: Session, job: TranslationJob) -> TranslationJob:
     db.commit()
     db.refresh(job)
     return job
+
+
+def get_queue_status(db: Session) -> dict[str, int]:
+    """Return per-status row counts on ``translation_jobs``.
+
+    Used by:
+    * The worker tick to emit ``equip.translation.queue_*`` gauges so
+      Datadog can show backlog + in-flight + failure curves over time.
+    * The ``/internal/translation-queue/health`` endpoint so ops can
+      curl-check the queue without poking the database.
+
+    Returns a dict keyed by status value (``queued`` / ``processing``
+    / ``done`` / ``failed`` / ``failed_permanent``) with the raw row
+    counts. Statuses with zero rows are still present (value 0) so the
+    dict shape is stable for downstream consumers.
+    """
+    rows = (
+        db.execute(
+            select(TranslationJob.status, func.count().label("n"))
+            .group_by(TranslationJob.status)
+        )
+        .all()
+    )
+    counts: dict[str, int] = {s.value: 0 for s in TranslationJobStatus}
+    for row in rows:
+        counts[row[0]] = int(row[1])
+    return counts
 
 
 def mark_job_failed(db: Session, job: TranslationJob, *, error: str) -> TranslationJob:
