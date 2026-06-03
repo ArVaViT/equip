@@ -22,8 +22,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const mounted = useRef(true)
   const activeUserId = useRef<string | null>(null)
+  // ``inflightUserId`` deduplicates *simultaneous* enrichProfile() calls
+  // for the same user. The activeUserId guards at the onAuthStateChange
+  // callsites short-circuit *sequential* duplicates (SIGNED_IN after
+  // INITIAL_SESSION), but they don't help when two events fire in the
+  // same render tick — both setting activeUserId.current = uid before
+  // either's supabase request lands. Production /rest/v1/profiles logs
+  // showed duplicate GETs 2µs apart for every tab focus.
+  const inflightUserId = useRef<string | null>(null)
 
   const enrichProfile = useCallback((userId: string, email: string) => {
+    // Same userId already in flight — second caller piggybacks on the
+    // first result (which will setUser + setLoading(false) once).
+    if (inflightUserId.current === userId) return
+    inflightUserId.current = userId
     activeUserId.current = userId
     // Supabase resolves with `{ data, error }` even for failures — it does NOT
     // reject the promise — so relying on the `.then` rejection handler only
@@ -36,6 +48,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .single()
       .then(
         ({ data, error }) => {
+          // Clear inflight regardless of outcome — a failed fetch
+          // should still allow a fresh retry on the next tab focus.
+          if (inflightUserId.current === userId) inflightUserId.current = null
           if (!mounted.current || activeUserId.current !== userId) return
           if (error || !data) {
             setLoading(false)
@@ -72,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false)
         },
         () => {
+          if (inflightUserId.current === userId) inflightUserId.current = null
           if (mounted.current && activeUserId.current === userId) {
             setLoading(false)
           }
