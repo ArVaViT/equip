@@ -44,7 +44,11 @@
     --warning-foreground: 265 28% 13%;
     --info: 215 75% 42%;
     --info-foreground: 0 0% 98%;
-    --border: 265 12% 87%;
+    /* 2026-06-03 UX call (Vadym): --border softened from 87% L to
+     * 94% L so directional dividers + remaining edge lines fade to
+     * a hint instead of an HTML-table grid. --input stays sharp at
+     * 87% L because field affordance IS the border. */
+    --border: 265 8% 94%;
     --input: 265 12% 87%;
     --ring: 262 56% 38%;
     --radius: 0.5rem;
@@ -93,7 +97,11 @@
     --warning-foreground: 240 12% 10%;
     --info: 215 72% 58%;
     --info-foreground: 240 12% 10%;
-    --border: 240 5% 19%;
+    /* Dark-mode counterpart of the light-mode softening: --border
+     * drops from 19% L to 13% L so it's nearly bg-card (12% L),
+     * dividers fade to a hint. --input stays at 19% L so form
+     * fields keep a visible boundary. */
+    --border: 240 5% 13%;
     --input: 240 5% 19%;
     --ring: 262 58% 72%;
 
