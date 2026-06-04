@@ -48,8 +48,16 @@ def _seed_dc_today(db: Session) -> tuple[DailyChallengeQuestion, uuid.UUID, uuid
     q = _seed_question_with_options(db, author_id=author.id)
     _schedule_for_today(db, q, scheduled_by=author.id)
     db.refresh(q)
-    correct = next(o.id for o in db.query(DailyChallengeOption).filter(DailyChallengeOption.question_id == q.id).all() if o.is_correct)
-    wrong = next(o.id for o in db.query(DailyChallengeOption).filter(DailyChallengeOption.question_id == q.id).all() if not o.is_correct)
+    correct = next(
+        o.id
+        for o in db.query(DailyChallengeOption).filter(DailyChallengeOption.question_id == q.id).all()
+        if o.is_correct
+    )
+    wrong = next(
+        o.id
+        for o in db.query(DailyChallengeOption).filter(DailyChallengeOption.question_id == q.id).all()
+        if not o.is_correct
+    )
     return q, correct, wrong
 
 
