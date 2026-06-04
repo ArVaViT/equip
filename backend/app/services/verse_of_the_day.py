@@ -455,8 +455,28 @@ def _fetch_passage(api_key: str, bible_id: int, ref: str) -> tuple[str, str]:
     transient outage, not a content gap).
     """
     url = f"{YOUVERSION_API_BASE}/bibles/{bible_id}/passages/{ref}"
-    with httpx.Client(timeout=8.0) as client:
-        response = client.get(url, headers={"X-YVP-App-Key": api_key})
+    try:
+        with httpx.Client(timeout=8.0) as client:
+            response = client.get(url, headers={"X-YVP-App-Key": api_key})
+    except httpx.HTTPError:
+        # Transport-level failure (timeout, connection refused, DNS) — the
+        # call never produced a status. This is precisely the outage the
+        # API-budget dashboard most needs to see, yet the per-call metric
+        # below only fired once we had a response. Emit a fatal data point
+        # (status_code=0 = "no response") before re-raising so an outage
+        # registers. Metric failure must never mask the original error.
+        try:
+            from app.core.metrics import increment
+
+            increment(
+                "equip.youversion.api_calls_total",
+                bible_id=str(bible_id),
+                outcome="fatal",
+                status_code="0",
+            )
+        except Exception:
+            pass
+        raise
     # Emit per-call API metric BEFORE the status branches so the dashboard
     # sees every call, not just the 200s. Tagged with bible_id (which
     # locale) + outcome (which budget bucket: 200 = ok, 404 = not_in_bible

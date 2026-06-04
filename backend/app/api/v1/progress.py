@@ -105,14 +105,15 @@ def teacher_complete_chapter(
     progress.completed_by = teacher.id
     progress.completion_type = "teacher"
     sync_enrollment_progress(db, student_id, course_id)
-    increment(
-        "equip.engagement.chapter_completed_total",
-        chapter_id=str(chapter_id),
-        course_id=str(course_id),
-        completion_type="teacher",
-    )
+    # Emit only AFTER a successful commit that actually flipped the row.
+    # Emitting before commit double-counted: on the concurrent-completion
+    # race below the loser rolls back but would already have fired the
+    # metric, and the winner fires it too — two increments for one real
+    # completion, contradicting the documented idempotency.
+    committed_flip = False
     try:
         db.commit()
+        committed_flip = True
     except IntegrityError:
         # Concurrent (teacher_complete + student-side autocomplete, or
         # two co-teachers clicking together) just committed a row for
@@ -132,9 +133,9 @@ def teacher_complete_chapter(
         )
         if not winner:
             raise
-        # If the winner is already complete just acknowledge it. If
-        # not (it raced but lost on a different field), reapply this
-        # teacher's intent — they explicitly asked for completion.
+        # If the winner is already complete just acknowledge it (no emit —
+        # the request that flipped it already counted). If not, reapply
+        # this teacher's intent — they explicitly asked for completion.
         if not winner.completed:
             winner.completed = True
             winner.completed_at = datetime.now(UTC)
@@ -142,6 +143,14 @@ def teacher_complete_chapter(
             winner.completion_type = "teacher"
             sync_enrollment_progress(db, student_id, course_id)
             db.commit()
+            committed_flip = True
+    if committed_flip:
+        increment(
+            "equip.engagement.chapter_completed_total",
+            chapter_id=str(chapter_id),
+            course_id=str(course_id),
+            completion_type="teacher",
+        )
     return {
         "message": "Chapter marked as complete by teacher",
         "chapter_id": chapter_id,

@@ -108,12 +108,26 @@ Drop-off rate is computed in the dashboard query as:
 
 over the chosen window — no separate emitter required.
 
-Still TODO (panels render "no data" gracefully):
+Still TODO (panels render "no data" gracefully). These metric names are
+referenced by dashboard widgets but **not emitted yet** — the
+`test_every_dashboard_metric_is_emitted_or_documented` sentinel requires
+every dashboard metric to be either emitted or listed here, so a dead
+tile can't sneak in silently:
 
-* `equip.questions.*` — course Q&A surface when it lands.
+* `equip.questions.*` — course Q&A surface when it lands
+  (covers `questions.open` + `questions.response_time.p50`).
 * `equip.completion.chapter_avg_pct` — per-chapter aggregate.
 * `equip.engagement.first_dropoff.p50` — needs session-window
   computation; deferred until session_id tagging lands.
+* `equip.activity.daily_active_users` — needs a distinct-user rollup
+  (the request-logging middleware emits `requests_total`, not DAU).
+* `equip.enrollments.count` — point-in-time enrollment gauge; today we
+  only emit `enrollments.created_total` (a counter).
+* `equip.courses.active_7d` — rolling 7-day active-course gauge; no
+  emitter yet.
+* `equip.grading.pending` — pending-grade depth gauge; today we emit
+  `grading.graded_total` + `grading.time_to_grade.p50` on grade, not a
+  pending-queue gauge.
 
 ## See also
 
