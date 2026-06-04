@@ -42,6 +42,7 @@ from app.schemas.cohort import (
     CohortCreate,
     CohortResponse,
     CohortStudentAdd,
+    CohortStudentRow,
     CohortUpdate,
 )
 from app.schemas.locale import normalize_locale
@@ -554,7 +555,7 @@ def detach_course(
 # ---------------------- junction: cohort x students -------------------
 
 
-@router.get("/{cohort_id}/students")
+@router.get("/{cohort_id}/students", response_model=list[CohortStudentRow])
 def list_cohort_students(
     cohort_id: UUID,
     skip: int = Query(0, ge=0, description="Pagination offset (student-level)."),

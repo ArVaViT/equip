@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Header, Query, Response
+from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -12,8 +13,31 @@ from app.services.translation.resolve_for_display import populate_spine_texts
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
+class CourseAnalyticsStudentRow(BaseModel):
+    """One enrollment row in the analytics student list. Typed so the
+    response is validated on the way out — this payload carries PII
+    (email + name), so a silent shape drift shouldn't ship unnoticed."""
+
+    enrollment_id: str
+    user_id: str
+    full_name: str
+    email: str
+    progress: int
+    enrolled_at: str | None = None
+
+
+class CourseAnalyticsResponse(BaseModel):
+    course_id: str
+    course_title: str
+    total_students: int
+    avg_progress: float
+    completion_count: int
+    enrollments: list[CourseAnalyticsStudentRow]
+
+
 @router.get(
     "/course/{course_id}",
+    response_model=CourseAnalyticsResponse,
     summary="Course-level analytics for the teacher dashboard",
     responses={
         200: {"description": "Course title + aggregate stats + paginated enrollment list"},
