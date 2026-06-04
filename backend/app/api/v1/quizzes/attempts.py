@@ -139,7 +139,7 @@ def submit_quiz(
     attempt.completed_at = datetime.now(UTC)
 
     if attempt.passed:
-        quiz_service.upsert_passed_chapter_progress(db, current_user.id, str(quiz.chapter_id))
+        quiz_service.upsert_passed_chapter_progress(db, current_user.id, str(quiz.chapter_id), course_id=course_id)
         sync_enrollment_progress(db, current_user.id, course_id)
 
     db.commit()

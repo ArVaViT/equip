@@ -1503,6 +1503,47 @@ def test_grade_essay_answer_recomputes_passed(client: TestClient, student, db: S
     assert graded_list[0]["points_earned"] == 18
 
 
+def test_regrade_below_passing_uncompletes_chapter(client: TestClient, student, db: Session):
+    """Regression: lowering a manual grade so the attempt drops below the
+    passing score must un-complete the quiz-sourced chapter and re-sync
+    enrollment progress. Previously only the fail->pass direction synced,
+    so a downgrade left the chapter completed and certificate eligibility
+    inflated on a grade the student no longer holds."""
+    from app.models.chapter_progress import ChapterProgress
+
+    _seed_course_with_enrollment(db)
+    quiz, _essay, attempt, essay_answer = _seed_submitted_essay_attempt(db)
+
+    # Grade high → attempt passes → chapter auto-completes via the quiz path.
+    up = client.patch(f"/api/v1/quizzes/answers/{essay_answer.id}", json={"points_earned": 18})
+    assert up.status_code == 200
+    db.expire_all()
+    cp = (
+        db.query(ChapterProgress)
+        .filter(ChapterProgress.user_id == STUDENT_ID, ChapterProgress.chapter_id == quiz.chapter_id)
+        .first()
+    )
+    assert cp is not None and cp.completed is True
+    assert cp.completion_type == "quiz"
+
+    # Re-grade the same essay down → 1 (mcq) + 2 = 3/21 ≈ 14% < 70 → fails.
+    down = client.patch(f"/api/v1/quizzes/answers/{essay_answer.id}", json={"points_earned": 2})
+    assert down.status_code == 200
+    attempts_resp = client.get(f"/api/v1/quizzes/{quiz.id}/attempts").json()
+    attempt_view = next(a for a in attempts_resp if a["id"] == str(attempt.id))
+    assert attempt_view["passed"] is False
+
+    db.expire_all()
+    cp = (
+        db.query(ChapterProgress)
+        .filter(ChapterProgress.user_id == STUDENT_ID, ChapterProgress.chapter_id == quiz.chapter_id)
+        .first()
+    )
+    assert cp is not None
+    assert cp.completed is False, "chapter must un-complete when the attempt drops below passing"
+    assert cp.completed_at is None
+
+
 def test_grade_answer_acquires_for_update_lock_on_attempt(client: TestClient, student, db: Session, monkeypatch):
     """The PATCH handler must take a ``FOR UPDATE`` row lock on the
     attempt before recomputing the aggregate score.

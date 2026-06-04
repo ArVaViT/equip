@@ -226,7 +226,7 @@ def persist_answers(
     return total_score, answer_results
 
 
-def upsert_passed_chapter_progress(db: Session, user_id: UUID, chapter_id: str) -> None:
+def upsert_passed_chapter_progress(db: Session, user_id: UUID, chapter_id: str, *, course_id: str) -> None:
     """Mark the chapter as ``quiz``-completed for the student (idempotent).
 
     Race-safe: a concurrent teacher-mark-complete or assignment-submit
@@ -268,6 +268,7 @@ def upsert_passed_chapter_progress(db: Session, user_id: UUID, chapter_id: str) 
         increment(
             "equip.engagement.chapter_completed_total",
             chapter_id=str(chapter_id),
+            course_id=str(course_id),
             completion_type="quiz",
         )
 
@@ -291,7 +292,52 @@ def recompute_attempt_grade(db: Session, attempt: QuizAttempt, quiz: Quiz) -> No
     percentage = (attempt.score / max_score * 100) if max_score > 0 else 0
     attempt.passed = max_score > 0 and percentage >= quiz.passing_score
 
-    if attempt.passed and not was_passed:
-        upsert_passed_chapter_progress(db, attempt.user_id, str(quiz.chapter_id))
-        course_id = resolve_chapter_course_id(db, quiz.chapter_id)
+    if attempt.passed == was_passed:
+        return
+
+    course_id = resolve_chapter_course_id(db, quiz.chapter_id)
+    if attempt.passed:
+        # fail → pass: mark the chapter done and sync progress up.
+        upsert_passed_chapter_progress(db, attempt.user_id, str(quiz.chapter_id), course_id=course_id)
         sync_enrollment_progress(db, attempt.user_id, course_id)
+    else:
+        # pass → fail (teacher lowered a manual grade below passing). The
+        # inverse used to be missing: the chapter stayed quiz-completed and
+        # enrollment.progress stayed inflated, so certificate eligibility
+        # was based on a grade the student no longer holds. Un-complete the
+        # chapter ONLY when (a) it was completed via the quiz path (don't
+        # clobber a teacher-mark / assignment completion) and (b) no OTHER
+        # passing attempt for this chapter survives, then re-sync down.
+        _undo_quiz_chapter_completion(db, attempt.user_id, quiz.chapter_id, exclude_attempt_id=attempt.id)
+        sync_enrollment_progress(db, attempt.user_id, course_id)
+
+
+def _undo_quiz_chapter_completion(db: Session, user_id: UUID, chapter_id: str, *, exclude_attempt_id: UUID) -> None:
+    """Clear a quiz-sourced chapter completion when the student no longer
+    has any passing attempt for that chapter. No-op if the chapter was
+    completed by a different path or another passing attempt remains."""
+    other_pass = (
+        db.query(QuizAttempt.id)
+        .join(Quiz, QuizAttempt.quiz_id == Quiz.id)
+        .filter(
+            Quiz.chapter_id == chapter_id,
+            QuizAttempt.user_id == user_id,
+            QuizAttempt.passed.is_(True),
+            QuizAttempt.id != exclude_attempt_id,
+        )
+        .first()
+    )
+    if other_pass is not None:
+        return
+
+    cp = (
+        db.query(ChapterProgress)
+        .filter(
+            ChapterProgress.user_id == user_id,
+            ChapterProgress.chapter_id == str(chapter_id),
+        )
+        .first()
+    )
+    if cp is not None and cp.completed and cp.completion_type == "quiz":
+        cp.completed = False
+        cp.completed_at = None

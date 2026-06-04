@@ -85,13 +85,16 @@ class TestQuizEngagementEmission:
         _seed_users(db)
         chapter_id = _seed_basic_course(db, "eng-q1")
         with caplog.at_level(logging.INFO, logger="equip.metric"):
-            quiz_service.upsert_passed_chapter_progress(db, STUDENT_ID, chapter_id)
+            quiz_service.upsert_passed_chapter_progress(db, STUDENT_ID, chapter_id, course_id="eng-q1")
             db.commit()
         msgs = [r.getMessage() for r in caplog.records if r.name == "equip.metric"]
         completed = [m for m in msgs if "equip.engagement.chapter_completed_total" in m]
         assert completed, "expected chapter_completed_total to fire"
         assert any("completion_type=quiz" in m for m in completed)
         assert any(f"chapter_id={chapter_id}" in m for m in completed)
+        # course_id must be present so per-course drop-off widgets work
+        # (the quiz path used to drop it, unlike the other two paths).
+        assert any("course_id=eng-q1" in m for m in completed)
         assert any("value=1.0" in m for m in completed)
 
     def test_does_not_emit_when_already_complete(
@@ -104,14 +107,14 @@ class TestQuizEngagementEmission:
         _seed_users(db)
         chapter_id = _seed_basic_course(db, "eng-q2")
         # First pass to set up the completed row
-        quiz_service.upsert_passed_chapter_progress(db, STUDENT_ID, chapter_id)
+        quiz_service.upsert_passed_chapter_progress(db, STUDENT_ID, chapter_id, course_id="eng-q2")
         db.commit()
         # Clear out whatever the setup pass emitted; the assertion
         # below is about what fires on the SECOND call.
         caplog.clear()
 
         with caplog.at_level(logging.INFO, logger="equip.metric"):
-            quiz_service.upsert_passed_chapter_progress(db, STUDENT_ID, chapter_id)
+            quiz_service.upsert_passed_chapter_progress(db, STUDENT_ID, chapter_id, course_id="eng-q2")
             db.commit()
         msgs = [r.getMessage() for r in caplog.records if r.name == "equip.metric"]
         completed = [m for m in msgs if "equip.engagement.chapter_completed_total" in m]
