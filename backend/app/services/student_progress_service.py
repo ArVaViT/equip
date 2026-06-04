@@ -107,24 +107,42 @@ def _aggregate_quiz_results(
         for q in qs:
             quiz_to_chapter[q.id] = ch_id
 
-    passed_any = func.max(case((QuizAttempt.passed.is_(True), 1), else_=0)).label("passed_any")
-    quiz_aggs = (
+    # The "best" attempt per (user, quiz) must come from a SINGLE row:
+    # independent MAX(score) + MAX(max_score) aggregates could combine a
+    # high score from one attempt with a high max_score from another and
+    # report a percentage that never happened (e.g. 8/10 + 5/20 -> "8/20").
+    # Rank attempts by PERCENTAGE (coalescing a 0 max_score to -1 so it
+    # sorts last, dialect-safe) and take rn=1; the per-group aggregates
+    # (passed_any / attempts / last_completed) ride along as window funcs
+    # so it's still one query. Window functions work on both Postgres and
+    # the SQLite test backend.
+    partition = (QuizAttempt.user_id, QuizAttempt.quiz_id)
+    pct_order = func.coalesce(QuizAttempt.score * 1.0 / func.nullif(QuizAttempt.max_score, 0), -1.0)
+    ranked = (
         db.query(
             QuizAttempt.user_id.label("user_id"),
             QuizAttempt.quiz_id.label("quiz_id"),
-            func.max(QuizAttempt.score).label("best_score"),
-            func.max(QuizAttempt.max_score).label("best_max_score"),
-            passed_any,
-            func.count().label("attempts"),
-            func.max(QuizAttempt.completed_at).label("last_completed"),
+            QuizAttempt.score.label("score"),
+            QuizAttempt.max_score.label("max_score"),
+            func.row_number()
+            .over(partition_by=partition, order_by=(pct_order.desc(), QuizAttempt.completed_at.desc()))
+            .label("rn"),
+            func.count().over(partition_by=partition).label("attempts"),
+            func.max(case((QuizAttempt.passed.is_(True), 1), else_=0)).over(partition_by=partition).label("passed_any"),
+            func.max(QuizAttempt.completed_at).over(partition_by=partition).label("last_completed"),
         )
         .filter(
             QuizAttempt.quiz_id.in_(all_quiz_ids),
             QuizAttempt.completed_at.isnot(None),
         )
-        .group_by(QuizAttempt.user_id, QuizAttempt.quiz_id)
-        .all()
+        .subquery()
     )
+    quiz_aggs = db.query(ranked).filter(ranked.c.rn == 1).all()
+
+    def _pct(entry: dict[str, Any]) -> float:
+        mx = entry["max_score"]
+        return entry["score"] / mx if mx else 0.0
+
     for row in quiz_aggs:
         uid = str(row.user_id)
         resolved_ch_id = quiz_to_chapter.get(row.quiz_id)
@@ -132,16 +150,17 @@ def _aggregate_quiz_results(
             continue
         ch_key = (uid, str(resolved_ch_id))
         attempts_by_user_chapter[ch_key] = attempts_by_user_chapter.get(ch_key, 0) + int(row.attempts or 0)
-        score = int(row.best_score or 0)
         entry = {
             "chapter_id": str(resolved_ch_id),
             "quiz_id": str(row.quiz_id),
-            "score": score,
-            "max_score": int(row.best_max_score or 0),
+            "score": int(row.score or 0),
+            "max_score": int(row.max_score or 0),
             "passed": bool(row.passed_any),
         }
         prev = best_by_user_chapter.get(ch_key)
-        if prev is None or score > prev["score"]:
+        # A chapter may hold several quizzes; the representative is the
+        # quiz the student did best on by PERCENTAGE, not raw points.
+        if prev is None or _pct(entry) > _pct(prev):
             best_by_user_chapter[ch_key] = entry
         if row.last_completed and (uid not in latest_quiz_by_user or row.last_completed > latest_quiz_by_user[uid]):
             latest_quiz_by_user[uid] = row.last_completed
