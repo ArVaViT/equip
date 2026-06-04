@@ -43,6 +43,7 @@ from app.services.translation.queue import (
     get_queue_status,
     mark_job_done,
     mark_job_failed,
+    record_job_failure,
 )
 
 if TYPE_CHECKING:
@@ -155,6 +156,7 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
         return WorkerTickResponse(status="idle")
 
     course_id = job.course_id
+    job_pk = job.id
     job_id = str(job.id)
     attempts = job.attempts
     course = get_course(db, course_id)
@@ -179,11 +181,15 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
     try:
         translate_course_content(db, course)
     except SQLAlchemyError as exc:
-        # Roll the session forward to a clean transaction before
-        # writing the job-status flip; otherwise the mark_job_failed
-        # commit would itself raise on the still-poisoned session.
-        db.rollback()
-        mark_job_failed(db, job, error=f"sqlalchemy: {exc}")
+        # A SQLAlchemyError poisons the transaction, so we must rollback
+        # before writing the status flip. But a plain rollback would also
+        # discard the attempts increment that claim_next_job only flushed
+        # (not committed) — leaving mark_job_failed to read the pre-claim
+        # count, never hit the cap, and re-queue a deterministically
+        # DB-failing job forever. record_job_failure rolls back AND
+        # re-stamps the post-claim ``attempts`` (captured above), so the
+        # cap check works and the job can reach failed_permanent.
+        record_job_failure(db, job_id=job_pk, attempts=attempts, error=f"sqlalchemy: {exc}")
         # Emit duration even on failure so the dashboard's p50/p95
         # tile includes the cost of failed work (the operator needs
         # to see if failures are also slow → upstream timeout).

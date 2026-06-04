@@ -190,3 +190,41 @@ def mark_job_failed(db: Session, job: TranslationJob, *, error: str) -> Translat
     db.commit()
     db.refresh(job)
     return job
+
+
+def record_job_failure(db: Session, *, job_id: uuid.UUID, attempts: int, error: str) -> TranslationJob | None:
+    """Record a worker failure resiliently, independent of the session
+    state left by a failed ``translate_course_content`` pass.
+
+    The worker's ``except SQLAlchemyError`` path MUST ``rollback()`` to
+    clear the poisoned transaction before it can write anything. But a
+    rollback also discards the ``attempts`` increment + ``PROCESSING``
+    flip that ``claim_next_job`` only *flushed* (never committed). If we
+    then re-read ``job.attempts`` it shows the PRE-claim count, the
+    ``>= TRANSLATION_JOB_MAX_ATTEMPTS`` check never trips, and a job that
+    deterministically raises a DB error is re-claimed on every cron tick
+    forever — burning Gemini calls and never reaching
+    ``failed_permanent``. (``mark_job_failed`` is correct only when the
+    in-session increment is still live, i.e. the no-rollback paths.)
+
+    This helper sidesteps the trap: it rolls the session back to a clean
+    transaction, re-fetches the row ``FOR UPDATE``, and stamps the
+    caller-supplied ``attempts`` — captured post-claim, so it survives
+    the rollback as a plain int. Promotion then sees the correct count.
+    Returns ``None`` if the row vanished (e.g. cascade-deleted) between
+    claim and failure.
+    """
+    db.rollback()
+    job = db.execute(select(TranslationJob).where(TranslationJob.id == job_id).with_for_update()).scalars().first()
+    if job is None:
+        return None
+    job.attempts = attempts
+    job.last_error = error[:2000] if error else None
+    job.finished_at = datetime.now(UTC)
+    if attempts >= TRANSLATION_JOB_MAX_ATTEMPTS:
+        job.status = TranslationJobStatus.FAILED_PERMANENT
+    else:
+        job.status = TranslationJobStatus.FAILED
+    db.commit()
+    db.refresh(job)
+    return job
