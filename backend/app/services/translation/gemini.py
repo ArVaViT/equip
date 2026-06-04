@@ -11,6 +11,7 @@ set. See ``app.services.translation.service.get_translation_provider``.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import time
 from typing import TYPE_CHECKING, Any
@@ -20,6 +21,7 @@ import httpx
 if TYPE_CHECKING:
     from types import TracebackType
 
+from app.core.metrics import emit, increment
 from app.services.bible.substitution import post_substitute, pre_substitute
 from app.services.translation.prompt import build_system_prompt, build_user_prompt
 from app.services.translation.protocol import (
@@ -155,6 +157,30 @@ class GeminiTranslationProvider:
             else:
                 if response.status_code == 200:
                     result = self._parse_response(response.json())
+                    # Emit Gemini cost metrics on every successful 200.
+                    # Tagged with model so a future model migration
+                    # (e.g. flash → pro) keeps the curves separable.
+                    # Wrapped in try/except — metric failure must NEVER
+                    # break the translation pipeline.
+                    try:
+                        increment("equip.gemini.calls_total", model=self._model, outcome="success")
+                        # ``emit`` lets us pass the token count as the metric
+                        # value directly — Datadog ``sum:`` over this gives
+                        # the cumulative token spend.
+                        if result.input_tokens:
+                            emit(
+                                "equip.gemini.tokens_input_total",
+                                float(result.input_tokens),
+                                model=self._model,
+                            )
+                        if result.output_tokens:
+                            emit(
+                                "equip.gemini.tokens_output_total",
+                                float(result.output_tokens),
+                                model=self._model,
+                            )
+                    except Exception:
+                        pass
                     if bible_subs:
                         # Restore Bible quote markers with the canonical
                         # target-locale text. Falls back to source if the
@@ -174,7 +200,21 @@ class GeminiTranslationProvider:
                         attempt,
                         response.text[:200],
                     )
+                    with contextlib.suppress(Exception):
+                        increment(
+                            "equip.gemini.calls_total",
+                            model=self._model,
+                            outcome="retry",
+                            status_code=str(response.status_code),
+                        )
                 else:
+                    with contextlib.suppress(Exception):
+                        increment(
+                            "equip.gemini.calls_total",
+                            model=self._model,
+                            outcome="fatal",
+                            status_code=str(response.status_code),
+                        )
                     raise TranslationError(f"Gemini returned {response.status_code}: {response.text[:200]}")
 
             if attempt < self._max_retries:

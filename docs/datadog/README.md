@@ -64,6 +64,14 @@ Live emission today (sites tagged with the route file that wires them):
   per-status gauges on every cron tick. Drives the Course
   Engagement dashboard's *Translation queue health* group and the
   `translation-queue-backlog` monitor.
+* **`equip.gemini.calls_total`** + **`equip.gemini.tokens_input_total`**
+  + **`equip.gemini.tokens_output_total`** —
+  `app/services/translation/gemini.py::translate` emits per Gemini
+  API call. Tagged with `model` (so a future flash → pro migration
+  keeps cost curves separable) and `outcome={success,retry,fatal}`.
+  `tokens_*_total` use the token count as the metric VALUE so
+  `sum:` over the window equals cumulative token spend → multiply
+  by Gemini's $/million rate to get $-burn.
 
 Drop-off rate is computed in the dashboard query as:
 
