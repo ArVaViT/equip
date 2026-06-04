@@ -65,8 +65,9 @@ Live emission today (sites tagged with the route file that wires them):
   `path_prefix` (first 4 url segments), and `exception_type` (class
   name, never the message — message could carry PII). Drives the
   P1 `backend-unhandled-exception-rate` monitor.
-* **`equip.translation.queue_depth`** + **`queue_processing`** +
-  **`queue_failed_permanent`** — `app/api/v1/
+* **`equip.translation.queue_depth`** +
+  **`equip.translation.queue_processing`** +
+  **`equip.translation.queue_failed_permanent`** — `app/api/v1/
   internal_translation_worker.py::_emit_queue_gauges` fires three
   per-status gauges on every cron tick. Drives the Course
   Engagement dashboard's *Translation queue health* group and the
@@ -79,6 +80,12 @@ Live emission today (sites tagged with the route file that wires them):
   `tokens_*_total` use the token count as the metric VALUE so
   `sum:` over the window equals cumulative token spend → multiply
   by Gemini's $/million rate to get $-burn.
+* **`equip.daily_challenge.attempt_total`** — `app/api/v1/
+  daily_challenge.py::submit_attempt` fires per **new** attempt
+  (`is_new_attempt=True`); idempotent re-submits return 201 but
+  do NOT increment. Tagged with `challenge_date` + `is_correct`
+  so the dashboard can chart attempts-per-day and derive a correct-
+  rate without a second metric.
 
 Drop-off rate is computed in the dashboard query as:
 
