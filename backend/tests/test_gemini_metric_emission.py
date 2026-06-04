@@ -21,6 +21,7 @@ Pinned guarantees:
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
@@ -160,18 +161,19 @@ class TestFatalMetrics:
             text="Bad request",
         )
         provider = _make_provider(client)
-        with caplog.at_level(logging.INFO, logger="equip.metric"):
-            try:
-                provider.translate(
-                    TranslationRequest(
-                        text="Hello",
-                        source_locale="en",
-                        target_locale="ru",
-                        content_kind="text",
-                    )
+        # non-retryable status raises — expected, we only assert on metrics
+        with (
+            caplog.at_level(logging.INFO, logger="equip.metric"),
+            contextlib.suppress(Exception),
+        ):
+            provider.translate(
+                TranslationRequest(
+                    text="Hello",
+                    source_locale="en",
+                    target_locale="ru",
+                    content_kind="text",
                 )
-            except Exception:
-                pass  # expected — non-retryable status raises
+            )
         msgs = [r.getMessage() for r in caplog.records if r.name == "equip.metric"]
         calls = [m for m in msgs if "equip.gemini.calls_total" in m]
         assert calls
