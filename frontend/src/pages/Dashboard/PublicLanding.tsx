@@ -110,7 +110,7 @@ export function PublicLanding() {
       {/* ── How it works ────────────────────────────────────────── */}
       <section
         aria-labelledby="landing-how-heading"
-        className="mt-20 rounded-lg border bg-muted/30 px-6 py-10 sm:mt-28 sm:px-10 sm:py-12"
+        className="mt-20 rounded-lg bg-muted/40 px-6 py-10 sm:mt-28 sm:px-10 sm:py-12"
       >
         <h2
           id="landing-how-heading"
@@ -198,7 +198,7 @@ interface FeatureCardProps {
 
 function FeatureCard({ icon, title, body }: FeatureCardProps) {
   return (
-    <div className="flex flex-col rounded-lg border bg-card p-5">
+    <div className="surface-card flex flex-col rounded-lg p-5">
       <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-brand/10 text-brand">
         {icon}
       </span>
@@ -236,7 +236,7 @@ function QuickLink({ to, icon, title, body }: QuickLinkProps) {
     <li>
       <Link
         to={to}
-        className="group flex items-start gap-3 rounded-md border bg-card p-4 transition-colors hover:border-brand/40 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+        className="group surface-card flex items-start gap-3 rounded-md p-4 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
       >
         <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-ink-muted transition-colors group-hover:bg-brand/10 group-hover:text-brand">
           {icon}

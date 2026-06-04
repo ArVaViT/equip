@@ -213,6 +213,20 @@
   }
 }
 
+@layer components {
+  /* Canonical elevated card/panel surface. Single source of truth so we
+   * never reintroduce the "white обводка" — a light --border hairline
+   * around a near-white bg-card on the warm 97%L page read as a white
+   * outline (Vadym rejected it repeatedly). Instead we separate by a soft
+   * SHADOW in light mode (no outline line at all), and fall back to the
+   * subtle etched --border in dark mode where a shadow is invisible.
+   * Replaces the hand-rolled ``border bg-card`` panel pattern. Keep
+   * ``rounded-*`` / padding on the element; this only owns surface + edge. */
+  .surface-card {
+    @apply bg-card shadow-sm dark:border dark:border-edge dark:shadow-none;
+  }
+}
+
 @layer utilities {
   /* Suppress the visible scrollbar on horizontally-scrolling
    * surfaces that already have a clear affordance (e.g. the
