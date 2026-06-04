@@ -58,6 +58,13 @@ Live emission today (sites tagged with the route file that wires them):
 * **`equip.reviews.rating_latest`** — `app/api/v1/reviews.py` emits
   per (user, course) on review create/update; the dashboard takes
   `avg` to produce the rating tile.
+* **`equip.errors.unhandled_total`** — the global FastAPI exception
+  handler in `app/main.py` fires this counter for every uncategorised
+  exception (i.e. not IntegrityError → 409 and not SQLAlchemyError →
+  503; those have hand-built handlers). Tagged with `method`,
+  `path_prefix` (first 4 url segments), and `exception_type` (class
+  name, never the message — message could carry PII). Drives the
+  P1 `backend-unhandled-exception-rate` monitor.
 * **`equip.translation.queue_depth`** + **`queue_processing`** +
   **`queue_failed_permanent`** — `app/api/v1/
   internal_translation_worker.py::_emit_queue_gauges` fires three
