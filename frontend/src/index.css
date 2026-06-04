@@ -44,13 +44,15 @@
     --warning-foreground: 265 28% 13%;
     --info: 215 75% 42%;
     --info-foreground: 0 0% 98%;
-    /* 2026-06-03 third UX iteration (Vadym): making --border invisible
-     * (= --card) only traded "stripes" for an absence of structure and
-     * STILL left faint near-white lines wherever a divider sits on the
-     * warm 97%L background. Restore the pre-overhaul value — a real,
-     * subtle violet-gray hairline (same as --input) that reads as a
-     * proper outline, not a white stripe. */
-    --border: 265 12% 87%;
+    /* 2026-06-03 fourth (final) UX iteration (Vadym). The journey:
+     *   87% L  → reads as a hard "HTML-table grid" of outlines  (too heavy)
+     *   99% L  → lighter than the 97% bg → renders as white STRIPES (too light)
+     * Both are wrong. The fix is geometric, not a guess: pin --border
+     * just BELOW the 97% L background (and the 99% L card). A line darker
+     * than its surroundings can NEVER read as a white highlight, and at
+     * only ~3% contrast it's a faint hint, not a grid. --input stays sharp
+     * at 87% L because a form field's affordance IS its border. */
+    --border: 265 9% 93%;
     --input: 265 12% 87%;
     --ring: 262 56% 38%;
     --radius: 0.5rem;
@@ -99,11 +101,12 @@
     --warning-foreground: 240 12% 10%;
     --info: 215 72% 58%;
     --info-foreground: 240 12% 10%;
-    /* Dark mode: restore the pre-overhaul hairline (same as --input,
-     * 19% L) — a subtle line slightly lighter than the 12% L card that
-     * reads as a normal divider. The "etched" 10% L variant removed
-     * visible structure without fixing the complaint. */
-    --border: 240 5% 19%;
+    /* Dark mode mirrors the light-mode geometry: pin --border just BELOW
+     * the 12% L card so any hairline reads as a faint darker etch, never a
+     * BRIGHT stripe (bright lines on dark surfaces were the original
+     * complaint). 19% L was too light → the grid; 10% vanished. 11% is the
+     * subtle middle. --input stays at 19% L so fields keep a clear edge. */
+    --border: 240 6% 11%;
     --input: 240 5% 19%;
     --ring: 262 58% 72%;
 
