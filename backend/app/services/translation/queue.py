@@ -164,13 +164,7 @@ def get_queue_status(db: Session) -> dict[str, int]:
     counts. Statuses with zero rows are still present (value 0) so the
     dict shape is stable for downstream consumers.
     """
-    rows = (
-        db.execute(
-            select(TranslationJob.status, func.count().label("n"))
-            .group_by(TranslationJob.status)
-        )
-        .all()
-    )
+    rows = db.execute(select(TranslationJob.status, func.count().label("n")).group_by(TranslationJob.status)).all()
     counts: dict[str, int] = {s.value: 0 for s in TranslationJobStatus}
     for row in rows:
         counts[row[0]] = int(row[1])
