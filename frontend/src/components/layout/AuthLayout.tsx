@@ -49,7 +49,7 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
             </div>
           </div>
 
-          <p className="font-sans text-xs text-[hsl(var(--auth-panel-text)/0.38)]">
+          <p className="font-sans text-xs text-[hsl(var(--auth-panel-text-muted))]">
             {t("auth.marketingPanelFooter", { year, appName: t("common.appName") })}
           </p>
         </div>
