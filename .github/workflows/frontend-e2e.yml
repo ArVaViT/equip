@@ -11,6 +11,13 @@ on:
       - "frontend/**"
       - ".github/workflows/frontend-e2e.yml"
 
+# Least-privilege token: this workflow only checks out the repo and uploads
+# build artifacts (report/traces) — neither needs write scope. Declaring it
+# at the top level denies everything else and clears the OpenSSF Scorecard
+# "Token-Permissions" finding flagged on this file.
+permissions:
+  contents: read
+
 # E2E is single-job because Playwright handles parallelism itself.
 # We pin Node to the same minor as the rest of the CI matrix
 # (frontend-ci.yml uses 22.18.0) so a bundler / browser-runtime mismatch

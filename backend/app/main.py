@@ -47,6 +47,12 @@ app = FastAPI(
     version="1.0.0",
     docs_url=None if _IS_PRODUCTION else "/docs",
     redoc_url=None if _IS_PRODUCTION else "/redoc",
+    # Hide the raw OpenAPI schema in production too. Leaving /openapi.json
+    # served while /docs and /redoc are disabled still hands an attacker the
+    # full route + model inventory; disabling the docs UIs without it is a
+    # half-measure. None disables the schema route entirely (which also
+    # removes the Swagger/Redoc data source — consistent with the UIs off).
+    openapi_url=None if _IS_PRODUCTION else "/openapi.json",
 )
 
 
