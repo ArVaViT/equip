@@ -23,6 +23,7 @@ from unittest.mock import patch
 
 import pytest
 from pydantic import SecretStr
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.course import Course
 from app.models.translation_job import (
@@ -228,3 +229,80 @@ def test_concurrent_workers_dont_claim_the_same_row(client: TestClient, db: Sess
 
     remaining = db.query(TranslationJob).filter(TranslationJob.status == TranslationJobStatus.QUEUED).count()
     assert remaining == 0
+
+
+def test_sqlalchemy_error_still_bumps_attempts(client: TestClient, db: Session, teacher, configured_worker):
+    """Regression: the ``except SQLAlchemyError`` path must persist the
+    attempts increment. It used to ``db.rollback()`` before failing,
+    which discarded the flush-only increment from ``claim_next_job`` and
+    reverted ``attempts`` to its pre-claim value — so the failure was
+    recorded with the WRONG (un-incremented) count."""
+    course = _make_course(db, teacher.id)
+    job = enqueue_course_translation(db, course.id)
+    assert job.attempts == 0
+
+    with patch(
+        "app.api.v1.internal_translation_worker.translate_course_content",
+        side_effect=SQLAlchemyError("deadlock detected"),
+    ):
+        resp = client.post(_WORKER_PATH, headers={"X-Worker-Secret": _GOOD_SECRET})
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "failed"
+    assert body["attempts"] == 1
+
+    db.refresh(job)
+    assert job.status == TranslationJobStatus.FAILED
+    # The increment survives the rollback — this is the whole point.
+    assert job.attempts == 1
+    assert "sqlalchemy" in (job.last_error or "")
+
+
+def test_sqlalchemy_error_at_cap_promotes_to_failed_permanent(
+    client: TestClient, db: Session, teacher, configured_worker
+):
+    """Regression for the poison-loop: a DB-failing job at one short of
+    the attempt cap must promote to ``failed_permanent`` on the next
+    tick. Before the fix the rolled-back increment meant the cap check
+    read the stale count and re-queued the job forever (re-claimed every
+    cron tick, burning Gemini calls, never visible in failed_permanent)."""
+    course = _make_course(db, teacher.id)
+    job = enqueue_course_translation(db, course.id)
+    job.attempts = TRANSLATION_JOB_MAX_ATTEMPTS - 1
+    db.commit()
+
+    with patch(
+        "app.api.v1.internal_translation_worker.translate_course_content",
+        side_effect=SQLAlchemyError("still deadlocking"),
+    ):
+        resp = client.post(_WORKER_PATH, headers={"X-Worker-Secret": _GOOD_SECRET})
+
+    assert resp.status_code == 200
+    db.refresh(job)
+    assert job.attempts == TRANSLATION_JOB_MAX_ATTEMPTS
+    assert job.status == TranslationJobStatus.FAILED_PERMANENT
+
+
+def test_sqlalchemy_poison_job_terminates_within_cap_ticks(client: TestClient, db: Session, teacher, configured_worker):
+    """End-to-end poison-loop guard: a job that raises SQLAlchemyError on
+    EVERY tick must reach ``failed_permanent`` after exactly
+    TRANSLATION_JOB_MAX_ATTEMPTS ticks and then stop being claimable —
+    not spin forever."""
+    course = _make_course(db, teacher.id)
+    job = enqueue_course_translation(db, course.id)
+
+    with patch(
+        "app.api.v1.internal_translation_worker.translate_course_content",
+        side_effect=SQLAlchemyError("permanently broken"),
+    ):
+        for _ in range(TRANSLATION_JOB_MAX_ATTEMPTS):
+            client.post(_WORKER_PATH, headers={"X-Worker-Secret": _GOOD_SECRET})
+        # One more tick: the job is failed_permanent now, so the queue is
+        # empty and the worker reports idle (it is NOT re-claimed).
+        extra = client.post(_WORKER_PATH, headers={"X-Worker-Secret": _GOOD_SECRET}).json()
+
+    assert extra["status"] == "idle"
+    db.refresh(job)
+    assert job.attempts == TRANSLATION_JOB_MAX_ATTEMPTS
+    assert job.status == TranslationJobStatus.FAILED_PERMANENT
