@@ -92,8 +92,7 @@ def test_every_emitted_metric_is_documented_in_readme() -> None:
     assert not undocumented, (
         "These metrics are emitted from app/ but NOT documented in "
         "docs/datadog/README.md. Add a stanza for each (or a "
-        "``equip.<group>.*`` wildcard that covers them):\n  - "
-        + "\n  - ".join(undocumented)
+        "``equip.<group>.*`` wildcard that covers them):\n  - " + "\n  - ".join(undocumented)
     )
 
 
