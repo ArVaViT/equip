@@ -30,6 +30,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 APP_DIR = REPO_ROOT / "backend" / "app"
 README = REPO_ROOT / "docs" / "datadog" / "README.md"
+DASHBOARDS_DIR = REPO_ROOT / "docs" / "datadog"
 
 # Captures the first argument to metrics helpers (``emit("equip.X")``
 # / ``increment("equip.X")`` / ``gauge("equip.X")`` / ``timing("equip.X")``).
@@ -105,3 +106,46 @@ def test_collect_emitted_metrics_finds_known_emitters() -> None:
     # These are known to ship today (post-#701 / #702 / #707).
     assert "equip.activity.requests_total" in emitted
     assert "equip.errors.unhandled_total" in emitted
+
+
+# A metric name in a Datadog query is followed by ``{tags}`` so the bare
+# name harvests cleanly, but strip the query helpers Datadog can append
+# after the closing brace just in case one is written inline.
+_DASHBOARD_METRIC_RE = re.compile(r"equip\.[a-zA-Z0-9_.]+")
+_QUERY_SUFFIXES = (".as_count", ".as_rate", ".rollup", ".fill", ".weight")
+
+
+def _collect_dashboard_metrics() -> set[str]:
+    """Harvest every ``equip.*`` metric name referenced in the dashboard
+    JSON specs under ``docs/datadog/``."""
+    found: set[str] = set()
+    for path in DASHBOARDS_DIR.glob("*.json"):
+        text = path.read_text(encoding="utf-8")
+        for raw in _DASHBOARD_METRIC_RE.findall(text):
+            name = raw.rstrip(".")
+            for suffix in _QUERY_SUFFIXES:
+                if name.endswith(suffix):
+                    name = name[: -len(suffix)]
+            found.add(name)
+    return found
+
+
+def test_every_dashboard_metric_is_emitted_or_documented() -> None:
+    """Reverse of the emitter sentinel: every ``equip.*`` metric a
+    dashboard JSON queries must be EITHER emitted from ``app/`` OR
+    documented in the README (a live stanza, a "Still TODO" bullet, or an
+    ``equip.<group>.*`` wildcard). Catches DEAD TILES — widgets that
+    render a perpetual "no data" because nobody emits the metric — which
+    the original one-directional sentinel missed."""
+    dashboard = _collect_dashboard_metrics()
+    assert dashboard, "expected to find equip.* metrics in docs/datadog/*.json"
+
+    emitted = _collect_emitted_metrics()
+    doc = _readme_text()
+    orphans = sorted(m for m in dashboard if m not in emitted and not _readme_mentions(m, doc))
+    assert not orphans, (
+        "These metrics are queried by a Datadog dashboard but are neither "
+        "emitted from app/ nor documented in docs/datadog/README.md "
+        "(dead tiles). Wire an emitter, or add a 'Still TODO' bullet / an "
+        "``equip.<group>.*`` wildcard:\n  - " + "\n  - ".join(orphans)
+    )

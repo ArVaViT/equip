@@ -187,6 +187,24 @@ class TestFetchPassage:
         with pytest.raises(svc.VerseOfTheDayUnavailable):
             svc._fetch_passage("KEY", 3034, "JHN.3.16")
 
+    def test_transport_error_emits_fatal_metric(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """A transport-level failure (connect error / timeout) yields no
+        HTTP status, so the per-call metric — which fired only after a
+        response — never registered the outage operators most need to
+        see. It must now emit a fatal data point (status_code=0) before
+        the error propagates."""
+        import logging
+
+        _install_client(monkeypatch, httpx.ConnectError("connection refused"))
+        with caplog.at_level(logging.INFO, logger="equip.metric"), pytest.raises(httpx.HTTPError):
+            svc._fetch_passage("KEY", 3034, "JHN.3.16")
+        msgs = [r.getMessage() for r in caplog.records if r.name == "equip.metric"]
+        calls = [m for m in msgs if "equip.youversion.api_calls_total" in m]
+        assert calls, "a transport failure must still emit api_calls_total"
+        assert any("outcome=fatal" in m and "status_code=0" in m for m in calls)
+
 
 class TestStripHtml:
     """The collapse-to-prose helper — pure regex, easy unit-test."""
