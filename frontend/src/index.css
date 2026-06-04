@@ -44,15 +44,13 @@
     --warning-foreground: 265 28% 13%;
     --info: 215 75% 42%;
     --info-foreground: 0 0% 98%;
-    /* 2026-06-03 second UX iteration (Vadym): the soft 94%L hint
-     * still read as "endless white stripes" — especially in dark
-     * mode where ANY value lighter than the card surface is visible.
-     * Match --border to --card (light) / a touch DARKER than --card
-     * (dark) so dividers either vanish (light) or read as a subtle
-     * etched line (dark). --input stays sharp at 87% L / 19% L
-     * because the field affordance IS the border — must remain
-     * visible. */
-    --border: 40 35% 99%;
+    /* 2026-06-03 third UX iteration (Vadym): making --border invisible
+     * (= --card) only traded "stripes" for an absence of structure and
+     * STILL left faint near-white lines wherever a divider sits on the
+     * warm 97%L background. Restore the pre-overhaul value — a real,
+     * subtle violet-gray hairline (same as --input) that reads as a
+     * proper outline, not a white stripe. */
+    --border: 265 12% 87%;
     --input: 265 12% 87%;
     --ring: 262 56% 38%;
     --radius: 0.5rem;
@@ -101,13 +99,11 @@
     --warning-foreground: 240 12% 10%;
     --info: 215 72% 58%;
     --info-foreground: 240 12% 10%;
-    /* Dark mode: --border drops BELOW --card (12% L) to 10% L. A
-     * border slightly DARKER than the card surface reads as an
-     * "etched" hairline (depth cue) rather than a brighter "stripe"
-     * (highlight). Bright stripes on dark surfaces are the
-     * specific complaint we're solving here. --input stays at 19% L
-     * so form fields keep visible boundary. */
-    --border: 240 8% 10%;
+    /* Dark mode: restore the pre-overhaul hairline (same as --input,
+     * 19% L) — a subtle line slightly lighter than the 12% L card that
+     * reads as a normal divider. The "etched" 10% L variant removed
+     * visible structure without fixing the complaint. */
+    --border: 240 5% 19%;
     --input: 240 5% 19%;
     --ring: 262 58% 72%;
 
