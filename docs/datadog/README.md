@@ -92,6 +92,13 @@ Live emission today (sites tagged with the route file that wires them):
   do NOT increment. Tagged with `challenge_date` + `is_correct`
   so the dashboard can chart attempts-per-day and derive a correct-
   rate without a second metric.
+* **`equip.youversion.api_calls_total`** —
+  `app/services/verse_of_the_day.py::_fetch_passage` fires per
+  YouVersion REST call. Tagged with `bible_id` (which locale's
+  bible), `outcome={success,not_in_bible,fatal}`, and `status_code`.
+  Lets the dashboard track API budget burn separately from app-side
+  errors (`not_in_bible` is the version-difference walk-forward
+  case, not a real failure).
 
 Drop-off rate is computed in the dashboard query as:
 
