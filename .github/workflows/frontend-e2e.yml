@@ -54,9 +54,15 @@ jobs:
         # (missing tree-shake-safe markers, env wiring) the same way
         # a real prod deploy would.
         env:
-          # Smoke tests don't need real backend env vars; the public
-          # routes degrade gracefully when ``VITE_API_URL`` is unset.
+          # Smoke tests don't hit a real backend, BUT the build must still
+          # be given Supabase vars: src/lib/supabase.ts THROWS at module
+          # load if VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are unset,
+          # which blanks the whole SPA (React never mounts) and fails every
+          # public-flow spec with "element not found". These are throwaway
+          # placeholders — the public routes never call Supabase.
           VITE_API_URL: http://localhost:8000
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_ANON_KEY: e2e-placeholder-anon-key-not-real
         run: |
           npm run build
           npx vite preview --host 127.0.0.1 --port 5173 &
