@@ -135,13 +135,24 @@ class CohortStudentAdd(BaseModel):
     email: EmailStr | None = None
 
 
-class CohortStudentRow(BaseModel):
-    """One row in the per-cohort students listing — enrollment summary
-    plus the student's identity. Used by the cohort overview page."""
+class CohortStudentCourseProgress(BaseModel):
+    """Per-course enrollment summary nested inside a cohort student row."""
 
-    user_id: UUID
-    enrolled_at: datetime | None = None
+    enrollment_id: str
+    enrolled_at: str | None = None
     progress: int
-    # Per-course rows: this cohort spans N courses, so a student has N
-    # enrollments. Aggregated client-side from the per-course response.
-    per_course: dict[str, dict] = Field(default_factory=dict)
+
+
+class CohortStudentRow(BaseModel):
+    """One row in the per-cohort students listing — the student's identity
+    plus a per-course enrollment summary. Used by the cohort overview
+    page. Matches the exact shape returned by
+    ``GET /cohorts/{id}/students`` (carries PII: full_name + email, so the
+    response is validated on the way out)."""
+
+    user_id: str
+    full_name: str | None = None
+    email: str
+    # This cohort spans N courses, so a student has up to N enrollments,
+    # keyed by course_id.
+    per_course: dict[str, CohortStudentCourseProgress] = Field(default_factory=dict)
