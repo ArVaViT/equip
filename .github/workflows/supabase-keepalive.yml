@@ -1,9 +1,13 @@
 name: Keep Supabase awake
 
 # Supabase free-tier projects are paused after 7 consecutive days without any
-# database activity. We hit the public course catalog endpoint every 6 days so
-# the pause timer always resets before it fires. The endpoint executes a real
-# SQL query (SELECT * FROM courses …) which counts as activity.
+# database activity. We hit the public course catalog endpoint (on the API
+# host api.equipbible.com — NOT the SPA host equipbible.com, whose catch-all
+# rewrite serves index.html for /api/* and never touches Postgres) every 6
+# days so the pause timer always resets before it fires. The endpoint executes
+# a real SQL query (SELECT … FROM courses …) which counts as activity. The
+# ping step asserts a JSON content-type so a future SPA-redirect regression
+# fails loudly instead of passing green on an HTML page.
 #
 # Scheduled every 6 days at 03:17 UTC — offset from the top of the hour so we
 # don't pile on with other scheduled jobs, and offset from midnight so a
@@ -32,9 +36,11 @@ jobs:
           API_URL: ${{ vars.KEEPALIVE_API_URL }}
         run: |
           if [ -z "${API_URL}" ]; then
-            # Fall back to the production default. Override via the repo var
-            # `KEEPALIVE_API_URL` if the API moves or we spin up a second env.
-            API_URL="https://equipbible.com/api/v1/courses?limit=1"
+            # Fall back to the production default. MUST be the API host —
+            # the SPA host (equipbible.com) rewrites /api/* to index.html and
+            # would pass the 2xx gate without ever querying the database.
+            # Override via the repo var `KEEPALIVE_API_URL` if the API moves.
+            API_URL="https://api.equipbible.com/api/v1/courses?limit=1"
           fi
           echo "api_url=${API_URL}" >> "$GITHUB_OUTPUT"
           echo "Will ping: ${API_URL}"
@@ -50,20 +56,33 @@ jobs:
           ATTEMPTS=3
           for i in $(seq 1 $ATTEMPTS); do
             echo "Attempt $i/$ATTEMPTS…"
-            HTTP_STATUS=$(curl -sS -o /tmp/body -w "%{http_code}" \
+            RESPONSE=$(curl -sS -o /tmp/body -w "%{http_code} %{content_type}" \
               --connect-timeout 10 --max-time 20 \
               -H "User-Agent: github-actions-supabase-keepalive/1.0" \
-              "$URL" || echo "000")
-            echo "HTTP $HTTP_STATUS"
+              "$URL" || echo "000 -")
+            HTTP_STATUS=$(echo "$RESPONSE" | cut -d' ' -f1)
+            CONTENT_TYPE=$(echo "$RESPONSE" | cut -d' ' -f2-)
+            echo "HTTP $HTTP_STATUS ($CONTENT_TYPE)"
             if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 400 ]; then
-              echo "Keepalive ping succeeded."
-              head -c 200 /tmp/body || true
-              exit 0
+              # A JSON body proves we reached the API and ran a real query.
+              # If we got HTML the URL is pointing at the SPA host — that
+              # would silently fail to keep the DB awake, so treat it as an
+              # error and let the retry/alert fire.
+              case "$CONTENT_TYPE" in
+                application/json*)
+                  echo "Keepalive ping succeeded (JSON response from the API)."
+                  head -c 200 /tmp/body || true
+                  exit 0
+                  ;;
+                *)
+                  echo "Got $HTTP_STATUS but non-JSON ($CONTENT_TYPE) — URL is not the API host. Not a real DB ping." >&2
+                  ;;
+              esac
             fi
             if [ "$i" -lt "$ATTEMPTS" ]; then
               sleep 15
             fi
           done
-          echo "All $ATTEMPTS attempts failed — Supabase may be sleeping or down." >&2
+          echo "All $ATTEMPTS attempts failed — Supabase may be sleeping/down, or KEEPALIVE_API_URL points at the SPA host instead of api.equipbible.com." >&2
           cat /tmp/body >&2 || true
           exit 1
