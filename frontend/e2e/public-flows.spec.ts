@@ -18,21 +18,24 @@ import { test, expect } from "@playwright/test";
 
 test.describe("public surfaces", () => {
   test("landing → login navigation works", async ({ page }) => {
-    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await page.goto("/", { waitUntil: "networkidle" });
     await expect(page).toHaveTitle(/Equip/i);
 
     // The header carries a sign-in entry point regardless of
     // language. The link text varies by locale; targeting by URL
-    // pattern keeps the test bilingual.
-    const loginLinks = page.locator('a[href="/login"]');
-    expect(await loginLinks.count()).toBeGreaterThan(0);
-    await loginLinks.first().click();
+    // pattern keeps the test bilingual. Use an auto-retrying
+    // visibility assertion (NOT a one-shot count) — `domcontentloaded`
+    // fires before the React bundle mounts, so reading the DOM once
+    // races the hydration and intermittently sees zero links.
+    const loginLink = page.locator('a[href="/login"]').first();
+    await expect(loginLink).toBeVisible();
+    await loginLink.click();
     await page.waitForURL(/\/login/);
     await expect(page).toHaveURL(/\/login/);
   });
 
   test("login page has an email + password field and a submit", async ({ page }) => {
-    await page.goto("/login", { waitUntil: "domcontentloaded" });
+    await page.goto("/login", { waitUntil: "networkidle" });
 
     // Use accessible-name match so the test works in either UI
     // language — the locale-switcher may flip these.
@@ -46,10 +49,13 @@ test.describe("public surfaces", () => {
   });
 
   test("login → register navigation works", async ({ page }) => {
-    await page.goto("/login", { waitUntil: "domcontentloaded" });
-    const registerLink = page.locator('a[href="/register"]');
-    expect(await registerLink.count()).toBeGreaterThan(0);
-    await registerLink.first().click();
+    await page.goto("/login", { waitUntil: "networkidle" });
+    // Auto-retrying assertion instead of a one-shot count — see the
+    // landing test: a direct deep-link load resolves the SPA shell
+    // before React renders the route, so a single read races hydration.
+    const registerLink = page.locator('a[href="/register"]').first();
+    await expect(registerLink).toBeVisible();
+    await registerLink.click();
     await page.waitForURL(/\/register/);
     await expect(page).toHaveURL(/\/register/);
   });
@@ -58,10 +64,12 @@ test.describe("public surfaces", () => {
     // Vite + react-router SPAs serve index.html for unknown routes
     // (the router resolves to <NotFound/>). The HTTP status is 200
     // but the visible UI is the 404 page; assert on visible content,
-    // not HTTP status.
-    await page.goto("/this-page-does-not-exist", { waitUntil: "domcontentloaded" });
-    const body = await page.locator("body").innerText();
-    // Either the English or Russian 404 copy must show up.
-    expect(body).toMatch(/(404|not\s*found|не\s*найдено|стран)/i);
+    // not HTTP status. `toContainText` auto-retries until React renders
+    // the route — a one-shot `innerText()` read after `domcontentloaded`
+    // returns "" because hydration hasn't run yet (the real CI flake).
+    // ``найден`` (not ``найдено``) matches the feminine "Страница не
+    // найдена" copy that actually ships.
+    await page.goto("/this-page-does-not-exist", { waitUntil: "networkidle" });
+    await expect(page.locator("body")).toContainText(/(404|not\s*found|не\s*найден|стран)/i);
   });
 });
