@@ -72,6 +72,12 @@ Live emission today (sites tagged with the route file that wires them):
   per-status gauges on every cron tick. Drives the Course
   Engagement dashboard's *Translation queue health* group and the
   `translation-queue-backlog` monitor.
+* **`equip.translation.duration_ms`** — `app/api/v1/
+  internal_translation_worker.py::_emit_translation_duration` times
+  each `translate_course_content` run. Tagged with
+  `outcome={done,failed}` so the dashboard can split the latency
+  curve by success vs failure — a sustained gap usually means the
+  failure path is timing out on an upstream call.
 * **`equip.gemini.calls_total`** + **`equip.gemini.tokens_input_total`**
   + **`equip.gemini.tokens_output_total`** —
   `app/services/translation/gemini.py::translate` emits per Gemini

@@ -226,6 +226,49 @@
           },
           {
             "definition": {
+              "type": "query_value",
+              "title": "Translation p50 (5m)",
+              "requests": [
+                {
+                  "q": "p50:equip.translation.duration_ms{env:$env.value,outcome:done}.rollup(p50, 300)",
+                  "aggregator": "last",
+                  "conditional_formats": [
+                    { "comparator": "<", "value": 5000, "palette": "white_on_green" },
+                    { "comparator": "<", "value": 15000, "palette": "white_on_yellow" },
+                    { "comparator": ">=", "value": 15000, "palette": "white_on_red" }
+                  ]
+                }
+              ],
+              "custom_unit": "ms",
+              "precision": 0
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Translation duration (done vs failed)",
+              "requests": [
+                {
+                  "q": "p50:equip.translation.duration_ms{env:$env.value,outcome:done}",
+                  "display_type": "line",
+                  "style": { "palette": "cool", "line_type": "solid", "line_width": "normal" }
+                },
+                {
+                  "q": "p95:equip.translation.duration_ms{env:$env.value,outcome:done}",
+                  "display_type": "line",
+                  "style": { "palette": "cool", "line_type": "dashed", "line_width": "normal" }
+                },
+                {
+                  "q": "p50:equip.translation.duration_ms{env:$env.value,outcome:failed}",
+                  "display_type": "line",
+                  "style": { "palette": "warm", "line_type": "solid", "line_width": "normal" }
+                }
+              ],
+              "yaxis": { "min": "0", "include_zero": true }
+            }
+          },
+          {
+            "definition": {
               "type": "timeseries",
               "title": "Queue depth over time",
               "requests": [
