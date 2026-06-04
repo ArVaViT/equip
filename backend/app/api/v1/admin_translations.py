@@ -20,7 +20,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import UUID  # noqa: TC003 — used by Pydantic schema at runtime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
@@ -28,6 +28,7 @@ from sqlalchemy.orm import Session  # noqa: TC002 — used by FastAPI Depends at
 
 from app.api.dependencies import require_admin
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.content_version import ContentVersion
 from app.models.translation_job import TranslationJob, TranslationJobStatus
 from app.services.audit_service import log_action
@@ -106,9 +107,11 @@ def reset_by_ids(
         db.rollback()
         raise
     if affected == 0:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No failed_permanent rows matched the supplied ids.",
+            message="No failed_permanent rows matched the supplied ids.",
+            context={"resource_type": "content_version"},
         )
     log_action(
         db,
@@ -163,9 +166,11 @@ def reset_by_entity(
         db.rollback()
         raise
     if affected == 0:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No failed_permanent row matched the selector.",
+            message="No failed_permanent row matched the selector.",
+            context={"resource_type": "content_version"},
         )
     log_action(
         db,

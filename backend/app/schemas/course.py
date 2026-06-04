@@ -2,7 +2,9 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.schemas._media_url import validate_safe_media_url
 
 # Mirrors the ``chapters_chapter_type_check`` CHECK in Postgres. ``video`` /
 # ``audio`` / ``mixed`` / ``content`` were collapsed into block-based
@@ -98,7 +100,13 @@ class CourseBase(BaseModel):
 
 
 class CourseCreate(CourseBase):
-    pass
+    # Validate the inherited image_url on INPUT only (CourseResponse also
+    # inherits CourseBase but defines no validator, so reads of any
+    # legacy value are never rejected).
+    @field_validator("image_url")
+    @classmethod
+    def _validate_image_url(cls, value: str | None) -> str | None:
+        return validate_safe_media_url(value)
 
 
 class CourseUpdate(BaseModel):
@@ -112,6 +120,11 @@ class CourseUpdate(BaseModel):
     access_mode: Literal["public", "institute"] | None = None
     enrollment_start: datetime | None = None
     enrollment_end: datetime | None = None
+
+    @field_validator("image_url")
+    @classmethod
+    def _validate_image_url(cls, value: str | None) -> str | None:
+        return validate_safe_media_url(value)
 
 
 class CourseResponse(CourseBase):

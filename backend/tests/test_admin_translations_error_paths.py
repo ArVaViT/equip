@@ -91,4 +91,7 @@ class TestResetByIdsNotFound:
             json={"ids": ["00000000-0000-0000-0000-000000000000"]},
         )
         assert r.status_code == 404
-        assert "failed_permanent" in r.json()["detail"]
+        # equip_error envelope: detail is {code, message, context}.
+        detail = r.json()["detail"]
+        assert detail["code"] == "resource.not_found"
+        assert "failed_permanent" in detail["message"]
