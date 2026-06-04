@@ -1,52 +1,29 @@
 """Production hardening: the interactive docs UIs AND the raw OpenAPI
 schema must all be disabled when the app boots in production.
 
-``_IS_PRODUCTION`` is derived from the ``VERCEL`` / ``PRODUCTION`` env vars
-at import time, so we reload ``app.main`` with the env toggled to assert the
-FastAPI app is constructed with ``docs_url`` / ``redoc_url`` / ``openapi_url``
-all ``None``. Leaving ``/openapi.json`` served while the UIs are hidden would
-still leak the full route + model inventory to anyone — this test locks the
-three together so a future refactor can't silently re-expose the schema.
+We test the pure ``docs_url_config`` helper rather than reloading
+``app.main`` — a module reload re-runs ``add_middleware`` /
+``include_router`` and corrupts global app state for unrelated tests
+(rate-limit buckets, the shared TestClient app). The helper is exactly
+what the ``FastAPI(...)`` constructor is fed, so this still locks the
+real behaviour: leaving ``/openapi.json`` served while the UIs are off
+would hand out the full route + model inventory.
 """
 
 from __future__ import annotations
 
-import importlib
-
-import pytest
+from app.main import docs_url_config
 
 
-@pytest.mark.parametrize("env_var", ["PRODUCTION", "VERCEL"])
-def test_docs_and_openapi_disabled_in_production(monkeypatch: pytest.MonkeyPatch, env_var: str) -> None:
-    # Ensure neither flag is set from the outer environment, then set the one
-    # under test so _IS_PRODUCTION evaluates True on reload.
-    monkeypatch.delenv("VERCEL", raising=False)
-    monkeypatch.delenv("PRODUCTION", raising=False)
-    monkeypatch.setenv(env_var, "1")
-
-    import app.main as main_module
-
-    reloaded = importlib.reload(main_module)
-    try:
-        assert reloaded.app.docs_url is None
-        assert reloaded.app.redoc_url is None
-        assert reloaded.app.openapi_url is None
-    finally:
-        # Restore the module to its non-production form so the rest of the
-        # suite (which imports ``app.main`` freely) sees the dev config.
-        monkeypatch.delenv(env_var, raising=False)
-        importlib.reload(reloaded)
+def test_docs_and_openapi_disabled_in_production() -> None:
+    cfg = docs_url_config(is_production=True)
+    assert cfg["docs_url"] is None
+    assert cfg["redoc_url"] is None
+    assert cfg["openapi_url"] is None
 
 
-def test_docs_and_openapi_enabled_outside_production(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.delenv("VERCEL", raising=False)
-    monkeypatch.delenv("PRODUCTION", raising=False)
-
-    import app.main as main_module
-
-    reloaded = importlib.reload(main_module)
-    assert reloaded.app.docs_url == "/docs"
-    assert reloaded.app.redoc_url == "/redoc"
-    assert reloaded.app.openapi_url == "/openapi.json"
+def test_docs_and_openapi_enabled_outside_production() -> None:
+    cfg = docs_url_config(is_production=False)
+    assert cfg["docs_url"] == "/docs"
+    assert cfg["redoc_url"] == "/redoc"
+    assert cfg["openapi_url"] == "/openapi.json"

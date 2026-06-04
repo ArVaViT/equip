@@ -22,6 +22,26 @@ logger = logging.getLogger("api")
 
 _IS_PRODUCTION = bool(os.environ.get("VERCEL") or os.environ.get("PRODUCTION"))
 
+
+def docs_url_config(is_production: bool) -> dict[str, str | None]:
+    """FastAPI ``docs_url`` / ``redoc_url`` / ``openapi_url`` kwargs.
+
+    In production all three are ``None`` so neither the Swagger/Redoc UIs
+    NOR the raw ``/openapi.json`` schema are served — serving the schema
+    while hiding the UIs still hands an attacker the full route + model
+    inventory. Extracted as a pure function so it can be unit-tested
+    without reloading this module (a reload re-runs ``add_middleware`` /
+    ``include_router`` and corrupts global app state for other tests).
+    """
+    return {
+        "docs_url": None if is_production else "/docs",
+        "redoc_url": None if is_production else "/redoc",
+        "openapi_url": None if is_production else "/openapi.json",
+    }
+
+
+_DOCS_CONFIG = docs_url_config(_IS_PRODUCTION)
+
 # Surface partially-configured environments (e.g. a Vercel preview deploy
 # that's missing prod env vars) as a single startup WARNING instead of a
 # Pydantic ValidationError that crashes the worker on import — which used
@@ -45,14 +65,9 @@ app = FastAPI(
         "progress tracking, and file uploads."
     ),
     version="1.0.0",
-    docs_url=None if _IS_PRODUCTION else "/docs",
-    redoc_url=None if _IS_PRODUCTION else "/redoc",
-    # Hide the raw OpenAPI schema in production too. Leaving /openapi.json
-    # served while /docs and /redoc are disabled still hands an attacker the
-    # full route + model inventory; disabling the docs UIs without it is a
-    # half-measure. None disables the schema route entirely (which also
-    # removes the Swagger/Redoc data source — consistent with the UIs off).
-    openapi_url=None if _IS_PRODUCTION else "/openapi.json",
+    docs_url=_DOCS_CONFIG["docs_url"],
+    redoc_url=_DOCS_CONFIG["redoc_url"],
+    openapi_url=_DOCS_CONFIG["openapi_url"],
 )
 
 
