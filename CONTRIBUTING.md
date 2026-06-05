@@ -96,7 +96,7 @@ cd frontend && npm run dev                     # http://localhost:5173
 ### 5. Run tests
 
 ```bash
-cd backend  && python -m pytest tests/   # 970+ tests, ~20s
+cd backend  && python -m pytest tests/   # 1400+ tests, ~45s
 cd frontend && npm run test:run           # Vitest + jsdom
 ```
 
