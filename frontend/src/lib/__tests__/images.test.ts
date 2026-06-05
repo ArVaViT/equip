@@ -49,6 +49,13 @@ describe("toProxyImage", () => {
     )
   })
 
+  it("rejects dangerous URL schemes (defence-in-depth)", async () => {
+    const { toProxyImage: fn } = await freshImages()
+    expect(fn("javascript:alert(1)")).toBeUndefined()
+    expect(fn("data:text/html,<script>alert(1)</script>")).toBeUndefined()
+    expect(fn("vbscript:msgbox(1)")).toBeUndefined()
+  })
+
   it("returns original URL when Supabase URL is not configured", async () => {
     vi.stubEnv("VITE_SUPABASE_URL", "")
     const { toProxyImage: fn } = await freshImages()
