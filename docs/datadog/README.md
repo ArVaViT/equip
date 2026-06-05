@@ -82,7 +82,9 @@ Live emission today (sites tagged with the route file that wires them):
   + **`equip.gemini.tokens_output_total`** —
   `app/services/translation/gemini.py::translate` emits per Gemini
   API call. Tagged with `model` (so a future flash → pro migration
-  keeps cost curves separable) and `outcome={success,retry,fatal}`.
+  keeps cost curves separable) and `outcome={success,retry,fatal,transport}`
+  (`transport` + `status_code=0` = a network-level failure with no HTTP
+  response, so a full Gemini outage still registers).
   `tokens_*_total` use the token count as the metric VALUE so
   `sum:` over the window equals cumulative token spend → multiply
   by Gemini's $/million rate to get $-burn.
