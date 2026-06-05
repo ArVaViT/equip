@@ -34,6 +34,11 @@ export function toProxyImage(url: string | null | undefined): string | undefined
   if (url.startsWith("/img/")) return url
   try {
     const parsed = new URL(url, window.location.origin)
+    // Defence-in-depth: only ever emit an http(s) URL into an <img src> /
+    // CSS background. React already escapes JSX attributes, but rejecting
+    // javascript:/data:/vbscript: here keeps dangerous schemes out of the
+    // DOM entirely (and out of the HTML-rewrite path below).
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined
     const supabaseHost = getSupabaseHost()
     if (!supabaseHost || parsed.host !== supabaseHost) return url
     if (!parsed.pathname.startsWith(STORAGE_PUBLIC_PREFIX)) return url
