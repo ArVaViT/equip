@@ -178,3 +178,31 @@ class TestFatalMetrics:
         calls = [m for m in msgs if "equip.gemini.calls_total" in m]
         assert calls
         assert any("outcome=fatal" in m and "status_code=400" in m for m in calls)
+
+    def test_transport_error_emits_transport_outcome(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """A network-level failure (timeout/connect/DNS) yields no HTTP
+        status. Without an emit on this branch a full Gemini outage is
+        invisible on the cost/budget dashboard — so it must fire
+        outcome=transport status_code=0 (per failed attempt)."""
+        client = MagicMock(spec=httpx.Client)
+        client.post.side_effect = httpx.ConnectError("name resolution failed")
+        provider = _make_provider(client)
+        with (
+            caplog.at_level(logging.INFO, logger="equip.metric"),
+            contextlib.suppress(Exception),
+        ):
+            provider.translate(
+                TranslationRequest(
+                    text="Hello",
+                    source_locale="en",
+                    target_locale="ru",
+                    content_kind="text",
+                )
+            )
+        msgs = [r.getMessage() for r in caplog.records if r.name == "equip.metric"]
+        calls = [m for m in msgs if "equip.gemini.calls_total" in m]
+        assert calls
+        assert any("outcome=transport" in m and "status_code=0" in m for m in calls)

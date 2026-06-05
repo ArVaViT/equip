@@ -154,6 +154,18 @@ class GeminiTranslationProvider:
             except httpx.HTTPError as exc:
                 last_error = exc
                 logger.warning("Gemini transport error attempt=%s err=%s", attempt, exc)
+                # A transport-level failure (timeout/connect/DNS) produces no
+                # HTTP status, so without this the per-call metric never fires
+                # on a full Gemini network outage — the failure mode the cost/
+                # budget dashboard most needs to see (same gap the youversion
+                # fix closed). status_code=0 = "no response".
+                with contextlib.suppress(Exception):
+                    increment(
+                        "equip.gemini.calls_total",
+                        model=self._model,
+                        outcome="transport",
+                        status_code="0",
+                    )
             else:
                 if response.status_code == 200:
                     result = self._parse_response(response.json())

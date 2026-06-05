@@ -76,7 +76,13 @@ class DatadogHTTPHandler(logging.Handler):
                 method="POST",
             )
             setattr(record, self._REENTRY_GUARD_ATTR, True)
-            urllib.request.urlopen(req, timeout=2)
+            # 0.5s cap: this POST runs inline on the request thread for every
+            # WARNING+ record, so under an error burst a slow Datadog intake
+            # could stack-block requests. A tight timeout bounds that; losing
+            # a log line on a slow intake is preferable to adding latency to
+            # a user request. (A background QueueListener would drop logs on
+            # Vercel serverless — the function freezes before it drains.)
+            urllib.request.urlopen(req, timeout=0.5)
         except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError):
             # Best effort. Losing a log record is preferable to crashing the request.
             pass
