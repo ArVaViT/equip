@@ -14,6 +14,7 @@ from app.api.dependencies import (
 )
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
+from app.core.metrics import increment
 from app.models.enrollment import Enrollment
 from app.models.quiz import Quiz, QuizAttempt, QuizQuestion
 from app.models.user import User
@@ -138,13 +139,25 @@ def submit_quiz(
     attempt.passed = max_score > 0 and percentage >= quiz.passing_score
     attempt.completed_at = datetime.now(UTC)
 
+    newly_completed_chapter = False
     if attempt.passed:
-        quiz_service.upsert_passed_chapter_progress(db, current_user.id, str(quiz.chapter_id), course_id=course_id)
+        newly_completed_chapter = quiz_service.upsert_passed_chapter_progress(db, current_user.id, str(quiz.chapter_id))
         sync_enrollment_progress(db, current_user.id, course_id)
 
     db.commit()
     db.refresh(attempt)
     assert attempt.started_at is not None
+
+    # Emit the completion metric only AFTER the commit succeeds (and only when
+    # this submit actually flipped the chapter) — emitting pre-commit
+    # double-counts if the transaction rolls back.
+    if newly_completed_chapter:
+        increment(
+            "equip.engagement.chapter_completed_total",
+            chapter_id=str(quiz.chapter_id),
+            course_id=course_id,
+            completion_type="quiz",
+        )
 
     return QuizAttemptResponse(
         id=attempt.id,

@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING, Any
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
-from app.core.metrics import increment
 from app.models.chapter_progress import ChapterProgress
 from app.models.quiz import (
     Quiz,
@@ -226,8 +225,14 @@ def persist_answers(
     return total_score, answer_results
 
 
-def upsert_passed_chapter_progress(db: Session, user_id: UUID, chapter_id: str, *, course_id: str) -> None:
+def upsert_passed_chapter_progress(db: Session, user_id: UUID, chapter_id: str) -> bool:
     """Mark the chapter as ``quiz``-completed for the student (idempotent).
+
+    Returns ``True`` iff THIS call flipped the chapter to completed, so the
+    caller can emit ``equip.engagement.chapter_completed_total`` AFTER its
+    own ``db.commit()``. Emitting in here (pre-commit) double-counted: on
+    the concurrent-completion rollback path the counter fired even though
+    the row write was rolled back.
 
     Race-safe: a concurrent teacher-mark-complete or assignment-submit
     for the same ``(user, chapter)`` may also be inserting a progress
@@ -265,21 +270,21 @@ def upsert_passed_chapter_progress(db: Session, user_id: UUID, chapter_id: str, 
         cp.completed = True
         cp.completed_at = datetime.now(UTC)
         cp.completion_type = "quiz"
-        increment(
-            "equip.engagement.chapter_completed_total",
-            chapter_id=str(chapter_id),
-            course_id=str(course_id),
-            completion_type="quiz",
-        )
+        return True
+    return False
 
 
-def recompute_attempt_grade(db: Session, attempt: QuizAttempt, quiz: Quiz) -> None:
+def recompute_attempt_grade(db: Session, attempt: QuizAttempt, quiz: Quiz) -> str | None:
     """Re-aggregate ``score`` / ``passed`` from the persisted answer rows.
 
     Called after every manual grade update so the attempt stays in sync
     without the teacher having to touch a "recompute" button. If
     ``passed`` flipped ``False`` → ``True`` the chapter is marked done
     and the enrollment progress is re-synced.
+
+    Returns the ``course_id`` iff this re-grade newly completed the chapter
+    (so the caller emits ``chapter_completed_total`` AFTER commit), else
+    ``None``.
     """
     rows = db.query(QuizAnswer).filter(QuizAnswer.attempt_id == attempt.id).all()
     attempt.score = sum(int(r.points_earned or 0) for r in rows)
@@ -293,13 +298,14 @@ def recompute_attempt_grade(db: Session, attempt: QuizAttempt, quiz: Quiz) -> No
     attempt.passed = max_score > 0 and percentage >= quiz.passing_score
 
     if attempt.passed == was_passed:
-        return
+        return None
 
     course_id = resolve_chapter_course_id(db, quiz.chapter_id)
     if attempt.passed:
         # fail → pass: mark the chapter done and sync progress up.
-        upsert_passed_chapter_progress(db, attempt.user_id, str(quiz.chapter_id), course_id=course_id)
+        newly_completed = upsert_passed_chapter_progress(db, attempt.user_id, str(quiz.chapter_id))
         sync_enrollment_progress(db, attempt.user_id, course_id)
+        return course_id if newly_completed else None
     else:
         # pass → fail (teacher lowered a manual grade below passing). The
         # inverse used to be missing: the chapter stayed quiz-completed and
@@ -310,6 +316,8 @@ def recompute_attempt_grade(db: Session, attempt: QuizAttempt, quiz: Quiz) -> No
         # passing attempt for this chapter survives, then re-sync down.
         _undo_quiz_chapter_completion(db, attempt.user_id, quiz.chapter_id, exclude_attempt_id=attempt.id)
         sync_enrollment_progress(db, attempt.user_id, course_id)
+    # pass→fail un-completes; nothing newly completed, so no metric to emit.
+    return None
 
 
 def _undo_quiz_chapter_completion(db: Session, user_id: UUID, chapter_id: str, *, exclude_attempt_id: UUID) -> None:

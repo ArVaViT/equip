@@ -75,9 +75,12 @@ def _seed_basic_course(db: Session, course_id: str = "eng-test") -> str:
 
 
 class TestQuizEngagementEmission:
-    """``upsert_passed_chapter_progress`` is the auto-from-quiz path."""
+    """``upsert_passed_chapter_progress`` is the auto-from-quiz path. It now
+    RETURNS whether it flipped completion (the route handlers emit the metric
+    post-commit); the helper itself no longer emits, so a rolled-back
+    transaction can't double-count."""
 
-    def test_emits_on_first_quiz_completion(
+    def test_returns_true_and_does_not_self_emit_on_first_completion(
         self,
         db: Session,
         caplog: pytest.LogCaptureFixture,
@@ -85,40 +88,24 @@ class TestQuizEngagementEmission:
         _seed_users(db)
         chapter_id = _seed_basic_course(db, "eng-q1")
         with caplog.at_level(logging.INFO, logger="equip.metric"):
-            quiz_service.upsert_passed_chapter_progress(db, STUDENT_ID, chapter_id, course_id="eng-q1")
+            flipped = quiz_service.upsert_passed_chapter_progress(db, STUDENT_ID, chapter_id)
             db.commit()
+        assert flipped is True
+        # The helper must NOT emit — emission is the caller's job, post-commit.
         msgs = [r.getMessage() for r in caplog.records if r.name == "equip.metric"]
-        completed = [m for m in msgs if "equip.engagement.chapter_completed_total" in m]
-        assert completed, "expected chapter_completed_total to fire"
-        assert any("completion_type=quiz" in m for m in completed)
-        assert any(f"chapter_id={chapter_id}" in m for m in completed)
-        # course_id must be present so per-course drop-off widgets work
-        # (the quiz path used to drop it, unlike the other two paths).
-        assert any("course_id=eng-q1" in m for m in completed)
-        assert any("value=1.0" in m for m in completed)
+        assert [m for m in msgs if "equip.engagement.chapter_completed_total" in m] == []
 
-    def test_does_not_emit_when_already_complete(
+    def test_returns_false_on_already_complete(
         self,
         db: Session,
-        caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """A second call after the chapter is already ``completed=True``
-        is a no-op and MUST NOT double-count toward drop-off math."""
+        """A second call after the chapter is already ``completed=True`` is a
+        no-op and returns False, so the caller won't double-count."""
         _seed_users(db)
         chapter_id = _seed_basic_course(db, "eng-q2")
-        # First pass to set up the completed row
-        quiz_service.upsert_passed_chapter_progress(db, STUDENT_ID, chapter_id, course_id="eng-q2")
+        assert quiz_service.upsert_passed_chapter_progress(db, STUDENT_ID, chapter_id) is True
         db.commit()
-        # Clear out whatever the setup pass emitted; the assertion
-        # below is about what fires on the SECOND call.
-        caplog.clear()
-
-        with caplog.at_level(logging.INFO, logger="equip.metric"):
-            quiz_service.upsert_passed_chapter_progress(db, STUDENT_ID, chapter_id, course_id="eng-q2")
-            db.commit()
-        msgs = [r.getMessage() for r in caplog.records if r.name == "equip.metric"]
-        completed = [m for m in msgs if "equip.engagement.chapter_completed_total" in m]
-        assert completed == [], "must NOT re-emit on no-op re-completion"
+        assert quiz_service.upsert_passed_chapter_progress(db, STUDENT_ID, chapter_id) is False
 
 
 class TestTeacherCompleteEngagementEmission:

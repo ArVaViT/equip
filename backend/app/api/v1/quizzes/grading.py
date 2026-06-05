@@ -227,9 +227,20 @@ def grade_answer(
     was_pending = answer.graded_at is None
     answer.graded_at = datetime.now(UTC)
 
-    quiz_service.recompute_attempt_grade(db, attempt, quiz)
+    newly_completed_course_id = quiz_service.recompute_attempt_grade(db, attempt, quiz)
     db.commit()
     db.refresh(answer)
+
+    # Emit the chapter-completion metric only AFTER commit, and only when this
+    # re-grade actually flipped the chapter to complete (fail→pass) — pre-commit
+    # emission double-counts on a rollback.
+    if newly_completed_course_id is not None:
+        increment(
+            "equip.engagement.chapter_completed_total",
+            chapter_id=str(quiz.chapter_id),
+            course_id=newly_completed_course_id,
+            completion_type="quiz",
+        )
 
     # ``equip.grading.*`` metrics feed the Teacher Load dashboard.
     # Only counts the first time this answer transitioned out of the
