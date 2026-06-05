@@ -155,11 +155,35 @@ Optional but production-set:
 - `DD_API_KEY` + `DD_SITE=us5.datadoghq.com` + `DD_SERVICE=equip-backend`
   + `DD_ENV=production` -- enables the `DatadogHTTPHandler` log shipping
 - `CORS_ORIGINS`, `CORS_ORIGIN_REGEX` -- override the defaults (rarely needed)
+- `TRANSLATION_WORKER_SECRET` -- shared secret the translation cron presents
+  (see *Translation worker cron* below). Unset → the worker endpoint 503s.
+- `TRANSLATION_QUEUE_ENABLED=true` -- routes publish-time translation through
+  the async queue (drained by the cron) instead of running inline.
+- `CRON_SECRET` -- **must equal `TRANSLATION_WORKER_SECRET`** (see below).
 
-Missing-but-required vars cause a `ValueError` at first Settings
-instantiation, which surfaces in Vercel as a 500 on the first request
-and a stack trace in the function logs. CI catches the same shape via
-the `lint-and-test` job's env defaults.
+Missing required vars do **not** crash boot. `settings.runtime_ready_errors()`
+collects them and logs a single `"booting in degraded mode; missing env
+vars: ..."` WARNING at startup; static routes (`/health`, `/`, `/favicon.*`)
+keep serving, while any route that needs the DB or auth returns a clean
+`503` / `401` through the per-request handlers. This was a deliberate change
+from the old crash-on-import behavior so a misconfigured preview can't turn
+every favicon scrape into a 500 stack trace. CI exercises the configured
+path via the `lint-and-test` job's env defaults.
+
+#### Translation worker cron
+
+`backend/vercel.json` schedules `GET /api/v1/internal/translation-worker`
+every minute (`*/1 * * * *`). Vercel signs each cron request with
+`Authorization: Bearer ${CRON_SECRET}`, and the endpoint validates that
+bearer (constant-time) against `TRANSLATION_WORKER_SECRET`. **Therefore
+`CRON_SECRET` and `TRANSLATION_WORKER_SECRET` must be set to the SAME value
+on `equip-backend`.** If `CRON_SECRET` is missing/mismatched the cron 401s
+every tick and, with `TRANSLATION_QUEUE_ENABLED=true`, queued translations
+silently never drain (this caused a ~37 min outage on 2026-06-03). The
+`translation-worker-401-rate` + `worker-cron-silent` Datadog monitors now
+page on a recurrence. **Pre-launch check:** `curl` the prod worker with no
+auth → expect `401`; confirm recent drained jobs in `/admin/translations/
+queue-status`.
 
 ### Frontend (`equip-frontend`)
 

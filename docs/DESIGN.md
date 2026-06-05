@@ -58,9 +58,18 @@ One scale, one serif, one sans.
 
 - **Radius:** `rounded-md` (6px) default. `rounded-lg` only for dialogs.
   No `rounded-2xl`, no `rounded-3xl`.
-- **Borders:** 1px `border-border` everywhere. No double borders.
-- **Shadows:** overlays only (dialog, popover, dropdown). Cards are flat with
-  a border. No `shadow-lg` on static content.
+- **Borders:** 1px `border-border` for controls + dividers. No double borders.
+  Card/panel SURFACES carry **no resting border** — they read as a white
+  outline on the warm page (Vadym rejected it repeatedly). A callsite that
+  genuinely needs a frame (selected, dnd-drop, hover handoff) opts back in
+  explicitly via `border border-edge`.
+- **Shadows:** overlays only (dialog, popover, dropdown). Cards/panels are
+  **flat** — separated by the `bg-card` / `bg-surface-elevated` fill and
+  spacing alone, no resting border and no shadow. No `shadow-lg` on static
+  content.
+- **Card/panel surface:** use the `.surface-card` utility (`src/index.css`:
+  `bg-card`, no border/shadow) — never hand-roll `border bg-card`. It is the
+  single source of truth so the white-outline regression can't return.
 - **Spacing:** Tailwind scale, multiples of 4. Page padding `p-6` desktop,
   `p-4` mobile. Cards `p-5`.
 

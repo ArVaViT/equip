@@ -163,7 +163,7 @@ cd frontend && npm run dev                      # http://localhost:5173
 ### 4. Run tests
 
 ```bash
-cd backend  && python -m pytest tests/    # 970+ tests (SQLite in-memory)
+cd backend  && python -m pytest tests/    # 1400+ tests (SQLite in-memory)
 cd frontend && npm run test:run           # Vitest + jsdom
 cd frontend && npm run i18n:check         # bilingual locale parity (en.json ↔ ru.json)
 ```
@@ -262,6 +262,8 @@ There are great LMS options out there. Equip exists in a specific gap they don't
 | Translators / i18n work | [docs/I18N.md](docs/I18N.md) — bilingual workflow, locale files, key parity |
 | Architecture | [docs/adr/](docs/adr/) — Architecture Decision Records |
 | Cross-cutting UI calls | [docs/UI-DECISIONS.md](docs/UI-DECISIONS.md) — frozen UI decisions log |
+| Running in production | [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) — monitoring, log forwarding, incident debugging |
+| Dashboards / metrics | [docs/datadog/](docs/datadog/) — Datadog dashboard + monitor JSON specs |
 | Security disclosure | [SECURITY.md](SECURITY.md) |
 
 ## Community
