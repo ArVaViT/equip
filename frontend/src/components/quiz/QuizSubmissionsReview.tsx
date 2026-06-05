@@ -161,7 +161,10 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
         return (
           <div
             key={item.answer_id}
-            className="surface-card rounded-md p-4 space-y-3"
+            // Nested inside a bg-card <Card>; a flat .surface-card (also
+            // bg-card) would be invisible. A sunken muted fill separates the
+            // item from its parent without an outline line.
+            className="rounded-md bg-muted/50 p-4 space-y-3"
           >
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
