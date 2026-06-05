@@ -1,5 +1,6 @@
 """Comprehensive tests for Quiz and Block endpoints."""
 
+import logging
 import uuid
 
 from fastapi.testclient import TestClient
@@ -1501,6 +1502,23 @@ def test_grade_essay_answer_recomputes_passed(client: TestClient, student, db: S
     graded_list = client.get(f"/api/v1/quizzes/{quiz.id}/pending-answers?include_graded=true").json()
     assert len(graded_list) == 1
     assert graded_list[0]["points_earned"] == 18
+
+
+def test_grade_up_to_passing_emits_chapter_completed_post_commit(client: TestClient, student, db: Session, caplog):
+    """Grading an essay up to passing flips the chapter to complete — the
+    chapter_completed_total metric must fire (now from the grading route,
+    AFTER commit, not pre-commit inside the service helper)."""
+    _seed_course_with_enrollment(db)
+    quiz, _essay, _attempt, essay_answer = _seed_submitted_essay_attempt(db)
+
+    with caplog.at_level(logging.INFO, logger="equip.metric"):
+        resp = client.patch(f"/api/v1/quizzes/answers/{essay_answer.id}", json={"points_earned": 18})
+    assert resp.status_code == 200
+
+    msgs = [r.getMessage() for r in caplog.records if r.name == "equip.metric"]
+    completed = [m for m in msgs if "equip.engagement.chapter_completed_total" in m]
+    assert completed, "grading up to passing must emit chapter_completed_total"
+    assert any("completion_type=quiz" in m and f"chapter_id={quiz.chapter_id}" in m for m in completed)
 
 
 def test_regrade_below_passing_uncompletes_chapter(client: TestClient, student, db: Session):
