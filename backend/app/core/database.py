@@ -1,6 +1,7 @@
 import logging
 import os
 from collections.abc import Generator
+from urllib.parse import urlparse
 
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.exc import SQLAlchemyError
@@ -42,6 +43,26 @@ def _get_engine() -> Engine:
         separator = "&" if "?" in db_url else "?"
         db_url = f"{db_url}{separator}sslmode=require"
 
+    # Serverless DB-shape guard. NullPool (below) opens ONE connection per warm
+    # instance, so on Vercel/Lambda prod MUST point at Supabase's transaction
+    # pooler (:6543), not the direct Postgres endpoint (:5432). A direct
+    # connection caps at ~15-60 backends and exhausts almost immediately under a
+    # launch spike. Nothing else enforces this documented invariant
+    # (.env.example / DEPLOYMENT.md), so warn loudly at boot rather than discover
+    # it during an incident.
+    if IS_SERVERLESS:
+        try:
+            _port = urlparse(db_url).port
+        except ValueError:
+            _port = None
+        if _port == 5432:
+            logger.warning(
+                "DATABASE_URL targets port 5432 (DIRECT Postgres) under serverless. "
+                "With NullPool this opens one backend per warm instance and will "
+                "exhaust connections under load — use the Supabase TRANSACTION "
+                "POOLER (:6543) instead."
+            )
+
     try:
         try:
             import psycopg2 as _psycopg2
@@ -55,7 +76,10 @@ def _get_engine() -> Engine:
 
         pool_kwargs: dict = {
             "connect_args": {
-                "connect_timeout": 10,
+                # 5s (was 10) so a saturated pooler sheds load fast under a
+                # spike instead of queueing each request for 10s. A healthy
+                # pooler connect is sub-second; this only bites when saturated.
+                "connect_timeout": 5,
                 "options": "-c statement_timeout=30000",
             },
             "pool_pre_ping": True,
