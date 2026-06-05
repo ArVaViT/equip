@@ -42,6 +42,39 @@ When tuning a threshold in the UI:
 Out-of-band tweaks rot fast — within a month nobody remembers why
 the threshold is 7 instead of 5.
 
+## UI-only monitors to CLEAN UP (alert-noise audit, 2026-06-05)
+
+Two monitors created ad-hoc in the Datadog UI (NOT in this directory) are
+the source of an inbox flood — each fires **three** emails per incident
+(Triggered → Warn → Recovered) and trips on normal serverless/SPA
+behaviour rather than real problems. They are not in git because they were
+never codified; the fix is to remove/retune them in the Datadog UI:
+
+- **`[P2] equip backend: error log spike`** (≈ "5+ backend error logs in
+  10 min") — **DELETE.** It is a cruder, far more sensitive duplicate of
+  `backend-unhandled-exception-rate.json` (which counts only *real*
+  unhandled 500s via `equip.errors.unhandled_total`, not cold-start 503s
+  or Datadog-Synthetics noise). A 90 s prod log tail on 2026-06-05 showed
+  **zero** errors; the spikes are transient cold-start / deploy bursts
+  (a busy deploy day alone trips it repeatedly). Keep the scoped P1.
+- **`[P3] equip frontend: slow page load (avg LCP > 4s)`** — **retune or
+  drop the email.** The SPA is client-rendered (no SSR), so LCP naturally
+  exceeds 4 s on slower networks; a 15-min average trips on ordinary
+  real-user variance. P3 should not email at all. Raise the threshold +
+  lengthen the window, or convert to a dashboard widget only.
+- For BOTH (and every monitor here): turn **off** re-notification on Warn
+  and Recovered — one email on Trigger is enough.
+
+### Redundant + failing Vercel log drain
+
+The Vercel → Datadog **log drain** is failing ~80% (hourly "Drain failures
+on Equip" emails) AND is redundant: the app already ships WARNING+ logs to
+Datadog in-app via `DatadogHTTPHandler` (`backend/app/core/logging.py`).
+**Remove the drain** in Vercel → Settings → Log Drains. Single log path =
+the in-app handler; INFO stays in Vercel's own log viewer. Also turn off
+deploy-failure emails (Vercel → Account → Notifications) — preview/prod
+deploy failures are already visible in CI.
+
 ## Open follow-ups
 
 - **`equip.engagement.drop_off_rate` monitor** — once the dashboard
