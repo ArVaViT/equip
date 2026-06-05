@@ -127,3 +127,43 @@ class TestGetDbErrorHandling:
             next(gen)  # exhaust → enters finally
         fake_session.close.assert_called_once()
         fake_session.rollback.assert_not_called()
+
+
+class TestServerlessPoolerGuard:
+    def test_warns_on_direct_5432_url_under_serverless(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """On serverless, a direct :5432 DATABASE_URL would exhaust
+        connections under load (NullPool). _get_engine must WARN so the
+        misconfiguration surfaces at boot, not during an incident."""
+        import logging
+
+        monkeypatch.setattr(core_db, "_engine", None)
+        monkeypatch.setattr(core_db, "_SessionLocal", None)
+        monkeypatch.setattr(core_db, "IS_SERVERLESS", True)
+        monkeypatch.setattr(
+            core_db.settings, "DATABASE_URL", "postgresql://u:p@db.abc.supabase.co:5432/postgres", raising=False
+        )
+        with caplog.at_level(logging.WARNING):
+            core_db._get_engine()
+        monkeypatch.setattr(core_db, "_engine", None)  # don't cache the throwaway engine
+        assert any("5432" in r.getMessage() and "POOLER" in r.getMessage() for r in caplog.records)
+
+    def test_quiet_on_transaction_pooler_6543(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        import logging
+
+        monkeypatch.setattr(core_db, "_engine", None)
+        monkeypatch.setattr(core_db, "_SessionLocal", None)
+        monkeypatch.setattr(core_db, "IS_SERVERLESS", True)
+        monkeypatch.setattr(
+            core_db.settings,
+            "DATABASE_URL",
+            "postgresql://u:p@aws-0-us.pooler.supabase.com:6543/postgres",
+            raising=False,
+        )
+        with caplog.at_level(logging.WARNING):
+            core_db._get_engine()
+        monkeypatch.setattr(core_db, "_engine", None)
+        assert not any("POOLER" in r.getMessage() for r in caplog.records)

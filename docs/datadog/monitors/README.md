@@ -65,15 +65,23 @@ never codified; the fix is to remove/retune them in the Datadog UI:
 - For BOTH (and every monitor here): turn **off** re-notification on Warn
   and Recovered — one email on Trigger is enough.
 
-### Redundant + failing Vercel log drain
+### Failing Vercel log drain — FIX it, do NOT just delete it
 
 The Vercel → Datadog **log drain** is failing ~80% (hourly "Drain failures
-on Equip" emails) AND is redundant: the app already ships WARNING+ logs to
-Datadog in-app via `DatadogHTTPHandler` (`backend/app/core/logging.py`).
-**Remove the drain** in Vercel → Settings → Log Drains. Single log path =
-the in-app handler; INFO stays in Vercel's own log viewer. Also turn off
-deploy-failure emails (Vercel → Account → Notifications) — preview/prod
-deploy failures are already visible in CI.
+on Equip" emails). It is tempting to call it redundant because the app ships
+logs to Datadog in-app via `DatadogHTTPHandler` — **but that handler is
+WARNING+ only** (`logging.py`), while every `equip.*` metric is emitted as an
+**INFO** log line (`app/core/metrics.py`). INFO reaches Datadog ONLY through
+this drain. **So deleting the drain silently kills the entire metric +
+dashboard layer** (engagement, translation-queue health, the
+`translation-queue-backlog` monitor) — only the WARNING+ pages survive.
+
+Correct fix order: **first** give `equip.metric` a second transport (a
+dedicated low-level HTTP path in the handler, or POST to the Datadog metrics
+API), verify metrics still flow, **then** the drain can be fixed or removed.
+Until then, repair the drain (it's the only metric pipeline) — do not delete
+it. (Deploy-failure emails are separate and safe to turn off: Vercel →
+Account → Notifications.)
 
 ## Open follow-ups
 
