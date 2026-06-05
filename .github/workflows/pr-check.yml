@@ -81,6 +81,13 @@ jobs:
           FOUND=0
           while IFS= read -r f; do
             [ -z "$f" ] && continue
+            # Template/sample files (.env.example, config.sample.yml, …) carry
+            # NO real secrets and are meant to be committed — exempt them so
+            # documenting a new env var in .env.example isn't blocked. The
+            # ``.env(\..*)?`` arm of $PATTERN would otherwise match .env.example.
+            case "$f" in
+              *.example|*.sample|*.template|*.dist) continue ;;
+            esac
             if echo "$f" | grep -qE "$PATTERN"; then
               echo "::error file=$f::Forbidden secret/credential file in diff: $f"
               FOUND=1
