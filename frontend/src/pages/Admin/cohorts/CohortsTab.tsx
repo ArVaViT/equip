@@ -368,7 +368,7 @@ function CohortsTable({ items }: { items: Cohort[] }) {
           <Link
             key={c.id}
             to={`/admin/cohorts/${c.id}`}
-            className="block rounded-md bg-card p-3 transition-colors hover:border-brand/30 hover:bg-muted/40"
+            className="block rounded-md border border-edge dark:border-transparent bg-card p-3 transition-colors hover:border-brand/30 hover:bg-muted/40"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">

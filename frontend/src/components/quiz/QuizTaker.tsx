@@ -144,7 +144,7 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
     : 0
 
   return (
-    <div className="mt-6 rounded-lg bg-card">
+    <div className="mt-6 rounded-lg border border-edge dark:border-transparent bg-card">
       <QuizHeader
         quiz={quiz}
         questionCount={sortedQuestions.length}

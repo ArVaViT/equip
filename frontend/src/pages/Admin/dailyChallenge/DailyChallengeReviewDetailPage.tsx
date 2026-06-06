@@ -221,7 +221,7 @@ interface FieldEditorProps {
 
 function FieldEditor({ label, field, cells, optionId, saving, onSave }: FieldEditorProps) {
   return (
-    <div className="rounded-md bg-card p-4">
+    <div className="rounded-md border border-edge dark:border-transparent bg-card p-4">
       <div className="mb-3 text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">{label}</div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <LocaleCellEditor
