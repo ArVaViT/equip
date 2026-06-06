@@ -44,15 +44,14 @@
     --warning-foreground: 265 28% 13%;
     --info: 215 75% 42%;
     --info-foreground: 0 0% 98%;
-    /* 2026-06-03 fourth (final) UX iteration (Vadym). The journey:
-     *   87% L  → reads as a hard "HTML-table grid" of outlines  (too heavy)
-     *   99% L  → lighter than the 97% bg → renders as white STRIPES (too light)
-     * Both are wrong. The fix is geometric, not a guess: pin --border
-     * just BELOW the 97% L background (and the 99% L card). A line darker
-     * than its surroundings can NEVER read as a white highlight, and at
-     * only ~3% contrast it's a faint hint, not a grid. --input stays sharp
-     * at 87% L because a form field's affordance IS its border. */
-    --border: 265 9% 93%;
+    /* 2026-06-06: restored to the pre-overhaul 87% L (Vadym: "a couple days
+     * ago there were no white lines, it was normal"). The overhaul had BOTH
+     * lightened this to 93% (a washed-out near-white line) AND stripped the
+     * resting border off cards — so the near-white card fill floated on the
+     * warm page and read as "white panels". Fix = put the clear gray hairline
+     * back (87% L) AND give cards their border again (.surface-card +
+     * ui/card.tsx) — the cohesive bordered-card look that read as normal. */
+    --border: 265 12% 87%;
     --input: 265 12% 87%;
     --ring: 262 56% 38%;
     --radius: 0.5rem;
@@ -101,12 +100,9 @@
     --warning-foreground: 240 12% 10%;
     --info: 215 72% 58%;
     --info-foreground: 240 12% 10%;
-    /* Dark mode mirrors the light-mode geometry: pin --border just BELOW
-     * the 12% L card so any hairline reads as a faint darker etch, never a
-     * BRIGHT stripe (bright lines on dark surfaces were the original
-     * complaint). 19% L was too light → the grid; 10% vanished. 11% is the
-     * subtle middle. --input stays at 19% L so fields keep a clear edge. */
-    --border: 240 6% 11%;
+    /* Dark mode restored to the pre-overhaul 19% L hairline (matches --input),
+     * the visible-divider value from "a couple days ago". */
+    --border: 240 5% 19%;
     --input: 240 5% 19%;
     --ring: 262 58% 72%;
 
@@ -214,16 +210,14 @@
 }
 
 @layer components {
-  /* Canonical card/panel surface. Single source of truth so we never
-   * reintroduce the "белая обводка": a light --border hairline around a
-   * near-white bg-card on the warm 97%L page read as a white outline, and
-   * a soft shadow read as an equally-unwanted frame. The design language
-   * (and Vadym's preference) is FLAT — separate by the bg-card fill +
-   * spacing alone, exactly like the base <Card>. No border, no shadow.
-   * Replaces the hand-rolled ``border bg-card`` panel pattern; keep
-   * ``rounded-*`` / padding on the element. */
+  /* Canonical card/panel surface. Single source of truth. 2026-06-06:
+   * restored the resting border (Vadym — flat/borderless cards made the
+   * near-white bg-card fill read as floating "white panels" on the warm
+   * page; the pre-overhaul bordered card is the look that read as normal).
+   * bg-card + a clear --border (87% L) hairline = a defined card, not a
+   * white block. Keep ``rounded-*`` / padding on the element. */
   .surface-card {
-    @apply bg-card;
+    @apply rounded-md border border-border bg-card;
   }
 }
 

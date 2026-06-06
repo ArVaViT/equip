@@ -8,22 +8,21 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      // 2026-06-02 UX call (Vadym): default Card drops the resting
-      // border — bg-surface-elevated alone separates from the page,
-      // and the all-bordered look read as cheap HTML chrome. Call
-      // sites that need a frame (selected state, dnd-drop zone,
-      // hover handoff via `hover:border-primary/40`) opt back in
-      // explicitly via `className="border border-edge"`.
+      // 2026-06-06: resting border RESTORED (Vadym: "a couple days ago
+      // there were no white lines, everything was normal"). Removing the
+      // border (#696) left a near-white surface-elevated (99% L) fill
+      // floating on the warm 97% L page — that read as "white panels", the
+      // exact thing being complained about. The bordered card (the state
+      // through #662) is the look that read as normal: a clear --edge (87% L)
+      // hairline frames the card instead of letting the fill float.
       //
-      // `transition-[border-color,background-color]` (kept) so the
-      // opt-in border-tint transitions stay smooth.
+      // `transition-[border-color,background-color]` keeps the hover
+      // border-tint handoff smooth (call sites use `hover:border-primary/40`).
       //
-      // ADR-0011 Wave 3 — migrated from `border-border bg-card
-      // text-card-foreground` to the v2 semantic vocabulary
-      // (`bg-surface-elevated text-ink`). Identical pixels today via
-      // the tokens-bridge layer; flips to OKLCH in Wave 9 with no
-      // code change.
-      "rounded-md bg-surface-elevated text-ink shadow-none transition-[border-color,background-color] duration-200 ease-editorial",
+      // ADR-0011 Wave 3 — v2 semantic vocabulary (`border-edge
+      // bg-surface-elevated text-ink`), bridged to --border/--card today;
+      // flips to OKLCH in Wave 9 with no code change.
+      "rounded-md border border-edge bg-surface-elevated text-ink shadow-none transition-[border-color,background-color] duration-200 ease-editorial",
       className
     )}
     {...props}
