@@ -54,9 +54,14 @@ function invalidateAllModulesUnderCourse(courseId: string): void {
 }
 
 const courseCrud = {
-  async getCourses(search?: string): Promise<Course[]> {
-    return cached(`courses:list:${search ?? ""}`, CACHE_TTL.TWO_MINUTES, async () => {
-      const params = search ? { search } : undefined
+  async getCourses(search?: string, opts?: { skip?: number; limit?: number }): Promise<Course[]> {
+    const skip = opts?.skip ?? 0
+    const limit = opts?.limit
+    return cached(`courses:list:${search ?? ""}:${skip}:${limit ?? ""}`, CACHE_TTL.TWO_MINUTES, async () => {
+      const params: Record<string, string | number> = {}
+      if (search) params.search = search
+      if (skip) params.skip = skip
+      if (limit !== undefined) params.limit = limit
       const response = await api.get<Course[]>("/courses", { params })
       return response.data
     })
