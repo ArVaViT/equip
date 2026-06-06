@@ -211,13 +211,17 @@
 
 @layer components {
   /* Canonical card/panel surface. Single source of truth. 2026-06-06:
-   * restored the resting border (Vadym — flat/borderless cards made the
-   * near-white bg-card fill read as floating "white panels" on the warm
-   * page; the pre-overhaul bordered card is the look that read as normal).
-   * bg-card + a clear --border (87% L) hairline = a defined card, not a
-   * white block. Keep ``rounded-*`` / padding on the element. */
+   * the border is THEME-SPECIFIC, because the two themes fail oppositely:
+   *   LIGHT — a near-white bg-card (99% L) on the warm 97% L page with NO
+   *           border floats as a "white panel". It NEEDS the 87% L hairline
+   *           to read as a defined card.
+   *   DARK  — a 19% L border around a 12% L card on the 9% L page outlines
+   *           every card = an ugly "HTML-table grid". Dark separates by
+   *           elevation (the lighter card fill), NOT by a line, so the
+   *           border is transparent there.
+   * Keep ``rounded-*`` / padding on the element. */
   .surface-card {
-    @apply rounded-md border border-border bg-card;
+    @apply rounded-md border border-border bg-card dark:border-transparent;
   }
 }
 
