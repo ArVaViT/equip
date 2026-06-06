@@ -8,21 +8,23 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      // 2026-06-06: resting border RESTORED (Vadym: "a couple days ago
-      // there were no white lines, everything was normal"). Removing the
-      // border (#696) left a near-white surface-elevated (99% L) fill
-      // floating on the warm 97% L page — that read as "white panels", the
-      // exact thing being complained about. The bordered card (the state
-      // through #662) is the look that read as normal: a clear --edge (87% L)
-      // hairline frames the card instead of letting the fill float.
+      // 2026-06-06: resting border is THEME-SPECIFIC (border in light,
+      // transparent in dark) — the two themes fail oppositely:
+      //   LIGHT — a borderless near-white surface-elevated (99% L) fill on
+      //           the warm 97% L page floats as a "white panel" (#696's bug).
+      //           Needs the --edge (87% L) hairline to read as a card.
+      //   DARK  — a 19% L border around a 12% L card on the 9% L page outlines
+      //           every card into an ugly "HTML-table grid". Dark separates by
+      //           elevation (the lighter fill), not by a line → border-transparent.
       //
       // `transition-[border-color,background-color]` keeps the hover
       // border-tint handoff smooth (call sites use `hover:border-primary/40`).
+      // Those hover/selected/dnd opt-ins set their own border color and so
+      // still show in dark, which is intended (a deliberate frame, not a grid).
       //
       // ADR-0011 Wave 3 — v2 semantic vocabulary (`border-edge
-      // bg-surface-elevated text-ink`), bridged to --border/--card today;
-      // flips to OKLCH in Wave 9 with no code change.
-      "rounded-md border border-edge bg-surface-elevated text-ink shadow-none transition-[border-color,background-color] duration-200 ease-editorial",
+      // bg-surface-elevated text-ink`), bridged to --border/--card today.
+      "rounded-md border border-edge bg-surface-elevated text-ink shadow-none transition-[border-color,background-color] duration-200 ease-editorial dark:border-transparent",
       className
     )}
     {...props}
