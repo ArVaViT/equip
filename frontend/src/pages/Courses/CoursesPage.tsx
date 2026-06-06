@@ -28,14 +28,22 @@ import { coursesCatalogSteps } from "@/lib/tourSteps"
  * dedupe key (see services/api.ts), so this triggers a real
  * round-trip rather than serving a cached payload.
  */
+// First-page size for the catalog. Smaller than the backend cap (200) so the
+// first paint is fast; the rest loads on demand via "load more". Before this,
+// the UI fetched the default 100 and silently dropped anything past it.
+const PAGE_SIZE = 24
+
 export default function CoursesPage() {
   const { t, i18n } = useTranslation()
   const { user } = useAuth()
   const { input, setInput, value: query, maxLength } = useDebouncedSearchParam()
   const [courses, setCourses] = useState<Course[]>([])
   const [reloadKey, setReloadKey] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [moreError, setMoreError] = useState(false)
   const { data: fetchedCourses, loading, error: fetchError } = useAsyncData(
-    async () => coursesService.getCourses(query || undefined),
+    async () => coursesService.getCourses(query || undefined, { skip: 0, limit: PAGE_SIZE }),
     // ``i18n.language`` triggers a refetch on locale flip so localised
     // titles/descriptions re-pull. ``t`` is intentionally not a dep —
     // its reference-change behaviour is implementation-defined.
@@ -54,8 +62,29 @@ export default function CoursesPage() {
   // (search/filter) downstream logic can continue to read from a single
   // source of truth without restructuring the rest of the file.
   useEffect(() => {
-    if (fetchedCourses !== undefined) setCourses(fetchedCourses)
+    if (fetchedCourses !== undefined) {
+      setCourses(fetchedCourses)
+      // A full page back means there may be more; a short page is the end.
+      setHasMore(fetchedCourses.length === PAGE_SIZE)
+      setMoreError(false)
+    }
   }, [fetchedCourses])
+
+  // Append the next page. skip = current count (catalog order is stable
+  // created_at desc, so offset paging is correct for append).
+  const loadMore = async () => {
+    setLoadingMore(true)
+    setMoreError(false)
+    try {
+      const next = await coursesService.getCourses(query || undefined, { skip: courses.length, limit: PAGE_SIZE })
+      setCourses((prev) => [...prev, ...next])
+      setHasMore(next.length === PAGE_SIZE)
+    } catch {
+      setMoreError(true)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   return (
     <div className="container mx-auto px-4 py-6 sm:py-10">
@@ -139,6 +168,15 @@ export default function CoursesPage() {
           ))}
         </div>
       )}
+
+      {!loading && !error && hasMore && (
+        <div className="mt-10 flex justify-center">
+          <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? t("courses.loadingMore") : t("courses.loadMore")}
+          </Button>
+        </div>
+      )}
+      {moreError && <p className="mt-4 text-center text-sm text-destructive">{t("courses.loadMoreFailed")}</p>}
     </div>
   )
 }
