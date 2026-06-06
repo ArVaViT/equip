@@ -164,7 +164,7 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
   )
 
   return (
-    <div className="rounded-lg bg-card">
+    <div className="rounded-lg border border-edge dark:border-transparent bg-card">
       <div className="border-b border-edge px-5 py-5">
         <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
           <FileText className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />

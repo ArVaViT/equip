@@ -183,7 +183,7 @@ function FileBlockLink({
       type="button"
       onClick={handleClick}
       disabled={opening}
-      className="group flex w-full items-center gap-3 rounded-md bg-card px-4 py-3 text-left transition-colors hover:border-brand/40 hover:bg-muted/40 disabled:opacity-60"
+      className="group flex w-full items-center gap-3 rounded-md border border-edge dark:border-transparent bg-card px-4 py-3 text-left transition-colors hover:border-brand/40 hover:bg-muted/40 disabled:opacity-60"
       aria-label={t("chapter.downloadFileAria", { name: label })}
     >
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted">
