@@ -4,7 +4,6 @@ from datetime import UTC, datetime
 
 from fastapi import Depends, Request, status
 from pydantic import BaseModel
-from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -16,6 +15,7 @@ from app.models.enrollment import Enrollment
 from app.models.user import User
 from app.schemas.course import EnrollmentResponse
 from app.services.audit_service import log_action
+from app.services.cohort_capacity import assert_cohort_has_capacity
 from app.services.course_service import enroll_user_in_course
 from app.services.translation.resolve_for_display import populate_spine_texts
 
@@ -53,7 +53,7 @@ def get_enrollment_status(
     }
 
 
-def _enforce_cohort_gates(db: Session, course_id: str, cohort_id: str, now: datetime) -> None:
+def _enforce_cohort_gates(db: Session, course_id: str, cohort_id: str, user_id: str, now: datetime) -> None:
     """Validate that the student can enroll into the requested cohort.
 
     Returns nothing on success; raises the appropriate HTTPException on
@@ -111,25 +111,10 @@ def _enforce_cohort_gates(db: Session, course_id: str, cohort_id: str, now: date
                 "enrollment_end": cohort.enrollment_end.isoformat(),
             },
         )
-    if cohort.max_students:
-        current_count = (
-            db.query(sa_func.count(sa_func.distinct(Enrollment.user_id)))
-            .filter(Enrollment.cohort_id == cohort.id)
-            .scalar()
-            or 0
-        )
-        if current_count >= cohort.max_students:
-            raise equip_error(
-                ErrorCode.COURSE_ENROLMENT_CLOSED,
-                status_code=status.HTTP_403_FORBIDDEN,
-                message="Cohort has reached maximum capacity",
-                context={
-                    "resource_type": "cohort",
-                    "cohort_id": cohort_id,
-                    "max_students": cohort.max_students,
-                    "current_count": current_count,
-                },
-            )
+    # Capacity gate — shared with the admin add-student path so the
+    # already-seated exemption + error code stay identical. Runs under the
+    # with_for_update() lock taken above.
+    assert_cohort_has_capacity(db, cohort, user_id)
 
 
 @router.post("/{course_id}/enroll", response_model=EnrollmentResponse)
@@ -174,7 +159,7 @@ def enroll_course(
         # Cohort-route self-enrollment works for either access mode —
         # joining the cohort is the director's intent regardless of
         # whether the course is institute or public.
-        _enforce_cohort_gates(db, course_id, body.cohort_id, now)
+        _enforce_cohort_gates(db, course_id, body.cohort_id, str(current_user.id), now)
         cohort_id = body.cohort_id
     else:
         # Solo (no-cohort) enrollment. Institute courses block this path

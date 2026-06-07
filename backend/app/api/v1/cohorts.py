@@ -47,6 +47,7 @@ from app.schemas.cohort import (
 )
 from app.schemas.locale import normalize_locale
 from app.services.audit_service import log_action
+from app.services.cohort_capacity import assert_cohort_has_capacity
 from app.services.content_versions import record_human_version
 from app.services.language_detection import detect_locale
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
@@ -110,15 +111,6 @@ def _fetch_cohort_names(db: Session, cohort_ids: list[UUID]) -> dict[str, str]:
 def _course_ids_for_cohort(db: Session, cohort_id: UUID) -> list[str]:
     """Return course_ids attached to the cohort via the junction."""
     return [row[0] for row in db.query(CohortCourse.course_id).filter(CohortCourse.cohort_id == cohort_id).all()]
-
-
-def _student_count(db: Session, cohort_id: UUID) -> int:
-    """Distinct users enrolled in this cohort. A cohort student typically
-    has N enrollment rows (one per attached course), so we COUNT DISTINCT
-    rather than count enrollment rows."""
-    return (
-        db.query(func.count(func.distinct(Enrollment.user_id))).filter(Enrollment.cohort_id == cohort_id).scalar() or 0
-    )
 
 
 def _serialize_many(db: Session, cohorts: list[Cohort]) -> list[CohortResponse]:
@@ -691,20 +683,11 @@ def add_student(
         )
     }
 
-    if cohort.max_students:
-        current_count = _student_count(db, cohort.id)
-        if not already_enrolled_courses and current_count >= cohort.max_students:
-            raise equip_error(
-                ErrorCode.VALIDATION_FAILED,
-                status_code=status.HTTP_403_FORBIDDEN,
-                message="Cohort has reached maximum capacity",
-                context={
-                    "resource_type": "cohort",
-                    "resource_id": str(cohort_id),
-                    "max_students": cohort.max_students,
-                    "current_count": current_count,
-                },
-            )
+    # Capacity gate — shared with the student self-enroll path (one helper so
+    # the already-seated exemption + error code can't drift again). The helper
+    # does its own "already in cohort?" check, so it's equivalent to the prior
+    # ``not already_enrolled_courses`` guard.
+    assert_cohort_has_capacity(db, cohort, user.id)
 
     course_ids = _course_ids_for_cohort(db, cohort.id)
     missing_course_ids = [cid for cid in course_ids if cid not in already_enrolled_courses]
