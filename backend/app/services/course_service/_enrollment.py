@@ -29,7 +29,20 @@ def enroll_user_in_course(
     course_id: str,
     cohort_id: str | None = None,
 ) -> Enrollment:
-    existing = db.query(Enrollment).filter(Enrollment.user_id == user_id, Enrollment.course_id == course_id).first()
+    # Existence is scoped to (user, course, cohort) — matching the DB unique
+    # index `(user_id, course_id, COALESCE(cohort_id, sentinel))`. A student
+    # who took the course solo (or in cohort A) may re-enrol via cohort B and
+    # get a NEW row, which is the intended multi-cohort-retake behaviour. A
+    # plain (user, course) check would wrongly return the old row and silently
+    # block the retake the index was designed to permit.
+    cohort_match = (
+        Enrollment.cohort_id.is_(None) if cohort_id is None else Enrollment.cohort_id == cohort_id
+    )
+    existing = (
+        db.query(Enrollment)
+        .filter(Enrollment.user_id == user_id, Enrollment.course_id == course_id, cohort_match)
+        .first()
+    )
     if existing:
         return existing
 
@@ -44,10 +57,14 @@ def enroll_user_in_course(
     try:
         db.commit()
     except IntegrityError:
-        # A concurrent POST for the same (user, course) just committed.
+        # A concurrent POST for the same (user, course, cohort) just committed.
         # Return the winner row instead of propagating the 500.
         db.rollback()
-        existing = db.query(Enrollment).filter(Enrollment.user_id == user_id, Enrollment.course_id == course_id).first()
+        existing = (
+            db.query(Enrollment)
+            .filter(Enrollment.user_id == user_id, Enrollment.course_id == course_id, cohort_match)
+            .first()
+        )
         if existing:
             return existing
         raise
