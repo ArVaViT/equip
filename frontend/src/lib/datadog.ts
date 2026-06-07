@@ -79,12 +79,16 @@ export function initDatadogRum() {
     version,
 
     // 100% of sessions — at our scale (tens of users) sampling just wastes
-    // visibility. Bump down later if volume ever grows.
+    // visibility, and the LCP/error monitors need full coverage. RUM session
+    // events are cheap; keep them all.
     sessionSampleRate: 100,
-    // Session Replay also at 100%. Per-replay cost is ~$0.006 on US5 and our
-    // volume is tiny; we'd rather always have the video when debugging a bug
-    // report than have to ask the user to reproduce.
-    sessionReplaySampleRate: 100,
+    // Session Replay at 20% (was 100). The replay recorder serializes DOM
+    // mutations from first paint, competing for the main thread during the
+    // exact window LCP is measured — at 100% it inflated the very LCP it
+    // recorded. It's also the priciest RUM line. 1-in-5 still gives video for
+    // debugging while cutting replay cost ~80% and keeping it off the critical
+    // path for most loads.
+    sessionReplaySampleRate: 20,
 
     // Privacy: mask every text input by default — quiz answers, student
     // names, password fields, chat-style pages all contain PII that must
