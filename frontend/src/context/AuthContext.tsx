@@ -17,9 +17,40 @@ import { setDatadogUser, clearDatadogUser } from "@/lib/datadog"
 // the canonical first-run locale UX for ALL signup paths (OAuth and
 // email alike), so the heuristic is gone.
 
+/**
+ * Synchronous "is anyone plausibly signed in?" probe used to seed the initial
+ * loading state. supabase-js persists its session under a
+ * `sb-<project-ref>-auth-token` localStorage key; if no such key holds a value,
+ * the visitor is definitely anonymous and we can render the public shell
+ * immediately instead of blocking the whole app on the async
+ * `INITIAL_SESSION` round-trip (the #1 cause of the >4s LCP on the landing).
+ * A stored session still starts `loading=true` so a logged-in user never
+ * flashes the anonymous landing before their dashboard. A localStorage that's
+ * blocked or empty → treated as anonymous (paint now). Worst case for a stale/
+ * expired stored token is the pre-existing behaviour: a brief spinner until
+ * `INITIAL_SESSION` resolves it to signed-out.
+ */
+function hasStoredSupabaseSession(): boolean {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k && k.startsWith("sb-") && k.endsWith("-auth-token")) {
+        const v = localStorage.getItem(k)
+        if (v && v !== "null") return true
+      }
+    }
+  } catch {
+    /* localStorage unavailable (private mode / blocked) → assume anonymous */
+  }
+  return false
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Seed from the synchronous storage probe: anonymous visitors (no token)
+  // skip the spinner and paint the public landing immediately; signed-in
+  // visitors wait for profile enrichment as before.
+  const [loading, setLoading] = useState(hasStoredSupabaseSession)
   const mounted = useRef(true)
   const activeUserId = useRef<string | null>(null)
   // ``inflightUserId`` deduplicates *simultaneous* enrichProfile() calls
