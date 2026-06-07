@@ -5,6 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.core.security import decode_access_token
 from app.models.course import Chapter, Course, CourseStatus, Module
 from app.models.enrollment import Enrollment
@@ -22,23 +23,26 @@ def get_current_user(
 ) -> User:
     payload = decode_access_token(credentials.credentials)
     if payload is None:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_REQUIRED,
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
+            message="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
     user_id: str | None = payload.get("sub")
     if user_id is None:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_REQUIRED,
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
+            message="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_REQUIRED,
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
+            message="User not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
@@ -63,9 +67,10 @@ def require_teacher(
     current_user: User = Depends(get_current_user),
 ) -> User:
     if current_user.role not in (UserRole.TEACHER.value, UserRole.ADMIN.value):
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only teachers can perform this action",
+            message="Only teachers can perform this action",
         )
     return current_user
 
@@ -74,9 +79,10 @@ def require_admin(
     current_user: User = Depends(get_current_user),
 ) -> User:
     if current_user.role != UserRole.ADMIN.value:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required",
+            message="Admin access required",
         )
     return current_user
 
@@ -137,9 +143,10 @@ def verify_course_owner(
         return course
     if allow_admin and _resolve_admin_flag(db, teacher):
         return course
-    raise HTTPException(
+    raise equip_error(
+        ErrorCode.AUTH_FORBIDDEN,
         status_code=status.HTTP_403_FORBIDDEN,
-        detail="You do not own this course",
+        message="You do not own this course",
     )
 
 
@@ -175,9 +182,10 @@ def verify_chapter_access(db: Session, chapter_id: str, user: User) -> Chapter:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chapter not found")
     enrolled = db.query(Enrollment).filter(Enrollment.user_id == user.id, Enrollment.course_id == course.id).first()
     if not enrolled:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You must be enrolled in this course",
+            message="You must be enrolled in this course",
         )
     return chapter
 
@@ -192,9 +200,10 @@ def verify_chapter_owner(db: Session, chapter_id: str, teacher: User | str) -> t
     if str(course.created_by) == str(teacher_id):
         return chapter, str(course.id)
     if not _resolve_admin_flag(db, teacher):
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not own this course",
+            message="You do not own this course",
         )
     return chapter, str(course.id)
 

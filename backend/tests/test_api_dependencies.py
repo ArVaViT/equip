@@ -144,7 +144,9 @@ class TestGetCurrentUser:
         with pytest.raises(HTTPException) as exc:
             deps.get_current_user(credentials=_bearer(), db=db)
         assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
-        assert "User not found" in exc.value.detail
+        # equip_error envelope: detail is now the typed dict, not a bare string.
+        assert exc.value.detail["code"] == "auth.required"
+        assert exc.value.detail["message"] == "User not found"
 
     def test_returns_user_on_happy_path(
         self,
@@ -230,7 +232,8 @@ class TestRequireTeacher:
         with pytest.raises(HTTPException) as exc:
             deps.require_teacher(current_user=student)
         assert exc.value.status_code == status.HTTP_403_FORBIDDEN
-        assert "teachers" in exc.value.detail.lower()
+        assert exc.value.detail["code"] == "auth.forbidden"
+        assert "teachers" in exc.value.detail["message"].lower()
 
 
 class TestRequireAdmin:
@@ -247,7 +250,8 @@ class TestRequireAdmin:
         with pytest.raises(HTTPException) as exc:
             deps.require_admin(current_user=teacher)
         assert exc.value.status_code == status.HTTP_403_FORBIDDEN
-        assert "admin" in exc.value.detail.lower()
+        assert exc.value.detail["code"] == "auth.forbidden"
+        assert "admin" in exc.value.detail["message"].lower()
 
     def test_student_is_403(self) -> None:
         student = User(id=STUDENT_ID, email="s", full_name="s", role=UserRole.STUDENT.value)
