@@ -112,9 +112,26 @@ describe("AuthContext", () => {
     signInWithGoogle.mockReset()
     resetPassword.mockReset()
     logout.mockReset()
+    localStorage.clear()
   })
 
-  it("starts in a loading=true, anon state until INITIAL_SESSION fires", () => {
+  it("starts loading=false + anon when no session is stored (anonymous fast paint)", () => {
+    // No `sb-*-auth-token` in localStorage → the provider seeds loading=false
+    // so the public landing paints immediately instead of blocking on the
+    // async INITIAL_SESSION round-trip (the LCP fix).
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>,
+    )
+    expect(screen.getByTestId("loading").textContent).toBe("false")
+    expect(screen.getByTestId("user").textContent).toBe("anon")
+  })
+
+  it("starts loading=true when a supabase session token IS stored", () => {
+    // A returning signed-in visitor must NOT flash the anonymous landing —
+    // a stored token seeds loading=true until INITIAL_SESSION enriches.
+    localStorage.setItem("sb-testproj-auth-token", JSON.stringify({ access_token: "tok" }))
     render(
       <AuthProvider>
         <AuthProbe />
