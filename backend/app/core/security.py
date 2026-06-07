@@ -27,10 +27,28 @@ def _cache_get(token: str) -> dict | None:
     return payload
 
 
+def _token_exp_epoch(token: str) -> float | None:
+    """Best-effort read of a JWT's ``exp`` (seconds since epoch) WITHOUT
+    verifying the signature. Used only to upper-bound the fallback cache TTL
+    so a token can never be served from cache past its own expiry."""
+    try:
+        claims = jwt.decode(token, options={"verify_signature": False})
+    except jwt.PyJWTError:
+        return None
+    exp = claims.get("exp")
+    return float(exp) if isinstance(exp, (int, float)) else None
+
+
 def _cache_put(token: str, payload: dict) -> None:
     if len(_supabase_cache) >= _SUPABASE_CACHE_MAX_ENTRIES:
         _supabase_cache.pop(next(iter(_supabase_cache)), None)
-    _supabase_cache[token] = (time.monotonic() + _SUPABASE_CACHE_TTL_SECONDS, payload)
+    # TTL is the lesser of the fixed window and the token's own remaining
+    # lifetime — a token that expires in 5s must not stay valid for 60s.
+    ttl = _SUPABASE_CACHE_TTL_SECONDS
+    exp_epoch = _token_exp_epoch(token)
+    if exp_epoch is not None:
+        ttl = max(0.0, min(ttl, exp_epoch - time.time()))
+    _supabase_cache[token] = (time.monotonic() + ttl, payload)
 
 
 def _validate_via_supabase(token: str) -> dict | None:
@@ -64,11 +82,18 @@ def _validate_via_supabase(token: str) -> dict | None:
     if resp.status_code != 200:
         return None
     data = resp.json()
+    # Validate the audience from the REAL response rather than defaulting it.
+    # The local-secret path enforces audience="authenticated"; this fallback
+    # must not be weaker, or a token minted for a different audience under the
+    # same project would be accepted as a normal user.
+    if data.get("aud") != "authenticated":
+        logger.warning("Supabase token rejected: aud != authenticated")
+        return None
     payload = {
         "sub": data.get("id"),
         "email": data.get("email"),
-        "aud": data.get("aud", "authenticated"),
-        "role": data.get("role", "authenticated"),
+        "aud": data.get("aud"),
+        "role": data.get("role"),
     }
     _cache_put(token, payload)
     return payload
