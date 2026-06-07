@@ -79,6 +79,23 @@ class TestCacheRoundTrip:
         _clear_cache()
         assert core_security._cache_get("never-put") is None
 
+    def test_ttl_clamped_to_token_expiry(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A token that expires in 5s must not stay cached for the full 60s
+        window. The cache TTL is ``min(60, token_exp - now)``.
+        """
+        _clear_cache()
+        monkeypatch.setattr(core_security.time, "time", lambda: 1000.0)
+        clock = {"mono": 0.0}
+        monkeypatch.setattr(core_security.time, "monotonic", lambda: clock["mono"])
+        # Token expires 5s after "now" (1000 -> 1005).
+        monkeypatch.setattr(core_security, "_token_exp_epoch", lambda _t: 1005.0)
+
+        core_security._cache_put("tok-short", {"sub": "u"})
+        clock["mono"] = 4.0  # within the token's 5s remaining life
+        assert core_security._cache_get("tok-short") == {"sub": "u"}
+        clock["mono"] = 6.0  # past token exp, but well under the 60s fixed TTL
+        assert core_security._cache_get("tok-short") is None
+
     def test_eviction_when_cache_is_full(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """When the cache hits ``_SUPABASE_CACHE_MAX_ENTRIES`` the next
         ``_cache_put`` drops the oldest entry (insertion-order FIFO via
@@ -200,6 +217,39 @@ class TestSupabaseFallback:
         monkeypatch.setattr(core_security.httpx, "get", fake_get)
         core_security._validate_via_supabase("tok")
         assert captured["headers"]["apikey"] == ""
+
+    def test_wrong_audience_rejected_and_not_cached(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A 200 from ``/auth/v1/user`` whose ``aud`` is NOT "authenticated"
+        must be rejected — the fallback path must be no weaker than the
+        local-secret path, which pins audience="authenticated".
+        """
+        _clear_cache()
+        monkeypatch.setattr(core_security.settings, "SUPABASE_URL", "https://proj.supabase.co")
+        monkeypatch.setattr(core_security.settings, "SUPABASE_SERVICE_ROLE_KEY", "sk-test")
+        monkeypatch.setattr(
+            core_security.httpx,
+            "get",
+            lambda *_a, **_k: _FakeHttpxResponse(
+                status_code=200,
+                json_body={"id": "u", "email": "e", "aud": "anon", "role": "anon"},
+            ),
+        )
+        assert core_security._validate_via_supabase("tok-wrongaud") is None
+        assert "tok-wrongaud" not in core_security._supabase_cache
+
+    def test_missing_audience_rejected(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _clear_cache()
+        monkeypatch.setattr(core_security.settings, "SUPABASE_URL", "https://proj.supabase.co")
+        monkeypatch.setattr(core_security.settings, "SUPABASE_SERVICE_ROLE_KEY", "sk-test")
+        monkeypatch.setattr(
+            core_security.httpx,
+            "get",
+            lambda *_a, **_k: _FakeHttpxResponse(
+                status_code=200,
+                json_body={"id": "u", "email": "e", "role": "authenticated"},
+            ),
+        )
+        assert core_security._validate_via_supabase("tok-noaud") is None
 
 
 class TestDecodeAccessToken:

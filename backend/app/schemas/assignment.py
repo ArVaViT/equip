@@ -78,7 +78,10 @@ class SubmissionResponse(BaseModel):
 
 
 class GradeSubmissionRequest(BaseModel):
-    grade: int = Field(..., ge=0)
+    # ``le`` mirrors ``max_score`` (≤10000) as a schema-level sanity ceiling.
+    # The route still rejects ``grade > the assignment's own max_score``; this
+    # just stops an absurd value being accepted by the schema alone.
+    grade: int = Field(..., ge=0, le=10000)
     feedback: str | None = Field(None, max_length=5000)
     # Must stay a subset of the DB CHECK on ``assignment_submissions.status``
     # (``submitted|graded|returned``). ``pending`` used to be accepted here
