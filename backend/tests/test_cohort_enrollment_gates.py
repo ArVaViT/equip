@@ -172,7 +172,7 @@ def _seed_enrollment(db: Session, *, user_id, course_id: str, cohort_id) -> None
 
 
 # ===========================================================================
-# UNIT TESTS — _enforce_cohort_gates(db, course_id, cohort_id, now)
+# UNIT TESTS — _enforce_cohort_gates(db, course_id, cohort_id, user_id, now)
 # ===========================================================================
 #
 # Tests here drive the gate function directly so we can pass an explicit
@@ -186,7 +186,7 @@ class TestCohortGateCohortLookup:
     def test_nonexistent_cohort_id_raises_404(self, db: Session, teacher):
         _seed_public_course(db)
         with pytest.raises(HTTPException) as exc:
-            _enforce_cohort_gates(db, "test-course-1", str(uuid.uuid4()), NOW_NAIVE)
+            _enforce_cohort_gates(db, "test-course-1", str(uuid.uuid4()), STUDENT_ID, NOW_NAIVE)
         assert exc.value.status_code == 404
         assert exc.value.detail["message"] == "Cohort not found"
 
@@ -195,7 +195,7 @@ class TestCohortGateCohortLookup:
         _seed_public_course(db, course_id="course-b")
         cohort = _seed_cohort(db, course_id="course-a")
         with pytest.raises(HTTPException) as exc:
-            _enforce_cohort_gates(db, "course-b", str(cohort.id), NOW_NAIVE)
+            _enforce_cohort_gates(db, "course-b", str(cohort.id), STUDENT_ID, NOW_NAIVE)
         assert exc.value.status_code == 404
         assert exc.value.detail["message"] == "Cohort does not include this course"
 
@@ -205,7 +205,7 @@ class TestCohortGateStatus:
         _seed_public_course(db)
         cohort = _seed_cohort(db, status="upcoming")
         with pytest.raises(HTTPException) as exc:
-            _enforce_cohort_gates(db, "test-course-1", str(cohort.id), NOW_NAIVE)
+            _enforce_cohort_gates(db, "test-course-1", str(cohort.id), STUDENT_ID, NOW_NAIVE)
         assert exc.value.status_code == 403
         assert exc.value.detail["message"] == "Cohort is not active"
 
@@ -213,7 +213,7 @@ class TestCohortGateStatus:
         _seed_public_course(db)
         cohort = _seed_cohort(db, status="completed")
         with pytest.raises(HTTPException) as exc:
-            _enforce_cohort_gates(db, "test-course-1", str(cohort.id), NOW_NAIVE)
+            _enforce_cohort_gates(db, "test-course-1", str(cohort.id), STUDENT_ID, NOW_NAIVE)
         assert exc.value.status_code == 403
         assert exc.value.detail["message"] == "Cohort is not active"
 
@@ -223,7 +223,7 @@ class TestCohortGateWindow:
         _seed_public_course(db)
         cohort = _seed_cohort(db, enrollment_start=NEAR_FUTURE_NAIVE)
         with pytest.raises(HTTPException) as exc:
-            _enforce_cohort_gates(db, "test-course-1", str(cohort.id), NOW_NAIVE)
+            _enforce_cohort_gates(db, "test-course-1", str(cohort.id), STUDENT_ID, NOW_NAIVE)
         assert exc.value.status_code == 403
         assert "not started yet" in exc.value.detail["message"].lower()
 
@@ -231,7 +231,7 @@ class TestCohortGateWindow:
         _seed_public_course(db)
         cohort = _seed_cohort(db, enrollment_end=RECENT_PAST_NAIVE)
         with pytest.raises(HTTPException) as exc:
-            _enforce_cohort_gates(db, "test-course-1", str(cohort.id), NOW_NAIVE)
+            _enforce_cohort_gates(db, "test-course-1", str(cohort.id), STUDENT_ID, NOW_NAIVE)
         assert exc.value.status_code == 403
         assert "ended" in exc.value.detail["message"].lower()
 
@@ -239,12 +239,12 @@ class TestCohortGateWindow:
         _seed_public_course(db)
         cohort = _seed_cohort(db, enrollment_start=PAST_NAIVE, enrollment_end=FAR_FUTURE_NAIVE)
         # No exception = pass.
-        _enforce_cohort_gates(db, "test-course-1", str(cohort.id), NOW_NAIVE)
+        _enforce_cohort_gates(db, "test-course-1", str(cohort.id), STUDENT_ID, NOW_NAIVE)
 
     def test_null_window_means_unlimited(self, db: Session, teacher):
         _seed_public_course(db)
         cohort = _seed_cohort(db)
-        _enforce_cohort_gates(db, "test-course-1", str(cohort.id), NOW_NAIVE)
+        _enforce_cohort_gates(db, "test-course-1", str(cohort.id), STUDENT_ID, NOW_NAIVE)
 
 
 class TestCohortGateCapacity:
@@ -253,7 +253,7 @@ class TestCohortGateCapacity:
         cohort = _seed_cohort(db, max_students=1)
         _seed_enrollment(db, user_id=TEACHER_ID, course_id="test-course-1", cohort_id=cohort.id)
         with pytest.raises(HTTPException) as exc:
-            _enforce_cohort_gates(db, "test-course-1", str(cohort.id), NOW_NAIVE)
+            _enforce_cohort_gates(db, "test-course-1", str(cohort.id), STUDENT_ID, NOW_NAIVE)
         assert exc.value.status_code == 403
         assert "capacity" in exc.value.detail["message"].lower()
 
@@ -271,13 +271,30 @@ class TestCohortGateCapacity:
         _seed_enrollment(db, user_id=TEACHER_ID, course_id="course-b", cohort_id=cohort.id)
 
         # 1 distinct user against cap of 2 → seat available.
-        _enforce_cohort_gates(db, "course-a", str(cohort.id), NOW_NAIVE)
+        _enforce_cohort_gates(db, "course-a", str(cohort.id), STUDENT_ID, NOW_NAIVE)
 
     def test_unlimited_capacity_when_max_students_null(self, db: Session, teacher, student):
         _seed_public_course(db)
         cohort = _seed_cohort(db, max_students=None)
         _seed_enrollment(db, user_id=TEACHER_ID, course_id="test-course-1", cohort_id=cohort.id)
-        _enforce_cohort_gates(db, "test-course-1", str(cohort.id), NOW_NAIVE)
+        _enforce_cohort_gates(db, "test-course-1", str(cohort.id), STUDENT_ID, NOW_NAIVE)
+
+    def test_already_seated_user_exempt_from_capacity(self, db: Session, teacher, student):
+        """A student already holding a seat in a FULL cohort can self-enroll
+        into a SECOND course of that same cohort — they don't consume a new
+        seat. Regression: the self-enroll path previously lacked the
+        already-seated exemption that the admin add-student path had, so it
+        wrongly 403'd this case. Now both share assert_cohort_has_capacity.
+        """
+        _seed_public_course(db, course_id="course-a")
+        _seed_public_course(db, course_id="course-b")
+        cohort = _seed_cohort(db, course_id="course-a", max_students=1)
+        db.add(CohortCourse(cohort_id=cohort.id, course_id="course-b"))
+        db.commit()
+        # The student takes the single seat via course-a.
+        _seed_enrollment(db, user_id=STUDENT_ID, course_id="course-a", cohort_id=cohort.id)
+        # Cohort is full (1/1), but the SAME student joining course-b must pass.
+        _enforce_cohort_gates(db, "course-b", str(cohort.id), STUDENT_ID, NOW_NAIVE)
 
 
 # ===========================================================================
