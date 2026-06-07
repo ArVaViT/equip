@@ -35,9 +35,7 @@ def enroll_user_in_course(
     # get a NEW row, which is the intended multi-cohort-retake behaviour. A
     # plain (user, course) check would wrongly return the old row and silently
     # block the retake the index was designed to permit.
-    cohort_match = (
-        Enrollment.cohort_id.is_(None) if cohort_id is None else Enrollment.cohort_id == cohort_id
-    )
+    cohort_match = Enrollment.cohort_id.is_(None) if cohort_id is None else Enrollment.cohort_id == cohort_id
     existing = (
         db.query(Enrollment)
         .filter(Enrollment.user_id == user_id, Enrollment.course_id == course_id, cohort_match)

@@ -167,11 +167,7 @@ class TestMultiCohortRetake:
         assert again.id == via_cohort.id
 
         # Net: exactly two rows for (user, course) — solo + cohort.
-        rows = (
-            db.query(Enrollment)
-            .filter(Enrollment.user_id == STUDENT_ID, Enrollment.course_id == course.id)
-            .count()
-        )
+        rows = db.query(Enrollment).filter(Enrollment.user_id == STUDENT_ID, Enrollment.course_id == course.id).count()
         assert rows == 2
 
     def test_solo_reenroll_still_idempotent(self, db: Session) -> None:
@@ -189,9 +185,5 @@ class TestMultiCohortRetake:
         first = enroll_user_in_course(db, STUDENT_ID, course.id)
         again = enroll_user_in_course(db, STUDENT_ID, course.id)
         assert again.id == first.id
-        rows = (
-            db.query(Enrollment)
-            .filter(Enrollment.user_id == STUDENT_ID, Enrollment.course_id == course.id)
-            .count()
-        )
+        rows = db.query(Enrollment).filter(Enrollment.user_id == STUDENT_ID, Enrollment.course_id == course.id).count()
         assert rows == 1
