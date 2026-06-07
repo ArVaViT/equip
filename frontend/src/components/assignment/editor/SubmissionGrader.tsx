@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge"
 import { FileText, Loader2, MessageSquare, Save, Star, User } from "lucide-react"
 import { coursesService } from "@/services/courses"
 import { toast } from "@/lib/toast"
+import { isHttpUrl } from "@/lib/url"
 import type { AssignmentSubmission } from "@/types"
 
 interface Props {
@@ -79,7 +80,7 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
           </div>
         )}
 
-        {submission.file_url && (
+        {submission.file_url && isHttpUrl(submission.file_url) && (
           <a
             href={submission.file_url}
             target="_blank"
