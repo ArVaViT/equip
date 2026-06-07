@@ -31,14 +31,6 @@ vi.mock("@/lib/supabase", () => ({
   },
 }))
 
-// New dependency of ``AuthContext`` for post-OAuth locale reconciliation.
-// Tests in this file never exercise that path, so just stub the call.
-vi.mock("@/services/preferences", () => ({
-  preferencesService: {
-    setPreferredLocale: vi.fn().mockResolvedValue({}),
-  },
-}))
-
 const login = vi.fn()
 const register = vi.fn()
 const signInWithGoogle = vi.fn()
