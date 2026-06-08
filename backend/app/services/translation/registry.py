@@ -141,18 +141,8 @@ def _resolve_course_via_chapter(db: Session, entity: Any) -> Course | None:
 
 
 def _resolve_course_via_quiz_chapter(db: Session, entity: Any) -> Course | None:
-    """Quiz -> chapter -> module -> course."""
-    chapter_id = getattr(entity, "chapter_id", None)
-    if not chapter_id:
-        return None
-    row = (
-        db.query(Course)
-        .join(Module, Module.course_id == Course.id)
-        .join(Chapter, Chapter.module_id == Module.id)
-        .filter(Chapter.id == chapter_id)
-        .first()
-    )
-    return row
+    """Quiz -> chapter -> module -> course (same chapter_id walk as a block)."""
+    return _resolve_course_via_chapter(db, entity)
 
 
 def _resolve_course_via_question(db: Session, entity: Any) -> Course | None:

@@ -15,6 +15,16 @@ security = HTTPBearer()
 optional_security = HTTPBearer(auto_error=False)
 
 
+def _unauthorized(message: str) -> HTTPException:
+    """Build the standard 401 envelope (same shape for every auth failure)."""
+    return equip_error(
+        ErrorCode.AUTH_REQUIRED,
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        message=message,
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
 # Sync so FastAPI runs it in the threadpool: keeps the event loop free while
 # decode_access_token (possible Supabase HTTP call) and the User SELECT block.
 def get_current_user(
@@ -23,28 +33,13 @@ def get_current_user(
 ) -> User:
     payload = decode_access_token(credentials.credentials)
     if payload is None:
-        raise equip_error(
-            ErrorCode.AUTH_REQUIRED,
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            message="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise _unauthorized("Could not validate credentials")
     user_id: str | None = payload.get("sub")
     if user_id is None:
-        raise equip_error(
-            ErrorCode.AUTH_REQUIRED,
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            message="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise _unauthorized("Could not validate credentials")
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
-        raise equip_error(
-            ErrorCode.AUTH_REQUIRED,
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            message="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise _unauthorized("User not found")
     return user
 
 

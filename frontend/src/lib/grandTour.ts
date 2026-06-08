@@ -1,7 +1,7 @@
 import { driver, type Config, type Driver, type DriveStep } from "driver.js"
 import "driver.js/dist/driver.css"
 import "@/styles/editorial-tour.css"
-import { sanitizeHtml } from "@/lib/sanitize"
+import { EDITORIAL_TOUR_BASE, sanitizePopover } from "@/lib/tour"
 
 /**
  * A grand-tour step is a regular driver.js step plus an optional
@@ -110,15 +110,7 @@ export function createGrandTour({
   // future user-interpolated tour copy could otherwise XSS.
   const baseSteps: DriveStep[] = steps.map((s) => ({
     element: s.element,
-    popover: s.popover
-      ? {
-          ...s.popover,
-          title: s.popover.title ? sanitizeHtml(s.popover.title) : s.popover.title,
-          description: s.popover.description
-            ? sanitizeHtml(s.popover.description)
-            : s.popover.description,
-        }
-      : s.popover,
+    popover: sanitizePopover(s.popover),
   }))
 
   // Pre-position on the first step's route so the very first
@@ -197,15 +189,9 @@ export function createGrandTour({
   }
 
   const config: Config = {
+    ...EDITORIAL_TOUR_BASE,
     steps: baseSteps,
     animate: !reducedMotion,
-    smoothScroll: true,
-    allowClose: true,
-    disableActiveInteraction: true,
-    overlayColor: "hsl(265 28% 13%)",
-    overlayOpacity: 0.55,
-    stagePadding: 6,
-    stageRadius: 8,
     showProgress: steps.length > 1,
     progressText: labels.progress,
     nextBtnText: labels.next,
