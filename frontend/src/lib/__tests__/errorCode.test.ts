@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from "vitest"
 
-import { getErrorCode, getErrorContext } from "../errorCode"
+import { getErrorCode } from "../errorCode"
 
 function fakeAxiosError(body: unknown, status = 400): unknown {
   // Shape mirrors what `axios.isAxiosError` accepts. The
@@ -45,30 +45,5 @@ describe("getErrorCode", () => {
     expect(getErrorCode(new Error("boom"))).toBeNull()
     expect(getErrorCode("plain string")).toBeNull()
     expect(getErrorCode(null)).toBeNull()
-  })
-})
-
-describe("getErrorContext", () => {
-  it("returns the context dict when present", () => {
-    const err = fakeAxiosError({
-      detail: {
-        code: "quiz.attempts_exhausted",
-        message: "Out of attempts",
-        context: { remaining: 0, cap: 3 },
-      },
-    })
-    expect(getErrorContext(err)).toEqual({ remaining: 0, cap: 3 })
-  })
-
-  it("returns an empty object when context is missing", () => {
-    const err = fakeAxiosError({
-      detail: { code: "auth.required", message: "Sign in" },
-    })
-    expect(getErrorContext(err)).toEqual({})
-  })
-
-  it("returns an empty object for the legacy string detail", () => {
-    const err = fakeAxiosError({ detail: "Course not found" })
-    expect(getErrorContext(err)).toEqual({})
   })
 })

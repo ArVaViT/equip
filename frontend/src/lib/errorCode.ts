@@ -82,15 +82,3 @@ export function getErrorCode(err: unknown): ErrorCode | null {
   const detail: unknown = err.response?.data?.detail
   return isStructuredErrorDetail(detail) ? detail.code : null
 }
-
-/**
- * Return the `context` dict from a structured error, or an empty
- * object when the error is legacy / unstructured. Useful for codes
- * that include machine-readable parameters (e.g. retries left,
- * conflicting resource id).
- */
-export function getErrorContext(err: unknown): Record<string, unknown> {
-  if (!isAxiosError(err)) return {}
-  const detail: unknown = err.response?.data?.detail
-  return isStructuredErrorDetail(detail) ? detail.context ?? {} : {}
-}

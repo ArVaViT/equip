@@ -26,22 +26,43 @@ export type TourStep = DriveStep
  * ``<em>`` keeps those tags while ``<script>``, ``<img onerror>``,
  * ``href="javascript:..."`` etc. are stripped.
  */
-function sanitiseStepTextInPlace(steps: readonly TourStep[]): TourStep[] {
-  return steps.map((step) => {
-    if (!step.popover) return step
-    const { popover, ...rest } = step
-    return {
-      ...rest,
-      popover: {
-        ...popover,
-        title: popover.title ? sanitizeHtml(popover.title) : popover.title,
-        description: popover.description
-          ? sanitizeHtml(popover.description)
-          : popover.description,
-      },
-    }
-  })
+/**
+ * Sanitise a driver.js popover's ``title`` + ``description`` (both rendered
+ * via ``innerHTML``) so a future user-interpolated tour string can't XSS.
+ * Shared by the per-page tour and the cross-route grand tour.
+ */
+export function sanitizePopover(popover: DriveStep["popover"]): DriveStep["popover"] {
+  if (!popover) return popover
+  return {
+    ...popover,
+    title: popover.title ? sanitizeHtml(popover.title) : popover.title,
+    description: popover.description ? sanitizeHtml(popover.description) : popover.description,
+  }
 }
+
+function sanitiseStepTextInPlace(steps: readonly TourStep[]): TourStep[] {
+  return steps.map((step) =>
+    step.popover ? { ...step, popover: sanitizePopover(step.popover) } : step,
+  )
+}
+
+/**
+ * Visual + interaction constants shared by both editorial tours, so the
+ * overlay tint, stage geometry, and popover class can't drift between the
+ * per-page tour and the grand tour. ``disableActiveInteraction`` keeps the
+ * spotlit element from acting as a click-trap (without it the catalog-search
+ * step would eat keystrokes and reposition the spotlight on every char).
+ */
+export const EDITORIAL_TOUR_BASE = {
+  smoothScroll: true,
+  allowClose: true,
+  disableActiveInteraction: true,
+  overlayColor: "hsl(265 28% 13%)",
+  overlayOpacity: 0.55,
+  stagePadding: 6,
+  stageRadius: 8,
+  popoverClass: "editorial-tour-popover",
+} satisfies Partial<Config>
 
 interface CreateTourOpts {
   steps: readonly TourStep[]
@@ -112,22 +133,12 @@ export function createEditorialTour({
   const animate = !reducedMotionPreferred()
 
   const config: Config = {
+    ...EDITORIAL_TOUR_BASE,
     steps: sanitiseStepTextInPlace(steps) as DriveStep[],
     // Both the SVG stage morph and the popover fade are gated on this
     // single flag — driver.js doesn't expose them separately, and the
     // CSS media query catches the popover fade as a defense in depth.
     animate,
-    smoothScroll: true,
-    allowClose: true,
-    // The spotlit element should READ as the subject of the popover,
-    // not be a click-trap that scrolls the page underneath while the
-    // user is reading. Without this, the catalog-search step would
-    // accept keystrokes and reposition the spotlight on every char.
-    disableActiveInteraction: true,
-    overlayColor: "hsl(265 28% 13%)",
-    overlayOpacity: 0.55,
-    stagePadding: 6,
-    stageRadius: 8,
     showProgress: steps.length > 1,
     progressText: labels.progress,
     nextBtnText: labels.next,
