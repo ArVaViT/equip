@@ -239,13 +239,6 @@ class GeminiTranslationProvider:
 
         raise TranslationError(f"Gemini call failed after retries: {last_error!r}")
 
-    def translate_batch(self, requests: list[TranslationRequest]) -> list[TranslationResult]:
-        # The REST endpoint translates one request at a time; the batching
-        # win comes from issuing them on a shared HTTP/2 connection. The
-        # default sequential implementation is fine for the volumes we
-        # anticipate (one course publish is a few hundred chunks).
-        return [self.translate(req) for req in requests]
-
     def _build_payload(self, request: TranslationRequest) -> dict[str, Any]:
         system_prompt = build_system_prompt(
             source_locale=request.source_locale,

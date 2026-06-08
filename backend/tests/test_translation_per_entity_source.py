@@ -143,9 +143,6 @@ class _RecordingProvider:
             model="recording",
         )
 
-    def translate_batch(self, requests):
-        return [self.translate(r) for r in requests]
-
 
 class TestReconcileEntityDetectsPerFieldLanguage:
     """When an entity's text is in a different language than its

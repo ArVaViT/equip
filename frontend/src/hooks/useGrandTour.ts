@@ -59,14 +59,6 @@ function reducedMotionPreferred(): boolean {
   }
 }
 
-interface UseGrandTourReturn {
-  /** Programmatic start — bypasses persistence and role gates. Used
-   *  for a future "Replay grand tour" trigger if we ever add one to
-   *  the welcome card. */
-  start: () => void
-  alreadySeen: boolean
-}
-
 /**
  * App-root hook that owns the cross-page grand tour.
  *
@@ -88,7 +80,7 @@ interface UseGrandTourReturn {
  * BrowserRouter). Mounting in multiple places will create multiple
  * driver instances racing each other.
  */
-export function useGrandTour(): UseGrandTourReturn {
+export function useGrandTour(): void {
   const { user } = useAuth()
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -150,20 +142,6 @@ export function useGrandTour(): UseGrandTourReturn {
     })
     driverRef.current.drive()
   }, [t, userId, navigate])
-
-  const start = useCallback(() => {
-    // Defensive: don't yank the user into a tour while the first-run
-    // Privacy/Setup screens are up. Any future "Replay grand tour"
-    // trigger that calls ``start()`` during the gate would otherwise
-    // race the modal.
-    if (getFirstRunActive()) return
-    firedRef.current = true
-    if (timerRef.current !== null) {
-      window.clearTimeout(timerRef.current)
-      timerRef.current = null
-    }
-    buildAndDrive()
-  }, [buildAndDrive])
 
   useEffect(() => {
     if (firedRef.current) return
@@ -230,6 +208,4 @@ export function useGrandTour(): UseGrandTourReturn {
       }
     }
   }, [])
-
-  return { start, alreadySeen }
 }
