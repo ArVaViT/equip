@@ -79,7 +79,12 @@ _ALLOWED_TAGS = frozenset(
 )
 
 _ALLOWED_ATTRIBUTES: dict[str, list[str]] = {
-    "a": ["href", "title", "target", "rel"],
+    # No ``target``: a stored link must never open a new browsing context,
+    # so there is no ``window.opener`` for the opened page to abuse
+    # (reverse tabnabbing). The frontend renderer strips ``target`` too;
+    # dropping it here keeps both layers consistent. Intentional new-tab
+    # links are built in app code with an explicit rel="noopener noreferrer".
+    "a": ["href", "title"],
     "img": ["src", "alt", "title", "width", "height", "loading"],
     "iframe": [
         "src",
