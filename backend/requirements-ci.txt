@@ -12,7 +12,7 @@ pytest==9.0.3
 pytest-cov==7.1.0
 httpx==0.28.1
 anyio==4.13.0
-ruff==0.15.15
+ruff==0.15.16
 mypy==2.1.0
-types-bleach==6.3.0.20260508
+types-bleach==6.4.0.20260607
 pip-audit==2.10.0
