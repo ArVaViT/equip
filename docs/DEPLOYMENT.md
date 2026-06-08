@@ -131,6 +131,21 @@ applied. To revert:
 3. Update the SQLAlchemy model so the local test suite catches the
    revert.
 
+### Schema baseline & disaster recovery
+
+`supabase/migrations/*.sql` is **incremental history** and cannot replay onto a
+blank database (the base tables predate migration tracking — they were made in
+the dashboard). The replayable source of truth is **`supabase/schema.sql`**, a
+`pg_dump --schema-only` of the prod `public` schema. CI job
+`schema-replay-postgres` loads it into a clean Postgres 17 on every
+schema-touching PR (bootstrapping the Supabase `auth`/roles primitives first via
+`supabase/ci/replay_bootstrap.sql`), proving prod is reproducible from zero.
+
+When you make an intentional prod schema change, **regenerate `schema.sql` in the
+same PR** (see [`supabase/ci/README.md`](../supabase/ci/README.md) for the exact
+`pg_dump` command). The diff is the audit trail; the replay job is the gate. This
+is what would have caught the `cohorts.name` drift before it broke prod.
+
 ## Environment variables
 
 Vercel project env vars are the source of truth for production
