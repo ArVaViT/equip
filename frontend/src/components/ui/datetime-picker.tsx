@@ -1,12 +1,8 @@
-import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarPopover } from "@/components/ui/CalendarPopover"
+import { startOfMonth, ymdKey } from "@/lib/calendar"
 import { cn } from "@/lib/utils"
-
-const DAYS_IN_WEEK = 7
 
 interface Props {
   /** ``"YYYY-MM-DDTHH:MM"`` string — identical contract to the native
@@ -22,10 +18,6 @@ interface Props {
   "aria-label"?: string
 }
 
-function ymdKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-}
-
 function parseLocal(s: string): { date: Date; hh: number; mm: number } | null {
   // Tolerant parser for ``YYYY-MM-DDTHH:MM`` and ``YYYY-MM-DDTHH:MM:SS``.
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(s)
@@ -36,50 +28,9 @@ function parseLocal(s: string): { date: Date; hh: number; mm: number } | null {
 }
 
 function compose(date: Date, hh: number, mm: number): string {
-  const day = ymdKey(date)
   const hhs = String(hh).padStart(2, "0")
   const mms = String(mm).padStart(2, "0")
-  return `${day}T${hhs}:${mms}`
-}
-
-function weekdayMonStart(d: Date): number {
-  return (d.getDay() + 6) % DAYS_IN_WEEK
-}
-
-function startOfMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), 1)
-}
-
-function addMonths(d: Date, n: number): Date {
-  return new Date(d.getFullYear(), d.getMonth() + n, 1)
-}
-
-interface MonthCell {
-  date: Date
-  inCurrentMonth: boolean
-  isToday: boolean
-  isSelected: boolean
-}
-
-function buildMonthGrid(anchor: Date, selectedYmd: string): MonthCell[] {
-  const year = anchor.getFullYear()
-  const month = anchor.getMonth()
-  const first = new Date(year, month, 1)
-  const offset = weekdayMonStart(first)
-  const gridStart = new Date(year, month, 1 - offset)
-  const todayKey = ymdKey(new Date())
-  const cells: MonthCell[] = []
-  for (let i = 0; i < 42; i++) {
-    const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i)
-    const key = ymdKey(d)
-    cells.push({
-      date: d,
-      inCurrentMonth: d.getMonth() === month,
-      isToday: key === todayKey,
-      isSelected: !!selectedYmd && key === selectedYmd,
-    })
-  }
-  return cells
+  return `${ymdKey(date)}T${hhs}:${mms}`
 }
 
 function formatLong(value: string, locale: string): string {
@@ -95,20 +46,18 @@ function formatLong(value: string, locale: string): string {
   return `${datePart} · ${hh}:${mm}`
 }
 
+const clampHH = (n: number) => Math.min(23, Math.max(0, Number.isFinite(n) ? Math.round(n) : 0))
+const clampMM = (n: number) => Math.min(59, Math.max(0, Number.isFinite(n) ? Math.round(n) : 0))
+
 /**
- * Date + time picker built on the same hand-rolled Popover + Mon-start
- * month-grid pattern as ``DateRangePicker``. Replaces native
- * ``<input type="datetime-local">`` whose look diverges across
- * Win/Mac/Linux (and which, on Windows, opens a chunky non-keyboard-
- * navigable popup that visually breaks the editorial layout).
+ * Date + time picker built on the shared {@link CalendarPopover} with a time
+ * row below the grid. Replaces native ``<input type="datetime-local">`` whose
+ * look diverges across Win/Mac/Linux (and which, on Windows, opens a chunky
+ * non-keyboard-navigable popup that visually breaks the editorial layout).
  *
- * Value contract is identical to the native input: ``"YYYY-MM-DDTHH:MM"``
- * ⇄ ``""``. Drop-in replacement for any caller that read
- * ``e.target.value`` from a datetime-local input.
- *
- * Time inputs use plain ``<Input type="number">`` so we don't pay for
- * a second native picker — HH (00-23) and MM (00-59) sit at the bottom
- * of the popover as two small editable cells.
+ * Value contract is identical to the native input: ``"YYYY-MM-DDTHH:MM"`` ⇄
+ * ``""``. Time inputs use plain ``<Input type="number">`` so we don't pay for
+ * a second native picker.
  */
 export function DateTimePicker({
   value,
@@ -121,147 +70,39 @@ export function DateTimePicker({
   "aria-label": ariaLabel,
 }: Props) {
   const { t, i18n } = useTranslation()
-  const [open, setOpen] = useState(false)
 
   const parsed = parseLocal(value)
   const selectedYmd = parsed ? ymdKey(parsed.date) : ""
   const hh = parsed?.hh ?? 9
   const mm = parsed?.mm ?? 0
 
-  const [anchor, setAnchor] = useState<Date>(() =>
-    startOfMonth(parsed?.date ?? new Date()),
-  )
-
-  const cells = useMemo(
-    () => buildMonthGrid(anchor, selectedYmd),
-    [anchor, selectedYmd],
-  )
-
-  const weekdayHeads = [
-    t("streak.days.mon"),
-    t("streak.days.tue"),
-    t("streak.days.wed"),
-    t("streak.days.thu"),
-    t("streak.days.fri"),
-    t("streak.days.sat"),
-    t("streak.days.sun"),
-  ]
-
-  const triggerLabel = value
-    ? formatLong(value, i18n.language)
-    : placeholder ?? t("dateTimePicker.placeholder")
-
-  const monthLabel = anchor.toLocaleDateString(i18n.language, {
-    month: "long",
-    year: "numeric",
-  })
-
-  const setDate = (d: Date) => onChange(compose(d, hh, mm))
-  const setHH = (next: number) => {
-    if (!parsed) {
-      // First time setting time — default to today's date.
-      onChange(compose(new Date(), next, mm))
-      return
-    }
-    onChange(compose(parsed.date, next, mm))
-  }
-  const setMM = (next: number) => {
-    if (!parsed) {
-      onChange(compose(new Date(), hh, next))
-      return
-    }
-    onChange(compose(parsed.date, hh, next))
-  }
-
-  const clampHH = (n: number) => Math.min(23, Math.max(0, Number.isFinite(n) ? Math.round(n) : 0))
-  const clampMM = (n: number) => Math.min(59, Math.max(0, Number.isFinite(n) ? Math.round(n) : 0))
+  const setHH = (next: number) => onChange(compose(parsed?.date ?? new Date(), next, mm))
+  const setMM = (next: number) => onChange(compose(parsed?.date ?? new Date(), hh, next))
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          id={id}
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={disabled}
-          aria-label={ariaLabel}
-          className={cn(
-            "h-9 justify-start gap-2 px-3 font-normal",
-            !value && "text-ink-muted",
-            active && "border-brand/40 ring-1 ring-primary/40",
-            className,
-          )}
-        >
-          <CalendarIcon className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
-          <span className="truncate text-xs sm:text-sm">{triggerLabel}</span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-[min(20rem,calc(100vw-2rem))] max-w-sm p-0"
-        align="start"
-      >
-        <div className="flex items-center justify-between gap-2 border-b border-edge px-3 py-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0"
-            onClick={() => setAnchor((a) => addMonths(a, -1))}
-            aria-label={t("dateRangePicker.prevMonth")}
-          >
-            <ChevronLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-          </Button>
-          <p className="text-sm font-medium capitalize text-ink">{monthLabel}</p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0"
-            onClick={() => setAnchor((a) => addMonths(a, 1))}
-            aria-label={t("dateRangePicker.nextMonth")}
-          >
-            <ChevronRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-          </Button>
-        </div>
-
-        <div className="p-2">
-          <div className="grid grid-cols-7 gap-0.5">
-            {weekdayHeads.map((d, i) => (
-              <div
-                key={i}
-                className="pb-1 text-center text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted"
-              >
-                {d}
-              </div>
-            ))}
-            {cells.map((c, i) => (
-              <button
-                type="button"
-                key={i}
-                onClick={() => setDate(c.date)}
-                className={cn(
-                  "relative flex h-8 w-full items-center justify-center rounded-sm text-xs tabular-nums",
-                  "transition-colors hover:bg-muted",
-                  c.inCurrentMonth ? "text-ink" : "text-ink-muted/40",
-                  c.isToday && !c.isSelected && "ring-1 ring-primary/60",
-                  c.isSelected && "bg-brand font-medium text-brand-foreground hover:bg-brand/90",
-                )}
-                aria-label={c.date.toLocaleDateString(i18n.language, {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-                aria-pressed={c.isSelected}
-              >
-                {c.date.getDate()}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Time row */}
+    <CalendarPopover
+      id={id}
+      aria-label={ariaLabel}
+      active={active}
+      disabled={disabled}
+      className={className}
+      triggerLabel={value ? formatLong(value, i18n.language) : placeholder ?? t("dateTimePicker.placeholder")}
+      triggerMuted={!value}
+      initialMonth={startOfMonth(parsed?.date ?? new Date())}
+      renderDay={(date, { isToday }) => {
+        const selected = !!selectedYmd && ymdKey(date) === selectedYmd
+        return {
+          selected,
+          className: cn(
+            isToday && !selected && "ring-1 ring-primary/60",
+            selected && "bg-brand font-medium text-brand-foreground hover:bg-brand/90",
+          ),
+        }
+      }}
+      onPickDay={(date) => onChange(compose(date, hh, mm))}
+      onClear={() => onChange("")}
+      clearDisabled={!value}
+      belowGrid={
         <div className="flex items-center justify-center gap-1.5 border-t border-edge px-3 py-2 text-xs">
           <Input
             type="number"
@@ -283,21 +124,7 @@ export function DateTimePicker({
             aria-label={t("dateTimePicker.minuteAria")}
           />
         </div>
-
-        <div className="flex items-center justify-end gap-2 border-t border-edge px-2 py-1.5">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => onChange("")}
-            disabled={!value}
-            className="h-7 text-xs text-ink-muted hover:text-ink"
-          >
-            <X className="mr-1 h-3 w-3" strokeWidth={1.75} aria-hidden />
-            {t("dateRangePicker.clear")}
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
+      }
+    />
   )
 }
