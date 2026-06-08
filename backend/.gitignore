@@ -40,3 +40,8 @@ htmlcov/
 
 .vercel
 coverage.json
+
+# QA/test temp creds (never commit)
+.tcreds
+.tusers
+.env.test
