@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 2XKTDS5XRmU2AGeGBdr3ouCL2xQnTL8Lw6qQrf0bhJatveYzrTmxtUS4acfUht6
+\restrict 38WNeZxckeLZWDTy141fQPRRANl1md4zQ1MgPqINFaBepVusIObZCg3Pg5vxEKc
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.6
@@ -470,22 +470,6 @@ CREATE TABLE public.daily_challenge_options (
 
 
 --
--- Name: daily_challenge_pilot_reviews; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.daily_challenge_pilot_reviews (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    question_id uuid NOT NULL,
-    reviewer_id uuid NOT NULL,
-    answered_correctly boolean NOT NULL,
-    engagement_rating integer NOT NULL,
-    notes text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT daily_challenge_pilot_reviews_engagement_rating_check CHECK (((engagement_rating >= 1) AND (engagement_rating <= 5)))
-);
-
-
---
 -- Name: daily_challenge_question_events; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -937,22 +921,6 @@ ALTER TABLE ONLY public.daily_challenge_options
 
 
 --
--- Name: daily_challenge_pilot_reviews daily_challenge_pilot_reviews_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.daily_challenge_pilot_reviews
-    ADD CONSTRAINT daily_challenge_pilot_reviews_pkey PRIMARY KEY (id);
-
-
---
--- Name: daily_challenge_pilot_reviews daily_challenge_pilot_reviews_question_id_reviewer_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.daily_challenge_pilot_reviews
-    ADD CONSTRAINT daily_challenge_pilot_reviews_question_id_reviewer_id_key UNIQUE (question_id, reviewer_id);
-
-
---
 -- Name: daily_challenge_question_events daily_challenge_question_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1366,20 +1334,6 @@ CREATE INDEX ix_dc_attempts_user_date ON public.daily_challenge_attempts USING b
 --
 
 CREATE INDEX ix_dc_options_question ON public.daily_challenge_options USING btree (question_id, order_index);
-
-
---
--- Name: ix_dc_pilot_reviews_question; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_dc_pilot_reviews_question ON public.daily_challenge_pilot_reviews USING btree (question_id);
-
-
---
--- Name: ix_dc_pilot_reviews_reviewer; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_dc_pilot_reviews_reviewer ON public.daily_challenge_pilot_reviews USING btree (reviewer_id);
 
 
 --
@@ -1984,22 +1938,6 @@ ALTER TABLE ONLY public.daily_challenge_options
 
 
 --
--- Name: daily_challenge_pilot_reviews daily_challenge_pilot_reviews_question_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.daily_challenge_pilot_reviews
-    ADD CONSTRAINT daily_challenge_pilot_reviews_question_id_fkey FOREIGN KEY (question_id) REFERENCES public.daily_challenge_questions(id) ON DELETE CASCADE;
-
-
---
--- Name: daily_challenge_pilot_reviews daily_challenge_pilot_reviews_reviewer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.daily_challenge_pilot_reviews
-    ADD CONSTRAINT daily_challenge_pilot_reviews_reviewer_id_fkey FOREIGN KEY (reviewer_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
-
-
---
 -- Name: daily_challenge_question_events daily_challenge_question_events_actor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2534,12 +2472,6 @@ ALTER TABLE public.daily_challenge_attempts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.daily_challenge_options ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: daily_challenge_pilot_reviews; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.daily_challenge_pilot_reviews ENABLE ROW LEVEL SECURITY;
-
---
 -- Name: daily_challenge_question_events; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -2581,15 +2513,6 @@ CREATE POLICY dc_options_select_via_question ON public.daily_challenge_options F
           WHERE ((s.question_id = q.id) AND (s.challenge_date <= ((now() AT TIME ZONE 'UTC'::text))::date))))) OR (EXISTS ( SELECT 1
            FROM public.profiles p
           WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text]))))))))));
-
-
---
--- Name: daily_challenge_pilot_reviews dc_pilot_reviews_select_editorial; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY dc_pilot_reviews_select_editorial ON public.daily_challenge_pilot_reviews FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text]))))));
 
 
 --
@@ -2933,5 +2856,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 2XKTDS5XRmU2AGeGBdr3ouCL2xQnTL8Lw6qQrf0bhJatveYzrTmxtUS4acfUht6
+\unrestrict 38WNeZxckeLZWDTy141fQPRRANl1md4zQ1MgPqINFaBepVusIObZCg3Pg5vxEKc
 
