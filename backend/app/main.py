@@ -165,6 +165,8 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
             exception_type=type(exc).__name__,
         )
     except Exception:
+        # Never let metric emission failures mask the original error or
+        # recurse back into this same handler — swallow and still 500.
         pass
     return JSONResponse(
         status_code=500,

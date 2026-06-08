@@ -34,9 +34,13 @@ as we tried to model real Bible schools:
 
 Cohorts become **top-level admin entities**.
 
-- A cohort has its own table (`cohorts`) with `name`, `start_date`,
+- A cohort has its own table (`cohorts`) with `start_date`,
   `end_date`, `enrollment_start/end`, `max_students`, `status`
-  (`upcoming → active → completed`, forward-only).
+  (`upcoming → active → completed`, forward-only). The display name
+  is **not** a column: it lives in `content_versions`
+  (`entity_type='cohort'`, `field='title'`) so it can be localized,
+  per the Phase 5e1 EAV i18n model. The legacy `name` column was
+  dropped in migration `20260528020000_drop_cohorts_name.sql`.
 - The relationship to courses is **many-to-many** through a junction
   table `cohort_courses(cohort_id, course_id)`. A single cohort
   can span any number of courses; a single course can be taught to
