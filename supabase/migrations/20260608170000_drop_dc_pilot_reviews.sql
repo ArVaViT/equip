@@ -1,0 +1,13 @@
+-- Drop the unused daily_challenge_pilot_reviews table.
+--
+-- The Daily Challenge generation pipeline reaches an
+-- "awaiting_pilot_reviewers" stage, but the human pilot-review submission
+-- half (endpoint + UI) was never built: the table has zero rows and no
+-- writer anywhere in the codebase. Removing the dead storage. If the
+-- human pilot-review gate is ever implemented, restore the table + model
+-- from git history (model: app/models/daily_challenge.py::DailyChallengePilotReview;
+-- created by 20260529230000_add_daily_challenge_editorial.sql).
+--
+-- CASCADE removes the table's FK constraints, the two indexes
+-- (ix_dc_pilot_reviews_question / _reviewer), and the RLS policy with it.
+DROP TABLE IF EXISTS public.daily_challenge_pilot_reviews CASCADE;

@@ -34,7 +34,6 @@ from sqlalchemy import (
     Index,
     Integer,
     Text,
-    UniqueConstraint,
     func,
     text,
 )
@@ -355,42 +354,4 @@ class DailyChallengeQuestionEvent(Base):
         PgUUID(as_uuid=True), ForeignKey("profiles.id", ondelete="SET NULL")
     )
     details: Mapped[dict] = mapped_column(JSON, default=dict, server_default="{}")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-
-class DailyChallengePilotReview(Base):
-    """Stage 5 pilot answers + engagement ratings.
-
-    One row per (question, reviewer). The promotion threshold (≥80%
-    correct rate + ≥3.5/5 mean engagement, n≥5) is computed in the
-    service layer rather than persisted as a denormalised column,
-    because the threshold is an editorial knob we may tune.
-
-    Updating a review re-uses the same row — the service layer does
-    an upsert; the unique constraint enforces uniqueness.
-    """
-
-    __tablename__ = "daily_challenge_pilot_reviews"
-    __table_args__ = (
-        UniqueConstraint("question_id", "reviewer_id", name="uq_dc_pilot_reviews_pair"),
-        CheckConstraint(
-            "engagement_rating BETWEEN 1 AND 5",
-            name="dc_pilot_reviews_rating_check",
-        ),
-        Index("ix_dc_pilot_reviews_question", "question_id"),
-        Index("ix_dc_pilot_reviews_reviewer", "reviewer_id"),
-    )
-
-    id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    question_id: Mapped[uuid.UUID] = mapped_column(
-        PgUUID(as_uuid=True),
-        ForeignKey("daily_challenge_questions.id", ondelete="CASCADE"),
-    )
-    reviewer_id: Mapped[uuid.UUID] = mapped_column(
-        PgUUID(as_uuid=True),
-        ForeignKey("profiles.id", ondelete="SET NULL"),
-    )
-    answered_correctly: Mapped[bool] = mapped_column(Boolean)
-    engagement_rating: Mapped[int] = mapped_column(Integer)
-    notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
