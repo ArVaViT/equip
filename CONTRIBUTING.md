@@ -236,8 +236,10 @@ can do this without staging the scratch file by accident.
 ## Pull request process
 
 1. Fill in the PR template (summary + checklist).
-2. Ensure CI passes — we require `Frontend CI / lint-and-build`,
-   `Backend CI / lint-and-test`, and `Backend CI / schema-smoke-postgres`.
+2. Ensure CI passes — the `Protect main` ruleset requires three stable
+   aggregator checks: **`Backend CI Pass`** (covers lint-and-test,
+   schema-smoke-postgres, and schema-replay-postgres), **`Frontend CI Pass`**,
+   and **`pr-quality`**.
 3. Self-review your diff before requesting review.
 4. A maintainer will review, possibly request changes, and merge.
 

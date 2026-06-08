@@ -1,27 +1,19 @@
 # Supabase backup + restore runbook
 
-> ⚠️ **STATUS — 2026-06-02: NO BACKUPS ACTIVE ON PROD.**
+> ✅ **STATUS — 2026-06-06: DAILY BACKUPS ACTIVE.**
 >
-> Equip prod is on Supabase **Free Plan**. Free Plan has no
-> scheduled backups, no PITR, no cross-project restore. If prod is
-> lost today, **there is no recovery path** — everything in the
-> Equip Supabase project disappears with it.
+> Equip prod is on Supabase **Pro**. Daily physical (WAL-G) backups
+> run automatically with ~8 days retained, so a lost project can be
+> restored from the previous day. **PITR (point-in-time recovery,
+> ~$100/mo) is still OFF** — recovery granularity is therefore "last
+> daily snapshot", not "any second". The restore drill below is now
+> runnable; it has **not yet been exercised** end-to-end (untested
+> recovery is the remaining gap — run it before relying on it).
 >
-> This is a **deliberate decision** (2026-06-02, Vadym): no real
-> users yet → not worth the $25/mo Pro tier. See
-> [`docs/runbooks/backup-smoke-2026-06-02.md`](./backup-smoke-2026-06-02.md)
-> for the read-only baseline that will let a future restore prove
-> itself.
->
-> **Trigger to act:** first real pilot enrollment → upgrade to Pro
-> within 24h, then run the smoke against the post-upgrade project to
-> seed a fresh baseline. The drill below becomes runnable at that
-> point, **not before**.
->
-> Until then this runbook is **planning material only** — the steps
-> describe what we'll do once Pro is active; do not try to follow
-> them against the current Free-tier project, the UI options
-> described won't be visible.
+> History: prod ran on the Free tier (no backups) by deliberate
+> decision until 2026-06-06, when Vadym upgraded to Pro and daily
+> backups switched on. The earlier "no recovery path" warning no
+> longer applies.
 
 Equip's database lives on Supabase managed Postgres. Once on Pro,
 WAL-G point-in-time recovery (PITR) becomes available as a paid

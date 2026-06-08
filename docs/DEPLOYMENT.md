@@ -298,8 +298,9 @@ to keep in source.
   staging tier, the cleanest path is a separate Supabase project +
   separate Vercel project bound to a `staging` branch.
 - **No automatic migration apply.** Documented above. Worth revisiting
-  once we have point-in-time recovery (Supabase Pro) -- the auto-apply
-  story is much less scary when a 5-minute rollback is one click.
+  once we enable point-in-time recovery (the project is on Pro; PITR is
+  the paid add-on, currently OFF) -- the auto-apply story is much less
+  scary when a fine-grained rollback is one click.
 - **No deploy notification.** Vercel can ping a Slack channel on
   production deploy success/failure. Equip has no shared Slack today,
   so this is deferred until the team grows past one developer.

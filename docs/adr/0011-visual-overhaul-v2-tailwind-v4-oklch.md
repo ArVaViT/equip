@@ -1,6 +1,12 @@
 # ADR-0011: Visual overhaul v2 — Tailwind v4 + OKLCH tokens
 
-- **Status**: Proposed (2026-06-02)
+- **Status**: Partially executed (as of 2026-06-08). The semantic-token
+  bridge work shipped iteratively on Tailwind **v3** (visual-overhaul-v2,
+  Waves 1–16). The headline decision — the Tailwind **v4 + `@theme`**
+  migration and the OKLCH palette cutover (Wave 9) — is still **pending**:
+  Tailwind is `^3.x`, `tailwind.config.js` is present, and `index.css`
+  tokens are HSL. Treat the "10-wave" roadmap below as superseded by the
+  shipped v3 bridge path; the v4/OKLCH swap remains the open work.
 - **Decision-makers**: @ArVaViT
 - **Successor to**: the implicit "v1" design system pinned in
   `docs/DESIGN.md` (Tailwind v3 + hex tokens + ad-hoc semantic

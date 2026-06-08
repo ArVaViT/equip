@@ -8,38 +8,24 @@ and the current backlog of items deferred for cost / plan reasons.
 > **Note:** Section headings here use Title Case and are intentionally
 > stable -- internal docs link by anchor.
 
-## HaveIBeenPwned leaked-password protection (deferred)
+## HaveIBeenPwned leaked-password protection (enabled)
 
-**Status:** disabled. Surfaces as a `WARN` advisor
-(`auth_leaked_password_protection`) on the Supabase Security Advisors page.
+**Status:** ENABLED (2026-06). `password_hibp_enabled: true` on the prod
+auth config; the `auth_leaked_password_protection` advisor no longer fires.
+Available because the project is on **Supabase Pro** (the feature is gated
+to Pro and up; it returned `HTTP 402` while we were on Free).
 
-**Why it stays disabled:** Supabase exposes this feature on **Pro plans
-and up**. The Equip project currently runs on the Free tier. The
-Management API confirms this via `HTTP 402 Payment Required`:
+**Defense in depth around it:**
 
-```text
-PATCH https://api.supabase.com/v1/projects/<ref>/config/auth
-{ "password_hibp_enabled": true }
-
-HTTP 402
-{"message":"Configuring leaked password protection via HaveIBeenPwned.org
-is available on Pro Plans and up."}
-```
-
-**Compensating controls already in place:**
-
-- Supabase enforces a minimum password length (default 6, configurable to 10+).
+- Minimum password length is set to **12**.
 - Email-based auth verifies ownership via the confirmation email link.
 - Most Equip accounts sign in with **Google OAuth**, not email/password
   -- those identities don't enter our password-hash flow at all.
 - Rate limiting on `/api/v1/auth/*` (10 req / 60s per IP, plus Vercel
   WAF at the edge) makes credential-stuffing expensive.
 
-**When to revisit:** when (and only when) the project upgrades to
-Supabase Pro for other reasons (larger DB, point-in-time recovery, daily
-backups). At that point flip `password_hibp_enabled: true` via the
-Management API or the Supabase Dashboard -- it's a single config flag
-with no schema impact.
+Toggle lives at `PATCH /v1/projects/<ref>/config/auth` (or the Supabase
+Dashboard) — a single config flag, no schema impact.
 
 ## CSP enforcement promotion
 
@@ -130,10 +116,10 @@ no window where the change is durable but the audit trail is missing.
   CI on every push (`.github/workflows/backend-ci.yml`). It audits the
   pinned runtime deps only -- not dev deps, not the host Python env.
   Latest run: clean.
-- Frontend: `npm audit` is recommended (currently checked manually as
-  of 2026-05-15: clean). A CI step calling `npm audit --audit-level
-  high` after `npm ci` would make this a hard gate; consider adding
-  one if a HIGH advisory ever shows up.
+- Frontend: `npm audit --omit=dev --audit-level=high` runs in CI after
+  `npm ci` (`.github/workflows/frontend-ci.yml`) — a HIGH/CRITICAL advisory
+  on production deps is a hard gate that fails the build. Moderate/low
+  advisories are triaged via Dependabot rather than blocking.
 - Major-version bumps must be deliberate. Don't blindly run `npm
   outdated --json | jq | xargs npm install` -- breakages from major
   bumps (Vite, React, Pydantic) are common and lose CI signal.

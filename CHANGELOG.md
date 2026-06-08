@@ -220,8 +220,9 @@ over the preceding months and is now available under the MIT license.
 
 ### Design and UX
 
-- **Design system** — editorial aesthetic (Fraunces + Inter), OKLCH semantic
-  tokens, dark/light theme, responsive down to 360px.
+- **Design system** — editorial aesthetic (Fraunces + Inter), HSL semantic
+  tokens (OKLCH layer staged for the ADR-0011 cutover), dark/light theme,
+  responsive down to 360px.
 - **UI primitives** — shadcn/ui + Radix (AlertDialog, DropdownMenu, Popover,
   Tooltip, Sheet, Tabs, Accordion, ScrollArea, Avatar, Badge).
 - **Patterns** — InlineEdit, InlineEditCover, PageHeader, EmptyState,

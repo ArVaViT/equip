@@ -21,6 +21,8 @@ the next missing-secret regression pages on minute 6, not minute 37.
 | `translation-worker-401-rate.json` | Cron is firing but auth fails (≥ 5 401s in 15 min) | P2 |
 | `worker-cron-silent.json` | Cron is NOT firing at all (≥ 15 min with no log line) | P2 |
 | `backend-5xx-rate.json` | Backend 5xx rate > 5% over 10 min | P1 |
+| `backend-unhandled-exception-rate.json` | Real unhandled 500s via `equip.errors.unhandled_total` | P2 |
+| `translation-queue-backlog.json` | `translation_jobs` queued is not draining | P3 |
 
 ## Importing into Datadog
 
@@ -42,28 +44,26 @@ When tuning a threshold in the UI:
 Out-of-band tweaks rot fast — within a month nobody remembers why
 the threshold is 7 instead of 5.
 
-## UI-only monitors to CLEAN UP (alert-noise audit, 2026-06-05)
+## UI-only monitors — alert-noise audit (2026-06-05) — RETUNED 2026-06-08
 
-Two monitors created ad-hoc in the Datadog UI (NOT in this directory) are
-the source of an inbox flood — each fires **three** emails per incident
-(Triggered → Warn → Recovered) and trips on normal serverless/SPA
-behaviour rather than real problems. They are not in git because they were
-never codified; the fix is to remove/retune them in the Datadog UI:
+Two monitors created ad-hoc in the Datadog UI (NOT in this directory) were
+the source of an inbox flood — 81 alert emails in 7 days, all from these two,
+each firing on Triggered → Recovered pairs and tripping on normal
+serverless/SPA behaviour rather than real problems. Status after the
+2026-06-08 retune (done via the Datadog API):
 
-- **`[P2] equip backend: error log spike`** (≈ "5+ backend error logs in
-  10 min") — **DELETE.** It is a cruder, far more sensitive duplicate of
-  `backend-unhandled-exception-rate.json` (which counts only *real*
-  unhandled 500s via `equip.errors.unhandled_total`, not cold-start 503s
-  or Datadog-Synthetics noise). A 90 s prod log tail on 2026-06-05 showed
-  **zero** errors; the spikes are transient cold-start / deploy bursts
-  (a busy deploy day alone trips it repeatedly). Keep the scoped P1.
-- **`[P3] equip frontend: slow page load (avg LCP > 4s)`** — **retune or
-  drop the email.** The SPA is client-rendered (no SSR), so LCP naturally
-  exceeds 4 s on slower networks; a 15-min average trips on ordinary
-  real-user variance. P3 should not email at all. Raise the threshold +
-  lengthen the window, or convert to a dashboard widget only.
-- For BOTH (and every monitor here): turn **off** re-notification on Warn
-  and Recovered — one email on Trigger is enough.
+- **`[P2] equip backend: error log spike`** — **RETUNED.** Threshold raised
+  from `≥ 5 errors / 10 min` to `≥ 10`, the warning level (was 2) dropped
+  entirely, and a 60 s evaluation delay added so transient cold-start /
+  deploy / pooler-restart blips self-recover before notifying. Still a
+  cruder duplicate of `backend-unhandled-exception-rate.json` (which counts
+  only *real* unhandled 500s); fold it into that scoped monitor when
+  convenient, but it no longer floods.
+- **`[P3] equip frontend: slow page load (avg LCP > 4s)`** — **self-cleared.**
+  The big LCP fix (PR #746, anonymous-paint seed) brought the metric back
+  under threshold; 0 events on 2026-06-08. Left as-is (now quiet).
+- General rule for every monitor here: keep re-notification **off** — one
+  email on Trigger is enough (all current monitors already set `renotify=0`).
 
 ### Failing Vercel log drain — FIX it, do NOT just delete it
 
