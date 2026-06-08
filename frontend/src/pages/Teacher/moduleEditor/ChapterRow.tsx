@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, type HTMLAttributes } from "react";
 import { Draggable } from "@hello-pangea/dnd";
 import { GripVertical, Lock, Pencil, Trash2, Unlock } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -48,7 +48,7 @@ export function ChapterRow({
       {(dragProvided, snapshot) => (
         <Card
           ref={dragProvided.innerRef}
-          {...dragProvided.draggableProps}
+          {...(dragProvided.draggableProps as HTMLAttributes<HTMLDivElement>)}
           className={`border-edge/60 ${
             snapshot.isDragging ? "shadow-lg ring-2 ring-primary/20" : ""
           }`}
