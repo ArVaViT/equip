@@ -110,4 +110,14 @@ describe("sanitizeHtml", () => {
     expect(output).toContain("<summary>q</summary>")
     expect(output).toContain('data-callout="toggle"')
   })
+
+  it("strips target from anchors so a new-tab link can't reverse-tabnab", () => {
+    // The renderer deliberately drops ``target`` entirely — a sanitized
+    // chapter link never opens a new browsing context, so there is no
+    // window.opener for the opened page to abuse. (The only intentional
+    // new-tab links are built in app code with rel="noopener noreferrer".)
+    const output = sanitizeHtml('<a href="https://example.com" target="_blank">x</a>')
+    expect(output).toContain('href="https://example.com"')
+    expect(output).not.toContain("target")
+  })
 })

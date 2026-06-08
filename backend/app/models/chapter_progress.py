@@ -31,7 +31,7 @@ class ChapterProgress(Base):
     completed: Mapped[bool] = mapped_column(default=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_by: Mapped[uuid.UUID | None] = mapped_column()
-    completion_type: Mapped[str] = mapped_column(String(10), default="self")
+    completion_type: Mapped[str] = mapped_column(String(20), default="self")
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

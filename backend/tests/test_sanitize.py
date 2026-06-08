@@ -38,6 +38,13 @@ class TestBaseAllowlist:
         # bleach drops the href attribute when its protocol isn't allowlisted.
         assert "javascript:" not in cleaned
 
+    def test_anchor_target_is_stripped(self):
+        # No ``target`` survives sanitisation: a stored link can't open a
+        # new browsing context, so it can't reverse-tabnab via window.opener.
+        cleaned = sanitize_string('<a href="/x" target="_blank">click</a>')
+        assert "target" not in cleaned
+        assert 'href="/x"' in cleaned
+
 
 class TestTableAllowlist:
     """The TipTap Table extension emits ``<table>`` + ``<thead>`` /

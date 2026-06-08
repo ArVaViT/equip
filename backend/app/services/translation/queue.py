@@ -27,10 +27,10 @@ state across requests.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 
 from app.models.translation_job import (
     TRANSLATION_JOB_MAX_ATTEMPTS,
@@ -45,6 +45,13 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+# A worker that claimed a job but never reported back — Vercel function
+# timeout/OOM mid-run — leaves the row stuck in ``processing`` forever:
+# never re-claimed, never failed, and it blocks re-enqueue of that course.
+# A single serverless invocation is capped well under this window, so any
+# job still ``processing`` past it is certainly dead and safe to re-claim.
+_PROCESSING_STALE_AFTER = timedelta(minutes=15)
 
 
 def enqueue_course_translation(
@@ -104,7 +111,9 @@ def claim_next_job(db: Session) -> TranslationJob | None:
     ``SELECT ... FOR UPDATE SKIP LOCKED`` predicate makes Postgres
     skip any row already row-locked by another transaction.
     ``failed`` jobs are eligible for re-claim so a transient Gemini
-    outage doesn't leak a job into oblivion.
+    outage doesn't leak a job into oblivion. Jobs stuck in ``processing``
+    past ``_PROCESSING_STALE_AFTER`` (a worker that died mid-run) are also
+    re-claimed so they recover instead of blocking the course forever.
 
     Returns ``None`` when no claimable job exists; the worker endpoint
     then 204s and the cron re-fires on the next tick.
@@ -115,10 +124,19 @@ def claim_next_job(db: Session) -> TranslationJob | None:
     flip in the same transaction so the row visibility window is
     minimised.
     """
+    stale_before = datetime.now(UTC) - _PROCESSING_STALE_AFTER
     job = (
         db.execute(
             select(TranslationJob)
-            .where(TranslationJob.status.in_([TranslationJobStatus.QUEUED, TranslationJobStatus.FAILED]))
+            .where(
+                or_(
+                    TranslationJob.status.in_([TranslationJobStatus.QUEUED, TranslationJobStatus.FAILED]),
+                    and_(
+                        TranslationJob.status == TranslationJobStatus.PROCESSING,
+                        TranslationJob.started_at < stale_before,
+                    ),
+                )
+            )
             .order_by(TranslationJob.enqueued_at)
             .limit(1)
             .with_for_update(skip_locked=True)

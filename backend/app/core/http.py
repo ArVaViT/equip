@@ -31,11 +31,13 @@ def get_client_ip(request: Request, fallback: str | None = None) -> str | None:
 
     On Vercel (and any other configured reverse-proxy deploy)
     ``request.client.host`` is the proxy worker's IP, not the user's
-    real IP. ``X-Forwarded-For`` is set by the proxy to ``<client>,
-    <proxy>, <proxy>...`` (left-to-right), so the left-most entry is
-    the original client; everything after is proxy chain.
+    real IP. We prefer ``x-vercel-forwarded-for``: Vercel sets it to the
+    single, authoritative client IP and rewrites it on every request, so
+    a client CANNOT spoof it. The standard ``x-forwarded-for`` is only a
+    fallback — a client can PREPEND entries to it, so taking its left-most
+    value would let an attacker farm a fresh rate-limit bucket per request.
 
-    Outside that trusted-proxy environment we ignore both forwarded
+    Outside that trusted-proxy environment we ignore the forwarded
     headers and use ``request.client.host`` directly — otherwise any
     client can spoof their IP per request and defeat per-IP throttling.
     Returns ``fallback`` when we truly cannot determine the IP (for the
@@ -43,6 +45,16 @@ def get_client_ip(request: Request, fallback: str | None = None) -> str | None:
     so the DB column stays NULL).
     """
     if _TRUSTED_PROXY:
+        # Authoritative, un-spoofable on Vercel — set by the platform.
+        vercel_ip = request.headers.get("x-vercel-forwarded-for")
+        if vercel_ip:
+            ip = vercel_ip.split(",")[0].strip()
+            if ip:
+                return ip
+
+        # Generic reverse-proxy fallback (Cloudflare/nginx/Caddy via
+        # TRUST_FORWARDED_HEADERS). Left-most = original client when the
+        # proxy is the one writing this header.
         forwarded = request.headers.get("x-forwarded-for")
         if forwarded:
             ip = forwarded.split(",")[0].strip()

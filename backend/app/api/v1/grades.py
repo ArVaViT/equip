@@ -36,6 +36,20 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/grades", tags=["grades"])
 
+# Spreadsheet apps (Excel / Google Sheets / LibreOffice) treat a cell that
+# begins with =, +, -, @, or a leading tab/CR as a FORMULA. Student names and
+# emails come from OAuth/profile data the user controls, so a name like
+# ``=HYPERLINK("http://evil","click")`` would execute on open. Prefix any such
+# cell with a single quote so it renders as literal text (CSV formula-injection
+# guard).
+_CSV_FORMULA_TRIGGERS = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _csv_safe(value: object) -> object:
+    if isinstance(value, str) and value and value[0] in _CSV_FORMULA_TRIGGERS:
+        return "'" + value
+    return value
+
 
 @router.get("/course/{course_id}/config", response_model=GradingConfigResponse)
 def get_grading_config(
@@ -199,8 +213,8 @@ def export_grades_csv(
         b = r["breakdown"]
         writer.writerow(
             [
-                r["student_name"] or "",
-                r["student_email"],
+                _csv_safe(r["student_name"] or ""),
+                _csv_safe(r["student_email"]),
                 b.quiz_avg,
                 b.quiz_weighted,
                 b.assignment_avg,
