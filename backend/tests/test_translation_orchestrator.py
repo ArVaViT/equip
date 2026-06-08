@@ -57,9 +57,6 @@ class _RecordingProvider:
         # assertions can pinpoint which row a translation produced.
         return TranslationResult(text=f"[{request.target_locale}]{request.text}", model="test")
 
-    def translate_batch(self, requests: list[TranslationRequest]) -> list[TranslationResult]:
-        return [self.translate(r) for r in requests]
-
 
 # ---------------------------------------------------------------------------
 # Helpers

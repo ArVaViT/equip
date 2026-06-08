@@ -105,13 +105,3 @@ class TranslationProvider(Protocol):
 
     def translate(self, request: TranslationRequest) -> TranslationResult:
         """Synchronously translate one request. Must be thread-safe."""
-
-    def translate_batch(self, requests: list[TranslationRequest]) -> list[TranslationResult]:
-        """Translate many requests.
-
-        The convention is to call ``translate()`` per request sequentially;
-        ``Protocol`` itself has no default implementation, so concrete
-        providers must implement this method (Gemini and Noop both do).
-        Providers that support native batching should override with a
-        single round-trip implementation for a meaningful speedup.
-        """

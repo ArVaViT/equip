@@ -57,9 +57,6 @@ class _RecordingProvider:
             raise TranslationError(f"forced failure for {request.text!r}")
         return TranslationResult(text=f"[{request.target_locale}]{request.text}", model="test")
 
-    def translate_batch(self, requests: list[TranslationRequest]) -> list[TranslationResult]:
-        return [self.translate(r) for r in requests]
-
 
 @pytest.fixture(autouse=True)
 def _enable_provider(monkeypatch: pytest.MonkeyPatch):

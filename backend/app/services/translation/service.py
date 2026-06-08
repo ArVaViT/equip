@@ -39,9 +39,6 @@ class NoopTranslationProvider:
     def translate(self, request: TranslationRequest) -> TranslationResult:
         return TranslationResult(text=request.text, model="noop")
 
-    def translate_batch(self, requests: list[TranslationRequest]) -> list[TranslationResult]:
-        return [self.translate(req) for req in requests]
-
 
 def _api_key_value() -> str | None:
     """Return the configured Gemini API key as a plain string (or ``None``).
