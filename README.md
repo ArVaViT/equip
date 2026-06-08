@@ -99,7 +99,7 @@ technical expertise that volunteer-run organizations simply don't have.
 | **Certificates** | Auto-generated certificates with teacher approval flow |
 | **Teacher tools** | Gradebook, analytics dashboard, cohort management, calendar, announcements |
 | **Admin tools** | User management, bulk operations, CSV export, course cloning, soft delete |
-| **Design** | Editorial aesthetic, dark/light theme, responsive (360px+), OKLCH semantic tokens |
+| **Design** | Editorial aesthetic, dark/light theme, responsive (360px+), HSL semantic tokens |
 | **Bilingual content (RU↔EN)** | Auto-translation of all teacher-authored text via Gemini, stored per (entity, field, locale) in the `content_versions` table; canonical KJV / Synodal substitution for Bible quotes; symmetric — author writes in their language, students read in theirs; off-the-request-path via a cron-driven worker queue so publishing stays instant even on 100-block courses |
 | **Security** | RLS on every table, server-side HTML sanitization, CORS lockdown, audit pipeline, typed error envelope (`{code, message, context}`) for structured client + Sentry handling |
 

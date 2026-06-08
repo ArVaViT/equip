@@ -19,7 +19,10 @@ views). Expressive surfaces have their own rules in "Motion" below.
 
 ## Tokens
 
-All colours live in `frontend/src/index.css` as CSS variables in OKLCH. No
+All colours live in `frontend/src/index.css` as CSS variables in **HSL**
+(`--background: 38 32% 97%`, consumed as `hsl(var(--token))`). An OKLCH layer
+is staged in `frontend/src/styles/tokens-v2.css` but not yet wired — the live
+palette is HSL until the ADR-0011 Wave 9 cutover. No
 component ever uses a raw Tailwind palette class (`bg-blue-500`, `text-rose-600`).
 If you need a colour, use a semantic token or add one.
 
@@ -81,12 +84,8 @@ Motion is part of the design language, not absent from it. Rules:
   imported as `motion/react`. Documented exception to the 4-check rule in
   "Adding a library" below.
 - **Primitives live in `frontend/src/components/motion/`:**
-  - `<FadeIn>` — opacity + small Y on mount
   - `<StaggerChildren>` — orchestrated entrance for list/grid items
-  - `<Reveal>` — IntersectionObserver-based entrance for scroll-revealed content
-  - `<HoverLift>` — card-style hover translation (2px default)
   - `<PressFeedback>` — button-style press scale (0.97 default)
-  - `<PageTransition>` — route-keyed `AnimatePresence` crossfade
   - Reach for these before hand-rolling `motion.div` in a feature file.
 - **Easing:** `cubic-bezier(0.22, 1, 0.36, 1)` ("editorial ease") everywhere —
   smooth, no bounce, no overshoot. Spring physics are banned outside drag
