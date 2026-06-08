@@ -31,6 +31,7 @@ jobs:
     timeout-minutes: 3
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
+      schema: ${{ steps.filter.outputs.schema }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -63,6 +64,16 @@ jobs:
           else
             echo "backend=false" >> "$GITHUB_OUTPUT"
             echo "No backend changes — heavy jobs will be skipped."
+          fi
+          # The schema-replay job validates that supabase/schema.sql still
+          # loads from scratch. Run it when the committed schema, the CI
+          # bootstrap, the migrations, or this workflow change.
+          if echo "$CHANGED" | grep -qE '^supabase/schema\.sql$|^supabase/ci/|^supabase/migrations/|^\.github/workflows/backend-ci\.yml$'; then
+            echo "schema=true" >> "$GITHUB_OUTPUT"
+            echo "Schema-relevant changes detected — replay job will run."
+          else
+            echo "schema=false" >> "$GITHUB_OUTPUT"
+            echo "No schema changes — replay job will be skipped."
           fi
 
   lint-and-test:
@@ -262,6 +273,79 @@ jobs:
           PY
 
   # ---------------------------------------------------------------------------
+  # Schema replay from scratch. Loads the committed `supabase/schema.sql`
+  # (a faithful pg_dump of the production public schema) into a clean
+  # Postgres 17, after stubbing the Supabase-managed primitives the dump
+  # references (auth schema + roles). This proves the schema is reproducible
+  # from the committed artifact — the DR "can we rebuild prod from zero?"
+  # guarantee — and turns any out-of-band prod drift into a visible diff on
+  # schema.sql in the PR that regenerates it. Complements schema-smoke
+  # (models -> Postgres); this is (prod dump -> Postgres).
+  # ---------------------------------------------------------------------------
+  schema-replay-postgres:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.schema == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Wait for Postgres
+        run: |
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U ci; then exit 0; fi
+            sleep 1
+          done
+          echo "Postgres did not become ready" >&2
+          exit 1
+
+      - name: Replay schema.sql from scratch
+        env:
+          PGPASSWORD: ci
+        run: |
+          set -euo pipefail
+          PSQL="psql -v ON_ERROR_STOP=1 -h localhost -p 5432 -U ci -d ci"
+          echo "::group::Bootstrap Supabase primitives"
+          $PSQL -f supabase/ci/replay_bootstrap.sql
+          echo "::endgroup::"
+          echo "::group::Load production schema dump"
+          $PSQL -f supabase/schema.sql
+          echo "::endgroup::"
+
+      - name: Verify table count matches prod
+        env:
+          PGPASSWORD: ci
+        run: |
+          set -euo pipefail
+          COUNT=$(psql -tA -h localhost -p 5432 -U ci -d ci \
+            -c "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';")
+          echo "public base tables after replay: $COUNT"
+          # Prod has 34 public base tables (see schema.sql). Guard against a
+          # silently-truncated dump or a partial load.
+          if [ "$COUNT" -ne 34 ]; then
+            echo "::error::Expected 34 public tables after replay, got $COUNT — schema.sql may be stale or partial." >&2
+            exit 1
+          fi
+          echo "OK: prod schema replays cleanly from supabase/schema.sql"
+
+  # ---------------------------------------------------------------------------
   # Required-check aggregator. This single job is what the branch ruleset
   # requires on every PR. It always runs (independent of detect-changes
   # output) and reports a single stable check name. When backend files were
@@ -270,7 +354,7 @@ jobs:
   # ---------------------------------------------------------------------------
   backend-ci-pass:
     name: Backend CI Pass
-    needs: [detect-changes, lint-and-test, schema-smoke-postgres]
+    needs: [detect-changes, lint-and-test, schema-smoke-postgres, schema-replay-postgres]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -280,12 +364,16 @@ jobs:
           set -e
           DC="${{ needs.detect-changes.result }}"
           CHANGED="${{ needs.detect-changes.outputs.backend }}"
+          SCHEMA="${{ needs.detect-changes.outputs.schema }}"
           LT="${{ needs.lint-and-test.result }}"
           SS="${{ needs.schema-smoke-postgres.result }}"
+          SR="${{ needs.schema-replay-postgres.result }}"
           echo "detect-changes=$DC"
           echo "backend_changed=$CHANGED"
+          echo "schema_changed=$SCHEMA"
           echo "lint-and-test=$LT"
           echo "schema-smoke-postgres=$SS"
+          echo "schema-replay-postgres=$SR"
           # detect-changes is the gate that decides whether the heavy
           # jobs run. If detect-changes itself failed (network flake,
           # checkout error, bad diff) we cannot conclude "no backend
@@ -295,12 +383,18 @@ jobs:
             echo "::error::detect-changes did not succeed (result=$DC); cannot auto-pass."
             exit 1
           fi
-          if [ "$CHANGED" != "true" ]; then
-            echo "No backend changes — auto-pass."
+          if [ "$CHANGED" != "true" ] && [ "$SCHEMA" != "true" ]; then
+            echo "No backend or schema changes — auto-pass."
             exit 0
           fi
-          if [ "$LT" != "success" ] || [ "$SS" != "success" ]; then
-            echo "::error::Backend CI failed."
+          # When backend code changed, lint-and-test + schema-smoke must pass.
+          if [ "$CHANGED" = "true" ] && { [ "$LT" != "success" ] || [ "$SS" != "success" ]; }; then
+            echo "::error::Backend CI failed (lint-and-test=$LT, schema-smoke=$SS)."
             exit 1
           fi
-          echo "All backend CI jobs succeeded."
+          # When schema artifacts changed, the from-scratch replay must pass.
+          if [ "$SCHEMA" = "true" ] && [ "$SR" != "success" ]; then
+            echo "::error::Schema replay failed (schema-replay-postgres=$SR)."
+            exit 1
+          fi
+          echo "All required backend CI jobs succeeded."
