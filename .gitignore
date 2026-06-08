@@ -129,3 +129,6 @@ backend/venv-*/
 # Supabase CLI local cache
 supabase/.temp/
 .claude/
+
+.newkeys
+.val
