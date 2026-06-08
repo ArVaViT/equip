@@ -17,7 +17,15 @@ import PageSpinner from "./components/ui/PageSpinner"
 import ScrollToTop from "./components/layout/ScrollToTop";
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useGrandTour } from "@/hooks/useGrandTour"
-import { FirstRunFlow } from "@/components/firstRun"
+
+// Lazy: FirstRunFlow renders null until a brand-new user's privacy/setup gate
+// activates, so it never needs to be on the critical path — and it (plus its
+// framer-motion dependency) is dead weight in the eager entry chunk for the
+// 99% of loads that are returning/anonymous users. Suspense fallback is null
+// because "not loaded yet" is visually identical to its own inactive state.
+const FirstRunFlow = lazy(() =>
+  import("@/components/firstRun").then((m) => ({ default: m.FirstRunFlow })),
+)
 
 const NotFound = lazy(() => import("./pages/NotFound"))
 
@@ -168,7 +176,9 @@ function AppRoutes() {
           after the main tree so its overlay sits above everything in
           DOM order; the explicit z-index in the component is the
           actual stacking source of truth. */}
-      <FirstRunFlow />
+      <Suspense fallback={null}>
+        <FirstRunFlow />
+      </Suspense>
     </div>
   )
 }
