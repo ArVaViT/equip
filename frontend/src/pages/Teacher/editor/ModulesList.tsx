@@ -1,3 +1,4 @@
+import type { HTMLAttributes } from "react"
 import { useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import {
@@ -64,7 +65,9 @@ export function ModulesList({ courseId, modules, onDragEnd, onAdd, onRemove }: P
                     {(dragProvided, snapshot) => (
                       <Card
                         ref={dragProvided.innerRef}
-                        {...dragProvided.draggableProps}
+                        // dnd draggableProps are valid div attrs at runtime; cast
+                        // satisfies the stricter CSSProperties in newer @types/react.
+                        {...(dragProvided.draggableProps as HTMLAttributes<HTMLDivElement>)}
                         className={`group flex items-center gap-3 p-4 hover:bg-muted/40 transition-colors cursor-pointer ${
                           snapshot.isDragging ? "shadow-lg ring-2 ring-primary/20" : ""
                         }`}
