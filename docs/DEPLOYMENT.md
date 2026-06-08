@@ -29,7 +29,7 @@ the Vercel project pages -- not in this repo.
 - `ruff format --check .`
 - `python -m py_compile` (smoke import of every module)
 - `mypy --config-file mypy.ini`
-- `pytest tests/` against in-memory SQLite (~600 tests)
+- `pytest tests/` against in-memory SQLite (~1400 tests)
 - `pip-audit` (allow-list-of-known-issues only)
 - A second job `schema-smoke-postgres` materializes the SQLAlchemy
   models against a real Postgres service container -- catches
