@@ -28,10 +28,21 @@ the next missing-secret regression pages on minute 6, not minute 37.
 
 1. Datadog UI → `Monitors` → `New Monitor` → `Import` (bottom right).
 2. Paste the file contents.
-3. Confirm the slack handle in the `message` field matches the
-   actual on-call channel (each monitor uses `@slack-equip-oncall`
-   as a placeholder; rename when wiring).
+3. The `message` field notifies `@arvavitcorp@gmail.com` (email — there is
+   no Slack today, per `OBSERVABILITY.md`). Repoint if a channel is added.
 4. Save.
+
+> ⚠️ **Query-vs-log-structure caveat (verified 2026-06-08):** these log
+> monitors were authored against `@http.url_details.path` / `@http.status_code`
+> attributes, but the backend ships **Python-logger** logs (via
+> `DatadogHTTPHandler`), whose attributes are `logger.name`, `status`
+> (`error`/`warn`/`info`), `error.stack`, and the free-text `message` — NOT
+> HTTP-access fields. Before importing, revise each `query` to match (e.g.
+> `status:error` + a `message` substring, or `@logger.name:api`), or the
+> monitor will sit in **No Data** and give false coverage. The live
+> `equip backend: error log spike` / `warning log spike` monitors already
+> catch backend errors/warnings (including worker DB errors) via `status:` —
+> these JSON files are the codified target set, pending query revision.
 
 ## Editing convention
 

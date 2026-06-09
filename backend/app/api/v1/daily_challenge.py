@@ -68,7 +68,7 @@ def get_today(
     response.headers["Vary"] = "Accept-Language"
     today = utc_today()
 
-    schedule_q = get_today_question(db, on_date=today)
+    schedule_q = get_today_question(db, on_date=today, allow_fallback=True)
     if schedule_q is None:
         raise equip_error(
             ErrorCode.DAILY_CHALLENGE_NOT_SCHEDULED,

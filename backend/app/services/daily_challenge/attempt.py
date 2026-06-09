@@ -110,7 +110,7 @@ def submit_today_attempt(
     """
     today = utc_today()
 
-    schedule_q = get_today_question(db, on_date=today)
+    schedule_q = get_today_question(db, on_date=today, allow_fallback=True)
     if schedule_q is None:
         raise NoScheduleError(f"no question scheduled for UTC date {today.isoformat()}")
     schedule, question = schedule_q
