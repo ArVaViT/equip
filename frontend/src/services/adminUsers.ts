@@ -30,4 +30,8 @@ export const adminUsersService = {
   async adminDeleteUser(userId: string): Promise<void> {
     await api.delete(`/users/admin/users/${userId}`)
   },
+
+  async restoreUser(userId: string): Promise<void> {
+    await api.post(`/users/admin/users/${userId}/restore`)
+  },
 }

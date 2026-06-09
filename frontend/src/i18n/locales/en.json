@@ -1915,7 +1915,10 @@
       "emptyNoUsers": "No users found",
       "showing": "Showing {{shown}} of {{total}} users",
       "missingName": "—",
-      "changeRoleAria": "Change role for {{name}}"
+      "changeRoleAria": "Change role for {{name}}",
+      "deactivatedBadge": "Deactivated",
+      "restoreTooltip": "Restore user",
+      "restoreAriaPrefix": "Restore {{name}}"
     },
     "pendingCerts": {
       "title": "Certificate Approvals",
@@ -1950,7 +1953,10 @@
         "deleteUserFailed": "Failed to delete user",
         "cannotDeleteSelf": "You can't delete your own account from here.",
         "bulkUpdated": "Updated {{count}} user(s) to {{role}}",
-        "bulkUpdateFailed": "Bulk update failed"
+        "bulkUpdateFailed": "Bulk update failed",
+        "userDeactivated": "User deactivated",
+        "userRestored": "User restored",
+        "restoreUserFailed": "Failed to restore user"
       },
       "confirm": {
         "deleteUserTitle": "Delete {{name}}?",

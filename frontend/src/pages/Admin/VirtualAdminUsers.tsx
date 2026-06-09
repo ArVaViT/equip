@@ -1,6 +1,7 @@
 import { List, type RowComponentProps } from "react-window"
 import { useTranslation } from "react-i18next"
-import { Trash2 } from "lucide-react"
+import { RotateCcw, Trash2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { RoleSelector } from "@/components/admin/RoleSelector"
@@ -16,6 +17,7 @@ interface ProfileRow {
   role: UserRole
   created_at: string
   avatar_url: string | null
+  deactivated_at: string | null
 }
 
 interface VirtualAdminUsersProps {
@@ -26,6 +28,7 @@ interface VirtualAdminUsersProps {
   onToggleSelect: (id: string) => void
   onRoleChange: (userId: string, role: UserRole) => void
   onDeleteUser: (user: ProfileRow) => void
+  onRestoreUser: (user: ProfileRow) => void
 }
 
 type RowProps = Omit<VirtualAdminUsersProps, "users"> & { users: ProfileRow[] }
@@ -42,11 +45,13 @@ function UserRow({
   onToggleSelect,
   onRoleChange,
   onDeleteUser,
+  onRestoreUser,
 }: RowComponentProps<RowProps>) {
   const { t } = useTranslation()
   const u = users[index]
   if (!u) return null
   const selected = selectedIds.has(u.id)
+  const deactivated = u.deactivated_at !== null
   const displayName = displayNameOf(u.full_name, u.email)
   return (
     <div
@@ -71,9 +76,17 @@ function UserRow({
           size="sm"
           alt={t("admin.users.avatarAltPrefix", { name: displayName })}
         />
-        <span className="truncate font-medium" title={u.full_name ?? undefined}>
+        <span
+          className={`truncate font-medium ${deactivated ? "text-ink-muted line-through" : ""}`}
+          title={u.full_name ?? undefined}
+        >
           {u.full_name?.trim() || t("admin.users.missingName")}
         </span>
+        {deactivated && (
+          <Badge variant="muted" className="shrink-0">
+            {t("admin.users.deactivatedBadge")}
+          </Badge>
+        )}
       </div>
       <div role="cell" className="truncate px-3 text-ink-muted" title={u.email}>
         {u.email}
@@ -90,17 +103,31 @@ function UserRow({
         {formatDate(u.created_at)}
       </div>
       <div role="cell" className="flex items-center justify-center">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 text-ink-muted hover:text-destructive"
-          disabled={updatingId === u.id || u.id === currentUserId}
-          onClick={() => onDeleteUser(u)}
-          aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
-          title={u.id === currentUserId ? t("admin.users.deleteSelfTooltip") : t("admin.users.deleteTooltip")}
-        >
-          <Trash2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-        </Button>
+        {deactivated ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-ink-muted hover:text-brand"
+            disabled={updatingId === u.id}
+            onClick={() => onRestoreUser(u)}
+            aria-label={t("admin.users.restoreAriaPrefix", { name: displayName })}
+            title={t("admin.users.restoreTooltip")}
+          >
+            <RotateCcw className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-ink-muted hover:text-destructive"
+            disabled={updatingId === u.id || u.id === currentUserId}
+            onClick={() => onDeleteUser(u)}
+            aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
+            title={u.id === currentUserId ? t("admin.users.deleteSelfTooltip") : t("admin.users.deleteTooltip")}
+          >
+            <Trash2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          </Button>
+        )}
       </div>
     </div>
   )
@@ -114,6 +141,7 @@ export default function VirtualAdminUsers({
   onToggleSelect,
   onRoleChange,
   onDeleteUser,
+  onRestoreUser,
 }: VirtualAdminUsersProps) {
   const { t } = useTranslation()
   // Height budget: enough to show ~10 rows before the window scrolls. Keeps the
@@ -150,6 +178,7 @@ export default function VirtualAdminUsers({
           onToggleSelect,
           onRoleChange,
           onDeleteUser,
+          onRestoreUser,
         }}
         style={{ height, width: "100%" }}
         overscanCount={5}

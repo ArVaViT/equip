@@ -208,17 +208,40 @@ export function useAdminOverview({ currentUserId, enabled = true }: UseAdminOver
     setUpdatingId(target.id)
     try {
       await coursesService.adminDeleteUser(target.id)
-      setUsers((prev) => prev.filter((u) => u.id !== target.id))
+      // Soft-delete: the row is NOT removed — it stays visible as deactivated
+      // so an admin can restore it. Preserve all data; just flip the flag.
+      const deactivatedAt = new Date().toISOString()
+      setUsers((prev) =>
+        prev.map((u) => (u.id === target.id ? { ...u, deactivated_at: deactivatedAt } : u)),
+      )
       setSelectedIds((prev) => {
         if (!prev.has(target.id)) return prev
         const next = new Set(prev)
         next.delete(target.id)
         return next
       })
-      toast({ title: t("admin.overview.toast.userDeleted"), variant: "success" })
+      toast({ title: t("admin.overview.toast.userDeactivated"), variant: "success" })
     } catch (err) {
       toast({
         title: getErrorDetail(err, t("admin.overview.toast.deleteUserFailed")),
+        variant: "destructive",
+      })
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  const handleRestoreUser = async (target: ProfileRow) => {
+    setUpdatingId(target.id)
+    try {
+      await coursesService.restoreUser(target.id)
+      setUsers((prev) =>
+        prev.map((u) => (u.id === target.id ? { ...u, deactivated_at: null } : u)),
+      )
+      toast({ title: t("admin.overview.toast.userRestored"), variant: "success" })
+    } catch (err) {
+      toast({
+        title: getErrorDetail(err, t("admin.overview.toast.restoreUserFailed")),
         variant: "destructive",
       })
     } finally {
@@ -344,6 +367,7 @@ export function useAdminOverview({ currentUserId, enabled = true }: UseAdminOver
     setBulkRole,
     handleRoleChange,
     handleDeleteUser,
+    handleRestoreUser,
     toggleSelect,
     toggleSelectAll,
     clearSelection,

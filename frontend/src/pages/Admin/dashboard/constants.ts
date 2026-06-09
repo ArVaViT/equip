@@ -99,6 +99,9 @@ export interface ProfileRow {
   role: UserRole
   created_at: string
   avatar_url: string | null
+  // Non-null when the account is soft-deleted (deactivated). The admin table
+  // shows a badge + a Restore action instead of Delete.
+  deactivated_at: string | null
 }
 
 export interface AdminStats {
