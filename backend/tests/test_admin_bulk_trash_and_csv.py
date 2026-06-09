@@ -214,13 +214,33 @@ class TestBulkUpdateRoles:
 
 
 class TestAdminDeleteUser:
-    def test_admin_can_hard_delete_student(self, admin_client: TestClient, db: Session):
+    def test_admin_delete_soft_deletes_and_preserves_data(self, admin_client: TestClient, db: Session):
         student = _make_other_student(db)
         student_id = student.id
         resp = admin_client.delete(f"{USERS_PREFIX}/admin/users/{student_id}")
         assert resp.status_code == 204
         db.expire_all()
-        assert db.query(User).filter(User.id == student_id).first() is None
+        # The row is NOT purged — it is deactivated, so the account can be restored.
+        row = db.query(User).filter(User.id == student_id).first()
+        assert row is not None
+        assert row.deactivated_at is not None
+
+    def test_admin_restore_reactivates(self, admin_client: TestClient, db: Session):
+        student = _make_other_student(db)
+        student_id = student.id
+        admin_client.delete(f"{USERS_PREFIX}/admin/users/{student_id}")
+        resp = admin_client.post(f"{USERS_PREFIX}/admin/users/{student_id}/restore")
+        assert resp.status_code == 204
+        db.expire_all()
+        row = db.query(User).filter(User.id == student_id).first()
+        assert row is not None
+        assert row.deactivated_at is None
+
+    def test_double_delete_is_idempotent(self, admin_client: TestClient, db: Session):
+        student = _make_other_student(db)
+        student_id = student.id
+        assert admin_client.delete(f"{USERS_PREFIX}/admin/users/{student_id}").status_code == 204
+        assert admin_client.delete(f"{USERS_PREFIX}/admin/users/{student_id}").status_code == 204
 
     def test_admin_cannot_delete_self(self, admin_client: TestClient, db: Session):
         resp = admin_client.delete(f"{USERS_PREFIX}/admin/users/{ADMIN_ID}")

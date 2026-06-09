@@ -40,6 +40,15 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise _unauthorized("User not found")
+    if user.deactivated_at is not None:
+        # Soft-deleted account: the auth token may still be valid, but the
+        # account is deactivated — block every authenticated surface until an
+        # admin restores it.
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="This account has been deactivated",
+        )
     return user
 
 
@@ -55,7 +64,12 @@ def get_optional_user(
     user_id: str | None = payload.get("sub")
     if user_id is None:
         return None
-    return db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == user_id).first()
+    # A deactivated account is treated as anonymous on optional-auth routes
+    # (public surfaces stay reachable; nothing authenticated is granted).
+    if user is not None and user.deactivated_at is not None:
+        return None
+    return user
 
 
 def require_teacher(

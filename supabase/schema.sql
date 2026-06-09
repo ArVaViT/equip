@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict tyLrXpaYjAbthHaMXm2WKgaGW0nGUUromjYU6ew8mYakVhNvrQA7MTZSdg7f1FS
+\restrict 8K1aodcsXaRqlCvPFJCkovMfXshyZJJjwUbdnQbmysPMVEotwqaOmQQxv9o5Wlq
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.6
@@ -603,6 +603,7 @@ CREATE TABLE public.profiles (
     avatar_url text,
     preferred_locale character varying(8) DEFAULT 'ru'::character varying NOT NULL,
     calendar_ical_min_iat bigint,
+    deactivated_at timestamp with time zone,
     CONSTRAINT chk_profiles_role CHECK ((role = ANY (ARRAY['admin'::text, 'teacher'::text, 'student'::text]))),
     CONSTRAINT profiles_preferred_locale_check CHECK (((preferred_locale)::text = ANY (ARRAY[('ru'::character varying)::text, ('en'::character varying)::text])))
 )
@@ -2856,5 +2857,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict tyLrXpaYjAbthHaMXm2WKgaGW0nGUUromjYU6ew8mYakVhNvrQA7MTZSdg7f1FS
+\unrestrict 8K1aodcsXaRqlCvPFJCkovMfXshyZJJjwUbdnQbmysPMVEotwqaOmQQxv9o5Wlq
 

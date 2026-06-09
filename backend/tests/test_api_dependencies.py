@@ -158,6 +158,24 @@ class TestGetCurrentUser:
         out = deps.get_current_user(credentials=_bearer(), db=db)
         assert out.id == teacher.id
 
+    def test_deactivated_user_returns_403(
+        self,
+        db: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A soft-deleted (deactivated) account is blocked even with a still
+        valid token — the auth identity lingers, but access is revoked."""
+        from datetime import UTC, datetime
+
+        teacher = _seed_teacher(db)
+        teacher.deactivated_at = datetime.now(UTC)
+        db.commit()
+        monkeypatch.setattr(deps, "decode_access_token", lambda _t: {"sub": teacher.id})
+        with pytest.raises(HTTPException) as exc:
+            deps.get_current_user(credentials=_bearer(), db=db)
+        assert exc.value.status_code == status.HTTP_403_FORBIDDEN
+        assert exc.value.detail["code"] == "auth.forbidden"
+
 
 # ---------------------------------------------------------------------------
 # get_optional_user — the don't-raise sibling
@@ -206,6 +224,21 @@ class TestGetOptionalUser:
         out = deps.get_optional_user(credentials=_bearer(), db=db)
         assert out is not None
         assert out.id == teacher.id
+
+    def test_deactivated_user_returns_none(
+        self,
+        db: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A deactivated account is treated as anonymous on optional-auth
+        routes — public surfaces stay reachable, nothing authenticated leaks."""
+        from datetime import UTC, datetime
+
+        teacher = _seed_teacher(db)
+        teacher.deactivated_at = datetime.now(UTC)
+        db.commit()
+        monkeypatch.setattr(deps, "decode_access_token", lambda _t: {"sub": teacher.id})
+        assert deps.get_optional_user(credentials=_bearer(), db=db) is None
 
 
 # ---------------------------------------------------------------------------
