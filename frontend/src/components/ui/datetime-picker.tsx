@@ -73,8 +73,10 @@ export function DateTimePicker({
 
   const parsed = parseLocal(value)
   const selectedYmd = parsed ? ymdKey(parsed.date) : ""
-  const hh = parsed?.hh ?? 9
-  const mm = parsed?.mm ?? 0
+  // Clamp on the read side too, not just the <input> onChange — a malformed
+  // stored value (e.g. "...T99:99") would otherwise round-trip into the field.
+  const hh = clampHH(parsed?.hh ?? 9)
+  const mm = clampMM(parsed?.mm ?? 0)
 
   const setHH = (next: number) => onChange(compose(parsed?.date ?? new Date(), next, mm))
   const setMM = (next: number) => onChange(compose(parsed?.date ?? new Date(), hh, next))

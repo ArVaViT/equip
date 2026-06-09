@@ -227,12 +227,25 @@ class TestStreakMath:
 
 
 class TestSubmitTodayAttempt:
-    def test_no_schedule_raises(self, db: Session, author: User, student: User):
-        # Question exists but no schedule row for today.
+    def test_no_schedule_falls_back_to_published_pool(self, db: Session, author: User, student: User):
+        # No schedule row for today, but a published question exists: rather
+        # than go dark, the live path auto-fills today's slot from the pool.
         q = _seed_question_with_options(db, author_id=author.id)
         opt_id = q.options[0].id
+        result = submit_today_attempt(db, user_id=student.id, selected_option_id=opt_id)
+        assert result.schedule.challenge_date == utc_today()
+        # the gap was self-healed into a real, persisted schedule row
+        assert (
+            db.query(DailyChallengeSchedule).filter(DailyChallengeSchedule.challenge_date == utc_today()).one_or_none()
+            is not None
+        )
+
+    def test_no_schedule_and_empty_pool_raises(self, db: Session, author: User, student: User):
+        # A draft question is NOT in the publishable pool, so there is nothing
+        # to fall back to and the genuine "no schedule" error still surfaces.
+        _seed_question_with_options(db, author_id=author.id, status="draft")
         with pytest.raises(NoScheduleError):
-            submit_today_attempt(db, user_id=student.id, selected_option_id=opt_id)
+            submit_today_attempt(db, user_id=student.id, selected_option_id=uuid.uuid4())
 
     def test_invalid_option_raises(self, db: Session, author: User, student: User):
         q = _seed_question_with_options(db, author_id=author.id)
@@ -292,10 +305,20 @@ class TestSubmitTodayAttempt:
 
 class TestDailyChallengeEndpoints:
     def test_today_returns_404_when_nothing_scheduled(self, db: Session, student_client: TestClient):
+        # Genuinely empty: no schedule AND no publishable question to fall back to.
         resp = student_client.get("/api/v1/daily-challenge/today")
         assert resp.status_code == 404
         detail = resp.json()["detail"]
         assert detail["code"] == "daily_challenge.not_scheduled"
+
+    def test_today_falls_back_when_unscheduled_but_pool_exists(
+        self, db: Session, author: User, student_client: TestClient
+    ):
+        # No schedule row, but a published question exists -> /today serves it
+        # from the pool instead of 404ing (the schedule self-heals).
+        _seed_question_with_options(db, author_id=author.id)
+        resp = student_client.get("/api/v1/daily-challenge/today")
+        assert resp.status_code == 200
 
     def test_today_returns_question_without_answer_key(
         self,
