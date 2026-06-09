@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 8K1aodcsXaRqlCvPFJCkovMfXshyZJJjwUbdnQbmysPMVEotwqaOmQQxv9o5Wlq
+\restrict NzQrkPhq8NcxjTJ3V2khfl29SehTJwAIqRrUN8QGaMEp7yJi4VhZ79HkVTez3Gz
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.6
@@ -481,7 +481,6 @@ CREATE TABLE public.daily_challenge_question_events (
     actor_id uuid,
     details jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT daily_challenge_question_events_event_type_check CHECK ((event_type = ANY (ARRAY['status_change'::text, 'rejected'::text, 'published'::text, 'scheduled'::text, 'unscheduled'::text, 'ai_generated'::text, 'ai_critique'::text, 'ai_synthesis'::text, 'scripture_validated'::text, 'doctrinally_reviewed'::text, 'bilingually_reviewed'::text, 'pilot_summary'::text]))),
     CONSTRAINT dc_q_events_type_check CHECK ((event_type = ANY (ARRAY['status_change'::text, 'rejected'::text, 'published'::text, 'scheduled'::text, 'unscheduled'::text, 'ai_generated'::text, 'ai_critique'::text, 'ai_synthesis'::text, 'scripture_validated'::text, 'doctrinally_reviewed'::text, 'bilingually_reviewed'::text, 'pilot_summary'::text, 'bilingual_edit'::text])))
 );
 
@@ -2857,5 +2856,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 8K1aodcsXaRqlCvPFJCkovMfXshyZJJjwUbdnQbmysPMVEotwqaOmQQxv9o5Wlq
+\unrestrict NzQrkPhq8NcxjTJ3V2khfl29SehTJwAIqRrUN8QGaMEp7yJi4VhZ79HkVTez3Gz
 

@@ -34,6 +34,7 @@ export type ErrorCode =
   // auth / permissions
   | "auth.required"
   | "auth.forbidden"
+  | "account.deactivated"
   // generic resource lookups
   | "resource.not_found"
   // course lifecycle

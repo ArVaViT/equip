@@ -43,9 +43,9 @@ def get_current_user(
     if user.deactivated_at is not None:
         # Soft-deleted account: the auth token may still be valid, but the
         # account is deactivated — block every authenticated surface until an
-        # admin restores it.
+        # admin restores it. A dedicated code lets the client sign out cleanly.
         raise equip_error(
-            ErrorCode.AUTH_FORBIDDEN,
+            ErrorCode.ACCOUNT_DEACTIVATED,
             status_code=status.HTTP_403_FORBIDDEN,
             message="This account has been deactivated",
         )

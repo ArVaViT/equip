@@ -174,7 +174,7 @@ class TestGetCurrentUser:
         with pytest.raises(HTTPException) as exc:
             deps.get_current_user(credentials=_bearer(), db=db)
         assert exc.value.status_code == status.HTTP_403_FORBIDDEN
-        assert exc.value.detail["code"] == "auth.forbidden"
+        assert exc.value.detail["code"] == "account.deactivated"
 
 
 # ---------------------------------------------------------------------------

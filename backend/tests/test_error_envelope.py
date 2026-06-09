@@ -50,6 +50,7 @@ def test_enum_values_are_stable_strings():
     expected = {
         "auth.required",
         "auth.forbidden",
+        "account.deactivated",
         "resource.not_found",
         "course.not_published",
         "course.already_enrolled",
