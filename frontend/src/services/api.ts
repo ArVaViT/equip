@@ -94,6 +94,16 @@ function refreshAccessTokenOnce(): Promise<string | null> {
 api.interceptors.response.use(
   (response) => response,
   async (error: unknown) => {
+    // A soft-deleted account returns 403 ``account.deactivated`` on every
+    // authenticated call. Eject the user cleanly to the auth screens instead
+    // of leaving them on a wall of generic permission errors.
+    if (isAxiosError(error) && error.response?.status === 403) {
+      const code = (error.response.data as { detail?: { code?: string } } | undefined)?.detail?.code
+      if (code === "account.deactivated") {
+        await supabase.auth.signOut()
+        return Promise.reject(error)
+      }
+    }
     if (!isAxiosError(error) || error.response?.status !== 401) {
       return Promise.reject(error)
     }

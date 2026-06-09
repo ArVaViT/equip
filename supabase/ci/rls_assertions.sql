@@ -11,6 +11,9 @@
 
 INSERT INTO auth.users (id, email) VALUES (:'student', 'student@test.local');
 INSERT INTO public.profiles (id, email, role) VALUES (:'student', 'student@test.local', 'student');
+-- A second, unrelated user to prove cross-tenant reads are blocked.
+INSERT INTO auth.users (id, email) VALUES ('22222222-2222-2222-2222-222222222222', 'other@test.local');
+INSERT INTO public.profiles (id, email, role) VALUES ('22222222-2222-2222-2222-222222222222', 'other@test.local', 'student');
 
 -- Become the logged-in student. The GUC is set at session level (as superuser)
 -- so it survives SET ROLE; auth.uid() reads it.
@@ -115,6 +118,27 @@ BEGIN
   RAISE EXCEPTION 'SECURITY HOLE: authenticated can UPDATE quiz_answers (tamper a submitted answer)';
 EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: quiz_answers UPDATE denied';
+END $$;
+
+-- 8) cross-tenant SELECT: the profiles_select_self policy must hide another
+--    user's row entirely (RLS filters rather than errors, so assert 0 rows).
+DO $$
+DECLARE visible int;
+BEGIN
+  SELECT count(*) INTO visible
+  FROM public.profiles
+  WHERE id = '22222222-2222-2222-2222-222222222222';
+  IF visible <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: authenticated can read another user''s profile row (% visible)', visible;
+  END IF;
+  -- And the own row IS visible (proves the policy isn't just hiding everything).
+  SELECT count(*) INTO visible
+  FROM public.profiles
+  WHERE id = '11111111-1111-1111-1111-111111111111';
+  IF visible <> 1 THEN
+    RAISE EXCEPTION 'HARNESS BROKEN: own profile row not visible (% rows)', visible;
+  END IF;
+  RAISE NOTICE 'OK: profiles SELECT is self-only (cross-tenant read blocked)';
 END $$;
 
 RESET ROLE;

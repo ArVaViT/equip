@@ -67,6 +67,12 @@ class ErrorCode(enum.StrEnum):
     AUTH_FORBIDDEN = "auth.forbidden"
     """Caller is authenticated but lacks the required role / ownership."""
 
+    ACCOUNT_DEACTIVATED = "account.deactivated"
+    """The account was soft-deleted (deactivated) by an admin. The token may
+    still be valid, but every authenticated surface is blocked until restored.
+    Distinct from AUTH_FORBIDDEN so the client can sign the user out cleanly
+    rather than showing a generic permission error."""
+
     # ── Generic resource lookups ────────────────────────────────────────
     RESOURCE_NOT_FOUND = "resource.not_found"
     """A specific entity was not located. ``context.resource_type`` +
