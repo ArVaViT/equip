@@ -346,6 +346,68 @@ jobs:
           echo "OK: prod schema replays cleanly from supabase/schema.sql"
 
   # ---------------------------------------------------------------------------
+  # RLS policy + privilege test. Recreates the prod schema + RLS policies +
+  # GRANTs on a clean Postgres, then probes it AS the `authenticated` role to
+  # prove forbidden direct writes are actually rejected (self-approve a
+  # certificate, tamper a quiz score, write a grade, escalate one's own role)
+  # and a legitimate own-row write still succeeds. The app-layer tests override
+  # auth, so this is the only thing that exercises the real RLS/grant boundary
+  # a migration could regress.
+  # ---------------------------------------------------------------------------
+  rls-policy-postgres:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.schema == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Wait for Postgres
+        run: |
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U ci; then exit 0; fi
+            sleep 1
+          done
+          echo "Postgres did not become ready" >&2
+          exit 1
+
+      - name: Recreate prod RLS surface and assert as authenticated
+        env:
+          PGPASSWORD: ci
+        run: |
+          set -euo pipefail
+          PSQL="psql -v ON_ERROR_STOP=1 -h localhost -p 5432 -U ci -d ci"
+          echo "::group::Bootstrap roles + configurable auth.uid()"
+          $PSQL -f supabase/ci/rls_bootstrap.sql
+          echo "::endgroup::"
+          echo "::group::Load prod schema (structure + RLS policies + triggers)"
+          $PSQL -f supabase/schema.sql
+          echo "::endgroup::"
+          echo "::group::Apply prod GRANTs to the client roles"
+          $PSQL -f supabase/ci/rls_grants.sql
+          echo "::endgroup::"
+          echo "::group::Probe as authenticated"
+          $PSQL -f supabase/ci/rls_assertions.sql
+          echo "::endgroup::"
+
+  # ---------------------------------------------------------------------------
   # Required-check aggregator. This single job is what the branch ruleset
   # requires on every PR. It always runs (independent of detect-changes
   # output) and reports a single stable check name. When backend files were
@@ -354,7 +416,7 @@ jobs:
   # ---------------------------------------------------------------------------
   backend-ci-pass:
     name: Backend CI Pass
-    needs: [detect-changes, lint-and-test, schema-smoke-postgres, schema-replay-postgres]
+    needs: [detect-changes, lint-and-test, schema-smoke-postgres, schema-replay-postgres, rls-policy-postgres]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -368,12 +430,14 @@ jobs:
           LT="${{ needs.lint-and-test.result }}"
           SS="${{ needs.schema-smoke-postgres.result }}"
           SR="${{ needs.schema-replay-postgres.result }}"
+          RLS="${{ needs.rls-policy-postgres.result }}"
           echo "detect-changes=$DC"
           echo "backend_changed=$CHANGED"
           echo "schema_changed=$SCHEMA"
           echo "lint-and-test=$LT"
           echo "schema-smoke-postgres=$SS"
           echo "schema-replay-postgres=$SR"
+          echo "rls-policy-postgres=$RLS"
           # detect-changes is the gate that decides whether the heavy
           # jobs run. If detect-changes itself failed (network flake,
           # checkout error, bad diff) we cannot conclude "no backend
@@ -392,9 +456,14 @@ jobs:
             echo "::error::Backend CI failed (lint-and-test=$LT, schema-smoke=$SS)."
             exit 1
           fi
-          # When schema artifacts changed, the from-scratch replay must pass.
+          # When schema artifacts changed, the from-scratch replay AND the
+          # RLS-policy probe must pass.
           if [ "$SCHEMA" = "true" ] && [ "$SR" != "success" ]; then
             echo "::error::Schema replay failed (schema-replay-postgres=$SR)."
+            exit 1
+          fi
+          if [ "$SCHEMA" = "true" ] && [ "$RLS" != "success" ]; then
+            echo "::error::RLS policy probe failed (rls-policy-postgres=$RLS)."
             exit 1
           fi
           echo "All required backend CI jobs succeeded."
