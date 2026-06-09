@@ -323,10 +323,12 @@ def schedule_for_date(
     caller gets a clean Python error path.
 
     Idempotent on (date, question_id) — re-scheduling the same pair
-    no-ops. Re-scheduling a different question for the date raises
-    because the PK on challenge_date enforces single-question-per-day
-    (we deliberately don't auto-replace; the editor calls
-    ``unschedule_date`` first)."""
+    no-ops. A date already holding a DIFFERENT *editorial* question
+    (``scheduled_by`` set) raises — we don't silently clobber a
+    deliberate choice. But an AUTO-FILLED placeholder (``scheduled_by
+    IS NULL`` — written by the live path when the schedule ran dry) is
+    transparently replaced so the editor's curated pick isn't blocked
+    by the dry-day fallback."""
     if question.rejected:
         raise QuestionRejectedError(f"question {question.id} is rejected; cannot schedule")
     if question.status != DailyChallengeQuestionStatus.PUBLISHED.value or question.published_at is None:
@@ -336,6 +338,21 @@ def schedule_for_date(
     if existing is not None:
         if existing.question_id == question.id:
             return existing  # idempotent
+        if existing.scheduled_by is None:
+            # Auto-filled placeholder — replace with the editor's choice.
+            existing.question_id = question.id
+            existing.scheduled_by = actor_id
+            db.flush()
+            _log_event(
+                db,
+                question_id=question.id,
+                event_type="scheduled",
+                actor_id=actor_id,
+                details={"challenge_date": on_date.isoformat(), "replaced": "autofill"},
+            )
+            db.commit()
+            db.refresh(existing)
+            return existing
         raise NotPublishableError(f"date {on_date.isoformat()} already scheduled to question {existing.question_id}")
 
     schedule = DailyChallengeSchedule(

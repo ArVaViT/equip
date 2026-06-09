@@ -208,6 +208,16 @@ def serve_feed(
             message="iCal token references a deleted account",
             context={"resource_type": "calendar_ical"},
         )
+    if user.deactivated_at is not None:
+        # The iCal feed is the one authenticated surface that doesn't go
+        # through get_current_user; mirror its deactivation block so a
+        # soft-deleted account can't keep pulling its feed from a stale URL.
+        raise equip_error(
+            ErrorCode.AUTH_REQUIRED,
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            message="iCal token references a deactivated account",
+            context={"resource_type": "calendar_ical"},
+        )
 
     # Rotation gate: refuse tokens issued before the user's last
     # ``/token`` call. ``calendar_ical_min_iat`` is NULL only when the

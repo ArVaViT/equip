@@ -27,6 +27,7 @@ from app.models.daily_challenge import (
     DailyChallengeQuestion,
     DailyChallengeQuestionEvent,
     DailyChallengeQuestionStatus,
+    DailyChallengeSchedule,
 )
 from app.models.user import User, UserRole
 from app.services.daily_challenge import (
@@ -260,6 +261,24 @@ class TestSchedule:
         q2 = publish_question(db, question=q2, actor_id=author.id)
         with pytest.raises(NotPublishableError):
             schedule_for_date(db, question=q2, on_date=date(2026, 5, 30), actor_id=author.id)
+
+    def test_autofill_placeholder_is_replaced_by_editor(self, db: Session, author: User):
+        # The live dry-day fallback writes a placeholder schedule with
+        # scheduled_by=NULL. An editor scheduling a curated question for that
+        # date must REPLACE it (not be blocked), or the autofill would hijack
+        # the slot with no recovery.
+        q1 = _make_draft(db, author)
+        q1 = _promote_to(db, q1, DailyChallengeQuestionStatus.PILOT_PASSED, author)
+        q1 = publish_question(db, question=q1, actor_id=author.id)
+        db.add(DailyChallengeSchedule(challenge_date=date(2026, 5, 30), question_id=q1.id, scheduled_by=None))
+        db.commit()
+
+        q2 = _make_draft(db, author)
+        q2 = _promote_to(db, q2, DailyChallengeQuestionStatus.PILOT_PASSED, author)
+        q2 = publish_question(db, question=q2, actor_id=author.id)
+        result = schedule_for_date(db, question=q2, on_date=date(2026, 5, 30), actor_id=author.id)
+        assert result.question_id == q2.id
+        assert result.scheduled_by == author.id
 
 
 class TestEndpoints:

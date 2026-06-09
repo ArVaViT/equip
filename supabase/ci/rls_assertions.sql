@@ -70,5 +70,52 @@ BEGIN
   RAISE NOTICE 'OK: own-row safe-field update succeeded (positive control)';
 END $$;
 
+-- 6) answer-key tables: a client (authenticated) must have NO direct read
+--    access. The answer key (is_correct) is served stripped via the backend;
+--    a direct client read would leak it before submission.
+DO $$
+BEGIN
+  PERFORM 1 FROM public.quiz_options LIMIT 1;
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can SELECT quiz_options (answer key leak)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: quiz_options direct read denied';
+END $$;
+
+DO $$
+BEGIN
+  PERFORM 1 FROM public.daily_challenge_options LIMIT 1;
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can SELECT daily_challenge_options (answer key leak)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: daily_challenge_options direct read denied';
+END $$;
+
+-- 7) tamper-proof tables: a client must not be able to write them directly
+--    (backend-managed via the service role).
+DO $$
+BEGIN
+  INSERT INTO public.audit_logs (action, resource_id, resource_type)
+  VALUES ('forge', 'x', 'user');
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can INSERT audit_logs (forge audit trail)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: audit_logs INSERT denied';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO public.quiz_extra_attempts (quiz_id, user_id, granted_by)
+  VALUES (gen_random_uuid(), '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111');
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can self-grant quiz_extra_attempts';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: quiz_extra_attempts INSERT denied';
+END $$;
+
+DO $$
+BEGIN
+  UPDATE public.quiz_answers SET is_correct = true;
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can UPDATE quiz_answers (tamper a submitted answer)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: quiz_answers UPDATE denied';
+END $$;
+
 RESET ROLE;
 SELECT 'RLS policy assertions passed' AS result;

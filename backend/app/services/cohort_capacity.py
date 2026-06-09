@@ -30,6 +30,7 @@ from sqlalchemy import func
 
 from app.core.errors import ErrorCode, equip_error
 from app.models.enrollment import Enrollment
+from app.models.user import User
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -55,8 +56,15 @@ def assert_cohort_has_capacity(db: Session, cohort: Cohort, user_id: str | UUID)
     )
     if already_seated:
         return
+    # Count only ACTIVE members: a soft-deleted (deactivated) student keeps
+    # their enrollment row but must not hold a seat — otherwise deactivating
+    # a student permanently consumes capacity.
     current_count = (
-        db.query(func.count(func.distinct(Enrollment.user_id))).filter(Enrollment.cohort_id == cohort.id).scalar() or 0
+        db.query(func.count(func.distinct(Enrollment.user_id)))
+        .join(User, User.id == Enrollment.user_id)
+        .filter(Enrollment.cohort_id == cohort.id, User.deactivated_at.is_(None))
+        .scalar()
+        or 0
     )
     if current_count >= cohort.max_students:
         raise equip_error(
