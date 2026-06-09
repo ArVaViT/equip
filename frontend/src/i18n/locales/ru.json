@@ -1536,7 +1536,10 @@
       "emptyNoUsers": "Пользователи не найдены",
       "showing": "Показано {{shown}} из {{total}} пользователей",
       "missingName": "—",
-      "changeRoleAria": "Изменить роль для {{name}}"
+      "changeRoleAria": "Изменить роль для {{name}}",
+      "deactivatedBadge": "Деактивирован",
+      "restoreTooltip": "Восстановить пользователя",
+      "restoreAriaPrefix": "Восстановить {{name}}"
     },
     "pendingCerts": {
       "title": "Сертификаты на финальное одобрение",
@@ -1571,7 +1574,10 @@
         "deleteUserFailed": "Не удалось удалить пользователя",
         "cannotDeleteSelf": "Вы не можете удалить свой собственный аккаунт отсюда.",
         "bulkUpdated": "Обновлено пользователей: {{count}} — роль {{role}}",
-        "bulkUpdateFailed": "Массовое обновление не удалось"
+        "bulkUpdateFailed": "Массовое обновление не удалось",
+        "userDeactivated": "Пользователь деактивирован",
+        "userRestored": "Пользователь восстановлен",
+        "restoreUserFailed": "Не удалось восстановить пользователя"
       },
       "confirm": {
         "deleteUserTitle": "Удалить {{name}}?",

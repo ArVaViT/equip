@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { Users, Search, Trash2 } from "lucide-react"
+import { Users, Search, Trash2, RotateCcw } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { EmptyState } from "@/components/patterns/EmptyState"
 import { RoleSelector } from "@/components/admin/RoleSelector"
@@ -61,6 +62,7 @@ interface Props {
   onToggleSelect: (id: string) => void
   onRoleChange: (userId: string, role: UserRole) => void
   onDeleteUser: (user: ProfileRow) => void
+  onRestoreUser: (user: ProfileRow) => void
 }
 
 /** Main users table + bulk-action bar + search input. */
@@ -87,6 +89,7 @@ export function UsersCard({
   onToggleSelect,
   onRoleChange,
   onDeleteUser,
+  onRestoreUser,
 }: Props) {
   const { t } = useTranslation()
   const allFilteredSelected =
@@ -253,6 +256,7 @@ export function UsersCard({
                 onToggleSelect={onToggleSelect}
                 onRoleChange={onRoleChange}
                 onDeleteUser={onDeleteUser}
+                onRestoreUser={onRestoreUser}
               />
             </Suspense>
           </>
@@ -266,6 +270,7 @@ export function UsersCard({
             onToggleSelect={onToggleSelect}
             onRoleChange={onRoleChange}
             onDeleteUser={onDeleteUser}
+            onRestoreUser={onRestoreUser}
           />
         )}
         {!loading && filtered.length > 0 && (
@@ -300,6 +305,7 @@ interface UsersTableProps {
   onToggleSelect: (id: string) => void
   onRoleChange: (userId: string, role: UserRole) => void
   onDeleteUser: (user: ProfileRow) => void
+  onRestoreUser: (user: ProfileRow) => void
 }
 
 function UsersTable({
@@ -311,6 +317,7 @@ function UsersTable({
   onToggleSelect,
   onRoleChange,
   onDeleteUser,
+  onRestoreUser,
 }: UsersTableProps) {
   const { t } = useTranslation()
   const allFilteredSelected =
@@ -348,6 +355,7 @@ function UsersTable({
               onToggleSelect={onToggleSelect}
               onRoleChange={onRoleChange}
               onDeleteUser={onDeleteUser}
+              onRestoreUser={onRestoreUser}
             />
           ))}
         </div>
@@ -413,6 +421,7 @@ function UsersTable({
                 onToggleSelect={onToggleSelect}
                 onRoleChange={onRoleChange}
                 onDeleteUser={onDeleteUser}
+                onRestoreUser={onRestoreUser}
               />
             ))}
           </tbody>
@@ -430,9 +439,11 @@ function UserCard({
   onToggleSelect,
   onRoleChange,
   onDeleteUser,
+  onRestoreUser,
 }: UserRowProps) {
   const { t } = useTranslation()
   const displayName = displayNameOf(user.full_name, user.email)
+  const deactivated = user.deactivated_at !== null
   return (
     <div
       className={cn(
@@ -455,25 +466,42 @@ function UserCard({
           alt={t("admin.users.avatarAltPrefix", { name: displayName })}
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-ink">
+          <p className={cn("truncate text-sm font-medium text-ink", deactivated && "text-ink-muted line-through")}>
             {user.full_name?.trim() || t("admin.users.missingName")}
           </p>
+          {deactivated && (
+            <Badge variant="muted" className="mt-0.5">{t("admin.users.deactivatedBadge")}</Badge>
+          )}
           <p className="truncate text-xs text-ink-muted">{user.email}</p>
           <p className="mt-1 text-xs text-ink-muted">
             {formatDate(user.created_at)}
           </p>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-11 w-11 shrink-0 p-0 text-ink-muted hover:text-destructive"
-          disabled={updating || isSelf}
-          onClick={() => onDeleteUser(user)}
-          aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
-          title={isSelf ? t("admin.users.deleteSelfTooltip") : t("admin.users.deleteTooltip")}
-        >
-          <Trash2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-        </Button>
+        {deactivated ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-11 w-11 shrink-0 p-0 text-ink-muted hover:text-brand"
+            disabled={updating}
+            onClick={() => onRestoreUser(user)}
+            aria-label={t("admin.users.restoreAriaPrefix", { name: displayName })}
+            title={t("admin.users.restoreTooltip")}
+          >
+            <RotateCcw className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-11 w-11 shrink-0 p-0 text-ink-muted hover:text-destructive"
+            disabled={updating || isSelf}
+            onClick={() => onDeleteUser(user)}
+            aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
+            title={isSelf ? t("admin.users.deleteSelfTooltip") : t("admin.users.deleteTooltip")}
+          >
+            <Trash2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          </Button>
+        )}
       </div>
       <div className="mt-3 pl-7">
         <RoleSelector
@@ -495,6 +523,7 @@ interface UserRowProps {
   onToggleSelect: (id: string) => void
   onRoleChange: (userId: string, role: UserRole) => void
   onDeleteUser: (user: ProfileRow) => void
+  onRestoreUser: (user: ProfileRow) => void
 }
 
 function UserRow({
@@ -505,9 +534,11 @@ function UserRow({
   onToggleSelect,
   onRoleChange,
   onDeleteUser,
+  onRestoreUser,
 }: UserRowProps) {
   const { t } = useTranslation()
   const displayName = displayNameOf(user.full_name, user.email)
+  const deactivated = user.deactivated_at !== null
   return (
     <tr
       className={cn(
@@ -531,9 +562,15 @@ function UserRow({
             size="sm"
             alt={t("admin.users.avatarAltPrefix", { name: displayName })}
           />
-          <span className="min-w-0 truncate font-medium" title={user.full_name ?? undefined}>
+          <span
+            className={cn("min-w-0 truncate font-medium", deactivated && "text-ink-muted line-through")}
+            title={user.full_name ?? undefined}
+          >
             {user.full_name?.trim() || t("admin.users.missingName")}
           </span>
+          {deactivated && (
+            <Badge variant="muted" className="shrink-0">{t("admin.users.deactivatedBadge")}</Badge>
+          )}
         </div>
       </td>
       <td className="px-5 py-3 text-ink-muted">
@@ -551,17 +588,31 @@ function UserRow({
         {formatDate(user.created_at)}
       </td>
       <td className="px-3 py-3 text-right">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 text-ink-muted hover:text-destructive"
-          disabled={updating || isSelf}
-          onClick={() => onDeleteUser(user)}
-          aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
-          title={isSelf ? t("admin.users.deleteSelfTooltip") : t("admin.users.deleteTooltip")}
-        >
-          <Trash2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-        </Button>
+        {deactivated ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-ink-muted hover:text-brand"
+            disabled={updating}
+            onClick={() => onRestoreUser(user)}
+            aria-label={t("admin.users.restoreAriaPrefix", { name: displayName })}
+            title={t("admin.users.restoreTooltip")}
+          >
+            <RotateCcw className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-ink-muted hover:text-destructive"
+            disabled={updating || isSelf}
+            onClick={() => onDeleteUser(user)}
+            aria-label={t("admin.users.deleteAriaPrefix", { name: displayName })}
+            title={isSelf ? t("admin.users.deleteSelfTooltip") : t("admin.users.deleteTooltip")}
+          >
+            <Trash2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          </Button>
+        )}
       </td>
     </tr>
   )

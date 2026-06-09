@@ -28,6 +28,10 @@ export interface User {
   preferred_locale: PreferredLocale
   created_at: string
   updated_at: string
+  // Present on the admin user-list rows; non-null when the account is
+  // soft-deleted (deactivated). Optional because the current-user profile
+  // shape doesn't always carry it.
+  deactivated_at?: string | null
 }
 
 export interface Course {

@@ -143,6 +143,7 @@ export default function AdminDashboard() {
             onToggleSelect={overview.toggleSelect}
             onRoleChange={overview.handleRoleChange}
             onDeleteUser={overview.handleDeleteUser}
+            onRestoreUser={overview.handleRestoreUser}
           />
         </div>
       )}
