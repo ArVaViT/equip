@@ -69,15 +69,15 @@ class TestAdminDeleteUserErrorPath:
         student,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """When ``_purge_user`` raises (FK cascade trouble,
-        constraint hit, etc.) the route catches it, rolls back, and
+        """When the soft-delete write fails (DB trouble during the
+        deactivation commit) the route catches it, rolls back, and
         surfaces a clean 500 — never a raw 503 or stack trace."""
         from app.api.v1 import users as route_mod
 
-        def fake_purge(*_a: object, **_k: object) -> None:
-            raise RuntimeError("cascade fanout exploded")
+        def boom(*_a: object, **_k: object) -> None:
+            raise RuntimeError("audit write exploded")
 
-        monkeypatch.setattr(route_mod, "_purge_user", fake_purge)
+        monkeypatch.setattr(route_mod, "log_action", boom)
         r = admin_client.delete(f"/api/v1/users/admin/users/{student.id}")
         assert r.status_code == 500
         body = r.json()["detail"]

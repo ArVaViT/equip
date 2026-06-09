@@ -42,6 +42,12 @@ class User(Base):
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), onupdate=func.now())
     avatar_url: Mapped[str | None] = mapped_column()
+    # Soft-delete marker. The admin "delete user" action sets this instead of
+    # purging data: every owned row is preserved and the login is blocked
+    # (see ``get_current_user``) until an admin restores the account (clears
+    # this back to NULL). Avoids the old half-state where data was hard-deleted
+    # but the auth identity lingered and resurrected an empty profile.
+    deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     enrollments: Mapped[list["Enrollment"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 

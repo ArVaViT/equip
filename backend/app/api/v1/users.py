@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
@@ -9,16 +9,6 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, require_admin
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
-from app.models.assignment import AssignmentSubmission
-from app.models.audit_log import AuditLog
-from app.models.certificate import Certificate
-from app.models.chapter_progress import ChapterProgress
-from app.models.course import Course
-from app.models.enrollment import Enrollment
-from app.models.notification import Notification
-from app.models.quiz import QuizAnswer, QuizAttempt
-from app.models.review import CourseReview
-from app.models.student_grade import StudentGrade
 from app.models.user import User
 from app.schemas.course import CourseSummary, EnrollmentSummaryResponse
 from app.schemas.locale import LocaleCode, normalize_locale
@@ -141,46 +131,6 @@ def update_my_preferences(
     return current_user
 
 
-def _purge_user(db: Session, uid: UUID) -> None:
-    """Delete every row that belongs to ``uid`` and then the ``User`` itself.
-
-    Shared by the admin-delete-user path. We walk the FKs manually instead of
-    relying on ``ON DELETE CASCADE`` because several tables intentionally keep
-    history (``courses.created_by``, ``audit_logs.user_id``) — those get
-    nulled out rather than removed. Runs inside the caller's transaction so a
-    partial failure rolls back cleanly.
-    """
-    db.query(ChapterProgress).filter(ChapterProgress.user_id == uid).delete(synchronize_session=False)
-    db.query(Notification).filter(Notification.user_id == uid).delete(synchronize_session=False)
-
-    # Delete every QuizAnswer whose parent QuizAttempt belongs to this user,
-    # then the QuizAttempts themselves. The answer delete is a single SQL
-    # round-trip (subquery against QuizAttempt) instead of pulling all
-    # attempt IDs into Python first — same result, one fewer query and no
-    # memory overhead proportional to attempt count.
-    db.query(QuizAnswer).filter(
-        QuizAnswer.attempt_id.in_(db.query(QuizAttempt.id).filter(QuizAttempt.user_id == uid))
-    ).delete(synchronize_session=False)
-    db.query(QuizAttempt).filter(QuizAttempt.user_id == uid).delete(synchronize_session=False)
-
-    db.query(AssignmentSubmission).filter(AssignmentSubmission.student_id == uid).delete(synchronize_session=False)
-    db.query(StudentGrade).filter(StudentGrade.student_id == uid).delete(synchronize_session=False)
-    db.query(Enrollment).filter(Enrollment.user_id == uid).delete(synchronize_session=False)
-    db.query(CourseReview).filter(CourseReview.user_id == uid).delete(synchronize_session=False)
-    db.query(Certificate).filter(Certificate.user_id == uid).delete(synchronize_session=False)
-
-    db.query(Course).filter(Course.created_by == uid).update(
-        {Course.created_by: None},
-        synchronize_session=False,
-    )
-    db.query(AuditLog).filter(AuditLog.user_id == uid).update(
-        {AuditLog.user_id: None},
-        synchronize_session=False,
-    )
-
-    db.query(User).filter(User.id == uid).delete(synchronize_session=False)
-
-
 class AdminUserRow(BaseModel):
     id: str
     email: str
@@ -188,6 +138,9 @@ class AdminUserRow(BaseModel):
     role: str
     avatar_url: str | None
     created_at: datetime | None
+    # Non-null when the account is soft-deleted; the admin panel surfaces this
+    # so a deactivated user can be told apart and restored.
+    deactivated_at: datetime | None
 
 
 @router.get("/admin/users", response_model=list[AdminUserRow])
@@ -206,6 +159,7 @@ def list_all_users(
             role=u.role,
             avatar_url=u.avatar_url,
             created_at=u.created_at,
+            deactivated_at=u.deactivated_at,
         )
         for u in users
     ]
@@ -322,13 +276,17 @@ def admin_delete_user(
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> Response:
-    """Hard-delete another user and all their owned rows.
+    """Soft-delete (deactivate) another user.
+
+    Sets ``deactivated_at`` and blocks the account's login, but PRESERVES every
+    owned row (courses, grades, certificates) so the account can be restored
+    via ``POST /admin/users/{id}/restore``. This is deliberately reversible —
+    it avoids the old half-state where data was hard-deleted while the auth
+    identity lingered and resurrected an empty profile on next login.
 
     An admin cannot delete themselves via this route — that would leave the
-    platform without an admin in the worst case. Self-deletion is disabled by
-    design: users cannot delete their own accounts from the UI. If the last
-    admin truly wants to leave, a direct SQL operation through Supabase is the
-    right escape hatch.
+    platform without an admin in the worst case. If the last admin truly wants
+    to leave, a direct SQL operation through Supabase is the right escape hatch.
     """
     uid = _parse_user_uuid(user_id)
     if uid == admin.id:
@@ -348,22 +306,25 @@ def admin_delete_user(
             context={"resource_type": "user", "resource_id": str(uid)},
         )
 
-    log_action(
-        db,
-        admin.id,
-        "delete",
-        "user",
-        str(uid),
-        details={"email": target.email, "role": target.role},
-        request=request,
-    )
+    if target.deactivated_at is not None:
+        # Already deactivated — idempotent success.
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     try:
-        _purge_user(db, uid)
+        log_action(
+            db,
+            admin.id,
+            "delete",
+            "user",
+            str(uid),
+            details={"email": target.email, "role": target.role, "mode": "soft_delete"},
+            request=request,
+        )
+        target.deactivated_at = datetime.now(UTC)
         db.commit()
     except Exception as exc:
         db.rollback()
-        logger.exception("Admin-initiated deletion failed for user %s", uid)
+        logger.exception("Admin-initiated deactivation failed for user %s", uid)
         raise equip_error(
             ErrorCode.VALIDATION_FAILED,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -371,4 +332,46 @@ def admin_delete_user(
             context={"resource_type": "user", "user_id": str(uid)},
         ) from exc
 
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/admin/users/{user_id}/restore", status_code=status.HTTP_204_NO_CONTENT)
+def admin_restore_user(
+    user_id: str,
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Reactivate a soft-deleted account (clears ``deactivated_at``).
+
+    The user's data was preserved on deactivation, so restoring re-enables
+    login and returns the account exactly as it was.
+    """
+    uid = _parse_user_uuid(user_id)
+
+    target = db.query(User).filter(User.id == uid).first()
+    if not target:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="User not found",
+            context={"resource_type": "user", "resource_id": str(uid)},
+        )
+
+    if target.deactivated_at is None:
+        # Already active — idempotent success.
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    log_action(
+        db,
+        admin.id,
+        "restore",
+        "user",
+        str(uid),
+        details={"email": target.email, "role": target.role},
+        request=request,
+    )
+
+    target.deactivated_at = None
+    db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -2368,6 +2368,21 @@
     "body": false
   },
   {
+    "method": "POST",
+    "path": "/api/v1/users/admin/users/{user_id}/restore",
+    "params": [
+      [
+        "user_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
     "method": "PUT",
     "path": "/api/v1/users/admin/users/{user_id}/role",
     "params": [
