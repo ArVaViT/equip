@@ -52,6 +52,7 @@ from app.api.v1.courses.enrollment import _enforce_cohort_gates
 from app.models.cohort import Cohort, CohortCourse
 from app.models.course import Course  # noqa: TC001  (used at runtime by helpers)
 from app.models.enrollment import Enrollment
+from app.models.user import User, UserRole
 from tests.conftest import STUDENT_ID, TEACHER_ID
 
 # SQLite compatibility: ``Uuid.bind_processor`` expects ``uuid.UUID``
@@ -277,6 +278,24 @@ class TestCohortGateCapacity:
         _seed_public_course(db)
         cohort = _seed_cohort(db, max_students=None)
         _seed_enrollment(db, user_id=TEACHER_ID, course_id="test-course-1", cohort_id=cohort.id)
+        _enforce_cohort_gates(db, "test-course-1", str(cohort.id), STUDENT_ID, NOW_NAIVE)
+
+    def test_deactivated_member_does_not_consume_a_seat(self, db: Session, teacher, student):
+        # A soft-deleted (deactivated) student keeps their enrollment row but
+        # must not hold a seat — otherwise deactivating a student permanently
+        # eats cohort capacity.
+        _seed_public_course(db)
+        cohort = _seed_cohort(db, max_students=1)
+        ghost = User(
+            id=uuid.uuid4(),
+            email=f"ghost-{uuid.uuid4().hex[:8]}@test.local",
+            role=UserRole.STUDENT.value,
+            deactivated_at=NOW_NAIVE,
+        )
+        db.add(ghost)
+        db.commit()
+        _seed_enrollment(db, user_id=ghost.id, course_id="test-course-1", cohort_id=cohort.id)
+        # Cap is 1, but the only member is deactivated -> a live student still fits.
         _enforce_cohort_gates(db, "test-course-1", str(cohort.id), STUDENT_ID, NOW_NAIVE)
 
     def test_already_seated_user_exempt_from_capacity(self, db: Session, teacher, student):
