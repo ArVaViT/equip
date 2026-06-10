@@ -133,7 +133,10 @@ def _serialize_many(db: Session, cohorts: list[Cohort]) -> list[CohortResponse]:
             Enrollment.cohort_id,
             func.count(func.distinct(Enrollment.user_id)),
         )
-        .filter(Enrollment.cohort_id.in_(cohort_ids))
+        # Exclude deactivated (soft-deleted) members so the displayed
+        # student_count matches the capacity gate in cohort_capacity.py.
+        .join(User, User.id == Enrollment.user_id)
+        .filter(Enrollment.cohort_id.in_(cohort_ids), User.deactivated_at.is_(None))
         .group_by(Enrollment.cohort_id)
     }
 

@@ -110,6 +110,58 @@ transaction as the data write. Sharing the transaction guarantees a
 single COMMIT either makes both visible or rolls both back -- there is
 no window where the change is durable but the audit trail is missing.
 
+## Client Read Surface — RLS Boundary vs Backend Gate
+
+**Decision (2026-06, accepted):** course *content* (course / module /
+chapter / block text for non-public, e.g. institute, courses) is readable
+at the **RLS layer** by any authenticated user who queries Postgres
+directly through `supabase-js`. We **accept** this and gate content
+visibility at the **backend (API) layer**, not with per-row RLS policies
+keyed on enrollment. This is a deliberate scope decision, not an oversight.
+
+**What the RLS layer DOES hard-enforce** (the real security boundary,
+because the browser holds the publishable key + a user JWT and can hit
+Postgres directly). All of these are proven every CI run by
+`supabase/ci/rls_assertions.sql`, run as the `authenticated` role:
+
+- **Answer keys** — `quiz_options` / `daily_challenge_options` SELECT is
+  REVOKED from `anon` + `authenticated` (migrations
+  `20260608200000_revoke_client_answer_key_reads`). A direct read can't
+  leak `is_correct` before submission; the backend serves stripped options.
+- **PII / cross-tenant** — `profiles` SELECT is self-only
+  (`profiles_select_self`); another user's row returns 0 rows.
+- **Grades / scores** — `student_grades`, `quiz_attempts`,
+  `certificates` are not client-writable; a student can't self-grade,
+  tamper a score, or self-approve a certificate.
+- **Audit trail + privilege** — `audit_logs`, `quiz_extra_attempts`,
+  `quiz_answers` writes are revoked from client roles; `profiles.role`
+  escalation is blocked by the immutable-fields trigger.
+
+**What is intentionally backend-gated, not RLS-gated:** reading the
+*teaching text* of a non-public course. The API filters by publish state
+and enrollment (`require_enrollment` / `verify_course_owner` deps); a
+caller who bypasses the API and reads the rows directly sees lesson prose
+and quiz *prompts* (never the answer key, never another user's data).
+
+**Why accept rather than add per-row content RLS:**
+
+1. The data exposed is teaching material, not secrets — lesson text and
+   question prompts, with every actual secret (answer keys, PII, grades,
+   audit) already hard-walled above.
+2. Equip's product direction is a neutral platform of teacher-uploaded
+   courses; content is meant to be readable by enrolled students. Gating
+   *reads* of course text behind enrollment needs per-row RLS policies
+   joining `enrollments` on every content table (courses, modules,
+   chapters, blocks, …) — a large, perf-sensitive surface that would have
+   to stay in lockstep with the enrollment model.
+3. Blast radius today is one institute course and zero real users.
+
+**Revisit if** Equip ever hosts genuinely confidential paid content where
+the lesson text itself (not just credentials) must be enrollment-gated.
+At that point add enrollment-keyed RLS policies to the content tables and
+extend `rls_assertions.sql` to prove a non-enrolled `authenticated` user
+reads 0 content rows.
+
 ## Dependency scanning
 
 - Backend: `pip-audit --requirement requirements.txt --strict` runs in

@@ -1,0 +1,26 @@
+{
+  "name": "equip frontend: frustration signals (rage clicks)",
+  "type": "rum alert",
+  "query": "rum(\"@type:action @action.frustration.type:rage_click service:equip-frontend env:production\").rollup(\"count\").last(\"30m\") >= 5",
+  "message": "5+ rage clicks in 30 minutes on the frontend. Users are stuck somewhere.\n\nNotify:\n\n(Dashboard-only: no email — watch on the Datadog dashboard. UX/warning signal, kept quiet to avoid inbox noise.)",
+  "tags": [
+    "env:production",
+    "project:equip",
+    "managed_by:claude"
+  ],
+  "priority": 3,
+  "options": {
+    "thresholds": {
+      "warning": 3.0,
+      "critical": 5.0
+    },
+    "evaluation_delay": 60,
+    "notify_audit": false,
+    "include_tags": true,
+    "renotify_interval": 0,
+    "notify_no_data": false,
+    "new_host_delay": 300,
+    "groupby_simple_monitor": false,
+    "silenced": {}
+  }
+}

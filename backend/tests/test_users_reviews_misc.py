@@ -3,6 +3,7 @@ Health, Audit, and Modules/Chapters endpoints.
 """
 
 import uuid
+from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -600,6 +601,33 @@ class TestCourseAnalytics:
         assert body["total_students"] == 0
         assert body["avg_progress"] == 0.0
         assert body["completion_count"] == 0
+
+    def test_deactivated_student_excluded_from_analytics(self, client: TestClient, db: Session):
+        # A soft-deleted student keeps their enrollment row but must not count
+        # toward total_students, skew avg_progress, or appear in the roster.
+        _seed_course(db, course_id="course-1", owner=TEACHER_ID)
+        live = User(id=STUDENT_ID, email="live@example.com", full_name="Live Student", role=UserRole.STUDENT.value)
+        ghost_id = uuid.UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
+        ghost = User(
+            id=ghost_id,
+            email="ghost@example.com",
+            full_name="Ghost Student",
+            role=UserRole.STUDENT.value,
+            deactivated_at=datetime(2026, 1, 1),
+        )
+        db.add_all([live, ghost])
+        db.commit()
+        _seed_enrollment(db, user_id=STUDENT_ID, course_id="course-1", progress=40)
+        _seed_enrollment(db, user_id=ghost_id, course_id="course-1", progress=100)
+
+        body = client.get("/api/v1/analytics/course/course-1").json()
+        # Only the live student counts: total 1, avg 40 (the ghost's 100 is
+        # excluded), no completions, and the roster lists the live student only.
+        assert body["total_students"] == 1
+        assert body["avg_progress"] == 40.0
+        assert body["completion_count"] == 0
+        roster_ids = {e["user_id"] for e in body["enrollments"]}
+        assert roster_ids == {str(STUDENT_ID)}
 
 
 # ===================================================================
