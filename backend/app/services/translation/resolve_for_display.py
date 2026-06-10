@@ -497,23 +497,74 @@ def build_localized_course_response_with_tree(
         display_locale=display_locale,
     )
 
-    ct = loc.pick("course", course.id, "title", course.title) or course.title
-    cd = loc.pick("course", course.id, "description", course.description)
-
+    # Build the response bottom-up in a SINGLE validation pass. The previous
+    # implementation validated every chapter/module twice — once to build the
+    # localized ``new_*`` lists (model_validate + model_copy), then again in a
+    # final ``CourseResponse.model_validate(course)`` that re-cascaded the whole
+    # ORM tree only to have its modules thrown away by a ``model_copy``. On a
+    # 240-chapter course that doubled the Pydantic work. Constructing each model
+    # directly (Pydantic still validates on construction) validates every entity
+    # exactly once. NB: ``chapter.title`` is a real column (bilingual source
+    # storage) so we must NOT write the display title back onto the ORM object —
+    # we only read ``ch.title`` as the fallback and pass the localized value into
+    # a fresh ``ChapterResponse``. The field lists below mirror
+    # CourseResponse / ModuleResponse / ChapterResponse; the no-overlay parity
+    # test in test_courses_bilingual_source guards against drift.
+    # ``model_validate(dict)`` validates each entity once; nested already-built
+    # ChapterResponse / ModuleResponse instances are accepted as-is (Pydantic v2
+    # ``revalidate_instances='never'``), so there's no re-cascade. Using a dict
+    # (rather than kwargs) keeps the ORM's wider column types — ``str`` for the
+    # ``chapter_type`` / ``access_mode`` Literals — validating at runtime without
+    # tripping the static type checker.
     new_modules: list[ModuleResponse] = []
     for mod in course.modules:
         mt = loc.pick("module", str(mod.id), "title", mod.title) or mod.title
         md = loc.pick("module", str(mod.id), "description", mod.description)
-        new_chapters: list[ChapterResponse] = []
-        for ch in mod.chapters:
-            cht = loc.pick("chapter", str(ch.id), "title", ch.title) or ch.title
-            ch_base = ChapterResponse.model_validate(ch, from_attributes=True)
-            new_chapters.append(ch_base.model_copy(update={"title": cht}))
-        mod_base = ModuleResponse.model_validate(mod, from_attributes=True)
-        new_modules.append(mod_base.model_copy(update={"title": mt, "description": md, "chapters": new_chapters}))
+        new_chapters = [
+            ChapterResponse.model_validate(
+                {
+                    "id": str(ch.id),
+                    "module_id": str(ch.module_id),
+                    "title": loc.pick("chapter", str(ch.id), "title", ch.title) or ch.title,
+                    "order_index": ch.order_index,
+                    "chapter_type": ch.chapter_type or "reading",
+                    "requires_completion": ch.requires_completion,
+                    "is_locked": ch.is_locked,
+                }
+            )
+            for ch in mod.chapters
+        ]
+        new_modules.append(
+            ModuleResponse.model_validate(
+                {
+                    "id": str(mod.id),
+                    "course_id": str(mod.course_id),
+                    "title": mt,
+                    "description": md,
+                    "order_index": mod.order_index,
+                    "due_date": mod.due_date,
+                    "chapters": new_chapters,
+                }
+            )
+        )
 
-    base = CourseResponse.model_validate(course, from_attributes=True)
-    return base.model_copy(update={"title": ct, "description": cd, "modules": new_modules})
+    return CourseResponse.model_validate(
+        {
+            "id": course.id,
+            "title": loc.pick("course", course.id, "title", course.title) or course.title,
+            "description": loc.pick("course", course.id, "description", course.description),
+            "image_url": course.image_url,
+            "status": course.status,
+            "access_mode": course.access_mode,
+            "created_by": course.created_by,
+            "created_at": course.created_at,
+            "updated_at": course.updated_at,
+            "deleted_at": course.deleted_at,
+            "enrollment_start": course.enrollment_start,
+            "enrollment_end": course.enrollment_end,
+            "modules": new_modules,
+        }
+    )
 
 
 def _fetch_quiz_tree_texts(

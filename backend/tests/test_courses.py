@@ -394,6 +394,69 @@ class TestCatalogLocalizedMetadata:
         assert r.status_code == 200
         assert r.json()["title"] == "English catalog title"
 
+    def test_localized_detail_includes_full_module_chapter_tree(
+        self,
+        client: TestClient,
+        db: Session,
+        anon_client: TestClient,
+    ) -> None:
+        """The localized course-detail builder must carry the WHOLE module +
+        chapter tree with every field, in order. Guards the single-pass
+        bottom-up construction in ``build_localized_course_response_with_tree``
+        against silently dropping a chapter/module field (the field lists are
+        hand-written there for performance, so this is their parity net)."""
+        from app.models.course import Chapter
+        from tests._cv_helpers import _seed_text_row, make_module_with_text
+
+        course = _create_course(client, title="Tree Course", description="Tree desc")
+        cid = course["id"]
+        module = make_module_with_text(db, course_id=cid, title="Module One", order_index=0, locale="en")
+        ch1 = Chapter(
+            id=f"{cid}-c1",
+            module_id=module.id,
+            title="Chapter One",
+            order_index=0,
+            chapter_type="quiz",
+            requires_completion=True,
+            is_locked=False,
+        )
+        ch2 = Chapter(
+            id=f"{cid}-c2",
+            module_id=module.id,
+            title="Chapter Two",
+            order_index=1,
+            chapter_type="reading",
+            requires_completion=False,
+            is_locked=True,
+        )
+        db.add_all([ch1, ch2])
+        db.flush()
+        _seed_text_row(db, entity_type="chapter", entity_id=ch1.id, field="title", locale="en", text="Chapter One")
+        _seed_text_row(db, entity_type="chapter", entity_id=ch2.id, field="title", locale="en", text="Chapter Two")
+        db.commit()
+        client.put(f"{PREFIX}/{cid}", json={"status": "published"})
+
+        r = anon_client.get(f"{PREFIX}/{cid}", headers={"Accept-Language": "en"})
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["title"] == "Tree Course"
+        assert body["status"] == "published"
+        assert len(body["modules"]) == 1
+        mod = body["modules"][0]
+        assert mod["title"] == "Module One"
+        assert mod["course_id"] == cid
+        chapters = mod["chapters"]
+        # Order preserved (Module.chapters order_by order_index).
+        assert [c["title"] for c in chapters] == ["Chapter One", "Chapter Two"]
+        c1 = chapters[0]
+        assert c1["id"] == f"{cid}-c1"
+        assert c1["module_id"] == module.id
+        assert c1["chapter_type"] == "quiz"
+        assert c1["requires_completion"] is True
+        assert c1["is_locked"] is False
+        assert chapters[1]["is_locked"] is True
+        assert chapters[1]["chapter_type"] == "reading"
+
     def test_get_detail_source_param_returns_raw_columns_for_owner(
         self,
         client: TestClient,
