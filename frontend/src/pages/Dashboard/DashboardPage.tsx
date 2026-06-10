@@ -252,8 +252,10 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
  *
  * **Layout (lg+).** Two columns:
  * - Left (wider): My Courses with internal scroll.
- * - Right (narrow): Verse + Today + Streak in equal vertical thirds
- *   so the right rail stays inside the viewport.
+ * - Right (narrow): Verse + Today + Daily Challenge in a 4-row grid —
+ *   Verse and Today take one row each, Daily Challenge spans two so its
+ *   question + options fit without an internal scrollbar. The whole rail
+ *   stays inside the viewport.
  *
  * **Mobile (< lg).** Single column stack in importance order: My
  * Courses → Verse → Today → Streak.
@@ -278,19 +280,21 @@ export default function DashboardPage() {
     <div className="container mx-auto h-full px-4 py-4 sm:py-6 lg:h-[calc(100dvh-3rem-3rem)]">
       <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-5">
         <MyCoursesSection onTourStart={startTour} />
-        {/* Right rail: equal-thirds on lg+ via grid-rows-3. Each card
-            gets the same vertical share so Verse + Today + Streak all
-            fit one viewport without one starving another. ``min-h-0``
-            on the inner grid items lets each card's internal overflow
-            kick in rather than expanding the row. */}
-        <div className="flex flex-col gap-4 lg:grid lg:grid-rows-3 lg:gap-5 lg:overflow-hidden">
+        {/* Right rail on lg+ via grid-rows-4. Verse + Today take one row
+            each; Daily Challenge spans two (``row-span-2``) because its
+            question + four options need more height than a light card, so
+            it fits one viewport without an internal scrollbar — and the
+            page itself never scrolls. ``min-h-0`` on the inner grid items
+            lets each card's own overflow kick in rather than expanding
+            the row. */}
+        <div className="flex flex-col gap-4 lg:grid lg:grid-rows-4 lg:gap-5 lg:overflow-hidden">
           <div data-tour="verse-of-day" className="lg:min-h-0 lg:overflow-hidden">
             <VerseOfTheDayCard />
           </div>
           <div data-tour="today" className="lg:min-h-0 lg:overflow-hidden">
             <TodayCard />
           </div>
-          <div data-tour="daily-challenge" className="lg:min-h-0 lg:overflow-hidden">
+          <div data-tour="daily-challenge" className="lg:row-span-2 lg:min-h-0 lg:overflow-hidden">
             <DailyChallengeCard />
           </div>
         </div>

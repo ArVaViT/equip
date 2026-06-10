@@ -54,7 +54,7 @@ function OptionButton({ option, reveal, disabled, onClick }: OptionButtonProps) 
       disabled={disabled}
       aria-pressed={isSelected}
       className={cn(
-        "group flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-left text-xs transition-colors",
+        "group flex w-full items-center gap-2.5 rounded-md border px-3 py-1.5 text-left text-xs transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
         reveal === null && "border-edge bg-surface hover:border-brand/30 hover:bg-muted/30",
         showAsCorrect && "border-success/40 bg-success/10 text-ink",
@@ -259,7 +259,7 @@ export function DailyChallengeCard() {
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
+      <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
         {loading ? (
           <div className="space-y-2">
             <Skeleton className="h-4 w-3/4" />
