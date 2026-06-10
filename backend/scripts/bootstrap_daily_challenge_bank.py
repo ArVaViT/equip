@@ -128,6 +128,18 @@ def main() -> int:
         help="First date to schedule from (UTC). Default today.",
     )
     parser.add_argument(
+        "--throttle-seconds",
+        type=float,
+        default=0.0,
+        help="Min seconds between Gemini calls (free-tier RPM guard; 0 = no throttle).",
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=2,
+        help="Per-call Gemini retry budget (bump when throttling a free-tier key).",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="No LLM calls, no DB writes; just exercise manifest + auth.",
@@ -169,7 +181,14 @@ def main() -> int:
     publish_failures: list[str] = []
     schedule_failures: list[str] = []
 
-    with GeminiPromptClient(api_key=api_key) as client, SessionFactory() as db:
+    client_kwargs: dict[str, Any] = {"api_key": api_key, "max_retries": args.max_retries}
+    if args.throttle_seconds > 0:
+        # Free-tier RPM guard: space calls out, and give 429s a real cooldown
+        # (default 0.5s cap is useless against a per-minute quota).
+        client_kwargs["min_request_interval_seconds"] = args.throttle_seconds
+        client_kwargs["retry_backoff_seconds"] = max(2.0, args.throttle_seconds)
+        client_kwargs["retry_backoff_cap_seconds"] = 60.0
+    with GeminiPromptClient(**client_kwargs) as client, SessionFactory() as db:
         cursor_date = _next_unscheduled_date(db, start=args.start_date)
 
         for idx, p in enumerate(passages, start=1):
