@@ -253,6 +253,27 @@ class TestListAllCohorts:
         assert body[0]["student_count"] == 1
         assert set(body[0]["course_ids"]) == {"c-1", "c-2"}
 
+    def test_student_count_excludes_deactivated(self, admin_client: TestClient, db: Session, student):
+        # A soft-deleted member keeps their enrollment but must drop out of the
+        # displayed student_count, matching the cohort-capacity gate.
+        from app.models.user import User, UserRole
+
+        _seed_course(db, course_id="c-1")
+        cohort = _seed_cohort_with_course(db, course_id="c-1", name="N")
+        ghost = User(
+            id=uuid.uuid4(),
+            email=f"ghost-{uuid.uuid4().hex[:8]}@test.local",
+            role=UserRole.STUDENT.value,
+            deactivated_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+        db.add(ghost)
+        db.commit()
+        _seed_enrollment(db, course_id="c-1", cohort_id=cohort.id)  # live student
+        _seed_enrollment(db, user_id=ghost.id, course_id="c-1", cohort_id=cohort.id)  # deactivated
+
+        body = admin_client.get(COHORT_PREFIX).json()
+        assert body[0]["student_count"] == 1
+
     def test_teacher_cannot_list(self, client: TestClient):
         resp = client.get(COHORT_PREFIX)
         assert resp.status_code == 403

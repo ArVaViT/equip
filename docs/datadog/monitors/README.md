@@ -1,115 +1,52 @@
 # Datadog monitors — Equip
 
-Source-controlled monitor definitions for the Datadog log-alert
-monitors that watch Equip's prod surface. Same pattern as the
-dashboard JSON files in `../`: tweak in the Datadog UI when needed,
-re-export the JSON back into this directory in the same PR so the
-source of truth stays in git.
+Source-controlled definitions for the live Datadog monitors. The Datadog org
+is the runtime source of truth; these JSONs are the committed mirror — when you
+retune a monitor in the UI, re-export its JSON here in the same PR.
 
-## Why monitors live here in JSON
+## Philosophy: quiet by default
 
-We hit a real outage on 2026-06-03: the translation-worker cron
-returned 401 every minute for ~37 minutes (`CRON_SECRET` env var
-missing, Vercel sent no auth header). No monitor caught it — we
-noticed only when sweeping logs by hand. These JSON files exist so
-the next missing-secret regression pages on minute 6, not minute 37.
+A solo operator drowns in a noisy inbox and then ignores it. So the rule is:
+**email fires only on a real, actionable incident; everything else is
+dashboard-only.** Concretely:
 
-## Inventory
+- Uptime + hard failures (synthetics down, error bursts, email-delivery
+  failures, a stuck queue, the daily-challenge running dry) → **email**. These
+  fire rarely, only when something is genuinely wrong.
+- UX / tuning signals (LCP, rage-clicks) and backend *warnings* →
+  **dashboard-only** (no `@` handle in the message). They're worth watching,
+  not worth an email.
+- Every monitor sets `notify_no_data: false` and `renotify_interval: 0` — one
+  email per incident, never a "no data" page, never re-nags.
 
-| File | What it catches | Priority |
+The live set is **12 monitors, 9 email / 3 dashboard-only**. The 4 synthetic
+uptime checks (`/health`, frontend `/`, `/api/v1/courses`, Supabase) are
+managed in the Synthetics UI and are not mirrored here; the 8 log/metric/RUM
+monitors below are.
+
+## Inventory (the 8 mirrored monitors)
+
+| File | What it catches | Notify |
 |---|---|---|
-| `translation-worker-401-rate.json` | Cron is firing but auth fails (≥ 5 401s in 15 min) | P2 |
-| `worker-cron-silent.json` | Cron is NOT firing at all (≥ 15 min with no log line) | P2 |
-| `backend-5xx-rate.json` | Backend 5xx rate > 5% over 10 min | P1 |
-| `backend-unhandled-exception-rate.json` | Real unhandled 500s via `equip.errors.unhandled_total` | P2 |
-| `translation-queue-backlog.json` | `translation_jobs` queued is not draining | P3 |
+| `backend-error-log-spike.json` | ≥10 backend `status:error` logs in 10 min | **email** |
+| `send-email-failures.json` | send-email edge fn logging delivery/function errors (silent email outage — Auth sees 200, users get nothing) | **email** |
+| `daily-challenge-schedule-dry.json` | the editorial schedule ran out and the live path is auto-filling from the pool (seed fresh questions) | **email** |
+| `translation-jobs-stuck-processing.json` | jobs piling up in `processing` (workers dying mid-run) | **email** |
+| `equip-frontend-rum-error-spike.json` | spike in real-user JS errors (RUM) | **email** |
+| `equip-backend-warning-log-spike.json` | ≥20 backend `status:warning` logs in 15 min | dashboard-only |
+| `equip-frontend-slow-page-load-avg-lcp-4s.json` | avg LCP > 4s (client-rendered SPA — noisy by nature) | dashboard-only |
+| `equip-frontend-frustration-signals-rage-clicks.json` | ≥5 rage-clicks in 30 min | dashboard-only |
 
-## Importing into Datadog
+> **Note on queries.** These all match the backend's actual **Python-logger**
+> log shape (`status:error` / `status:warning`, `service:…`), not HTTP-access
+> fields. An earlier generation of JSONs queried `@http.url_details.path` /
+> `@http.status_code`, which our logs don't carry, so they sat in No-Data;
+> those were retired in favour of this set.
 
-1. Datadog UI → `Monitors` → `New Monitor` → `Import` (bottom right).
-2. Paste the file contents.
-3. The `message` field notifies `@arvavitcorp@gmail.com` (email — there is
-   no Slack today, per `OBSERVABILITY.md`). Repoint if a channel is added.
-4. Save.
+## Re-export after a UI change
 
-> ⚠️ **Query-vs-log-structure caveat (verified 2026-06-08):** these log
-> monitors were authored against `@http.url_details.path` / `@http.status_code`
-> attributes, but the backend ships **Python-logger** logs (via
-> `DatadogHTTPHandler`), whose attributes are `logger.name`, `status`
-> (`error`/`warn`/`info`), `error.stack`, and the free-text `message` — NOT
-> HTTP-access fields. Before importing, revise each `query` to match (e.g.
-> `status:error` + a `message` substring, or `@logger.name:api`), or the
-> monitor will sit in **No Data** and give false coverage. The live
-> `equip backend: error log spike` / `warning log spike` monitors already
-> catch backend errors/warnings (including worker DB errors) via `status:` —
-> these JSON files are the codified target set, pending query revision.
-
-## Editing convention
-
-When tuning a threshold in the UI:
-
-1. Open the monitor → `Edit JSON` (right side of the edit form).
-2. Copy the JSON back into the matching file in this directory.
-3. Same PR that ships the new threshold value to prod.
-
-Out-of-band tweaks rot fast — within a month nobody remembers why
-the threshold is 7 instead of 5.
-
-## UI-only monitors — alert-noise audit (2026-06-05) — RETUNED 2026-06-08
-
-Two monitors created ad-hoc in the Datadog UI (NOT in this directory) were
-the source of an inbox flood — 81 alert emails in 7 days, all from these two,
-each firing on Triggered → Recovered pairs and tripping on normal
-serverless/SPA behaviour rather than real problems. Status after the
-2026-06-08 retune (done via the Datadog API):
-
-- **`[P2] equip backend: error log spike`** — **RETUNED.** Threshold raised
-  from `≥ 5 errors / 10 min` to `≥ 10`, the warning level (was 2) dropped
-  entirely, and a 60 s evaluation delay added so transient cold-start /
-  deploy / pooler-restart blips self-recover before notifying. Still a
-  cruder duplicate of `backend-unhandled-exception-rate.json` (which counts
-  only *real* unhandled 500s); fold it into that scoped monitor when
-  convenient, but it no longer floods.
-- **`[P3] equip frontend: slow page load (avg LCP > 4s)`** — **self-cleared.**
-  The big LCP fix (PR #746, anonymous-paint seed) brought the metric back
-  under threshold; 0 events on 2026-06-08. Left as-is (now quiet).
-- General rule for every monitor here: keep re-notification **off** — one
-  email on Trigger is enough (all current monitors already set `renotify=0`).
-
-### Failing Vercel log drain — FIX it, do NOT just delete it
-
-The Vercel → Datadog **log drain** is failing ~80% (hourly "Drain failures
-on Equip" emails). It is tempting to call it redundant because the app ships
-logs to Datadog in-app via `DatadogHTTPHandler` — **but that handler is
-WARNING+ only** (`logging.py`), while every `equip.*` metric is emitted as an
-**INFO** log line (`app/core/metrics.py`). INFO reaches Datadog ONLY through
-this drain. **So deleting the drain silently kills the entire metric +
-dashboard layer** (engagement, translation-queue health, the
-`translation-queue-backlog` monitor) — only the WARNING+ pages survive.
-
-Correct fix order: **first** give `equip.metric` a second transport (a
-dedicated low-level HTTP path in the handler, or POST to the Datadog metrics
-API), verify metrics still flow, **then** the drain can be fixed or removed.
-Until then, repair the drain (it's the only metric pipeline) — do not delete
-it. (Deploy-failure emails are separate and safe to turn off: Vercel →
-Account → Notifications.)
-
-## Open follow-ups
-
-- **`equip.engagement.drop_off_rate` monitor** — once the dashboard
-  derived-metric stabilizes, add a P3 monitor that pages on a 30%
-  drop-off ceiling per course.
-- **`equip.translation.queue_depth` saturation monitor** — when
-  `translation_jobs` queued > 50 for > 1h, page; queue isn't draining
-  fast enough. (Requires adding a gauge emitter in
-  `app/services/translation/queue.py` first.)
-- **Vercel-side cron health check via Vercel Cron Audit log** —
-  belt + braces over the Datadog log-presence check; Vercel's own
-  cron history page surfaces failures even if Datadog forwarder
-  breaks.
-
-## Related
-
-- `../course-engagement-dashboard.json` and `../teacher-load-dashboard.json` — the dashboards these monitors complement.
-- [[reference-equip-vercel-cron-secret]] in personal memory — the
-  trap the 401-rate monitor is built to catch.
+```
+GET https://api.us5.datadoghq.com/api/v1/monitor/<id>
+```
+Keep `name`, `type`, `query`, `message`, `tags`, `priority`, `options`; drop the
+runtime `id`/`overall_state`. Commit the diff in the same PR as the change.

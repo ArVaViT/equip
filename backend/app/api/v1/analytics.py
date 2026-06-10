@@ -75,20 +75,23 @@ def get_course_analytics(
     response.headers["Vary"] = "Accept-Language"
 
     # Aggregates in one round-trip instead of loading everything into Python.
+    # Deactivated (soft-deleted) accounts are excluded so the teacher sees the
+    # live class, not historical ghosts — mirrors the cohort-capacity count.
     agg = (
         db.query(
             func.count(Enrollment.id).label("total"),
             func.coalesce(func.avg(Enrollment.progress), 0.0).label("avg_progress"),
             func.count(Enrollment.id).filter(Enrollment.progress >= 100).label("completed"),
         )
-        .filter(Enrollment.course_id == course_id)
+        .join(User, Enrollment.user_id == User.id)
+        .filter(Enrollment.course_id == course_id, User.deactivated_at.is_(None))
         .one()
     )
 
     enrollments = (
         db.query(Enrollment, User)
         .join(User, Enrollment.user_id == User.id)
-        .filter(Enrollment.course_id == course_id)
+        .filter(Enrollment.course_id == course_id, User.deactivated_at.is_(None))
         .order_by(Enrollment.enrolled_at.desc())
         .offset(skip)
         .limit(limit)

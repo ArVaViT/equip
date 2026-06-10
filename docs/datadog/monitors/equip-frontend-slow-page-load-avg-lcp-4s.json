@@ -1,0 +1,26 @@
+{
+  "name": "equip frontend: slow page load (avg LCP > 4s)",
+  "type": "rum alert",
+  "query": "rum(\"@type:view service:equip-frontend env:production @view.largest_contentful_paint:>0\").rollup(\"avg\", \"@view.largest_contentful_paint\").last(\"15m\") > 4000000000",
+  "message": "Average LCP over 4 seconds in last 15 minutes. Pages are loading slowly for real users.\n\nNotify:\n\n(Dashboard-only: no email — watch on the Datadog dashboard. UX/warning signal, kept quiet to avoid inbox noise.)",
+  "tags": [
+    "env:production",
+    "project:equip",
+    "managed_by:claude"
+  ],
+  "priority": 3,
+  "options": {
+    "thresholds": {
+      "warning": 3500000000.0,
+      "critical": 4000000000.0
+    },
+    "notify_no_data": false,
+    "renotify_interval": 0,
+    "notify_audit": false,
+    "include_tags": true,
+    "new_host_delay": 300,
+    "escalation_message": "",
+    "groupby_simple_monitor": false,
+    "silenced": {}
+  }
+}

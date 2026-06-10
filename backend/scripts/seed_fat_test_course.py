@@ -17,15 +17,26 @@ staging — never prod). The course is marked ``draft`` so a stray
 run against prod doesn't surface to users; promote to ``published``
 manually after eyeballing the dashboard render.
 
+Pass ``--students N`` to also enrol N synthetic learners (``@seed.invalid``
+addresses) with a deterministic spread of completion — chapter_progress
+rows are written so the dashboard / analytics surfaces see internally
+consistent partial progress, not just a bare number.
+
 Usage:
 
+    # Structure + 50 students with mixed progress:
     python -m scripts.seed_fat_test_course --course-id fat-test \\
         --teacher-email teacher@example.com \\
-        --modules 35 --chapters-per-module 5
+        --modules 35 --chapters-per-module 5 --students 50
+
+    # Tear it all back down (structure + students + progress):
+    python -m scripts.seed_fat_test_course --course-id fat-test --purge
 
 The teacher must already exist in the ``profiles`` table; we look up
 by email and abort if missing rather than auto-create (auto-creating
-admin users from a script would be too easy to fat-finger).
+admin users from a script would be too easy to fat-finger). Synthetic
+students, by contrast, are created/removed by the script — they live
+only in the seed namespace and ``--purge`` cleans them up.
 """
 
 from __future__ import annotations
@@ -34,6 +45,7 @@ import argparse
 import logging
 import sys
 import uuid
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import sessionmaker
@@ -41,9 +53,12 @@ from sqlalchemy.orm import sessionmaker
 from app.core.database import _get_engine
 from app.models.assignment import Assignment
 from app.models.chapter_block import ChapterBlock
+from app.models.chapter_progress import ChapterProgress
+from app.models.content_version import ContentVersion
 from app.models.course import Chapter, Course, Module
+from app.models.enrollment import Enrollment
 from app.models.quiz import Quiz, QuizOption, QuizQuestion
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.services.content_versions.write import record_human_version
 
 if TYPE_CHECKING:
@@ -56,6 +71,20 @@ logger = logging.getLogger("seed_fat_test_course")
 # Cycle types deterministically so the seed is reproducible — every
 # 5th chapter is reading / quiz / assignment / reading / quiz, etc.
 _CHAPTER_TYPE_CYCLE = ("reading", "quiz", "assignment", "reading", "quiz")
+
+# Fixed namespace so synthetic student ids are stable across re-runs
+# (idempotency) and trivially identifiable for ``--purge``.
+_STUDENT_NS = uuid.UUID("f0f0f0f0-0000-4000-8000-000000000001")
+
+
+def _student_email(course_id: str, index: int) -> str:
+    # ``.invalid`` is a reserved TLD (RFC 2606) — these addresses can
+    # never receive real mail, so a stray prod seed can't email anyone.
+    return f"fat-student-{course_id}-{index:03d}@seed.invalid"
+
+
+def _student_id(course_id: str, index: int) -> uuid.UUID:
+    return uuid.uuid5(_STUDENT_NS, f"{course_id}:{index}")
 
 
 def _cv_text(
@@ -287,6 +316,105 @@ def _ensure_assignment(db: Session, *, chapter_id: str, teacher: User) -> None:
     )
 
 
+def _ordered_chapter_ids(db: Session, *, course_id: str) -> list[str]:
+    """Chapter ids for the course in catalog order (module, then chapter
+    order_index) — the order a real student would progress through."""
+    rows = (
+        db.query(Chapter.id)
+        .join(Module, Chapter.module_id == Module.id)
+        .filter(Module.course_id == course_id)
+        .order_by(Module.order_index, Chapter.order_index)
+        .all()
+    )
+    return [r[0] for r in rows]
+
+
+def _ensure_student(db: Session, *, course_id: str, index: int) -> User:
+    student_id = _student_id(course_id, index)
+    student = db.query(User).filter(User.id == student_id).first()
+    if student is None:
+        student = User(
+            id=student_id,
+            email=_student_email(course_id, index),
+            full_name=f"Seed Student {index + 1}",
+            role=UserRole.STUDENT.value,
+        )
+        db.add(student)
+        db.flush()
+    return student
+
+
+def seed_students(
+    db: Session,
+    *,
+    course_id: str,
+    students: int,
+) -> dict:
+    """Enroll ``students`` synthetic learners in the course with a spread
+    of completion. Each student's ``enrollment.progress`` is derived from
+    the chapters they've completed, so the dashboard / analytics surfaces
+    see internally-consistent partial progress (not just a bare number).
+
+    Idempotent: students, enrollments, and chapter_progress rows all key
+    on deterministic ids, so a re-run upserts rather than duplicates.
+    """
+    chapter_ids = _ordered_chapter_ids(db, course_id=course_id)
+    total_chapters = len(chapter_ids)
+
+    enrolled = 0
+    for i in range(students):
+        student = _ensure_student(db, course_id=course_id, index=i)
+
+        # Deterministic spread of completion across 0..100% so the cohort
+        # exercises empty, partial, and finished states simultaneously.
+        frac = ((i * 37) % 101) / 100.0
+        done = round(frac * total_chapters)
+        progress = round(done / total_chapters * 100) if total_chapters else 0
+
+        enrollment_id = f"{course_id}-enroll-{i:03d}"
+        enrollment = db.query(Enrollment).filter(Enrollment.id == enrollment_id).first()
+        if enrollment is None:
+            enrollment = Enrollment(
+                id=enrollment_id,
+                user_id=student.id,
+                course_id=course_id,
+                progress=progress,
+            )
+            db.add(enrollment)
+        else:
+            enrollment.progress = progress
+        db.flush()
+        enrolled += 1
+
+        # Mark the first ``done`` chapters complete for this student.
+        for chapter_id in chapter_ids[:done]:
+            exists = (
+                db.query(ChapterProgress)
+                .filter(
+                    ChapterProgress.user_id == student.id,
+                    ChapterProgress.chapter_id == chapter_id,
+                )
+                .first()
+            )
+            if exists is None:
+                db.add(
+                    ChapterProgress(
+                        id=uuid.uuid4(),
+                        user_id=student.id,
+                        chapter_id=chapter_id,
+                        completed=True,
+                        completed_at=datetime.now(UTC),
+                        completion_type="self",
+                    )
+                )
+        if (i + 1) % 20 == 0:
+            db.commit()
+            logger.info("Committed through student %s", i + 1)
+    db.commit()
+
+    return {"students": enrolled, "chapters_per_student_max": total_chapters}
+
+
 def seed(
     db: Session,
     *,
@@ -295,6 +423,7 @@ def seed(
     modules: int,
     chapters_per_module: int,
     teacher: User,
+    students: int = 0,
 ) -> dict:
     course = _ensure_course(db, course_id=course_id, title=title, teacher=teacher)
 
@@ -319,12 +448,99 @@ def seed(
             logger.info("Committed through module %s", m_idx + 1)
     db.commit()
 
-    return {
+    report = {
         "course_id": course.id,
         "modules": modules,
         "chapters": chapter_total,
         "quizzes": quiz_total,
         "assignments": assignment_total,
+        "students": 0,
+    }
+    if students > 0:
+        student_report = seed_students(db, course_id=course.id, students=students)
+        report["students"] = student_report["students"]
+    return report
+
+
+def purge(db: Session, *, course_id: str) -> dict:
+    """Tear down everything ``seed`` created for ``course_id``: structure,
+    enrollments, progress, synthetic students, and their content_versions.
+
+    Scoped strictly to the deterministic seed namespace — module/chapter/
+    enrollment ids carry the ``{course_id}-`` prefix and students match the
+    ``@seed.invalid`` pattern — so it can't touch real data even if pointed
+    at the wrong DB. Deletes in FK-safe order.
+    """
+    chapter_ids = _ordered_chapter_ids(db, course_id=course_id)
+    module_ids = [r[0] for r in db.query(Module.id).filter(Module.course_id == course_id).all()]
+    quiz_ids = [r[0] for r in db.query(Quiz.id).filter(Quiz.chapter_id.in_(chapter_ids)).all()] if chapter_ids else []
+    question_ids = (
+        [r[0] for r in db.query(QuizQuestion.id).filter(QuizQuestion.quiz_id.in_(quiz_ids)).all()] if quiz_ids else []
+    )
+    option_ids = (
+        [r[0] for r in db.query(QuizOption.id).filter(QuizOption.question_id.in_(question_ids)).all()]
+        if question_ids
+        else []
+    )
+    block_ids = (
+        [r[0] for r in db.query(ChapterBlock.id).filter(ChapterBlock.chapter_id.in_(chapter_ids)).all()]
+        if chapter_ids
+        else []
+    )
+    assignment_ids = (
+        [r[0] for r in db.query(Assignment.id).filter(Assignment.chapter_id.in_(chapter_ids)).all()]
+        if chapter_ids
+        else []
+    )
+    student_ids = [
+        r[0] for r in db.query(User.id).filter(User.email.like(f"fat-student-{course_id}-%@seed.invalid")).all()
+    ]
+
+    # Every entity whose text lives in content_versions, as (entity_type, id).
+    cv_entities: list[tuple[str, str]] = [("course", course_id)]
+    cv_entities += [("module", m) for m in module_ids]
+    cv_entities += [("chapter_block", str(b)) for b in block_ids]
+    cv_entities += [("quiz", str(q)) for q in quiz_ids]
+    cv_entities += [("quiz_question", str(q)) for q in question_ids]
+    cv_entities += [("quiz_option", str(o)) for o in option_ids]
+    cv_entities += [("assignment", str(a)) for a in assignment_ids]
+
+    # Leaf rows first.
+    db.query(ChapterProgress).filter(ChapterProgress.chapter_id.in_(chapter_ids)).delete(synchronize_session=False)
+    if student_ids:
+        db.query(ChapterProgress).filter(ChapterProgress.user_id.in_(student_ids)).delete(synchronize_session=False)
+    db.query(Enrollment).filter(Enrollment.course_id == course_id).delete(synchronize_session=False)
+    if option_ids:
+        db.query(QuizOption).filter(QuizOption.id.in_(option_ids)).delete(synchronize_session=False)
+    if question_ids:
+        db.query(QuizQuestion).filter(QuizQuestion.id.in_(question_ids)).delete(synchronize_session=False)
+    if quiz_ids:
+        db.query(Quiz).filter(Quiz.id.in_(quiz_ids)).delete(synchronize_session=False)
+    if assignment_ids:
+        db.query(Assignment).filter(Assignment.id.in_(assignment_ids)).delete(synchronize_session=False)
+    if block_ids:
+        db.query(ChapterBlock).filter(ChapterBlock.id.in_(block_ids)).delete(synchronize_session=False)
+    if chapter_ids:
+        db.query(Chapter).filter(Chapter.id.in_(chapter_ids)).delete(synchronize_session=False)
+    if module_ids:
+        db.query(Module).filter(Module.id.in_(module_ids)).delete(synchronize_session=False)
+    db.query(Course).filter(Course.id == course_id).delete(synchronize_session=False)
+
+    for entity_type, entity_id in cv_entities:
+        db.query(ContentVersion).filter(
+            ContentVersion.entity_type == entity_type,
+            ContentVersion.entity_id == entity_id,
+        ).delete(synchronize_session=False)
+
+    if student_ids:
+        db.query(User).filter(User.id.in_(student_ids)).delete(synchronize_session=False)
+
+    db.commit()
+    return {
+        "course_id": course_id,
+        "modules": len(module_ids),
+        "chapters": len(chapter_ids),
+        "students": len(student_ids),
     }
 
 
@@ -340,18 +556,46 @@ def main() -> int:
         help="Chapters per module (mixed types: reading / quiz / assignment)",
     )
     parser.add_argument(
+        "--students",
+        type=int,
+        default=0,
+        help="Synthetic students to enrol with a spread of progress (0 = course structure only)",
+    )
+    parser.add_argument(
         "--teacher-email",
-        required=True,
-        help="Email of the existing User row to set as course owner",
+        help="Email of the existing User row to set as course owner (required unless --purge)",
+    )
+    parser.add_argument(
+        "--purge",
+        action="store_true",
+        help="Tear down everything previously seeded for --course-id (structure + students + progress)",
     )
     args = parser.parse_args()
+
+    engine = _get_engine()
+    SessionFactory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    if args.purge:
+        with SessionFactory() as db:
+            report = purge(db, course_id=args.course_id)
+            logger.info(
+                "Purged course=%s modules=%d chapters=%d students=%d",
+                report["course_id"],
+                report["modules"],
+                report["chapters"],
+                report["students"],
+            )
+        return 0
 
     if args.modules < 1 or args.chapters_per_module < 1:
         logger.error("modules and chapters-per-module must be >= 1")
         return 1
-
-    engine = _get_engine()
-    SessionFactory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    if args.students < 0:
+        logger.error("students must be >= 0")
+        return 1
+    if not args.teacher_email:
+        logger.error("--teacher-email is required when seeding (omit only with --purge)")
+        return 1
 
     with SessionFactory() as db:
         teacher = db.query(User).filter(User.email == args.teacher_email).first()
@@ -369,14 +613,16 @@ def main() -> int:
             modules=args.modules,
             chapters_per_module=args.chapters_per_module,
             teacher=teacher,
+            students=args.students,
         )
         logger.info(
-            "Seeded course=%s modules=%d chapters=%d quizzes=%d assignments=%d",
+            "Seeded course=%s modules=%d chapters=%d quizzes=%d assignments=%d students=%d",
             report["course_id"],
             report["modules"],
             report["chapters"],
             report["quizzes"],
             report["assignments"],
+            report["students"],
         )
     return 0
 
