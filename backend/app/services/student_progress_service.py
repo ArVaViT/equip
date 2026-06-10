@@ -83,6 +83,7 @@ def _load_chapter_quizzes_and_assignments(
 def _aggregate_quiz_results(
     db: Session,
     quiz_map: dict[str, list[Quiz]],
+    user_ids: list[str] | None = None,
 ) -> tuple[
     dict[tuple[str, str], dict[str, Any]],
     dict[tuple[str, str], int],
@@ -118,6 +119,12 @@ def _aggregate_quiz_results(
     # the SQLite test backend.
     partition = (QuizAttempt.user_id, QuizAttempt.quiz_id)
     pct_order = func.coalesce(QuizAttempt.score * 1.0 / func.nullif(QuizAttempt.max_score, 0), -1.0)
+    # ``user_ids`` scopes the aggregation to a single student (the per-student
+    # detail endpoint) or a page of students, so the window functions don't
+    # churn over the whole roster when only one row's worth is needed.
+    attempt_filters = [QuizAttempt.quiz_id.in_(all_quiz_ids), QuizAttempt.completed_at.isnot(None)]
+    if user_ids is not None:
+        attempt_filters.append(QuizAttempt.user_id.in_(user_ids))
     ranked = (
         db.query(
             QuizAttempt.user_id.label("user_id"),
@@ -131,10 +138,7 @@ def _aggregate_quiz_results(
             func.max(case((QuizAttempt.passed.is_(True), 1), else_=0)).over(partition_by=partition).label("passed_any"),
             func.max(QuizAttempt.completed_at).over(partition_by=partition).label("last_completed"),
         )
-        .filter(
-            QuizAttempt.quiz_id.in_(all_quiz_ids),
-            QuizAttempt.completed_at.isnot(None),
-        )
+        .filter(*attempt_filters)
         .subquery()
     )
     quiz_aggs = db.query(ranked).filter(ranked.c.rn == 1).all()
@@ -170,6 +174,7 @@ def _aggregate_quiz_results(
 def _aggregate_assignment_submissions(
     db: Session,
     assignment_map: dict[str, list[Assignment]],
+    user_ids: list[str] | None = None,
 ) -> tuple[
     dict[tuple[str, str], list[dict[str, Any]]],
     dict[str, Assignment],
@@ -196,13 +201,16 @@ def _aggregate_assignment_submissions(
     # Two-step query: compute MAX(submitted_at) per (student, assignment)
     # in a subquery, then pull the full row that matches. We tie-break on
     # ``id`` below for determinism when two rows share submitted_at.
+    sub_filters = [AssignmentSubmission.assignment_id.in_(all_assignment_ids)]
+    if user_ids is not None:
+        sub_filters.append(AssignmentSubmission.student_id.in_(user_ids))
     latest_ts_subq = (
         db.query(
             AssignmentSubmission.student_id.label("student_id"),
             AssignmentSubmission.assignment_id.label("assignment_id"),
             func.max(AssignmentSubmission.submitted_at).label("latest_at"),
         )
-        .filter(AssignmentSubmission.assignment_id.in_(all_assignment_ids))
+        .filter(*sub_filters)
         .group_by(AssignmentSubmission.student_id, AssignmentSubmission.assignment_id)
         .subquery()
     )
@@ -242,59 +250,205 @@ def _aggregate_assignment_submissions(
     return subs_by_user_chapter, assignment_by_id_str, latest_sub_by_user
 
 
-def _load_completed_progress(db: Session, chapter_ids: list[str]) -> dict[str, dict[str, ChapterProgress]]:
+def _load_completed_progress(
+    db: Session, chapter_ids: list[str], user_ids: list[str] | None = None
+) -> dict[str, dict[str, ChapterProgress]]:
     """Map ``user_id -> chapter_id -> ChapterProgress`` for completed rows only."""
     if not chapter_ids:
         return {}
-    rows = (
-        db.query(ChapterProgress)
-        .filter(
-            ChapterProgress.chapter_id.in_(chapter_ids),
-            ChapterProgress.completed == True,
-        )
-        .all()
-    )
+    progress_filters = [ChapterProgress.chapter_id.in_(chapter_ids), ChapterProgress.completed == True]
+    if user_ids is not None:
+        progress_filters.append(ChapterProgress.user_id.in_(user_ids))
+    rows = db.query(ChapterProgress).filter(*progress_filters).all()
     out: dict[str, dict[str, ChapterProgress]] = defaultdict(dict)
     for p in rows:
         out[str(p.user_id)][str(p.chapter_id)] = p
     return out
 
 
+def _load_assignment_titles(db: Session, course: Course, assignment_by_id_str: dict[str, Assignment]) -> dict[str, str]:
+    """Phase 5e3: ``assignments.title`` column dropped — bulk-fetch the
+    source-language title from cv. Any-locale fallback keeps the lookup
+    defensive against missing rows (prefer showing *something* over crashing).
+    """
+    if not assignment_by_id_str:
+        return {}
+    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+
+    source_locale = course.source_locale or "en"
+    cv_titles = fetch_cv_entity_texts_with_fallback(
+        db,
+        entity_type="assignment",
+        entity_ids=list(assignment_by_id_str.keys()),
+        fields=["title"],
+        display_locale=source_locale,
+        source_locale=source_locale,
+    )
+    return {aid: (cv_titles.get((aid, "title")) or "") for aid in assignment_by_id_str}
+
+
+def _build_quiz_results(
+    uid: str,
+    quiz_map: dict[str, list[Quiz]],
+    best_by_user_chapter: dict[tuple[str, str], dict[str, Any]],
+    attempts_by_user_chapter: dict[tuple[str, str], int],
+    chapter_title_map: dict[str, str],
+) -> list[dict[str, Any]]:
+    """Per-chapter best-quiz rollup for one student."""
+    quiz_results = []
+    for ch_id in quiz_map:
+        ch_key = (uid, str(ch_id))
+        best = best_by_user_chapter.get(ch_key)
+        if best is None:
+            continue
+        quiz_results.append(
+            {
+                "chapter_title": chapter_title_map.get(str(ch_id), ""),
+                "chapter_id": str(ch_id),
+                "quiz_id": best["quiz_id"],
+                "score": best["score"],
+                "max_score": best["max_score"],
+                "passed": best["passed"],
+                "attempts_used": attempts_by_user_chapter.get(ch_key, 0),
+            }
+        )
+    return quiz_results
+
+
+def _build_assignment_results(
+    uid: str,
+    assignment_map: dict[str, list[Assignment]],
+    subs_by_user_chapter: dict[tuple[str, str], list[dict[str, Any]]],
+    assignment_title_by_id: dict[str, str],
+    chapter_title_map: dict[str, str],
+) -> list[dict[str, Any]]:
+    """Latest-submission-per-assignment rollup for one student."""
+    assignment_results = []
+    for ch_id, assignments in assignment_map.items():
+        ch_key = (uid, str(ch_id))
+        submissions = subs_by_user_chapter.get(ch_key, [])
+        # Build assignment_id -> latest-submission dict once per chapter so the
+        # per-assignment lookup is O(1). Submissions are already filtered to
+        # the latest per assignment upstream in _aggregate_assignment_submissions.
+        sub_by_assignment: dict[str, dict[str, Any]] = {s["assignment_id"]: s for s in submissions}
+        for a in assignments:
+            latest = sub_by_assignment.get(str(a.id))
+            if latest is None:
+                continue
+            assignment_results.append(
+                {
+                    "chapter_title": chapter_title_map.get(str(ch_id), ""),
+                    "chapter_id": str(ch_id),
+                    "title": assignment_title_by_id.get(str(a.id), ""),
+                    "status": latest["status"],
+                    "grade": latest["grade"],
+                    "max_score": a.max_score or 0,
+                }
+            )
+    return assignment_results
+
+
+def _quiz_avg(quiz_results: list[dict[str, Any]]) -> int | None:
+    """Mean quiz percentage, mirroring the (now removed) frontend ``quizAvg``."""
+    if not quiz_results:
+        return None
+    total = sum((q["score"] / q["max_score"] * 100) if q["max_score"] else 0.0 for q in quiz_results)
+    return round(total / len(quiz_results))
+
+
+def _assignment_avg(assignment_results: list[dict[str, Any]]) -> int | None:
+    """Mean graded-assignment percentage, mirroring the frontend ``assignmentAvg``."""
+    graded = [a for a in assignment_results if a["grade"] is not None]
+    if not graded:
+        return None
+    total = sum((a["grade"] / a["max_score"] * 100) if a["max_score"] else 0.0 for a in graded)
+    return round(total / len(graded))
+
+
+def _overall_grade(quiz_avg: int | None, assignment_avg: int | None) -> int | None:
+    """Unweighted mean of the present averages, mirroring frontend ``overallGrade``."""
+    scores = [s for s in (quiz_avg, assignment_avg) if s is not None]
+    if not scores:
+        return None
+    return round(sum(scores) / len(scores))
+
+
+def _latest_activity_iso(enrolled_at: datetime | None, quiz_ts: datetime | None, sub_ts: datetime | None) -> str | None:
+    latest = enrolled_at
+    for ts in (quiz_ts, sub_ts):
+        if ts and (latest is None or ts > latest):
+            latest = ts
+    return latest.isoformat() if latest else None
+
+
+def _build_chapter_infos(
+    uid: str,
+    chapters: list[Chapter],
+    user_progress: dict[str, ChapterProgress],
+    best_by_user_chapter: dict[tuple[str, str], dict[str, Any]],
+    subs_by_user_chapter: dict[tuple[str, str], list[dict[str, Any]]],
+    assignment_by_id_str: dict[str, Assignment],
+) -> list[dict[str, Any]]:
+    """Per-chapter completion + embedded quiz/assignment result for one student.
+
+    Shared by the row-expand detail (progress board) and the full gradebook
+    matrix, which both need the per-chapter view for a student.
+    """
+    chapter_infos = []
+    for ch in chapters:
+        cp = user_progress.get(str(ch.id))
+        ch_key = (uid, str(ch.id))
+        best = best_by_user_chapter.get(ch_key)
+        quiz_data = None
+        if best is not None:
+            quiz_data = {"score": best["score"], "max_score": best["max_score"], "passed": best["passed"]}
+        ch_subs = subs_by_user_chapter.get(ch_key, [])
+        asgn_data = None
+        if ch_subs:
+            latest_sub = max(ch_subs, key=lambda s: s["submitted_at"] or datetime.min)
+            asgn = assignment_by_id_str.get(latest_sub["assignment_id"])
+            max_score = asgn.max_score if asgn is not None else 100
+            asgn_data = {"status": latest_sub["status"], "grade": latest_sub["grade"], "max_score": max_score}
+        chapter_infos.append(
+            {
+                "id": str(ch.id),
+                "title": ch.title,
+                "module_id": str(ch.module_id),
+                "chapter_type": ch.chapter_type or "reading",
+                "requires_completion": bool(ch.requires_completion),
+                "completed": cp is not None,
+                "completed_by": cp.completion_type if cp else None,
+                "quiz_result": quiz_data,
+                "assignment_result": asgn_data,
+            }
+        )
+    return chapter_infos
+
+
 def build_course_student_progress(db: Session, course: Course, course_id: str) -> dict[str, Any]:
-    """Return the full teacher-dashboard progress payload for a course."""
+    """Teacher progress-board LIST payload: one lightweight summary row per
+    enrolled student — scalars plus server-computed quiz/assignment/overall
+    averages. The heavy per-chapter breakdown (``chapters``) and the full
+    quiz/assignment result arrays are NOT included here; they're fetched
+    per-student on row expand via :func:`build_student_chapter_detail`.
+
+    This keeps the list response O(students) instead of O(students x chapters):
+    a 250-student x 240-chapter course used to emit ~60k chapter objects in one
+    response. The averages still need the per-student result rollups, but those
+    arrays are computed and discarded rather than serialised.
+    """
     populate_spine_texts(db, [course])
     chapters, module_map, chapter_title_map = _load_course_structure(db, course_id)
     chapter_ids = [c.id for c in chapters]
     gradable_chapter_ids = [c.id for c in chapters if c.chapter_type in GRADABLE_CHAPTER_TYPES]
 
     quiz_map, assignment_map = _load_chapter_quizzes_and_assignments(db, chapter_ids)
-
     best_by_user_chapter, attempts_by_user_chapter, latest_quiz_by_user = _aggregate_quiz_results(db, quiz_map)
-
     subs_by_user_chapter, assignment_by_id_str, latest_sub_by_user = _aggregate_assignment_submissions(
         db, assignment_map
     )
-
-    # Phase 5e3: assignments.title column dropped — bulk-fetch the
-    # source-language title from cv for the dashboard rendering below.
-    # Any-locale fallback keeps the lookup defensive against missing
-    # rows (the dashboard prefers showing *something* over crashing).
-    assignment_title_by_id: dict[str, str] = {}
-    if assignment_by_id_str:
-        from app.services.content_versions import fetch_cv_entity_texts_with_fallback
-
-        source_locale = course.source_locale or "en"
-        cv_titles = fetch_cv_entity_texts_with_fallback(
-            db,
-            entity_type="assignment",
-            entity_ids=list(assignment_by_id_str.keys()),
-            fields=["title"],
-            display_locale=source_locale,
-            source_locale=source_locale,
-        )
-        assignment_title_by_id = {aid: (cv_titles.get((aid, "title")) or "") for aid in assignment_by_id_str}
-
-    progress_by_user = _load_completed_progress(db, chapter_ids)
+    assignment_title_by_id = _load_assignment_titles(db, course, assignment_by_id_str)
+    progress_by_user = _load_completed_progress(db, gradable_chapter_ids)
 
     enrollments = (
         db.query(Enrollment, User)
@@ -309,93 +463,16 @@ def build_course_student_progress(db: Session, course: Course, course_id: str) -
     student_progress = []
     for enrollment, user in enrollments:
         uid = str(user.id)
-
-        quiz_results = []
-        for ch_id in quiz_map:
-            ch_key = (uid, str(ch_id))
-            best = best_by_user_chapter.get(ch_key)
-            if best is None:
-                continue
-            quiz_results.append(
-                {
-                    "chapter_title": chapter_title_map.get(str(ch_id), ""),
-                    "chapter_id": str(ch_id),
-                    "quiz_id": best["quiz_id"],
-                    "score": best["score"],
-                    "max_score": best["max_score"],
-                    "passed": best["passed"],
-                    "attempts_used": attempts_by_user_chapter.get(ch_key, 0),
-                }
-            )
-
-        assignment_results = []
-        for ch_id, assignments in assignment_map.items():
-            ch_key = (uid, str(ch_id))
-            submissions = subs_by_user_chapter.get(ch_key, [])
-            # Build assignment_id -> latest-submission dict once per chapter
-            # so the per-assignment lookup is O(1) instead of an O(M) list
-            # comprehension. Submissions are already filtered to the latest
-            # per assignment upstream in _aggregate_assignment_submissions.
-            sub_by_assignment: dict[str, dict[str, Any]] = {s["assignment_id"]: s for s in submissions}
-            for a in assignments:
-                latest = sub_by_assignment.get(str(a.id))
-                if latest is None:
-                    continue
-                assignment_results.append(
-                    {
-                        "chapter_title": chapter_title_map.get(str(ch_id), ""),
-                        "chapter_id": str(ch_id),
-                        "title": assignment_title_by_id.get(str(a.id), ""),
-                        "status": latest["status"],
-                        "grade": latest["grade"],
-                        "max_score": a.max_score or 0,
-                    }
-                )
-
+        quiz_results = _build_quiz_results(
+            uid, quiz_map, best_by_user_chapter, attempts_by_user_chapter, chapter_title_map
+        )
+        assignment_results = _build_assignment_results(
+            uid, assignment_map, subs_by_user_chapter, assignment_title_by_id, chapter_title_map
+        )
         user_progress = progress_by_user.get(uid, {})
         chapters_completed = sum(1 for cid in gradable_chapter_ids if cid in user_progress)
-
-        chapter_infos = []
-        for ch in chapters:
-            cp = user_progress.get(str(ch.id))
-            ch_key = (uid, str(ch.id))
-            best = best_by_user_chapter.get(ch_key)
-            quiz_data = None
-            if best is not None:
-                quiz_data = {
-                    "score": best["score"],
-                    "max_score": best["max_score"],
-                    "passed": best["passed"],
-                }
-            ch_subs = subs_by_user_chapter.get(ch_key, [])
-            asgn_data = None
-            if ch_subs:
-                latest_sub = max(ch_subs, key=lambda s: s["submitted_at"] or datetime.min)
-                asgn = assignment_by_id_str.get(latest_sub["assignment_id"])
-                max_score = asgn.max_score if asgn is not None else 100
-                asgn_data = {
-                    "status": latest_sub["status"],
-                    "grade": latest_sub["grade"],
-                    "max_score": max_score,
-                }
-            chapter_infos.append(
-                {
-                    "id": str(ch.id),
-                    "title": ch.title,
-                    "module_id": str(ch.module_id),
-                    "chapter_type": ch.chapter_type or "reading",
-                    "requires_completion": bool(ch.requires_completion),
-                    "completed": cp is not None,
-                    "completed_by": cp.completion_type if cp else None,
-                    "quiz_result": quiz_data,
-                    "assignment_result": asgn_data,
-                }
-            )
-
-        latest_activity = enrollment.enrolled_at
-        for ts in (latest_quiz_by_user.get(uid), latest_sub_by_user.get(uid)):
-            if ts and (latest_activity is None or ts > latest_activity):
-                latest_activity = ts
+        quiz_avg = _quiz_avg(quiz_results)
+        assignment_avg = _assignment_avg(assignment_results)
 
         student_progress.append(
             {
@@ -406,10 +483,12 @@ def build_course_student_progress(db: Session, course: Course, course_id: str) -
                 "progress": enrollment.progress,
                 "chapters_completed": chapters_completed,
                 "total_chapters": len(gradable_chapter_ids),
-                "quiz_results": quiz_results,
-                "assignment_results": assignment_results,
-                "last_activity": latest_activity.isoformat() if latest_activity else None,
-                "chapters": chapter_infos,
+                "quiz_avg": quiz_avg,
+                "assignment_avg": assignment_avg,
+                "overall_grade": _overall_grade(quiz_avg, assignment_avg),
+                "last_activity": _latest_activity_iso(
+                    enrollment.enrolled_at, latest_quiz_by_user.get(uid), latest_sub_by_user.get(uid)
+                ),
             }
         )
 
@@ -420,4 +499,100 @@ def build_course_student_progress(db: Session, course: Course, course_id: str) -
         "total_students": len(enrollments),
         "modules": list(module_map.values()),
         "students": student_progress,
+    }
+
+
+def build_student_chapter_detail(db: Session, course: Course, course_id: str, student_id: str) -> dict[str, Any]:
+    """Per-student detail for the progress-board row expansion: the full
+    per-chapter breakdown plus the quiz/assignment result arrays for ONE
+    student. Every aggregation is scoped to ``student_id`` so this stays cheap
+    regardless of roster size.
+    """
+    populate_spine_texts(db, [course])
+    chapters, _module_map, chapter_title_map = _load_course_structure(db, course_id)
+    chapter_ids = [c.id for c in chapters]
+
+    quiz_map, assignment_map = _load_chapter_quizzes_and_assignments(db, chapter_ids)
+    best_by_user_chapter, attempts_by_user_chapter, _latest_quiz = _aggregate_quiz_results(
+        db, quiz_map, user_ids=[student_id]
+    )
+    subs_by_user_chapter, assignment_by_id_str, _latest_sub = _aggregate_assignment_submissions(
+        db, assignment_map, user_ids=[student_id]
+    )
+    assignment_title_by_id = _load_assignment_titles(db, course, assignment_by_id_str)
+    progress_by_user = _load_completed_progress(db, chapter_ids, user_ids=[student_id])
+    user_progress = progress_by_user.get(student_id, {})
+
+    quiz_results = _build_quiz_results(
+        student_id, quiz_map, best_by_user_chapter, attempts_by_user_chapter, chapter_title_map
+    )
+    assignment_results = _build_assignment_results(
+        student_id, assignment_map, subs_by_user_chapter, assignment_title_by_id, chapter_title_map
+    )
+
+    chapter_infos = _build_chapter_infos(
+        student_id, chapters, user_progress, best_by_user_chapter, subs_by_user_chapter, assignment_by_id_str
+    )
+
+    return {
+        "student_id": student_id,
+        "chapters": chapter_infos,
+        "quiz_results": quiz_results,
+        "assignment_results": assignment_results,
+    }
+
+
+def build_course_gradebook_matrix(db: Session, course: Course, course_id: str) -> dict[str, Any]:
+    """Full students x chapters matrix for the teacher GRADEBOOK.
+
+    Unlike the progress-board list (which is a per-student summary), the
+    gradebook renders an always-visible spreadsheet of every student against
+    every chapter, so it genuinely needs the per-chapter breakdown for the
+    whole roster. The top-level quiz/assignment result arrays the board's
+    detail carries are omitted — the gradebook reads only the per-chapter
+    ``quiz_result`` / ``assignment_result`` embedded in each chapter cell.
+    """
+    populate_spine_texts(db, [course])
+    chapters, module_map, _chapter_title_map = _load_course_structure(db, course_id)
+    chapter_ids = [c.id for c in chapters]
+    gradable_chapter_ids = [c.id for c in chapters if c.chapter_type in GRADABLE_CHAPTER_TYPES]
+
+    quiz_map, assignment_map = _load_chapter_quizzes_and_assignments(db, chapter_ids)
+    best_by_user_chapter, _attempts, _latest_quiz = _aggregate_quiz_results(db, quiz_map)
+    subs_by_user_chapter, assignment_by_id_str, _latest_sub = _aggregate_assignment_submissions(db, assignment_map)
+    progress_by_user = _load_completed_progress(db, gradable_chapter_ids)
+
+    enrollments = (
+        db.query(Enrollment, User)
+        .join(User, Enrollment.user_id == User.id)
+        # Mirror the board/analytics roster: deactivated students are excluded.
+        .filter(Enrollment.course_id == course_id, User.deactivated_at.is_(None))
+        .all()
+    )
+
+    students = []
+    for enrollment, user in enrollments:
+        uid = str(user.id)
+        user_progress = progress_by_user.get(uid, {})
+        students.append(
+            {
+                "id": uid,
+                "full_name": user.full_name or user.email,
+                "email": user.email,
+                "progress": enrollment.progress,
+                "chapters_completed": sum(1 for cid in gradable_chapter_ids if cid in user_progress),
+                "total_chapters": len(gradable_chapter_ids),
+                "chapters": _build_chapter_infos(
+                    uid, chapters, user_progress, best_by_user_chapter, subs_by_user_chapter, assignment_by_id_str
+                ),
+            }
+        )
+
+    return {
+        "course_id": course_id,
+        "course_title": course.title,
+        "total_chapters": len(gradable_chapter_ids),
+        "total_students": len(enrollments),
+        "modules": list(module_map.values()),
+        "students": students,
     }

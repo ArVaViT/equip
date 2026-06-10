@@ -1084,8 +1084,12 @@ def _seed_teacher_progress_dashboard(db: Session) -> tuple[str, uuid.UUID, uuid.
 class TestCourseStudentProgress:
     """GET /api/v1/progress/course/{course_id}/students — teacher dashboard."""
 
-    def test_happy_path_includes_quiz_assignment_and_chapters(self, client: TestClient, db: Session):
-        course_id, quiz_id, _asg_id, ch_quiz_id, ch_asg_id, ch_read_id = _seed_teacher_progress_dashboard(db)
+    def test_list_returns_summary_with_server_computed_averages(self, client: TestClient, db: Session):
+        # The list endpoint is a lightweight per-student summary: scalars plus
+        # server-computed quiz/assignment/overall averages. The heavy per-chapter
+        # breakdown + result arrays are NOT in the list payload — they're fetched
+        # per-student via the /detail endpoint on row expand.
+        course_id, *_ = _seed_teacher_progress_dashboard(db)
         r = client.get(f"/api/v1/progress/course/{course_id}/students")
         assert r.status_code == 200, r.text
         body = r.json()
@@ -1101,26 +1105,89 @@ class TestCourseStudentProgress:
         assert st["progress"] == 40
         assert st["chapters_completed"] == 1
         assert st["total_chapters"] == 2
-        assert len(st["quiz_results"]) == 1
-        qr = st["quiz_results"][0]
+        assert st["last_activity"] is not None
+        # Best quiz = 9/10 = 90%; assignment submitted but ungraded -> no avg.
+        assert st["quiz_avg"] == 90
+        assert st["assignment_avg"] is None
+        assert st["overall_grade"] == 90
+        # The list payload must stay slim — no per-student arrays.
+        assert "quiz_results" not in st
+        assert "assignment_results" not in st
+        assert "chapters" not in st
+
+    def test_detail_endpoint_returns_chapter_breakdown_and_arrays(self, client: TestClient, db: Session):
+        course_id, quiz_id, _asg_id, ch_quiz_id, ch_asg_id, ch_read_id = _seed_teacher_progress_dashboard(db)
+        r = client.get(f"/api/v1/progress/course/{course_id}/students/{STUDENT_ID}/detail")
+        assert r.status_code == 200, r.text
+        detail = r.json()
+        assert detail["student_id"] == str(STUDENT_ID)
+        assert len(detail["quiz_results"]) == 1
+        qr = detail["quiz_results"][0]
         assert qr["chapter_id"] == ch_quiz_id
         assert qr["quiz_id"] == str(quiz_id)
         assert qr["score"] == 9
         assert qr["passed"] is True
         assert qr["attempts_used"] == 2
-        assert len(st["assignment_results"]) == 1
-        ar = st["assignment_results"][0]
+        assert len(detail["assignment_results"]) == 1
+        ar = detail["assignment_results"][0]
         assert ar["chapter_id"] == ch_asg_id
         assert ar["title"] == "Essay"
         assert ar["status"] == "submitted"
         assert ar["max_score"] == 100
-        assert st["last_activity"] is not None
-        ch_infos = {c["id"]: c for c in st["chapters"]}
+        ch_infos = {c["id"]: c for c in detail["chapters"]}
         assert ch_infos[ch_quiz_id]["quiz_result"]["score"] == 9
         assert ch_infos[ch_quiz_id]["quiz_result"]["passed"] is True
         assert ch_infos[ch_asg_id]["assignment_result"]["status"] == "submitted"
         assert ch_infos[ch_read_id]["quiz_result"] is None
         assert ch_infos[ch_read_id]["assignment_result"] is None
+
+    def test_detail_404_when_student_not_enrolled(self, client: TestClient, db: Session):
+        course_id, *_ = _seed_teacher_progress_dashboard(db)
+        stranger = uuid.UUID("dddddddd-dddd-dddd-dddd-dddddddddddd")
+        r = client.get(f"/api/v1/progress/course/{course_id}/students/{stranger}/detail")
+        assert r.status_code == 404
+
+    def test_detail_403_for_non_owner(self, client: TestClient, db: Session):
+        _ensure_student(db)
+        _seed_foreign_course(db, course_id="foreign-prog-detail")
+        r = client.get(f"/api/v1/progress/course/foreign-prog-detail/students/{STUDENT_ID}/detail")
+        assert r.status_code == 403
+
+    def test_detail_403_for_student_role(self, student_client: TestClient, db: Session):
+        course_id, *_ = _seed_teacher_progress_dashboard(db)
+        r = student_client.get(f"/api/v1/progress/course/{course_id}/students/{STUDENT_ID}/detail")
+        assert r.status_code == 403
+
+    def test_gradebook_matrix_returns_per_student_chapters(self, client: TestClient, db: Session):
+        # The gradebook endpoint is the full students x chapters matrix: every
+        # enrolled student carries the per-chapter breakdown (with embedded
+        # quiz/assignment result), but NOT the top-level result arrays the
+        # board's detail endpoint uses.
+        course_id, _quiz_id, _asg_id, ch_quiz_id, ch_asg_id, ch_read_id = _seed_teacher_progress_dashboard(db)
+        r = client.get(f"/api/v1/progress/course/{course_id}/gradebook")
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["course_id"] == course_id
+        assert body["total_students"] == 1
+        assert len(body["modules"]) == 1
+        assert len(body["students"]) == 1
+        st = body["students"][0]
+        assert st["id"] == str(STUDENT_ID)
+        assert st["chapters_completed"] == 1
+        assert st["total_chapters"] == 2
+        # Matrix carries chapters with embedded results, not the board arrays.
+        assert "quiz_results" not in st
+        assert "assignment_results" not in st
+        ch_infos = {c["id"]: c for c in st["chapters"]}
+        assert ch_infos[ch_quiz_id]["quiz_result"]["score"] == 9
+        assert ch_infos[ch_asg_id]["assignment_result"]["status"] == "submitted"
+        assert ch_infos[ch_read_id]["quiz_result"] is None
+
+    def test_gradebook_matrix_403_for_non_owner(self, client: TestClient, db: Session):
+        _ensure_student(db)
+        _seed_foreign_course(db, course_id="foreign-gradebook")
+        r = client.get("/api/v1/progress/course/foreign-gradebook/gradebook")
+        assert r.status_code == 403
 
     def test_deactivated_student_excluded(self, client: TestClient, db: Session):
         # A soft-deleted student must not appear on the teacher progress board

@@ -123,32 +123,25 @@ export default function StudentProgress() {
   }, [data, search, sortBy, sortDir])
 
   const handleStudentChapterUpdate = useCallback(
-    (
-      studentId: string,
-      chapterId: string,
-      completed: boolean,
-      completedBy: "teacher" | "self" | null,
-    ) => {
+    (studentId: string, _chapterId: string, completed: boolean) => {
+      // The per-chapter detail now lives inside the expanded StudentRow; here
+      // we only optimistically bump the summary row's completion count +
+      // progress bar. Authoritative values refresh on next board load.
       setData((prev) => {
         if (!prev) return prev
         return {
           ...prev,
           students: prev.students.map((s) => {
             if (s.id !== studentId) return s
-            const updatedChapters = s.chapters?.map((ch) =>
-              ch.id === chapterId ? { ...ch, completed, completed_by: completedBy } : ch,
-            )
-            const completedCount =
-              updatedChapters?.filter((ch) => ch.completed).length ?? s.chapters_completed
+            const chaptersCompleted = completed
+              ? s.chapters_completed + 1
+              : Math.max(0, s.chapters_completed - 1)
             return {
               ...s,
-              chapters: updatedChapters,
-              chapters_completed: completed
-                ? s.chapters_completed + 1
-                : Math.max(0, s.chapters_completed - 1),
+              chapters_completed: chaptersCompleted,
               progress:
                 prev.total_chapters > 0
-                  ? Math.round((completedCount / prev.total_chapters) * 100)
+                  ? Math.min(100, Math.round((chaptersCompleted / prev.total_chapters) * 100))
                   : s.progress,
             }
           }),

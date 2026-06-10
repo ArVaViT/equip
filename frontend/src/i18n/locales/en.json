@@ -1188,6 +1188,9 @@
       "chaptersCompletedValue": "{{done}} of {{total}}",
       "progress": "Progress",
       "chapterBreakdown": "Chapter Breakdown",
+      "loadingDetail": "Loading chapter breakdown…",
+      "detailFailed": "Couldn't load the chapter breakdown.",
+      "retry": "Retry",
       "gradebookButton": "Gradebook",
       "viewAnalytics": "View Analytics"
     },

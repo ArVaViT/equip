@@ -14,38 +14,10 @@ export type ChapterInfo = StudentChapterInfo
 export type SortColumn = "name" | "progress" | "last_activity"
 export type SortDirection = "asc" | "desc"
 
-/** Average quiz percentage, or null if the student has no quiz attempts. */
-export function quizAvg(student: StudentData): number | null {
-  if (student.quiz_results.length === 0) return null
-  const total = student.quiz_results.reduce(
-    (sum, q) => sum + (q.score / q.max_score) * 100,
-    0,
-  )
-  return Math.round(total / student.quiz_results.length)
-}
-
-/** Average graded-assignment percentage, or null if nothing has been graded. */
-export function assignmentAvg(student: StudentData): number | null {
-  const graded = student.assignment_results.filter((a) => a.grade !== null)
-  if (graded.length === 0) return null
-  const total = graded.reduce((sum, a) => sum + (a.grade! / a.max_score) * 100, 0)
-  return Math.round(total / graded.length)
-}
-
-/**
- * Simple mean of quizAvg and assignmentAvg. We intentionally do NOT weight
- * by attempt count — a single low quiz shouldn't skew the grade more than
- * graded assignments would.
- */
-export function overallGrade(student: StudentData): number | null {
-  const scores: number[] = []
-  const qAvg = quizAvg(student)
-  const aAvg = assignmentAvg(student)
-  if (qAvg !== null) scores.push(qAvg)
-  if (aAvg !== null) scores.push(aAvg)
-  if (scores.length === 0) return null
-  return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
-}
+// quizAvg / assignmentAvg / overallGrade are now computed server-side and
+// arrive on the summary row (``quiz_avg`` / ``assignment_avg`` /
+// ``overall_grade``) so the board never has to load every student's full
+// result arrays. The per-chapter breakdown is fetched lazily on row expand.
 
 export function formatDate(d: string | null): string {
   if (!d) return "—"

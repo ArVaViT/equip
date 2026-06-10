@@ -41,18 +41,6 @@ export interface StudentProgressData {
   chapters_completed: number
   total_chapters: number
   chapters: ChapterInfo[]
-  quiz_results: Array<{
-    chapter_id: string
-    score: number
-    max_score: number
-    passed: boolean
-  }>
-  assignment_results: Array<{
-    chapter_id: string
-    status: string
-    grade: number | null
-    max_score: number
-  }>
 }
 
 export interface ModuleInfo {

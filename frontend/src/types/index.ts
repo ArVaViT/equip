@@ -403,6 +403,13 @@ export interface StudentAssignmentResult {
   max_score: number
 }
 
+/**
+ * Lightweight per-student summary row for the progress-board LIST. The heavy
+ * per-chapter breakdown + quiz/assignment result arrays are NOT here — they're
+ * fetched per student via ``getStudentProgressDetail`` when a row expands. The
+ * averages are computed server-side so the board never has to hold every
+ * student's full result set in memory.
+ */
 export interface StudentProgressEntry {
   id: string
   full_name: string
@@ -411,10 +418,43 @@ export interface StudentProgressEntry {
   progress: number
   chapters_completed: number
   total_chapters: number
+  quiz_avg: number | null
+  assignment_avg: number | null
+  overall_grade: number | null
+  last_activity: string | null
+}
+
+/** Per-student detail fetched lazily on progress-board row expansion. */
+export interface StudentProgressDetail {
+  student_id: string
+  chapters: StudentChapterInfo[]
   quiz_results: StudentQuizResult[]
   assignment_results: StudentAssignmentResult[]
-  last_activity: string | null
+}
+
+/** One row of the gradebook spreadsheet: a student + their full chapter matrix. */
+export interface StudentGradebookEntry {
+  id: string
+  full_name: string
+  email: string
+  progress: number
+  chapters_completed: number
+  total_chapters: number
   chapters: StudentChapterInfo[]
+}
+
+/**
+ * Full students x chapters matrix for the gradebook. Distinct from the slim
+ * ``StudentProgressResponse`` (progress-board list) because the gradebook
+ * renders every student against every chapter at once.
+ */
+export interface CourseGradebookMatrix {
+  course_id: string
+  course_title: string
+  total_chapters: number
+  total_students: number
+  modules: { id: string; title: string; order_index: number }[]
+  students: StudentGradebookEntry[]
 }
 
 export interface StudentProgressResponse {
