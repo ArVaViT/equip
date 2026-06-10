@@ -48,6 +48,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
 
 from app.core.database import _get_engine
@@ -329,13 +330,31 @@ def _ordered_chapter_ids(db: Session, *, course_id: str) -> list[str]:
     return [r[0] for r in rows]
 
 
+def _ensure_auth_user(db: Session, *, user_id: uuid.UUID, email: str) -> None:
+    """``profiles.id`` FKs to ``auth.users(id)`` — on real Postgres a profile
+    row can't exist without its auth row, so seed that first. SQLite test DBs
+    have no ``auth`` schema, so skip there (the FK isn't materialised). These
+    are ``@seed.invalid`` identities with no password — a staging/dev tool,
+    never for prod auth. ``ON CONFLICT DO NOTHING`` keeps it idempotent.
+    """
+    if db.bind is None or db.bind.dialect.name != "postgresql":
+        return
+    db.execute(
+        text("INSERT INTO auth.users (id, email) VALUES (:id, :email) ON CONFLICT (id) DO NOTHING"),
+        {"id": str(user_id), "email": email},
+    )
+    db.flush()
+
+
 def _ensure_student(db: Session, *, course_id: str, index: int) -> User:
     student_id = _student_id(course_id, index)
     student = db.query(User).filter(User.id == student_id).first()
     if student is None:
+        email = _student_email(course_id, index)
+        _ensure_auth_user(db, user_id=student_id, email=email)
         student = User(
             id=student_id,
-            email=_student_email(course_id, index),
+            email=email,
             full_name=f"Seed Student {index + 1}",
             role=UserRole.STUDENT.value,
         )
@@ -386,18 +405,22 @@ def seed_students(
         db.flush()
         enrolled += 1
 
-        # Mark the first ``done`` chapters complete for this student.
-        for chapter_id in chapter_ids[:done]:
-            exists = (
-                db.query(ChapterProgress)
-                .filter(
+        # Mark the first ``done`` chapters complete for this student. Fetch
+        # the student's already-recorded chapters in ONE query, then bulk-add
+        # the missing ones — the previous per-chapter existence check was
+        # O(students * chapters) round-trips (minutes of latency at pilot
+        # scale against a remote DB).
+        target = chapter_ids[:done]
+        if target:
+            existing = {
+                cid
+                for (cid,) in db.query(ChapterProgress.chapter_id).filter(
                     ChapterProgress.user_id == student.id,
-                    ChapterProgress.chapter_id == chapter_id,
+                    ChapterProgress.chapter_id.in_(target),
                 )
-                .first()
-            )
-            if exists is None:
-                db.add(
+            }
+            db.add_all(
+                [
                     ChapterProgress(
                         id=uuid.uuid4(),
                         user_id=student.id,
@@ -406,7 +429,10 @@ def seed_students(
                         completed_at=datetime.now(UTC),
                         completion_type="self",
                     )
-                )
+                    for chapter_id in target
+                    if chapter_id not in existing
+                ]
+            )
         if (i + 1) % 20 == 0:
             db.commit()
             logger.info("Committed through student %s", i + 1)
@@ -534,6 +560,13 @@ def purge(db: Session, *, course_id: str) -> dict:
 
     if student_ids:
         db.query(User).filter(User.id.in_(student_ids)).delete(synchronize_session=False)
+        # Profiles FK to auth.users — drop the seeded auth rows too so purge
+        # leaves nothing behind (postgres only; SQLite has no auth schema).
+        if db.bind is not None and db.bind.dialect.name == "postgresql":
+            db.execute(
+                text("DELETE FROM auth.users WHERE id = ANY(:ids)"),
+                {"ids": [str(sid) for sid in student_ids]},
+            )
 
     db.commit()
     return {

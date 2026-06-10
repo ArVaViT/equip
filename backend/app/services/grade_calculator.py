@@ -191,7 +191,10 @@ def calculate_all_student_grades(db: Session, course: Course):
     enrollments = (
         db.query(Enrollment.user_id, User.full_name, User.email)
         .join(User, User.id == Enrollment.user_id)
-        .filter(Enrollment.course_id == course.id)
+        # Exclude deactivated (soft-deleted) students so the gradebook,
+        # class average, and CSV match the analytics roster — they must not
+        # count ghosts (mirrors analytics.py + cohort_capacity.py).
+        .filter(Enrollment.course_id == course.id, User.deactivated_at.is_(None))
         .all()
     )
     if not enrollments:

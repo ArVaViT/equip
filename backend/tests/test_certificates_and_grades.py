@@ -810,6 +810,28 @@ class TestGradeSummary:
         assert r.json()["students"] == []
         assert r.json()["class_average"] == 0.0
 
+    def test_deactivated_student_excluded(self, client: TestClient, db: Session):
+        # A soft-deleted student keeps their enrollment but must NOT appear in
+        # the gradebook summary or drag the class average — matches the
+        # analytics roster (the recently-fixed deactivated-exclusion rule).
+        _seed_enrolled_course(db, progress=50)  # live STUDENT_ID
+        ghost_id = uuid.UUID("dddddddd-dddd-dddd-dddd-dddddddddddd")
+        db.add(
+            User(
+                id=ghost_id,
+                email="ghost@example.com",
+                full_name="Ghost",
+                role=UserRole.STUDENT.value,
+                deactivated_at=datetime(2026, 1, 1, tzinfo=UTC),
+            )
+        )
+        db.add(Enrollment(id="enroll-ghost", user_id=ghost_id, course_id="course-1", progress=0))
+        db.commit()
+
+        body = client.get("/api/v1/grades/course/course-1/summary").json()
+        ids = {s["student_id"] for s in body["students"]}
+        assert ids == {str(STUDENT_ID)}  # ghost excluded
+
     def test_not_owner(self, client: TestClient, db: Session):
         _seed_foreign_course(db)
         r = client.get("/api/v1/grades/course/other-course/summary")
@@ -1099,6 +1121,27 @@ class TestCourseStudentProgress:
         assert ch_infos[ch_asg_id]["assignment_result"]["status"] == "submitted"
         assert ch_infos[ch_read_id]["quiz_result"] is None
         assert ch_infos[ch_read_id]["assignment_result"] is None
+
+    def test_deactivated_student_excluded(self, client: TestClient, db: Session):
+        # A soft-deleted student must not appear on the teacher progress board
+        # nor inflate total_students (mirrors analytics + grades).
+        course_id, *_ = _seed_teacher_progress_dashboard(db)
+        ghost_id = uuid.UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
+        db.add(
+            User(
+                id=ghost_id,
+                email="ghost-prog@example.com",
+                full_name="Ghost",
+                role=UserRole.STUDENT.value,
+                deactivated_at=datetime(2026, 1, 1, tzinfo=UTC),
+            )
+        )
+        db.add(Enrollment(id=f"enroll-ghost-{course_id}", user_id=ghost_id, course_id=course_id, progress=0))
+        db.commit()
+
+        body = client.get(f"/api/v1/progress/course/{course_id}/students").json()
+        assert body["total_students"] == 1
+        assert {s["id"] for s in body["students"]} == {str(STUDENT_ID)}
 
     def test_empty_enrollments(self, client: TestClient, db: Session):
         _seed_course(db, course_id="course-empty-stu")
