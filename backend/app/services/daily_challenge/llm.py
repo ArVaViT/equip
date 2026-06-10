@@ -59,6 +59,9 @@ class GeminiPromptClient:
         default_model: str = "gemini-2.5-flash-lite",
         timeout_seconds: float = 60.0,
         max_retries: int = 2,
+        min_request_interval_seconds: float = 0.0,
+        retry_backoff_seconds: float = 0.5,
+        retry_backoff_cap_seconds: float = 30.0,
         client: httpx.Client | None = None,
     ) -> None:
         if not api_key:
@@ -66,6 +69,15 @@ class GeminiPromptClient:
         self._api_key = api_key
         self._default_model = default_model
         self._max_retries = max_retries
+        # Proactive client-side rate limit: keep at least this long between
+        # requests so a burst-heavy orchestrator run stays under a free-tier
+        # per-minute quota (0 = no throttle, the default for paid keys). On a
+        # 429 we still back off — but spacing requests up front is what stops
+        # the free tier 429-ing *mid-passage* and yielding half-built output.
+        self._min_interval = max(0.0, min_request_interval_seconds)
+        self._retry_backoff = max(0.0, retry_backoff_seconds)
+        self._retry_backoff_cap = max(0.0, retry_backoff_cap_seconds)
+        self._last_request_at: float | None = None
         self._owns_client = client is None
         self._client = client or httpx.Client(
             timeout=httpx.Timeout(connect=5.0, read=timeout_seconds, write=10.0, pool=5.0),
@@ -74,6 +86,20 @@ class GeminiPromptClient:
     def close(self) -> None:
         if self._owns_client:
             self._client.close()
+
+    def _throttle(self) -> None:
+        """Sleep just enough to keep consecutive requests ``_min_interval``
+        seconds apart. No-op when the interval is 0 (paid keys)."""
+        if self._min_interval <= 0:
+            return
+        if self._last_request_at is not None:
+            wait = self._min_interval - (time.monotonic() - self._last_request_at)
+            if wait > 0:
+                time.sleep(wait)
+        self._last_request_at = time.monotonic()
+
+    def _backoff_delay(self, attempt: int) -> float:
+        return min(self._retry_backoff_cap, self._retry_backoff * (2**attempt))
 
     def __enter__(self) -> GeminiPromptClient:
         return self
@@ -128,6 +154,7 @@ class GeminiPromptClient:
 
         last_error: Exception | None = None
         for attempt in range(self._max_retries + 1):
+            self._throttle()
             try:
                 response = self._client.post(url, json=payload, headers=headers)
             except httpx.HTTPError as exc:
@@ -156,7 +183,7 @@ class GeminiPromptClient:
                     raise LLMError(f"Gemini returned {response.status_code}: {response.text[:200]}")
 
             if attempt < self._max_retries:
-                time.sleep(min(0.5, 0.1 * (2**attempt)))
+                time.sleep(self._backoff_delay(attempt))
 
         raise LLMError(f"Gemini prompt failed after retries: {last_error!r}")
 
