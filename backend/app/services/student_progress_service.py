@@ -299,7 +299,10 @@ def build_course_student_progress(db: Session, course: Course, course_id: str) -
     enrollments = (
         db.query(Enrollment, User)
         .join(User, Enrollment.user_id == User.id)
-        .filter(Enrollment.course_id == course_id)
+        # Exclude deactivated (soft-deleted) students so the teacher progress
+        # board + total_students match the analytics roster (mirrors
+        # analytics.py / cohort_capacity.py).
+        .filter(Enrollment.course_id == course_id, User.deactivated_at.is_(None))
         .all()
     )
 
