@@ -31,7 +31,13 @@ from app.schemas.announcement import AnnouncementResponse
 from app.schemas.assignment import AssignmentResponse
 from app.schemas.calendar import CourseEventResponse
 from app.schemas.chapter_block import BlockResponse
-from app.schemas.course import ChapterResponse, CourseResponse, CourseSummary, ModuleResponse
+from app.schemas.course import (
+    ChapterResponse,
+    CourseDashboardSummary,
+    CourseResponse,
+    CourseSummary,
+    ModuleResponse,
+)
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.schemas.quiz import QuizResponse, QuizStudentResponse
 from app.services.content_versions import (
@@ -134,11 +140,49 @@ def build_localized_course_summaries(
     return out
 
 
+def build_localized_course_dashboard_summaries(
+    db: Session,
+    courses: list[Course],
+    display_locale: LocaleCode,
+) -> list[CourseDashboardSummary]:
+    """Like :func:`build_localized_course_summaries` but emits the slim
+    ``CourseDashboardSummary`` (no ``modules``) for ``/users/me/courses``.
+
+    Resolves only the course-level title + description against
+    ``content_versions``; never touches the module/chapter relationship, so
+    serialising the result triggers no lazy-load on a tree-less course.
+    """
+    if not courses:
+        return []
+    by_src: dict[str, list[str]] = {}
+    for c in courses:
+        by_src.setdefault(normalize_locale(c.source_locale), []).append(c.id)
+    texts: dict[tuple[str, str], str | None] = {}
+    for src_locale, ids in by_src.items():
+        texts.update(
+            fetch_cv_entity_texts_with_fallback(
+                db,
+                entity_type="course",
+                entity_ids=ids,
+                fields=["title", "description"],
+                display_locale=display_locale,
+                source_locale=src_locale,
+            )
+        )
+    out: list[CourseDashboardSummary] = []
+    for c in courses:
+        c.title = texts.get((c.id, "title")) or ""
+        c.description = texts.get((c.id, "description"))
+        out.append(CourseDashboardSummary.model_validate(c, from_attributes=True))
+    return out
+
+
 def populate_spine_texts(
     db: Session,
     courses: list[Course],
     *,
     display_locale: LocaleCode | None = None,
+    hydrate_modules: bool = True,
 ) -> None:
     """Phase 5g: ``courses.title|description`` and ``modules.title|description``
     columns dropped. Hydrate each course (and every loaded module/chapter
@@ -197,7 +241,12 @@ def populate_spine_texts(
     # ── modules (every module attached to every course, grouped by the
     # parent course's source_locale so one bulk cv query covers each tier).
     # ``c.modules`` triggers SA's lazy-load if the relationship hasn't been
-    # eager-fetched yet; the readiness service relies on that. ──
+    # eager-fetched yet; the readiness service relies on that. The dashboard
+    # list (``/users/me/courses``) loads courses with NO module tree and only
+    # needs course-level text, so it passes ``hydrate_modules=False`` to skip
+    # this block and avoid an N+1 lazy-load over modules it never serialises. ──
+    if not hydrate_modules:
+        return
     modules_by_src: dict[str, list[Module]] = {}
     for c in courses:
         mods = list(c.modules)

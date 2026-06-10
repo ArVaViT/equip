@@ -191,6 +191,29 @@ class TestGetMyCourses:
         resp = anon_client.get("/api/v1/users/me/courses")
         assert resp.status_code in (401, 403)
 
+    def test_dashboard_payload_omits_module_tree(self, student_client: TestClient, db: Session):
+        """The dashboard list view must NOT carry the module/chapter tree.
+
+        ``/users/me/courses`` is the highest-traffic screen; it serialises
+        only the course scalars + the enrollment's progress, and no
+        ``getMyCourses`` consumer reads ``course.modules``. This locks the
+        slim ``CourseDashboardSummary`` shape (no ``modules`` field) + the
+        tree-less loader so a future change can't silently reintroduce the
+        per-enrolled-course full-tree over-fetch (240+ chapters on a fat
+        course) discovered in the fat-course audit.
+        """
+        _seed_course(db)
+        _seed_module(db)
+        _seed_chapter(db)
+        _seed_enrollment(db, user_id=STUDENT_ID)
+        resp = student_client.get("/api/v1/users/me/courses")
+        assert resp.status_code == 200
+        data = resp.json()
+        row = next(e for e in data if e["course_id"] == "course-1")
+        assert row["course"]["title"] == "Test Course"
+        # The module (and therefore chapter) tree is absent from the payload.
+        assert "modules" not in row["course"]
+
 
 # ===================================================================
 # USERS — self-account deletion has been removed. Only admins can hard

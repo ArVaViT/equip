@@ -176,8 +176,32 @@ class EnrollmentResponse(BaseModel):
     course: CourseResponse | None = None
 
 
+class CourseDashboardSummary(CourseBase):
+    """Course shape for the student-dashboard list (``/users/me/courses``).
+
+    Deliberately omits ``modules`` (and therefore the chapter level): the
+    dashboard renders only the course title + the enrollment's progress, and
+    no ``getMyCourses`` consumer reads ``course.modules``. Keeping this shape
+    free of the module/chapter relationship lets the loader skip the tree
+    entirely — no eager full-tree fetch, no per-module lazy-load on serialise.
+    See ``course_service.get_user_courses``.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    status: str = "draft"
+    access_mode: Literal["public", "institute"] = "public"
+    created_by: UUID | None = None
+    created_at: datetime
+    updated_at: datetime | None = None
+    deleted_at: datetime | None = None
+    enrollment_start: datetime | None = None
+    enrollment_end: datetime | None = None
+
+
 class EnrollmentSummaryResponse(BaseModel):
-    """Enrollment for list views — embeds the slim CourseSummary."""
+    """Enrollment for the dashboard list — embeds the slim CourseDashboardSummary."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -187,7 +211,7 @@ class EnrollmentSummaryResponse(BaseModel):
     cohort_id: UUID | None = None
     enrolled_at: datetime
     progress: int
-    course: CourseSummary | None = None
+    course: CourseDashboardSummary | None = None
 
 
 class CourseTranslationResponse(BaseModel):

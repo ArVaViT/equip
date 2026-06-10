@@ -10,13 +10,13 @@ from app.api.dependencies import get_current_user, require_admin
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.user import User
-from app.schemas.course import CourseSummary, EnrollmentSummaryResponse
+from app.schemas.course import CourseDashboardSummary, EnrollmentSummaryResponse
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.schemas.user import PreferredLocaleUpdate, UserResponse
 from app.services.audit_service import log_action
 from app.services.course_service import get_user_courses
 from app.services.translation.resolve_for_display import (
-    build_localized_course_summaries,
+    build_localized_course_dashboard_summaries,
     populate_spine_texts,
     should_apply_course_translation_overlay,
 )
@@ -54,7 +54,10 @@ def get_my_courses(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[EnrollmentSummaryResponse]:
-    # Dashboard view: slim payload (chapter body content stripped).
+    # Dashboard view: slim payload — only course scalars (no module/chapter
+    # tree). ``get_user_courses`` loads courses WITHOUT the tree, so all text
+    # hydration here is course-only (``hydrate_modules=False``) to avoid an
+    # N+1 lazy-load over modules the dashboard never renders.
     response.headers["Vary"] = "Accept-Language"
     display_locale: LocaleCode = normalize_locale(accept_language)
     rows = get_user_courses(db, current_user.id, skip=skip, limit=limit)
@@ -63,15 +66,16 @@ def get_my_courses(
     courses = [e.course for e in rows if e.course is not None]
     if not courses:
         return [EnrollmentSummaryResponse.model_validate(e, from_attributes=True) for e in rows]
-    # Pre-hydrate at the source locale for the owner / admin path. The
-    # student / non-owner path uses a localized summary; per-course
-    # overlay choice depends on the caller's role.
-    populate_spine_texts(db, courses)
+    # Pre-hydrate course title/description at the source locale (baseline used
+    # by the owner / admin non-overlay path). The student / non-owner path
+    # overwrites with a display-locale summary below; overlay choice is
+    # per-course and depends on the caller's role.
+    populate_spine_texts(db, courses, hydrate_modules=False)
     localized = {
         c.id: s
         for c, s in zip(
             courses,
-            build_localized_course_summaries(db, courses, display_locale),
+            build_localized_course_dashboard_summaries(db, courses, display_locale),
             strict=True,
         )
     }
@@ -84,7 +88,7 @@ def get_my_courses(
         summary = (
             localized[c.id]
             if should_apply_course_translation_overlay(course=c, current_user=current_user)
-            else CourseSummary.model_validate(c, from_attributes=True)
+            else CourseDashboardSummary.model_validate(c, from_attributes=True)
         )
         base = EnrollmentSummaryResponse.model_validate(e, from_attributes=True)
         out.append(base.model_copy(update={"course": summary}))
