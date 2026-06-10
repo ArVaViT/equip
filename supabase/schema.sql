@@ -1176,6 +1176,13 @@ CREATE INDEX ix_certificates_course_id ON public.certificates USING btree (cours
 
 
 --
+-- Name: ix_certificates_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_certificates_status ON public.certificates USING btree (status);
+
+
+--
 -- Name: ix_certificates_teacher_approved_by; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1208,6 +1215,13 @@ CREATE INDEX ix_chapter_blocks_quiz_id ON public.chapter_blocks USING btree (qui
 --
 
 CREATE INDEX ix_chapter_progress_chapter_id ON public.chapter_progress USING btree (chapter_id);
+
+
+--
+-- Name: ix_chapter_progress_chapter_user_completed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_chapter_progress_chapter_user_completed ON public.chapter_progress USING btree (chapter_id, user_id) WHERE completed;
 
 
 --
@@ -1488,6 +1502,13 @@ CREATE INDEX ix_quiz_answers_selected_option_id ON public.quiz_answers USING btr
 --
 
 CREATE INDEX ix_quiz_attempts_quiz_id ON public.quiz_attempts USING btree (quiz_id);
+
+
+--
+-- Name: ix_quiz_attempts_quiz_user_completed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_quiz_attempts_quiz_user_completed ON public.quiz_attempts USING btree (quiz_id, user_id) WHERE (completed_at IS NOT NULL);
 
 
 --

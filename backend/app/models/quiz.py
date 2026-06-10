@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -66,6 +66,14 @@ class QuizAttempt(Base):
     __table_args__ = (
         Index("ix_quiz_attempts_user_quiz", "user_id", "quiz_id"),
         Index("ix_quiz_attempts_quiz_id", "quiz_id"),
+        # Partial composite for _aggregate_quiz_results: filters
+        # `quiz_id IN (...) AND completed_at IS NOT NULL`, windows by user/quiz.
+        Index(
+            "ix_quiz_attempts_quiz_user_completed",
+            "quiz_id",
+            "user_id",
+            postgresql_where=text("completed_at IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)

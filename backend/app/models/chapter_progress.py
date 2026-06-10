@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, UniqueConstraint, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -23,6 +23,14 @@ class ChapterProgress(Base):
         # ``user_id`` via its leading column; keep only the chapter-side
         # index for the "all progress rows for chapter X" access pattern.
         Index("ix_chapter_progress_chapter_id", "chapter_id"),
+        # Partial composite for _load_completed_progress: filters
+        # `chapter_id IN (...) AND completed [AND user_id IN (...)]`.
+        Index(
+            "ix_chapter_progress_chapter_user_completed",
+            "chapter_id",
+            "user_id",
+            postgresql_where=text("completed"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
