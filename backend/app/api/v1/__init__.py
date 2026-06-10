@@ -17,6 +17,7 @@ from app.api.v1 import (
     daily_challenge_archive,
     grades,
     health,
+    internal_daily_challenge_worker,
     internal_translation_worker,
     notifications,
     prerequisites,
@@ -52,6 +53,7 @@ api_router.include_router(calendar_ical.router)
 api_router.include_router(verse_of_the_day.router)
 api_router.include_router(admin_translations.router)
 api_router.include_router(internal_translation_worker.router)
+api_router.include_router(internal_daily_challenge_worker.router)
 api_router.include_router(daily_challenge.router)
 api_router.include_router(daily_challenge_archive.router)
 api_router.include_router(admin_daily_challenge.router)

@@ -20,6 +20,10 @@
     {
       "path": "/api/v1/internal/translation-worker",
       "schedule": "*/1 * * * *"
+    },
+    {
+      "path": "/api/v1/internal/daily-challenge-worker",
+      "schedule": "0 9 * * *"
     }
   ]
 }
