@@ -12,6 +12,7 @@ import { FileBlockEditor } from "./FileBlockEditor"
 
 interface Props {
   block: ChapterBlock
+  courseId: string
   chapterId: string
   index: number
   expanded: boolean
@@ -31,6 +32,7 @@ interface Props {
  */
 export function BlockRow({
   block,
+  courseId,
   chapterId,
   index,
   expanded,
@@ -114,6 +116,7 @@ export function BlockRow({
           {block.block_type === "file" && (
             <FileBlockEditor
               block={block}
+              courseId={courseId}
               chapterId={chapterId}
               onUpdated={onBlockUpdated}
             />

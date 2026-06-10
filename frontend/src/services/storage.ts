@@ -161,10 +161,15 @@ export const storageService = {
    * is ever stored in the database, so rotating the Supabase JWT secret
    * doesn't invalidate anything.
    */
-  async uploadBlockFile(chapterId: string, file: File): Promise<UploadedBlockFile> {
+  async uploadBlockFile(courseId: string, chapterId: string, file: File): Promise<UploadedBlockFile> {
     const timestamp = Date.now()
     const safeName = sanitizeFileName(file.name)
-    const path = `${chapterId}/${timestamp}-${safeName}`
+    // First path segment MUST be the course id: the `course-materials`
+    // bucket's RLS policy (`course_materials_enrolled_read`) authorises a
+    // download by matching `foldername[1]` against the caller's enrolment /
+    // course ownership. A chapter-id-first path (the old shape) matches no
+    // course, so enrolled students got a 400 when signing the file.
+    const path = `${courseId}/${chapterId}/${timestamp}-${safeName}`
 
     const { error } = await supabase.storage
       .from(COURSE_MATERIALS_BUCKET)

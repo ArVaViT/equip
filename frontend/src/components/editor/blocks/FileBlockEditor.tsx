@@ -11,6 +11,7 @@ import type { ChapterBlock } from "@/types"
 
 interface Props {
   block: ChapterBlock
+  courseId: string
   chapterId: string
   onUpdated: (updated: ChapterBlock) => void
 }
@@ -20,7 +21,7 @@ interface Props {
  * single file. Owns its own "uploading" state so sibling blocks aren't
  * affected by this block's upload.
  */
-export function FileBlockEditor({ block, chapterId, onUpdated }: Props) {
+export function FileBlockEditor({ block, courseId, chapterId, onUpdated }: Props) {
   const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -29,7 +30,7 @@ export function FileBlockEditor({ block, chapterId, onUpdated }: Props) {
   const upload = async (file: File) => {
     setUploading(true)
     try {
-      const { bucket, path, name } = await storageService.uploadBlockFile(chapterId, file)
+      const { bucket, path, name } = await storageService.uploadBlockFile(courseId, chapterId, file)
       const updated = await coursesService.updateBlock(block.id, {
         file_bucket: bucket,
         file_path: path,
