@@ -15,8 +15,6 @@ from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
 
-from ._queries import _COURSE_TREE
-
 if TYPE_CHECKING:
     from uuid import UUID
 
@@ -88,10 +86,19 @@ def get_user_courses(
     skip: int = 0,
     limit: int | None = None,
 ) -> list[Enrollment]:
+    # Dashboard list view: load the enrollment + its course SCALARS only — no
+    # module/chapter tree. ``/users/me/courses`` is the highest-traffic screen
+    # and serialises ``EnrollmentSummaryResponse`` whose embedded
+    # ``CourseDashboardSummary`` carries only id/title/progress-relevant scalar
+    # fields (no ``modules``). The old loader eager-loaded the full
+    # ``_COURSE_TREE`` (240+ chapters on a fat course) only for Pydantic to
+    # discard them; a modules-only loader would instead lazy-load chapters
+    # per module during serialisation (N+1). Dropping the tree entirely means
+    # the slim schema never touches the relationship, so neither happens.
     query = (
         db.query(Enrollment)
         .join(Course, Course.id == Enrollment.course_id)
-        .options(joinedload(Enrollment.course).options(*_COURSE_TREE))
+        .options(joinedload(Enrollment.course))
         .filter(Enrollment.user_id == user_id, Course.deleted_at.is_(None))
         .order_by(Enrollment.enrolled_at.desc())
     )
