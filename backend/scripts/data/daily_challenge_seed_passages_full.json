@@ -1,0 +1,1056 @@
+{
+  "passages": [
+    {
+      "book": "Genesis",
+      "chapter": 1,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Genesis",
+      "chapter": 2,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Genesis",
+      "chapter": 3,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Genesis",
+      "chapter": 6,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Genesis",
+      "chapter": 7,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Genesis",
+      "chapter": 9,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Genesis",
+      "chapter": 12,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Genesis",
+      "chapter": 15,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Genesis",
+      "chapter": 22,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Genesis",
+      "chapter": 28,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Genesis",
+      "chapter": 37,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Genesis",
+      "chapter": 39,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Genesis",
+      "chapter": 41,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Genesis",
+      "chapter": 45,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Genesis",
+      "chapter": 50,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Exodus",
+      "chapter": 3,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Exodus",
+      "chapter": 12,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Exodus",
+      "chapter": 14,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Exodus",
+      "chapter": 16,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Exodus",
+      "chapter": 20,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Exodus",
+      "chapter": 32,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Exodus",
+      "chapter": 34,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Leviticus",
+      "chapter": 16,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Leviticus",
+      "chapter": 19,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Leviticus",
+      "chapter": 23,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Numbers",
+      "chapter": 13,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Numbers",
+      "chapter": 14,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Numbers",
+      "chapter": 21,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Deuteronomy",
+      "chapter": 6,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Deuteronomy",
+      "chapter": 8,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Deuteronomy",
+      "chapter": 30,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Deuteronomy",
+      "chapter": 34,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Joshua",
+      "chapter": 1,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Joshua",
+      "chapter": 6,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Joshua",
+      "chapter": 24,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Judges",
+      "chapter": 6,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Judges",
+      "chapter": 7,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Judges",
+      "chapter": 16,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Ruth",
+      "chapter": 1,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Ruth",
+      "chapter": 4,
+      "category": "cross_reference"
+    },
+    {
+      "book": "1 Samuel",
+      "chapter": 3,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "1 Samuel",
+      "chapter": 16,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "1 Samuel",
+      "chapter": 17,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "2 Samuel",
+      "chapter": 7,
+      "category": "cross_reference"
+    },
+    {
+      "book": "2 Samuel",
+      "chapter": 11,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "2 Samuel",
+      "chapter": 12,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "1 Kings",
+      "chapter": 3,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "1 Kings",
+      "chapter": 18,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "1 Kings",
+      "chapter": 19,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "2 Kings",
+      "chapter": 5,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "2 Kings",
+      "chapter": 2,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Nehemiah",
+      "chapter": 8,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Esther",
+      "chapter": 4,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Esther",
+      "chapter": 7,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Job",
+      "chapter": 1,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Job",
+      "chapter": 38,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Job",
+      "chapter": 42,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Psalms",
+      "chapter": 1,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Psalms",
+      "chapter": 8,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Psalms",
+      "chapter": 19,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Psalms",
+      "chapter": 22,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Psalms",
+      "chapter": 23,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Psalms",
+      "chapter": 51,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Psalms",
+      "chapter": 91,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Psalms",
+      "chapter": 103,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Psalms",
+      "chapter": 110,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Psalms",
+      "chapter": 119,
+      "verse_from": 1,
+      "verse_to": 16,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Psalms",
+      "chapter": 121,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Psalms",
+      "chapter": 139,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Proverbs",
+      "chapter": 3,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Proverbs",
+      "chapter": 31,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Ecclesiastes",
+      "chapter": 3,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Ecclesiastes",
+      "chapter": 12,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Song of Solomon",
+      "chapter": 2,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Isaiah",
+      "chapter": 6,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Isaiah",
+      "chapter": 7,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Isaiah",
+      "chapter": 9,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Isaiah",
+      "chapter": 40,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Isaiah",
+      "chapter": 53,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Isaiah",
+      "chapter": 55,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Isaiah",
+      "chapter": 61,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Jeremiah",
+      "chapter": 1,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Jeremiah",
+      "chapter": 29,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Jeremiah",
+      "chapter": 31,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Ezekiel",
+      "chapter": 36,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Ezekiel",
+      "chapter": 37,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Daniel",
+      "chapter": 2,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Daniel",
+      "chapter": 3,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Daniel",
+      "chapter": 6,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Daniel",
+      "chapter": 9,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Hosea",
+      "chapter": 11,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Joel",
+      "chapter": 2,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Amos",
+      "chapter": 5,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Jonah",
+      "chapter": 1,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Jonah",
+      "chapter": 2,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Jonah",
+      "chapter": 3,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Micah",
+      "chapter": 5,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Micah",
+      "chapter": 6,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Habakkuk",
+      "chapter": 2,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Zechariah",
+      "chapter": 9,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Malachi",
+      "chapter": 3,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Matthew",
+      "chapter": 1,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Matthew",
+      "chapter": 2,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Matthew",
+      "chapter": 3,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Matthew",
+      "chapter": 4,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Matthew",
+      "chapter": 5,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Matthew",
+      "chapter": 6,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Matthew",
+      "chapter": 7,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Matthew",
+      "chapter": 13,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Matthew",
+      "chapter": 16,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Matthew",
+      "chapter": 17,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Matthew",
+      "chapter": 18,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Matthew",
+      "chapter": 22,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Matthew",
+      "chapter": 24,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Matthew",
+      "chapter": 26,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Matthew",
+      "chapter": 27,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Matthew",
+      "chapter": 28,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Mark",
+      "chapter": 1,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Mark",
+      "chapter": 2,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Mark",
+      "chapter": 4,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Mark",
+      "chapter": 5,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Mark",
+      "chapter": 8,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Mark",
+      "chapter": 10,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Mark",
+      "chapter": 12,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Mark",
+      "chapter": 15,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Mark",
+      "chapter": 16,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Luke",
+      "chapter": 1,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Luke",
+      "chapter": 2,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Luke",
+      "chapter": 4,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Luke",
+      "chapter": 10,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Luke",
+      "chapter": 15,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Luke",
+      "chapter": 18,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Luke",
+      "chapter": 19,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Luke",
+      "chapter": 22,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Luke",
+      "chapter": 23,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Luke",
+      "chapter": 24,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "John",
+      "chapter": 1,
+      "category": "cross_reference"
+    },
+    {
+      "book": "John",
+      "chapter": 3,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "John",
+      "chapter": 4,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "John",
+      "chapter": 6,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "John",
+      "chapter": 8,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "John",
+      "chapter": 10,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "John",
+      "chapter": 11,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "John",
+      "chapter": 13,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "John",
+      "chapter": 14,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "John",
+      "chapter": 15,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "John",
+      "chapter": 17,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "John",
+      "chapter": 19,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "John",
+      "chapter": 20,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "John",
+      "chapter": 21,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Acts",
+      "chapter": 1,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Acts",
+      "chapter": 2,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Acts",
+      "chapter": 3,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Acts",
+      "chapter": 4,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Acts",
+      "chapter": 7,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Acts",
+      "chapter": 8,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Acts",
+      "chapter": 9,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Acts",
+      "chapter": 10,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Acts",
+      "chapter": 12,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Acts",
+      "chapter": 16,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Acts",
+      "chapter": 17,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Acts",
+      "chapter": 20,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Acts",
+      "chapter": 27,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Romans",
+      "chapter": 1,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Romans",
+      "chapter": 3,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Romans",
+      "chapter": 5,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Romans",
+      "chapter": 6,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Romans",
+      "chapter": 8,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Romans",
+      "chapter": 10,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Romans",
+      "chapter": 12,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "1 Corinthians",
+      "chapter": 1,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "1 Corinthians",
+      "chapter": 12,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "1 Corinthians",
+      "chapter": 13,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "1 Corinthians",
+      "chapter": 15,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "2 Corinthians",
+      "chapter": 5,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "2 Corinthians",
+      "chapter": 12,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Galatians",
+      "chapter": 2,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Galatians",
+      "chapter": 5,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Ephesians",
+      "chapter": 1,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Ephesians",
+      "chapter": 2,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Ephesians",
+      "chapter": 4,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Ephesians",
+      "chapter": 6,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Philippians",
+      "chapter": 2,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Philippians",
+      "chapter": 4,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Colossians",
+      "chapter": 1,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Colossians",
+      "chapter": 3,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "1 Thessalonians",
+      "chapter": 4,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "2 Thessalonians",
+      "chapter": 2,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "1 Timothy",
+      "chapter": 3,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "2 Timothy",
+      "chapter": 3,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Titus",
+      "chapter": 2,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Philemon",
+      "chapter": 1,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Hebrews",
+      "chapter": 1,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Hebrews",
+      "chapter": 4,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Hebrews",
+      "chapter": 11,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Hebrews",
+      "chapter": 12,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "James",
+      "chapter": 1,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "James",
+      "chapter": 2,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "1 Peter",
+      "chapter": 1,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "1 Peter",
+      "chapter": 2,
+      "category": "cross_reference"
+    },
+    {
+      "book": "2 Peter",
+      "chapter": 1,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "1 John",
+      "chapter": 1,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "1 John",
+      "chapter": 3,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "1 John",
+      "chapter": 4,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Jude",
+      "chapter": 1,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Revelation",
+      "chapter": 1,
+      "category": "narrative_recall"
+    },
+    {
+      "book": "Revelation",
+      "chapter": 3,
+      "category": "passage_exegesis"
+    },
+    {
+      "book": "Revelation",
+      "chapter": 5,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Revelation",
+      "chapter": 21,
+      "category": "cross_reference"
+    },
+    {
+      "book": "Revelation",
+      "chapter": 22,
+      "category": "cross_reference"
+    }
+  ]
+}
