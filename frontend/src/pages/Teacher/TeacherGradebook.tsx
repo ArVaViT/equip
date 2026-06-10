@@ -122,7 +122,7 @@ export default function TeacherGradebook() {
           coursesService.getCourse(courseId),
           coursesService.getCourseGrades(courseId).catch(() => []),
           coursesService.getGradeSummary(courseId).catch(() => null),
-          coursesService.getStudentProgress(courseId).catch(() => null),
+          coursesService.getGradebookMatrix(courseId).catch(() => null),
         ])
         if (cancelled) return
         setCourseTitle(course.title)

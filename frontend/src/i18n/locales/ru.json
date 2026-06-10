@@ -785,6 +785,9 @@
       "chaptersCompletedValue": "{{done}} из {{total}}",
       "progress": "Прогресс",
       "chapterBreakdown": "По главам",
+      "loadingDetail": "Загрузка разбивки по главам…",
+      "detailFailed": "Не удалось загрузить разбивку по главам.",
+      "retry": "Повторить",
       "gradebookButton": "Журнал оценок",
       "viewAnalytics": "Аналитика"
     },

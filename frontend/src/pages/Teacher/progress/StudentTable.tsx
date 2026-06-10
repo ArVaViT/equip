@@ -10,9 +10,6 @@ import { Users } from "lucide-react"
 import { EmptyState as DesignEmptyState } from "@/components/patterns/EmptyState"
 import { StudentRow } from "./StudentRow"
 import {
-  assignmentAvg,
-  overallGrade,
-  quizAvg,
   type SortColumn,
   type SortDirection,
   type StudentData,
@@ -102,9 +99,9 @@ export function StudentTable({
                     student={student}
                     isExpanded={expandedId === student.id}
                     onToggle={() => onExpandToggle(student.id)}
-                    quizAvg={quizAvg(student)}
-                    assignmentAvg={assignmentAvg(student)}
-                    overallGrade={overallGrade(student)}
+                    quizAvg={student.quiz_avg}
+                    assignmentAvg={student.assignment_avg}
+                    overallGrade={student.overall_grade}
                     courseId={courseId}
                     onChapterUpdate={onChapterUpdate}
                   />

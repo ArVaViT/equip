@@ -14,7 +14,11 @@ from app.models.course import Chapter, Module
 from app.models.enrollment import Enrollment
 from app.models.user import User
 from app.services.course_service import sync_enrollment_progress
-from app.services.student_progress_service import build_course_student_progress
+from app.services.student_progress_service import (
+    build_course_gradebook_matrix,
+    build_course_student_progress,
+    build_student_chapter_detail,
+)
 
 router = APIRouter(prefix="/progress", tags=["progress"])
 
@@ -60,6 +64,47 @@ def get_course_student_progress(
 ):
     course = verify_course_owner(db, course_id, teacher)
     return build_course_student_progress(db, course, course_id)
+
+
+@router.get("/course/{course_id}/gradebook")
+def get_course_gradebook_matrix(
+    course_id: str,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    """Full students x chapters matrix for the gradebook spreadsheet.
+
+    Separate from the slim ``/students`` list because the gradebook renders
+    every student against every chapter at once, so it needs the per-chapter
+    breakdown for the whole roster.
+    """
+    course = verify_course_owner(db, course_id, teacher)
+    return build_course_gradebook_matrix(db, course, course_id)
+
+
+@router.get("/course/{course_id}/students/{student_id}/detail")
+def get_student_progress_detail(
+    course_id: str,
+    student_id: UUID,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    """Per-chapter breakdown + quiz/assignment results for ONE student.
+
+    Backs the progress-board row expansion: the list endpoint returns only
+    lightweight per-student summaries, so the heavy per-chapter detail is
+    pulled lazily here when a teacher expands a row.
+    """
+    course = verify_course_owner(db, course_id, teacher)
+    enrolled = db.query(Enrollment).filter(Enrollment.user_id == student_id, Enrollment.course_id == course_id).first()
+    if not enrolled:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Student is not enrolled in this course",
+            context={"resource_type": "enrollment", "course_id": course_id},
+        )
+    return build_student_chapter_detail(db, course, course_id, str(student_id))
 
 
 @router.put("/chapter/{chapter_id}/student/{student_id}/complete")

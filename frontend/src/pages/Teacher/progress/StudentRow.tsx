@@ -1,15 +1,17 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/lib/toast"
 import { coursesService } from "@/services/courses"
+import type { StudentProgressDetail } from "@/types"
 import {
   BookOpen,
   ChevronDown,
   ChevronRight,
   ClipboardList,
   FileText,
+  Loader2,
 } from "lucide-react"
 import { ChapterBreakdownRow } from "./ChapterBreakdownRow"
 import { ProgressBar, ScoreBadge } from "./ProgressBar"
@@ -63,33 +65,73 @@ export function StudentRow({
   const { t } = useTranslation()
   const [togglingChapter, setTogglingChapter] = useState<string | null>(null)
   const [grantingQuiz, setGrantingQuiz] = useState<string | null>(null)
+  // The per-chapter breakdown is fetched lazily the first time a row expands —
+  // the list payload only carries summary scalars, so each student's full
+  // chapter/quiz/assignment detail is pulled on demand here.
+  const [detail, setDetail] = useState<StudentProgressDetail | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [detailError, setDetailError] = useState(false)
+
+  useEffect(() => {
+    if (!isExpanded || detail || detailLoading) return
+    let cancelled = false
+    setDetailLoading(true)
+    setDetailError(false)
+    coursesService
+      .getStudentProgressDetail(courseId, student.id)
+      .then((d) => {
+        if (!cancelled) setDetail(d)
+      })
+      .catch(() => {
+        if (!cancelled) setDetailError(true)
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isExpanded, detail, detailLoading, courseId, student.id])
 
   const allChapters = useMemo(() => {
     const map = new Map<string, ChapterEntry>()
-    for (const ch of student.chapters ?? []) {
+    if (!detail) return map
+    for (const ch of detail.chapters) {
       map.set(ch.id, { ...(map.get(ch.id) ?? {}), chapterInfo: ch })
     }
-    for (const q of student.quiz_results) {
+    for (const q of detail.quiz_results) {
       map.set(q.chapter_id, { ...(map.get(q.chapter_id) ?? {}), quiz: q })
     }
-    for (const a of student.assignment_results) {
+    for (const a of detail.assignment_results) {
       map.set(a.chapter_id, { ...(map.get(a.chapter_id) ?? {}), assignment: a })
     }
     return map
-  }, [student.chapters, student.quiz_results, student.assignment_results])
+  }, [detail])
 
   const handleToggleComplete = async (chapterInfo: ChapterInfo) => {
     setTogglingChapter(chapterInfo.id)
+    const nowCompleted = !chapterInfo.completed
     try {
       if (chapterInfo.completed) {
         await coursesService.teacherMarkIncomplete(chapterInfo.id, student.id)
-        onChapterUpdate(student.id, chapterInfo.id, false, null)
         toast({ title: t("studentProgress.row.markedIncomplete"), variant: "success" })
       } else {
         await coursesService.teacherMarkComplete(chapterInfo.id, student.id)
-        onChapterUpdate(student.id, chapterInfo.id, true, "teacher")
         toast({ title: t("studentProgress.row.markedComplete"), variant: "success" })
       }
+      // Update the locally-held detail so the expanded breakdown reflects the
+      // flip immediately, and bump the parent summary row's progress counts.
+      setDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              chapters: prev.chapters.map((ch) =>
+                ch.id === chapterInfo.id ? { ...ch, completed: nowCompleted } : ch,
+              ),
+            }
+          : prev,
+      )
+      onChapterUpdate(student.id, chapterInfo.id, nowCompleted, nowCompleted ? "teacher" : null)
     } catch {
       toast({ title: t("studentProgress.row.toggleFailed"), variant: "destructive" })
     } finally {
@@ -168,7 +210,28 @@ export function StudentRow({
                 </SummaryStat>
               </div>
 
-              {allChapters.size > 0 && (
+              {detailLoading && (
+                <div className="flex items-center gap-2 py-4 text-sm text-ink-muted">
+                  <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
+                  {t("studentProgress.row.loadingDetail")}
+                </div>
+              )}
+              {detailError && !detailLoading && (
+                <div className="flex items-center gap-3 py-4 text-sm text-ink-muted">
+                  <span>{t("studentProgress.row.detailFailed")}</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setDetail(null)
+                      setDetailError(false)
+                    }}
+                  >
+                    {t("studentProgress.row.retry")}
+                  </Button>
+                </div>
+              )}
+              {detail && !detailLoading && allChapters.size > 0 && (
                 <div>
                   <h4 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
                     <BookOpen className="h-4 w-4" strokeWidth={1.75} />
