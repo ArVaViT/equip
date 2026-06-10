@@ -11,6 +11,7 @@ import { AddBlockMenu, BlockRow, type BlockType } from "./blocks"
 import { BLOCK_TYPE_LABEL_KEYS } from "./blocks/types"
 
 interface Props {
+  courseId: string
   chapterId: string
 }
 
@@ -20,7 +21,7 @@ interface Props {
  * state for reordering, and delegates each row (and every type of
  * per-block editor) to `./blocks/`.
  */
-export default function ChapterBlockEditor({ chapterId }: Props) {
+export default function ChapterBlockEditor({ courseId, chapterId }: Props) {
   const confirm = useConfirm()
   const { t } = useTranslation()
   const [blocks, setBlocks] = useState<ChapterBlock[]>([])
@@ -180,6 +181,7 @@ export default function ChapterBlockEditor({ chapterId }: Props) {
           <BlockRow
             key={block.id}
             block={block}
+            courseId={courseId}
             chapterId={chapterId}
             index={idx}
             expanded={expandedId === block.id}

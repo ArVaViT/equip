@@ -210,6 +210,10 @@ export default function ChapterEditor() {
     void guardedNavigate(to)
   }
 
+  // Route always supplies these, but useParams types them optional. Narrow
+  // once here so children (e.g. ChapterBlockEditor) get a concrete courseId.
+  if (!courseId || !moduleId || !chapterId) return null
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -362,7 +366,7 @@ export default function ChapterEditor() {
       <Card data-tour="chapter-editor-blocks" className="mb-6">
         <CardContent className="space-y-4 p-5">
           {chapterType === "reading" && (
-            <ChapterBlockEditor chapterId={chapter.id} />
+            <ChapterBlockEditor courseId={courseId} chapterId={chapter.id} />
           )}
 
           {(chapterType === "quiz" || chapterType === "exam") && (
