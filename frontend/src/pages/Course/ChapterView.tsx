@@ -37,6 +37,7 @@ import {
 import { ErrorState } from "@/components/patterns"
 import { useUserTour } from "@/hooks/useUserTour"
 import { chapterViewSteps } from "@/lib/tourSteps"
+import { recordCourseView } from "@/lib/recentlyViewed"
 
 /**
  * Renders a sanitised text-block via ``dangerouslySetInnerHTML`` and
@@ -451,6 +452,15 @@ export default function ChapterView() {
     // title + chapter list. ``t`` is intentionally not a dep.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId, moduleId, user?.id, i18n.language])
+
+  // Studying a chapter counts as opening the course for the dashboard's
+  // "recently viewed" row. Signed-in only; filtered against real
+  // enrollments at render time.
+  useEffect(() => {
+    if (user && courseId) {
+      recordCourseView(courseId)
+    }
+  }, [user, courseId])
 
   const sortedChapters = useMemo(
     () => [...(mod?.chapters ?? [])].sort((a, b) => a.order_index - b.order_index),

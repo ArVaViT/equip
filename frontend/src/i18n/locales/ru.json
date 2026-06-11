@@ -243,7 +243,10 @@
     "modulesLabel_one": "{{count}} модуль",
     "modulesLabel_few": "{{count}} модуля",
     "modulesLabel_many": "{{count}} модулей",
-    "modulesLabel_other": "{{count}} модуля"
+    "modulesLabel_other": "{{count}} модуля",
+    "inProgress": "В процессе",
+    "completed": "Завершён",
+    "progressLabel": "Пройдено {{percent}}%"
   },
   "pageTitle": {
     "login": "Вход",
@@ -1786,6 +1789,7 @@
     "course": "Курс",
     "grade": "Оценка: {{grade}}",
     "browseAllCta": "Открыть каталог",
+    "recentlyViewed": "Недавно открытые",
     "votd": {
       "eyebrow": "Сегодня",
       "title": "Стих дня"

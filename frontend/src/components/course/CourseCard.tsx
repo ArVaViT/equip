@@ -5,7 +5,7 @@ import { motion, useReducedMotion } from "motion/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { Course } from "@/types"
-import { BookOpen, ArrowRight } from "lucide-react"
+import { BookOpen, ArrowRight, CheckCircle } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import { formatDate } from "@/i18n/format"
 import { EDITORIAL_EASE } from "@/lib/motion"
@@ -13,6 +13,14 @@ import { EDITORIAL_EASE } from "@/lib/motion"
 interface CourseCardProps {
   course: Course
   style?: React.CSSProperties
+  /**
+   * Completion percent (0–100) for an ENROLLED student, surfaced as a
+   * thin progress bar in the card footer. ``undefined`` / ``null`` means
+   * the viewer isn't enrolled (or progress is unknown) and no bar shows.
+   * Passed down from the catalog page off a single ``getMyCourses``
+   * lookup — never fetched per-card.
+   */
+  progress?: number | null
 }
 
 type EnrollmentState = "opens" | "closed" | "open" | null
@@ -52,12 +60,15 @@ function EnrollmentBadge({ start, end }: { start?: string | null; end?: string |
   )
 }
 
-function CourseCard({ course, style }: CourseCardProps) {
+function CourseCard({ course, style, progress }: CourseCardProps) {
   const { t } = useTranslation()
   const prefersReducedMotion = useReducedMotion()
   const [imgError, setImgError] = useState(false)
   const coverSrc = toProxyImage(course.image_url)
   const moduleCount = course.modules?.length ?? 0
+  const isEnrolled = typeof progress === "number"
+  const progressPct = isEnrolled ? Math.max(0, Math.min(100, Math.round(progress!))) : 0
+  const isComplete = isEnrolled && progressPct >= 100
 
   const cardInner = (
     <Card className="flex h-full flex-col overflow-hidden border-edge/60 transition-colors hover:border-brand/40">
@@ -107,6 +118,32 @@ function CourseCard({ course, style }: CourseCardProps) {
           />
         </span>
       </CardContent>
+      {isEnrolled && (
+        <div className="px-6 pb-4 pt-0">
+          <div className="mb-1 flex items-center justify-between text-[11px] font-medium text-ink-muted">
+            <span className="inline-flex items-center gap-1">
+              {isComplete && (
+                <CheckCircle className="h-3.5 w-3.5 text-success" strokeWidth={1.75} aria-hidden />
+              )}
+              {isComplete ? t("courseCard.completed") : t("courseCard.inProgress")}
+            </span>
+            <span className="tabular-nums">{progressPct}%</span>
+          </div>
+          <div
+            className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+            role="progressbar"
+            aria-valuenow={progressPct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={t("courseCard.progressLabel", { percent: progressPct })}
+          >
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${isComplete ? "bg-success" : "bg-brand"}`}
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+        </div>
+      )}
     </Card>
   )
 

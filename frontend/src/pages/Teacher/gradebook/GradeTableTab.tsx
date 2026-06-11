@@ -134,7 +134,7 @@ export function GradeTableTab({
 const STICKY_COL_SHADOW =
   "after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-2 after:-mr-2 after:bg-gradient-to-r after:from-foreground/[0.06] after:to-transparent"
 
-function GradeTableHead({
+const GradeTableHead = memo(function GradeTableHead({
   orderedModules,
   moduleChapterMap,
   allChapters,
@@ -190,7 +190,7 @@ function GradeTableHead({
       </tr>
     </thead>
   )
-}
+})
 
 interface GradeTableRowProps {
   student: StudentProgressData

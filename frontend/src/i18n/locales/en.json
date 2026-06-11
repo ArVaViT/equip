@@ -123,6 +123,7 @@
     "course": "Course",
     "grade": "Grade: {{grade}}",
     "browseAllCta": "Browse all courses",
+    "recentlyViewed": "Recently viewed",
     "votd": {
       "eyebrow": "Today",
       "title": "Verse of the Day"
@@ -664,7 +665,10 @@
     "byInvitation": "By invitation",
     "openCourse": "Open",
     "modulesLabel_one": "{{count}} module",
-    "modulesLabel_other": "{{count}} modules"
+    "modulesLabel_other": "{{count}} modules",
+    "inProgress": "In progress",
+    "completed": "Completed",
+    "progressLabel": "{{percent}}% complete"
   },
   "pageTitle": {
     "login": "Sign In",

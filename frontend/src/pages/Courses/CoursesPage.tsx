@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { Input } from "@/components/ui/input"
@@ -49,6 +49,22 @@ export default function CoursesPage() {
     // its reference-change behaviour is implementation-defined.
     [query, reloadKey, i18n.language],
   )
+  // Enrollment progress for the signed-in viewer, so each catalog card
+  // can show a completion bar for courses they're enrolled in. ONE call
+  // to the (1-min cached, shared) ``getMyCourses`` endpoint — not a
+  // per-card fetch. Anonymous users skip it entirely and see plain
+  // cards. A failure degrades silently to "no bars".
+  const { data: myEnrollments } = useAsyncData(
+    async () => (user ? coursesService.getMyCourses().catch(() => []) : []),
+    [user?.id],
+  )
+  const progressByCourseId = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const e of myEnrollments ?? []) {
+      if (e.course_id) map.set(e.course_id, e.progress)
+    }
+    return map
+  }, [myEnrollments])
   // Token-key error so a locale flip while the error is on screen
   // updates the message without a refetch.
   const error: string | null = fetchError ? t("courses.loadFailed") : null
@@ -164,7 +180,12 @@ export default function CoursesPage() {
       ) : (
         <div data-tour="catalog-grid" className="stagger-fade-in grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3">
           {courses.map((course, index) => (
-            <CourseCard key={course.id} course={course} style={{ "--stagger-index": index } as React.CSSProperties} />
+            <CourseCard
+              key={course.id}
+              course={course}
+              progress={progressByCourseId.get(course.id)}
+              style={{ "--stagger-index": index } as React.CSSProperties}
+            />
           ))}
         </div>
       )}
