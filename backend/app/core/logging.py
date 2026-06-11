@@ -106,13 +106,19 @@ def setup_logging() -> None:
     root.addHandler(handler)
 
     api_key = os.environ.get("DD_API_KEY")
-    if api_key:
+    dd_env = os.environ.get("DD_ENV")
+    # BOTH keys must be explicitly set. DD_ENV used to default to
+    # "production", which meant any machine with a User-scoped DD_API_KEY
+    # (e.g. the dev box) shipped local pytest ERRORs tagged env:production —
+    # they passed the prod error-spike monitor's filter and fired a false
+    # alert (observed 2026-06-11). Prod sets both vars in Vercel env.
+    if api_key and dd_env:
         version = (os.environ.get("VERCEL_GIT_COMMIT_SHA") or "dev")[:7]
         dd_handler = DatadogHTTPHandler(
             api_key=api_key,
             site=os.environ.get("DD_SITE", "datadoghq.com"),
             service=os.environ.get("DD_SERVICE", "equip-backend"),
-            env=os.environ.get("DD_ENV", "production"),
+            env=dd_env,
             version=version,
             vercel_region=os.environ.get("VERCEL_REGION", "unknown"),
         )

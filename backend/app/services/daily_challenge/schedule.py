@@ -78,7 +78,11 @@ def _autofill_today_schedule(db: Session, target_date: date) -> DailyChallengeSc
         return (
             db.query(DailyChallengeSchedule).filter(DailyChallengeSchedule.challenge_date == target_date).one_or_none()
         )
-    logger.info(
+    # WARNING, not info: the in-process Datadog handler ships WARNING+ only,
+    # and the "[Equip] Daily Challenge schedule ran dry" log monitor watches
+    # this exact message — at INFO it never reached Datadog and the monitor
+    # was permanently blind to the silent outage it exists to catch.
+    logger.warning(
         "daily_challenge: auto-filled schedule for %s from published pool (question %s)",
         target_date.isoformat(),
         question_id,

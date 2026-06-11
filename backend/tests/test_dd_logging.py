@@ -150,8 +150,24 @@ def test_setup_logging_skips_dd_handler_when_key_missing(monkeypatch: pytest.Mon
 def test_setup_logging_installs_dd_handler_when_key_present(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DD_API_KEY", "x")
     monkeypatch.setenv("DD_SITE", "us5.datadoghq.com")
+    monkeypatch.setenv("DD_ENV", "production")
     setup_logging()
     root = logging.getLogger()
     dd_handlers = [h for h in root.handlers if isinstance(h, DatadogHTTPHandler)]
     assert len(dd_handlers) == 1
     assert dd_handlers[0].level == logging.WARNING
+
+
+def test_setup_logging_skips_dd_handler_without_explicit_dd_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """DD_API_KEY alone must NOT activate shipping.
+
+    DD_ENV used to default to "production", so any machine with a
+    User-scoped DD_API_KEY (the dev box) shipped local pytest ERRORs that
+    matched the prod error-spike monitor's env:production filter and fired
+    a false alert (2026-06-11).
+    """
+    monkeypatch.setenv("DD_API_KEY", "x")
+    monkeypatch.delenv("DD_ENV", raising=False)
+    setup_logging()
+    root = logging.getLogger()
+    assert not any(isinstance(h, DatadogHTTPHandler) for h in root.handlers)

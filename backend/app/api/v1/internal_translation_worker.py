@@ -120,9 +120,17 @@ def _emit_queue_gauges(db: Session) -> None:
     """
     try:
         counts = get_queue_status(db)
+        processing = int(counts.get("processing", 0))
         gauge("equip.translation.queue_depth", float(counts.get("queued", 0) + counts.get("failed", 0)))
-        gauge("equip.translation.queue_processing", float(counts.get("processing", 0)))
+        gauge("equip.translation.queue_processing", float(processing))
         gauge("equip.translation.queue_failed_permanent", float(counts.get("failed_permanent", 0)))
+        if processing > 3:
+            # WARNING so it actually ships to Datadog (the in-process handler
+            # is WARNING+; the INFO gauge lines above only reach stdout). The
+            # "[Equip] Translation jobs stuck in processing" monitor watches
+            # this message — its previous form queried a custom metric that
+            # no pipeline ever produced, so it could never fire.
+            logger.warning("translation worker: %s jobs stuck in processing", processing)
     except Exception:
         return
 
