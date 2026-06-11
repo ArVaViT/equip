@@ -152,6 +152,80 @@ def _schedule_for_today(db: Session, question: DailyChallengeQuestion, scheduled
 
 
 # ---------------------------------------------------------------------------
+# Verse-range normalization (create_question CHECK-safety)
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeVerseRange:
+    """``_normalize_verse_range`` must coerce any (from, to) pair to satisfy the
+    daily_challenge_questions CHECK. The fat-bank run lost ~27% of whole-chapter
+    passages because the LLM emitted a dangling verse_end with no verse_start."""
+
+    @pytest.mark.parametrize(
+        ("vf", "vt", "expected"),
+        [
+            (None, None, (None, None)),  # whole-chapter
+            (None, 16, (None, None)),  # dangling end (the real bug) -> drop it
+            (5, None, (5, None)),  # start only
+            (5, 10, (5, 10)),  # valid range
+            (10, 5, (10, None)),  # reversed -> keep start
+            (0, 5, (None, None)),  # non-positive start
+            (5, 0, (5, None)),  # non-positive end
+            (-3, 4, (None, None)),  # negative start
+        ],
+    )
+    def test_normalize(self, vf, vt, expected):
+        from app.services.daily_challenge.admin import _normalize_verse_range
+
+        assert _normalize_verse_range(vf, vt) == expected
+
+    def test_create_question_with_dangling_verse_to_does_not_violate_check(self, db: Session, author: User):
+        """The model mirrors the prod CHECK, so SQLite enforces it: before the
+        fix this raised IntegrityError; now it persists CHECK-safe (None/None)."""
+        from app.services.daily_challenge.admin import OptionDraft, create_question
+
+        q = create_question(
+            db,
+            question_type="multiple_choice",
+            bible_book="Jonah",
+            bible_chapter=1,
+            bible_verse_from=None,
+            bible_verse_to=16,  # dangling end, no start — the bug case
+            question_text="What did Jonah do when called to Nineveh?",
+            options=[OptionDraft(text="Fled to Tarshish", is_correct=True), OptionDraft(text="Obeyed", is_correct=False)],
+            explanation="Jonah 1 — he fled toward Tarshish.",
+            category="narrative_meaning",
+            created_by=author.id,
+            fallback_locale="en",
+        )
+        db.commit()
+        db.refresh(q)
+        assert q.bible_verse_from is None
+        assert q.bible_verse_to is None
+
+    def test_create_question_preserves_valid_range(self, db: Session, author: User):
+        from app.services.daily_challenge.admin import OptionDraft, create_question
+
+        q = create_question(
+            db,
+            question_type="multiple_choice",
+            bible_book="Psalms",
+            bible_chapter=119,
+            bible_verse_from=1,
+            bible_verse_to=16,
+            question_text="What does Psalm 119:1-16 commend?",
+            options=[OptionDraft(text="Walking in the law", is_correct=True), OptionDraft(text="Riches", is_correct=False)],
+            explanation="Psalm 119 exalts God's word.",
+            category="passage_exegesis",
+            created_by=author.id,
+            fallback_locale="en",
+        )
+        db.commit()
+        db.refresh(q)
+        assert (q.bible_verse_from, q.bible_verse_to) == (1, 16)
+
+
+# ---------------------------------------------------------------------------
 # Streak math
 # ---------------------------------------------------------------------------
 

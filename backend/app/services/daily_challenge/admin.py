@@ -114,6 +114,30 @@ def _log_event(
     )
 
 
+def _normalize_verse_range(verse_from: int | None, verse_to: int | None) -> tuple[int | None, int | None]:
+    """Coerce a (verse_from, verse_to) pair so it satisfies the
+    ``daily_challenge_questions`` CHECK constraints:
+
+      * ``bible_verse_from IS NULL OR bible_verse_from > 0``
+      * ``bible_verse_to IS NULL OR (bible_verse_from IS NOT NULL AND bible_verse_to >= bible_verse_from)``
+
+    LLM-generated survivors (``verse_start`` / ``verse_end`` from the model) can
+    carry a dangling ``verse_to`` with no ``verse_from``, a reversed range, or a
+    non-positive value — all rejected by the DB, which silently dropped the
+    generated question (the fat-bank run lost ~27% of whole-chapter passages this
+    way, and the daily replenish cron fell back to recycling on such days).
+    Normalising at the persistence chokepoint keeps every path CHECK-safe.
+    """
+    vf = verse_from if isinstance(verse_from, int) and not isinstance(verse_from, bool) and verse_from > 0 else None
+    vt = verse_to if isinstance(verse_to, int) and not isinstance(verse_to, bool) and verse_to > 0 else None
+    if vf is None:
+        # No start verse → can't anchor an end; treat as whole-chapter/unspecified.
+        return None, None
+    if vt is None or vt < vf:
+        return vf, None
+    return vf, vt
+
+
 def create_question(
     db: Session,
     *,
@@ -144,6 +168,10 @@ def create_question(
         raise ValueError("daily challenge question needs at least two options")
     if question_type == "true_false" and len(options) != 2:
         raise ValueError("true_false questions need exactly two options")
+
+    # Keep the verse range CHECK-safe regardless of what the generator/admin
+    # passed (dangling end, reversed range, non-positive). See _normalize_verse_range.
+    bible_verse_from, bible_verse_to = _normalize_verse_range(bible_verse_from, bible_verse_to)
 
     detected = detect_locale(" ".join(t for t in (question_text, explanation) if t))
     source_locale = detected or fallback_locale or "en"
