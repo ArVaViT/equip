@@ -395,11 +395,17 @@ def verify_certificate(
     ``valid=false`` with the number echoed so the caller can show a
     "not found" page without confirming what other numbers exist.
     """
+    # Defense in depth: a certificate number is only ever assigned at admin
+    # approval (``admin_approve`` generates it), so a number on a row in any
+    # other status can only be a forged/tampered row — never report it valid.
     row = (
         db.query(Certificate, User, Course)
         .outerjoin(User, Certificate.user_id == User.id)
         .outerjoin(Course, Certificate.course_id == Course.id)
-        .filter(Certificate.certificate_number == certificate_number)
+        .filter(
+            Certificate.certificate_number == certificate_number,
+            Certificate.status == CertificateStatus.APPROVED,
+        )
         .first()
     )
     if not row:

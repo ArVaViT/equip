@@ -120,7 +120,97 @@ EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: quiz_answers UPDATE denied';
 END $$;
 
--- 8) cross-tenant SELECT: the profiles_select_self policy must hide another
+-- 8) server-only writes lockdown (migration 20260611200000): the entire
+--    client write surface is revoked except profiles safe-field UPDATE.
+--    Each probe is the concrete forgery the 2026-06-11 audit flagged.
+DO $$
+BEGIN
+  INSERT INTO public.certificates (user_id, status, certificate_number)
+  VALUES ('11111111-1111-1111-1111-111111111111', 'approved', 'CERT-FORGED00001');
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can INSERT an approved certificate (forge a credential)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: certificates INSERT denied';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO public.quiz_attempts (quiz_id, user_id, score, max_score, passed)
+  VALUES (gen_random_uuid(), '11111111-1111-1111-1111-111111111111', 100, 100, true);
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can INSERT quiz_attempts (fabricate a passed attempt)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: quiz_attempts INSERT denied';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO public.quiz_answers (attempt_id, question_id, is_correct, points_earned)
+  VALUES (gen_random_uuid(), gen_random_uuid(), true, 100);
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can INSERT quiz_answers (fabricate correct answers)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: quiz_answers INSERT denied';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO public.chapter_progress (user_id, chapter_id, completed)
+  VALUES ('11111111-1111-1111-1111-111111111111', gen_random_uuid(), true);
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can INSERT chapter_progress (fake course progress)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: chapter_progress INSERT denied';
+END $$;
+
+DO $$
+BEGIN
+  UPDATE public.chapter_progress SET completed = true;
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can UPDATE chapter_progress';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: chapter_progress UPDATE denied';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO public.assignment_submissions (assignment_id, student_id)
+  VALUES (gen_random_uuid(), '11111111-1111-1111-1111-111111111111');
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can INSERT assignment_submissions';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: assignment_submissions INSERT denied';
+END $$;
+
+DO $$
+BEGIN
+  DELETE FROM public.enrollments;
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can DELETE enrollments';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: enrollments DELETE denied';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO public.course_reviews (course_id, user_id, rating)
+  VALUES (gen_random_uuid(), '11111111-1111-1111-1111-111111111111', 5);
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can INSERT course_reviews (bypass API validation)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: course_reviews INSERT denied';
+END $$;
+
+DO $$
+BEGIN
+  UPDATE public.notifications SET is_read = true;
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can UPDATE notifications directly';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: notifications UPDATE denied';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO public.courses (created_by, status)
+  VALUES ('11111111-1111-1111-1111-111111111111', 'draft');
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can INSERT courses directly';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: courses INSERT denied';
+END $$;
+
+-- 9) cross-tenant SELECT: the profiles_select_self policy must hide another
 --    user's row entirely (RLS filters rather than errors, so assert 0 rows).
 DO $$
 DECLARE visible int;
