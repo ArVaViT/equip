@@ -1164,6 +1164,19 @@ class TestCourseStudentProgress:
         # quiz/assignment result), but NOT the top-level result arrays the
         # board's detail endpoint uses.
         course_id, _quiz_id, _asg_id, ch_quiz_id, ch_asg_id, ch_read_id = _seed_teacher_progress_dashboard(db)
+        # Complete the READING chapter too: the matrix must reflect completion
+        # of non-gradable chapters (regression: the matrix once loaded progress
+        # only for gradable chapters, so completed reading/video/audio chapters
+        # rendered as not-completed and the totals column undercounted).
+        db.add(
+            ChapterProgress(
+                user_id=STUDENT_ID,
+                chapter_id=ch_read_id,
+                completed=True,
+                completion_type="self",
+            )
+        )
+        db.commit()
         r = client.get(f"/api/v1/progress/course/{course_id}/gradebook")
         assert r.status_code == 200, r.text
         body = r.json()
@@ -1182,6 +1195,10 @@ class TestCourseStudentProgress:
         assert ch_infos[ch_quiz_id]["quiz_result"]["score"] == 9
         assert ch_infos[ch_asg_id]["assignment_result"]["status"] == "submitted"
         assert ch_infos[ch_read_id]["quiz_result"] is None
+        # Non-gradable completion shows in the matrix cell, and matches what
+        # the row-expand detail endpoint reports for the same chapter.
+        assert ch_infos[ch_read_id]["completed"] is True
+        assert ch_infos[ch_asg_id]["completed"] is True
 
     def test_gradebook_matrix_403_for_non_owner(self, client: TestClient, db: Session):
         _ensure_student(db)

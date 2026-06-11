@@ -560,7 +560,12 @@ def build_course_gradebook_matrix(db: Session, course: Course, course_id: str) -
     quiz_map, assignment_map = _load_chapter_quizzes_and_assignments(db, chapter_ids)
     best_by_user_chapter, _attempts, _latest_quiz = _aggregate_quiz_results(db, quiz_map)
     subs_by_user_chapter, assignment_by_id_str, _latest_sub = _aggregate_assignment_submissions(db, assignment_map)
-    progress_by_user = _load_completed_progress(db, gradable_chapter_ids)
+    # The matrix renders a completion cell for EVERY chapter (reading/video/
+    # audio included), so load progress for all of them — the gradable subset
+    # is only the denominator of the chapters_completed/total_chapters counts.
+    # (Loading just gradable_chapter_ids here made every completed
+    # non-gradable chapter render as not-completed and undercount totals.)
+    progress_by_user = _load_completed_progress(db, chapter_ids)
 
     enrollments = (
         db.query(Enrollment, User)
