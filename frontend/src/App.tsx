@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react"
+import { lazy, Suspense, useEffect, useRef } from "react"
 import { BrowserRouter, Route, Navigate, useLocation } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Routes } from "@datadog/browser-rum-react/react-router-v6"
@@ -55,6 +55,29 @@ const DailyChallengeArchivePage = lazy(() => import("./pages/DailyChallengeArchi
 const DailyChallengeReviewPage = lazy(() => import("./pages/Admin/dailyChallenge/DailyChallengeReviewPage"))
 const DailyChallengeReviewDetailPage = lazy(() => import("./pages/Admin/dailyChallenge/DailyChallengeReviewDetailPage"))
 
+/**
+ * a11y: after a client-side route change, move keyboard / screen-reader
+ * focus to the ``#main-content`` landmark so the next Tab starts inside
+ * the freshly-rendered page instead of wherever the clicked link left
+ * it (often back at the top of the persistent Header). The initial mount
+ * is skipped — a hard page load already lands focus at the document
+ * start, and stealing it on first paint would fight the skip-link and
+ * any autofocused field. ``preventScroll`` so focusing the landmark
+ * doesn't yank the viewport; ``ScrollToTop`` owns scroll position.
+ */
+function useRouteFocus() {
+  const { pathname } = useLocation()
+  const isInitialMount = useRef(true)
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      return
+    }
+    const main = document.getElementById("main-content")
+    main?.focus({ preventScroll: true })
+  }, [pathname])
+}
+
 type RouteMode = "private" | "public" | "teacher" | "admin"
 
 function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }) {
@@ -82,6 +105,7 @@ function AppRoutes() {
   const isAuthPage = AUTH_PATHS.some((p) => location.pathname.startsWith(p))
   usePageTitle()
   useLocaleSync()
+  useRouteFocus()
   // Grand tour lives here so it has access to React Router (for
   // programmatic navigation between steps) and AuthContext (for the
   // role gate). Mounts after auth is resolved; the hook itself gates

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams, Link } from "react-router-dom"
 import { BookOpen } from "lucide-react"
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { ErrorState } from "@/components/patterns"
 import { coursesService } from "@/services/courses"
 import { storageService } from "@/services/storage"
+import { recordCourseView } from "@/lib/recentlyViewed"
 import { useAuth } from "@/context/useAuth"
 import { toast } from "@/lib/toast"
 import { ROLES } from "@/types"
@@ -121,6 +122,16 @@ export default function CourseDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, user?.id, i18n.language])
 
+  // Track this course in the dashboard's "recently viewed" row. Only for
+  // signed-in users (anonymous visitors don't have a dashboard) and only
+  // once the course actually resolved, so a 404 / failed load doesn't
+  // pin a dead id. Filtered against real enrollments at render time.
+  useEffect(() => {
+    if (user && course?.id) {
+      recordCourseView(course.id)
+    }
+  }, [user, course?.id])
+
   const doEnroll = async (cohortId?: string) => {
     if (!id || !user) return
     setEnrolling(true)
@@ -145,6 +156,26 @@ export default function CourseDetail() {
     }
   }
 
+  // Derived module ordering + chapter count, memoised on ``course`` so
+  // EnrolledView receives stable array/scalar identities across renders
+  // that don't change the course payload (e.g. a certificate update).
+  // Hooks must run before the early returns below — they no-op to safe
+  // defaults while ``course`` is still null during load.
+  const sortedModules = useMemo(
+    () =>
+      [...(course?.modules ?? [])].sort((a, b) => {
+        const da = a.due_date ? new Date(a.due_date).getTime() : Infinity
+        const db = b.due_date ? new Date(b.due_date).getTime() : Infinity
+        if (da !== db) return da - db
+        return a.order_index - b.order_index
+      }),
+    [course],
+  )
+  const totalChapters = useMemo(
+    () => sortedModules.reduce((sum, m) => sum + (m.chapters?.length ?? 0), 0),
+    [sortedModules],
+  )
+
   if (loading) {
     return <CourseDetailSkeleton />
   }
@@ -168,16 +199,6 @@ export default function CourseDetail() {
   }
 
   const isOwner = user?.id === course.created_by || user?.role === ROLES.ADMIN
-  const sortedModules = [...(course.modules ?? [])].sort((a, b) => {
-    const da = a.due_date ? new Date(a.due_date).getTime() : Infinity
-    const db = b.due_date ? new Date(b.due_date).getTime() : Infinity
-    if (da !== db) return da - db
-    return a.order_index - b.order_index
-  })
-  const totalChapters = sortedModules.reduce(
-    (sum, m) => sum + (m.chapters?.length ?? 0),
-    0,
-  )
 
   if (!enrollment) {
     return (

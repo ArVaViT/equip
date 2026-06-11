@@ -13,6 +13,7 @@ import { VerseOfTheDayCard } from "@/components/home/VerseOfTheDayCard"
 import { DailyChallengeCard } from "@/components/dashboard/DailyChallengeCard"
 import { TodayCard } from "@/components/dashboard/TodayCard"
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard"
+import { RecentlyViewedRow } from "@/components/dashboard/RecentlyViewedRow"
 import { useUserTour } from "@/hooks/useUserTour"
 import { studentDashboardSteps } from "@/lib/tourSteps"
 import { firstNameOf } from "@/lib/names"
@@ -280,7 +281,17 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto h-full px-4 py-4 sm:py-6 lg:h-[calc(100dvh-3rem-3rem)]">
       <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-5">
-        <MyCoursesSection onTourStart={startTour} />
+        {/* Left column: an optional "recently viewed" strip (renders
+            nothing when empty, so it costs no vertical space for new
+            users) above the scrollable My Courses panel. ``min-h-0``
+            lets My Courses keep its own internal scroll within the
+            single-viewport grid. */}
+        <div className="flex min-h-0 flex-col gap-4 lg:gap-5">
+          <RecentlyViewedRow />
+          <div className="min-h-0 flex-1">
+            <MyCoursesSection onTourStart={startTour} />
+          </div>
+        </div>
         {/* Right rail on lg+ as ``[auto auto minmax(0,1fr)]``. Verse and
             Today are light, bounded cards (a single verse; at most three
             events) so they take exactly their content height (``auto``)

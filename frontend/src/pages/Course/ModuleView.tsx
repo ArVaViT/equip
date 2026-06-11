@@ -2,7 +2,7 @@ import { useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams, Link } from "react-router-dom"
 import { formatDateLong } from "@/i18n/format"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
 import { useAuth } from "@/context/useAuth"
@@ -20,7 +20,7 @@ import {
 } from "lucide-react"
 import { isGradableChapterType } from "@/lib/chapterTypes"
 import ChapterTypeBadge from "@/components/course/ChapterTypeBadge"
-import { ErrorState } from "@/components/patterns"
+import { EmptyState, ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
 
 // Module ID + course ID come from the route, locale from i18n; bundle the
@@ -265,11 +265,10 @@ export default function ModuleView() {
             })}
           </div>
         ) : (
-          <Card className="border-dashed">
-            <CardContent className="py-12 text-center text-ink-muted text-sm">
-              {t("module.noChaptersYet")}
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={<Book strokeWidth={1.75} aria-hidden />}
+            title={t("module.noChaptersYet")}
+          />
         )}
       </div>
 

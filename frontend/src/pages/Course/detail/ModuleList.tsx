@@ -1,3 +1,4 @@
+import { memo } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import {
@@ -69,7 +70,7 @@ interface ModuleRowProps {
   completedChapterIds: Set<string>
 }
 
-function ModuleRow({
+const ModuleRow = memo(function ModuleRow({
   courseId,
   module,
   idx,
@@ -179,4 +180,4 @@ function ModuleRow({
       </CardHeader>
     </Card>
   )
-}
+})
