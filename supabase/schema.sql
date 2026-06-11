@@ -432,6 +432,7 @@ CREATE TABLE public.courses (
     source_locale character varying(8) DEFAULT 'ru'::character varying NOT NULL,
     access_mode text DEFAULT 'public'::text NOT NULL,
     CONSTRAINT chk_courses_status CHECK ((status = ANY (ARRAY['draft'::text, 'published'::text]))),
+    CONSTRAINT ck_courses_weights_sum_100 CHECK ((((quiz_weight + assignment_weight) + participation_weight) = 100)),
     CONSTRAINT courses_access_mode_check CHECK ((access_mode = ANY (ARRAY['public'::text, 'institute'::text]))),
     CONSTRAINT courses_source_locale_check CHECK (((source_locale)::text = ANY (ARRAY[('ru'::character varying)::text, ('en'::character varying)::text])))
 );
