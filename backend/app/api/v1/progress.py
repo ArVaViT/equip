@@ -5,7 +5,13 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, require_teacher, verify_chapter_owner, verify_course_owner
+from app.api.dependencies import (
+    get_current_user,
+    lookup_enrollment,
+    require_teacher,
+    verify_chapter_owner,
+    verify_course_owner,
+)
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.metrics import increment
@@ -29,9 +35,7 @@ def get_my_chapter_progress(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    enrolled = (
-        db.query(Enrollment).filter(Enrollment.user_id == current_user.id, Enrollment.course_id == course_id).first()
-    )
+    enrolled = lookup_enrollment(db, current_user.id, course_id)
     if not enrolled:
         raise equip_error(
             ErrorCode.AUTH_FORBIDDEN,

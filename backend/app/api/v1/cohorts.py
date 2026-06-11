@@ -29,7 +29,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_optional_user, is_owner_or_admin, require_admin
+from app.api.dependencies import get_live_course_or_404, get_optional_user, is_owner_or_admin, require_admin
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.cohort import Cohort, CohortCourse, CohortStatus
@@ -185,15 +185,7 @@ def _get_or_404(db: Session, cohort_id: UUID) -> Cohort:
 
 
 def _course_or_404(db: Session, course_id: str) -> Course:
-    course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
-    if not course:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Course not found",
-            context={"resource_type": "course", "resource_id": course_id},
-        )
-    return course
+    return get_live_course_or_404(db, course_id)
 
 
 # ----------------------------- admin CRUD -----------------------------
@@ -808,14 +800,7 @@ def list_cohorts_for_course(
     owner or an admin. Cohort name is localized via the translation
     overlay just like the legacy endpoint did."""
     response.headers["Vary"] = "Accept-Language"
-    course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
-    if not course:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Course not found",
-            context={"resource_type": "course", "resource_id": course_id},
-        )
+    course = get_live_course_or_404(db, course_id)
     if course.status != CourseStatus.PUBLISHED and not is_owner_or_admin(course, current_user):
         # Unpublished course leaks 404 to non-owners by design so the
         # response is indistinguishable from a missing course id.

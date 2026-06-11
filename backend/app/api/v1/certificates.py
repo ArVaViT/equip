@@ -4,12 +4,17 @@ from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response, 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, require_admin, require_teacher
+from app.api.dependencies import (
+    get_current_user,
+    get_live_course_or_404,
+    lookup_enrollment,
+    require_admin,
+    require_teacher,
+)
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.certificate import Certificate, CertificateStatus
 from app.models.course import Course
-from app.models.enrollment import Enrollment
 from app.models.user import User
 from app.schemas.certificate import CertificateResponse, CertificateVerifyResponse
 from app.schemas.locale import LocaleCode, normalize_locale
@@ -58,18 +63,9 @@ def request_certificate(
     certificate stays rejected and the student must re-request".
     """
     # Soft-deleted courses must not accept new certificate requests.
-    course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
-    if not course:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Course not found",
-            context={"resource_type": "course", "resource_id": course_id},
-        )
+    get_live_course_or_404(db, course_id)
 
-    enrollment = (
-        db.query(Enrollment).filter(Enrollment.user_id == current_user.id, Enrollment.course_id == course_id).first()
-    )
+    enrollment = lookup_enrollment(db, current_user.id, course_id)
     if not enrollment:
         raise equip_error(
             ErrorCode.VALIDATION_FAILED,

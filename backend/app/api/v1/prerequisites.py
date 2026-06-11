@@ -2,7 +2,12 @@ from fastapi import APIRouter, Depends, Header, Response, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, require_teacher, verify_course_owner
+from app.api.dependencies import (
+    get_current_user,
+    get_live_course_or_404,
+    require_teacher,
+    verify_course_owner,
+)
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.course import Course, CourseStatus
@@ -55,14 +60,7 @@ def get_prerequisites(
     # this endpoint was public and would happily leak draft-course
     # relationships to anonymous callers (audit P1.4). Trashed courses are
     # treated as not found so deleted prerequisites don't leak either.
-    course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
-    if not course:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Course not found",
-            context={"resource_type": "course", "resource_id": course_id},
-        )
+    course = get_live_course_or_404(db, course_id)
 
     is_admin = current_user.role == UserRole.ADMIN.value
     is_owner = str(course.created_by) == str(current_user.id)

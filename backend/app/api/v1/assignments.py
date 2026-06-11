@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
     get_current_user,
+    lookup_enrollment,
     require_teacher,
     resolve_chapter_course_id,
     verify_chapter_access,
@@ -18,7 +19,6 @@ from app.core.metrics import increment
 from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Course, Module
-from app.models.enrollment import Enrollment
 from app.models.user import User, UserRole
 from app.schemas.assignment import (
     AssignmentCreate,
@@ -267,9 +267,7 @@ def submit_assignment(
         )
 
     course_id = resolve_chapter_course_id(db, assignment.chapter_id)
-    enrolled = (
-        db.query(Enrollment).filter(Enrollment.user_id == current_user.id, Enrollment.course_id == course_id).first()
-    )
+    enrolled = lookup_enrollment(db, current_user.id, course_id)
     if not enrolled:
         raise equip_error(
             ErrorCode.AUTH_FORBIDDEN,
@@ -387,9 +385,7 @@ def list_my_submissions(
         )
 
     course_id = resolve_chapter_course_id(db, assignment.chapter_id)
-    enrolled = (
-        db.query(Enrollment).filter(Enrollment.user_id == current_user.id, Enrollment.course_id == course_id).first()
-    )
+    enrolled = lookup_enrollment(db, current_user.id, course_id)
     if not enrolled and current_user.role not in (UserRole.TEACHER.value, UserRole.ADMIN.value):
         raise equip_error(
             ErrorCode.AUTH_FORBIDDEN,
