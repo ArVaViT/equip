@@ -2259,13 +2259,6 @@ CREATE POLICY blocks_select_all ON public.chapter_blocks FOR SELECT TO authentic
 ALTER TABLE public.certificates ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: certificates certificates_insert_request; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY certificates_insert_request ON public.certificates FOR INSERT TO authenticated WITH CHECK ((user_id = ( SELECT auth.uid() AS uid)));
-
-
---
 -- Name: certificates certificates_select_own_or_teacher; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -2287,33 +2280,12 @@ ALTER TABLE public.chapter_blocks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.chapter_progress ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: chapter_progress chapter_progress_delete_own; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY chapter_progress_delete_own ON public.chapter_progress FOR DELETE TO authenticated USING ((user_id = ( SELECT auth.uid() AS uid)));
-
-
---
--- Name: chapter_progress chapter_progress_insert_own; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY chapter_progress_insert_own ON public.chapter_progress FOR INSERT TO authenticated WITH CHECK ((user_id = ( SELECT auth.uid() AS uid)));
-
-
---
 -- Name: chapter_progress chapter_progress_select; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY chapter_progress_select ON public.chapter_progress FOR SELECT TO authenticated USING (((user_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1
    FROM public.profiles p
   WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text])))))));
-
-
---
--- Name: chapter_progress chapter_progress_update_own; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY chapter_progress_update_own ON public.chapter_progress FOR UPDATE TO authenticated USING ((user_id = ( SELECT auth.uid() AS uid))) WITH CHECK ((user_id = ( SELECT auth.uid() AS uid)));
 
 
 --
@@ -2349,37 +2321,10 @@ CREATE POLICY cohort_courses_select_all ON public.cohort_courses FOR SELECT USIN
 ALTER TABLE public.cohorts ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: cohorts cohorts_delete_teacher; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY cohorts_delete_teacher ON public.cohorts FOR DELETE TO authenticated USING ((EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text]))))));
-
-
---
--- Name: cohorts cohorts_insert_teacher; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY cohorts_insert_teacher ON public.cohorts FOR INSERT TO authenticated WITH CHECK ((EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text]))))));
-
-
---
 -- Name: cohorts cohorts_select_all; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY cohorts_select_all ON public.cohorts FOR SELECT TO authenticated USING (true);
-
-
---
--- Name: cohorts cohorts_update_teacher; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY cohorts_update_teacher ON public.cohorts FOR UPDATE TO authenticated USING ((EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text]))))));
 
 
 --
@@ -2445,37 +2390,10 @@ ALTER TABLE public.course_reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.courses ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: courses courses_delete_teacher; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY courses_delete_teacher ON public.courses FOR DELETE TO authenticated USING (((created_by = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = 'admin'::text))))));
-
-
---
--- Name: courses courses_insert_teacher; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY courses_insert_teacher ON public.courses FOR INSERT TO authenticated WITH CHECK ((EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text]))))));
-
-
---
 -- Name: courses courses_select_published; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY courses_select_published ON public.courses FOR SELECT TO authenticated USING (((status = 'published'::text) OR (created_by = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = 'admin'::text))))));
-
-
---
--- Name: courses courses_update_teacher; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY courses_update_teacher ON public.courses FOR UPDATE TO authenticated USING (((created_by = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1
    FROM public.profiles p
   WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = 'admin'::text))))));
 
@@ -2579,13 +2497,6 @@ CREATE POLICY dc_streaks_select_own ON public.daily_challenge_streaks FOR SELECT
 ALTER TABLE public.enrollments ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: enrollments enrollments_delete_own; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY enrollments_delete_own ON public.enrollments FOR DELETE TO authenticated USING ((user_id = ( SELECT auth.uid() AS uid)));
-
-
---
 -- Name: enrollments enrollments_select; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -2618,31 +2529,6 @@ ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY notifications_select_own ON public.notifications FOR SELECT TO authenticated USING ((user_id = ( SELECT auth.uid() AS uid)));
-
-
---
--- Name: notifications notifications_update_own; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY notifications_update_own ON public.notifications FOR UPDATE TO authenticated USING ((user_id = ( SELECT auth.uid() AS uid))) WITH CHECK ((user_id = ( SELECT auth.uid() AS uid)));
-
-
---
--- Name: course_prerequisites prereqs_delete_teacher; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY prereqs_delete_teacher ON public.course_prerequisites FOR DELETE TO authenticated USING ((EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text]))))));
-
-
---
--- Name: course_prerequisites prereqs_insert_teacher; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY prereqs_insert_teacher ON public.course_prerequisites FOR INSERT TO authenticated WITH CHECK ((EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text]))))));
 
 
 --
@@ -2686,15 +2572,6 @@ CREATE POLICY profiles_update_own_safe_fields ON public.profiles FOR UPDATE TO a
 ALTER TABLE public.quiz_answers ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: quiz_answers quiz_answers_insert_own; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY quiz_answers_insert_own ON public.quiz_answers FOR INSERT TO authenticated WITH CHECK ((EXISTS ( SELECT 1
-   FROM public.quiz_attempts qa
-  WHERE ((qa.id = quiz_answers.attempt_id) AND (qa.user_id = ( SELECT auth.uid() AS uid))))));
-
-
---
 -- Name: quiz_answers quiz_answers_select_own; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -2710,13 +2587,6 @@ CREATE POLICY quiz_answers_select_own ON public.quiz_answers FOR SELECT TO authe
 --
 
 ALTER TABLE public.quiz_attempts ENABLE ROW LEVEL SECURITY;
-
---
--- Name: quiz_attempts quiz_attempts_insert_own; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY quiz_attempts_insert_own ON public.quiz_attempts FOR INSERT TO authenticated WITH CHECK ((user_id = ( SELECT auth.uid() AS uid)));
-
 
 --
 -- Name: quiz_attempts quiz_attempts_select_own; Type: POLICY; Schema: public; Owner: -
@@ -2775,51 +2645,10 @@ CREATE POLICY quiz_questions_select_all ON public.quiz_questions FOR SELECT TO a
 ALTER TABLE public.quizzes ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: quizzes quizzes_delete_teacher; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY quizzes_delete_teacher ON public.quizzes FOR DELETE TO authenticated USING ((EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text]))))));
-
-
---
--- Name: quizzes quizzes_insert_teacher; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY quizzes_insert_teacher ON public.quizzes FOR INSERT TO authenticated WITH CHECK ((EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text]))))));
-
-
---
 -- Name: quizzes quizzes_select_all; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY quizzes_select_all ON public.quizzes FOR SELECT TO authenticated USING ((( SELECT auth.uid() AS uid) IS NOT NULL));
-
-
---
--- Name: quizzes quizzes_update_teacher; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY quizzes_update_teacher ON public.quizzes FOR UPDATE TO authenticated USING ((EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text]))))));
-
-
---
--- Name: course_reviews reviews_delete_own; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY reviews_delete_own ON public.course_reviews FOR DELETE TO authenticated USING ((user_id = ( SELECT auth.uid() AS uid)));
-
-
---
--- Name: course_reviews reviews_insert_own; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY reviews_insert_own ON public.course_reviews FOR INSERT TO authenticated WITH CHECK ((user_id = ( SELECT auth.uid() AS uid)));
 
 
 --
@@ -2842,13 +2671,6 @@ ALTER TABLE public.student_grades ENABLE ROW LEVEL SECURITY;
 CREATE POLICY student_grades_select ON public.student_grades FOR SELECT TO authenticated USING (((student_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1
    FROM public.profiles p
   WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text])))))));
-
-
---
--- Name: assignment_submissions submissions_insert_own; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY submissions_insert_own ON public.assignment_submissions FOR INSERT TO authenticated WITH CHECK ((student_id = ( SELECT auth.uid() AS uid)));
 
 
 --

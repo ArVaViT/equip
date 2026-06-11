@@ -4,6 +4,7 @@ import contextlib
 import uuid
 from datetime import UTC, datetime
 
+import pytest
 import sqlalchemy.types as _sa_types
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -571,6 +572,23 @@ class TestVerifyCertificate:
 
     def test_accessible_without_auth(self, anon_client: TestClient, db: Session):
         r = anon_client.get("/api/v1/certificates/verify/CERT-NOPE")
+        assert r.status_code == 200
+        assert r.json()["valid"] is False
+
+    @pytest.mark.parametrize("forged_status", ["pending", "teacher_approved", "rejected"])
+    def test_non_approved_row_never_verifies(self, client: TestClient, db: Session, forged_status: str):
+        """A certificate_number on a non-approved row is a forgery.
+
+        Numbers are only ever assigned inside ``admin_approve``, so a row
+        carrying a number in any other status can only come from tampering
+        (e.g. the pre-20260611200000 direct-INSERT RLS hole). The public
+        verifier must report it invalid.
+        """
+        _seed_enrolled_course(db, progress=100)
+        cert = _seed_certificate(db, "course-1", cert_status=forged_status)
+        cert.certificate_number = "CERT-FORGED00001"
+        db.commit()
+        r = client.get("/api/v1/certificates/verify/CERT-FORGED00001")
         assert r.status_code == 200
         assert r.json()["valid"] is False
 
