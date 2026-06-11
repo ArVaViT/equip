@@ -4,12 +4,12 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_user, get_live_course_or_404
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.metrics import gauge
 from app.models.certificate import Certificate
-from app.models.course import Course, CourseStatus
+from app.models.course import CourseStatus
 from app.models.review import CourseReview
 from app.models.user import User
 from app.schemas.review import ReviewCreate, ReviewResponse
@@ -24,8 +24,11 @@ def list_course_reviews(
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
 ):
-    course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
-    if not course or course.status != CourseStatus.PUBLISHED:
+    # ``get_live_course_or_404`` raises the canonical 404 for a missing /
+    # soft-deleted course; an unpublished course is masked behind the same
+    # 404 here so its existence does not leak to anonymous callers.
+    course = get_live_course_or_404(db, course_id)
+    if course.status != CourseStatus.PUBLISHED:
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,

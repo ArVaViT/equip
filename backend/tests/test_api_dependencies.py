@@ -24,7 +24,7 @@ from fastapi import HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials
 
 from app.api import dependencies as deps
-from app.models.course import Chapter, CourseStatus, Module
+from app.models.course import Chapter, Course, CourseStatus, Module
 from app.models.enrollment import Enrollment
 from app.models.user import User, UserRole
 
@@ -530,3 +530,139 @@ class TestVerifyChapterOwner:
         with pytest.raises(HTTPException) as exc:
             deps.verify_chapter_owner(db, chapter_id, teacher)
         assert exc.value.status_code == status.HTTP_404_NOT_FOUND
+
+
+# ---------------------------------------------------------------------------
+# get_live_course_or_404 — the dedup'd course-fetch-or-404 helper (#205)
+# ---------------------------------------------------------------------------
+
+
+class TestGetLiveCourseOr404:
+    """Consolidates the course-fetch-or-404 boilerplate that
+    certificates / cohorts / grades / prerequisites / reviews duplicated.
+    The 404 envelope must stay byte-identical to those hand-written
+    raises (code / status / message / context)."""
+
+    def test_returns_live_course(self, db: Session) -> None:
+        _seed_teacher(db)
+        course_id, _, _ = _seed_published_course_with_chapter(db, course_id="glc-1", owner=TEACHER_ID)
+        course = deps.get_live_course_or_404(db, course_id)
+        assert course.id == course_id
+
+    def test_unknown_course_raises_canonical_404(self, db: Session) -> None:
+        with pytest.raises(HTTPException) as exc:
+            deps.get_live_course_or_404(db, "missing-course")
+        assert exc.value.status_code == status.HTTP_404_NOT_FOUND
+        # Byte-identical envelope to the migrated call sites.
+        assert exc.value.detail["code"] == "resource.not_found"
+        assert exc.value.detail["message"] == "Course not found"
+        assert exc.value.detail["context"] == {
+            "resource_type": "course",
+            "resource_id": "missing-course",
+        }
+
+    def test_soft_deleted_course_is_404(self, db: Session) -> None:
+        """A soft-deleted course is treated as missing — same as the
+        hand-written ``deleted_at.is_(None)`` filters it replaced."""
+        from datetime import UTC, datetime
+
+        _seed_teacher(db)
+        course_id, _, _ = _seed_published_course_with_chapter(db, course_id="glc-2", owner=TEACHER_ID)
+        db.query(Course).filter(Course.id == course_id).update({"deleted_at": datetime.now(UTC)})
+        db.commit()
+        with pytest.raises(HTTPException) as exc:
+            deps.get_live_course_or_404(db, course_id)
+        assert exc.value.status_code == status.HTTP_404_NOT_FOUND
+
+
+# ---------------------------------------------------------------------------
+# lookup_enrollment — the non-raising enrollment query helper (#205)
+# ---------------------------------------------------------------------------
+
+
+class TestLookupEnrollment:
+    """Pure query helper: returns the row or ``None`` and never raises.
+    Each call site keeps its own ``if not enrolled: raise ...`` because
+    the not-enrolled contract differs per endpoint (403 / 400 / 404)."""
+
+    def test_returns_enrollment_when_present(self, db: Session) -> None:
+        _seed_teacher(db)
+        student = _seed_student(db)
+        course_id, _, _ = _seed_published_course_with_chapter(db, course_id="le-1", owner=TEACHER_ID)
+        db.add(Enrollment(id=f"enr-{course_id}", user_id=student.id, course_id=course_id, progress=0))
+        db.commit()
+        row = deps.lookup_enrollment(db, student.id, course_id)
+        assert row is not None
+        assert str(row.course_id) == course_id
+        assert str(row.user_id) == str(student.id)
+
+    def test_returns_none_when_not_enrolled(self, db: Session) -> None:
+        _seed_teacher(db)
+        student = _seed_student(db)
+        course_id, _, _ = _seed_published_course_with_chapter(db, course_id="le-2", owner=TEACHER_ID)
+        assert deps.lookup_enrollment(db, student.id, course_id) is None
+
+
+# ---------------------------------------------------------------------------
+# #205 regression: migrated endpoints keep their ORIGINAL status codes.
+#
+# The helpers above are behavior-preserving only if each migrated route
+# still emits the SAME not-enrolled / not-found contract it did before
+# the dedup. These exercise the real wired-up routes (via the conftest
+# auth-override clients) and pin the divergent status codes that the
+# enrollment ``if not enrolled: raise`` blocks intentionally keep.
+# ---------------------------------------------------------------------------
+
+
+class TestMigratedEndpointContractsUnchanged:
+    def test_certificates_not_enrolled_still_400(
+        self,
+        db: Session,
+        student_client,
+    ) -> None:
+        """certificates.request_certificate keeps its 400 (VALIDATION_FAILED)
+        not-enrolled contract — NOT the helper's 404 / not a 403.
+
+        The ``student_client`` fixture already seeds the teacher + student,
+        so the course just needs an owner (TEACHER_ID)."""
+        course_id, _, _ = _seed_published_course_with_chapter(db, course_id="reg-cert", owner=TEACHER_ID)
+        resp = student_client.post(f"/api/v1/certificates/course/{course_id}")
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        assert resp.json()["detail"]["message"] == "Not enrolled in this course"
+
+    def test_progress_not_enrolled_still_403(
+        self,
+        db: Session,
+        student_client,
+    ) -> None:
+        """progress.get_my_chapter_progress keeps its 403 (AUTH_FORBIDDEN)
+        not-enrolled contract."""
+        course_id, _, _ = _seed_published_course_with_chapter(db, course_id="reg-prog", owner=TEACHER_ID)
+        resp = student_client.get(f"/api/v1/progress/course/{course_id}/my-progress")
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
+        assert resp.json()["detail"]["message"] == "Not enrolled in this course"
+
+    def test_assignment_submit_not_enrolled_still_403(
+        self,
+        db: Session,
+        student_client,
+    ) -> None:
+        """assignments.submit_assignment keeps its 403 (AUTH_FORBIDDEN)
+        not-enrolled contract with its endpoint-specific message — NOT the
+        helper's 404. (The grades enrollment-404 path binds a raw-string
+        UUID and is covered by the Postgres schema-smoke job, not SQLite.)"""
+        from app.models.assignment import Assignment
+
+        _course_id, _module_id, chapter_id = _seed_published_course_with_chapter(
+            db, course_id="reg-asg", owner=TEACHER_ID
+        )
+        assignment = Assignment(chapter_id=chapter_id, max_score=100)
+        db.add(assignment)
+        db.commit()
+        db.refresh(assignment)
+        resp = student_client.post(
+            f"/api/v1/assignments/{assignment.id}/submit",
+            json={"content": "my answer"},
+        )
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
+        assert resp.json()["detail"]["message"] == "You must be enrolled in this course to submit assignments"

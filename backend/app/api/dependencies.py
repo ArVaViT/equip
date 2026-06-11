@@ -134,6 +134,37 @@ def is_owner_or_admin(entity: object, user: User | None) -> bool:
 from app.services.domain_access import assert_course_owner  # noqa: E402, F401  (re-export)
 
 
+def get_live_course_or_404(db: Session, course_id: str) -> Course:
+    """Fetch a non-deleted course or raise the canonical 404.
+
+    Consolidates the course-fetch-or-404 boilerplate that several route
+    modules duplicated. The error envelope (code / status / message /
+    context) is byte-identical to those hand-written call sites so the
+    HTTP contract is unchanged. Soft-deleted courses (``deleted_at``)
+    are treated as not found.
+    """
+    course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
+    if course is None:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Course not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
+    return course
+
+
+def lookup_enrollment(db: Session, user_id: object, course_id: object) -> Enrollment | None:
+    """Return the enrollment row for ``(user_id, course_id)`` or ``None``.
+
+    Pure query helper: it deliberately does NOT raise. Each call site keeps
+    its own ``if not enrolled: raise ...`` because the not-enrolled contract
+    varies per endpoint (403 vs 400 vs 404, with different messages / staff
+    bypasses). One indexed PK lookup on ``(user_id, course_id)``.
+    """
+    return db.query(Enrollment).filter(Enrollment.user_id == user_id, Enrollment.course_id == course_id).first()
+
+
 def verify_course_owner(
     db: Session,
     course_id: str,

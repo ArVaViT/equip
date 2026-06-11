@@ -11,10 +11,15 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, require_teacher, verify_course_owner
+from app.api.dependencies import (
+    get_current_user,
+    get_live_course_or_404,
+    lookup_enrollment,
+    require_teacher,
+    verify_course_owner,
+)
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
-from app.models.course import Course
 from app.models.enrollment import Enrollment
 from app.models.student_grade import StudentGrade
 from app.models.user import User, UserRole
@@ -57,14 +62,7 @@ def get_grading_config(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
-    if not course:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Course not found",
-            context={"resource_type": "course", "resource_id": course_id},
-        )
+    course = get_live_course_or_404(db, course_id)
 
     is_owner = str(course.created_by) == str(current_user.id)
     is_admin = current_user.role == UserRole.ADMIN.value
@@ -111,9 +109,7 @@ def get_calculated_grade(
 ):
     course = verify_course_owner(db, course_id, teacher)
 
-    enrolled = (
-        db.query(Enrollment).filter(Enrollment.user_id == str(student_id), Enrollment.course_id == course_id).first()
-    )
+    enrolled = lookup_enrollment(db, str(student_id), course_id)
     if not enrolled:
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
@@ -351,7 +347,7 @@ def upsert_student_grade(
 ) -> StudentGrade:
     verify_course_owner(db, course_id, teacher)
 
-    enrolled = db.query(Enrollment).filter(Enrollment.user_id == student_id, Enrollment.course_id == course_id).first()
+    enrolled = lookup_enrollment(db, student_id, course_id)
     if not enrolled:
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,

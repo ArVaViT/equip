@@ -6,7 +6,7 @@ from fastapi import Depends, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_user, lookup_enrollment
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.cohort import Cohort, CohortCourse
@@ -35,9 +35,7 @@ def get_enrollment_status(
     # Lightweight yes/no endpoint used by CourseDetail so the page does not have
     # to load the full ``/users/me/courses`` payload just to check whether the
     # viewer is enrolled. One indexed PK lookup on (user_id, course_id).
-    enrollment = (
-        db.query(Enrollment).filter(Enrollment.user_id == current_user.id, Enrollment.course_id == course_id).first()
-    )
+    enrollment = lookup_enrollment(db, current_user.id, course_id)
     if not enrollment:
         return {"enrolled": False, "enrollment": None}
     return {
