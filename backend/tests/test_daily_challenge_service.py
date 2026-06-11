@@ -192,7 +192,10 @@ class TestNormalizeVerseRange:
             bible_verse_from=None,
             bible_verse_to=16,  # dangling end, no start — the bug case
             question_text="What did Jonah do when called to Nineveh?",
-            options=[OptionDraft(text="Fled to Tarshish", is_correct=True), OptionDraft(text="Obeyed", is_correct=False)],
+            options=[
+                OptionDraft(text="Fled to Tarshish", is_correct=True),
+                OptionDraft(text="Obeyed", is_correct=False),
+            ],
             explanation="Jonah 1 — he fled toward Tarshish.",
             category="narrative_meaning",
             created_by=author.id,
@@ -214,7 +217,10 @@ class TestNormalizeVerseRange:
             bible_verse_from=1,
             bible_verse_to=16,
             question_text="What does Psalm 119:1-16 commend?",
-            options=[OptionDraft(text="Walking in the law", is_correct=True), OptionDraft(text="Riches", is_correct=False)],
+            options=[
+                OptionDraft(text="Walking in the law", is_correct=True),
+                OptionDraft(text="Riches", is_correct=False),
+            ],
             explanation="Psalm 119 exalts God's word.",
             category="passage_exegesis",
             created_by=author.id,
