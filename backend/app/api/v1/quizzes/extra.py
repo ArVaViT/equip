@@ -10,11 +10,11 @@ from app.api.dependencies import require_teacher, resolve_chapter_course_id
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.enrollment import Enrollment
-from app.models.quiz import Quiz, QuizExtraAttempt
+from app.models.quiz import QuizExtraAttempt
 from app.models.user import User
 from app.schemas.quiz import ExtraAttemptsResponse, GrantExtraAttemptsRequest
 
-from ._deps import verify_quiz_owner
+from ._deps import get_quiz_or_404, verify_quiz_owner
 from ._router import router
 
 
@@ -25,14 +25,7 @@ def grant_extra_attempts(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
-    quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
-    if not quiz:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Quiz not found",
-            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
-        )
+    quiz = get_quiz_or_404(db, quiz_id)
     verify_quiz_owner(db, quiz, teacher.id)
 
     course_id = resolve_chapter_course_id(db, quiz.chapter_id)
@@ -109,14 +102,7 @@ def list_extra_attempts(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
-    quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
-    if not quiz:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Quiz not found",
-            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
-        )
+    quiz = get_quiz_or_404(db, quiz_id)
     verify_quiz_owner(db, quiz, teacher.id)
 
     return (

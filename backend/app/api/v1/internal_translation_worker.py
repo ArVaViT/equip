@@ -21,20 +21,18 @@ config knob, not a code change.
 
 from __future__ import annotations
 
-import hmac
 import logging
 import secrets
 import time
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Depends, Header, status
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session  # noqa: TC002 — used by FastAPI Depends at runtime
 
-from app.core.config import settings
+from app.api.dependencies import require_worker_secret
 from app.core.database import get_db
-from app.core.errors import ErrorCode, equip_error
 from app.core.metrics import gauge, timing
 from app.services.course_service import get_course
 from app.services.translation.course_pipeline import translate_course_content
@@ -67,47 +65,6 @@ class WorkerTickResponse(BaseModel):
     job_id: str | None = None
     course_id: str | None = None
     attempts: int | None = None
-
-
-def _require_worker_secret(
-    x_worker_secret: str | None = Header(default=None, alias="X-Worker-Secret"),
-    authorization: str | None = Header(default=None, alias="Authorization"),
-) -> None:
-    """Constant-time shared-secret check. Refuses every request when
-    the env var is unset — opt-in by design so dev environments without
-    the queue cron don't accidentally expose the endpoint.
-
-    Accepts two header shapes so a single env var serves both flows:
-
-    * ``X-Worker-Secret: <secret>`` — direct human / test access.
-    * ``Authorization: Bearer <secret>`` — what Vercel Cron Jobs send
-      automatically (Vercel signs each cron request with the
-      ``CRON_SECRET`` env var; we map ``TRANSLATION_WORKER_SECRET`` to
-      that value at deploy so the auth scheme matches).
-    """
-    expected = settings.TRANSLATION_WORKER_SECRET
-    if expected is None or not expected.get_secret_value():
-        raise equip_error(
-            ErrorCode.TRANSLATION_WORKER_UNCONFIGURED,
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            message="Translation worker is not configured on this deployment.",
-            context={"resource_type": "translation_worker"},
-        )
-    expected_value = expected.get_secret_value()
-
-    presented = x_worker_secret or ""
-    if not presented and authorization and authorization.startswith("Bearer "):
-        presented = authorization.removeprefix("Bearer ").strip()
-
-    if not hmac.compare_digest(presented, expected_value):
-        # 401 with a generic message so a probing attacker can't
-        # distinguish 'wrong secret' from 'no secret header'.
-        raise equip_error(
-            ErrorCode.TRANSLATION_WORKER_UNAUTHORIZED,
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            message="Worker authentication failed.",
-            context={"resource_type": "translation_worker"},
-        )
 
 
 def _emit_queue_gauges(db: Session) -> None:
@@ -246,7 +203,7 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
 )
 def drain_one_job(
     db: Session = Depends(get_db),
-    _: None = Depends(_require_worker_secret),
+    _: None = Depends(require_worker_secret),
 ) -> WorkerTickResponse:
     """Cron-callable. Claims one job and runs the orchestrator."""
     return _run_one_tick(db)
@@ -264,7 +221,7 @@ def drain_one_job(
 )
 def drain_one_job_get(
     db: Session = Depends(get_db),
-    _: None = Depends(_require_worker_secret),
+    _: None = Depends(require_worker_secret),
 ) -> WorkerTickResponse:
     """Vercel Cron Jobs send GET — same body as the POST handler. Kept
     as a thin alias instead of changing the canonical method so test
@@ -295,7 +252,7 @@ class QueueHealthResponse(BaseModel):
 )
 def queue_health(
     db: Session = Depends(get_db),
-    _: None = Depends(_require_worker_secret),
+    _: None = Depends(require_worker_secret),
 ) -> QueueHealthResponse:
     """Authenticated health probe — same secret as the worker.
 
@@ -321,7 +278,6 @@ def queue_health(
 __all__ = [
     "_emit_queue_gauges",
     "_emit_translation_duration",
-    "_require_worker_secret",
     "_run_one_tick",
     "router",
 ]

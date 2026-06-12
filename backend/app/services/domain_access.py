@@ -22,8 +22,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException, status
+from fastapi import status
 
+from app.core.errors import ErrorCode, equip_error
 from app.models.course import Chapter, Course, Module
 from app.models.user import User, UserRole
 
@@ -51,7 +52,11 @@ def assert_course_owner(
         return
     if allow_admin and user.role == UserRole.ADMIN.value:
         return
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+    raise equip_error(
+        ErrorCode.AUTH_FORBIDDEN,
+        status_code=status.HTTP_403_FORBIDDEN,
+        message=detail,
+    )
 
 
 def resolve_chapter_course_id(db: Session, chapter_id: str) -> str:
@@ -75,5 +80,10 @@ def resolve_chapter_course_id(db: Session, chapter_id: str) -> str:
         .first()
     )
     if not row:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chapter not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Chapter not found",
+            context={"resource_type": "chapter", "resource_id": chapter_id},
+        )
     return row[0]

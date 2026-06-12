@@ -1,9 +1,11 @@
+import hmac
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.security import decode_access_token
@@ -96,6 +98,49 @@ def require_admin(
     return current_user
 
 
+def require_worker_secret(
+    x_worker_secret: str | None = Header(default=None, alias="X-Worker-Secret"),
+    authorization: str | None = Header(default=None, alias="Authorization"),
+) -> None:
+    """Constant-time shared-secret check for the internal cron workers.
+
+    Refuses every request when the env var is unset — opt-in by design so
+    dev environments without the queue cron don't accidentally expose the
+    endpoints.
+
+    Accepts two header shapes so a single env var serves both flows:
+
+    * ``X-Worker-Secret: <secret>`` — direct human / test access.
+    * ``Authorization: Bearer <secret>`` — what Vercel Cron Jobs send
+      automatically (Vercel signs each cron request with the
+      ``CRON_SECRET`` env var; we map ``TRANSLATION_WORKER_SECRET`` to
+      that value at deploy so the auth scheme matches).
+    """
+    expected = settings.TRANSLATION_WORKER_SECRET
+    if expected is None or not expected.get_secret_value():
+        raise equip_error(
+            ErrorCode.TRANSLATION_WORKER_UNCONFIGURED,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            message="Translation worker is not configured on this deployment.",
+            context={"resource_type": "translation_worker"},
+        )
+    expected_value = expected.get_secret_value()
+
+    presented = x_worker_secret or ""
+    if not presented and authorization and authorization.startswith("Bearer "):
+        presented = authorization.removeprefix("Bearer ").strip()
+
+    if not hmac.compare_digest(presented, expected_value):
+        # 401 with a generic message so a probing attacker can't
+        # distinguish 'wrong secret' from 'no secret header'.
+        raise equip_error(
+            ErrorCode.TRANSLATION_WORKER_UNAUTHORIZED,
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            message="Worker authentication failed.",
+            context={"resource_type": "translation_worker"},
+        )
+
+
 def _resolve_admin_flag(db: Session, teacher: User | str | UUID) -> bool:
     """Return whether ``teacher`` holds the admin role.
 
@@ -177,7 +222,12 @@ def verify_course_owner(
     # that need deleted rows query the ORM directly with include_deleted.
     course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
     if not course:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Course not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
     teacher_id = teacher.id if isinstance(teacher, User) else teacher
     if str(course.created_by) == str(teacher_id):
         return course
@@ -207,7 +257,12 @@ def _resolve_chapter(db: Session, chapter_id: str) -> tuple[Chapter, Module, Cou
         .first()
     )
     if not row:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chapter not found")
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Chapter not found",
+            context={"resource_type": "chapter", "resource_id": chapter_id},
+        )
     return row[0], row[1], row[2]
 
 
@@ -219,7 +274,14 @@ def verify_chapter_access(db: Session, chapter_id: str, user: User) -> Chapter:
     if str(course.created_by) == str(user.id):
         return chapter
     if course.status != CourseStatus.PUBLISHED:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chapter not found")
+        # 404 (not 403) so an unpublished course's existence doesn't leak
+        # to students probing chapter ids.
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Chapter not found",
+            context={"resource_type": "chapter", "resource_id": chapter_id},
+        )
     enrolled = db.query(Enrollment).filter(Enrollment.user_id == user.id, Enrollment.course_id == course.id).first()
     if not enrolled:
         raise equip_error(

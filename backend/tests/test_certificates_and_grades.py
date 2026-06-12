@@ -416,7 +416,7 @@ class TestTeacherApproveCertificate:
 
         r = client.put(f"/api/v1/certificates/{cert.id}/teacher-approve")
         assert r.status_code == 403
-        assert "own" in r.json()["detail"].lower()
+        assert "own" in r.json()["detail"]["message"].lower()
 
 
 class TestAdminApproveCertificate:
@@ -480,7 +480,7 @@ class TestAdminApproveCertificate:
 
         r = client.put(f"/api/v1/certificates/{cert.id}/admin-approve")
         assert r.status_code == 403
-        assert "own" in r.json()["detail"].lower()
+        assert "own" in r.json()["detail"]["message"].lower()
 
 
 class TestRejectCertificate:

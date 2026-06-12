@@ -22,7 +22,7 @@ from app.schemas.quiz import QuizAttemptResponse, QuizSubmitRequest
 from app.services import quiz_service
 from app.services.course_service import sync_enrollment_progress
 
-from ._deps import verify_quiz_owner
+from ._deps import get_quiz_or_404, verify_quiz_owner
 from ._router import router
 
 
@@ -93,22 +93,10 @@ def submit_quiz(
             context={"resource_type": "quiz", "quiz_id": str(quiz_id), "course_id": course_id},
         )
 
-    quiz = (
-        db.query(Quiz)
-        .options(selectinload(Quiz.questions).selectinload(QuizQuestion.options))
-        .filter(Quiz.id == quiz_id)
-        .with_for_update()
-        .first()
-    )
-    if not quiz:
-        # Lost-race fallback: someone deleted the quiz between the
-        # pre-check and the lock. Same 404 the original flow returned.
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Quiz not found",
-            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
-        )
+    # Lost-race fallback inside the helper: someone deleting the quiz
+    # between the pre-check and the lock gets the same 404 the original
+    # flow returned.
+    quiz = get_quiz_or_404(db, quiz_id, load_questions=True, for_update=True)
 
     quiz_service.ensure_attempts_available(db, quiz, current_user.id)
 
@@ -180,14 +168,7 @@ def get_quiz_attempts(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
-    quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
-    if not quiz:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Quiz not found",
-            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
-        )
+    quiz = get_quiz_or_404(db, quiz_id)
     verify_quiz_owner(db, quiz, teacher.id)
     return (
         db.query(QuizAttempt)
@@ -208,14 +189,7 @@ def get_my_quiz_attempts(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
-    if not quiz:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Quiz not found",
-            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
-        )
+    quiz = get_quiz_or_404(db, quiz_id)
     verify_chapter_access(db, quiz.chapter_id, current_user)
 
     return (

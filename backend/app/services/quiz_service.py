@@ -11,9 +11,10 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from fastapi import HTTPException, status
+from fastapi import status
 from sqlalchemy.exc import IntegrityError
 
+from app.core.errors import ErrorCode, equip_error
 from app.models.chapter_progress import ChapterProgress
 from app.models.quiz import (
     Quiz,
@@ -60,7 +61,12 @@ def ensure_attempts_available(db: Session, quiz: Quiz, user_id: UUID) -> None:
     total_allowed = quiz.max_attempts + (extra.extra_attempts if extra else 0)
     if used_attempts >= total_allowed:
         detail = "Exam attempts limit reached" if quiz.quiz_type == "exam" else "Maximum attempts reached"
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+        raise equip_error(
+            ErrorCode.QUIZ_ATTEMPTS_EXHAUSTED,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message=detail,
+            context={"resource_type": "quiz", "quiz_id": str(quiz.id), "max_attempts": total_allowed},
+        )
 
 
 def index_quiz_options(
@@ -169,9 +175,11 @@ def persist_answers(
     for ans in submitted:
         question = questions_map.get(ans.question_id)
         if not question:
-            raise HTTPException(
+            raise equip_error(
+                ErrorCode.VALIDATION_FAILED,
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Unknown question_id: {ans.question_id}",
+                message=f"Unknown question_id: {ans.question_id}",
+                context={"resource_type": "quiz_question", "question_id": str(ans.question_id)},
             )
         answered.add(question.id)
         is_correct, points_earned = grade_auto_answer(question, ans.selected_option_id, options_by_id)

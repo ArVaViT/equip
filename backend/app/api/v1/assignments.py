@@ -49,6 +49,25 @@ router = APIRouter(prefix="/assignments", tags=["assignments"])
 _TRANSLATABLE_ASSIGNMENT_FIELDS = ("title", "description")
 
 
+def _get_assignment_or_404(db: Session, assignment_id: UUID) -> Assignment:
+    """Fetch an assignment or raise the canonical 404.
+
+    Consolidates the fetch-or-404 boilerplate this module repeated at
+    every ``{assignment_id}`` route. The error envelope (code / status /
+    message / context) is byte-identical to the hand-written call sites
+    it replaced, so the HTTP contract is unchanged.
+    """
+    assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
+    if not assignment:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Assignment not found",
+            context={"resource_type": "assignment", "resource_id": str(assignment_id)},
+        )
+    return assignment
+
+
 def _assignment_to_response(db: Session, assignment: Assignment, *, source_locale: str = "en") -> AssignmentResponse:
     """Phase 5e3: title + description columns dropped — pull both from
     cv (preferring source_locale, falling back to any active locale).
@@ -169,14 +188,7 @@ def update_assignment(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
-    assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
-    if not assignment:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Assignment not found",
-            context={"resource_type": "assignment", "resource_id": str(assignment_id)},
-        )
+    assignment = _get_assignment_or_404(db, assignment_id)
     verify_chapter_owner(db, assignment.chapter_id, teacher)
 
     patch = data.model_dump(exclude_unset=True)
@@ -214,14 +226,7 @@ def delete_assignment(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
-    assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
-    if not assignment:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Assignment not found",
-            context={"resource_type": "assignment", "resource_id": str(assignment_id)},
-        )
+    assignment = _get_assignment_or_404(db, assignment_id)
     verify_chapter_owner(db, assignment.chapter_id, teacher)
     # Phase 5ad: cv has no FK back; drop its rows explicitly.
     delete_entity_cv_rows(db, entity_type="assignment", entity_id=assignment.id)
@@ -257,14 +262,7 @@ def submit_assignment(
     their "this chapter is done" badge. Grading then happens through
     ``grade_submission`` on the teacher side.
     """
-    assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
-    if not assignment:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Assignment not found",
-            context={"resource_type": "assignment", "resource_id": str(assignment_id)},
-        )
+    assignment = _get_assignment_or_404(db, assignment_id)
 
     course_id = resolve_chapter_course_id(db, assignment.chapter_id)
     enrolled = lookup_enrollment(db, current_user.id, course_id)
@@ -348,14 +346,7 @@ def list_submissions(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
-    assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
-    if not assignment:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Assignment not found",
-            context={"resource_type": "assignment", "resource_id": str(assignment_id)},
-        )
+    assignment = _get_assignment_or_404(db, assignment_id)
     verify_chapter_owner(db, assignment.chapter_id, teacher)
     return (
         db.query(AssignmentSubmission)
@@ -375,14 +366,7 @@ def list_my_submissions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
-    if not assignment:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Assignment not found",
-            context={"resource_type": "assignment", "resource_id": str(assignment_id)},
-        )
+    assignment = _get_assignment_or_404(db, assignment_id)
 
     course_id = resolve_chapter_course_id(db, assignment.chapter_id)
     enrolled = lookup_enrollment(db, current_user.id, course_id)
@@ -425,14 +409,7 @@ def grade_submission(
             message="Submission not found",
             context={"resource_type": "submission", "resource_id": str(submission_id)},
         )
-    assignment = db.query(Assignment).filter(Assignment.id == submission.assignment_id).first()
-    if not assignment:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Assignment not found",
-            context={"resource_type": "assignment", "resource_id": str(submission.assignment_id)},
-        )
+    assignment = _get_assignment_or_404(db, submission.assignment_id)
     verify_chapter_owner(db, assignment.chapter_id, teacher)
 
     if data.grade > assignment.max_score:

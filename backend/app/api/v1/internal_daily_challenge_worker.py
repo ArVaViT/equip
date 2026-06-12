@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session  # noqa: TC002 — used by FastAPI Depends at runtime
 
-from app.api.v1.internal_translation_worker import _require_worker_secret
+from app.api.dependencies import require_worker_secret
 from app.core.config import settings
 from app.core.database import get_db
 from app.services.daily_challenge.llm import GeminiPromptClient
@@ -29,9 +29,10 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/internal", tags=["internal"])
 
-# A free-tier key 429s on a ~7-call burst, so space calls out (still well
-# inside a Vercel Pro 60s function: ~7 x 4s ~= 28s) and give a 429 a real
-# cooldown. On a paid key this is harmless headroom.
+# A free-tier key 429s on a ~7-call burst, so space calls out and give a
+# 429 a real cooldown. Vercel Fluid Compute Pro: 300s effective function
+# timeout (verified 2026-06-11); worst-case tick ~65-135s fits with 2x
+# headroom. On a paid key this is harmless headroom.
 _THROTTLE_SECONDS = 4.0
 _MAX_RETRIES = 4
 
@@ -90,7 +91,7 @@ def _run_one_tick(db: Session) -> ReplenishResponse:
 )
 def replenish_post(
     db: Session = Depends(get_db),
-    _: None = Depends(_require_worker_secret),
+    _: None = Depends(require_worker_secret),
 ) -> ReplenishResponse:
     """Cron-callable. Generates one question and appends it."""
     return _run_one_tick(db)
@@ -108,7 +109,7 @@ def replenish_post(
 )
 def replenish_get(
     db: Session = Depends(get_db),
-    _: None = Depends(_require_worker_secret),
+    _: None = Depends(require_worker_secret),
 ) -> ReplenishResponse:
     """Vercel Cron Jobs send GET — same body as POST."""
     return _run_one_tick(db)

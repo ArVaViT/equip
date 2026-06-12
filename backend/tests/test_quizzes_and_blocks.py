@@ -1065,7 +1065,7 @@ def test_submit_quiz_max_attempts_exceeded(student_client: TestClient, db: Sessi
         },
     )
     assert second.status_code == 403
-    assert "attempts" in second.json()["detail"].lower()
+    assert "attempts" in second.json()["detail"]["message"].lower()
 
 
 def test_submit_quiz_extra_attempts_extend_limit(student_client: TestClient, db: Session):

@@ -10,7 +10,7 @@ from app.api.dependencies import require_teacher
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.metrics import increment, timing
-from app.models.quiz import Quiz, QuizAnswer, QuizAttempt, QuizQuestion
+from app.models.quiz import QuizAnswer, QuizAttempt, QuizQuestion
 from app.models.user import User
 from app.schemas.quiz import (
     PendingAnswerInfo,
@@ -20,7 +20,7 @@ from app.schemas.quiz import (
 from app.services import quiz_service
 from app.services.content_versions import fetch_cv_entity_texts_with_fallback
 
-from ._deps import verify_quiz_owner
+from ._deps import get_quiz_or_404, verify_quiz_owner
 from ._router import router
 
 
@@ -51,14 +51,7 @@ def list_pending_answers(
 
     An answer is considered *pending* when ``graded_at IS NULL``.
     """
-    quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
-    if not quiz:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Quiz not found",
-            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
-        )
+    quiz = get_quiz_or_404(db, quiz_id)
     verify_quiz_owner(db, quiz, teacher.id)
 
     query = (
@@ -188,14 +181,7 @@ def grade_answer(
             context={"resource_type": "quiz_attempt", "resource_id": str(answer.attempt_id)},
         )
 
-    quiz = db.query(Quiz).filter(Quiz.id == attempt.quiz_id).first()
-    if not quiz:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Quiz not found",
-            context={"resource_type": "quiz", "resource_id": str(attempt.quiz_id)},
-        )
+    quiz = get_quiz_or_404(db, attempt.quiz_id)
     verify_quiz_owner(db, quiz, teacher.id)
 
     if data.points_earned > int(question.points):
