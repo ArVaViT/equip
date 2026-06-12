@@ -36,6 +36,35 @@ class TestCreateCourse:
         assert data["status"] == "draft"
         assert data["created_by"] == str(TEACHER_ID)
 
+    def test_course_limit_blocks_teacher_but_not_admin(
+        self, client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+    ):
+        """Anti-abuse cap: live courses per teacher are limited; admins and
+        trash-then-create flows are not."""
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "MAX_COURSES_PER_TEACHER", 2)
+        _create_course(client, title="One")
+        second = _create_course(client, title="Two")
+
+        resp = client.post(PREFIX, json={"title": "Three"})
+        assert resp.status_code == 400
+        assert "limit" in resp.json()["detail"]["message"].lower()
+
+        # Soft-deleting frees a slot - deleted courses must not count.
+        del_resp = client.delete(f"{PREFIX}/{second['id']}")
+        assert del_resp.status_code in (200, 204)
+        _create_course(client, title="Three (after trash)")
+
+        # Admins are exempt from the cap.
+        from app.models.user import User, UserRole
+
+        teacher = db.query(User).filter(User.id == TEACHER_ID).first()
+        teacher.role = UserRole.ADMIN.value
+        db.commit()
+        _create_course(client, title="Admin Four")
+        _create_course(client, title="Admin Five")
+
     def test_create_without_title_returns_422(self, client: TestClient):
         resp = client.post(PREFIX, json={"description": "no title"})
         assert resp.status_code == 422
