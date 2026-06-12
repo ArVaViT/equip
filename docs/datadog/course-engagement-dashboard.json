@@ -1,6 +1,6 @@
 {
   "title": "Equip — Course Engagement",
-  "description": "Per-course health: DAU, completion rate, time-to-first-drop-off, locale split.\n\nUseful when:\n* Deciding which courses are pilot-ready vs. need more material.\n* Spotting the chapter where students consistently abandon.\n* Showing a school director the impact data after a cohort wraps.\n\nFilter by `course_id:<id>` to scope. The default view aggregates across all courses for a quick \"is anything obviously off\" scan.\n\nDeploy: Datadog UI -> Dashboards -> New Dashboard -> Import JSON.",
+  "description": "Per-course health: active users, completion rate, translation queue, locale split.\n\nUseful when:\n* Deciding which courses are pilot-ready vs. need more material.\n* Spotting a course where students abandon early (drop-off rate).\n* Showing a school director the impact data after a cohort wraps.\n\nFilter by `course_id:<id>` to scope (metric widgets only — the RUM active-user widgets are platform-wide). The default view aggregates across all courses for a quick \"is anything obviously off\" scan.\n\nDeploy: Datadog UI -> Dashboards -> New Dashboard -> Import JSON, or POST to /api/v1/dashboard.",
   "layout_type": "ordered",
   "reflow_type": "auto",
   "template_variables": [
@@ -8,19 +8,13 @@
       "name": "course_id",
       "prefix": "course_id",
       "default": "*"
-    },
-    {
-      "name": "env",
-      "prefix": "env",
-      "available_values": ["prod", "preview"],
-      "default": "prod"
     }
   ],
   "widgets": [
     {
       "definition": {
         "type": "note",
-        "content": "## How to read this\n\n- **DAU** (daily active users) — students who hit any course-scoped route today.\n- **Completion rate** — `completed_chapters / total_chapters` per enrollment, averaged across the course.\n- **Time-to-first-drop-off** — median time from first chapter open to last activity, for students who never completed.\n- **Locale split** — RU vs EN traffic; if one drops to 0, the i18n pipeline may have broken.",
+        "content": "## How to read this\n\n- **Active users** — unique RUM users with a session on `equip-frontend` in the window (RUM data, platform-wide; the `$course_id` filter does NOT apply to these two widgets).\n- **Completion rate** — `completed_chapters / total_chapters` per enrollment, averaged across the course (`equip.completion.course_avg_pct`, re-emitted on every progress recompute).\n- **Drop-off rate** — derived: `100 * (1 - chapter_completions / new_enrollments)` over the window. Rough proxy, noisy at low volume.\n- **Locale split** — RU vs EN traffic from `equip.activity.requests_total`; if one drops to 0, the i18n pipeline may have broken.\n\nAll `equip.*` metrics are log-based distributions parsed from `equip.metric:` log lines (pipeline: 'Equip — drain metric parsing'). Single prod env — no env tag exists. Per-chapter completion aggregates are not emitted (no `chapter_avg_pct` metric).",
         "background_color": "blue",
         "font_size": "14",
         "text_align": "left"
@@ -35,11 +29,21 @@
           {
             "definition": {
               "type": "query_value",
-              "title": "DAU (today)",
+              "title": "Active users (RUM, window)",
               "requests": [
                 {
-                  "q": "sum:equip.activity.daily_active_users{env:$env.value,course_id:$course_id.value}",
-                  "aggregator": "last"
+                  "response_format": "scalar",
+                  "formulas": [{ "formula": "query1" }],
+                  "queries": [
+                    {
+                      "data_source": "rum",
+                      "name": "query1",
+                      "search": { "query": "@type:session service:equip-frontend" },
+                      "compute": { "aggregation": "cardinality", "metric": "@usr.id" },
+                      "group_by": [],
+                      "storage": "hot"
+                    }
+                  ]
                 }
               ],
               "precision": 0
@@ -48,11 +52,23 @@
           {
             "definition": {
               "type": "timeseries",
-              "title": "DAU over time",
+              "title": "Active users over time (RUM sessions)",
+              "show_legend": false,
               "requests": [
                 {
-                  "q": "sum:equip.activity.daily_active_users{env:$env.value,course_id:$course_id.value} by {course_id}",
-                  "display_type": "area"
+                  "response_format": "timeseries",
+                  "display_type": "area",
+                  "formulas": [{ "formula": "query1" }],
+                  "queries": [
+                    {
+                      "data_source": "rum",
+                      "name": "query1",
+                      "search": { "query": "@type:session service:equip-frontend" },
+                      "compute": { "aggregation": "cardinality", "metric": "@usr.id", "interval": 86400000 },
+                      "group_by": [],
+                      "storage": "hot"
+                    }
+                  ]
                 }
               ],
               "yaxis": { "min": "0", "include_zero": true }
@@ -64,7 +80,7 @@
               "title": "New enrollments (7d)",
               "requests": [
                 {
-                  "q": "sum:equip.enrollments.created_total{env:$env.value,course_id:$course_id.value}.rollup(sum, 604800)",
+                  "q": "sum:equip.enrollments.created_total{course_id:$course_id.value}.as_count().rollup(sum, 604800)",
                   "aggregator": "last"
                 }
               ],
@@ -77,7 +93,7 @@
               "title": "Enrollments per day (by course)",
               "requests": [
                 {
-                  "q": "sum:equip.enrollments.created_total{env:$env.value,course_id:$course_id.value} by {course_id}.rollup(sum, 86400)",
+                  "q": "sum:equip.enrollments.created_total{course_id:$course_id.value} by {course_id}.as_count().rollup(sum, 86400)",
                   "display_type": "bars"
                 }
               ],
@@ -99,7 +115,7 @@
               "title": "Completion rate (avg %)",
               "requests": [
                 {
-                  "q": "avg:equip.completion.course_avg_pct{env:$env.value,course_id:$course_id.value}",
+                  "q": "avg:equip.completion.course_avg_pct{course_id:$course_id.value}",
                   "aggregator": "avg",
                   "conditional_formats": [
                     { "comparator": ">", "value": 70, "palette": "white_on_green" },
@@ -115,10 +131,10 @@
           {
             "definition": {
               "type": "timeseries",
-              "title": "Per-chapter completion (heatmap)",
+              "title": "Completion rate over time (by course)",
               "requests": [
                 {
-                  "q": "avg:equip.completion.chapter_avg_pct{env:$env.value,course_id:$course_id.value} by {chapter_id}",
+                  "q": "avg:equip.completion.course_avg_pct{course_id:$course_id.value} by {course_id}",
                   "display_type": "line"
                 }
               ],
@@ -131,7 +147,7 @@
               "title": "Chapter completions (7d)",
               "requests": [
                 {
-                  "q": "sum:equip.engagement.chapter_completed_total{env:$env.value,course_id:$course_id.value}.rollup(sum, 604800)",
+                  "q": "sum:equip.engagement.chapter_completed_total{course_id:$course_id.value}.as_count().rollup(sum, 604800)",
                   "aggregator": "last"
                 }
               ],
@@ -141,10 +157,10 @@
           {
             "definition": {
               "type": "toplist",
-              "title": "Completion paths (by type, last 7d)",
+              "title": "Completion paths (by type, window)",
               "requests": [
                 {
-                  "q": "top(sum:equip.engagement.chapter_completed_total{env:$env.value,course_id:$course_id.value} by {completion_type}.rollup(sum, 604800), 5, 'sum', 'desc')"
+                  "q": "top(sum:equip.engagement.chapter_completed_total{course_id:$course_id.value} by {completion_type}.as_count(), 5, 'sum', 'desc')"
                 }
               ]
             }
@@ -155,7 +171,7 @@
               "title": "Drop-off rate (7d, derived)",
               "requests": [
                 {
-                  "q": "100 * (1 - (sum:equip.engagement.chapter_completed_total{env:$env.value,course_id:$course_id.value}.rollup(sum, 604800) / sum:equip.enrollments.created_total{env:$env.value,course_id:$course_id.value}.rollup(sum, 604800)))",
+                  "q": "100 * (1 - (sum:equip.engagement.chapter_completed_total{course_id:$course_id.value}.as_count().rollup(sum, 604800) / sum:equip.enrollments.created_total{course_id:$course_id.value}.as_count().rollup(sum, 604800)))",
                   "aggregator": "last",
                   "conditional_formats": [
                     { "comparator": "<", "value": 30, "palette": "white_on_green" },
@@ -180,10 +196,10 @@
           {
             "definition": {
               "type": "query_value",
-              "title": "Backlog (queued + failed)",
+              "title": "Backlog (queued)",
               "requests": [
                 {
-                  "q": "avg:equip.translation.queue_depth{env:$env.value}",
+                  "q": "max:equip.translation.queue_depth{*}",
                   "aggregator": "last",
                   "conditional_formats": [
                     { "comparator": "<", "value": 10, "palette": "white_on_green" },
@@ -201,7 +217,7 @@
               "title": "In-flight (processing)",
               "requests": [
                 {
-                  "q": "avg:equip.translation.queue_processing{env:$env.value}",
+                  "q": "max:equip.translation.queue_processing{*}",
                   "aggregator": "last"
                 }
               ],
@@ -214,7 +230,7 @@
               "title": "Dead-lettered (failed_permanent)",
               "requests": [
                 {
-                  "q": "avg:equip.translation.queue_failed_permanent{env:$env.value}",
+                  "q": "max:equip.translation.queue_failed_permanent{*}",
                   "aggregator": "last",
                   "conditional_formats": [
                     { "comparator": ">", "value": 0, "palette": "white_on_red" }
@@ -230,7 +246,7 @@
               "title": "Translation p50 (5m)",
               "requests": [
                 {
-                  "q": "p50:equip.translation.duration_ms{env:$env.value,outcome:done}.rollup(p50, 300)",
+                  "q": "p50:equip.translation.duration_ms{outcome:done}.rollup(300)",
                   "aggregator": "last",
                   "conditional_formats": [
                     { "comparator": "<", "value": 5000, "palette": "white_on_green" },
@@ -249,17 +265,17 @@
               "title": "Translation duration (done vs failed)",
               "requests": [
                 {
-                  "q": "p50:equip.translation.duration_ms{env:$env.value,outcome:done}",
+                  "q": "p50:equip.translation.duration_ms{outcome:done}",
                   "display_type": "line",
                   "style": { "palette": "cool", "line_type": "solid", "line_width": "normal" }
                 },
                 {
-                  "q": "p95:equip.translation.duration_ms{env:$env.value,outcome:done}",
+                  "q": "p95:equip.translation.duration_ms{outcome:done}",
                   "display_type": "line",
                   "style": { "palette": "cool", "line_type": "dashed", "line_width": "normal" }
                 },
                 {
-                  "q": "p50:equip.translation.duration_ms{env:$env.value,outcome:failed}",
+                  "q": "p50:equip.translation.duration_ms{outcome:failed}",
                   "display_type": "line",
                   "style": { "palette": "warm", "line_type": "solid", "line_width": "normal" }
                 }
@@ -273,12 +289,12 @@
               "title": "Queue depth over time",
               "requests": [
                 {
-                  "q": "avg:equip.translation.queue_depth{env:$env.value}",
+                  "q": "max:equip.translation.queue_depth{*}",
                   "display_type": "area",
                   "style": { "palette": "warm", "line_type": "solid", "line_width": "normal" }
                 },
                 {
-                  "q": "avg:equip.translation.queue_processing{env:$env.value}",
+                  "q": "max:equip.translation.queue_processing{*}",
                   "display_type": "line",
                   "style": { "palette": "cool", "line_type": "solid", "line_width": "normal" }
                 }
@@ -301,7 +317,7 @@
               "title": "Average rating (out of 5)",
               "requests": [
                 {
-                  "q": "avg:equip.reviews.rating_latest{env:$env.value,course_id:$course_id.value}",
+                  "q": "avg:equip.reviews.rating_latest{course_id:$course_id.value}",
                   "aggregator": "avg",
                   "conditional_formats": [
                     { "comparator": ">", "value": 4, "palette": "white_on_green" },
@@ -319,7 +335,7 @@
               "title": "Locale split (RU vs EN)",
               "requests": [
                 {
-                  "q": "sum:equip.activity.requests_total{env:$env.value,course_id:$course_id.value} by {locale}",
+                  "q": "sum:equip.activity.requests_total{course_id:$course_id.value} by {locale}.as_count()",
                   "display_type": "area"
                 }
               ]

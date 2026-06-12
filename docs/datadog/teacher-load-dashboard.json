@@ -1,6 +1,6 @@
 {
   "title": "Equip — Teacher Load",
-  "description": "Per-teacher activity + grading-backlog dashboard.\n\nGoals:\n* Spot a teacher whose grading queue is growing (pending_grade events without matching graded events).\n* Spot a teacher whose response time on student questions has crept up.\n* Compare cohort sizes so a teacher with a 200-student backlog isn't asked to take more on.\n\nFilter the entire dashboard by `teacher_id:<uuid>` to scope to one teacher.\n\nDeploy: import this JSON via Datadog UI -> Dashboards -> New Dashboard -> Import JSON. After import, set the dashboard share with the Equip team.",
+  "description": "Per-teacher grading activity + platform enrollment context.\n\nGoals:\n* Spot a teacher whose grading throughput stalls (graded events stop arriving while submissions keep coming).\n* Spot a teacher whose median time-to-grade has crept up.\n* See enrollment distribution so a teacher with a 200-student course isn't asked to take more on.\n\nFilter by `teacher_id:<uuid>` to scope — NOTE: only the Grading widgets respond to the filter; enrollment metrics carry no teacher_id tag.\n\nDeploy: import this JSON via Datadog UI -> Dashboards -> New Dashboard -> Import JSON, or POST to /api/v1/dashboard. After import, set the dashboard share with the Equip team.",
   "layout_type": "ordered",
   "reflow_type": "auto",
   "template_variables": [
@@ -9,19 +9,13 @@
       "prefix": "teacher_id",
       "available_values": [],
       "default": "*"
-    },
-    {
-      "name": "env",
-      "prefix": "env",
-      "available_values": ["prod", "preview"],
-      "default": "prod"
     }
   ],
   "widgets": [
     {
       "definition": {
         "type": "note",
-        "content": "## How to read this dashboard\n\n- **Pending grading items**: should hover near 0 between sprints. Sustained > 20 for one teacher → outreach.\n- **Median time to grade**: > 72h sustained → outreach.\n- **Active courses**: courses with at least one enrolled student in the last 7 days.\n- **Student message response time**: how long the teacher took to reply after a student posted to the course Q&A.",
+        "content": "## How to read this dashboard\n\n- **Graded items**: throughput of teacher-graded answers (essay / short_answer). A teacher with active courses but zero graded events for days → backlog is probably building.\n- **Median time to grade**: > 72h sustained → outreach. Computed from submission → grade timestamps (seconds).\n- **Enrollments**: `created_total` is a counter of NEW enrollments; the cumulative tile sums it over the dashboard's time window (not all-time).\n- **`$teacher_id` filter applies ONLY to the Grading group** — `equip.enrollments.created_total` is tagged with `course_id`/`cohort_id`, not `teacher_id`.\n\nAll metrics are log-based distributions parsed from `equip.metric:` log lines (pipeline: 'Equip — drain metric parsing'). Single prod env — no env tag exists.",
         "background_color": "blue",
         "font_size": "14",
         "text_align": "left",
@@ -33,24 +27,19 @@
     {
       "definition": {
         "type": "group",
-        "title": "Grading queue",
+        "title": "Grading",
         "layout_type": "ordered",
         "widgets": [
           {
             "definition": {
               "type": "query_value",
-              "title": "Pending grading items (now)",
+              "title": "Graded items (last 7d)",
               "title_size": "16",
               "title_align": "left",
               "requests": [
                 {
-                  "q": "sum:equip.grading.pending{env:$env.value,teacher_id:$teacher_id.value}",
-                  "aggregator": "last",
-                  "conditional_formats": [
-                    { "comparator": "<", "value": 5, "palette": "white_on_green" },
-                    { "comparator": "<", "value": 20, "palette": "white_on_yellow" },
-                    { "comparator": ">=", "value": 20, "palette": "white_on_red" }
-                  ]
+                  "q": "sum:equip.grading.graded_total{teacher_id:$teacher_id.value}.as_count().rollup(sum, 604800)",
+                  "aggregator": "last"
                 }
               ],
               "precision": 0
@@ -59,29 +48,29 @@
           {
             "definition": {
               "type": "timeseries",
-              "title": "Grading queue depth over time",
+              "title": "Graded throughput by teacher",
               "title_size": "16",
               "title_align": "left",
               "show_legend": true,
               "requests": [
                 {
-                  "q": "max:equip.grading.pending{env:$env.value,teacher_id:$teacher_id.value} by {teacher_id}",
-                  "display_type": "line",
-                  "style": { "palette": "warm", "line_type": "solid", "line_width": "normal" }
+                  "q": "sum:equip.grading.graded_total{teacher_id:$teacher_id.value} by {teacher_id}.as_count()",
+                  "display_type": "bars",
+                  "style": { "palette": "cool", "line_type": "solid", "line_width": "normal" }
                 }
               ],
-              "yaxis": { "label": "items", "scale": "linear", "min": "0", "include_zero": true }
+              "yaxis": { "label": "items graded", "scale": "linear", "min": "0", "include_zero": true }
             }
           },
           {
             "definition": {
               "type": "query_value",
-              "title": "Median time to grade (last 7d)",
+              "title": "Median time to grade",
               "title_size": "16",
               "title_align": "left",
               "requests": [
                 {
-                  "q": "avg:equip.grading.time_to_grade.p50{env:$env.value,teacher_id:$teacher_id.value}",
+                  "q": "p50:equip.grading.time_to_grade.p50{teacher_id:$teacher_id.value}",
                   "aggregator": "avg",
                   "conditional_formats": [
                     { "comparator": "<", "value": 86400, "palette": "white_on_green" },
@@ -93,40 +82,22 @@
               "custom_unit": "s",
               "precision": 0
             }
-          }
-        ]
-      }
-    },
-    {
-      "definition": {
-        "type": "group",
-        "title": "Student questions",
-        "layout_type": "ordered",
-        "widgets": [
-          {
-            "definition": {
-              "type": "query_value",
-              "title": "Open student questions",
-              "requests": [
-                {
-                  "q": "sum:equip.questions.open{env:$env.value,teacher_id:$teacher_id.value}",
-                  "aggregator": "last"
-                }
-              ],
-              "precision": 0
-            }
           },
           {
             "definition": {
-              "type": "query_value",
-              "title": "Median response time (last 7d)",
+              "type": "timeseries",
+              "title": "Median time to grade by teacher",
+              "title_size": "16",
+              "title_align": "left",
+              "show_legend": true,
               "requests": [
                 {
-                  "q": "avg:equip.questions.response_time.p50{env:$env.value,teacher_id:$teacher_id.value}",
-                  "aggregator": "avg"
+                  "q": "p50:equip.grading.time_to_grade.p50{teacher_id:$teacher_id.value} by {teacher_id}",
+                  "display_type": "line",
+                  "style": { "palette": "warm", "line_type": "solid", "line_width": "normal" }
                 }
               ],
-              "custom_unit": "s"
+              "yaxis": { "label": "seconds", "scale": "linear", "min": "0", "include_zero": true }
             }
           }
         ]
@@ -135,16 +106,16 @@
     {
       "definition": {
         "type": "group",
-        "title": "Courses + cohorts",
+        "title": "Enrollments (platform-wide — teacher_id filter does not apply)",
         "layout_type": "ordered",
         "widgets": [
           {
             "definition": {
               "type": "query_value",
-              "title": "Active courses (≥1 enrolled in last 7d)",
+              "title": "Enrollments created (cumulative over window)",
               "requests": [
                 {
-                  "q": "max:equip.courses.active_7d{env:$env.value,teacher_id:$teacher_id.value}",
+                  "q": "cumsum(sum:equip.enrollments.created_total{*}.as_count())",
                   "aggregator": "last"
                 }
               ],
@@ -154,12 +125,26 @@
           {
             "definition": {
               "type": "toplist",
-              "title": "Enrollments per course",
+              "title": "New enrollments per course (window)",
               "requests": [
                 {
-                  "q": "top(sum:equip.enrollments.count{env:$env.value,teacher_id:$teacher_id.value} by {course_id}.rollup(last_1h), 10, 'sum', 'desc')"
+                  "q": "top(sum:equip.enrollments.created_total{*} by {course_id}.as_count(), 10, 'sum', 'desc')"
                 }
               ]
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "New enrollments per day (by cohort)",
+              "requests": [
+                {
+                  "q": "sum:equip.enrollments.created_total{*} by {cohort_id}.as_count().rollup(sum, 86400)",
+                  "display_type": "bars",
+                  "style": { "palette": "cool", "line_type": "solid", "line_width": "normal" }
+                }
+              ],
+              "yaxis": { "min": "0", "include_zero": true }
             }
           }
         ]

@@ -1,13 +1,15 @@
 # Datadog dashboards
 
 This directory holds the JSON specs for Datadog dashboards Equip
-keeps in source control. Each spec corresponds to one dashboard
-that's importable via the Datadog UI:
+keeps in source control. Each spec corresponds to one **live**
+dashboard (US5 site):
 
-| Spec | Purpose |
-|---|---|
-| `teacher-load-dashboard.json` | Per-teacher grading-queue depth, response time, active courses, enrollment counts. |
-| `course-engagement-dashboard.json` | Per-course DAU, completion rate, time-to-first-drop-off, top drop-off chapters, locale split, average rating. |
+| Spec | Live ID | Purpose |
+|---|---|---|
+| — (UI-managed) | `shf-kq8-bgf` | Equip overview. |
+| — (UI-managed) | `x7b-cua-zrm` | Equip backend. |
+| `teacher-load-dashboard.json` | `54n-cn8-nhm` | Per-teacher grading throughput + median time-to-grade, platform enrollment context. |
+| `course-engagement-dashboard.json` | `dgr-dh4-n4x` | Per-course active users (RUM), completion rate, drop-off, translation queue, locale split, average rating. |
 
 ## Why JSON, not Terraform
 
@@ -19,117 +21,103 @@ weekly, it's worth converting these to
 
 ## Importing a dashboard
 
+Via UI:
+
 1. Datadog UI → `Dashboards` → `New Dashboard`.
 2. Click the `Configure` (gear) icon → `Import dashboard JSON`.
 3. Paste the file's contents.
 4. Set sharing: `Teamwide` for the Equip team.
 
-After import, the dashboard exists by ID. If you tweak it in the
-UI, export the updated JSON and paste it back into the file in
-this directory in the SAME PR — keeping source-of-truth out of
-sync with prod is the fastest way for dashboards to silently rot.
+Via API: `POST https://api.us5.datadoghq.com/api/v1/dashboard` with
+`DD-API-KEY` / `DD-APPLICATION-KEY` headers and the file body
+(strip any top-level `id` / `url` / `created_at` / `author_handle`
+fields first — POST rejects them).
 
-## Required metrics
+After import, the dashboard exists by ID — record it in the table
+above. If you tweak it in the UI, export the updated JSON and paste
+it back into the file in this directory in the SAME PR — keeping
+source-of-truth out of sync with prod is the fastest way for
+dashboards to silently rot.
 
-Both dashboards reference custom metrics with the `equip.*` namespace.
-They're emitted via **log-based metrics** — structured INFO lines
-under the `equip.metric` logger that Datadog parses into time series.
-See `app/core/metrics.py` for the emitter contract.
+## How the metrics work
 
-Live emission today (sites tagged with the route file that wires them):
+All `equip.*` custom metrics are **log-based distribution metrics**:
+the backend logs structured `equip.metric:` lines (see
+`app/core/metrics.py` for the emitter contract), the Vercel log
+drain ships them to Datadog, and the log pipeline **'Equip — drain
+metric parsing'** parses them into generated metrics
+(type: distribution).
 
-* **`equip.grading.graded_total`** + **`equip.grading.time_to_grade.p50`**
-  — `app/api/v1/quizzes/grading.py` fires on the
-  `pending → graded` transition (guarded against re-grade
-  double-count).
-* **`equip.activity.requests_total`** + **`equip.activity.duration_ms`**
-  — the request-logging middleware in `app/main.py` tags every
-  request with `course_id`, `locale`, `status_code`.
-* **`equip.completion.course_avg_pct`** — `app/services/course_service/
-  _enrollment.py::sync_enrollment_progress` emits a gauge on every
-  progress recompute.
-* **`equip.engagement.chapter_completed_total`** — emitted by all
-  three chapter-completion paths (teacher-mark / quiz-pass /
-  assignment-submit), tagged with `completion_type`, idempotent on
-  no-op re-completion.
-* **`equip.enrollments.created_total`** — `app/services/
-  course_service/_enrollment.py::enroll_user_in_course` emits once
-  per *new* row (idempotent on re-enroll).
-* **`equip.reviews.rating_latest`** — `app/api/v1/reviews.py` emits
-  per (user, course) on review create/update; the dashboard takes
-  `avg` to produce the rating tile.
-* **`equip.errors.unhandled_total`** — the global FastAPI exception
-  handler in `app/main.py` fires this counter for every uncategorised
-  exception (i.e. not IntegrityError → 409 and not SQLAlchemyError →
-  503; those have hand-built handlers). Tagged with `method`,
-  `path_prefix` (first 4 url segments), and `exception_type` (class
-  name, never the message — message could carry PII). Drives the
-  P1 `backend-unhandled-exception-rate` monitor.
-* **`equip.translation.queue_depth`** +
-  **`equip.translation.queue_processing`** +
-  **`equip.translation.queue_failed_permanent`** — `app/api/v1/
-  internal_translation_worker.py::_emit_queue_gauges` fires three
-  per-status gauges on every cron tick. Drives the Course
-  Engagement dashboard's *Translation queue health* group and the
-  `translation-queue-backlog` monitor.
-* **`equip.translation.duration_ms`** — `app/api/v1/
-  internal_translation_worker.py::_emit_translation_duration` times
-  each `translate_course_content` run. Tagged with
-  `outcome={done,failed}` so the dashboard can split the latency
-  curve by success vs failure — a sustained gap usually means the
-  failure path is timing out on an upstream call.
-* **`equip.gemini.calls_total`** + **`equip.gemini.tokens_input_total`**
-  + **`equip.gemini.tokens_output_total`** —
-  `app/services/translation/gemini.py::translate` emits per Gemini
-  API call. Tagged with `model` (so a future flash → pro migration
-  keeps cost curves separable) and `outcome={success,retry,fatal,transport}`
-  (`transport` + `status_code=0` = a network-level failure with no HTTP
-  response, so a full Gemini outage still registers).
-  `tokens_*_total` use the token count as the metric VALUE so
-  `sum:` over the window equals cumulative token spend → multiply
-  by Gemini's $/million rate to get $-burn.
-* **`equip.daily_challenge.attempt_total`** — `app/api/v1/
-  daily_challenge.py::submit_attempt` fires per **new** attempt
-  (`is_new_attempt=True`); idempotent re-submits return 201 but
-  do NOT increment. Tagged with `challenge_date` + `is_correct`
-  so the dashboard can chart attempts-per-day and derive a correct-
-  rate without a second metric.
-* **`equip.youversion.api_calls_total`** —
-  `app/services/verse_of_the_day.py::_fetch_passage` fires per
-  YouVersion REST call. Tagged with `bible_id` (which locale's
-  bible), `outcome={success,not_in_bible,fatal}`, and `status_code`.
-  Lets the dashboard track API budget burn separately from app-side
-  errors (`not_in_bible` is the version-difference walk-forward
-  case, not a real failure).
+Consequences for queries:
 
-Drop-off rate is computed in the dashboard query as:
+* `avg:` / `max:` / `sum:` query shapes work on every metric;
+  counters take `.as_count()`.
+* Percentile queries (`p50:`, `p95:`, …) work ONLY where noted below.
+* There is **no `env` tag** — Equip runs a single prod env, and the
+  backend skips non-main builds, so dashboards don't carry an `env`
+  template variable. (RUM data does have `env`, but the RUM widgets
+  here don't need it.)
+* `teacher_id` exists ONLY on the two grading metrics — on the
+  Teacher Load dashboard, the `$teacher_id` template variable
+  affects the Grading group only.
 
-```
-100 * (1 - (chapter_completed_total / enrollments.created_total))
-```
+## Metrics that exist today (2026-06-11)
 
-over the chosen window — no separate emitter required.
+| Metric | Tags | Percentiles | Emitter |
+|---|---|---|---|
+| `equip.activity.requests_total` | `locale`, `course_id`, `status_code` | — | request-logging middleware, `app/main.py` |
+| `equip.activity.duration_ms` | `locale`, `course_id` | yes | request-logging middleware, `app/main.py` |
+| `equip.errors.unhandled_total` | `method`, `path_prefix`, `exception_type` | — | global exception handler, `app/main.py`; drives the P1 `backend-unhandled-exception-rate` monitor; `exception_type` is the class name, never the message (PII) |
+| `equip.engagement.chapter_completed_total` | `course_id`, `completion_type` | — | all three completion paths (teacher-mark / quiz-pass / assignment-submit), idempotent on re-completion |
+| `equip.reviews.rating_latest` | `course_id` | — | `app/api/v1/reviews.py`, gauge per (user, course) on create/update; dashboard takes `avg` |
+| `equip.daily_challenge.attempt_total` | `is_correct` | — | `app/api/v1/daily_challenge.py::submit_attempt`, fires per NEW attempt only |
+| `equip.grading.graded_total` | `teacher_id` | — | `app/api/v1/quizzes/grading.py` on the `pending → graded` transition (guarded against re-grade double-count) |
+| `equip.grading.time_to_grade.p50` | `teacher_id` | yes | same site; submission → grade latency in seconds |
+| `equip.youversion.api_calls_total` | `bible_id`, `outcome` | — | `app/services/verse_of_the_day.py::_fetch_passage`; `outcome=not_in_bible` is the version-difference walk-forward case, not a failure |
+| `equip.enrollments.created_total` | `course_id`, `cohort_id` | — | `app/services/course_service/_enrollment.py::enroll_user_in_course`, once per NEW row |
+| `equip.completion.course_avg_pct` | `course_id` | — | `..._enrollment.py::sync_enrollment_progress`, gauge on every progress recompute |
+| `equip.translation.queue_depth` / `equip.translation.queue_processing` / `equip.translation.queue_failed_permanent` | (none) | — | `app/api/v1/internal_translation_worker.py::_emit_queue_gauges` on every cron tick; drives the `translation-queue-backlog` monitor |
+| `equip.translation.duration_ms` | `outcome` (`done`/`failed`) | yes | `..._emit_translation_duration` times each `translate_course_content` run |
+| `equip.gemini.calls_total` | `model`, `outcome` (`success`/`retry`/`fatal`/`transport`) | — | `app/services/translation/gemini.py::translate` per Gemini API call |
 
-Still TODO (panels render "no data" gracefully). These metric names are
-referenced by dashboard widgets but **not emitted yet** — the
-`test_every_dashboard_metric_is_emitted_or_documented` sentinel requires
-every dashboard metric to be either emitted or listed here, so a dead
-tile can't sneak in silently:
+Emitted in logs but **no generated-metric rule yet** (logged values
+are queryable in Log Explorer, not as metrics):
 
-* `equip.questions.*` — course Q&A surface when it lands
-  (covers `questions.open` + `questions.response_time.p50`).
-* `equip.completion.chapter_avg_pct` — per-chapter aggregate.
-* `equip.engagement.first_dropoff.p50` — needs session-window
-  computation; deferred until session_id tagging lands.
-* `equip.activity.daily_active_users` — needs a distinct-user rollup
-  (the request-logging middleware emits `requests_total`, not DAU).
-* `equip.enrollments.count` — point-in-time enrollment gauge; today we
-  only emit `enrollments.created_total` (a counter).
-* `equip.courses.active_7d` — rolling 7-day active-course gauge; no
-  emitter yet.
-* `equip.grading.pending` — pending-grade depth gauge; today we emit
-  `grading.graded_total` + `grading.time_to_grade.p50` on grade, not a
-  pending-queue gauge.
+* `equip.gemini.tokens_input_total` + `equip.gemini.tokens_output_total`
+  — `app/services/translation/gemini.py` uses the token count as the
+  log value; add a distribution rule on the pipeline if $-burn
+  tracking should move from logs to metrics.
+
+## Derived / replaced panels
+
+* **Active users** (Course Engagement) comes from **RUM**, not a
+  custom metric: unique `@usr.id` over `@type:session
+  service:equip-frontend`. There is no
+  `equip.activity.daily_active_users` metric.
+* **Cumulative enrollments** (Teacher Load) is
+  `cumsum(sum:equip.enrollments.created_total{*}.as_count())` —
+  cumulative over the dashboard window, not an all-time gauge
+  (there is no `equip.enrollments.count` point-in-time metric).
+* **Grading load** (Teacher Load) is graded **throughput** +
+  median time-to-grade — there is no pending-queue depth gauge
+  (`equip.grading.pending` does not exist).
+* **Drop-off rate** is computed in the dashboard query as
+  `100 * (1 - (chapter_completed_total / enrollments.created_total))`
+  over the chosen window — no separate emitter required.
+
+Metrics that earlier drafts referenced but that do NOT exist (do not
+re-add widgets for these without wiring an emitter + pipeline rule
+first): `equip.grading.pending`, `equip.questions.open`,
+`equip.questions.response_time.p50`,
+`equip.activity.daily_active_users`,
+`equip.completion.chapter_avg_pct`,
+`equip.engagement.first_dropoff.p50`, `equip.courses.active_7d`,
+`equip.enrollments.count`.
+
+The `test_every_dashboard_metric_is_emitted_or_documented` sentinel
+(`backend/tests/test_metric_readme_sentinel.py`) enforces both
+directions: every emitted metric must appear in this README, and
+every metric a dashboard queries must be emitted or documented here.
 
 ## See also
 
