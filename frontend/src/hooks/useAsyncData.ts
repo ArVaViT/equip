@@ -1,9 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export interface AsyncDataState<T> {
   data: T | undefined;
   loading: boolean;
   error: Error | null;
+  /**
+   * Re-runs the fetcher (e.g. after a mutation). Cancellation semantics
+   * match the deps-change path: an in-flight fetch from the previous run
+   * is marked cancelled and its result discarded.
+   */
+  refetch: () => void;
 }
 
 export function useAsyncData<T>(
@@ -13,6 +19,12 @@ export function useAsyncData<T>(
   const [data, setData] = useState<T | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  // Internal reload key: bumping it re-fires the effect without callers
+  // having to thread their own reloadKey through deps (the hand-rolled
+  // pattern this hook exists to replace).
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const refetch = useCallback(() => setReloadKey((k) => k + 1), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,7 +50,7 @@ export function useAsyncData<T>(
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, [...deps, reloadKey]);
 
-  return { data, loading, error };
+  return { data, loading, error, refetch };
 }

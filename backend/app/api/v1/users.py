@@ -134,10 +134,13 @@ def update_my_preferences(
     previous = current_user.preferred_locale
     current_user.preferred_locale = body.preferred_locale
 
-    # Audit log MUST share a transaction with the locale change. Writing
-    # the audit row before the commit means a single COMMIT either makes
-    # both visible or rolls both back — there is never a window in which
-    # the new locale is durable but the audit trail is missing.
+    # ``log_action`` COMMITS the session itself (its trailing commit is
+    # load-bearing — see audit_service.py). Calling it here, after the
+    # locale mutation, makes the locale change and the audit row durable
+    # in the SAME commit — both visible or both rolled back. The explicit
+    # ``db.commit()`` below is then a no-op kept for readability; do NOT
+    # reorder this call after other uncommitted writes you don't want
+    # committed along with it.
     log_action(
         db,
         current_user.id,

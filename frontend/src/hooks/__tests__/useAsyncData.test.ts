@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react"
+import { act, renderHook, waitFor } from "@testing-library/react"
 import { describe, it, expect, vi } from "vitest"
 import { useAsyncData } from "@/hooks/useAsyncData"
 
@@ -76,5 +76,19 @@ describe("useAsyncData", () => {
 
     // Newer result should win
     expect(result.current.data).toBe("second result")
+  })
+  it("refetch re-runs the fetcher and cancels the superseded run", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce("first")
+      .mockResolvedValueOnce("second")
+
+    const { result } = renderHook(() => useAsyncData(fetcher, []))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.data).toBe("first")
+
+    act(() => result.current.refetch())
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.data).toBe("second")
+    expect(fetcher).toHaveBeenCalledTimes(2)
   })
 })

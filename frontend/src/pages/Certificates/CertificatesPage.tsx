@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
@@ -10,58 +9,39 @@ import { Award, ArrowLeft, RefreshCw, ScrollText } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatDateLong } from "@/i18n/format"
 import { useUserTour } from "@/hooks/useUserTour"
+import { useAsyncData } from "@/hooks/useAsyncData"
 import { certificatesSteps } from "@/lib/tourSteps"
 
 export default function CertificatesPage() {
   const { t, i18n } = useTranslation()
-  const [certificates, setCertificates] = useState<Certificate[]>([])
-  const [enrollments, setEnrollments] = useState<Enrollment[]>([])
-  const [loading, setLoading] = useState(true)
-  // Distinguish load-failure from genuine empty so the user doesn't see
-  // "no certificates yet — start learning" when the request actually
-  // 500'd. The empty-state copy is a call to action that's wrong (and
-  // misleading) when we never knew whether they have any.
-  const [loadError, setLoadError] = useState(false)
-  const [reloadKey, setReloadKey] = useState(0)
-  useUserTour({
-    tourId: "certificates-v1",
-    steps: certificatesSteps(t),
-    ready: !loading,
-  })
-
-  const retry = useCallback(() => {
-    setReloadKey((k) => k + 1)
-  }, [])
-
   // ``i18n.language`` in deps so a locale flip re-pulls the
   // localised course-title overlay without a hard reload. We
   // deliberately do NOT include ``t`` — its reference change is
   // implementation-defined across react-i18next versions and using
   // it as a dep was the brittle pattern in this codebase.
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setLoadError(false)
-    const load = async () => {
-      try {
-        const [certs, courses] = await Promise.all([
-          coursesService.getMyCertificates(),
-          coursesService.getMyCourses().catch(() => []),
-        ])
-        if (cancelled) return
-        setCertificates(certs)
-        setEnrollments(courses)
-      } catch {
-        if (!cancelled) setLoadError(true)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    load()
-    return () => {
-      cancelled = true
-    }
-  }, [i18n.language, reloadKey])
+  const { data, loading, error, refetch: retry } = useAsyncData(
+    async () => {
+      const [certs, courses] = await Promise.all([
+        coursesService.getMyCertificates(),
+        coursesService.getMyCourses().catch(() => [] as Enrollment[]),
+      ])
+      return { certificates: certs, enrollments: courses }
+    },
+    [i18n.language],
+  )
+  const certificates: Certificate[] = data?.certificates ?? []
+  const enrollments: Enrollment[] = data?.enrollments ?? []
+  // Distinguish load-failure from genuine empty so the user doesn't see
+  // "no certificates yet — start learning" when the request actually
+  // 500'd. The empty-state copy is a call to action that's wrong (and
+  // misleading) when we never knew whether they have any.
+  const loadError = error !== null
+
+  useUserTour({
+    tourId: "certificates-v1",
+    steps: certificatesSteps(t),
+    ready: !loading,
+  })
 
   const courseTitle = (courseId: string | null) => {
     if (!courseId) return t("certificates.courseFallback", { id: "—" })
