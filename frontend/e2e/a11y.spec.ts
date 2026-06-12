@@ -33,19 +33,32 @@ import AxeBuilder from "@axe-core/playwright";
  *
  * The entrance fade (`animate-fade-in`, ~0.55s) animates opacity, and axe
  * computes color contrast against the rendered frame — sampling mid-fade
- * produced phantom contrast violations with a different blended color on
- * every retry (the long-standing login-page flake). Infinite animations
- * (spinners) are skipped so this can never hang.
+ * produced phantom contrast violations (e.g. text-ink-muted #5f556d blended
+ * to #7f7789 at ~80% opacity → a 4.04:1 "failure" on an element whose
+ * resting contrast passes). Two subtleties:
+ *
+ * 1. `networkidle` first: lazily-loaded chunks (Suspense routes, the
+ *    per-locale i18n catalogs) mount AFTER domcontentloaded, so their
+ *    entrance animations don't exist yet when a single settle pass runs —
+ *    exactly how the deterministic 4.04 reappeared once the shell went lazy.
+ * 2. Settle in a LOOP: each newly-mounted subtree can start a fresh wave
+ *    of animations; drain waves until a pass finds none (bounded so a
+ *    pathological page can't hang the suite).
+ *
+ * Infinite animations (spinners) are skipped so this can never hang.
  */
 async function settleAnimations(page: Page): Promise<void> {
-  await page.evaluate(() =>
-    Promise.all(
-      document
+  await page.waitForLoadState("networkidle");
+  for (let wave = 0; wave < 5; wave++) {
+    const finiteAnimations = await page.evaluate(async () => {
+      const anims = document
         .getAnimations()
-        .filter((a) => a.effect?.getTiming().iterations !== Infinity)
-        .map((a) => a.finished.catch(() => undefined)),
-    ),
-  );
+        .filter((a) => a.effect?.getTiming().iterations !== Infinity);
+      await Promise.all(anims.map((a) => a.finished.catch(() => undefined)));
+      return anims.length;
+    });
+    if (finiteAnimations === 0) return;
+  }
 }
 
 test.describe("page-level a11y (public)", () => {
