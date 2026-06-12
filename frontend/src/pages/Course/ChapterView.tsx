@@ -12,7 +12,7 @@ import { coursesService } from "@/services/courses"
 import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
 import { useAuth } from "@/context/useAuth"
-import type { Module, Chapter, ChapterBlock } from "@/types"
+import type { Course, Module, Chapter, ChapterBlock } from "@/types"
 import {
   ArrowLeft,
   ArrowRight,
@@ -351,9 +351,55 @@ function ChapterNavLink({
   )
 }
 
+type EndOfModuleNav =
+  | { kind: "nextModule"; moduleId: string; chapterId: string; title: string }
+  | { kind: "finishCourse" }
+
+/** "Next" tile for the last chapter of a module: next module's first
+ *  chapter, or — after the last module — the course page (where the
+ *  completion dialog / certificate request lives). */
+function EndOfModuleNavLink({
+  nav,
+  courseId,
+}: {
+  nav: EndOfModuleNav
+  courseId?: string
+}) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const isFinish = nav.kind === "finishCourse"
+  const eyebrow = isFinish ? t("chapter.finishEyebrow") : t("chapter.nextModuleEyebrow")
+  const label = isFinish ? t("chapter.finishCourseLabel") : nav.title
+  const target = isFinish
+    ? `/courses/${courseId}`
+    : `/courses/${courseId}/modules/${nav.moduleId}/chapters/${nav.chapterId}`
+
+  return (
+    <PressFeedback className="flex min-w-0 flex-1">
+      <button
+        type="button"
+        onClick={() => navigate(target)}
+        className="group flex min-w-0 flex-1 flex-col rounded-md bg-card px-3 py-2 text-right transition-colors hover:border-brand/40 hover:bg-muted/40"
+        aria-label={`${eyebrow}: ${label}`}
+      >
+        <span className="flex items-center justify-end gap-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted transition-colors group-hover:text-brand">
+          {eyebrow}
+          {isFinish ? (
+            <CheckCircle className="h-3.5 w-3.5" strokeWidth={1.75} />
+          ) : (
+            <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+          )}
+        </span>
+        <span className="mt-0.5 truncate text-sm font-medium text-ink">{label}</span>
+      </button>
+    </PressFeedback>
+  )
+}
+
 function ChapterNav({
   prevChapter,
   nextChapter,
+  endOfModuleNav,
   currentIdx,
   total,
   courseId,
@@ -362,6 +408,7 @@ function ChapterNav({
 }: {
   prevChapter: Chapter | null
   nextChapter: Chapter | null
+  endOfModuleNav: EndOfModuleNav | null
   currentIdx: number
   total: number
   courseId?: string
@@ -385,13 +432,17 @@ function ChapterNav({
           courseId={courseId}
           moduleId={moduleId}
         />
-        <ChapterNavLink
-          side="next"
-          chapter={nextChapter}
-          courseId={courseId}
-          moduleId={moduleId}
-          locked={isNextLocked}
-        />
+        {!nextChapter && endOfModuleNav ? (
+          <EndOfModuleNavLink nav={endOfModuleNav} courseId={courseId} />
+        ) : (
+          <ChapterNavLink
+            side="next"
+            chapter={nextChapter}
+            courseId={courseId}
+            moduleId={moduleId}
+            locked={isNextLocked}
+          />
+        )}
       </div>
     </nav>
   )
@@ -407,6 +458,7 @@ export default function ChapterView() {
   const { user } = useAuth()
 
   const [mod, setMod] = useState<Module | null>(null)
+  const [course, setCourse] = useState<Course | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
@@ -436,12 +488,18 @@ export default function ChapterView() {
       setLoading(true)
       setError(null)
       try {
-        const [m, completedChapterIds] = await Promise.all([
+        const [m, completedChapterIds, fullCourse] = await Promise.all([
           coursesService.getModule(courseId, moduleId),
           coursesService.getMyChapterProgress(courseId).catch(() => [] as string[]),
+          // Only needed to answer "is there a NEXT module after this one?"
+          // for the end-of-module nav tile. Cached 3min and usually warm
+          // (the student navigated here from the course page). On failure
+          // the tile degrades to the old disabled placeholder.
+          coursesService.getCourse(courseId).catch(() => null),
         ])
         if (cancelled) return
         setMod(m)
+        setCourse(fullCourse)
         setCompletedIds(new Set(completedChapterIds))
       } catch {
         if (!cancelled) setError(t("errors.loadChapterFailed"))
@@ -474,6 +532,30 @@ export default function ChapterView() {
   const chapter = currentIdx >= 0 ? sortedChapters[currentIdx] : null
   const prevChapter = currentIdx > 0 ? sortedChapters[currentIdx - 1] ?? null : null
   const nextChapter = currentIdx < sortedChapters.length - 1 ? sortedChapters[currentIdx + 1] ?? null : null
+
+  // End-of-module navigation: when this is the last chapter of the module,
+  // the "next" tile used to be a disabled placeholder — a literal dead end
+  // at the most motivated moment of the course. Resolve where to go next:
+  // the first chapter of the next module, or (after the last module) the
+  // course page, where the completion dialog / certificate request lives.
+  const endOfModuleNav = useMemo((): EndOfModuleNav | null => {
+    if (nextChapter || !course?.modules?.length || !moduleId) return null
+    const sortedModules = [...course.modules].sort((a, b) => a.order_index - b.order_index)
+    const idx = sortedModules.findIndex((m) => m.id === moduleId)
+    if (idx === -1) return null
+    const nextWithChapters = sortedModules
+      .slice(idx + 1)
+      .find((m) => (m.chapters?.length ?? 0) > 0)
+    if (nextWithChapters) {
+      const first = [...(nextWithChapters.chapters ?? [])].sort(
+        (a, b) => a.order_index - b.order_index,
+      )[0]
+      if (first) {
+        return { kind: "nextModule", moduleId: nextWithChapters.id, chapterId: first.id, title: nextWithChapters.title }
+      }
+    }
+    return { kind: "finishCourse" }
+  }, [nextChapter, course, moduleId])
 
   useEffect(() => {
     if (!chapter) return
@@ -678,6 +760,7 @@ export default function ChapterView() {
         <ChapterNav
           prevChapter={prevChapter}
           nextChapter={nextChapter}
+          endOfModuleNav={endOfModuleNav}
           currentIdx={currentIdx}
           total={sortedChapters.length}
           courseId={courseId}

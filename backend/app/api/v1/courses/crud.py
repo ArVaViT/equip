@@ -6,6 +6,7 @@ from fastapi import Depends, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import assert_course_owner, require_teacher
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.sanitize import sanitize_string
@@ -37,6 +38,28 @@ def create_new_course(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> Course:
+    # Anti-abuse cap (pilot hygiene): one teacher hoarding hundreds of
+    # courses is either a runaway script or a misunderstanding — either way
+    # a human conversation, not more rows. Admins are exempt (they seed and
+    # migrate content). Soft-deleted courses don't count — trash-then-create
+    # must not dead-end a legitimate teacher.
+    if teacher.role != UserRole.ADMIN.value:
+        live_count = db.query(Course).filter(Course.created_by == teacher.id, Course.deleted_at.is_(None)).count()
+        if live_count >= settings.MAX_COURSES_PER_TEACHER:
+            raise equip_error(
+                ErrorCode.VALIDATION_FAILED,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=(
+                    f"Course limit reached ({settings.MAX_COURSES_PER_TEACHER}). "
+                    "Contact an administrator if you need more."
+                ),
+                context={
+                    "resource_type": "course",
+                    "limit": settings.MAX_COURSES_PER_TEACHER,
+                    "current": live_count,
+                },
+            )
+
     if data.title:
         data.title = sanitize_string(data.title)
     # The teacher writes in their UI language by definition — derive the

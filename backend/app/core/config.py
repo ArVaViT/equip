@@ -82,6 +82,13 @@ class Settings(BaseSettings):
     # plus the new ``finishReason`` check in ``GeminiTranslationProvider``
     # closes that hole. Cost-wise the cap only matters when actually emitted.
     GEMINI_MAX_OUTPUT_TOKENS: int = Field(default=8192, description="Cap on generation length")
+    # Anti-abuse cap on live (non-deleted) courses per teacher. Generous on
+    # purpose — a real Bible-school teacher authors a handful of courses; a
+    # runaway script or a misunderstanding authors hundreds. Admins exempt.
+    MAX_COURSES_PER_TEACHER: int = Field(
+        default=50,
+        description="Max live courses a single teacher can own (admins exempt)",
+    )
     # Minimum spacing between two Gemini calls from the same worker, in
     # seconds. ``0`` (default) is the right value for production: course
     # publishing is naturally bursty-but-sparse and rarely trips Gemini's
