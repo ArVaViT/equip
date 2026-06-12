@@ -16,9 +16,20 @@ Per tick it:
   3. promotes the surviving draft → published,
   4. schedules it on the next unscheduled date (the end of the list).
 
-Any failure (quota 429, gate rejection, publish/schedule error) returns a
-status string and leaves the DB clean — the next day's tick simply tries
-again. Autofill keeps the live challenge working in the meantime.
+Failure handling: generation failures before any question exists simply
+return an ``error`` status (nothing persisted by this tick survives the
+rollback... except commits made inside the orchestrator — see below). Once
+a question row HAS been committed by the generation pipeline, a later
+promote/publish failure cannot be rolled back (the orchestrator and the
+editorial helpers commit as they go), so the orphan is terminally
+``rejected`` with an audit reason instead of lingering as a zombie draft
+in the editorial panel. A failed *schedule* step intentionally rejects
+nothing: the question is already published, and the autofill pool serves
+published questions, so it is usable inventory. Autofill keeps the live
+challenge working in the meantime; ``_pick_passage``'s cursor counts every
+question row (including rejected), so a failed passage is skipped until
+the 210-passage list wraps rather than stalling the pipeline by being
+retried into the same deterministic failure every day.
 """
 
 from __future__ import annotations
@@ -39,6 +50,7 @@ from app.models.user import User, UserRole
 from app.services.daily_challenge.admin import (
     promote_status,
     publish_question,
+    reject_question,
     schedule_for_date,
 )
 from app.services.daily_challenge.orchestrator import GenerationRequest, run_generation
@@ -87,9 +99,12 @@ def _next_unscheduled_date(db: Session, *, start: date) -> date:
 
 
 def _pick_passage(db: Session) -> dict[str, object]:
-    """Cursor = current question count, so each success advances the
-    pointer and the worker cycles through the seed list without repeats
-    until it wraps (210 days)."""
+    """Cursor = current question count (rejected rows included), so every
+    tick that persisted a question — even one that later failed and was
+    terminally rejected — advances the pointer. The worker cycles through
+    the seed list without repeats until it wraps (~210 days); a failed
+    passage gets its retry on the next wrap instead of stalling the
+    pipeline on a deterministic failure."""
     count = db.query(func.count(DailyChallengeQuestion.id)).scalar() or 0
     return SEED_PASSAGES[count % len(SEED_PASSAGES)]
 
@@ -105,6 +120,22 @@ def _system_actor_id(db: Session) -> uuid.UUID | None:
         .limit(1)
         .scalar()
     )
+
+
+def _reject_orphan(db: Session, *, question: DailyChallengeQuestion, actor: uuid.UUID, reason: str) -> None:
+    """Best-effort terminal cleanup for a question the tick cannot finish.
+
+    ``reject_question`` keeps the row + its audit trail (Agent C's
+    philosophy) while taking it out of the editorial panel's active list.
+    Never raises — the caller is already on its error path and the orphan
+    being left behind is the lesser failure.
+    """
+    try:
+        reject_question(db, question=question, actor_id=actor, reason=reason[:500])
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.warning("replenish: failed to reject orphan question %s", question.id)
 
 
 def replenish_one_question(
@@ -150,6 +181,7 @@ def replenish_one_question(
         for _ in range(_PROMOTE_STAGES_FROM_DRAFT):
             question = promote_status(db, question=question, actor_id=actor)
         if question.status != DailyChallengeQuestionStatus.PILOT_PASSED.value:
+            _reject_orphan(db, question=question, actor=actor, reason=f"replenish: stuck at status={question.status}")
             return ReplenishOutcome(
                 status="error", question_id=str(qid), passage=label, detail=f"stuck at status={question.status}"
             )
@@ -157,6 +189,10 @@ def replenish_one_question(
     except Exception as exc:
         db.rollback()
         logger.warning("replenish: publish failed for %s: %s", qid, exc)
+        # The generation pipeline committed the question; a plain rollback
+        # cannot undo that. Terminally reject it (with audit reason) so it
+        # neither lingers as a zombie draft nor blocks the passage cursor.
+        _reject_orphan(db, question=question, actor=actor, reason=f"replenish: publish failed: {exc}")
         return ReplenishOutcome(status="error", question_id=str(qid), passage=label, detail=f"publish: {exc}")
 
     cursor = _next_unscheduled_date(db, start=start_date or datetime.now(UTC).date())

@@ -206,6 +206,33 @@ class TestNormalizeVerseRange:
         assert q.bible_verse_from is None
         assert q.bible_verse_to is None
 
+    def test_create_question_rejects_more_than_six_options(self, db: Session, author: User):
+        """daily_challenge_options_order_check caps order_index at 5; a 7th
+        option must die as a clear gate ValueError, not an IntegrityError
+        deep in the generation pipeline (same class as the verse-range bug)."""
+        import pytest
+
+        from app.services.daily_challenge.admin import OptionDraft, create_question
+
+        opts = [OptionDraft(text="Correct", is_correct=True)] + [
+            OptionDraft(text=f"Wrong {i}", is_correct=False) for i in range(6)
+        ]
+        with pytest.raises(ValueError, match="at most six options"):
+            create_question(
+                db,
+                question_type="multiple_choice",
+                bible_book="Genesis",
+                bible_chapter=1,
+                bible_verse_from=None,
+                bible_verse_to=None,
+                question_text="Too many options?",
+                options=opts,
+                explanation=None,
+                category="passage_exegesis",
+                created_by=author.id,
+                fallback_locale="en",
+            )
+
     def test_create_question_preserves_valid_range(self, db: Session, author: User):
         from app.services.daily_challenge.admin import OptionDraft, create_question
 
