@@ -134,7 +134,7 @@ class TestServerlessPoolerGuard:
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ) -> None:
         """On serverless, a direct :5432 DATABASE_URL would exhaust
-        connections under load (NullPool). _get_engine must WARN so the
+        connections under load (the pool is tiny by design). _get_engine must WARN so the
         misconfiguration surfaces at boot, not during an incident."""
         import logging
 
