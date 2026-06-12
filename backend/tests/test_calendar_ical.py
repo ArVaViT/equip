@@ -126,7 +126,7 @@ def test_feed_with_valid_token_serves_text_calendar(
     def _stub_events(**kwargs: object) -> list[CalendarEvent]:
         return [_calendar_event()]
 
-    monkeypatch.setattr(route_mod, "get_calendar_events", _stub_events)
+    monkeypatch.setattr(route_mod, "build_calendar_events", _stub_events)
 
     def _override_db() -> object:
         yield db
@@ -235,7 +235,7 @@ def test_feed_rejects_token_issued_before_rotation_floor(
     def _stub_events(**kwargs: object) -> list[CalendarEvent]:
         return [_calendar_event()]
 
-    monkeypatch.setattr(route_mod, "get_calendar_events", _stub_events)
+    monkeypatch.setattr(route_mod, "build_calendar_events", _stub_events)
 
     def _override_db() -> object:
         yield db
