@@ -39,12 +39,13 @@ from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
 from sqlalchemy.orm import Session  # noqa: TC002 — FastAPI Depends runtime use
 
 from app.api.dependencies import get_current_user
-from app.api.v1.calendar import get_calendar_events
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.user import User
+from app.schemas.locale import normalize_locale
 from app.services.calendar_ical import render_calendar
+from app.services.calendar_service import build_calendar_events
 
 if TYPE_CHECKING:
     from app.schemas.calendar import CalendarEvent
@@ -233,19 +234,16 @@ def serve_feed(
             context={"resource_type": "calendar_ical"},
         )
 
-    # Reuse the existing route logic so module deadlines + assignment
-    # deadlines + course events all come through with the same cv
-    # localization, source-locale fallback, deleted-course filtering,
-    # and 1000-event cap. ``Response`` arg is unused but the upstream
-    # route signature requires one.
-    inner_response = Response()
-    events: list[CalendarEvent] = get_calendar_events(
-        response=inner_response,
+    # Reuse the shared aggregation service so module deadlines +
+    # assignment deadlines + course events all come through with the
+    # same cv localization, source-locale fallback, deleted-course
+    # filtering, and 1000-event cap as ``GET /calendar/events``.
+    events: list[CalendarEvent] = build_calendar_events(
+        db=db,
+        user=user,
         course_id=None,
         limit=1000,
-        accept_language=accept_language,
-        current_user=user,
-        db=db,
+        display_locale=normalize_locale(accept_language),
     )
     body = render_calendar(events, user_email=user.email)
     response.headers["Content-Type"] = "text/calendar; charset=utf-8"
