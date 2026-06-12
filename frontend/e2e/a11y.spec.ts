@@ -25,12 +25,33 @@
  * each individual test scopes the run to the actual rendered region
  * via `.include()`.
  */
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+
+/**
+ * Wait for every FINITE animation/transition to finish before axe runs.
+ *
+ * The entrance fade (`animate-fade-in`, ~0.55s) animates opacity, and axe
+ * computes color contrast against the rendered frame — sampling mid-fade
+ * produced phantom contrast violations with a different blended color on
+ * every retry (the long-standing login-page flake). Infinite animations
+ * (spinners) are skipped so this can never hang.
+ */
+async function settleAnimations(page: Page): Promise<void> {
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
+}
 
 test.describe("page-level a11y (public)", () => {
   test("home page has no WCAG 2.1 AA violations", async ({ page }) => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
+    await settleAnimations(page);
 
     const accessibilityScanResults = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
@@ -49,6 +70,7 @@ test.describe("page-level a11y (public)", () => {
 
   test("login page has no WCAG 2.1 AA violations", async ({ page }) => {
     await page.goto("/login", { waitUntil: "domcontentloaded" });
+    await settleAnimations(page);
 
     const accessibilityScanResults = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])

@@ -86,6 +86,11 @@ export const assignmentsService = {
     cacheInvalidatePrefix("grades:my")
     cacheInvalidatePrefix("analytics:course:")
     cacheInvalidatePrefix("progress:students:")
+    // The gradebook matrix and the row-expand detail cache the same data the
+    // grade just changed — without these, a remounted gradebook can show the
+    // pre-grade value for up to 30s.
+    cacheInvalidatePrefix("progress:gradebook:")
+    cacheInvalidatePrefix("progress:detail:")
     return response.data
   },
 }

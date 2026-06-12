@@ -121,6 +121,16 @@ export const quizzesService = {
       points_earned: pointsEarned,
       grader_comment: graderComment ?? null,
     })
+    // Grading an essay/short-answer changes the same aggregates assignment
+    // grading does — keep the invalidation set in sync with gradeSubmission
+    // (assignments.ts), or stale gradebook/progress values survive up to 30s.
+    cacheInvalidatePrefix("grades:course:")
+    cacheInvalidatePrefix("grades:summary:")
+    cacheInvalidatePrefix("grades:my")
+    cacheInvalidatePrefix("analytics:course:")
+    cacheInvalidatePrefix("progress:students:")
+    cacheInvalidatePrefix("progress:gradebook:")
+    cacheInvalidatePrefix("progress:detail:")
     return response.data
   },
 
