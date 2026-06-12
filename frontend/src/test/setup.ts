@@ -1,4 +1,12 @@
 import '@testing-library/jest-dom'
+import i18n, { i18nReady, SUPPORTED_LOCALES } from '@/i18n/config'
+
+// i18n catalogs are lazy per-locale chunks in the app (see i18n/config.ts).
+// The unit suite assumes synchronous resources — tests call `t()` right
+// after render and flip languages with `await changeLanguage(...)` — so
+// preload BOTH catalogs here before any test file runs.
+await i18nReady
+await i18n.loadLanguages([...SUPPORTED_LOCALES])
 
 // jsdom doesn't implement IntersectionObserver. Components that read it during
 // mount (motion/react useInView, viewport reveal, virtualisation) crash without

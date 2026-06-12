@@ -13,8 +13,11 @@ const driveMock = vi.fn()
 const destroyMock = vi.fn()
 const createTourMock = vi.fn(() => ({ drive: driveMock, destroy: destroyMock }))
 
+// The real factory is async (driver.js is a lazy import), so the mock
+// resolves a Promise too — tests flush it via `await act(async ...)`.
 vi.mock("@/lib/tour", () => ({
-  createEditorialTour: (...args: unknown[]) => createTourMock(...(args as [])),
+  createEditorialTour: (...args: unknown[]) =>
+    Promise.resolve(createTourMock(...(args as []))),
 }))
 
 function makeUser(id: string): User {
@@ -119,20 +122,20 @@ describe("useUserTour", () => {
     expect(teacherTour.alreadySeen).toBe(false)
   })
 
-  it("start() builds + drives a tour", () => {
+  it("start() builds + drives a tour", async () => {
     const tour = renderWithUser("user-a", "student-dashboard-v1")
-    act(() => {
+    await act(async () => {
       tour.start()
     })
     expect(createTourMock).toHaveBeenCalledTimes(1)
     expect(driveMock).toHaveBeenCalledTimes(1)
   })
 
-  it("no-ops when there is no signed-in user", () => {
+  it("no-ops when there is no signed-in user", async () => {
     const tour = renderWithUser(null, "student-dashboard-v1")
     // The hook never wrote a flag because we have nobody to scope by.
     expect(tour.alreadySeen).toBe(false)
-    act(() => {
+    await act(async () => {
       tour.start()
     })
     // start() still wires up driver.js — calling it manually with no

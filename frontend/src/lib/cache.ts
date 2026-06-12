@@ -92,6 +92,19 @@ export function cacheInvalidate(key: string): void {
   }
 }
 
+/**
+ * Drop EVERY cached entry, across all keys and locale variants.
+ *
+ * Used on auth boundary crossings (sign-out, sign-in as a different
+ * account): cached payloads are scoped per-user by the API's auth
+ * header, not by the cache key, so anything cached for user A would
+ * otherwise be served to user B on a shared device for up to the TTL
+ * — enrollment status, grades, notifications, the lot.
+ */
+export function cacheClear(): void {
+  store.clear()
+}
+
 export function cacheInvalidatePrefix(prefix: string): void {
   // Prefix invalidation must also span locale variants. Because we
   // suffix with ``::<locale>``, a substring match against ``prefix``

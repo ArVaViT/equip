@@ -1,22 +1,19 @@
 import { Link } from "react-router-dom"
-import { LayoutGroup, motion, useReducedMotion } from "motion/react"
 import { cn } from "@/lib/utils"
-import { EDITORIAL_EASE } from "@/lib/motion"
-
-/**
- * Shared layout-group id so the active-tab underline animates
- * between desktop nav items. The same constant is consumed by the
- * <LayoutGroup> wrapper in HeaderDesktopNav; exporting it keeps the
- * two in sync without a leaky string literal.
- */
-export const HEADER_UNDERLINE_LAYOUT_ID = "header-active-underline"
 
 /**
  * Active-route wrapper used by both the desktop nav bar and the
  * mobile sheet. ``variant`` switches the box model — the bar variant
- * inlays a sliding underline (per HEADER_UNDERLINE_LAYOUT_ID); the
- * sheet variant uses a left border + background tint so the same
- * "this is the current page" affordance reads at touch sizes.
+ * inlays a static underline under the active link; the sheet variant
+ * uses a left border + background tint so the same "this is the
+ * current page" affordance reads at touch sizes.
+ *
+ * The underline used to slide between tabs via a motion/react
+ * ``layoutId`` span, but that single affordance was the only thing
+ * keeping framer-motion in the eager shell chunk (~33 KB gzip). The
+ * static underline below is the exact markup the reduced-motion
+ * branch already rendered — the slide was deliberately sacrificed
+ * for the bundle win.
  */
 export function HeaderNavLink({
   to,
@@ -31,7 +28,6 @@ export function HeaderNavLink({
   onNavigate?: () => void
   variant?: "bar" | "sheet"
 }) {
-  const prefersReducedMotion = useReducedMotion()
   const isSheet = variant === "sheet"
   return (
     <Link
@@ -51,25 +47,12 @@ export function HeaderNavLink({
       )}
     >
       {children}
-      {!isSheet &&
-        active &&
-        (prefersReducedMotion ? (
-          <span
-            className="pointer-events-none absolute inset-x-3 bottom-0 h-0.5 rounded-sm bg-brand"
-            aria-hidden
-          />
-        ) : (
-          <motion.span
-            layoutId={HEADER_UNDERLINE_LAYOUT_ID}
-            className="pointer-events-none absolute inset-x-3 bottom-0 h-0.5 rounded-sm bg-brand"
-            transition={{ duration: 0.32, ease: EDITORIAL_EASE }}
-            aria-hidden
-          />
-        ))}
+      {!isSheet && active && (
+        <span
+          className="pointer-events-none absolute inset-x-3 bottom-0 h-0.5 rounded-sm bg-brand"
+          aria-hidden
+        />
+      )}
     </Link>
   )
 }
-
-// Re-export ``LayoutGroup`` so consumers can wrap the nav without an
-// extra motion/react import.
-export { LayoutGroup }

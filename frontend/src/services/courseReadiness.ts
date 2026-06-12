@@ -2,14 +2,14 @@ import api from "./api"
 
 export type ReadinessSeverity = "critical" | "recommended" | "polish"
 
-export type ReadinessSubjectType =
+type ReadinessSubjectType =
   | "course"
   | "module"
   | "chapter"
   | "quiz"
   | "assignment"
 
-export type ReadinessActionType =
+type ReadinessActionType =
   | "set_description"
   | "set_cover_image"
   | "open_enrollment"
@@ -20,7 +20,7 @@ export type ReadinessActionType =
   | "open_assignment"
   | "open_grading_weights"
 
-export interface ReadinessSubject {
+interface ReadinessSubject {
   type: ReadinessSubjectType
   id: string
   title: string

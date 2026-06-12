@@ -14,21 +14,14 @@ import {
   cacheSet,
   cacheInvalidate,
   cacheInvalidatePrefix,
+  cacheClear,
   cached,
 } from "@/lib/cache"
 
-// The cache module keeps state at module scope. Each test starts by
-// clearing whatever the previous test wrote so order does not matter.
-function resetCache(): void {
-  // Cache exposes no clear() helper by design (services own their keys);
-  // we walk the known test-prefixed keys instead.
-  for (const prefix of ["t:", "u:", "x:", "evict:", "t:cached:"]) {
-    cacheInvalidatePrefix(prefix)
-  }
-}
-
+// The cache module keeps state at module scope. Each test starts from
+// an empty store so order does not matter.
 beforeEach(() => {
-  resetCache()
+  cacheClear()
 })
 
 afterEach(() => {
@@ -110,6 +103,34 @@ describe("cache.cacheInvalidatePrefix", () => {
     cacheSet("u:keep", 1, 60_000)
     cacheInvalidatePrefix("u:no-such-prefix:")
     expect(cacheGet("u:keep")).toBe(1)
+  })
+})
+
+describe("cache.cacheClear", () => {
+  it("removes every entry regardless of key shape", () => {
+    // Auth boundary crossings (sign-out / sign-in as another account)
+    // call this so user A's payloads can't be served to user B.
+    cacheSet("t:a", 1, 60_000)
+    cacheSet("u:list:all", "A", 60_000)
+    cacheSet<string | null>("x:null", null, 60_000)
+
+    cacheClear()
+
+    expect(cacheGet("t:a")).toBeUndefined()
+    expect(cacheGet("u:list:all")).toBeUndefined()
+    expect(cacheGet("x:null")).toBeUndefined()
+  })
+
+  it("is a no-op on an already-empty cache", () => {
+    cacheClear()
+    expect(() => cacheClear()).not.toThrow()
+  })
+
+  it("allows fresh writes after clearing", () => {
+    cacheSet("t:rewrite", "old", 60_000)
+    cacheClear()
+    cacheSet("t:rewrite", "new", 60_000)
+    expect(cacheGet("t:rewrite")).toBe("new")
   })
 })
 
