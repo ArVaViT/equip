@@ -3,10 +3,9 @@ import os
 from collections.abc import Generator
 from urllib.parse import urlparse
 
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Connection, Engine, create_engine, event
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
-from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
 
@@ -43,13 +42,13 @@ def _get_engine() -> Engine:
         separator = "&" if "?" in db_url else "?"
         db_url = f"{db_url}{separator}sslmode=require"
 
-    # Serverless DB-shape guard. NullPool (below) opens ONE connection per warm
-    # instance, so on Vercel/Lambda prod MUST point at Supabase's transaction
-    # pooler (:6543), not the direct Postgres endpoint (:5432). A direct
-    # connection caps at ~15-60 backends and exhausts almost immediately under a
-    # launch spike. Nothing else enforces this documented invariant
-    # (.env.example / DEPLOYMENT.md), so warn loudly at boot rather than discover
-    # it during an incident.
+    # Serverless DB-shape guard. The per-instance pool (below) keeps 1-3
+    # connections per warm instance, so on Vercel/Lambda prod MUST point at
+    # Supabase's transaction pooler (:6543), not the direct Postgres endpoint
+    # (:5432). Direct connections cap at ~15-60 backends and exhaust almost
+    # immediately under a launch spike. Nothing else enforces this documented
+    # invariant (.env.example / DEPLOYMENT.md), so warn loudly at boot rather
+    # than discover it during an incident.
     if IS_SERVERLESS:
         try:
             _port = urlparse(db_url).port
@@ -79,15 +78,33 @@ def _get_engine() -> Engine:
                 # 5s (was 10) so a saturated pooler sheds load fast under a
                 # spike instead of queueing each request for 10s. A healthy
                 # pooler connect is sub-second; this only bites when saturated.
+                # NOTE: do NOT put statement_timeout in an ``options`` startup
+                # parameter here — Supavisor transaction pooling silently drops
+                # it (verified on prod 2026-06-11: SHOW statement_timeout
+                # returned the 2min cluster default). The real bound is the
+                # SET LOCAL emitted per-transaction below.
                 "connect_timeout": 5,
-                "options": "-c statement_timeout=30000",
             },
             "pool_pre_ping": True,
             "echo": False,
         }
 
         if IS_SERVERLESS:
-            pool_kwargs["poolclass"] = NullPool
+            # Vercel keeps the Python process warm across invocations (the
+            # module-cached engine, JWT cache and Gemini client all rely on
+            # it), so a tiny per-instance pool amortises the TCP+TLS+auth
+            # handshake to the pooler (~10-30ms) instead of paying it on
+            # EVERY request as NullPool did. Bounded at 1+2 connections per
+            # warm instance against the transaction pooler; pool_recycle
+            # guards against the pooler silently dropping idle clients.
+            pool_kwargs.update(
+                {
+                    "pool_size": 1,
+                    "max_overflow": 2,
+                    "pool_recycle": 300,
+                    "pool_timeout": 10,
+                }
+            )
         else:
             pool_kwargs.update(
                 {
@@ -99,6 +116,19 @@ def _get_engine() -> Engine:
             )
 
         _engine = create_engine(db_url, **pool_kwargs)
+
+        if _engine.dialect.name == "postgresql":
+            # Transaction-scoped statement timeout. SET LOCAL is the only
+            # form that survives Supavisor transaction pooling (a session
+            # SET would leak onto whatever client gets the server connection
+            # next; the ``options`` startup parameter is dropped entirely).
+            # One cheap round-trip per transaction restores the designed 30s
+            # bound — without it a pathological query holds a pooler slot
+            # for the 2min cluster default.
+            @event.listens_for(_engine, "begin")
+            def _set_statement_timeout(conn: Connection) -> None:
+                conn.exec_driver_sql("SET LOCAL statement_timeout = '30s'")
+
         logger.info("Database engine created successfully")
 
         _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
