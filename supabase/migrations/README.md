@@ -33,19 +33,16 @@ still has pending work.
    so tests (which bootstrap the schema via `Base.metadata.create_all()`)
    stay aligned with production.
 
-## Rebuilding a fresh database from these files
+## Rebuilding a fresh database
 
-Any standard Postgres will accept the files — they contain pure Postgres
-DDL plus Supabase-managed schemas (`auth`, `storage`). On a new Supabase
-project:
-
-```bash
-supabase db push --linked
-```
-
-On a non-Supabase Postgres you'd first need to create the `auth` and
-`storage` schemas (or strip out references to `auth.uid()` and
-`storage.objects`, depending on the target stack).
+These files alone **cannot** rebuild a fresh database — the base tables
+(`users`, `courses`, …) pre-date migration tracking, so the earliest
+migrations here `ALTER` tables that no file in this directory creates.
+The replayable baseline is [`supabase/schema.sql`](../schema.sql), a
+`pg_dump --schema-only` of prod regenerated in the same PR as every
+schema change. See [`supabase/ci/README.md`](../ci/README.md) for the
+`schema-replay-postgres` CI job that proves it loads on a clean
+Postgres, and for the regeneration recipe.
 
 ## Relationship with the app code
 

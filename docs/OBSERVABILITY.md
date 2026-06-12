@@ -17,7 +17,7 @@ Configured 2026-05-11 to 2026-05-13. Org `arvavitcorp`, Datadog site
 |---|---|---|
 | Frontend errors, sessions, replays, Core Web Vitals | Datadog RUM (`equip-frontend`) | 100 % session + 100 % replay sampling; React-Router integration so dashboards aggregate by route template |
 | Backend WARNING / ERROR / CRITICAL logs | `DatadogHTTPHandler` in `backend/app/core/logging.py` | Per-record HTTPS POST to Datadog intake, tagged with env / service / version / vercel_region / vercel.request_id |
-| Backend INFO logs + build logs + edge events | Vercel Log Drain `drn_JWO7AolUh4PEEUXB` | ndjson stream from Vercel → Datadog intake; covers both `equip-frontend` and `equip-backend` projects |
+| Backend INFO logs + build logs + edge events | Vercel Log Drain `drn_DJUgg6MWFVruo4qV` ("Datadog (us5)", `deliveryFormat: json`) | json stream from Vercel → Datadog intake (the intake URL carries `ddtags` such as `env:production`); covers both `equip-frontend` and `equip-backend` projects. Replaced the original ndjson drain on 2026-06-11 -- Datadog intake answered 415 to ndjson payloads. |
 | External uptime | 3 Datadog synthetic monitors (30 min cadence, 2 retries, aws:us-east-1) | `https://api.equipbible.com/health`, `https://equipbible.com/`, `https://api.equipbible.com/api/v1/courses` |
 | Transactional email delivery | Supabase Edge Function `send-email` → Resend (verified domain `equipbible.com`) | Function ships its own logs to Datadog when `DD_API_KEY` is set; one monitor on its error stream |
 
@@ -40,9 +40,9 @@ root logger configured in app.core.logging.setup_logging()
        ↓                                                    ↓
 StreamHandler → stdout                          DatadogHTTPHandler.emit()
        ↓                                                    ↓
-Vercel captures stdout                          synchronous POST with 2s timeout
+Vercel captures stdout                          synchronous POST with 0.5s timeout
        ↓                                          to https://http-intake.logs.us5.datadoghq.com
-Vercel Log Drain drn_JWO7AolUh4PEEUXB                       ↓
+Vercel Log Drain drn_DJUgg6MWFVruo4qV                       ↓
        ↓                                          Datadog index "main" (15-day retention)
 Datadog index "main"                                        ↓
                                               tagged: env, service, version (git SHA[:7]),
@@ -92,16 +92,39 @@ Datadog inbox are the routes.
 | 19728791 | RUM alert | ≥ 10 frontend errors in 10 min (warn at 5) | `priority:2` |
 | 19728792 | RUM alert | ≥ 5 rage clicks in 30 min (warn at 3) | warn |
 | 19728793 | RUM alert | avg LCP > 4 s over 15 min (warn 2.5 s). LCP is in **nanoseconds** in RUM events -- never use ms thresholds | warn |
-| 19730778 | Log alert | ≥ 5 ERROR / CRITICAL backend log lines in 10 min (warn at 2) | `priority:2` |
-| 19730779 | Log alert | ≥ 20 WARNING backend log lines in 15 min (warn at 10) -- usually IntegrityError noise | warn |
+| 19730778 | Log alert | ≥ 10 ERROR / CRITICAL backend log lines in 10 min (warn at 6), scoped `source:python` | `priority:2` |
+| 19730779 | Log alert | ≥ 20 WARNING backend log lines in 15 min (warn at 10) -- usually IntegrityError noise. Scoped `source:python` | warn |
 | 19761387 | Log alert | ≥ 3 error logs from `service:send-email status:error` in 10 min (warn at 1) | `priority:2` |
+| 20465339 | Log alert | Translation jobs stuck in `processing` -- watches the worker's "jobs stuck in processing" WARNING line. (Replaced metric monitor `20393856`, deleted 2026-06-11 -- the metric it queried never existed, so it could never fire.) | `priority:3` |
+| 20391511 | Log alert | Daily Challenge schedule ran dry -- watches the "auto-filled schedule" line, now logged at WARNING so it reaches Datadog (at INFO the monitor was blind) | warn |
+
+The backend spike monitors (19730778 / 19730779) are scoped to
+`source:python` so each record counts once -- without the scope, lines
+arriving via both the in-process handler and the log drain would
+double-count toward the threshold.
 
 Dashboards:
 
 - [Equip overview (RUM)](https://app.us5.datadoghq.com/dashboard/shf-kq8-bgf) -- `shf-kq8-bgf`
 - [Equip backend (logs + synthetics)](https://app.us5.datadoghq.com/dashboard/x7b-cua-zrm) -- `x7b-cua-zrm`
+- [Equip teacher load](https://app.us5.datadoghq.com/dashboard/54n-cn8-nhm) -- `54n-cn8-nhm` (grading throughput, time-to-grade)
+- [Equip course engagement](https://app.us5.datadoghq.com/dashboard/dgr-dh4-n4x) -- `dgr-dh4-n4x` (active users, completion, drop-off, locale split)
 
-Both have a `$env` template variable that defaults to `production`.
+The first two have a `$env` template variable that defaults to
+`production`; the teacher-load and course-engagement dashboards are
+JSON-managed in git -- see
+[`docs/datadog/README.md`](datadog/README.md), the **source of truth
+for custom metrics and dashboard specs**.
+
+Behind those dashboards: the backend logs structured `equip.metric:`
+lines, the log drain ships them, and the **'Equip — drain metric
+parsing'** log pipeline parses them into the **18 `equip.*` log-based
+distribution metrics**. The `main` index also carries **3 exclusion
+filters** (translation-worker-tick INFO noise, the `equip.metric` lines
+themselves, and lambda `START`/`END`/`REPORT` lines) to keep ingest
+under the daily cap. Log-based metrics are generated **before** index
+exclusion, so excluding the `equip.metric` lines from the index does
+not affect the metrics.
 
 ## How to debug a production issue
 
@@ -169,7 +192,7 @@ These are deliberate omissions; revisit when traffic or budget grows.
   path), so the extra check is low-value today. `GET /health/db` exists
   but is admin-gated. Add `/health/ready` if we ever hit a real outage
   where the serverless function answers but DB writes are timing out.
-- **No alert routing beyond email.** All 9 monitors notify
+- **No alert routing beyond email.** All monitors notify
   `arvavitcorp@gmail.com`. Add SMS / Slack / PagerDuty if the
   on-call rotation grows past one person.
 - **No daily Resend send-count or bounce-rate monitor.** Resend Free

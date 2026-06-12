@@ -29,27 +29,17 @@ Dashboard) — a single config flag, no schema impact.
 
 ## CSP enforcement promotion
 
-**Status:** `Content-Security-Policy-Report-Only` ships from `vercel.json`.
-Promotion to enforcing CSP is **not** done yet.
+**Status:** ENFORCING (promoted June 2026). `frontend/vercel.json` ships
+a real `Content-Security-Policy` header -- the Report-Only burn-in
+surfaced no violations and the header key was flipped.
+`frontend/src/__tests__/vercelCsp.test.ts` asserts the enforcing header
+is present and that the report-only key has not been reintroduced.
 
-**Why report-only first:** the policy enumerates every external origin
-the SPA touches today (`api.equipbible.com`, Supabase, Datadog RUM,
-YouTube embeds). It is highly likely we missed something -- a transitive
-dep that quietly loads an analytics pixel, a future content block that
-points at a new CDN, etc. Enforcing CSP before a real-traffic burn-in
-risks a 100%-blocked page for users.
-
-**Promotion checklist (do these in one PR):**
-
-1. Watch `Content-Security-Policy-Report-Only` console violations for a
-   week of normal usage (you / staging users / a Datadog RUM query for
-   `error.message LIKE "%violated directive%"`).
-2. Add any legitimately-blocked origin to the appropriate directive.
-3. Rename the header key from `Content-Security-Policy-Report-Only` to
-   `Content-Security-Policy` in `frontend/vercel.json`.
-4. Update `src/__tests__/vercelCsp.test.ts` -- the "ships as Report-Only,
-   not enforcing" assertion needs to flip.
-5. Ship; watch Datadog for the first 24h.
+**When adding a new external origin** (a new CDN, analytics endpoint,
+embed host, etc.): extend the matching directive in
+`frontend/vercel.json` AND update `vercelCsp.test.ts` in the same PR --
+the test enumerates the allowed origins, so a directive change without
+the test change fails CI.
 
 ## Rate-limiting topology
 
@@ -132,10 +122,26 @@ Postgres directly). All of these are proven every CI run by
   (`profiles_select_self`); another user's row returns 0 rows.
 - **Grades / scores** — `student_grades`, `quiz_attempts`,
   `certificates` are not client-writable; a student can't self-grade,
-  tamper a score, or self-approve a certificate.
+  tamper a score, or self-approve a certificate. (Subsumed by the
+  blanket write lockdown below.)
 - **Audit trail + privilege** — `audit_logs`, `quiz_extra_attempts`,
-  `quiz_answers` writes are revoked from client roles; `profiles.role`
-  escalation is blocked by the immutable-fields trigger.
+  `quiz_answers` writes are revoked from client roles (likewise subsumed
+  by the lockdown below); `profiles.role` escalation is blocked by the
+  immutable-fields trigger.
+
+**Client Write Surface (server-only since 2026-06-11):** migration
+`20260611200000_server_only_writes_lockdown` revoked
+INSERT / UPDATE / DELETE / TRUNCATE on **all** public tables from `anon`
++ `authenticated`, dropped the 22 write policies those revokes made
+inert, and flipped DEFAULT PRIVILEGES so tables created by future
+migrations are born without client write grants. The **only** remaining
+client write is the `profiles` safe-fields UPDATE (row-scoped by policy,
+column-protected by `trg_profiles_protect_immutable_fields`). As defense
+in depth, the public `/certificates/verify` endpoint additionally honors
+only rows with `status='approved'` -- a forged row in any other status is
+never reported valid. Enforcement is asserted every CI run by 10 denial
+probes in `supabase/ci/rls_assertions.sql` (certificate forgery, attempt
+/ answer fabrication, progress faking, enrollment deletion, and more).
 
 **What is intentionally backend-gated, not RLS-gated:** reading the
 *teaching text* of a non-public course. The API filters by publish state
@@ -154,7 +160,10 @@ and quiz *prompts* (never the answer key, never another user's data).
    joining `enrollments` on every content table (courses, modules,
    chapters, blocks, …) — a large, perf-sensitive surface that would have
    to stay in lockstep with the enrollment model.
-3. Blast radius today is one institute course and zero real users.
+3. Blast radius is course *teaching text* only. Real pilot users exist
+   since 2026-06-10, but every actual secret (answer keys, PII, grades,
+   audit trail) is already hard-walled at the RLS layer above -- what a
+   direct reader can reach is lesson prose and question prompts.
 
 **Revisit if** Equip ever hosts genuinely confidential paid content where
 the lesson text itself (not just credentials) must be enrollment-gated.
