@@ -22,8 +22,9 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from fastapi import HTTPException, Request, status
+from fastapi import Request, status
 
+from app.core.errors import ErrorCode, equip_error
 from app.core.i18n import t
 from app.models.certificate import Certificate, CertificateStatus
 from app.models.course import Course
@@ -67,9 +68,11 @@ def _load_cert_or_404(db: Session, cert_id: UUID, *, for_update: bool = False) -
         q = q.with_for_update()
     cert = q.first()
     if not cert:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Certificate not found",
+            message="Certificate not found",
+            context={"resource_type": "certificate", "resource_id": str(cert_id)},
         )
     return cert
 
@@ -91,19 +94,28 @@ def _load_active_course_or_403(
     ownership against — so we collapse that to the same 403.
     """
     if course_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=ownership_detail)
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message=ownership_detail,
+        )
     course = db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first()
     if not course:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=ownership_detail)
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message=ownership_detail,
+        )
     return course
 
 
 def _assert_status(cert: Certificate, expected: str | tuple[str, ...]) -> None:
     allowed = (expected,) if isinstance(expected, str) else expected
     if cert.status not in allowed:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=_status_error_message(cert, allowed),
+            message=_status_error_message(cert, allowed),
         )
 
 
@@ -118,9 +130,10 @@ def _assert_not_self_approval(cert: Certificate, approver: User) -> None:
     pair of eyes. Both undermine the two-stage approval design.
     """
     if str(cert.user_id) == str(approver.id):
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You cannot approve or issue your own certificate",
+            message="You cannot approve or issue your own certificate",
         )
 
 
@@ -171,9 +184,10 @@ def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> 
     # admin's id matches the teacher-approver's so issuance always involves
     # two distinct accounts.
     if cert.teacher_approved_by is not None and str(cert.teacher_approved_by) == str(admin.id):
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=(
+            message=(
                 "You can't admin-approve a certificate you teacher-approved yourself. "
                 "Another admin needs to sign off on this issuance."
             ),
@@ -226,9 +240,10 @@ def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> 
 def reject(db: Session, cert_id: UUID, user: User, request: Request) -> Certificate:
     cert = _load_cert_or_404(db, cert_id, for_update=True)
     if cert.status in (CertificateStatus.APPROVED, CertificateStatus.REJECTED):
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Certificate cannot be rejected (current status: {cert.status})",
+            message=f"Certificate cannot be rejected (current status: {cert.status})",
         )
 
     # Stage-gated authorisation:
@@ -241,9 +256,10 @@ def reject(db: Session, cert_id: UUID, user: User, request: Request) -> Certific
     # cert, change their mind, and reject it after it reached the admin
     # queue -- effectively a one-person veto of their own prior approval.
     if cert.status == CertificateStatus.TEACHER_APPROVED and user.role != UserRole.ADMIN.value:
-        raise HTTPException(
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=("Only an administrator can reject a certificate that has already passed teacher approval."),
+            message="Only an administrator can reject a certificate that has already passed teacher approval.",
         )
 
     ownership_detail = "You can only reject certificates for your own courses"
@@ -251,7 +267,11 @@ def reject(db: Session, cert_id: UUID, user: User, request: Request) -> Certific
     # to clear a request against a course they've since soft-deleted.
     course = db.query(Course).filter(Course.id == cert.course_id).first()
     if not course:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=ownership_detail)
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message=ownership_detail,
+        )
     assert_course_owner(course, user, detail=ownership_detail)
 
     cert.status = CertificateStatus.REJECTED

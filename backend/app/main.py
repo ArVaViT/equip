@@ -71,12 +71,14 @@ app = FastAPI(
 )
 
 
-app.add_middleware(SecurityHeadersMiddleware)
-
-# GZip JSON responses larger than ~1KB. Starlette runs middleware in LIFO order
-# on the response path, so this sits between SecurityHeaders (innermost, closest
-# to the route) and CORS (outermost). That way Content-Length already reflects
-# the compressed payload by the time CORS/logging sees it.
+# Starlette wraps middleware LIFO: the LAST add_middleware call is the
+# OUTERMOST layer, so every response — including ones minted by an inner
+# middleware instead of a route — only carries headers added by layers
+# OUTSIDE the one that produced it.
+#
+# GZip JSON responses larger than ~1KB. Innermost (added first, closest to
+# the route) so Content-Length already reflects the compressed payload by
+# the time the outer layers see it.
 app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=5)
 
 app.add_middleware(RateLimitMiddleware, calls=100, window=60)
@@ -85,7 +87,8 @@ app.add_middleware(RateLimitMiddleware, calls=100, window=60)
 # actual response. We match against an explicit allow-list plus a regex that
 # covers every Vercel alias for the frontend (production, branch, preview) and
 # any localhost port, so dev servers and PR previews keep working without env
-# changes.
+# changes. CORS must stay OUTSIDE RateLimit so 429s still carry ACAO and the
+# browser surfaces them to the frontend instead of masking them as CORS errors.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -96,6 +99,12 @@ app.add_middleware(
     expose_headers=["Content-Disposition", "X-Request-Id"],
     max_age=3600,
 )
+
+# Added LAST → OUTERMOST of the response-mutating stack: security headers land
+# on EVERY response, including 429s minted by RateLimitMiddleware and CORS
+# preflight replies. (Previously this was innermost, so rate-limited responses
+# shipped without security headers.)
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(api_router, prefix="/api/v1")
 

@@ -38,7 +38,7 @@ from app.services.translation.resolve_for_display import (
     resolve_chapter_locale_context,
 )
 
-from ._deps import verify_quiz_owner
+from ._deps import get_quiz_or_404, verify_quiz_owner
 from ._router import router
 
 _TRANSLATABLE_QUIZ_FIELDS = ("title", "description")
@@ -131,19 +131,7 @@ def get_quiz_detail(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
-    quiz = (
-        db.query(Quiz)
-        .options(selectinload(Quiz.questions).selectinload(QuizQuestion.options))
-        .filter(Quiz.id == quiz_id)
-        .first()
-    )
-    if not quiz:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Quiz not found",
-            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
-        )
+    quiz = get_quiz_or_404(db, quiz_id, load_questions=True)
     verify_quiz_owner(db, quiz, teacher.id)
     return build_quiz_response_from_cv(
         db, quiz, source_locale=normalize_locale(_course_source_locale_for_chapter(db, quiz.chapter_id))
@@ -223,19 +211,7 @@ def create_quiz(
                 texts={"option_text": o_text},
             )
     db.commit()
-    reloaded = (
-        db.query(Quiz)
-        .options(selectinload(Quiz.questions).selectinload(QuizQuestion.options))
-        .filter(Quiz.id == quiz_id_val)
-        .first()
-    )
-    if reloaded is None:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Quiz not found",
-            context={"resource_type": "quiz", "resource_id": str(quiz_id_val)},
-        )
+    reloaded = get_quiz_or_404(db, quiz_id_val, load_questions=True)
     run_course_translation_pipeline_if_published(db, course_id)
     return build_quiz_response_from_cv(db, reloaded, source_locale=normalize_locale(fallback_locale))
 
@@ -247,14 +223,7 @@ def update_quiz(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
-    quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
-    if not quiz:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Quiz not found",
-            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
-        )
+    quiz = get_quiz_or_404(db, quiz_id)
     verify_quiz_owner(db, quiz, teacher.id)
 
     patch = data.model_dump(exclude_unset=True)
@@ -284,19 +253,7 @@ def update_quiz(
             texts=text_patch,
         )
     db.commit()
-    reloaded = (
-        db.query(Quiz)
-        .options(selectinload(Quiz.questions).selectinload(QuizQuestion.options))
-        .filter(Quiz.id == quiz.id)
-        .first()
-    )
-    if reloaded is None:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Quiz not found",
-            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
-        )
+    reloaded = get_quiz_or_404(db, quiz.id, load_questions=True)
     reconcile_entity_if_course_published(db, "quiz", reloaded)
     return build_quiz_response_from_cv(db, reloaded, source_locale=normalize_locale(source_locale))
 
@@ -307,19 +264,7 @@ def delete_quiz(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
-    quiz = (
-        db.query(Quiz)
-        .options(selectinload(Quiz.questions).selectinload(QuizQuestion.options))
-        .filter(Quiz.id == quiz_id)
-        .first()
-    )
-    if not quiz:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Quiz not found",
-            context={"resource_type": "quiz", "resource_id": str(quiz_id)},
-        )
+    quiz = get_quiz_or_404(db, quiz_id, load_questions=True)
     verify_quiz_owner(db, quiz, teacher.id)
     # Phase 5ad: cv has no FK back; the quiz tree (quiz → questions →
     # options) is hard-deleted via cascade on the entity tables but

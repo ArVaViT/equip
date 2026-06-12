@@ -152,7 +152,7 @@ class TestTwoEyesApprovalGuard:
         with pytest.raises(HTTPException) as exc_info:
             admin_approve(db, cert.id, admin, mock_request)
         assert exc_info.value.status_code == 403
-        assert "another admin" in exc_info.value.detail.lower()
+        assert "another admin" in exc_info.value.detail["message"].lower()
 
     def test_different_admin_can_admin_approve_teacher_approved_cert(self, db, mock_request):
         # Sanity check: when the admin is different from the teacher-
@@ -191,7 +191,7 @@ class TestRejectStageAuthorisation:
         with pytest.raises(HTTPException) as exc_info:
             reject(db, cert.id, teacher, mock_request)
         assert exc_info.value.status_code == 403
-        assert "administrator" in exc_info.value.detail.lower()
+        assert "administrator" in exc_info.value.detail["message"].lower()
 
     def test_admin_can_reject_teacher_approved_cert(self, db, mock_request):
         teacher = _make_user(db, user_id=TEACHER_ID, role=UserRole.TEACHER.value)
@@ -238,7 +238,7 @@ class TestStatusTransitionMatrix:
         with pytest.raises(HTTPException) as exc_info:
             admin_approve(db, cert.id, admin, mock_request)
         assert exc_info.value.status_code == 400
-        assert "teacher-approved" in exc_info.value.detail.lower()
+        assert "teacher-approved" in exc_info.value.detail["message"].lower()
 
     def test_teacher_approve_on_already_teacher_approved_fails(self, db, mock_request):
         """No double-tap of teacher_approve."""
@@ -254,7 +254,7 @@ class TestStatusTransitionMatrix:
         with pytest.raises(HTTPException) as exc_info:
             teacher_approve(db, cert.id, teacher, mock_request)
         assert exc_info.value.status_code == 400
-        assert "pending" in exc_info.value.detail.lower()
+        assert "pending" in exc_info.value.detail["message"].lower()
 
     def test_teacher_approve_on_approved_cert_fails(self, db, mock_request):
         teacher = _make_user(db, user_id=TEACHER_ID, role=UserRole.TEACHER.value)
@@ -298,7 +298,7 @@ class TestSelfApprovalGuard:
         with pytest.raises(HTTPException) as exc_info:
             teacher_approve(db, cert.id, teacher, mock_request)
         assert exc_info.value.status_code == 403
-        assert "own" in exc_info.value.detail.lower()
+        assert "own" in exc_info.value.detail["message"].lower()
 
     def test_admin_cannot_admin_approve_own_cert(self, db, mock_request):
         admin = _make_user(db, user_id=ADMIN_ID, role=UserRole.ADMIN.value)
@@ -317,7 +317,7 @@ class TestSelfApprovalGuard:
         with pytest.raises(HTTPException) as exc_info:
             admin_approve(db, cert.id, admin, mock_request)
         assert exc_info.value.status_code == 403
-        assert "own" in exc_info.value.detail.lower()
+        assert "own" in exc_info.value.detail["message"].lower()
 
 
 class TestCertificateNumberUniqueness:

@@ -45,6 +45,25 @@ def _parse_user_uuid(user_id: str) -> UUID:
         ) from None
 
 
+def _get_user_or_404(db: Session, uid: UUID) -> User:
+    """Fetch a user row or raise the canonical 404.
+
+    Consolidates the fetch-or-404 boilerplate the admin routes repeated.
+    The error envelope (code / status / message / context) is
+    byte-identical to the hand-written call sites it replaced, so the
+    HTTP contract is unchanged.
+    """
+    user = db.query(User).filter(User.id == uid).first()
+    if not user:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="User not found",
+            context={"resource_type": "user", "resource_id": str(uid)},
+        )
+    return user
+
+
 @router.get("/me/courses", response_model=list[EnrollmentSummaryResponse])
 def get_my_courses(
     response: Response,
@@ -255,14 +274,7 @@ def update_user_role(
             message="Cannot change your own role",
             context={"resource_type": "user", "user_id": str(uid)},
         )
-    user = db.query(User).filter(User.id == uid).first()
-    if not user:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="User not found",
-            context={"resource_type": "user", "resource_id": str(uid)},
-        )
+    user = _get_user_or_404(db, uid)
     old_role = user.role
     user.role = role
     db.commit()
@@ -301,14 +313,7 @@ def admin_delete_user(
             context={"resource_type": "user", "user_id": str(uid)},
         )
 
-    target = db.query(User).filter(User.id == uid).first()
-    if not target:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="User not found",
-            context={"resource_type": "user", "resource_id": str(uid)},
-        )
+    target = _get_user_or_404(db, uid)
 
     if target.deactivated_at is not None:
         # Already deactivated — idempotent success.
@@ -353,14 +358,7 @@ def admin_restore_user(
     """
     uid = _parse_user_uuid(user_id)
 
-    target = db.query(User).filter(User.id == uid).first()
-    if not target:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="User not found",
-            context={"resource_type": "user", "resource_id": str(uid)},
-        )
+    target = _get_user_or_404(db, uid)
 
     if target.deactivated_at is None:
         # Already active — idempotent success.

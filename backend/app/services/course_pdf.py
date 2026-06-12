@@ -28,17 +28,9 @@ import io
 import re
 from typing import TYPE_CHECKING
 
-from reportlab.lib.pagesizes import LETTER
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import inch
-from reportlab.platypus import (
-    PageBreak,
-    Paragraph,
-    SimpleDocTemplate,
-    Spacer,
-)
-
 if TYPE_CHECKING:
+    from reportlab.lib.styles import ParagraphStyle
+
     from app.models.course import Course
 
 
@@ -56,6 +48,9 @@ def _to_plain_text(html: str | None) -> str:
 
 
 def _build_styles() -> dict[str, ParagraphStyle]:
+    # function-level: keeps reportlab (~100ms) out of serverless cold start
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+
     base = getSampleStyleSheet()
     styles: dict[str, ParagraphStyle] = {}
     styles["title"] = ParagraphStyle(
@@ -124,6 +119,11 @@ def render_course_pdf(course: Course) -> bytes:
     it in. This function is pure layout — no DB access, no locale
     resolution, no permission checks.
     """
+    # function-level: keeps reportlab (~100ms) out of serverless cold start
+    from reportlab.lib.pagesizes import LETTER
+    from reportlab.lib.units import inch
+    from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer
+
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf,

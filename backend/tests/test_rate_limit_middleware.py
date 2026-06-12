@@ -84,6 +84,27 @@ class TestRateLimitExceeded:
         assert r.status_code == 429
         assert "Too many requests" in r.text
 
+    def test_429_carries_security_headers(
+        self,
+        client: TestClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """SecurityHeadersMiddleware is the OUTERMOST response-mutating
+        middleware (added last in ``app.main``), so even responses minted
+        by inner middleware — like RateLimitMiddleware's 429 — must carry
+        the security headers. Pin the ordering: a refactor that re-adds
+        SecurityHeaders before RateLimit would strip them from 429s."""
+        mw = _get_middleware_instance()
+        monkeypatch.setattr(mw, "calls", 1)
+        monkeypatch.setattr(mw, "window", 60)
+
+        client.get("/api/v1/users/me")  # burn the single-call budget
+        r = client.get("/api/v1/users/me")
+        assert r.status_code == 429
+        assert r.headers["X-Content-Type-Options"] == "nosniff"
+        assert r.headers["X-Frame-Options"] == "DENY"
+        assert "Content-Security-Policy" in r.headers
+
 
 class TestStaleBucketCleanup:
     def test_cleanup_drops_buckets_outside_window(self) -> None:
