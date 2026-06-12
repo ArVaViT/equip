@@ -13,7 +13,7 @@ The repo has **two Vercel projects** and **one Supabase project**:
 
 | Surface | Project | Triggers | Output |
 |---|---|---|---|
-| Frontend (Vite SPA) | `equip-frontend` | Push to `main` matching `frontend/**` | `equipbible.com` + `www.equipbible.com` (apex) |
+| Frontend (Vite SPA) | `equip-frontend` | Push to `main` matching `frontend/**` | `equipbible.com` (`www.equipbible.com` 308-redirects to apex since 2026-06-11) |
 | Backend (FastAPI on Python serverless) | `equip-backend` | Push to `main` matching `backend/**` | `api.equipbible.com` |
 | Database schema | Supabase project `Equip` | **Manual** (see below) | Postgres schema |
 
@@ -226,9 +226,9 @@ Build-time only on Vercel (not in the bundle):
 | Max function duration | n/a (static) | default (10 s on Pro plan) |
 | Function memory | n/a | default (1024 MB) |
 | Region | All edge / IAD1 | IAD1 (default Python serverless) |
-| Custom domains | `equipbible.com`, `www.equipbible.com` | `api.equipbible.com` |
+| Custom domains | `equipbible.com` (`www` 308-redirects to apex) | `api.equipbible.com` |
 | Auto-deploy branch | `main` | `main` |
-| Log Drain | Same drain | `drn_JWO7AolUh4PEEUXB` → Datadog us5 |
+| Log Drain | Same drain | `drn_DJUgg6MWFVruo4qV` → Datadog us5 (json) |
 
 `backend/vercel.json` sets `maxLambdaSize: 50mb` and a single catch-all
 route to `index.py`. There are no other custom Vercel settings on the

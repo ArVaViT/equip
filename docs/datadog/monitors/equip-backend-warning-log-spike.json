@@ -1,7 +1,7 @@
 {
   "name": "equip backend: warning log spike",
   "type": "log alert",
-  "query": "logs(\"service:equip-backend env:production status:warning\").index(\"*\").rollup(\"count\").last(\"15m\") >= 20",
+  "query": "logs(\"service:equip-backend env:production source:python status:warning\").index(\"*\").rollup(\"count\").last(\"15m\") >= 20",
   "message": "20+ backend WARNING logs in 15 minutes. Often integrity errors. https://app.us5.datadoghq.com/logs?query=service%3Aequip-backend%20status%3Awarning\n\nNotify:\n\n(Dashboard-only: no email — watch on the Datadog dashboard. UX/warning signal, kept quiet to avoid inbox noise.)",
   "tags": [
     "env:production",
