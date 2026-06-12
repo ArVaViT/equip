@@ -166,6 +166,13 @@ def create_question(
         raise ValueError(f"daily challenge question must have exactly one correct option, got {correct_count}")
     if len(options) < 2:
         raise ValueError("daily challenge question needs at least two options")
+    # Upper bound mirrors daily_challenge_options_order_check (order_index
+    # BETWEEN 0 AND 5): a 7th option would die as an IntegrityError deep in
+    # the generation pipeline ("persist failed", question silently dropped)
+    # instead of a clear gate error here — same failure class as the verse
+    # range fixed in #791.
+    if len(options) > 6:
+        raise ValueError(f"daily challenge question allows at most six options, got {len(options)}")
     if question_type == "true_false" and len(options) != 2:
         raise ValueError("true_false questions need exactly two options")
 

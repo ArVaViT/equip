@@ -101,6 +101,54 @@ class TestReplenishOneQuestion:
         assert out.status == "error"
         assert "429" in (out.detail or "")
 
+    def test_publish_failure_rejects_orphan(self, db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        # The generation pipeline commits its question; if a later
+        # promote/publish step dies, the row cannot be rolled back. The tick
+        # must terminally reject it (audit reason intact) so it neither
+        # lingers as a zombie draft nor gets reused by the passage cursor.
+        admin = _admin(db)
+
+        def _fake_generate(db_: Session, *, client: object, request: object) -> GenerationOutcome:
+            q = _draft(db_, created_by=admin.id)
+            return GenerationOutcome(generation_run_id=uuid.uuid4(), created_question_ids=[q.id])
+
+        def _fake_promote(
+            db_: Session, *, question: DailyChallengeQuestion, actor_id: uuid.UUID
+        ) -> DailyChallengeQuestion:
+            question.status = DailyChallengeQuestionStatus.PILOT_PASSED.value
+            db_.flush()
+            return question
+
+        def _publish_boom(*_a: object, **_k: object) -> DailyChallengeQuestion:
+            raise RuntimeError("publish exploded")
+
+        monkeypatch.setattr(R, "run_generation", _fake_generate)
+        monkeypatch.setattr(R, "promote_status", _fake_promote)
+        monkeypatch.setattr(R, "publish_question", _publish_boom)
+
+        out = R.replenish_one_question(db, client=object())  # type: ignore[arg-type]
+        assert out.status == "error"
+        orphan = db.query(DailyChallengeQuestion).filter_by(id=uuid.UUID(out.question_id)).one()
+        assert orphan.rejected is True
+        assert "publish failed" in (orphan.rejection_reason or "")
+
+    def test_stuck_promotion_rejects_orphan(self, db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Promotion that never reaches pilot_passed is the same orphan class.
+        admin = _admin(db)
+
+        def _fake_generate(db_: Session, *, client: object, request: object) -> GenerationOutcome:
+            q = _draft(db_, created_by=admin.id)
+            return GenerationOutcome(generation_run_id=uuid.uuid4(), created_question_ids=[q.id])
+
+        monkeypatch.setattr(R, "run_generation", _fake_generate)
+        monkeypatch.setattr(R, "promote_status", lambda db_, *, question, actor_id: question)  # no-op: stays draft
+
+        out = R.replenish_one_question(db, client=object())  # type: ignore[arg-type]
+        assert out.status == "error"
+        assert "stuck at status=draft" in (out.detail or "")
+        orphan = db.query(DailyChallengeQuestion).filter_by(id=uuid.UUID(out.question_id)).one()
+        assert orphan.rejected is True
+
     def test_happy_path_publishes_and_appends(self, db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
         admin = _admin(db)
 
