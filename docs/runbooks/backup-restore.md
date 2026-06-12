@@ -6,9 +6,15 @@
 > run automatically with ~8 days retained, so a lost project can be
 > restored from the previous day. **PITR (point-in-time recovery,
 > ~$100/mo) is still OFF** — recovery granularity is therefore "last
-> daily snapshot", not "any second". The restore drill below is now
-> runnable; it has **not yet been exercised** end-to-end (untested
-> recovery is the remaining gap — run it before relying on it).
+> daily snapshot", not "any second".
+>
+> **2026-06-11: a LOGICAL restore drill PASSED** (see drill log) —
+> full pg_dump of prod restored into a throwaway project with exact
+> row-count parity (incl. auth.users + all 37 RLS policies) and the
+> throwaway deleted the same hour. The dashboard click-through
+> drill against a WAL-G physical backup (the flow below) still
+> needs one manual run by Vadym — the logical drill proves the DATA
+> is recoverable, not the Supabase physical-backup pipeline.
 >
 > History: prod ran on the Free tier (no backups) by deliberate
 > decision until 2026-06-06, when Vadym upgraded to Pro and daily
@@ -120,7 +126,7 @@ quarter so the next real incident isn't the first time.
 
 | Date | Operator | Source backup | Row delta | Notes |
 |---|---|---|---|---|
-| _(empty — first drill pending)_ | | | | |
+| 2026-06-11 | Claude (autonomous) | live pg_dump (logical variant, not WAL-G) | **0** — exact parity: courses 12, modules 15, blocks 28, enrollments 28, profiles 19, auth.users 19, dc_questions 204, content_versions 3606; 37 RLS policies present | Throwaway project `equip-restore-drill-20260611` created + deleted via Management API same hour. Gotchas: (1) new-project pooler DNS lags a few minutes — use the DIRECT host `db.<ref>.supabase.co:5432`; (2) `content_versions` circular self-FK is `DEFERRABLE INITIALLY DEFERRED`, so load data with `psql --single-transaction` and ordering doesn't matter; (3) load order: public schema → auth.users data → public data. Physical (dashboard) drill still pending. |
 
 ---
 
