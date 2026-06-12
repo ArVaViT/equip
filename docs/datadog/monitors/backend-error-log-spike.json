@@ -1,7 +1,7 @@
 {
   "name": "equip backend: error log spike",
   "type": "log alert",
-  "query": "logs(\"service:equip-backend env:production status:(error OR critical)\").index(\"*\").rollup(\"count\").last(\"10m\") >= 10",
+  "query": "logs(\"service:equip-backend env:production source:python status:(error OR critical)\").index(\"*\").rollup(\"count\").last(\"10m\") >= 10",
   "message": "5+ backend error logs in 10 minutes. Check https://app.us5.datadoghq.com/logs?query=service%3Aequip-backend%20env%3Aproduction%20status%3A%28error%20OR%20critical%29\n\nNotify: @arvavitcorp@gmail.com",
   "tags": [
     "env:production",

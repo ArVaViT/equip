@@ -1,19 +1,21 @@
 {
   "name": "[Equip] Translation jobs stuck in processing",
-  "type": "metric alert",
-  "query": "avg(last_30m):avg:equip.translation.queue_processing{env:production} > 3",
+  "type": "log alert",
+  "query": "logs(\"service:equip-backend \\\"jobs stuck in processing\\\"\").index(\"*\").rollup(\"count\").last(\"30m\") >= 1",
   "message": "Translation jobs are piling up in 'processing' (workers dying mid-run). The 15-min reaper re-claims them but a sustained backlog means repeated worker failures. @arvavitcorp@gmail.com",
   "tags": [],
-  "priority": 3,
+  "priority": null,
   "options": {
-    "renotify_interval": 0,
     "notify_no_data": false,
     "thresholds": {
-      "critical": 3.0
+      "critical": 1.0
     },
+    "enable_logs_sample": true,
+    "renotify_interval": 0,
     "notify_audit": false,
     "new_host_delay": 300,
     "include_tags": true,
+    "groupby_simple_monitor": false,
     "silenced": {}
   }
 }
