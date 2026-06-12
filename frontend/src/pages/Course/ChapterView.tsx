@@ -62,7 +62,10 @@ function TextBlockRender({ html }: { html: string }) {
     // ``<summary>`` and the rendered spans go along intact — but
     // toggle-first avoids extra DOM churn.
     renderToggleCalloutsIn(ref.current)
-    renderMathIn(ref.current)
+    // Async fire-and-forget: KaTeX (and its stylesheet) load lazily and
+    // only when the chapter actually contains math markers. Copy-button
+    // wiring below doesn't depend on math rendering, so no need to await.
+    void renderMathIn(ref.current)
     attachCopyButtonsIn(ref.current, {
       copy: t("blockEditor.codeBlock.copy"),
       copied: t("blockEditor.codeBlock.copied"),

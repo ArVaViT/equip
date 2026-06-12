@@ -1,5 +1,3 @@
-import katex from "katex";
-
 /**
  * Walks ``container`` for math markers emitted by
  * ``@aarkue/tiptap-math-extension`` and replaces each marker's text
@@ -19,11 +17,27 @@ import katex from "katex";
  * KaTeX output. Idempotent — markers that have already been rendered
  * carry a ``data-katex-rendered`` flag we skip on the second pass.
  *
+ * KaTeX (~60 KB gz) and its stylesheet load LAZILY, and only when the
+ * chapter actually contains math markers — most chapters have none, so
+ * the student path pays nothing. The CSS import matters as much as the
+ * JS: katex.min.css used to ship only in the (teacher-only) editor
+ * chunk, so a formula looked perfect in the editor and rendered as
+ * broken un-styled markup for every student.
+ *
  * Throws are caught per-marker: a single malformed expression must
  * never blank out the rest of the chapter.
  */
-export function renderMathIn(container: HTMLElement | null): void {
+export async function renderMathIn(container: HTMLElement | null): Promise<void> {
   if (!container) return;
+  if (!container.querySelector('span[data-type="inlineMath"]:not([data-katex-rendered])')) {
+    return;
+  }
+  const [{ default: katex }] = await Promise.all([
+    import("katex"),
+    import("katex/dist/katex.min.css"),
+  ]);
+  // Re-query after the await: the injected HTML may have changed while
+  // the chunk loaded, and the import is the slow part anyway.
   const nodes = container.querySelectorAll<HTMLSpanElement>(
     'span[data-type="inlineMath"]:not([data-katex-rendered])',
   );
