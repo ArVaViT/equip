@@ -71,7 +71,11 @@ async function main() {
     return;
   }
   const violations = [];
-  const checked = [];
+  // A budget name can match more than one emitted file (e.g. the
+  // ``supabase`` manual chunk plus a tiny same-named import facade).
+  // Collect every match per budget first, then assert on the LARGEST —
+  // that's the real payload; the facade would otherwise shadow it.
+  const matchesByPrefix = new Map();
   for (const f of files) {
     if (!f.endsWith(".js")) continue;
     const prefix = chunkPrefix(f);
@@ -82,9 +86,22 @@ async function main() {
     const st = await stat(path);
     if (!st.isFile()) continue;
     const gz = await gzipSizeKb(path);
-    checked.push({ prefix, file: f, gz, budget });
-    if (gz > budget) {
-      violations.push({ prefix, file: f, gz, budget });
+    if (!matchesByPrefix.has(prefix)) matchesByPrefix.set(prefix, []);
+    matchesByPrefix.get(prefix).push({ prefix, file: f, gz, budget });
+  }
+  const checked = [];
+  for (const [prefix, matches] of matchesByPrefix) {
+    matches.sort((a, b) => b.gz - a.gz);
+    const largest = matches[0];
+    if (matches.length > 1) {
+      console.warn(
+        `warn: budget "${prefix}" matched ${matches.length} files ` +
+          `(${matches.map((m) => m.file).join(", ")}); asserting on the largest.`,
+      );
+    }
+    checked.push(largest);
+    if (largest.gz > largest.budget) {
+      violations.push(largest);
     }
   }
   // Always print the budget table so reviewers see headroom at a glance.

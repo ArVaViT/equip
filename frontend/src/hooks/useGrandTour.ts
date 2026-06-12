@@ -88,6 +88,10 @@ export function useGrandTour(): void {
   const driverRef = useRef<Driver | null>(null)
   const firedRef = useRef(false)
   const timerRef = useRef<number | null>(null)
+  // ``createGrandTour`` is async (driver.js loads on demand). If the
+  // hook unmounts while a build is in flight, the resolved driver is
+  // discarded before ``drive()`` — instances are inert until driven.
+  const disposedRef = useRef(false)
 
   const userId = user?.id
   const userRole = user?.role
@@ -109,7 +113,8 @@ export function useGrandTour(): void {
     if (!userId) return
     const steps = studentGrandTourSteps(t)
     driverRef.current?.destroy()
-    driverRef.current = createGrandTour({
+    driverRef.current = null
+    const pending = createGrandTour({
       steps,
       labels: {
         next: t("tour.next"),
@@ -140,7 +145,11 @@ export function useGrandTour(): void {
         setGrandTourActive(false)
       },
     })
-    driverRef.current.drive()
+    void pending.then((tour) => {
+      if (disposedRef.current) return
+      driverRef.current = tour
+      tour.drive()
+    })
   }, [t, userId, navigate])
 
   useEffect(() => {
@@ -191,7 +200,9 @@ export function useGrandTour(): void {
   }, [userId, userRole, alreadySeen, firstRunActive, location.pathname, buildAndDrive])
 
   useEffect(() => {
+    disposedRef.current = false
     return () => {
+      disposedRef.current = true // discard any in-flight async build
       driverRef.current?.destroy()
       driverRef.current = null
       if (timerRef.current !== null) {

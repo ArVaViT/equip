@@ -5,6 +5,7 @@ import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import type { User } from "@/types"
 import { AuthContext } from "./auth-context"
 import { setDatadogUser, clearDatadogUser } from "@/lib/datadog"
+import { cacheClear } from "@/lib/cache"
 
 // ``reconcileFreshOAuthLocale`` lived here previously — a silent
 // post-signup PATCH that fired whenever ``profile.preferred_locale``
@@ -163,6 +164,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // already have the authoritative profile loaded.
             return
           }
+          // A DIFFERENT account signed in (or the first account after an
+          // anonymous session). The in-memory service cache may still hold
+          // the previous user's (or the guest's) API payloads — clear it so
+          // nothing bleeds across accounts on a shared device.
+          cacheClear()
           setLoading(true)
           enrichProfile(session.user.id, session.user.email ?? "")
           return
@@ -182,6 +188,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           activeUserId.current = null
           setUser(null)
           clearDatadogUser()
+          // Drop the signed-out user's cached API payloads so the next
+          // account on this device starts from a cold cache.
+          cacheClear()
           setLoading(false)
         }
       },

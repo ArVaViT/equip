@@ -19,10 +19,13 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { useGrandTour } from "@/hooks/useGrandTour"
 
 // Lazy: FirstRunFlow renders null until a brand-new user's privacy/setup gate
-// activates, so it never needs to be on the critical path — and it (plus its
-// framer-motion dependency) is dead weight in the eager entry chunk for the
-// 99% of loads that are returning/anonymous users. Suspense fallback is null
-// because "not loaded yet" is visually identical to its own inactive state.
+// activates, so it never needs to be on the critical path — its component code
+// is dead weight in the eager entry chunk for the 99% of loads that are
+// returning/anonymous users. (Note: this does NOT keep framer-motion itself
+// out of the entry chunk — the bundler hoists motion into `index` because
+// several lazy routes share it; see PressFeedback/CourseCard/DashboardPage.)
+// Suspense fallback is null because "not loaded yet" is visually identical to
+// its own inactive state.
 const FirstRunFlow = lazy(() =>
   import("@/components/firstRun").then((m) => ({ default: m.FirstRunFlow })),
 )

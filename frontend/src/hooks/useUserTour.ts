@@ -102,6 +102,12 @@ export function useUserTour({
   const driverRef = useRef<Driver | null>(null)
   const firedRef = useRef(false)
   const timerRef = useRef<number | null>(null)
+  // ``createEditorialTour`` is async (driver.js loads on demand). Each
+  // ``start()`` bumps this sequence; a resolved build whose sequence is
+  // stale (superseded start, unmount, grand-tour takeover) is discarded
+  // before it ever touches the DOM — driver instances are inert until
+  // ``drive()`` is called.
+  const startSeqRef = useRef(0)
   const stepsRef = useRef(steps)
   useEffect(() => {
     stepsRef.current = steps
@@ -147,7 +153,7 @@ export function useUserTour({
     () => false,
   )
 
-  const buildDriver = useCallback((): Driver => {
+  const buildDriver = useCallback((): Promise<Driver> => {
     return createEditorialTour({
       steps: stepsRef.current,
       labels: {
@@ -179,8 +185,13 @@ export function useUserTour({
     // a stale Driver from a previous locale would render English
     // buttons on a Russian session (or vice versa).
     driverRef.current?.destroy()
-    driverRef.current = buildDriver()
-    driverRef.current.drive()
+    driverRef.current = null
+    const seq = ++startSeqRef.current
+    void buildDriver().then((built) => {
+      if (seq !== startSeqRef.current) return
+      driverRef.current = built
+      built.drive()
+    })
   }, [buildDriver])
 
   useEffect(() => {
@@ -237,14 +248,21 @@ export function useUserTour({
   useEffect(() => {
     const shouldTearDown =
       (grandTourActive && isCovered) || firstRunActive
-    if (shouldTearDown && driverRef.current) {
-      driverRef.current.destroy()
-      driverRef.current = null
+    if (shouldTearDown) {
+      // Invalidate any in-flight async build too — a driver resolving
+      // after the takeover must not drive over the grand tour / modal.
+      startSeqRef.current++
+      if (driverRef.current) {
+        driverRef.current.destroy()
+        driverRef.current = null
+      }
     }
   }, [grandTourActive, isCovered, firstRunActive])
 
   useEffect(() => {
+    const seqRef = startSeqRef
     return () => {
+      seqRef.current++ // discard any in-flight async build
       driverRef.current?.destroy()
       driverRef.current = null
       if (timerRef.current !== null) {

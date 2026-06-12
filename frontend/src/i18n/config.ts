@@ -9,22 +9,24 @@
  *   4. Hard-coded fallback `ru` — the project was launched in Russian and
  *      every existing course is authored in it.
  *
- * Bundles are imported eagerly: combined size is < 5 KB gzipped, and lazy-
- * loading would force a render flicker on every cold start. We can switch
- * to namespaced lazy bundles when the catalog grows.
+ * Catalogs are loaded lazily, one locale per visitor (~20 KB gzip each):
+ * a tiny backend plugin resolves each language through a per-locale
+ * dynamic import, so only the active catalog rides the critical path.
+ * `main.tsx` awaits `i18nReady` before the first React render, which
+ * keeps the original no-flicker guarantee — the first paint already has
+ * its translations. `i18n.changeLanguage()` awaits the backend too, so
+ * a language switch never renders missing keys.
  */
 
-import i18n from "i18next"
+import i18n, { type BackendModule, type ReadCallback } from "i18next"
 import { initReactI18next } from "react-i18next"
 import LanguageDetector from "i18next-browser-languagedetector"
-import en from "./locales/en.json"
-import ru from "./locales/ru.json"
 
 export const SUPPORTED_LOCALES = ["ru", "en"] as const
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
 export const DEFAULT_LOCALE: SupportedLocale = "ru"
 
-export const LOCALE_STORAGE_KEY = "equip:locale"
+const LOCALE_STORAGE_KEY = "equip:locale"
 const LEGACY_LOCALE_STORAGE_KEY = "bible-school:locale"
 
 // One-time migration: existing users still have their locale under the old
@@ -48,6 +50,40 @@ export function isSupportedLocale(value: unknown): value is SupportedLocale {
   return typeof value === "string" && (SUPPORTED_LOCALES as readonly string[]).includes(value)
 }
 
+// Per-locale dynamic imports — each catalog becomes its own lazy chunk so
+// the eager i18n chunk carries only the i18next runtime, not both JSONs.
+const LOCALE_LOADERS: Record<SupportedLocale, () => Promise<{ default: object }>> = {
+  ru: () => import("./locales/ru.json"),
+  en: () => import("./locales/en.json"),
+}
+
+/**
+ * Minimal i18next backend that resolves catalogs through the dynamic
+ * imports above. Going through the backend API (instead of manual
+ * `addResourceBundle` calls) means i18next itself awaits the catalog
+ * inside `init()` and `changeLanguage()` — callers that `await` those
+ * never observe a missing-key render.
+ */
+const lazyLocaleBackend: BackendModule = {
+  type: "backend",
+  init() {
+    /* no-op — loaders are statically known */
+  },
+  read(language: string, _namespace: string, callback: ReadCallback) {
+    if (!isSupportedLocale(language)) {
+      // `supportedLngs` should make this unreachable; respond with an
+      // empty catalog rather than an error so a weird detector value
+      // can't wedge initialisation.
+      callback(null, {})
+      return
+    }
+    LOCALE_LOADERS[language]().then(
+      (mod) => callback(null, mod.default as Parameters<ReadCallback>[1]),
+      (err) => callback(err as Error, null),
+    )
+  },
+}
+
 // Vite injects `import.meta.env.MODE` as "development" / "production" / "test"
 // (vitest sets MODE="test"). Guard for non-Vite environments just in case.
 const mode =
@@ -55,14 +91,17 @@ const mode =
 const isProd = mode === "production"
 const isTest = mode === "test"
 
-i18n
+/**
+ * Resolves once the detected locale's catalog (plus the `ru` fallback when
+ * they differ) is registered. `main.tsx` gates the first render on this;
+ * the vitest setup awaits it (plus `loadLanguages`) so tests keep their
+ * synchronous-resources assumption.
+ */
+export const i18nReady: Promise<unknown> = i18n
+  .use(lazyLocaleBackend)
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
-    resources: {
-      ru: { translation: ru },
-      en: { translation: en },
-    },
     fallbackLng: DEFAULT_LOCALE,
     supportedLngs: SUPPORTED_LOCALES as unknown as string[],
     // Most page text is in <Trans> or t() calls. We do not ship raw HTML
@@ -95,13 +134,15 @@ i18n
   })
 
 // Keep <html lang> in sync with the active locale so screen readers, browser
-// translation toolbars, and CSS `:lang(...)` selectors all align.
+// translation toolbars, and CSS `:lang(...)` selectors all align. With the
+// async backend, `i18n.language` is only settled once init resolves — the
+// `languageChanged` event i18next emits at that point (and on every
+// subsequent switch) drives the update.
 const updateHtmlLang = (lng: string) => {
-  if (typeof document !== "undefined") {
+  if (typeof document !== "undefined" && lng) {
     document.documentElement.lang = lng
   }
 }
-updateHtmlLang(i18n.language)
 
 // HMR re-evaluates this module on every save, so guard the listener
 // registration to avoid stacking duplicate handlers across hot reloads.

@@ -1,6 +1,6 @@
 import api from "./api"
 
-export type DailyChallengeQuestionType = "multiple_choice" | "true_false"
+type DailyChallengeQuestionType = "multiple_choice" | "true_false"
 
 export interface DailyChallengeOption {
   id: string
@@ -8,7 +8,7 @@ export interface DailyChallengeOption {
   order_index: number
 }
 
-export interface DailyChallengeAttemptSummary {
+interface DailyChallengeAttemptSummary {
   id: string
   selected_option_id: string
   is_correct: boolean
@@ -68,7 +68,7 @@ export interface DailyChallengeArchiveListResponse {
   next_cursor: string | null
 }
 
-export interface DailyChallengeArchiveRevealView {
+interface DailyChallengeArchiveRevealView {
   correct_option_id: string
   explanation: string | null
   last_attempt_was_correct: boolean

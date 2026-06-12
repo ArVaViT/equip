@@ -1,7 +1,7 @@
 import type { ChapterType } from '@/lib/chapterTypes'
 
 export type UserRole = 'admin' | 'teacher' | 'student'
-export type PreferredLocale = 'ru' | 'en'
+type PreferredLocale = 'ru' | 'en'
 
 /**
  * Single source of truth for role string literals. Use ``ROLES.ADMIN``
@@ -433,7 +433,7 @@ export interface StudentProgressDetail {
 }
 
 /** One row of the gradebook spreadsheet: a student + their full chapter matrix. */
-export interface StudentGradebookEntry {
+interface StudentGradebookEntry {
   id: string
   full_name: string
   email: string

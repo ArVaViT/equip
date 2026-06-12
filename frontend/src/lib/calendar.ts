@@ -8,7 +8,7 @@
  * different Sunday-start grid — do not converge them.
  */
 
-export const DAYS_IN_WEEK = 7
+const DAYS_IN_WEEK = 7
 
 /** Local `YYYY-MM-DD` key (no timezone shift — uses the date's own Y/M/D). */
 export function ymdKey(d: Date): string {

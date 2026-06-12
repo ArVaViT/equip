@@ -1,7 +1,6 @@
-import { driver, type Config, type Driver, type DriveStep } from "driver.js"
-import "driver.js/dist/driver.css"
+import type { Config, Driver, DriveStep } from "driver.js"
 import "@/styles/editorial-tour.css"
-import { EDITORIAL_TOUR_BASE, sanitizePopover } from "@/lib/tour"
+import { EDITORIAL_TOUR_BASE, loadTourRuntime, sanitizePopover } from "@/lib/tour"
 
 /**
  * A grand-tour step is a regular driver.js step plus an optional
@@ -90,7 +89,7 @@ export function waitForSelector(selector: string, timeoutMs = 5000): Promise<Ele
  * The driver instance owns the popover and overlay; the orchestrator
  * just decides when to advance and what to wait for.
  */
-export function createGrandTour({
+export async function createGrandTour({
   steps,
   labels,
   navigate,
@@ -98,7 +97,10 @@ export function createGrandTour({
   reducedMotion,
   onDone,
   onSkipped,
-}: CreateGrandTourOpts): Driver {
+}: CreateGrandTourOpts): Promise<Driver> {
+  // driver.js + DOMPurify load on demand — tours are a first-login
+  // experience, not an every-pageview cost. See ``loadTourRuntime``.
+  const { driver, sanitizeHtml } = await loadTourRuntime()
   let reachedEnd = false
   let destroyed = false
 
@@ -110,7 +112,7 @@ export function createGrandTour({
   // future user-interpolated tour copy could otherwise XSS.
   const baseSteps: DriveStep[] = steps.map((s) => ({
     element: s.element,
-    popover: sanitizePopover(s.popover),
+    popover: sanitizePopover(s.popover, sanitizeHtml),
   }))
 
   // Pre-position on the first step's route so the very first

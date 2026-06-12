@@ -1,9 +1,27 @@
-import { driver, type Config, type DriveStep, type Driver } from "driver.js"
-import "driver.js/dist/driver.css"
+import type { Config, DriveStep, Driver } from "driver.js"
 import "@/styles/editorial-tour.css"
-import { sanitizeHtml } from "@/lib/sanitize"
 
 export type TourStep = DriveStep
+
+/**
+ * driver.js (runtime + its stylesheet) and DOMPurify are loaded on
+ * demand, the first time a tour actually starts. Tours fire for a
+ * tiny minority of page loads (first visit per surface, or a manual
+ * "Take a tour" click), so keeping them out of the eager shell chunk
+ * saves ~10+ KB gzip on every cold start. Both factory functions
+ * below are therefore async; callers fire-and-forget (`void`) them.
+ */
+export async function loadTourRuntime(): Promise<{
+  driver: typeof import("driver.js").driver
+  sanitizeHtml: (html: string) => string
+}> {
+  const [{ driver }, { sanitizeHtml }] = await Promise.all([
+    import("driver.js"),
+    import("@/lib/sanitize"),
+    import("driver.js/dist/driver.css"),
+  ])
+  return { driver, sanitizeHtml }
+}
 
 /**
  * driver.js writes ``popover.title`` and ``popover.description``
@@ -31,7 +49,10 @@ export type TourStep = DriveStep
  * via ``innerHTML``) so a future user-interpolated tour string can't XSS.
  * Shared by the per-page tour and the cross-route grand tour.
  */
-export function sanitizePopover(popover: DriveStep["popover"]): DriveStep["popover"] {
+export function sanitizePopover(
+  popover: DriveStep["popover"],
+  sanitizeHtml: (html: string) => string,
+): DriveStep["popover"] {
   if (!popover) return popover
   return {
     ...popover,
@@ -40,9 +61,12 @@ export function sanitizePopover(popover: DriveStep["popover"]): DriveStep["popov
   }
 }
 
-function sanitiseStepTextInPlace(steps: readonly TourStep[]): TourStep[] {
+function sanitiseStepTextInPlace(
+  steps: readonly TourStep[],
+  sanitizeHtml: (html: string) => string,
+): TourStep[] {
   return steps.map((step) =>
-    step.popover ? { ...step, popover: sanitizePopover(step.popover) } : step,
+    step.popover ? { ...step, popover: sanitizePopover(step.popover, sanitizeHtml) } : step,
   )
 }
 
@@ -120,12 +144,13 @@ function reducedMotionPreferred(): boolean {
  * suppress the auto-fire next time, but for analytics they're
  * meaningfully different signals.
  */
-export function createEditorialTour({
+export async function createEditorialTour({
   steps,
   labels,
   onDone,
   onSkipped,
-}: CreateTourOpts): Driver {
+}: CreateTourOpts): Promise<Driver> {
+  const { driver, sanitizeHtml } = await loadTourRuntime()
   // Track whether the user reached the end so onDestroyed can decide
   // which callback to fire. driver.js's own state.activeIndex isn't
   // reliable on the destroy hook — it gets reset before we see it.
@@ -134,7 +159,7 @@ export function createEditorialTour({
 
   const config: Config = {
     ...EDITORIAL_TOUR_BASE,
-    steps: sanitiseStepTextInPlace(steps) as DriveStep[],
+    steps: sanitiseStepTextInPlace(steps, sanitizeHtml) as DriveStep[],
     // Both the SVG stage morph and the popover fade are gated on this
     // single flag — driver.js doesn't expose them separately, and the
     // CSS media query catches the popover fade as a defense in depth.
