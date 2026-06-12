@@ -18,6 +18,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: frontend-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
 # E2E is single-job because Playwright handles parallelism itself.
 # We pin Node to the same minor as the rest of the CI matrix
 # (frontend-ci.yml uses 22.18.0) so a bundler / browser-runtime mismatch
@@ -31,9 +35,9 @@ jobs:
         working-directory: frontend
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v4
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: 22.18.0
           cache: npm
@@ -42,10 +46,29 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      - name: Resolve Playwright version
+        # Cache key for the browser archive below — keyed on the exact
+        # @playwright/test version from the lockfile so a Playwright bump
+        # naturally invalidates the cache.
+        id: playwright-version
+        run: >-
+          echo "version=$(node -p
+          "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
+          >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browser archive
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
       - name: Install Playwright browser
         # ``--with-deps`` pulls the system libs (libnss, libxss, etc.)
-        # the headless browser needs on Ubuntu. The browser archive
-        # itself is cached by the action below.
+        # the headless browser needs on Ubuntu. This step runs even on a
+        # cache hit: the browser download is then a ~2s no-op, but the OS
+        # deps still need installing on the fresh runner.
         run: npx playwright install --with-deps chromium
 
       - name: Start preview server
@@ -78,7 +101,7 @@ jobs:
 
       - name: Upload Playwright report on failure
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: playwright-report
           path: frontend/playwright-report/
@@ -86,7 +109,7 @@ jobs:
 
       - name: Upload traces on failure
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: playwright-traces
           path: frontend/test-results/

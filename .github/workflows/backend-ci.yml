@@ -132,9 +132,12 @@ jobs:
         run: 'python -c "from app.main import app; print(''OK: FastAPI app imports successfully'')"'
 
       - name: Run tests with coverage
+        # -n auto (pytest-xdist) fans tests out across all runner cores;
+        # pytest-cov combines coverage across xdist workers out of the box.
         run: >-
           python -m pytest tests/
           -vv
+          -n auto
           --tb=short
           --cov=app
           --cov-report=term-missing
