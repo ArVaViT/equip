@@ -17,7 +17,6 @@ from app.services.audit_service import log_action
 from app.services.course_service import get_user_courses
 from app.services.translation.resolve_for_display import (
     build_localized_course_dashboard_summaries,
-    populate_spine_texts,
     should_apply_course_translation_overlay,
 )
 
@@ -85,11 +84,12 @@ def get_my_courses(
     courses = [e.course for e in rows if e.course is not None]
     if not courses:
         return [EnrollmentSummaryResponse.model_validate(e, from_attributes=True) for e in rows]
-    # Pre-hydrate course title/description at the source locale (baseline used
-    # by the owner / admin non-overlay path). The student / non-owner path
-    # overwrites with a display-locale summary below; overlay choice is
-    # per-course and depends on the caller's role.
-    populate_spine_texts(db, courses, hydrate_modules=False)
+    # One bulk content_versions read resolves every course's title/description
+    # at the display locale AND hydrates ``course.title`` on the ORM objects, so
+    # the owner / admin non-overlay path below (which serialises the course
+    # directly via ``CourseDashboardSummary.model_validate``) reads the same
+    # resolved text. The old ``populate_spine_texts`` pre-pass here was fully
+    # overwritten by this builder — a wasted second cv fetch per request.
     localized = {
         c.id: s
         for c, s in zip(
