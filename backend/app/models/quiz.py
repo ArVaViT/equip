@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -9,7 +9,13 @@ from app.core.database import Base
 
 class Quiz(Base):
     __tablename__ = "quizzes"
-    __table_args__ = (Index("ix_quizzes_chapter_id", "chapter_id"),)
+    __table_args__ = (
+        Index("ix_quizzes_chapter_id", "chapter_id"),
+        # Mirror prod CHECK constraints.
+        CheckConstraint("quiz_type IN ('quiz', 'exam')", name="quizzes_quiz_type_check"),
+        CheckConstraint("passing_score >= 0 AND passing_score <= 100", name="quizzes_passing_score_range"),
+        CheckConstraint("max_attempts IS NULL OR max_attempts > 0", name="quizzes_max_attempts_positive"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     chapter_id: Mapped[str] = mapped_column(ForeignKey("chapters.id", ondelete="CASCADE"))
@@ -30,7 +36,16 @@ class Quiz(Base):
 
 class QuizQuestion(Base):
     __tablename__ = "quiz_questions"
-    __table_args__ = (Index("ix_quiz_questions_quiz_id_order", "quiz_id", "order_index"),)
+    __table_args__ = (
+        Index("ix_quiz_questions_quiz_id_order", "quiz_id", "order_index"),
+        # Mirror prod CHECK constraints (question-type domain, points 1..100, non-negative min_words).
+        CheckConstraint(
+            "question_type IN ('multiple_choice', 'true_false', 'short_answer', 'essay')",
+            name="quiz_questions_question_type_check",
+        ),
+        CheckConstraint("points >= 1 AND points <= 100", name="quiz_questions_points_range"),
+        CheckConstraint("min_words IS NULL OR min_words >= 0", name="quiz_questions_min_words_nonneg"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     quiz_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("quizzes.id", ondelete="CASCADE"))
@@ -74,6 +89,9 @@ class QuizAttempt(Base):
             "user_id",
             postgresql_where=text("completed_at IS NOT NULL"),
         ),
+        # Mirror prod: scores are non-negative when present.
+        CheckConstraint("score IS NULL OR score >= 0", name="quiz_attempts_score_nonneg"),
+        CheckConstraint("max_score IS NULL OR max_score >= 0", name="quiz_attempts_max_score_nonneg"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)

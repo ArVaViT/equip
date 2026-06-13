@@ -61,6 +61,10 @@ class Course(Base):
             "quiz_weight + assignment_weight + participation_weight = 100",
             name="ck_courses_weights_sum_100",
         ),
+        # Mirror prod CHECK constraints (catalog status, enroll access mode, authoring locale).
+        CheckConstraint("status IN ('draft', 'published')", name="chk_courses_status"),
+        CheckConstraint("access_mode IN ('public', 'institute')", name="courses_access_mode_check"),
+        CheckConstraint("source_locale IN ('ru', 'en')", name="courses_source_locale_check"),
     )
 
     id: Mapped[str] = mapped_column(primary_key=True)
@@ -207,6 +211,11 @@ class Chapter(Base):
             "module_id",
             "order_index",
             postgresql_where=text("deleted_at IS NULL"),
+        ),
+        # Mirror prod: chapter type domain.
+        CheckConstraint(
+            "chapter_type IN ('reading', 'quiz', 'exam', 'assignment')",
+            name="chapters_chapter_type_check",
         ),
     )
 

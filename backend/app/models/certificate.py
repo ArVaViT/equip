@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -31,6 +31,11 @@ class Certificate(Base):
         # duplication (same columns, same order).
         UniqueConstraint("user_id", "course_id", name="uq_certificate_user_course"),
         Index("ix_certificates_status", "status"),
+        # Mirror prod: status state machine (pending → teacher_approved → approved / rejected).
+        CheckConstraint(
+            "status IN ('pending', 'teacher_approved', 'approved', 'rejected')",
+            name="certificates_status_check",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)

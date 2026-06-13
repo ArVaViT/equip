@@ -67,7 +67,7 @@ def _seed_basic_course(db: Session, course_id: str = "eng-test") -> str:
         module_id=module.id,
         title="C",
         order_index=0,
-        chapter_type="text",
+        chapter_type="reading",
     )
     db.add(chapter)
     db.flush()

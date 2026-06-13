@@ -449,14 +449,11 @@ class TestSoloEnrollRouteStatusGates:
         assert resp.status_code == 403
         assert "unpublished" in resp.json()["detail"]["message"].lower()
 
-    def test_solo_enroll_on_archived_course_returns_403(self, student_client: TestClient, db: Session, student):
-        _seed_public_course(db, status="archived")
-        resp = student_client.post(
-            f"{COURSES_PREFIX}/test-course-1/enroll",
-            json={},
-        )
-        assert resp.status_code == 403
-        assert "unpublished" in resp.json()["detail"]["message"].lower()
+    # NOTE: there is intentionally no "archived course" case here. ``courses.status``
+    # is CHECK-constrained to ('draft', 'published') in prod (chk_courses_status) and
+    # the CourseStatus enum has no ARCHIVED member — an archived course is not a
+    # representable state, so the old test seeded data prod would reject. The
+    # draft case above already covers the non-published → 403 branch.
 
     def test_solo_enroll_on_nonexistent_course_returns_404(self, student_client: TestClient, db: Session, student):
         resp = student_client.post(
