@@ -436,7 +436,7 @@ class TestTrashAndRestore:
         from app.models.certificate import Certificate
 
         course = _seed_course_direct(db, course_id="snap-test", title="Snapshot Me", deleted=True)
-        cert = Certificate(user_id=STUDENT_ID, course_id=course.id, status="issued")
+        cert = Certificate(user_id=STUDENT_ID, course_id=course.id, status="approved")
         db.add(cert)
         db.commit()
         cert_id = cert.id

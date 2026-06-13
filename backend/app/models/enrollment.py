@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Index, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -25,6 +25,8 @@ class Enrollment(Base):
         UniqueConstraint("user_id", "course_id", "cohort_id", name="uq_enrollment_user_course_cohort"),
         Index("ix_enrollments_course_id", "course_id"),
         Index("ix_enrollments_cohort_id", "cohort_id"),
+        # Mirror prod: progress is a 0..100 percentage.
+        CheckConstraint("progress >= 0 AND progress <= 100", name="enrollments_progress_range"),
     )
 
     id: Mapped[str] = mapped_column(primary_key=True)

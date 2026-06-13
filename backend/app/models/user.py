@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, DateTime, func
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -20,6 +20,12 @@ class UserRole(enum.StrEnum):
 
 class User(Base):
     __tablename__ = "profiles"
+    __table_args__ = (
+        # Mirror the prod CHECK constraints so the SQLite test path and the
+        # Postgres schema-smoke job enforce the same value domains.
+        CheckConstraint("role IN ('admin', 'teacher', 'student')", name="chk_profiles_role"),
+        CheckConstraint("preferred_locale IN ('ru', 'en')", name="profiles_preferred_locale_check"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
     # ``unique=True`` already creates a B-tree; a second ``index=True`` would

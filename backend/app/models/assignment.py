@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -9,7 +9,11 @@ from app.core.database import Base
 
 class Assignment(Base):
     __tablename__ = "assignments"
-    __table_args__ = (Index("ix_assignments_chapter_id", "chapter_id"),)
+    __table_args__ = (
+        Index("ix_assignments_chapter_id", "chapter_id"),
+        # Mirror prod: max_score must be positive.
+        CheckConstraint("max_score > 0", name="assignments_max_score_positive"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     chapter_id: Mapped[str] = mapped_column(ForeignKey("chapters.id", ondelete="CASCADE"))
@@ -29,6 +33,12 @@ class AssignmentSubmission(Base):
     __table_args__ = (
         Index("ix_assignment_subs_student_assignment", "student_id", "assignment_id"),
         Index("ix_assignment_subs_assignment_id", "assignment_id"),
+        # Mirror prod CHECK constraints (status domain + non-negative grade).
+        CheckConstraint(
+            "status IN ('submitted', 'graded', 'returned')",
+            name="assignment_submissions_status_check",
+        ),
+        CheckConstraint("grade IS NULL OR grade >= 0", name="assignment_submissions_grade_nonneg"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)

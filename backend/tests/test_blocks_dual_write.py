@@ -39,7 +39,7 @@ def _seed_chapter(db: Session, *, course_locale: str = "ru") -> str:
         module_id=module.id,
         title="Глава",
         order_index=0,
-        chapter_type="text",
+        chapter_type="reading",
     )
     db.add_all([course, module, chapter])
     db.commit()
