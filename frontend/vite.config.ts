@@ -36,6 +36,15 @@ export default defineConfig({
         // imported from the lazy teacher routes (CourseEditor / ChapterEditor).
         manualChunks(id) {
           if (id.includes('node_modules/@supabase/supabase-js')) return 'supabase'
+          // The `motion` runtime (motion / motion-dom / motion-utils) is used
+          // only by lazy routes + a few shared components (CourseCard,
+          // PressFeedback, DashboardPage, …) — never by the eager shell, since
+          // HeaderNavLink dropped its layoutId underline. Left to rollup's
+          // default heuristic it gets hoisted into the entry `index` chunk
+          // (several async chunks share it), so every anonymous / login load
+          // pays ~30 KB gzip it never uses. Pin it to its own chunk so it
+          // loads in parallel only when a motion-using route mounts.
+          if (/node_modules[\\/]motion(-dom|-utils)?[\\/]/.test(id)) return 'motion'
           if (
             id.includes('node_modules/react-router-dom') ||
             id.includes('node_modules/react-router') ||
