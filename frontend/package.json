@@ -37,7 +37,7 @@
     "@radix-ui/react-select": "^2.3.0",
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-tooltip": "^1.2.9",
-    "@supabase/supabase-js": "^2.108.0",
+    "@supabase/supabase-js": "^2.108.1",
     "@tiptap/core": "^3.26.0",
     "@tiptap/extension-character-count": "^3.26.0",
     "@tiptap/extension-code-block-lowlight": "^3.26.0",
