@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { EmptyState, ErrorState } from "@/components/patterns"
+import { EmptyState, ErrorState, Eyebrow } from "@/components/patterns"
 import { coursesService } from "@/services/courses"
 import type { Certificate, Enrollment } from "@/types"
 import { Award, ArrowLeft, RefreshCw, ScrollText } from "lucide-react"
@@ -155,9 +155,9 @@ export default function CertificatesPage() {
                       </div>
                     )}
                     <div>
-                      <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+                      <Eyebrow>
                         {isApproved ? t("certificates.issuedOrStatus") : t("certificates.statusColumn")}
-                      </p>
+                      </Eyebrow>
                       <p className={`mt-0.5 text-sm font-medium ${isApproved ? "text-ink" : "text-ink-muted"}`}>
                         {statusLabel}
                       </p>

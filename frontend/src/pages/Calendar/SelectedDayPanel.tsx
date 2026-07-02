@@ -35,7 +35,7 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
           <CalendarDays className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
           {weekday}
         </p>
-        <CardTitle className="font-serif text-lg font-semibold tracking-tight">
+        <CardTitle>
           {dateLine}
         </CardTitle>
         {events.length > 0 && (

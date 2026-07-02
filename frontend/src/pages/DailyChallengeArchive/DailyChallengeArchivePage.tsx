@@ -5,7 +5,8 @@ import { Calendar, Check, ChevronLeft, Sparkles, X } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { getErrorCode } from "@/lib/errorCode"
-import { PageHeader, EmptyState, ErrorState } from "@/components/patterns"
+import { PageHeader, EmptyState, ErrorState, Eyebrow } from "@/components/patterns"
+import { OptionButton, RevealPanel } from "@/components/dailyChallenge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import {
@@ -220,9 +221,7 @@ function CalendarGrid({ entries, selectedDate, onSelect, t }: CalendarGridProps)
         )
         return (
           <div key={monthKey} className="space-y-2">
-            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-              {monthLabel}
-            </p>
+            <Eyebrow>{monthLabel}</Eyebrow>
             <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
               {monthEntries
                 .slice()
@@ -457,68 +456,19 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
             <ul className="space-y-1.5">
               {[...data.options]
                 .sort((a, b) => a.order_index - b.order_index)
-                .map((opt) => {
-                  const isCorrect = reveal?.correct_option_id === opt.id
-                  const isSelected = reveal?.selected_option_id === opt.id
-                  const showCorrect = reveal !== null && isCorrect
-                  const showWrong = reveal !== null && isSelected && !isCorrect
-                  return (
-                    <li key={opt.id}>
-                      <button
-                        type="button"
-                        onClick={() => void handleSelect(opt.id)}
-                        disabled={reveal !== null || submitting}
-                        aria-pressed={isSelected}
-                        className={cn(
-                          "flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-left text-xs transition-colors",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-                          reveal === null && "border-edge bg-surface hover:border-brand/30 hover:bg-muted/30",
-                          showCorrect && "border-success/40 bg-success/10 text-ink",
-                          showWrong && "border-destructive/40 bg-destructive/10 text-ink",
-                          reveal !== null && !showCorrect && !showWrong && "border-edge bg-surface text-ink-muted",
-                          (reveal !== null || submitting) && "cursor-default",
-                        )}
-                      >
-                        <span
-                          aria-hidden
-                          className={cn(
-                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold",
-                            reveal === null && "border-edge text-ink-muted",
-                            showCorrect && "border-success bg-success text-success-foreground",
-                            showWrong && "border-destructive bg-destructive text-destructive-foreground",
-                            reveal !== null && !showCorrect && !showWrong && "border-edge text-ink-muted",
-                          )}
-                        >
-                          {showCorrect ? (
-                            <Check className="h-3 w-3" strokeWidth={1.75} />
-                          ) : showWrong ? (
-                            <X className="h-3 w-3" strokeWidth={1.75} />
-                          ) : (
-                            String.fromCharCode(65 + opt.order_index)
-                          )}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate">{opt.option_text}</span>
-                      </button>
-                    </li>
-                  )
-                })}
+                .map((opt) => (
+                  <li key={opt.id}>
+                    <OptionButton
+                      option={opt}
+                      reveal={reveal}
+                      disabled={reveal !== null || submitting}
+                      onClick={() => void handleSelect(opt.id)}
+                    />
+                  </li>
+                ))}
             </ul>
             {reveal !== null && (
-              <div className="space-y-1.5 rounded-md bg-muted/20 px-3 py-2.5">
-                <p
-                  className={cn(
-                    "text-[11px] font-semibold uppercase tracking-[0.14em]",
-                    reveal.is_correct ? "text-success" : "text-ink-muted",
-                  )}
-                >
-                  {reveal.is_correct
-                    ? t("dailyChallenge.reveal.correct")
-                    : t("dailyChallenge.reveal.wrong")}
-                </p>
-                {reveal.explanation && (
-                  <p className="text-xs leading-snug text-ink">{reveal.explanation}</p>
-                )}
-              </div>
+              <RevealPanel isCorrect={reveal.is_correct} explanation={reveal.explanation} />
             )}
           </>
         ) : null}

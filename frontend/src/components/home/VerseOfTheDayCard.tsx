@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { BookOpenText } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Eyebrow } from "@/components/patterns"
 import {
   verseOfTheDayService,
   type VerseOfTheDay,
@@ -68,9 +69,7 @@ export function VerseOfTheDayCard() {
           aria-hidden
         />
         <div className="min-w-0">
-          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-            {t("dashboard.votd.eyebrow")}
-          </p>
+          <Eyebrow>{t("dashboard.votd.eyebrow")}</Eyebrow>
           <h2
             id="verse-of-the-day-heading"
             className="font-serif text-sm font-semibold leading-tight tracking-tight text-ink"

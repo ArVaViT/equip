@@ -52,6 +52,15 @@ export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, 
         // per-module ``inflightChapterAssignments`` Map duplicated
         // that behaviour and would have diverged if the api-layer
         // policy ever changed.
+        // When the panel is scoped to a single assignment we already know
+        // the submissions endpoint we'll need — kick it off in parallel
+        // with the assignment list instead of waterfalling behind it.
+        // Errors degrade to "no submission" exactly like the per-item
+        // fetches below (the .catch is attached at creation so a failed
+        // prefetch can never surface as an unhandled rejection).
+        const prefetchedSubmissions = assignmentId
+          ? coursesService.getMySubmissions(assignmentId).catch(() => [] as AssignmentSubmission[])
+          : null
         const all = await coursesService.getChapterAssignments(chapterId)
         if (cancelled) return
         const data = assignmentId ? all.filter((a) => a.id === assignmentId) : all
@@ -60,7 +69,11 @@ export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, 
 
         if (data.length > 0) {
           const subResults = await Promise.all(
-            data.map((a) => coursesService.getMySubmissions(a.id).catch(() => [] as AssignmentSubmission[]))
+            data.map((a) =>
+              prefetchedSubmissions && a.id === assignmentId
+                ? prefetchedSubmissions
+                : coursesService.getMySubmissions(a.id).catch(() => [] as AssignmentSubmission[])
+            )
           )
           if (cancelled) return
           const map: Record<string, AssignmentSubmission | null> = {}

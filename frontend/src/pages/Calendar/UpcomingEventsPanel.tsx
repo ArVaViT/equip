@@ -23,7 +23,7 @@ export function UpcomingEventsPanel({ events }: UpcomingEventsPanelProps) {
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
           {t("calendar.upcomingEyebrow")}
         </p>
-        <CardTitle className="font-serif text-lg font-semibold tracking-tight">
+        <CardTitle>
           {t("calendar.upcomingTitle")}
         </CardTitle>
       </CardHeader>

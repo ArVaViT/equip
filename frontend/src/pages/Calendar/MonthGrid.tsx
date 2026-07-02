@@ -51,7 +51,7 @@ export function MonthGrid({
             <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted tabular-nums">
               {year}
             </p>
-            <CardTitle className="font-serif text-lg font-semibold tracking-tight">
+            <CardTitle>
               {getMonthName(month, locale)}
             </CardTitle>
           </div>

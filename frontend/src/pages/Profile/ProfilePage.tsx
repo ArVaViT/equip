@@ -226,7 +226,7 @@ export default function ProfilePage() {
 
         <Card className="transition-[border-color] duration-200 hover:border-brand/25">
           <CardHeader className="space-y-1">
-            <CardTitle className="font-serif text-lg font-semibold tracking-tight">
+            <CardTitle>
               {t("profile.learningProgress")}
             </CardTitle>
             <CardDescription>{t("profile.learningProgressDescription")}</CardDescription>
@@ -266,7 +266,7 @@ export default function ProfilePage() {
 
         <Card className="transition-[border-color] duration-200 hover:border-brand/25">
           <CardHeader>
-            <CardTitle className="font-serif text-lg font-semibold tracking-tight">{t("profile.accountDetails")}</CardTitle>
+            <CardTitle>{t("profile.accountDetails")}</CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="divide-y divide-border rounded-md ">
@@ -294,7 +294,7 @@ export default function ProfilePage() {
 
         <Card className="transition-[border-color] duration-200 hover:border-brand/25">
           <CardHeader>
-            <CardTitle className="font-serif text-lg font-semibold tracking-tight">{t("profile.preferences")}</CardTitle>
+            <CardTitle>{t("profile.preferences")}</CardTitle>
           </CardHeader>
           <CardContent className="divide-y divide-border rounded-md px-0">
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4">

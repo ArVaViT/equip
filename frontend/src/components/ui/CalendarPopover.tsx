@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Eyebrow } from "@/components/patterns"
 import { addMonths, buildMonthMatrix, ymdKey } from "@/lib/calendar"
 import { cn } from "@/lib/utils"
 
@@ -131,12 +132,9 @@ export function CalendarPopover({
         <div className="p-2">
           <div className="grid grid-cols-7 gap-0.5">
             {weekdayHeads.map((d, i) => (
-              <div
-                key={i}
-                className="pb-1 text-center text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted"
-              >
+              <Eyebrow as="div" key={i} className="pb-1 text-center">
                 {d}
-              </div>
+              </Eyebrow>
             ))}
             {days.map((date, i) => {
               const inCurrentMonth = date.getMonth() === anchorMonth

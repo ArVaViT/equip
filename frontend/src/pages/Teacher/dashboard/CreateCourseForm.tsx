@@ -34,7 +34,7 @@ export function CreateCourseForm({
   return (
     <Card className="mb-8 border-dashed">
       <CardHeader>
-        <CardTitle className="font-serif text-lg font-semibold tracking-tight">
+        <CardTitle>
           {t("teacherDashboard.createForm.title")}
         </CardTitle>
       </CardHeader>
