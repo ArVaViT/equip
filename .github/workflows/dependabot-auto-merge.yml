@@ -10,8 +10,10 @@ name: Dependabot auto-merge
 #   - `gh pr merge --auto` does NOT bypass the branch ruleset. GitHub merges
 #     only after every required check on `main` reports success (currently
 #     pr-quality, Backend CI Pass, Frontend CI Pass).
-#   - `if: github.actor == 'dependabot[bot]'` guarantees this job only acts
-#     on Dependabot-authored PRs, regardless of what triggers the workflow.
+#   - `if: github.event.pull_request.user.login == 'dependabot[bot]'` gates
+#     on the PR *author* (GitHub's hardening guidance) — `github.actor`
+#     follows the triggering event, not authorship, so a re-triggered event
+#     on a non-Dependabot PR could otherwise slip past the check.
 #   - `pull_request_target` is required so the job has the
 #     `pull-requests: write` permission needed to call the merge endpoint
 #     for Dependabot PRs (which run from a bot-owned ref, treated like a
@@ -30,7 +32,7 @@ permissions:
 jobs:
   auto-merge:
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
     permissions:
       contents: write # enable auto-merge / merge the PR
       pull-requests: write # approve + set auto-merge on the PR
