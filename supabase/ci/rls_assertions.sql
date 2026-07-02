@@ -92,6 +92,17 @@ EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: daily_challenge_options direct read denied';
 END $$;
 
+-- content_versions is the sole store of ALL course text (entity text columns
+-- were dropped in Phase 5); a direct client read would expose unpublished and
+-- cohort-gated content. Served exclusively through the backend.
+DO $$
+BEGIN
+  PERFORM 1 FROM public.content_versions LIMIT 1;
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can SELECT content_versions (full content scrape)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: content_versions direct read denied';
+END $$;
+
 -- 7) tamper-proof tables: a client must not be able to write them directly
 --    (backend-managed via the service role).
 DO $$
