@@ -7,7 +7,7 @@ from app.api.dependencies import get_current_user, require_teacher, verify_cours
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.sanitize import sanitize_string
-from app.models.course import Course
+from app.models.course import Course, CourseStatus
 from app.models.course_event import CourseEvent
 from app.models.enrollment import Enrollment
 from app.models.user import User, UserRole
@@ -155,7 +155,7 @@ def list_course_events(
     response.headers["Vary"] = "Accept-Language"
     # Narrow probe: only the columns needed for ownership + soft-delete checks.
     course_row = (
-        db.query(Course.created_by, Course.source_locale)
+        db.query(Course.created_by, Course.source_locale, Course.status)
         .filter(Course.id == course_id, Course.deleted_at.is_(None))
         .first()
     )
@@ -175,6 +175,16 @@ def list_course_events(
             .first()
         )
         if not enrolled:
+            # Mirror the catalog / PDF-export leak guard: an unpublished
+            # course 404s to non-member probes so its existence doesn't
+            # leak; published courses keep the plain 403.
+            if course_row.status != CourseStatus.PUBLISHED:
+                raise equip_error(
+                    ErrorCode.RESOURCE_NOT_FOUND,
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    message="Course not found",
+                    context={"resource_type": "course", "resource_id": course_id},
+                )
             raise equip_error(
                 ErrorCode.AUTH_FORBIDDEN,
                 status_code=status.HTTP_403_FORBIDDEN,

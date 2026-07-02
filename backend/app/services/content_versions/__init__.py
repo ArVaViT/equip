@@ -13,6 +13,7 @@ from app.services.content_versions.read import (
     fetch_cv_text_bulk,
 )
 from app.services.content_versions.write import (
+    delete_entities_cv_rows,
     delete_entity_cv_rows,
     record_human_version,
     record_mt_failure,
@@ -20,6 +21,7 @@ from app.services.content_versions.write import (
 )
 
 __all__ = [
+    "delete_entities_cv_rows",
     "delete_entity_cv_rows",
     "dual_write_entity_content",
     "fetch_cv_entity_texts_with_fallback",

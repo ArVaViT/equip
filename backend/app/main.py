@@ -1,5 +1,4 @@
 import logging
-import os
 import time
 import uuid
 from pathlib import Path
@@ -11,7 +10,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.api.v1 import api_router
-from app.core.config import settings
+from app.core.config import env_flag, settings
 from app.core.logging import setup_logging, vercel_request_id
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security import SecurityHeadersMiddleware
@@ -20,7 +19,7 @@ setup_logging()
 
 logger = logging.getLogger("api")
 
-_IS_PRODUCTION = bool(os.environ.get("VERCEL") or os.environ.get("PRODUCTION"))
+_IS_PRODUCTION = env_flag("VERCEL", "PRODUCTION")
 
 
 def docs_url_config(is_production: bool) -> dict[str, str | None]:

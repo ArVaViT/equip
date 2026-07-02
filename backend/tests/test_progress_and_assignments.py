@@ -343,6 +343,38 @@ class TestListAssignmentSubmissions:
         r = student_client.get(f"/api/v1/assignments/{asg.id}/submissions")
         assert r.status_code == 403
 
+    def test_deactivated_student_excluded(
+        self,
+        client: TestClient,
+        student_client: TestClient,
+        db: Session,
+        teacher: User,
+    ):
+        """A soft-deleted student's submissions must drop out of the teacher
+        grading queue — same rule as the gradebook rosters (#786)."""
+        from datetime import UTC, datetime
+
+        from ._cv_helpers import make_assignment_with_text
+
+        _course, _mod, chapter = _seed_course_graph(db)
+        asg = make_assignment_with_text(db, chapter_id=chapter.id, title="Ghost sub", max_score=10)
+        aid = asg.id
+        db.commit()
+        sub = student_client.post(
+            f"/api/v1/assignments/{aid}/submit",
+            json={"content": "Before deactivation"},
+        )
+        assert sub.status_code == 201, sub.text
+        ghost = db.query(User).filter(User.id == STUDENT_ID).one()
+        ghost.deactivated_at = datetime(2026, 1, 1, tzinfo=UTC)
+        db.commit()
+
+        app.dependency_overrides[get_current_user] = lambda: teacher
+        app.dependency_overrides[get_optional_user] = lambda: teacher
+        r = client.get(f"/api/v1/assignments/{aid}/submissions")
+        assert r.status_code == 200, r.text
+        assert r.json() == []
+
 
 class TestGradeSubmission:
     """PUT /api/v1/assignments/submissions/{submission_id}/grade"""

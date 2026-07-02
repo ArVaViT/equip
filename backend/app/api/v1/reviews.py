@@ -8,7 +8,7 @@ from app.api.dependencies import get_current_user, get_live_course_or_404
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.metrics import gauge
-from app.models.certificate import Certificate
+from app.models.certificate import Certificate, CertificateStatus
 from app.models.course import CourseStatus
 from app.models.review import CourseReview
 from app.models.user import User
@@ -58,7 +58,7 @@ def create_or_update_review(
         .filter(
             Certificate.user_id == current_user.id,
             Certificate.course_id == course_id,
-            Certificate.status == "approved",
+            Certificate.status == CertificateStatus.APPROVED,
         )
         .first()
     )

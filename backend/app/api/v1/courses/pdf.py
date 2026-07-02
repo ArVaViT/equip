@@ -26,7 +26,6 @@ from app.services.course_pdf import render_course_pdf
 from app.services.course_service import get_course
 from app.services.translation.resolve_for_display import (
     build_localized_course_response_with_tree,
-    populate_module_texts,
     populate_spine_texts,
 )
 
@@ -103,13 +102,10 @@ def export_course_pdf(
     # reads ``course.title`` / ``course.description`` /
     # ``module.title`` / ``chapter.title`` directly.
     display_locale: LocaleCode = normalize_locale(accept_language)
+    # populate_spine_texts already bulk-hydrates every module's
+    # title/description at the course's source locale (hydrate_modules
+    # defaults to True), so no per-module hydration pass is needed.
     populate_spine_texts(db, [course])
-    for module in course.modules or []:
-        populate_module_texts(
-            db,
-            [module],
-            source_locale=normalize_locale(course.source_locale),
-        )
     # build_localized_course_response_with_tree applies the overlay in
     # place via .title attribute hydration on each module + chapter.
     _ = build_localized_course_response_with_tree(db, course, display_locale)

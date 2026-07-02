@@ -247,10 +247,14 @@ def list_pending_certificates(
     certs = (
         db.query(Certificate)
         .join(Course, Course.id == Certificate.course_id)
+        # Deactivated students keep their certificate rows but drop out of
+        # the review queue — same rule as the gradebook rosters (#786).
+        .join(User, User.id == Certificate.user_id)
         .filter(
             Course.created_by == teacher.id,
             Course.deleted_at.is_(None),
             Certificate.status == CertificateStatus.PENDING,
+            User.deactivated_at.is_(None),
         )
         .order_by(Certificate.requested_at.asc())
         .offset(skip)
@@ -280,7 +284,12 @@ def list_admin_pending_certificates(
     """
     certs = (
         db.query(Certificate)
-        .filter(Certificate.status == CertificateStatus.TEACHER_APPROVED)
+        # Same deactivated-student exclusion as the teacher pending list.
+        .join(User, User.id == Certificate.user_id)
+        .filter(
+            Certificate.status == CertificateStatus.TEACHER_APPROVED,
+            User.deactivated_at.is_(None),
+        )
         .order_by(Certificate.teacher_approved_at.asc())
         .offset(skip)
         .limit(limit)

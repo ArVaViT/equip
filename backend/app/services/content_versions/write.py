@@ -41,6 +41,8 @@ from app.models.content_version import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -327,6 +329,28 @@ def delete_entity_cv_rows(
     deleted = (
         db.query(ContentVersion)
         .filter(ContentVersion.entity_type == entity_type, ContentVersion.entity_id == eid_str)
+        .delete(synchronize_session=False)
+    )
+    return deleted
+
+
+def delete_entities_cv_rows(
+    db: Session,
+    *,
+    entity_type: str,
+    entity_ids: Sequence[str | uuid.UUID],
+) -> int:
+    """Bulk variant of ``delete_entity_cv_rows`` — one ``IN``-list DELETE
+    for many entities of the same type (e.g. every question of a quiz
+    being hard-deleted). Same caveats apply: leaf entities only, never
+    soft-delete entities. Returns the row count.
+    """
+    if not entity_ids:
+        return 0
+    id_strs = [str(eid) for eid in entity_ids]
+    deleted = (
+        db.query(ContentVersion)
+        .filter(ContentVersion.entity_type == entity_type, ContentVersion.entity_id.in_(id_strs))
         .delete(synchronize_session=False)
     )
     return deleted

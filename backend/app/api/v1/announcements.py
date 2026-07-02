@@ -131,7 +131,7 @@ def list_announcements(
 ) -> list[AnnouncementResponse]:
     response.headers["Vary"] = "Accept-Language"
     query = db.query(Announcement)
-    is_admin = current_user.role in (UserRole.ADMIN.value, "admin")
+    is_admin = current_user.role == UserRole.ADMIN.value
     # ``?source=1`` is editor-only: it returns unredacted source text
     # for the announcements of a specific course, so gate it to a
     # course_id filter that the caller actually owns (or admin). A
@@ -146,8 +146,16 @@ def list_announcements(
                 context={"resource_type": "announcement"},
             )
         if not is_admin:
+            # Soft-deleted courses don't count for ownership — mirrors the
+            # ``deleted_at`` check on the create path below.
             owns = (
-                db.query(Course.id).filter(Course.id == course_id, Course.created_by == current_user.id).first()
+                db.query(Course.id)
+                .filter(
+                    Course.id == course_id,
+                    Course.created_by == current_user.id,
+                    Course.deleted_at.is_(None),
+                )
+                .first()
                 is not None
             )
             if not owns:
@@ -168,11 +176,17 @@ def list_announcements(
         if not is_admin:
             # Non-admin must be enrolled in or own this course to see its announcements.
             # Previously this branch skipped the check entirely (IDOR). See audit P0.4.
+            # Soft-deleted courses grant no access — an enrollment or
+            # ownership row pointing at a trashed course must not keep its
+            # announcements readable (mirrors the ``deleted_at`` check on
+            # the create path below).
             has_access = (
                 db.query(Enrollment.id)
+                .join(Course, Course.id == Enrollment.course_id)
                 .filter(
                     Enrollment.user_id == current_user.id,
                     Enrollment.course_id == course_id,
+                    Course.deleted_at.is_(None),
                 )
                 .first()
                 is not None
@@ -181,6 +195,7 @@ def list_announcements(
                 .filter(
                     Course.id == course_id,
                     Course.created_by == current_user.id,
+                    Course.deleted_at.is_(None),
                 )
                 .first()
                 is not None
@@ -194,8 +209,20 @@ def list_announcements(
                 )
         query = query.filter(Announcement.course_id == course_id)
     elif not is_admin:
-        enrolled_ids = db.query(Enrollment.course_id).filter(Enrollment.user_id == current_user.id).scalar_subquery()
-        owned_ids = db.query(Course.id).filter(Course.created_by == current_user.id).scalar_subquery()
+        # Exclude soft-deleted courses from both tiers so trashed-course
+        # announcements drop out of the feed the moment the course is
+        # trashed (mirrors the ``deleted_at`` check on the create path).
+        enrolled_ids = (
+            db.query(Enrollment.course_id)
+            .join(Course, Course.id == Enrollment.course_id)
+            .filter(Enrollment.user_id == current_user.id, Course.deleted_at.is_(None))
+            .scalar_subquery()
+        )
+        owned_ids = (
+            db.query(Course.id)
+            .filter(Course.created_by == current_user.id, Course.deleted_at.is_(None))
+            .scalar_subquery()
+        )
         query = query.filter(
             Announcement.course_id.in_(enrolled_ids)
             | Announcement.course_id.in_(owned_ids)
@@ -346,7 +373,12 @@ def create_announcement(
         enrolled_users = (
             db.query(Enrollment.user_id, User.preferred_locale)
             .join(User, User.id == Enrollment.user_id)
-            .filter(Enrollment.course_id == data.course_id)
+            .filter(
+                Enrollment.course_id == data.course_id,
+                # Deactivated accounts keep their enrollment rows but must
+                # not receive notification fan-out (#786 rule).
+                User.deactivated_at.is_(None),
+            )
             .all()
         )
         recipients_by_locale: dict[str, list[uuid.UUID | str]] = {}

@@ -24,7 +24,9 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 import pytest
+from pydantic import SecretStr
 
+from app.core.config import settings
 from app.services import verse_of_the_day as svc
 
 if TYPE_CHECKING:
@@ -227,7 +229,7 @@ class TestGetVerseOfTheDayHttpErrorPath:
     serve stale content silently."""
 
     def test_httpx_transport_error_aborts_walk(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+        monkeypatch.setattr(settings, "YOUVERSION_API_KEY", SecretStr("test-key"))
         call_count = {"n": 0}
 
         def fail(*_a: object, **_k: object) -> Any:
@@ -250,7 +252,7 @@ class TestGetVerseOfTheDayWalkExhausted:
     ``VerseNotInBible`` attached so the runbook has a starting point."""
 
     def test_walk_cap_exceeded_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+        monkeypatch.setattr(settings, "YOUVERSION_API_KEY", SecretStr("test-key"))
 
         def always_missing(*_a: object, **_k: object) -> Any:
             raise svc.VerseNotInBible("ref missing")

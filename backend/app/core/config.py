@@ -7,6 +7,18 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 logger = logging.getLogger(__name__)
 
 
+def env_flag(*names: str) -> bool:
+    """True when any of the named environment variables is set non-empty.
+
+    Shared helper for the boot-time platform flags (production /
+    serverless / trusted-proxy) that were previously computed with a
+    copy-pasted ``bool(os.environ.get(...) or os.environ.get(...))`` at
+    each site. Reads the environment at call time — call sites evaluate
+    it once at module import, exactly like the inline expressions did.
+    """
+    return any(os.environ.get(name) for name in names)
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
@@ -59,6 +71,11 @@ class Settings(BaseSettings):
     # ``SecretStr`` keeps the value out of any incidental ``Settings``
     # repr/log dump; callers must use ``.get_secret_value()`` to read it.
     GEMINI_API_KEY: SecretStr | None = Field(default=None, description="Google AI Studio API key (server-only)")
+    # YouVersion Platform key for the Verse of the Day card. Optional the
+    # same way GEMINI_API_KEY is: when unset (CI, local dev without setup)
+    # the verse service raises ``VerseOfTheDayUnavailable`` and the route
+    # returns 404 so the frontend quietly hides the card.
+    YOUVERSION_API_KEY: SecretStr | None = Field(default=None, description="YouVersion Platform API key (server-only)")
     # gemini-2.5-flash-lite: no "thinking" tokens (translation doesn't need
     # them) so the full GEMINI_MAX_OUTPUT_TOKENS budget goes to the actual
     # translation. The previous default ``gemini-flash-latest`` resolves to

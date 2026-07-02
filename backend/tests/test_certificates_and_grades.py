@@ -326,6 +326,19 @@ class TestListPendingCertificates:
         assert r.status_code == 200
         assert r.json() == []
 
+    def test_deactivated_student_excluded(self, client: TestClient, db: Session):
+        # A soft-deleted student's pending certificate must drop out of the
+        # teacher review queue — same rule as the gradebook rosters (#786).
+        _seed_enrolled_course(db, progress=100)
+        _seed_certificate(db, "course-1")
+        student = db.query(User).filter(User.id == STUDENT_ID).one()
+        student.deactivated_at = datetime(2026, 1, 1, tzinfo=UTC)
+        db.commit()
+
+        r = client.get("/api/v1/certificates/pending")
+        assert r.status_code == 200
+        assert r.json() == []
+
 
 class TestAdminPendingCertificates:
     """GET /api/v1/certificates/admin/pending"""
@@ -345,6 +358,19 @@ class TestAdminPendingCertificates:
     def test_student_forbidden(self, student_client: TestClient, db: Session):
         r = student_client.get("/api/v1/certificates/admin/pending")
         assert r.status_code == 403
+
+    def test_deactivated_student_excluded(self, client: TestClient, db: Session):
+        # Same deactivated-student exclusion as the teacher pending list.
+        _make_admin(db)
+        _seed_enrolled_course(db, progress=100)
+        _seed_certificate(db, "course-1", cert_status="teacher_approved")
+        student = db.query(User).filter(User.id == STUDENT_ID).one()
+        student.deactivated_at = datetime(2026, 1, 1, tzinfo=UTC)
+        db.commit()
+
+        r = client.get("/api/v1/certificates/admin/pending")
+        assert r.status_code == 200
+        assert r.json() == []
 
 
 class TestTeacherApproveCertificate:
@@ -418,6 +444,22 @@ class TestTeacherApproveCertificate:
         assert r.status_code == 403
         assert "own" in r.json()["detail"]["message"].lower()
 
+    def test_deactivated_student_returns_409(self, client: TestClient, db: Session):
+        """Approving by id must fail for a deactivated student — the cert is
+        hidden from the pending queue, so a direct PUT is a stale click (or
+        a probe) and must not advance the workflow."""
+        _seed_enrolled_course(db, progress=100)
+        cert = _seed_certificate(db, "course-1")
+        student = db.query(User).filter(User.id == STUDENT_ID).one()
+        student.deactivated_at = datetime(2026, 1, 1, tzinfo=UTC)
+        db.commit()
+
+        r = client.put(f"/api/v1/certificates/{cert.id}/teacher-approve")
+        assert r.status_code == 409
+        assert "deactivated" in r.json()["detail"]["message"].lower()
+        db.refresh(cert)
+        assert cert.status == "pending"
+
 
 class TestAdminApproveCertificate:
     """PUT /api/v1/certificates/{cert_id}/admin-approve"""
@@ -451,6 +493,23 @@ class TestAdminApproveCertificate:
         _make_admin(db)
         r = client.put(f"/api/v1/certificates/{uuid.uuid4()}/admin-approve")
         assert r.status_code == 404
+
+    def test_deactivated_student_returns_409(self, client: TestClient, db: Session):
+        # Same deactivated-student guard as teacher-approve: no credential
+        # is issued to a soft-deleted account.
+        _make_admin(db)
+        _seed_enrolled_course(db, progress=100)
+        cert = _seed_certificate(db, "course-1", cert_status="teacher_approved")
+        student = db.query(User).filter(User.id == STUDENT_ID).one()
+        student.deactivated_at = datetime(2026, 1, 1, tzinfo=UTC)
+        db.commit()
+
+        r = client.put(f"/api/v1/certificates/{cert.id}/admin-approve")
+        assert r.status_code == 409
+        assert "deactivated" in r.json()["detail"]["message"].lower()
+        db.refresh(cert)
+        assert cert.status == "teacher_approved"
+        assert cert.certificate_number is None
 
     def test_admin_self_approval_forbidden(self, client: TestClient, db: Session):
         """Admin cannot issue a certificate where they are the recipient.
@@ -770,6 +829,30 @@ class TestGradingConfig:
             json={"quiz_weight": 40, "assignment_weight": 40, "participation_weight": 20},
         )
         assert r.status_code == 403
+
+    def test_get_config_published_non_member_returns_403(self, student_client: TestClient, db: Session):
+        # Published course, not enrolled → plain 403 (unchanged behaviour).
+        _seed_course(db)
+        r = student_client.get("/api/v1/grades/course/course-1/config")
+        assert r.status_code == 403
+
+    def test_get_config_unpublished_non_member_returns_404(self, student_client: TestClient, db: Session):
+        """Probing an unpublished course id must 404, not 403 — a 403 would
+        confirm the course exists (same leak guard as catalog / PDF export)."""
+        from ._cv_helpers import make_course_with_text
+
+        _ensure_other_teacher(db)
+        make_course_with_text(
+            db,
+            course_id="draft-course",
+            title="Draft",
+            status="draft",
+            created_by=OTHER_TEACHER_ID,
+        )
+        db.commit()
+
+        r = student_client.get("/api/v1/grades/course/draft-course/config")
+        assert r.status_code == 404
 
 
 class TestCalculatedGrade:

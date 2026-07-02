@@ -6,8 +6,9 @@ and anything else that needs a reliable client IP share one implementation.
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
+
+from app.core.config import env_flag
 
 if TYPE_CHECKING:
     from fastapi import Request
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 # Vercel sets ``VERCEL=1`` in every function invocation, and we also
 # honour an explicit ``TRUST_FORWARDED_HEADERS=1`` for other reverse-
 # proxy deployments (Cloudflare, custom Caddy/nginx, etc).
-_TRUSTED_PROXY = bool(os.environ.get("VERCEL") or os.environ.get("TRUST_FORWARDED_HEADERS"))
+_TRUSTED_PROXY = env_flag("VERCEL", "TRUST_FORWARDED_HEADERS")
 
 
 def get_client_ip(request: Request, fallback: str | None = None) -> str | None:
