@@ -89,7 +89,7 @@ def update_existing_course(
             message=f"Course '{course_id}' not found",
             context={"resource_type": "course", "resource_id": course_id},
         )
-    assert_course_owner(course, teacher, allow_admin=False)
+    assert_course_owner(course, teacher)
     # ``access_mode`` (public vs institute) controls solo-enrollment
     # access per ADR-010. Letting any course owner flip it would let a
     # teacher promote their institute course to public, bypassing the
@@ -148,7 +148,7 @@ def remove_course(
             message=f"Course '{course_id}' not found",
             context={"resource_type": "course", "resource_id": course_id},
         )
-    assert_course_owner(course, teacher, allow_admin=False)
+    assert_course_owner(course, teacher)
     # Phase 5bi: ``course.title`` is a runtime attribute hydrated by
     # ``populate_spine_texts``. ``get_course`` does NOT hydrate, so the
     # log_action below would stamp ``None`` into the audit row without
@@ -219,7 +219,7 @@ def restore_deleted_course(
             message="Course is not deleted",
             context={"resource_type": "course", "course_id": course_id},
         )
-    assert_course_owner(course, teacher, allow_admin=False)
+    assert_course_owner(course, teacher)
     result = restore_course(db, course)
     log_action(db, teacher.id, "restore", "course", course_id, request=request)
     return result
@@ -240,7 +240,7 @@ def permanently_remove_course(
             message="Course not found",
             context={"resource_type": "course", "resource_id": course_id},
         )
-    assert_course_owner(course, teacher, allow_admin=False)
+    assert_course_owner(course, teacher)
     if course.deleted_at is None:
         raise equip_error(
             ErrorCode.VALIDATION_FAILED,

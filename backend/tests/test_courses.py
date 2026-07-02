@@ -136,6 +136,69 @@ class TestUpdateCourse:
         assert resp.status_code == 404
 
 
+class TestAdminManagesForeignCourse:
+    """Admin-bypass unification: the whole content tree (course CRUD,
+    modules, chapters) accepts admin as well as the owner, matching
+    blocks/quizzes/assignments. Certificate teacher-approval remains
+    deliberately owner-only (two-stage approval)."""
+
+    def test_admin_updates_foreign_course(self, admin_client: TestClient, client: TestClient):
+        course = _create_course(client)
+        resp = admin_client.put(f"{PREFIX}/{course['id']}", json={"title": "Admin Edit"})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["title"] == "Admin Edit"
+
+    def test_admin_deletes_and_restores_foreign_course(self, admin_client: TestClient, client: TestClient):
+        course = _create_course(client)
+        resp = admin_client.delete(f"{PREFIX}/{course['id']}")
+        assert resp.status_code == 204, resp.text
+        resp = admin_client.post(f"{PREFIX}/{course['id']}/restore")
+        assert resp.status_code == 200, resp.text
+
+    def test_admin_manages_foreign_modules_and_chapters(self, admin_client: TestClient, client: TestClient):
+        course = _create_course(client)
+        created = admin_client.post(f"{PREFIX}/{course['id']}/modules", json={"title": "Admin Module"})
+        assert created.status_code == 201, created.text
+        module_id = created.json()["id"]
+
+        updated = admin_client.put(f"{PREFIX}/{course['id']}/modules/{module_id}", json={"title": "Renamed"})
+        assert updated.status_code == 200, updated.text
+
+        chapter = admin_client.post(
+            f"{PREFIX}/{course['id']}/modules/{module_id}/chapters",
+            json={"title": "Admin Chapter"},
+        )
+        assert chapter.status_code == 201, chapter.text
+        chapter_id = chapter.json()["id"]
+
+        resp = admin_client.delete(f"{PREFIX}/{course['id']}/modules/{module_id}/chapters/{chapter_id}")
+        assert resp.status_code == 204, resp.text
+
+        resp = admin_client.delete(f"{PREFIX}/{course['id']}/modules/{module_id}")
+        assert resp.status_code == 204, resp.text
+
+    def test_other_teacher_still_forbidden(self, db: Session, client: TestClient):
+        """Unifying admin access must not loosen the teacher boundary."""
+        from app.api.dependencies import get_current_user, get_optional_user
+        from app.main import app
+        from app.models.user import User, UserRole
+
+        course = _create_course(client)
+        other = User(
+            id="dddddddd-dddd-dddd-dddd-dddddddddddd",
+            email="other-teacher@example.com",
+            full_name="Other Teacher",
+            role=UserRole.TEACHER.value,
+        )
+        db.add(other)
+        db.commit()
+
+        app.dependency_overrides[get_current_user] = lambda: other
+        app.dependency_overrides[get_optional_user] = lambda: other
+        resp = client.put(f"{PREFIX}/{course['id']}", json={"title": "Steal"})
+        assert resp.status_code == 403, resp.text
+
+
 class TestDeleteCourse:
     def test_delete_existing_course(self, client: TestClient):
         course = _create_course(client)

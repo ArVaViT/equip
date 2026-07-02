@@ -34,7 +34,7 @@ def create_new_chapter(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> Chapter:
-    verify_course_owner(db, course_id, teacher.id, allow_admin=False)
+    verify_course_owner(db, course_id, teacher.id)
     module = get_module(db, course_id, module_id)
     if not module:
         raise equip_error(
@@ -62,7 +62,7 @@ def update_existing_chapter(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> Chapter:
-    verify_course_owner(db, course_id, teacher.id, allow_admin=False)
+    verify_course_owner(db, course_id, teacher.id)
     chapter = get_chapter(db, course_id, module_id, chapter_id)
     if not chapter:
         raise equip_error(
@@ -94,7 +94,7 @@ def remove_chapter(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> None:
-    verify_course_owner(db, course_id, teacher.id, allow_admin=False)
+    verify_course_owner(db, course_id, teacher.id)
     chapter = get_chapter(db, course_id, module_id, chapter_id)
     if not chapter:
         raise equip_error(

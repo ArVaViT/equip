@@ -31,7 +31,7 @@ def create_new_module(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> Module:
-    verify_course_owner(db, course_id, teacher.id, allow_admin=False)
+    verify_course_owner(db, course_id, teacher.id)
     created = create_module(db, course_id, data)
     reconcile_entity_if_course_published(db, "module", created)
     return created
@@ -45,7 +45,7 @@ def update_existing_module(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> Module:
-    verify_course_owner(db, course_id, teacher.id, allow_admin=False)
+    verify_course_owner(db, course_id, teacher.id)
     module = get_module(db, course_id, module_id)
     if not module:
         raise equip_error(
@@ -66,7 +66,7 @@ def remove_module(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> None:
-    verify_course_owner(db, course_id, teacher.id, allow_admin=False)
+    verify_course_owner(db, course_id, teacher.id)
     module = get_module(db, course_id, module_id)
     if not module:
         raise equip_error(

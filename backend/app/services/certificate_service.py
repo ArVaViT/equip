@@ -172,6 +172,9 @@ def teacher_approve(db: Session, cert_id: UUID, teacher: User, request: Request)
 
     ownership_detail = "You can only approve certificates for your own courses"
     course = _load_active_course_or_403(db, cert.course_id, ownership_detail=ownership_detail)
+    # Deliberately owner-only (NOT the admin-allowed default used across the
+    # content tree): certificate approval is two-stage (teacher -> admin), and
+    # letting an admin act as the teacher here would collapse the two-man rule.
     assert_course_owner(course, teacher, allow_admin=False, detail=ownership_detail)
 
     cert.status = CertificateStatus.TEACHER_APPROVED
