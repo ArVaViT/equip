@@ -350,7 +350,14 @@ def list_submissions(
     verify_chapter_owner(db, assignment.chapter_id, teacher)
     return (
         db.query(AssignmentSubmission)
-        .filter(AssignmentSubmission.assignment_id == assignment_id)
+        # Deactivated students keep their submission rows but drop out of
+        # the teacher grading queue — same rule as the gradebook rosters
+        # (#786).
+        .join(User, User.id == AssignmentSubmission.student_id)
+        .filter(
+            AssignmentSubmission.assignment_id == assignment_id,
+            User.deactivated_at.is_(None),
+        )
         .order_by(AssignmentSubmission.submitted_at.desc())
         .offset(skip)
         .limit(limit)

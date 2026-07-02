@@ -1504,6 +1504,22 @@ def test_grade_essay_answer_recomputes_passed(client: TestClient, student, db: S
     assert graded_list[0]["points_earned"] == 18
 
 
+def test_pending_answers_excludes_deactivated_student(client: TestClient, student, db: Session):
+    """A soft-deleted student's essay answers must drop out of the teacher
+    grading queue — same rule as the gradebook rosters (#786)."""
+    _seed_course_with_enrollment(db)
+    quiz, _essay, _attempt, _essay_answer = _seed_submitted_essay_attempt(db)
+
+    pending = client.get(f"/api/v1/quizzes/{quiz.id}/pending-answers").json()
+    assert len(pending) == 1
+
+    row = db.query(User).filter(User.id == STUDENT_ID).one()
+    row.deactivated_at = _now_utc()
+    db.commit()
+
+    assert client.get(f"/api/v1/quizzes/{quiz.id}/pending-answers").json() == []
+
+
 def test_grade_up_to_passing_emits_chapter_completed_post_commit(client: TestClient, student, db: Session, caplog):
     """Grading an essay up to passing flips the chapter to complete — the
     chapter_completed_total metric must fire (now from the grading route,

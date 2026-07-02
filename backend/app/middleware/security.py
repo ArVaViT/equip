@@ -1,7 +1,7 @@
-import os
-
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from app.core.config import env_flag
 
 # The API only ever serves JSON (or binary blobs via StreamingResponse). It
 # should never execute scripts or load styles, so we lock CSP down as hard as
@@ -13,7 +13,7 @@ _STRICT_API_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; 
 # the same host over HTTPS — but if a dev ever points a real hostname at a
 # local tunnel, HSTS could pin the browser to HTTPS in confusing ways. Only
 # advertise it in hosted environments.
-_IS_PRODUCTION = bool(os.environ.get("VERCEL") or os.environ.get("PRODUCTION"))
+_IS_PRODUCTION = env_flag("VERCEL", "PRODUCTION")
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

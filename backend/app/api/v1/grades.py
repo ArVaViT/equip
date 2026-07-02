@@ -20,6 +20,7 @@ from app.api.dependencies import (
 )
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
+from app.models.course import CourseStatus
 from app.models.enrollment import Enrollment
 from app.models.student_grade import StudentGrade
 from app.models.user import User, UserRole
@@ -71,6 +72,16 @@ def get_grading_config(
         is not None
     )
     if not (is_owner or is_admin or is_enrolled):
+        # Mirror the catalog / PDF-export leak guard: an unpublished
+        # course 404s to non-member probes so its existence doesn't leak;
+        # published courses keep the plain 403.
+        if course.status != CourseStatus.PUBLISHED:
+            raise equip_error(
+                ErrorCode.RESOURCE_NOT_FOUND,
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Course not found",
+                context={"resource_type": "course", "resource_id": course_id},
+            )
         raise equip_error(
             ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,

@@ -721,6 +721,30 @@ class TestCohortStudents:
         assert rows[0]["user_id"] == str(STUDENT_ID)
         assert set(rows[0]["per_course"].keys()) == {"course-1", "course-2"}
 
+    def test_deactivated_student_excluded_from_matrix(self, admin_client: TestClient, db: Session, student):
+        # A soft-deleted member keeps their enrollment rows but must not
+        # appear as a matrix row — same rule as student_count and the
+        # gradebook rosters (#786).
+        from app.models.user import User, UserRole
+
+        _seed_course(db, course_id="course-1")
+        cohort = _seed_cohort_with_course(db, course_id="course-1")
+        ghost = User(
+            id=uuid.uuid4(),
+            email=f"ghost-{uuid.uuid4().hex[:8]}@test.local",
+            role=UserRole.STUDENT.value,
+            deactivated_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+        db.add(ghost)
+        db.commit()
+        _seed_enrollment(db, course_id="course-1", cohort_id=cohort.id)  # live student
+        _seed_enrollment(db, user_id=ghost.id, course_id="course-1", cohort_id=cohort.id)  # deactivated
+
+        resp = admin_client.get(f"{COHORT_PREFIX}/{cohort.id}/students")
+        assert resp.status_code == 200
+        rows = resp.json()
+        assert [r["user_id"] for r in rows] == [str(STUDENT_ID)]
+
     def test_nonexistent_cohort_returns_404(self, admin_client: TestClient):
         resp = admin_client.get(f"{COHORT_PREFIX}/{uuid.uuid4()}/students")
         assert resp.status_code == 404
@@ -1216,6 +1240,22 @@ class TestListCourseEvents:
         resp = student_client.get(f"{COURSES_PREFIX}/test-course-1/events")
         assert resp.status_code == 403
 
+    def test_unenrolled_student_unpublished_course_gets_404(self, student_client: TestClient, db: Session):
+        """Probing an unpublished course id must 404, not 403 — a 403 would
+        confirm the course exists (same leak guard as catalog / PDF export)."""
+        from ._cv_helpers import make_course_with_text
+
+        make_course_with_text(
+            db,
+            course_id="draft-course-ev",
+            title="Draft",
+            status="draft",
+            created_by=TEACHER_ID,
+        )
+        db.commit()
+        resp = student_client.get(f"{COURSES_PREFIX}/draft-course-ev/events")
+        assert resp.status_code == 404
+
     def test_nonexistent_course_returns_404(self, client: TestClient):
         resp = client.get(f"{COURSES_PREFIX}/no-such-course/events")
         assert resp.status_code == 404
@@ -1640,6 +1680,32 @@ class TestCreateAnnouncement:
             .all()
         )
         assert len(notifs) == 1
+
+    def test_no_notification_for_deactivated_students(self, client: TestClient, db: Session, student):
+        # A soft-deleted account keeps its enrollment row but must not
+        # receive announcement fan-out — same rule as the roster
+        # exclusions (#786).
+        from app.models.user import User, UserRole
+
+        course = _create_course_via_api(client)
+        ghost = User(
+            id=uuid.uuid4(),
+            email=f"ghost-{uuid.uuid4().hex[:8]}@test.local",
+            role=UserRole.STUDENT.value,
+            deactivated_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+        db.add(ghost)
+        db.commit()
+        _seed_enrollment(db, user_id=STUDENT_ID, course_id=course["id"])  # live
+        _seed_enrollment(db, user_id=ghost.id, course_id=course["id"])  # deactivated
+
+        client.post(
+            ANNOUNCEMENT_PREFIX,
+            json=_announcement_payload(course_id=course["id"]),
+        )
+
+        recipients = {n.user_id for n in db.query(Notification).filter(Notification.type == "new_announcement").all()}
+        assert recipients == {STUDENT_ID}
 
     def test_notification_text_respects_recipient_preferred_locale(self, client: TestClient, db: Session, student):
         """Phase 5v: notification fan-out groups recipients by

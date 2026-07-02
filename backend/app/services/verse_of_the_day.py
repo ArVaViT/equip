@@ -16,12 +16,13 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
-import os
 import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import httpx
+
+from app.core.config import settings
 
 if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
@@ -526,7 +527,7 @@ def get_verse_of_the_day(locale: LocaleCode, *, today: dt.date | None = None) ->
     if bible_id is None:
         raise VerseOfTheDayUnavailable(f"Unsupported locale: {locale!r}")
 
-    api_key = os.environ.get("YOUVERSION_API_KEY")
+    api_key = settings.YOUVERSION_API_KEY.get_secret_value() if settings.YOUVERSION_API_KEY else None
     if not api_key:
         raise VerseOfTheDayUnavailable("YOUVERSION_API_KEY is not configured")
 

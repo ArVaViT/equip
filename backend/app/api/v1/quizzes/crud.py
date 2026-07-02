@@ -27,7 +27,11 @@ from app.schemas.quiz import (
     QuizStudentResponse,
     QuizUpdate,
 )
-from app.services.content_versions import delete_entity_cv_rows, dual_write_entity_content
+from app.services.content_versions import (
+    delete_entities_cv_rows,
+    delete_entity_cv_rows,
+    dual_write_entity_content,
+)
 from app.services.translation.pipeline_hooks import (
     reconcile_entity_if_course_published,
     run_course_translation_pipeline_if_published,
@@ -270,10 +274,18 @@ def delete_quiz(
     # options) is hard-deleted via cascade on the entity tables but
     # nothing cascades on cv. Drop the cv rows for every level
     # before db.delete(quiz) so the cascade leaves zero orphans.
-    for question in quiz.questions:
-        for option in question.options:
-            delete_entity_cv_rows(db, entity_type="quiz_option", entity_id=option.id)
-        delete_entity_cv_rows(db, entity_type="quiz_question", entity_id=question.id)
+    # Bulk IN-list deletes (one per entity type) instead of one DELETE
+    # per row — a 50-question quiz used to issue 200+ statements here.
+    delete_entities_cv_rows(
+        db,
+        entity_type="quiz_option",
+        entity_ids=[option.id for question in quiz.questions for option in question.options],
+    )
+    delete_entities_cv_rows(
+        db,
+        entity_type="quiz_question",
+        entity_ids=[question.id for question in quiz.questions],
+    )
     delete_entity_cv_rows(db, entity_type="quiz", entity_id=quiz.id)
     db.delete(quiz)
     db.commit()

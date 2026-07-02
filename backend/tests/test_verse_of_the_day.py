@@ -2,7 +2,7 @@
 
 We never hit YouVersion in tests — both the service-level cases and the
 route case monkeypatch the single ``_fetch_passage`` seam in the service
-module. CI does not have ``YOUVERSION_API_KEY`` set; the
+module. ``settings.YOUVERSION_API_KEY`` is patched per-test; the
 ``apikey_missing`` route case relies on that.
 """
 
@@ -12,7 +12,9 @@ import datetime as dt
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 
+from app.core.config import settings
 from app.main import app
 from app.services import verse_of_the_day as svc
 
@@ -47,7 +49,7 @@ def test_pick_reference_varies_by_date():
 
 
 def test_get_verse_of_the_day_returns_localized_payload(monkeypatch):
-    monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "YOUVERSION_API_KEY", SecretStr("test-key"))
     monkeypatch.setattr(
         svc,
         "_fetch_passage",
@@ -63,7 +65,7 @@ def test_get_verse_of_the_day_returns_localized_payload(monkeypatch):
 
 def test_get_verse_of_the_day_caches_within_day(monkeypatch):
     """Two calls on the same UTC date hit the upstream API exactly once."""
-    monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "YOUVERSION_API_KEY", SecretStr("test-key"))
     calls = {"n": 0}
 
     def _counting(api_key: str, bible_id: int, ref: str) -> tuple[str, str]:
@@ -80,7 +82,7 @@ def test_get_verse_of_the_day_caches_within_day(monkeypatch):
 def test_get_verse_of_the_day_evicts_stale_dates(monkeypatch):
     """Yesterday's cache entry must be dropped when today's lands so the
     cache never grows unbounded across long-lived warm instances."""
-    monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "YOUVERSION_API_KEY", SecretStr("test-key"))
     monkeypatch.setattr(svc, "_fetch_passage", _stub_fetch())
     svc.get_verse_of_the_day("en", today=dt.date(2026, 5, 13))
     svc.get_verse_of_the_day("en", today=dt.date(2026, 5, 14))
@@ -89,13 +91,13 @@ def test_get_verse_of_the_day_evicts_stale_dates(monkeypatch):
 
 
 def test_get_verse_of_the_day_raises_without_api_key(monkeypatch):
-    monkeypatch.delenv("YOUVERSION_API_KEY", raising=False)
+    monkeypatch.setattr(settings, "YOUVERSION_API_KEY", None)
     with pytest.raises(svc.VerseOfTheDayUnavailable):
         svc.get_verse_of_the_day("en")
 
 
 def test_get_verse_of_the_day_raises_for_unsupported_locale(monkeypatch):
-    monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "YOUVERSION_API_KEY", SecretStr("test-key"))
     with pytest.raises(svc.VerseOfTheDayUnavailable):
         # Cast through ``str`` since the function's signature is
         # ``LocaleCode``; we want to exercise the runtime guard for
@@ -109,7 +111,7 @@ def test_strip_html_collapses_paragraph_wrapper():
 
 
 def test_route_returns_verse_when_service_succeeds(monkeypatch):
-    monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "YOUVERSION_API_KEY", SecretStr("test-key"))
     monkeypatch.setattr(svc, "_fetch_passage", _stub_fetch())
     with TestClient(app) as tc:
         resp = tc.get("/api/v1/verse-of-the-day?locale=en")
@@ -122,7 +124,7 @@ def test_route_returns_verse_when_service_succeeds(monkeypatch):
 
 
 def test_route_normalizes_bcp47_locales(monkeypatch):
-    monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "YOUVERSION_API_KEY", SecretStr("test-key"))
     monkeypatch.setattr(svc, "_fetch_passage", _stub_fetch())
     with TestClient(app) as tc:
         # en-US should match the 'en' catalog; ru-RU should match 'ru'.
@@ -132,7 +134,7 @@ def test_route_normalizes_bcp47_locales(monkeypatch):
 
 
 def test_route_returns_404_when_apikey_missing(monkeypatch):
-    monkeypatch.delenv("YOUVERSION_API_KEY", raising=False)
+    monkeypatch.setattr(settings, "YOUVERSION_API_KEY", None)
     with TestClient(app) as tc:
         resp = tc.get("/api/v1/verse-of-the-day?locale=en")
     assert resp.status_code == 404
@@ -144,7 +146,7 @@ def test_walks_forward_on_verse_not_in_bible(monkeypatch):
     numbering differences. The service must walk forward in the
     catalog until a present reference is found, and the chosen
     fallback must be deterministic for (date, locale)."""
-    monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "YOUVERSION_API_KEY", SecretStr("test-key"))
     today = dt.date(2026, 5, 31)
     primary = svc._pick_reference(today)
     fallback = svc._pick_reference_offset(today, 1)
@@ -168,7 +170,7 @@ def test_walks_forward_on_verse_not_in_bible(monkeypatch):
 def test_walks_forward_then_caches_the_fallback(monkeypatch):
     """A successful walk-forward fallback must cache so the second
     call on the same UTC date does NOT walk again."""
-    monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "YOUVERSION_API_KEY", SecretStr("test-key"))
     today = dt.date(2026, 5, 31)
     primary = svc._pick_reference(today)
     calls = {"n": 0}
@@ -191,7 +193,7 @@ def test_gives_up_after_walk_cap(monkeypatch):
     """If every reference in the walk window is absent, surface the
     standard ``VerseOfTheDayUnavailable`` so the frontend hides the
     card silently — never expose a partial / broken state."""
-    monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "YOUVERSION_API_KEY", SecretStr("test-key"))
 
     def _always_missing(api_key: str, bible_id: int, ref: str) -> tuple[str, str]:
         raise svc.VerseNotInBible(f"no {ref} in {bible_id}")
@@ -210,7 +212,7 @@ def test_walk_does_not_consume_transient_errors(monkeypatch):
     the route 404s and the frontend hides; the next page load tries
     again. (Walking forward on transient errors would silently mask
     upstream outages by always serving the second verse.)"""
-    monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "YOUVERSION_API_KEY", SecretStr("test-key"))
 
     def _transient(api_key: str, bible_id: int, ref: str) -> tuple[str, str]:
         raise svc.VerseOfTheDayUnavailable("YouVersion 503")
@@ -253,7 +255,7 @@ def test_walk_skips_complex_psalm_chapters_for_ru(monkeypatch) -> None:
     """When today's catalog ref falls on a complex psalm boundary
     for RU, the walk must advance to the next catalog entry rather
     than serving wrong content."""
-    monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "YOUVERSION_API_KEY", SecretStr("test-key"))
     today = dt.date(2026, 5, 31)
     # Find an offset where the catalog hits a complex chapter; fall
     # back to monkey-stubbing the picker so the test is deterministic.
@@ -279,7 +281,7 @@ def test_psalm_for_ru_uses_remapped_chapter(monkeypatch) -> None:
     """For an RU Psalm in the simple-offset range, the route must
     call the upstream API with chapter-1 so the returned content
     matches the catalog's intent (the Hebrew-numbered verse)."""
-    monkeypatch.setenv("YOUVERSION_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "YOUVERSION_API_KEY", SecretStr("test-key"))
     today = dt.date(2026, 6, 1)
     requested: list[str] = []
 

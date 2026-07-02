@@ -77,6 +77,25 @@ def _load_cert_or_404(db: Session, cert_id: UUID, *, for_update: bool = False) -
     return cert
 
 
+def _assert_student_active(db: Session, cert: Certificate) -> None:
+    """Refuse to advance a certificate whose student was deactivated.
+
+    Deactivated students are hidden from both pending queues, so an
+    approve-by-id against one is a stale click (or a probe). Surface a
+    409 rather than silently issuing a credential to a soft-deleted
+    account; restoring the student makes the certificate approvable
+    again.
+    """
+    deactivated = db.query(User.deactivated_at).filter(User.id == cert.user_id).scalar()
+    if deactivated is not None:
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_409_CONFLICT,
+            message="Cannot approve a certificate for a deactivated account",
+            context={"resource_type": "certificate", "resource_id": str(cert.id)},
+        )
+
+
 def _load_active_course_or_403(
     db: Session,
     course_id: str | None,
@@ -149,6 +168,7 @@ def teacher_approve(db: Session, cert_id: UUID, teacher: User, request: Request)
     cert = _load_cert_or_404(db, cert_id, for_update=True)
     _assert_status(cert, CertificateStatus.PENDING)
     _assert_not_self_approval(cert, teacher)
+    _assert_student_active(db, cert)
 
     ownership_detail = "You can only approve certificates for your own courses"
     course = _load_active_course_or_403(db, cert.course_id, ownership_detail=ownership_detail)
@@ -176,6 +196,7 @@ def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> 
     cert = _load_cert_or_404(db, cert_id, for_update=True)
     _assert_status(cert, CertificateStatus.TEACHER_APPROVED)
     _assert_not_self_approval(cert, admin)
+    _assert_student_active(db, cert)
 
     # Two-eyes guard. An admin who is ALSO the course's teacher can land on
     # the cert at the ``teacher_approved`` stage (they signed it themselves

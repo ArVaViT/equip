@@ -571,9 +571,13 @@ def list_cohort_students(
     cohort = _get_or_404(db, cohort_id)
     # Paginate user_ids first so the row-fetch never crosses page
     # boundaries (a single student's enrollments stay together).
+    # Deactivated (soft-deleted) students keep their enrollment rows but
+    # must not appear as matrix rows — same rule as the gradebook /
+    # analytics rosters (#786).
     user_id_page = (
         db.query(Enrollment.user_id)
-        .filter(Enrollment.cohort_id == cohort.id)
+        .join(User, Enrollment.user_id == User.id)
+        .filter(Enrollment.cohort_id == cohort.id, User.deactivated_at.is_(None))
         .distinct()
         .order_by(Enrollment.user_id)
         .offset(skip)

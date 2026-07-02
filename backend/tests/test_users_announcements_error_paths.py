@@ -203,3 +203,84 @@ class TestAnnouncementsCourseFilterAccessGate:
         r = client.get(f"/api/v1/announcements?course_id={course_id}")
         assert r.status_code == 200
         assert len(r.json()) >= 1
+
+
+class TestAnnouncementsIgnoreSoftDeletedCourses:
+    """A trashed course's announcements must drop out of the list feed.
+
+    The create path already refuses to post to a soft-deleted course;
+    the read side has to mirror it — an enrollment or ownership row
+    pointing at a trashed course must not keep its announcements
+    readable, in either the ``?course_id=`` filter or the unfiltered
+    enrolled/owned fallback.
+    """
+
+    @staticmethod
+    def _soft_delete_course(db: Session, course_id: str) -> None:
+        from datetime import UTC, datetime
+
+        from app.models.course import Course
+
+        row = db.query(Course).filter(Course.id == course_id).one()
+        row.deleted_at = datetime.now(UTC)
+        db.commit()
+
+    def test_enrolled_student_course_filter_returns_403_after_trash(
+        self,
+        student_client: TestClient,
+        db: Session,
+    ) -> None:
+        course_id = _seed_course_with_announcement(db, "annc-del-1")
+        db.add(
+            Enrollment(
+                id=f"enr-{course_id}",
+                user_id=STUDENT_ID,
+                course_id=course_id,
+                progress=0,
+            )
+        )
+        db.commit()
+        self._soft_delete_course(db, course_id)
+
+        r = student_client.get(f"/api/v1/announcements?course_id={course_id}")
+        assert r.status_code == 403
+
+    def test_enrolled_student_feed_excludes_trashed_course(
+        self,
+        student_client: TestClient,
+        db: Session,
+    ) -> None:
+        course_id = _seed_course_with_announcement(db, "annc-del-2")
+        db.add(
+            Enrollment(
+                id=f"enr-{course_id}",
+                user_id=STUDENT_ID,
+                course_id=course_id,
+                progress=0,
+            )
+        )
+        db.commit()
+        # Visible before the trash…
+        assert len(student_client.get("/api/v1/announcements").json()) == 1
+        self._soft_delete_course(db, course_id)
+        # …gone after.
+        assert student_client.get("/api/v1/announcements").json() == []
+
+    def test_owner_feed_excludes_trashed_course(
+        self,
+        client: TestClient,
+        db: Session,
+    ) -> None:
+        course_id = _seed_course_with_announcement(db, "annc-del-3")
+        self._soft_delete_course(db, course_id)
+        assert client.get("/api/v1/announcements").json() == []
+
+    def test_source_gate_denies_owner_of_trashed_course(
+        self,
+        client: TestClient,
+        db: Session,
+    ) -> None:
+        course_id = _seed_course_with_announcement(db, "annc-del-4")
+        self._soft_delete_course(db, course_id)
+        r = client.get(f"/api/v1/announcements?source=1&course_id={course_id}")
+        assert r.status_code == 403

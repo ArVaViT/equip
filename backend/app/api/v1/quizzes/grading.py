@@ -64,6 +64,9 @@ def list_pending_answers(
             QuizAttempt.completed_at.isnot(None),
             QuizQuestion.question_type.in_(quiz_service.MANUAL_GRADED_QUESTION_TYPES),
             QuizAnswer.text_answer.isnot(None),
+            # Deactivated students keep their attempts but drop out of the
+            # grading queue — same rule as the gradebook rosters (#786).
+            User.deactivated_at.is_(None),
         )
         .order_by(QuizAttempt.completed_at.desc(), QuizQuestion.order_index.asc())
     )

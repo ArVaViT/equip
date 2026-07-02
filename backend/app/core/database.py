@@ -1,5 +1,4 @@
 import logging
-import os
 from collections.abc import Generator
 from urllib.parse import urlparse
 
@@ -7,7 +6,7 @@ from sqlalchemy import Connection, Engine, create_engine, event
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
-from app.core.config import settings
+from app.core.config import env_flag, settings
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +18,7 @@ class Base(DeclarativeBase):
 _engine: Engine | None = None
 _SessionLocal: sessionmaker | None = None
 
-IS_SERVERLESS = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+IS_SERVERLESS = env_flag("VERCEL", "AWS_LAMBDA_FUNCTION_NAME")
 
 
 def _get_engine() -> Engine:
