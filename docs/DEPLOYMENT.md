@@ -223,16 +223,19 @@ Build-time only on Vercel (not in the bundle):
 |---|---|---|
 | Framework preset | Vite | Other (custom `vercel.json`) |
 | Node version | 22.x | n/a (Python 3.12) |
-| Max function duration | n/a (static) | default (10 s on Pro plan) |
+| Max function duration | n/a (static) | 60 s (`functions` block in `vercel.json`) |
 | Function memory | n/a | default (1024 MB) |
 | Region | All edge / IAD1 | IAD1 (default Python serverless) |
 | Custom domains | `equipbible.com` (`www` 308-redirects to apex) | `api.equipbible.com` |
 | Auto-deploy branch | `main` | `main` |
 | Log Drain | Same drain | `drn_DJUgg6MWFVruo4qV` → Datadog us5 (json) |
 
-`backend/vercel.json` sets `maxLambdaSize: 50mb` and a single catch-all
-route to `index.py`. There are no other custom Vercel settings on the
-backend -- the FastAPI handler is the default `@vercel/python` build.
+`backend/vercel.json` uses the modern `functions` + `rewrites` format:
+the FastAPI entrypoint lives at `api/index.py` (re-exporting
+`app.main:app`), a catch-all rewrite sends every path to it (the
+function still receives the original request path), and `maxDuration`
+is set to 60 s so the cron workers (Gemini generation, translation
+batches) have headroom over the platform default.
 
 `frontend/vercel.json` adds SPA fallback rewrites, the
 Supabase-storage image rewrite (`/img/<bucket>/<path>`), and the strict
