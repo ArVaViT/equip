@@ -50,8 +50,11 @@ const CardTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <h3
     ref={ref}
+    // Editorial convention: card titles are serif (Fraunces) + tight
+    // tracking everywhere — folded into the base so call sites stop
+    // re-adding (and occasionally forgetting) `font-serif tracking-tight`.
     className={cn(
-      "text-lg font-semibold leading-none tracking-tight",
+      "font-serif text-lg font-semibold leading-none tracking-tight",
       className
     )}
     {...props}

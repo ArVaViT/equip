@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
-import { ArrowRight, Check, Flame, Sparkles, X } from "lucide-react"
+import { ArrowRight, Flame, Sparkles } from "lucide-react"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
 import { getErrorCode } from "@/lib/errorCode"
 import { Skeleton } from "@/components/ui/skeleton"
-import { EmptyState } from "@/components/patterns"
+import { EmptyState, Eyebrow } from "@/components/patterns"
+import { OptionButton, RevealPanel } from "@/components/dailyChallenge"
 import {
   dailyChallengeService,
   type DailyChallengeAttemptResponse,
-  type DailyChallengeOption,
   type DailyChallengeTodayResponse,
 } from "@/services/dailyChallenge"
 
@@ -32,58 +31,6 @@ function revealFromAttempt(
     streak_after: res.streak_after,
     selected_option_id: res.selected_option_id,
   }
-}
-
-interface OptionButtonProps {
-  option: DailyChallengeOption
-  reveal: RevealState | null
-  disabled: boolean
-  onClick: () => void
-}
-
-function OptionButton({ option, reveal, disabled, onClick }: OptionButtonProps) {
-  const isSelected = reveal?.selected_option_id === option.id
-  const isCorrect = reveal?.correct_option_id === option.id
-  const showAsCorrect = reveal !== null && isCorrect
-  const showAsWrong = reveal !== null && isSelected && !isCorrect
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-pressed={isSelected}
-      className={cn(
-        "group flex w-full items-center gap-2.5 rounded-md border px-3 py-1.5 text-left text-xs transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-        reveal === null && "border-edge bg-surface hover:border-brand/30 hover:bg-muted/30",
-        showAsCorrect && "border-success/40 bg-success/10 text-ink",
-        showAsWrong && "border-destructive/40 bg-destructive/10 text-ink",
-        reveal !== null && !showAsCorrect && !showAsWrong && "border-edge bg-surface text-ink-muted",
-        disabled && "cursor-default",
-      )}
-    >
-      <span
-        aria-hidden
-        className={cn(
-          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold",
-          reveal === null && "border-edge text-ink-muted group-hover:border-brand/40",
-          showAsCorrect && "border-success bg-success text-success-foreground",
-          showAsWrong && "border-destructive bg-destructive text-destructive-foreground",
-          reveal !== null && !showAsCorrect && !showAsWrong && "border-edge text-ink-muted",
-        )}
-      >
-        {showAsCorrect ? (
-          <Check className="h-3 w-3" strokeWidth={1.75} />
-        ) : showAsWrong ? (
-          <X className="h-3 w-3" strokeWidth={1.75} />
-        ) : (
-          String.fromCharCode(65 + option.order_index)
-        )}
-      </span>
-      <span className="min-w-0 flex-1 truncate">{option.option_text}</span>
-    </button>
-  )
 }
 
 interface CandleStreakProps {
@@ -234,9 +181,7 @@ export function DailyChallengeCard() {
         <div className="flex min-w-0 items-center gap-2.5">
           <Sparkles className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
           <div className="min-w-0">
-            <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-              {t("dailyChallenge.eyebrow")}
-            </p>
+            <Eyebrow>{t("dailyChallenge.eyebrow")}</Eyebrow>
             <h2
               id="dc-card-heading"
               className="truncate font-serif text-sm font-semibold tracking-tight text-ink"
@@ -293,21 +238,7 @@ export function DailyChallengeCard() {
                 ))}
             </ul>
             {reveal !== null && (
-              <div className="space-y-1.5 rounded-md bg-muted/20 px-3 py-2.5">
-                <p
-                  className={cn(
-                    "text-[11px] font-semibold uppercase tracking-[0.14em]",
-                    reveal.is_correct ? "text-success" : "text-ink-muted",
-                  )}
-                >
-                  {reveal.is_correct
-                    ? t("dailyChallenge.reveal.correct")
-                    : t("dailyChallenge.reveal.wrong")}
-                </p>
-                {reveal.explanation && (
-                  <p className="text-xs leading-snug text-ink">{reveal.explanation}</p>
-                )}
-              </div>
+              <RevealPanel isCorrect={reveal.is_correct} explanation={reveal.explanation} />
             )}
           </>
         ) : null}

@@ -214,7 +214,7 @@ export default function ModuleView() {
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
                     <CardHeader className="pb-2">
-                      <CardTitle className="flex min-w-0 items-center gap-2 font-serif text-base font-semibold tracking-tight">
+                      <CardTitle className="flex min-w-0 items-center gap-2 text-base">
                         <Lock className="h-5 w-5 text-ink-muted/50 shrink-0" strokeWidth={1.75} aria-hidden />
                         <span className="min-w-0 flex-1 truncate text-ink-muted">
                           {chapter.title}
@@ -240,7 +240,7 @@ export default function ModuleView() {
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
                     <CardHeader className="pb-2">
-                      <CardTitle className="flex min-w-0 items-center gap-2 font-serif text-base font-semibold tracking-tight">
+                      <CardTitle className="flex min-w-0 items-center gap-2 text-base">
                         {isGradable ? (
                           isCompleted ? (
                             <CheckCircle className="h-5 w-5 shrink-0 text-success" strokeWidth={1.75} aria-hidden />

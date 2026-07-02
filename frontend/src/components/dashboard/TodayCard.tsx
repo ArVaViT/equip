@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { ArrowRight, CalendarDays } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { EmptyState } from "@/components/patterns"
+import { EmptyState, Eyebrow } from "@/components/patterns"
 import { coursesService } from "@/services/courses"
 import { useAuth } from "@/context/useAuth"
 import type { CalendarEvent } from "@/types"
@@ -86,9 +86,7 @@ export function TodayCard() {
         <div className="flex min-w-0 items-center gap-2.5">
           <CalendarDays className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
           <div className="min-w-0">
-            <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-              {t("dashboard.today.eyebrow")}
-            </p>
+            <Eyebrow>{t("dashboard.today.eyebrow")}</Eyebrow>
             <h2
               id="today-card-heading"
               className="truncate font-serif text-sm font-semibold capitalize tracking-tight text-ink"

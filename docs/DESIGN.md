@@ -48,14 +48,17 @@ One scale, one serif, one sans.
 
 - **Serif (`Fraunces`):** page titles (H1, H2), chapter reader body.
 - **Sans (`Inter`):** everything else.
-- **Scale:** `32 / 24 / 18 / 16 / 14 / 13` px. No `text-[Npx]` arbitrary values.
+- **Scale:** `32 / 24 / 18 / 16 / 14 / 13` px. No `text-[Npx]` arbitrary
+  values — the single documented exception is the 11px eyebrow below.
 - **Weights:** 400 body, 500 UI, 600 emphasis, 700 display. No 800/900.
 - **Editorial eyebrow:** the tiny uppercase label that sits above a heading
-  (e.g. VerseOfTheDayCard, CourseReadinessCard) is `text-xs font-medium
-  uppercase tracking-[0.18em] text-muted-foreground`. The wide tracking is
+  (e.g. VerseOfTheDayCard, CourseReadinessCard) is `text-[11px] font-medium
+  uppercase tracking-[0.18em] text-ink-muted`. The wide tracking is
   load-bearing — that's what makes it read as an eyebrow rather than a
-  shrunk body line. Inline is fine; only worth extracting a component if it
-  appears more than ~4 times.
+  shrunk body line. Use the `<Eyebrow>` pattern component
+  (`@/components/patterns`) instead of retyping the recipe; its
+  `tone="accent"` variant (`tracking-[0.22em] text-accent`) covers the
+  first-run / celebration surfaces.
 
 ## Spacing, radius, elevation
 

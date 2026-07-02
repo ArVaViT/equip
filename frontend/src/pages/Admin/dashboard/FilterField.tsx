@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import { cn } from "@/lib/utils"
+import { Eyebrow } from "@/components/patterns"
 
 interface Props {
   label: string
@@ -40,15 +41,9 @@ export function FilterField({ label, children, hideLabel = false, className }: P
   const id = genId()
   return (
     <div className={cn("flex flex-col gap-1", className)}>
-      <label
-        htmlFor={id}
-        className={cn(
-          "text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted",
-          hideLabel && "sr-only",
-        )}
-      >
+      <Eyebrow as="label" htmlFor={id} className={cn(hideLabel && "sr-only")}>
         {label}
-      </label>
+      </Eyebrow>
       {children({ id })}
     </div>
   )

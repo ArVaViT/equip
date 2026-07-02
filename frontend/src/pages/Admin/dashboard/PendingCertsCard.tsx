@@ -23,7 +23,7 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
   return (
     <Card className="mb-6 border-l-stripe border-l-primary">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 font-serif text-lg font-semibold tracking-tight">
+        <CardTitle className="flex items-center gap-2">
           <Award className="h-4 w-4 text-brand" strokeWidth={1.75} aria-hidden />
           {t("admin.pendingCerts.title")}
           <Badge variant="default" className="font-normal">

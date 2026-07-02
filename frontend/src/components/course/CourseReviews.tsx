@@ -69,7 +69,7 @@ export default function CourseReviews({ courseId }: Props) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2">
           <MessageSquare className="h-5 w-5" strokeWidth={1.75} />
           {t("reviews.heading")}
           {reviews.length > 0 && (

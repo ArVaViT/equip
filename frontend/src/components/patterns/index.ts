@@ -1,3 +1,4 @@
+export { Eyebrow } from "./Eyebrow"
 export { InlineEdit } from "./InlineEdit"
 export { InlineEditCover } from "./InlineEditCover"
 export { PageHeader } from "./PageHeader"
