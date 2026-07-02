@@ -2335,20 +2335,6 @@ CREATE POLICY cohorts_select_all ON public.cohorts FOR SELECT TO authenticated U
 ALTER TABLE public.content_versions ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: content_versions content_versions_anon_read; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY content_versions_anon_read ON public.content_versions FOR SELECT TO anon USING (((status = 'ok'::text) AND (superseded_by IS NULL)));
-
-
---
--- Name: content_versions content_versions_authenticated_read; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY content_versions_authenticated_read ON public.content_versions FOR SELECT TO authenticated USING (((status = 'ok'::text) AND (superseded_by IS NULL)));
-
-
---
 -- Name: content_versions content_versions_service_role_all; Type: POLICY; Schema: public; Owner: -
 --
 
