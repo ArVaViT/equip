@@ -42,17 +42,27 @@ test.describe("teacher golden path", () => {
 
   test("create-course CTA is reachable from dashboard", async ({ teacherPage }) => {
     await teacherPage.goto("/teacher", { waitUntil: "domcontentloaded" });
+    // The teacher dashboard's primary CTA (ru: «Новый курс»).
     const cta = teacherPage.getByRole("button", {
-      name: /(create\s*course|new\s*course|создать\s*курс)/i,
+      name: /(create\s*course|new\s*course|создать\s*курс|новый\s*курс)/i,
     });
     await expect(cta).toBeVisible({ timeout: 10_000 });
   });
 
-  test("teacher analytics tab is reachable", async ({ teacherPage }) => {
-    await teacherPage.goto("/teacher/analytics", { waitUntil: "domcontentloaded" });
-    // The analytics surface always lays out at least one of:
-    // engagement heading, KPI tile, or empty-state copy.
-    const body = await teacherPage.locator("body").innerText();
-    expect(body).toMatch(/(analytics|аналитика|engagement|enrollments|stat)/i);
+  test("teacher analytics is reachable from a course", async ({ teacherPage }) => {
+    // Analytics is per-course (route /teacher/courses/:id/analytics),
+    // surfaced as an "Аналитика" action on each course card of the
+    // dashboard — there is no standalone /teacher/analytics route.
+    await teacherPage.goto("/teacher", { waitUntil: "domcontentloaded" });
+    const analyticsLink = teacherPage
+      .getByRole("link", { name: /(analytics|аналитика)/i })
+      .first();
+    await expect(analyticsLink).toBeVisible({ timeout: 10_000 });
+    await analyticsLink.click();
+    await teacherPage.waitForURL(/\/teacher\/courses\/.+\/analytics/);
+    await expect(teacherPage.locator("body")).toContainText(
+      /(analytics|аналитика|engagement|enrollments|stat|вовлечён|запис)/i,
+      { timeout: 10_000 },
+    );
   });
 });

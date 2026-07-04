@@ -1,7 +1,7 @@
 import { test as setup } from "@playwright/test";
 import { mkdirSync, existsSync } from "node:fs";
 
-import { getTestUser, signInViaForm } from "./fixtures/auth";
+import { getTestUser, signInViaForm, suppressOnboarding } from "./fixtures/auth";
 
 /**
  * Global setup for the Playwright suite.
@@ -28,6 +28,7 @@ setup("authenticate as student", async ({ page }) => {
   if (!existsSync(AUTH_DIR)) mkdirSync(AUTH_DIR, { recursive: true });
   const user = getTestUser("student");
   await signInViaForm(page, user);
+  await suppressOnboarding(page, user.id);
   await page.context().storageState({ path: `${AUTH_DIR}/student.json` });
 });
 
@@ -39,6 +40,7 @@ setup("authenticate as teacher", async ({ page }) => {
   if (!existsSync(AUTH_DIR)) mkdirSync(AUTH_DIR, { recursive: true });
   const user = getTestUser("teacher");
   await signInViaForm(page, user);
+  await suppressOnboarding(page, user.id);
   await page.context().storageState({ path: `${AUTH_DIR}/teacher.json` });
 });
 
@@ -50,5 +52,6 @@ setup("authenticate as admin", async ({ page }) => {
   if (!existsSync(AUTH_DIR)) mkdirSync(AUTH_DIR, { recursive: true });
   const user = getTestUser("admin");
   await signInViaForm(page, user);
+  await suppressOnboarding(page, user.id);
   await page.context().storageState({ path: `${AUTH_DIR}/admin.json` });
 });
