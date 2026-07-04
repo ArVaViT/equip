@@ -81,6 +81,52 @@ export async function signInViaForm(
 }
 
 /**
+ * Pre-set the onboarding/tour localStorage flags for a user so the
+ * first-run flow (Privacy → Quick Setup → picker) and the auto-firing
+ * driver.js tours don't cover the surface under test. Keys mirror
+ * ``src/lib/storageKeys.ts`` — kept in sync by hand because the e2e
+ * suite can't import app internals. Call after sign-in and before
+ * ``storageState()`` so the flags persist into the saved session.
+ */
+export async function suppressOnboarding(
+  page: Page,
+  userId: string,
+): Promise<void> {
+  // Every per-page tourId in the app (src/pages/**/* `tourId:` values).
+  // driver.js auto-fires these on first visit and its full-screen
+  // overlay intercepts pointer events, so specs must pre-mark them seen.
+  const TOUR_IDS = [
+    "student-dashboard-v1",
+    "courses-catalog-v1",
+    "profile-v1",
+    "certificates-v1",
+    "calendar-v1",
+    "course-detail-enrolled-v1",
+    "chapter-view-v1",
+    "teacher-dashboard-v1",
+    "gradebook-v1",
+    "analytics-v1",
+    "student-progress-v1",
+    "chapter-editor-v1",
+    "module-editor-v1",
+    "course-editor-v1",
+  ];
+  await page.evaluate(
+    ({ id, tourIds }) => {
+      const flags = [
+        `equip.privacy.accepted.${id}`,
+        `equip.first-run.setup.${id}`,
+        `equip.first-run.completed.${id}`,
+        `equip.grand-tour.seen.${id}`,
+        ...tourIds.map((t) => `equip.tour.seen.${id}.${t}`),
+      ];
+      for (const k of flags) window.localStorage.setItem(k, "1");
+    },
+    { id: userId, tourIds: TOUR_IDS },
+  );
+}
+
+/**
  * Inject a Supabase session into localStorage so the SPA boots
  * already authenticated. Faster than the form sign-in and isolated
  * from any login-form regression in the SUT.

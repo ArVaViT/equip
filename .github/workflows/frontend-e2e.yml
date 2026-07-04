@@ -77,15 +77,24 @@ jobs:
         # (missing tree-shake-safe markers, env wiring) the same way
         # a real prod deploy would.
         env:
-          # Smoke tests don't hit a real backend, BUT the build must still
-          # be given Supabase vars: src/lib/supabase.ts THROWS at module
-          # load if VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are unset,
-          # which blanks the whole SPA (React never mounts) and fails every
-          # public-flow spec with "element not found". These are throwaway
-          # placeholders — the public routes never call Supabase.
-          VITE_API_URL: http://localhost:8000
-          VITE_SUPABASE_URL: https://example.supabase.co
-          VITE_SUPABASE_ANON_KEY: e2e-placeholder-anon-key-not-real
+          # Two modes, switched by the repo variable STAGING_ACTIVE:
+          #
+          # * STAGING_ACTIVE == 'true' — build against the live staging
+          #   stack (api-staging.equipbible.com + the staging Supabase
+          #   branch), which lets global.setup.ts sign the role users in
+          #   and unlocks the authenticated student/teacher specs.
+          # * otherwise — placeholder env; src/lib/supabase.ts THROWS at
+          #   module load if VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are
+          #   unset (blanking the SPA), so placeholders keep the public
+          #   smoke specs alive. Fork/Dependabot PRs see no secrets and
+          #   land here automatically.
+          #
+          # Staging is ephemeral by design — tearing it down only requires
+          # flipping STAGING_ACTIVE to 'false'; the auth'd specs then skip
+          # instead of failing.
+          VITE_API_URL: ${{ vars.STAGING_ACTIVE == 'true' && 'https://api-staging.equipbible.com' || 'http://localhost:8000' }}
+          VITE_SUPABASE_URL: ${{ vars.STAGING_ACTIVE == 'true' && secrets.STAGING_SUPABASE_URL || 'https://example.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.STAGING_ACTIVE == 'true' && secrets.STAGING_SUPABASE_ANON_KEY || 'e2e-placeholder-anon-key-not-real' }}
         run: |
           npm run build
           npx vite preview --host 127.0.0.1 --port 5173 &
@@ -97,6 +106,18 @@ jobs:
         env:
           CI: "true"
           E2E_BASE_URL: http://127.0.0.1:5173
+          # Role-user credentials for the staging Supabase branch. Empty
+          # when STAGING_ACTIVE != 'true' (or on fork/Dependabot PRs) —
+          # global.setup.ts and the auth'd specs skip gracefully then.
+          E2E_STUDENT_EMAIL: ${{ vars.STAGING_ACTIVE == 'true' && secrets.E2E_STUDENT_EMAIL || '' }}
+          E2E_STUDENT_PASSWORD: ${{ vars.STAGING_ACTIVE == 'true' && secrets.E2E_STUDENT_PASSWORD || '' }}
+          E2E_STUDENT_ID: ${{ vars.STAGING_ACTIVE == 'true' && secrets.E2E_STUDENT_ID || '' }}
+          E2E_TEACHER_EMAIL: ${{ vars.STAGING_ACTIVE == 'true' && secrets.E2E_TEACHER_EMAIL || '' }}
+          E2E_TEACHER_PASSWORD: ${{ vars.STAGING_ACTIVE == 'true' && secrets.E2E_TEACHER_PASSWORD || '' }}
+          E2E_TEACHER_ID: ${{ vars.STAGING_ACTIVE == 'true' && secrets.E2E_TEACHER_ID || '' }}
+          E2E_ADMIN_EMAIL: ${{ vars.STAGING_ACTIVE == 'true' && secrets.E2E_ADMIN_EMAIL || '' }}
+          E2E_ADMIN_PASSWORD: ${{ vars.STAGING_ACTIVE == 'true' && secrets.E2E_ADMIN_PASSWORD || '' }}
+          E2E_ADMIN_ID: ${{ vars.STAGING_ACTIVE == 'true' && secrets.E2E_ADMIN_ID || '' }}
         run: npx playwright test
 
       - name: Upload Playwright report on failure
