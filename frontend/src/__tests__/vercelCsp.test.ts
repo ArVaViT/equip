@@ -80,11 +80,17 @@ const REQUIRED_TOKENS: ReadonlyArray<string> = [
   "https://*.browser-intake-datadoghq.com",
   "https://browser-intake-us5-datadoghq.com",
   "https://session-replay-us5-datadoghq.com",
-  // Supabase project endpoint (auth + REST + realtime websocket).
-  "https://rrisqutxlkamwfhcashl.supabase.co",
-  "wss://rrisqutxlkamwfhcashl.supabase.co",
-  // Backend API.
+  // Supabase endpoint (auth + REST + realtime websocket). Wildcarded to
+  // ``*.supabase.co`` so the same static CSP works for the production
+  // project AND any ephemeral staging branch (whose project ref differs
+  // and changes on every respawn). The anon key + RLS are the real
+  // boundary; broadening from one Supabase project to "any Supabase
+  // project" is a marginal relaxation, not a script-exec surface.
+  "https://*.supabase.co",
+  "wss://*.supabase.co",
+  // Backend API — prod + the staging deployment.
   "https://api.equipbible.com",
+  "https://api-staging.equipbible.com",
   // YouTube embeds -- the only iframe origin we whitelist on the SPA.
   "https://www.youtube.com",
   "https://www.youtube-nocookie.com",
