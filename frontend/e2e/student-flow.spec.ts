@@ -26,10 +26,11 @@ test.beforeEach(async () => {
 test.describe("student golden path", () => {
   test("dashboard renders the daily challenge card", async ({ studentPage }) => {
     await studentPage.goto("/", { waitUntil: "domcontentloaded" });
-    // The daily challenge is a load-bearing card on the student
-    // dashboard; the heading text is bilingual.
+    // The daily-challenge card is load-bearing on the student
+    // dashboard. Its heading is the localized "question of the day"
+    // title (ru: «Сегодняшний вопрос» / eyebrow «Вопрос дня»).
     const card = studentPage.getByRole("heading", {
-      name: /(daily\s*challenge|испытание|ежедневн)/i,
+      name: /(daily\s*challenge|вопрос\s*дня|сегодняшний\s*вопрос)/i,
     });
     await expect(card).toBeVisible({ timeout: 10_000 });
   });
@@ -39,17 +40,23 @@ test.describe("student golden path", () => {
     // The catalog renders either: course cards, or an "empty state"
     // when there are no published courses. Either is OK for the
     // golden path; both pin that the route resolved + the layout
-    // chrome mounted.
-    const body = await studentPage.locator("body").innerText();
-    expect(body).toMatch(/(course|курс|no\s*courses|нет\s*курсов)/i);
+    // chrome mounted. Use a web-first assertion so the check retries
+    // past the initial "Загрузка…" spinner instead of reading once.
+    await expect(studentPage.locator("body")).toContainText(
+      /(course|курс|no\s*courses|нет\s*курсов)/i,
+      { timeout: 10_000 },
+    );
   });
 
   test("profile page reachable from authenticated state", async ({ studentPage }) => {
     await studentPage.goto("/profile", { waitUntil: "domcontentloaded" });
-    // Profile renders the user's display name + the locale picker.
-    // We don't assert on the specific name; only that one of the
-    // shared profile-page sections is visible.
-    const body = await studentPage.locator("body").innerText();
-    expect(body).toMatch(/(profile|профил|account|account\s*settings|locale|язык)/i);
+    // Profile renders the user's display name + the locale picker. We
+    // don't assert on the specific name; only that one of the shared
+    // profile-page sections resolves (web-first assertion retries past
+    // the loading spinner).
+    await expect(studentPage.locator("body")).toContainText(
+      /(profile|профил|account|account\s*settings|locale|язык)/i,
+      { timeout: 10_000 },
+    );
   });
 });
