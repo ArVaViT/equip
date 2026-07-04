@@ -352,14 +352,23 @@ def _ensure_student(db: Session, *, course_id: str, index: int) -> User:
     if student is None:
         email = _student_email(course_id, index)
         _ensure_auth_user(db, user_id=student_id, email=email)
+        # On a real Supabase database the ``on_auth_user_created`` trigger
+        # creates the profile row from the auth insert above — re-check
+        # before adding, or the flush would violate ``profiles_pkey``.
+        # (SQLite test DBs have neither the auth schema nor the trigger.)
+        student = db.query(User).filter(User.id == student_id).first()
+    if student is None:
         student = User(
             id=student_id,
-            email=email,
+            email=_student_email(course_id, index),
             full_name=f"Seed Student {index + 1}",
             role=UserRole.STUDENT.value,
         )
         db.add(student)
         db.flush()
+    else:
+        student.full_name = f"Seed Student {index + 1}"
+        student.role = UserRole.STUDENT.value
     return student
 
 
