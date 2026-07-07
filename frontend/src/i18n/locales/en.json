@@ -64,24 +64,42 @@
     "hero": {
       "registerCta": "Create account"
     },
-    "features": {
+    "trust": {
+      "openSource": "Free & open-source",
+      "bilingual": "Bilingual: RU ⇄ EN",
+      "certificates": "Certificates you can verify"
+    },
+    "value": {
       "heading": "What's in Equip",
       "subheading": "Tools for serious Scripture study — no distractions, no lost progress.",
-      "systematic": {
-        "title": "Structured courses",
-        "body": "Each course is broken into modules and chapters — you follow the structure, not stray fragments."
+      "structure": {
+        "eyebrow": "Course structure",
+        "title": "A course, not a pile of videos",
+        "body": "Every course is modules and chapters in a fixed order. You always see what's done, what's left, and what comes next.",
+        "module": "Module 1 · Genesis 1–11",
+        "chapter1": "Chapter 1 — Creation",
+        "chapter2": "Chapter 2 — The Fall",
+        "chapter3": "Chapter 3 — Cain and Abel"
       },
-      "progress": {
-        "title": "Per-chapter progress",
-        "body": "See what's done and what's left. A clear \"Done\" action on every chapter."
+      "assessment": {
+        "eyebrow": "Assessment",
+        "title": "Not just multiple choice",
+        "body": "Four question types, including essay and short answer — graded by a real teacher, not only auto-scored.",
+        "sampleQuestion": "Summarize the main idea of this chapter in your own words.",
+        "gradedBadge": "Teacher graded"
       },
       "certificates": {
-        "title": "Certificates",
-        "body": "Complete a course and get a certificate — publicly verifiable by number."
+        "eyebrow": "Certification",
+        "title": "A certificate you can verify",
+        "body": "Complete a course and get a certificate with a unique number. Anyone can check it's real by that number.",
+        "certTitle": "Certificate of Completion",
+        "verifyLabel": "Verify by number"
       },
       "bilingual": {
-        "title": "Bilingual",
-        "body": "Russian and English — switch in one click, no reload needed."
+        "eyebrow": "Language",
+        "title": "Bilingual from day one",
+        "body": "A teacher's Russian-language course becomes available in English automatically — no manual translation, no delay.",
+        "caption": "Course materials translated automatically"
       }
     },
     "how": {
@@ -89,25 +107,6 @@
       "step1": "Sign up — takes a minute, email or Google is enough.",
       "step2": "Open the catalog and enroll in the course you want.",
       "step3": "Work through chapters, take quizzes, claim your certificate at the end."
-    },
-    "quicklinks": {
-      "heading": "Where to next",
-      "catalog": {
-        "title": "Course catalog",
-        "body": "Every published course — browse and enroll."
-      },
-      "register": {
-        "title": "Create an account",
-        "body": "Free registration for students."
-      },
-      "signIn": {
-        "title": "Sign in",
-        "body": "Already have an account? Pick up where you left off."
-      },
-      "forgot": {
-        "title": "Reset password",
-        "body": "Forgot it? We'll email you a reset link."
-      }
     },
     "finalCta": {
       "heading": "Ready to start?",

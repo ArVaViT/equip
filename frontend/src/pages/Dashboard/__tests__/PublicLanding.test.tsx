@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { I18nextProvider } from "react-i18next"
 import { describe, expect, it } from "vitest"
@@ -11,15 +11,21 @@ import { PublicLanding } from "@/pages/Dashboard/PublicLanding"
  *
  *   1. First-time human visitors (activation funnel).
  *   2. Search-engine crawlers (Googlebot needs real ``<a href>`` links
- *      to discover /courses, /register, /login, /forgot-password and
- *      to feed the sitelinks heuristic).
+ *      to discover /courses, /register, /login and to feed the
+ *      sitelinks heuristic).
  *
  * These tests lock in the *crawler-visible* contract: the page must
- * render an <h1> with the brand name and real anchor elements to
- * every key internal destination. Refactoring a Link into a
- * button + ``navigate()`` would pass typecheck but silently strip
- * the page of its SEO surface — these tests fail loudly when that
- * happens.
+ * render an <h1> with the brand name and real anchor elements to the
+ * key internal destinations. Refactoring a Link into a button +
+ * ``navigate()`` would pass typecheck but silently strip the page of
+ * its SEO surface — these tests fail loudly when that happens.
+ *
+ * Note: /forgot-password is deliberately NOT asserted here. The old
+ * design gave it its own "Reset password" landing-page card purely to
+ * keep it crawler-visible — that card was flagged as generic
+ * template-filler (Vadym: literally a reset-password feature card on
+ * the marketing page) and removed in the 2026-07 rebuild. It's still
+ * one click away from /login, which is the correct place for it.
  */
 
 function renderLanding() {
@@ -38,30 +44,29 @@ describe("PublicLanding (unauth marketing page)", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/equip/i)
   })
 
-  it("exposes every key internal destination as a real <a href>", () => {
+  it("exposes the key internal destinations as real <a href>", () => {
     const { container } = renderLanding()
     const hrefs = Array.from(container.querySelectorAll<HTMLAnchorElement>("a[href]")).map(
       (a) => a.getAttribute("href"),
     )
     // Each destination must appear at least once. Multiple matches per
-    // path are expected (hero + quick-links + final-CTA all link to
-    // /courses + /register), so we use ``toContain`` not equality.
+    // path are expected (hero + final-CTA both link to /courses +
+    // /register), so we use ``toContain`` not equality.
     expect(hrefs).toContain("/courses")
     expect(hrefs).toContain("/register")
     expect(hrefs).toContain("/login")
-    expect(hrefs).toContain("/forgot-password")
   })
 
-  it("renders the 'Quick links' section as a semantic <ul>", () => {
+  it("renders the four value-proposition rows as h3 headings", () => {
     renderLanding()
-    // The section labels itself via ``aria-labelledby`` pointing at the
-    // heading id, so the region is queryable by name. Inside, every
-    // quick-link is an <li> — keeping that semantic shape matters for
-    // crawler comprehension + screen-reader navigation.
-    const heading = screen.getByRole("heading", { level: 2, name: /куда дальше|where to next/i })
-    const section = heading.closest("section")
-    expect(section).not.toBeNull()
-    const list = within(section!).getByRole("list")
-    expect(within(list).getAllByRole("listitem").length).toBeGreaterThanOrEqual(4)
+    // Each row is a concrete claim (structure / assessment /
+    // certificates / bilingual), not a generic icon+adjective grid.
+    const h3s = screen.getAllByRole("heading", { level: 3 })
+    expect(h3s.length).toBe(4)
+  })
+
+  it("does not render a generic 'reset password' marketing card", () => {
+    renderLanding()
+    expect(screen.queryByText(/восстановить пароль|reset password/i)).not.toBeInTheDocument()
   })
 })
