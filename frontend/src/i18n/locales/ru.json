@@ -1652,6 +1652,38 @@
       "pageSizeLabel": "Строк на странице",
       "detailsEmpty": "Нет деталей",
       "summaryLabel": "На этой странице"
+    },
+    "tabInvitations": "Приглашения",
+    "invitations": {
+      "title": "Приглашения",
+      "loadError": "Не удалось загрузить приглашения",
+      "inviteButton": "Создать приглашение",
+      "filterRole": "Роль",
+      "allRoles": "Все роли",
+      "filterStatus": "Статус",
+      "allStatuses": "Все статусы",
+      "statusPending": "Ожидает",
+      "statusAccepted": "Принято",
+      "statusRevoked": "Отозвано",
+      "statusExpired": "Истекло",
+      "emptyTitle": "Приглашений пока нет",
+      "thEmail": "Email",
+      "thRole": "Роль",
+      "thStatus": "Статус",
+      "thSent": "Отправлено",
+      "resend": "Отправить снова",
+      "createTitle": "Создать приглашение",
+      "fieldEmail": "Email",
+      "emailPlaceholder": "person@example.com",
+      "fieldRole": "Роль",
+      "sending": "Отправка…",
+      "send": "Отправить приглашение",
+      "toast": {
+        "created": "Приглашение отправлено",
+        "createFailed": "Не удалось отправить приглашение",
+        "resent": "Приглашение отправлено повторно",
+        "resendFailed": "Не удалось отправить приглашение повторно"
+      }
     }
   },
   "roles": {
@@ -2229,5 +2261,25 @@
     "placeholder": "Выберите дату и время",
     "hourAria": "Часы",
     "minuteAria": "Минуты"
+  },
+  "invite": {
+    "heading": "Присоединиться к Equip",
+    "formSubheading": "Вас пригласили присоединиться к Equip в роли: {{role}}",
+    "readyBody": "Вы вошли как <strong>{{email}}</strong>. Примите приглашение, чтобы присоединиться к Equip в роли: {{role}}.",
+    "acceptButton": "Принять приглашение",
+    "createAccountButton": "Создать аккаунт",
+    "confirmThenReturn": "Перейдите по ссылке в письме, а затем вернитесь на эту страницу, чтобы завершить регистрацию.",
+    "accepted": "Готово.",
+    "acceptedAs": "Готово — вы присоединились к Equip в роли: {{role}}.",
+    "goToDashboard": "Перейти в кабинет",
+    "logOutAndSwitch": "Выйти и сменить аккаунт",
+    "errors": {
+      "notFound": "Эта ссылка-приглашение недействительна. Проверьте ссылку или попросите администратора отправить её снова.",
+      "unusable": "Это приглашение уже использовано, отозвано или истекло. Попросите администратора создать новое.",
+      "emailMismatch": "Это приглашение отправлено на другой email.",
+      "emailMismatchDetail": "Это приглашение отправлено на <strong>{{invited}}</strong>, но вы вошли как <strong>{{current}}</strong>.",
+      "acceptFailed": "Не удалось принять приглашение. Попробуйте ещё раз.",
+      "accountExists": "У вас уже есть аккаунт Equip с этим email. Войдите в систему, затем снова откройте эту ссылку-приглашение, чтобы принять его."
+    }
   }
 }

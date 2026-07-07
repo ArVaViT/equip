@@ -35,6 +35,22 @@ export function makeRegisterSchema() {
     })
 }
 
+// Same shape as makeRegisterSchema minus `email` -- the accept-invite
+// page fixes the email to whatever the invite was issued to, so there's
+// no editable email field to validate.
+export function makeAcceptInviteSchema() {
+  return z
+    .object({
+      full_name: z.string().min(2, t("authRegister.errors.fullNameTooShort")),
+      password: z.string().min(6, t("authRegister.errors.passwordTooShort")),
+      confirmPassword: z.string(),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: t("authRegister.errors.passwordsDoNotMatch"),
+      path: ["confirmPassword"],
+    })
+}
+
 // Static snapshots removed — every caller now invokes the factory
 // inside the submit handler so error messages match the active
 // locale (see ``Login.tsx`` / ``useRegister.ts`` / ``ResetPassword.tsx``).

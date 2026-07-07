@@ -25,6 +25,9 @@ const AuditLogTab = lazy(() =>
 const CohortsTab = lazy(() =>
   import("./cohorts/CohortsTab").then((m) => ({ default: m.CohortsTab })),
 )
+const InvitationsTab = lazy(() =>
+  import("./invitations/InvitationsTab").then((m) => ({ default: m.InvitationsTab })),
+)
 
 /**
  * Admin dashboard orchestrator. Delegates every piece of state to
@@ -156,6 +159,18 @@ export default function AdminDashboard() {
         >
           <Suspense fallback={<PageSpinner />}>
             <CohortsTab />
+          </Suspense>
+        </div>
+      )}
+
+      {tab === "invitations" && (
+        <div
+          role="tabpanel"
+          id={ADMIN_TAB_PANEL_ID.invitations}
+          aria-labelledby={ADMIN_TAB_TRIGGER_ID.invitations}
+        >
+          <Suspense fallback={<PageSpinner />}>
+            <InvitationsTab />
           </Suspense>
         </div>
       )}

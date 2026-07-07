@@ -301,6 +301,26 @@ export interface Cohort {
   student_count: number
 }
 
+// InvitationRole deliberately excludes 'admin' -- mirrors the backend
+// Pydantic Literal["teacher", "student"] and the Postgres CHECK
+// constraint on invitations.role. An invite can never grant admin.
+export type InvitationRole = 'teacher' | 'student'
+export type InvitationStatus = 'pending' | 'accepted' | 'revoked'
+
+export interface Invitation {
+  id: string
+  email: string
+  role: InvitationRole
+  status: InvitationStatus
+  invited_by: string | null
+  created_at: string | null
+  accepted_at: string | null
+  expires_at: string
+  // Derived server-side: a 'pending' row past expires_at. Only
+  // meaningful when status === 'pending'.
+  is_expired: boolean
+}
+
 export type NotificationType =
   | 'certificate_approved'
   | 'certificate_rejected'
