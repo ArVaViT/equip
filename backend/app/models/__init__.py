@@ -9,6 +9,7 @@ from app.models.content_version import ContentVersion
 from app.models.course import Chapter, Course, Module
 from app.models.course_event import CourseEvent
 from app.models.enrollment import Enrollment
+from app.models.invitation import Invitation, InvitationRole, InvitationStatus
 from app.models.notification import Notification
 from app.models.prerequisite import CoursePrerequisite
 from app.models.quiz import (
@@ -39,6 +40,9 @@ __all__ = [
     "CoursePrerequisite",
     "CourseReview",
     "Enrollment",
+    "Invitation",
+    "InvitationRole",
+    "InvitationStatus",
     "Module",
     "Notification",
     "Quiz",
