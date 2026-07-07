@@ -20,8 +20,10 @@ interface Props {
 }
 
 /**
- * The actual registration form — role toggle, four text inputs,
- * Google OAuth shortcut, submit button. Receives state and handlers from
+ * The actual registration form — four text inputs, Google OAuth
+ * shortcut, submit button. Self-signup is student-only (no role
+ * selector); teacher accounts are granted via an admin-issued invite
+ * (see pages/Invite/AcceptInvite.tsx). Receives state and handlers from
  * `useRegister`; nothing in here owns mutable state.
  */
 export function RegisterForm({

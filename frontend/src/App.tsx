@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef } from "react"
-import { BrowserRouter, Route, Navigate, useLocation } from "react-router-dom"
+import { BrowserRouter, Route, Navigate, useLocation, useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Routes } from "@datadog/browser-rum-react/react-router-v6"
 import { AuthProvider } from "./context/AuthContext"
@@ -17,6 +17,7 @@ import PageSpinner from "./components/ui/PageSpinner"
 import ScrollToTop from "./components/layout/ScrollToTop";
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useGrandTour } from "@/hooks/useGrandTour"
+import { takePendingInviteToken } from "@/lib/pendingInvite"
 
 // Lazy: FirstRunFlow renders null until a brand-new user's privacy/setup gate
 // activates, so it never needs to be on the critical path — its component code
@@ -37,6 +38,7 @@ const Register = lazy(() => import("./pages/Auth/Register"))
 const ForgotPassword = lazy(() => import("./pages/Auth/ForgotPassword"))
 const ResetPassword = lazy(() => import("./pages/Auth/ResetPassword"))
 const AuthCallback = lazy(() => import("./pages/Auth/AuthCallback"))
+const AcceptInvite = lazy(() => import("./pages/Invite/AcceptInvite"))
 const DashboardPage = lazy(() => import("./pages/Dashboard/DashboardPage"))
 const CoursesPage = lazy(() => import("./pages/Courses/CoursesPage"))
 const ProfilePage = lazy(() => import("./pages/Profile/ProfilePage"))
@@ -99,7 +101,38 @@ function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }
   return <>{children}</>
 }
 
-const AUTH_PATHS = ["/login", "/register", "/forgot-password", "/auth/reset-password", "/auth/callback", "/auth/confirm"]
+const AUTH_PATHS = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/auth/reset-password",
+  "/auth/callback",
+  "/auth/confirm",
+  "/invite/accept",
+]
+
+/**
+ * Resumes an in-progress invite redemption after a full-page redirect
+ * (Google OAuth, or clicking the "confirm your email" link) lands the
+ * visitor back on the app authenticated but on an unrelated route.
+ * AcceptInvite persists the token via `setPendingInviteToken` right
+ * before either redirect kicks off; this picks it up once `user`
+ * becomes non-null and finishes the trip back to `/invite/accept`.
+ * `takePendingInviteToken` clears the stored value on read, so this is
+ * naturally a no-op on every render after the first.
+ */
+function useResumePendingInvite() {
+  const { user } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (!user) return
+    if (location.pathname === "/invite/accept") return
+    const token = takePendingInviteToken()
+    if (token) navigate(`/invite/accept?token=${encodeURIComponent(token)}`, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
+}
 
 function AppRoutes() {
   const { loading } = useAuth()
@@ -109,6 +142,7 @@ function AppRoutes() {
   usePageTitle()
   useLocaleSync()
   useRouteFocus()
+  useResumePendingInvite()
   // Grand tour lives here so it has access to React Router (for
   // programmatic navigation between steps) and AuthContext (for the
   // role gate). Mounts after auth is resolved; the hook itself gates
@@ -131,6 +165,10 @@ function AppRoutes() {
             <Route path="/auth/reset-password" element={<ResetPassword />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/auth/confirm" element={<AuthCallback />} />
+            {/* No <Gate> -- must render correctly for both an anonymous
+                visitor (fresh invite link) and an authenticated one
+                (bounced back here after Google OAuth / email confirm). */}
+            <Route path="/invite/accept" element={<AcceptInvite />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </Suspense>

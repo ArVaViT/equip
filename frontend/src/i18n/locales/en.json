@@ -2035,6 +2035,38 @@
       "pageSizeLabel": "Rows per page",
       "detailsEmpty": "No details",
       "summaryLabel": "On this page"
+    },
+    "tabInvitations": "Invitations",
+    "invitations": {
+      "title": "Invitations",
+      "loadError": "Failed to load invitations",
+      "inviteButton": "Generate invite",
+      "filterRole": "Role",
+      "allRoles": "All roles",
+      "filterStatus": "Status",
+      "allStatuses": "All statuses",
+      "statusPending": "Pending",
+      "statusAccepted": "Accepted",
+      "statusRevoked": "Revoked",
+      "statusExpired": "Expired",
+      "emptyTitle": "No invitations sent yet",
+      "thEmail": "Email",
+      "thRole": "Role",
+      "thStatus": "Status",
+      "thSent": "Sent",
+      "resend": "Resend",
+      "createTitle": "Generate invite",
+      "fieldEmail": "Email",
+      "emailPlaceholder": "person@example.com",
+      "fieldRole": "Role",
+      "sending": "Sending…",
+      "send": "Send invite",
+      "toast": {
+        "created": "Invitation sent",
+        "createFailed": "Failed to send invitation",
+        "resent": "Invitation resent",
+        "resendFailed": "Failed to resend invitation"
+      }
     }
   },
   "roles": {
@@ -2176,5 +2208,25 @@
     "placeholder": "Pick date + time",
     "hourAria": "Hour",
     "minuteAria": "Minute"
+  },
+  "invite": {
+    "heading": "Join Equip",
+    "formSubheading": "You've been invited to join Equip as a {{role}}",
+    "readyBody": "You're signed in as <strong>{{email}}</strong>. Accept this invitation to join Equip as a {{role}}.",
+    "acceptButton": "Accept invitation",
+    "createAccountButton": "Create account",
+    "confirmThenReturn": "Click the link in the email, then come back to this page to finish joining.",
+    "accepted": "You're all set.",
+    "acceptedAs": "You're all set — you've joined Equip as a {{role}}.",
+    "goToDashboard": "Go to dashboard",
+    "logOutAndSwitch": "Log out and switch accounts",
+    "errors": {
+      "notFound": "This invitation link isn't valid. Double-check the link or ask the admin who invited you to resend it.",
+      "unusable": "This invitation has already been used, was revoked, or has expired. Ask the admin who invited you for a new one.",
+      "emailMismatch": "This invitation was sent to a different email address.",
+      "emailMismatchDetail": "This invitation was sent to <strong>{{invited}}</strong>, but you're signed in as <strong>{{current}}</strong>.",
+      "acceptFailed": "Couldn't accept this invitation. Please try again.",
+      "accountExists": "You already have an Equip account with this email. Log in, then reopen this invite link to accept it."
+    }
   }
 }

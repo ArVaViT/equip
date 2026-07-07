@@ -53,6 +53,11 @@ export type ErrorCode =
   | "daily_challenge.already_attempted"
   | "daily_challenge.invalid_option"
   | "daily_challenge.archive_date_not_allowed"
+  // invitations
+  | "invitation.not_found"
+  | "invitation.expired"
+  | "invitation.already_used"
+  | "invitation.email_mismatch"
   // validation
   | "validation.failed"
 
