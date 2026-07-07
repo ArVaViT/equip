@@ -76,6 +76,22 @@ class Settings(BaseSettings):
     # the verse service raises ``VerseOfTheDayUnavailable`` and the route
     # returns 404 so the frontend quietly hides the card.
     YOUVERSION_API_KEY: SecretStr | None = Field(default=None, description="YouVersion Platform API key (server-only)")
+    # Direct backend→Resend calls for transactional mail that isn't a
+    # Supabase Auth lifecycle event (signup/recovery/magic_link don't go
+    # through here -- those stay on supabase/functions/send-email, which is
+    # a Supabase Auth email hook and can't be reused for arbitrary sends).
+    # Invitation emails are the first user of this. Optional the same way
+    # the other provider keys are: unset means the invite is created but
+    # send_invitation_email logs and no-ops instead of raising, so a missing
+    # key degrades to "admin must share the link manually" rather than a
+    # 500 on invite creation.
+    RESEND_API_KEY: SecretStr | None = Field(default=None, description="Resend API key (server-only)")
+    # Base URL for links embedded in backend-sent emails (invite accept
+    # link, etc). No existing Settings field carried this -- other call
+    # sites hardcode "https://equipbible.com" inline (see app/main.py,
+    # calendar_ical.py). Kept as a real setting (not another hardcode) so
+    # a preview/staging deployment can point invite links at itself.
+    FRONTEND_URL: str = Field(default="https://equipbible.com", description="Public frontend origin for email links")
     # gemini-2.5-flash-lite: no "thinking" tokens (translation doesn't need
     # them) so the full GEMINI_MAX_OUTPUT_TOKENS budget goes to the actual
     # translation. The previous default ``gemini-flash-latest`` resolves to

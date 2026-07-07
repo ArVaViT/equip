@@ -128,6 +128,23 @@ class ErrorCode(enum.StrEnum):
     those are owned by the live ``/today`` surface. Frontend should
     redirect the user back to today's card."""
 
+    # ── Invitations ──────────────────────────────────────────────────────
+    INVITATION_NOT_FOUND = "invitation.not_found"
+    """No invitation matches the given token."""
+
+    INVITATION_EXPIRED = "invitation.expired"
+    """The invitation's ``expires_at`` has passed. Still ``status='pending'``
+    in the DB -- expiry is computed at read/accept time, not a stored
+    transition."""
+
+    INVITATION_ALREADY_USED = "invitation.already_used"
+    """The invitation's ``status`` is no longer ``pending`` (already
+    accepted, or revoked by an admin re-inviting with a fresh row)."""
+
+    INVITATION_EMAIL_MISMATCH = "invitation.email_mismatch"
+    """The authenticated caller's email does not match the email the
+    invitation was issued to."""
+
     # ── Validation ──────────────────────────────────────────────────────
     VALIDATION_FAILED = "validation.failed"
     """Request body / params failed semantic validation beyond the

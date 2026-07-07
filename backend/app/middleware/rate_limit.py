@@ -73,6 +73,18 @@ ENDPOINT_LIMITS: dict[str, tuple[int, int]] = {
     # that's a small UX cost for the safety net.
     "/api/v1/users/admin/": (30, 60),
     "/api/v1/cohorts": (60, 60),
+    # Unauthenticated token lookup (accept-invite page preview). Same
+    # ceiling as the certificate-number verify route for the same
+    # reason: one guess per legitimate visit, cheap defence-in-depth
+    # against enumeration even though the token itself is a 32-byte
+    # random value. Declared BEFORE the broader "/invitations" prefix
+    # below so its longer, more specific match wins (``_resolve_limit``
+    # returns the first prefix match in insertion order).
+    "/api/v1/invitations/token/": (30, 60),
+    # Admin create/list + the authenticated accept-by-token route share
+    # this bucket. Mirrors the admin-mutation ceiling above; accept is a
+    # one-time action per invitee so 30/min/IP is generous.
+    "/api/v1/invitations": (30, 60),
 }
 
 MAX_BUCKETS = 10_000

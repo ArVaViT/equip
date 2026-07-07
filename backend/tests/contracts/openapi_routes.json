@@ -1920,6 +1920,68 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/invitations",
+    "params": [
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "role",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ],
+      [
+        "status",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/invitations",
+    "params": [],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/invitations/accept",
+    "params": [],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/invitations/token/{token}",
+    "params": [
+      [
+        "token",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/notifications",
     "params": [
       [
