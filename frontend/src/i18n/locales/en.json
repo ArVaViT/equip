@@ -1313,6 +1313,12 @@
     "backToCourses": "Back to courses"
   },
   "teacherDashboard": {
+    "stats": {
+      "totalCourses": "Courses",
+      "published": "Published",
+      "modules": "Modules",
+      "pendingActions": "Needs attention"
+    },
     "courseCard": {
       "statusPublished": "Published",
       "statusDraft": "Draft",

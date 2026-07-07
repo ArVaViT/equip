@@ -921,6 +921,12 @@
     "backToCourses": "К курсам"
   },
   "teacherDashboard": {
+    "stats": {
+      "totalCourses": "Курсы",
+      "published": "Опубликовано",
+      "modules": "Модули",
+      "pendingActions": "Требует внимания"
+    },
     "courseCard": {
       "statusPublished": "Опубликован",
       "statusDraft": "Черновик",
