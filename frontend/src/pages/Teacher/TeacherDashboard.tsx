@@ -18,6 +18,7 @@ import {
   EmptyCoursesCard,
   PendingCertsCard,
   TeacherDashboardSkeleton,
+  TeacherStatsRow,
   TrashSection,
   type PendingCert,
 } from "./dashboard"
@@ -248,6 +249,14 @@ export default function TeacherDashboard() {
           onSubmit={handleCreate}
           onCancel={() => setShowCreate(false)}
         />
+      )}
+
+      {/* Real stats, not a placeholder — only once there's at least one
+          course to summarize. A brand-new teacher with zero courses
+          gets the dedicated onboarding welcome card below instead
+          (EmptyCoursesCard), not a row of four zeroes. */}
+      {!loading && !error && courses.length > 0 && (
+        <TeacherStatsRow courses={courses} pendingActions={pendingCerts.length} />
       )}
 
       <PendingCertsCard
