@@ -5,7 +5,8 @@ import { motion, useReducedMotion } from "motion/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { Course } from "@/types"
-import { BookOpen, ArrowRight, CheckCircle } from "lucide-react"
+import { ArrowRight, CheckCircle } from "lucide-react"
+import { CourseCoverFallback } from "./CourseCoverFallback"
 import { toProxyImage } from "@/lib/images"
 import { formatDate } from "@/i18n/format"
 import { EDITORIAL_EASE } from "@/lib/motion"
@@ -92,8 +93,8 @@ function CourseCard({ course, style, progress }: CourseCardProps) {
             />
           </div>
         ) : (
-          <div className="flex aspect-[16/10] w-full items-center justify-center bg-muted">
-            <BookOpen className="h-10 w-10 text-ink-muted/30" strokeWidth={1.75} aria-hidden />
+          <div className="aspect-[16/10] w-full">
+            <CourseCoverFallback courseId={course.id} title={course.title} size="md" />
           </div>
         )}
       </div>
