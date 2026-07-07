@@ -2,107 +2,133 @@ import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import {
   ArrowRight,
+  Award,
   BookOpen,
-  CheckCircle2,
-  Globe2,
-  Layers,
+  Check,
+  Circle,
+  Languages,
+  PenLine,
   ShieldCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Eyebrow } from "@/components/patterns"
 
 /**
  * Marketing landing rendered at ``/`` for unauthenticated visitors.
  *
- * Three goals:
+ * Rebuilt 2026-07 to replace the generic shadcn-template feel (a flat
+ * 4-icon feature grid + a "Quick links" card grid whose weakest entry
+ * was a "Восстановить пароль"/"Reset password" marketing card — real
+ * template filler, not something worth landing-page real estate).
  *
- * 1. **Activation.** First-time visitors should reach either the
- *    catalog (browse → enroll) or registration in one click. Two
- *    primary CTAs sit above the fold; a third "ready to start" CTA
- *    closes the page.
+ * Structure now:
  *
- * 2. **SEO surface.** Sections introduce real internal links to
- *    ``/courses``, ``/register``, ``/login``, ``/forgot-password``.
- *    Real ``<Link>`` elements (not button-look-alikes wired to
- *    ``navigate()``) keep them crawler-visible without JS. The
- *    feature grid + "how it works" steps add semantic content for
- *    crawlers and feed Google's sitelinks heuristic with named
- *    sections.
+ * 1. **Hero** — brand, tagline, a qualitative trust strip (no invented
+ *    numbers — see feedback-do-not-fabricate-numbers), two primary CTAs.
+ * 2. **Value rows** — four alternating narrative rows, each pairing one
+ *    concrete claim with a small illustrative UI mock built from the
+ *    same tokens/components used elsewhere in the product (not stock
+ *    icons + adjectives, and not a screenshot pipeline).
+ * 3. **How it works** — unchanged 3-step list.
+ * 4. **Final CTA** — single strong close, not a stacked link wall.
  *
- * 3. **Trust signals.** The "for whom" + "what's inside" copy makes
- *    the platform's positioning explicit ("системное изучение",
- *    "сертификаты", "двуязычность") instead of leaving it to the
- *    one-line tagline.
- *
- * Russian-first by default (matches ``DEFAULT_LOCALE``). i18n keys
- * live under ``landing.*``; English translations mirror the structure
- * so a returning EN viewer sees the same sections.
+ * SEO: crawlable internal links to /courses, /register, /login live in
+ * the hero + final CTA (real ``<Link>`` elements, not button-look-alikes
+ * wired to ``navigate()``). /forgot-password is intentionally NOT
+ * linked from marketing copy — it's one click from /login, which is
+ * where a real visitor needs it; giving it a landing-page feature card
+ * was the filler tell being fixed here.
  */
 export function PublicLanding() {
   const { t } = useTranslation()
   return (
     <div className="container mx-auto max-w-5xl px-4 pb-24">
       {/* ── Hero ────────────────────────────────────────────────── */}
-      <section className="flex flex-col items-center pt-16 text-center sm:pt-24">
-        <h1 className="font-serif text-4xl font-bold tracking-tight text-ink sm:text-5xl md:text-6xl">
-          {t("common.appName")}
-        </h1>
-        <p className="mt-4 max-w-2xl text-balance text-base leading-relaxed text-ink-muted sm:text-lg">
-          {t("footer.tagline")}
-        </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Link to="/courses">
-            <Button size="lg">
-              {t("dashboard.browseAllCta")}
-              <ArrowRight className="ml-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-            </Button>
-          </Link>
-          <Link to="/register">
-            <Button size="lg" variant="outline">
-              {t("landing.hero.registerCta")}
-            </Button>
-          </Link>
-          <Link to="/login">
-            <Button size="lg" variant="ghost">
-              {t("common.signIn")}
-            </Button>
-          </Link>
+      <section className="relative" aria-labelledby="landing-hero-heading">
+        <div className="pointer-events-none absolute left-1/2 top-0 -z-0 h-[min(22rem,55vw)] w-[min(120vw,44rem)] -translate-x-1/2 md:h-[26rem] md:w-[52rem]">
+          <div className="bg-home-hero-glow h-full w-full blur-3xl" aria-hidden />
+        </div>
+        <div className="relative z-10 flex flex-col items-center pt-16 text-center sm:pt-24">
+          <h1
+            id="landing-hero-heading"
+            className="font-serif text-4xl font-bold tracking-tight text-ink sm:text-5xl md:text-6xl"
+          >
+            {t("common.appName")}
+          </h1>
+          <p className="mt-4 max-w-2xl text-balance text-base leading-relaxed text-ink-muted sm:text-lg">
+            {t("footer.tagline")}
+          </p>
+          <ul className="mt-6 flex flex-wrap items-center justify-center gap-2">
+            <li>
+              <Badge variant="outline">{t("landing.trust.openSource")}</Badge>
+            </li>
+            <li>
+              <Badge variant="outline">{t("landing.trust.bilingual")}</Badge>
+            </li>
+            <li>
+              <Badge variant="outline">{t("landing.trust.certificates")}</Badge>
+            </li>
+          </ul>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Link to="/courses">
+              <Button size="lg">
+                {t("dashboard.browseAllCta")}
+                <ArrowRight className="ml-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+              </Button>
+            </Link>
+            <Link to="/register">
+              <Button size="lg" variant="outline">
+                {t("landing.hero.registerCta")}
+              </Button>
+            </Link>
+            <Link to="/login">
+              <Button size="lg" variant="ghost">
+                {t("common.signIn")}
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* ── Features grid ───────────────────────────────────────── */}
-      <section
-        aria-labelledby="landing-features-heading"
-        className="mt-20 sm:mt-28"
-      >
-        <h2
-          id="landing-features-heading"
-          className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl"
-        >
-          {t("landing.features.heading")}
-        </h2>
-        <p className="mt-2 max-w-2xl text-sm text-ink-muted">
-          {t("landing.features.subheading")}
-        </p>
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <FeatureCard
-            icon={<Layers className="h-5 w-5" strokeWidth={1.75} aria-hidden />}
-            title={t("landing.features.systematic.title")}
-            body={t("landing.features.systematic.body")}
+      {/* ── Value rows ──────────────────────────────────────────── */}
+      <section aria-labelledby="landing-value-heading" className="mt-20 sm:mt-28">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2
+            id="landing-value-heading"
+            className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl"
+          >
+            {t("landing.value.heading")}
+          </h2>
+          <p className="mt-2 text-sm text-ink-muted">{t("landing.value.subheading")}</p>
+        </div>
+
+        <div className="mt-12 flex flex-col gap-16 sm:mt-16 sm:gap-20">
+          <ValueRow
+            eyebrow={t("landing.value.structure.eyebrow")}
+            title={t("landing.value.structure.title")}
+            body={t("landing.value.structure.body")}
+            visual={<StructureMock />}
           />
-          <FeatureCard
-            icon={<CheckCircle2 className="h-5 w-5" strokeWidth={1.75} aria-hidden />}
-            title={t("landing.features.progress.title")}
-            body={t("landing.features.progress.body")}
+          <ValueRow
+            eyebrow={t("landing.value.assessment.eyebrow")}
+            title={t("landing.value.assessment.title")}
+            body={t("landing.value.assessment.body")}
+            visual={<AssessmentMock />}
+            reverse
           />
-          <FeatureCard
-            icon={<ShieldCheck className="h-5 w-5" strokeWidth={1.75} aria-hidden />}
-            title={t("landing.features.certificates.title")}
-            body={t("landing.features.certificates.body")}
+          <ValueRow
+            eyebrow={t("landing.value.certificates.eyebrow")}
+            title={t("landing.value.certificates.title")}
+            body={t("landing.value.certificates.body")}
+            visual={<CertificateMock />}
           />
-          <FeatureCard
-            icon={<Globe2 className="h-5 w-5" strokeWidth={1.75} aria-hidden />}
-            title={t("landing.features.bilingual.title")}
-            body={t("landing.features.bilingual.body")}
+          <ValueRow
+            eyebrow={t("landing.value.bilingual.eyebrow")}
+            title={t("landing.value.bilingual.title")}
+            body={t("landing.value.bilingual.body")}
+            visual={<BilingualMock />}
+            reverse
           />
         </div>
       </section>
@@ -123,45 +149,6 @@ export function PublicLanding() {
           <Step n={2} text={t("landing.how.step2")} />
           <Step n={3} text={t("landing.how.step3")} />
         </ol>
-      </section>
-
-      {/* ── Quick links — internal-linking section for sitelinks ─── */}
-      <section
-        aria-labelledby="landing-quicklinks-heading"
-        className="mt-20 sm:mt-28"
-      >
-        <h2
-          id="landing-quicklinks-heading"
-          className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl"
-        >
-          {t("landing.quicklinks.heading")}
-        </h2>
-        <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <QuickLink
-            to="/courses"
-            icon={<BookOpen className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
-            title={t("landing.quicklinks.catalog.title")}
-            body={t("landing.quicklinks.catalog.body")}
-          />
-          <QuickLink
-            to="/register"
-            icon={<ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
-            title={t("landing.quicklinks.register.title")}
-            body={t("landing.quicklinks.register.body")}
-          />
-          <QuickLink
-            to="/login"
-            icon={<ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
-            title={t("landing.quicklinks.signIn.title")}
-            body={t("landing.quicklinks.signIn.body")}
-          />
-          <QuickLink
-            to="/forgot-password"
-            icon={<ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
-            title={t("landing.quicklinks.forgot.title")}
-            body={t("landing.quicklinks.forgot.body")}
-          />
-        </ul>
       </section>
 
       {/* ── Final CTA ───────────────────────────────────────────── */}
@@ -190,20 +177,28 @@ export function PublicLanding() {
   )
 }
 
-interface FeatureCardProps {
-  icon: React.ReactNode
+interface ValueRowProps {
+  eyebrow: string
   title: string
   body: string
+  visual: React.ReactNode
+  /** Puts the visual on the left / text on the right at ``lg+``, so
+   *  consecutive rows alternate sides instead of reading as a repeated
+   *  template block. */
+  reverse?: boolean
 }
 
-function FeatureCard({ icon, title, body }: FeatureCardProps) {
+function ValueRow({ eyebrow, title, body, visual, reverse }: ValueRowProps) {
   return (
-    <div className="surface-card flex flex-col rounded-lg p-5">
-      <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-brand/10 text-brand">
-        {icon}
-      </span>
-      <h3 className="mt-4 text-base font-semibold text-ink">{title}</h3>
-      <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">{body}</p>
+    <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-2 lg:gap-12">
+      <div className={reverse ? "lg:order-2" : undefined}>
+        <Eyebrow>{eyebrow}</Eyebrow>
+        <h3 className="mt-2 font-serif text-xl font-semibold tracking-tight text-ink sm:text-2xl">
+          {title}
+        </h3>
+        <p className="mt-3 max-w-md text-sm leading-relaxed text-ink-muted sm:text-base">{body}</p>
+      </div>
+      <div className={reverse ? "lg:order-1" : undefined}>{visual}</div>
     </div>
   )
 }
@@ -224,28 +219,79 @@ function Step({ n, text }: StepProps) {
   )
 }
 
-interface QuickLinkProps {
-  to: string
-  icon: React.ReactNode
-  title: string
-  body: string
+/** Mini module/chapter checklist — illustrates course structure. */
+function StructureMock() {
+  const { t } = useTranslation()
+  return (
+    <div className="surface-card mx-auto max-w-sm rounded-lg p-5">
+      <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-ink-muted">
+        <BookOpen className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+        {t("landing.value.structure.module")}
+      </p>
+      <ul className="mt-4 space-y-2.5">
+        <li className="flex items-center gap-2.5 text-sm text-ink">
+          <Check className="h-4 w-4 shrink-0 text-success" strokeWidth={1.75} aria-hidden />
+          {t("landing.value.structure.chapter1")}
+        </li>
+        <li className="flex items-center gap-2.5 text-sm text-ink">
+          <Check className="h-4 w-4 shrink-0 text-success" strokeWidth={1.75} aria-hidden />
+          {t("landing.value.structure.chapter2")}
+        </li>
+        <li className="flex items-center gap-2.5 text-sm text-ink-muted">
+          <Circle className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+          {t("landing.value.structure.chapter3")}
+        </li>
+      </ul>
+    </div>
+  )
 }
 
-function QuickLink({ to, icon, title, body }: QuickLinkProps) {
+/** Mini quiz question card — illustrates teacher-graded assessment. */
+function AssessmentMock() {
+  const { t } = useTranslation()
   return (
-    <li>
-      <Link
-        to={to}
-        className="group surface-card flex items-start gap-3 rounded-md p-4 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-      >
-        <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-ink-muted transition-colors group-hover:bg-brand/10 group-hover:text-brand">
-          {icon}
-        </span>
-        <span className="min-w-0">
-          <span className="block text-sm font-medium text-ink">{title}</span>
-          <span className="mt-0.5 block text-xs text-ink-muted">{body}</span>
-        </span>
-      </Link>
-    </li>
+    <div className="surface-card mx-auto max-w-sm rounded-lg p-5">
+      <Badge variant="infoSubtle">
+        <PenLine className="mr-1 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+        {t("landing.value.assessment.gradedBadge")}
+      </Badge>
+      <p className="mt-3 text-sm font-medium leading-relaxed text-ink">
+        {t("landing.value.assessment.sampleQuestion")}
+      </p>
+    </div>
+  )
+}
+
+/** Mini certificate card — illustrates number-verifiable certificates. */
+function CertificateMock() {
+  const { t } = useTranslation()
+  return (
+    <div className="surface-card mx-auto max-w-sm rounded-lg p-6 text-center">
+      <span className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand">
+        <Award className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+      </span>
+      <p className="mt-3 font-serif text-base font-semibold text-ink">
+        {t("landing.value.certificates.certTitle")}
+      </p>
+      <div className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-edge px-2.5 py-1 text-xs text-ink-muted">
+        <ShieldCheck className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+        {t("landing.value.certificates.verifyLabel")}
+      </div>
+    </div>
+  )
+}
+
+/** Mini locale toggle — illustrates the auto-translation pipeline. */
+function BilingualMock() {
+  const { t } = useTranslation()
+  return (
+    <div className="surface-card mx-auto max-w-sm rounded-lg p-5 text-center">
+      <div className="flex items-center justify-center gap-3">
+        <span className="rounded-md bg-brand/10 px-3 py-1.5 text-sm font-medium text-brand">RU</span>
+        <Languages className="h-4 w-4 text-ink-muted" strokeWidth={1.75} aria-hidden />
+        <span className="rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-ink-muted">EN</span>
+      </div>
+      <p className="mt-3 text-xs text-ink-muted">{t("landing.value.bilingual.caption")}</p>
+    </div>
   )
 }
