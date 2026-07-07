@@ -425,6 +425,58 @@
   .border-l-stripe {
     border-left-width: 3px;
   }
+
+  /* Auto-generated course cover art (``<CourseCoverFallback>``). A
+     course that hasn't had a cover uploaded gets a deterministic
+     gradient + monogram instead of a flat muted rectangle with a
+     generic icon — the catalog/dashboard shouldn't look empty just
+     because a teacher hasn't uploaded art yet. Each tint is picked
+     from the existing ``--chart-{1..5}`` categorical palette (already
+     tuned for both themes), so this adds no new colour tokens. Each
+     variant sets its own background + letter colour directly (rather
+     than indirecting through a shared custom property) so the rule
+     order/inheritance is trivial to reason about. */
+  .course-cover-tint-1,
+  .course-cover-tint-2,
+  .course-cover-tint-3,
+  .course-cover-tint-4,
+  .course-cover-tint-5 {
+    background-color: hsl(var(--muted));
+  }
+  .course-cover-tint-1 {
+    background-image: linear-gradient(135deg, hsl(var(--chart-1) / 0.32) 0%, hsl(var(--chart-1) / 0.1) 55%, transparent 100%);
+  }
+  .course-cover-tint-2 {
+    background-image: linear-gradient(135deg, hsl(var(--chart-2) / 0.32) 0%, hsl(var(--chart-2) / 0.1) 55%, transparent 100%);
+  }
+  .course-cover-tint-3 {
+    background-image: linear-gradient(135deg, hsl(var(--chart-3) / 0.32) 0%, hsl(var(--chart-3) / 0.1) 55%, transparent 100%);
+  }
+  .course-cover-tint-4 {
+    background-image: linear-gradient(135deg, hsl(var(--chart-4) / 0.32) 0%, hsl(var(--chart-4) / 0.1) 55%, transparent 100%);
+  }
+  .course-cover-tint-5 {
+    background-image: linear-gradient(135deg, hsl(var(--chart-5) / 0.32) 0%, hsl(var(--chart-5) / 0.1) 55%, transparent 100%);
+  }
+  /* Solid (not blended-into-white) tint at high opacity — reads as a
+     clearly coloured monogram against the quiet wash above, the same
+     way the chart tokens already read clearly against both theme
+     backgrounds in data-viz contexts. */
+  .course-cover-tint-1 .course-cover-letter {
+    color: hsl(var(--chart-1) / 0.82);
+  }
+  .course-cover-tint-2 .course-cover-letter {
+    color: hsl(var(--chart-2) / 0.82);
+  }
+  .course-cover-tint-3 .course-cover-letter {
+    color: hsl(var(--chart-3) / 0.82);
+  }
+  .course-cover-tint-4 .course-cover-letter {
+    color: hsl(var(--chart-4) / 0.82);
+  }
+  .course-cover-tint-5 .course-cover-letter {
+    color: hsl(var(--chart-5) / 0.82);
+  }
 }
 
 @layer components {

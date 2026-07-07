@@ -2,7 +2,6 @@ import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import {
   BarChart3,
-  BookOpen,
   ClipboardList,
   Copy,
   Eye,
@@ -24,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { CourseCoverFallback } from "@/components/course/CourseCoverFallback"
 import { toProxyImage } from "@/lib/images"
 import { formatDate } from "@/i18n/format"
 import type { Course } from "@/types"
@@ -63,8 +63,8 @@ export function CourseCard({
             className="h-16 w-16 shrink-0 rounded-lg object-cover sm:h-20 sm:w-20"
           />
         ) : (
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-muted sm:h-20 sm:w-20">
-            <BookOpen className="h-7 w-7 text-ink-muted/40 sm:h-8 sm:w-8" strokeWidth={1.75} aria-hidden />
+          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg sm:h-20 sm:w-20">
+            <CourseCoverFallback courseId={course.id} title={course.title} size="sm" />
           </div>
         )}
         <div className="min-w-0 flex-1">
