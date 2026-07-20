@@ -22,8 +22,8 @@
   },
   "dependencies": {
     "@aarkue/tiptap-math-extension": "^1.4.0",
-    "@datadog/browser-rum": "^7.4.0",
-    "@datadog/browser-rum-react": "^7.4.0",
+    "@datadog/browser-rum": "^7.5.0",
+    "@datadog/browser-rum-react": "^7.5.0",
     "@fontsource-variable/fraunces": "^5.2.9",
     "@fontsource-variable/inter": "^5.2.8",
     "@hello-pangea/dnd": "^18.0.1",
@@ -78,7 +78,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
-    "@datadog/datadog-ci": "^5.20.1",
+    "@datadog/datadog-ci": "^5.21.2",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.60.0",
     "@testing-library/dom": "^10.4.1",
