@@ -47,7 +47,7 @@ jobs:
         if: >-
           (steps.meta.outputs.update-type == 'version-update:semver-patch' ||
            steps.meta.outputs.update-type == 'version-update:semver-minor') &&
-          (steps.meta.outputs.package-ecosystem == 'npm' ||
+          (steps.meta.outputs.package-ecosystem == 'npm_and_yarn' ||
            steps.meta.outputs.package-ecosystem == 'pip')
         run: gh pr merge --auto --squash "$PR_URL"
         env:
