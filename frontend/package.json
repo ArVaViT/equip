@@ -57,7 +57,7 @@
     "axios": "^1.18.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "dompurify": "^3.4.11",
+    "dompurify": "^3.4.12",
     "driver.js": "^1.4.0",
     "highlight.js": "^11.11.1",
     "i18next": "^26.3.4",
