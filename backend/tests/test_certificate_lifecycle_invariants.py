@@ -31,6 +31,7 @@ route adapter.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -38,10 +39,11 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.models.certificate import Certificate
+from app.models.certificate import Certificate, CertificateStatus
 from app.models.course import Course
 from app.models.user import User, UserRole
 from app.services.certificate_service import (
+    _status_error_message,
     admin_approve,
     generate_certificate_number,
     reject,
@@ -343,3 +345,74 @@ class TestCertificateNumberUniqueness:
             n = generate_certificate_number()
             assert n not in seen, f"collision on {n}"
             seen.add(n)
+
+
+class TestArchivedCourseGuard:
+    """``course_id`` is nullable on ``Certificate`` because the FK fires
+    ``ON DELETE SET NULL`` when the underlying course is hard-deleted.
+    An archived certificate (course gone, one way or another) can no
+    longer be teacher-approved or admin-approved -- there's no course
+    left to verify ownership against -- so both paths collapse to the
+    same ownership-denied 403 rather than a 500 or a 404 that would
+    leak whether the course ever existed."""
+
+    def test_teacher_approve_with_null_course_id_is_forbidden(self, db, mock_request):
+        teacher = _make_user(db, user_id=TEACHER_ID, role=UserRole.TEACHER.value)
+        student = _make_user(db, user_id=STUDENT_ID, role=UserRole.STUDENT.value)
+        cert = Certificate(id=uuid.uuid4(), user_id=student.id, course_id=None, status="pending")
+        db.add(cert)
+        db.commit()
+        db.refresh(cert)
+
+        with pytest.raises(HTTPException) as exc_info:
+            teacher_approve(db, cert.id, teacher, mock_request)
+        assert exc_info.value.status_code == 403
+        assert "own courses" in exc_info.value.detail["message"].lower()
+
+    def test_teacher_approve_with_soft_deleted_course_is_forbidden(self, db, mock_request):
+        teacher = _make_user(db, user_id=TEACHER_ID, role=UserRole.TEACHER.value)
+        course = _make_course(db, owner_id=teacher.id)
+        course.deleted_at = datetime.now(UTC)
+        db.commit()
+        cert = _make_cert(db, course=course, status="pending")
+
+        with pytest.raises(HTTPException) as exc_info:
+            teacher_approve(db, cert.id, teacher, mock_request)
+        assert exc_info.value.status_code == 403
+        assert "own courses" in exc_info.value.detail["message"].lower()
+
+    def test_reject_with_missing_course_row_is_forbidden(self, db, mock_request):
+        """``reject`` deliberately does NOT require the course to be live
+        (a teacher may need to clear a request against a course they've
+        since soft-deleted) -- but it still needs *some* course row to
+        check ownership against. When the row is gone entirely (hard
+        delete without the FK cascade, or a stale course_id), reject
+        must still deny rather than raise."""
+        teacher = _make_user(db, user_id=TEACHER_ID, role=UserRole.TEACHER.value)
+        student = _make_user(db, user_id=STUDENT_ID, role=UserRole.STUDENT.value)
+        cert = Certificate(id=uuid.uuid4(), user_id=student.id, course_id=None, status="pending")
+        db.add(cert)
+        db.commit()
+        db.refresh(cert)
+
+        with pytest.raises(HTTPException) as exc_info:
+            reject(db, cert.id, teacher, mock_request)
+        assert exc_info.value.status_code == 403
+        assert "own courses" in exc_info.value.detail["message"].lower()
+
+
+class TestStatusErrorMessageFallback:
+    """``_status_error_message`` special-cases the two ``allowed`` tuples
+    that ``_assert_status`` actually passes today (PENDING-only,
+    TEACHER_APPROVED-only) with a tailored sentence. Any other ``allowed``
+    shape -- unreachable via the current call sites, but a live branch a
+    future third transition gate could hit -- falls back to a generic
+    'cannot transition' message instead of raising a KeyError-style crash."""
+
+    def test_fallback_message_for_unrecognized_allowed_tuple(self, db):
+        student = _make_user(db, user_id=STUDENT_ID, role=UserRole.STUDENT.value)
+        course = _make_course(db, owner_id=TEACHER_ID)
+        cert = _make_cert(db, course=course, student_id=student.id, status="rejected")
+
+        msg = _status_error_message(cert, (CertificateStatus.APPROVED,))
+        assert msg == f"Certificate cannot transition from status: {cert.status}"
