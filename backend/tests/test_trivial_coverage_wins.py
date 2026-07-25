@@ -106,6 +106,25 @@ class TestDualWriteShortCircuits:
     def test_coerce_uuid_passes_none(self) -> None:
         assert _coerce_uuid(None) is None
 
+    def test_unclassifiable_text_with_no_fallback_skips_field(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """When detection has no signal for a field's text and the caller
+        passed no ``fallback_locale`` either, the field is silently
+        skipped — it will retry on the next save with more context —
+        rather than writing a row with ``locale=None``."""
+        monkeypatch.setattr(
+            "app.services.content_versions.dual_write.detect_locale",
+            lambda _text: None,
+        )
+        db = MagicMock()
+        dual_write_entity_content(
+            db,
+            entity_type="course",
+            entity_id="c-3",
+            texts={"title": "???"},
+            fallback_locale=None,
+        )
+        db.add.assert_not_called()
+
 
 class TestEnsureAttemptsAvailableNoLimit:
     def test_max_attempts_none_early_returns(self) -> None:

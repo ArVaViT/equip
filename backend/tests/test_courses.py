@@ -135,6 +135,18 @@ class TestUpdateCourse:
         )
         assert resp.status_code == 404
 
+    def test_owner_teacher_cannot_set_access_mode(self, client: TestClient):
+        """``access_mode`` gates public vs institute enrollment (ADR-010) and
+        is admin-only — even the course's own teacher-owner is forbidden from
+        flipping it, since that would let them self-promote an institute
+        course to public."""
+        course = _create_course(client)
+        resp = client.put(
+            f"{PREFIX}/{course['id']}",
+            json={"access_mode": "public"},
+        )
+        assert resp.status_code == 403
+
 
 class TestAdminManagesForeignCourse:
     """Admin-bypass unification: the whole content tree (course CRUD,
@@ -260,6 +272,30 @@ class TestCloneCourse:
     def test_clone_nonexistent_returns_404(self, client: TestClient):
         resp = client.post(f"{PREFIX}/nonexistent-id/clone")
         assert resp.status_code == 404
+
+    def test_clone_draft_by_non_owner_forbidden(self, db: Session, client: TestClient):
+        """Drafts are only visible to their owner, so cloning one is too —
+        regardless of the requester's teacher role."""
+        import uuid
+
+        from app.api.dependencies import get_current_user, get_optional_user
+        from app.main import app
+        from app.models.user import User, UserRole
+
+        course = _create_course(client)  # created as "draft" by default
+        other = User(
+            id=uuid.uuid4(),
+            email="other-cloner@example.com",
+            full_name="Other Teacher",
+            role=UserRole.TEACHER.value,
+        )
+        db.add(other)
+        db.commit()
+
+        app.dependency_overrides[get_current_user] = lambda: other
+        app.dependency_overrides[get_optional_user] = lambda: other
+        resp = client.post(f"{PREFIX}/{course['id']}/clone")
+        assert resp.status_code == 403
 
     def test_clone_copies_chapter_blocks_and_essay_questions(self, client: TestClient):
         """Regression: clone must propagate storage pointers and essay hints.

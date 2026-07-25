@@ -565,6 +565,32 @@ def test_get_chapter_quiz_anon_unauthorized(anon_client: TestClient):
     assert resp.status_code == 401
 
 
+def test_get_chapter_quiz_extends_max_attempts_with_extra_grant(student_client: TestClient, db: Session):
+    """The student-facing chapter-quiz view must reflect grant attempts,
+    not just the base quiz limit, so the student sees the real number of
+    tries left before they even open the quiz."""
+    from app.models.quiz import QuizExtraAttempt
+
+    _seed_course_with_enrollment(db)
+    quiz, _, _ = _seed_quiz_with_questions(db)
+    quiz.max_attempts = 1
+    db.commit()
+
+    db.add(
+        QuizExtraAttempt(
+            quiz_id=quiz.id,
+            user_id=STUDENT_ID,
+            extra_attempts=2,
+            granted_by=TEACHER_ID,
+        )
+    )
+    db.commit()
+
+    resp = student_client.get("/api/v1/quizzes/chapter/ch-1")
+    assert resp.status_code == 200
+    assert resp.json()["max_attempts"] == 3
+
+
 # ── GET /api/v1/quizzes/chapter/{chapter_id}?source=1 (editor escape hatch) ──
 
 
@@ -835,6 +861,21 @@ def test_update_quiz_student_forbidden(student_client: TestClient, db: Session):
 def test_update_quiz_not_found(client: TestClient, db: Session):
     resp = client.put(f"/api/v1/quizzes/{uuid.uuid4()}", json={"title": "Ghost"})
     assert resp.status_code == 404
+
+
+def test_update_quiz_description_only(client: TestClient, db: Session):
+    """``description`` is popped off the patch and dual-written the same
+    way ``title`` is (Phase 5f) — exercise it independently of title so a
+    description-only PATCH from the editor doesn't silently no-op."""
+    _seed_course(db)
+    quiz, _, _ = _seed_quiz_with_questions(db)
+
+    resp = client.put(
+        f"/api/v1/quizzes/{quiz.id}",
+        json={"description": "Updated description"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["description"] == "Updated description"
 
 
 def test_update_quiz_anon_unauthorized(anon_client: TestClient):
