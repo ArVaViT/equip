@@ -92,8 +92,16 @@ jobs:
       # Fail on HIGH or CRITICAL advisories in production dependencies. Moderate
       # and below are reported but don't block merges; we triage those via the
       # Dependabot queue rather than blocking every PR.
+      #
+      # GHSA-qwww-vcr4-c8h2 (react-router RSC-mode CSRF bypass) is allowlisted:
+      # Equip only uses react-router-dom's declarative BrowserRouter/Routes API,
+      # never the unstable RSC/data-router APIs this advisory requires, so it
+      # isn't exploitable here. The real fix is react-router v8, which drops
+      # react-router-dom entirely and requires React 19.2.7+ — a real migration,
+      # tracked separately, not a same-day dependency bump. Re-check this
+      # allowlist whenever react-router-dom, react, or react-dom is bumped.
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: npx --yes audit-ci@7.1.0 --high --skip-dev --allowlist GHSA-qwww-vcr4-c8h2
 
       # ESLint 10 flat config resolves file patterns via its own config;
       # the legacy --ext flag was removed, and `tsx`/`ts` file matching is
