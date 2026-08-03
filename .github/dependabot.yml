@@ -79,6 +79,12 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
+      # TypeScript 7 is out, but i18next 26.x still declares a peer range of
+      # `^5 || ^6`, so npm's resolver refuses the install outright (ERESOLVE)
+      # and every dev-tooling group PR dies before a single test runs. Lift
+      # this once i18next widens the range.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   # Backend (FastAPI + SQLAlchemy + Supabase Py) -----------------------------
   - package-ecosystem: "pip"
