@@ -62,7 +62,7 @@
     "highlight.js": "^11.11.1",
     "i18next": "^26.3.4",
     "i18next-browser-languagedetector": "^8.2.1",
-    "katex": "^0.17.0",
+    "katex": "^0.18.1",
     "lowlight": "^3.3.0",
     "lucide-react": "^1.23.0",
     "motion": "^12.38.0",
