@@ -23,8 +23,29 @@ import { reactPlugin } from "@datadog/browser-rum-react"
  *      it's noise from owner browsing. Filtering it keeps the panel
  *      honest without adding ``vercel.live`` to every CSP directive.
  *
+ *   3. **Google Fonts pulled in by a browser extension** — we self-host
+ *      every typeface through ``@fontsource`` and reference
+ *      ``fonts.gstatic.com`` nowhere, so a ``font-src`` block naming it
+ *      cannot come from our own markup. In practice it's an extension
+ *      rewriting the page's fonts in the visitor's browser: one such
+ *      visitor produced 32 of these events in a single page load, and
+ *      one of the blocked families (Instrument Serif) isn't even a
+ *      dependency of this project. CSP is doing precisely its job by
+ *      refusing the request — surfacing it as an application error is
+ *      the only unhelpful part.
+ *
  * Real CSP violations from our own assets still come through.
  */
+
+/**
+ * Hosts our own markup never requests, whose violations are therefore
+ * always injected from outside the app.
+ *
+ * Deliberately an explicit list rather than a blanket "any third-party
+ * origin" rule: a script pulled from an unexpected host is exactly the
+ * signal this panel exists to surface, and a catch-all would bury it.
+ */
+const EXTENSION_INJECTED_HOSTS = ["fonts.gstatic.com", "fonts.googleapis.com"]
 export function isBenignCspViolation(event: RumEvent): boolean {
   if (event.type !== "error") return false
   const err = (event as RumEvent & { error?: { message?: string; stack?: string } }).error
@@ -36,6 +57,9 @@ export function isBenignCspViolation(event: RumEvent): boolean {
   if (stack.includes("/assets/schemas-")) return true
   // Vercel preview-comments overlay — only loads for the project owner.
   if (stack.includes("vercel.live") || message.includes("vercel.live")) return true
+  // Google Fonts injected by a browser extension — the blocked URI is
+  // carried in the message, so match there rather than on the stack.
+  if (EXTENSION_INJECTED_HOSTS.some((host) => message.includes(host))) return true
   return false
 }
 

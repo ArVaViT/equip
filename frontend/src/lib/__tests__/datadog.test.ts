@@ -52,6 +52,35 @@ describe("isBenignCspViolation", () => {
     ).toBe(true)
   })
 
+  it("drops Google Fonts blocked by font-src (extension-injected)", () => {
+    // Verbatim message from a real RUM event: one visitor's browser
+    // extension swapped the page fonts and produced 32 of these in a
+    // single page load. We self-host via @fontsource and never request
+    // gstatic, so this can't originate from our own markup.
+    expect(
+      isBenignCspViolation(
+        cspError({
+          message:
+            "csp_violation: 'https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2'" +
+            " blocked by 'font-src' directive",
+          stack: "font-src: 'https://fonts.gstatic.com/s/inter/v20/...' blocked by 'font-src' directive ...",
+        }),
+      ),
+    ).toBe(true)
+  })
+
+  it("drops the Google Fonts stylesheet host too", () => {
+    expect(
+      isBenignCspViolation(
+        cspError({
+          message:
+            "csp_violation: 'https://fonts.googleapis.com/css2?family=Inter' blocked by 'style-src' directive",
+          stack: "style-src ...",
+        }),
+      ),
+    ).toBe(true)
+  })
+
   it("keeps a real CSP violation from our own assets", () => {
     expect(
       isBenignCspViolation(
