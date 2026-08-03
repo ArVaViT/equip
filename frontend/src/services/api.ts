@@ -152,7 +152,18 @@ api.get = function dedupedGet<T = unknown, R = AxiosResponse<T>, D = unknown>(
   const existing = inflight.get(key)
   if (existing) return existing as Promise<R>
 
-  const promise = originalGet<T, R, D>(url, config).finally(() => {
+  // axios 1.19 stopped returning `Promise<R>` from its instance methods and
+  // switched to `Promise<AxiosResponseResult<T, R, D, P>>` — a conditional
+  // that resolves to `AxiosResponse<T, D, {}, P>` when the caller left `R` at
+  // axios' internal `AxiosResponseDefault` sentinel, and to `R` otherwise.
+  // That distinction is exactly what this wrapper cannot express: it declares
+  // its own `R = AxiosResponse<T>` default, so from the compiler's side `R`
+  // is an open type parameter that might be the sentinel, and the conditional
+  // stays unresolved. `AxiosResponseResult` isn't exported, so we can't mirror
+  // the signature either. The assignment below is already reconciled with
+  // `as typeof api.get`; this cast is the same reconciliation one level down.
+  // Purely type-level — dedupe behaviour is unchanged.
+  const promise = (originalGet<T, R, D>(url, config) as Promise<R>).finally(() => {
     inflight.delete(key)
   })
   inflight.set(key, promise as Promise<AxiosResponse<unknown>>)
