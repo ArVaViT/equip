@@ -55,3 +55,13 @@ CREATE UNIQUE INDEX ix_invitations_one_pending_per_email_role
 -- grants). Applies even to SELECT: a token is a bearer secret and an
 -- email is PII, neither belongs in a PostgREST-reachable table.
 REVOKE ALL ON public.invitations FROM anon, authenticated;
+
+-- Defence in depth, matching every other table in the schema: grants are the
+-- boundary, RLS with zero policies is the backstop if one is ever granted by
+-- accident. The backend connects as the table owner and is unaffected.
+--
+-- Added 2026-08-06, when applying this migration: it was written on
+-- 2026-07-07 but never reached production, so the invitations endpoints have
+-- been failing on a missing relation ever since. Found by diffing the
+-- SQLAlchemy model tables against information_schema.
+ALTER TABLE public.invitations ENABLE ROW LEVEL SECURITY;
