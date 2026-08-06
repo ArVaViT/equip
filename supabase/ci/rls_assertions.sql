@@ -242,5 +242,26 @@ BEGIN
   RAISE NOTICE 'OK: profiles SELECT is self-only (cross-tenant read blocked)';
 END $$;
 
+-- 10) org_settings: institutional configuration — the school's default scheme,
+--     pass threshold and grade bands — is backend-only. The SPA reads it
+--     through the grading-config endpoint, never straight from the table, so
+--     `authenticated` must have no privilege on it at all. A leak here would
+--     also expose the school's identity fields to any signed-in user.
+DO $$
+BEGIN
+  PERFORM * FROM public.org_settings;
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can SELECT org_settings';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: org_settings SELECT denied (privilege)';
+END $$;
+
+DO $$
+BEGIN
+  UPDATE public.org_settings SET default_pass_threshold = 0;
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can UPDATE org_settings';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: org_settings UPDATE denied (privilege)';
+END $$;
+
 RESET ROLE;
 SELECT 'RLS policy assertions passed' AS result;

@@ -109,3 +109,8 @@ VALUES (
 -- pass threshold are institutional configuration, and every read the SPA needs
 -- arrives through the FastAPI grading-config endpoint.
 REVOKE ALL ON public.org_settings FROM anon, authenticated;
+
+-- Defence in depth, and consistency with the other 33 tables. Grants are the
+-- boundary; RLS with zero policies is the backstop if one is ever granted by
+-- accident. The backend connects as the table owner and is unaffected.
+ALTER TABLE public.org_settings ENABLE ROW LEVEL SECURITY;

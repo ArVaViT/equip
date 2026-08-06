@@ -431,9 +431,16 @@ CREATE TABLE public.courses (
     deleted_at timestamp with time zone,
     source_locale character varying(8) DEFAULT 'ru'::character varying NOT NULL,
     access_mode text DEFAULT 'public'::text NOT NULL,
+    grading_scheme text DEFAULT 'letter'::text NOT NULL,
+    pass_threshold numeric(5,2) DEFAULT 70 NOT NULL,
+    academic_hours integer,
     CONSTRAINT chk_courses_status CHECK ((status = ANY (ARRAY['draft'::text, 'published'::text]))),
+    CONSTRAINT ck_courses_scheme_threshold CHECK (((grading_scheme <> 'five_point'::text) OR (pass_threshold <= (75)::numeric))),
     CONSTRAINT ck_courses_weights_sum_100 CHECK ((((quiz_weight + assignment_weight) + participation_weight) = 100)),
+    CONSTRAINT courses_academic_hours_check CHECK ((academic_hours > 0)),
     CONSTRAINT courses_access_mode_check CHECK ((access_mode = ANY (ARRAY['public'::text, 'institute'::text]))),
+    CONSTRAINT courses_grading_scheme_check CHECK ((grading_scheme = ANY (ARRAY['pass_fail'::text, 'percent'::text, 'five_point'::text, 'letter'::text]))),
+    CONSTRAINT courses_pass_threshold_check CHECK (((pass_threshold >= (0)::numeric) AND (pass_threshold <= (100)::numeric))),
     CONSTRAINT courses_source_locale_check CHECK (((source_locale)::text = ANY (ARRAY[('ru'::character varying)::text, ('en'::character varying)::text])))
 );
 
@@ -586,6 +593,26 @@ CREATE TABLE public.notifications (
     is_read boolean DEFAULT false NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     meta jsonb
+);
+
+
+--
+-- Name: org_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.org_settings (
+    id boolean DEFAULT true NOT NULL,
+    school_name_ru text,
+    school_name_en text,
+    city text,
+    default_grading_scheme text DEFAULT 'letter'::text NOT NULL,
+    default_pass_threshold numeric(5,2) DEFAULT 70 NOT NULL,
+    grade_bands jsonb DEFAULT '{}'::jsonb NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_by uuid,
+    CONSTRAINT org_settings_default_grading_scheme_check CHECK ((default_grading_scheme = ANY (ARRAY['pass_fail'::text, 'percent'::text, 'five_point'::text, 'letter'::text]))),
+    CONSTRAINT org_settings_default_pass_threshold_check CHECK (((default_pass_threshold >= (0)::numeric) AND (default_pass_threshold <= (100)::numeric))),
+    CONSTRAINT org_settings_id_check CHECK (id)
 );
 
 
@@ -975,6 +1002,14 @@ ALTER TABLE ONLY public.modules
 
 ALTER TABLE ONLY public.notifications
     ADD CONSTRAINT notifications_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: org_settings org_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.org_settings
+    ADD CONSTRAINT org_settings_pkey PRIMARY KEY (id);
 
 
 --
@@ -2064,6 +2099,14 @@ ALTER TABLE ONLY public.notifications
 
 
 --
+-- Name: org_settings org_settings_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.org_settings
+    ADD CONSTRAINT org_settings_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
 -- Name: profiles profiles_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2524,6 +2567,12 @@ CREATE POLICY notifications_select_own ON public.notifications FOR SELECT TO aut
 
 CREATE POLICY prereqs_select_all ON public.course_prerequisites FOR SELECT TO authenticated USING ((( SELECT auth.uid() AS uid) IS NOT NULL));
 
+
+--
+-- Name: org_settings; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.org_settings ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: profiles; Type: ROW SECURITY; Schema: public; Owner: -
