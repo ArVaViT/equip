@@ -273,8 +273,7 @@ def test_public_course_with_no_window_flags(db: Session, teacher: User):
 def test_quiz_weight_zero_flags_polish_when_quiz_chapter_present(db: Session, teacher: User):
     course = _make_course(db)
     course.quiz_weight = 0
-    course.assignment_weight = 80
-    course.participation_weight = 20
+    course.assignment_weight = 100
     module = _add_module(db, course)
     chapter = _add_chapter(db, module, chapter_type="quiz")
     _add_quiz_with_question(db, chapter)

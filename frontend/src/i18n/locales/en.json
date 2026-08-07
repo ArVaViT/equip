@@ -1683,12 +1683,10 @@
     },
     "config": {
       "title": "Grading Configuration",
-      "description": "Set how quizzes, assignments, and participation contribute to final grades",
+      "description": "Set how quizzes and assignments split the course grade",
       "quizWeight": "Quiz Weight (%)",
       "assignmentWeight": "Assignment Weight (%)",
-      "participationWeight": "Participation Weight (%)",
-      "totalValid": "Total: {{total}}% ✓",
-      "totalInvalid": "Total: {{total}}% (must equal 100%)",
+      "split": "Quizzes {{quiz}}% · Assignments {{assignment}}%",
       "saving": "Saving...",
       "save": "Save Weights"
     },

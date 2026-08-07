@@ -94,9 +94,8 @@ def _seed_course(
         description="Test",
         status="published",
         created_by=owner,
-        quiz_weight=30,
-        assignment_weight=50,
-        participation_weight=20,
+        quiz_weight=40,
+        assignment_weight=60,
     )
     module = make_module_with_text(
         db, module_id=f"{course_id}-mod", course_id=course_id, title="Module 1", order_index=1
@@ -787,9 +786,11 @@ class TestGradingConfig:
         assert r.status_code == 200
         body = r.json()
         assert body == {
-            "quiz_weight": 30,
-            "assignment_weight": 50,
-            "participation_weight": 20,
+            "quiz_weight": 40,
+            "assignment_weight": 60,
+            # Retired (D5): the field is still returned for client
+            # compatibility but is pinned to 0 by the schema and a DB CHECK.
+            "participation_weight": 0,
         }
 
     def test_get_config_course_not_found(self, client: TestClient, db: Session):
@@ -800,11 +801,27 @@ class TestGradingConfig:
         _seed_course(db)
         r = client.put(
             "/api/v1/grades/course/course-1/config",
+            json={"quiz_weight": 50, "assignment_weight": 50},
+        )
+        assert r.status_code == 200
+        assert r.json()["quiz_weight"] == 50
+        assert r.json()["assignment_weight"] == 50
+
+    def test_update_config_from_stale_client_folds_participation(self, client: TestClient, db: Session):
+        """A browser loaded before D5 keeps PUTing three weights.
+
+        Answering 422 would strand a teacher mid-edit, so the server folds the
+        participation share into the two real categories: 40/40/20 -> 50/50.
+        """
+        _seed_course(db)
+        r = client.put(
+            "/api/v1/grades/course/course-1/config",
             json={"quiz_weight": 40, "assignment_weight": 40, "participation_weight": 20},
         )
         assert r.status_code == 200
-        assert r.json()["quiz_weight"] == 40
-        assert r.json()["assignment_weight"] == 40
+        body = r.json()
+        assert (body["quiz_weight"], body["assignment_weight"]) == (50, 50)
+        assert body["participation_weight"] == 0
 
     def test_update_weights_not_100(self, client: TestClient, db: Session):
         _seed_course(db)
@@ -1080,9 +1097,8 @@ def _seed_teacher_progress_dashboard(db: Session) -> tuple[str, uuid.UUID, uuid.
         title="Dashboard Course",
         status="published",
         created_by=TEACHER_ID,
-        quiz_weight=30,
-        assignment_weight=50,
-        participation_weight=20,
+        quiz_weight=40,
+        assignment_weight=60,
     )
     module = make_module_with_text(db, module_id=f"{course_id}-mod", course_id=course_id, title="Mod 1", order_index=1)
     ch_quiz_id = f"{course_id}-quiz"

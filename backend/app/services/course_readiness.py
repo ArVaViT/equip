@@ -402,9 +402,10 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
                 )
 
     # ── Grading weights (polish) ────────────────────────────────────
-    # The DB CHECK guarantees ``quiz + assignment + participation == 100``
-    # but a course with quiz chapters and ``quiz_weight = 0`` is
-    # surprising: students complete quizzes that don't count. Flag it.
+    # Since D5 there are two categories, not three: participation is pinned to
+    # 0 by CHECK, so the weights are simply quiz + assignment == 100. A course
+    # with quiz chapters and ``quiz_weight = 0`` is still surprising — students
+    # complete quizzes that don't count — so both checks stay.
     if has_any_quiz_chapter:
         checks.append(
             ReadinessCheck(

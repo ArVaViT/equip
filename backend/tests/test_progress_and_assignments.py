@@ -79,9 +79,8 @@ def _seed_foreign_teacher_chapter(db: Session) -> Chapter:
         description="x",
         status="published",
         created_by=OTHER_TEACHER_ID,
-        quiz_weight=30,
-        assignment_weight=50,
-        participation_weight=20,
+        quiz_weight=40,
+        assignment_weight=60,
     )
     module = Module(
         id="mod-foreign-asg",

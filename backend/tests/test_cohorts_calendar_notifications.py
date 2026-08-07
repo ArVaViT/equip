@@ -64,9 +64,8 @@ def _seed_course(db: Session, *, course_id: str = "test-course-1", owner_id=TEAC
         description="A test course",
         status="published",
         created_by=owner_id,
-        quiz_weight=30,
-        assignment_weight=50,
-        participation_weight=20,
+        quiz_weight=40,
+        assignment_weight=60,
     )
     db.commit()
     db.refresh(course)

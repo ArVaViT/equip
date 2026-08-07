@@ -70,7 +70,7 @@ function makeStudent(id: string, name: string): StudentCalculatedGrade {
 const CONFIG: GradingConfig = {
   quiz_weight: 30,
   assignment_weight: 50,
-  participation_weight: 20,
+  participation_weight: 0,
 }
 
 function Harness({ studentCount }: { studentCount: number }) {
@@ -130,7 +130,7 @@ function countRowRenders(studentCount: number): {
   const mountCount = useTranslationCalls.length
   useTranslationCalls.length = 0
   const firstRow = container.querySelector(
-    "[class*='grid-cols-[1fr_80px_80px_90px_80px_70px_70px]'].cursor-pointer",
+    "[class*='grid-cols-[1fr_80px_80px_80px_70px_70px]'].cursor-pointer",
   ) as HTMLElement | null
   if (!firstRow) throw new Error("first row not found")
   fireEvent.click(firstRow)
@@ -181,7 +181,7 @@ describe("SummaryTab row memoisation", () => {
       </I18nextProvider>,
     )
     const rows = container.querySelectorAll(
-      "[class*='grid-cols-[1fr_80px_80px_90px_80px_70px_70px]'].cursor-pointer",
+      "[class*='grid-cols-[1fr_80px_80px_80px_70px_70px]'].cursor-pointer",
     )
     expect(rows.length).toBe(10)
   })
