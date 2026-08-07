@@ -32,9 +32,8 @@ export function GradebookStats({ studentCount, classAverage, gradedCount, config
       />
       <StatCard
         label={t("gradebook.stats.weights")}
-        // Composite triple like "30/50/20" would feel chunky at the
-        // default ``text-2xl font-bold`` — keep it readable.
-        value={`${config.quiz_weight}/${config.assignment_weight}/${config.participation_weight}`}
+        // Two categories since D5 — "40/60" reads at a glance.
+        value={`${config.quiz_weight}/${config.assignment_weight}`}
         valueClassName="text-base font-semibold"
         icon={Calculator}
       />

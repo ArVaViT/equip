@@ -77,9 +77,9 @@ export default function TeacherGradebook() {
   const [error, setError] = useState<string | null>(null)
 
   const [config, setConfig] = useState<GradingConfig>({
-    quiz_weight: 30,
-    assignment_weight: 50,
-    participation_weight: 20,
+    quiz_weight: 40,
+    assignment_weight: 60,
+    participation_weight: 0,
   })
   const [configDraft, setConfigDraft] = useState<GradingConfig>(config)
   const [configOpen, setConfigOpen] = useState(false)
@@ -160,9 +160,6 @@ export default function TeacherGradebook() {
 
   const saveConfig = async () => {
     if (!courseId) return
-    const total =
-      configDraft.quiz_weight + configDraft.assignment_weight + configDraft.participation_weight
-    if (total !== 100) return
     setSavingConfig(true)
     try {
       const updated = await coursesService.updateGradingConfig(courseId, configDraft)

@@ -44,9 +44,8 @@ def _seed_published_course(db: Session, course_id: str = "g-route") -> str:
         title="Test",
         status="published",
         created_by=TEACHER_ID,
-        quiz_weight=40,
-        assignment_weight=40,
-        participation_weight=20,
+        quiz_weight=50,
+        assignment_weight=50,
     )
     db.commit()
     return course.id

@@ -39,7 +39,7 @@ interface Props {
 }
 
 /**
- * "Summary Grades" tab: auto-calculated quiz/assignment/participation
+ * "Summary Grades" tab: auto-calculated quiz/assignment
  * breakdown per student with an inline panel for manual grade overrides.
  */
 export function SummaryTab({
@@ -72,9 +72,6 @@ export function SummaryTab({
           break
         case "assignment":
           cmp = a.breakdown.assignment_avg - b.breakdown.assignment_avg
-          break
-        case "participation":
-          cmp = a.breakdown.participation_pct - b.breakdown.participation_pct
           break
         case "final":
           cmp = a.breakdown.final_score - b.breakdown.final_score
@@ -116,11 +113,10 @@ export function SummaryTab({
           />
         ) : (
           <div className="overflow-x-auto">
-            <div className="grid grid-cols-[1fr_80px_80px_90px_80px_70px_70px] gap-3 px-4 py-3 border-b bg-muted/30 rounded-t-lg min-w-[700px]">
+            <div className="grid grid-cols-[1fr_80px_80px_80px_70px_70px] gap-3 px-4 py-3 border-b bg-muted/30 rounded-t-lg min-w-[700px]">
               <SortHeader field="name" label={t("gradebook.summary.thStudent")} sortField={sortField} sortDir={sortDir} onToggle={toggleSort} />
               <SortHeader field="quiz" label={t("gradebook.summary.thQuiz")} sortField={sortField} sortDir={sortDir} onToggle={toggleSort} className="justify-end" />
               <SortHeader field="assignment" label={t("gradebook.summary.thAssignment")} sortField={sortField} sortDir={sortDir} onToggle={toggleSort} className="justify-end" />
-              <SortHeader field="participation" label={t("gradebook.summary.thParticipation")} sortField={sortField} sortDir={sortDir} onToggle={toggleSort} className="justify-end" />
               <SortHeader field="final" label={t("gradebook.summary.thFinal")} sortField={sortField} sortDir={sortDir} onToggle={toggleSort} className="justify-end" />
               <SortHeader field="letter" label={t("gradebook.summary.thGrade")} sortField={sortField} sortDir={sortDir} onToggle={toggleSort} className="justify-center" />
               <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted text-center">{t("gradebook.summary.thManual")}</span>
@@ -227,7 +223,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
   return (
     <div>
       <div
-        className="grid cursor-pointer grid-cols-[1fr_80px_80px_90px_80px_70px_70px] items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40"
+        className="grid cursor-pointer grid-cols-[1fr_80px_80px_80px_70px_70px] items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40"
         onClick={() => onToggleExpand(student.student_id)}
       >
         <div className="flex items-center gap-2 min-w-0">
@@ -243,7 +239,6 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
         </div>
         <p className="text-sm tabular-nums text-right">{b.quiz_avg.toFixed(1)}%</p>
         <p className="text-sm tabular-nums text-right">{b.assignment_avg.toFixed(1)}%</p>
-        <p className="text-sm tabular-nums text-right">{b.participation_pct.toFixed(1)}%</p>
         <p className="text-sm font-semibold tabular-nums text-right">{b.final_score.toFixed(1)}%</p>
         <div className="flex justify-center">
           <span className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ${letterColor(b.letter_grade)}`}>
@@ -281,12 +276,6 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
               pct={b.assignment_avg}
               weight={config.assignment_weight}
               weighted={b.assignment_weighted}
-            />
-            <BreakdownEntry
-              label={t("gradebook.summary.breakdownParticipation")}
-              pct={b.participation_pct}
-              weight={config.participation_weight}
-              weighted={b.participation_weighted}
             />
           </div>
 
@@ -379,11 +368,10 @@ function ClassAverageRow({
     summary.students.reduce((acc, st) => acc + pick(st), 0) / studentCount
 
   return (
-    <div className="grid grid-cols-[1fr_80px_80px_90px_80px_70px_70px] gap-3 px-4 py-3 bg-muted/40 font-semibold text-sm items-center border-t-2">
+    <div className="grid grid-cols-[1fr_80px_80px_80px_70px_70px] gap-3 px-4 py-3 bg-muted/40 font-semibold text-sm items-center border-t-2">
       <span className="pl-6">{t("gradebook.summary.classAverageRow", { count: studentCount })}</span>
       <p className="tabular-nums text-right">{avg((s) => s.breakdown.quiz_avg).toFixed(1)}%</p>
       <p className="tabular-nums text-right">{avg((s) => s.breakdown.assignment_avg).toFixed(1)}%</p>
-      <p className="tabular-nums text-right">{avg((s) => s.breakdown.participation_pct).toFixed(1)}%</p>
       <p className="tabular-nums text-right">{classAvg.toFixed(1)}%</p>
       <span />
       <span />

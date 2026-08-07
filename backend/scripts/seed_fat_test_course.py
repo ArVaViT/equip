@@ -119,9 +119,8 @@ def _ensure_course(db: Session, *, course_id: str, title: str, teacher: User) ->
             source_locale="en",
             created_by=teacher.id,
             access_mode="public",
-            quiz_weight=40,
-            assignment_weight=40,
-            participation_weight=20,
+            quiz_weight=50,
+            assignment_weight=50,
         )
         db.add(course)
         db.flush()

@@ -89,9 +89,8 @@ def _seed_course_with_one_quiz_one_assignment(
         description="x",
         status="published",
         created_by=TEACHER_ID,
-        quiz_weight=40,
-        assignment_weight=40,
-        participation_weight=20,
+        quiz_weight=50,
+        assignment_weight=50,
     )
     module = make_module_with_text(
         db,
@@ -221,13 +220,15 @@ class TestCalculateStudentGradeForCourse:
 
         breakdown = calculate_student_grade_for_course(db, course, STUDENT_ID)
 
-        # weights are 40/40/20; everything is 100 → final must be 100.
+        # weights are 50/50; everything is 100 → final must be 100.
         assert breakdown.quiz_avg == 100.0
-        assert breakdown.quiz_weighted == 40.0
+        assert breakdown.quiz_weighted == 50.0
         assert breakdown.assignment_avg == 100.0
-        assert breakdown.assignment_weighted == 40.0
+        assert breakdown.assignment_weighted == 50.0
+        # Participation is retired (D5): still reported for wire
+        # compatibility, but it can no longer contribute to the score.
         assert breakdown.participation_pct == 100.0
-        assert breakdown.participation_weighted == 20.0
+        assert breakdown.participation_weighted == 0.0
         assert breakdown.final_score == 100.0
         assert breakdown.letter_grade == "A"
 
@@ -252,13 +253,18 @@ class TestCalculateStudentGradeForCourse:
 
         breakdown = calculate_student_grade_for_course(db, course, STUDENT_ID)
 
-        # 50% quiz * 40 weight = 20; nothing else contributes.
+        # 50% quiz * 50 weight = 25; nothing else contributes.
+        #
+        # Note what this number really says: the student answered half the
+        # quiz and has not touched the assignment, yet the assignment category
+        # still drags the total down as if it were a zero. Empty-category
+        # redistribution (D4, next PR) is what makes this honest.
         assert breakdown.quiz_avg == 50.0
-        assert breakdown.quiz_weighted == 20.0
+        assert breakdown.quiz_weighted == 25.0
         assert breakdown.assignment_avg == 0.0
         assert breakdown.assignment_weighted == 0.0
         assert breakdown.participation_pct == 0.0
-        assert breakdown.final_score == 20.0
+        assert breakdown.final_score == 25.0
         assert breakdown.letter_grade == "F"
 
     def test_best_of_two_attempts_wins(self, db: Session, student) -> None:
@@ -317,7 +323,7 @@ class TestCalculateStudentGradeForCourse:
 
         breakdown = calculate_student_grade_for_course(db, course, STUDENT_ID)
         assert breakdown.assignment_avg == 100.0
-        assert breakdown.assignment_weighted == 40.0
+        assert breakdown.assignment_weighted == 50.0
 
     def test_uncompleted_attempt_does_not_count(self, db: Session, student) -> None:
         """Attempts without ``completed_at`` (still in flight, saved
@@ -449,9 +455,8 @@ class TestCalculateAllStudentGrades:
             title="Empty",
             status="published",
             created_by=TEACHER_ID,
-            quiz_weight=40,
-            assignment_weight=40,
-            participation_weight=20,
+            quiz_weight=50,
+            assignment_weight=50,
         )
         db.commit()
         _enroll(db, STUDENT_ID, course.id)

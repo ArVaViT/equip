@@ -18,9 +18,19 @@ interface Props {
 }
 
 /**
- * Collapsible card where a teacher edits the quiz/assignment/participation
- * weight split. The component enforces that the three weights must sum
- * to 100 before the save button becomes clickable.
+ * Collapsible card where a teacher splits the course grade between quizzes
+ * and assignments.
+ *
+ * Two changes from the three-field version, both in service of the same goal —
+ * a teacher should not be able to get this wrong:
+ *
+ * 1. "Participation" is gone (D5). It duplicated course progress and counted
+ *    every passed quiz twice, and no Bible-college handbook in the redesign
+ *    research treats it as a weighted category.
+ * 2. The two remaining weights are complementary, so editing one sets the
+ *    other. The old card let a teacher type 30 and 50, then blocked Save with
+ *    "must sum to 100" — an error state that existed only because the form
+ *    asked for a number it could compute itself.
  */
 export function GradingConfigCard({
   open,
@@ -31,8 +41,14 @@ export function GradingConfigCard({
   saving,
 }: Props) {
   const { t } = useTranslation()
-  const total = draft.quiz_weight + draft.assignment_weight + draft.participation_weight
-  const valid = total === 100
+  // Complementary by construction — the invalid state is unreachable.
+  const setSplit = (quiz: number) =>
+    onDraftChange({
+      ...draft,
+      quiz_weight: quiz,
+      assignment_weight: 100 - quiz,
+      participation_weight: 0,
+    })
   // Stable id used for ``aria-controls`` so a screen-reader user
   // pressing Enter/Space on the trigger knows which panel just opened.
   const panelId = useId()
@@ -71,34 +87,26 @@ export function GradingConfigCard({
       </button>
       {open && (
         <CardContent id={panelId} className="border-t pt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <WeightField
               label={t("gradebook.config.quizWeight")}
               value={draft.quiz_weight}
-              onChange={(v) => onDraftChange({ ...draft, quiz_weight: v })}
+              onChange={setSplit}
             />
             <WeightField
               label={t("gradebook.config.assignmentWeight")}
               value={draft.assignment_weight}
-              onChange={(v) => onDraftChange({ ...draft, assignment_weight: v })}
-            />
-            <WeightField
-              label={t("gradebook.config.participationWeight")}
-              value={draft.participation_weight}
-              onChange={(v) => onDraftChange({ ...draft, participation_weight: v })}
+              onChange={(v) => setSplit(100 - v)}
             />
           </div>
           <div className="flex items-center justify-between mt-4">
-            <p
-              className={`text-sm font-medium ${
-                valid ? "text-success" : "text-destructive"
-              }`}
-            >
-              {valid
-                ? t("gradebook.config.totalValid", { total })
-                : t("gradebook.config.totalInvalid", { total })}
+            <p className="text-sm font-medium text-ink-muted">
+              {t("gradebook.config.split", {
+                quiz: draft.quiz_weight,
+                assignment: draft.assignment_weight,
+              })}
             </p>
-            <Button size="sm" onClick={onSave} disabled={!valid || saving}>
+            <Button size="sm" onClick={onSave} disabled={saving}>
               <Save className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
               {saving ? t("gradebook.config.saving") : t("gradebook.config.save")}
             </Button>

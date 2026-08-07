@@ -8,7 +8,6 @@ export const SORT_FIELDS = [
   "name",
   "quiz",
   "assignment",
-  "participation",
   "final",
   "letter",
 ] as const

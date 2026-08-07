@@ -62,6 +62,7 @@ class Course(Base):
             "quiz_weight + assignment_weight + participation_weight = 100",
             name="ck_courses_weights_sum_100",
         ),
+        CheckConstraint("participation_weight = 0", name="ck_courses_participation_retired"),
         CheckConstraint(
             "grading_scheme IN ('pass_fail', 'percent', 'five_point', 'letter')",
             name="courses_grading_scheme_check",
@@ -96,9 +97,13 @@ class Course(Base):
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), onupdate=func.now())
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    quiz_weight: Mapped[int] = mapped_column(default=30, server_default="30")
-    assignment_weight: Mapped[int] = mapped_column(default=50, server_default="50")
-    participation_weight: Mapped[int] = mapped_column(default=20, server_default="20")
+    quiz_weight: Mapped[int] = mapped_column(default=40, server_default="40")
+    assignment_weight: Mapped[int] = mapped_column(default=60, server_default="60")
+    # Retired as a weighted category (D5) — pinned to 0 everywhere: DB CHECK,
+    # these defaults, and the API schema. It duplicated `enrollments.progress`
+    # and counted every passed quiz twice. Completion is the attendance gate;
+    # the column survives only for schema compatibility.
+    participation_weight: Mapped[int] = mapped_column(default=0, server_default="0")
 
     # How this course is graded (D1). Four presets, never free-form: teachers
     # pick one, only the institution edits the bands behind them
