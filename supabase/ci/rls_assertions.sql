@@ -263,5 +263,25 @@ EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: org_settings UPDATE denied (privilege)';
 END $$;
 
+-- 11) invitations: a token is a bearer capability and the email column is PII.
+--     Neither belongs in a PostgREST-reachable table — a signed-in student who
+--     could SELECT here would be able to redeem someone else's teacher invite.
+DO $$
+BEGIN
+  PERFORM * FROM public.invitations;
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can SELECT invitations (tokens are bearer secrets)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: invitations SELECT denied (privilege)';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO public.invitations (email, role, token)
+  VALUES ('self@test.local', 'teacher', 'forged-token');
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can INSERT invitations (self-promotion to teacher)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: invitations INSERT denied (privilege)';
+END $$;
+
 RESET ROLE;
 SELECT 'RLS policy assertions passed' AS result;

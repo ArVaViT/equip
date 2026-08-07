@@ -567,6 +567,25 @@ CREATE TABLE public.enrollments (
 
 
 --
+-- Name: invitations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.invitations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    email text NOT NULL,
+    role text NOT NULL,
+    token text NOT NULL,
+    status text DEFAULT 'pending'::text NOT NULL,
+    invited_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    accepted_at timestamp with time zone,
+    expires_at timestamp with time zone DEFAULT (now() + '7 days'::interval) NOT NULL,
+    CONSTRAINT invitations_role_check CHECK ((role = ANY (ARRAY['teacher'::text, 'student'::text]))),
+    CONSTRAINT invitations_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'revoked'::text])))
+);
+
+
+--
 -- Name: modules; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -986,6 +1005,22 @@ ALTER TABLE ONLY public.daily_challenge_streaks
 
 ALTER TABLE ONLY public.enrollments
     ADD CONSTRAINT enrollments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: invitations invitations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.invitations
+    ADD CONSTRAINT invitations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: invitations invitations_token_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.invitations
+    ADD CONSTRAINT invitations_token_key UNIQUE (token);
 
 
 --
@@ -1489,6 +1524,20 @@ CREATE INDEX ix_enrollments_course_id ON public.enrollments USING btree (course_
 --
 
 CREATE INDEX ix_enrollments_user_id ON public.enrollments USING btree (user_id);
+
+
+--
+-- Name: ix_invitations_email_role; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_invitations_email_role ON public.invitations USING btree (email, role, created_at DESC);
+
+
+--
+-- Name: ix_invitations_one_pending_per_email_role; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_invitations_one_pending_per_email_role ON public.invitations USING btree (email, role) WHERE (status = 'pending'::text);
 
 
 --
@@ -2083,6 +2132,14 @@ ALTER TABLE ONLY public.enrollments
 
 
 --
+-- Name: invitations invitations_invited_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.invitations
+    ADD CONSTRAINT invitations_invited_by_fkey FOREIGN KEY (invited_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
 -- Name: modules modules_course_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2534,6 +2591,12 @@ CREATE POLICY enrollments_select ON public.enrollments FOR SELECT TO authenticat
    FROM public.profiles p
   WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text])))))));
 
+
+--
+-- Name: invitations; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.invitations ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: modules; Type: ROW SECURITY; Schema: public; Owner: -
