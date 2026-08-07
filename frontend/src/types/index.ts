@@ -107,9 +107,22 @@ interface GradeBreakdown {
   assignment_avg: number
   assignment_weighted: number
   participation_pct: number
+  /** Retired as a weighted category (D5) — always 0, kept for wire compatibility. */
   participation_weighted: number
   final_score: number
   letter_grade: string
+  /** Weights the score was actually computed from: an empty category drops out
+   *  and hands its weight to the other one. Equal to the configured weights
+   *  when both categories have items. */
+  effective_quiz_weight: number
+  effective_assignment_weight: number
+  /** True when the effective weights differ from the configured ones, so the
+   *  UI can explain why instead of showing a number that contradicts the
+   *  settings page. */
+  weights_redistributed: boolean
+  /** `completion_pass` — the course has nothing gradable; `final_score` and
+   *  `letter_grade` carry no meaning. */
+  result_state: "graded" | "completion_pass"
 }
 
 export interface StudentCalculatedGrade {

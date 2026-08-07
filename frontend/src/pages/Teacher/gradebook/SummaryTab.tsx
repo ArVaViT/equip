@@ -10,7 +10,6 @@ import {
   Save, Award, MessageSquare, Users,
 } from "lucide-react"
 import type {
-  GradingConfig,
   GradeSummaryResponse,
   StudentGrade,
   StudentCalculatedGrade,
@@ -25,7 +24,6 @@ import { EMPTY_FORM, letterColor } from "./helpers"
 
 interface Props {
   summary: GradeSummaryResponse | null
-  config: GradingConfig
   manualGrades: Map<string, StudentGrade>
   forms: Map<string, GradeForm>
   saving: string | null
@@ -44,7 +42,6 @@ interface Props {
  */
 export function SummaryTab({
   summary,
-  config,
   manualGrades,
   forms,
   saving,
@@ -127,7 +124,6 @@ export function SummaryTab({
                 <StudentSummaryRow
                   key={student.student_id}
                   student={student}
-                  config={config}
                   manualGrade={manualGrades.get(student.student_id)}
                   form={forms.get(student.student_id) ?? EMPTY_FORM}
                   expanded={expandedId === student.student_id}
@@ -187,7 +183,6 @@ function SortHeader({ field, label, sortField, sortDir, onToggle, className }: S
 
 interface StudentSummaryRowProps {
   student: StudentCalculatedGrade
-  config: GradingConfig
   manualGrade: StudentGrade | undefined
   form: GradeForm
   expanded: boolean
@@ -207,7 +202,6 @@ interface StudentSummaryRowProps {
  */
 const StudentSummaryRow = memo(function StudentSummaryRow({
   student,
-  config,
   manualGrade,
   form,
   expanded,
@@ -268,16 +262,34 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
             <BreakdownEntry
               label={t("gradebook.summary.breakdownQuiz")}
               pct={b.quiz_avg}
-              weight={config.quiz_weight}
+              // Effective, not configured: an empty category drops out and
+              // hands its weight over, so the displayed split must be the one
+              // the score was actually computed from. Teachers here check
+              // grades on paper — the app's number and theirs have to agree.
+              weight={b.effective_quiz_weight}
               weighted={b.quiz_weighted}
             />
             <BreakdownEntry
               label={t("gradebook.summary.breakdownAssignment")}
               pct={b.assignment_avg}
-              weight={config.assignment_weight}
+              weight={b.effective_assignment_weight}
               weighted={b.assignment_weighted}
             />
           </div>
+
+          {b.result_state === "completion_pass" && (
+            <div className="rounded border-l-stripe border-l-info bg-info/10 px-3 py-2 text-xs text-ink">
+              {t("gradebook.summary.completionPass")}
+            </div>
+          )}
+
+          {b.weights_redistributed && b.result_state === "graded" && (
+            <div className="rounded border-l-stripe border-l-info bg-info/10 px-3 py-2 text-xs text-ink">
+              {b.effective_assignment_weight === 0
+                ? t("gradebook.summary.noAssignmentsWeightMoved")
+                : t("gradebook.summary.noQuizzesWeightMoved")}
+            </div>
+          )}
 
           {hasDifferentManual && (
             <div className="rounded border-l-stripe border-l-warning bg-warning/10 px-3 py-2 text-xs text-ink">

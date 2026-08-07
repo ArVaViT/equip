@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -80,6 +81,22 @@ class GradingConfigUpdate(BaseModel):
 
 
 class GradeBreakdown(BaseModel):
+    """One student's grade, with the arithmetic shown rather than implied.
+
+    The *effective* weights are what the score is actually computed from, and
+    they are what every surface must display (D4). A course with quizzes and no
+    assignments used to be capped: the empty assignment category kept its
+    weight and contributed zero, so the largest production course — 4 quizzes,
+    0 assignments, 13 students — could not exceed 60% no matter what a student
+    did. An empty category now drops out and its weight is redistributed at
+    calculation time, so a teacher adding their first assignment mid-course
+    just works.
+
+    ``result_state`` distinguishes an ordinary graded course from one with
+    nothing gradable in it at all, where there is no number to compute and the
+    honest answer is «зачёт (по завершению)» rather than a silent zero.
+    """
+
     quiz_avg: float
     quiz_weighted: float
     assignment_avg: float
@@ -88,6 +105,20 @@ class GradeBreakdown(BaseModel):
     participation_weighted: float
     final_score: float
     letter_grade: str
+
+    #: Weights after empty categories drop out. Equal to the configured
+    #: weights when both categories have items.
+    effective_quiz_weight: int = 0
+    effective_assignment_weight: int = 0
+    #: True when the effective weights differ from what the teacher configured,
+    #: so the UI can explain why ("this course has no assignments, so their
+    #: weight moved to quizzes") instead of showing a number that contradicts
+    #: the settings page.
+    weights_redistributed: bool = False
+    #: ``graded`` — an ordinary weighted result.
+    #: ``completion_pass`` — the course has no quizzes and no assignments; the
+    #: result is completion-based and ``final_score`` carries no meaning.
+    result_state: Literal["graded", "completion_pass"] = "graded"
 
 
 class StudentCalculatedGrade(BaseModel):

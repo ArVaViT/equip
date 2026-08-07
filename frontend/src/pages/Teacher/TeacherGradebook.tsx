@@ -368,7 +368,6 @@ export default function TeacherGradebook() {
           />
           <SummaryTab
             summary={summary}
-            config={config}
             manualGrades={manualGrades}
             forms={forms}
             saving={saving}

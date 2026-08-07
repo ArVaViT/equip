@@ -59,25 +59,82 @@ def _get_assignment_ids_for_chapters(db: Session, chapter_ids: list[str]) -> lis
     return [r[0] for r in rows]
 
 
+def effective_weights(course: Course, *, has_quizzes: bool, has_assignments: bool) -> tuple[int, int]:
+    """Weights after empty categories drop out (D4).
+
+    A category with no items in the course contributes nothing, so leaving it
+    weighted silently caps the achievable score. The largest production course
+    — 4 quizzes, 0 assignments, 13 students — was capped at the quiz weight
+    alone: a student answering every question perfectly still landed on a
+    failing letter, and no amount of work could move it.
+
+    The rule is applied at calculation time rather than stored, so a teacher
+    who adds the first assignment halfway through a course just works: the
+    weights snap back to what the settings page says without anyone editing
+    anything.
+
+    Returns ``(0, 0)`` when neither category has items — the vacuous case,
+    where there is nothing to redistribute *to*. See ``_build_breakdown``.
+    """
+    if has_quizzes and has_assignments:
+        return course.quiz_weight, course.assignment_weight
+    if has_quizzes:
+        return 100, 0
+    if has_assignments:
+        return 0, 100
+    return 0, 0
+
+
 def _build_breakdown(
     course: Course,
     quiz_avg: float,
     assignment_avg: float,
     participation_pct: float,
+    *,
+    has_quizzes: bool,
+    has_assignments: bool,
 ) -> GradeBreakdown:
-    quiz_weighted = quiz_avg * course.quiz_weight / 100.0
-    assignment_weighted = assignment_avg * course.assignment_weight / 100.0
-    participation_weighted = participation_pct * course.participation_weight / 100.0
-    final_score = round(quiz_weighted + assignment_weighted + participation_weighted, 2)
+    eff_quiz, eff_assignment = effective_weights(course, has_quizzes=has_quizzes, has_assignments=has_assignments)
+
+    # Vacuous course: nothing gradable exists, so there is no number to
+    # compute. Reporting 0% here would read as "failed everything" for a
+    # student who has nothing to fail — most of the certificates issued so far
+    # came from exactly this shape of course. The official result is
+    # completion-based; the certificate gate reduces to progress == 100.
+    if not has_quizzes and not has_assignments:
+        return GradeBreakdown(
+            quiz_avg=0.0,
+            quiz_weighted=0.0,
+            assignment_avg=0.0,
+            assignment_weighted=0.0,
+            participation_pct=round(participation_pct, 2),
+            participation_weighted=0.0,
+            final_score=0.0,
+            letter_grade="",
+            effective_quiz_weight=0,
+            effective_assignment_weight=0,
+            weights_redistributed=False,
+            result_state="completion_pass",
+        )
+
+    quiz_weighted = quiz_avg * eff_quiz / 100.0
+    assignment_weighted = assignment_avg * eff_assignment / 100.0
+    final_score = round(quiz_weighted + assignment_weighted, 2)
     return GradeBreakdown(
         quiz_avg=round(quiz_avg, 2),
         quiz_weighted=round(quiz_weighted, 2),
         assignment_avg=round(assignment_avg, 2),
         assignment_weighted=round(assignment_weighted, 2),
         participation_pct=round(participation_pct, 2),
-        participation_weighted=round(participation_weighted, 2),
+        # Retired as a weighted category (D5); reported for wire compatibility
+        # only, and pinned to zero so it cannot influence a score again.
+        participation_weighted=0.0,
         final_score=final_score,
         letter_grade=score_to_letter(final_score),
+        effective_quiz_weight=eff_quiz,
+        effective_assignment_weight=eff_assignment,
+        weights_redistributed=(eff_quiz, eff_assignment) != (course.quiz_weight, course.assignment_weight),
+        result_state="graded",
     )
 
 
@@ -176,7 +233,14 @@ def calculate_student_grade(
         ) or 0
         participation_pct = (completed_count / total_chapters) * 100.0
 
-    return _build_breakdown(course, quiz_avg, assignment_avg, participation_pct)
+    return _build_breakdown(
+        course,
+        quiz_avg,
+        assignment_avg,
+        participation_pct,
+        has_quizzes=bool(quiz_ids),
+        has_assignments=bool(assignment_ids),
+    )
 
 
 def calculate_all_student_grades(db: Session, course: Course):
@@ -289,7 +353,14 @@ def calculate_all_student_grades(db: Session, course: Course):
         comp = completion_counts.get(sid, 0)
         participation_pct = (comp / total_chapters * 100.0) if total_chapters else 0.0
 
-        breakdown = _build_breakdown(course, quiz_avg, assignment_avg, participation_pct)
+        breakdown = _build_breakdown(
+            course,
+            quiz_avg,
+            assignment_avg,
+            participation_pct,
+            has_quizzes=bool(quiz_ids),
+            has_assignments=bool(assignment_ids),
+        )
         results.append(
             {
                 "student_id": sid,

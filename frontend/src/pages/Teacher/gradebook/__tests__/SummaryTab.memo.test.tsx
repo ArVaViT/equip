@@ -55,9 +55,13 @@ function makeStudent(id: string, name: string): StudentCalculatedGrade {
     student_email: `${id}@example.test`,
     breakdown: {
       quiz_avg: 75,
-      quiz_weighted: 22.5,
+      quiz_weighted: 30,
       assignment_avg: 80,
-      assignment_weighted: 40,
+      assignment_weighted: 48,
+      effective_quiz_weight: 40,
+      effective_assignment_weight: 60,
+      weights_redistributed: false,
+      result_state: "graded" as const,
       participation_pct: 90,
       participation_weighted: 18,
       final_score: 80.5,
@@ -101,7 +105,6 @@ function Harness({ studentCount }: { studentCount: number }) {
   return (
     <SummaryTab
       summary={summary}
-      config={CONFIG}
       manualGrades={new Map<string, StudentGrade>()}
       forms={forms}
       saving={null}
