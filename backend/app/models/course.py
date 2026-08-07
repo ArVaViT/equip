@@ -1,9 +1,10 @@
 import enum
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, func, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Numeric, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -61,6 +62,19 @@ class Course(Base):
             "quiz_weight + assignment_weight + participation_weight = 100",
             name="ck_courses_weights_sum_100",
         ),
+        CheckConstraint(
+            "grading_scheme IN ('pass_fail', 'percent', 'five_point', 'letter')",
+            name="courses_grading_scheme_check",
+        ),
+        CheckConstraint("pass_threshold >= 0 AND pass_threshold <= 100", name="courses_pass_threshold_check"),
+        CheckConstraint("academic_hours > 0", name="courses_academic_hours_check"),
+        # D8.1: the five-point «3» line cannot sit above 75 or the
+        # «удовлетворительно» band becomes unreachable. Backstop for any write
+        # path that bypasses the paired scheme+threshold endpoint.
+        CheckConstraint(
+            "grading_scheme <> 'five_point' OR pass_threshold <= 75",
+            name="ck_courses_scheme_threshold",
+        ),
         # Mirror prod CHECK constraints (catalog status, enroll access mode, authoring locale).
         CheckConstraint("status IN ('draft', 'published')", name="chk_courses_status"),
         CheckConstraint("access_mode IN ('public', 'institute')", name="courses_access_mode_check"),
@@ -85,6 +99,19 @@ class Course(Base):
     quiz_weight: Mapped[int] = mapped_column(default=30, server_default="30")
     assignment_weight: Mapped[int] = mapped_column(default=50, server_default="50")
     participation_weight: Mapped[int] = mapped_column(default=20, server_default="20")
+
+    # How this course is graded (D1). Four presets, never free-form: teachers
+    # pick one, only the institution edits the bands behind them
+    # (``org_settings.grade_bands``). New courses inherit the school default.
+    grading_scheme: Mapped[str] = mapped_column(default="letter", server_default="letter")
+    # The course-result line for the band schemes — percent / five_point /
+    # letter. Distinct from ``quizzes.passing_score``, which gates chapter
+    # completion; D3 keeps the two from silently disagreeing. Ignored by
+    # ``pass_fail``, whose rule is completion-native (D2).
+    pass_threshold: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=Decimal("70"), server_default="70")
+    # «Объём в часах» printed on the ведомость and the transcript. Nullable —
+    # only schools issuing hour-bearing documents fill it in.
+    academic_hours: Mapped[int | None] = mapped_column()
 
     # Authoring language for this course's content. Phase 5e-g moved
     # every translatable string into ``content_versions`` keyed by

@@ -11,6 +11,7 @@ from app.models.course_event import CourseEvent
 from app.models.enrollment import Enrollment
 from app.models.invitation import Invitation, InvitationRole, InvitationStatus
 from app.models.notification import Notification
+from app.models.org_settings import DEFAULT_GRADE_BANDS, OrgSettings
 from app.models.prerequisite import CoursePrerequisite
 from app.models.quiz import (
     Quiz,
@@ -25,6 +26,7 @@ from app.models.student_grade import StudentGrade
 from app.models.user import User, UserRole
 
 __all__ = [
+    "DEFAULT_GRADE_BANDS",
     "Announcement",
     "Assignment",
     "AssignmentSubmission",
@@ -45,6 +47,7 @@ __all__ = [
     "InvitationStatus",
     "Module",
     "Notification",
+    "OrgSettings",
     "Quiz",
     "QuizAnswer",
     "QuizAttempt",
