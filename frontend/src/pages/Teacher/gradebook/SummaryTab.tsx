@@ -310,37 +310,35 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
 
       {expanded && (
         <div className="border-t px-4 py-4 bg-muted/10 space-y-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm">
-            <BreakdownEntry
-              label={t("gradebook.summary.breakdownQuiz")}
-              pct={b.quiz_avg}
-              // Effective, not configured: an empty category drops out and
-              // hands its weight over, so the displayed split must be the one
-              // the score was actually computed from. Teachers here check
-              // grades on paper — the app's number and theirs have to agree.
-              weight={b.effective_quiz_weight}
-              weighted={b.quiz_weighted}
-            />
-            <BreakdownEntry
-              label={t("gradebook.summary.breakdownAssignment")}
-              pct={b.assignment_avg}
-              weight={b.effective_assignment_weight}
-              weighted={b.assignment_weighted}
-            />
-          </div>
-
-          {b.result_state === "completion_pass" && (
-            <div className="rounded border-l-stripe border-l-info bg-info/10 px-3 py-2 text-xs text-ink">
-              {t("gradebook.summary.completionPass")}
+          {hasScore ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+              {/* Only the categories that carry the score are shown, with the
+                  weights actually applied. Printing «0.0% (×0% = 0.0)» for a
+                  category that took no part looks like a mark of zero. */}
+              {b.effective_quiz_weight > 0 && (
+                <BreakdownEntry
+                  label={t("gradebook.summary.breakdownQuiz")}
+                  pct={b.quiz_avg}
+                  weight={b.effective_quiz_weight}
+                  weighted={b.quiz_weighted}
+                />
+              )}
+              {b.effective_assignment_weight > 0 && (
+                <BreakdownEntry
+                  label={t("gradebook.summary.breakdownAssignment")}
+                  pct={b.assignment_avg}
+                  weight={b.effective_assignment_weight}
+                  weighted={b.assignment_weighted}
+                />
+              )}
             </div>
-          )}
-
-          {b.weights_redistributed && b.result_state === "graded" && (
-            <div className="rounded border-l-stripe border-l-info bg-info/10 px-3 py-2 text-xs text-ink">
-              {b.effective_assignment_weight === 0
-                ? t("gradebook.summary.noAssignmentsWeightMoved")
-                : t("gradebook.summary.noQuizzesWeightMoved")}
-            </div>
+          ) : (
+            // The course-level banner above already says why there is no
+            // number; repeating it per row would be noise. State the student
+            // fact instead.
+            <p className="text-xs text-ink-muted">
+              {t("gradebook.summary.noScoreForStudent")}
+            </p>
           )}
 
           {hasDifferentManual && (
