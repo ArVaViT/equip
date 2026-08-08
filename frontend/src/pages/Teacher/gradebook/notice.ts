@@ -1,0 +1,67 @@
+import type { GradeBreakdown, GradingConfig } from "@/types"
+
+/**
+ * Which explanation the gradebook owes the teacher, if any.
+ *
+ * This lives in its own function for one reason: every time the wording was
+ * decided inline it started lying in some corner. Five adversarial reviews
+ * produced, in order — a banner claiming a course had no quizzes while four
+ * sat in it; a banner telling teachers to mark an assignment in a course with
+ * no assignments; and a banner announcing "you set quizzes to 0%" to a teacher
+ * who had set them to 100%. Each was a different branch nobody had enumerated.
+ *
+ * So the branches are enumerated here, in one place, over the inputs that
+ * actually decide the sentence:
+ *
+ * - `state` — is there a score at all, and if not, why not;
+ * - the **configured** weights — what the teacher chose. Never the effective
+ *   ones: in `zero_weighted` both effective weights are 0, so asking which of
+ *   them is zero tells you nothing and quietly answers "quizzes" every time;
+ * - whether the course **contains** items of each kind — otherwise the advice
+ *   points at work that does not exist.
+ *
+ * Returns a translation key, or null when the gradebook has nothing to explain.
+ */
+export function gradebookNotice(
+  breakdown: GradeBreakdown | undefined,
+  config: GradingConfig | undefined,
+): string | null {
+  if (!breakdown || !config) return null
+
+  const { result_state, has_quiz_items, has_assignment_items, weights_redistributed } = breakdown
+
+  if (result_state === "completion_pass") return "gradebook.summary.completionPassCourse"
+
+  if (result_state === "not_graded_yet") return "gradebook.summary.notGradedYetCourse"
+
+  if (result_state === "zero_weighted") {
+    // Graded work exists but sits in a category the teacher weighted 0%.
+    // Which one is zero comes from the configuration, and what the teacher
+    // should expect next depends on whether the *other* kind of work is even
+    // in the course.
+    if (config.quiz_weight === 0) {
+      return has_assignment_items
+        ? "gradebook.summary.quizzesWeighZero"
+        : "gradebook.summary.quizzesWeighZeroNoAssignments"
+    }
+    return has_quiz_items
+      ? "gradebook.summary.assignmentsWeighZero"
+      : "gradebook.summary.assignmentsWeighZeroNoQuizzes"
+  }
+
+  if (weights_redistributed) {
+    // One category is carrying the whole grade because the other has nothing
+    // graded in it. Whether that is permanent (no such items exist) or
+    // temporary (items exist, unmarked) changes both the reason and what
+    // happens next — including that grades will *fall* for students with
+    // nothing marked.
+    if (breakdown.effective_assignment_weight === 0) {
+      return has_assignment_items
+        ? "gradebook.summary.assignmentsUnmarked"
+        : "gradebook.summary.noAssignmentsCourse"
+    }
+    return has_quiz_items ? "gradebook.summary.quizzesUntaken" : "gradebook.summary.noQuizzesCourse"
+  }
+
+  return null
+}

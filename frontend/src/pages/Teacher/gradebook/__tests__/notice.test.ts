@@ -1,0 +1,178 @@
+import { describe, it, expect } from "vitest"
+
+import { gradebookNotice } from "../notice"
+import type { GradeBreakdown, GradingConfig } from "@/types"
+
+/**
+ * Every branch of the gradebook's explanation, enumerated.
+ *
+ * Five adversarial reviews found the same class of defect three times, each in
+ * a corner nobody had listed: a banner claiming a course had no quizzes while
+ * four sat in it; one telling a teacher to mark an assignment in a course with
+ * no assignments; one announcing "you set quizzes to 0%" to a teacher who had
+ * set them to 100%. None of them were arithmetic bugs — all three were the UI
+ * confidently describing a situation that was not the one on screen.
+ *
+ * The wording now comes from one function, and this file is the reason it can
+ * be trusted: the whole input space is spelled out, including the mirror cases
+ * that kept being missed.
+ */
+
+const breakdown = (over: Partial<GradeBreakdown>): GradeBreakdown => ({
+  quiz_avg: 0,
+  quiz_weighted: 0,
+  assignment_avg: 0,
+  assignment_weighted: 0,
+  participation_pct: 0,
+  participation_weighted: 0,
+  final_score: 0,
+  letter_grade: "",
+  effective_quiz_weight: 0,
+  effective_assignment_weight: 0,
+  has_quiz_items: false,
+  has_assignment_items: false,
+  weights_redistributed: false,
+  result_state: "graded",
+  ...over,
+})
+
+const config = (quiz: number, assignment: number): GradingConfig => ({
+  quiz_weight: quiz,
+  assignment_weight: assignment,
+  participation_weight: 0,
+})
+
+describe("gradebookNotice", () => {
+  it("says nothing about an ordinary graded course", () => {
+    const b = breakdown({
+      result_state: "graded",
+      effective_quiz_weight: 40,
+      effective_assignment_weight: 60,
+      has_quiz_items: true,
+      has_assignment_items: true,
+    })
+
+    expect(gradebookNotice(b, config(40, 60))).toBeNull()
+  })
+
+  it("explains a course that contains nothing gradable", () => {
+    const b = breakdown({ result_state: "completion_pass" })
+
+    expect(gradebookNotice(b, config(40, 60))).toBe("gradebook.summary.completionPassCourse")
+  })
+
+  it("explains a course where marking has not started", () => {
+    const b = breakdown({ result_state: "not_graded_yet", has_quiz_items: true })
+
+    expect(gradebookNotice(b, config(40, 60))).toBe("gradebook.summary.notGradedYetCourse")
+  })
+
+  describe("a category weighted zero", () => {
+    it("names quizzes when quizzes are the zeroed one", () => {
+      const b = breakdown({
+        result_state: "zero_weighted",
+        has_quiz_items: true,
+        has_assignment_items: true,
+      })
+
+      expect(gradebookNotice(b, config(0, 100))).toBe("gradebook.summary.quizzesWeighZero")
+    })
+
+    it("names assignments when assignments are the zeroed one", () => {
+      // The mirror case, and the one that shipped broken: in `zero_weighted`
+      // both *effective* weights are 0, so branching on them answered
+      // "quizzes" every time — telling a teacher who had set quizzes to 100%
+      // that they had set them to 0%.
+      const b = breakdown({
+        result_state: "zero_weighted",
+        has_quiz_items: true,
+        has_assignment_items: true,
+      })
+
+      expect(gradebookNotice(b, config(100, 0))).toBe("gradebook.summary.assignmentsWeighZero")
+    })
+
+    it("does not send a teacher after assignments that do not exist", () => {
+      const b = breakdown({
+        result_state: "zero_weighted",
+        has_quiz_items: true,
+        has_assignment_items: false,
+      })
+
+      expect(gradebookNotice(b, config(0, 100))).toBe(
+        "gradebook.summary.quizzesWeighZeroNoAssignments",
+      )
+    })
+
+    it("does not send a teacher after quizzes that do not exist", () => {
+      const b = breakdown({
+        result_state: "zero_weighted",
+        has_quiz_items: false,
+        has_assignment_items: true,
+      })
+
+      expect(gradebookNotice(b, config(100, 0))).toBe(
+        "gradebook.summary.assignmentsWeighZeroNoQuizzes",
+      )
+    })
+  })
+
+  describe("weight redistributed to the live category", () => {
+    it("distinguishes assignments that exist but are unmarked", () => {
+      const b = breakdown({
+        result_state: "graded",
+        weights_redistributed: true,
+        effective_quiz_weight: 100,
+        effective_assignment_weight: 0,
+        has_quiz_items: true,
+        has_assignment_items: true,
+      })
+
+      expect(gradebookNotice(b, config(40, 60))).toBe("gradebook.summary.assignmentsUnmarked")
+    })
+
+    it("distinguishes a course that has no assignments at all", () => {
+      const b = breakdown({
+        result_state: "graded",
+        weights_redistributed: true,
+        effective_quiz_weight: 100,
+        effective_assignment_weight: 0,
+        has_quiz_items: true,
+        has_assignment_items: false,
+      })
+
+      expect(gradebookNotice(b, config(40, 60))).toBe("gradebook.summary.noAssignmentsCourse")
+    })
+
+    it("distinguishes quizzes that exist but are untaken", () => {
+      const b = breakdown({
+        result_state: "graded",
+        weights_redistributed: true,
+        effective_quiz_weight: 0,
+        effective_assignment_weight: 100,
+        has_quiz_items: true,
+        has_assignment_items: true,
+      })
+
+      expect(gradebookNotice(b, config(40, 60))).toBe("gradebook.summary.quizzesUntaken")
+    })
+
+    it("distinguishes a course that has no quizzes at all", () => {
+      const b = breakdown({
+        result_state: "graded",
+        weights_redistributed: true,
+        effective_quiz_weight: 0,
+        effective_assignment_weight: 100,
+        has_quiz_items: false,
+        has_assignment_items: true,
+      })
+
+      expect(gradebookNotice(b, config(40, 60))).toBe("gradebook.summary.noQuizzesCourse")
+    })
+  })
+
+  it("stays silent when there is nothing to render yet", () => {
+    expect(gradebookNotice(undefined, config(40, 60))).toBeNull()
+    expect(gradebookNotice(breakdown({}), undefined)).toBeNull()
+  })
+})

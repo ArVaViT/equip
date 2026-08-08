@@ -21,6 +21,7 @@ import {
   type GradeForm,
 } from "./types"
 import { EMPTY_FORM, letterColor } from "./helpers"
+import { gradebookNotice } from "./notice"
 
 interface Props {
   summary: GradeSummaryResponse | null
@@ -99,15 +100,9 @@ export function SummaryTab({
   // course, so any row carries the same answer. Shown once at the top because
   // an explanation buried inside an expandable row is an explanation nobody
   // reads — the teacher sees a table of dashes and rings support instead.
+  // One place decides what the gradebook explains — see notice.ts for why.
   const first = sortedStudents[0]?.breakdown
-  const courseIsCompletionOnly = first?.result_state === "completion_pass"
-  const courseNotGradedYet = first?.result_state === "not_graded_yet"
-  // Graded work exists, but only in a category weighted 0% — quizzes as
-  // practice self-checks, say. Telling this teacher "nothing has been graded
-  // yet" is false, and the usual advice ("percentages appear once someone
-  // takes a quiz") points at an event that already happened.
-  const courseZeroWeighted = first?.result_state === "zero_weighted"
-  const courseRedistributed = first?.weights_redistributed && first?.result_state === "graded"
+  const noticeKey = gradebookNotice(first, summary?.config)
 
   return (
     <Card>
@@ -116,36 +111,9 @@ export function SummaryTab({
         <CardDescription>{t("gradebook.summary.description")}</CardDescription>
       </CardHeader>
       <CardContent>
-        {courseIsCompletionOnly && (
+        {noticeKey && (
           <div className="mb-4 rounded border-l-stripe border-l-info bg-info/10 px-3 py-2 text-sm text-ink">
-            {t("gradebook.summary.completionPassCourse")}
-          </div>
-        )}
-        {courseNotGradedYet && (
-          <div className="mb-4 rounded border-l-stripe border-l-info bg-info/10 px-3 py-2 text-sm text-ink">
-            {t("gradebook.summary.notGradedYetCourse")}
-          </div>
-        )}
-        {courseZeroWeighted && (
-          <div className="mb-4 rounded border-l-stripe border-l-info bg-info/10 px-3 py-2 text-sm text-ink">
-            {first?.effective_quiz_weight === 0 && first?.has_quiz_items
-              ? t("gradebook.summary.quizzesWeighZero")
-              : t("gradebook.summary.assignmentsWeighZero")}
-          </div>
-        )}
-        {courseRedistributed && (
-          <div className="mb-4 rounded border-l-stripe border-l-info bg-info/10 px-3 py-2 text-sm text-ink">
-            {/* "No assignments in this course" and "assignments exist but none
-                are marked yet" need different sentences. Telling a teacher to
-                mark the first assignment when the course has none sends them
-                hunting for something that does not exist. */}
-            {first?.effective_assignment_weight === 0
-              ? first?.has_assignment_items
-                ? t("gradebook.summary.assignmentsUnmarked")
-                : t("gradebook.summary.noAssignmentsCourse")
-              : first?.has_quiz_items
-                ? t("gradebook.summary.quizzesUntaken")
-                : t("gradebook.summary.noQuizzesCourse")}
+            {t(noticeKey)}
           </div>
         )}
         {studentCount === 0 ? (
@@ -460,6 +428,12 @@ function ClassAverageRow({
   // rows already show dashes there — printing "0.0%" in bold underneath them
   // would contradict the whole table.
   const hasNumbers = classAvg !== null
+  // Category averages exist in `zero_weighted` too — the marks are real, they
+  // just carry no weight. Dashing them out here while every student row above
+  // shows a figure is the same "dash over marks that exist" defect, one line
+  // lower.
+  const hasCategoryFigures =
+    hasNumbers || summary.students[0]?.breakdown.result_state === "zero_weighted"
   const avg = (pick: (s: StudentCalculatedGrade) => number) =>
     summary.students.reduce((acc, st) => acc + pick(st), 0) / studentCount
 
@@ -467,10 +441,10 @@ function ClassAverageRow({
     <div className="grid grid-cols-[1fr_80px_80px_80px_70px_70px] gap-3 px-4 py-3 bg-muted/40 font-semibold text-sm items-center border-t-2">
       <span className="pl-6">{t("gradebook.summary.classAverageRow", { count: studentCount })}</span>
       <p className="tabular-nums text-right">
-        {hasNumbers ? `${avg((s) => s.breakdown.quiz_avg).toFixed(1)}%` : "—"}
+        {hasCategoryFigures ? `${avg((s) => s.breakdown.quiz_avg).toFixed(1)}%` : "—"}
       </p>
       <p className="tabular-nums text-right">
-        {hasNumbers ? `${avg((s) => s.breakdown.assignment_avg).toFixed(1)}%` : "—"}
+        {hasCategoryFigures ? `${avg((s) => s.breakdown.assignment_avg).toFixed(1)}%` : "—"}
       </p>
       <p className="tabular-nums text-right">{hasNumbers ? `${classAvg.toFixed(1)}%` : "—"}</p>
       <span />

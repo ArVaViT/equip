@@ -101,7 +101,7 @@ export interface GradingConfig {
   participation_weight: number
 }
 
-interface GradeBreakdown {
+export interface GradeBreakdown {
   quiz_avg: number
   quiz_weighted: number
   assignment_avg: number
