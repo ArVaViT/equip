@@ -110,6 +110,14 @@ class GradeBreakdown(BaseModel):
     #: weights when both categories have items.
     effective_quiz_weight: int = 0
     effective_assignment_weight: int = 0
+    #: Whether the course *contains* items of each kind. Distinct from the
+    #: weights above: a course can have assignments that carry no weight yet
+    #: because none are marked. The UI needs both to word its explanation
+    #: honestly — telling a teacher to "mark the first assignment" when the
+    #: course has no assignments at all sends them looking for something that
+    #: does not exist.
+    has_quiz_items: bool = False
+    has_assignment_items: bool = False
     #: True when the effective weights differ from what the teacher configured,
     #: so the UI can explain why ("this course has no assignments, so their
     #: weight moved to quizzes") instead of showing a number that contradicts

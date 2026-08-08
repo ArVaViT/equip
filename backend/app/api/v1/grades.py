@@ -233,22 +233,30 @@ def export_grades_csv(
     )
     for r in results:
         b = r["breakdown"]
+        # A course with nothing graded has no numbers to export — not in the
+        # final score, and not in the per-category columns either. Writing
+        # zeros sends a spreadsheet to the school that reads as "everyone
+        # scored zero", and a printed page has no banner to explain itself, so
+        # the cells must say so themselves.
+        graded = b.result_state == "graded"
+
+        def num(value: float, *, graded: bool = graded) -> float | str:
+            return value if graded else "—"
+
         writer.writerow(
             [
                 _csv_safe(r["student_name"] or ""),
                 _csv_safe(r["student_email"]),
-                b.quiz_avg,
-                b.quiz_weighted,
-                b.assignment_avg,
-                b.assignment_weighted,
+                num(b.quiz_avg),
+                num(b.quiz_weighted),
+                num(b.assignment_avg),
+                num(b.assignment_weighted),
+                # Chapter completion is a real figure in every state — it is
+                # the one number that still means something here.
                 b.participation_pct,
                 b.participation_weighted,
-                # A course with nothing graded has no score to export. Writing
-                # 0 and an empty letter sends a spreadsheet to the school that
-                # reads as "everyone scored zero" — the printed page has no
-                # banner to explain itself, so it must say so in the cell.
-                b.final_score if b.result_state == "graded" else "—",
-                b.letter_grade if b.result_state == "graded" else _RESULT_STATE_CSV[b.result_state],
+                num(b.final_score),
+                b.letter_grade if graded else _RESULT_STATE_CSV[b.result_state],
                 r["manual_grade"] or "",
             ]
         )

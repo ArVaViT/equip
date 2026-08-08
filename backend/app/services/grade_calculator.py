@@ -165,9 +165,15 @@ def effective_weights(course: Course, *, has_quizzes: bool, has_assignments: boo
     """
     if has_quizzes and has_assignments:
         return course.quiz_weight, course.assignment_weight
-    if has_quizzes:
+    # A category the teacher set to zero must never inherit the whole grade.
+    # Consider a course where quizzes are practice self-checks at weight 0 and
+    # the essay carries everything: handing the quizzes 100% while the essay
+    # waits to be marked would grade the student on work their teacher
+    # declared worthless. Redistribution answers "which category is carrying
+    # the grade", never "which one is left".
+    if has_quizzes and course.quiz_weight > 0:
         return 100, 0
-    if has_assignments:
+    if has_assignments and course.assignment_weight > 0:
         return 0, 100
     return 0, 0
 
@@ -213,6 +219,8 @@ def _build_breakdown(
             letter_grade="",
             effective_quiz_weight=0,
             effective_assignment_weight=0,
+            has_quiz_items=has_quiz_items,
+            has_assignment_items=has_assignment_items,
             weights_redistributed=False,
             result_state=state,  # type: ignore[arg-type]
         )
@@ -236,6 +244,13 @@ def _build_breakdown(
     if not has_quizzes and not has_assignments:
         return _no_number("not_graded_yet")
 
+    # Everything live is weighted zero — the graded work so far carries no
+    # value by the teacher's own configuration, so there is nothing to compute.
+    # Falling through would produce 0.0% and a failing symbol built entirely
+    # out of work that was never meant to count.
+    if eff_quiz == 0 and eff_assignment == 0:
+        return _no_number("not_graded_yet")
+
     quiz_weighted = quiz_avg * eff_quiz / 100.0
     assignment_weighted = assignment_avg * eff_assignment / 100.0
     final_score = round(quiz_weighted + assignment_weighted, 2)
@@ -254,6 +269,8 @@ def _build_breakdown(
         letter_grade=(resolve_symbol(final_score, course, settings) if settings else score_to_letter(final_score)),
         effective_quiz_weight=eff_quiz,
         effective_assignment_weight=eff_assignment,
+        has_quiz_items=has_quiz_items,
+        has_assignment_items=has_assignment_items,
         weights_redistributed=(eff_quiz, eff_assignment) != (course.quiz_weight, course.assignment_weight),
         result_state="graded",
     )

@@ -332,3 +332,90 @@ def test_pass_fail_does_not_derive_a_pass_from_a_percentage(db) -> None:
     course.grading_scheme = "pass_fail"
 
     assert resolve_symbol(99.0, course, get_org_settings(db)) == ""
+
+
+# --------------------------------------------------------------------------
+# a category the teacher zeroed must never inherit the grade
+# --------------------------------------------------------------------------
+
+
+def test_zero_weight_category_does_not_take_over_the_grade() -> None:
+    """Quizzes as practice self-checks, the essay carrying the whole grade.
+
+    A real shape for a correspondence Bible school. Redistribution used to hand
+    the quizzes 100% while the essay waited to be marked, grading the student
+    on work their teacher had explicitly declared worthless — 4/10 on a
+    practice check became a hard F in the gradebook and in the printed CSV.
+    """
+    course = _course(quiz=0, assignment=100)
+
+    b = _breakdown(
+        course,
+        40.0,
+        0.0,
+        has_quizzes=True,
+        has_assignments=False,
+        has_quiz_items=True,
+        has_assignment_items=True,
+    )
+
+    assert b.result_state == "not_graded_yet"
+    assert b.letter_grade == ""
+    assert (b.effective_quiz_weight, b.effective_assignment_weight) == (0, 0)
+
+
+def test_zero_weight_category_cannot_manufacture_a_high_grade_either() -> None:
+    """The mirror case: the lie cuts both ways.
+
+    95% on a practice check would have read as an A earned from work that
+    counts for nothing — which a teacher signing off the final grade would
+    have no reason to distrust.
+    """
+    course = _course(quiz=0, assignment=100)
+
+    b = _breakdown(
+        course,
+        95.0,
+        0.0,
+        has_quizzes=True,
+        has_assignments=False,
+        has_quiz_items=True,
+        has_assignment_items=True,
+    )
+
+    assert b.result_state == "not_graded_yet"
+
+
+def test_the_weighted_category_still_carries_everything_when_it_is_the_live_one() -> None:
+    course = _course(quiz=0, assignment=100)
+
+    b = _breakdown(
+        course,
+        0.0,
+        80.0,
+        has_quizzes=False,
+        has_assignments=True,
+        has_quiz_items=True,
+        has_assignment_items=True,
+    )
+
+    assert b.result_state == "graded"
+    assert (b.effective_quiz_weight, b.effective_assignment_weight) == (0, 100)
+    assert b.final_score == 80.0
+
+
+def test_course_items_are_reported_so_the_ui_can_word_itself_honestly() -> None:
+    """Telling a teacher to "mark the first assignment" when the course has
+    none sends them looking for something that does not exist."""
+    b = _breakdown(
+        _course(),
+        90.0,
+        0.0,
+        has_quizzes=True,
+        has_assignments=False,
+        has_quiz_items=True,
+        has_assignment_items=False,
+    )
+
+    assert b.has_quiz_items is True
+    assert b.has_assignment_items is False

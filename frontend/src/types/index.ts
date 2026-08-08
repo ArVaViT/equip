@@ -116,6 +116,10 @@ interface GradeBreakdown {
    *  when both categories have items. */
   effective_quiz_weight: number
   effective_assignment_weight: number
+  /** Содержит ли курс элементы каждого вида — отдельный факт от весов:
+   *  задания могут быть, но пока ничего не весить, потому что не проверены. */
+  has_quiz_items: boolean
+  has_assignment_items: boolean
   /** True when the effective weights differ from the configured ones, so the
    *  UI can explain why instead of showing a number that contradicts the
    *  settings page. */

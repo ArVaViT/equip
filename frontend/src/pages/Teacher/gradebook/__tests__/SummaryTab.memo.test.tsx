@@ -60,6 +60,8 @@ function makeStudent(id: string, name: string): StudentCalculatedGrade {
       assignment_weighted: 48,
       effective_quiz_weight: 40,
       effective_assignment_weight: 60,
+      has_quiz_items: true,
+      has_assignment_items: true,
       weights_redistributed: false,
       result_state: "graded" as const,
       participation_pct: 90,

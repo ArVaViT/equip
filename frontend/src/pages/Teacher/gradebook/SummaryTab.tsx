@@ -123,9 +123,17 @@ export function SummaryTab({
         )}
         {courseRedistributed && (
           <div className="mb-4 rounded border-l-stripe border-l-info bg-info/10 px-3 py-2 text-sm text-ink">
+            {/* "No assignments in this course" and "assignments exist but none
+                are marked yet" need different sentences. Telling a teacher to
+                mark the first assignment when the course has none sends them
+                hunting for something that does not exist. */}
             {first?.effective_assignment_weight === 0
-              ? t("gradebook.summary.noAssignmentsCourse")
-              : t("gradebook.summary.noQuizzesCourse")}
+              ? first?.has_assignment_items
+                ? t("gradebook.summary.assignmentsUnmarked")
+                : t("gradebook.summary.noAssignmentsCourse")
+              : first?.has_quiz_items
+                ? t("gradebook.summary.quizzesUntaken")
+                : t("gradebook.summary.noQuizzesCourse")}
           </div>
         )}
         {studentCount === 0 ? (
@@ -239,7 +247,13 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
   const { t } = useTranslation()
   const b = student.breakdown
   const hasScore = b.result_state === "graded"
-  const hasDifferentManual = Boolean(manualGrade?.grade && manualGrade.grade !== b.letter_grade)
+  // Only meaningful when there is a computed grade to differ *from*. On a
+  // course with nothing to grade the computed symbol is empty, so any manual
+  // grade would flag as "differs from  (0.0%)" — printing the very zero this
+  // whole change exists to remove, in the one place a teacher is expected to
+  // grade by hand.
+  const hasDifferentManual =
+    hasScore && Boolean(manualGrade?.grade && manualGrade.grade !== b.letter_grade)
 
   return (
     <div>
