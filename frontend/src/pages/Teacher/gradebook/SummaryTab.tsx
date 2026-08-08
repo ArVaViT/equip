@@ -21,7 +21,7 @@ import {
   type GradeForm,
 } from "./types"
 import { EMPTY_FORM, letterColor } from "./helpers"
-import { gradebookNotice, gradePillLabel } from "./notice"
+import { gradePillLabel } from "./notice"
 
 interface Props {
   summary: GradeSummaryResponse | null
@@ -100,9 +100,6 @@ export function SummaryTab({
   // course, so any row carries the same answer. Shown once at the top because
   // an explanation buried inside an expandable row is an explanation nobody
   // reads — the teacher sees a table of dashes and rings support instead.
-  // One place decides what the gradebook explains — see notice.ts for why.
-  const first = sortedStudents[0]?.breakdown
-  const noticeKey = gradebookNotice(first, summary?.config)
 
   return (
     <Card>
@@ -111,11 +108,6 @@ export function SummaryTab({
         <CardDescription>{t("gradebook.summary.description")}</CardDescription>
       </CardHeader>
       <CardContent>
-        {noticeKey && (
-          <div className="mb-4 rounded border-l-stripe border-l-info bg-info/10 px-3 py-2 text-sm text-ink">
-            {t(noticeKey)}
-          </div>
-        )}
         {studentCount === 0 ? (
           <EmptyState
             variant="compact"

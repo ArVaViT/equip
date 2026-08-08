@@ -19,6 +19,7 @@ import {
   type ProgressResponse,
 } from "./gradebook/types"
 import { GradebookStats } from "./gradebook/GradebookStats"
+import { gradebookNotice } from "./gradebook/notice"
 import { GradebookTabs } from "./gradebook/GradebookTabs"
 import { GradingConfigCard } from "./gradebook/GradingConfigCard"
 import { SummaryTab } from "./gradebook/SummaryTab"
@@ -316,6 +317,7 @@ export default function TeacherGradebook() {
   // calculated row answers for all of them; null while there is nothing
   // calculated, and the card falls back to the configured pair.
   const firstBreakdown = summary?.students[0]?.breakdown
+  const noticeKey = gradebookNotice(firstBreakdown, summary?.config)
   const effectiveWeights =
     firstBreakdown && firstBreakdown.result_state === "graded"
       ? `${firstBreakdown.effective_quiz_weight}/${firstBreakdown.effective_assignment_weight}`
@@ -361,6 +363,16 @@ export default function TeacherGradebook() {
         config={config}
         effectiveWeights={effectiveWeights}
       />
+
+      {/* Course-level fact, so it belongs at course level. Living inside the
+          Summary tab left the Grade Table tab showing «Веса 100/0» with no
+          explanation anywhere on screen, and put the reason two screens below
+          the contradiction it was answering. */}
+      {noticeKey && (
+        <div className="mb-6 rounded border-l-stripe border-l-info bg-info/10 px-3 py-2 text-sm text-ink">
+          {t(noticeKey)}
+        </div>
+      )}
 
       <GradebookTabs active={activeTab} onChange={setActiveTab} />
 

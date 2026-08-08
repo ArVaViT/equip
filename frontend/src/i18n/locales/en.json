@@ -1679,7 +1679,8 @@
       "students": "Students",
       "classAverage": "Class Average",
       "manuallyGraded": "Manually Graded",
-      "weights": "Weights Q/A/P"
+      "weights": "Weights applied",
+      "weightsDiffer": "settings say {{configured}} — see the note above the tabs"
     },
     "config": {
       "title": "Grading Configuration",

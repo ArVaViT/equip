@@ -1295,7 +1295,8 @@
       "students": "Студенты",
       "classAverage": "Средний балл",
       "manuallyGraded": "Оценено вручную",
-      "weights": "Веса Т/З/У"
+      "weights": "Веса сейчас",
+      "weightsDiffer": "в настройках {{configured}} — почему, написано над вкладками"
     },
     "config": {
       "title": "Настройка оценивания",

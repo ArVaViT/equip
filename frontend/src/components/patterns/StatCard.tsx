@@ -19,6 +19,12 @@ interface Props {
    * (e.g. "30/50/20" weight triples in the gradebook).
    */
   valueClassName?: string
+  /**
+   * Small line under the value, for when the number needs a word to stop
+   * looking like a contradiction — e.g. the gradebook showing the weights
+   * actually applied while the settings page shows a different pair.
+   */
+  hint?: string
 }
 
 /**
@@ -32,6 +38,7 @@ export function StatCard({
   icon: Icon,
   variant = "value-leading",
   valueClassName,
+  hint,
 }: Props) {
   if (variant === "icon-leading") {
     return (
@@ -43,6 +50,7 @@ export function StatCard({
           <div>
             <p className="text-sm text-ink-muted">{label}</p>
             <p className={cn("text-2xl font-bold tabular-nums", valueClassName)}>{value}</p>
+            {hint && <p className="mt-0.5 text-xs text-ink-muted">{hint}</p>}
           </div>
         </CardContent>
       </Card>
@@ -56,6 +64,7 @@ export function StatCard({
           <div>
             <p className="text-sm text-ink-muted">{label}</p>
             <p className={cn("text-2xl font-bold tabular-nums mt-1", valueClassName)}>{value}</p>
+            {hint && <p className="mt-0.5 text-xs text-ink-muted">{hint}</p>}
           </div>
           <Icon className="h-6 w-6 text-ink-muted/60" strokeWidth={1.75} aria-hidden />
         </div>
