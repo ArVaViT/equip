@@ -139,17 +139,29 @@ def _build_breakdown(
     assignment_avg: float,
     participation_pct: float,
     *,
+    has_quiz_items: bool,
+    has_assignment_items: bool,
     has_quizzes: bool,
     has_assignments: bool,
 ) -> GradeBreakdown:
+    """Assemble one student's breakdown.
+
+    Two different facts arrive here and must not be confused — conflating them
+    is exactly the regression an adversarial review caught:
+
+    * ``has_*_items`` — does the course *contain* quizzes / assignments. A fact
+      about the course syllabus.
+    * ``has_quizzes`` / ``has_assignments`` — has anything actually been graded
+      in that category yet (see :func:`category_is_live`). A fact about work
+      done so far, and the only thing weight redistribution may depend on.
+
+    Telling a teacher "this course has no quizzes" while four quizzes sit in it
+    is a lie; showing 0%/F to a class nobody has marked yet is a different lie.
+    They get different states.
+    """
     eff_quiz, eff_assignment = effective_weights(course, has_quizzes=has_quizzes, has_assignments=has_assignments)
 
-    # Vacuous course: nothing gradable exists, so there is no number to
-    # compute. Reporting 0% here would read as "failed everything" for a
-    # student who has nothing to fail — most of the certificates issued so far
-    # came from exactly this shape of course. The official result is
-    # completion-based; the certificate gate reduces to progress == 100.
-    if not has_quizzes and not has_assignments:
+    def _no_number(state: str) -> GradeBreakdown:
         return GradeBreakdown(
             quiz_avg=0.0,
             quiz_weighted=0.0,
@@ -162,8 +174,27 @@ def _build_breakdown(
             effective_quiz_weight=0,
             effective_assignment_weight=0,
             weights_redistributed=False,
-            result_state="completion_pass",
+            result_state=state,  # type: ignore[arg-type]
         )
+
+    # Vacuous course: nothing gradable exists, so there is no number to
+    # compute. Reporting 0% here would read as "failed everything" for a
+    # student who has nothing to fail — most of the certificates issued so far
+    # came from exactly this shape of course. The official result is
+    # completion-based; the certificate gate reduces to progress == 100.
+    #
+    # Note this says nothing about whether *this* student passed — that is
+    # still a question about their progress, and the UI must not present it as
+    # a pass on its own.
+    if not has_quiz_items and not has_assignment_items:
+        return _no_number("completion_pass")
+
+    # The course has gradable items but nothing has been graded in any category
+    # yet: first week of term, or a fresh cohort. There is no honest number to
+    # show — a weighted mean over zero live categories is 0%, which reads as
+    # failure for a class that simply has not been marked.
+    if not has_quizzes and not has_assignments:
+        return _no_number("not_graded_yet")
 
     quiz_weighted = quiz_avg * eff_quiz / 100.0
     assignment_weighted = assignment_avg * eff_assignment / 100.0
@@ -287,6 +318,8 @@ def calculate_student_grade(
         quiz_avg,
         assignment_avg,
         participation_pct,
+        has_quiz_items=bool(quiz_ids),
+        has_assignment_items=bool(assignment_ids),
         has_quizzes=live_quizzes,
         has_assignments=live_assignments,
     )
@@ -410,6 +443,8 @@ def calculate_all_student_grades(db: Session, course: Course):
             quiz_avg,
             assignment_avg,
             participation_pct,
+            has_quiz_items=bool(quiz_ids),
+            has_assignment_items=bool(assignment_ids),
             has_quizzes=live_quizzes,
             has_assignments=live_assignments,
         )

@@ -311,7 +311,15 @@ export default function TeacherGradebook() {
   }
 
   const studentCount = summary?.students.length ?? 0
-  const classAvg = summary?.class_average ?? 0
+  const classAvg = summary?.class_average ?? null
+  // The split grades were actually computed from. Course-wide, so the first
+  // calculated row answers for all of them; null while there is nothing
+  // calculated, and the card falls back to the configured pair.
+  const firstBreakdown = summary?.students[0]?.breakdown
+  const effectiveWeights =
+    firstBreakdown && firstBreakdown.result_state === "graded"
+      ? `${firstBreakdown.effective_quiz_weight}/${firstBreakdown.effective_assignment_weight}`
+      : null
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -351,6 +359,7 @@ export default function TeacherGradebook() {
         classAverage={classAvg}
         gradedCount={manualGrades.size}
         config={config}
+        effectiveWeights={effectiveWeights}
       />
 
       <GradebookTabs active={activeTab} onChange={setActiveTab} />

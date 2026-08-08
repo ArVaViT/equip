@@ -85,7 +85,7 @@ export function SummaryTab({
   }, [summary, sortField, sortDir])
 
   const studentCount = sortedStudents.length
-  const classAvg = summary?.class_average ?? 0
+  const classAvg = summary?.class_average ?? null
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -101,6 +101,7 @@ export function SummaryTab({
   // reads — the teacher sees a table of dashes and rings support instead.
   const first = sortedStudents[0]?.breakdown
   const courseIsCompletionOnly = first?.result_state === "completion_pass"
+  const courseNotGradedYet = first?.result_state === "not_graded_yet"
   const courseRedistributed = first?.weights_redistributed && first?.result_state === "graded"
 
   return (
@@ -113,6 +114,11 @@ export function SummaryTab({
         {courseIsCompletionOnly && (
           <div className="mb-4 rounded border-l-stripe border-l-info bg-info/10 px-3 py-2 text-sm text-ink">
             {t("gradebook.summary.completionPassCourse")}
+          </div>
+        )}
+        {courseNotGradedYet && (
+          <div className="mb-4 rounded border-l-stripe border-l-info bg-info/10 px-3 py-2 text-sm text-ink">
+            {t("gradebook.summary.notGradedYetCourse")}
           </div>
         )}
         {courseRedistributed && (
@@ -232,6 +238,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
 }: StudentSummaryRowProps) {
   const { t } = useTranslation()
   const b = student.breakdown
+  const hasScore = b.result_state === "graded"
   const hasDifferentManual = Boolean(manualGrade?.grade && manualGrade.grade !== b.letter_grade)
 
   return (
@@ -254,23 +261,33 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
         {/* A course with nothing gradable has no percentage. Printing 0.0%
             and an empty grade pill reads as "everyone failed" — the single
             most alarming thing a teacher can open the gradebook to. */}
+        {/* No number exists in two cases — a course with nothing gradable, and
+            a course nobody has been marked in yet. Printing 0.0% and an empty
+            grade pill in either reads as "everyone failed". */}
         <p className="text-sm tabular-nums text-right">
-          {b.result_state === "completion_pass" ? "—" : `${b.quiz_avg.toFixed(1)}%`}
+          {hasScore ? `${b.quiz_avg.toFixed(1)}%` : "—"}
         </p>
         <p className="text-sm tabular-nums text-right">
-          {b.result_state === "completion_pass" ? "—" : `${b.assignment_avg.toFixed(1)}%`}
+          {hasScore ? `${b.assignment_avg.toFixed(1)}%` : "—"}
         </p>
         <p className="text-sm font-semibold tabular-nums text-right">
-          {b.result_state === "completion_pass" ? "—" : `${b.final_score.toFixed(1)}%`}
+          {hasScore ? `${b.final_score.toFixed(1)}%` : "—"}
         </p>
         <div className="flex justify-center">
-          {b.result_state === "completion_pass" ? (
-            <span className="inline-flex items-center justify-center rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-bold text-success">
-              {t("gradebook.summary.completionPassBadge")}
-            </span>
-          ) : (
+          {hasScore ? (
             <span className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ${letterColor(b.letter_grade)}`}>
               {b.letter_grade}
+            </span>
+          ) : (
+            // Deliberately neutral. `completion_pass` is a fact about the
+            // course having nothing to grade — not a statement that this
+            // student passed, which still depends on their progress. A green
+            // «Зачёт» here would award a pass to someone who has not opened a
+            // single chapter.
+            <span className="inline-flex items-center justify-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-ink-muted">
+              {b.result_state === "completion_pass"
+                ? t("gradebook.summary.byCompletionBadge")
+                : t("gradebook.summary.notGradedYetBadge")}
             </span>
           )}
         </div>
@@ -408,18 +425,27 @@ function ClassAverageRow({
 }: {
   summary: GradeSummaryResponse
   studentCount: number
-  classAvg: number
+  classAvg: number | null
 }) {
   const { t } = useTranslation()
+  // `classAvg === null` means the backend had nothing to average: a course
+  // with no graded work, or one where marking has not started. The per-student
+  // rows already show dashes there — printing "0.0%" in bold underneath them
+  // would contradict the whole table.
+  const hasNumbers = classAvg !== null
   const avg = (pick: (s: StudentCalculatedGrade) => number) =>
     summary.students.reduce((acc, st) => acc + pick(st), 0) / studentCount
 
   return (
     <div className="grid grid-cols-[1fr_80px_80px_80px_70px_70px] gap-3 px-4 py-3 bg-muted/40 font-semibold text-sm items-center border-t-2">
       <span className="pl-6">{t("gradebook.summary.classAverageRow", { count: studentCount })}</span>
-      <p className="tabular-nums text-right">{avg((s) => s.breakdown.quiz_avg).toFixed(1)}%</p>
-      <p className="tabular-nums text-right">{avg((s) => s.breakdown.assignment_avg).toFixed(1)}%</p>
-      <p className="tabular-nums text-right">{classAvg.toFixed(1)}%</p>
+      <p className="tabular-nums text-right">
+        {hasNumbers ? `${avg((s) => s.breakdown.quiz_avg).toFixed(1)}%` : "—"}
+      </p>
+      <p className="tabular-nums text-right">
+        {hasNumbers ? `${avg((s) => s.breakdown.assignment_avg).toFixed(1)}%` : "—"}
+      </p>
+      <p className="tabular-nums text-right">{hasNumbers ? `${classAvg.toFixed(1)}%` : "—"}</p>
       <span />
       <span />
     </div>

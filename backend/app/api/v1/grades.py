@@ -42,6 +42,14 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/grades", tags=["grades"])
 
+#: What the grade column says in a CSV when there is no score. The export is
+#: printed and filed without the screen that would otherwise explain it, so the
+#: cell has to carry its own explanation.
+_RESULT_STATE_CSV = {
+    "completion_pass": "Passed on completion (course has no graded work)",
+    "not_graded_yet": "Not graded yet",
+}
+
 # Spreadsheet apps (Excel / Google Sheets / LibreOffice) treat a cell that
 # begins with =, +, -, @, or a leading tab/CR as a FORMULA. Student names and
 # emails come from OAuth/profile data the user controls, so a name like
@@ -166,7 +174,14 @@ def get_grade_summary(
         results = calculate_all_student_grades(db, course)
 
         students = [StudentCalculatedGrade(**r) for r in results]
-        class_avg = round(sum(s.breakdown.final_score for s in students) / len(students), 2) if students else 0.0
+        # A class average only means something when there are grades to average.
+        # ``result_state`` is resolved course-wide, so one student answers for
+        # all: on a completion-only or not-yet-graded course every final_score
+        # is a placeholder zero, and averaging them prints "class average 0.0%"
+        # in bold under a table of dashes — the single most alarming line a
+        # teacher can open a gradebook to.
+        gradable = [s for s in students if s.breakdown.result_state == "graded"]
+        class_avg = round(sum(s.breakdown.final_score for s in gradable) / len(gradable), 2) if gradable else None
 
         return GradeSummaryResponse(
             course_id=course_id,
@@ -228,8 +243,12 @@ def export_grades_csv(
                 b.assignment_weighted,
                 b.participation_pct,
                 b.participation_weighted,
-                b.final_score,
-                b.letter_grade,
+                # A course with nothing graded has no score to export. Writing
+                # 0 and an empty letter sends a spreadsheet to the school that
+                # reads as "everyone scored zero" — the printed page has no
+                # banner to explain itself, so it must say so in the cell.
+                b.final_score if b.result_state == "graded" else "—",
+                b.letter_grade if b.result_state == "graded" else _RESULT_STATE_CSV[b.result_state],
                 r["manual_grade"] or "",
             ]
         )

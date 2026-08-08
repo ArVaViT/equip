@@ -43,12 +43,21 @@ def _breakdown(
     *,
     has_quizzes: bool,
     has_assignments: bool,
+    has_quiz_items: bool | None = None,
+    has_assignment_items: bool | None = None,
 ) -> GradeBreakdown:
+    """Default: the course contains exactly the categories that are live.
+
+    Pass ``has_*_items`` explicitly to model the case that matters most — the
+    course has items, but nothing has been graded in them yet.
+    """
     return _build_breakdown(
         course,
         quiz_avg,
         assignment_avg,
         0.0,
+        has_quiz_items=has_quizzes if has_quiz_items is None else has_quiz_items,
+        has_assignment_items=has_assignments if has_assignment_items is None else has_assignment_items,
         has_quizzes=has_quizzes,
         has_assignments=has_assignments,
     )
@@ -167,7 +176,16 @@ def test_participation_never_contributes_even_with_a_stale_row() -> None:
     course = _course(40, 60)
     course.participation_weight = 20  # only reachable pre-migration
 
-    b = _build_breakdown(course, 100.0, 100.0, 100.0, has_quizzes=True, has_assignments=True)
+    b = _build_breakdown(
+        course,
+        100.0,
+        100.0,
+        100.0,
+        has_quiz_items=True,
+        has_assignment_items=True,
+        has_quizzes=True,
+        has_assignments=True,
+    )
 
     assert b.participation_weighted == 0.0
     assert b.final_score == 100.0
@@ -184,3 +202,61 @@ def test_participation_never_contributes_even_with_a_stale_row() -> None:
 )
 def test_effective_weights_table(has_q: bool, has_a: bool, expected: tuple[int, int]) -> None:
     assert effective_weights(_course(40, 60), has_quizzes=has_q, has_assignments=has_a) == expected
+
+
+# --------------------------------------------------------------------------
+# "has items" and "has graded work" are different questions
+# --------------------------------------------------------------------------
+
+
+def test_course_with_quizzes_but_no_attempts_is_not_called_completion_pass() -> None:
+    """The regression an adversarial review caught in the previous fix.
+
+    First week of term: four quizzes sit in the course, nobody has taken one.
+    Reporting `completion_pass` there tells thirteen students they passed and
+    tells their teacher the course contains no quizzes — while four quizzes
+    sit in it. Both statements are false.
+    """
+    b = _breakdown(
+        _course(),
+        0.0,
+        0.0,
+        has_quizzes=False,
+        has_assignments=False,
+        has_quiz_items=True,
+        has_assignment_items=False,
+    )
+
+    assert b.result_state == "not_graded_yet"
+    assert b.letter_grade == ""
+    assert b.final_score == 0.0
+
+
+def test_completion_pass_requires_the_course_to_actually_have_nothing() -> None:
+    b = _breakdown(
+        _course(),
+        0.0,
+        0.0,
+        has_quizzes=False,
+        has_assignments=False,
+        has_quiz_items=False,
+        has_assignment_items=False,
+    )
+
+    assert b.result_state == "completion_pass"
+
+
+def test_first_graded_work_moves_the_course_out_of_not_graded_yet() -> None:
+    b = _breakdown(
+        _course(),
+        90.0,
+        0.0,
+        has_quizzes=True,
+        has_assignments=False,
+        has_quiz_items=True,
+        has_assignment_items=True,
+    )
+
+    assert b.result_state == "graded"
+    assert b.final_score == 90.0
+    assert (b.effective_quiz_weight, b.effective_assignment_weight) == (100, 0)

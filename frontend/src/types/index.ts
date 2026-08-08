@@ -122,7 +122,7 @@ interface GradeBreakdown {
   weights_redistributed: boolean
   /** `completion_pass` — the course has nothing gradable; `final_score` and
    *  `letter_grade` carry no meaning. */
-  result_state: "graded" | "completion_pass"
+  result_state: "graded" | "completion_pass" | "not_graded_yet"
 }
 
 export interface StudentCalculatedGrade {
@@ -137,7 +137,8 @@ export interface GradeSummaryResponse {
   course_id: string
   config: GradingConfig
   students: StudentCalculatedGrade[]
-  class_average: number
+  /** null — усреднять нечего: курс без оцениваемого или ещё не проверенный. */
+  class_average: number | null
 }
 
 export interface Announcement {

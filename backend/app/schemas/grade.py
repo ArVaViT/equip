@@ -116,9 +116,16 @@ class GradeBreakdown(BaseModel):
     #: the settings page.
     weights_redistributed: bool = False
     #: ``graded`` — an ordinary weighted result.
-    #: ``completion_pass`` — the course has no quizzes and no assignments; the
-    #: result is completion-based and ``final_score`` carries no meaning.
-    result_state: Literal["graded", "completion_pass"] = "graded"
+    #: ``completion_pass`` — the course contains no quizzes and no assignments
+    #: at all, so there is nothing to compute; the result is completion-based.
+    #: This is a fact about the *course*, not about the student: it does not by
+    #: itself mean this student passed — that still depends on progress.
+    #: ``not_graded_yet`` — the course has gradable items, but nothing has been
+    #: graded in it yet (start of term, or a fresh cohort). Distinct from
+    #: ``completion_pass`` on purpose: telling a teacher "this course has no
+    #: quizzes" while four quizzes sit in it is a lie, and showing 0%/F to a
+    #: class that has not been marked yet is a different lie.
+    result_state: Literal["graded", "completion_pass", "not_graded_yet"] = "graded"
 
 
 class StudentCalculatedGrade(BaseModel):
@@ -133,4 +140,7 @@ class GradeSummaryResponse(BaseModel):
     course_id: str
     config: GradingConfigResponse
     students: list[StudentCalculatedGrade]
-    class_average: float
+    #: ``None`` when the course has nothing graded to average — a
+    #: completion-only course, or one where marking has not started. Zero would
+    #: be a lie the size of the whole class.
+    class_average: float | None = None
