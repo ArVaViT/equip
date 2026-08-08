@@ -253,18 +253,17 @@ class TestCalculateStudentGradeForCourse:
 
         breakdown = calculate_student_grade_for_course(db, course, STUDENT_ID)
 
-        # 50% quiz * 50 weight = 25; nothing else contributes.
-        #
-        # Note what this number really says: the student answered half the
-        # quiz and has not touched the assignment, yet the assignment category
-        # still drags the total down as if it were a zero. Empty-category
-        # redistribution (D4, next PR) is what makes this honest.
+        # Half the quiz, and the assignment category holds no graded work at
+        # all — so it does not take a share (D4). Half of what actually counts
+        # is 50%, not the 25% the old formula produced by weighing an empty
+        # category as a zero.
         assert breakdown.quiz_avg == 50.0
-        assert breakdown.quiz_weighted == 25.0
+        assert breakdown.quiz_weighted == 50.0
         assert breakdown.assignment_avg == 0.0
         assert breakdown.assignment_weighted == 0.0
         assert breakdown.participation_pct == 0.0
-        assert breakdown.final_score == 25.0
+        assert (breakdown.effective_quiz_weight, breakdown.effective_assignment_weight) == (100, 0)
+        assert breakdown.final_score == 50.0
         assert breakdown.letter_grade == "F"
 
     def test_best_of_two_attempts_wins(self, db: Session, student) -> None:
@@ -323,7 +322,10 @@ class TestCalculateStudentGradeForCourse:
 
         breakdown = calculate_student_grade_for_course(db, course, STUDENT_ID)
         assert breakdown.assignment_avg == 100.0
-        assert breakdown.assignment_weighted == 50.0
+        # No quiz attempt exists, so the quiz category is not live and the
+        # assignment carries the full weight.
+        assert breakdown.assignment_weighted == 100.0
+        assert (breakdown.effective_quiz_weight, breakdown.effective_assignment_weight) == (0, 100)
 
     def test_uncompleted_attempt_does_not_count(self, db: Session, student) -> None:
         """Attempts without ``completed_at`` (still in flight, saved
@@ -495,3 +497,179 @@ class TestCalculateAllStudentGrades:
 
         batch = calculate_all_student_grades(db, course)
         assert batch[0]["breakdown"].assignment_avg == 100.0
+
+
+class TestCategoryGoesLiveOnlyWithGradedWork:
+    """A category counts once it holds graded work — not when an item exists.
+
+    Found by an adversarial review of the empty-category redistribution, and it
+    is the more dangerous half of that change. Gating on existence means a
+    teacher who creates the first assignment — due in two weeks, nothing
+    submitted — instantly restores its configured weight against a zero
+    average. On the real course (4 quizzes, 0 assignments, 13 students) every
+    student would drop from 100% to 40% in the same instant: A to F, no
+    warning, nobody having missed anything.
+    """
+
+    def test_creating_an_assignment_does_not_move_anyones_grade(self, db: Session, student) -> None:
+        course, _chapter_id, quiz_id, _assignment_id = _seed_course_with_one_quiz_one_assignment(db)
+        _enroll(db, STUDENT_ID, course.id)
+        db.add(
+            QuizAttempt(
+                id=uuid.uuid4(),
+                quiz_id=quiz_id,
+                user_id=STUDENT_ID,
+                score=10,
+                max_score=10,
+                completed_at=datetime.now(UTC),
+            )
+        )
+        db.commit()
+
+        # The assignment exists (the fixture creates it) but nothing has been
+        # submitted or marked, so only the quiz category is live.
+        breakdown = calculate_student_grade_for_course(db, course, STUDENT_ID)
+
+        assert breakdown.final_score == 100.0
+        assert breakdown.letter_grade == "A"
+        assert (breakdown.effective_quiz_weight, breakdown.effective_assignment_weight) == (100, 0)
+
+    def test_first_marked_submission_brings_the_configured_split_back(self, db: Session, student) -> None:
+        course, _chapter_id, quiz_id, assignment_id = _seed_course_with_one_quiz_one_assignment(db)
+        _enroll(db, STUDENT_ID, course.id)
+        db.add(
+            QuizAttempt(
+                id=uuid.uuid4(),
+                quiz_id=quiz_id,
+                user_id=STUDENT_ID,
+                score=10,
+                max_score=10,
+                completed_at=datetime.now(UTC),
+            )
+        )
+        db.add(
+            AssignmentSubmission(
+                id=uuid.uuid4(),
+                assignment_id=assignment_id,
+                student_id=STUDENT_ID,
+                status="graded",
+                grade=50,  # half of max_score 100
+                graded_by=TEACHER_ID,
+            )
+        )
+        db.commit()
+
+        breakdown = calculate_student_grade_for_course(db, course, STUDENT_ID)
+
+        # Weights 50/50 are back now that both categories carry graded work.
+        assert (breakdown.effective_quiz_weight, breakdown.effective_assignment_weight) == (50, 50)
+        assert breakdown.final_score == 75.0
+
+    def test_an_ungraded_submission_does_not_wake_the_category(self, db: Session, student) -> None:
+        """Submitted but not yet marked is still nothing to weigh.
+
+        Otherwise a single student handing work in early would drag the whole
+        class down until the teacher got round to marking it.
+        """
+        course, _chapter_id, quiz_id, assignment_id = _seed_course_with_one_quiz_one_assignment(db)
+        _enroll(db, STUDENT_ID, course.id)
+        db.add(
+            QuizAttempt(
+                id=uuid.uuid4(),
+                quiz_id=quiz_id,
+                user_id=STUDENT_ID,
+                score=10,
+                max_score=10,
+                completed_at=datetime.now(UTC),
+            )
+        )
+        db.add(
+            AssignmentSubmission(
+                id=uuid.uuid4(),
+                assignment_id=assignment_id,
+                student_id=STUDENT_ID,
+                status="submitted",
+                grade=None,
+                graded_by=None,
+            )
+        )
+        db.commit()
+
+        breakdown = calculate_student_grade_for_course(db, course, STUDENT_ID)
+
+        assert (breakdown.effective_quiz_weight, breakdown.effective_assignment_weight) == (100, 0)
+        assert breakdown.final_score == 100.0
+
+    def test_the_whole_class_is_graded_on_the_same_weights(self, db: Session, student) -> None:
+        """One classmate's marked work switches the split for everyone.
+
+        Per-student weights would mean two people in one class holding
+        different definitions of the same number — the exact thing Принцип 3
+        forbids.
+        """
+        other_id = uuid.uuid4()
+        db.add(
+            User(
+                id=other_id,
+                email="other-student@test.local",
+                full_name="Other Student",
+                role=UserRole.STUDENT,
+            )
+        )
+        course, _chapter_id, quiz_id, assignment_id = _seed_course_with_one_quiz_one_assignment(db)
+        _enroll(db, STUDENT_ID, course.id)
+        _enroll(db, other_id, course.id)
+        for uid in (STUDENT_ID, other_id):
+            db.add(
+                QuizAttempt(
+                    id=uuid.uuid4(),
+                    quiz_id=quiz_id,
+                    user_id=uid,
+                    score=10,
+                    max_score=10,
+                    completed_at=datetime.now(UTC),
+                )
+            )
+        # Only the *other* student has marked work.
+        db.add(
+            AssignmentSubmission(
+                id=uuid.uuid4(),
+                assignment_id=assignment_id,
+                student_id=other_id,
+                status="graded",
+                grade=100,
+                graded_by=TEACHER_ID,
+            )
+        )
+        db.commit()
+
+        mine = calculate_student_grade_for_course(db, course, STUDENT_ID)
+        theirs = calculate_student_grade_for_course(db, course, other_id)
+
+        assert (mine.effective_quiz_weight, mine.effective_assignment_weight) == (50, 50)
+        assert (theirs.effective_quiz_weight, theirs.effective_assignment_weight) == (50, 50)
+        # Same weights, different scores — mine has no assignment mark yet.
+        assert mine.final_score == 50.0
+        assert theirs.final_score == 100.0
+
+    def test_batch_path_agrees_with_the_single_student_path(self, db: Session, student) -> None:
+        course, _chapter_id, quiz_id, _assignment_id = _seed_course_with_one_quiz_one_assignment(db)
+        _enroll(db, STUDENT_ID, course.id)
+        db.add(
+            QuizAttempt(
+                id=uuid.uuid4(),
+                quiz_id=quiz_id,
+                user_id=STUDENT_ID,
+                score=8,
+                max_score=10,
+                completed_at=datetime.now(UTC),
+            )
+        )
+        db.commit()
+
+        single = calculate_student_grade_for_course(db, course, STUDENT_ID)
+        batch = calculate_all_student_grades(db, course)[0]["breakdown"]
+
+        assert batch.effective_quiz_weight == single.effective_quiz_weight
+        assert batch.effective_assignment_weight == single.effective_assignment_weight
+        assert batch.final_score == single.final_score == 80.0

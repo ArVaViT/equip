@@ -59,22 +59,70 @@ def _get_assignment_ids_for_chapters(db: Session, chapter_ids: list[str]) -> lis
     return [r[0] for r in rows]
 
 
-def effective_weights(course: Course, *, has_quizzes: bool, has_assignments: bool) -> tuple[int, int]:
-    """Weights after empty categories drop out (D4).
+def category_is_live(db: Session, *, quiz_ids: list[UUID], assignment_ids: list[UUID]) -> tuple[bool, bool]:
+    """Whether each category actually carries graded work yet, course-wide.
 
-    A category with no items in the course contributes nothing, so leaving it
+    A category counts once **anyone in the course** has a graded piece of work
+    in it — a completed quiz attempt, or a submission a teacher has marked. Not
+    when the item merely exists.
+
+    That distinction is the whole point, and getting it wrong is worse than the
+    bug it replaces. Gating on existence means the moment a teacher creates the
+    first assignment — due in two weeks, nobody has submitted anything — the
+    assignment category snaps back to its configured weight while its average
+    is still zero. On course 1f3c4803 that would drop all thirteen students
+    from 100% to 40% in the same instant: A to F, no warning, no submission
+    missed, purely because their teacher planned ahead. An empty category and a
+    category nobody has been graded in yet are arithmetically identical, so
+    they must behave identically.
+
+    Course-wide rather than per-student on purpose: two students in one class
+    must never have their grades computed from different weights. One number,
+    one meaning, both roles (Принцип 3).
+
+    The flip is still automatic — the first marked submission brings the
+    teacher's configured split back — but it happens when there is something
+    real to weigh.
+    """
+    has_quiz_work = False
+    if quiz_ids:
+        has_quiz_work = (
+            db.query(QuizAttempt.id)
+            .filter(QuizAttempt.quiz_id.in_(quiz_ids), QuizAttempt.completed_at.isnot(None))
+            .first()
+            is not None
+        )
+
+    has_assignment_work = False
+    if assignment_ids:
+        has_assignment_work = (
+            db.query(AssignmentSubmission.id)
+            .filter(
+                AssignmentSubmission.assignment_id.in_(assignment_ids),
+                AssignmentSubmission.grade.isnot(None),
+            )
+            .first()
+            is not None
+        )
+
+    return has_quiz_work, has_assignment_work
+
+
+def effective_weights(course: Course, *, has_quizzes: bool, has_assignments: bool) -> tuple[int, int]:
+    """Weights after inactive categories drop out (D4).
+
+    A category with nothing graded in it contributes zero, so leaving it
     weighted silently caps the achievable score. The largest production course
     — 4 quizzes, 0 assignments, 13 students — was capped at the quiz weight
     alone: a student answering every question perfectly still landed on a
     failing letter, and no amount of work could move it.
 
-    The rule is applied at calculation time rather than stored, so a teacher
-    who adds the first assignment halfway through a course just works: the
-    weights snap back to what the settings page says without anyone editing
-    anything.
+    The flags come from :func:`category_is_live`, which asks whether the
+    category carries graded work rather than whether items exist — see there
+    for why the difference matters.
 
-    Returns ``(0, 0)`` when neither category has items — the vacuous case,
-    where there is nothing to redistribute *to*. See ``_build_breakdown``.
+    Returns ``(0, 0)`` when neither category is live — the vacuous case, where
+    there is nothing to redistribute *to*. See ``_build_breakdown``.
     """
     if has_quizzes and has_assignments:
         return course.quiz_weight, course.assignment_weight
@@ -233,13 +281,14 @@ def calculate_student_grade(
         ) or 0
         participation_pct = (completed_count / total_chapters) * 100.0
 
+    live_quizzes, live_assignments = category_is_live(db, quiz_ids=quiz_ids, assignment_ids=assignment_ids)
     return _build_breakdown(
         course,
         quiz_avg,
         assignment_avg,
         participation_pct,
-        has_quizzes=bool(quiz_ids),
-        has_assignments=bool(assignment_ids),
+        has_quizzes=live_quizzes,
+        has_assignments=live_assignments,
     )
 
 
@@ -343,6 +392,9 @@ def calculate_all_student_grades(db: Session, course: Course):
     total_chapters = len(chapter_ids)
     total_quizzes = len(quiz_ids)
     total_assignments = len(assignment_ids)
+    # Resolved once for the whole course: every student in a class must be
+    # graded on the same weights.
+    live_quizzes, live_assignments = category_is_live(db, quiz_ids=quiz_ids, assignment_ids=assignment_ids)
     results = []
     for user_id, full_name, email in enrollments:
         sid = str(user_id)
@@ -358,8 +410,8 @@ def calculate_all_student_grades(db: Session, course: Course):
             quiz_avg,
             assignment_avg,
             participation_pct,
-            has_quizzes=bool(quiz_ids),
-            has_assignments=bool(assignment_ids),
+            has_quizzes=live_quizzes,
+            has_assignments=live_assignments,
         )
         results.append(
             {

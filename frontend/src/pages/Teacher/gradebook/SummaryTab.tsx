@@ -95,6 +95,14 @@ export function SummaryTab({
     }
   }
 
+  // Course-level facts, not per-student: the calculator resolves both from the
+  // course, so any row carries the same answer. Shown once at the top because
+  // an explanation buried inside an expandable row is an explanation nobody
+  // reads — the teacher sees a table of dashes and rings support instead.
+  const first = sortedStudents[0]?.breakdown
+  const courseIsCompletionOnly = first?.result_state === "completion_pass"
+  const courseRedistributed = first?.weights_redistributed && first?.result_state === "graded"
+
   return (
     <Card>
       <CardHeader>
@@ -102,6 +110,18 @@ export function SummaryTab({
         <CardDescription>{t("gradebook.summary.description")}</CardDescription>
       </CardHeader>
       <CardContent>
+        {courseIsCompletionOnly && (
+          <div className="mb-4 rounded border-l-stripe border-l-info bg-info/10 px-3 py-2 text-sm text-ink">
+            {t("gradebook.summary.completionPassCourse")}
+          </div>
+        )}
+        {courseRedistributed && (
+          <div className="mb-4 rounded border-l-stripe border-l-info bg-info/10 px-3 py-2 text-sm text-ink">
+            {first?.effective_assignment_weight === 0
+              ? t("gradebook.summary.noAssignmentsCourse")
+              : t("gradebook.summary.noQuizzesCourse")}
+          </div>
+        )}
         {studentCount === 0 ? (
           <EmptyState
             variant="compact"
@@ -231,13 +251,28 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
             <p className="text-xs text-ink-muted truncate">{student.student_email}</p>
           </div>
         </div>
-        <p className="text-sm tabular-nums text-right">{b.quiz_avg.toFixed(1)}%</p>
-        <p className="text-sm tabular-nums text-right">{b.assignment_avg.toFixed(1)}%</p>
-        <p className="text-sm font-semibold tabular-nums text-right">{b.final_score.toFixed(1)}%</p>
+        {/* A course with nothing gradable has no percentage. Printing 0.0%
+            and an empty grade pill reads as "everyone failed" — the single
+            most alarming thing a teacher can open the gradebook to. */}
+        <p className="text-sm tabular-nums text-right">
+          {b.result_state === "completion_pass" ? "—" : `${b.quiz_avg.toFixed(1)}%`}
+        </p>
+        <p className="text-sm tabular-nums text-right">
+          {b.result_state === "completion_pass" ? "—" : `${b.assignment_avg.toFixed(1)}%`}
+        </p>
+        <p className="text-sm font-semibold tabular-nums text-right">
+          {b.result_state === "completion_pass" ? "—" : `${b.final_score.toFixed(1)}%`}
+        </p>
         <div className="flex justify-center">
-          <span className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ${letterColor(b.letter_grade)}`}>
-            {b.letter_grade}
-          </span>
+          {b.result_state === "completion_pass" ? (
+            <span className="inline-flex items-center justify-center rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-bold text-success">
+              {t("gradebook.summary.completionPassBadge")}
+            </span>
+          ) : (
+            <span className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ${letterColor(b.letter_grade)}`}>
+              {b.letter_grade}
+            </span>
+          )}
         </div>
         <div className="flex justify-center">
           {manualGrade?.grade ? (
