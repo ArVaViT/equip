@@ -43,6 +43,7 @@ from ._cv_helpers import (
     make_assignment_with_text,
     make_course_with_text,
     make_module_with_text,
+    make_quiz_question_with_text,
     make_quiz_with_text,
 )
 from .conftest import STUDENT_ID, TEACHER_ID
@@ -673,3 +674,83 @@ class TestCategoryGoesLiveOnlyWithGradedWork:
         assert batch.effective_quiz_weight == single.effective_quiz_weight
         assert batch.effective_assignment_weight == single.effective_assignment_weight
         assert batch.final_score == single.final_score == 80.0
+
+
+class TestQuizCategoryNeedsMarkedWork:
+    """An essay quiz sits unmarked until a teacher reads it.
+
+    `graded_at IS NULL` on an answer means exactly that. Treating a submitted
+    attempt as graded work would put the course into `graded` with an average
+    built from answers nobody has read — the same "graded zero" this module
+    exists to prevent, arriving through the quiz door instead of the assignment
+    one.
+    """
+
+    def test_submitted_but_unmarked_essay_answers_do_not_wake_the_category(self, db: Session, student) -> None:
+        from app.models.quiz import QuizAnswer
+
+        course, _chapter_id, quiz_id, _assignment_id = _seed_course_with_one_quiz_one_assignment(db)
+        _enroll(db, STUDENT_ID, course.id)
+        question = make_quiz_question_with_text(db, quiz_id=quiz_id, question_type="essay")
+        db.flush()
+        attempt_id = uuid.uuid4()
+        db.add(
+            QuizAttempt(
+                id=attempt_id,
+                quiz_id=quiz_id,
+                user_id=STUDENT_ID,
+                score=0,
+                max_score=10,
+                completed_at=datetime.now(UTC),
+            )
+        )
+        db.add(
+            QuizAnswer(
+                id=uuid.uuid4(),
+                attempt_id=attempt_id,
+                question_id=question.id,
+                is_correct=None,
+                points_earned=0,
+                graded_at=None,  # awaiting the teacher
+            )
+        )
+        db.commit()
+
+        breakdown = calculate_student_grade_for_course(db, course, STUDENT_ID)
+
+        assert breakdown.result_state == "not_graded_yet"
+
+    def test_marking_the_answer_wakes_it(self, db: Session, student) -> None:
+        from app.models.quiz import QuizAnswer
+
+        course, _chapter_id, quiz_id, _assignment_id = _seed_course_with_one_quiz_one_assignment(db)
+        _enroll(db, STUDENT_ID, course.id)
+        question = make_quiz_question_with_text(db, quiz_id=quiz_id, question_type="essay")
+        db.flush()
+        attempt_id = uuid.uuid4()
+        db.add(
+            QuizAttempt(
+                id=attempt_id,
+                quiz_id=quiz_id,
+                user_id=STUDENT_ID,
+                score=8,
+                max_score=10,
+                completed_at=datetime.now(UTC),
+            )
+        )
+        db.add(
+            QuizAnswer(
+                id=uuid.uuid4(),
+                attempt_id=attempt_id,
+                question_id=question.id,
+                is_correct=True,
+                points_earned=8,
+                graded_at=datetime.now(UTC),
+            )
+        )
+        db.commit()
+
+        breakdown = calculate_student_grade_for_course(db, course, STUDENT_ID)
+
+        assert breakdown.result_state == "graded"
+        assert breakdown.final_score == 80.0

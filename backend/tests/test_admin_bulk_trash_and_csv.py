@@ -499,9 +499,7 @@ class TestGradeCsvExport:
         assert "Passed" not in body
         assert "By completion" in body
 
-    def test_completion_only_course_exports_the_real_progress_figure(
-        self, client: TestClient, db: Session
-    ):
+    def test_completion_only_course_exports_the_real_progress_figure(self, client: TestClient, db: Session):
         """The cell points at a column, so that column must be able to move.
 
         «Participation (%)» is computed over gradable chapters, and a course is

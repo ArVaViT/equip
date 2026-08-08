@@ -9,7 +9,7 @@ from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
 from app.models.org_settings import OrgSettings
-from app.models.quiz import Quiz, QuizAttempt
+from app.models.quiz import Quiz, QuizAnswer, QuizAttempt
 from app.models.student_grade import StudentGrade
 from app.models.user import User
 from app.schemas.grade import GradeBreakdown
@@ -125,9 +125,24 @@ def category_is_live(db: Session, *, quiz_ids: list[UUID], assignment_ids: list[
     """
     has_quiz_work = False
     if quiz_ids:
+        # A finished attempt is not necessarily a graded one. Open-ended
+        # answers carry ``graded_at IS NULL`` until a teacher reviews them, so
+        # an essay-style quiz can be submitted and sit unmarked for a week.
+        # Counting it as live would put the course into `graded` with a 0%
+        # average built from answers nobody has read — the same "graded 0"
+        # this module exists to prevent, arriving through the quiz door.
+        pending_answer = (
+            db.query(QuizAnswer.id)
+            .filter(QuizAnswer.attempt_id == QuizAttempt.id, QuizAnswer.graded_at.is_(None))
+            .exists()
+        )
         has_quiz_work = (
             db.query(QuizAttempt.id)
-            .filter(QuizAttempt.quiz_id.in_(quiz_ids), QuizAttempt.completed_at.isnot(None))
+            .filter(
+                QuizAttempt.quiz_id.in_(quiz_ids),
+                QuizAttempt.completed_at.isnot(None),
+                ~pending_answer,
+            )
             .first()
             is not None
         )
@@ -188,7 +203,7 @@ def _build_breakdown(
     has_assignment_items: bool,
     has_quizzes: bool,
     has_assignments: bool,
-    settings: OrgSettings | None = None,
+    settings: OrgSettings,
 ) -> GradeBreakdown:
     """Assemble one student's breakdown.
 
@@ -287,7 +302,7 @@ def _build_breakdown(
         final_score=final_score,
         # The institution's own bands when a session resolved them; the shipped
         # scale only as a fallback for callers without one.
-        letter_grade=(resolve_symbol(final_score, course, settings) if settings else score_to_letter(final_score)),
+        letter_grade=resolve_symbol(final_score, course, settings),
         effective_quiz_weight=eff_quiz,
         effective_assignment_weight=eff_assignment,
         has_quiz_items=has_quiz_items,

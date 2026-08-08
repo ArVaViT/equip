@@ -21,11 +21,13 @@ Two rules fix it:
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 import pytest
 
 from app.models.course import Course
+from app.models.org_settings import DEFAULT_GRADE_BANDS, OrgSettings
 from app.services.grade_calculator import _build_breakdown, effective_weights
 
 if TYPE_CHECKING:
@@ -34,6 +36,16 @@ if TYPE_CHECKING:
 
 def _course(quiz: int = 40, assignment: int = 60) -> Course:
     return Course(id="c-eff", status="draft", quiz_weight=quiz, assignment_weight=assignment)
+
+
+def _settings() -> OrgSettings:
+    """Shipped defaults, without a session — these tests exercise arithmetic."""
+    return OrgSettings(
+        id=True,
+        default_grading_scheme="letter",
+        default_pass_threshold=Decimal("70"),
+        grade_bands=dict(DEFAULT_GRADE_BANDS),
+    )
 
 
 def _breakdown(
@@ -60,6 +72,7 @@ def _breakdown(
         has_assignment_items=has_assignments if has_assignment_items is None else has_assignment_items,
         has_quizzes=has_quizzes,
         has_assignments=has_assignments,
+        settings=_settings(),
     )
 
 
@@ -185,6 +198,7 @@ def test_participation_never_contributes_even_with_a_stale_row() -> None:
         has_assignment_items=True,
         has_quizzes=True,
         has_assignments=True,
+        settings=_settings(),
     )
 
     assert b.participation_weighted == 0.0
