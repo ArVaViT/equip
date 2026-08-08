@@ -55,7 +55,7 @@ router = APIRouter(prefix="/grades", tags=["grades"])
 #: documents, and a teacher would sign it. The pass decision belongs to the
 #: teacher reading the completion figure, not to the export.
 _RESULT_STATE_CSV = {
-    "completion_pass": "By completion — see Participation (%)",
+    "completion_pass": "By completion — see Course Progress (%)",
     "not_graded_yet": "Not graded yet",
     "zero_weighted": "No percentage (graded work is weighted 0%)",
 }
@@ -223,6 +223,19 @@ def export_grades_csv(
     course = verify_course_owner(db, course_id, teacher)
     results = calculate_all_student_grades(db, course)
 
+    # Course progress, straight from the enrolment. On a completion-only course
+    # this is the *only* honest figure — «Participation (%)» is computed over
+    # gradable chapters, and a course qualifies as completion-only precisely
+    # because it has none, so that column is a structural zero there. Pointing
+    # a teacher at a column that cannot be anything but zero is a different lie
+    # from the one it replaced.
+    progress_by_student = {
+        str(user_id): progress
+        for user_id, progress in db.query(Enrollment.user_id, Enrollment.progress)
+        .filter(Enrollment.course_id == course.id)
+        .all()
+    }
+
     buf = io.StringIO()
     buf.write("\ufeff")
     writer = csv.writer(buf)
@@ -235,7 +248,7 @@ def export_grades_csv(
             "Assignment Avg (%)",
             "Assignment Weighted",
             "Participation (%)",
-            "Participation Weighted",
+            "Course Progress (%)",
             "Final Score",
             "Letter Grade",
             "Manual Grade",
@@ -264,10 +277,11 @@ def export_grades_csv(
                 num(b.quiz_weighted),
                 num(b.assignment_avg),
                 num(b.assignment_weighted),
-                # Chapter completion is a real figure in every state — it is
-                # the one number that still means something here.
+                # Completion over *gradable* chapters — structurally zero on a
+                # completion-only course, which is why the real progress figure
+                # travels beside it.
                 b.participation_pct,
-                b.participation_weighted,
+                progress_by_student.get(r["student_id"], 0),
                 b.final_score if graded else "—",
                 b.letter_grade if graded else _RESULT_STATE_CSV[b.result_state],
                 r["manual_grade"] or "",

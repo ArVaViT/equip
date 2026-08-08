@@ -13,9 +13,14 @@ Before this module, ``grade_calculator.LETTER_GRADES`` hardcoded US letter
 bands for every course on the platform, and the frontend kept its own copy of
 the same scale in ``gradebook/types.ts``. Two copies of an institutional
 policy, neither of which the institution could edit. Bands now live in
-``org_settings.grade_bands`` (admin-editable), this module resolves them, and
-the grading-config endpoint exports the effective set so the SPA renders from
-the backend's answer instead of its own constants.
+``org_settings.grade_bands`` (admin-editable) and this module resolves them,
+so a grade a student sees now follows what the institution configured.
+
+The SPA still carries its own copy of the letter scale for pill colours and
+sort order. Exporting the effective bands through the grading-config endpoint,
+so the frontend renders from the backend's answer, lands with the scheme
+picker — until a course can be anything but ``letter`` the duplication is
+dormant rather than wrong.
 
 Teachers still get presets only — the anti-Moodle thesis holds at teacher
 level. It is the *institution* that configures.
