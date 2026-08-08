@@ -1707,6 +1707,7 @@
       "noScoreForStudent": "No percentage for this student yet — see the note above the table.",
       "byCompletionBadge": "By completion",
       "notGradedYetBadge": "Not graded",
+      "notWeightedBadge": "Not weighted",
       "notGradedYetCourse": "Nothing has been graded in this course yet, so there are no percentages to show. They appear as soon as the first quiz is taken or the first assignment is marked.",
       "completionPassCourse": "This course has no quizzes and no assignments, so there is no percentage to compute. It is passed by completion: a student passes once every chapter is done. This is expected, not an error.",
       "quizzesWeighZero": "You set quizzes to 0% in this course, so they produce no percentage — their marks are visible in the Grade Table tab. A percentage appears once you mark the first assignment: assignments carry the whole grade here. To make quizzes count, change the weights in the grading settings.",

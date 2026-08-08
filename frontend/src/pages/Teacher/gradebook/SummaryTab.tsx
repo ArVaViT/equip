@@ -21,7 +21,7 @@ import {
   type GradeForm,
 } from "./types"
 import { EMPTY_FORM, letterColor } from "./helpers"
-import { gradebookNotice } from "./notice"
+import { gradebookNotice, gradePillLabel } from "./notice"
 
 interface Props {
   summary: GradeSummaryResponse | null
@@ -282,9 +282,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
             // «Зачёт» here would award a pass to someone who has not opened a
             // single chapter.
             <span className="inline-flex items-center justify-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-ink-muted">
-              {b.result_state === "completion_pass"
-                ? t("gradebook.summary.byCompletionBadge")
-                : t("gradebook.summary.notGradedYetBadge")}
+              {t(gradePillLabel(b.result_state) ?? "")}
             </span>
           )}
         </div>

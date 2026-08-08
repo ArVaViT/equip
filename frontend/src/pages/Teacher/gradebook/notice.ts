@@ -65,3 +65,25 @@ export function gradebookNotice(
 
   return null
 }
+
+
+/**
+ * The label shown in the grade column when there is no symbol to show.
+ *
+ * Lives beside `gradebookNotice` because it drifted from it once already:
+ * `zero_weighted` fell through into the "not graded" branch and printed «Нет
+ * оценок» in the same row as a real 87.5% two columns to the left. The work
+ * had been marked; it simply carried no weight.
+ */
+export function gradePillLabel(state: GradeBreakdown["result_state"]): string | null {
+  switch (state) {
+    case "graded":
+      return null
+    case "completion_pass":
+      return "gradebook.summary.byCompletionBadge"
+    case "zero_weighted":
+      return "gradebook.summary.notWeightedBadge"
+    case "not_graded_yet":
+      return "gradebook.summary.notGradedYetBadge"
+  }
+}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 
-import { gradebookNotice } from "../notice"
+import { gradebookNotice, gradePillLabel } from "../notice"
 import type { GradeBreakdown, GradingConfig } from "@/types"
 
 /**
@@ -174,5 +174,29 @@ describe("gradebookNotice", () => {
   it("stays silent when there is nothing to render yet", () => {
     expect(gradebookNotice(undefined, config(40, 60))).toBeNull()
     expect(gradebookNotice(breakdown({}), undefined)).toBeNull()
+  })
+})
+
+/**
+ * The grade pill has its own three-way split, and it drifted from the banner's
+ * once already: `zero_weighted` fell into the "not graded" branch and printed
+ * «Нет оценок» in the same row as a real 87.5% two columns to the left. The
+ * work had been marked — it simply carried no weight.
+ */
+describe("gradePillLabel", () => {
+  it("shows no label at all when there is a real grade symbol", () => {
+    expect(gradePillLabel("graded")).toBeNull()
+  })
+
+  it("calls a completion-only course what it is", () => {
+    expect(gradePillLabel("completion_pass")).toBe("gradebook.summary.byCompletionBadge")
+  })
+
+  it("does not call marked-but-unweighted work ungraded", () => {
+    expect(gradePillLabel("zero_weighted")).toBe("gradebook.summary.notWeightedBadge")
+  })
+
+  it("still says ungraded when nothing has been graded", () => {
+    expect(gradePillLabel("not_graded_yet")).toBe("gradebook.summary.notGradedYetBadge")
   })
 })

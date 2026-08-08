@@ -45,8 +45,17 @@ router = APIRouter(prefix="/grades", tags=["grades"])
 #: What the grade column says in a CSV when there is no score. The export is
 #: printed and filed without the screen that would otherwise explain it, so the
 #: cell has to carry its own explanation.
+#: What the grade column says in a CSV when there is no score.
+#:
+#: Deliberately neutral for ``completion_pass``. The screen renders «По
+#: завершению» there rather than a pass, because the state describes the
+#: *course* having nothing to grade — it says nothing about whether this
+#: student did the work. Writing "Passed" into an exported sheet would award a
+#: pass to someone who never opened a chapter, on the more official of the two
+#: documents, and a teacher would sign it. The pass decision belongs to the
+#: teacher reading the completion figure, not to the export.
 _RESULT_STATE_CSV = {
-    "completion_pass": "Passed on completion (course has no graded work)",
+    "completion_pass": "By completion — see Participation (%)",
     "not_graded_yet": "Not graded yet",
     "zero_weighted": "No percentage (graded work is weighted 0%)",
 }
