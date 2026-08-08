@@ -310,7 +310,12 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
               {/* Only the categories that carry the score are shown, with the
                   weights actually applied. Printing «0.0% (×0% = 0.0)» for a
                   category that took no part looks like a mark of zero. */}
-              {b.effective_quiz_weight > 0 && (
+              {/* A category is hidden only when it holds nothing — never
+                  because its weight is zero. Marks that exist must stay
+                  visible, with «(×0% = 0.0)» showing exactly why they do not
+                  move the total; dropping the row leaves 80% in the table
+                  above with no explanation anywhere on the page. */}
+              {(b.effective_quiz_weight > 0 || b.has_quiz_items) && (
                 <BreakdownEntry
                   label={t("gradebook.summary.breakdownQuiz")}
                   pct={b.quiz_avg}
@@ -318,7 +323,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
                   weighted={b.quiz_weighted}
                 />
               )}
-              {b.effective_assignment_weight > 0 && (
+              {(b.effective_assignment_weight > 0 || b.has_assignment_items) && (
                 <BreakdownEntry
                   label={t("gradebook.summary.breakdownAssignment")}
                   pct={b.assignment_avg}

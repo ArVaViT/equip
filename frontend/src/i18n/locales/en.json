@@ -1708,6 +1708,8 @@
       "byCompletionBadge": "By completion",
       "notGradedYetBadge": "Not graded",
       "notWeightedBadge": "Not weighted",
+      "assignmentsNotCounted": "Assignments are set to 0% in this course, so their marks are shown but do not affect the total — the grade comes from quizzes alone. Change the weights in the grading settings if you want assignments to count.",
+      "quizzesNotCounted": "Quizzes are set to 0% in this course, so their results are shown but do not affect the total — the grade comes from assignments alone. Change the weights in the grading settings if you want quizzes to count.",
       "notGradedYetCourse": "Nothing has been graded in this course yet, so there are no percentages to show. They appear as soon as the first quiz is taken or the first assignment is marked.",
       "completionPassCourse": "This course has no quizzes and no assignments, so there is no percentage to compute. It is passed by completion: a student passes once every chapter is done. This is expected, not an error.",
       "quizzesWeighZero": "You set quizzes to 0% in this course, so they produce no percentage — their marks are visible in the Grade Table tab. A percentage appears once you mark the first assignment: assignments carry the whole grade here. To make quizzes count, change the weights in the grading settings.",

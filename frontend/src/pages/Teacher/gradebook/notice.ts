@@ -49,6 +49,21 @@ export function gradebookNotice(
       : "gradebook.summary.assignmentsWeighZeroNoQuizzes"
   }
 
+  // A graded course where one category is configured at 0% but does carry
+  // marks. The score is real and so are those marks — they simply contribute
+  // nothing, and without a word about it the teacher sees 80% next to a total
+  // that ignores it. Distinct from `zero_weighted`, where there is no score at
+  // all: here the promise "a percentage appears once..." would be nonsense,
+  // the percentage is already on screen.
+  if (result_state === "graded" && !weights_redistributed) {
+    if (config.assignment_weight === 0 && has_assignment_items) {
+      return "gradebook.summary.assignmentsNotCounted"
+    }
+    if (config.quiz_weight === 0 && has_quiz_items) {
+      return "gradebook.summary.quizzesNotCounted"
+    }
+  }
+
   if (weights_redistributed) {
     // One category is carrying the whole grade because the other has nothing
     // graded in it. Whether that is permanent (no such items exist) or

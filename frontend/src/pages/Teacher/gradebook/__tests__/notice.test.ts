@@ -171,6 +171,53 @@ describe("gradebookNotice", () => {
     })
   })
 
+  describe("a graded course where one category is configured at zero", () => {
+    it("explains assignments that are marked but do not count", () => {
+      // The gap this closes: the table shows 80% for assignments while the
+      // total ignores them, and nothing on the page said why.
+      const b = breakdown({
+        result_state: "graded",
+        weights_redistributed: false,
+        effective_quiz_weight: 100,
+        effective_assignment_weight: 0,
+        has_quiz_items: true,
+        has_assignment_items: true,
+        quiz_avg: 75,
+        assignment_avg: 80,
+        final_score: 75,
+      })
+
+      expect(gradebookNotice(b, config(100, 0))).toBe("gradebook.summary.assignmentsNotCounted")
+    })
+
+    it("explains quizzes that are taken but do not count", () => {
+      const b = breakdown({
+        result_state: "graded",
+        weights_redistributed: false,
+        effective_quiz_weight: 0,
+        effective_assignment_weight: 100,
+        has_quiz_items: true,
+        has_assignment_items: true,
+      })
+
+      expect(gradebookNotice(b, config(0, 100))).toBe("gradebook.summary.quizzesNotCounted")
+    })
+
+    it("says nothing when the zero-weight category holds nothing anyway", () => {
+      // No marks to explain away — the ordinary shape of a quiz-only course.
+      const b = breakdown({
+        result_state: "graded",
+        weights_redistributed: false,
+        effective_quiz_weight: 100,
+        effective_assignment_weight: 0,
+        has_quiz_items: true,
+        has_assignment_items: false,
+      })
+
+      expect(gradebookNotice(b, config(100, 0))).toBeNull()
+    })
+  })
+
   it("stays silent when there is nothing to render yet", () => {
     expect(gradebookNotice(undefined, config(40, 60))).toBeNull()
     expect(gradebookNotice(breakdown({}), undefined)).toBeNull()
