@@ -260,3 +260,75 @@ def test_first_graded_work_moves_the_course_out_of_not_graded_yet() -> None:
     assert b.result_state == "graded"
     assert b.final_score == 90.0
     assert (b.effective_quiz_weight, b.effective_assignment_weight) == (100, 0)
+
+
+# --------------------------------------------------------------------------
+# institutional bands actually reach the grade
+# --------------------------------------------------------------------------
+
+
+def test_school_bands_decide_the_symbol_not_hardcoded_letters(db) -> None:
+    """The point of `org_settings`: a school moves its bands, grades follow.
+
+    Before this was wired in, the calculator applied 90/80/70/60 to every
+    course on the platform, so a school could edit the table and watch nothing
+    happen. That is worse than not offering the setting at all.
+    """
+    from app.services.grade_calculator import resolve_symbol
+    from app.services.grading_scheme import get_org_settings
+
+    settings = get_org_settings(db)
+    course = _course()
+
+    assert resolve_symbol(85.0, course, settings) == "B"
+
+    # UA practice: «5 от 85». The school lowers its A boundary.
+    settings.grade_bands = {"letter": [[85, "A"], [75, "B"], [65, "C"], [55, "D"], [0, "F"]]}
+    db.flush()
+
+    assert resolve_symbol(85.0, course, settings) == "A"
+
+
+def test_five_point_course_shows_five_point_symbols(db) -> None:
+    """A course on the five-point scheme must not show a US letter.
+
+    Showing «B» to a RU-locale student in a пятибалльная course is exactly the
+    culturally-wrong default the redesign exists to remove.
+    """
+    from app.services.grade_calculator import resolve_symbol
+    from app.services.grading_scheme import get_org_settings
+
+    settings = get_org_settings(db)
+    course = _course()
+    course.grading_scheme = "five_point"
+
+    assert resolve_symbol(95.0, course, settings) == "5"
+    assert resolve_symbol(80.0, course, settings) == "4"
+    assert resolve_symbol(72.0, course, settings) == "3"
+    assert resolve_symbol(50.0, course, settings) == "2"
+
+
+def test_percent_course_has_no_symbol(db) -> None:
+    """The number is the result; inventing a letter beside it would be noise."""
+    from app.services.grade_calculator import resolve_symbol
+    from app.services.grading_scheme import get_org_settings
+
+    course = _course()
+    course.grading_scheme = "percent"
+
+    assert resolve_symbol(82.0, course, get_org_settings(db)) == ""
+
+
+def test_pass_fail_does_not_derive_a_pass_from_a_percentage(db) -> None:
+    """D2: «зачёт» is completion-native, never a hidden average clearing a line.
+
+    Returning a symbol here would reintroduce exactly the behaviour the design
+    removed — and would do it silently, which is worse.
+    """
+    from app.services.grade_calculator import resolve_symbol
+    from app.services.grading_scheme import get_org_settings
+
+    course = _course()
+    course.grading_scheme = "pass_fail"
+
+    assert resolve_symbol(99.0, course, get_org_settings(db)) == ""

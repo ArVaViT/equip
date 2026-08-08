@@ -8,11 +8,16 @@ from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
+from app.models.org_settings import OrgSettings
 from app.models.quiz import Quiz, QuizAttempt
 from app.models.student_grade import StudentGrade
 from app.models.user import User
 from app.schemas.grade import GradeBreakdown
+from app.services.grading_scheme import effective_bands, get_org_settings, score_to_symbol
 
+#: Fallback letter scale, used only when no database session is at hand.
+#: The live bands come from ``org_settings`` via :mod:`app.services.grading_scheme`
+#: — a school can move them, and these constants must never overrule that.
 LETTER_GRADES = [
     (90, "A"),
     (80, "B"),
@@ -23,10 +28,44 @@ LETTER_GRADES = [
 
 
 def score_to_letter(score: float) -> str:
+    """Legacy helper: the shipped letter scale, ignoring institutional bands.
+
+    Kept for callers that have no session. Anything computing a grade a
+    student will see must go through :func:`resolve_symbol` instead, or a
+    school that edits its bands will find the change has no effect.
+    """
     for threshold, letter in LETTER_GRADES:
         if score >= threshold:
             return letter
     return "F"
+
+
+def resolve_symbol(score: float, course: Course, settings: OrgSettings) -> str:
+    """The grade symbol for *score* under this course's scheme.
+
+    This is what makes ``org_settings`` real rather than decorative. Until it
+    was wired in, a school could edit its band boundaries and nothing moved:
+    the calculator applied hardcoded 90/80/70/60 to every course on the
+    platform regardless of the scheme the course claimed to use.
+
+    * ``letter`` / ``five_point`` — the symbol whose band the score falls in,
+      read from the institution's own table;
+    * ``percent`` — no symbol; the number *is* the result;
+    * ``pass_fail`` — no symbol here either. Its rule is completion-native
+      (D2): «зачёт» means every chapter done and every assignment accepted, not
+      a weighted average clearing a line. Deriving a pass from a percentage
+      would be exactly the hidden-average behaviour the design removed, so this
+      returns nothing until that rule lands. The scheme is not selectable in
+      the UI yet, and every production course is ``letter``.
+    """
+    # A course with no scheme of its own falls back to the school default
+    # rather than to no symbol at all: an unset column must never silently
+    # strip a student's grade of its letter.
+    scheme = course.grading_scheme or settings.default_grading_scheme
+    bands = effective_bands(settings, scheme)
+    if not bands:
+        return ""
+    return score_to_symbol(score, scheme, bands) or ""
 
 
 def _get_course_chapter_ids(db: Session, course_id: str) -> list[str]:
@@ -143,6 +182,7 @@ def _build_breakdown(
     has_assignment_items: bool,
     has_quizzes: bool,
     has_assignments: bool,
+    settings: OrgSettings | None = None,
 ) -> GradeBreakdown:
     """Assemble one student's breakdown.
 
@@ -209,7 +249,9 @@ def _build_breakdown(
         # only, and pinned to zero so it cannot influence a score again.
         participation_weighted=0.0,
         final_score=final_score,
-        letter_grade=score_to_letter(final_score),
+        # The institution's own bands when a session resolved them; the shipped
+        # scale only as a fallback for callers without one.
+        letter_grade=(resolve_symbol(final_score, course, settings) if settings else score_to_letter(final_score)),
         effective_quiz_weight=eff_quiz,
         effective_assignment_weight=eff_assignment,
         weights_redistributed=(eff_quiz, eff_assignment) != (course.quiz_weight, course.assignment_weight),
@@ -322,6 +364,7 @@ def calculate_student_grade(
         has_assignment_items=bool(assignment_ids),
         has_quizzes=live_quizzes,
         has_assignments=live_assignments,
+        settings=get_org_settings(db),
     )
 
 
@@ -428,6 +471,7 @@ def calculate_all_student_grades(db: Session, course: Course):
     # Resolved once for the whole course: every student in a class must be
     # graded on the same weights.
     live_quizzes, live_assignments = category_is_live(db, quiz_ids=quiz_ids, assignment_ids=assignment_ids)
+    settings = get_org_settings(db)
     results = []
     for user_id, full_name, email in enrollments:
         sid = str(user_id)
@@ -447,6 +491,7 @@ def calculate_all_student_grades(db: Session, course: Course):
             has_assignment_items=bool(assignment_ids),
             has_quizzes=live_quizzes,
             has_assignments=live_assignments,
+            settings=settings,
         )
         results.append(
             {
