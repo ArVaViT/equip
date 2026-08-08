@@ -102,6 +102,11 @@ export function SummaryTab({
   const first = sortedStudents[0]?.breakdown
   const courseIsCompletionOnly = first?.result_state === "completion_pass"
   const courseNotGradedYet = first?.result_state === "not_graded_yet"
+  // Graded work exists, but only in a category weighted 0% — quizzes as
+  // practice self-checks, say. Telling this teacher "nothing has been graded
+  // yet" is false, and the usual advice ("percentages appear once someone
+  // takes a quiz") points at an event that already happened.
+  const courseZeroWeighted = first?.result_state === "zero_weighted"
   const courseRedistributed = first?.weights_redistributed && first?.result_state === "graded"
 
   return (
@@ -119,6 +124,13 @@ export function SummaryTab({
         {courseNotGradedYet && (
           <div className="mb-4 rounded border-l-stripe border-l-info bg-info/10 px-3 py-2 text-sm text-ink">
             {t("gradebook.summary.notGradedYetCourse")}
+          </div>
+        )}
+        {courseZeroWeighted && (
+          <div className="mb-4 rounded border-l-stripe border-l-info bg-info/10 px-3 py-2 text-sm text-ink">
+            {first?.effective_quiz_weight === 0 && first?.has_quiz_items
+              ? t("gradebook.summary.quizzesWeighZero")
+              : t("gradebook.summary.assignmentsWeighZero")}
           </div>
         )}
         {courseRedistributed && (
@@ -278,11 +290,14 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
         {/* No number exists in two cases — a course with nothing gradable, and
             a course nobody has been marked in yet. Printing 0.0% and an empty
             grade pill in either reads as "everyone failed". */}
+        {/* In `zero_weighted` the category averages are real marks that simply
+            carry no weight — hiding them behind a dash would deny the teacher
+            figures that exist. Only the final score is absent. */}
         <p className="text-sm tabular-nums text-right">
-          {hasScore ? `${b.quiz_avg.toFixed(1)}%` : "—"}
+          {hasScore || b.result_state === "zero_weighted" ? `${b.quiz_avg.toFixed(1)}%` : "—"}
         </p>
         <p className="text-sm tabular-nums text-right">
-          {hasScore ? `${b.assignment_avg.toFixed(1)}%` : "—"}
+          {hasScore || b.result_state === "zero_weighted" ? `${b.assignment_avg.toFixed(1)}%` : "—"}
         </p>
         <p className="text-sm font-semibold tabular-nums text-right">
           {hasScore ? `${b.final_score.toFixed(1)}%` : "—"}

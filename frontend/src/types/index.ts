@@ -126,7 +126,7 @@ interface GradeBreakdown {
   weights_redistributed: boolean
   /** `completion_pass` — the course has nothing gradable; `final_score` and
    *  `letter_grade` carry no meaning. */
-  result_state: "graded" | "completion_pass" | "not_graded_yet"
+  result_state: "graded" | "completion_pass" | "not_graded_yet" | "zero_weighted"
 }
 
 export interface StudentCalculatedGrade {

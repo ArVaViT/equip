@@ -133,7 +133,15 @@ class GradeBreakdown(BaseModel):
     #: ``completion_pass`` on purpose: telling a teacher "this course has no
     #: quizzes" while four quizzes sit in it is a lie, and showing 0%/F to a
     #: class that has not been marked yet is a different lie.
-    result_state: Literal["graded", "completion_pass", "not_graded_yet"] = "graded"
+    #: ``zero_weighted`` — work *has* been graded, but only in a category the
+    #: teacher set to 0%. Quizzes as practice self-checks with the essay
+    #: carrying the grade is the ordinary case. Separate from
+    #: ``not_graded_yet`` because "nothing has been graded yet" would be false
+    #: and the advice that follows it ("percentages appear once someone takes a
+    #: quiz") would promise something that has already happened and will never
+    #: help. The averages stay populated here — they are real, they just carry
+    #: no weight.
+    result_state: Literal["graded", "completion_pass", "not_graded_yet", "zero_weighted"] = "graded"
 
 
 class StudentCalculatedGrade(BaseModel):

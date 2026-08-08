@@ -359,7 +359,11 @@ def test_zero_weight_category_does_not_take_over_the_grade() -> None:
         has_assignment_items=True,
     )
 
-    assert b.result_state == "not_graded_yet"
+    # Not "nothing graded yet" — the quizzes were taken and 40% is a real
+    # figure. It simply carries no weight, and the gradebook must keep showing
+    # it rather than denying a mark that exists.
+    assert b.result_state == "zero_weighted"
+    assert b.quiz_avg == 40.0
     assert b.letter_grade == ""
     assert (b.effective_quiz_weight, b.effective_assignment_weight) == (0, 0)
 
@@ -383,7 +387,8 @@ def test_zero_weight_category_cannot_manufacture_a_high_grade_either() -> None:
         has_assignment_items=True,
     )
 
-    assert b.result_state == "not_graded_yet"
+    assert b.result_state == "zero_weighted"
+    assert b.quiz_avg == 95.0
 
 
 def test_the_weighted_category_still_carries_everything_when_it_is_the_live_one() -> None:

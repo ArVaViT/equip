@@ -248,8 +248,29 @@ def _build_breakdown(
     # value by the teacher's own configuration, so there is nothing to compute.
     # Falling through would produce 0.0% and a failing symbol built entirely
     # out of work that was never meant to count.
+    #
+    # This is NOT "nothing has been graded yet": quizzes have been taken and
+    # their average is real. Saying otherwise would tell a teacher that
+    # percentages appear once someone takes a quiz — an event that has already
+    # happened and will never produce the promised effect. The averages are
+    # kept so the gradebook can show the marks that do exist.
     if eff_quiz == 0 and eff_assignment == 0:
-        return _no_number("not_graded_yet")
+        return GradeBreakdown(
+            quiz_avg=round(quiz_avg, 2),
+            quiz_weighted=0.0,
+            assignment_avg=round(assignment_avg, 2),
+            assignment_weighted=0.0,
+            participation_pct=round(participation_pct, 2),
+            participation_weighted=0.0,
+            final_score=0.0,
+            letter_grade="",
+            effective_quiz_weight=0,
+            effective_assignment_weight=0,
+            has_quiz_items=has_quiz_items,
+            has_assignment_items=has_assignment_items,
+            weights_redistributed=False,
+            result_state="zero_weighted",
+        )
 
     quiz_weighted = quiz_avg * eff_quiz / 100.0
     assignment_weighted = assignment_avg * eff_assignment / 100.0

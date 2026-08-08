@@ -48,6 +48,7 @@ router = APIRouter(prefix="/grades", tags=["grades"])
 _RESULT_STATE_CSV = {
     "completion_pass": "Passed on completion (course has no graded work)",
     "not_graded_yet": "Not graded yet",
+    "zero_weighted": "No percentage (graded work is weighted 0%)",
 }
 
 # Spreadsheet apps (Excel / Google Sheets / LibreOffice) treat a cell that
@@ -239,9 +240,12 @@ def export_grades_csv(
         # scored zero", and a printed page has no banner to explain itself, so
         # the cells must say so themselves.
         graded = b.result_state == "graded"
+        # Category averages are real in `zero_weighted` too — they simply carry
+        # no weight. Only the final score is genuinely absent there.
+        has_category_figures = graded or b.result_state == "zero_weighted"
 
-        def num(value: float, *, graded: bool = graded) -> float | str:
-            return value if graded else "—"
+        def num(value: float, *, show: bool = has_category_figures) -> float | str:
+            return value if show else "—"
 
         writer.writerow(
             [
@@ -255,7 +259,7 @@ def export_grades_csv(
                 # the one number that still means something here.
                 b.participation_pct,
                 b.participation_weighted,
-                num(b.final_score),
+                b.final_score if graded else "—",
                 b.letter_grade if graded else _RESULT_STATE_CSV[b.result_state],
                 r["manual_grade"] or "",
             ]
