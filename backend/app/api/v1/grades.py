@@ -34,6 +34,7 @@ from app.schemas.grade import (
     GradingSchemeResponse,
     GradingSchemeUpdate,
     StudentCalculatedGrade,
+    StudentGradeResponse,
 )
 from app.services.audit_service import log_action
 from app.services.grade_calculator import (
@@ -452,7 +453,7 @@ def export_grades_csv(
 # ── Existing Manual Grade Endpoints ───────────────────────────────
 
 
-@router.get("/my", response_model=list[GradeResponse])
+@router.get("/my", response_model=list[StudentGradeResponse])
 def list_my_grades(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
@@ -469,7 +470,7 @@ def list_my_grades(
     )
 
 
-@router.get("/my/{course_id}", response_model=GradeResponse)
+@router.get("/my/{course_id}", response_model=StudentGradeResponse)
 def get_my_grade_for_course(
     course_id: str,
     current_user: User = Depends(get_current_user),
@@ -742,8 +743,7 @@ def clear_student_grade(
         "graded_by": str(grade.graded_by) if grade.graded_by else None,
         "reason": grade.reason,
     }
-    # Audited before the delete: afterwards the row — and everything worth
-    # recording about it — is gone.
+    # Audited before anything is removed: afterwards the values are gone.
     audit_override(
         db,
         actor_id=teacher.id,
@@ -752,5 +752,17 @@ def clear_student_grade(
         previous=previous,
         request=request,
     )
-    db.delete(grade)
+
+    # Clearing removes the *grade*, not the teacher's note to the student. A
+    # comment written alongside it ("resubmit section 3") has nothing to do
+    # with the override and must survive; the row goes only when nothing is
+    # left on it.
+    grade.override_code = None
+    grade.override_score = None
+    grade.computed_score = None
+    grade.reason = None
+    grade.graded_by = teacher.id
+    grade.graded_at = datetime.now(UTC)
+    if not grade.comment:
+        db.delete(grade)
     db.commit()

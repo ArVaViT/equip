@@ -118,6 +118,7 @@ function Harness({ studentCount }: { studentCount: number }) {
       onToggleExpand={onToggleExpand}
       onUpdateForm={onUpdateForm}
       onSaveGrade={onSaveGrade}
+      onClearGrade={onSaveGrade}
     />
   )
 }

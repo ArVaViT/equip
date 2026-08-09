@@ -436,7 +436,7 @@ def calculate_all_student_grades(db: Session, course: Course):
     assignment_ids = _get_assignment_ids_for_chapters(db, chapter_ids)
 
     enrollments = (
-        db.query(Enrollment.user_id, User.full_name, User.email, Enrollment.cohort_id)
+        db.query(Enrollment.user_id, User.full_name, User.email, Enrollment.cohort_id, Enrollment.enrolled_at)
         .join(User, User.id == Enrollment.user_id)
         # Exclude deactivated (soft-deleted) students so the gradebook,
         # class average, and CSV match the analytics roster — they must not
@@ -523,7 +523,16 @@ def calculate_all_student_grades(db: Session, course: Course):
     # leftover override from before the course had cohorts could outrank this
     # term's and quietly pass a failing student. The enrolment's cohort decides;
     # a cohort-less row is the fallback, never a rival.
-    enrolment_cohort = {str(e.user_id): e.cohort_id for e in enrollments}
+    # Same rule as resolve_official_row, and it has to be the same: a student
+    # with two enrolments must not get one answer on the gradebook and another
+    # on their own page. Later enrolment wins; the dict is built in ascending
+    # order so the last write is the newest.
+    enrolment_cohort: dict[str, object] = {}
+    for e in sorted(
+        enrollments,
+        key=lambda row: (row.enrolled_at is not None, row.enrolled_at, str(row.user_id)),
+    ):
+        enrolment_cohort[str(e.user_id)] = e.cohort_id
     by_student: dict[str, dict[str | None, StudentGrade]] = {}
     for row in db.query(StudentGrade).filter(StudentGrade.course_id == course.id).all():
         key = str(row.cohort_id) if row.cohort_id else None
@@ -549,7 +558,7 @@ def calculate_all_student_grades(db: Session, course: Course):
     live_quizzes, live_assignments = category_is_live(db, quiz_ids=quiz_ids, assignment_ids=assignment_ids)
     settings = get_org_settings(db)
     results = []
-    for user_id, full_name, email, _cohort_id in enrollments:
+    for user_id, full_name, email, _cohort_id, _enrolled_at in enrollments:
         sid = str(user_id)
         qs = quiz_scores.get(sid, [])
         quiz_avg = sum(qs) / total_quizzes if total_quizzes > 0 else 0.0

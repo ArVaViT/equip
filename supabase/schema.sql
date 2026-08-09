@@ -781,7 +781,7 @@ END +
 CASE
     WHEN (override_score IS NULL) THEN 0
     ELSE 1
-END) = 1)),
+END) <= 1)),
     CONSTRAINT student_grades_override_code_check CHECK ((override_code = ANY (ARRAY['pass'::text, 'fail'::text, '5'::text, '4'::text, '3'::text, '2'::text, 'A'::text, 'B'::text, 'C'::text, 'D'::text, 'F'::text]))),
     CONSTRAINT student_grades_override_score_check CHECK (((override_score >= (0)::numeric) AND (override_score <= (100)::numeric)))
 );

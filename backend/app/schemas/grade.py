@@ -27,6 +27,30 @@ class GradeUpsert(BaseModel):
     comment: str | None = Field(None, max_length=5000)
 
 
+class StudentGradeResponse(BaseModel):
+    """What a student may see of their own hand-set grade.
+
+    Deliberately without ``reason``. That field is the teacher's note to the
+    institution — "passed at the pastor's request", "corrected after the appeal"
+    — and D7 scopes it to directors. ``comment`` is the note written *to* the
+    student and is rendered to them by design (D10.3); the two are different
+    audiences and must not share a schema.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    student_id: UUID
+    course_id: str
+    cohort_id: UUID | None = None
+    override_code: str | None = None
+    override_score: Decimal | None = None
+    computed_score: Decimal | None = None
+    comment: str | None = None
+    graded_at: datetime
+    updated_at: datetime | None = None
+
+
 class GradeResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

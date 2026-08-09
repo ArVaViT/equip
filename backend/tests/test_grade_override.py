@@ -80,9 +80,18 @@ def test_a_number_is_refused_where_the_scheme_expects_a_symbol() -> None:
     assert "percent" in error
 
 
-def test_exactly_one_form_is_required() -> None:
-    assert validate_override(_course("letter"), code=None, score=None) is not None
+def test_both_forms_at_once_are_refused() -> None:
     assert validate_override(_course("letter"), code="A", score=Decimal("90")) is not None
+
+
+def test_neither_form_is_a_comment_without_a_grade() -> None:
+    """A teacher writing "resubmit section 3" without touching the grade.
+
+    The first version demanded exactly one override, which made this ordinary
+    act impossible — and forced clearing a grade to destroy the comment with
+    the row.
+    """
+    assert validate_override(_course("letter"), code=None, score=None) is None
 
 
 # --------------------------------------------------------------------------
@@ -274,3 +283,130 @@ def test_a_symbol_from_the_wrong_scheme_is_refused_by_the_route(client, db: Sess
     )
 
     assert resp.status_code == 422
+
+
+def test_clearing_a_grade_keeps_the_comment(client, db: Session, teacher, student) -> None:
+    """The note to the student is not part of the grade being removed."""
+    from .conftest import STUDENT_ID
+
+    course = Course(id="c-keep-comment", status="published", created_by=teacher.id)
+    db.add(course)
+    db.add(Enrollment(id="enr-keep", user_id=STUDENT_ID, course_id=course.id, progress=0))
+    db.commit()
+    client.put(
+        f"/api/v1/grades/course/{course.id}/student/{STUDENT_ID}",
+        json={"override_code": "F", "comment": "Resubmit section 3"},
+    )
+
+    resp = client.delete(f"/api/v1/grades/course/{course.id}/student/{STUDENT_ID}")
+
+    assert resp.status_code == 204
+    row = db.query(StudentGrade).filter(StudentGrade.course_id == course.id).first()
+    assert row is not None, "the comment must survive the grade being cleared"
+    assert row.override_code is None
+    assert row.comment == "Resubmit section 3"
+
+
+def test_clearing_a_bare_grade_removes_the_row(client, db: Session, teacher, student) -> None:
+    from .conftest import STUDENT_ID
+
+    course = Course(id="c-bare", status="published", created_by=teacher.id)
+    db.add(course)
+    db.add(Enrollment(id="enr-bare", user_id=STUDENT_ID, course_id=course.id, progress=0))
+    db.commit()
+    client.put(
+        f"/api/v1/grades/course/{course.id}/student/{STUDENT_ID}",
+        json={"override_code": "F"},
+    )
+
+    client.delete(f"/api/v1/grades/course/{course.id}/student/{STUDENT_ID}")
+
+    assert db.query(StudentGrade).filter(StudentGrade.course_id == course.id).first() is None
+
+
+def test_a_student_never_sees_the_reason(client, db: Session, teacher, student) -> None:
+    """«Passed at the pastor's request» is a note to the institution.
+
+    `comment` is written to the student and shown to them by design; `reason`
+    explains the decision to a director. They had been sharing a schema.
+    """
+    from .conftest import STUDENT_ID
+
+    course = Course(id="c-reason-privacy", status="published", created_by=teacher.id)
+    db.add(course)
+    db.add(Enrollment(id="enr-reason", user_id=STUDENT_ID, course_id=course.id, progress=0))
+    db.commit()
+    client.put(
+        f"/api/v1/grades/course/{course.id}/student/{STUDENT_ID}",
+        json={"override_code": "A", "reason": "Passed at the pastor's request", "comment": "Well done"},
+    )
+
+    # The schema is the guard, so assert on it directly rather than on a
+    # second authenticated client: `reason` must not be part of what a student
+    # can be served at all.
+    from app.schemas.grade import StudentGradeResponse
+
+    row = db.query(StudentGrade).filter(StudentGrade.course_id == course.id).first()
+    served = StudentGradeResponse.model_validate(row).model_dump()
+
+    assert served["comment"] == "Well done"
+    assert "reason" not in served, "the note to the institution is not the student's to read"
+    assert row.reason == "Passed at the pastor's request", "but it is stored, for the director"
+
+
+def test_two_enrolments_resolve_to_the_later_one_everywhere(db: Session, teacher) -> None:
+    """A retake writes a second enrolment row; both paths must agree.
+
+    Picking whichever row the database returned first made the official grade
+    depend on row order — the exact thing this resolution exists to remove —
+    and the single-student path and the gradebook could disagree on the same
+    data.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from app.models.cohort import Cohort
+    from app.services.grade_calculator import calculate_all_student_grades
+
+    course = Course(id="c-retake", status="published", created_by=teacher.id)
+    db.add(course)
+    student_id = uuid.uuid4()
+    old_cohort, new_cohort = uuid.uuid4(), uuid.uuid4()
+    now = datetime.now(UTC)
+    for cid, start in ((old_cohort, now - timedelta(days=400)), (new_cohort, now)):
+        db.add(Cohort(id=cid, start_date=start, end_date=start + timedelta(days=90), status="active"))
+    db.flush()
+
+    from app.models.user import User, UserRole
+
+    db.add(User(id=student_id, email="retaker@test.local", full_name="Retaker", role=UserRole.STUDENT))
+    db.flush()
+    db.add(
+        Enrollment(
+            id="enr-old",
+            user_id=student_id,
+            course_id=course.id,
+            cohort_id=old_cohort,
+            progress=0,
+            enrolled_at=now - timedelta(days=400),
+        )
+    )
+    db.add(
+        Enrollment(
+            id="enr-new",
+            user_id=student_id,
+            course_id=course.id,
+            cohort_id=new_cohort,
+            progress=0,
+            enrolled_at=now,
+        )
+    )
+    _override(db, student_id, course.id, code="F", cohort_id=old_cohort)
+    _override(db, student_id, course.id, code="A", cohort_id=new_cohort)
+    db.commit()
+
+    single = resolve_official_row(db, student_id=student_id, course_id=course.id)
+    batch = calculate_all_student_grades(db, course)
+
+    assert single is not None
+    assert single.override_code == "A", "last year's F must not outrank this year's grade"
+    assert batch[0]["manual_grade"] == "A", "and the gradebook must say the same"

@@ -71,9 +71,15 @@ def resolve_official_row(db: Session, *, student_id: UUID | str, course_id: str)
     if not rows:
         return None
 
+    # A student can hold several enrolments in one course — a retake in a later
+    # cohort writes a new row (see Enrollment.__table_args__). Taking whichever
+    # came back first made the official grade depend on row order, which is
+    # exactly what this function exists to prevent. The most recent enrolment
+    # is the one being graded now.
     enrolment_cohort = (
         db.query(Enrollment.cohort_id)
         .filter(Enrollment.user_id == student_id, Enrollment.course_id == course_id)
+        .order_by(Enrollment.enrolled_at.desc().nullslast(), Enrollment.id.desc())
         .limit(1)
         .scalar()
     )
@@ -95,8 +101,12 @@ def validate_override(course: Course, *, code: str | None, score: Decimal | None
 
     Returns an error message, or ``None`` when the pair is acceptable.
     """
-    if (code is None) == (score is None):
-        return "Provide exactly one of override_code or override_score"
+    if code is not None and score is not None:
+        return "Provide either override_code or override_score, not both"
+    if code is None and score is None:
+        # A row with no override is a comment the teacher left without touching
+        # the grade — ordinary, and previously impossible.
+        return None
 
     scheme = course.grading_scheme or "letter"
 

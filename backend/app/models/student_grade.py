@@ -25,12 +25,13 @@ class StudentGrade(Base):
             "cohort_id",
             name="uq_student_grades_student_course_cohort",
         ),
-        # A row exists only to express an override: a symbol or a number, never
-        # both and never neither. "Neither" is what a cleared override would
-        # look like — and a cleared override is a deleted row, not a row full
-        # of NULLs.
+        # At most one override. A row may hold a symbol, a number, or neither —
+        # the last being a teacher who wrote a comment and left the grade
+        # alone, which is an ordinary thing to do. Demanding exactly one made
+        # comment-only rows illegal and forced clearing a grade to destroy the
+        # comment with it.
         CheckConstraint(
-            "(CASE WHEN override_code IS NULL THEN 0 ELSE 1 END + CASE WHEN override_score IS NULL THEN 0 ELSE 1 END) = 1",
+            "(CASE WHEN override_code IS NULL THEN 0 ELSE 1 END + CASE WHEN override_score IS NULL THEN 0 ELSE 1 END) <= 1",
             name="ck_student_grades_one_override",
         ),
     )

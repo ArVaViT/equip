@@ -204,6 +204,36 @@ export default function TeacherGradebook() {
     [],
   )
 
+  // Same pattern as formsRef: assigned in an effect, not during render, so
+  // the memoised handler can read current values without taking them as a
+  // dependency.
+  const manualGradesRef = useRef(manualGrades)
+  useEffect(() => {
+    manualGradesRef.current = manualGrades
+  }, [manualGrades])
+
+  const clearGrade = useCallback(
+    async (userId: string) => {
+      if (!courseId) return
+      setSaving(userId)
+      try {
+        await coursesService.clearGrade(courseId, userId)
+        setManualGrades((prev) => {
+          const next = new Map(prev)
+          next.delete(userId)
+          return next
+        })
+        setForms((prev) => new Map(prev).set(userId, { ...(prev.get(userId) ?? EMPTY_FORM), grade: "" }))
+        toast({ title: t("toast.gradeCleared"), variant: "success" })
+      } catch {
+        toast({ title: t("toast.gradeSaveFailed"), variant: "destructive" })
+      } finally {
+        setSaving(null)
+      }
+    },
+    [courseId, t],
+  )
+
   const saveGrade = useCallback(
     async (userId: string) => {
       if (!courseId) return
@@ -211,23 +241,18 @@ export default function TeacherGradebook() {
       try {
         const form = formsRef.current.get(userId) ?? EMPTY_FORM
         const code = form.grade.trim()
+        const existing = manualGradesRef.current.get(userId)
 
-        // An empty field means "remove the hand-set grade", not "leave it
-        // alone". The old shape had no way to express removal at all, so a
-        // mistaken F stayed forever.
-        if (!code) {
-          await coursesService.clearGrade(courseId, userId)
-          setManualGrades((prev) => {
-            const next = new Map(prev)
-            next.delete(userId)
-            return next
-          })
-          toast({ title: t("toast.gradeCleared"), variant: "success" })
-          return
-        }
-
+        // Saving never deletes. An empty field used to mean "remove the grade",
+        // which destroyed hand-set marks the screen could not even display —
+        // a numeric override on a percent course renders as an empty box, so
+        // pressing Save after editing a comment erased it. Removal is now its
+        // own action, and saving with an empty field simply leaves the grade
+        // alone while the comment goes through.
         const data = await coursesService.upsertGrade(courseId, userId, {
-          override_code: code,
+          override_code: code || undefined,
+          override_score:
+            !code && existing?.override_score != null ? existing.override_score : undefined,
           comment: form.comment.trim() || undefined,
         })
         setManualGrades((prev) => new Map(prev).set(userId, data))
@@ -415,6 +440,7 @@ export default function TeacherGradebook() {
             onToggleExpand={toggleExpand}
             onUpdateForm={updateForm}
             onSaveGrade={saveGrade}
+            onClearGrade={clearGrade}
           />
         </>
       )}
