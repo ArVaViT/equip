@@ -1691,6 +1691,36 @@
     "body": false
   },
   {
+    "method": "GET",
+    "path": "/api/v1/grades/course/{course_id}/scheme",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/grades/course/{course_id}/scheme",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
     "method": "DELETE",
     "path": "/api/v1/grades/course/{course_id}/student/{student_id}",
     "params": [

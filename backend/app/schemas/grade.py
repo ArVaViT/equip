@@ -101,6 +101,34 @@ class GradingConfigUpdate(BaseModel):
         return self
 
 
+class GradingSchemeUpdate(BaseModel):
+    """Scheme and pass line, written together or not at all (D8.1).
+
+    They are a pair: a five-point course whose pass line sits above 75 has an
+    unreachable «3» band, and the only way to catch that is to validate both
+    at once. A scheme-only write could otherwise leave a course in a state no
+    student can satisfy.
+    """
+
+    grading_scheme: Literal["pass_fail", "percent", "five_point", "letter"]
+    pass_threshold: Decimal = Field(..., ge=0, le=100)
+    #: Optional note recorded in the audit entry — why the school changed how
+    #: this course is graded. Changing a scheme mid-course is exactly the kind
+    #: of decision a director will be asked about later.
+    reason: str | None = Field(None, max_length=2000)
+
+
+class GradingSchemeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    grading_scheme: str
+    pass_threshold: Decimal
+    #: The bands this course's grades are read against, resolved from the
+    #: institution's settings. Exported so the client renders from the
+    #: backend's answer instead of a copy of the scale.
+    bands: list[tuple[Decimal, str]] = []
+
+
 class GradeBreakdown(BaseModel):
     """One student's grade, with the arithmetic shown rather than implied.
 

@@ -31,8 +31,11 @@ from app.schemas.grade import (
     GradeUpsert,
     GradingConfigResponse,
     GradingConfigUpdate,
+    GradingSchemeResponse,
+    GradingSchemeUpdate,
     StudentCalculatedGrade,
 )
+from app.services.audit_service import log_action
 from app.services.grade_calculator import (
     calculate_all_student_grades,
     calculate_student_grade_for_course,
@@ -45,6 +48,7 @@ from app.services.grade_override import (
     resolve_official_row,
     validate_override,
 )
+from app.services.grading_scheme import effective_bands, get_org_settings, validate_scheme_threshold
 from app.services.translation.resolve_for_display import populate_spine_texts
 
 logger = logging.getLogger(__name__)
@@ -133,6 +137,113 @@ def update_grading_config(
     db.commit()
     db.refresh(course)
     return GradingConfigResponse.model_validate(course)
+
+
+@router.get("/course/{course_id}/scheme", response_model=GradingSchemeResponse)
+def get_grading_scheme(
+    course_id: str,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    """The course's scheme, pass line, and the bands they are read against."""
+    course = verify_course_owner(db, course_id, teacher)
+    settings = get_org_settings(db)
+    scheme = course.grading_scheme or settings.default_grading_scheme
+    return GradingSchemeResponse(
+        grading_scheme=scheme,
+        pass_threshold=course.pass_threshold,
+        bands=effective_bands(settings, scheme),
+    )
+
+
+@router.put("/course/{course_id}/scheme", response_model=GradingSchemeResponse)
+def update_grading_scheme(
+    course_id: str,
+    data: GradingSchemeUpdate,
+    request: Request,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    """Change how a course is graded — both values at once, and audited (D8).
+
+    Three rules, each earned:
+
+    1. **The pair is validated together.** A scheme without its pass line can
+       produce a course nobody can pass — five-point above 75 leaves «3»
+       unreachable.
+    2. **Existing hand-set grades block the change (409).** An «A» means
+       nothing in a five-point course, and silently reinterpreting it would
+       change a student's official result without anyone deciding to. The
+       teacher clears or re-enters them first.
+    3. **It is written down.** Changing the scheme changes what every grade in
+       the course means; that is not a settings tweak, it is an academic
+       decision someone should be able to point at later.
+    """
+    course = verify_course_owner(db, course_id, teacher)
+
+    invalid = validate_scheme_threshold(data.grading_scheme, data.pass_threshold)
+    if invalid:
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            message=invalid,
+            context={"resource_type": "course", "resource_id": course_id},
+        )
+
+    previous_scheme = course.grading_scheme
+    previous_threshold = course.pass_threshold
+
+    if data.grading_scheme != previous_scheme:
+        overrides = db.query(StudentGrade).filter(StudentGrade.course_id == course_id).all()
+        if overrides:
+            # Reinterpreting «A» as a five-point grade is not a conversion, it
+            # is a guess about someone's result. Refuse and name the students,
+            # so the teacher can decide deliberately.
+            raise equip_error(
+                ErrorCode.VALIDATION_FAILED,
+                status_code=status.HTTP_409_CONFLICT,
+                message=(
+                    f"{len(overrides)} hand-set grade(s) exist under the {previous_scheme} scheme. "
+                    "Clear or re-enter them before changing how this course is graded."
+                ),
+                context={
+                    "resource_type": "course",
+                    "resource_id": course_id,
+                    "affected_students": [str(o.student_id) for o in overrides],
+                },
+            )
+
+    course.grading_scheme = data.grading_scheme
+    course.pass_threshold = data.pass_threshold
+    db.commit()
+    db.refresh(course)
+
+    log_action(
+        db,
+        user_id=teacher.id,
+        action="grading_scheme_changed",
+        resource_type="course",
+        resource_id=course_id,
+        details={
+            "previous": {
+                "grading_scheme": previous_scheme,
+                "pass_threshold": float(previous_threshold) if previous_threshold is not None else None,
+            },
+            "new": {
+                "grading_scheme": data.grading_scheme,
+                "pass_threshold": float(data.pass_threshold),
+            },
+            "reason": data.reason,
+        },
+        request=request,
+    )
+
+    settings = get_org_settings(db)
+    return GradingSchemeResponse(
+        grading_scheme=course.grading_scheme,
+        pass_threshold=course.pass_threshold,
+        bands=effective_bands(settings, course.grading_scheme),
+    )
 
 
 @router.get(
