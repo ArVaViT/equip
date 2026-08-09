@@ -57,6 +57,7 @@ def _breakdown(
     has_assignments: bool,
     has_quiz_items: bool | None = None,
     has_assignment_items: bool | None = None,
+    has_gradable_chapters: bool = False,
 ) -> GradeBreakdown:
     """Default: the course contains exactly the categories that are live.
 
@@ -73,6 +74,7 @@ def _breakdown(
         has_quizzes=has_quizzes,
         has_assignments=has_assignments,
         settings=_settings(),
+        has_gradable_chapters=has_gradable_chapters,
     )
 
 
@@ -438,3 +440,45 @@ def test_course_items_are_reported_so_the_ui_can_word_itself_honestly() -> None:
 
     assert b.has_quiz_items is True
     assert b.has_assignment_items is False
+
+
+def test_course_under_construction_is_not_called_completion_pass_material() -> None:
+    """A chapter typed «quiz» exists before the quiz does.
+
+    `create_chapter` never creates a Quiz row, and the editor refuses to save a
+    quiz with no questions — so a course mid-build has gradable chapters and no
+    gradable items. Reporting that as "nothing to grade here" told a teacher
+    staring at «Тест 1» that their course had no quizzes, and put the same
+    claim on the exported sheet.
+
+    The state is still `completion_pass` arithmetically — there is nothing to
+    compute — but the surfaces must be able to tell the two apart.
+    """
+    b = _breakdown(
+        _course(),
+        0.0,
+        0.0,
+        has_quizzes=False,
+        has_assignments=False,
+        has_quiz_items=False,
+        has_assignment_items=False,
+        has_gradable_chapters=True,
+    )
+
+    assert b.result_state == "completion_pass"
+    assert b.has_gradable_chapters is True
+
+
+def test_a_genuinely_content_only_course_reports_no_gradable_chapters() -> None:
+    b = _breakdown(
+        _course(),
+        0.0,
+        0.0,
+        has_quizzes=False,
+        has_assignments=False,
+        has_quiz_items=False,
+        has_assignment_items=False,
+    )
+
+    assert b.result_state == "completion_pass"
+    assert b.has_gradable_chapters is False

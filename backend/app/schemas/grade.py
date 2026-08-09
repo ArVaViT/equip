@@ -118,6 +118,13 @@ class GradeBreakdown(BaseModel):
     #: does not exist.
     has_quiz_items: bool = False
     has_assignment_items: bool = False
+    #: Whether the course has chapters *meant* to be graded. A chapter typed
+    #: "quiz" exists the moment a teacher creates it, but the quiz itself is
+    #: only saved once it has questions — so a course under construction has
+    #: gradable chapters and no gradable items. Without this the platform
+    #: cheerfully announces "this course has no quizzes, that is not an error"
+    #: while a chapter named «Тест 1» sits in it.
+    has_gradable_chapters: bool = False
     #: True when the effective weights differ from what the teacher configured,
     #: so the UI can explain why ("this course has no assignments, so their
     #: weight moved to quizzes") instead of showing a number that contradicts

@@ -31,6 +31,7 @@ const breakdown = (over: Partial<GradeBreakdown>): GradeBreakdown => ({
   effective_assignment_weight: 0,
   has_quiz_items: false,
   has_assignment_items: false,
+  has_gradable_chapters: false,
   weights_redistributed: false,
   result_state: "graded",
   ...over,
@@ -59,6 +60,16 @@ describe("gradebookNotice", () => {
     const b = breakdown({ result_state: "completion_pass" })
 
     expect(gradebookNotice(b, config(40, 60))).toBe("gradebook.summary.completionPassCourse")
+  })
+
+  it("does not call a course under construction a completion-pass course", () => {
+    // A chapter typed "quiz" exists the moment it is created; the quiz is
+    // saved only once it has questions. Announcing "no quizzes here, and that
+    // is not an error" to a teacher looking at «Тест 1» is confidently wrong —
+    // and the same sentence reaches the printed sheet.
+    const b = breakdown({ result_state: "completion_pass", has_gradable_chapters: true })
+
+    expect(gradebookNotice(b, config(40, 60))).toBe("gradebook.summary.chaptersNotFilledIn")
   })
 
   it("explains a course where marking has not started", () => {

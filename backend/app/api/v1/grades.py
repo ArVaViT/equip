@@ -283,7 +283,14 @@ def export_grades_csv(
                 b.participation_pct,
                 progress_by_student.get(r["student_id"], 0),
                 b.final_score if graded else "—",
-                b.letter_grade if graded else _RESULT_STATE_CSV[b.result_state],
+                b.letter_grade
+                if graded
+                # A course still being filled in must not certify anything.
+                else (
+                    "Course not filled in yet (no quiz or assignment saved)"
+                    if b.result_state == "completion_pass" and b.has_gradable_chapters
+                    else _RESULT_STATE_CSV[b.result_state]
+                ),
                 r["manual_grade"] or "",
             ]
         )

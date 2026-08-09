@@ -30,7 +30,17 @@ export function gradebookNotice(
 
   const { result_state, has_quiz_items, has_assignment_items, weights_redistributed } = breakdown
 
-  if (result_state === "completion_pass") return "gradebook.summary.completionPassCourse"
+  if (result_state === "completion_pass") {
+    // A chapter typed "quiz" exists from the moment it is created; the quiz
+    // itself is only saved once it has questions. Announcing "this course has
+    // no quizzes, and that is not an error" to a teacher looking at a chapter
+    // named «Тест 1» is confidently wrong — and the same claim reaches the
+    // exported sheet, certifying a completion pass for a course still being
+    // built.
+    return breakdown.has_gradable_chapters
+      ? "gradebook.summary.chaptersNotFilledIn"
+      : "gradebook.summary.completionPassCourse"
+  }
 
   if (result_state === "not_graded_yet") return "gradebook.summary.notGradedYetCourse"
 

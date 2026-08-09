@@ -204,6 +204,7 @@ def _build_breakdown(
     has_quizzes: bool,
     has_assignments: bool,
     settings: OrgSettings,
+    has_gradable_chapters: bool = False,
 ) -> GradeBreakdown:
     """Assemble one student's breakdown.
 
@@ -236,6 +237,7 @@ def _build_breakdown(
             effective_assignment_weight=0,
             has_quiz_items=has_quiz_items,
             has_assignment_items=has_assignment_items,
+            has_gradable_chapters=has_gradable_chapters,
             weights_redistributed=False,
             result_state=state,  # type: ignore[arg-type]
         )
@@ -283,6 +285,7 @@ def _build_breakdown(
             effective_assignment_weight=0,
             has_quiz_items=has_quiz_items,
             has_assignment_items=has_assignment_items,
+            has_gradable_chapters=has_gradable_chapters,
             weights_redistributed=False,
             result_state="zero_weighted",
         )
@@ -307,6 +310,7 @@ def _build_breakdown(
         effective_assignment_weight=eff_assignment,
         has_quiz_items=has_quiz_items,
         has_assignment_items=has_assignment_items,
+        has_gradable_chapters=has_gradable_chapters,
         weights_redistributed=(eff_quiz, eff_assignment) != (course.quiz_weight, course.assignment_weight),
         result_state="graded",
     )
@@ -418,6 +422,7 @@ def calculate_student_grade(
         has_quizzes=live_quizzes,
         has_assignments=live_assignments,
         settings=get_org_settings(db),
+        has_gradable_chapters=bool(chapter_ids),
     )
 
 
@@ -545,6 +550,7 @@ def calculate_all_student_grades(db: Session, course: Course):
             has_quizzes=live_quizzes,
             has_assignments=live_assignments,
             settings=settings,
+            has_gradable_chapters=bool(chapter_ids),
         )
         results.append(
             {

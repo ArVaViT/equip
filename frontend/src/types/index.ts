@@ -120,6 +120,10 @@ export interface GradeBreakdown {
    *  задания могут быть, но пока ничего не весить, потому что не проверены. */
   has_quiz_items: boolean
   has_assignment_items: boolean
+  /** Есть ли главы, предназначенные для оценивания. Глава типа «тест»
+   *  существует сразу, а сам тест сохраняется только с вопросами — курс в
+   *  процессе сборки имеет главы, но не имеет оцениваемых элементов. */
+  has_gradable_chapters: boolean
   /** True when the effective weights differ from the configured ones, so the
    *  UI can explain why instead of showing a number that contradicts the
    *  settings page. */
