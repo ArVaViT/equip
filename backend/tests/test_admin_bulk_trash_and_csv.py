@@ -461,6 +461,87 @@ class TestTrashAndRestore:
 
 
 class TestGradeCsvExport:
+    def test_completion_only_course_does_not_declare_anyone_passed(self, client: TestClient, db: Session):
+        """The export must not award a pass the screen deliberately withholds.
+
+        A course of reading chapters has nothing to grade, so every student
+        lands in `completion_pass`. That is a fact about the course, not about
+        the student — the gradebook renders a neutral «По завершению» there,
+        with a comment saying a green «Зачёт» would award a pass to someone who
+        never opened a chapter.
+
+        The CSV is the more official of the two documents: it gets printed,
+        filed and signed. It once wrote "Passed on completion" into every row,
+        including students at 0% progress, and a teacher signing that sheet
+        would be certifying something nobody verified.
+        """
+        course = _seed_course_direct(db, course_id="completion-course", title="Reading Only")
+        student = User(
+            id=uuid.uuid4(),
+            email="never-opened@test.local",
+            full_name="Never Opened",
+            role=UserRole.STUDENT,
+        )
+        db.add(student)
+        db.add(
+            Enrollment(
+                id=f"enr-{student.id}",
+                user_id=student.id,
+                course_id=course.id,
+                progress=0,
+            )
+        )
+        db.commit()
+
+        body = client.get(f"{GRADES_PREFIX}/course/completion-course/export-csv").text
+
+        assert "Never Opened" in body
+        assert "Passed" not in body
+        assert "By completion" in body
+
+    def test_completion_only_course_exports_the_real_progress_figure(self, client: TestClient, db: Session):
+        """The cell points at a column, so that column must be able to move.
+
+        «Participation (%)» is computed over gradable chapters, and a course is
+        completion-only precisely because it has none — so that column is a
+        structural zero there. The first version of this row told teachers to
+        consult it, which is a different lie from the "Passed" it replaced:
+        a student who finished the whole course looked identical to one who
+        never opened it.
+
+        `enrollment.progress` is the figure the pass actually rests on, and it
+        now travels with the export.
+        """
+        course = _seed_course_direct(db, course_id="completion-progress", title="Reading Only")
+        finished = User(
+            id=uuid.uuid4(),
+            email="finished@test.local",
+            full_name="Finished Everything",
+            role=UserRole.STUDENT,
+        )
+        never = User(
+            id=uuid.uuid4(),
+            email="never@test.local",
+            full_name="Never Started",
+            role=UserRole.STUDENT,
+        )
+        db.add_all([finished, never])
+        db.add_all(
+            [
+                Enrollment(id=f"enr-{finished.id}", user_id=finished.id, course_id=course.id, progress=100),
+                Enrollment(id=f"enr-{never.id}", user_id=never.id, course_id=course.id, progress=0),
+            ]
+        )
+        db.commit()
+
+        body = client.get(f"{GRADES_PREFIX}/course/completion-progress/export-csv").text
+        rows = {line.split(",")[0]: line for line in body.splitlines() if "," in line}
+
+        assert "Course Progress (%)" in body
+        # The two students must be distinguishable — that is the whole point.
+        assert ",100," in rows["Finished Everything"]
+        assert ",100," not in rows["Never Started"]
+
     def test_export_happy_path_returns_csv(self, client: TestClient, db: Session):
         _seed_course_direct(db, course_id="csv-course", title="Intro to CSV")
         resp = client.get(f"{GRADES_PREFIX}/course/csv-course/export-csv")

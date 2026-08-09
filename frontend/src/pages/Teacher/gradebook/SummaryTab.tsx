@@ -10,7 +10,6 @@ import {
   Save, Award, MessageSquare, Users,
 } from "lucide-react"
 import type {
-  GradingConfig,
   GradeSummaryResponse,
   StudentGrade,
   StudentCalculatedGrade,
@@ -22,10 +21,10 @@ import {
   type GradeForm,
 } from "./types"
 import { EMPTY_FORM, letterColor } from "./helpers"
+import { gradePillLabel } from "./notice"
 
 interface Props {
   summary: GradeSummaryResponse | null
-  config: GradingConfig
   manualGrades: Map<string, StudentGrade>
   forms: Map<string, GradeForm>
   saving: string | null
@@ -44,7 +43,6 @@ interface Props {
  */
 export function SummaryTab({
   summary,
-  config,
   manualGrades,
   forms,
   saving,
@@ -88,7 +86,7 @@ export function SummaryTab({
   }, [summary, sortField, sortDir])
 
   const studentCount = sortedStudents.length
-  const classAvg = summary?.class_average ?? 0
+  const classAvg = summary?.class_average ?? null
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -97,6 +95,11 @@ export function SummaryTab({
       onSortChange(field, field === "name" ? "asc" : "desc")
     }
   }
+
+  // Course-level facts, not per-student: the calculator resolves both from the
+  // course, so any row carries the same answer. Shown once at the top because
+  // an explanation buried inside an expandable row is an explanation nobody
+  // reads — the teacher sees a table of dashes and rings support instead.
 
   return (
     <Card>
@@ -127,7 +130,6 @@ export function SummaryTab({
                 <StudentSummaryRow
                   key={student.student_id}
                   student={student}
-                  config={config}
                   manualGrade={manualGrades.get(student.student_id)}
                   form={forms.get(student.student_id) ?? EMPTY_FORM}
                   expanded={expandedId === student.student_id}
@@ -187,7 +189,6 @@ function SortHeader({ field, label, sortField, sortDir, onToggle, className }: S
 
 interface StudentSummaryRowProps {
   student: StudentCalculatedGrade
-  config: GradingConfig
   manualGrade: StudentGrade | undefined
   form: GradeForm
   expanded: boolean
@@ -207,7 +208,6 @@ interface StudentSummaryRowProps {
  */
 const StudentSummaryRow = memo(function StudentSummaryRow({
   student,
-  config,
   manualGrade,
   form,
   expanded,
@@ -218,7 +218,14 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
 }: StudentSummaryRowProps) {
   const { t } = useTranslation()
   const b = student.breakdown
-  const hasDifferentManual = Boolean(manualGrade?.grade && manualGrade.grade !== b.letter_grade)
+  const hasScore = b.result_state === "graded"
+  // Only meaningful when there is a computed grade to differ *from*. On a
+  // course with nothing to grade the computed symbol is empty, so any manual
+  // grade would flag as "differs from  (0.0%)" — printing the very zero this
+  // whole change exists to remove, in the one place a teacher is expected to
+  // grade by hand.
+  const hasDifferentManual =
+    hasScore && Boolean(manualGrade?.grade && manualGrade.grade !== b.letter_grade)
 
   return (
     <div>
@@ -237,13 +244,39 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
             <p className="text-xs text-ink-muted truncate">{student.student_email}</p>
           </div>
         </div>
-        <p className="text-sm tabular-nums text-right">{b.quiz_avg.toFixed(1)}%</p>
-        <p className="text-sm tabular-nums text-right">{b.assignment_avg.toFixed(1)}%</p>
-        <p className="text-sm font-semibold tabular-nums text-right">{b.final_score.toFixed(1)}%</p>
+        {/* A course with nothing gradable has no percentage. Printing 0.0%
+            and an empty grade pill reads as "everyone failed" — the single
+            most alarming thing a teacher can open the gradebook to. */}
+        {/* No number exists in two cases — a course with nothing gradable, and
+            a course nobody has been marked in yet. Printing 0.0% and an empty
+            grade pill in either reads as "everyone failed". */}
+        {/* In `zero_weighted` the category averages are real marks that simply
+            carry no weight — hiding them behind a dash would deny the teacher
+            figures that exist. Only the final score is absent. */}
+        <p className="text-sm tabular-nums text-right">
+          {hasScore || b.result_state === "zero_weighted" ? `${b.quiz_avg.toFixed(1)}%` : "—"}
+        </p>
+        <p className="text-sm tabular-nums text-right">
+          {hasScore || b.result_state === "zero_weighted" ? `${b.assignment_avg.toFixed(1)}%` : "—"}
+        </p>
+        <p className="text-sm font-semibold tabular-nums text-right">
+          {hasScore ? `${b.final_score.toFixed(1)}%` : "—"}
+        </p>
         <div className="flex justify-center">
-          <span className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ${letterColor(b.letter_grade)}`}>
-            {b.letter_grade}
-          </span>
+          {hasScore ? (
+            <span className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ${letterColor(b.letter_grade)}`}>
+              {b.letter_grade}
+            </span>
+          ) : (
+            // Deliberately neutral. `completion_pass` is a fact about the
+            // course having nothing to grade — not a statement that this
+            // student passed, which still depends on their progress. A green
+            // «Зачёт» here would award a pass to someone who has not opened a
+            // single chapter.
+            <span className="inline-flex items-center justify-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-ink-muted">
+              {t(gradePillLabel(b.result_state) ?? "")}
+            </span>
+          )}
         </div>
         <div className="flex justify-center">
           {manualGrade?.grade ? (
@@ -264,20 +297,41 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
 
       {expanded && (
         <div className="border-t px-4 py-4 bg-muted/10 space-y-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm">
-            <BreakdownEntry
-              label={t("gradebook.summary.breakdownQuiz")}
-              pct={b.quiz_avg}
-              weight={config.quiz_weight}
-              weighted={b.quiz_weighted}
-            />
-            <BreakdownEntry
-              label={t("gradebook.summary.breakdownAssignment")}
-              pct={b.assignment_avg}
-              weight={config.assignment_weight}
-              weighted={b.assignment_weighted}
-            />
-          </div>
+          {hasScore ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+              {/* Only the categories that carry the score are shown, with the
+                  weights actually applied. Printing «0.0% (×0% = 0.0)» for a
+                  category that took no part looks like a mark of zero. */}
+              {/* A category is hidden only when it holds nothing — never
+                  because its weight is zero. Marks that exist must stay
+                  visible, with «(×0% = 0.0)» showing exactly why they do not
+                  move the total; dropping the row leaves 80% in the table
+                  above with no explanation anywhere on the page. */}
+              {(b.effective_quiz_weight > 0 || b.has_quiz_items) && (
+                <BreakdownEntry
+                  label={t("gradebook.summary.breakdownQuiz")}
+                  pct={b.quiz_avg}
+                  weight={b.effective_quiz_weight}
+                  weighted={b.quiz_weighted}
+                />
+              )}
+              {(b.effective_assignment_weight > 0 || b.has_assignment_items) && (
+                <BreakdownEntry
+                  label={t("gradebook.summary.breakdownAssignment")}
+                  pct={b.assignment_avg}
+                  weight={b.effective_assignment_weight}
+                  weighted={b.assignment_weighted}
+                />
+              )}
+            </div>
+          ) : (
+            // The course-level banner above already says why there is no
+            // number; repeating it per row would be noise. State the student
+            // fact instead.
+            <p className="text-xs text-ink-muted">
+              {t("gradebook.summary.noScoreForStudent")}
+            </p>
+          )}
 
           {hasDifferentManual && (
             <div className="rounded border-l-stripe border-l-warning bg-warning/10 px-3 py-2 text-xs text-ink">
@@ -361,18 +415,33 @@ function ClassAverageRow({
 }: {
   summary: GradeSummaryResponse
   studentCount: number
-  classAvg: number
+  classAvg: number | null
 }) {
   const { t } = useTranslation()
+  // `classAvg === null` means the backend had nothing to average: a course
+  // with no graded work, or one where marking has not started. The per-student
+  // rows already show dashes there — printing "0.0%" in bold underneath them
+  // would contradict the whole table.
+  const hasNumbers = classAvg !== null
+  // Category averages exist in `zero_weighted` too — the marks are real, they
+  // just carry no weight. Dashing them out here while every student row above
+  // shows a figure is the same "dash over marks that exist" defect, one line
+  // lower.
+  const hasCategoryFigures =
+    hasNumbers || summary.students[0]?.breakdown.result_state === "zero_weighted"
   const avg = (pick: (s: StudentCalculatedGrade) => number) =>
     summary.students.reduce((acc, st) => acc + pick(st), 0) / studentCount
 
   return (
     <div className="grid grid-cols-[1fr_80px_80px_80px_70px_70px] gap-3 px-4 py-3 bg-muted/40 font-semibold text-sm items-center border-t-2">
       <span className="pl-6">{t("gradebook.summary.classAverageRow", { count: studentCount })}</span>
-      <p className="tabular-nums text-right">{avg((s) => s.breakdown.quiz_avg).toFixed(1)}%</p>
-      <p className="tabular-nums text-right">{avg((s) => s.breakdown.assignment_avg).toFixed(1)}%</p>
-      <p className="tabular-nums text-right">{classAvg.toFixed(1)}%</p>
+      <p className="tabular-nums text-right">
+        {hasCategoryFigures ? `${avg((s) => s.breakdown.quiz_avg).toFixed(1)}%` : "—"}
+      </p>
+      <p className="tabular-nums text-right">
+        {hasCategoryFigures ? `${avg((s) => s.breakdown.assignment_avg).toFixed(1)}%` : "—"}
+      </p>
+      <p className="tabular-nums text-right">{hasNumbers ? `${classAvg.toFixed(1)}%` : "—"}</p>
       <span />
       <span />
     </div>

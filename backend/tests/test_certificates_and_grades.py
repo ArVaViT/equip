@@ -926,7 +926,9 @@ class TestGradeSummary:
         r = client.get("/api/v1/grades/course/course-1/summary")
         assert r.status_code == 200
         assert r.json()["students"] == []
-        assert r.json()["class_average"] == 0.0
+        # No students, no average — null rather than a 0.0% that reads as
+        # "the whole class scored zero".
+        assert r.json()["class_average"] is None
 
     def test_deactivated_student_excluded(self, client: TestClient, db: Session):
         # A soft-deleted student keeps their enrollment but must NOT appear in

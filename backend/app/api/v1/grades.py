@@ -42,6 +42,24 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/grades", tags=["grades"])
 
+#: What the grade column says in a CSV when there is no score. The export is
+#: printed and filed without the screen that would otherwise explain it, so the
+#: cell has to carry its own explanation.
+#: What the grade column says in a CSV when there is no score.
+#:
+#: Deliberately neutral for ``completion_pass``. The screen renders «По
+#: завершению» there rather than a pass, because the state describes the
+#: *course* having nothing to grade — it says nothing about whether this
+#: student did the work. Writing "Passed" into an exported sheet would award a
+#: pass to someone who never opened a chapter, on the more official of the two
+#: documents, and a teacher would sign it. The pass decision belongs to the
+#: teacher reading the completion figure, not to the export.
+_RESULT_STATE_CSV = {
+    "completion_pass": "By completion — see Course Progress (%)",
+    "not_graded_yet": "Not graded yet",
+    "zero_weighted": "No percentage (graded work is weighted 0%)",
+}
+
 # Spreadsheet apps (Excel / Google Sheets / LibreOffice) treat a cell that
 # begins with =, +, -, @, or a leading tab/CR as a FORMULA. Student names and
 # emails come from OAuth/profile data the user controls, so a name like
@@ -166,7 +184,14 @@ def get_grade_summary(
         results = calculate_all_student_grades(db, course)
 
         students = [StudentCalculatedGrade(**r) for r in results]
-        class_avg = round(sum(s.breakdown.final_score for s in students) / len(students), 2) if students else 0.0
+        # A class average only means something when there are grades to average.
+        # ``result_state`` is resolved course-wide, so one student answers for
+        # all: on a completion-only or not-yet-graded course every final_score
+        # is a placeholder zero, and averaging them prints "class average 0.0%"
+        # in bold under a table of dashes — the single most alarming line a
+        # teacher can open a gradebook to.
+        gradable = [s for s in students if s.breakdown.result_state == "graded"]
+        class_avg = round(sum(s.breakdown.final_score for s in gradable) / len(gradable), 2) if gradable else None
 
         return GradeSummaryResponse(
             course_id=course_id,
@@ -198,6 +223,19 @@ def export_grades_csv(
     course = verify_course_owner(db, course_id, teacher)
     results = calculate_all_student_grades(db, course)
 
+    # Course progress, straight from the enrolment. On a completion-only course
+    # this is the *only* honest figure — «Participation (%)» is computed over
+    # gradable chapters, and a course qualifies as completion-only precisely
+    # because it has none, so that column is a structural zero there. Pointing
+    # a teacher at a column that cannot be anything but zero is a different lie
+    # from the one it replaced.
+    progress_by_student = {
+        str(user_id): progress
+        for user_id, progress in db.query(Enrollment.user_id, Enrollment.progress)
+        .filter(Enrollment.course_id == course.id)
+        .all()
+    }
+
     buf = io.StringIO()
     buf.write("\ufeff")
     writer = csv.writer(buf)
@@ -210,7 +248,7 @@ def export_grades_csv(
             "Assignment Avg (%)",
             "Assignment Weighted",
             "Participation (%)",
-            "Participation Weighted",
+            "Course Progress (%)",
             "Final Score",
             "Letter Grade",
             "Manual Grade",
@@ -218,18 +256,41 @@ def export_grades_csv(
     )
     for r in results:
         b = r["breakdown"]
+        # A course with nothing graded has no numbers to export — not in the
+        # final score, and not in the per-category columns either. Writing
+        # zeros sends a spreadsheet to the school that reads as "everyone
+        # scored zero", and a printed page has no banner to explain itself, so
+        # the cells must say so themselves.
+        graded = b.result_state == "graded"
+        # Category averages are real in `zero_weighted` too — they simply carry
+        # no weight. Only the final score is genuinely absent there.
+        has_category_figures = graded or b.result_state == "zero_weighted"
+
+        def num(value: float, *, show: bool = has_category_figures) -> float | str:
+            return value if show else "—"
+
         writer.writerow(
             [
                 _csv_safe(r["student_name"] or ""),
                 _csv_safe(r["student_email"]),
-                b.quiz_avg,
-                b.quiz_weighted,
-                b.assignment_avg,
-                b.assignment_weighted,
+                num(b.quiz_avg),
+                num(b.quiz_weighted),
+                num(b.assignment_avg),
+                num(b.assignment_weighted),
+                # Completion over *gradable* chapters — structurally zero on a
+                # completion-only course, which is why the real progress figure
+                # travels beside it.
                 b.participation_pct,
-                b.participation_weighted,
-                b.final_score,
-                b.letter_grade,
+                progress_by_student.get(r["student_id"], 0),
+                b.final_score if graded else "—",
+                b.letter_grade
+                if graded
+                # A course still being filled in must not certify anything.
+                else (
+                    "Course not filled in yet (no quiz or assignment saved)"
+                    if b.result_state == "completion_pass" and b.has_gradable_chapters
+                    else _RESULT_STATE_CSV[b.result_state]
+                ),
                 r["manual_grade"] or "",
             ]
         )

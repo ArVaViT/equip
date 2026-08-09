@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -80,6 +81,22 @@ class GradingConfigUpdate(BaseModel):
 
 
 class GradeBreakdown(BaseModel):
+    """One student's grade, with the arithmetic shown rather than implied.
+
+    The *effective* weights are what the score is actually computed from, and
+    they are what every surface must display (D4). A course with quizzes and no
+    assignments used to be capped: the empty assignment category kept its
+    weight and contributed zero, so the largest production course — 4 quizzes,
+    0 assignments, 13 students — could not exceed 60% no matter what a student
+    did. An empty category now drops out and its weight is redistributed at
+    calculation time, so a teacher adding their first assignment mid-course
+    just works.
+
+    ``result_state`` distinguishes an ordinary graded course from one with
+    nothing gradable in it at all, where there is no number to compute and the
+    honest answer is «зачёт (по завершению)» rather than a silent zero.
+    """
+
     quiz_avg: float
     quiz_weighted: float
     assignment_avg: float
@@ -88,6 +105,50 @@ class GradeBreakdown(BaseModel):
     participation_weighted: float
     final_score: float
     letter_grade: str
+
+    #: Weights after empty categories drop out. Equal to the configured
+    #: weights when both categories have items.
+    effective_quiz_weight: int = 0
+    effective_assignment_weight: int = 0
+    #: Whether the course *contains* items of each kind. Distinct from the
+    #: weights above: a course can have assignments that carry no weight yet
+    #: because none are marked. The UI needs both to word its explanation
+    #: honestly — telling a teacher to "mark the first assignment" when the
+    #: course has no assignments at all sends them looking for something that
+    #: does not exist.
+    has_quiz_items: bool = False
+    has_assignment_items: bool = False
+    #: Whether the course has chapters *meant* to be graded. A chapter typed
+    #: "quiz" exists the moment a teacher creates it, but the quiz itself is
+    #: only saved once it has questions — so a course under construction has
+    #: gradable chapters and no gradable items. Without this the platform
+    #: cheerfully announces "this course has no quizzes, that is not an error"
+    #: while a chapter named «Тест 1» sits in it.
+    has_gradable_chapters: bool = False
+    #: True when the effective weights differ from what the teacher configured,
+    #: so the UI can explain why ("this course has no assignments, so their
+    #: weight moved to quizzes") instead of showing a number that contradicts
+    #: the settings page.
+    weights_redistributed: bool = False
+    #: ``graded`` — an ordinary weighted result.
+    #: ``completion_pass`` — the course contains no quizzes and no assignments
+    #: at all, so there is nothing to compute; the result is completion-based.
+    #: This is a fact about the *course*, not about the student: it does not by
+    #: itself mean this student passed — that still depends on progress.
+    #: ``not_graded_yet`` — the course has gradable items, but nothing has been
+    #: graded in it yet (start of term, or a fresh cohort). Distinct from
+    #: ``completion_pass`` on purpose: telling a teacher "this course has no
+    #: quizzes" while four quizzes sit in it is a lie, and showing 0%/F to a
+    #: class that has not been marked yet is a different lie.
+    #: ``zero_weighted`` — work *has* been graded, but only in a category the
+    #: teacher set to 0%. Quizzes as practice self-checks with the essay
+    #: carrying the grade is the ordinary case. Separate from
+    #: ``not_graded_yet`` because "nothing has been graded yet" would be false
+    #: and the advice that follows it ("percentages appear once someone takes a
+    #: quiz") would promise something that has already happened and will never
+    #: help. The averages stay populated here — they are real, they just carry
+    #: no weight.
+    result_state: Literal["graded", "completion_pass", "not_graded_yet", "zero_weighted"] = "graded"
 
 
 class StudentCalculatedGrade(BaseModel):
@@ -102,4 +163,7 @@ class GradeSummaryResponse(BaseModel):
     course_id: str
     config: GradingConfigResponse
     students: list[StudentCalculatedGrade]
-    class_average: float
+    #: ``None`` when the course has nothing graded to average — a
+    #: completion-only course, or one where marking has not started. Zero would
+    #: be a lie the size of the whole class.
+    class_average: float | None = None
