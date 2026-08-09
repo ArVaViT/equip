@@ -429,7 +429,7 @@ class TestCalculateAllStudentGrades:
                 id=uuid.uuid4(),
                 student_id=STUDENT_ID,
                 course_id=course.id,
-                grade="A+",
+                override_code="A",
                 comment="Manual override",
                 graded_by=TEACHER_ID,
             )
@@ -438,7 +438,8 @@ class TestCalculateAllStudentGrades:
 
         batch = calculate_all_student_grades(db, course)
         assert len(batch) == 1
-        assert batch[0]["manual_grade"] == "A+"
+        # «A+» is no longer representable — the override is a scheme symbol now (D7).
+        assert batch[0]["manual_grade"] == "A"
 
     def test_course_with_no_gradable_chapters_short_circuits(
         self,

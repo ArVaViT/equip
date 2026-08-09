@@ -266,13 +266,13 @@ const GradeTableRow = memo(function GradeTableRow({
           <div className="flex flex-col items-center">
             <span className="font-semibold text-sm">{earned}</span>
             <span className="text-xs text-ink-muted">/{total}</span>
-            {manualGrade?.grade && (
+            {manualGrade?.override_code && (
               <span
                 className={`mt-0.5 rounded-full px-1.5 py-0.5 text-xs font-bold ${letterColor(
-                  manualGrade.grade,
+                  manualGrade.override_code,
                 )}`}
               >
-                {manualGrade.grade}
+                {manualGrade.override_code}
               </span>
             )}
           </div>

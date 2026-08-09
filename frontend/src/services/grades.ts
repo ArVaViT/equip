@@ -13,7 +13,7 @@ export const gradesService = {
   async upsertGrade(
     courseId: string,
     studentId: string,
-    data: { grade?: string; comment?: string },
+    data: { override_code?: string; override_score?: number; reason?: string; comment?: string },
   ): Promise<StudentGrade> {
     const response = await api.put<StudentGrade>(
       `/grades/course/${courseId}/student/${studentId}`,
@@ -23,6 +23,19 @@ export const gradesService = {
     cacheInvalidate(`grades:summary:${courseId}`)
     cacheInvalidatePrefix("grades:my")
     return response.data
+  },
+
+  /**
+   * Remove a hand-set grade so the computed one takes over again.
+   *
+   * There was no way to do this before: the write path read an omitted field
+   * as "leave it alone", so a mistaken F was permanent.
+   */
+  async clearGrade(courseId: string, studentId: string): Promise<void> {
+    await api.delete(`/grades/course/${courseId}/student/${studentId}`)
+    cacheInvalidate(`grades:course:${courseId}`)
+    cacheInvalidate(`grades:summary:${courseId}`)
+    cacheInvalidatePrefix("grades:my")
   },
 
   async getMyGrades(): Promise<StudentGrade[]> {

@@ -225,9 +225,9 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
                     <span className="shrink-0 text-[11px] font-medium tabular-nums text-ink-muted">
                       {enrollment.progress}%
                     </span>
-                    {grade?.grade ? (
+                    {grade?.override_code ? (
                       <span className="rounded-sm bg-surface/80 px-1.5 py-0 text-[10px] font-medium text-ink">
-                        {grade.grade}
+                        {grade.override_code}
                       </span>
                     ) : null}
                   </div>

@@ -734,6 +734,7 @@
     "gradingWeightsSaved": "Grading weights saved",
     "gradingConfigSaveFailed": "Failed to save grading config",
     "gradeSaved": "Grade saved",
+    "gradeCleared": "Hand-set grade removed — the calculated one applies again",
     "gradeSaveFailed": "Failed to save grade",
     "exportGradesFailed": "Failed to export grades",
     "certificatesLoadFailed": "Failed to load certificates",

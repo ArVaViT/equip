@@ -764,12 +764,26 @@ CREATE TABLE public.student_grades (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     student_id uuid NOT NULL,
     course_id character varying NOT NULL,
-    grade character varying(10),
     comment text,
     graded_by uuid,
     graded_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    cohort_id uuid
+    cohort_id uuid,
+    override_code text,
+    override_score numeric(5,2),
+    computed_score numeric(5,2),
+    reason text,
+    CONSTRAINT ck_student_grades_one_override CHECK (((
+CASE
+    WHEN (override_code IS NULL) THEN 0
+    ELSE 1
+END +
+CASE
+    WHEN (override_score IS NULL) THEN 0
+    ELSE 1
+END) = 1)),
+    CONSTRAINT student_grades_override_code_check CHECK ((override_code = ANY (ARRAY['pass'::text, 'fail'::text, '5'::text, '4'::text, '3'::text, '2'::text, 'A'::text, 'B'::text, 'C'::text, 'D'::text, 'F'::text]))),
+    CONSTRAINT student_grades_override_score_check CHECK (((override_score >= (0)::numeric) AND (override_score <= (100)::numeric)))
 );
 
 

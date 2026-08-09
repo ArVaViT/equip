@@ -7,7 +7,23 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class GradeUpsert(BaseModel):
-    grade: str | None = Field(None, max_length=10)
+    """A hand-set grade (D7).
+
+    Exactly one of ``override_code`` / ``override_score`` — a symbol from the
+    course's scheme, or a percentage for ``percent`` courses. The pairing is
+    checked against the course itself in the route, because which symbols are
+    legal depends on the scheme: «5» is a grade in a five-point course and
+    nonsense in a letter one.
+
+    Clearing a grade is a DELETE on the same route, not an empty value here.
+    The old shape used "field omitted means leave it alone", which made an
+    override impossible to remove: once a teacher had set an F, no request
+    could take it back.
+    """
+
+    override_code: str | None = Field(None, max_length=8)
+    override_score: Decimal | None = Field(None, ge=0, le=100)
+    reason: str | None = Field(None, max_length=2000)
     comment: str | None = Field(None, max_length=5000)
 
 
@@ -18,7 +34,12 @@ class GradeResponse(BaseModel):
     student_id: UUID
     course_id: str
     cohort_id: UUID | None = None
-    grade: str | None = None
+    override_code: str | None = None
+    override_score: Decimal | None = None
+    #: What the calculator said when the override was set — kept so both
+    #: numbers can be shown together instead of the hand-set one alone.
+    computed_score: Decimal | None = None
+    reason: str | None = None
     comment: str | None = None
     graded_by: UUID | None = None
     graded_at: datetime

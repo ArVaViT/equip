@@ -1691,6 +1691,29 @@
     "body": false
   },
   {
+    "method": "DELETE",
+    "path": "/api/v1/grades/course/{course_id}/student/{student_id}",
+    "params": [
+      [
+        "cohort_id",
+        "query"
+      ],
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "student_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
     "method": "GET",
     "path": "/api/v1/grades/course/{course_id}/student/{student_id}",
     "params": [

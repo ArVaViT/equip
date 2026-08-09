@@ -133,7 +133,7 @@ export default function TeacherGradebook() {
         for (const g of rawGrades ?? []) {
           gradeMap.set(g.student_id, g)
           formMap.set(g.student_id, {
-            grade: g.grade ?? "",
+            grade: g.override_code ?? "",
             comment: g.comment ?? "",
           })
         }
@@ -210,8 +210,24 @@ export default function TeacherGradebook() {
       setSaving(userId)
       try {
         const form = formsRef.current.get(userId) ?? EMPTY_FORM
+        const code = form.grade.trim()
+
+        // An empty field means "remove the hand-set grade", not "leave it
+        // alone". The old shape had no way to express removal at all, so a
+        // mistaken F stayed forever.
+        if (!code) {
+          await coursesService.clearGrade(courseId, userId)
+          setManualGrades((prev) => {
+            const next = new Map(prev)
+            next.delete(userId)
+            return next
+          })
+          toast({ title: t("toast.gradeCleared"), variant: "success" })
+          return
+        }
+
         const data = await coursesService.upsertGrade(courseId, userId, {
-          grade: form.grade.trim() || undefined,
+          override_code: code,
           comment: form.comment.trim() || undefined,
         })
         setManualGrades((prev) => new Map(prev).set(userId, data))

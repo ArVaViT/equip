@@ -312,6 +312,7 @@
     "gradingWeightsSaved": "Веса оценок сохранены",
     "gradingConfigSaveFailed": "Не удалось сохранить настройки оценивания",
     "gradeSaved": "Оценка сохранена",
+    "gradeCleared": "Ручная оценка снята — снова действует расчётная",
     "gradeSaveFailed": "Не удалось сохранить оценку",
     "exportGradesFailed": "Не удалось экспортировать оценки",
     "certificatesLoadFailed": "Не удалось загрузить сертификаты",

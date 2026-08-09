@@ -225,7 +225,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
   // whole change exists to remove, in the one place a teacher is expected to
   // grade by hand.
   const hasDifferentManual =
-    hasScore && Boolean(manualGrade?.grade && manualGrade.grade !== b.letter_grade)
+    hasScore && Boolean(manualGrade?.override_code && manualGrade.override_code !== b.letter_grade)
 
   return (
     <div>
@@ -279,7 +279,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
           )}
         </div>
         <div className="flex justify-center">
-          {manualGrade?.grade ? (
+          {manualGrade?.override_code ? (
             <span
               className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
                 hasDifferentManual
@@ -287,7 +287,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
                   : "bg-muted text-ink-muted"
               }`}
             >
-              {manualGrade.grade}
+              {manualGrade.override_code}
             </span>
           ) : (
             <span className="text-xs text-ink-muted">—</span>
@@ -338,7 +338,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
               <Trans
                 i18nKey="gradebook.summary.manualDiffers"
                 values={{
-                  manual: manualGrade?.grade ?? "",
+                  manual: manualGrade?.override_code ?? "",
                   calc: b.letter_grade,
                   pct: b.final_score.toFixed(1),
                 }}
