@@ -245,7 +245,13 @@ class GradeBreakdown(BaseModel):
     #: quiz") would promise something that has already happened and will never
     #: help. The averages stay populated here — they are real, they just carry
     #: no weight.
-    result_state: Literal["graded", "completion_pass", "not_graded_yet", "zero_weighted"] = "graded"
+    #: ``not_assessed`` — «не аттестован». Every gradable item this student owed
+    #: was excused (D6), so there is no denominator left and no honest number.
+    #: It must not collapse into ``completion_pass``: excusing an item also
+    #: completes its chapter, so a student excused from everything sits at
+    #: progress 100, and "passed by completion" would hand them a certificate
+    #: for work nobody ever assessed. A teacher decides this one by hand.
+    result_state: Literal["graded", "completion_pass", "not_graded_yet", "zero_weighted", "not_assessed"] = "graded"
 
 
 class StudentCalculatedGrade(BaseModel):

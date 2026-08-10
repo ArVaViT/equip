@@ -1748,7 +1748,9 @@
       "clearManual": "Remove grade",
       "saveManual": "Save Manual Grade",
       "classAverageRow_one": "Class Average ({{count}} student)",
-      "classAverageRow_other": "Class Average ({{count}} students)"
+      "classAverageRow_other": "Class Average ({{count}} students)",
+      "notAssessedBadge": "Not assessed",
+      "notAssessedCourse": "All of this student's work was excused, so there is nothing to average. Set their final grade by hand — the certificate is on hold until you do."
     },
     "table": {
       "title": "Student Grade Table",

@@ -20,7 +20,10 @@ left alone.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
+
+from sqlalchemy.exc import IntegrityError
 
 from app.models.assignment import Assignment
 from app.models.chapter_progress import ChapterProgress
@@ -49,8 +52,55 @@ def chapter_for_item(db: Session, *, item_type: str, item_id: UUID, course_id: s
     query = db.query(model.chapter_id).filter(model.id == item_id)
     if course_id is not None:
         query = query.join(Chapter, Chapter.id == model.chapter_id).join(Module, Module.id == Chapter.module_id)
-        query = query.filter(Module.course_id == course_id)
+        # Soft-deleted chapters are already out of every grade calculation, so
+        # an exemption there can never move a number. Accepting one answers 201
+        # and writes an audit entry for a decision with no effect — and one that
+        # would quietly start applying if the chapter were ever restored.
+        query = query.filter(
+            Module.course_id == course_id,
+            Chapter.deleted_at.is_(None),
+            Module.deleted_at.is_(None),
+        )
     return query.scalar()
+
+
+def _every_item_excused(db: Session, *, student_id: UUID, chapter_id: str) -> bool:
+    """Is there nothing left in this chapter for this student to do?
+
+    A chapter is not one piece of work. It can hold two quizzes, or a quiz and
+    an assignment, and completing it because *one* of them was waived hands the
+    student a finished chapter while the rest sits unsubmitted — progress 100,
+    certificate gate open, work still owed. So the chapter closes only when
+    every gradable item in it is excused, and reopens the moment one isn't.
+
+    Deliberately about exemptions alone, not "excused or already done": a
+    chapter the student partly finished is closed by the machinery that
+    finished it, and it is not this function's business to close it for them.
+    """
+    quiz_ids = [r[0] for r in db.query(Quiz.id).filter(Quiz.chapter_id == chapter_id).all()]
+    assignment_ids = [r[0] for r in db.query(Assignment.id).filter(Assignment.chapter_id == chapter_id).all()]
+    if not quiz_ids and not assignment_ids:
+        return False
+
+    excused_quizzes, excused_assignments = _excused_ids_for_items(
+        db, student_id=student_id, quiz_ids=quiz_ids, assignment_ids=assignment_ids
+    )
+    return all(q in excused_quizzes for q in quiz_ids) and all(a in excused_assignments for a in assignment_ids)
+
+
+def _excused_ids_for_items(db: Session, *, student_id: UUID, quiz_ids: list, assignment_ids: list) -> tuple[set, set]:
+    rows = (
+        db.query(GradeExemption.item_type, GradeExemption.item_id)
+        .filter(
+            GradeExemption.student_id == student_id,
+            GradeExemption.item_id.in_(list(quiz_ids) + list(assignment_ids)),
+        )
+        .all()
+    )
+    return (
+        {r.item_id for r in rows if r.item_type == "quiz"},
+        {r.item_id for r in rows if r.item_type == "assignment"},
+    )
 
 
 def excused_item_ids(db: Session, *, student_id: UUID | str, course_id: str) -> tuple[set, set]:
@@ -93,37 +143,81 @@ def apply_exemption(
     if existing is not None:
         return existing
 
+    chapter_id = chapter_for_item(db, item_type=item_type, item_id=item_id)
+    if chapter_id is None:
+        raise LookupError("no such quiz or assignment")
+
     exemption = GradeExemption(
         student_id=student_id,
         course_id=course_id,
         item_type=item_type,
         item_id=item_id,
+        chapter_id=chapter_id,
         reason=reason,
         created_by=teacher_id,
     )
-    db.add(exemption)
+    # Two teachers clicking at once used to make one of them a 500: the SELECT
+    # above misses for both, and the loser lands on the unique key. The
+    # SAVEPOINT keeps that collision from poisoning the caller's transaction so
+    # the row the winner wrote can simply be returned — which is what
+    # "idempotent" was supposed to mean.
+    try:
+        with db.begin_nested():
+            db.add(exemption)
+            db.flush()
+    except IntegrityError:
+        # Matched against the unique key exactly — (student, item_type, item_id),
+        # without the course — or a row that collided would be invisible here and
+        # the 500 we just caught would come straight back.
+        existing = (
+            db.query(GradeExemption)
+            .filter(
+                GradeExemption.student_id == student_id,
+                GradeExemption.item_type == item_type,
+                GradeExemption.item_id == item_id,
+            )
+            .first()
+        )
+        if existing is None:
+            raise
+        return existing
 
-    chapter_id = chapter_for_item(db, item_type=item_type, item_id=item_id)
-    if chapter_id is not None:
+    if _every_item_excused(db, student_id=student_id, chapter_id=chapter_id):
         progress = (
             db.query(ChapterProgress)
             .filter(ChapterProgress.user_id == student_id, ChapterProgress.chapter_id == chapter_id)
             .first()
         )
         if progress is None:
-            progress = ChapterProgress(
-                user_id=student_id,
-                chapter_id=chapter_id,
-                completed=True,
-                completion_type=EXCUSED,
-                completed_by=teacher_id,
-            )
-            db.add(progress)
-        elif not progress.completed:
+            # Same race, other table: the student's own autocomplete or a
+            # co-teacher's mark-complete may be inserting this very row.
+            # ``upsert_passed_chapter_progress`` handles it the same way.
+            try:
+                with db.begin_nested():
+                    progress = ChapterProgress(
+                        user_id=student_id,
+                        chapter_id=chapter_id,
+                        completed=True,
+                        completed_at=datetime.now(UTC),
+                        completion_type=EXCUSED,
+                        completed_by=teacher_id,
+                    )
+                    db.add(progress)
+                    db.flush()
+            except IntegrityError:
+                progress = (
+                    db.query(ChapterProgress)
+                    .filter(ChapterProgress.user_id == student_id, ChapterProgress.chapter_id == chapter_id)
+                    .first()
+                )
+                if progress is None:
+                    raise
+        if not progress.completed:
             # An unfinished chapter becomes complete *as excused*. A chapter the
             # student had already finished is left exactly as it is — recording
             # it as waived would erase the fact that they did the work.
             progress.completed = True
+            progress.completed_at = datetime.now(UTC)
             progress.completion_type = EXCUSED
             progress.completed_by = teacher_id
 
@@ -157,8 +251,17 @@ def remove_exemption(
     if exemption is None:
         return None
 
-    chapter_id = chapter_for_item(db, item_type=item_type, item_id=item_id)
-    if chapter_id is not None:
+    # From the row, not from the item: the item may have been deleted since,
+    # and the completion this exemption created still has to be revertible.
+    chapter_id = exemption.chapter_id
+    db.delete(exemption)
+    db.flush()
+
+    # Reopen the chapter only if the student now owes something in it again. A
+    # chapter whose other item is still excused has nothing left for them to
+    # do, and slamming it shut would close the certificate gate over work that
+    # was waived.
+    if not _every_item_excused(db, student_id=student_id, chapter_id=chapter_id):
         progress = (
             db.query(ChapterProgress)
             .filter(
@@ -170,10 +273,14 @@ def remove_exemption(
         )
         if progress is not None:
             progress.completed = False
-            progress.completion_type = "self"
+            # ``completion_type`` is left as ``'excused'`` deliberately. The row
+            # records how the chapter was last completed, and rewriting it to
+            # ``'self'`` would claim the student ticked it themselves — a thing
+            # that never happened, and indistinguishable afterwards from a
+            # chapter they simply started. ``teacher_uncomplete_chapter``
+            # refuses the same rewrite for the same reason.
             progress.completed_by = None
 
-    db.delete(exemption)
     db.flush()
     sync_enrollment_progress(db, student_id, course_id)
     return exemption

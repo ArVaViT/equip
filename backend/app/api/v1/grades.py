@@ -76,6 +76,10 @@ _RESULT_STATE_CSV = {
     "completion_pass": "By completion — see Course Progress (%)",
     "not_graded_yet": "Not graded yet",
     "zero_weighted": "No percentage (graded work is weighted 0%)",
+    # Not a pass and not a failure. Every item was excused, so the sheet has to
+    # say that a person still owes this student a decision — the 100% in the
+    # progress column beside it would otherwise read as a finished course.
+    "not_assessed": "Not assessed — all work excused; needs a teacher's grade",
 }
 
 # Spreadsheet apps (Excel / Google Sheets / LibreOffice) treat a cell that
@@ -261,12 +265,20 @@ def delete_exemption(
             context={"resource_type": "grade_exemption", "student_id": student_id},
         )
 
+    # Commit the removal before writing the trail. `log_action` rolls the
+    # session back if the audit write fails, which here would have discarded the
+    # deletion and the progress revert with it — and the route still returned
+    # 204, telling the teacher the work was returned while both halves sat
+    # untouched in the database. The create path already commits first.
+    removed_id = str(removed.id)
+    db.commit()
+
     log_action(
         db,
         user_id=teacher.id,
         action="grade_exemption_removed",
         resource_type="grade_exemption",
-        resource_id=str(removed.id),
+        resource_id=removed_id,
         details={
             "student_id": str(student_id),
             "course_id": course_id,
@@ -275,7 +287,6 @@ def delete_exemption(
         },
         request=request,
     )
-    db.commit()
 
 
 @router.get("/course/{course_id}/scheme", response_model=GradingSchemeResponse)

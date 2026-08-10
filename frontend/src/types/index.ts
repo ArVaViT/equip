@@ -138,8 +138,17 @@ export interface GradeBreakdown {
    *  settings page. */
   weights_redistributed: boolean
   /** `completion_pass` — the course has nothing gradable; `final_score` and
-   *  `letter_grade` carry no meaning. */
-  result_state: "graded" | "completion_pass" | "not_graded_yet" | "zero_weighted"
+   *  `letter_grade` carry no meaning.
+   *  `not_assessed` — every item this student owed was excused, so there is no
+   *  denominator left. Distinct from `completion_pass`: excusing an item also
+   *  completes its chapter, so these students sit at progress 100 and reading
+   *  them as "passed by completion" would certify a course nobody graded. */
+  result_state:
+    | "graded"
+    | "completion_pass"
+    | "not_graded_yet"
+    | "zero_weighted"
+    | "not_assessed"
 }
 
 export interface StudentCalculatedGrade {

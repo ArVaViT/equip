@@ -23,6 +23,7 @@ class GradeExemption(Base):
     __tablename__ = "grade_exemptions"
     __table_args__ = (
         Index("ix_grade_exemptions_student_course", "student_id", "course_id"),
+        Index("ix_grade_exemptions_chapter", "student_id", "chapter_id"),
         # One exemption per student per item: waiving the same work twice is a
         # no-op, not a second row the inverse would only half revert.
         UniqueConstraint("student_id", "item_type", "item_id", name="uq_grade_exemptions_student_item"),
@@ -34,6 +35,11 @@ class GradeExemption(Base):
     course_id: Mapped[str] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
     item_type: Mapped[str] = mapped_column()
     item_id: Mapped[uuid.UUID] = mapped_column()
+    #: The chapter the item sits in, recorded rather than looked up. ``item_id``
+    #: is polymorphic so it carries no foreign key, and quizzes and assignments
+    #: are hard-deleted — reaching the chapter *through* the item meant that
+    #: deleting the item stranded an 'excused' completion nothing could revert.
+    chapter_id: Mapped[str] = mapped_column(ForeignKey("chapters.id", ondelete="CASCADE"))
     #: Optional, director-visible. Waiving work is a decision someone will be
     #: asked about — especially when it is the last thing between a student and
     #: a certificate.

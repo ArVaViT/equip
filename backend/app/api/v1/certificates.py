@@ -19,6 +19,7 @@ from app.models.user import User
 from app.schemas.certificate import CertificateResponse, CertificateVerifyResponse
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services import certificate_service
+from app.services.grade_calculator import calculate_student_grade_for_course
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 
 router = APIRouter(prefix="/certificates", tags=["certificates"])
@@ -63,7 +64,7 @@ def request_certificate(
     certificate stays rejected and the student must re-request".
     """
     # Soft-deleted courses must not accept new certificate requests.
-    get_live_course_or_404(db, course_id)
+    course = get_live_course_or_404(db, course_id)
 
     enrollment = lookup_enrollment(db, current_user.id, course_id)
     if not enrollment:
@@ -79,6 +80,20 @@ def request_certificate(
             status_code=status.HTTP_400_BAD_REQUEST,
             message=f"Course not completed. Current progress: {enrollment.progress}%",
             context={"resource_type": "certificate", "course_id": course_id, "progress": enrollment.progress},
+        )
+
+    # "Not assessed" (D6). Excusing an item also completes its chapter, so a
+    # student excused from every piece of work reaches progress 100 without a
+    # single thing having been assessed — and the check above would wave them
+    # through. Nobody set out to build that path; it is what the two halves of
+    # an exemption add up to, which is why it has to be closed here rather than
+    # trusted not to happen.
+    if calculate_student_grade_for_course(db, course, current_user.id).result_state == "not_assessed":
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="All of your work in this course was excused, so there is no grade to certify yet. Ask your teacher to set a final grade.",
+            context={"resource_type": "certificate", "course_id": course_id},
         )
 
     existing = (

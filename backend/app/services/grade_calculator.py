@@ -207,6 +207,7 @@ def _build_breakdown(
     has_assignments: bool,
     settings: OrgSettings,
     has_gradable_chapters: bool = False,
+    all_items_excused: bool = False,
 ) -> GradeBreakdown:
     """Assemble one student's breakdown.
 
@@ -243,6 +244,20 @@ def _build_breakdown(
             weights_redistributed=False,
             result_state=state,  # type: ignore[arg-type]
         )
+
+    # Every item this student owed has been excused (D6). The course does have
+    # gradable work — it just no longer applies to them, so there is no
+    # denominator left and nothing to average.
+    #
+    # This must NOT fall through to the vacuous-course branch below. That branch
+    # means "the syllabus has no gradable work at all", and its answer is
+    # "passed by completion" — which here would hand a certificate to a student
+    # who was excused from every single thing, purely because excusing an item
+    # also completes its chapter and pushes progress to 100. The design calls
+    # this out: never silently 0 or 100. "Not assessed" — a teacher has to
+    # decide this one by hand.
+    if all_items_excused:
+        return _no_number("not_assessed")
 
     # Vacuous course: nothing gradable exists, so there is no number to
     # compute. Reporting 0% here would read as "failed everything" for a
@@ -353,8 +368,16 @@ def calculate_student_grade(
     # assignment still gets marked down for not doing it — mercy that costs the
     # same as no mercy.
     excused_quizzes, excused_assignments = excused_item_ids(db, student_id=student_id, course_id=course.id)
+    # What the course *contains* is a fact about the syllabus and does not
+    # change per student. Recomputing it from the filtered lists would tell a
+    # teacher "this course has no quizzes" about a course holding four of them,
+    # just because this one student was excused from all four.
+    course_quiz_ids, course_assignment_ids = quiz_ids, assignment_ids
+    course_has_quizzes = bool(quiz_ids)
+    course_has_assignments = bool(assignment_ids)
     quiz_ids = [q for q in quiz_ids if q not in excused_quizzes]
     assignment_ids = [a for a in assignment_ids if a not in excused_assignments]
+    all_items_excused = (course_has_quizzes or course_has_assignments) and not (quiz_ids or assignment_ids)
 
     quiz_avg = 0.0
     if quiz_ids:
@@ -421,18 +444,33 @@ def calculate_student_grade(
         ) or 0
         participation_pct = (completed_count / total_chapters) * 100.0
 
-    live_quizzes, live_assignments = category_is_live(db, quiz_ids=quiz_ids, assignment_ids=assignment_ids)
+    # Liveness is a fact about the course — whether anyone has been marked in
+    # the category yet — so it is asked with the course's own items, not this
+    # student's remainder. Asking with the filtered list made a student excused
+    # from every quiz drop the quiz category entirely while the class list, which
+    # asks course-wide, kept it: 80% on one screen and 24% on the other for the
+    # same person.
+    live_quizzes, live_assignments = category_is_live(
+        db, quiz_ids=course_quiz_ids, assignment_ids=course_assignment_ids
+    )
+    # A category this student owes nothing in cannot weigh on them, however
+    # alive it is for their classmates — that is what removing the item from the
+    # denominator means (D6). Leaving it weighted caps their achievable score at
+    # the other category's share, which is the D4 bug wearing an exemption.
+    live_quizzes = live_quizzes and bool(quiz_ids)
+    live_assignments = live_assignments and bool(assignment_ids)
     return _build_breakdown(
         course,
         quiz_avg,
         assignment_avg,
         participation_pct,
-        has_quiz_items=bool(quiz_ids),
-        has_assignment_items=bool(assignment_ids),
+        has_quiz_items=course_has_quizzes,
+        has_assignment_items=course_has_assignments,
         has_quizzes=live_quizzes,
         has_assignments=live_assignments,
         settings=get_org_settings(db),
         has_gradable_chapters=bool(chapter_ids),
+        all_items_excused=all_items_excused,
     )
 
 
@@ -607,10 +645,17 @@ def calculate_all_student_grades(db: Session, course: Course):
             participation_pct,
             has_quiz_items=bool(quiz_ids),
             has_assignment_items=bool(assignment_ids),
-            has_quizzes=live_quizzes,
-            has_assignments=live_assignments,
+            # Course-wide liveness, narrowed to what this student still owes —
+            # identical to the single-student path, and it has to be identical
+            # or the same person reads two different scores on two screens.
+            has_quizzes=live_quizzes and total_quizzes > 0,
+            has_assignments=live_assignments and total_assignments > 0,
             settings=settings,
             has_gradable_chapters=bool(chapter_ids),
+            # Same rule as the single-student path: a student excused from
+            # everything must not read "not assessed" on their own page and
+            # "passed by completion" on the class list.
+            all_items_excused=bool(quiz_ids or assignment_ids) and not (total_quizzes or total_assignments),
         )
         results.append(
             {

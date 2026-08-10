@@ -495,3 +495,423 @@ def test_quiz_exemptions_work_the_same_way(db: Session, teacher, student) -> Non
     )
     assert progress is not None
     assert progress.completion_type == "excused"
+
+
+# --------------------------------------------------------------------------
+# A chapter is not one piece of work, and a category is not one student
+#
+# Every case below was found by an adversarial pass over the first version of
+# this feature, which assumed one item per chapter and one answer per course.
+# --------------------------------------------------------------------------
+
+
+def _one_chapter_two_items(db: Session, teacher, course_id: str):
+    """A single gradable chapter carrying BOTH a quiz and an assignment."""
+    course = Course(id=course_id, status="published", created_by=teacher.id, quiz_weight=50, assignment_weight=50)
+    db.add(course)
+    module = Module(id=f"{course_id}-m", course_id=course_id, order_index=0, title="M")
+    db.add(module)
+    db.flush()
+    chapter = Chapter(id=f"{course_id}-ch", module_id=module.id, order_index=0, chapter_type="quiz", title="C")
+    db.add(chapter)
+    db.flush()
+    quiz = Quiz(id=uuid.uuid4(), chapter_id=chapter.id)
+    assignment = Assignment(id=uuid.uuid4(), chapter_id=chapter.id, max_score=100)
+    db.add_all([quiz, assignment])
+    db.add(Enrollment(id=f"enr-{course_id}", user_id=STUDENT_ID, course_id=course_id, progress=0))
+    db.commit()
+    return course, chapter, quiz, assignment
+
+
+def _mixed_course(db: Session, teacher, course_id: str):
+    """One quiz chapter and one assignment chapter, weighted 70/30."""
+    course = Course(id=course_id, status="published", created_by=teacher.id, quiz_weight=70, assignment_weight=30)
+    db.add(course)
+    module = Module(id=f"{course_id}-m", course_id=course_id, order_index=0, title="M")
+    db.add(module)
+    db.flush()
+    qch = Chapter(id=f"{course_id}-chq", module_id=module.id, order_index=0, chapter_type="quiz", title="Q")
+    ach = Chapter(id=f"{course_id}-cha", module_id=module.id, order_index=1, chapter_type="assignment", title="A")
+    db.add_all([qch, ach])
+    db.flush()
+    quiz = Quiz(id=uuid.uuid4(), chapter_id=qch.id)
+    assignment = Assignment(id=uuid.uuid4(), chapter_id=ach.id, max_score=100)
+    db.add_all([quiz, assignment])
+    db.add(Enrollment(id=f"enr-{course_id}", user_id=STUDENT_ID, course_id=course_id, progress=0))
+    db.commit()
+    return course, quiz, assignment
+
+
+def test_excusing_one_item_leaves_a_chapter_that_still_owes_work_open(db: Session, teacher, student) -> None:
+    """One quiz waived does not finish a chapter that also holds an assignment.
+
+    Otherwise progress reaches 100 and the certificate gate opens while the
+    assignment sits unsubmitted — a finished course with work still owed.
+    """
+    course, _chapter, quiz, _assignment = _one_chapter_two_items(db, teacher, "c-excuse-partial")
+
+    apply_exemption(
+        db,
+        student_id=STUDENT_ID,
+        course_id=course.id,
+        item_type="quiz",
+        item_id=quiz.id,
+        teacher_id=teacher.id,
+    )
+    db.commit()
+
+    enrolment = db.query(Enrollment).filter(Enrollment.user_id == STUDENT_ID, Enrollment.course_id == course.id).first()
+    assert enrolment.progress != 100
+
+
+def test_a_chapter_closes_only_when_every_item_in_it_is_excused(db: Session, teacher, student) -> None:
+    course, chapter, quiz, assignment = _one_chapter_two_items(db, teacher, "c-excuse-both")
+
+    for item_type, item_id in (("quiz", quiz.id), ("assignment", assignment.id)):
+        apply_exemption(
+            db,
+            student_id=STUDENT_ID,
+            course_id=course.id,
+            item_type=item_type,
+            item_id=item_id,
+            teacher_id=teacher.id,
+        )
+    db.commit()
+
+    progress = (
+        db.query(ChapterProgress)
+        .filter(ChapterProgress.user_id == STUDENT_ID, ChapterProgress.chapter_id == chapter.id)
+        .first()
+    )
+    assert progress.completed is True
+    assert progress.completion_type == "excused"
+
+
+def test_returning_one_item_reopens_the_chapter_it_belongs_to(db: Session, teacher, student) -> None:
+    """The inverse of the rule above, and it has to be the same rule.
+
+    The assignment stays waived, but the quiz is owed again — so there IS
+    something left to do in that chapter and it must not stay closed.
+    """
+    course, chapter, quiz, assignment = _one_chapter_two_items(db, teacher, "c-excuse-reopen")
+    for item_type, item_id in (("quiz", quiz.id), ("assignment", assignment.id)):
+        apply_exemption(
+            db,
+            student_id=STUDENT_ID,
+            course_id=course.id,
+            item_type=item_type,
+            item_id=item_id,
+            teacher_id=teacher.id,
+        )
+    db.commit()
+
+    remove_exemption(db, student_id=STUDENT_ID, course_id=course.id, item_type="quiz", item_id=quiz.id)
+    db.commit()
+
+    progress = (
+        db.query(ChapterProgress)
+        .filter(ChapterProgress.user_id == STUDENT_ID, ChapterProgress.chapter_id == chapter.id)
+        .first()
+    )
+    assert progress.completed is False
+
+
+def test_two_quizzes_in_one_chapter_need_both_waived(db: Session, teacher, student) -> None:
+    course = Course(id="c-excuse-2q", status="published", created_by=teacher.id, quiz_weight=100, assignment_weight=0)
+    db.add(course)
+    module = Module(id="c-excuse-2q-m", course_id=course.id, order_index=0, title="M")
+    db.add(module)
+    db.flush()
+    chapter = Chapter(id="c-excuse-2q-ch", module_id=module.id, order_index=0, chapter_type="quiz", title="C")
+    db.add(chapter)
+    db.flush()
+    first, second = Quiz(id=uuid.uuid4(), chapter_id=chapter.id), Quiz(id=uuid.uuid4(), chapter_id=chapter.id)
+    db.add_all([first, second])
+    db.add(Enrollment(id="enr-c-excuse-2q", user_id=STUDENT_ID, course_id=course.id, progress=0))
+    db.commit()
+
+    apply_exemption(
+        db,
+        student_id=STUDENT_ID,
+        course_id=course.id,
+        item_type="quiz",
+        item_id=first.id,
+        teacher_id=teacher.id,
+    )
+    db.commit()
+
+    enrolment = db.query(Enrollment).filter(Enrollment.user_id == STUDENT_ID, Enrollment.course_id == course.id).first()
+    assert enrolment.progress != 100, "the second quiz is still owed"
+
+
+def test_work_done_after_being_excused_survives_the_exemption_being_lifted(db: Session, teacher, student) -> None:
+    """Excused, recovered, passed the quiz anyway, teacher lifts the waiver.
+
+    The completion has to change hands from the exemption to the student the
+    moment they pass, or lifting the waiver reopens a chapter they earned.
+    """
+    from app.models.quiz import QuizAttempt
+    from app.services.quiz_service import upsert_passed_chapter_progress
+
+    course = Course(
+        id="c-excuse-did-it", status="published", created_by=teacher.id, quiz_weight=100, assignment_weight=0
+    )
+    db.add(course)
+    module = Module(id="c-excuse-did-it-m", course_id=course.id, order_index=0, title="M")
+    db.add(module)
+    db.flush()
+    chapter = Chapter(id="c-excuse-did-it-ch", module_id=module.id, order_index=0, chapter_type="quiz", title="C")
+    db.add(chapter)
+    db.flush()
+    quiz = Quiz(id=uuid.uuid4(), chapter_id=chapter.id)
+    db.add(quiz)
+    db.add(Enrollment(id="enr-c-excuse-did-it", user_id=STUDENT_ID, course_id=course.id, progress=0))
+    db.commit()
+
+    apply_exemption(
+        db,
+        student_id=STUDENT_ID,
+        course_id=course.id,
+        item_type="quiz",
+        item_id=quiz.id,
+        teacher_id=teacher.id,
+    )
+    db.commit()
+
+    db.add(
+        QuizAttempt(
+            id=uuid.uuid4(),
+            quiz_id=quiz.id,
+            user_id=STUDENT_ID,
+            score=100,
+            max_score=100,
+            passed=True,
+            completed_at=datetime.now(UTC),
+        )
+    )
+    upsert_passed_chapter_progress(db, STUDENT_ID, chapter.id)
+    db.commit()
+
+    remove_exemption(db, student_id=STUDENT_ID, course_id=course.id, item_type="quiz", item_id=quiz.id)
+    db.commit()
+
+    progress = (
+        db.query(ChapterProgress)
+        .filter(ChapterProgress.user_id == STUDENT_ID, ChapterProgress.chapter_id == chapter.id)
+        .first()
+    )
+    assert progress.completed is True, "they passed it"
+    assert progress.completion_type == "quiz", "and the record says who did the work"
+
+
+def test_the_two_surfaces_agree_when_a_whole_category_is_excused(db: Session, teacher, student) -> None:
+    """Excusing the only quiz redistributes the weights — on both paths or neither.
+
+    The single-student path asked whether the category was live using the
+    student's remaining items; the class list asked course-wide. Same student,
+    80% on one screen and 24% on the other.
+    """
+    from app.models.assignment import AssignmentSubmission
+    from app.models.quiz import QuizAttempt
+
+    course, quiz, assignment = _mixed_course(db, teacher, "c-excuse-agree")
+    db.add(
+        QuizAttempt(
+            id=uuid.uuid4(),
+            quiz_id=quiz.id,
+            user_id=STUDENT_ID,
+            score=20,
+            max_score=100,
+            completed_at=datetime.now(UTC),
+        )
+    )
+    db.add(
+        AssignmentSubmission(
+            id=uuid.uuid4(),
+            assignment_id=assignment.id,
+            student_id=STUDENT_ID,
+            status="graded",
+            grade=80,
+            graded_by=teacher.id,
+        )
+    )
+    db.commit()
+
+    apply_exemption(
+        db,
+        student_id=STUDENT_ID,
+        course_id=course.id,
+        item_type="quiz",
+        item_id=quiz.id,
+        teacher_id=teacher.id,
+    )
+    db.commit()
+
+    solo = calculate_student_grade_for_course(db, course, STUDENT_ID)
+    (row,) = calculate_all_student_grades(db, course)
+
+    assert solo.final_score == row["breakdown"].final_score
+    assert solo.final_score == 80.0, "the quiz is no longer theirs to sit; the assignment carries the grade"
+
+
+def test_a_student_excused_from_everything_is_not_assessed(client, db: Session, teacher, student) -> None:
+    """Not assessed — and the certificate gate holds.
+
+    Excusing an item also completes its chapter, so a student excused from
+    every piece of work reaches progress 100 without a single thing having been
+    assessed. Reading that as "passed by completion" would print a certificate
+    for a course nobody graded.
+    """
+    course, quiz, assignment = _mixed_course(db, teacher, "c-excuse-everything")
+    for item_type, item_id in (("quiz", quiz.id), ("assignment", assignment.id)):
+        apply_exemption(
+            db,
+            student_id=STUDENT_ID,
+            course_id=course.id,
+            item_type=item_type,
+            item_id=item_id,
+            teacher_id=teacher.id,
+        )
+    db.commit()
+
+    solo = calculate_student_grade_for_course(db, course, STUDENT_ID)
+    (row,) = calculate_all_student_grades(db, course)
+
+    assert solo.result_state == "not_assessed"
+    assert row["breakdown"].result_state == "not_assessed", "and the class list says the same"
+    assert solo.has_quiz_items is True, "the course still contains a quiz — that is a fact about the syllabus"
+
+    enrolment = db.query(Enrollment).filter(Enrollment.user_id == STUDENT_ID, Enrollment.course_id == course.id).first()
+    assert enrolment.progress == 100, "every chapter is waived, so the progress gate alone would let them through"
+
+
+def test_the_certificate_gate_refuses_a_student_with_nothing_assessed(
+    student_client, db: Session, teacher, student
+) -> None:
+    course, quiz, assignment = _mixed_course(db, teacher, "c-excuse-cert")
+    for item_type, item_id in (("quiz", quiz.id), ("assignment", assignment.id)):
+        apply_exemption(
+            db,
+            student_id=STUDENT_ID,
+            course_id=course.id,
+            item_type=item_type,
+            item_id=item_id,
+            teacher_id=teacher.id,
+        )
+    db.commit()
+
+    resp = student_client.post(f"/api/v1/certificates/course/{course.id}")
+
+    assert resp.status_code == 400, resp.text
+    assert "excused" in resp.text
+
+
+def test_an_exemption_survives_its_item_being_deleted(db: Session, teacher, student) -> None:
+    """Deleting the work must not strand a completion nobody can undo.
+
+    `item_id` is polymorphic, so it carries no foreign key, and assignments are
+    hard-deleted. Reaching the chapter *through* the item meant that removing
+    the exemption afterwards silently skipped the revert — leaving the chapter
+    complete as 'excused', progress counting it toward the certificate, and the
+    guard on the incomplete route pointing at a row that no longer existed.
+    """
+    course, (_kept, waived) = _course_with_two_assignments(db, teacher, course_id="c-excuse-deleted")
+    apply_exemption(
+        db,
+        student_id=STUDENT_ID,
+        course_id=course.id,
+        item_type="assignment",
+        item_id=waived.id,
+        teacher_id=teacher.id,
+    )
+    db.commit()
+
+    db.delete(waived)
+    db.commit()
+
+    remove_exemption(db, student_id=STUDENT_ID, course_id=course.id, item_type="assignment", item_id=waived.id)
+    db.commit()
+
+    progress = (
+        db.query(ChapterProgress)
+        .filter(
+            ChapterProgress.chapter_id == "c-excuse-deleted-ch1",
+            ChapterProgress.user_id == STUDENT_ID,
+        )
+        .first()
+    )
+    assert progress.completed is False, "the chapter reopened even though the item was gone"
+
+
+def test_returning_work_keeps_the_record_of_how_it_was_completed(db: Session, teacher, student) -> None:
+    """`completion_type` must not be rewritten to 'self' on the way out.
+
+    'self' means the student ticked the chapter themselves. That never
+    happened, and afterwards the row is indistinguishable from one they
+    started and abandoned — the same rewrite `teacher_uncomplete_chapter`
+    refuses for the same reason.
+    """
+    course, (_kept, waived) = _course_with_two_assignments(db, teacher, course_id="c-excuse-provenance")
+    apply_exemption(
+        db,
+        student_id=STUDENT_ID,
+        course_id=course.id,
+        item_type="assignment",
+        item_id=waived.id,
+        teacher_id=teacher.id,
+    )
+    db.commit()
+    remove_exemption(db, student_id=STUDENT_ID, course_id=course.id, item_type="assignment", item_id=waived.id)
+    db.commit()
+
+    progress = (
+        db.query(ChapterProgress)
+        .filter(
+            ChapterProgress.chapter_id == "c-excuse-provenance-ch1",
+            ChapterProgress.user_id == STUDENT_ID,
+        )
+        .first()
+    )
+    assert progress.completed is False
+    assert progress.completion_type == "excused", "how it was last completed is still true"
+
+
+def test_a_soft_deleted_chapter_cannot_be_excused_from(client, db: Session, teacher, student) -> None:
+    """An exemption there could never move a number, so it must not be offered.
+
+    Deleted chapters are already out of every grade calculation. Accepting one
+    writes an audit entry for a decision with no effect — and one that would
+    quietly start applying if the chapter were ever restored.
+    """
+    course, (first, _second) = _course_with_two_assignments(db, teacher, course_id="c-excuse-deleted-ch")
+    chapter = db.query(Chapter).filter(Chapter.id == "c-excuse-deleted-ch-ch0").first()
+    chapter.deleted_at = datetime.now(UTC)
+    db.commit()
+
+    resp = client.post(
+        f"/api/v1/grades/course/{course.id}/student/{STUDENT_ID}/exemptions",
+        json={"item_type": "assignment", "item_id": str(first.id)},
+    )
+
+    assert resp.status_code == 404, resp.text
+
+
+def test_marking_a_chapter_complete_by_hand_is_written_down(client, db: Session, teacher, student) -> None:
+    """`enrollment.progress` is the whole certificate gate.
+
+    Doing this on every gradable chapter takes a student from nothing to
+    eligible — a bigger decision than editing a displayed grade, which has been
+    audited all along.
+    """
+    _course, _items = _course_with_two_assignments(db, teacher, course_id="c-audit-complete")
+
+    resp = client.put(f"/api/v1/progress/chapter/c-audit-complete-ch0/student/{STUDENT_ID}/complete")
+    assert resp.status_code == 200, resp.text
+
+    entry = db.query(AuditLog).filter(AuditLog.action == "chapter_completed_by_teacher").first()
+    assert entry is not None
+    assert entry.details["student_id"] == str(STUDENT_ID)
+
+    client.put(f"/api/v1/progress/chapter/c-audit-complete-ch0/student/{STUDENT_ID}/incomplete")
+    removed = db.query(AuditLog).filter(AuditLog.action == "chapter_completion_removed_by_teacher").first()
+    assert removed is not None, "and taking it back clears completed_by, so it needs its own entry"

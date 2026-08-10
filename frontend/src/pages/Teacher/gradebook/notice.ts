@@ -42,6 +42,14 @@ export function gradebookNotice(
       : "gradebook.summary.completionPassCourse"
   }
 
+  if (result_state === "not_assessed") {
+    // Every item this student owed was excused. Their progress reads 100
+    // because excusing an item also completes its chapter, so the row would
+    // otherwise look like a finished course with a missing grade rather than a
+    // decision still waiting on a person.
+    return "gradebook.summary.notAssessedCourse"
+  }
+
   if (result_state === "not_graded_yet") return "gradebook.summary.notGradedYetCourse"
 
   if (result_state === "zero_weighted") {
@@ -110,5 +118,7 @@ export function gradePillLabel(state: GradeBreakdown["result_state"]): string | 
       return "gradebook.summary.notWeightedBadge"
     case "not_graded_yet":
       return "gradebook.summary.notGradedYetBadge"
+    case "not_assessed":
+      return "gradebook.summary.notAssessedBadge"
   }
 }
