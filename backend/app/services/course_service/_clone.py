@@ -167,6 +167,16 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
         created_by=uuid.UUID(teacher_id) if isinstance(teacher_id, str) else teacher_id,
         enrollment_start=None,
         enrollment_end=None,
+        # Grading configuration travels with the course (D13). Cloning is how a
+        # school opens the same course for a new cohort, and dropping these
+        # would hand the copy the platform defaults instead: a course graded
+        # «letter, pass at 80» would quietly become «letter, pass at 70», and
+        # weights a teacher had tuned would reset. Nobody would be told.
+        grading_scheme=original.grading_scheme,
+        pass_threshold=original.pass_threshold,
+        quiz_weight=original.quiz_weight,
+        assignment_weight=original.assignment_weight,
+        academic_hours=original.academic_hours,
     )
     db.add(new_course)
 

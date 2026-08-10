@@ -269,6 +269,33 @@ class TestCloneCourse:
         assert "Copy" in clone["title"]
         assert clone["status"] == "draft"
 
+    def test_clone_carries_the_grading_configuration(self, client: TestClient, db: Session):
+        """Cloning is how a school reopens a course for a new cohort (D13).
+
+        Dropping the grading config would hand the copy platform defaults: a
+        course graded «letter, pass at 80» would quietly become «pass at 70»,
+        and tuned weights would reset — with nobody told, in the one workflow
+        where the teacher expects an exact copy.
+        """
+        from app.models.course import Course
+
+        course = _create_course(client, title="Graded Original")
+        original = db.query(Course).filter(Course.id == course["id"]).first()
+        original.grading_scheme = "five_point"
+        original.pass_threshold = 65
+        original.quiz_weight = 70
+        original.assignment_weight = 30
+        original.academic_hours = 36
+        db.commit()
+
+        clone_id = client.post(f"{PREFIX}/{course['id']}/clone").json()["id"]
+        clone = db.query(Course).filter(Course.id == clone_id).first()
+
+        assert clone.grading_scheme == "five_point"
+        assert float(clone.pass_threshold) == 65.0
+        assert (clone.quiz_weight, clone.assignment_weight) == (70, 30)
+        assert clone.academic_hours == 36
+
     def test_clone_nonexistent_returns_404(self, client: TestClient):
         resp = client.post(f"{PREFIX}/nonexistent-id/clone")
         assert resp.status_code == 404
