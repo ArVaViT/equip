@@ -42,20 +42,20 @@ def _course(db: Session, teacher, course_id: str = "c-scheme-change", scheme: st
     return course
 
 
-def test_reading_the_scheme_returns_the_bands_it_is_read_against(client, db: Session, teacher) -> None:
+def test_reading_the_scheme_returns_the_bands_it_is_read_against(admin_client, db: Session, teacher) -> None:
     """The client should render from the backend's answer, not its own copy."""
     course = _course(db, teacher)
 
-    body = client.get(SCHEME_URL.format(course_id=course.id)).json()
+    body = admin_client.get(SCHEME_URL.format(course_id=course.id)).json()
 
     assert body["grading_scheme"] == "letter"
     assert [b[1] for b in body["bands"]] == ["A", "B", "C", "D", "F"]
 
 
-def test_scheme_and_threshold_change_together(client, db: Session, teacher) -> None:
+def test_scheme_and_threshold_change_together(admin_client, db: Session, teacher) -> None:
     course = _course(db, teacher)
 
-    resp = client.put(
+    resp = admin_client.put(
         SCHEME_URL.format(course_id=course.id),
         json={"grading_scheme": "five_point", "pass_threshold": "70", "reason": "School switched to 5-point"},
     )
@@ -65,7 +65,7 @@ def test_scheme_and_threshold_change_together(client, db: Session, teacher) -> N
     assert [b[1] for b in resp.json()["bands"]] == ["5", "4", "3", "2"]
 
 
-def test_five_point_above_the_ceiling_is_refused(client, db: Session, teacher) -> None:
+def test_five_point_above_the_ceiling_is_refused(admin_client, db: Session, teacher) -> None:
     """A pass line above 75 leaves «3 (удовлетворительно)» unreachable.
 
     The course would look ordinary and be impossible to pass at the grade the
@@ -73,7 +73,7 @@ def test_five_point_above_the_ceiling_is_refused(client, db: Session, teacher) -
     """
     course = _course(db, teacher)
 
-    resp = client.put(
+    resp = admin_client.put(
         SCHEME_URL.format(course_id=course.id),
         json={"grading_scheme": "five_point", "pass_threshold": "80"},
     )
@@ -82,7 +82,7 @@ def test_five_point_above_the_ceiling_is_refused(client, db: Session, teacher) -
     assert "75" in resp.text
 
 
-def test_existing_hand_set_grades_block_a_scheme_change(client, db: Session, teacher, student) -> None:
+def test_existing_hand_set_grades_block_a_scheme_change(admin_client, db: Session, teacher, student) -> None:
     """«A» is not a grade in a five-point course.
 
     Converting it silently would change a student's official result with
@@ -103,7 +103,7 @@ def test_existing_hand_set_grades_block_a_scheme_change(client, db: Session, tea
     )
     db.commit()
 
-    resp = client.put(
+    resp = admin_client.put(
         SCHEME_URL.format(course_id=course.id),
         json={"grading_scheme": "five_point", "pass_threshold": "70"},
     )
@@ -114,7 +114,7 @@ def test_existing_hand_set_grades_block_a_scheme_change(client, db: Session, tea
     assert course.grading_scheme == "letter", "the course must not change while overrides stand"
 
 
-def test_threshold_alone_may_move_with_overrides_present(client, db: Session, teacher, student) -> None:
+def test_threshold_alone_may_move_with_overrides_present(admin_client, db: Session, teacher, student) -> None:
     """Only a *scheme* change reinterprets existing symbols.
 
     Nudging the pass line inside the same scheme does not make an «A» mean
@@ -127,7 +127,7 @@ def test_threshold_alone_may_move_with_overrides_present(client, db: Session, te
     db.add(StudentGrade(id=uuid.uuid4(), student_id=STUDENT_ID, course_id=course.id, override_code="B"))
     db.commit()
 
-    resp = client.put(
+    resp = admin_client.put(
         SCHEME_URL.format(course_id=course.id),
         json={"grading_scheme": "letter", "pass_threshold": "75"},
     )
@@ -137,10 +137,10 @@ def test_threshold_alone_may_move_with_overrides_present(client, db: Session, te
     assert float(course.pass_threshold) == 75.0
 
 
-def test_the_change_is_written_down(client, db: Session, teacher) -> None:
+def test_the_change_is_written_down(admin_client, db: Session, teacher) -> None:
     course = _course(db, teacher, course_id="c-scheme-audit")
 
-    client.put(
+    admin_client.put(
         SCHEME_URL.format(course_id=course.id),
         json={"grading_scheme": "percent", "pass_threshold": "60", "reason": "Director's decision"},
     )
@@ -152,7 +152,44 @@ def test_the_change_is_written_down(client, db: Session, teacher) -> None:
     assert entry.details["reason"] == "Director's decision"
 
 
-def test_another_teachers_course_is_not_reachable(client, db: Session, teacher) -> None:
+def test_a_teacher_cannot_change_how_their_own_course_is_graded(client, db: Session, teacher) -> None:
+    """A director's decision, not a teacher's (D1).
+
+    Left to each teacher, one school's transcript ends up mixing «зачёт»,
+    «4 (хорошо)» and «B» across its own courses — and the transcript is the
+    artifact the school is judged on. The teacher owns this course; they still
+    cannot decide alone what its grades mean.
+    """
+    course = Course(id="c-teacher-cannot", status="published", created_by=teacher.id)
+    db.add(course)
+    db.commit()
+
+    resp = client.put(
+        SCHEME_URL.format(course_id=course.id),
+        json={"grading_scheme": "percent", "pass_threshold": "60"},
+    )
+
+    assert resp.status_code == 403
+    db.refresh(course)
+    assert course.grading_scheme == "letter", "and nothing moved"
+
+
+def test_a_teacher_can_still_see_how_their_course_is_graded(client, db: Session, teacher) -> None:
+    """Read stays open. A teacher who cannot see the pass line cannot explain a
+    grade to the student sitting in front of them."""
+    course = Course(id="c-teacher-can-read", status="published", created_by=teacher.id)
+    db.add(course)
+    db.commit()
+
+    resp = client.get(SCHEME_URL.format(course_id=course.id))
+
+    assert resp.status_code == 200
+    assert resp.json()["grading_scheme"] == "letter"
+    assert resp.json()["bands"], "including the bands their grades are read against"
+
+
+def test_a_director_may_change_a_course_they_do_not_teach(admin_client, db: Session, teacher) -> None:
+    """Which is the whole point of it being an institutional call."""
     from app.models.user import User, UserRole
 
     other_teacher = User(
@@ -167,12 +204,14 @@ def test_another_teachers_course_is_not_reachable(client, db: Session, teacher) 
     db.add(foreign)
     db.commit()
 
-    resp = client.put(
+    resp = admin_client.put(
         SCHEME_URL.format(course_id=foreign.id),
         json={"grading_scheme": "percent", "pass_threshold": "60"},
     )
 
-    assert resp.status_code == 403
+    assert resp.status_code == 200
+    db.refresh(foreign)
+    assert foreign.grading_scheme == "percent"
 
 
 class TestQuizThresholdAlignment:
@@ -232,7 +271,9 @@ class TestQuizThresholdAlignment:
         assert quiz.passing_score == 60
 
 
-def test_moving_the_course_line_records_which_quizzes_it_leaves_behind(client, db: Session, teacher, student) -> None:
+def test_moving_the_course_line_records_which_quizzes_it_leaves_behind(
+    admin_client, db: Session, teacher, student
+) -> None:
     """A quiz keeps the pass line it was written with.
 
     Raise the course's and a student clears every quiz, is congratulated each
@@ -252,7 +293,7 @@ def test_moving_the_course_line_records_which_quizzes_it_leaves_behind(client, d
     db.add(Quiz(id=uuid.uuid4(), chapter_id=chapter.id, passing_score=60))
     db.commit()
 
-    resp = client.put(
+    resp = admin_client.put(
         f"/api/v1/grades/course/{course.id}/scheme",
         json={"grading_scheme": "letter", "pass_threshold": 85},
     )

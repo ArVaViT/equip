@@ -15,12 +15,12 @@ import type {
   StudentCalculatedGrade,
 } from "@/types"
 import {
-  LETTER_ORDER,
   type SortField,
   type SortDir,
   type GradeForm,
 } from "./types"
-import { EMPTY_FORM, letterColor } from "./helpers"
+import { EMPTY_FORM } from "./helpers"
+import { symbolRank, symbolTone, type GradeBand } from "./symbolScale"
 import { classAverages } from "./classAverages"
 import { gradePillLabel } from "./notice"
 
@@ -58,6 +58,12 @@ export function SummaryTab({
   onClearGrade,
 }: Props) {
   const { t } = useTranslation()
+  // The school's own scale, as the backend resolved it. Falls back to an empty
+  // list only while the summary is loading, where nothing is rendered anyway.
+  const bands = useMemo<GradeBand[]>(
+    () => (summary?.bands ?? []).map(([floor, symbol]) => [Number(floor), symbol]),
+    [summary],
+  )
   const sortedStudents = useMemo(() => {
     if (!summary) return []
     const list = [...summary.students]
@@ -78,15 +84,15 @@ export function SummaryTab({
           cmp = a.breakdown.final_score - b.breakdown.final_score
           break
         case "letter":
-          cmp =
-            (LETTER_ORDER[a.breakdown.letter_grade] ?? 0) -
-            (LETTER_ORDER[b.breakdown.letter_grade] ?? 0)
+          // Ranked against the school's own scale, so «5» outranks «2» in a
+          // five-point course instead of tying with it at zero.
+          cmp = symbolRank(a.breakdown.letter_grade, bands) - symbolRank(b.breakdown.letter_grade, bands)
           break
       }
       return cmp * dir
     })
     return list
-  }, [summary, sortField, sortDir])
+  }, [summary, sortField, sortDir, bands])
 
   const studentCount = sortedStudents.length
   const classAvg = summary?.class_average ?? null
@@ -137,6 +143,7 @@ export function SummaryTab({
                   form={forms.get(student.student_id) ?? EMPTY_FORM}
                   expanded={expandedId === student.student_id}
                   saving={saving === student.student_id}
+                  bands={bands}
                   onToggleExpand={onToggleExpand}
                   onUpdateForm={onUpdateForm}
                   onSaveGrade={onSaveGrade}
@@ -197,6 +204,10 @@ interface StudentSummaryRowProps {
   form: GradeForm
   expanded: boolean
   saving: boolean
+  /** The school's scale, so the pill is coloured by position rather than by a
+   *  name the client would otherwise have to recognise. Stable across renders
+   *  (memoised in the parent), so the row's shallow compare still catches. */
+  bands: GradeBand[]
   onToggleExpand: (userId: string) => void
   onUpdateForm: (userId: string, field: keyof GradeForm, value: string) => void
   onSaveGrade: (userId: string) => void
@@ -217,6 +228,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
   form,
   expanded,
   saving,
+  bands,
   onToggleExpand,
   onUpdateForm,
   onSaveGrade,
@@ -286,7 +298,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
         <div className="flex justify-center">
           {hasScore ? (
             <span
-              className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ${letterColor(b.current_letter_grade || b.letter_grade)}`}
+              className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ${symbolTone(b.current_letter_grade || b.letter_grade, bands)}`}
               title={b.scores_differ ? t("gradebook.pair.explainer") : undefined}
             >
               {b.current_letter_grade || b.letter_grade}

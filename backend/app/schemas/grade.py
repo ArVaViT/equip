@@ -297,6 +297,13 @@ class GradeSummaryResponse(BaseModel):
     #: completion-only course, or one where marking has not started. Zero would
     #: be a lie the size of the whole class.
     class_average: float | None = None
+    #: How this course is graded, and the bands its symbols are read against.
+    #: Sent so the client renders from the school's own scale instead of the
+    #: copy of the letter scale it used to keep — a copy that silently sorted «5» equal to
+    #: «2» and greyed out every grade the moment a school picked another
+    #: scheme, while the numbers beside them stayed correct.
+    grading_scheme: str = "letter"
+    bands: list[tuple[Decimal, str]] = []
 
 
 # ---------------------------------------------------------------------------

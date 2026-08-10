@@ -20,24 +20,6 @@ export const EMPTY_FORM: Readonly<GradeForm> = Object.freeze({
   comment: "",
 })
 
-/** Pill background/foreground tokens per letter-grade bucket. */
-export function letterColor(letter: string): string {
-  switch (letter) {
-    case "A":
-      return "bg-success/15 text-success"
-    case "B":
-      return "bg-info/15 text-info"
-    case "C":
-      return "bg-accent/20 text-ink"
-    case "D":
-      return "bg-warning/15 text-warning"
-    case "F":
-      return "bg-destructive/15 text-destructive"
-    default:
-      return "bg-muted text-ink-muted"
-  }
-}
-
 /** Tiny icon (12px) that classifies a chapter in the grade table. */
 export function chapterTypeIcon(type: string) {
   switch (type) {
