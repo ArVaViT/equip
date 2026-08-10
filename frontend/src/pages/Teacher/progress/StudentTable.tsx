@@ -28,7 +28,7 @@ interface Props {
     studentId: string,
     chapterId: string,
     completed: boolean,
-    completedBy: "teacher" | "self" | null,
+    completedBy: "teacher" | "self" | "excused" | null,
   ) => void
 }
 

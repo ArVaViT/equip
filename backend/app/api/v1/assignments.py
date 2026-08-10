@@ -319,6 +319,12 @@ def submit_assignment(
                 raise
 
     newly_completed = False
+    if progress.completed and progress.completion_type == "excused":
+        # Excused, then submitted anyway. The work is real, so the row must say
+        # so — otherwise lifting the exemption reopens a chapter the student
+        # actually finished.
+        progress.completion_type = "self"
+        progress.completed_by = None
     if not progress.completed:
         progress.completed = True
         progress.completed_at = datetime.now(UTC)

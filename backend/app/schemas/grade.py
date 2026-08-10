@@ -153,6 +153,30 @@ class GradingSchemeResponse(BaseModel):
     bands: list[tuple[Decimal, str]] = []
 
 
+class ExemptionCreate(BaseModel):
+    """Excuse a student from one piece of work (D6)."""
+
+    item_type: Literal["quiz", "assignment"]
+    item_id: UUID
+    #: Optional, director-visible. Waiving work is a decision someone will be
+    #: asked about, especially when it is the last thing between a student and
+    #: a certificate.
+    reason: str | None = Field(None, max_length=2000)
+
+
+class ExemptionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    student_id: UUID
+    course_id: str
+    item_type: str
+    item_id: UUID
+    reason: str | None = None
+    created_by: UUID | None = None
+    created_at: datetime | None = None
+
+
 class GradeBreakdown(BaseModel):
     """One student's grade, with the arithmetic shown rather than implied.
 
@@ -221,7 +245,13 @@ class GradeBreakdown(BaseModel):
     #: quiz") would promise something that has already happened and will never
     #: help. The averages stay populated here — they are real, they just carry
     #: no weight.
-    result_state: Literal["graded", "completion_pass", "not_graded_yet", "zero_weighted"] = "graded"
+    #: ``not_assessed`` — «не аттестован». Every gradable item this student owed
+    #: was excused (D6), so there is no denominator left and no honest number.
+    #: It must not collapse into ``completion_pass``: excusing an item also
+    #: completes its chapter, so a student excused from everything sits at
+    #: progress 100, and "passed by completion" would hand them a certificate
+    #: for work nobody ever assessed. A teacher decides this one by hand.
+    result_state: Literal["graded", "completion_pass", "not_graded_yet", "zero_weighted", "not_assessed"] = "graded"
 
 
 class StudentCalculatedGrade(BaseModel):

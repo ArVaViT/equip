@@ -2,8 +2,12 @@ import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Modal } from "@/components/patterns"
 import { toast } from "@/lib/toast"
 import { coursesService } from "@/services/courses"
+import { gradesService } from "@/services/grades"
 import type { StudentProgressDetail } from "@/types"
 import {
   BookOpen,
@@ -36,7 +40,7 @@ interface Props {
     studentId: string,
     chapterId: string,
     completed: boolean,
-    completedBy: "teacher" | "self" | null,
+    completedBy: "teacher" | "self" | "excused" | null,
   ) => void
 }
 
@@ -65,6 +69,11 @@ export function StudentRow({
   const { t } = useTranslation()
   const [togglingChapter, setTogglingChapter] = useState<string | null>(null)
   const [grantingQuiz, setGrantingQuiz] = useState<string | null>(null)
+  const [excusingChapter, setExcusingChapter] = useState<string | null>(null)
+  // The chapter awaiting a reason. Waiving work is a decision someone will be
+  // asked about later, so the reason is worth one dialog.
+  const [excuseTarget, setExcuseTarget] = useState<ChapterInfo | null>(null)
+  const [excuseReason, setExcuseReason] = useState("")
   // The per-chapter breakdown is fetched lazily the first time a row expands —
   // the list payload only carries summary scalars, so each student's full
   // chapter/quiz/assignment detail is pulled on demand here.
@@ -136,6 +145,77 @@ export function StudentRow({
       toast({ title: t("studentProgress.row.toggleFailed"), variant: "destructive" })
     } finally {
       setTogglingChapter(null)
+    }
+  }
+
+  /** Write the exemption, then mirror both of its halves into the open row. */
+  const submitExcuse = async () => {
+    const chapter = excuseTarget
+    if (!chapter?.gradable_item) return
+    setExcusingChapter(chapter.id)
+    try {
+      await gradesService.excuseStudent(courseId, student.id, {
+        item_type: chapter.gradable_item.type,
+        item_id: chapter.gradable_item.id,
+        reason: excuseReason.trim() || undefined,
+      })
+      // A chapter the student had already finished keeps the completion it
+      // earned — the server leaves it alone, so mirroring "excused" here would
+      // put a label on screen that isn't in the database.
+      const wasCompleted = chapter.completed
+      setDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              chapters: prev.chapters.map((ch) =>
+                ch.id === chapter.id && !wasCompleted
+                  ? { ...ch, completed: true, completed_by: "excused" }
+                  : ch,
+              ),
+            }
+          : prev,
+      )
+      // The chapter counts as done now, so the summary row's counters move too
+      // — that is the half of an exemption teachers don't expect and the half
+      // that decides whether a certificate is reachable. Only when it actually
+      // changed, or the count drifts up by one for nothing.
+      if (!wasCompleted) onChapterUpdate(student.id, chapter.id, true, "excused")
+      toast({ title: t("studentProgress.row.excused"), variant: "success" })
+      setExcuseTarget(null)
+      setExcuseReason("")
+    } catch {
+      toast({ title: t("studentProgress.row.excuseFailed"), variant: "destructive" })
+    } finally {
+      setExcusingChapter(null)
+    }
+  }
+
+  const handleUnexcuse = async (chapter: ChapterInfo) => {
+    if (!chapter.gradable_item) return
+    setExcusingChapter(chapter.id)
+    try {
+      await gradesService.removeExemption(
+        courseId,
+        student.id,
+        chapter.gradable_item.type,
+        chapter.gradable_item.id,
+      )
+      setDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              chapters: prev.chapters.map((ch) =>
+                ch.id === chapter.id ? { ...ch, completed: false, completed_by: null } : ch,
+              ),
+            }
+          : prev,
+      )
+      onChapterUpdate(student.id, chapter.id, false, null)
+      toast({ title: t("studentProgress.row.exemptionRemoved"), variant: "success" })
+    } catch {
+      toast({ title: t("studentProgress.row.exemptionRemoveFailed"), variant: "destructive" })
+    } finally {
+      setExcusingChapter(null)
     }
   }
 
@@ -247,8 +327,14 @@ export function StudentRow({
                         assignment={entry.assignment}
                         togglingChapterId={togglingChapter}
                         grantingQuizId={grantingQuiz}
+                        excusingChapterId={excusingChapter}
                         onToggleComplete={handleToggleComplete}
                         onGrantExtraAttempt={handleGrantExtraAttempt}
+                        onExcuse={(ch) => {
+                          setExcuseReason("")
+                          setExcuseTarget(ch)
+                        }}
+                        onUnexcuse={handleUnexcuse}
                       />
                     ))}
                   </div>
@@ -273,6 +359,40 @@ export function StudentRow({
           </td>
         </tr>
       )}
+
+      <Modal
+        open={excuseTarget !== null}
+        onClose={() => setExcuseTarget(null)}
+        title={t("studentProgress.excuse.title", { chapter: excuseTarget?.title ?? "" })}
+      >
+        <div className="space-y-4">
+          {/* Said plainly, because the second half surprises people: the work
+              stops counting against the grade AND the chapter counts as done,
+              which is what keeps the certificate reachable. */}
+          <p className="text-sm text-ink-muted">{t("studentProgress.excuse.explainer")}</p>
+          <div className="space-y-1.5">
+            <Label htmlFor="excuse-reason">{t("studentProgress.excuse.reasonLabel")}</Label>
+            <Textarea
+              id="excuse-reason"
+              rows={3}
+              value={excuseReason}
+              onChange={(e) => setExcuseReason(e.target.value)}
+              placeholder={t("studentProgress.excuse.reasonPlaceholder")}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setExcuseTarget(null)}>
+              {t("common.cancel")}
+            </Button>
+            <Button onClick={submitExcuse} disabled={excusingChapter !== null}>
+              {excusingChapter !== null && (
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" strokeWidth={1.75} aria-hidden />
+              )}
+              {t("studentProgress.excuse.confirm")}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   )
 }

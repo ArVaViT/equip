@@ -258,3 +258,15 @@ describe("gradePillLabel", () => {
     expect(gradePillLabel("not_graded_yet")).toBe("gradebook.summary.notGradedYetBadge")
   })
 })
+
+describe("a student excused from everything", () => {
+  it("is not read as a completion pass", () => {
+    // Excusing an item also completes its chapter, so these students sit at
+    // progress 100. `completion_pass` beside that reads as a finished course
+    // and certifies work nobody assessed.
+    const b = breakdown({ result_state: "not_assessed", has_quiz_items: true })
+
+    expect(gradebookNotice(b, config(40, 60))).toBe("gradebook.summary.notAssessedCourse")
+    expect(gradePillLabel("not_assessed")).toBe("gradebook.summary.notAssessedBadge")
+  })
+})

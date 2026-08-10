@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -19,6 +19,7 @@ from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Module
 from app.models.enrollment import Enrollment
 from app.models.user import User
+from app.services.audit_service import log_action
 from app.services.course_service import sync_enrollment_progress
 from app.services.student_progress_service import (
     build_course_gradebook_matrix,
@@ -115,6 +116,7 @@ def get_student_progress_detail(
 def teacher_complete_chapter(
     chapter_id: str,
     student_id: UUID,
+    request: Request,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
@@ -200,6 +202,20 @@ def teacher_complete_chapter(
             course_id=str(course_id),
             completion_type="teacher",
         )
+        # `enrollment.progress` is the whole certificate gate, so marking every
+        # gradable chapter complete by hand takes a student from nothing to
+        # eligible. That is a bigger decision than editing a displayed grade,
+        # which has been audited all along; until now the only trace of it was
+        # `completed_by`, which the inverse route clears.
+        log_action(
+            db,
+            user_id=teacher.id,
+            action="chapter_completed_by_teacher",
+            resource_type="chapter_progress",
+            resource_id=str(chapter_id),
+            details={"student_id": str(student_id), "course_id": str(course_id)},
+            request=request,
+        )
     return {
         "message": "Chapter marked as complete by teacher",
         "chapter_id": chapter_id,
@@ -211,6 +227,7 @@ def teacher_complete_chapter(
 def teacher_uncomplete_chapter(
     chapter_id: str,
     student_id: UUID,
+    request: Request,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
@@ -237,6 +254,17 @@ def teacher_uncomplete_chapter(
             message="Chapter is not completed",
             context={"resource_type": "chapter_progress"},
         )
+    if progress.completion_type == "excused":
+        # An exemption holds the chapter and the grade together (D6). Undoing
+        # the completion here would leave the work out of the grade while the
+        # student's progress dropped below 100 — the certificate blocked and no
+        # sign of why. The exemption is the thing to remove; it undoes both.
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_409_CONFLICT,
+            message="This chapter is complete because the student was excused from the work. Remove the exemption instead.",
+            context={"resource_type": "chapter_progress"},
+        )
     progress.completed = False
     progress.completed_at = None
     progress.completed_by = None
@@ -246,6 +274,18 @@ def teacher_uncomplete_chapter(
     # was originally completed (quiz/teacher/self).
     sync_enrollment_progress(db, student_id, course_id)
     db.commit()
+    # Taking a completion back moves the same gate the other way, and it clears
+    # `completed_by` on the way — so without this entry the record of who
+    # granted it in the first place disappears with it.
+    log_action(
+        db,
+        user_id=teacher.id,
+        action="chapter_completion_removed_by_teacher",
+        resource_type="chapter_progress",
+        resource_id=str(chapter_id),
+        details={"student_id": str(student_id), "course_id": str(course_id)},
+        request=request,
+    )
     return {
         "message": "Chapter completion removed",
         "chapter_id": chapter_id,

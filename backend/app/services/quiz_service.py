@@ -279,6 +279,12 @@ def upsert_passed_chapter_progress(db: Session, user_id: UUID, chapter_id: str) 
         cp.completed_at = datetime.now(UTC)
         cp.completion_type = "quiz"
         return True
+    if cp.completion_type == "excused":
+        # Excused, then well enough to sit the quiz anyway — and they passed it.
+        # A real pass supersedes the waiver: the row has to say the student did
+        # this, or lifting the exemption later reopens a chapter they earned.
+        cp.completion_type = "quiz"
+        cp.completed_by = None
     return False
 
 

@@ -23,9 +23,12 @@ from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.course import CourseStatus
 from app.models.enrollment import Enrollment
+from app.models.grade_exemption import GradeExemption
 from app.models.student_grade import StudentGrade
 from app.models.user import User, UserRole
 from app.schemas.grade import (
+    ExemptionCreate,
+    ExemptionResponse,
     GradeResponse,
     GradeSummaryResponse,
     GradeUpsert,
@@ -41,6 +44,7 @@ from app.services.grade_calculator import (
     calculate_all_student_grades,
     calculate_student_grade_for_course,
 )
+from app.services.grade_exemption_service import apply_exemption, chapter_for_item, remove_exemption
 from app.services.grade_override import (
     ACTION_CHANGED,
     ACTION_CLEARED,
@@ -72,6 +76,10 @@ _RESULT_STATE_CSV = {
     "completion_pass": "By completion — see Course Progress (%)",
     "not_graded_yet": "Not graded yet",
     "zero_weighted": "No percentage (graded work is weighted 0%)",
+    # Not a pass and not a failure. Every item was excused, so the sheet has to
+    # say that a person still owes this student a decision — the 100% in the
+    # progress column beside it would otherwise read as a finished course.
+    "not_assessed": "Not assessed — all work excused; needs a teacher's grade",
 }
 
 # Spreadsheet apps (Excel / Google Sheets / LibreOffice) treat a cell that
@@ -138,6 +146,147 @@ def update_grading_config(
     db.commit()
     db.refresh(course)
     return GradingConfigResponse.model_validate(course)
+
+
+@router.get("/course/{course_id}/student/{student_id}/exemptions", response_model=list[ExemptionResponse])
+def list_exemptions(
+    course_id: str,
+    student_id: str,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    """Work this student has been excused from."""
+    verify_course_owner(db, course_id, teacher)
+    return (
+        db.query(GradeExemption)
+        .filter(GradeExemption.course_id == course_id, GradeExemption.student_id == UUID(str(student_id)))
+        .order_by(GradeExemption.created_at.desc())
+        .all()
+    )
+
+
+@router.post(
+    "/course/{course_id}/student/{student_id}/exemptions",
+    response_model=ExemptionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_exemption(
+    course_id: str,
+    student_id: str,
+    data: ExemptionCreate,
+    request: Request,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    """Excuse a student from a piece of work — in the grade and the progress (D6).
+
+    Both denominators, or neither. Removing the item from the grade alone
+    leaves the chapter incomplete, so progress never reaches 100 and the
+    certificate stays permanently out of reach — for exactly the student the
+    exemption was meant to help.
+    """
+    verify_course_owner(db, course_id, teacher)
+
+    student_uuid = UUID(str(student_id))
+    if not lookup_enrollment(db, student_uuid, course_id):
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Student is not enrolled in this course",
+            context={"resource_type": "enrollment", "student_id": student_id, "course_id": course_id},
+        )
+
+    if chapter_for_item(db, item_type=data.item_type, item_id=data.item_id, course_id=course_id) is None:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="No such quiz or assignment in this course",
+            context={"resource_type": data.item_type, "resource_id": str(data.item_id)},
+        )
+
+    exemption = apply_exemption(
+        db,
+        student_id=student_uuid,
+        course_id=course_id,
+        item_type=data.item_type,
+        item_id=data.item_id,
+        teacher_id=teacher.id,
+        reason=data.reason,
+    )
+    db.commit()
+    db.refresh(exemption)
+
+    log_action(
+        db,
+        user_id=teacher.id,
+        action="grade_exemption_created",
+        resource_type="grade_exemption",
+        resource_id=str(exemption.id),
+        details={
+            "student_id": str(student_uuid),
+            "course_id": course_id,
+            "item_type": data.item_type,
+            "item_id": str(data.item_id),
+            "reason": data.reason,
+        },
+        request=request,
+    )
+    return exemption
+
+
+@router.delete(
+    "/course/{course_id}/student/{student_id}/exemptions/{item_type}/{item_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_exemption(
+    course_id: str,
+    student_id: str,
+    item_type: str,
+    item_id: str,
+    request: Request,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+) -> None:
+    """Take an exemption back, reverting only what it created."""
+    verify_course_owner(db, course_id, teacher)
+
+    removed = remove_exemption(
+        db,
+        student_id=UUID(str(student_id)),
+        course_id=course_id,
+        item_type=item_type,
+        item_id=UUID(str(item_id)),
+    )
+    if removed is None:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="No such exemption",
+            context={"resource_type": "grade_exemption", "student_id": student_id},
+        )
+
+    # Commit the removal before writing the trail. `log_action` rolls the
+    # session back if the audit write fails, which here would have discarded the
+    # deletion and the progress revert with it — and the route still returned
+    # 204, telling the teacher the work was returned while both halves sat
+    # untouched in the database. The create path already commits first.
+    removed_id = str(removed.id)
+    db.commit()
+
+    log_action(
+        db,
+        user_id=teacher.id,
+        action="grade_exemption_removed",
+        resource_type="grade_exemption",
+        resource_id=removed_id,
+        details={
+            "student_id": str(student_id),
+            "course_id": course_id,
+            "item_type": item_type,
+            "item_id": str(item_id),
+        },
+        request=request,
+    )
 
 
 @router.get("/course/{course_id}/scheme", response_model=GradingSchemeResponse)

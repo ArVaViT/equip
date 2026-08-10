@@ -8,11 +8,13 @@ from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
+from app.models.grade_exemption import GradeExemption
 from app.models.org_settings import OrgSettings
 from app.models.quiz import Quiz, QuizAnswer, QuizAttempt
 from app.models.student_grade import StudentGrade
 from app.models.user import User
 from app.schemas.grade import GradeBreakdown
+from app.services.grade_exemption_service import excused_item_ids
 from app.services.grading_scheme import effective_bands, get_org_settings, score_to_symbol
 
 #: Fallback letter scale, used only when no database session is at hand.
@@ -205,6 +207,7 @@ def _build_breakdown(
     has_assignments: bool,
     settings: OrgSettings,
     has_gradable_chapters: bool = False,
+    all_items_excused: bool = False,
 ) -> GradeBreakdown:
     """Assemble one student's breakdown.
 
@@ -241,6 +244,20 @@ def _build_breakdown(
             weights_redistributed=False,
             result_state=state,  # type: ignore[arg-type]
         )
+
+    # Every item this student owed has been excused (D6). The course does have
+    # gradable work — it just no longer applies to them, so there is no
+    # denominator left and nothing to average.
+    #
+    # This must NOT fall through to the vacuous-course branch below. That branch
+    # means "the syllabus has no gradable work at all", and its answer is
+    # "passed by completion" — which here would hand a certificate to a student
+    # who was excused from every single thing, purely because excusing an item
+    # also completes its chapter and pushes progress to 100. The design calls
+    # this out: never silently 0 or 100. "Not assessed" — a teacher has to
+    # decide this one by hand.
+    if all_items_excused:
+        return _no_number("not_assessed")
 
     # Vacuous course: nothing gradable exists, so there is no number to
     # compute. Reporting 0% here would read as "failed everything" for a
@@ -346,6 +363,22 @@ def calculate_student_grade(
     in hand (e.g. inside :func:`calculate_all_student_grades`). Callers that
     only have a course should use :func:`calculate_student_grade_for_course`.
     """
+    # «Освобождение» removes the item from the numerator *and* the denominator
+    # (D6). Leaving it in the denominator would mean a student excused from an
+    # assignment still gets marked down for not doing it — mercy that costs the
+    # same as no mercy.
+    excused_quizzes, excused_assignments = excused_item_ids(db, student_id=student_id, course_id=course.id)
+    # What the course *contains* is a fact about the syllabus and does not
+    # change per student. Recomputing it from the filtered lists would tell a
+    # teacher "this course has no quizzes" about a course holding four of them,
+    # just because this one student was excused from all four.
+    course_quiz_ids, course_assignment_ids = quiz_ids, assignment_ids
+    course_has_quizzes = bool(quiz_ids)
+    course_has_assignments = bool(assignment_ids)
+    quiz_ids = [q for q in quiz_ids if q not in excused_quizzes]
+    assignment_ids = [a for a in assignment_ids if a not in excused_assignments]
+    all_items_excused = (course_has_quizzes or course_has_assignments) and not (quiz_ids or assignment_ids)
+
     quiz_avg = 0.0
     if quiz_ids:
         rows = (
@@ -411,18 +444,33 @@ def calculate_student_grade(
         ) or 0
         participation_pct = (completed_count / total_chapters) * 100.0
 
-    live_quizzes, live_assignments = category_is_live(db, quiz_ids=quiz_ids, assignment_ids=assignment_ids)
+    # Liveness is a fact about the course — whether anyone has been marked in
+    # the category yet — so it is asked with the course's own items, not this
+    # student's remainder. Asking with the filtered list made a student excused
+    # from every quiz drop the quiz category entirely while the class list, which
+    # asks course-wide, kept it: 80% on one screen and 24% on the other for the
+    # same person.
+    live_quizzes, live_assignments = category_is_live(
+        db, quiz_ids=course_quiz_ids, assignment_ids=course_assignment_ids
+    )
+    # A category this student owes nothing in cannot weigh on them, however
+    # alive it is for their classmates — that is what removing the item from the
+    # denominator means (D6). Leaving it weighted caps their achievable score at
+    # the other category's share, which is the D4 bug wearing an exemption.
+    live_quizzes = live_quizzes and bool(quiz_ids)
+    live_assignments = live_assignments and bool(assignment_ids)
     return _build_breakdown(
         course,
         quiz_avg,
         assignment_avg,
         participation_pct,
-        has_quiz_items=bool(quiz_ids),
-        has_assignment_items=bool(assignment_ids),
+        has_quiz_items=course_has_quizzes,
+        has_assignment_items=course_has_assignments,
         has_quizzes=live_quizzes,
         has_assignments=live_assignments,
         settings=get_org_settings(db),
         has_gradable_chapters=bool(chapter_ids),
+        all_items_excused=all_items_excused,
     )
 
 
@@ -449,8 +497,14 @@ def calculate_all_student_grades(db: Session, course: Course):
 
     student_ids = [e.user_id for e in enrollments]
 
-    # Batch: best quiz scores per student per quiz
-    quiz_scores: dict[str, list[float]] = {str(sid): [] for sid in student_ids}
+    # Batch: best quiz scores per student per quiz.
+    #
+    # Keyed by item, not a flat list, because exemptions are per student: the
+    # denominator below drops an excused quiz, so its score has to leave the
+    # numerator with it. A flat list made that impossible and produced averages
+    # over 100 — a student excused from the one quiz they did badly on had the
+    # bad score divided by the remaining count.
+    quiz_scores: dict[str, dict[UUID, float]] = {str(sid): {} for sid in student_ids}
     if quiz_ids:
         quiz_rows = (
             db.query(
@@ -468,10 +522,11 @@ def calculate_all_student_grades(db: Session, course: Course):
         )
         for qr in quiz_rows:
             if qr.best is not None:
-                quiz_scores.setdefault(str(qr.user_id), []).append(float(qr.best))
+                quiz_scores.setdefault(str(qr.user_id), {})[qr.quiz_id] = float(qr.best)
 
-    # Batch: best assignment grade per student per assignment
-    asgn_scores: dict[str, list[float]] = {str(sid): [] for sid in student_ids}
+    # Batch: best assignment grade per student per assignment. Keyed by item for
+    # the same reason as the quizzes above.
+    asgn_scores: dict[str, dict[UUID, float]] = {str(sid): {} for sid in student_ids}
     if assignment_ids:
         asgn_rows = (
             db.query(
@@ -497,7 +552,7 @@ def calculate_all_student_grades(db: Session, course: Course):
             # See same-named single-student site above — clamp at 100%
             # so a historical over-cap grade doesn't distort the batch.
             pct = min(100.0, float(ar.best_grade) / ar.max_score * 100.0) if ar.max_score else 0.0
-            asgn_scores.setdefault(str(ar.student_id), []).append(pct)
+            asgn_scores.setdefault(str(ar.student_id), {})[ar.assignment_id] = pct
 
     # Batch: chapter completion counts per student
     completion_counts: dict[str, int] = {}
@@ -550,9 +605,19 @@ def calculate_all_student_grades(db: Session, course: Course):
             else (f"{chosen.override_score:.2f}" if chosen.override_score is not None else None)
         )
 
+    # Per-student exemptions: the same D6 rule as the single-student path, but
+    # resolved once for the whole class rather than per row.
+    exemption_rows = (
+        db.query(GradeExemption.student_id, GradeExemption.item_type, GradeExemption.item_id)
+        .filter(GradeExemption.course_id == course.id)
+        .all()
+    )
+    excused_by_student: dict[str, tuple[set, set]] = {}
+    for exemption in exemption_rows:
+        quizzes, assignments = excused_by_student.setdefault(str(exemption.student_id), (set(), set()))
+        (quizzes if exemption.item_type == "quiz" else assignments).add(exemption.item_id)
+
     total_chapters = len(chapter_ids)
-    total_quizzes = len(quiz_ids)
-    total_assignments = len(assignment_ids)
     # Resolved once for the whole course: every student in a class must be
     # graded on the same weights.
     live_quizzes, live_assignments = category_is_live(db, quiz_ids=quiz_ids, assignment_ids=assignment_ids)
@@ -560,9 +625,15 @@ def calculate_all_student_grades(db: Session, course: Course):
     results = []
     for user_id, full_name, email, _cohort_id, _enrolled_at in enrollments:
         sid = str(user_id)
-        qs = quiz_scores.get(sid, [])
+        excused_q, excused_a = excused_by_student.get(sid, (set(), set()))
+        total_quizzes = len([q for q in quiz_ids if q not in excused_q])
+        total_assignments = len([a for a in assignment_ids if a not in excused_a])
+
+        # Numerator and denominator drop the excused item together. Keeping the
+        # score while shrinking the count is how you get 140%.
+        qs = [s for qid, s in quiz_scores.get(sid, {}).items() if qid not in excused_q]
         quiz_avg = sum(qs) / total_quizzes if total_quizzes > 0 else 0.0
-        asgs = asgn_scores.get(sid, [])
+        asgs = [s for aid, s in asgn_scores.get(sid, {}).items() if aid not in excused_a]
         assignment_avg = sum(asgs) / total_assignments if total_assignments > 0 else 0.0
         comp = completion_counts.get(sid, 0)
         participation_pct = (comp / total_chapters * 100.0) if total_chapters else 0.0
@@ -574,10 +645,17 @@ def calculate_all_student_grades(db: Session, course: Course):
             participation_pct,
             has_quiz_items=bool(quiz_ids),
             has_assignment_items=bool(assignment_ids),
-            has_quizzes=live_quizzes,
-            has_assignments=live_assignments,
+            # Course-wide liveness, narrowed to what this student still owes —
+            # identical to the single-student path, and it has to be identical
+            # or the same person reads two different scores on two screens.
+            has_quizzes=live_quizzes and total_quizzes > 0,
+            has_assignments=live_assignments and total_assignments > 0,
             settings=settings,
             has_gradable_chapters=bool(chapter_ids),
+            # Same rule as the single-student path: a student excused from
+            # everything must not read "not assessed" on their own page and
+            # "passed by completion" on the class list.
+            all_items_excused=bool(quiz_ids or assignment_ids) and not (total_quizzes or total_assignments),
         )
         results.append(
             {

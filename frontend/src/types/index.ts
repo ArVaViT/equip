@@ -138,8 +138,17 @@ export interface GradeBreakdown {
    *  settings page. */
   weights_redistributed: boolean
   /** `completion_pass` — the course has nothing gradable; `final_score` and
-   *  `letter_grade` carry no meaning. */
-  result_state: "graded" | "completion_pass" | "not_graded_yet" | "zero_weighted"
+   *  `letter_grade` carry no meaning.
+   *  `not_assessed` — every item this student owed was excused, so there is no
+   *  denominator left. Distinct from `completion_pass`: excusing an item also
+   *  completes its chapter, so these students sit at progress 100 and reading
+   *  them as "passed by completion" would certify a course nobody graded. */
+  result_state:
+    | "graded"
+    | "completion_pass"
+    | "not_graded_yet"
+    | "zero_weighted"
+    | "not_assessed"
 }
 
 export interface StudentCalculatedGrade {
@@ -430,9 +439,28 @@ export interface StudentChapterInfo {
   chapter_type: ChapterType
   requires_completion: boolean
   completed: boolean
-  completed_by: 'teacher' | 'self' | 'quiz' | null
+  /** How the chapter came to be complete. `excused` means a teacher waived the
+   *  work — the tick is the same green as any other, so only this tells them
+   *  apart, and a certificate gets signed on the difference. */
+  completed_by: 'teacher' | 'self' | 'quiz' | 'excused' | null
   quiz_result: { score: number; max_score: number; passed: boolean } | null
   assignment_result: { status: string; grade: number | null; max_score: number } | null
+  /** The piece of work behind this chapter, present whether or not the student
+   *  ever touched it — which is exactly when a teacher reaches for an
+   *  exemption, and exactly when the result blocks above are null. */
+  gradable_item: { type: 'quiz' | 'assignment'; id: string } | null
+}
+
+/** One waiver: this student does not owe this piece of work (D6). */
+export interface GradeExemption {
+  id: string
+  student_id: string
+  course_id: string
+  item_type: 'quiz' | 'assignment'
+  item_id: string
+  reason: string | null
+  created_by: string | null
+  created_at: string | null
 }
 
 export interface StudentQuizResult {
