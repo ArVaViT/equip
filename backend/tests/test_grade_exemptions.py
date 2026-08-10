@@ -390,6 +390,48 @@ def test_excusing_work_that_does_not_exist_is_a_404(client, db: Session, teacher
     assert resp.status_code == 404
 
 
+def test_the_progress_detail_names_the_work_behind_each_chapter(client, db: Session, teacher, student) -> None:
+    """The teacher's screen needs the item id for work nobody has touched.
+
+    That is the whole case for an exemption — the student never submitted —
+    and it is precisely when ``assignment_result`` is null, so the screen has
+    nothing else to point at.
+    """
+    course, (first, _second) = _course_with_two_assignments(db, teacher, course_id="c-excuse-detail")
+
+    resp = client.get(f"/api/v1/progress/course/{course.id}/students/{STUDENT_ID}/detail")
+
+    assert resp.status_code == 200, resp.text
+    chapters = {c["id"]: c for c in resp.json()["chapters"]}
+    row = chapters["c-excuse-detail-ch0"]
+    assert row["assignment_result"] is None, "nothing submitted — the case that matters"
+    assert row["gradable_item"] == {"type": "assignment", "id": str(first.id)}
+
+
+def test_an_excused_chapter_says_so_on_the_teachers_screen(client, db: Session, teacher, student) -> None:
+    """An excused chapter must not read as work the student did.
+
+    It is a green tick either way; only the label carries the difference, and
+    the label is what a teacher signs a certificate on.
+    """
+    course, (_first, waived) = _course_with_two_assignments(db, teacher, course_id="c-excuse-label")
+    apply_exemption(
+        db,
+        student_id=STUDENT_ID,
+        course_id=course.id,
+        item_type="assignment",
+        item_id=waived.id,
+        teacher_id=teacher.id,
+    )
+    db.commit()
+
+    resp = client.get(f"/api/v1/progress/course/{course.id}/students/{STUDENT_ID}/detail")
+
+    chapters = {c["id"]: c for c in resp.json()["chapters"]}
+    assert chapters["c-excuse-label-ch1"]["completed"] is True
+    assert chapters["c-excuse-label-ch1"]["completed_by"] == "excused"
+
+
 def test_an_excused_chapter_cannot_be_un_completed_by_hand(client, db: Session, teacher, student) -> None:
     """The two halves of an exemption stay together.
 

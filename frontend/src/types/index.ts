@@ -430,9 +430,28 @@ export interface StudentChapterInfo {
   chapter_type: ChapterType
   requires_completion: boolean
   completed: boolean
-  completed_by: 'teacher' | 'self' | 'quiz' | null
+  /** How the chapter came to be complete. `excused` means a teacher waived the
+   *  work — the tick is the same green as any other, so only this tells them
+   *  apart, and a certificate gets signed on the difference. */
+  completed_by: 'teacher' | 'self' | 'quiz' | 'excused' | null
   quiz_result: { score: number; max_score: number; passed: boolean } | null
   assignment_result: { status: string; grade: number | null; max_score: number } | null
+  /** The piece of work behind this chapter, present whether or not the student
+   *  ever touched it — which is exactly when a teacher reaches for an
+   *  exemption, and exactly when the result blocks above are null. */
+  gradable_item: { type: 'quiz' | 'assignment'; id: string } | null
+}
+
+/** One waiver: this student does not owe this piece of work (D6). */
+export interface GradeExemption {
+  id: string
+  student_id: string
+  course_id: string
+  item_type: 'quiz' | 'assignment'
+  item_id: string
+  reason: string | null
+  created_by: string | null
+  created_at: string | null
 }
 
 export interface StudentQuizResult {

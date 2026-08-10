@@ -1199,7 +1199,11 @@
       "detailFailed": "Couldn't load the chapter breakdown.",
       "retry": "Retry",
       "gradebookButton": "Gradebook",
-      "viewAnalytics": "View Analytics"
+      "viewAnalytics": "View Analytics",
+      "excused": "Student excused from the work",
+      "excuseFailed": "Could not excuse the student",
+      "exemptionRemoved": "The work counts again",
+      "exemptionRemoveFailed": "Could not return the work"
     },
     "chapterRow": {
       "notCompleted": "Not completed",
@@ -1209,7 +1213,11 @@
       "completedByQuiz": "Completed via quiz",
       "completedBySubmission": "Completed via submission",
       "undo": "Undo",
-      "complete": "Complete"
+      "complete": "Complete",
+      "excused": "Excused by teacher",
+      "excuse": "Excuse",
+      "excuseTitle": "Excuse this student from the work",
+      "returnWork": "Return the work"
     },
     "stats": {
       "totalStudents": "Total Students",
@@ -1224,6 +1232,13 @@
       "hoursAgo_other": "{{count}}h ago",
       "daysAgo_one": "{{count}}d ago",
       "daysAgo_other": "{{count}}d ago"
+    },
+    "excuse": {
+      "title": "Excuse from “{{chapter}}”",
+      "explainer": "The work stops counting toward the grade, and the chapter counts as done — so progress can still reach 100% and the certificate stays reachable. You can return the work at any time.",
+      "reasonLabel": "Reason (optional, visible to directors)",
+      "reasonPlaceholder": "Illness, bereavement, joined the course late…",
+      "confirm": "Excuse"
     }
   },
   "teacherAnalytics": {

@@ -3,11 +3,14 @@ import { Button } from "@/components/ui/button"
 import {
   CheckCircle,
   Clock,
+  HeartHandshake,
   Loader2,
   RotateCcw,
+  Undo2,
   XCircle,
 } from "lucide-react"
 import { isGradableChapterType } from "@/lib/chapterTypes"
+import { chapterActions } from "./chapterActions"
 import type { AssignmentResult, ChapterInfo, QuizResult } from "./helpers"
 
 interface Props {
@@ -17,8 +20,11 @@ interface Props {
   assignment?: AssignmentResult
   togglingChapterId: string | null
   grantingQuizId: string | null
+  excusingChapterId: string | null
   onToggleComplete: (chapter: ChapterInfo) => void
   onGrantExtraAttempt: (quizId: string) => void
+  onExcuse: (chapter: ChapterInfo) => void
+  onUnexcuse: (chapter: ChapterInfo) => void
 }
 
 /**
@@ -33,14 +39,19 @@ export function ChapterBreakdownRow({
   assignment,
   togglingChapterId,
   grantingQuizId,
+  excusingChapterId,
   onToggleComplete,
   onGrantExtraAttempt,
+  onExcuse,
+  onUnexcuse,
 }: Props) {
   const { t } = useTranslation()
   const title =
     chapterInfo?.title ?? quiz?.chapter_title ?? assignment?.chapter_title ?? chapterId
   const gradable = chapterInfo ? isGradableChapterType(chapterInfo.chapter_type) : false
   const completed = chapterInfo?.completed ?? false
+  const actions = chapterActions(chapterInfo)
+  const busy = excusingChapterId === chapterInfo?.id
 
   return (
     <div className="flex items-center gap-4 bg-surface rounded-lg px-4 py-3 border text-sm">
@@ -112,7 +123,54 @@ export function ChapterBreakdownRow({
         </div>
       )}
 
-      {chapterInfo && gradable && (
+      {/* An excused chapter offers one action, not two: the exemption holds the
+          grade and the completion together, so undoing the tick on its own is
+          refused by the server. Returning the work undoes both. */}
+      {chapterInfo && actions.canReturn && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0 text-xs h-7"
+          disabled={busy}
+          onClick={(e) => {
+            e.stopPropagation()
+            onUnexcuse(chapterInfo)
+          }}
+        >
+          {busy ? (
+            <Clock className="h-3 w-3 mr-1 animate-spin" strokeWidth={1.75} />
+          ) : (
+            <Undo2 className="h-3 w-3 mr-1" strokeWidth={1.75} />
+          )}
+          {t("studentProgress.chapterRow.returnWork")}
+        </Button>
+      )}
+
+      {/* Offered on finished chapters too: a student who submitted while ill
+          may still be waived from the mark, and the chapter simply stays as the
+          student left it. */}
+      {chapterInfo && actions.canExcuse && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="shrink-0 text-xs h-7 text-ink-muted hover:text-ink"
+          disabled={busy}
+          onClick={(e) => {
+            e.stopPropagation()
+            onExcuse(chapterInfo)
+          }}
+          title={t("studentProgress.chapterRow.excuseTitle")}
+        >
+          {busy ? (
+            <Clock className="h-3 w-3 mr-1 animate-spin" strokeWidth={1.75} />
+          ) : (
+            <HeartHandshake className="h-3 w-3 mr-1" strokeWidth={1.75} />
+          )}
+          {t("studentProgress.chapterRow.excuse")}
+        </Button>
+      )}
+
+      {chapterInfo && actions.canToggleCompletion && (
         <Button
           variant={completed ? "outline" : "default"}
           size="sm"
@@ -145,6 +203,12 @@ function CompletionLabel({
   completedBy: ChapterInfo["completed_by"]
 }) {
   const { t } = useTranslation()
+  if (completedBy === "excused") {
+    // Not "completed" in any sense the student would recognise. The tick is
+    // the same green as work they actually did, so the label is the only place
+    // the difference survives — and a certificate gets signed on it.
+    return <span className="text-info">{t("studentProgress.chapterRow.excused")}</span>
+  }
   if (completedBy === "teacher") {
     return <span className="text-info">{t("studentProgress.chapterRow.completedByTeacher")}</span>
   }

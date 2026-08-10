@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import case, func
 
 from app.constants import GRADABLE_CHAPTER_TYPES
+from app.core.ids import as_uuids
 from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Course, Module
@@ -124,7 +125,7 @@ def _aggregate_quiz_results(
     # churn over the whole roster when only one row's worth is needed.
     attempt_filters = [QuizAttempt.quiz_id.in_(all_quiz_ids), QuizAttempt.completed_at.isnot(None)]
     if user_ids is not None:
-        attempt_filters.append(QuizAttempt.user_id.in_(user_ids))
+        attempt_filters.append(QuizAttempt.user_id.in_(as_uuids(user_ids)))
     ranked = (
         db.query(
             QuizAttempt.user_id.label("user_id"),
@@ -201,9 +202,11 @@ def _aggregate_assignment_submissions(
     # Two-step query: compute MAX(submitted_at) per (student, assignment)
     # in a subquery, then pull the full row that matches. We tie-break on
     # ``id`` below for determinism when two rows share submitted_at.
-    sub_filters = [AssignmentSubmission.assignment_id.in_(all_assignment_ids)]
+    # ``assignment_by_id_str`` is keyed by string for the lookups further down;
+    # the column is a UUID, so the filter needs the real thing.
+    sub_filters = [AssignmentSubmission.assignment_id.in_(as_uuids(all_assignment_ids))]
     if user_ids is not None:
-        sub_filters.append(AssignmentSubmission.student_id.in_(user_ids))
+        sub_filters.append(AssignmentSubmission.student_id.in_(as_uuids(user_ids)))
     latest_ts_subq = (
         db.query(
             AssignmentSubmission.student_id.label("student_id"),
@@ -258,7 +261,7 @@ def _load_completed_progress(
         return {}
     progress_filters = [ChapterProgress.chapter_id.in_(chapter_ids), ChapterProgress.completed == True]
     if user_ids is not None:
-        progress_filters.append(ChapterProgress.user_id.in_(user_ids))
+        progress_filters.append(ChapterProgress.user_id.in_(as_uuids(user_ids)))
     rows = db.query(ChapterProgress).filter(*progress_filters).all()
     out: dict[str, dict[str, ChapterProgress]] = defaultdict(dict)
     for p in rows:
@@ -388,11 +391,18 @@ def _build_chapter_infos(
     best_by_user_chapter: dict[tuple[str, str], dict[str, Any]],
     subs_by_user_chapter: dict[tuple[str, str], list[dict[str, Any]]],
     assignment_by_id_str: dict[str, Assignment],
+    quiz_map: dict[str, list[Quiz]] | None = None,
+    assignment_map: dict[str, list[Assignment]] | None = None,
 ) -> list[dict[str, Any]]:
     """Per-chapter completion + embedded quiz/assignment result for one student.
 
     Shared by the row-expand detail (progress board) and the full gradebook
     matrix, which both need the per-chapter view for a student.
+
+    ``gradable_item`` names the piece of work behind the chapter regardless of
+    whether the student ever touched it — which is exactly the case where a
+    teacher reaches for an exemption. The result blocks below can't stand in for
+    it: they exist only once there is a submission or an attempt.
     """
     chapter_infos = []
     for ch in chapters:
@@ -409,6 +419,14 @@ def _build_chapter_infos(
             asgn = assignment_by_id_str.get(latest_sub["assignment_id"])
             max_score = asgn.max_score if asgn is not None else 100
             asgn_data = {"status": latest_sub["status"], "grade": latest_sub["grade"], "max_score": max_score}
+        gradable_item = None
+        chapter_quizzes = (quiz_map or {}).get(str(ch.id)) or []
+        chapter_assignments = (assignment_map or {}).get(str(ch.id)) or []
+        if chapter_quizzes:
+            gradable_item = {"type": "quiz", "id": str(chapter_quizzes[0].id)}
+        elif chapter_assignments:
+            gradable_item = {"type": "assignment", "id": str(chapter_assignments[0].id)}
+
         chapter_infos.append(
             {
                 "id": str(ch.id),
@@ -420,6 +438,7 @@ def _build_chapter_infos(
                 "completed_by": cp.completion_type if cp else None,
                 "quiz_result": quiz_data,
                 "assignment_result": asgn_data,
+                "gradable_item": gradable_item,
             }
         )
     return chapter_infos
@@ -531,7 +550,14 @@ def build_student_chapter_detail(db: Session, course: Course, course_id: str, st
     )
 
     chapter_infos = _build_chapter_infos(
-        student_id, chapters, user_progress, best_by_user_chapter, subs_by_user_chapter, assignment_by_id_str
+        student_id,
+        chapters,
+        user_progress,
+        best_by_user_chapter,
+        subs_by_user_chapter,
+        assignment_by_id_str,
+        quiz_map,
+        assignment_map,
     )
 
     return {
@@ -588,7 +614,14 @@ def build_course_gradebook_matrix(db: Session, course: Course, course_id: str) -
                 "chapters_completed": sum(1 for cid in gradable_chapter_ids if cid in user_progress),
                 "total_chapters": len(gradable_chapter_ids),
                 "chapters": _build_chapter_infos(
-                    uid, chapters, user_progress, best_by_user_chapter, subs_by_user_chapter, assignment_by_id_str
+                    uid,
+                    chapters,
+                    user_progress,
+                    best_by_user_chapter,
+                    subs_by_user_chapter,
+                    assignment_by_id_str,
+                    quiz_map,
+                    assignment_map,
                 ),
             }
         )
