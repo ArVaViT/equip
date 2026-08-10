@@ -266,7 +266,7 @@ describe("a student excused from everything", () => {
     // and certifies work nobody assessed.
     const b = breakdown({ result_state: "not_assessed", has_quiz_items: true })
 
-    expect(gradebookNotice(b, config())).toBe("gradebook.summary.notAssessedCourse")
+    expect(gradebookNotice(b, config(40, 60))).toBe("gradebook.summary.notAssessedCourse")
     expect(gradePillLabel("not_assessed")).toBe("gradebook.summary.notAssessedBadge")
   })
 })
