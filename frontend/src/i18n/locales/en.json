@@ -1785,7 +1785,8 @@
       "notGradedYet": "not marked yet",
       "notWeighted": "weighted 0%",
       "notAssessed": "all excused",
-      "setByTeacher": "by teacher"
+      "setByTeacher": "by teacher",
+      "awaitingGradingTitle": "Submitted — waiting for you to mark the open answers"
     }
   },
   "admin": {
@@ -2241,7 +2242,8 @@
       "assignmentHasBrief": "Assignment in \"{{title}}\" has a brief / description.",
       "quizThresholdAboveCourse": "A quiz demands a higher score than the course does. Students can pass the course on paper and still never complete the chapter, so the certificate stays out of reach.",
       "quizWeightNonzero": "Quizzes count toward the final grade.",
-      "assignmentWeightNonzero": "Assignments count toward the final grade."
+      "assignmentWeightNonzero": "Assignments count toward the final grade.",
+      "quizThresholdBelowCourse": "Some quizzes pass at a lower score than the course does. A student can clear every quiz and still finish below the course's pass line."
     }
   },
   "dateRangePicker": {

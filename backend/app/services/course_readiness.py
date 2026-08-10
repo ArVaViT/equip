@@ -28,6 +28,7 @@ Severities:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Literal
 
 from sqlalchemy.orm import Session, joinedload
@@ -431,7 +432,10 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
     # student passes the course on paper and never reaches progress 100: the
     # chapter stays incomplete, so the certificate stays out of reach, and
     # nothing on screen explains why (D3).
-    strict_quizzes = [q for q in quizzes_by_chapter.values() if q.passing_score > int(course.pass_threshold)]
+    # Compared against the real threshold, not a truncated one: a quiz at 71 in
+    # a course whose line is 70.5 is above it, and int() said otherwise.
+    course_line = Decimal(str(course.pass_threshold or 0))
+    strict_quizzes = [q for q in quizzes_by_chapter.values() if Decimal(q.passing_score) > course_line]
     if strict_quizzes:
         checks.append(
             ReadinessCheck(
@@ -439,6 +443,24 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
                 severity="polish",
                 passed=False,
                 message_key="courseReadiness.checks.quizThresholdAboveCourse",
+                action=ReadinessAction(type="open_grading_weights", params={}),
+            )
+        )
+
+    # The mirror of the check above, and the one nobody thinks of: a course line
+    # RAISED after its quizzes were written leaves every quiz easier than the
+    # course. A student then clears each quiz, is told each time that they
+    # passed, and still lands below the line the course grades them on — with
+    # every chapter green. The first check catches drift one way; without this
+    # one, drift the other way is silent.
+    lenient_quizzes = [q for q in quizzes_by_chapter.values() if Decimal(q.passing_score) < course_line]
+    if lenient_quizzes:
+        checks.append(
+            ReadinessCheck(
+                id="quiz_threshold_below_course",
+                severity="polish",
+                passed=False,
+                message_key="courseReadiness.checks.quizThresholdBelowCourse",
                 action=ReadinessAction(type="open_grading_weights", params={}),
             )
         )

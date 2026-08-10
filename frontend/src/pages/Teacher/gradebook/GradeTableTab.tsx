@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { EmptyState } from "@/components/patterns"
 import {
   BookOpen, Users, Circle, CheckCircle2,
-  ChevronDown, ChevronRight, Award, MessageSquare, Save,
+  ChevronDown, ChevronRight, Award, MessageSquare, Save, Clock,
 } from "lucide-react"
 import type { StudentCalculatedGrade } from "@/types"
 import type {
@@ -345,6 +345,20 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
   const type = chapter.chapter_type
 
   if (type === "quiz" || type === "exam") {
+    if (chapter.quiz_result?.awaiting_grading) {
+      // An essay quiz is submitted long before it is marked. Until a teacher
+      // reads the open answers its score is 0 out of the full total, and the
+      // ordinary renderer paints that a red 0% — a failure shown for work
+      // nobody has looked at, on the screen that decides certificates.
+      return (
+        <div
+          className="flex h-9 flex-col items-center justify-center rounded border border-warning/30 bg-warning/10 px-1 text-xs font-medium text-warning"
+          title={t("gradebook.table.awaitingGradingTitle")}
+        >
+          <Clock className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+        </div>
+      )
+    }
     if (chapter.quiz_result) {
       const pct =
         chapter.quiz_result.max_score > 0

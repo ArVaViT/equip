@@ -21,9 +21,10 @@ from app.api.dependencies import (
 )
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
-from app.models.course import CourseStatus
+from app.models.course import Chapter, CourseStatus, Module
 from app.models.enrollment import Enrollment
 from app.models.grade_exemption import GradeExemption
+from app.models.quiz import Quiz
 from app.models.student_grade import StudentGrade
 from app.models.user import User, UserRole
 from app.schemas.grade import (
@@ -289,6 +290,28 @@ def delete_exemption(
     )
 
 
+def _quizzes_off_the_course_line(db: Session, course_id: str, threshold: Decimal) -> list[dict[str, object]]:
+    """Quizzes whose own pass line no longer matches the course's.
+
+    Reported into the audit entry so the change is answerable later: "the line
+    moved to 85 and these four quizzes stayed at 60" is the sentence a director
+    needs, and nobody can reconstruct it after the fact.
+    """
+    rows = (
+        db.query(Quiz.id, Quiz.chapter_id, Quiz.passing_score)
+        .join(Chapter, Chapter.id == Quiz.chapter_id)
+        .join(Module, Module.id == Chapter.module_id)
+        .filter(
+            Module.course_id == course_id,
+            Module.deleted_at.is_(None),
+            Chapter.deleted_at.is_(None),
+            Quiz.passing_score != int(threshold),
+        )
+        .all()
+    )
+    return [{"quiz_id": str(r.id), "chapter_id": r.chapter_id, "passing_score": r.passing_score} for r in rows]
+
+
 @router.get("/course/{course_id}/scheme", response_model=GradingSchemeResponse)
 def get_grading_scheme(
     course_id: str,
@@ -365,6 +388,16 @@ def update_grading_scheme(
 
     course.grading_scheme = data.grading_scheme
     course.pass_threshold = data.pass_threshold
+
+    # Quizzes carry their own pass line, inherited from the course's when they
+    # were written (D3). Moving the course's leaves them where they were, and
+    # the drift is invisible from here: raise the line and a student clears
+    # every quiz, is congratulated each time, and still lands below the mark the
+    # course grades them on — with every chapter green. Recorded rather than
+    # silently rewritten, because a quiz threshold is a teacher's decision and
+    # this endpoint is not the place to overrule it.
+    drifted = _quizzes_off_the_course_line(db, course_id, data.pass_threshold)
+
     db.commit()
     db.refresh(course)
 
@@ -384,6 +417,7 @@ def update_grading_scheme(
                 "pass_threshold": float(data.pass_threshold),
             },
             "reason": data.reason,
+            "quizzes_off_the_new_line": drifted,
         },
         request=request,
     )
