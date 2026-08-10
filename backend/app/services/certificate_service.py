@@ -31,6 +31,7 @@ from app.models.course import Course
 from app.models.user import User, UserRole
 from app.schemas.locale import normalize_locale
 from app.services.audit_service import log_action
+from app.services.certificate_grade_snapshot import snapshot_certificate_grade
 from app.services.domain_access import assert_course_owner
 from app.services.notification_service import create_notification
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
@@ -230,6 +231,12 @@ def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> 
     # title/message strings come from the locale branch so a Russian
     # student doesn't get English notification text.
     course = db.query(Course).filter(Course.id == cert.course_id, Course.deleted_at.is_(None)).first()
+
+    # Freeze the grade onto the document at the moment it becomes one (M6).
+    # Everything it is computed from stays editable afterwards, so a certificate
+    # that recomputed on read would quietly change years later.
+    snapshot_certificate_grade(db, cert, course)
+
     recipient_locale = normalize_locale(_recipient_locale(db, cert.user_id))
     course_title = (
         fetch_course_titles_by_id(db, [course.id], display_locale=recipient_locale).get(course.id) if course else None

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict wbc0VA3IjrxTM4WVhxxFdHZHE3MBZyfHt81hLLEpruBE44KWtC8nDgdXe1BpT93
+\restrict NgDrh5lPAa5PYBEiHfOIXFsJr5g69BF1VeS8a2xBpgh5zSVsKt8BAXVWYEGneZi
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10 (Homebrew)
@@ -255,7 +255,22 @@ CREATE TABLE public.certificates (
     admin_approved_by uuid,
     cohort_id uuid,
     archived_course_title text,
-    CONSTRAINT certificates_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('teacher_approved'::character varying)::text, ('approved'::character varying)::text, ('rejected'::character varying)::text])))
+    grading_scheme text,
+    pass_threshold numeric(5,2),
+    official_code text,
+    official_score numeric(5,2),
+    graded_via text,
+    CONSTRAINT certificates_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('teacher_approved'::character varying)::text, ('approved'::character varying)::text, ('rejected'::character varying)::text]))),
+    CONSTRAINT ck_certificates_graded_via CHECK (((graded_via IS NULL) OR (graded_via = ANY (ARRAY['computed'::text, 'override'::text, 'completion'::text])))),
+    CONSTRAINT ck_certificates_one_official_grade CHECK (((
+CASE
+    WHEN (official_code IS NULL) THEN 0
+    ELSE 1
+END +
+CASE
+    WHEN (official_score IS NULL) THEN 0
+    ELSE 1
+END) <= 1))
 );
 
 
@@ -2891,5 +2906,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict wbc0VA3IjrxTM4WVhxxFdHZHE3MBZyfHt81hLLEpruBE44KWtC8nDgdXe1BpT93
+\unrestrict NgDrh5lPAa5PYBEiHfOIXFsJr5g69BF1VeS8a2xBpgh5zSVsKt8BAXVWYEGneZi
 
