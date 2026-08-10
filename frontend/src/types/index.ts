@@ -601,6 +601,9 @@ export interface CourseEvent {
 
 /** One piece of work, as its owner sees it (D10.3). */
 export interface MyGradeItem {
+  /** The quiz or assignment itself. A chapter can hold two, so the chapter is
+   *  not an identity. */
+  item_id: string
   chapter_id: string
   title: string
   kind: "quiz" | "assignment"

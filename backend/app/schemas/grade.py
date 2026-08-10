@@ -322,8 +322,13 @@ ItemStatus = Literal["graded", "pending_review", "not_submitted", "excused"]
 
 
 class MyGradeItem(BaseModel):
-    """One piece of work, as its owner sees it."""
+    """One piece of work, as its owner sees it.
 
+    Identified by the item, not the chapter: nothing stops a chapter holding
+    two quizzes, and keying a list by chapter collapses them into one row.
+    """
+
+    item_id: str
     chapter_id: str
     title: str
     kind: Literal["quiz", "assignment"]

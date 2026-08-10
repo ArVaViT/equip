@@ -78,3 +78,46 @@ describe("symbolTone", () => {
     expect(symbolTone("Незачёт", passFail)).toContain("destructive")
   })
 })
+
+describe("symbolTone across scale sizes", () => {
+  const scaleOf = (n: number): GradeBand[] =>
+    Array.from({ length: n }, (_, i) => [100 - i * 10, `s${i}`] as GradeBand)
+
+  // The palette has five tones. A school defining more bands than that must
+  // still never see a lower grade painted to look better than a higher one —
+  // which is the property that actually matters, and the one that holds at any
+  // size. Requiring every band to differ is impossible past five and was the
+  // wrong thing to ask.
+  const SEVERITY = [
+    "bg-success/15 text-success",
+    "bg-info/15 text-info",
+    "bg-accent/20 text-ink",
+    "bg-warning/15 text-warning",
+    "bg-destructive/15 text-destructive",
+  ]
+
+  it.each([1, 2, 3, 4, 5, 6, 7, 12])("never paints a lower band better (%i bands)", (n) => {
+    const bands = scaleOf(n)
+    const ranks = bands.map(([, s]) => SEVERITY.indexOf(symbolTone(s, bands)))
+
+    for (let i = 1; i < ranks.length; i++) {
+      expect(ranks[i]!, `band ${i + 1} of ${n}`).toBeGreaterThanOrEqual(ranks[i - 1]!)
+    }
+  })
+
+  it.each([2, 3, 4, 5])("keeps every band distinct while the palette allows (%i bands)", (n) => {
+    const bands = scaleOf(n)
+    const tones = bands.map(([, s]) => symbolTone(s, bands))
+
+    expect(new Set(tones).size).toBe(n)
+  })
+
+  it("always paints the bottom band as failing, whatever the scale", () => {
+    for (const n of [2, 3, 4, 5, 6]) {
+      const bands = scaleOf(n)
+      const last = bands[bands.length - 1]![1]
+
+      expect(symbolTone(last, bands)).toContain("destructive")
+    }
+  })
+})

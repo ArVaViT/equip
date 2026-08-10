@@ -23,7 +23,15 @@ function grade(over: Partial<MyCourseGrade> = {}): MyCourseGrade {
 }
 
 function item(over: Partial<MyGradeItem> = {}): MyGradeItem {
-  return { chapter_id: "ch", title: "Работа", kind: "quiz", status: "graded", score: 90, ...over }
+  return {
+    item_id: "i1",
+    chapter_id: "ch",
+    title: "Работа",
+    kind: "quiz",
+    status: "graded",
+    score: 90,
+    ...over,
+  }
 }
 
 describe("myGradeDisplay", () => {

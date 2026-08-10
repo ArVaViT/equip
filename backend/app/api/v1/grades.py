@@ -57,7 +57,7 @@ from app.services.grade_override import (
     validate_override,
 )
 from app.services.grading_scheme import effective_bands, get_org_settings, validate_scheme_threshold
-from app.services.my_grade_service import build_my_course_grade
+from app.services.my_grade_service import build_my_course_grade, latest_enrollment
 from app.services.translation.resolve_for_display import populate_spine_texts
 
 logger = logging.getLogger(__name__)
@@ -714,7 +714,10 @@ def get_my_course_grade(
     deliberate change rather than an oversight (D10.4).
     """
     course = get_live_course_or_404(db, course_id)
-    enrollment = lookup_enrollment(db, current_user.id, course_id)
+    # The enrolment the grade is resolved against, not just any of them — a
+    # retaking student has two, and pairing this term's mark with last term's
+    # progress bar is a number nobody can explain.
+    enrollment = latest_enrollment(db, current_user.id, course_id)
     if not enrollment:
         raise equip_error(
             ErrorCode.AUTH_FORBIDDEN,
