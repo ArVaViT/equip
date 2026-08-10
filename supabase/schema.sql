@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict TvcR0aVUiF6ruWsbhaTf09dW3lolym27TK3AhlwWOELkGgYMuHjGxHIfyioOp1g
+\restrict Yf8Mj8jbSmQ5kgjdl2U7PcE0aGz7KIxrayLseTf73s8pq6FjRfyqFwjnmIZESIp
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10 (Homebrew)
@@ -611,6 +611,7 @@ CREATE TABLE public.grade_sheet_rows (
     official_code text,
     official_score numeric(5,2),
     is_override boolean DEFAULT false NOT NULL,
+    student_name text,
     CONSTRAINT ck_grade_sheet_rows_one_grade CHECK (((
 CASE
     WHEN (official_code IS NULL) THEN 0
@@ -643,6 +644,8 @@ CREATE TABLE public.grade_sheets (
     superseded_at timestamp with time zone,
     corrects_sheet_id uuid,
     correction_reason text,
+    locale text DEFAULT 'en'::text NOT NULL,
+    course_title text,
     CONSTRAINT ck_grade_sheets_reopen_is_deliberate CHECK (((reopened_at IS NULL) OR ((reopened_at >= finalized_at) AND (reopen_reason IS NOT NULL))))
 );
 
@@ -3059,5 +3062,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict TvcR0aVUiF6ruWsbhaTf09dW3lolym27TK3AhlwWOELkGgYMuHjGxHIfyioOp1g
+\unrestrict Yf8Mj8jbSmQ5kgjdl2U7PcE0aGz7KIxrayLseTf73s8pq6FjRfyqFwjnmIZESIp
 
