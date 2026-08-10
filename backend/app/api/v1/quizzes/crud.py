@@ -153,13 +153,27 @@ def create_quiz(
     if data.quiz_type == "exam" and max_attempts is None:
         max_attempts = 1
 
+    # Two pass lines exist and they must not drift apart (D3):
+    #
+    #   quizzes.passing_score  — the chapter-completion gate, per quiz;
+    #   courses.pass_threshold — the course result line.
+    #
+    # A quiz defaulting to a hardcoded 70 inside a course that passes at 80
+    # produces the trap where a student clears every quiz, reaches progress
+    # 100, and still cannot pass the course. New quizzes inherit the course's
+    # line; a teacher who wants a different one says so explicitly.
+    passing_score = data.passing_score
+    if passing_score is None:
+        course = db.query(Course).filter(Course.id == course_id).first()
+        passing_score = int(course.pass_threshold) if course is not None else 70
+
     quiz_id_val = uuid.uuid4()
     quiz = Quiz(
         id=quiz_id_val,
         chapter_id=data.chapter_id,
         quiz_type=data.quiz_type,
         max_attempts=max_attempts,
-        passing_score=data.passing_score,
+        passing_score=passing_score,
     )
     db.add(quiz)
 

@@ -427,6 +427,22 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
             )
         )
 
+    # A quiz that demands more than the course does creates the trap where a
+    # student passes the course on paper and never reaches progress 100: the
+    # chapter stays incomplete, so the certificate stays out of reach, and
+    # nothing on screen explains why (D3).
+    strict_quizzes = [q for q in quizzes_by_chapter.values() if q.passing_score > int(course.pass_threshold)]
+    if strict_quizzes:
+        checks.append(
+            ReadinessCheck(
+                id="quiz_threshold_above_course",
+                severity="polish",
+                passed=False,
+                message_key="courseReadiness.checks.quizThresholdAboveCourse",
+                action=ReadinessAction(type="open_grading_weights", params={}),
+            )
+        )
+
     # ── Aggregate ────────────────────────────────────────────────────
     total = len(checks)
     passing = sum(1 for c in checks if c.passed)

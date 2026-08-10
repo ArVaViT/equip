@@ -80,7 +80,11 @@ class QuizCreate(BaseModel):
     description: str | None = Field(None, max_length=5000)
     quiz_type: Literal["quiz", "exam"] = "quiz"
     max_attempts: int | None = Field(None, ge=1, le=10)
-    passing_score: int = Field(70, ge=0, le=100)
+    #: Omit to inherit the course's pass line (D3). The two thresholds mean
+    #: different things — this one gates chapter completion, the course one is
+    #: the final result line — and a hardcoded 70 here silently disagreed with
+    #: a course graded at 80.
+    passing_score: int | None = Field(None, ge=0, le=100)
     questions: list[QuizQuestionCreate] = Field(default_factory=list, max_length=100)
 
 

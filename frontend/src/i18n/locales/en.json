@@ -2209,6 +2209,7 @@
       "examHasQuestion": "Exam in \"{{title}}\" has at least one question.",
       "quizQuestionsComplete": "Every question in \"{{title}}\" has the answers it needs (options, correct marker).",
       "assignmentHasBrief": "Assignment in \"{{title}}\" has a brief / description.",
+      "quizThresholdAboveCourse": "A quiz demands a higher score than the course does. Students can pass the course on paper and still never complete the chapter, so the certificate stays out of reach.",
       "quizWeightNonzero": "Quizzes count toward the final grade.",
       "assignmentWeightNonzero": "Assignments count toward the final grade."
     }
