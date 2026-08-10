@@ -2283,5 +2283,23 @@
       "acceptFailed": "Couldn't accept this invitation. Please try again.",
       "accountExists": "You already have an Equip account with this email. Log in, then reopen this invite link to accept it."
     }
+  },
+  "myGrade": {
+    "title": "Your grade",
+    "loading": "Loading your grade…",
+    "setByTeacher": "set by teacher",
+    "finalIs": "Final: {{grade}}",
+    "state": {
+      "byCompletion": "This course is graded on completion — see your progress above.",
+      "notGradedYet": "Nothing has been marked yet.",
+      "notWeighted": "The marked work carries no weight toward the final grade.",
+      "notAssessed": "All of your work here was excused, so there is no grade to calculate. Your teacher will set one."
+    },
+    "status": {
+      "graded": "marked",
+      "pending_review": "waiting to be marked",
+      "not_submitted": "not handed in",
+      "excused": "excused"
+    }
   }
 }

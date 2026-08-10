@@ -593,3 +593,45 @@ export interface CourseEvent {
   created_at: string
 }
 
+
+/** One piece of work, as its owner sees it (D10.3). */
+export interface MyGradeItem {
+  chapter_id: string
+  title: string
+  kind: "quiz" | "assignment"
+  /** `pending_review` is the one that matters: an essay sits at 0 with
+   *  `passed = false` from submission until somebody reads it, and a student
+   *  shown that number concludes they failed work nobody has opened. */
+  status: "graded" | "pending_review" | "not_submitted" | "excused"
+  /** Present only for `graded`. A number on a pending row is the running
+   *  total, which is precisely the thing being withheld. */
+  score: number | null
+}
+
+/**
+ * A student's own standing in one course.
+ *
+ * Carries no class average, no other student's name, no rank — absent from the
+ * type rather than filtered out downstream, so putting one back would take a
+ * deliberate change (D10.4). `comment` is the teacher's note *to* the student;
+ * the `reason` on the same row is the note about them, written for the
+ * institution, and never leaves the backend (D7).
+ */
+export interface MyCourseGrade {
+  course_id: string
+  grading_scheme: string
+  pass_threshold: string
+  progress: number
+  current_score: number | null
+  current_symbol: string | null
+  final_score: number | null
+  final_symbol: string | null
+  scores_differ: boolean
+  result_state: string
+  /** True for a scheme whose rule is completion-based rather than arithmetic
+   *  (`pass_fail`, D2) — the weighted percentage is not the result there. */
+  scores_withheld: boolean
+  official_grade: string | null
+  comment: string | null
+  items: MyGradeItem[]
+}

@@ -297,3 +297,74 @@ class GradeSummaryResponse(BaseModel):
     #: completion-only course, or one where marking has not started. Zero would
     #: be a lie the size of the whole class.
     class_average: float | None = None
+
+
+# ---------------------------------------------------------------------------
+# What a student sees of their own grade (D10)
+# ---------------------------------------------------------------------------
+
+#: The four states a piece of work can be in, from the student's side.
+#:
+#: ``pending_review`` is the one that did not exist before and matters most. An
+#: essay sits at 0 out of 10 with ``passed = false`` from the moment it is
+#: submitted until a teacher reads it, and the student had no way to tell that
+#: apart from a genuine zero — they were shown a failure for work nobody had
+#: looked at yet. The teacher's gradebook stopped doing that this week; this is
+#: the same fix on the side of the person it frightens.
+ItemStatus = Literal["graded", "pending_review", "not_submitted", "excused"]
+
+
+class MyGradeItem(BaseModel):
+    """One piece of work, as its owner sees it."""
+
+    chapter_id: str
+    title: str
+    kind: Literal["quiz", "assignment"]
+    status: ItemStatus
+    #: Percentage, present only for ``graded``. A number on a `pending_review`
+    #: row would be the running total, which is exactly the thing being hidden.
+    score: float | None = None
+
+
+class MyCourseGrade(BaseModel):
+    """A student's own standing in one course.
+
+    Deliberately absent, and absent by design rather than by omission (D10.4):
+    the class average, any other student's name, any rank or percentile. A
+    grade is between a student, their teacher and the school. Nothing here is
+    comparative, and there is no field a future caller could fill with a peer's
+    data without changing this schema on purpose.
+
+    ``comment`` is the teacher's note **to the student** and is rendered; the
+    ``reason`` on the same database row is the note *about* them, written for
+    the institution, and never appears in a student-facing schema (D7).
+    """
+
+    course_id: str
+    grading_scheme: str
+    pass_threshold: Decimal
+    progress: int
+
+    #: «Текущая» and «итоговая» — the pair, always together (D10.1). ``None``
+    #: when there is no honest number: nothing marked yet, nothing gradable in
+    #: the course, or every item excused.
+    current_score: float | None = None
+    current_symbol: str | None = None
+    final_score: float | None = None
+    final_symbol: str | None = None
+    scores_differ: bool = False
+    #: Why there is no number, when there is none — the same vocabulary the
+    #: teacher's screens use, so the two sides describe one situation.
+    result_state: str = "graded"
+    #: True when the course is graded on a scheme whose rule is completion-based
+    #: rather than arithmetic (``pass_fail``, D2). The weighted percentage is
+    #: then not the result and must not be shown as one, so the scores are
+    #: withheld rather than dressed up.
+    scores_withheld: bool = False
+
+    #: The hand-set grade, when a teacher set one. It IS the official grade
+    #: (D7), so it is what the student is told.
+    official_grade: str | None = None
+    comment: str | None = None
+
+    items: list[MyGradeItem] = []

@@ -37,6 +37,7 @@ from app.schemas.grade import (
     GradingConfigUpdate,
     GradingSchemeResponse,
     GradingSchemeUpdate,
+    MyCourseGrade,
     StudentCalculatedGrade,
     StudentGradeResponse,
 )
@@ -55,6 +56,7 @@ from app.services.grade_override import (
     validate_override,
 )
 from app.services.grading_scheme import effective_bands, get_org_settings, validate_scheme_threshold
+from app.services.my_grade_service import build_my_course_grade
 from app.services.translation.resolve_for_display import populate_spine_texts
 
 logger = logging.getLogger(__name__)
@@ -675,6 +677,36 @@ def get_my_grade_for_course(
             context={"resource_type": "grade", "course_id": course_id},
         )
     return grade
+
+
+@router.get("/my/{course_id}/breakdown", response_model=MyCourseGrade)
+def get_my_course_grade(
+    course_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """A student's own standing in one course (D10).
+
+    Self-only **by construction**: there is no student parameter to tamper
+    with. The identity comes from the token and the only other input is the
+    course, which is checked against the caller's own enrolment. That is the
+    same shape every other student-facing route on this platform has, and
+    keeping it means there is nothing here to get wrong later.
+
+    Carries no class average, no other student's name, no rank — not omitted
+    from the query but absent from the schema, so filling one in would take a
+    deliberate change rather than an oversight (D10.4).
+    """
+    course = get_live_course_or_404(db, course_id)
+    enrollment = lookup_enrollment(db, current_user.id, course_id)
+    if not enrollment:
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="Not enrolled in this course",
+            context={"resource_type": "grade", "course_id": course_id},
+        )
+    return build_my_course_grade(db, course, enrollment, current_user.id)
 
 
 @router.get("/course/{course_id}", response_model=list[GradeResponse])

@@ -1924,6 +1924,21 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/grades/my/{course_id}/breakdown",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/health/db",
     "params": [],
     "responses": [

@@ -24,6 +24,7 @@ import type { CourseMaterial } from "./types"
 import { EnrolledHeader } from "./EnrolledHeader"
 import { MaterialsModal } from "./MaterialsModal"
 import { ModuleList } from "./ModuleList"
+import { MyGradeCard } from "./MyGradeCard"
 import { UpcomingEvents } from "./UpcomingEvents"
 
 interface Props {
@@ -126,6 +127,13 @@ export function EnrolledView({
           modules={sortedModules}
           completedChapterIds={completedChapterIds}
         />
+      </div>
+
+      {/* Above the certificate card on purpose: the grade is the thing that
+          will one day decide whether that card can be used, so a student
+          should meet it first and long before it matters. */}
+      <div className="mt-6">
+        <MyGradeCard courseId={course.id} />
       </div>
 
       <div className="mt-6">
