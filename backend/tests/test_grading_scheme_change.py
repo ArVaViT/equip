@@ -171,3 +171,60 @@ def test_another_teachers_course_is_not_reachable(client, db: Session, teacher) 
     )
 
     assert resp.status_code == 403
+
+
+class TestQuizThresholdAlignment:
+    """The two pass lines must not drift apart (D3).
+
+    `quizzes.passing_score` gates chapter completion; `courses.pass_threshold`
+    is the course result line. A quiz defaulting to a hardcoded 70 inside a
+    course that passes at 80 produces the trap the design names: the student
+    clears every quiz, reaches progress 100, and still cannot pass — or the
+    reverse, a stricter quiz keeps the chapter incomplete so the certificate
+    stays out of reach with nothing on screen explaining why.
+    """
+
+    def test_a_new_quiz_inherits_the_course_pass_line(self, client, db: Session, teacher) -> None:
+        from app.models.course import Chapter, Module
+        from app.models.quiz import Quiz
+
+        course = _course(db, teacher, course_id="c-quiz-inherit")
+        course.pass_threshold = 85
+        module = Module(id="m-inherit", course_id=course.id, order_index=0, title="M")
+        db.add(module)
+        db.flush()
+        chapter = Chapter(id="ch-inherit", module_id=module.id, order_index=0, chapter_type="quiz", title="Ch")
+        db.add(chapter)
+        db.commit()
+
+        resp = client.post(
+            "/api/v1/quizzes",
+            json={"chapter_id": chapter.id, "title": "Quiz 1", "questions": []},
+        )
+
+        assert resp.status_code in (200, 201), resp.text
+        quiz = db.query(Quiz).filter(Quiz.chapter_id == chapter.id).first()
+        assert quiz is not None
+        assert quiz.passing_score == 85, "a quiz must not silently demand less than its course"
+
+    def test_an_explicit_threshold_still_wins(self, client, db: Session, teacher) -> None:
+        """Inheriting is a default, not a rule — a teacher may still differ."""
+        from app.models.course import Chapter, Module
+        from app.models.quiz import Quiz
+
+        course = _course(db, teacher, course_id="c-quiz-explicit")
+        course.pass_threshold = 85
+        module = Module(id="m-explicit", course_id=course.id, order_index=0, title="M")
+        db.add(module)
+        db.flush()
+        chapter = Chapter(id="ch-explicit", module_id=module.id, order_index=0, chapter_type="quiz", title="Ch")
+        db.add(chapter)
+        db.commit()
+
+        client.post(
+            "/api/v1/quizzes",
+            json={"chapter_id": chapter.id, "title": "Quiz 1", "passing_score": 60, "questions": []},
+        )
+
+        quiz = db.query(Quiz).filter(Quiz.chapter_id == chapter.id).first()
+        assert quiz.passing_score == 60
