@@ -25,10 +25,13 @@ from app.models.enrollment import Enrollment
 from app.models.quiz import Quiz, QuizAttempt
 from app.models.user import User
 from app.schemas.locale import normalize_locale
+from app.services.grade_calculator import calculate_all_student_grades
 from app.services.translation.resolve_for_display import populate_module_texts, populate_spine_texts
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
+
+    from app.schemas.grade import GradeBreakdown
 
 
 def _load_course_structure(
@@ -351,29 +354,60 @@ def _build_assignment_results(
     return assignment_results
 
 
-def _quiz_avg(quiz_results: list[dict[str, Any]]) -> int | None:
-    """Mean quiz percentage, mirroring the (now removed) frontend ``quizAvg``."""
-    if not quiz_results:
-        return None
-    total = sum((q["score"] / q["max_score"] * 100) if q["max_score"] else 0.0 for q in quiz_results)
-    return round(total / len(quiz_results))
+#: States in which there is no honest percentage to show. The board renders
+#: these as "—" plus the reason rather than a number, exactly as the gradebook
+#: does — a 0 here reads as "failed everything" to the one person who acts on it.
+_NO_NUMBER_STATES = {"completion_pass", "not_graded_yet", "zero_weighted", "not_assessed"}
+
+#: A student the calculator returned no row for — deactivated mid-request, or an
+#: enrolment race. Blank, never zero: an absent number must not read as failure.
+_EMPTY_OFFICIAL: dict[str, Any] = {
+    "quiz_avg": None,
+    "assignment_avg": None,
+    "overall_grade": None,
+    "manual_grade": None,
+    "result_state": "not_graded_yet",
+    "letter_grade": None,
+}
 
 
-def _assignment_avg(assignment_results: list[dict[str, Any]]) -> int | None:
-    """Mean graded-assignment percentage, mirroring the frontend ``assignmentAvg``."""
-    graded = [a for a in assignment_results if a["grade"] is not None]
-    if not graded:
-        return None
-    total = sum((a["grade"] / a["max_score"] * 100) if a["max_score"] else 0.0 for a in graded)
-    return round(total / len(graded))
+def _official_row(breakdown: GradeBreakdown, manual_grade: str | None) -> dict[str, Any]:
+    """The progress board's numbers, taken from the canonical calculator (D14).
 
+    This board used to do its own arithmetic, and it disagreed with the
+    gradebook about the same student on three separate counts:
 
-def _overall_grade(quiz_avg: int | None, assignment_avg: int | None) -> int | None:
-    """Unweighted mean of the present averages, mirroring frontend ``overallGrade``."""
-    scores = [s for s in (quiz_avg, assignment_avg) if s is not None]
-    if not scores:
-        return None
-    return round(sum(scores) / len(scores))
+    * it divided by the work the student had **attempted**, not the work they
+      were **set** — one quiz out of four at 100% read 100 here and 25 in the
+      gradebook;
+    * it took an unweighted mean of the two category averages, ignoring the
+      weights the teacher had configured entirely;
+    * it never consulted overrides, exemptions, institutional bands, or the
+      empty-category redistribution, so none of the last four PRs reached it.
+
+    One number, one meaning, both screens.
+    """
+    return {
+        # A category average is a number only once something in it has been
+        # marked. Nobody has read the essays yet is not the same fact as the
+        # essays were bad, and 0% on a teacher's board says the second one.
+        "quiz_avg": round(breakdown.quiz_avg) if breakdown.student_has_quiz_marks else None,
+        "assignment_avg": round(breakdown.assignment_avg) if breakdown.student_has_assignment_marks else None,
+        # Sent unrounded. Rounding here and again in the browser gave the same
+        # student 86% on one screen and 87% on another (Python rounds .5 to
+        # even, JavaScript rounds it up), and a rounded 89.5 printed as "90%"
+        # beside the letter B, which the school's own band table calls A.
+        # One formatter, on the client, from the raw number.
+        "overall_grade": None if breakdown.result_state in _NO_NUMBER_STATES else breakdown.final_score,
+        # The override, when present, IS the official grade (D7) — it wins for
+        # the certificate, the ведомость and the student's own page, so a board
+        # showing the computed number beside it would be showing the unofficial
+        # one. Carried separately rather than folded in, because the pair is the
+        # point: a teacher must be able to see that a grade was set by hand.
+        "manual_grade": manual_grade,
+        "result_state": breakdown.result_state,
+        "letter_grade": breakdown.letter_grade or None,
+    }
 
 
 def _latest_activity_iso(enrolled_at: datetime | None, quiz_ts: datetime | None, sub_ts: datetime | None) -> str | None:
@@ -444,6 +478,46 @@ def _build_chapter_infos(
     return chapter_infos
 
 
+def _latest_activity_by_user(db: Session, course_id: str) -> tuple[dict[str, datetime], dict[str, datetime]]:
+    """Last completed quiz attempt and last submission per student, two queries.
+
+    "Last seen" is all the board wants from these tables; deriving it from the
+    full per-chapter rollups meant running window functions over every attempt
+    in the course to read one MAX out of each.
+    """
+    quiz_rows = (
+        db.query(QuizAttempt.user_id, func.max(QuizAttempt.completed_at))
+        .join(Quiz, Quiz.id == QuizAttempt.quiz_id)
+        .join(Chapter, Chapter.id == Quiz.chapter_id)
+        .join(Module, Module.id == Chapter.module_id)
+        .filter(
+            Module.course_id == course_id,
+            Module.deleted_at.is_(None),
+            Chapter.deleted_at.is_(None),
+            QuizAttempt.completed_at.isnot(None),
+        )
+        .group_by(QuizAttempt.user_id)
+        .all()
+    )
+    sub_rows = (
+        db.query(AssignmentSubmission.student_id, func.max(AssignmentSubmission.submitted_at))
+        .join(Assignment, Assignment.id == AssignmentSubmission.assignment_id)
+        .join(Chapter, Chapter.id == Assignment.chapter_id)
+        .join(Module, Module.id == Chapter.module_id)
+        .filter(
+            Module.course_id == course_id,
+            Module.deleted_at.is_(None),
+            Chapter.deleted_at.is_(None),
+        )
+        .group_by(AssignmentSubmission.student_id)
+        .all()
+    )
+    return (
+        {str(uid): ts for uid, ts in quiz_rows if ts is not None},
+        {str(uid): ts for uid, ts in sub_rows if ts is not None},
+    )
+
+
 def build_course_student_progress(db: Session, course: Course, course_id: str) -> dict[str, Any]:
     """Teacher progress-board LIST payload: one lightweight summary row per
     enrolled student — scalars plus server-computed quiz/assignment/overall
@@ -453,20 +527,19 @@ def build_course_student_progress(db: Session, course: Course, course_id: str) -
 
     This keeps the list response O(students) instead of O(students x chapters):
     a 250-student x 240-chapter course used to emit ~60k chapter objects in one
-    response. The averages still need the per-student result rollups, but those
-    arrays are computed and discarded rather than serialised.
+    response. The grades come from the canonical calculator (D14) in one batch
+    call, so this board can no longer disagree with the gradebook about the same
+    student.
     """
     populate_spine_texts(db, [course])
-    chapters, module_map, chapter_title_map = _load_course_structure(db, course_id)
-    chapter_ids = [c.id for c in chapters]
+    chapters, module_map, _chapter_titles = _load_course_structure(db, course_id)
     gradable_chapter_ids = [c.id for c in chapters if c.chapter_type in GRADABLE_CHAPTER_TYPES]
 
-    quiz_map, assignment_map = _load_chapter_quizzes_and_assignments(db, chapter_ids)
-    best_by_user_chapter, attempts_by_user_chapter, latest_quiz_by_user = _aggregate_quiz_results(db, quiz_map)
-    subs_by_user_chapter, assignment_by_id_str, latest_sub_by_user = _aggregate_assignment_submissions(
-        db, assignment_map
-    )
-    assignment_title_by_id = _load_assignment_titles(db, course, assignment_by_id_str)
+    # Only two timestamps are needed from the result tables now — "last seen".
+    # This used to run the full per-chapter quiz and submission rollups (window
+    # functions over every attempt in the course, plus a title lookup) purely to
+    # feed averages this board no longer computes for itself.
+    latest_quiz_by_user, latest_sub_by_user = _latest_activity_by_user(db, course_id)
     progress_by_user = _load_completed_progress(db, gradable_chapter_ids)
 
     enrollments = (
@@ -479,19 +552,18 @@ def build_course_student_progress(db: Session, course: Course, course_id: str) -
         .all()
     )
 
+    # One batch call for the whole roster — the same one the gradebook makes,
+    # so the two screens cannot drift apart again.
+    official_by_student = {
+        row["student_id"]: _official_row(row["breakdown"], row["manual_grade"])
+        for row in calculate_all_student_grades(db, course)
+    }
+
     student_progress = []
     for enrollment, user in enrollments:
         uid = str(user.id)
-        quiz_results = _build_quiz_results(
-            uid, quiz_map, best_by_user_chapter, attempts_by_user_chapter, chapter_title_map
-        )
-        assignment_results = _build_assignment_results(
-            uid, assignment_map, subs_by_user_chapter, assignment_title_by_id, chapter_title_map
-        )
         user_progress = progress_by_user.get(uid, {})
         chapters_completed = sum(1 for cid in gradable_chapter_ids if cid in user_progress)
-        quiz_avg = _quiz_avg(quiz_results)
-        assignment_avg = _assignment_avg(assignment_results)
 
         student_progress.append(
             {
@@ -502,9 +574,7 @@ def build_course_student_progress(db: Session, course: Course, course_id: str) -
                 "progress": enrollment.progress,
                 "chapters_completed": chapters_completed,
                 "total_chapters": len(gradable_chapter_ids),
-                "quiz_avg": quiz_avg,
-                "assignment_avg": assignment_avg,
-                "overall_grade": _overall_grade(quiz_avg, assignment_avg),
+                **official_by_student.get(uid, _EMPTY_OFFICIAL),
                 "last_activity": _latest_activity_iso(
                     enrollment.enrolled_at, latest_quiz_by_user.get(uid), latest_sub_by_user.get(uid)
                 ),

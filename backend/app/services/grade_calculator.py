@@ -208,6 +208,8 @@ def _build_breakdown(
     settings: OrgSettings,
     has_gradable_chapters: bool = False,
     all_items_excused: bool = False,
+    student_has_quiz_marks: bool = False,
+    student_has_assignment_marks: bool = False,
 ) -> GradeBreakdown:
     """Assemble one student's breakdown.
 
@@ -241,6 +243,8 @@ def _build_breakdown(
             has_quiz_items=has_quiz_items,
             has_assignment_items=has_assignment_items,
             has_gradable_chapters=has_gradable_chapters,
+            student_has_quiz_marks=student_has_quiz_marks,
+            student_has_assignment_marks=student_has_assignment_marks,
             weights_redistributed=False,
             result_state=state,  # type: ignore[arg-type]
         )
@@ -303,6 +307,8 @@ def _build_breakdown(
             has_quiz_items=has_quiz_items,
             has_assignment_items=has_assignment_items,
             has_gradable_chapters=has_gradable_chapters,
+            student_has_quiz_marks=student_has_quiz_marks,
+            student_has_assignment_marks=student_has_assignment_marks,
             weights_redistributed=False,
             result_state="zero_weighted",
         )
@@ -328,6 +334,8 @@ def _build_breakdown(
         has_quiz_items=has_quiz_items,
         has_assignment_items=has_assignment_items,
         has_gradable_chapters=has_gradable_chapters,
+        student_has_quiz_marks=student_has_quiz_marks,
+        student_has_assignment_marks=student_has_assignment_marks,
         weights_redistributed=(eff_quiz, eff_assignment) != (course.quiz_weight, course.assignment_weight),
         result_state="graded",
     )
@@ -380,6 +388,7 @@ def calculate_student_grade(
     all_items_excused = (course_has_quizzes or course_has_assignments) and not (quiz_ids or assignment_ids)
 
     quiz_avg = 0.0
+    student_has_quiz_marks = False
     if quiz_ids:
         rows = (
             db.query(
@@ -395,10 +404,12 @@ def calculate_student_grade(
             .all()
         )
         best_scores = [float(r.best) for r in rows if r.best is not None]
+        student_has_quiz_marks = bool(best_scores)
         total_quizzes = len(quiz_ids)
         quiz_avg = sum(best_scores) / total_quizzes if total_quizzes > 0 else 0.0
 
     assignment_avg = 0.0
+    student_has_assignment_marks = False
     if assignment_ids:
         best_per_assignment = (
             db.query(
@@ -428,6 +439,7 @@ def calculate_student_grade(
                 min(100.0, row.best_grade / row.max_score * 100.0) if row.max_score else 0.0
                 for row in best_per_assignment
             ]
+            student_has_assignment_marks = bool(graded_pcts)
             assignment_avg = sum(graded_pcts) / total_assignments
 
     total_chapters = len(chapter_ids)
@@ -471,6 +483,8 @@ def calculate_student_grade(
         settings=get_org_settings(db),
         has_gradable_chapters=bool(chapter_ids),
         all_items_excused=all_items_excused,
+        student_has_quiz_marks=student_has_quiz_marks,
+        student_has_assignment_marks=student_has_assignment_marks,
     )
 
 
@@ -656,6 +670,12 @@ def calculate_all_student_grades(db: Session, course: Course):
             # everything must not read "not assessed" on their own page and
             # "passed by completion" on the class list.
             all_items_excused=bool(quiz_ids or assignment_ids) and not (total_quizzes or total_assignments),
+            # Per student, not per course. Course-wide liveness answers "does
+            # this category count at all"; this answers "has anyone read *this
+            # student's* work" — and a class where one student is marked must
+            # not put a 0 on the row of everyone who isn't.
+            student_has_quiz_marks=bool(qs),
+            student_has_assignment_marks=bool(asgs),
         )
         results.append(
             {

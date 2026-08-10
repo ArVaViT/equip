@@ -18,6 +18,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { ChapterBreakdownRow } from "./ChapterBreakdownRow"
+import { officialGrade } from "./officialGrade"
 import { ProgressBar, ScoreBadge } from "./ProgressBar"
 import {
   formatDate,
@@ -34,7 +35,6 @@ interface Props {
   onToggle: () => void
   quizAvg: number | null
   assignmentAvg: number | null
-  overallGrade: number | null
   courseId: string
   onChapterUpdate: (
     studentId: string,
@@ -62,11 +62,11 @@ export function StudentRow({
   onToggle,
   quizAvg,
   assignmentAvg,
-  overallGrade,
   courseId,
   onChapterUpdate,
 }: Props) {
   const { t } = useTranslation()
+  const official = officialGrade(student)
   const [togglingChapter, setTogglingChapter] = useState<string | null>(null)
   const [grantingQuiz, setGrantingQuiz] = useState<string | null>(null)
   const [excusingChapter, setExcusingChapter] = useState<string | null>(null)
@@ -268,11 +268,20 @@ export function StudentRow({
             <div className="bg-muted/30 border-y px-6 py-5 space-y-5">
               <div className="flex flex-wrap gap-6">
                 <SummaryStat label={t("studentProgress.row.overallGrade")}>
+                  {/* The official grade, decided the same way the gradebook
+                      decides it: a teacher's override wins, and an absent
+                      number says why rather than printing a bare dash. */}
                   <p className="text-xl font-bold">
-                    {overallGrade !== null
-                      ? `${overallGrade}%`
-                      : t("studentProgress.row.overallGradeNa")}
+                    {official.text ?? t("studentProgress.row.overallGradeNa")}
+                    {official.isManual && (
+                      <span className="ml-2 align-middle text-xs font-medium text-info">
+                        {t("studentProgress.grade.setByTeacher")}
+                      </span>
+                    )}
                   </p>
+                  {official.noteKey && (
+                    <p className="text-xs text-ink-muted mt-0.5">{t(official.noteKey)}</p>
+                  )}
                 </SummaryStat>
                 <SummaryStat label={t("studentProgress.row.enrolled")}>
                   <p className="text-sm font-medium">{formatDate(student.enrolled_at)}</p>

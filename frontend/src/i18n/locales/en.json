@@ -1239,6 +1239,13 @@
       "reasonLabel": "Reason (optional, visible to directors)",
       "reasonPlaceholder": "Illness, bereavement, joined the course late…",
       "confirm": "Excuse"
+    },
+    "grade": {
+      "byCompletion": "By completion — see progress",
+      "notGradedYet": "Nothing marked yet",
+      "notWeighted": "Graded work carries no weight",
+      "notAssessed": "All work excused — needs a grade",
+      "setByTeacher": "set by teacher"
     }
   },
   "teacherAnalytics": {
@@ -1750,7 +1757,8 @@
       "classAverageRow_one": "Class Average ({{count}} student)",
       "classAverageRow_other": "Class Average ({{count}} students)",
       "notAssessedBadge": "Not assessed",
-      "notAssessedCourse": "All of this student's work was excused, so there is nothing to average. Set their final grade by hand — the certificate is on hold until you do."
+      "notAssessedCourse": "All of this student's work was excused, so there is nothing to average. Set their final grade by hand — the certificate is on hold until you do.",
+      "classAverageOfRoster": "of {{total}} enrolled"
     },
     "table": {
       "title": "Student Grade Table",
@@ -1772,7 +1780,12 @@
         "assignmentGraded": "Assignment graded",
         "assignmentSubmitted": "Assignment submitted",
         "notSubmitted": "Not submitted"
-      }
+      },
+      "byCompletion": "by completion",
+      "notGradedYet": "not marked yet",
+      "notWeighted": "weighted 0%",
+      "notAssessed": "all excused",
+      "setByTeacher": "by teacher"
     }
   },
   "admin": {

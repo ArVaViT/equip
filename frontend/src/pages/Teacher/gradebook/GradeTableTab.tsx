@@ -8,7 +8,7 @@ import {
   BookOpen, Users, Circle, CheckCircle2,
   ChevronDown, ChevronRight, Award, MessageSquare, Save,
 } from "lucide-react"
-import type { StudentGrade } from "@/types"
+import type { StudentCalculatedGrade } from "@/types"
 import type {
   ChapterInfo,
   ModuleInfo,
@@ -16,7 +16,8 @@ import type {
   StudentProgressData,
   GradeForm,
 } from "./types"
-import { EMPTY_FORM, letterColor, chapterTypeIcon } from "./helpers"
+import { EMPTY_FORM, chapterTypeIcon } from "./helpers"
+import { officialColumn, type OfficialCell } from "./officialColumn"
 
 interface Props {
   progressData: ProgressResponse | null
@@ -24,7 +25,9 @@ interface Props {
   moduleChapterMap: Map<string, ChapterInfo[]>
   studentChapterMap: Map<string, Map<string, ChapterInfo>>
   tableStudents: StudentProgressData[]
-  manualGrades: Map<string, StudentGrade>
+  /** The official grade per student, from the summary endpoint — the same
+   *  numbers the Summary tab shows, so the two tabs cannot disagree. */
+  summaryByStudent: Map<string, StudentCalculatedGrade>
   forms: Map<string, GradeForm>
   saving: string | null
   expandedId: string | null
@@ -44,7 +47,7 @@ export function GradeTableTab({
   moduleChapterMap,
   studentChapterMap,
   tableStudents,
-  manualGrades,
+  summaryByStudent,
   forms,
   saving,
   expandedId,
@@ -107,7 +110,7 @@ export function GradeTableTab({
                     student={student}
                     allChapters={allChapters}
                     studentChapterMap={studentChapterMap}
-                    manualGrade={manualGrades.get(student.id)}
+                    official={officialColumn(summaryByStudent.get(student.id))}
                     form={forms.get(student.id) ?? EMPTY_FORM}
                     expanded={expandedId === student.id}
                     saving={saving === student.id}
@@ -196,7 +199,7 @@ interface GradeTableRowProps {
   student: StudentProgressData
   allChapters: ChapterInfo[]
   studentChapterMap: Map<string, Map<string, ChapterInfo>>
-  manualGrade: StudentGrade | undefined
+  official: OfficialCell
   form: GradeForm
   expanded: boolean
   saving: boolean
@@ -216,7 +219,7 @@ const GradeTableRow = memo(function GradeTableRow({
   student,
   allChapters,
   studentChapterMap,
-  manualGrade,
+  official,
   form,
   expanded,
   saving,
@@ -226,7 +229,6 @@ const GradeTableRow = memo(function GradeTableRow({
 }: GradeTableRowProps) {
   const { t } = useTranslation()
   const chMap = studentChapterMap.get(student.id)
-  const { earned, total } = computeStudentTotals(allChapters, chMap)
 
   return (
     <Fragment>
@@ -264,16 +266,19 @@ const GradeTableRow = memo(function GradeTableRow({
         ))}
         <td className="border-b px-2 py-2 text-center">
           <div className="flex flex-col items-center">
-            <span className="font-semibold text-sm">{earned}</span>
-            <span className="text-xs text-ink-muted">/{total}</span>
-            {manualGrade?.override_code && (
-              <span
-                className={`mt-0.5 rounded-full px-1.5 py-0.5 text-xs font-bold ${letterColor(
-                  manualGrade.override_code,
-                )}`}
-              >
-                {manualGrade.override_code}
+            {/* The official grade, the same one the Summary tab and the CSV
+                show. This column used to add up raw points, and that sum could
+                disagree with the Summary tab two clicks away. */}
+            <span className="font-semibold text-sm">
+              {official.text ?? "—"}
+            </span>
+            {official.isManual && (
+              <span className="text-[10px] font-medium text-info">
+                {t("gradebook.table.setByTeacher")}
               </span>
+            )}
+            {official.noteKey && (
+              <span className="text-[10px] text-ink-muted leading-tight">{t(official.noteKey)}</span>
             )}
           </div>
         </td>
@@ -401,47 +406,6 @@ function EmptyCell() {
       <Circle className="h-3.5 w-3.5" strokeWidth={1.75} />
     </div>
   )
-}
-
-/**
- * Compute total points earned / available for a student across the given
- * chapter list.
- *
- * - Quiz / exam chapters: use the student's quiz score & max_score; count
- *   max_score as 1 placeholder if the quiz has not been attempted.
- * - Assignment chapters: always count `max_score ?? 100` as available;
- *   add the grade to earned when the assignment has been graded.
- * - Everything else (reading, video, audio): 1 point for completion.
- */
-function computeStudentTotals(
-  chapters: ChapterInfo[],
-  chMap: Map<string, ChapterInfo> | undefined,
-): { earned: number; total: number } {
-  let earned = 0
-  let total = 0
-  for (const ch of chapters) {
-    const type = ch.chapter_type
-    if (type === "quiz" || type === "exam") {
-      const qr = chMap?.get(ch.id)?.quiz_result
-      if (qr) {
-        earned += qr.score
-        total += qr.max_score
-      } else {
-        total += 1
-      }
-    } else if (type === "assignment") {
-      const ar = chMap?.get(ch.id)?.assignment_result
-      const maxPts = ar?.max_score ?? 100
-      total += maxPts
-      if (ar?.grade !== null && ar?.grade !== undefined) {
-        earned += ar.grade
-      }
-    } else {
-      total += 1
-      if (chMap?.get(ch.id)?.completed) earned += 1
-    }
-  }
-  return { earned, total }
 }
 
 function GradeTableLegend() {

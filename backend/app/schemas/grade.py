@@ -215,6 +215,17 @@ class GradeBreakdown(BaseModel):
     #: does not exist.
     has_quiz_items: bool = False
     has_assignment_items: bool = False
+    #: Whether **this student** has at least one marked piece of work in each
+    #: category. This is what separates "0% because they got everything wrong"
+    #: from "0% because nobody has read theirs" — arithmetically identical,
+    #: opposite meanings, and only one of them belongs on a screen as a number.
+    #:
+    #: Deliberately per-student, unlike the course-wide liveness that drives
+    #: weight redistribution. Conflating the two puts a 0 on the row of every
+    #: unmarked student in a class where anyone has been marked, which is the
+    #: exact reading the flag exists to prevent.
+    student_has_quiz_marks: bool = False
+    student_has_assignment_marks: bool = False
     #: Whether the course has chapters *meant* to be graded. A chapter typed
     #: "quiz" exists the moment a teacher creates it, but the quiz itself is
     #: only saved once it has questions — so a course under construction has
