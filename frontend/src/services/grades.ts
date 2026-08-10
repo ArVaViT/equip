@@ -2,6 +2,7 @@ import api from "./api"
 import { cached, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
 import type {
   GradeExemption,
+  MyCourseGrade,
   GradingConfig,
   GradeSummaryResponse,
   StudentGrade,
@@ -94,6 +95,22 @@ export const gradesService = {
       `/grades/course/${courseId}/student/${studentId}/exemptions`,
     )
     return response.data
+  },
+
+  /**
+   * The student's own standing in one course — both grades, the per-item list
+   * and the teacher's comment. Self-only on the server: there is no student
+   * parameter to pass, which is the point.
+   */
+  async getMyCourseGrade(courseId: string): Promise<MyCourseGrade> {
+    // Keyed under `grades:my` deliberately: every teacher write in this file
+    // already invalidates that prefix, so a hand-set grade reaches the student
+    // by the same path as everything else. `grades:mine:` would have been
+    // caught by the same prefix purely by accident of spelling.
+    return cached(`grades:my:course:${courseId}`, CACHE_TTL.ONE_MINUTE, async () => {
+      const response = await api.get<MyCourseGrade>(`/grades/my/${courseId}/breakdown`)
+      return response.data
+    })
   },
 
   async getMyGrades(): Promise<StudentGrade[]> {
