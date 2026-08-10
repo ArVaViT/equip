@@ -63,7 +63,14 @@ export function MyGradeCard({ courseId }: { courseId: string }) {
       </Card>
     )
   }
-  if (!grade || grade.items.length === 0) return null
+  // An empty item list is not an empty card. A completion-only course has no
+  // gradable work — and it is exactly the shape most certificates here have
+  // come from, so a hand-set grade and the teacher's note to the student are
+  // the only things that will ever appear on it.
+  if (!grade) return null
+  const hasAnythingToSay =
+    grade.items.length > 0 || grade.official_grade !== null || grade.comment !== null
+  if (!hasAnythingToSay) return null
 
   const display = myGradeDisplay(grade)
   const items = outstandingItems(grade.items)
@@ -106,7 +113,9 @@ export function MyGradeCard({ courseId }: { courseId: string }) {
           {items.map((item) => {
             const Icon = ICON_BY_STATUS[item.status]
             return (
-              <li key={`${item.kind}-${item.chapter_id}`} className="flex items-center gap-2 text-sm">
+              // Keyed by item, not chapter: a chapter can hold two quizzes,
+              // and keying by chapter collapsed them onto one row.
+              <li key={item.item_id} className="flex items-center gap-2 text-sm">
                 <Icon
                   className={`h-4 w-4 shrink-0 ${TONE_BY_STATUS[item.status]}`}
                   strokeWidth={1.75}

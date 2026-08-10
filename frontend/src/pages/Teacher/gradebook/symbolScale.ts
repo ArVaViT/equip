@@ -25,20 +25,42 @@ export function symbolRank(symbol: string, bands: GradeBand[]): number {
 }
 
 /**
+ * Tones from best to worst, indexed directly rather than derived from a
+ * fraction. The fraction version bucketed `index / (n - 1)` against fixed
+ * cutoffs and gave two adjacent bands the same colour as soon as a school
+ * defined six.
+ *
+ * The palette is finite, so a scale longer than it must repeat somewhere. It
+ * repeats the *lowest* passing tone, never a higher one: running out of
+ * colours must not paint a low grade to look better than it is. That
+ * monotonicity is the property under test — "every band gets its own colour"
+ * is impossible past five and was the wrong thing to ask for.
+ */
+const TONES = [
+  "bg-success/15 text-success",
+  "bg-info/15 text-info",
+  "bg-accent/20 text-ink",
+  "bg-warning/15 text-warning",
+] as const
+
+const FAILING_TONE = "bg-destructive/15 text-destructive"
+const UNKNOWN_TONE = "bg-muted text-ink-muted"
+
+/**
  * Colour by position in the scale rather than by name, so «5» reads like «A»
  * and «2» like «F» without anybody maintaining a second table.
+ *
+ * The bottom band is the failing one in every scheme that has bands, so it
+ * always takes the failing tone; the rest walk down the list above and repeat
+ * its last entry if a school defines more bands than there are tones. Repeating
+ * the *lowest* passing tone is deliberate: running out of colours must never
+ * promote a low grade into a higher-looking one.
  */
 export function symbolTone(symbol: string, bands: GradeBand[]): string {
   const rank = symbolRank(symbol, bands)
-  if (rank === -1 || bands.length === 0) return "bg-muted text-ink-muted"
+  if (rank === -1 || bands.length === 0) return UNKNOWN_TONE
 
-  // Position from the top, as a fraction — a four-band scale and a five-band
-  // one both map onto the same five tones without special-casing either.
-  const fromTop = (bands.length - rank) / Math.max(1, bands.length - 1)
-  if (fromTop <= 0.01) return "bg-success/15 text-success"
-  if (fromTop <= 0.34) return "bg-info/15 text-info"
-  if (fromTop <= 0.67) return "bg-accent/20 text-ink"
-  if (fromTop < 1) return "bg-warning/15 text-warning"
-  // The bottom band is the failing one in every scheme that has bands.
-  return "bg-destructive/15 text-destructive"
+  const fromTop = bands.length - rank
+  if (fromTop === bands.length - 1) return FAILING_TONE
+  return TONES[Math.min(fromTop, TONES.length - 1)] ?? UNKNOWN_TONE
 }

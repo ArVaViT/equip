@@ -353,3 +353,76 @@ def test_a_pass_fail_course_does_not_show_a_percentage(student_client, db: Sessi
     assert body["current_score"] is None
     assert body["final_score"] is None
     assert body["items"], "the per-item list is still the honest part and stays"
+
+
+# --------------------------------------------------------------------------
+# a chapter is not one piece of work
+#
+# Found by an adversarial pass over the first version of this endpoint — and
+# it was the very thing the change claimed to fix.
+# --------------------------------------------------------------------------
+
+
+def _two_quizzes_in_one_chapter(db: Session, teacher, course_id: str):
+    course, module = _course(db, teacher, course_id)
+    chapter = Chapter(id=f"{course_id}-ch", module_id=module.id, order_index=0, chapter_type="quiz", title="Глава")
+    db.add(chapter)
+    db.flush()
+    first = Quiz(id=uuid.uuid4(), chapter_id=chapter.id)
+    second = Quiz(id=uuid.uuid4(), chapter_id=chapter.id)
+    db.add_all([first, second])
+    db.commit()
+    return course, first, second
+
+
+def test_the_second_quiz_in_a_chapter_is_not_swallowed(student_client, db: Session, teacher, student) -> None:
+    """One quiz of two, answered perfectly, is 50% — and the list has to say
+    where the other half went.
+
+    The list was keyed by chapter while the grade is computed per item, so the
+    untouched sibling vanished: the student was shown 50% overall and a single
+    piece of work at 100%, with nothing accounting for the difference. That is
+    worse than a wrong number, because there is nothing on screen to question.
+    """
+    course, first, _second = _two_quizzes_in_one_chapter(db, teacher, "c-my-two-quizzes")
+    _attempt(db, first, 100)
+    db.commit()
+
+    body = student_client.get(URL.format(course_id=course.id)).json()
+
+    assert body["final_score"] == 50.0
+    assert len(body["items"]) == 2, "one row per piece of work, not per chapter"
+    assert sorted(i["status"] for i in body["items"]) == ["graded", "not_submitted"]
+
+
+def test_a_quiz_and_an_assignment_in_one_chapter_are_both_listed(student_client, db: Session, teacher, student) -> None:
+    """`gradable_item` names one item per chapter and the quiz wins, so an
+    assignment sharing a chapter was both absent and, when it was the only one
+    left, mislabelled as a quiz."""
+    course, module = _course(db, teacher, "c-my-mixed-chapter", qw=50, aw=50)
+    chapter = Chapter(
+        id="c-my-mixed-chapter-ch", module_id=module.id, order_index=0, chapter_type="quiz", title="Глава"
+    )
+    db.add(chapter)
+    db.flush()
+    db.add(Quiz(id=uuid.uuid4(), chapter_id=chapter.id))
+    db.add(Assignment(id=uuid.uuid4(), chapter_id=chapter.id, max_score=100))
+    db.commit()
+
+    items = student_client.get(URL.format(course_id=course.id)).json()["items"]
+
+    assert sorted(i["kind"] for i in items) == ["assignment", "quiz"]
+    assert {i["status"] for i in items} == {"not_submitted"}
+
+
+def test_each_item_carries_its_own_id(student_client, db: Session, teacher, student) -> None:
+    """Two items in one chapter were indistinguishable to the client, which
+    keyed its list on the chapter and collapsed them."""
+    course, first, second = _two_quizzes_in_one_chapter(db, teacher, "c-my-item-ids")
+    _attempt(db, first, 100)
+    db.commit()
+
+    items = student_client.get(URL.format(course_id=course.id)).json()["items"]
+
+    ids = {i["item_id"] for i in items}
+    assert ids == {str(first.id), str(second.id)}

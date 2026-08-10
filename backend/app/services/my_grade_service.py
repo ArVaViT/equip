@@ -10,19 +10,28 @@ certificate pass-gate goes live at the end of Phase 2, and the design's first
 rule is that enforcement never ships before the visibility that explains it. A
 student refused a certificate must already know why, and have known for weeks.
 
-Assembled from the same builders the teacher's screens use, deliberately. Two
-readers of one calculation cannot drift; two calculations of one number always
-do, and this rebuild spent four PRs proving it.
+The list is built from the course's **items**, not its chapters. The first
+version of this file walked the result arrays and filled the gaps by chapter,
+which quietly dropped every untouched sibling: a chapter holding two quizzes,
+one of them answered perfectly, showed a student 50% overall and a single piece
+of work at 100%, with nothing on screen accounting for the difference. Nothing
+enforces one gradable item per chapter, and the grade has never assumed it.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from sqlalchemy import case
+from sqlalchemy import func as sqlfunc
+
+from app.constants import GRADABLE_CHAPTER_TYPES
+from app.models.assignment import Assignment, AssignmentSubmission
+from app.models.course import Chapter, Module
+from app.models.quiz import Quiz, QuizAnswer, QuizAttempt
 from app.services.grade_calculator import calculate_student_grade_for_course
 from app.services.grade_exemption_service import excused_item_ids
 from app.services.grade_override import resolve_official_row
-from app.services.student_progress_service import build_student_chapter_detail
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -41,119 +50,149 @@ _NO_NUMBER_STATES = {"completion_pass", "not_graded_yet", "zero_weighted", "not_
 _COMPLETION_NATIVE_SCHEMES = {"pass_fail"}
 
 
-def _quiz_items(detail: dict[str, Any], excused_quiz_ids: set) -> list[dict[str, Any]]:
-    items = []
-    for result in detail["quiz_results"]:
-        chapter = next((c for c in detail["chapters"] if c["id"] == result["chapter_id"]), None)
-        excused = _is_excused(chapter, result.get("quiz_id"), excused_quiz_ids)
-        quiz_result = (chapter or {}).get("quiz_result") or {}
-        awaiting = bool(quiz_result.get("awaiting_grading"))
-        if excused:
-            status, score = "excused", None
-        elif awaiting:
-            # Submitted, unread. Its score is a running total, and showing that
-            # to the person waiting on it is how a student concludes they failed
-            # an essay nobody has opened.
-            status, score = "pending_review", None
-        else:
-            status = "graded"
-            score = round(result["score"] / result["max_score"] * 100, 1) if result["max_score"] else 0.0
-        items.append(
-            {
-                "chapter_id": result["chapter_id"],
-                "title": result["chapter_title"],
-                "kind": "quiz",
-                "status": status,
-                "score": score,
-            }
-        )
-    return items
+def _course_items(db: Session, course_id: str) -> tuple[list[Any], list[Any]]:
+    """Every gradable item in the course, with its chapter title.
 
-
-def _is_excused(chapter: dict[str, Any] | None, item_id: Any, excused_ids: set) -> bool:
-    if item_id is not None and _as_uuid(item_id) in excused_ids:
-        return True
-    # An exemption also marks the chapter, which is the only signal left when
-    # the item itself has since been deleted.
-    return bool(chapter and chapter.get("completed_by") == "excused")
-
-
-def _as_uuid(value: Any) -> Any:
-    from uuid import UUID as _UUID
-
-    try:
-        return _UUID(str(value))
-    except (ValueError, TypeError, AttributeError):
-        return value
-
-
-def _assignment_items(detail: dict[str, Any], excused_assignment_ids: set) -> list[dict[str, Any]]:
-    items = []
-    for result in detail["assignment_results"]:
-        chapter = next((c for c in detail["chapters"] if c["id"] == result["chapter_id"]), None)
-        gradable = (chapter or {}).get("gradable_item") or {}
-        item_id = gradable.get("id") if gradable.get("type") == "assignment" else None
-        if _is_excused(chapter, item_id, excused_assignment_ids):
-            status, score = "excused", None
-        elif result["grade"] is None:
-            # Handed in and waiting, or returned for revision — either way there
-            # is no mark yet, and inventing one would be the same lie as above.
-            status, score = ("pending_review", None) if result["status"] != "not_submitted" else ("not_submitted", None)
-        else:
-            status = "graded"
-            score = round(result["grade"] / result["max_score"] * 100, 1) if result["max_score"] else 0.0
-        items.append(
-            {
-                "chapter_id": result["chapter_id"],
-                "title": result["title"] or result["chapter_title"],
-                "kind": "assignment",
-                "status": status,
-                "score": score,
-            }
-        )
-    return items
-
-
-def _missing_items(detail: dict[str, Any], listed_chapters: set[str], excused: tuple[set, set]) -> list[dict[str, Any]]:
-    """Work the student owes and has not started.
-
-    The result arrays only carry items with a submission or an attempt, so
-    without this the list silently omits everything untouched — which is
-    precisely the work a student needs to see.
+    Soft-deleted chapters and modules are excluded here for the same reason the
+    calculator excludes them: work in a deleted chapter is not owed.
     """
-    excused_quizzes, excused_assignments = excused
-    items = []
-    for chapter in detail["chapters"]:
-        if chapter["id"] in listed_chapters:
-            continue
-        gradable = chapter.get("gradable_item")
-        if not gradable:
-            continue
-        excused_here = (
-            _as_uuid(gradable["id"]) in (excused_quizzes if gradable["type"] == "quiz" else excused_assignments)
-            or chapter.get("completed_by") == "excused"
+    base = (
+        db.query(Chapter.id.label("chapter_id"), Chapter.title.label("chapter_title"))
+        .join(Module, Module.id == Chapter.module_id)
+        .filter(
+            Module.course_id == course_id,
+            Module.deleted_at.is_(None),
+            Chapter.deleted_at.is_(None),
+            Chapter.chapter_type.in_(GRADABLE_CHAPTER_TYPES),
         )
-        items.append(
-            {
-                "chapter_id": chapter["id"],
-                "title": chapter["title"],
-                "kind": gradable["type"],
-                "status": "excused" if excused_here else "not_submitted",
-                "score": None,
-            }
+        .subquery()
+    )
+    quizzes = (
+        db.query(Quiz.id, base.c.chapter_id, base.c.chapter_title)
+        .join(base, base.c.chapter_id == Quiz.chapter_id)
+        .all()
+    )
+    assignments = (
+        db.query(Assignment.id, base.c.chapter_id, base.c.chapter_title, Assignment.max_score)
+        .join(base, base.c.chapter_id == Assignment.chapter_id)
+        .all()
+    )
+    return quizzes, assignments
+
+
+def _quiz_marks(db: Session, student_id: UUID, quiz_ids: list[UUID]) -> dict[UUID, dict[str, Any]]:
+    """Best completed attempt per quiz, and whether it is still unread."""
+    if not quiz_ids:
+        return {}
+    # An essay's open answers carry `graded_at IS NULL` until a teacher reads
+    # them, and until then the attempt's score is a running total rather than a
+    # result. Showing that to the person waiting on it is how a student
+    # concludes they failed work nobody has opened.
+    pending = db.query(QuizAnswer.attempt_id).filter(QuizAnswer.graded_at.is_(None)).distinct().subquery()
+    rows = (
+        db.query(
+            QuizAttempt.quiz_id,
+            sqlfunc.max(QuizAttempt.score * 100.0 / sqlfunc.nullif(QuizAttempt.max_score, 0)).label("best"),
+            sqlfunc.max(case((pending.c.attempt_id.isnot(None), 1), else_=0)).label("awaiting"),
         )
-    return items
+        .outerjoin(pending, pending.c.attempt_id == QuizAttempt.id)
+        .filter(
+            QuizAttempt.quiz_id.in_(quiz_ids),
+            QuizAttempt.user_id == student_id,
+            QuizAttempt.completed_at.isnot(None),
+        )
+        .group_by(QuizAttempt.quiz_id)
+        .all()
+    )
+    return {r.quiz_id: {"score": r.best, "awaiting": bool(r.awaiting)} for r in rows}
+
+
+def _assignment_marks(db: Session, student_id: UUID, assignment_ids: list[UUID]) -> dict[UUID, dict[str, Any]]:
+    """Latest submission state and best mark per assignment."""
+    if not assignment_ids:
+        return {}
+    rows = (
+        db.query(
+            AssignmentSubmission.assignment_id,
+            sqlfunc.max(AssignmentSubmission.grade).label("best_grade"),
+            sqlfunc.count(AssignmentSubmission.id).label("submissions"),
+        )
+        .filter(
+            AssignmentSubmission.assignment_id.in_(assignment_ids),
+            AssignmentSubmission.student_id == student_id,
+        )
+        .group_by(AssignmentSubmission.assignment_id)
+        .all()
+    )
+    return {r.assignment_id: {"grade": r.best_grade, "submissions": r.submissions} for r in rows}
+
+
+def _status_and_score(
+    *, excused: bool, has_work: bool, awaiting: bool, score: float | None
+) -> tuple[str, float | None]:
+    if excused:
+        # «Освобождено», never «не сдано» — the work was not missed, it was set
+        # aside by a teacher who wrote down why.
+        return "excused", None
+    if not has_work:
+        return "not_submitted", None
+    if awaiting or score is None:
+        return "pending_review", None
+    return "graded", round(score, 1)
 
 
 def build_my_course_grade(db: Session, course: Course, enrollment: Enrollment, student_id: UUID) -> dict[str, Any]:
     """The student's own view of one course. Never anyone else's."""
     breakdown = calculate_student_grade_for_course(db, course, student_id)
-    detail = build_student_chapter_detail(db, course, course.id, str(student_id))
-    excused = excused_item_ids(db, student_id=student_id, course_id=course.id)
+    excused_quizzes, excused_assignments = excused_item_ids(db, student_id=student_id, course_id=course.id)
 
-    items = _quiz_items(detail, excused[0]) + _assignment_items(detail, excused[1])
-    listed = {item["chapter_id"] for item in items}
-    items += _missing_items(detail, listed, excused)
+    quizzes, assignments = _course_items(db, course.id)
+    quiz_marks = _quiz_marks(db, student_id, [q.id for q in quizzes])
+    assignment_marks = _assignment_marks(db, student_id, [a.id for a in assignments])
+
+    items: list[dict[str, Any]] = []
+    for quiz in quizzes:
+        mark = quiz_marks.get(quiz.id)
+        status, score = _status_and_score(
+            excused=quiz.id in excused_quizzes,
+            has_work=mark is not None,
+            awaiting=bool(mark and mark["awaiting"]),
+            score=float(mark["score"]) if mark and mark["score"] is not None else None,
+        )
+        items.append(
+            {
+                "item_id": str(quiz.id),
+                "chapter_id": quiz.chapter_id,
+                "title": quiz.chapter_title,
+                "kind": "quiz",
+                "status": status,
+                "score": score,
+            }
+        )
+    for assignment in assignments:
+        mark = assignment_marks.get(assignment.id)
+        raw_grade = mark["grade"] if mark is not None else None
+        pct = None
+        if raw_grade is not None and assignment.max_score:
+            # Clamped for the same reason the calculator clamps: a pre-cap
+            # historical row above `max_score` would print over 100%.
+            pct = min(100.0, float(raw_grade) / assignment.max_score * 100.0)
+        status, score = _status_and_score(
+            excused=assignment.id in excused_assignments,
+            has_work=mark is not None,
+            awaiting=mark is not None and raw_grade is None,
+            score=pct,
+        )
+        items.append(
+            {
+                "item_id": str(assignment.id),
+                "chapter_id": assignment.chapter_id,
+                "title": assignment.chapter_title,
+                "kind": "assignment",
+                "status": status,
+                "score": score,
+            }
+        )
 
     scheme = course.grading_scheme
     withheld = scheme in _COMPLETION_NATIVE_SCHEMES
@@ -173,9 +212,9 @@ def build_my_course_grade(db: Session, course: Course, enrollment: Enrollment, s
         "pass_threshold": course.pass_threshold,
         "progress": enrollment.progress,
         "current_score": None if no_number else breakdown.current_score,
-        "current_symbol": breakdown.current_letter_grade or None if not no_number else None,
+        "current_symbol": (breakdown.current_letter_grade or None) if not no_number else None,
         "final_score": None if no_number else breakdown.final_score,
-        "final_symbol": breakdown.letter_grade or None if not no_number else None,
+        "final_symbol": (breakdown.letter_grade or None) if not no_number else None,
         "scores_differ": False if no_number else breakdown.scores_differ,
         "result_state": breakdown.result_state,
         "scores_withheld": withheld,
@@ -183,5 +222,23 @@ def build_my_course_grade(db: Session, course: Course, enrollment: Enrollment, s
         # The note written TO the student. `reason` — the note about them,
         # written for the institution — is never read here (D7).
         "comment": official_row.comment if official_row is not None else None,
-        "items": sorted(items, key=lambda i: (i["kind"], i["title"])),
+        "items": sorted(items, key=lambda i: (i["kind"], i["title"], i["item_id"])),
     }
+
+
+def latest_enrollment(db: Session, student_id: UUID, course_id: str) -> Enrollment | None:
+    """The enrolment this student's grade is resolved against.
+
+    A retaking student has two: last term's and this one's. ``resolve_official_row``
+    deliberately picks the most recent, so the progress shown beside that grade
+    has to come from the same row — otherwise the card pairs this term's mark
+    with last term's progress bar, and which one wins is row order.
+    """
+    from app.models.enrollment import Enrollment as _Enrollment
+
+    return (
+        db.query(_Enrollment)
+        .filter(_Enrollment.user_id == student_id, _Enrollment.course_id == course_id)
+        .order_by(_Enrollment.enrolled_at.desc().nullslast(), _Enrollment.id.desc())
+        .first()
+    )
