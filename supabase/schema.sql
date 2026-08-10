@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict NzQrkPhq8NcxjTJ3V2khfl29SehTJwAIqRrUN8QGaMEp7yJi4VhZ79HkVTez3Gz
+\restrict wbc0VA3IjrxTM4WVhxxFdHZHE3MBZyfHt81hLLEpruBE44KWtC8nDgdXe1BpT93
 
 -- Dumped from database version 17.6
--- Dumped by pg_dump version 17.6
+-- Dumped by pg_dump version 17.10 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -293,7 +293,7 @@ CREATE TABLE public.chapter_progress (
     completed boolean DEFAULT false NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT chapter_progress_completion_type_check CHECK (((completion_type)::text = ANY (ARRAY[('self'::character varying)::text, ('teacher'::character varying)::text, ('quiz'::character varying)::text])))
+    CONSTRAINT chapter_progress_completion_type_check CHECK (((completion_type)::text = ANY ((ARRAY['self'::character varying, 'teacher'::character varying, 'quiz'::character varying, 'excused'::character varying])::text[])))
 );
 
 
@@ -564,6 +564,24 @@ CREATE TABLE public.enrollments (
     progress integer DEFAULT 0 NOT NULL,
     cohort_id uuid,
     CONSTRAINT enrollments_progress_range CHECK (((progress >= 0) AND (progress <= 100)))
+);
+
+
+--
+-- Name: grade_exemptions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.grade_exemptions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    student_id uuid NOT NULL,
+    course_id text NOT NULL,
+    item_type text NOT NULL,
+    item_id uuid NOT NULL,
+    reason text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    chapter_id text NOT NULL,
+    CONSTRAINT grade_exemptions_item_type_check CHECK ((item_type = ANY (ARRAY['quiz'::text, 'assignment'::text])))
 );
 
 
@@ -1020,6 +1038,22 @@ ALTER TABLE ONLY public.daily_challenge_streaks
 
 ALTER TABLE ONLY public.enrollments
     ADD CONSTRAINT enrollments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: grade_exemptions grade_exemptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.grade_exemptions
+    ADD CONSTRAINT grade_exemptions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: grade_exemptions grade_exemptions_student_id_item_type_item_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.grade_exemptions
+    ADD CONSTRAINT grade_exemptions_student_id_item_type_item_id_key UNIQUE (student_id, item_type, item_id);
 
 
 --
@@ -1539,6 +1573,20 @@ CREATE INDEX ix_enrollments_course_id ON public.enrollments USING btree (course_
 --
 
 CREATE INDEX ix_enrollments_user_id ON public.enrollments USING btree (user_id);
+
+
+--
+-- Name: ix_grade_exemptions_chapter; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_grade_exemptions_chapter ON public.grade_exemptions USING btree (student_id, chapter_id);
+
+
+--
+-- Name: ix_grade_exemptions_student_course; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_grade_exemptions_student_course ON public.grade_exemptions USING btree (student_id, course_id);
 
 
 --
@@ -2147,6 +2195,30 @@ ALTER TABLE ONLY public.enrollments
 
 
 --
+-- Name: grade_exemptions grade_exemptions_chapter_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.grade_exemptions
+    ADD CONSTRAINT grade_exemptions_chapter_id_fkey FOREIGN KEY (chapter_id) REFERENCES public.chapters(id) ON DELETE CASCADE;
+
+
+--
+-- Name: grade_exemptions grade_exemptions_course_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.grade_exemptions
+    ADD CONSTRAINT grade_exemptions_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id) ON DELETE CASCADE;
+
+
+--
+-- Name: grade_exemptions grade_exemptions_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.grade_exemptions
+    ADD CONSTRAINT grade_exemptions_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
 -- Name: invitations invitations_invited_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2608,6 +2680,12 @@ CREATE POLICY enrollments_select ON public.enrollments FOR SELECT TO authenticat
 
 
 --
+-- Name: grade_exemptions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.grade_exemptions ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: invitations; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -2640,17 +2718,17 @@ CREATE POLICY notifications_select_own ON public.notifications FOR SELECT TO aut
 
 
 --
+-- Name: org_settings; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.org_settings ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: course_prerequisites prereqs_select_all; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY prereqs_select_all ON public.course_prerequisites FOR SELECT TO authenticated USING ((( SELECT auth.uid() AS uid) IS NOT NULL));
 
-
---
--- Name: org_settings; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.org_settings ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: profiles; Type: ROW SECURITY; Schema: public; Owner: -
@@ -2813,5 +2891,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict NzQrkPhq8NcxjTJ3V2khfl29SehTJwAIqRrUN8QGaMEp7yJi4VhZ79HkVTez3Gz
+\unrestrict wbc0VA3IjrxTM4WVhxxFdHZHE3MBZyfHt81hLLEpruBE44KWtC8nDgdXe1BpT93
 
