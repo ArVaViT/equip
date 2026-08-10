@@ -215,6 +215,9 @@ def grade_answer(
     # consults. Re-grading the same row simply refreshes the timestamp.
     was_pending = answer.graded_at is None
     answer.graded_at = datetime.now(UTC)
+    # The teacher's id was already here — it tags the throughput metric two
+    # screens down — it just never reached the row that holds the judgement.
+    answer.graded_by = teacher.id
 
     newly_completed_course_id = quiz_service.recompute_attempt_grade(db, attempt, quiz)
     db.commit()
