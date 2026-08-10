@@ -237,6 +237,17 @@ def teacher_uncomplete_chapter(
             message="Chapter is not completed",
             context={"resource_type": "chapter_progress"},
         )
+    if progress.completion_type == "excused":
+        # An exemption holds the chapter and the grade together (D6). Undoing
+        # the completion here would leave the work out of the grade while the
+        # student's progress dropped below 100 — the certificate blocked and no
+        # sign of why. The exemption is the thing to remove; it undoes both.
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_409_CONFLICT,
+            message="This chapter is complete because the student was excused from the work. Remove the exemption instead.",
+            context={"resource_type": "chapter_progress"},
+        )
     progress.completed = False
     progress.completed_at = None
     progress.completed_by = None

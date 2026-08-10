@@ -283,5 +283,32 @@ EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: invitations INSERT denied (privilege)';
 END $$;
 
+-- 12) grade_exemptions: an exemption removes a piece of work from a student's
+--     grade *and* from their progress, which is the shortest path anyone has to
+--     a certificate they did not earn — insert two rows and the requirement
+--     disappears without a single score being touched. Backend-only, like every
+--     other table that decides an official result.
+DO $$
+BEGIN
+  PERFORM * FROM public.grade_exemptions;
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can SELECT grade_exemptions';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: grade_exemptions SELECT denied (privilege)';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO public.grade_exemptions (student_id, course_id, item_type, item_id)
+  VALUES (
+    '11111111-1111-1111-1111-111111111111',
+    (SELECT id FROM public.courses LIMIT 1),
+    'assignment',
+    '22222222-2222-2222-2222-222222222222'
+  );
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can INSERT grade_exemptions (self-excuse from coursework)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: grade_exemptions INSERT denied (privilege)';
+END $$;
+
 RESET ROLE;
 SELECT 'RLS policy assertions passed' AS result;

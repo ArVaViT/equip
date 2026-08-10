@@ -9,6 +9,7 @@ from app.models.content_version import ContentVersion
 from app.models.course import Chapter, Course, Module
 from app.models.course_event import CourseEvent
 from app.models.enrollment import Enrollment
+from app.models.grade_exemption import GradeExemption
 from app.models.invitation import Invitation, InvitationRole, InvitationStatus
 from app.models.notification import Notification
 from app.models.org_settings import DEFAULT_GRADE_BANDS, OrgSettings
@@ -42,6 +43,7 @@ __all__ = [
     "CoursePrerequisite",
     "CourseReview",
     "Enrollment",
+    "GradeExemption",
     "Invitation",
     "InvitationRole",
     "InvitationStatus",

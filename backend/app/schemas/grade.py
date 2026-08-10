@@ -153,6 +153,30 @@ class GradingSchemeResponse(BaseModel):
     bands: list[tuple[Decimal, str]] = []
 
 
+class ExemptionCreate(BaseModel):
+    """Excuse a student from one piece of work (D6)."""
+
+    item_type: Literal["quiz", "assignment"]
+    item_id: UUID
+    #: Optional, director-visible. Waiving work is a decision someone will be
+    #: asked about, especially when it is the last thing between a student and
+    #: a certificate.
+    reason: str | None = Field(None, max_length=2000)
+
+
+class ExemptionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    student_id: UUID
+    course_id: str
+    item_type: str
+    item_id: UUID
+    reason: str | None = None
+    created_by: UUID | None = None
+    created_at: datetime | None = None
+
+
 class GradeBreakdown(BaseModel):
     """One student's grade, with the arithmetic shown rather than implied.
 

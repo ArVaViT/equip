@@ -8,11 +8,13 @@ from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
+from app.models.grade_exemption import GradeExemption
 from app.models.org_settings import OrgSettings
 from app.models.quiz import Quiz, QuizAnswer, QuizAttempt
 from app.models.student_grade import StudentGrade
 from app.models.user import User
 from app.schemas.grade import GradeBreakdown
+from app.services.grade_exemption_service import excused_item_ids
 from app.services.grading_scheme import effective_bands, get_org_settings, score_to_symbol
 
 #: Fallback letter scale, used only when no database session is at hand.
@@ -346,6 +348,14 @@ def calculate_student_grade(
     in hand (e.g. inside :func:`calculate_all_student_grades`). Callers that
     only have a course should use :func:`calculate_student_grade_for_course`.
     """
+    # «Освобождение» removes the item from the numerator *and* the denominator
+    # (D6). Leaving it in the denominator would mean a student excused from an
+    # assignment still gets marked down for not doing it — mercy that costs the
+    # same as no mercy.
+    excused_quizzes, excused_assignments = excused_item_ids(db, student_id=student_id, course_id=course.id)
+    quiz_ids = [q for q in quiz_ids if q not in excused_quizzes]
+    assignment_ids = [a for a in assignment_ids if a not in excused_assignments]
+
     quiz_avg = 0.0
     if quiz_ids:
         rows = (
@@ -449,8 +459,14 @@ def calculate_all_student_grades(db: Session, course: Course):
 
     student_ids = [e.user_id for e in enrollments]
 
-    # Batch: best quiz scores per student per quiz
-    quiz_scores: dict[str, list[float]] = {str(sid): [] for sid in student_ids}
+    # Batch: best quiz scores per student per quiz.
+    #
+    # Keyed by item, not a flat list, because exemptions are per student: the
+    # denominator below drops an excused quiz, so its score has to leave the
+    # numerator with it. A flat list made that impossible and produced averages
+    # over 100 — a student excused from the one quiz they did badly on had the
+    # bad score divided by the remaining count.
+    quiz_scores: dict[str, dict[UUID, float]] = {str(sid): {} for sid in student_ids}
     if quiz_ids:
         quiz_rows = (
             db.query(
@@ -468,10 +484,11 @@ def calculate_all_student_grades(db: Session, course: Course):
         )
         for qr in quiz_rows:
             if qr.best is not None:
-                quiz_scores.setdefault(str(qr.user_id), []).append(float(qr.best))
+                quiz_scores.setdefault(str(qr.user_id), {})[qr.quiz_id] = float(qr.best)
 
-    # Batch: best assignment grade per student per assignment
-    asgn_scores: dict[str, list[float]] = {str(sid): [] for sid in student_ids}
+    # Batch: best assignment grade per student per assignment. Keyed by item for
+    # the same reason as the quizzes above.
+    asgn_scores: dict[str, dict[UUID, float]] = {str(sid): {} for sid in student_ids}
     if assignment_ids:
         asgn_rows = (
             db.query(
@@ -497,7 +514,7 @@ def calculate_all_student_grades(db: Session, course: Course):
             # See same-named single-student site above — clamp at 100%
             # so a historical over-cap grade doesn't distort the batch.
             pct = min(100.0, float(ar.best_grade) / ar.max_score * 100.0) if ar.max_score else 0.0
-            asgn_scores.setdefault(str(ar.student_id), []).append(pct)
+            asgn_scores.setdefault(str(ar.student_id), {})[ar.assignment_id] = pct
 
     # Batch: chapter completion counts per student
     completion_counts: dict[str, int] = {}
@@ -550,9 +567,19 @@ def calculate_all_student_grades(db: Session, course: Course):
             else (f"{chosen.override_score:.2f}" if chosen.override_score is not None else None)
         )
 
+    # Per-student exemptions: the same D6 rule as the single-student path, but
+    # resolved once for the whole class rather than per row.
+    exemption_rows = (
+        db.query(GradeExemption.student_id, GradeExemption.item_type, GradeExemption.item_id)
+        .filter(GradeExemption.course_id == course.id)
+        .all()
+    )
+    excused_by_student: dict[str, tuple[set, set]] = {}
+    for exemption in exemption_rows:
+        quizzes, assignments = excused_by_student.setdefault(str(exemption.student_id), (set(), set()))
+        (quizzes if exemption.item_type == "quiz" else assignments).add(exemption.item_id)
+
     total_chapters = len(chapter_ids)
-    total_quizzes = len(quiz_ids)
-    total_assignments = len(assignment_ids)
     # Resolved once for the whole course: every student in a class must be
     # graded on the same weights.
     live_quizzes, live_assignments = category_is_live(db, quiz_ids=quiz_ids, assignment_ids=assignment_ids)
@@ -560,9 +587,15 @@ def calculate_all_student_grades(db: Session, course: Course):
     results = []
     for user_id, full_name, email, _cohort_id, _enrolled_at in enrollments:
         sid = str(user_id)
-        qs = quiz_scores.get(sid, [])
+        excused_q, excused_a = excused_by_student.get(sid, (set(), set()))
+        total_quizzes = len([q for q in quiz_ids if q not in excused_q])
+        total_assignments = len([a for a in assignment_ids if a not in excused_a])
+
+        # Numerator and denominator drop the excused item together. Keeping the
+        # score while shrinking the count is how you get 140%.
+        qs = [s for qid, s in quiz_scores.get(sid, {}).items() if qid not in excused_q]
         quiz_avg = sum(qs) / total_quizzes if total_quizzes > 0 else 0.0
-        asgs = asgn_scores.get(sid, [])
+        asgs = [s for aid, s in asgn_scores.get(sid, {}).items() if aid not in excused_a]
         assignment_avg = sum(asgs) / total_assignments if total_assignments > 0 else 0.0
         comp = completion_counts.get(sid, 0)
         participation_pct = (comp / total_chapters * 100.0) if total_chapters else 0.0

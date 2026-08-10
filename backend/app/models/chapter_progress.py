@@ -16,7 +16,7 @@ class ChapterProgress(Base):
         # values too. A regression like completion_type="quiz" is caught in
         # tests without having to go through the prod DB to find out.
         CheckConstraint(
-            "completion_type IN ('self', 'teacher', 'quiz')",
+            "completion_type IN ('self', 'teacher', 'quiz', 'excused')",
             name="chapter_progress_completion_type_check",
         ),
         # ``uq_progress_user_chapter`` already provides a B-tree on

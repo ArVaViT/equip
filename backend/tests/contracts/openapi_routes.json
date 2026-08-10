@@ -1810,6 +1810,71 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/grades/course/{course_id}/student/{student_id}/exemptions",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "student_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/grades/course/{course_id}/student/{student_id}/exemptions",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "student_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/grades/course/{course_id}/student/{student_id}/exemptions/{item_type}/{item_id}",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "item_id",
+        "path"
+      ],
+      [
+        "item_type",
+        "path"
+      ],
+      [
+        "student_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/grades/course/{course_id}/summary",
     "params": [
       [
