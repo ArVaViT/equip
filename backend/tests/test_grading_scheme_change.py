@@ -20,11 +20,13 @@ Three rules, each protecting something different:
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from app.models.audit_log import AuditLog
-from app.models.course import Course
+from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
+from app.models.quiz import Quiz
 from app.models.student_grade import StudentGrade
 
 if TYPE_CHECKING:
@@ -228,3 +230,96 @@ class TestQuizThresholdAlignment:
 
         quiz = db.query(Quiz).filter(Quiz.chapter_id == chapter.id).first()
         assert quiz.passing_score == 60
+
+
+def test_moving_the_course_line_records_which_quizzes_it_leaves_behind(
+    client, db: Session, teacher, student
+) -> None:
+    """A quiz keeps the pass line it was written with.
+
+    Raise the course's and a student clears every quiz, is congratulated each
+    time, and still lands below the mark the course grades them on — with every
+    chapter green. The drift is invisible from the settings screen, so it goes
+    into the audit entry: "the line moved to 85 and these quizzes stayed at 60"
+    is the sentence a director needs, and nobody can reconstruct it later.
+    """
+    course = Course(id="c-drift", status="published", created_by=teacher.id, pass_threshold=Decimal("60.00"))
+    db.add(course)
+    module = Module(id="c-drift-m", course_id=course.id, order_index=0, title="M")
+    db.add(module)
+    db.flush()
+    chapter = Chapter(id="c-drift-ch", module_id=module.id, order_index=0, chapter_type="quiz", title="Q")
+    db.add(chapter)
+    db.flush()
+    db.add(Quiz(id=uuid.uuid4(), chapter_id=chapter.id, passing_score=60))
+    db.commit()
+
+    resp = client.put(
+        f"/api/v1/grades/course/{course.id}/scheme",
+        json={"grading_scheme": "letter", "pass_threshold": 85},
+    )
+
+    assert resp.status_code == 200, resp.text
+    entry = (
+        db.query(AuditLog)
+        .filter(AuditLog.action == "grading_scheme_changed")
+        .order_by(AuditLog.created_at.desc())
+        .first()
+    )
+    drifted = entry.details["quizzes_off_the_new_line"]
+    assert len(drifted) == 1
+    assert drifted[0]["passing_score"] == 60
+
+
+def test_a_quiz_easier_than_its_course_is_flagged_by_readiness(db: Session, teacher) -> None:
+    """The mirror of the check that already existed, and the one nobody thinks
+    of: drift one way was caught, drift the other way was silent."""
+    from app.services.course_readiness import compute_readiness
+
+    course = Course(
+        id="c-lenient",
+        status="published",
+        created_by=teacher.id,
+        pass_threshold=Decimal("85.00"),
+        title="Lenient",
+    )
+    db.add(course)
+    module = Module(id="c-lenient-m", course_id=course.id, order_index=0, title="M")
+    db.add(module)
+    db.flush()
+    chapter = Chapter(id="c-lenient-ch", module_id=module.id, order_index=0, chapter_type="quiz", title="Q")
+    db.add(chapter)
+    db.flush()
+    db.add(Quiz(id=uuid.uuid4(), chapter_id=chapter.id, passing_score=60))
+    db.commit()
+
+    report = compute_readiness(db, course)
+    failing = {c.id for c in report.checks if not c.passed}
+
+    assert "quiz_threshold_below_course" in failing
+
+
+def test_a_quiz_stricter_than_its_course_is_still_flagged(db: Session, teacher) -> None:
+    from app.services.course_readiness import compute_readiness
+
+    course = Course(
+        id="c-strict",
+        status="published",
+        created_by=teacher.id,
+        pass_threshold=Decimal("60.00"),
+        title="Strict",
+    )
+    db.add(course)
+    module = Module(id="c-strict-m", course_id=course.id, order_index=0, title="M")
+    db.add(module)
+    db.flush()
+    chapter = Chapter(id="c-strict-ch", module_id=module.id, order_index=0, chapter_type="quiz", title="Q")
+    db.add(chapter)
+    db.flush()
+    db.add(Quiz(id=uuid.uuid4(), chapter_id=chapter.id, passing_score=90))
+    db.commit()
+
+    report = compute_readiness(db, course)
+    failing = {c.id for c in report.checks if not c.passed}
+
+    assert "quiz_threshold_above_course" in failing

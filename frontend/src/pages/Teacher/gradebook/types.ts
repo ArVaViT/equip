@@ -23,8 +23,15 @@ export interface ChapterInfo {
   module_id: string
   chapter_type: string
   completed: boolean
-  completed_by: "self" | "teacher" | null
-  quiz_result: { score: number; max_score: number; passed: boolean } | null
+  completed_by: "self" | "teacher" | "quiz" | "excused" | null
+  /** `awaiting_grading` — submitted, but its open answers are still unread, so
+   *  `score` is a running total and not a result. */
+  quiz_result: {
+    score: number
+    max_score: number
+    passed: boolean
+    awaiting_grading?: boolean
+  } | null
   assignment_result: {
     status: string
     grade: number | null

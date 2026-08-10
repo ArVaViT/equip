@@ -22,7 +22,7 @@ from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
-from app.models.quiz import Quiz, QuizAttempt
+from app.models.quiz import Quiz, QuizAnswer, QuizAttempt
 from app.models.user import User
 from app.schemas.locale import normalize_locale
 from app.services.grade_calculator import calculate_all_student_grades
@@ -141,7 +141,16 @@ def _aggregate_quiz_results(
             func.count().over(partition_by=partition).label("attempts"),
             func.max(case((QuizAttempt.passed.is_(True), 1), else_=0)).over(partition_by=partition).label("passed_any"),
             func.max(QuizAttempt.completed_at).over(partition_by=partition).label("last_completed"),
+            # An essay or short-answer quiz is submitted long before it is
+            # marked: its open answers carry `graded_at IS NULL` until a teacher
+            # reads them, and until then its score is 0 out of the full total.
+            # Painted as an ordinary result that is a red 0% — a failure a
+            # teacher is shown for work they have not looked at yet.
+            func.max(case((QuizAnswer.graded_at.is_(None), 1), else_=0))
+            .over(partition_by=partition)
+            .label("awaiting_grading"),
         )
+        .outerjoin(QuizAnswer, QuizAnswer.attempt_id == QuizAttempt.id)
         .filter(*attempt_filters)
         .subquery()
     )
@@ -164,6 +173,7 @@ def _aggregate_quiz_results(
             "score": int(row.score or 0),
             "max_score": int(row.max_score or 0),
             "passed": bool(row.passed_any),
+            "awaiting_grading": bool(row.awaiting_grading),
         }
         prev = best_by_user_chapter.get(ch_key)
         # A chapter may hold several quizzes; the representative is the
@@ -445,7 +455,12 @@ def _build_chapter_infos(
         best = best_by_user_chapter.get(ch_key)
         quiz_data = None
         if best is not None:
-            quiz_data = {"score": best["score"], "max_score": best["max_score"], "passed": best["passed"]}
+            quiz_data = {
+                "score": best["score"],
+                "max_score": best["max_score"],
+                "passed": best["passed"],
+                "awaiting_grading": best.get("awaiting_grading", False),
+            }
         ch_subs = subs_by_user_chapter.get(ch_key, [])
         asgn_data = None
         if ch_subs:

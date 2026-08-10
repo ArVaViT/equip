@@ -450,7 +450,15 @@ export interface StudentChapterInfo {
    *  work — the tick is the same green as any other, so only this tells them
    *  apart, and a certificate gets signed on the difference. */
   completed_by: 'teacher' | 'self' | 'quiz' | 'excused' | null
-  quiz_result: { score: number; max_score: number; passed: boolean } | null
+  /** `awaiting_grading` — the attempt is in, but its open answers are still
+   *  unread, so `score` is a running total and not a result. Rendering it as
+   *  an ordinary mark shows a teacher a red 0% for work nobody has looked at. */
+  quiz_result: {
+    score: number
+    max_score: number
+    passed: boolean
+    awaiting_grading?: boolean
+  } | null
   assignment_result: { status: string; grade: number | null; max_score: number } | null
   /** The piece of work behind this chapter, present whether or not the student
    *  ever touched it — which is exactly when a teacher reaches for an
