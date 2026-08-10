@@ -82,6 +82,8 @@ GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE public.enrollments TO anon;
 GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE public.enrollments TO authenticated;
 GRANT ALL ON TABLE public.enrollments TO service_role;
 GRANT ALL ON TABLE public.grade_exemptions TO service_role;
+GRANT ALL ON TABLE public.grade_sheet_rows TO service_role;
+GRANT ALL ON TABLE public.grade_sheets TO service_role;
 GRANT ALL ON TABLE public.invitations TO service_role;
 GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE public.modules TO anon;
 GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE public.modules TO authenticated;

@@ -25,6 +25,7 @@ from app.core.errors import ErrorCode, equip_error
 from app.models.course import Chapter, CourseStatus, Module
 from app.models.enrollment import Enrollment
 from app.models.grade_exemption import GradeExemption
+from app.models.grade_sheet import GradeSheet, GradeSheetRow
 from app.models.quiz import Quiz
 from app.models.student_grade import StudentGrade
 from app.models.user import User, UserRole
@@ -32,6 +33,7 @@ from app.schemas.grade import (
     ExemptionCreate,
     ExemptionResponse,
     GradeResponse,
+    GradeSheetResponse,
     GradeSummaryResponse,
     GradeUpsert,
     GradingConfigResponse,
@@ -39,6 +41,8 @@ from app.schemas.grade import (
     GradingSchemeResponse,
     GradingSchemeUpdate,
     MyCourseGrade,
+    SheetReopenRequest,
+    SheetRowResponse,
     StudentCalculatedGrade,
     StudentGradeResponse,
 )
@@ -56,6 +60,7 @@ from app.services.grade_override import (
     resolve_official_row,
     validate_override,
 )
+from app.services.grade_sheet_service import active_sheet, finalize_sheet, refuse_reason, reopen_sheet
 from app.services.grading_scheme import effective_bands, get_org_settings, validate_scheme_threshold
 from app.services.my_grade_service import build_my_course_grade, latest_enrollment
 from app.services.translation.resolve_for_display import populate_spine_texts
@@ -313,6 +318,149 @@ def _quizzes_off_the_course_line(db: Session, course_id: str, threshold: Decimal
         .all()
     )
     return [{"quiz_id": str(r.id), "chapter_id": r.chapter_id, "passing_score": r.passing_score} for r in rows]
+
+
+def _sheet_response(db: Session, sheet: GradeSheet) -> GradeSheetResponse:
+    """A closed sheet plus the names, read from the snapshot rather than recomputed."""
+    rows = db.query(GradeSheetRow).filter(GradeSheetRow.sheet_id == sheet.id).all()
+    names = {
+        str(u.id): (u.full_name or u.email)
+        for u in db.query(User).filter(User.id.in_([r.student_id for r in rows] or [None])).all()
+    }
+    return GradeSheetResponse(
+        **{
+            k: getattr(sheet, k)
+            for k in (
+                "id",
+                "course_id",
+                "cohort_id",
+                "cohort_name",
+                "grading_scheme",
+                "pass_threshold",
+                "finalized_at",
+                "finalized_by",
+                "reopened_at",
+                "reopen_reason",
+                "corrects_sheet_id",
+                "correction_reason",
+            )
+        },
+        rows=[
+            SheetRowResponse(
+                student_id=r.student_id,
+                student_name=names.get(str(r.student_id)),
+                result_state=r.result_state,  # type: ignore[arg-type]  # CHECK-constrained in the DB
+                official_code=r.official_code,
+                official_score=r.official_score,
+                is_override=r.is_override,
+            )
+            for r in sorted(rows, key=lambda r: names.get(str(r.student_id)) or "")
+        ],
+    )
+
+
+@router.get("/course/{course_id}/sheet", response_model=GradeSheetResponse | None)
+def get_grade_sheet(
+    course_id: str,
+    cohort_id: UUID | None = None,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    """The ведомость currently standing for this поток, or ``null`` if none.
+
+    ``cohort_id`` omitted means «без потока» — the bucket for students with no
+    cohort, not "all of them" (D11).
+    """
+    verify_course_owner(db, course_id, teacher)
+    sheet = active_sheet(db, course_id, cohort_id)
+    return _sheet_response(db, sheet) if sheet else None
+
+
+@router.post("/course/{course_id}/sheet", response_model=GradeSheetResponse, status_code=status.HTTP_201_CREATED)
+def close_grade_sheet(
+    course_id: str,
+    request: Request,
+    cohort_id: UUID | None = None,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """«Закрыть ведомость» — freeze every student's official result (D11).
+
+    A director's action, like the scheme itself: closing a ведомость is what
+    turns a live report into a document someone signs.
+
+    Re-closing supersedes the previous sheet rather than overwriting it, so the
+    history of what was signed survives a correction.
+    """
+    course = verify_course_owner(db, course_id, admin)
+    refusal = refuse_reason(course)
+    if refusal:
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            message=refusal,
+            context={"resource_type": "grade_sheet", "course_id": course_id},
+        )
+    sheet = finalize_sheet(db, course, cohort_id, admin.id)
+    db.commit()
+
+    log_action(
+        db,
+        user_id=admin.id,
+        action="grade_sheet_finalized",
+        resource_type="grade_sheet",
+        resource_id=str(sheet.id),
+        details={"course_id": course_id, "cohort_id": str(cohort_id) if cohort_id else None},
+        request=request,
+    )
+    return _sheet_response(db, sheet)
+
+
+@router.post("/sheet/{sheet_id}/reopen", response_model=GradeSheetResponse)
+def reopen_grade_sheet(
+    sheet_id: UUID,
+    data: SheetReopenRequest,
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Reopen a closed sheet, on the record.
+
+    A signed document cannot be quietly corrected: the reason is required, the
+    action is audited, and the printable carries a «была переоткрыта» mark.
+    """
+    sheet = db.query(GradeSheet).filter(GradeSheet.id == sheet_id).first()
+    if sheet is None or sheet.superseded_at is not None:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="No such open ведомость",
+            context={"resource_type": "grade_sheet", "resource_id": str(sheet_id)},
+        )
+    verify_course_owner(db, sheet.course_id, admin)
+
+    try:
+        reopen_sheet(db, sheet, admin.id, data.reason)
+    except ValueError:
+        # Overwriting the first reason would erase the part worth keeping.
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_409_CONFLICT,
+            message="This ведомость is already open. Close it before reopening it again.",
+            context={"resource_type": "grade_sheet", "resource_id": str(sheet_id)},
+        ) from None
+    db.commit()
+
+    log_action(
+        db,
+        user_id=admin.id,
+        action="grade_sheet_reopened",
+        resource_type="grade_sheet",
+        resource_id=str(sheet.id),
+        details={"course_id": sheet.course_id, "reason": data.reason},
+        request=request,
+    )
+    return _sheet_response(db, sheet)
 
 
 @router.get("/course/{course_id}/scheme", response_model=GradingSchemeResponse)
