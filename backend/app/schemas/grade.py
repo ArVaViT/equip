@@ -7,8 +7,48 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class GradeUpsert(BaseModel):
-    grade: str | None = Field(None, max_length=10)
+    """A hand-set grade (D7).
+
+    Exactly one of ``override_code`` / ``override_score`` — a symbol from the
+    course's scheme, or a percentage for ``percent`` courses. The pairing is
+    checked against the course itself in the route, because which symbols are
+    legal depends on the scheme: «5» is a grade in a five-point course and
+    nonsense in a letter one.
+
+    Clearing a grade is a DELETE on the same route, not an empty value here.
+    The old shape used "field omitted means leave it alone", which made an
+    override impossible to remove: once a teacher had set an F, no request
+    could take it back.
+    """
+
+    override_code: str | None = Field(None, max_length=8)
+    override_score: Decimal | None = Field(None, ge=0, le=100)
+    reason: str | None = Field(None, max_length=2000)
     comment: str | None = Field(None, max_length=5000)
+
+
+class StudentGradeResponse(BaseModel):
+    """What a student may see of their own hand-set grade.
+
+    Deliberately without ``reason``. That field is the teacher's note to the
+    institution — "passed at the pastor's request", "corrected after the appeal"
+    — and D7 scopes it to directors. ``comment`` is the note written *to* the
+    student and is rendered to them by design (D10.3); the two are different
+    audiences and must not share a schema.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    student_id: UUID
+    course_id: str
+    cohort_id: UUID | None = None
+    override_code: str | None = None
+    override_score: Decimal | None = None
+    computed_score: Decimal | None = None
+    comment: str | None = None
+    graded_at: datetime
+    updated_at: datetime | None = None
 
 
 class GradeResponse(BaseModel):
@@ -18,7 +58,12 @@ class GradeResponse(BaseModel):
     student_id: UUID
     course_id: str
     cohort_id: UUID | None = None
-    grade: str | None = None
+    override_code: str | None = None
+    override_score: Decimal | None = None
+    #: What the calculator said when the override was set — kept so both
+    #: numbers can be shown together instead of the hand-set one alone.
+    computed_score: Decimal | None = None
+    reason: str | None = None
     comment: str | None = None
     graded_by: UUID | None = None
     graded_at: datetime
@@ -78,6 +123,34 @@ class GradingConfigUpdate(BaseModel):
             self.participation_weight = 0
 
         return self
+
+
+class GradingSchemeUpdate(BaseModel):
+    """Scheme and pass line, written together or not at all (D8.1).
+
+    They are a pair: a five-point course whose pass line sits above 75 has an
+    unreachable «3» band, and the only way to catch that is to validate both
+    at once. A scheme-only write could otherwise leave a course in a state no
+    student can satisfy.
+    """
+
+    grading_scheme: Literal["pass_fail", "percent", "five_point", "letter"]
+    pass_threshold: Decimal = Field(..., ge=0, le=100)
+    #: Optional note recorded in the audit entry — why the school changed how
+    #: this course is graded. Changing a scheme mid-course is exactly the kind
+    #: of decision a director will be asked about later.
+    reason: str | None = Field(None, max_length=2000)
+
+
+class GradingSchemeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    grading_scheme: str
+    pass_threshold: Decimal
+    #: The bands this course's grades are read against, resolved from the
+    #: institution's settings. Exported so the client renders from the
+    #: backend's answer instead of a copy of the scale.
+    bands: list[tuple[Decimal, str]] = []
 
 
 class GradeBreakdown(BaseModel):

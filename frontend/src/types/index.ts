@@ -88,7 +88,16 @@ export interface StudentGrade {
   id: string
   student_id: string
   course_id: string
-  grade: string | null
+  /** Символ ручной оценки в схеме курса: «A», «5», «pass». Свободный текст
+   *  больше не хранится — «Aa+» непредставимо (D7). */
+  override_code: string | null
+  /** Числовая ручная оценка — только для процентной схемы. */
+  override_score: number | null
+  /** Что насчитала система в момент простановки ручной оценки: оба числа
+   *  показываются рядом, чтобы правка руками была видна как правка. */
+  computed_score: number | null
+  /** Необязательное обоснование, видно директору. */
+  reason: string | null
   comment: string | null
   graded_by: string
   graded_at: string

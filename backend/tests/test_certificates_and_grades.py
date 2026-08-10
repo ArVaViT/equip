@@ -174,11 +174,12 @@ def _seed_grade(
     grade: str = "A",
     comment: str = "Good work",
 ) -> StudentGrade:
+    """`grade` is the override symbol — the free-text column is gone (D7)."""
     sg = StudentGrade(
         id=uuid.uuid4(),
         student_id=STUDENT_ID,
         course_id=course_id,
-        grade=grade,
+        override_code=grade,
         comment=comment,
         graded_by=TEACHER_ID,
     )
@@ -973,7 +974,7 @@ class TestMyGrades:
         assert r.status_code == 200
         body = r.json()
         assert len(body) == 1
-        assert body[0]["grade"] == "A"
+        assert body[0]["override_code"] == "A"
 
     def test_empty(self, student_client: TestClient, db: Session):
         r = student_client.get("/api/v1/grades/my")
@@ -989,7 +990,7 @@ class TestMyGradeForCourse:
         _seed_grade(db, "course-1")
         r = student_client.get("/api/v1/grades/my/course-1")
         assert r.status_code == 200
-        assert r.json()["grade"] == "A"
+        assert r.json()["override_code"] == "A"
 
     def test_not_found(self, student_client: TestClient, db: Session):
         r = student_client.get("/api/v1/grades/my/nonexistent")
@@ -1031,7 +1032,7 @@ class TestGetStudentGrade:
         _seed_grade(db, "course-1")
         r = client.get(f"/api/v1/grades/course/course-1/student/{STUDENT_ID}")
         assert r.status_code == 200
-        assert r.json()["grade"] == "A"
+        assert r.json()["override_code"] == "A"
 
     def test_not_found(self, client: TestClient, db: Session):
         _seed_course(db)
@@ -1046,11 +1047,11 @@ class TestUpsertStudentGrade:
         _seed_enrolled_course(db)
         r = client.put(
             f"/api/v1/grades/course/course-1/student/{STUDENT_ID}",
-            json={"grade": "B+", "comment": "Nice work"},
+            json={"override_code": "B", "comment": "Nice work"},
         )
         assert r.status_code == 200
         body = r.json()
-        assert body["grade"] == "B+"
+        assert body["override_code"] == "B"
         assert body["comment"] == "Nice work"
         assert body["graded_by"] == str(TEACHER_ID)
 
@@ -1059,17 +1060,17 @@ class TestUpsertStudentGrade:
         _seed_grade(db, "course-1", grade="C")
         r = client.put(
             f"/api/v1/grades/course/course-1/student/{STUDENT_ID}",
-            json={"grade": "A", "comment": "Improved"},
+            json={"override_code": "A", "comment": "Improved"},
         )
         assert r.status_code == 200
-        assert r.json()["grade"] == "A"
+        assert r.json()["override_code"] == "A"
         assert r.json()["comment"] == "Improved"
 
     def test_not_owner(self, client: TestClient, db: Session):
         _seed_foreign_course(db)
         r = client.put(
             f"/api/v1/grades/course/other-course/student/{STUDENT_ID}",
-            json={"grade": "F"},
+            json={"override_code": "F"},
         )
         assert r.status_code == 403
 
@@ -1077,7 +1078,7 @@ class TestUpsertStudentGrade:
         _seed_enrolled_course(db)
         r = student_client.put(
             f"/api/v1/grades/course/course-1/student/{STUDENT_ID}",
-            json={"grade": "A"},
+            json={"override_code": "A"},
         )
         assert r.status_code == 403
 

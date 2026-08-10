@@ -35,6 +35,7 @@ interface Props {
   onToggleExpand: (userId: string) => void
   onUpdateForm: (userId: string, field: keyof GradeForm, value: string) => void
   onSaveGrade: (userId: string) => void
+  onClearGrade: (userId: string) => void
 }
 
 /**
@@ -53,6 +54,7 @@ export function SummaryTab({
   onToggleExpand,
   onUpdateForm,
   onSaveGrade,
+  onClearGrade,
 }: Props) {
   const { t } = useTranslation()
   const sortedStudents = useMemo(() => {
@@ -137,6 +139,7 @@ export function SummaryTab({
                   onToggleExpand={onToggleExpand}
                   onUpdateForm={onUpdateForm}
                   onSaveGrade={onSaveGrade}
+                  onClearGrade={onClearGrade}
                 />
               ))}
 
@@ -196,6 +199,7 @@ interface StudentSummaryRowProps {
   onToggleExpand: (userId: string) => void
   onUpdateForm: (userId: string, field: keyof GradeForm, value: string) => void
   onSaveGrade: (userId: string) => void
+  onClearGrade: (userId: string) => void
 }
 
 /**
@@ -215,6 +219,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
   onToggleExpand,
   onUpdateForm,
   onSaveGrade,
+  onClearGrade,
 }: StudentSummaryRowProps) {
   const { t } = useTranslation()
   const b = student.breakdown
@@ -225,7 +230,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
   // whole change exists to remove, in the one place a teacher is expected to
   // grade by hand.
   const hasDifferentManual =
-    hasScore && Boolean(manualGrade?.grade && manualGrade.grade !== b.letter_grade)
+    hasScore && Boolean(manualGrade?.override_code && manualGrade.override_code !== b.letter_grade)
 
   return (
     <div>
@@ -279,7 +284,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
           )}
         </div>
         <div className="flex justify-center">
-          {manualGrade?.grade ? (
+          {manualGrade?.override_code ? (
             <span
               className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
                 hasDifferentManual
@@ -287,7 +292,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
                   : "bg-muted text-ink-muted"
               }`}
             >
-              {manualGrade.grade}
+              {manualGrade.override_code}
             </span>
           ) : (
             <span className="text-xs text-ink-muted">—</span>
@@ -338,7 +343,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
               <Trans
                 i18nKey="gradebook.summary.manualDiffers"
                 values={{
-                  manual: manualGrade?.grade ?? "",
+                  manual: manualGrade?.override_code ?? "",
                   calc: b.letter_grade,
                   pct: b.final_score.toFixed(1),
                 }}
@@ -372,14 +377,29 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
             </div>
           </div>
 
-          <Button
-            size="sm"
-            onClick={() => onSaveGrade(student.student_id)}
-            disabled={saving}
-          >
-            <Save className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} />
-            {saving ? t("gradebook.summary.savingManual") : t("gradebook.summary.saveManual")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => onSaveGrade(student.student_id)}
+              disabled={saving}
+            >
+              <Save className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} />
+              {saving ? t("gradebook.summary.savingManual") : t("gradebook.summary.saveManual")}
+            </Button>
+            {/* Removal is its own action. Saving with an empty field used to
+                delete the grade, which erased marks the screen could not
+                display — a numeric override renders as an empty box. */}
+            {(manualGrade?.override_code || manualGrade?.override_score != null) && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onClearGrade(student.student_id)}
+                disabled={saving}
+              >
+                {t("gradebook.summary.clearManual")}
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </div>

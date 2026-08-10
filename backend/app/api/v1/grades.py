@@ -3,10 +3,11 @@ import io
 import logging
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 from urllib.parse import quote
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -30,12 +31,25 @@ from app.schemas.grade import (
     GradeUpsert,
     GradingConfigResponse,
     GradingConfigUpdate,
+    GradingSchemeResponse,
+    GradingSchemeUpdate,
     StudentCalculatedGrade,
+    StudentGradeResponse,
 )
+from app.services.audit_service import log_action
 from app.services.grade_calculator import (
     calculate_all_student_grades,
     calculate_student_grade_for_course,
 )
+from app.services.grade_override import (
+    ACTION_CHANGED,
+    ACTION_CLEARED,
+    ACTION_SET,
+    audit_override,
+    resolve_official_row,
+    validate_override,
+)
+from app.services.grading_scheme import effective_bands, get_org_settings, validate_scheme_threshold
 from app.services.translation.resolve_for_display import populate_spine_texts
 
 logger = logging.getLogger(__name__)
@@ -126,6 +140,113 @@ def update_grading_config(
     return GradingConfigResponse.model_validate(course)
 
 
+@router.get("/course/{course_id}/scheme", response_model=GradingSchemeResponse)
+def get_grading_scheme(
+    course_id: str,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    """The course's scheme, pass line, and the bands they are read against."""
+    course = verify_course_owner(db, course_id, teacher)
+    settings = get_org_settings(db)
+    scheme = course.grading_scheme or settings.default_grading_scheme
+    return GradingSchemeResponse(
+        grading_scheme=scheme,
+        pass_threshold=course.pass_threshold,
+        bands=effective_bands(settings, scheme),
+    )
+
+
+@router.put("/course/{course_id}/scheme", response_model=GradingSchemeResponse)
+def update_grading_scheme(
+    course_id: str,
+    data: GradingSchemeUpdate,
+    request: Request,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    """Change how a course is graded — both values at once, and audited (D8).
+
+    Three rules, each earned:
+
+    1. **The pair is validated together.** A scheme without its pass line can
+       produce a course nobody can pass — five-point above 75 leaves «3»
+       unreachable.
+    2. **Existing hand-set grades block the change (409).** An «A» means
+       nothing in a five-point course, and silently reinterpreting it would
+       change a student's official result without anyone deciding to. The
+       teacher clears or re-enters them first.
+    3. **It is written down.** Changing the scheme changes what every grade in
+       the course means; that is not a settings tweak, it is an academic
+       decision someone should be able to point at later.
+    """
+    course = verify_course_owner(db, course_id, teacher)
+
+    invalid = validate_scheme_threshold(data.grading_scheme, data.pass_threshold)
+    if invalid:
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            message=invalid,
+            context={"resource_type": "course", "resource_id": course_id},
+        )
+
+    previous_scheme = course.grading_scheme
+    previous_threshold = course.pass_threshold
+
+    if data.grading_scheme != previous_scheme:
+        overrides = db.query(StudentGrade).filter(StudentGrade.course_id == course_id).all()
+        if overrides:
+            # Reinterpreting «A» as a five-point grade is not a conversion, it
+            # is a guess about someone's result. Refuse and name the students,
+            # so the teacher can decide deliberately.
+            raise equip_error(
+                ErrorCode.VALIDATION_FAILED,
+                status_code=status.HTTP_409_CONFLICT,
+                message=(
+                    f"{len(overrides)} hand-set grade(s) exist under the {previous_scheme} scheme. "
+                    "Clear or re-enter them before changing how this course is graded."
+                ),
+                context={
+                    "resource_type": "course",
+                    "resource_id": course_id,
+                    "affected_students": [str(o.student_id) for o in overrides],
+                },
+            )
+
+    course.grading_scheme = data.grading_scheme
+    course.pass_threshold = data.pass_threshold
+    db.commit()
+    db.refresh(course)
+
+    log_action(
+        db,
+        user_id=teacher.id,
+        action="grading_scheme_changed",
+        resource_type="course",
+        resource_id=course_id,
+        details={
+            "previous": {
+                "grading_scheme": previous_scheme,
+                "pass_threshold": float(previous_threshold) if previous_threshold is not None else None,
+            },
+            "new": {
+                "grading_scheme": data.grading_scheme,
+                "pass_threshold": float(data.pass_threshold),
+            },
+            "reason": data.reason,
+        },
+        request=request,
+    )
+
+    settings = get_org_settings(db)
+    return GradingSchemeResponse(
+        grading_scheme=course.grading_scheme,
+        pass_threshold=course.pass_threshold,
+        bands=effective_bands(settings, course.grading_scheme),
+    )
+
+
 @router.get(
     "/course/{course_id}/student/{student_id}/calculated",
     response_model=StudentCalculatedGrade,
@@ -158,10 +279,17 @@ def get_calculated_grade(
 
     breakdown = calculate_student_grade_for_course(db, course, student_id)
 
+    # Resolved by cohort, not by whichever row the database returns first —
+    # a leftover cohort-less override must not outrank this term's (D7).
+    official = resolve_official_row(db, student_id=str(student_id), course_id=course_id)
     manual = (
-        db.query(StudentGrade.grade)
-        .filter(StudentGrade.course_id == course_id, StudentGrade.student_id == str(student_id))
-        .scalar()
+        None
+        if official is None
+        else (
+            official.override_code
+            if official.override_code is not None
+            else (f"{official.override_score:.2f}" if official.override_score is not None else None)
+        )
     )
 
     return StudentCalculatedGrade(
@@ -325,7 +453,7 @@ def export_grades_csv(
 # ── Existing Manual Grade Endpoints ───────────────────────────────
 
 
-@router.get("/my", response_model=list[GradeResponse])
+@router.get("/my", response_model=list[StudentGradeResponse])
 def list_my_grades(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
@@ -342,7 +470,7 @@ def list_my_grades(
     )
 
 
-@router.get("/my/{course_id}", response_model=GradeResponse)
+@router.get("/my/{course_id}", response_model=StudentGradeResponse)
 def get_my_grade_for_course(
     course_id: str,
     current_user: User = Depends(get_current_user),
@@ -413,13 +541,35 @@ def upsert_student_grade(
     course_id: str,
     student_id: str,
     data: GradeUpsert,
+    request: Request,
     cohort_id: str | None = Query(None, max_length=36),
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> StudentGrade:
-    verify_course_owner(db, course_id, teacher)
+    """Set or change a hand-set grade (D7).
 
-    enrolled = lookup_enrollment(db, student_id, course_id)
+    The override wins over the computed grade wherever the official result is
+    needed, so three things happen every time: the value is checked against the
+    course's scheme, the computed score is snapshotted beside it, and the
+    change is written to the audit log with what it replaced.
+    """
+    course = verify_course_owner(db, course_id, teacher)
+
+    # The path gives strings; the columns are typed. Convert before any query
+    # touches them, or the comparison fails deep in the driver with
+    # "'str' object has no attribute 'hex'" and surfaces as a 503.
+    try:
+        student_uuid = UUID(str(student_id))
+        cohort_uuid = UUID(cohort_id) if cohort_id else None
+    except ValueError:
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            message="student_id and cohort_id must be UUIDs",
+            context={"resource_type": "grade", "student_id": student_id},
+        ) from None
+
+    enrolled = lookup_enrollment(db, student_uuid, course_id)
     if not enrolled:
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
@@ -428,31 +578,64 @@ def upsert_student_grade(
             context={"resource_type": "enrollment", "student_id": student_id, "course_id": course_id},
         )
 
+    invalid = validate_override(course, code=data.override_code, score=data.override_score)
+    if invalid:
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            message=invalid,
+            context={"resource_type": "grade", "course_id": course_id, "scheme": course.grading_scheme},
+        )
+
+    # What the system itself arrived at, recorded beside the hand-set value so
+    # neither surface has to guess later what was overridden.
+    computed = calculate_student_grade_for_course(db, course, student_uuid)
+    computed_score = Decimal(str(computed.final_score)) if computed.result_state == "graded" else None
+
     query = db.query(StudentGrade).filter(
-        StudentGrade.student_id == student_id,
+        StudentGrade.student_id == student_uuid,
         StudentGrade.course_id == course_id,
     )
-    if cohort_id is not None:
-        query = query.filter(StudentGrade.cohort_id == cohort_id)
+    query = query.filter(
+        StudentGrade.cohort_id == cohort_uuid if cohort_uuid is not None else StudentGrade.cohort_id.is_(None)
+    )
     grade = query.first()
 
     if grade:
-        if data.grade is not None:
-            grade.grade = data.grade
+        previous = {
+            "override_code": grade.override_code,
+            "override_score": float(grade.override_score) if grade.override_score is not None else None,
+            "graded_by": str(grade.graded_by) if grade.graded_by else None,
+        }
+        grade.override_code = data.override_code
+        grade.override_score = data.override_score
+        grade.computed_score = computed_score
+        grade.reason = data.reason
         if data.comment is not None:
             grade.comment = data.comment
         grade.graded_by = teacher.id
         grade.graded_at = datetime.now(UTC)
         db.commit()
         db.refresh(grade)
+        audit_override(
+            db,
+            actor_id=teacher.id,
+            action=ACTION_CHANGED,
+            row=grade,
+            previous=previous,
+            request=request,
+        )
         return grade
 
     grade = StudentGrade(
         id=uuid.uuid4(),
-        student_id=student_id,
+        student_id=student_uuid,
         course_id=course_id,
-        cohort_id=cohort_id,
-        grade=data.grade,
+        cohort_id=cohort_uuid,
+        override_code=data.override_code,
+        override_score=data.override_score,
+        computed_score=computed_score,
+        reason=data.reason,
         comment=data.comment,
         graded_by=teacher.id,
     )
@@ -460,40 +643,126 @@ def upsert_student_grade(
     try:
         db.commit()
     except IntegrityError:
-        # Concurrent upsert just inserted the same (student, course,
-        # cohort) row. The unique index in migration
-        # ``20260521172911_student_grades_unique_constraint`` is what
-        # surfaces the race as a clean IntegrityError instead of two
-        # duplicate rows. Re-read, apply the caller's update on top of
-        # the winner, return that.
+        # Concurrent upsert just inserted the same (student, course, cohort)
+        # row. The unique index in migration 20260521172911 surfaces the race
+        # as a clean IntegrityError instead of two duplicate rows. Re-read,
+        # apply this caller's values on top of the winner, return that.
         db.rollback()
         existing_query = db.query(StudentGrade).filter(
-            StudentGrade.student_id == student_id,
+            StudentGrade.student_id == student_uuid,
             StudentGrade.course_id == course_id,
         )
-        if cohort_id is not None:
-            existing_query = existing_query.filter(StudentGrade.cohort_id == cohort_id)
-        else:
-            existing_query = existing_query.filter(StudentGrade.cohort_id.is_(None))
+        existing_query = existing_query.filter(
+            StudentGrade.cohort_id == cohort_uuid if cohort_uuid is not None else StudentGrade.cohort_id.is_(None)
+        )
         existing = existing_query.first()
         if not existing:
-            # IntegrityError without a matching row means a different
-            # constraint fired (FK violation, etc). Surface a clean 409
-            # instead of leaking via the generic SQLAlchemy 503 handler.
             raise equip_error(
                 ErrorCode.VALIDATION_FAILED,
                 status_code=status.HTTP_409_CONFLICT,
                 message="Grade could not be saved due to a conflict; please retry.",
                 context={"resource_type": "grade", "student_id": student_id, "course_id": course_id},
             ) from None
-        if data.grade is not None:
-            existing.grade = data.grade
+        previous = {
+            "override_code": existing.override_code,
+            "override_score": float(existing.override_score) if existing.override_score is not None else None,
+            "graded_by": str(existing.graded_by) if existing.graded_by else None,
+        }
+        existing.override_code = data.override_code
+        existing.override_score = data.override_score
+        existing.computed_score = computed_score
+        existing.reason = data.reason
         if data.comment is not None:
             existing.comment = data.comment
         existing.graded_by = teacher.id
         existing.graded_at = datetime.now(UTC)
         db.commit()
         db.refresh(existing)
+        audit_override(
+            db,
+            actor_id=teacher.id,
+            action=ACTION_CHANGED,
+            row=existing,
+            previous=previous,
+            request=request,
+        )
         return existing
     db.refresh(grade)
+    audit_override(db, actor_id=teacher.id, action=ACTION_SET, row=grade, request=request)
     return grade
+
+
+@router.delete("/course/{course_id}/student/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
+def clear_student_grade(
+    course_id: str,
+    student_id: str,
+    request: Request,
+    cohort_id: str | None = Query(None, max_length=36),
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+) -> None:
+    """Remove a hand-set grade and fall back to the computed one.
+
+    There was no way to do this before. The old write path treated an omitted
+    field as "leave it alone", so once a teacher had set an F nothing could
+    take it back — and the typed CHECK makes "row with neither value" illegal
+    anyway, so clearing has to be a deletion rather than an emptying.
+    """
+    verify_course_owner(db, course_id, teacher)
+
+    try:
+        student_uuid = UUID(str(student_id))
+        cohort_uuid = UUID(cohort_id) if cohort_id else None
+    except ValueError:
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            message="student_id and cohort_id must be UUIDs",
+            context={"resource_type": "grade", "student_id": student_id},
+        ) from None
+
+    query = db.query(StudentGrade).filter(
+        StudentGrade.student_id == student_uuid,
+        StudentGrade.course_id == course_id,
+    )
+    query = query.filter(
+        StudentGrade.cohort_id == cohort_uuid if cohort_uuid is not None else StudentGrade.cohort_id.is_(None)
+    )
+    grade = query.first()
+    if not grade:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="No hand-set grade to remove",
+            context={"resource_type": "grade", "student_id": student_id, "course_id": course_id},
+        )
+
+    previous = {
+        "override_code": grade.override_code,
+        "override_score": float(grade.override_score) if grade.override_score is not None else None,
+        "graded_by": str(grade.graded_by) if grade.graded_by else None,
+        "reason": grade.reason,
+    }
+    # Audited before anything is removed: afterwards the values are gone.
+    audit_override(
+        db,
+        actor_id=teacher.id,
+        action=ACTION_CLEARED,
+        row=grade,
+        previous=previous,
+        request=request,
+    )
+
+    # Clearing removes the *grade*, not the teacher's note to the student. A
+    # comment written alongside it ("resubmit section 3") has nothing to do
+    # with the override and must survive; the row goes only when nothing is
+    # left on it.
+    grade.override_code = None
+    grade.override_score = None
+    grade.computed_score = None
+    grade.reason = None
+    grade.graded_by = teacher.id
+    grade.graded_at = datetime.now(UTC)
+    if not grade.comment:
+        db.delete(grade)
+    db.commit()

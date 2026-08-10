@@ -436,7 +436,7 @@ def calculate_all_student_grades(db: Session, course: Course):
     assignment_ids = _get_assignment_ids_for_chapters(db, chapter_ids)
 
     enrollments = (
-        db.query(Enrollment.user_id, User.full_name, User.email)
+        db.query(Enrollment.user_id, User.full_name, User.email, Enrollment.cohort_id, Enrollment.enrolled_at)
         .join(User, User.id == Enrollment.user_id)
         # Exclude deactivated (soft-deleted) students so the gradebook,
         # class average, and CSV match the analytics roster — they must not
@@ -515,13 +515,40 @@ def calculate_all_student_grades(db: Session, course: Course):
         for uid, cnt in comp_rows:
             completion_counts[str(uid)] = cnt
 
-    # Manual grades
+    # Hand-set overrides, resolved deterministically (D7).
+    #
+    # The table is unique on (student, course, cohort) with NULLs not distinct,
+    # so one student can legitimately have a cohort row and a legacy row with
+    # no cohort. This loop used to keep whichever came back last, which meant a
+    # leftover override from before the course had cohorts could outrank this
+    # term's and quietly pass a failing student. The enrolment's cohort decides;
+    # a cohort-less row is the fallback, never a rival.
+    # Same rule as resolve_official_row, and it has to be the same: a student
+    # with two enrolments must not get one answer on the gradebook and another
+    # on their own page. Later enrolment wins; the dict is built in ascending
+    # order so the last write is the newest.
+    enrolment_cohort: dict[str, object] = {}
+    for e in sorted(
+        enrollments,
+        key=lambda row: (row.enrolled_at is not None, row.enrolled_at, str(row.user_id)),
+    ):
+        enrolment_cohort[str(e.user_id)] = e.cohort_id
+    by_student: dict[str, dict[str | None, StudentGrade]] = {}
+    for row in db.query(StudentGrade).filter(StudentGrade.course_id == course.id).all():
+        key = str(row.cohort_id) if row.cohort_id else None
+        by_student.setdefault(str(row.student_id), {})[key] = row
+
     manual_grades_map: dict[str, str | None] = {}
-    manual_rows = (
-        db.query(StudentGrade.student_id, StudentGrade.grade).filter(StudentGrade.course_id == course.id).all()
-    )
-    for row in manual_rows:
-        manual_grades_map[str(row.student_id)] = row.grade
+    for sid, rows_by_cohort in by_student.items():
+        cohort = enrolment_cohort.get(sid)
+        chosen = rows_by_cohort.get(str(cohort) if cohort else None) or rows_by_cohort.get(None)
+        if chosen is None:
+            continue
+        manual_grades_map[sid] = (
+            chosen.override_code
+            if chosen.override_code is not None
+            else (f"{chosen.override_score:.2f}" if chosen.override_score is not None else None)
+        )
 
     total_chapters = len(chapter_ids)
     total_quizzes = len(quiz_ids)
@@ -531,7 +558,7 @@ def calculate_all_student_grades(db: Session, course: Course):
     live_quizzes, live_assignments = category_is_live(db, quiz_ids=quiz_ids, assignment_ids=assignment_ids)
     settings = get_org_settings(db)
     results = []
-    for user_id, full_name, email in enrollments:
+    for user_id, full_name, email, _cohort_id, _enrolled_at in enrollments:
         sid = str(user_id)
         qs = quiz_scores.get(sid, [])
         quiz_avg = sum(qs) / total_quizzes if total_quizzes > 0 else 0.0
