@@ -64,7 +64,14 @@ if [[ "$SCOPE" == "all" || "$SCOPE" == "frontend" ]]; then
   # this Node build. Without it 33 tests fail on a clean checkout, on a machine
   # where CI is green — and a gate that fails on an untouched tree is a gate
   # people learn to ignore.
-  run "vitest"            env -C frontend NODE_OPTIONS="--localstorage-file=${TMPDIR:-/tmp}/equip-vitest-localstorage.json" npx vitest run
+  #
+  # A fresh file per run, deleted after. A fixed path made the gate flaky: the
+  # store is SQLite-backed, so a previous run's -wal/-shm siblings can fail the
+  # next one for no reason connected to the code. Flaky is worse than absent,
+  # for exactly the same reason as above.
+  LS_STORE="$(mktemp -d)/localstorage.json"
+  run "vitest"            env -C frontend NODE_OPTIONS="--localstorage-file=$LS_STORE" npx vitest run
+  rm -rf "$(dirname "$LS_STORE")"
 fi
 
 echo

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict NgDrh5lPAa5PYBEiHfOIXFsJr5g69BF1VeS8a2xBpgh5zSVsKt8BAXVWYEGneZi
+\restrict RiztmY1Ya8bPtarzEmmOdc5fKL5hSfCL8Mxz40WsBzxjJvFLnI54mQk0xo8jyBD
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10 (Homebrew)
@@ -703,7 +703,8 @@ CREATE TABLE public.quiz_answers (
     is_correct boolean,
     points_earned integer DEFAULT 0 NOT NULL,
     grader_comment text,
-    graded_at timestamp with time zone
+    graded_at timestamp with time zone,
+    graded_by uuid
 )
 WITH (autovacuum_vacuum_threshold='25', autovacuum_analyze_threshold='25');
 
@@ -1647,6 +1648,13 @@ CREATE INDEX ix_quiz_answers_graded_at ON public.quiz_answers USING btree (grade
 
 
 --
+-- Name: ix_quiz_answers_graded_by; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_quiz_answers_graded_by ON public.quiz_answers USING btree (graded_by) WHERE (graded_by IS NOT NULL);
+
+
+--
 -- Name: ix_quiz_answers_question_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2282,6 +2290,14 @@ ALTER TABLE ONLY public.quiz_answers
 
 
 --
+-- Name: quiz_answers quiz_answers_graded_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.quiz_answers
+    ADD CONSTRAINT quiz_answers_graded_by_fkey FOREIGN KEY (graded_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
 -- Name: quiz_answers quiz_answers_question_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2906,5 +2922,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict NgDrh5lPAa5PYBEiHfOIXFsJr5g69BF1VeS8a2xBpgh5zSVsKt8BAXVWYEGneZi
+\unrestrict RiztmY1Ya8bPtarzEmmOdc5fKL5hSfCL8Mxz40WsBzxjJvFLnI54mQk0xo8jyBD
 

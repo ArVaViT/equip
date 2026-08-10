@@ -147,5 +147,10 @@ class QuizAnswer(Base):
     # because they're scored deterministically; only open-ended answers
     # ever have ``graded_at IS NULL`` in steady state.
     graded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    #: Who marked it. An essay score is a person's judgement, and it travels all
+    #: the way to a certificate — every other link in that chain records its
+    #: author. NULL means either nobody did (auto-marked) or the platform was
+    #: not yet recording it.
+    graded_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("profiles.id", ondelete="SET NULL"))
 
     attempt: Mapped["QuizAttempt"] = relationship(back_populates="answers")
