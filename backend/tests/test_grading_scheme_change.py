@@ -232,9 +232,7 @@ class TestQuizThresholdAlignment:
         assert quiz.passing_score == 60
 
 
-def test_moving_the_course_line_records_which_quizzes_it_leaves_behind(
-    client, db: Session, teacher, student
-) -> None:
+def test_moving_the_course_line_records_which_quizzes_it_leaves_behind(client, db: Session, teacher, student) -> None:
     """A quiz keeps the pass line it was written with.
 
     Raise the course's and a student clears every quiz, is congratulated each
