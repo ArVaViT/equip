@@ -413,6 +413,12 @@ class GradeSheetResponse(BaseModel):
 
     id: UUID
     course_id: str
+    #: The course title as it read at closing, in this document's language.
+    #: Courses get retitled; a signed heading does not.
+    course_title: str | None = None
+    #: The language this document was closed in. The interface locale belongs
+    #: to the reader; a signed page keeps its own.
+    locale: str = "en"
     cohort_id: UUID | None = None
     #: The поток's name as it stood at closing — cohort names are editable and
     #: a signed heading is not.

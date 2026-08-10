@@ -528,3 +528,94 @@ def test_the_sheet_keeps_the_cohort_name_it_was_signed_under(admin_client, db: S
     sheet = admin_client.post(f"{SHEET_URL.format(course_id=course.id)}?cohort_id={cohort.id}").json()
 
     assert sheet["cohort_name"] == "Поток 2026"
+
+
+# --------------------------------------------------------------------------
+# A signed page keeps its own words
+#
+# The first version froze the numbers and left the words live, which is half a
+# snapshot and therefore not one.
+# --------------------------------------------------------------------------
+
+
+def test_a_student_who_changes_her_name_does_not_change_the_document(
+    admin_client, db: Session, teacher, student
+) -> None:
+    """Read live, a marriage rewrites a page already in the filing cabinet."""
+    course, quiz = _course(db, teacher, "c-sheet-maiden")
+    _enrol(db, course.id, STUDENT_ID)
+    _attempt(db, quiz, STUDENT_ID, 90)
+    db.commit()
+    signed_as = admin_client.post(SHEET_URL.format(course_id=course.id)).json()["rows"][0]["student_name"]
+    # Without this the test compares None to None and passes while the snapshot
+    # does nothing at all — which is exactly what it did on the first attempt.
+    assert signed_as, "the document has to carry a name before it can keep one"
+
+    person = db.query(User).filter(User.id == STUDENT_ID).first()
+    person.full_name = "Новая Фамилия"
+    db.commit()
+
+    row = admin_client.get(SHEET_URL.format(course_id=course.id)).json()["rows"][0]
+
+    assert row["student_name"] == signed_as
+    assert row["student_name"] != "Новая Фамилия"
+
+
+def test_the_cohort_name_comes_from_the_documents_own_language(admin_client, db: Session, teacher, student) -> None:
+    """The admin helper picks whichever translation was entered first, which is
+    fine for a list and wrong for a signed page — a school whose English name
+    happened to be entered first would get it on the other language's page."""
+    from app.models.content_version import ContentVersion
+
+    course, _quiz = _course(db, teacher, "c-sheet-locale")
+    cohort = Cohort(
+        id=uuid.uuid4(),
+        start_date=datetime.now(UTC).date(),
+        end_date=datetime.now(UTC).date(),
+        status="active",
+    )
+    db.add(cohort)
+    db.flush()
+    # Russian entered first — the old resolver would have taken this one.
+    db.add(
+        ContentVersion(
+            entity_type="cohort",
+            entity_id=str(cohort.id),
+            field="title",
+            locale="ru",
+            text="Поток 2026",
+            origin="human",
+        )
+    )
+    db.add(
+        ContentVersion(
+            entity_type="cohort",
+            entity_id=str(cohort.id),
+            field="title",
+            locale="en",
+            text="Class of 2026",
+            origin="human",
+        )
+    )
+    _enrol(db, course.id, STUDENT_ID, cohort_id=cohort.id)
+    db.commit()
+
+    sheet = admin_client.post(f"{SHEET_URL.format(course_id=course.id)}?cohort_id={cohort.id}").json()
+
+    assert sheet["locale"] == "en"
+    assert sheet["cohort_name"] == "Class of 2026"
+
+
+def test_the_document_records_the_language_it_was_closed_in(admin_client, db: Session, teacher, student) -> None:
+    """Every sheet closes in English by decision. The value is stored rather
+    than assumed so that adding a language later costs nothing — without it,
+    the day a second one appears, every sheet already in the cabinet is of
+    unknown language and there is nothing to read it back from."""
+    course, _quiz = _course(db, teacher, "c-sheet-records-locale")
+    _enrol(db, course.id, STUDENT_ID)
+    db.commit()
+
+    sheet = admin_client.post(SHEET_URL.format(course_id=course.id)).json()
+
+    assert sheet["locale"] == "en"
+    assert sheet["course_title"] is not None, "the title is frozen too — courses get retitled"

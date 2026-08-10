@@ -321,20 +321,24 @@ def _quizzes_off_the_course_line(db: Session, course_id: str, threshold: Decimal
 
 
 def _sheet_response(db: Session, sheet: GradeSheet) -> GradeSheetResponse:
-    """A closed sheet plus the names, read from the snapshot rather than recomputed."""
+    """A closed sheet, read entirely from the snapshot.
+
+    Nothing here is looked up live — not the student names, not the course
+    title, not the поток. A document whose words move after signature is not a
+    document, and names move: people marry, courses get retitled, cohorts get
+    renamed.
+    """
     rows = db.query(GradeSheetRow).filter(GradeSheetRow.sheet_id == sheet.id).all()
-    names = {
-        str(u.id): (u.full_name or u.email)
-        for u in db.query(User).filter(User.id.in_([r.student_id for r in rows] or [None])).all()
-    }
     return GradeSheetResponse(
         **{
             k: getattr(sheet, k)
             for k in (
                 "id",
                 "course_id",
+                "course_title",
                 "cohort_id",
                 "cohort_name",
+                "locale",
                 "grading_scheme",
                 "pass_threshold",
                 "finalized_at",
@@ -348,13 +352,13 @@ def _sheet_response(db: Session, sheet: GradeSheet) -> GradeSheetResponse:
         rows=[
             SheetRowResponse(
                 student_id=r.student_id,
-                student_name=names.get(str(r.student_id)),
+                student_name=r.student_name,
                 result_state=r.result_state,  # type: ignore[arg-type]  # CHECK-constrained in the DB
                 official_code=r.official_code,
                 official_score=r.official_score,
                 is_override=r.is_override,
             )
-            for r in sorted(rows, key=lambda r: names.get(str(r.student_id)) or "")
+            for r in sorted(rows, key=lambda r: r.student_name or "")
         ],
     )
 

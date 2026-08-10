@@ -22,12 +22,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from app.core.ids import as_uuid
+from app.models.content_version import ContentVersion
 from app.models.enrollment import Enrollment
 from app.models.grade_sheet import GradeSheet, GradeSheetRow
 from app.models.user import User
 from app.services.grade_calculator import calculate_all_student_grades
 from app.services.grade_override import override_for_cohort
 from app.services.grading_scheme import effective_bands, get_org_settings, score_passes, symbol_floor
+from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 
 if TYPE_CHECKING:
     from decimal import Decimal
@@ -36,6 +38,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
     from app.models.course import Course
+    from app.schemas.locale import LocaleCode
 
 #: A result, not a computation state. The calculator's vocabulary answers "why
 #: is there no number"; a signed document answers "what did this person get".
@@ -115,12 +118,37 @@ def _code_passes(code: str, scheme: str, pass_threshold: Decimal, bands: list) -
     return floor is not None and score_passes(floor, pass_threshold)
 
 
-def _cohort_name(db: Session, cohort_id: UUID | None) -> str | None:
+#: Every ведомость closes in English, by decision. The value is stored rather
+#: than assumed so that adding a language later costs nothing — without it, the
+#: day a second language appears, every sheet already in the cabinet is of
+#: unknown language and there is nothing to read it back from.
+SHEET_LOCALE: LocaleCode = "en"
+
+
+def _cohort_name(db: Session, cohort_id: UUID | None, locale: str) -> str | None:
+    """The поток's name in the document's own language.
+
+    The admin helper picks "whichever translation was entered first", which is
+    fine for an admin list and wrong for a signed page: a school whose English
+    name happened to be entered first would get it on a Russian ведомость.
+    """
     if cohort_id is None:
         return None
-    from app.api.v1.cohorts import _fetch_cohort_names
-
-    return _fetch_cohort_names(db, [cohort_id]).get(str(cohort_id))
+    rows = (
+        db.query(ContentVersion.locale, ContentVersion.text)
+        .filter(
+            ContentVersion.entity_type == "cohort",
+            ContentVersion.entity_id == str(cohort_id),
+            ContentVersion.field == "title",
+            ContentVersion.superseded_by.is_(None),
+            ContentVersion.status == "ok",
+        )
+        .all()
+    )
+    by_locale = {r.locale: r.text for r in rows}
+    # The document's language first; any other translation is better than an
+    # unnamed поток on a signed page, but only as a fallback.
+    return by_locale.get(locale) or next(iter(by_locale.values()), None)
 
 
 def refuse_reason(course: Course) -> str | None:
@@ -200,7 +228,9 @@ def finalize_sheet(db: Session, course: Course, cohort_id: UUID | None, closed_b
         finalized_by=closed_by,
         # The поток's name as it stood. Cohort names live in `content_versions`
         # and are editable; the heading on a signed page is not.
-        cohort_name=_cohort_name(db, cohort_id),
+        locale=SHEET_LOCALE,
+        cohort_name=_cohort_name(db, cohort_id, SHEET_LOCALE),
+        course_title=fetch_course_titles_by_id(db, [course.id], display_locale=SHEET_LOCALE).get(course.id),
         # A document that changed after signature has to say so on its face,
         # and the document that says it must be the corrected one — not the
         # superseded page nobody will print again.
@@ -241,6 +271,9 @@ def finalize_sheet(db: Session, course: Course, cohort_id: UUID | None, closed_b
             GradeSheetRow(
                 sheet_id=sheet.id,
                 student_id=student_uuid,
+                # The name the document is signed under. Read live, a student
+                # who marries rewrites a page already in the cabinet.
+                student_name=row["student_name"] or row["student_email"],
                 result_state=state,
                 official_code=code,
                 official_score=score,

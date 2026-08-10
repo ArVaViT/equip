@@ -57,7 +57,16 @@ class GradeSheet(Base):
     #: index. A поток with a signed ведомость is not deletable.
     cohort_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("cohorts.id", ondelete="RESTRICT"))
     #: The поток's name as it was, so the printed heading survives a rename.
+    #: Resolved in the sheet's own ``locale``, not by "whichever translation
+    #: was entered first" — that put an English поток name on a Russian page.
     cohort_name: Mapped[str | None] = mapped_column(Text)
+    #: The course title as it read at closing, in the sheet's language.
+    course_title: Mapped[str | None] = mapped_column(Text)
+    #: The language this document was closed in. The interface locale belongs
+    #: to the reader and changes per session; a signed document's language
+    #: belongs to the document — printed, signed and filed, that paper stays in
+    #: the language it was printed in.
+    locale: Mapped[str] = mapped_column(Text, default="en", server_default="en")
 
     #: The rules in force at closing. A school that moves its scale later must
     #: not move what this document says it certified.
@@ -112,6 +121,9 @@ class GradeSheetRow(Base):
     #: The director-visible glyph: set by hand, not computed. A signing
     #: director should see that at a glance rather than have to ask.
     is_override: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    #: The name the document was signed under. Read live, a student who marries
+    #: and changes her surname rewrites a page already in the filing cabinet.
+    student_name: Mapped[str | None] = mapped_column(Text)
 
     def __repr__(self) -> str:
         return f"<GradeSheetRow student={self.student_id} {self.result_state}>"
