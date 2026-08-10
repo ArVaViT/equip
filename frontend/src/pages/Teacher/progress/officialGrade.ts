@@ -1,9 +1,11 @@
 import type { StudentProgressEntry } from "@/types"
-import { formatGradePercent } from "../gradebook/formatGrade"
+import { gradePair } from "../gradebook/gradePair"
 
 export interface OfficialGrade {
   /** What to print. Already formatted; `null` means print nothing but the note. */
   text: string | null
+  /** «Итоговая», when it differs from what `text` shows. `null` = nothing to add. */
+  finalText: string | null
   /** True when a teacher set this by hand, so the UI can mark it as such. */
   isManual: boolean
   /** i18n key explaining an absent number. `null` when there is a number. */
@@ -34,17 +36,32 @@ const NOTE_BY_STATE: Record<string, string> = {
  */
 export function officialGrade(entry: StudentProgressEntry): OfficialGrade {
   if (entry.manual_grade) {
-    return { text: entry.manual_grade, isManual: true, noteKey: null }
+    // A hand-set grade replaces both halves of the pair — there is no
+    // "current" version of a decision somebody made.
+    return { text: entry.manual_grade, finalText: null, isManual: true, noteKey: null }
   }
-  if (entry.overall_grade === null) {
-    return { text: null, isManual: false, noteKey: NOTE_BY_STATE[entry.result_state] ?? null }
+  if (entry.overall_grade === null || entry.current_grade === null) {
+    return {
+      text: null,
+      finalText: null,
+      isManual: false,
+      noteKey: NOTE_BY_STATE[entry.result_state] ?? null,
+    }
   }
-  // The symbol rides along when the course has one — a school reading in letters
-  // should not have to translate 87% in its head on every row.
-  const symbol = entry.letter_grade ? ` (${entry.letter_grade})` : ""
+
+  // Lead with «текущая» — it is the number the student is looking at, so it is
+  // the one that makes a conversation between them possible (D10).
+  const pair = gradePair(
+    entry.current_grade,
+    entry.overall_grade,
+    entry.current_letter_grade,
+    entry.letter_grade,
+  )
   return {
-    text: `${formatGradePercent(entry.overall_grade)}${symbol}`,
+    text: pair.current,
+    finalText: pair.differ ? pair.final : null,
     isManual: false,
     noteKey: null,
   }
+
 }

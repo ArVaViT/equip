@@ -269,13 +269,27 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
         <p className="text-sm tabular-nums text-right">
           {b.student_has_assignment_marks ? `${b.assignment_avg.toFixed(1)}%` : "—"}
         </p>
+        {/* «Текущая» leads — it is the number the student sees, so it is the
+            one that makes a conversation with them possible. «Итоговая» sits
+            under it the moment they differ, with the reason on hover (D10). */}
         <p className="text-sm font-semibold tabular-nums text-right">
-          {hasScore ? `${b.final_score.toFixed(1)}%` : "—"}
+          {hasScore ? `${b.current_score.toFixed(1)}%` : "—"}
+          {hasScore && b.scores_differ && (
+            <span
+              className="block text-[10px] font-normal text-ink-muted"
+              title={t("gradebook.pair.explainer")}
+            >
+              {t("gradebook.pair.finalShort", { grade: `${b.final_score.toFixed(1)}%` })}
+            </span>
+          )}
         </p>
         <div className="flex justify-center">
           {hasScore ? (
-            <span className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ${letterColor(b.letter_grade)}`}>
-              {b.letter_grade}
+            <span
+              className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ${letterColor(b.current_letter_grade || b.letter_grade)}`}
+              title={b.scores_differ ? t("gradebook.pair.explainer") : undefined}
+            >
+              {b.current_letter_grade || b.letter_grade}
             </span>
           ) : (
             // Deliberately neutral. `completion_pass` is a fact about the

@@ -375,6 +375,9 @@ _EMPTY_OFFICIAL: dict[str, Any] = {
     "quiz_avg": None,
     "assignment_avg": None,
     "overall_grade": None,
+    "current_grade": None,
+    "current_letter_grade": None,
+    "scores_differ": False,
     "manual_grade": None,
     "result_state": "not_graded_yet",
     "letter_grade": None,
@@ -409,6 +412,12 @@ def _official_row(breakdown: GradeBreakdown, manual_grade: str | None) -> dict[s
         # beside the letter B, which the school's own band table calls A.
         # One formatter, on the client, from the raw number.
         "overall_grade": None if breakdown.result_state in _NO_NUMBER_STATES else breakdown.final_score,
+        # «Текущая» beside «итоговая» (D10). One without the other is how the
+        # student and the teacher end up holding two numbers neither can
+        # explain; the pair is only ever shown as a pair.
+        "current_grade": None if breakdown.result_state in _NO_NUMBER_STATES else breakdown.current_score,
+        "current_letter_grade": breakdown.current_letter_grade or None,
+        "scores_differ": breakdown.scores_differ,
         # The override, when present, IS the official grade (D7) — it wins for
         # the certificate, the ведомость and the student's own page, so a board
         # showing the computed number beside it would be showing the unofficial

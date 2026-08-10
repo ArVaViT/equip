@@ -272,6 +272,17 @@ const GradeTableRow = memo(function GradeTableRow({
             <span className="font-semibold text-sm">
               {official.text ?? "—"}
             </span>
+            {/* «Итоговая» only once it differs — the student meets it the day
+                it diverges, not for the first time when a certificate is
+                refused. */}
+            {official.finalText && (
+              <span
+                className="text-[10px] text-ink-muted leading-tight"
+                title={t("gradebook.pair.explainer")}
+              >
+                {t("gradebook.pair.finalShort", { grade: official.finalText })}
+              </span>
+            )}
             {official.isManual && (
               <span className="text-[10px] font-medium text-info">
                 {t("gradebook.table.setByTeacher")}

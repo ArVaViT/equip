@@ -279,6 +279,12 @@ export function StudentRow({
                       </span>
                     )}
                   </p>
+                  {official.finalText && (
+                    <p className="text-xs text-ink-muted mt-0.5">
+                      {t("gradebook.pair.finalShort", { grade: official.finalText })} ·{" "}
+                      {t("gradebook.pair.explainer")}
+                    </p>
+                  )}
                   {official.noteKey && (
                     <p className="text-xs text-ink-muted mt-0.5">{t(official.noteKey)}</p>
                   )}

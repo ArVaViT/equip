@@ -150,6 +150,13 @@ export interface GradeBreakdown {
    *  denominator left. Distinct from `completion_pass`: excusing an item also
    *  completes its chapter, so these students sit at progress 100 and reading
    *  them as "passed by completion" would certify a course nobody graded. */
+  /** «Текущая» — the same marks over only the work that has been marked.
+   *  `final_score` counts outstanding work as zero. Both, always as a pair
+   *  (D10): one without the other is how a student and a teacher end up with
+   *  two numbers neither can explain. */
+  current_score: number
+  current_letter_grade: string
+  scores_differ: boolean
   result_state:
     | "graded"
     | "completion_pass"
@@ -520,6 +527,10 @@ export interface StudentProgressEntry {
   /** The official weighted grade, from the same service the gradebook uses
    *  (D14). `null` whenever `result_state` says there is no honest number. */
   overall_grade: number | null
+  /** «Текущая» beside «итоговая» — see `GradeBreakdown.current_score`. */
+  current_grade: number | null
+  current_letter_grade: string | null
+  scores_differ: boolean
   /** The hand-set grade, when a teacher set one. The override IS the official
    *  grade (D7), so it wins the display; the computed number stays beside it
    *  rather than being replaced, because seeing the pair is the point. */
