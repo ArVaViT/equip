@@ -310,5 +310,26 @@ EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: grade_exemptions INSERT denied (privilege)';
 END $$;
 
+-- 13) grade_sheets / grade_sheet_rows: a signed ведомость is the document a
+--     director puts their name on. A student able to write here would be
+--     writing their own line into it; one able to read it would see every
+--     classmate's result, which no student surface has ever exposed.
+DO $$
+BEGIN
+  PERFORM * FROM public.grade_sheet_rows;
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can SELECT grade_sheet_rows (every classmate result)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: grade_sheet_rows SELECT denied (privilege)';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO public.grade_sheets (course_id, grading_scheme)
+  VALUES ((SELECT id FROM public.courses LIMIT 1), 'letter');
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can INSERT grade_sheets (forge a signed document)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: grade_sheets INSERT denied (privilege)';
+END $$;
+
 RESET ROLE;
 SELECT 'RLS policy assertions passed' AS result;

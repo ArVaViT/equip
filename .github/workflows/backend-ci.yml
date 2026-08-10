@@ -340,12 +340,11 @@ jobs:
           COUNT=$(psql -tA -h localhost -p 5432 -U ci -d ci \
             -c "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';")
           echo "public base tables after replay: $COUNT"
-          # Prod has 36 public base tables (see schema.sql) — 33 plus
-          # org_settings and invitations (2026-08-06) and grade_exemptions
-          # (2026-08-09). Guard against a silently-truncated dump or a
-          # partial load.
-          if [ "$COUNT" -ne 36 ]; then
-            echo "::error::Expected 36 public tables after replay, got $COUNT — schema.sql may be stale or partial." >&2
+          # Prod has 38 public base tables (see schema.sql) — 36 plus
+          # grade_sheets and grade_sheet_rows (2026-08-10). Guard against a
+          # silently-truncated dump or a partial load.
+          if [ "$COUNT" -ne 38 ]; then
+            echo "::error::Expected 38 public tables after replay, got $COUNT — schema.sql may be stale or partial." >&2
             exit 1
           fi
           echo "OK: prod schema replays cleanly from supabase/schema.sql"

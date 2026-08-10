@@ -380,3 +380,57 @@ class MyCourseGrade(BaseModel):
     comment: str | None = None
 
     items: list[MyGradeItem] = []
+
+
+# ---------------------------------------------------------------------------
+# Ведомость (D11 / M5)
+# ---------------------------------------------------------------------------
+
+
+class SheetRowResponse(BaseModel):
+    """One student's line on a closed sheet."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    student_id: UUID
+    student_name: str | None = None
+    result_state: Literal["pass", "fail", "completion_pass", "not_attested"]
+    official_code: str | None = None
+    official_score: Decimal | None = None
+    #: The director-visible glyph: set by hand, not computed. Someone about to
+    #: sign should see that at a glance rather than have to ask.
+    is_override: bool = False
+
+
+class GradeSheetResponse(BaseModel):
+    """A closed ведомость, as the printable renders it.
+
+    Everything here is read from the snapshot, never recomputed. A document
+    whose numbers move after signature is not a document.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    course_id: str
+    cohort_id: UUID | None = None
+    #: The поток's name as it stood at closing — cohort names are editable and
+    #: a signed heading is not.
+    cohort_name: str | None = None
+    grading_scheme: str
+    pass_threshold: Decimal | None = None
+    finalized_at: datetime
+    finalized_by: UUID | None = None
+    reopened_at: datetime | None = None
+    reopen_reason: str | None = None
+    #: Set when this sheet replaced a reopened one — the «была переоткрыта»
+    #: mark, on the document people will actually print.
+    corrects_sheet_id: UUID | None = None
+    correction_reason: str | None = None
+    rows: list[SheetRowResponse] = []
+
+
+class SheetReopenRequest(BaseModel):
+    """Reopening is deliberate and on the record, so the reason is required."""
+
+    reason: str = Field(..., min_length=1, max_length=2000)

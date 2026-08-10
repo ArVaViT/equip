@@ -1721,6 +1721,44 @@
     "body": true
   },
   {
+    "method": "GET",
+    "path": "/api/v1/grades/course/{course_id}/sheet",
+    "params": [
+      [
+        "cohort_id",
+        "query"
+      ],
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/grades/course/{course_id}/sheet",
+    "params": [
+      [
+        "cohort_id",
+        "query"
+      ],
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": false
+  },
+  {
     "method": "DELETE",
     "path": "/api/v1/grades/course/{course_id}/student/{student_id}",
     "params": [
@@ -1936,6 +1974,21 @@
       "422"
     ],
     "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/grades/sheet/{sheet_id}/reopen",
+    "params": [
+      [
+        "sheet_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
   },
   {
     "method": "GET",

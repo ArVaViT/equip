@@ -30,8 +30,16 @@
 CREATE TABLE public.grade_sheets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     course_id TEXT NOT NULL REFERENCES public.courses(id) ON DELETE CASCADE,
-    -- NULL is «без потока», a bucket rather than a missing value.
-    cohort_id UUID REFERENCES public.cohorts(id) ON DELETE SET NULL,
+    -- NULL is «без потока», a bucket rather than a missing value — which is
+    -- exactly why this is RESTRICT and not SET NULL. Nulling the column on a
+    -- signed sheet does not "forget the cohort", it silently moves the
+    -- document into the «без потока» bucket, where it shadows that bucket's own
+    -- page and collides with the unique index below. A поток with a signed
+    -- ведомость is not deletable, and should not be.
+    cohort_id UUID REFERENCES public.cohorts(id) ON DELETE RESTRICT,
+    -- The поток's name as it was, so the printed page keeps its heading even
+    -- if the cohort is renamed afterwards.
+    cohort_name TEXT,
 
     -- The rules in force at closing. A school that moves its scale later must
     -- not move what this document says it certified.
@@ -45,6 +53,11 @@ CREATE TABLE public.grade_sheets (
     reopen_reason TEXT,
     -- Set when a later closing replaces this one. The old sheet is kept.
     superseded_at TIMESTAMPTZ,
+    -- The «была переоткрыта» mark, carried onto the document that replaced a
+    -- reopened one. Stamping only the superseded page marks the copy nobody
+    -- prints again.
+    corrects_sheet_id UUID REFERENCES public.grade_sheets(id) ON DELETE SET NULL,
+    correction_reason TEXT,
 
     -- A sheet cannot have been reopened before it was closed, and a reopening
     -- without a reason is the thing the reason exists to prevent.

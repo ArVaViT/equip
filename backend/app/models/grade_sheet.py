@@ -50,8 +50,14 @@ class GradeSheet(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     course_id: Mapped[str] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
-    #: NULL is «без потока» — a bucket for solo students, not a missing value.
-    cohort_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("cohorts.id", ondelete="SET NULL"))
+    #: NULL is «без потока» — a bucket for solo students, not a missing value,
+    #: which is why this is RESTRICT. Nulling it on a signed sheet does not
+    #: forget the cohort: it moves the document into the «без потока» bucket,
+    #: where it shadows that bucket's own page and collides with the unique
+    #: index. A поток with a signed ведомость is not deletable.
+    cohort_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("cohorts.id", ondelete="RESTRICT"))
+    #: The поток's name as it was, so the printed heading survives a rename.
+    cohort_name: Mapped[str | None] = mapped_column(Text)
 
     #: The rules in force at closing. A school that moves its scale later must
     #: not move what this document says it certified.
@@ -66,6 +72,11 @@ class GradeSheet(Base):
     #: Set when a later closing replaces this one. The old sheet is kept, so
     #: the history of what was signed survives a correction.
     superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    #: When this sheet replaced a reopened one — the «была переоткрыта» mark,
+    #: carried onto the document that people will actually print. Stamping only
+    #: the superseded page marks the copy nobody looks at again.
+    corrects_sheet_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("grade_sheets.id", ondelete="SET NULL"))
+    correction_reason: Mapped[str | None] = mapped_column(Text)
 
     def __repr__(self) -> str:
         return f"<GradeSheet course={self.course_id} cohort={self.cohort_id}>"
@@ -90,9 +101,7 @@ class GradeSheetRow(Base):
         ),
     )
 
-    sheet_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("grade_sheets.id", ondelete="CASCADE"), primary_key=True
-    )
+    sheet_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("grade_sheets.id", ondelete="CASCADE"), primary_key=True)
     student_id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
     #: A result, not a computation state. The calculator's vocabulary answers
     #: "why is there no number"; a signed document answers "what did this

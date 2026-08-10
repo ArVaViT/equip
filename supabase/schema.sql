@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict RiztmY1Ya8bPtarzEmmOdc5fKL5hSfCL8Mxz40WsBzxjJvFLnI54mQk0xo8jyBD
+\restrict TvcR0aVUiF6ruWsbhaTf09dW3lolym27TK3AhlwWOELkGgYMuHjGxHIfyioOp1g
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10 (Homebrew)
@@ -601,6 +601,53 @@ CREATE TABLE public.grade_exemptions (
 
 
 --
+-- Name: grade_sheet_rows; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.grade_sheet_rows (
+    sheet_id uuid NOT NULL,
+    student_id uuid NOT NULL,
+    result_state text NOT NULL,
+    official_code text,
+    official_score numeric(5,2),
+    is_override boolean DEFAULT false NOT NULL,
+    CONSTRAINT ck_grade_sheet_rows_one_grade CHECK (((
+CASE
+    WHEN (official_code IS NULL) THEN 0
+    ELSE 1
+END +
+CASE
+    WHEN (official_score IS NULL) THEN 0
+    ELSE 1
+END) <= 1)),
+    CONSTRAINT grade_sheet_rows_result_state_check CHECK ((result_state = ANY (ARRAY['pass'::text, 'fail'::text, 'completion_pass'::text, 'not_attested'::text])))
+);
+
+
+--
+-- Name: grade_sheets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.grade_sheets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    course_id text NOT NULL,
+    cohort_id uuid,
+    cohort_name text,
+    grading_scheme text NOT NULL,
+    pass_threshold numeric(5,2),
+    finalized_at timestamp with time zone DEFAULT now() NOT NULL,
+    finalized_by uuid,
+    reopened_at timestamp with time zone,
+    reopened_by uuid,
+    reopen_reason text,
+    superseded_at timestamp with time zone,
+    corrects_sheet_id uuid,
+    correction_reason text,
+    CONSTRAINT ck_grade_sheets_reopen_is_deliberate CHECK (((reopened_at IS NULL) OR ((reopened_at >= finalized_at) AND (reopen_reason IS NOT NULL))))
+);
+
+
+--
 -- Name: invitations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1070,6 +1117,22 @@ ALTER TABLE ONLY public.grade_exemptions
 
 ALTER TABLE ONLY public.grade_exemptions
     ADD CONSTRAINT grade_exemptions_student_id_item_type_item_id_key UNIQUE (student_id, item_type, item_id);
+
+
+--
+-- Name: grade_sheet_rows grade_sheet_rows_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.grade_sheet_rows
+    ADD CONSTRAINT grade_sheet_rows_pkey PRIMARY KEY (sheet_id, student_id);
+
+
+--
+-- Name: grade_sheets grade_sheets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.grade_sheets
+    ADD CONSTRAINT grade_sheets_pkey PRIMARY KEY (id);
 
 
 --
@@ -1606,6 +1669,13 @@ CREATE INDEX ix_grade_exemptions_student_course ON public.grade_exemptions USING
 
 
 --
+-- Name: ix_grade_sheets_course; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_grade_sheets_course ON public.grade_sheets USING btree (course_id);
+
+
+--
 -- Name: ix_invitations_email_role; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1771,6 +1841,13 @@ CREATE UNIQUE INDEX uniq_dc_attempts_live_per_day ON public.daily_challenge_atte
 --
 
 CREATE UNIQUE INDEX uq_enrollment_user_course_cohort ON public.enrollments USING btree (user_id, course_id, COALESCE(cohort_id, '00000000-0000-0000-0000-000000000000'::uuid));
+
+
+--
+-- Name: uq_grade_sheets_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_grade_sheets_active ON public.grade_sheets USING btree (course_id, COALESCE(cohort_id, '00000000-0000-0000-0000-000000000000'::uuid)) WHERE (superseded_at IS NULL);
 
 
 --
@@ -2239,6 +2316,54 @@ ALTER TABLE ONLY public.grade_exemptions
 
 ALTER TABLE ONLY public.grade_exemptions
     ADD CONSTRAINT grade_exemptions_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: grade_sheet_rows grade_sheet_rows_sheet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.grade_sheet_rows
+    ADD CONSTRAINT grade_sheet_rows_sheet_id_fkey FOREIGN KEY (sheet_id) REFERENCES public.grade_sheets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: grade_sheets grade_sheets_cohort_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.grade_sheets
+    ADD CONSTRAINT grade_sheets_cohort_id_fkey FOREIGN KEY (cohort_id) REFERENCES public.cohorts(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: grade_sheets grade_sheets_corrects_sheet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.grade_sheets
+    ADD CONSTRAINT grade_sheets_corrects_sheet_id_fkey FOREIGN KEY (corrects_sheet_id) REFERENCES public.grade_sheets(id) ON DELETE SET NULL;
+
+
+--
+-- Name: grade_sheets grade_sheets_course_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.grade_sheets
+    ADD CONSTRAINT grade_sheets_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id) ON DELETE CASCADE;
+
+
+--
+-- Name: grade_sheets grade_sheets_finalized_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.grade_sheets
+    ADD CONSTRAINT grade_sheets_finalized_by_fkey FOREIGN KEY (finalized_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: grade_sheets grade_sheets_reopened_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.grade_sheets
+    ADD CONSTRAINT grade_sheets_reopened_by_fkey FOREIGN KEY (reopened_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
 
 
 --
@@ -2717,6 +2842,18 @@ CREATE POLICY enrollments_select ON public.enrollments FOR SELECT TO authenticat
 ALTER TABLE public.grade_exemptions ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: grade_sheet_rows; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.grade_sheet_rows ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: grade_sheets; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.grade_sheets ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: invitations; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -2922,5 +3059,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict RiztmY1Ya8bPtarzEmmOdc5fKL5hSfCL8Mxz40WsBzxjJvFLnI54mQk0xo8jyBD
+\unrestrict TvcR0aVUiF6ruWsbhaTf09dW3lolym27TK3AhlwWOELkGgYMuHjGxHIfyioOp1g
 

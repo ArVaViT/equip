@@ -96,6 +96,32 @@ def resolve_official_row(db: Session, *, student_id: UUID | str, course_id: str)
     return None
 
 
+def override_for_cohort(
+    db: Session, *, student_id: UUID | str, course_id: str, cohort_id: UUID | None
+) -> StudentGrade | None:
+    """The override that counts **for a named поток**, not for "now".
+
+    :func:`resolve_official_row` answers "which grade is this student's current
+    one", and resolves the cohort from their most recent enrolment. A ведомость
+    asks a different question: last year's document has to freeze last year's
+    grade, and asking the live question there would stamp this year's mark onto
+    a page dated two years ago.
+
+    Same order otherwise: the row for this cohort, then the cohort-less row.
+    """
+    rows = (
+        db.query(StudentGrade).filter(StudentGrade.student_id == student_id, StudentGrade.course_id == course_id).all()
+    )
+    if cohort_id is not None:
+        for row in rows:
+            if row.cohort_id == cohort_id:
+                return row
+    for row in rows:
+        if row.cohort_id is None:
+            return row
+    return None
+
+
 def validate_override(course: Course, *, code: str | None, score: Decimal | None) -> str | None:
     """Check a proposed override against the course scheme.
 
