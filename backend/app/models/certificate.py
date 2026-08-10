@@ -1,8 +1,19 @@
 import enum
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, func
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -36,6 +47,18 @@ class Certificate(Base):
             "status IN ('pending', 'teacher_approved', 'approved', 'rejected')",
             name="certificates_status_check",
         ),
+        # At most one of the two: a symbol or a percentage, never both. Written
+        # with CASE rather than ``num_nonnulls`` so SQLite can materialise it
+        # for the test suite.
+        CheckConstraint(
+            "(CASE WHEN official_code IS NULL THEN 0 ELSE 1 END"
+            " + CASE WHEN official_score IS NULL THEN 0 ELSE 1 END) <= 1",
+            name="ck_certificates_one_official_grade",
+        ),
+        CheckConstraint(
+            "graded_via IS NULL OR graded_via IN ('computed', 'override', 'completion')",
+            name="ck_certificates_graded_via",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
@@ -68,3 +91,26 @@ class Certificate(Base):
     # schema-smoke job blind to the relationship. See migration
     # ``20260516021349_certificates_cohort_fk_ensure.sql``.
     cohort_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("cohorts.id", ondelete="SET NULL"), nullable=True)
+
+    # --- The grade this certificate was issued on (M6) ---------------------
+    #
+    # A certificate is a document: printed, signed, kept for twenty years.
+    # Everything it was computed from is live and editable — the weights, the
+    # school's bands, the pass line, the marks, even whether a piece of work was
+    # excused. Recomputed on read, the paper stops matching the database the
+    # first time a director nudges the band table, silently and for everyone who
+    # ever graduated. Written once at issuance; never updated afterwards.
+    #
+    # NULL on every certificate issued before this existed. That is the honest
+    # value: nobody recorded the rules those were issued under, and inventing a
+    # snapshot for them would be writing history rather than keeping it.
+    grading_scheme: Mapped[str | None] = mapped_column(Text)
+    pass_threshold: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    #: The result in whichever form the scheme uses — a symbol or a percentage,
+    #: never both, mirroring ``student_grades`` (D7).
+    official_code: Mapped[str | None] = mapped_column(Text)
+    official_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    #: How the grade was decided — the question a director asks when two
+    #: certificates from one course disagree. ``computed`` | ``override`` |
+    #: ``completion``.
+    graded_via: Mapped[str | None] = mapped_column(Text)
