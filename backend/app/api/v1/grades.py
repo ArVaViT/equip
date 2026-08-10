@@ -16,6 +16,7 @@ from app.api.dependencies import (
     get_current_user,
     get_live_course_or_404,
     lookup_enrollment,
+    require_admin,
     require_teacher,
     verify_course_owner,
 )
@@ -336,12 +337,19 @@ def update_grading_scheme(
     course_id: str,
     data: GradingSchemeUpdate,
     request: Request,
-    teacher: User = Depends(require_teacher),
+    admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """Change how a course is graded — both values at once, and audited (D8).
 
-    Three rules, each earned:
+    **A director's decision, not a teacher's** (D1). Left to each teacher, one
+    school's transcript ends up mixing «зачёт», «4 (хорошо)» and «B» across its
+    own courses — and the transcript is the artifact the school is judged on.
+    The school sets a default; deviating from it is an institutional call. A
+    teacher can still *see* how their course is graded; they cannot change it
+    alone.
+
+    Four rules, each earned:
 
     1. **The pair is validated together.** A scheme without its pass line can
        produce a course nobody can pass — five-point above 75 leaves «3»
@@ -353,8 +361,9 @@ def update_grading_scheme(
     3. **It is written down.** Changing the scheme changes what every grade in
        the course means; that is not a settings tweak, it is an academic
        decision someone should be able to point at later.
+    4. **Quizzes that drift off the new pass line are recorded** — see below.
     """
-    course = verify_course_owner(db, course_id, teacher)
+    course = verify_course_owner(db, course_id, admin)
 
     invalid = validate_scheme_threshold(data.grading_scheme, data.pass_threshold)
     if invalid:
@@ -405,7 +414,7 @@ def update_grading_scheme(
 
     log_action(
         db,
-        user_id=teacher.id,
+        user_id=admin.id,
         action="grading_scheme_changed",
         resource_type="course",
         resource_id=course_id,
@@ -506,11 +515,18 @@ def get_grade_summary(
         gradable = [s for s in students if s.breakdown.result_state == "graded"]
         class_avg = round(sum(s.breakdown.final_score for s in gradable) / len(gradable), 2) if gradable else None
 
+        # The school's scale travels with the grades, so the client never has
+        # to know what A or «4» mean.
+        org_settings = get_org_settings(db)
+        scheme = course.grading_scheme or org_settings.default_grading_scheme
+
         return GradeSummaryResponse(
             course_id=course_id,
             config=GradingConfigResponse.model_validate(course),
             students=students,
             class_average=class_avg,
+            grading_scheme=scheme,
+            bands=effective_bands(org_settings, scheme),
         )
     except HTTPException:
         raise

@@ -99,6 +99,14 @@ function Harness({ studentCount }: { studentCount: number }) {
       makeStudent(`s${i + 1}`, `Student ${i + 1}`),
     ),
     class_average: 80.5,
+    grading_scheme: "letter",
+    bands: [
+      ["90", "A"],
+      ["80", "B"],
+      ["70", "C"],
+      ["60", "D"],
+      ["0", "F"],
+    ] as [string, string][],
   }))
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [forms] = useState<Map<string, GradeForm>>(new Map())

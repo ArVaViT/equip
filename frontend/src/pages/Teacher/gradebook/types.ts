@@ -69,11 +69,3 @@ export interface GradeForm {
   comment: string
 }
 
-/** Ordered ranking used when sorting students by letter grade. */
-export const LETTER_ORDER: Record<string, number> = {
-  A: 5,
-  B: 4,
-  C: 3,
-  D: 2,
-  F: 1,
-}

@@ -177,6 +177,11 @@ export interface GradeSummaryResponse {
   course_id: string
   config: GradingConfig
   students: StudentCalculatedGrade[]
+  /** How this course is graded, and the bands its symbols are read against —
+   *  sent so the client renders from the school's own scale instead of a
+   *  hardcoded copy of A–F. `[floor, symbol]`, highest floor first. */
+  grading_scheme: string
+  bands: [string, string][]
   /** null — усреднять нечего: курс без оцениваемого или ещё не проверенный. */
   class_average: number | null
 }
