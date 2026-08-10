@@ -21,6 +21,7 @@ import {
   type GradeForm,
 } from "./types"
 import { EMPTY_FORM, letterColor } from "./helpers"
+import { classAverages } from "./classAverages"
 import { gradePillLabel } from "./notice"
 
 interface Props {
@@ -258,11 +259,15 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
         {/* In `zero_weighted` the category averages are real marks that simply
             carry no weight — hiding them behind a dash would deny the teacher
             figures that exist. Only the final score is absent. */}
+        {/* A category average is a number only once THIS student has something
+            marked in it. The old condition was about the course, so an unmarked
+            student in a class where anyone had been marked read 0.0% — "nobody
+            has opened theirs" printed as a failing figure. */}
         <p className="text-sm tabular-nums text-right">
-          {hasScore || b.result_state === "zero_weighted" ? `${b.quiz_avg.toFixed(1)}%` : "—"}
+          {b.student_has_quiz_marks ? `${b.quiz_avg.toFixed(1)}%` : "—"}
         </p>
         <p className="text-sm tabular-nums text-right">
-          {hasScore || b.result_state === "zero_weighted" ? `${b.assignment_avg.toFixed(1)}%` : "—"}
+          {b.student_has_assignment_marks ? `${b.assignment_avg.toFixed(1)}%` : "—"}
         </p>
         <p className="text-sm font-semibold tabular-nums text-right">
           {hasScore ? `${b.final_score.toFixed(1)}%` : "—"}
@@ -284,7 +289,11 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
           )}
         </div>
         <div className="flex justify-center">
-          {manualGrade?.override_code ? (
+          {/* `manual_grade`, not `override_code`: a percent-scheme course stores
+              the hand-set grade as a number, and reading only the code left the
+              column blank while the other two screens showed the override as
+              official — no hint here that one existed at all. */}
+          {student.manual_grade ? (
             <span
               className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
                 hasDifferentManual
@@ -292,7 +301,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
                   : "bg-muted text-ink-muted"
               }`}
             >
-              {manualGrade.override_code}
+              {student.manual_grade}
             </span>
           ) : (
             <span className="text-xs text-ink-muted">—</span>
@@ -443,23 +452,27 @@ function ClassAverageRow({
   // rows already show dashes there — printing "0.0%" in bold underneath them
   // would contradict the whole table.
   const hasNumbers = classAvg !== null
-  // Category averages exist in `zero_weighted` too — the marks are real, they
-  // just carry no weight. Dashing them out here while every student row above
-  // shows a figure is the same "dash over marks that exist" defect, one line
-  // lower.
-  const hasCategoryFigures =
-    hasNumbers || summary.students[0]?.breakdown.result_state === "zero_weighted"
-  const avg = (pick: (s: StudentCalculatedGrade) => number) =>
-    summary.students.reduce((acc, st) => acc + pick(st), 0) / studentCount
+  // Computed over the students who actually have a grade — see classAverages.
+  const averages = classAverages(summary.students)
 
   return (
     <div className="grid grid-cols-[1fr_80px_80px_80px_70px_70px] gap-3 px-4 py-3 bg-muted/40 font-semibold text-sm items-center border-t-2">
-      <span className="pl-6">{t("gradebook.summary.classAverageRow", { count: studentCount })}</span>
+      {/* Counts the students the figures were actually computed from, not the
+          whole roster — "Class Average (13 students)" over a mean of four is a
+          claim about nine people who were never in it. */}
+      <span className="pl-6">
+        {t("gradebook.summary.classAverageRow", { count: averages.countedStudents })}
+        {averages.countedStudents < studentCount && (
+          <span className="ml-1 font-normal text-xs text-ink-muted">
+            {t("gradebook.summary.classAverageOfRoster", { total: studentCount })}
+          </span>
+        )}
+      </span>
       <p className="tabular-nums text-right">
-        {hasCategoryFigures ? `${avg((s) => s.breakdown.quiz_avg).toFixed(1)}%` : "—"}
+        {averages.quiz !== null ? `${averages.quiz.toFixed(1)}%` : "—"}
       </p>
       <p className="tabular-nums text-right">
-        {hasCategoryFigures ? `${avg((s) => s.breakdown.assignment_avg).toFixed(1)}%` : "—"}
+        {averages.assignment !== null ? `${averages.assignment.toFixed(1)}%` : "—"}
       </p>
       <p className="tabular-nums text-right">{hasNumbers ? `${classAvg.toFixed(1)}%` : "—"}</p>
       <span />

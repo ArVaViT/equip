@@ -129,6 +129,13 @@ export interface GradeBreakdown {
    *  задания могут быть, но пока ничего не весить, потому что не проверены. */
   has_quiz_items: boolean
   has_assignment_items: boolean
+  /** Whether **this student** has at least one marked piece of work in each
+   *  category. Separates "0% because they got it wrong" from "0% because
+   *  nobody has read theirs" — identical arithmetic, opposite meanings, and
+   *  only one of them belongs on a screen as a number. Per student, unlike the
+   *  course-wide liveness that drives weight redistribution. */
+  student_has_quiz_marks: boolean
+  student_has_assignment_marks: boolean
   /** Есть ли главы, предназначенные для оценивания. Глава типа «тест»
    *  существует сразу, а сам тест сохраняется только с вопросами — курс в
    *  процессе сборки имеет главы, но не имеет оцениваемых элементов. */
@@ -497,9 +504,20 @@ export interface StudentProgressEntry {
   progress: number
   chapters_completed: number
   total_chapters: number
+  /** Category averages, present only once something in that category has
+   *  actually been marked. `null` means "nobody has read it yet" — a distinct
+   *  fact from 0%, which on a teacher's board reads as failure. */
   quiz_avg: number | null
   assignment_avg: number | null
+  /** The official weighted grade, from the same service the gradebook uses
+   *  (D14). `null` whenever `result_state` says there is no honest number. */
   overall_grade: number | null
+  /** The hand-set grade, when a teacher set one. The override IS the official
+   *  grade (D7), so it wins the display; the computed number stays beside it
+   *  rather than being replaced, because seeing the pair is the point. */
+  manual_grade: string | null
+  result_state: GradeBreakdown["result_state"]
+  letter_grade: string | null
   last_activity: string | null
 }
 

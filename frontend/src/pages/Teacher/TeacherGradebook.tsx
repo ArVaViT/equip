@@ -207,6 +207,13 @@ export default function TeacherGradebook() {
   // Same pattern as formsRef: assigned in an effect, not during render, so
   // the memoised handler can read current values without taking them as a
   // dependency.
+  // The Grade Table's last column is the official grade, so it reads the very
+  // rows the Summary tab reads (D14) rather than adding up points of its own.
+  const summaryByStudent = useMemo(
+    () => new Map((summary?.students ?? []).map((s) => [s.student_id, s])),
+    [summary],
+  )
+
   const manualGradesRef = useRef(manualGrades)
   useEffect(() => {
     manualGradesRef.current = manualGrades
@@ -452,7 +459,7 @@ export default function TeacherGradebook() {
           moduleChapterMap={moduleChapterMap}
           studentChapterMap={studentChapterMap}
           tableStudents={tableStudents}
-          manualGrades={manualGrades}
+          summaryByStudent={summaryByStudent}
           forms={forms}
           saving={saving}
           expandedId={expandedId}

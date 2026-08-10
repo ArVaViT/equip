@@ -101,7 +101,6 @@ export function StudentTable({
                     onToggle={() => onExpandToggle(student.id)}
                     quizAvg={student.quiz_avg}
                     assignmentAvg={student.assignment_avg}
-                    overallGrade={student.overall_grade}
                     courseId={courseId}
                     onChapterUpdate={onChapterUpdate}
                   />

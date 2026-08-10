@@ -31,6 +31,8 @@ const breakdown = (over: Partial<GradeBreakdown>): GradeBreakdown => ({
   effective_assignment_weight: 0,
   has_quiz_items: false,
   has_assignment_items: false,
+  student_has_quiz_marks: false,
+  student_has_assignment_marks: false,
   has_gradable_chapters: false,
   weights_redistributed: false,
   result_state: "graded",
