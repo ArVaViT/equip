@@ -20,6 +20,9 @@ function entry(
       participation_weighted: 0,
       final_score: 0,
       letter_grade: "",
+      current_score: 0,
+      current_letter_grade: "",
+      scores_differ: false,
       effective_quiz_weight: 40,
       effective_assignment_weight: 60,
       has_quiz_items: true,
@@ -35,22 +38,39 @@ function entry(
 }
 
 describe("officialColumn", () => {
-  it("shows the weighted percentage with the course's own symbol", () => {
-    const cell = officialColumn(entry({ final_score: 87.4, letter_grade: "B" }))
+  it("shows one number when nothing is outstanding", () => {
+    const cell = officialColumn(
+      entry({ final_score: 87.4, letter_grade: "B", current_score: 87.4, current_letter_grade: "B" }),
+    )
 
-    expect(cell).toEqual({ text: "87.4% B", isManual: false, noteKey: null })
+    expect(cell).toEqual({ text: "87.4% B", finalText: null, isManual: false, noteKey: null })
+  })
+
+  it("shows both numbers as soon as they diverge", () => {
+    // «Текущая» leads; «итоговая» appears the day it differs rather than for
+    // the first time when a certificate is refused.
+    const cell = officialColumn(
+      entry({ current_score: 100, current_letter_grade: "A", final_score: 25, letter_grade: "F" }),
+    )
+
+    expect(cell.text).toBe("100.0% A")
+    expect(cell.finalText).toBe("25.0% F")
   })
 
   it("omits the symbol on a scheme that has none", () => {
     // percent courses have no letter; printing an empty one leaves a dangling space
-    expect(officialColumn(entry({ final_score: 91, letter_grade: "" })).text).toBe("91.0%")
+    expect(officialColumn(entry({ current_score: 91, final_score: 91 })).text).toBe("91.0%")
   })
 
   it("never rounds the percentage past the letter beside it", () => {
     // 89.5 printed as "90% B" leaves a teacher holding two facts that
     // contradict each other — the school's band table says 90 is an A — and
     // the one they can see is the wrong one.
-    expect(officialColumn(entry({ final_score: 89.5, letter_grade: "B" })).text).toBe("89.5% B")
+    expect(
+      officialColumn(
+        entry({ current_score: 89.5, current_letter_grade: "B", final_score: 89.5, letter_grade: "B" }),
+      ).text,
+    ).toBe("89.5% B")
   })
 
   it("shows a hand-set grade instead of the computed one", () => {
@@ -86,6 +106,11 @@ describe("officialColumn", () => {
   })
 
   it("prints nothing for a student the summary has no row for", () => {
-    expect(officialColumn(undefined)).toEqual({ text: null, isManual: false, noteKey: null })
+    expect(officialColumn(undefined)).toEqual({
+      text: null,
+      finalText: null,
+      isManual: false,
+      noteKey: null,
+    })
   })
 })

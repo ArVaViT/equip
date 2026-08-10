@@ -210,6 +210,8 @@ def _build_breakdown(
     all_items_excused: bool = False,
     student_has_quiz_marks: bool = False,
     student_has_assignment_marks: bool = False,
+    current_quiz_avg: float | None = None,
+    current_assignment_avg: float | None = None,
 ) -> GradeBreakdown:
     """Assemble one student's breakdown.
 
@@ -316,6 +318,15 @@ def _build_breakdown(
     quiz_weighted = quiz_avg * eff_quiz / 100.0
     assignment_weighted = assignment_avg * eff_assignment / 100.0
     final_score = round(quiz_weighted + assignment_weighted, 2)
+
+    # «Текущая» rides the same weights — it differs only in the denominator
+    # inside each category, never in how the categories combine. A student who
+    # sees 82% and a teacher who sees 40% must be able to reconcile them by one
+    # sentence, and they can only do that if the arithmetic between the two is
+    # identical apart from the thing being explained.
+    cur_quiz = quiz_avg if current_quiz_avg is None else current_quiz_avg
+    cur_assignment = assignment_avg if current_assignment_avg is None else current_assignment_avg
+    current_score = round(cur_quiz * eff_quiz / 100.0 + cur_assignment * eff_assignment / 100.0, 2)
     return GradeBreakdown(
         quiz_avg=round(quiz_avg, 2),
         quiz_weighted=round(quiz_weighted, 2),
@@ -329,6 +340,11 @@ def _build_breakdown(
         # The institution's own bands when a session resolved them; the shipped
         # scale only as a fallback for callers without one.
         letter_grade=resolve_symbol(final_score, course, settings),
+        current_score=current_score,
+        current_letter_grade=resolve_symbol(current_score, course, settings),
+        # Compared on the rounded values the surfaces actually print: a
+        # difference in the third decimal is not a thing to explain to anyone.
+        scores_differ=current_score != final_score,
         effective_quiz_weight=eff_quiz,
         effective_assignment_weight=eff_assignment,
         has_quiz_items=has_quiz_items,
@@ -388,6 +404,7 @@ def calculate_student_grade(
     all_items_excused = (course_has_quizzes or course_has_assignments) and not (quiz_ids or assignment_ids)
 
     quiz_avg = 0.0
+    current_quiz_avg = 0.0
     student_has_quiz_marks = False
     if quiz_ids:
         rows = (
@@ -407,8 +424,14 @@ def calculate_student_grade(
         student_has_quiz_marks = bool(best_scores)
         total_quizzes = len(quiz_ids)
         quiz_avg = sum(best_scores) / total_quizzes if total_quizzes > 0 else 0.0
+        # «Текущая» — the same marks over only the work that has been marked
+        # (D10). Mid-course this is the number that answers "how am I doing";
+        # `quiz_avg` above answers "what will this be if I stop now", which is a
+        # different and much harsher question in week two.
+        current_quiz_avg = sum(best_scores) / len(best_scores) if best_scores else 0.0
 
     assignment_avg = 0.0
+    current_assignment_avg = 0.0
     student_has_assignment_marks = False
     if assignment_ids:
         best_per_assignment = (
@@ -441,6 +464,7 @@ def calculate_student_grade(
             ]
             student_has_assignment_marks = bool(graded_pcts)
             assignment_avg = sum(graded_pcts) / total_assignments
+            current_assignment_avg = sum(graded_pcts) / len(graded_pcts) if graded_pcts else 0.0
 
     total_chapters = len(chapter_ids)
     participation_pct = 0.0
@@ -485,6 +509,8 @@ def calculate_student_grade(
         all_items_excused=all_items_excused,
         student_has_quiz_marks=student_has_quiz_marks,
         student_has_assignment_marks=student_has_assignment_marks,
+        current_quiz_avg=current_quiz_avg,
+        current_assignment_avg=current_assignment_avg,
     )
 
 
@@ -649,6 +675,10 @@ def calculate_all_student_grades(db: Session, course: Course):
         quiz_avg = sum(qs) / total_quizzes if total_quizzes > 0 else 0.0
         asgs = [s for aid, s in asgn_scores.get(sid, {}).items() if aid not in excused_a]
         assignment_avg = sum(asgs) / total_assignments if total_assignments > 0 else 0.0
+        # The same marks over only what has been marked (D10) — see the
+        # single-student path; the two must agree here as everywhere else.
+        current_quiz_avg = sum(qs) / len(qs) if qs else 0.0
+        current_assignment_avg = sum(asgs) / len(asgs) if asgs else 0.0
         comp = completion_counts.get(sid, 0)
         participation_pct = (comp / total_chapters * 100.0) if total_chapters else 0.0
 
@@ -676,6 +706,8 @@ def calculate_all_student_grades(db: Session, course: Course):
             # not put a 0 on the row of everyone who isn't.
             student_has_quiz_marks=bool(qs),
             student_has_assignment_marks=bool(asgs),
+            current_quiz_avg=current_quiz_avg,
+            current_assignment_avg=current_assignment_avg,
         )
         results.append(
             {

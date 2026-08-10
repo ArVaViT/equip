@@ -1,9 +1,11 @@
 import type { StudentCalculatedGrade } from "@/types"
-import { formatGradePercent } from "./formatGrade"
+import { gradePair } from "./gradePair"
 
 export interface OfficialCell {
   /** The grade to print, already formatted. `null` when there is no number. */
   text: string | null
+  /** «Итоговая», when it differs from `text`. `null` = nothing to add. */
+  finalText: string | null
   /** True when a teacher set it by hand, so the cell can mark it. */
   isManual: boolean
   /** i18n key for the short reason when there is no number. */
@@ -42,21 +44,25 @@ const NO_NUMBER = new Set(Object.keys(NOTE_BY_STATE))
  * anyway.
  */
 export function officialColumn(entry: StudentCalculatedGrade | undefined): OfficialCell {
-  if (!entry) return { text: null, isManual: false, noteKey: null }
+  if (!entry) return { text: null, finalText: null, isManual: false, noteKey: null }
 
   // A hand-set grade IS the official grade (D7): it decides the certificate and
   // the ведомость, so the column that claims to be official must show it.
   if (entry.manual_grade) {
-    return { text: entry.manual_grade, isManual: true, noteKey: null }
+    return { text: entry.manual_grade, finalText: null, isManual: true, noteKey: null }
   }
 
-  const { result_state, final_score, letter_grade } = entry.breakdown
-  if (NO_NUMBER.has(result_state)) {
-    return { text: null, isManual: false, noteKey: NOTE_BY_STATE[result_state] ?? null }
+  const b = entry.breakdown
+  if (NO_NUMBER.has(b.result_state)) {
+    return { text: null, finalText: null, isManual: false, noteKey: NOTE_BY_STATE[b.result_state] ?? null }
   }
-  const percent = formatGradePercent(final_score)
+
+  // «Текущая» leads, matching the student's own view and the progress board
+  // (D10) — the point of the pair is that both roles read it the same way.
+  const pair = gradePair(b.current_score, b.final_score, b.current_letter_grade, b.letter_grade)
   return {
-    text: letter_grade ? `${percent} ${letter_grade}` : percent,
+    text: pair.current,
+    finalText: pair.differ ? pair.final : null,
     isManual: false,
     noteKey: null,
   }

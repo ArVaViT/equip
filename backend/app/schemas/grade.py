@@ -202,6 +202,22 @@ class GradeBreakdown(BaseModel):
     participation_weighted: float
     final_score: float
     letter_grade: str
+    #: «Текущая оценка» — the same marks over only the work that has been
+    #: marked. «Итоговая» (``final_score``) counts everything not yet handed in
+    #: as a zero.
+    #:
+    #: Both, under the same names, for both roles (D10). Giving the student one
+    #: and the teacher the other is how you get an unexplainable 85%-vs-40% gap
+    #: in week two, with each side certain their own number is the grade. The
+    #: pair is shown as a pair; when they are equal there is one number and
+    #: nothing to explain.
+    current_score: float = 0.0
+    current_letter_grade: str = ""
+    #: True when the two differ, so every surface can render the one-line
+    #: reason («итоговая считает несданные работы как 0») in the same words. The
+    #: student meets «итоговая» the day it diverges, never as a surprise at
+    #: certificate time.
+    scores_differ: bool = False
 
     #: Weights after empty categories drop out. Equal to the configured
     #: weights when both categories have items.

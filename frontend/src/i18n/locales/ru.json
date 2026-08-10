@@ -1405,6 +1405,10 @@
       "notAssessed": "всё освобождено",
       "setByTeacher": "вручную",
       "awaitingGradingTitle": "Сдано — ждёт вашей проверки открытых ответов"
+    },
+    "pair": {
+      "explainer": "Итоговая считает несданные работы как 0",
+      "finalShort": "итог. {{grade}}"
     }
   },
   "admin": {

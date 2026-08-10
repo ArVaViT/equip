@@ -1787,6 +1787,10 @@
       "notAssessed": "all excused",
       "setByTeacher": "by teacher",
       "awaitingGradingTitle": "Submitted — waiting for you to mark the open answers"
+    },
+    "pair": {
+      "explainer": "The final grade counts work not handed in as 0",
+      "finalShort": "final {{grade}}"
     }
   },
   "admin": {
