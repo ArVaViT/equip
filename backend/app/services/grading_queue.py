@@ -42,6 +42,23 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
+def unread_answer_filters() -> tuple:
+    """What makes a quiz answer "waiting on a teacher", as one definition.
+
+    Three surfaces ask this question — the grading page, the dashboard count,
+    and the certificate explainer that tells a student their essay has not been
+    read yet. Written out three times they drift, and the drift is invisible:
+    the student is told one thing and the teacher's queue shows another, with
+    neither number obviously wrong.
+    """
+    return (
+        QuizAttempt.completed_at.isnot(None),
+        QuizAnswer.graded_at.is_(None),
+        QuizAnswer.text_answer.isnot(None),
+        QuizQuestion.question_type.in_(quiz_service.MANUAL_GRADED_QUESTION_TYPES),
+    )
+
+
 def pending_by_course(db: Session, teacher_id: UUID) -> dict[str, int]:
     """``{course_id: count}`` of work awaiting this teacher, courses they own.
 
@@ -76,10 +93,7 @@ def pending_by_course(db: Session, teacher_id: UUID) -> dict[str, int]:
             Course.deleted_at.is_(None),
             Module.deleted_at.is_(None),
             Chapter.deleted_at.is_(None),
-            QuizAttempt.completed_at.isnot(None),
-            QuizAnswer.graded_at.is_(None),
-            QuizAnswer.text_answer.isnot(None),
-            QuizQuestion.question_type.in_(quiz_service.MANUAL_GRADED_QUESTION_TYPES),
+            *unread_answer_filters(),
             # Deactivated students drop out of the grading queue (#786), so
             # they must drop out of the count of it too.
             User.deactivated_at.is_(None),

@@ -26,12 +26,13 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
-from app.models.quiz import QuizAnswer, QuizAttempt
+from app.models.quiz import QuizAnswer, QuizAttempt, QuizQuestion
 from app.services.gradable_items import course_items
 from app.services.grade_calculator import calculate_student_grade_for_course
 from app.services.grade_exemption_service import excused_item_ids
 from app.services.grade_override import resolve_official_row
 from app.services.grade_sheet_service import FAIL, NOT_ATTESTED, official_result
+from app.services.grading_queue import unread_answer_filters
 from app.services.grading_scheme import effective_bands, get_org_settings
 from app.services.zachet import NOT_ATTESTED as ZACHET_NOT_ATTESTED
 from app.services.zachet import (
@@ -248,11 +249,14 @@ def _quizzes_awaiting_marking(db: Session, student_id: UUID, quiz_ids: list) -> 
     rows = (
         db.query(QuizAttempt.quiz_id)
         .join(QuizAnswer, QuizAnswer.attempt_id == QuizAttempt.id)
+        .join(QuizQuestion, QuizQuestion.id == QuizAnswer.question_id)
         .filter(
             QuizAttempt.quiz_id.in_(quiz_ids),
             QuizAttempt.user_id == student_id,
-            QuizAttempt.completed_at.isnot(None),
-            QuizAnswer.graded_at.is_(None),
+            # The same definition the teacher's queue uses. Told "your essay is
+            # not marked yet" for an answer that is not on the teacher's list,
+            # a student waits for something that will never arrive.
+            *unread_answer_filters(),
         )
         .distinct()
         .all()

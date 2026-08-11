@@ -412,6 +412,41 @@ def test_a_quiz_never_sat_is_not_also_a_failed_quiz(db: Session, teacher, studen
     assert QUIZZES_NOT_PASSED not in codes
 
 
+def test_an_auto_marked_answer_is_not_something_a_student_is_waiting_on(db: Session, teacher, student) -> None:
+    """A multiple-choice answer is marked at submit and never appears on the
+    teacher's queue. Told "your work is not marked yet" for an answer no teacher
+    will ever open, a student waits for something that will not arrive — and the
+    two screens disagree with neither number obviously wrong."""
+    course, module = _course(db, "cert-auto-marked")
+    quiz, _chapter = _quiz(db, module, "cert-auto-marked")
+    attempt = QuizAttempt(
+        id=uuid.uuid4(),
+        quiz_id=quiz.id,
+        user_id=STUDENT_ID,
+        score=100,
+        max_score=100,
+        passed=True,
+        completed_at=datetime.now(UTC),
+    )
+    db.add(attempt)
+    question = QuizQuestion(id=uuid.uuid4(), quiz_id=quiz.id, question_type="multiple_choice", points=10, order_index=0)
+    db.add(question)
+    db.flush()
+    # `graded_at` left NULL on purpose: the shape a pre-backfill row has.
+    db.add(
+        QuizAnswer(
+            id=uuid.uuid4(),
+            attempt_id=attempt.id,
+            question_id=question.id,
+            text_answer=None,
+            points_earned=10,
+        )
+    )
+    db.commit()
+
+    assert WORK_NOT_GRADED not in _codes(_blockers(db, course))
+
+
 # ---------------------------------------------------------------------------
 # The wire
 # ---------------------------------------------------------------------------
