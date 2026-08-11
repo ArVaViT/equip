@@ -1791,7 +1791,8 @@
     "pair": {
       "explainer": "The final grade counts work not handed in as 0",
       "finalShort": "final {{grade}}"
-    }
+    },
+    "vedomost": "Grade sheet"
   },
   "admin": {
     "title": "Admin Dashboard",
@@ -2300,6 +2301,35 @@
       "pending_review": "waiting to be marked",
       "not_submitted": "not handed in",
       "excused": "excused"
+    }
+  },
+  "vedomost": {
+    "title": "Grade sheet",
+    "loading": "Loading the grade sheet…",
+    "notClosedTitle": "This grade sheet has not been closed",
+    "notClosedBody": "Closing it freezes every student's result as it stands today. The printed page reads from that snapshot, so re-marking work later cannot change a document already signed.",
+    "close": "Close the grade sheet",
+    "print": "Print",
+    "closedOn": "Closed {{date}}",
+    "wasReopened": "This sheet replaces a reopened one. Reason: {{reason}}",
+    "schoolUnnamed": "(school name not set)",
+    "course": "Course",
+    "teacher": "Teacher",
+    "cohort": "Cohort",
+    "noCohort": "Without a cohort",
+    "hours": "Academic hours",
+    "passLine": "Pass line",
+    "student": "Student",
+    "resultHeader": "Result",
+    "byHand": "H",
+    "byHandLegend": "H — grade set by the teacher rather than computed.",
+    "signTeacher": "Teacher (signature)",
+    "signDirector": "Director (signature)",
+    "result": {
+      "pass": "Passed",
+      "fail": "Not passed",
+      "completionPass": "Passed (by completion)",
+      "notAttested": "Not attested"
     }
   }
 }

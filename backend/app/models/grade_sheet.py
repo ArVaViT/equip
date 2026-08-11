@@ -68,6 +68,18 @@ class GradeSheet(Base):
     #: the language it was printed in.
     locale: Mapped[str] = mapped_column(Text, default="en", server_default="en")
 
+    # --- The rest of the letterhead, frozen for the same reason -----------
+    #
+    # Every one of these is editable in a live table. Read at print time, a
+    # school rename or a course restructure would rewrite the heading of every
+    # document already signed and filed.
+    school_name: Mapped[str | None] = mapped_column(Text)
+    school_city: Mapped[str | None] = mapped_column(Text)
+    teacher_name: Mapped[str | None] = mapped_column(Text)
+    academic_hours: Mapped[int | None] = mapped_column()
+    cohort_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cohort_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     #: The rules in force at closing. A school that moves its scale later must
     #: not move what this document says it certified.
     grading_scheme: Mapped[str] = mapped_column(Text)

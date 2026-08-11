@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
 import type { GradingConfig, GradeSummaryResponse, StudentGrade } from "@/types"
 import { toast } from "@/lib/toast"
-import { ArrowLeft, Award, ChevronRight, Download } from "lucide-react"
+import { ArrowLeft, Award, ChevronRight, Download, FileText } from "lucide-react"
 import { ErrorState } from "@/components/patterns"
 import {
   SORT_FIELDS,
@@ -397,10 +397,21 @@ export default function TeacherGradebook() {
           {courseTitle && <p className="text-ink-muted mt-1">{courseTitle}</p>}
         </div>
         {studentCount > 0 && (
-          <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={exporting}>
-            <Download className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-            {exporting ? t("gradebook.exporting") : t("gradebook.exportCsv")}
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* The CSV is a report; the ведомость is the document a director
+                signs and files. Both belong here, and they are not the same
+                thing. */}
+            <Link to={`/teacher/courses/${courseId}/vedomost`}>
+              <Button variant="outline" size="sm">
+                <FileText className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                {t("gradebook.vedomost")}
+              </Button>
+            </Link>
+            <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={exporting}>
+              <Download className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+              {exporting ? t("gradebook.exporting") : t("gradebook.exportCsv")}
+            </Button>
+          </div>
         )}
       </div>
 

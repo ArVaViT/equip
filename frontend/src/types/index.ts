@@ -643,3 +643,46 @@ export interface MyCourseGrade {
   comment: string | null
   items: MyGradeItem[]
 }
+
+/** One line of a closed ведомость, as it was signed. */
+export interface SheetRow {
+  student_id: string
+  /** The name the document was signed under — not the current one. */
+  student_name: string | null
+  result_state: "pass" | "fail" | "completion_pass" | "not_attested"
+  official_code: string | null
+  official_score: string | null
+  /** Set by hand rather than computed — the director-visible glyph. */
+  is_override: boolean
+}
+
+/**
+ * A closed ведомость. Everything here came off the snapshot: the grades, the
+ * names, the поток, the letterhead and the language. Nothing on this page is
+ * looked up again, because a document whose words move after signature is not
+ * a document.
+ */
+export interface GradeSheet {
+  id: string
+  course_id: string
+  course_title: string | null
+  locale: string
+  cohort_id: string | null
+  cohort_name: string | null
+  cohort_start: string | null
+  cohort_end: string | null
+  school_name: string | null
+  school_city: string | null
+  teacher_name: string | null
+  academic_hours: number | null
+  grading_scheme: string
+  pass_threshold: string | null
+  finalized_at: string
+  finalized_by: string | null
+  reopened_at: string | null
+  reopen_reason: string | null
+  /** Set when this sheet replaced a reopened one — «была переоткрыта». */
+  corrects_sheet_id: string | null
+  correction_reason: string | null
+  rows: SheetRow[]
+}
