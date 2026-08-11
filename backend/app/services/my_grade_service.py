@@ -26,12 +26,13 @@ from sqlalchemy import case
 from sqlalchemy import func as sqlfunc
 
 from app.constants import GRADABLE_CHAPTER_TYPES
-from app.models.assignment import Assignment, AssignmentSubmission
+from app.models.assignment import Assignment
 from app.models.course import Chapter, Module
 from app.models.quiz import Quiz, QuizAnswer, QuizAttempt
 from app.services.grade_calculator import calculate_student_grade_for_course
 from app.services.grade_exemption_service import excused_item_ids
 from app.services.grade_override import resolve_official_row
+from app.services.zachet import latest_submissions, zachet_result
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -108,32 +109,27 @@ def _quiz_marks(db: Session, student_id: UUID, quiz_ids: list[UUID]) -> dict[UUI
 
 
 def _assignment_marks(db: Session, student_id: UUID, assignment_ids: list[UUID]) -> dict[UUID, dict[str, Any]]:
-    """Latest submission state and best mark per assignment."""
-    if not assignment_ids:
-        return {}
-    rows = (
-        db.query(
-            AssignmentSubmission.assignment_id,
-            sqlfunc.max(AssignmentSubmission.grade).label("best_grade"),
-            sqlfunc.count(AssignmentSubmission.id).label("submissions"),
-        )
-        .filter(
-            AssignmentSubmission.assignment_id.in_(assignment_ids),
-            AssignmentSubmission.student_id == student_id,
-        )
-        .group_by(AssignmentSubmission.assignment_id)
-        .all()
-    )
-    return {r.assignment_id: {"grade": r.best_grade, "submissions": r.submissions} for r in rows}
+    """The submission that decides each assignment, from the same helper the
+    зачёт rule uses — so the card and the verdict cannot disagree about the
+    same essay, which they did when each picked its own "latest"."""
+    return latest_submissions(db, student_id=student_id, assignment_ids=assignment_ids)
 
 
 def _status_and_score(
-    *, excused: bool, has_work: bool, awaiting: bool, score: float | None
+    *, excused: bool, has_work: bool, awaiting: bool, score: float | None, returned: bool = False
 ) -> tuple[str, float | None]:
     if excused:
+        # Checked first: an exemption means the work is not owed at all, so a
+        # returned-then-excused essay must not keep showing as owed. It did,
+        # putting a red «возвращено на доработку» row under a «Зачёт».
         # «Освобождено», never «не сдано» — the work was not missed, it was set
         # aside by a teacher who wrote down why.
         return "excused", None
+    if returned:
+        # Marked, and handed back. The grade on it is real but the work is not
+        # finished — returning work is the teacher's "not yet", and the ball is
+        # with the student.
+        return "returned", None
     if not has_work:
         return "not_submitted", None
     if awaiting or score is None:
@@ -182,6 +178,7 @@ def build_my_course_grade(db: Session, course: Course, enrollment: Enrollment, s
             has_work=mark is not None,
             awaiting=mark is not None and raw_grade is None,
             score=pct,
+            returned=mark is not None and mark.get("status") == "returned",
         )
         items.append(
             {
@@ -197,6 +194,20 @@ def build_my_course_grade(db: Session, course: Course, enrollment: Enrollment, s
     scheme = course.grading_scheme
     withheld = scheme in _COMPLETION_NATIVE_SCHEMES
     no_number = breakdown.result_state in _NO_NUMBER_STATES or withheld
+
+    # A pass/fail course has a real verdict, and the student is the person who
+    # most needs it — «зачёт» is predictable without arithmetic, which is the
+    # whole point of the scheme (D2). Withholding the percentage while saying
+    # nothing in its place would leave them worse informed than before.
+    zachet = None
+    if withheld:
+        zachet, _owed = zachet_result(
+            db,
+            student_id=student_id,
+            course_id=course.id,
+            progress=enrollment.progress,
+            all_items_excused=breakdown.result_state == "not_assessed",
+        )
 
     official_row = resolve_official_row(db, student_id=student_id, course_id=course.id)
     official_grade = None
@@ -218,6 +229,7 @@ def build_my_course_grade(db: Session, course: Course, enrollment: Enrollment, s
         "scores_differ": False if no_number else breakdown.scores_differ,
         "result_state": breakdown.result_state,
         "scores_withheld": withheld,
+        "zachet": zachet,
         "official_grade": official_grade,
         # The note written TO the student. `reason` — the note about them,
         # written for the institution — is never read here (D7).

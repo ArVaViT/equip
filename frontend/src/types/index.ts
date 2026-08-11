@@ -610,7 +610,11 @@ export interface MyGradeItem {
   /** `pending_review` is the one that matters: an essay sits at 0 with
    *  `passed = false` from submission until somebody reads it, and a student
    *  shown that number concludes they failed work nobody has opened. */
-  status: "graded" | "pending_review" | "not_submitted" | "excused"
+  /** `returned` is not a variant of `pending_review`: pending work waits on
+   *  the teacher, returned work waits on the student. A returned essay carries
+   *  a grade, so without its own status it rendered as «проверено» while the
+   *  course result said «незачёт». */
+  status: "graded" | "pending_review" | "returned" | "not_submitted" | "excused"
   /** Present only for `graded`. A number on a pending row is the running
    *  total, which is precisely the thing being withheld. */
   score: number | null
@@ -639,6 +643,10 @@ export interface MyCourseGrade {
   /** True for a scheme whose rule is completion-based rather than arithmetic
    *  (`pass_fail`, D2) — the weighted percentage is not the result there. */
   scores_withheld: boolean
+  /** For a completion-graded course, the verdict itself. No percentage sits
+   *  behind it by design (D2): the rule is whether every required piece of
+   *  work was accepted. */
+  zachet: "zachet" | "nezachet" | "not_attested" | null
   official_grade: string | null
   comment: string | null
   items: MyGradeItem[]

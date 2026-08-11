@@ -2300,7 +2300,13 @@
       "graded": "marked",
       "pending_review": "waiting to be marked",
       "not_submitted": "not handed in",
-      "excused": "excused"
+      "excused": "excused",
+      "returned": "returned for revision"
+    },
+    "zachet": {
+      "zachet": "Passed",
+      "nezachet": "Not passed yet",
+      "not_attested": "Not attested"
     }
   },
   "vedomost": {

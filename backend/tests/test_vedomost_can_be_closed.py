@@ -447,21 +447,88 @@ def test_a_hand_set_grade_outranks_not_attested(admin_client, db: Session, teach
     assert row["is_override"] is True
 
 
-def test_a_pass_fail_course_is_refused_rather_than_guessed(admin_client, db: Session, teacher, student) -> None:
+def test_a_pass_fail_course_records_the_verdict_not_a_percentage(admin_client, db: Session, teacher, student) -> None:
     """«Зачёт» is every required piece of work accepted, not an average
-    clearing a line (D2), and that rule is not built. Freezing the weighted
-    percentage would put a verdict onto a signed page the platform cannot
-    justify — and it did, printing «зачёт» beside a "fail"."""
-    course, quiz = _course(db, teacher, "c-sheet-passfail-refused")
-    course.grading_scheme = "pass_fail"
-    _enrol(db, course.id, STUDENT_ID)
-    _attempt(db, quiz, STUDENT_ID, 65)
+    clearing a line (D2). The sheet used to refuse to close for this scheme,
+    because the rule did not exist; now it does, and no number goes on the page.
+    """
+    from app.models.assignment import Assignment, AssignmentSubmission
+
+    course = Course(id="c-sheet-zachet", status="published", created_by=teacher.id, grading_scheme="pass_fail")
+    db.add(course)
+    module = Module(id="c-sheet-zachet-m", course_id=course.id, order_index=0, title="M")
+    db.add(module)
+    db.flush()
+    chapter = Chapter(
+        id="c-sheet-zachet-ch",
+        module_id=module.id,
+        order_index=0,
+        chapter_type="assignment",
+        title="Работа",
+    )
+    db.add(chapter)
+    db.flush()
+    assignment = Assignment(id=uuid.uuid4(), chapter_id=chapter.id, max_score=100)
+    db.add(assignment)
+    db.flush()
+    db.add(
+        AssignmentSubmission(
+            id=uuid.uuid4(),
+            assignment_id=assignment.id,
+            student_id=STUDENT_ID,
+            status="graded",
+            grade=52,
+            graded_by=teacher.id,
+        )
+    )
+    _enrol(db, course.id, STUDENT_ID, progress=100)
     db.commit()
 
-    resp = admin_client.post(SHEET_URL.format(course_id=course.id))
+    row = admin_client.post(SHEET_URL.format(course_id=course.id)).json()["rows"][0]
 
-    assert resp.status_code == 422
-    assert db.query(GradeSheet).count() == 0
+    assert row["result_state"] == "pass", "the work was accepted; the mark on it is not the rule"
+    assert row["official_score"] is None, "no percentage goes on a pass/fail page"
+    assert row["official_code"] is None
+
+
+def test_a_pass_fail_course_with_work_returned_is_not_passed(admin_client, db: Session, teacher, student) -> None:
+    """A high mark cannot outrank «вернуть на доработку» — that is the teacher's
+    "not yet", and it is the whole difference from counting marks."""
+    from app.models.assignment import Assignment, AssignmentSubmission
+
+    course = Course(id="c-sheet-returned", status="published", created_by=teacher.id, grading_scheme="pass_fail")
+    db.add(course)
+    module = Module(id="c-sheet-returned-m", course_id=course.id, order_index=0, title="M")
+    db.add(module)
+    db.flush()
+    chapter = Chapter(
+        id="c-sheet-returned-ch",
+        module_id=module.id,
+        order_index=0,
+        chapter_type="assignment",
+        title="Работа",
+    )
+    db.add(chapter)
+    db.flush()
+    assignment = Assignment(id=uuid.uuid4(), chapter_id=chapter.id, max_score=100)
+    db.add(assignment)
+    db.flush()
+    db.add(
+        AssignmentSubmission(
+            id=uuid.uuid4(),
+            assignment_id=assignment.id,
+            student_id=STUDENT_ID,
+            status="returned",
+            grade=95,
+            graded_by=teacher.id,
+        )
+    )
+    _enrol(db, course.id, STUDENT_ID, progress=100)
+    db.commit()
+
+    row = admin_client.post(SHEET_URL.format(course_id=course.id)).json()["rows"][0]
+
+    assert row["result_state"] == "fail"
 
 
 def test_the_correction_mark_lands_on_the_document_people_print(admin_client, db: Session, teacher, student) -> None:
@@ -657,3 +724,93 @@ def test_the_letterhead_is_frozen_with_the_rest(admin_client, db: Session, teach
     assert filed["school_name"] == "Grace Bible School"
     assert filed["school_city"] == "Kyiv"
     assert filed["academic_hours"] == 36
+
+
+def test_a_reading_only_pass_fail_course_is_not_failed_wholesale(admin_client, db: Session, teacher, student) -> None:
+    """A course with nothing gradable has nothing to accept or refuse, whatever
+    the scheme. The pass/fail branch used to sit above the completion check and
+    stamped «незачёт» on every row of a reading-only course — its progress is 0
+    because there are no gradable chapters to complete."""
+    course = Course(id="c-sheet-reading", status="published", created_by=teacher.id, grading_scheme="pass_fail")
+    db.add(course)
+    module = Module(id="c-sheet-reading-m", course_id=course.id, order_index=0, title="M")
+    db.add(module)
+    db.flush()
+    db.add(
+        Chapter(
+            id="c-sheet-reading-ch",
+            module_id=module.id,
+            order_index=0,
+            chapter_type="reading",
+            title="Глава",
+        )
+    )
+    _enrol(db, course.id, STUDENT_ID, progress=0)
+    db.commit()
+
+    row = admin_client.post(SHEET_URL.format(course_id=course.id)).json()["rows"][0]
+
+    assert row["result_state"] == "completion_pass"
+
+
+def test_a_retaking_students_sheet_reads_its_own_потока_progress(admin_client, db: Session, teacher, student) -> None:
+    """Keyed by student with no cohort filter, a retaking student's two
+    enrolments overwrote each other and *both* sheets read whichever came
+    back last."""
+    from app.models.assignment import Assignment, AssignmentSubmission
+
+    course = Course(
+        id="c-sheet-retake-progress",
+        status="published",
+        created_by=teacher.id,
+        grading_scheme="pass_fail",
+    )
+    db.add(course)
+    module = Module(id="c-sheet-retake-progress-m", course_id=course.id, order_index=0, title="M")
+    db.add(module)
+    db.flush()
+    chapter = Chapter(
+        id="c-sheet-retake-progress-ch",
+        module_id=module.id,
+        order_index=0,
+        chapter_type="assignment",
+        title="Работа",
+    )
+    db.add(chapter)
+    db.flush()
+    assignment = Assignment(id=uuid.uuid4(), chapter_id=chapter.id, max_score=100)
+    db.add(assignment)
+    db.flush()
+    db.add(
+        AssignmentSubmission(
+            id=uuid.uuid4(),
+            assignment_id=assignment.id,
+            student_id=STUDENT_ID,
+            status="graded",
+            grade=80,
+            graded_by=teacher.id,
+        )
+    )
+    finished = Cohort(
+        id=uuid.uuid4(),
+        start_date=datetime.now(UTC).date(),
+        end_date=datetime.now(UTC).date(),
+        status="completed",
+    )
+    db.add(finished)
+    db.flush()
+    db.add(
+        Enrollment(
+            id="enr-retake-done",
+            user_id=STUDENT_ID,
+            course_id=course.id,
+            cohort_id=finished.id,
+            progress=100,
+        )
+    )
+    db.add(Enrollment(id="enr-retake-fresh", user_id=STUDENT_ID, course_id=course.id, progress=10))
+    db.commit()
+
+    row = admin_client.post(f"{SHEET_URL.format(course_id=course.id)}?cohort_id={finished.id}").json()["rows"][0]
+
+    assert row["result_state"] == "pass", "the finished поток's page reads the finished enrolment"

@@ -353,6 +353,9 @@ def test_a_pass_fail_course_does_not_show_a_percentage(student_client, db: Sessi
     assert body["current_score"] is None
     assert body["final_score"] is None
     assert body["items"], "the per-item list is still the honest part and stays"
+    # And the student is told the actual result rather than nothing: «зачёт» is
+    # predictable without arithmetic, which is the point of the scheme (D2).
+    assert body["zachet"] in {"zachet", "nezachet", "not_attested"}
 
 
 # --------------------------------------------------------------------------
@@ -426,3 +429,60 @@ def test_each_item_carries_its_own_id(student_client, db: Session, teacher, stud
 
     ids = {i["item_id"] for i in items}
     assert ids == {str(first.id), str(second.id)}
+
+
+def test_a_pass_fail_student_is_told_zachet_not_a_silence(student_client, db: Session, teacher, student) -> None:
+    """Withholding the percentage while saying nothing in its place would leave
+    the student worse informed than before the scheme existed."""
+    from app.models.assignment import AssignmentSubmission
+
+    course, module = _course(db, teacher, "c-my-zachet", scheme="pass_fail", qw=0, aw=100)
+    assignment = _assignment(db, module, course.id, 0, "Эссе")
+    db.add(
+        AssignmentSubmission(
+            id=uuid.uuid4(),
+            assignment_id=assignment.id,
+            student_id=STUDENT_ID,
+            status="graded",
+            grade=55,
+            graded_by=teacher.id,
+        )
+    )
+    enrolment = db.query(Enrollment).filter(Enrollment.course_id == course.id).first()
+    enrolment.progress = 100
+    db.commit()
+
+    body = student_client.get(URL.format(course_id=course.id)).json()
+
+    assert body["zachet"] == "zachet", "the work was accepted; the 55 on it is not the rule"
+    assert body["current_score"] is None, "and no percentage is shown for it"
+
+
+def test_a_pass_fail_student_with_work_returned_is_told_nezachet(student_client, db: Session, teacher, student) -> None:
+    from app.models.assignment import AssignmentSubmission
+
+    course, module = _course(db, teacher, "c-my-nezachet", scheme="pass_fail", qw=0, aw=100)
+    assignment = _assignment(db, module, course.id, 0, "Эссе")
+    db.add(
+        AssignmentSubmission(
+            id=uuid.uuid4(),
+            assignment_id=assignment.id,
+            student_id=STUDENT_ID,
+            status="returned",
+            grade=90,
+            graded_by=teacher.id,
+        )
+    )
+    enrolment = db.query(Enrollment).filter(Enrollment.course_id == course.id).first()
+    enrolment.progress = 100
+    db.commit()
+
+    body = student_client.get(URL.format(course_id=course.id)).json()
+
+    assert body["zachet"] == "nezachet"
+    # `returned` rather than `pending_review`: pending work waits on the
+    # teacher, returned work waits on the student. Shown as «проверено» — which
+    # is what a graded-and-returned essay used to render as — the list would say
+    # everything is done while the course result says «незачёт».
+    assert body["items"][0]["status"] == "returned"
+    assert body["items"][0]["score"] is None, "the mark on it is not the state it is in"

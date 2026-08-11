@@ -38,12 +38,31 @@ function formatScore(score: number, symbol: string | null): string {
  * average (D2), so its weighted percentage is not the result. Showing it would
  * be the hidden-average behaviour the design set out to remove.
  */
-export function myGradeDisplay(grade: MyCourseGrade): MyGradeDisplay {
+export function myGradeDisplay(
+  grade: MyCourseGrade,
+  t: (key: string) => string = (k) => k,
+): MyGradeDisplay {
   if (grade.official_grade) {
-    return { headline: grade.official_grade, isManual: true, finalText: null, noteKey: null }
+    // A pass/fail override is stored as the code `pass` / `fail` (D7). Printed
+    // raw it read «pass» beside a computed «Зачёт» — the same verdict in two
+    // different languages depending on who decided it.
+    const code = grade.official_grade
+    const headline =
+      grade.scores_withheld && (code === "pass" || code === "fail")
+        ? t(`myGrade.zachet.${code === "pass" ? "zachet" : "nezachet"}`)
+        : code
+    return { headline, isManual: true, finalText: null, noteKey: null }
   }
   if (grade.scores_withheld) {
-    return { headline: null, isManual: false, finalText: null, noteKey: "myGrade.state.byCompletion" }
+    // A pass/fail course has a real verdict and the student is the person who
+    // most needs it. «Зачёт» is predictable without arithmetic — that is the
+    // point of the scheme (D2) — so it is the headline, not a missing number.
+    return {
+      headline: grade.zachet ? t(`myGrade.zachet.${grade.zachet}`) : null,
+      isManual: false,
+      finalText: null,
+      noteKey: grade.zachet ? null : "myGrade.state.byCompletion",
+    }
   }
   if (grade.current_score === null || grade.final_score === null) {
     return {
@@ -63,11 +82,15 @@ export function myGradeDisplay(grade: MyCourseGrade): MyGradeDisplay {
 
 /** Items a student still owes, in the order they should worry about them. */
 export function outstandingItems(items: MyGradeItem[]): MyGradeItem[] {
+  // Ordered by whose move it is: work the student still owes first — never
+  // handed in, then handed back for revision — then work waiting on a teacher,
+  // then what is settled.
   const order: Record<MyGradeItem["status"], number> = {
     not_submitted: 0,
-    pending_review: 1,
-    graded: 2,
-    excused: 3,
+    returned: 1,
+    pending_review: 2,
+    graded: 3,
+    excused: 4,
   }
   return [...items].sort((a, b) => order[a.status] - order[b.status] || a.title.localeCompare(b.title))
 }
