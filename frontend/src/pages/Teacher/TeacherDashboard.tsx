@@ -52,6 +52,7 @@ export default function TeacherDashboard() {
   const [cloningId, setCloningId] = useState<string | null>(null)
   const [pendingCerts, setPendingCerts] = useState<PendingCert[]>([])
   const [pendingGrading, setPendingGrading] = useState(0)
+  const [pendingByCourse, setPendingByCourse] = useState<Record<string, number>>({})
   const [certActionId, setCertActionId] = useState<string | null>(null)
   const tourSteps = teacherDashboardSteps(t)
   const { start: startTour } = useUserTour({
@@ -80,6 +81,7 @@ export default function TeacherDashboard() {
       setCourses(data)
       setPendingCerts(certs)
       setPendingGrading(waiting.total)
+      setPendingByCourse(waiting.by_course)
     } catch {
       if (!signal?.cancelled)
         setError(t("errors.loadTeacherCoursesFailed"))
@@ -317,6 +319,7 @@ export default function TeacherDashboard() {
               <CourseCard
                 key={course.id}
                 course={course}
+                pendingGrading={pendingByCourse[course.id] ?? 0}
                 togglingId={togglingId}
                 cloningId={cloningId}
                 onToggleStatus={handleToggleStatus}

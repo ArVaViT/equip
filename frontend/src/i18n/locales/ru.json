@@ -967,7 +967,11 @@
       "actionClone": "Скопировать курс",
       "actionEditCourse": "Редактировать курс",
       "actionDelete": "Удалить",
-      "actionMore": "Ещё действия"
+      "actionMore": "Ещё действия",
+      "pendingGrading_one": "{{count}} работа на проверку",
+      "pendingGrading_few": "{{count}} работы на проверку",
+      "pendingGrading_many": "{{count}} работ на проверку",
+      "pendingGrading_other": "{{count}} работы на проверку"
     },
     "createForm": {
       "title": "Создать новый курс",
