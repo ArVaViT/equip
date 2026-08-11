@@ -12,6 +12,7 @@ on is a number they stop reading.
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -20,6 +21,7 @@ from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.course import Chapter, Course, Module
 from app.models.quiz import Quiz, QuizAnswer, QuizAttempt, QuizQuestion
 from app.models.user import User
+from app.services import quiz_service
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -219,6 +221,66 @@ def test_both_kinds_of_waiting_are_one_number(client, db: Session, teacher, stud
     db.commit()
 
     assert client.get(URL).json()["by_course"][course.id] == 2
+
+
+def test_a_deactivated_student_leaves_the_queue_with_their_work(client, db: Session, teacher, student) -> None:
+    """Their answers stay in the database but drop off the grading page (#786).
+    If the badge still counted them the teacher would open the page, find
+    nothing to mark, and the number would never reach zero — which is exactly
+    how a queue stops being read."""
+    course, module = _course(db, TEACHER_ID, "c-q-deactivated")
+    _essay_awaiting(db, module, course.id, graded=False)
+    _assignment_submission(db, module, course.id, status="submitted", grade=None)
+    db.query(User).filter(User.id == STUDENT_ID).update({"deactivated_at": datetime.now(UTC)})
+    db.commit()
+
+    assert client.get(URL).json()["total"] == 0
+
+
+def test_every_question_type_is_either_auto_marked_or_hand_marked() -> None:
+    """`graded_at IS NULL` means "waiting on a teacher" only because every
+    question type either gets stamped at submit or is on the grading page. A
+    third kind — added to the CHECK constraint without deciding who marks it —
+    would sit unstamped forever and put a permanent floor under the badge.
+    The schema is what keeps that from happening; this asserts the two lists
+    still agree with it."""
+    constraint = next(
+        c for c in QuizQuestion.__table__.constraints if getattr(c, "name", "") == "quiz_questions_question_type_check"
+    )
+    allowed = set(re.findall(r"'([a-z_]+)'", str(constraint.sqltext)))
+
+    assert allowed == set(quiz_service.AUTO_GRADED_QUESTION_TYPES) | set(quiz_service.MANUAL_GRADED_QUESTION_TYPES)
+
+
+def test_a_skipped_question_is_not_work_to_read(client, db: Session, teacher, student) -> None:
+    """An unanswered essay carries no text. The grading page requires
+    `text_answer IS NOT NULL`; counting the empty row would send a teacher to a
+    page with one fewer item on it than the badge promised."""
+    _course_row, module = _course(db, TEACHER_ID, "c-q-skipped")
+    chapter = Chapter(id="c-q-skipped-q", module_id=module.id, order_index=0, chapter_type="quiz", title="Эссе")
+    db.add(chapter)
+    db.flush()
+    quiz = Quiz(id=uuid.uuid4(), chapter_id=chapter.id)
+    db.add(quiz)
+    db.flush()
+    question = QuizQuestion(id=uuid.uuid4(), quiz_id=quiz.id, question_type="essay", points=10, order_index=0)
+    db.add(question)
+    attempt = QuizAttempt(
+        id=uuid.uuid4(),
+        quiz_id=quiz.id,
+        user_id=STUDENT_ID,
+        score=0,
+        max_score=10,
+        completed_at=datetime.now(UTC),
+    )
+    db.add(attempt)
+    db.flush()
+    db.add(
+        QuizAnswer(id=uuid.uuid4(), attempt_id=attempt.id, question_id=question.id, text_answer=None, points_earned=0)
+    )
+    db.commit()
+
+    assert client.get(URL).json()["total"] == 0
 
 
 def test_a_student_cannot_read_the_queue(student_client, db: Session, teacher, student) -> None:
