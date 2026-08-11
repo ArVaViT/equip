@@ -1339,7 +1339,8 @@
       "totalCourses": "Courses",
       "published": "Published",
       "modules": "Modules",
-      "pendingActions": "Needs attention"
+      "pendingActions": "Needs attention",
+      "pendingGrading": "Waiting to be marked"
     },
     "courseCard": {
       "statusPublished": "Published",

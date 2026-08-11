@@ -41,6 +41,7 @@ from app.schemas.grade import (
     GradingSchemeResponse,
     GradingSchemeUpdate,
     MyCourseGrade,
+    PendingGradingSummary,
     SheetReopenRequest,
     SheetRowResponse,
     StudentCalculatedGrade,
@@ -61,6 +62,7 @@ from app.services.grade_override import (
     validate_override,
 )
 from app.services.grade_sheet_service import active_sheet, finalize_sheet, reopen_sheet
+from app.services.grading_queue import pending_summary
 from app.services.grading_scheme import effective_bands, get_org_settings, validate_scheme_threshold
 from app.services.my_grade_service import build_my_course_grade, latest_enrollment
 from app.services.translation.resolve_for_display import populate_spine_texts
@@ -367,6 +369,22 @@ def _sheet_response(db: Session, sheet: GradeSheet) -> GradeSheetResponse:
             for r in sorted(rows, key=lambda r: r.student_name or "")
         ],
     )
+
+
+@router.get("/pending", response_model=PendingGradingSummary)
+def get_pending_grading(
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    """What is waiting for this teacher to mark it, across their courses.
+
+    An essay is submitted and then nothing happens until somebody opens the
+    right course, the right chapter and the right attempt. There was no place
+    that said "seven pieces of work are waiting on you" — the teacher had to
+    already suspect it, which for a school taking its first cohort is where
+    student work sits unread for a fortnight.
+    """
+    return PendingGradingSummary(**pending_summary(db, teacher.id))
 
 
 @router.get("/course/{course_id}/sheet", response_model=GradeSheetResponse | None)

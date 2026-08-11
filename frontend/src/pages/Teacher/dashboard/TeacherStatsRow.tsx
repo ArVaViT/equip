@@ -1,11 +1,13 @@
 import { useTranslation } from "react-i18next"
-import { Bell, BookOpen, Eye, Layers } from "lucide-react"
+import { Bell, BookOpen, ClipboardCheck, Eye } from "lucide-react"
 import { StatCard } from "@/components/patterns"
 import type { Course } from "@/types"
 
 interface Props {
   courses: Course[]
   pendingActions: number
+  /** Work waiting to be marked, across this teacher's courses. */
+  pendingGrading: number
 }
 
 /**
@@ -20,10 +22,9 @@ interface Props {
  * ``ProgressStats``, ``TeacherAnalytics``, and the admin overview row)
  * rather than inventing a teacher-specific card.
  */
-export function TeacherStatsRow({ courses, pendingActions }: Props) {
+export function TeacherStatsRow({ courses, pendingActions, pendingGrading }: Props) {
   const { t } = useTranslation()
   const publishedCount = courses.filter((c) => c.status === "published").length
-  const moduleCount = courses.reduce((sum, c) => sum + (c.modules?.length ?? 0), 0)
 
   return (
     <div className="mb-6 grid grid-cols-2 gap-3 sm:mb-8 lg:grid-cols-4">
@@ -39,10 +40,12 @@ export function TeacherStatsRow({ courses, pendingActions }: Props) {
         icon={Eye}
         variant="icon-leading"
       />
+      {/* Replaces the module count, which nobody acts on. This is the number
+          that decides whether a teacher opens the app today. */}
       <StatCard
-        label={t("teacherDashboard.stats.modules")}
-        value={moduleCount}
-        icon={Layers}
+        label={t("teacherDashboard.stats.pendingGrading")}
+        value={pendingGrading}
+        icon={ClipboardCheck}
         variant="icon-leading"
       />
       <StatCard

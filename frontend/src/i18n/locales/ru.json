@@ -947,7 +947,8 @@
       "totalCourses": "Курсы",
       "published": "Опубликовано",
       "modules": "Модули",
-      "pendingActions": "Требует внимания"
+      "pendingActions": "Требует внимания",
+      "pendingGrading": "Ждёт проверки"
     },
     "courseCard": {
       "statusPublished": "Опубликован",

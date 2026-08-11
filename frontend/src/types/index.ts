@@ -694,3 +694,16 @@ export interface GradeSheet {
   correction_reason: string | null
   rows: SheetRow[]
 }
+
+/**
+ * Work waiting on the teacher, counted once.
+ *
+ * Only their move: an unread open answer, a submitted assignment with no mark.
+ * Work the student owes — never handed in, or handed back for revision — is
+ * deliberately absent. A number a teacher cannot act on is a number they stop
+ * reading.
+ */
+export interface PendingGrading {
+  total: number
+  by_course: Record<string, number>
+}
