@@ -423,6 +423,14 @@ class GradeSheetResponse(BaseModel):
     #: The поток's name as it stood at closing — cohort names are editable and
     #: a signed heading is not.
     cohort_name: str | None = None
+    cohort_start: datetime | None = None
+    cohort_end: datetime | None = None
+    #: The institutional letterhead, frozen with everything else. A school
+    #: renames itself and a teacher leaves; a filed document does neither.
+    school_name: str | None = None
+    school_city: str | None = None
+    teacher_name: str | None = None
+    academic_hours: int | None = None
     grading_scheme: str
     pass_threshold: Decimal | None = None
     finalized_at: datetime

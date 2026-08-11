@@ -22,6 +22,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from app.core.ids import as_uuid
+from app.models.cohort import Cohort
 from app.models.content_version import ContentVersion
 from app.models.enrollment import Enrollment
 from app.models.grade_sheet import GradeSheet, GradeSheetRow
@@ -151,6 +152,30 @@ def _cohort_name(db: Session, cohort_id: UUID | None, locale: str) -> str | None
     return by_locale.get(locale) or next(iter(by_locale.values()), None)
 
 
+def _letterhead(db: Session, course: Course, cohort_id: UUID | None) -> dict[str, Any]:
+    """The institutional fields, as they stood at closing.
+
+    A school renames itself, a teacher leaves, a course is restructured, a term
+    shifts by a week. Any of those read at print time rewrites the heading of
+    every document already in the cabinet.
+    """
+    settings = get_org_settings(db)
+    teacher = db.query(User).filter(User.id == course.created_by).first() if course.created_by else None
+    cohort = db.query(Cohort).filter(Cohort.id == cohort_id).first() if cohort_id else None
+    return {
+        # The school's name in the document's own language, falling back to the
+        # other rather than leaving a signed page unheaded.
+        "school_name": (settings.school_name_en if SHEET_LOCALE == "en" else settings.school_name_ru)
+        or settings.school_name_ru
+        or settings.school_name_en,
+        "school_city": settings.city,
+        "teacher_name": (teacher.full_name or teacher.email) if teacher else None,
+        "academic_hours": course.academic_hours,
+        "cohort_start": cohort.start_date if cohort else None,
+        "cohort_end": cohort.end_date if cohort else None,
+    }
+
+
 def refuse_reason(course: Course) -> str | None:
     """Why this course cannot be frozen yet, or ``None``.
 
@@ -231,6 +256,7 @@ def finalize_sheet(db: Session, course: Course, cohort_id: UUID | None, closed_b
         locale=SHEET_LOCALE,
         cohort_name=_cohort_name(db, cohort_id, SHEET_LOCALE),
         course_title=fetch_course_titles_by_id(db, [course.id], display_locale=SHEET_LOCALE).get(course.id),
+        **_letterhead(db, course, cohort_id),
         # A document that changed after signature has to say so on its face,
         # and the document that says it must be the corrected one — not the
         # superseded page nobody will print again.

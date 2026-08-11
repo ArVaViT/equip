@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Yf8Mj8jbSmQ5kgjdl2U7PcE0aGz7KIxrayLseTf73s8pq6FjRfyqFwjnmIZESIp
+\restrict 0ttEqNwra9qZCoW7cemeJixsaTwGEh5pXaHuY20WX7gi6HiUmWwuE8MyH1BmFo8
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10 (Homebrew)
@@ -646,6 +646,12 @@ CREATE TABLE public.grade_sheets (
     correction_reason text,
     locale text DEFAULT 'en'::text NOT NULL,
     course_title text,
+    school_name text,
+    school_city text,
+    teacher_name text,
+    academic_hours integer,
+    cohort_start timestamp with time zone,
+    cohort_end timestamp with time zone,
     CONSTRAINT ck_grade_sheets_reopen_is_deliberate CHECK (((reopened_at IS NULL) OR ((reopened_at >= finalized_at) AND (reopen_reason IS NOT NULL))))
 );
 
@@ -3062,5 +3068,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Yf8Mj8jbSmQ5kgjdl2U7PcE0aGz7KIxrayLseTf73s8pq6FjRfyqFwjnmIZESIp
+\unrestrict 0ttEqNwra9qZCoW7cemeJixsaTwGEh5pXaHuY20WX7gi6HiUmWwuE8MyH1BmFo8
 

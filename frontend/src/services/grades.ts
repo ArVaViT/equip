@@ -2,6 +2,7 @@ import api from "./api"
 import { cached, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
 import type {
   GradeExemption,
+  GradeSheet,
   MyCourseGrade,
   GradingConfig,
   GradeSummaryResponse,
@@ -111,6 +112,29 @@ export const gradesService = {
       const response = await api.get<MyCourseGrade>(`/grades/my/${courseId}/breakdown`)
       return response.data
     })
+  },
+
+  /** The ведомость standing for this поток, or `null` if none is closed. */
+  async getGradeSheet(courseId: string, cohortId?: string | null): Promise<GradeSheet | null> {
+    const response = await api.get<GradeSheet | null>(`/grades/course/${courseId}/sheet`, {
+      params: cohortId ? { cohort_id: cohortId } : undefined,
+    })
+    return response.data
+  },
+
+  /** Close it — freezes every student's result. Director-only on the server. */
+  async closeGradeSheet(courseId: string, cohortId?: string | null): Promise<GradeSheet> {
+    const response = await api.post<GradeSheet>(
+      `/grades/course/${courseId}/sheet`,
+      undefined,
+      { params: cohortId ? { cohort_id: cohortId } : undefined },
+    )
+    return response.data
+  },
+
+  async reopenGradeSheet(sheetId: string, reason: string): Promise<GradeSheet> {
+    const response = await api.post<GradeSheet>(`/grades/sheet/${sheetId}/reopen`, { reason })
+    return response.data
   },
 
   async getMyGrades(): Promise<StudentGrade[]> {

@@ -619,3 +619,41 @@ def test_the_document_records_the_language_it_was_closed_in(admin_client, db: Se
 
     assert sheet["locale"] == "en"
     assert sheet["course_title"] is not None, "the title is frozen too — courses get retitled"
+
+
+def test_the_letterhead_is_frozen_with_the_rest(admin_client, db: Session, teacher, student) -> None:
+    """A school renames itself; a filed document does not.
+
+    Read at print time, any of these rewrites the heading of every ведомость
+    already signed — a 2024 page would start claiming this year's course length
+    under next year's school name.
+    """
+    course, quiz = _course(db, teacher, "c-sheet-letterhead")
+    course.academic_hours = 36
+    # `get_org_settings` creates the single row on first read; the sheet path
+    # is the only thing that touches it, so seed it here.
+    from app.services.grading_scheme import get_org_settings
+
+    settings = get_org_settings(db)
+    settings.school_name_en = "Grace Bible School"
+    settings.city = "Kyiv"
+    _enrol(db, course.id, STUDENT_ID)
+    _attempt(db, quiz, STUDENT_ID, 90)
+    db.commit()
+
+    signed = admin_client.post(SHEET_URL.format(course_id=course.id)).json()
+    assert signed["school_name"] == "Grace Bible School"
+    assert signed["school_city"] == "Kyiv"
+    assert signed["academic_hours"] == 36
+    assert signed["teacher_name"], "somebody taught it, and the page says who"
+
+    settings.school_name_en = "Другое название"
+    settings.city = "Другой город"
+    course.academic_hours = 72
+    db.commit()
+
+    filed = admin_client.get(SHEET_URL.format(course_id=course.id)).json()
+
+    assert filed["school_name"] == "Grace Bible School"
+    assert filed["school_city"] == "Kyiv"
+    assert filed["academic_hours"] == 36

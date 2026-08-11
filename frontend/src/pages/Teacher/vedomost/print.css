@@ -1,0 +1,76 @@
+/*
+ * Print styles for the ведомость.
+ *
+ * Print is a different medium, not a narrow screen. The units are millimetres
+ * because a sheet of paper has millimetres; the colours are ink on white
+ * because a school prints in black and white and a "muted grey" that reads
+ * fine on a monitor disappears at 300dpi; and everything the browser adds by
+ * default — navigation, buttons, its own header and footer — has to go, or a
+ * signed document arrives with a URL stamped across the bottom.
+ *
+ * No paid PDF service and no server-side renderer: the browser's own
+ * "Print → Save as PDF" produces the file, which is one less thing to keep
+ * running and one less place for a document to be generated differently than
+ * it was displayed.
+ */
+
+@page {
+  size: A4;
+  /* Wide enough on the left for a two-hole punch — these get filed. */
+  margin: 18mm 15mm 18mm 22mm;
+}
+
+@media print {
+  /* The application chrome is not part of the document. */
+  header,
+  nav,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .vedomost {
+    /* Overriding the app's container: the page IS the container now. */
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    font-size: 11pt;
+    line-height: 1.35;
+  }
+
+  /* A name must never be split across two sheets, and a table that runs over
+     has to repeat its header — otherwise page two is a column of results with
+     nothing saying whose. */
+  .vedomost table {
+    page-break-inside: auto;
+  }
+  .vedomost tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  .vedomost thead {
+    display: table-header-group;
+  }
+  .vedomost tfoot {
+    display: table-footer-group;
+  }
+
+  /* Signature lines belong at the bottom of the last page, never orphaned
+     alone on a sheet of their own. */
+  .vedomost .signatures {
+    page-break-inside: avoid;
+  }
+
+  /* Backgrounds are dropped by default in print; the override glyph and the
+     reopened watermark carry meaning, so they are drawn with borders and text
+     rather than fills. */
+  .vedomost .marker {
+    border: 1pt solid #000;
+  }
+}
