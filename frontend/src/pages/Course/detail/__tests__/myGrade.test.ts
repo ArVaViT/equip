@@ -18,6 +18,7 @@ function grade(over: Partial<MyCourseGrade> = {}): MyCourseGrade {
     zachet: null,
     official_grade: null,
     comment: null,
+    certificate_blockers: [],
     items: [],
     ...over,
   }

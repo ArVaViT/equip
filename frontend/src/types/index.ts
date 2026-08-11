@@ -621,6 +621,22 @@ export interface MyGradeItem {
 }
 
 /**
+ * One reason a certificate is not available yet (D9).
+ *
+ * A code and numbers, never a sentence: the words live in the locale
+ * catalogues, so adding a language is a translation change rather than a
+ * backend release, and the student's card and the teacher's cannot word the
+ * same obstacle differently.
+ */
+export interface CertificateBlocker {
+  code: string
+  params: Record<string, string | number | boolean>
+  /** Where the work is. A refusal that names a problem without saying where it
+   *  is sends the student to the teacher instead of to the work. */
+  chapter_ids: string[]
+}
+
+/**
  * A student's own standing in one course.
  *
  * Carries no class average, no other student's name, no rank — absent from the
@@ -649,6 +665,10 @@ export interface MyCourseGrade {
   zachet: "zachet" | "nezachet" | "not_attested" | null
   official_grade: string | null
   comment: string | null
+  /** Empty means nothing stands in the way. Shipped ahead of the gate that
+   *  will enforce it, so no student meets a refusal they have never seen
+   *  explained. */
+  certificate_blockers: CertificateBlocker[]
   items: MyGradeItem[]
 }
 

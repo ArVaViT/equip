@@ -344,6 +344,26 @@ class MyGradeItem(BaseModel):
     score: float | None = None
 
 
+class CertificateBlocker(BaseModel):
+    """One reason a certificate is not available yet.
+
+    A code and numbers, never a sentence. The words live in the frontend
+    catalogues so that adding a language is a translation change and not a
+    backend release, and so the student's screen and the teacher's card cannot
+    word the same obstacle differently.
+    """
+
+    code: str
+    #: Numbers the sentence needs: ``{"count": 2}``, ``{"final_score": 64.0,
+    #: "pass_threshold": 70.0}``.
+    #: ``bool`` leads the union deliberately: Python bools are ints, and a
+    #: union that meets ``int`` first turns ``provisional: true`` into ``1``.
+    params: dict[str, bool | int | float | str] = {}
+    #: The chapters to link to. A refusal that names a problem without saying
+    #: where it is sends the student to the teacher instead of to the work.
+    chapter_ids: list[str] = []
+
+
 class MyCourseGrade(BaseModel):
     """A student's own standing in one course.
 
@@ -388,6 +408,15 @@ class MyCourseGrade(BaseModel):
     #: (D7), so it is what the student is told.
     official_grade: str | None = None
     comment: str | None = None
+
+    #: Why the certificate is not available yet — specifics, in reading order,
+    #: with deep links (D9). Empty means nothing stands in the way.
+    #:
+    #: This ships **before** the gate that will enforce it (Принцип 2): a
+    #: refusal a student cannot act on becomes a message to the teacher, and a
+    #: teacher who gets that message five times a week starts approving
+    #: certificates to make it stop.
+    certificate_blockers: list[CertificateBlocker] = []
 
     items: list[MyGradeItem] = []
 

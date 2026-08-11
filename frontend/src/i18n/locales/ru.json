@@ -2370,6 +2370,32 @@
       "zachet": "Зачёт",
       "nezachet": "Незачёт",
       "not_attested": "Не аттестован"
+    },
+    "certificate": {
+      "notYetTitle": "Сертификат пока недоступен",
+      "reason": {
+        "course_not_complete": "Курс пройден на {{progress}}% — нужно 100%",
+        "work_not_graded_one": "{{count}} работа ещё не проверена преподавателем",
+        "work_not_graded_few": "{{count}} работы ещё не проверены преподавателем",
+        "work_not_graded_many": "{{count}} работ ещё не проверены преподавателем",
+        "work_not_graded_other": "{{count}} работы ещё не проверены преподавателем",
+        "work_returned_one": "{{count}} работа возвращена на доработку",
+        "work_returned_few": "{{count}} работы возвращены на доработку",
+        "work_returned_many": "{{count}} работ возвращены на доработку",
+        "work_returned_other": "{{count}} работы возвращены на доработку",
+        "work_not_submitted_one": "{{count}} работа не сдана",
+        "work_not_submitted_few": "{{count}} работы не сданы",
+        "work_not_submitted_many": "{{count}} работ не сданы",
+        "work_not_submitted_other": "{{count}} работы не сданы",
+        "quizzes_not_passed_one": "{{count}} тест не пройден — нужна пересдача",
+        "quizzes_not_passed_few": "{{count}} теста не пройдены — нужна пересдача",
+        "quizzes_not_passed_many": "{{count}} тестов не пройдены — нужна пересдача",
+        "quizzes_not_passed_other": "{{count}} теста не пройдены — нужна пересдача",
+        "below_threshold": "Итоговый результат {{final_score}}% ниже проходного {{pass_threshold}}%",
+        "below_threshold_provisional": "Пока {{final_score}}% при проходном {{pass_threshold}}% — непроверенные работы считаются нулём, результат ещё вырастет",
+        "not_assessed": "Оценивать нечего: нужна итоговая оценка от преподавателя",
+        "unknown": "Есть незакрытое требование — уточните у преподавателя"
+      }
     }
   },
   "vedomost": {

@@ -133,7 +133,7 @@ export function EnrolledView({
           will one day decide whether that card can be used, so a student
           should meet it first and long before it matters. */}
       <div className="mt-6">
-        <MyGradeCard courseId={course.id} />
+        <MyGradeCard courseId={course.id} modules={sortedModules} />
       </div>
 
       <div className="mt-6">

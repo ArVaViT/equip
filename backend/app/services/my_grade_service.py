@@ -25,10 +25,9 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import case
 from sqlalchemy import func as sqlfunc
 
-from app.constants import GRADABLE_CHAPTER_TYPES
-from app.models.assignment import Assignment
-from app.models.course import Chapter, Module
-from app.models.quiz import Quiz, QuizAnswer, QuizAttempt
+from app.models.quiz import QuizAnswer, QuizAttempt
+from app.services.certificate_readiness import certificate_blockers
+from app.services.gradable_items import course_items
 from app.services.grade_calculator import calculate_student_grade_for_course
 from app.services.grade_exemption_service import excused_item_ids
 from app.services.grade_override import resolve_official_row
@@ -49,36 +48,6 @@ _NO_NUMBER_STATES = {"completion_pass", "not_graded_yet", "zero_weighted", "not_
 #: Its rule is completion-native (D2) and not implemented yet, so the weighted
 #: percentage is not this course's result and must not be presented as one.
 _COMPLETION_NATIVE_SCHEMES = {"pass_fail"}
-
-
-def _course_items(db: Session, course_id: str) -> tuple[list[Any], list[Any]]:
-    """Every gradable item in the course, with its chapter title.
-
-    Soft-deleted chapters and modules are excluded here for the same reason the
-    calculator excludes them: work in a deleted chapter is not owed.
-    """
-    base = (
-        db.query(Chapter.id.label("chapter_id"), Chapter.title.label("chapter_title"))
-        .join(Module, Module.id == Chapter.module_id)
-        .filter(
-            Module.course_id == course_id,
-            Module.deleted_at.is_(None),
-            Chapter.deleted_at.is_(None),
-            Chapter.chapter_type.in_(GRADABLE_CHAPTER_TYPES),
-        )
-        .subquery()
-    )
-    quizzes = (
-        db.query(Quiz.id, base.c.chapter_id, base.c.chapter_title)
-        .join(base, base.c.chapter_id == Quiz.chapter_id)
-        .all()
-    )
-    assignments = (
-        db.query(Assignment.id, base.c.chapter_id, base.c.chapter_title, Assignment.max_score)
-        .join(base, base.c.chapter_id == Assignment.chapter_id)
-        .all()
-    )
-    return quizzes, assignments
 
 
 def _quiz_marks(db: Session, student_id: UUID, quiz_ids: list[UUID]) -> dict[UUID, dict[str, Any]]:
@@ -142,7 +111,7 @@ def build_my_course_grade(db: Session, course: Course, enrollment: Enrollment, s
     breakdown = calculate_student_grade_for_course(db, course, student_id)
     excused_quizzes, excused_assignments = excused_item_ids(db, student_id=student_id, course_id=course.id)
 
-    quizzes, assignments = _course_items(db, course.id)
+    quizzes, assignments = course_items(db, course.id)
     quiz_marks = _quiz_marks(db, student_id, [q.id for q in quizzes])
     assignment_marks = _assignment_marks(db, student_id, [a.id for a in assignments])
 
@@ -234,6 +203,10 @@ def build_my_course_grade(db: Session, course: Course, enrollment: Enrollment, s
         # The note written TO the student. `reason` — the note about them,
         # written for the institution — is never read here (D7).
         "comment": official_row.comment if official_row is not None else None,
+        "certificate_blockers": [
+            b.as_dict()
+            for b in certificate_blockers(db, course, enrollment, student_id, breakdown=breakdown, zachet=zachet)
+        ],
         "items": sorted(items, key=lambda i: (i["kind"], i["title"], i["item_id"])),
     }
 
