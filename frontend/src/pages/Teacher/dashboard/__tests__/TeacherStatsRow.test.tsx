@@ -31,7 +31,7 @@ function TestWrapper({ children }: { children: ReactNode }) {
 }
 
 describe("TeacherStatsRow", () => {
-  it("counts total courses, published courses, and modules", () => {
+  it("counts total courses, published courses, and the two things needing attention", () => {
     const courses = [
       makeCourse({ id: "c-1", status: "published", modules: [{ id: "m1", course_id: "c-1", title: "A", description: null, order_index: 0, due_date: null }] }),
       makeCourse({ id: "c-2", status: "draft", modules: [] }),
@@ -45,24 +45,33 @@ describe("TeacherStatsRow", () => {
         ],
       }),
     ]
-    render(<TeacherStatsRow courses={courses} pendingActions={5} />, { wrapper: TestWrapper })
+    render(
+      <TeacherStatsRow courses={courses} pendingActions={5} pendingGrading={7} />,
+      { wrapper: TestWrapper },
+    )
 
-    // total courses = 3, published = 2, modules = 1 + 0 + 3 = 4, pending = 5 — four distinct values.
+    // The module count is gone: nobody acts on it. In its place is the number
+    // that decides whether a teacher opens the app today.
+    // courses = 3, published = 2, waiting to be marked = 7, needs attention = 5.
     expect(screen.getByText("3")).toBeInTheDocument()
     expect(screen.getByText("2")).toBeInTheDocument()
-    expect(screen.getByText("4")).toBeInTheDocument()
+    expect(screen.getByText("7")).toBeInTheDocument()
     expect(screen.getByText("5")).toBeInTheDocument()
   })
 
-  it("shows zero counts (not hidden) when courses have no modules and nothing is pending", () => {
-    render(<TeacherStatsRow courses={[makeCourse()]} pendingActions={0} />, { wrapper: TestWrapper })
-    // "Modules" and "Needs attention" both read 0 — zeros still render
+  it("shows zero counts (not hidden) when nothing is waiting", () => {
+    // An empty queue is worth saying out loud — a hidden zero reads as a
+    // broken widget, and this is the number a teacher checks daily.
+    render(
+      <TeacherStatsRow courses={[makeCourse()]} pendingActions={0} pendingGrading={0} />,
+      { wrapper: TestWrapper },
+    )
     expect(screen.getAllByText("0").length).toBeGreaterThanOrEqual(2)
   })
 
   it("renders without a11y violations", async () => {
     const { container } = render(
-      <TeacherStatsRow courses={[makeCourse()]} pendingActions={1} />,
+      <TeacherStatsRow courses={[makeCourse()]} pendingActions={1} pendingGrading={2} />,
       { wrapper: TestWrapper },
     )
     expect(await axe(container)).toHaveNoViolations()

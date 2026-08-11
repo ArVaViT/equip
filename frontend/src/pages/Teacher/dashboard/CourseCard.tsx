@@ -30,6 +30,9 @@ import type { Course } from "@/types"
 
 interface Props {
   course: Course
+  /** Work waiting on the teacher in this course. 0 renders nothing —
+      a badge that is always there stops being a signal. */
+  pendingGrading?: number
   togglingId: string | null
   cloningId: string | null
   onToggleStatus: (course: Course) => void
@@ -39,6 +42,7 @@ interface Props {
 
 export function CourseCard({
   course,
+  pendingGrading = 0,
   togglingId,
   cloningId,
   onToggleStatus,
@@ -75,6 +79,19 @@ export function CourseCard({
                 ? t("teacherDashboard.courseCard.statusPublished")
                 : t("teacherDashboard.courseCard.statusDraft")}
             </Badge>
+            {pendingGrading > 0 && (
+              <Link
+                to={`/teacher/courses/${course.id}/gradebook`}
+                className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              >
+                {/* The number on the dashboard header answers "do I owe anyone
+                    anything today"; this answers "where". Without the link the
+                    teacher still has to hunt for the course. */}
+                <Badge variant="warningSubtle">
+                  {t("teacherDashboard.courseCard.pendingGrading", { count: pendingGrading })}
+                </Badge>
+              </Link>
+            )}
           </div>
           {course.description && (
             <p className="mt-1 line-clamp-2 text-sm text-ink-muted">

@@ -10,6 +10,7 @@ import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
 import { makeCourseSchema, type CourseFormData } from "@/lib/validations/course"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { coursesService } from "@/services/courses"
+import { gradesService } from "@/services/grades"
 import { toast } from "@/lib/toast"
 import type { Course } from "@/types"
 import {
@@ -50,6 +51,8 @@ export default function TeacherDashboard() {
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [cloningId, setCloningId] = useState<string | null>(null)
   const [pendingCerts, setPendingCerts] = useState<PendingCert[]>([])
+  const [pendingGrading, setPendingGrading] = useState(0)
+  const [pendingByCourse, setPendingByCourse] = useState<Record<string, number>>({})
   const [certActionId, setCertActionId] = useState<string | null>(null)
   const tourSteps = teacherDashboardSteps(t)
   const { start: startTour } = useUserTour({
@@ -67,13 +70,18 @@ export default function TeacherDashboard() {
     setLoading(true)
     setError(null)
     try {
-      const [data, certs] = await Promise.all([
+      const [data, certs, waiting] = await Promise.all([
         coursesService.getTeacherCourses(),
         coursesService.getPendingCertificates().catch(() => []),
+        // A dashboard that fails to load because one count is unavailable is
+        // worse than a dashboard missing one count.
+        gradesService.getPendingGrading().catch(() => ({ total: 0, by_course: {} })),
       ])
       if (signal?.cancelled) return
       setCourses(data)
       setPendingCerts(certs)
+      setPendingGrading(waiting.total)
+      setPendingByCourse(waiting.by_course)
     } catch {
       if (!signal?.cancelled)
         setError(t("errors.loadTeacherCoursesFailed"))
@@ -256,7 +264,11 @@ export default function TeacherDashboard() {
           gets the dedicated onboarding welcome card below instead
           (EmptyCoursesCard), not a row of four zeroes. */}
       {!loading && !error && courses.length > 0 && (
-        <TeacherStatsRow courses={courses} pendingActions={pendingCerts.length} />
+        <TeacherStatsRow
+          courses={courses}
+          pendingActions={pendingCerts.length}
+          pendingGrading={pendingGrading}
+        />
       )}
 
       <PendingCertsCard
@@ -307,6 +319,7 @@ export default function TeacherDashboard() {
               <CourseCard
                 key={course.id}
                 course={course}
+                pendingGrading={pendingByCourse[course.id] ?? 0}
                 togglingId={togglingId}
                 cloningId={cloningId}
                 onToggleStatus={handleToggleStatus}

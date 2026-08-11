@@ -1976,6 +1976,15 @@
     "body": false
   },
   {
+    "method": "GET",
+    "path": "/api/v1/grades/pending",
+    "params": [],
+    "responses": [
+      "200"
+    ],
+    "body": false
+  },
+  {
     "method": "POST",
     "path": "/api/v1/grades/sheet/{sheet_id}/reopen",
     "params": [

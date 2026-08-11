@@ -3,6 +3,7 @@ import { cached, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib
 import type {
   GradeExemption,
   GradeSheet,
+  PendingGrading,
   MyCourseGrade,
   GradingConfig,
   GradeSummaryResponse,
@@ -135,6 +136,14 @@ export const gradesService = {
   async reopenGradeSheet(sheetId: string, reason: string): Promise<GradeSheet> {
     const response = await api.post<GradeSheet>(`/grades/sheet/${sheetId}/reopen`, { reason })
     return response.data
+  },
+
+  /** What is waiting for this teacher to mark, across their courses. */
+  async getPendingGrading(): Promise<PendingGrading> {
+    return cached("grades:pending", CACHE_TTL.THIRTY_SECONDS, async () => {
+      const response = await api.get<PendingGrading>("/grades/pending")
+      return response.data
+    })
   },
 
   async getMyGrades(): Promise<StudentGrade[]> {

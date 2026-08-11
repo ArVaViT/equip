@@ -458,3 +458,16 @@ class SheetReopenRequest(BaseModel):
     """Reopening is deliberate and on the record, so the reason is required."""
 
     reason: str = Field(..., min_length=1, max_length=2000)
+
+
+class PendingGradingSummary(BaseModel):
+    """What a teacher owes, counted once.
+
+    Only work waiting on **them**: an unread open answer, a submitted
+    assignment with no mark. Work the student owes — never handed in, or handed
+    back for revision — is deliberately absent. A number a teacher cannot act
+    on is a number they stop reading.
+    """
+
+    total: int = 0
+    by_course: dict[str, int] = {}

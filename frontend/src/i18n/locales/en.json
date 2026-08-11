@@ -1339,7 +1339,8 @@
       "totalCourses": "Courses",
       "published": "Published",
       "modules": "Modules",
-      "pendingActions": "Needs attention"
+      "pendingActions": "Needs attention",
+      "pendingGrading": "Waiting to be marked"
     },
     "courseCard": {
       "statusPublished": "Published",
@@ -1356,7 +1357,9 @@
       "actionClone": "Clone course",
       "actionEditCourse": "Edit course",
       "actionDelete": "Delete",
-      "actionMore": "More actions"
+      "actionMore": "More actions",
+      "pendingGrading_one": "{{count}} to grade",
+      "pendingGrading_other": "{{count}} to grade"
     },
     "createForm": {
       "title": "Create New Course",
