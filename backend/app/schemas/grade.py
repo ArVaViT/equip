@@ -318,7 +318,13 @@ class GradeSummaryResponse(BaseModel):
 #: apart from a genuine zero — they were shown a failure for work nobody had
 #: looked at yet. The teacher's gradebook stopped doing that this week; this is
 #: the same fix on the side of the person it frightens.
-ItemStatus = Literal["graded", "pending_review", "not_submitted", "excused"]
+#: ``returned`` is the fifth, and it is not a variant of ``pending_review``:
+#: pending work waits on the **teacher**, returned work waits on the
+#: **student**. They look identical in a list and mean opposite things about
+#: whose move it is — and a returned essay carries a grade, so without its own
+#: status it rendered as «проверено» while the course result said «незачёт»,
+#: with nothing on screen joining the two.
+ItemStatus = Literal["graded", "pending_review", "returned", "not_submitted", "excused"]
 
 
 class MyGradeItem(BaseModel):
@@ -373,6 +379,10 @@ class MyCourseGrade(BaseModel):
     #: then not the result and must not be shown as one, so the scores are
     #: withheld rather than dressed up.
     scores_withheld: bool = False
+    #: For a completion-graded course, the verdict itself: «зачёт», «незачёт»
+    #: or «не аттестован». There is no percentage behind it by design (D2) —
+    #: the rule is whether every required piece of work was accepted.
+    zachet: Literal["zachet", "nezachet", "not_attested"] | None = None
 
     #: The hand-set grade, when a teacher set one. It IS the official grade
     #: (D7), so it is what the student is told.

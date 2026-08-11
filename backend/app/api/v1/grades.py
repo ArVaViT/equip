@@ -60,7 +60,7 @@ from app.services.grade_override import (
     resolve_official_row,
     validate_override,
 )
-from app.services.grade_sheet_service import active_sheet, finalize_sheet, refuse_reason, reopen_sheet
+from app.services.grade_sheet_service import active_sheet, finalize_sheet, reopen_sheet
 from app.services.grading_scheme import effective_bands, get_org_settings, validate_scheme_threshold
 from app.services.my_grade_service import build_my_course_grade, latest_enrollment
 from app.services.translation.resolve_for_display import populate_spine_texts
@@ -403,14 +403,6 @@ def close_grade_sheet(
     history of what was signed survives a correction.
     """
     course = verify_course_owner(db, course_id, admin)
-    refusal = refuse_reason(course)
-    if refusal:
-        raise equip_error(
-            ErrorCode.VALIDATION_FAILED,
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            message=refusal,
-            context={"resource_type": "grade_sheet", "course_id": course_id},
-        )
     sheet = finalize_sheet(db, course, cohort_id, admin.id)
     db.commit()
 

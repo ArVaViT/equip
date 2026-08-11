@@ -15,6 +15,7 @@ function grade(over: Partial<MyCourseGrade> = {}): MyCourseGrade {
     scores_differ: false,
     result_state: "graded",
     scores_withheld: false,
+    zachet: null,
     official_grade: null,
     comment: null,
     items: [],
@@ -69,10 +70,21 @@ describe("myGradeDisplay", () => {
     expect(d.finalText).toBeNull()
   })
 
-  it("withholds a percentage on a completion-graded course", () => {
-    // «Зачёт» is not an average clearing a line (D2). Showing the weighted
-    // number here would be the hidden-average behaviour the design removed.
-    const d = myGradeDisplay(grade({ scores_withheld: true, grading_scheme: "pass_fail" }))
+  it("shows the verdict on a completion-graded course, not a missing number", () => {
+    // «Зачёт» is not an average clearing a line (D2), and withholding the
+    // percentage while saying nothing in its place would leave the student
+    // worse informed than before the scheme existed.
+    const d = myGradeDisplay(
+      grade({ scores_withheld: true, grading_scheme: "pass_fail", zachet: "zachet" }),
+      (k) => k,
+    )
+
+    expect(d.headline).toBe("myGrade.zachet.zachet")
+    expect(d.noteKey).toBeNull()
+  })
+
+  it("says why when a completion-graded course has no verdict yet", () => {
+    const d = myGradeDisplay(grade({ scores_withheld: true, zachet: null }))
 
     expect(d.headline).toBeNull()
     expect(d.noteKey).toBe("myGrade.state.byCompletion")
@@ -99,15 +111,18 @@ describe("outstandingItems", () => {
   it("puts the work they owe first and the excused last", () => {
     // A list sorted by what to do next, not by chapter order: the point of the
     // list is answering "what is left".
+    // Ordered by whose move it is: what the student still owes comes first.
     const sorted = outstandingItems([
       item({ title: "Проверено", status: "graded" }),
       item({ title: "Освобождено", status: "excused" }),
       item({ title: "Не сдано", status: "not_submitted" }),
       item({ title: "Ждёт проверки", status: "pending_review" }),
+      item({ title: "Возвращено", status: "returned" }),
     ])
 
     expect(sorted.map((i) => i.status)).toEqual([
       "not_submitted",
+      "returned",
       "pending_review",
       "graded",
       "excused",
@@ -130,5 +145,25 @@ describe("outstandingItems", () => {
     outstandingItems(original)
 
     expect(original).toEqual(before)
+  })
+})
+
+describe("a completion-graded course", () => {
+  it("translates a hand-set verdict rather than printing its code", () => {
+    // The override is stored as `pass` (D7). Printed raw it read «pass» beside
+    // a computed «Зачёт» — the same verdict in two languages depending on who
+    // decided it.
+    const d = myGradeDisplay(
+      grade({ scores_withheld: true, grading_scheme: "pass_fail", official_grade: "pass" }),
+      (k) => k,
+    )
+
+    expect(d.headline).toBe("myGrade.zachet.zachet")
+    expect(d.isManual).toBe(true)
+  })
+
+  it("leaves a symbol from a graded scheme alone", () => {
+    // «A» is already the word the school uses; only pass/fail codes need it.
+    expect(myGradeDisplay(grade({ official_grade: "A" }), (k) => k).headline).toBe("A")
   })
 })

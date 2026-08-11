@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle2, Circle, Clock, HeartHandshake, Loader2 } from "lucide-react"
+import { CheckCircle2, Circle, Clock, HeartHandshake, Loader2, Undo2 } from "lucide-react"
 import { gradesService } from "@/services/grades"
 import type { MyCourseGrade, MyGradeItem } from "@/types"
 import { myGradeDisplay, outstandingItems } from "./myGrade"
@@ -9,6 +9,7 @@ import { myGradeDisplay, outstandingItems } from "./myGrade"
 const ICON_BY_STATUS: Record<MyGradeItem["status"], typeof Circle> = {
   graded: CheckCircle2,
   pending_review: Clock,
+  returned: Undo2,
   not_submitted: Circle,
   excused: HeartHandshake,
 }
@@ -16,6 +17,8 @@ const ICON_BY_STATUS: Record<MyGradeItem["status"], typeof Circle> = {
 const TONE_BY_STATUS: Record<MyGradeItem["status"], string> = {
   graded: "text-success",
   pending_review: "text-warning",
+  // The student's move, not the teacher's — coloured like something to act on.
+  returned: "text-destructive",
   not_submitted: "text-ink-muted",
   excused: "text-info",
 }
@@ -72,7 +75,7 @@ export function MyGradeCard({ courseId }: { courseId: string }) {
     grade.items.length > 0 || grade.official_grade !== null || grade.comment !== null
   if (!hasAnythingToSay) return null
 
-  const display = myGradeDisplay(grade)
+  const display = myGradeDisplay(grade, t)
   const items = outstandingItems(grade.items)
 
   return (

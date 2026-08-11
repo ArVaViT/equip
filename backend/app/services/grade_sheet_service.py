@@ -31,6 +31,9 @@ from app.services.grade_calculator import calculate_all_student_grades
 from app.services.grade_override import override_for_cohort
 from app.services.grading_scheme import effective_bands, get_org_settings, score_passes, symbol_floor
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
+from app.services.zachet import NOT_ATTESTED as ZACHET_NOT_ATTESTED
+from app.services.zachet import ZACHET as ZACHET_PASS
+from app.services.zachet import assignments_in_course, course_quiz_rows, zachet_result
 
 if TYPE_CHECKING:
     from decimal import Decimal
@@ -57,6 +60,7 @@ def _row_result(
     scheme: str,
     pass_threshold: Decimal,
     bands: list[tuple[Decimal, str]],
+    zachet: str | None = None,
 ) -> tuple[str, str | None, Decimal | None, bool]:
     """One student's line: ``(result_state, code, score, is_override)``.
 
@@ -86,10 +90,24 @@ def _row_result(
     if override_score is not None:
         return (PASS if score_passes(override_score, pass_threshold) else FAIL), None, override_score, True
 
+    if breakdown.result_state == "completion_pass":
+        # Nothing gradable in the course, so there is nothing to accept or
+        # refuse — and that is true whatever the scheme. Checked before the
+        # pass/fail branch, which would otherwise stamp «незачёт» on every row
+        # of a reading-only course: its progress is 0 because there are no
+        # gradable chapters to complete.
+        return COMPLETION_PASS, None, None, False
+
+    # A pass/fail course is decided by whether the work was accepted, not by a
+    # number (D2). Its verdict is computed elsewhere and arrives here already
+    # made; no percentage participates, and none is recorded.
+    if zachet is not None:
+        if zachet == ZACHET_NOT_ATTESTED:
+            return NOT_ATTESTED, None, None, False
+        return (PASS if zachet == ZACHET_PASS else FAIL), None, None, False
+
     if breakdown.result_state == "not_assessed":
         return NOT_ATTESTED, None, None, False
-    if breakdown.result_state == "completion_pass":
-        return COMPLETION_PASS, None, None, False
     if breakdown.result_state in {"not_graded_yet", "zero_weighted"}:
         # Nothing marked, or nothing that counts. There is no result to record,
         # and a document must not invent one.
@@ -176,28 +194,6 @@ def _letterhead(db: Session, course: Course, cohort_id: UUID | None) -> dict[str
     }
 
 
-def refuse_reason(course: Course) -> str | None:
-    """Why this course cannot be frozen yet, or ``None``.
-
-    Only ``pass_fail``, and only because its rule is not built. «Зачёт» means
-    every required piece of work accepted, not an average clearing a line (D2)
-    — so the weighted percentage the calculator produces is not this course's
-    result. Freezing it would put a verdict onto a signed page that the
-    platform cannot justify, and a document is the last place to guess.
-
-    Refusing is the honest answer until D2 lands. No production course uses the
-    scheme, so this blocks nobody today; it is here so that the day one does,
-    the ведомость says "not yet" instead of inventing a number.
-    """
-    if course.grading_scheme == "pass_fail":
-        return (
-            "«Зачёт/незачёт» is decided by whether every required piece of work was "
-            "accepted, and that rule is not implemented yet. Closing a ведомость for "
-            "this course would record a verdict the platform cannot justify."
-        )
-    return None
-
-
 def active_sheet(db: Session, course_id: str, cohort_id: UUID | None) -> GradeSheet | None:
     """The sheet currently standing for this поток, if it has been closed."""
     return (
@@ -267,6 +263,17 @@ def finalize_sheet(db: Session, course: Course, cohort_id: UUID | None, closed_b
     db.flush()
 
     in_scope = set(students_in_scope(db, course.id, cohort_id))
+    # Course-invariant lookups, hoisted out of the per-student loop below.
+    sheet_assignments = [r.id for r in assignments_in_course(db, course.id)] if scheme == "pass_fail" else None
+    sheet_quizzes = course_quiz_rows(db, course.id) if scheme == "pass_fail" else None
+    # Scoped to this sheet's поток, exactly like `students_in_scope`. Keyed by
+    # student without the filter, a retaking student's two enrolments overwrote
+    # each other and *both* sheets read whichever came back last.
+    progress_query = db.query(Enrollment.user_id, Enrollment.progress).filter(Enrollment.course_id == course.id)
+    progress_query = progress_query.filter(
+        Enrollment.cohort_id == cohort_id if cohort_id else Enrollment.cohort_id.is_(None)
+    )
+    progress_by_student = {str(r.user_id): r.progress for r in progress_query}
     # One row per student, not per enrolment. `calculate_all_student_grades`
     # yields a row per enrolment, and a retake is deliberately a second
     # enrolment — so a returning student produced two lines with the same
@@ -285,6 +292,21 @@ def finalize_sheet(db: Session, course: Course, cohort_id: UUID | None, closed_b
         # Scoped to THIS sheet's поток. Asking "which is their current grade"
         # would stamp this year's mark onto last year's page.
         official = override_for_cohort(db, student_id=student_uuid, course_id=course.id, cohort_id=cohort_id)
+        # For a pass/fail course the verdict is completion-native, so it is
+        # resolved per student rather than read off the breakdown.
+        zachet = None
+        # Skipped entirely when a hand-set grade decides the row: the verdict
+        # would be computed and then discarded three lines down.
+        if scheme == "pass_fail" and official is None:
+            zachet, _owed = zachet_result(
+                db,
+                student_id=student_uuid,
+                course_id=course.id,
+                progress=progress_by_student.get(row["student_id"], 0),
+                all_items_excused=row["breakdown"].result_state == "not_assessed",
+                course_assignment_ids=sheet_assignments,
+                course_quizzes=sheet_quizzes,
+            )
         state, code, score, is_override = _row_result(
             row["breakdown"],
             official.override_code if official else None,
@@ -292,6 +314,7 @@ def finalize_sheet(db: Session, course: Course, cohort_id: UUID | None, closed_b
             scheme=scheme,
             pass_threshold=course.pass_threshold,
             bands=bands,
+            zachet=zachet,
         )
         db.add(
             GradeSheetRow(

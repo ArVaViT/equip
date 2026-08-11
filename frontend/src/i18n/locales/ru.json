@@ -2358,7 +2358,13 @@
       "graded": "проверено",
       "pending_review": "ждёт проверки",
       "not_submitted": "не сдано",
-      "excused": "освобождено"
+      "excused": "освобождено",
+      "returned": "возвращено на доработку"
+    },
+    "zachet": {
+      "zachet": "Зачёт",
+      "nezachet": "Незачёт",
+      "not_attested": "Не аттестован"
     }
   },
   "vedomost": {
