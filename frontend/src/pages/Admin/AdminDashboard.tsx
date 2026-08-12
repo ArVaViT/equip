@@ -8,6 +8,7 @@ import { ErrorState } from "@/components/patterns"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { ADMIN_TAB_PANEL_ID, ADMIN_TAB_TRIGGER_ID, ADMIN_TABS, type AdminTab } from "./dashboard/constants"
 import { AdminTabs } from "./dashboard/AdminTabs"
+import { SchoolSettingsTab } from "./dashboard/SchoolSettingsTab"
 import { OverviewStats } from "./dashboard/OverviewStats"
 import { PendingCertsCard } from "./dashboard/PendingCertsCard"
 import { UsersCard } from "./dashboard/UsersCard"
@@ -201,6 +202,19 @@ export default function AdminDashboard() {
               onPageSizeChange={audit.setPageSize}
             />
           </Suspense>
+        </div>
+      )}
+
+      {tab === "school" && (
+        <div
+          role="tabpanel"
+          id={ADMIN_TAB_PANEL_ID.school}
+          aria-labelledby={ADMIN_TAB_TRIGGER_ID.school}
+        >
+          {/* Not gated on `overview.error`: the school's own details load from
+              their own endpoint, and a failed user list is no reason to hide
+              the screen that puts a name on the documents. */}
+          <SchoolSettingsTab />
         </div>
       )}
     </div>

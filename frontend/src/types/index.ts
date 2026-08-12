@@ -668,6 +668,32 @@ export interface GradeHistoryEntry {
   blockers: string[]
 }
 
+/**
+ * What the school has decided about itself (D1).
+ *
+ * The identity fields are printed on every ведомость. `grade_bands` is shared:
+ * changing it re-labels every live grade on the platform at once, which is why
+ * the write is admin-only and audited.
+ */
+export interface OrgSettings {
+  school_name_ru: string | null
+  school_name_en: string | null
+  city: string | null
+  default_grading_scheme: string
+  default_pass_threshold: string
+  grade_bands: Record<string, [number, string][]>
+  updated_at: string | null
+  updated_by: string | null
+}
+
+/** Partial by design — see `adminService.updateOrgSettings`. */
+export type OrgSettingsUpdate = Partial<
+  Pick<
+    OrgSettings,
+    "school_name_ru" | "school_name_en" | "city" | "default_grading_scheme" | "default_pass_threshold" | "grade_bands"
+  >
+>
+
 /** One open «запросить пересдачу», as the teacher's course pages see it. */
 export interface RetakeRequest {
   student_id: string

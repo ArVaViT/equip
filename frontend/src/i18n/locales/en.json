@@ -16,7 +16,8 @@
     "close": "Close",
     "scrollToTop": "Scroll to top",
     "skipToContent": "Skip to main content",
-    "dismissAnnouncement": "Dismiss announcement"
+    "dismissAnnouncement": "Dismiss announcement",
+    "save": "Save"
   },
   "inlineEdit": {
     "defaultPlaceholder": "Click to edit",
@@ -2158,6 +2159,21 @@
         "resent": "Invitation resent",
         "resendFailed": "Failed to resend invitation"
       }
+    },
+    "tabSchool": "School",
+    "school": {
+      "title": "School details",
+      "description": "These fields are printed on every ведомость. Admin only.",
+      "nameRu": "Name in Russian",
+      "nameEn": "Name in English",
+      "nameEnHint": "The ведомость prints in English — this is the name that lands on the document",
+      "city": "City",
+      "saved": "Saved",
+      "saveFailed": "Could not save",
+      "loadFailed": "Could not load the settings",
+      "gradingTitle": "The school's grading",
+      "gradingSummary": "Default: {{scheme}}, pass mark {{threshold}}%",
+      "gradingNote": "The scale is edited through the API: moving a boundary re-labels every current grade at once, and that does not belong beside a text box for the city."
     }
   },
   "roles": {
@@ -2395,5 +2411,11 @@
       "completionPass": "Passed (by completion)",
       "notAttested": "Not attested"
     }
+  },
+  "gradingScheme": {
+    "pass_fail": "pass/fail",
+    "percent": "percent",
+    "five_point": "five-point",
+    "letter": "letter"
   }
 }

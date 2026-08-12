@@ -162,6 +162,25 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/admin/org-settings",
+    "params": [],
+    "responses": [
+      "200"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/admin/org-settings",
+    "params": [],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/admin/translations/queue-status",
     "params": [
       [
