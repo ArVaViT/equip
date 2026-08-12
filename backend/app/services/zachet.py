@@ -99,7 +99,7 @@ def latest_submissions(db: Session, *, student_id: UUID, assignment_ids: list) -
         .all()
     )
     # Ascending, so the last write per assignment is the winner.
-    return {r.assignment_id: {"status": r.status, "grade": r.grade} for r in rows}
+    return {r.assignment_id: {"status": r.status, "grade": r.grade, "feedback": r.feedback} for r in rows}
 
 
 def unaccepted_assignments(

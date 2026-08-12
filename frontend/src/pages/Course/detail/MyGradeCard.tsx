@@ -144,18 +144,28 @@ export function MyGradeCard({
             return (
               // Keyed by item, not chapter: a chapter can hold two quizzes,
               // and keying by chapter collapsed them onto one row.
-              <li key={item.item_id} className="flex items-center gap-2 text-sm">
-                <Icon
-                  className={`h-4 w-4 shrink-0 ${TONE_BY_STATUS[item.status]}`}
-                  strokeWidth={1.75}
-                  aria-hidden
-                />
-                <span className="flex-1 truncate">{item.title}</span>
-                <span className="text-xs text-ink-muted">
-                  {item.status === "graded" && item.score !== null
-                    ? `${item.score.toFixed(0)}%`
-                    : t(`myGrade.status.${item.status}`)}
-                </span>
+              <li key={item.item_id} className="text-sm">
+                <div className="flex items-center gap-2">
+                  <Icon
+                    className={`h-4 w-4 shrink-0 ${TONE_BY_STATUS[item.status]}`}
+                    strokeWidth={1.75}
+                    aria-hidden
+                  />
+                  <span className="flex-1 truncate">{item.title}</span>
+                  <span className="text-xs text-ink-muted">
+                    {item.status === "graded" && item.score !== null
+                      ? `${item.score.toFixed(0)}%`
+                      : t(`myGrade.status.${item.status}`)}
+                  </span>
+                </div>
+                {/* The number without the words is the grade without the
+                    lesson. It was always stored and always two navigations
+                    away; this is the screen the student actually opens. */}
+                {item.feedback && (
+                  <p className="ml-6 mt-1 border-l-2 border-ink-muted/25 pl-2 text-sm text-ink-muted">
+                    {item.feedback}
+                  </p>
+                )}
               </li>
             )
           })}

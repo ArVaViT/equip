@@ -621,6 +621,13 @@ export interface MyGradeItem {
   /** Present only for `graded`. A number on a pending row is the running
    *  total, which is precisely the thing being withheld. */
   score: number | null
+  /** What the teacher wrote on this piece of work. Reachable before this only
+   *  by navigating back into the chapter — and for a school teaching by
+   *  correspondence the written note *is* the teaching.
+   *
+   *  Present on `returned` too, unlike the score: "handed back" with nothing
+   *  said about what to change is the one row here a student cannot act on. */
+  feedback: string | null
 }
 
 /**
