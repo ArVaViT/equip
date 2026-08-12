@@ -218,3 +218,177 @@ def test_the_student_sees_the_same_grid_as_the_teacher(db: Session, teacher, stu
 
     assert [lvl["points"] for lvl in payload["criteria"][0]["levels"]] == [0, 5, 10]
     assert payload["criteria"][0]["title"] == "Критерий 0"
+
+
+# ---------------------------------------------------------------------------
+# The routes
+# ---------------------------------------------------------------------------
+
+
+def _attach(db: Session, assignment, rubric) -> None:
+    db.add(AssignmentRubric(assignment_id=assignment.id, rubric_id=rubric.id, attached_by=TEACHER_ID))
+    db.commit()
+
+
+def test_a_rubric_arrives_whole(client, db: Session, teacher) -> None:
+    """Criteria and levels in one call. A rubric that exists with two of its
+    four criteria is a marking standard nobody agreed to — and it is the state
+    every failed save would leave behind."""
+    course, _assignment = _course_with_assignment(db, "rb-create")
+    db.commit()
+
+    response = client.post(
+        "/api/v1/rubrics",
+        json={
+            "course_id": course.id,
+            "title": "Эссе",
+            "criteria": [
+                {"title": "Опора на текст", "levels": [{"label": "нет", "points": 0}, {"label": "есть", "points": 10}]}
+            ],
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["max_score"] == 10
+    assert len(body["criteria"][0]["levels"]) == 2
+
+
+def test_a_criterion_needs_more_than_one_level(client, db: Session, teacher) -> None:
+    """A criterion with a single level is not a judgement, it is a label."""
+    course, _assignment = _course_with_assignment(db, "rb-onelevel")
+    db.commit()
+
+    response = client.post(
+        "/api/v1/rubrics",
+        json={
+            "course_id": course.id,
+            "title": "Эссе",
+            "criteria": [{"title": "Одно", "levels": [{"label": "есть", "points": 10}]}],
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_a_rubric_from_another_course_cannot_be_attached(client, db: Session, teacher) -> None:
+    """Otherwise one course's standard silently rewrites another's maximum."""
+    _course_a, assignment = _course_with_assignment(db, "rb-mine")
+    other_course, _other_assignment = _course_with_assignment(db, "rb-theirs")
+    foreign, _ = _rubric(db, other_course.id, criteria=[[0, 10]])
+    db.commit()
+
+    response = client.post(f"/api/v1/rubrics/attach/{assignment.id}?rubric_id={foreign.id}")
+
+    assert response.status_code == 400
+
+
+def test_marking_every_criterion_grades_the_work(client, db: Session, teacher, student) -> None:
+    course, assignment = _course_with_assignment(db, "rb-mark")
+    rubric, made = _rubric(db, course.id, criteria=[[0, 5, 10], [0, 4, 8]])
+    _attach(db, assignment, rubric)
+    submission = _submission(db, assignment)
+    db.commit()
+
+    response = client.put(
+        f"/api/v1/rubrics/submission/{submission.id}/marks",
+        json={
+            "marks": [
+                {"criterion_id": str(made[0][0].id), "level_id": str(made[0][1][2].id)},
+                {"criterion_id": str(made[1][0].id), "level_id": str(made[1][1][1].id)},
+            ],
+            "feedback": "Сильная работа",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["earned"] == 14
+    db.refresh(submission)
+    assert submission.status == "graded"
+    assert submission.grade == 14
+    assert submission.feedback == "Сильная работа"
+
+
+def test_a_half_filled_grid_is_not_a_grade(client, db: Session, teacher, student) -> None:
+    """Marking is incremental — the teacher works down the criteria and the
+    queue autosaves. Publishing that as a mark tells a student they scored 40%
+    when the third criterion has simply not been reached."""
+    course, assignment = _course_with_assignment(db, "rb-partial-route")
+    rubric, made = _rubric(db, course.id, criteria=[[0, 10], [0, 10]])
+    _attach(db, assignment, rubric)
+    submission = _submission(db, assignment)
+    db.commit()
+
+    response = client.put(
+        f"/api/v1/rubrics/submission/{submission.id}/marks",
+        json={"marks": [{"criterion_id": str(made[0][0].id), "level_id": str(made[0][1][1].id)}]},
+    )
+
+    assert response.status_code == 200, response.text
+    db.refresh(submission)
+    assert submission.status == "submitted", "still waiting on the teacher"
+    assert submission.grade is None, "and no number has reached the student"
+
+
+def test_a_level_from_another_rubric_buys_nothing(client, db: Session, teacher, student) -> None:
+    """The chain — level belongs to criterion, criterion to the rubric, rubric
+    to this assignment. Without it a level id from anywhere on the platform is
+    an arbitrary number of points, and the result looks like an ordinary mark
+    in every record afterwards."""
+    course, assignment = _course_with_assignment(db, "rb-idor")
+    rubric, made = _rubric(db, course.id, criteria=[[0, 10]])
+    _other, other_made = _rubric(db, course.id, criteria=[[0, 1000]])
+    _attach(db, assignment, rubric)
+    submission = _submission(db, assignment)
+    db.commit()
+
+    response = client.put(
+        f"/api/v1/rubrics/submission/{submission.id}/marks",
+        json={"marks": [{"criterion_id": str(made[0][0].id), "level_id": str(other_made[0][1][1].id)}]},
+    )
+
+    assert response.status_code == 400, response.text
+    db.refresh(submission)
+    assert submission.grade is None
+
+
+def test_a_student_reads_their_own_grid(student_client, db: Session, teacher, student) -> None:
+    """A rubric shown only to the person marking is a private opinion with
+    arithmetic on it."""
+    course, assignment = _course_with_assignment(db, "rb-student")
+    rubric, made = _rubric(db, course.id, criteria=[[0, 10]])
+    _attach(db, assignment, rubric)
+    submission = _submission(db, assignment)
+    db.add(
+        RubricMark(
+            id=uuid.uuid4(),
+            submission_id=submission.id,
+            criterion_id=made[0][0].id,
+            level_id=made[0][1][1].id,
+            marked_by=TEACHER_ID,
+        )
+    )
+    db.commit()
+
+    body = student_client.get(f"/api/v1/rubrics/submission/{submission.id}").json()
+
+    assert body["rubric"]["criteria"][0]["title"] == "Критерий 0"
+    assert body["marks"][0]["points"] == 10
+
+
+def test_a_student_cannot_read_somebody_elses(student_client, db: Session, teacher, student) -> None:
+    from app.models.user import User as UserModel
+
+    course, assignment = _course_with_assignment(db, "rb-nosy")
+    rubric, _ = _rubric(db, course.id, criteria=[[0, 10]])
+    _attach(db, assignment, rubric)
+    other = UserModel(id=uuid.uuid4(), email="other-rb@example.com", full_name="Другой", role="student")
+    db.add(other)
+    db.flush()
+    submission = AssignmentSubmission(
+        id=uuid.uuid4(), assignment_id=assignment.id, student_id=other.id, status="submitted", content="Чужое"
+    )
+    db.add(submission)
+    db.commit()
+
+    assert student_client.get(f"/api/v1/rubrics/submission/{submission.id}").status_code == 403

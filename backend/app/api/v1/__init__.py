@@ -26,6 +26,7 @@ from app.api.v1 import (
     progress,
     quizzes,
     reviews,
+    rubrics,
     users,
     verse_of_the_day,
 )
@@ -43,6 +44,7 @@ api_router.include_router(quizzes.router)
 api_router.include_router(assignments.router)
 api_router.include_router(certificates.router)
 api_router.include_router(reviews.router)
+api_router.include_router(rubrics.router)
 api_router.include_router(prerequisites.router)
 api_router.include_router(progress.router)
 api_router.include_router(blocks.router)

@@ -2727,6 +2727,80 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/rubrics",
+    "params": [
+      [
+        "course_id",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/rubrics",
+    "params": [],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/rubrics/attach/{assignment_id}",
+    "params": [
+      [
+        "assignment_id",
+        "path"
+      ],
+      [
+        "rubric_id",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/rubrics/submission/{submission_id}",
+    "params": [
+      [
+        "submission_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/rubrics/submission/{submission_id}/marks",
+    "params": [
+      [
+        "submission_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/users/admin/users",
     "params": [
       [
