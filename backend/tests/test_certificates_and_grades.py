@@ -216,7 +216,11 @@ class TestRequestCertificate:
         _seed_enrolled_course(db, progress=50)
         r = student_client.post("/api/v1/certificates/course/course-1")
         assert r.status_code == 400
-        assert "50%" in r.json()["detail"]["message"]
+        # The number moved from the sentence into the reason list, where the
+        # student's own course page can render it in their language (D9).
+        blockers = r.json()["detail"]["context"]["blockers"]
+        assert blockers[0]["code"] == "course_not_complete"
+        assert blockers[0]["params"]["progress"] == 50
 
     def test_course_not_found(self, student_client: TestClient, db: Session):
         r = student_client.post("/api/v1/certificates/course/nonexistent")

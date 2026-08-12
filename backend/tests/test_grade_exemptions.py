@@ -803,7 +803,12 @@ def test_the_certificate_gate_refuses_a_student_with_nothing_assessed(
     resp = student_client.post(f"/api/v1/certificates/course/{course.id}")
 
     assert resp.status_code == 400, resp.text
-    assert "excused" in resp.text
+    # The refusal now travels as codes rather than a sentence, so the card that
+    # already explains this on the student's course page renders it in whatever
+    # language they read (D9). The rule is unchanged: excusing every item takes
+    # progress to 100 without a single thing having been assessed, and a
+    # certificate would be certifying nothing.
+    assert [b["code"] for b in resp.json()["detail"]["context"]["blockers"]] == ["not_assessed"]
 
 
 def test_an_exemption_survives_its_item_being_deleted(db: Session, teacher, student) -> None:

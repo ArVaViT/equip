@@ -12,12 +12,17 @@ import { formatDateLong } from "@/i18n/format"
 interface Props {
   courseId: string
   progress: number
+  /** True while something still stands between this student and a certificate
+   *  (D9). What exactly is listed on the grade card directly above — the
+   *  server refuses with the same list, so a button here would be a button
+   *  whose only outcome is an error. */
+  blocked?: boolean
   certificate: Certificate | null
   onCertificateUpdate: (cert: Certificate | null) => void
   onReviewSubmitted?: () => void
 }
 
-export default function CertificateCard({ courseId, progress, certificate, onCertificateUpdate, onReviewSubmitted }: Props) {
+export default function CertificateCard({ courseId, progress, blocked = false, certificate, onCertificateUpdate, onReviewSubmitted }: Props) {
   const { user } = useAuth()
   const { t } = useTranslation()
   const [requesting, setRequesting] = useState(false)
@@ -97,10 +102,18 @@ export default function CertificateCard({ courseId, progress, certificate, onCer
                 {t("certificates.card.completedDescription")}
               </p>
             </div>
-            <Button onClick={handleRequest} disabled={requesting}>
-              <Sparkles className="mr-1.5 h-4 w-4" strokeWidth={1.75} />
-              {requesting ? t("certificates.card.requesting") : t("certificates.card.request")}
-            </Button>
+            {blocked ? (
+              // Pointing up rather than repeating the list: the reasons are
+              // specific, they have links, and two copies of them drift.
+              <p className="max-w-[16rem] text-sm text-ink-muted">
+                {t("certificates.card.blocked")}
+              </p>
+            ) : (
+              <Button onClick={handleRequest} disabled={requesting}>
+                <Sparkles className="mr-1.5 h-4 w-4" strokeWidth={1.75} />
+                {requesting ? t("certificates.card.requesting") : t("certificates.card.request")}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

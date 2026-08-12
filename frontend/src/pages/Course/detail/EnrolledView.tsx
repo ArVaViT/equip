@@ -57,6 +57,10 @@ export function EnrolledView({
   const [reviewsModal, setReviewsModal] = useState(false)
   const [downloadingPath, setDownloadingPath] = useState<string | null>(null)
   const [showCompletion, setShowCompletion] = useState(false)
+  // Starts at 0, so a grade card that never loads leaves the button as it was.
+  // The server refuses either way; guessing "blocked" here would hide the
+  // button from a student who has earned it.
+  const [blockerCount, setBlockerCount] = useState(0)
 
   const enrolledCohort = cohorts.find((c) => c.id === enrollment.cohort_id)
 
@@ -133,7 +137,11 @@ export function EnrolledView({
           will one day decide whether that card can be used, so a student
           should meet it first and long before it matters. */}
       <div className="mt-6">
-        <MyGradeCard courseId={course.id} modules={sortedModules} />
+        <MyGradeCard
+          courseId={course.id}
+          modules={sortedModules}
+          onBlockersChange={setBlockerCount}
+        />
       </div>
 
       <div className="mt-6">
@@ -141,6 +149,7 @@ export function EnrolledView({
           key={course.id}
           courseId={course.id}
           progress={enrollment.progress}
+          blocked={blockerCount > 0}
           certificate={certificate}
           onCertificateUpdate={onCertificateUpdate}
         />
