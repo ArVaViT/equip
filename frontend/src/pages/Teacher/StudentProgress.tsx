@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Link, useParams } from "react-router-dom"
+import { Link, useParams, useSearchParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { coursesService } from "@/services/courses"
+import { gradesService } from "@/services/grades"
 import { toast } from "@/lib/toast"
 import { getErrorDetail } from "@/lib/errorDetail"
-import type { StudentProgressResponse } from "@/types"
+import type { RetakeRequest, StudentProgressResponse } from "@/types"
 import {
   ArrowLeft,
   BarChart3,
@@ -47,9 +48,15 @@ export default function StudentProgress() {
     maxLength,
   } = useDebouncedSearchParam()
 
+  const [params] = useSearchParams()
+  // Arrived from a retake notification: the student it is about opens straight
+  // away. A teacher who has to find the row first is a teacher who does it
+  // later.
+  const requestedStudent = params.get("student")
   const [data, setData] = useState<StudentProgressResponse | null>(null)
+  const [retakeRequests, setRetakeRequests] = useState<Record<string, RetakeRequest>>({})
   const [loading, setLoading] = useState(true)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(requestedStudent)
   const [sortBy, setSortBy] = useState<SortColumn>("name")
   const [sortDir, setSortDir] = useState<SortDirection>("asc")
 
@@ -65,9 +72,15 @@ export default function StudentProgress() {
       setLoading(true)
       setData(null)
       try {
-        const result = await coursesService.getStudentProgress(courseId)
+        const [result, requests] = await Promise.all([
+          coursesService.getStudentProgress(courseId),
+          // A page that fails to load because one marker is unavailable is
+          // worse than a page missing one marker.
+          gradesService.getRetakeRequests(courseId).catch(() => [] as RetakeRequest[]),
+        ])
         if (signal?.cancelled) return
         setData(result)
+        setRetakeRequests(Object.fromEntries(requests.map((r) => [r.student_id, r])))
       } catch (err) {
         if (signal?.cancelled) return
         toast({
@@ -234,6 +247,7 @@ export default function StudentProgress() {
       <div data-tour="progress-table">
         <StudentTable
           students={filtered}
+          retakeRequests={retakeRequests}
           courseId={courseId ?? ""}
           hasSearch={Boolean(search)}
           expandedId={expandedId}

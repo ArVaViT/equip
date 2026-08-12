@@ -501,6 +501,17 @@ class RetakeRequestResponse(BaseModel):
     status: Literal["requested", "already_requested"]
 
 
+class RetakeRequest(BaseModel):
+    """One open «запросить пересдачу», as the teacher's course pages see it."""
+
+    student_id: UUID
+    requested_at: datetime | None = None
+    #: What was blocking them when they asked, so the teacher arrives already
+    #: knowing which of their four powers this calls for rather than opening
+    #: four screens to find out.
+    blockers: list[str] = []
+
+
 class PendingGradingSummary(BaseModel):
     """What a teacher owes, counted once.
 

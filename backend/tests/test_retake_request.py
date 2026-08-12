@@ -97,6 +97,29 @@ def _unmarked_assignment(db: Session, module, course_id: str) -> None:
     )
 
 
+def _seed_request(db: Session, course_id: str, blockers: list[str], *, is_read: bool = False, hours_ago: int = 0):
+    """A request already in the teacher's queue.
+
+    Written directly rather than through the student's endpoint: both test
+    clients override the same auth dependency globally, so a test cannot hold a
+    student and a teacher session at once. The round trip is covered by the
+    tests above; these are about what the teacher's page does with it.
+    """
+    db.add(
+        Notification(
+            id=uuid.uuid4(),
+            user_id=TEACHER_ID,
+            type=RETAKE_REQUEST_NOTIFICATION,
+            title="Retake requested",
+            message="asking",
+            is_read=is_read,
+            created_at=datetime.now(UTC) - timedelta(hours=hours_ago),
+            meta={"course_id": course_id, "student_id": str(STUDENT_ID), "blockers": blockers},
+        )
+    )
+    db.flush()
+
+
 def _requests(db: Session) -> list[Notification]:
     return db.query(Notification).filter(Notification.type == RETAKE_REQUEST_NOTIFICATION).all()
 
@@ -117,7 +140,10 @@ def test_a_failing_student_reaches_their_teacher(student_client, db: Session, te
     # And it says what is wrong, so the teacher opens the drawer already knowing
     # which of their four powers this calls for.
     assert requests[0].meta["blockers"] == ["below_threshold"]
-    assert requests[0].link == f"/teacher/courses/{course.id}/gradebook"
+    # The progress page with the student opened: three of the four powers this
+    # routes to live there, and a teacher who has to find the row first is a
+    # teacher who does it later.
+    assert requests[0].link == f"/teacher/courses/{course.id}/progress?student={STUDENT_ID}"
 
 
 def test_pressing_it_twice_does_not_ask_twice(student_client, db: Session, teacher, student) -> None:
@@ -253,6 +279,60 @@ def test_a_stranger_cannot_ask_about_a_course_they_do_not_take(student_client, d
     db.commit()
 
     assert student_client.post(URL.format(course.id)).status_code == 403
+
+
+def test_the_teacher_can_still_see_the_request_after_the_bell_is_cleared(client, db: Session, teacher, student) -> None:
+    """A notification is read once and gone. A student who asked in week three
+    and was missed has no way to raise it again and no evidence they ever did."""
+    course, module = _course(db, "retake-list")
+    _failed_assignment(db, module, course.id)
+    _seed_request(db, course.id, ["below_threshold"], is_read=True)
+    db.commit()
+
+    rows = client.get(f"/api/v1/grades/course/{course.id}/retake-requests").json()
+
+    assert [r["student_id"] for r in rows] == [str(STUDENT_ID)]
+    assert rows[0]["blockers"] == ["below_threshold"]
+
+
+def test_one_person_asking_twice_is_one_person_needing_help(client, db: Session, teacher, student) -> None:
+    course, module = _course(db, "retake-dedup")
+    _failed_assignment(db, module, course.id)
+    _seed_request(db, course.id, ["below_threshold"], hours_ago=48)
+    _seed_request(db, course.id, ["below_threshold"])
+    db.commit()
+
+    rows = client.get(f"/api/v1/grades/course/{course.id}/retake-requests").json()
+
+    assert len(_requests(db)) == 2
+    assert len(rows) == 1
+
+
+def test_a_request_belongs_to_the_course_it_was_made_in(client, db: Session, teacher, student) -> None:
+    """One teacher's two courses. A request raised in Romans must not appear on
+    the Acts page — a teacher who opens a course and finds someone asking for
+    help with work that is not in it stops trusting the marker entirely."""
+    romans, romans_module = _course(db, "retake-romans")
+    _failed_assignment(db, romans_module, romans.id)
+    _course(db, "retake-acts")
+    _seed_request(db, romans.id, ["below_threshold"])
+    db.commit()
+
+    assert client.get("/api/v1/grades/course/retake-acts/retake-requests").json() == []
+    assert len(client.get(f"/api/v1/grades/course/{romans.id}/retake-requests").json()) == 1
+
+
+def test_another_teachers_course_keeps_its_own_requests(client, db: Session, teacher, student) -> None:
+    from app.models.user import User
+
+    other = User(id=uuid.uuid4(), email="other-teacher@example.com", full_name="Другой", role="teacher")
+    db.add(other)
+    db.flush()
+    course = Course(id="retake-foreign-list", status="published", created_by=other.id)
+    db.add(course)
+    db.commit()
+
+    assert client.get(f"/api/v1/grades/course/{course.id}/retake-requests").status_code in {403, 404}
 
 
 def test_one_students_request_does_not_speak_for_another(student_client, db: Session, teacher, student) -> None:

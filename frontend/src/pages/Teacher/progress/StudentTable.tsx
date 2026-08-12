@@ -9,6 +9,7 @@ import {
 import { Users } from "lucide-react"
 import { EmptyState as DesignEmptyState } from "@/components/patterns/EmptyState"
 import { StudentRow } from "./StudentRow"
+import type { RetakeRequest } from "@/types"
 import {
   type SortColumn,
   type SortDirection,
@@ -17,6 +18,8 @@ import {
 
 interface Props {
   students: StudentData[]
+  /** Open «запросить пересдачу» by student id (D12). */
+  retakeRequests?: Record<string, RetakeRequest>
   courseId: string
   hasSearch: boolean
   expandedId: string | null
@@ -34,6 +37,7 @@ interface Props {
 
 export function StudentTable({
   students,
+  retakeRequests,
   courseId,
   hasSearch,
   expandedId,
@@ -97,6 +101,7 @@ export function StudentTable({
                   <StudentRow
                     key={student.id}
                     student={student}
+                    retakeRequest={retakeRequests?.[student.id]}
                     isExpanded={expandedId === student.id}
                     onToggle={() => onExpandToggle(student.id)}
                     quizAvg={student.quiz_avg}

@@ -4,6 +4,7 @@ import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import Any
 from urllib.parse import quote
 from uuid import UUID
 
@@ -44,6 +45,7 @@ from app.schemas.grade import (
     GradingSchemeUpdate,
     MyCourseGrade,
     PendingGradingSummary,
+    RetakeRequest,
     RetakeRequestResponse,
     SheetReopenRequest,
     SheetRowResponse,
@@ -972,7 +974,10 @@ def request_retake(
         type=RETAKE_REQUEST_NOTIFICATION,
         title="Retake requested",
         message=f"{student_name} is asking for a chance to retake work in this course.",
-        link=f"/teacher/courses/{course_id}/gradebook",
+        # The progress page, not the gradebook: three of the four powers this
+        # request routes to live there (excuse, gift an attempt, return the
+        # work), and the student is opened rather than searched for.
+        link=f"/teacher/courses/{course_id}/progress?student={current_user.id}",
         metadata={
             "course_id": course_id,
             "student_id": str(current_user.id),
@@ -992,6 +997,49 @@ def request_retake(
     )
     db.commit()
     return {"status": "requested"}
+
+
+@router.get("/course/{course_id}/retake-requests", response_model=list[RetakeRequest])
+def list_retake_requests(
+    course_id: str,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    """Who in this course has asked for a way forward, and what stopped them.
+
+    The receiving end of D12. A notification is read once and gone; a student
+    who asked in week three and was missed has no way to raise it again and no
+    evidence they ever did. This is the same request, still on the page, for as
+    long as it is open.
+    """
+    verify_course_owner(db, course_id, teacher)
+    rows = (
+        db.query(Notification)
+        .filter(
+            Notification.user_id == teacher.id,
+            Notification.type == RETAKE_REQUEST_NOTIFICATION,
+            Notification.meta["course_id"].as_string() == course_id,
+        )
+        .order_by(Notification.created_at.desc())
+        .all()
+    )
+    # Newest per student: an older ask says nothing the newer one does not, and
+    # two rows for one person reads as two people needing help.
+    seen: set[str] = set()
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        student_id = (row.meta or {}).get("student_id")
+        if not student_id or student_id in seen:
+            continue
+        seen.add(student_id)
+        out.append(
+            {
+                "student_id": student_id,
+                "requested_at": row.created_at,
+                "blockers": (row.meta or {}).get("blockers") or [],
+            }
+        )
+    return out
 
 
 @router.get("/course/{course_id}", response_model=list[GradeResponse])
