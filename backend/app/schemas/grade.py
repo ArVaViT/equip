@@ -342,6 +342,19 @@ class MyGradeItem(BaseModel):
     #: Percentage, present only for ``graded``. A number on a `pending_review`
     #: row would be the running total, which is exactly the thing being hidden.
     score: float | None = None
+    #: What the teacher wrote on this piece of work.
+    #:
+    #: It has always been reachable — on the chapter, two navigations away —
+    #: and never on the card the student opens to see how they are doing. For
+    #: a school teaching by correspondence the written note *is* the teaching,
+    #: and an essay showing "90%" with none of it beside the number is the
+    #: grade without the lesson.
+    #:
+    #: Present on a `returned` row too, unlike the score. The number there is
+    #: provisional and would mislead; the words are the opposite — work handed
+    #: back with nothing said about what to change is the one row on this card
+    #: the student cannot act on without it.
+    feedback: str | None = None
 
 
 class CertificateBlocker(BaseModel):

@@ -32,6 +32,7 @@ function item(over: Partial<MyGradeItem> = {}): MyGradeItem {
     kind: "quiz",
     status: "graded",
     score: 90,
+    feedback: null,
     ...over,
   }
 }

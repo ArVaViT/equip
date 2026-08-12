@@ -132,6 +132,11 @@ def build_my_course_grade(db: Session, course: Course, enrollment: Enrollment, s
                 "kind": "quiz",
                 "status": status,
                 "score": score,
+                # A quiz has no single note: its comments hang off individual
+                # answers. Surfacing "the" comment for one would mean picking
+                # one and dropping the rest, so the attempt page stays the
+                # place for those.
+                "feedback": None,
             }
         )
     for assignment in assignments:
@@ -157,6 +162,10 @@ def build_my_course_grade(db: Session, course: Course, enrollment: Enrollment, s
                 "kind": "assignment",
                 "status": status,
                 "score": score,
+                # Not shown for work the student is not owed and has not done:
+                # a note on an excused item is about a decision they did not
+                # make, and there is nothing written on work never handed in.
+                "feedback": (mark or {}).get("feedback") if status in {"graded", "returned"} else None,
             }
         )
 
