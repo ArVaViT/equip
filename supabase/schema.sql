@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 0ttEqNwra9qZCoW7cemeJixsaTwGEh5pXaHuY20WX7gi6HiUmWwuE8MyH1BmFo8
+\restrict AdqbouUUiwdEl49L1U7ihyaR4jFDbDZ8j4WxNIh0b1pu6Xe8KvmX4BHaZM7Oq48
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10 (Homebrew)
@@ -181,6 +181,18 @@ CREATE TABLE public.announcements (
     created_by uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: assignment_rubrics; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.assignment_rubrics (
+    assignment_id uuid NOT NULL,
+    rubric_id uuid NOT NULL,
+    attached_at timestamp with time zone DEFAULT now() NOT NULL,
+    attached_by uuid
 );
 
 
@@ -847,6 +859,66 @@ CREATE TABLE public.quizzes (
 
 
 --
+-- Name: rubric_criteria; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.rubric_criteria (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    rubric_id uuid NOT NULL,
+    order_index integer DEFAULT 0 NOT NULL,
+    title text NOT NULL,
+    description text,
+    archived_at timestamp with time zone
+);
+
+
+--
+-- Name: rubric_levels; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.rubric_levels (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    criterion_id uuid NOT NULL,
+    order_index integer DEFAULT 0 NOT NULL,
+    label text NOT NULL,
+    points integer DEFAULT 0 NOT NULL,
+    description text,
+    archived_at timestamp with time zone,
+    CONSTRAINT rubric_levels_points_range CHECK (((points >= 0) AND (points <= 1000)))
+);
+
+
+--
+-- Name: rubric_marks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.rubric_marks (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    submission_id uuid NOT NULL,
+    criterion_id uuid NOT NULL,
+    level_id uuid NOT NULL,
+    comment text,
+    marked_by uuid,
+    marked_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: rubrics; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.rubrics (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    course_id text NOT NULL,
+    title text NOT NULL,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    archived_at timestamp with time zone
+);
+
+
+--
 -- Name: student_grades; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -902,6 +974,14 @@ CREATE TABLE public.translation_jobs (
 
 ALTER TABLE ONLY public.announcements
     ADD CONSTRAINT announcements_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: assignment_rubrics assignment_rubrics_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assignment_rubrics
+    ADD CONSTRAINT assignment_rubrics_pkey PRIMARY KEY (assignment_id);
 
 
 --
@@ -1241,6 +1321,38 @@ ALTER TABLE ONLY public.quizzes
 
 
 --
+-- Name: rubric_criteria rubric_criteria_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rubric_criteria
+    ADD CONSTRAINT rubric_criteria_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: rubric_levels rubric_levels_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rubric_levels
+    ADD CONSTRAINT rubric_levels_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: rubric_marks rubric_marks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rubric_marks
+    ADD CONSTRAINT rubric_marks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: rubrics rubrics_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rubrics
+    ADD CONSTRAINT rubrics_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: student_grades student_grades_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1262,6 +1374,14 @@ ALTER TABLE ONLY public.student_grades
 
 ALTER TABLE ONLY public.translation_jobs
     ADD CONSTRAINT translation_jobs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: rubric_marks uq_rubric_marks_submission_criterion; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rubric_marks
+    ADD CONSTRAINT uq_rubric_marks_submission_criterion UNIQUE (submission_id, criterion_id);
 
 
 --
@@ -1325,6 +1445,13 @@ CREATE INDEX ix_announcements_course_id ON public.announcements USING btree (cou
 --
 
 CREATE INDEX ix_announcements_created_by ON public.announcements USING btree (created_by);
+
+
+--
+-- Name: ix_assignment_rubrics_rubric; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_assignment_rubrics_rubric ON public.assignment_rubrics USING btree (rubric_id);
 
 
 --
@@ -1783,6 +1910,34 @@ CREATE INDEX ix_quizzes_chapter_id ON public.quizzes USING btree (chapter_id);
 
 
 --
+-- Name: ix_rubric_criteria_rubric; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_rubric_criteria_rubric ON public.rubric_criteria USING btree (rubric_id, order_index);
+
+
+--
+-- Name: ix_rubric_levels_criterion; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_rubric_levels_criterion ON public.rubric_levels USING btree (criterion_id, order_index);
+
+
+--
+-- Name: ix_rubric_marks_submission; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_rubric_marks_submission ON public.rubric_marks USING btree (submission_id);
+
+
+--
+-- Name: ix_rubrics_course; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_rubrics_course ON public.rubrics USING btree (course_id);
+
+
+--
 -- Name: ix_student_grades_cohort_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1957,6 +2112,30 @@ ALTER TABLE ONLY public.announcements
 
 ALTER TABLE ONLY public.announcements
     ADD CONSTRAINT announcements_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: assignment_rubrics assignment_rubrics_assignment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assignment_rubrics
+    ADD CONSTRAINT assignment_rubrics_assignment_id_fkey FOREIGN KEY (assignment_id) REFERENCES public.assignments(id) ON DELETE CASCADE;
+
+
+--
+-- Name: assignment_rubrics assignment_rubrics_attached_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assignment_rubrics
+    ADD CONSTRAINT assignment_rubrics_attached_by_fkey FOREIGN KEY (attached_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: assignment_rubrics assignment_rubrics_rubric_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assignment_rubrics
+    ADD CONSTRAINT assignment_rubrics_rubric_id_fkey FOREIGN KEY (rubric_id) REFERENCES public.rubrics(id) ON DELETE CASCADE;
 
 
 --
@@ -2501,6 +2680,70 @@ ALTER TABLE ONLY public.quiz_questions
 
 ALTER TABLE ONLY public.quizzes
     ADD CONSTRAINT quizzes_chapter_id_fkey FOREIGN KEY (chapter_id) REFERENCES public.chapters(id) ON DELETE CASCADE;
+
+
+--
+-- Name: rubric_criteria rubric_criteria_rubric_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rubric_criteria
+    ADD CONSTRAINT rubric_criteria_rubric_id_fkey FOREIGN KEY (rubric_id) REFERENCES public.rubrics(id) ON DELETE CASCADE;
+
+
+--
+-- Name: rubric_levels rubric_levels_criterion_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rubric_levels
+    ADD CONSTRAINT rubric_levels_criterion_id_fkey FOREIGN KEY (criterion_id) REFERENCES public.rubric_criteria(id) ON DELETE CASCADE;
+
+
+--
+-- Name: rubric_marks rubric_marks_criterion_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rubric_marks
+    ADD CONSTRAINT rubric_marks_criterion_id_fkey FOREIGN KEY (criterion_id) REFERENCES public.rubric_criteria(id) ON DELETE CASCADE;
+
+
+--
+-- Name: rubric_marks rubric_marks_level_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rubric_marks
+    ADD CONSTRAINT rubric_marks_level_id_fkey FOREIGN KEY (level_id) REFERENCES public.rubric_levels(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: rubric_marks rubric_marks_marked_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rubric_marks
+    ADD CONSTRAINT rubric_marks_marked_by_fkey FOREIGN KEY (marked_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: rubric_marks rubric_marks_submission_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rubric_marks
+    ADD CONSTRAINT rubric_marks_submission_id_fkey FOREIGN KEY (submission_id) REFERENCES public.assignment_submissions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: rubrics rubrics_course_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rubrics
+    ADD CONSTRAINT rubrics_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id) ON DELETE CASCADE;
+
+
+--
+-- Name: rubrics rubrics_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rubrics
+    ADD CONSTRAINT rubrics_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
 
 
 --
@@ -3068,5 +3311,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 0ttEqNwra9qZCoW7cemeJixsaTwGEh5pXaHuY20WX7gi6HiUmWwuE8MyH1BmFo8
+\unrestrict AdqbouUUiwdEl49L1U7ihyaR4jFDbDZ8j4WxNIh0b1pu6Xe8KvmX4BHaZM7Oq48
 
