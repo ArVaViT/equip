@@ -5,6 +5,7 @@ import type {
   GradeSheet,
   PendingGrading,
   MyCourseGrade,
+  RetakeRequestResult,
   GradingConfig,
   GradeSummaryResponse,
   StudentGrade,
@@ -113,6 +114,19 @@ export const gradesService = {
       const response = await api.get<MyCourseGrade>(`/grades/my/${courseId}/breakdown`)
       return response.data
     })
+  },
+
+  /**
+   * «Запросить пересдачу» (D12) — routes the student to the teacher who can
+   * gift an attempt, return the work, excuse the item or set the grade.
+   *
+   * Idempotent on the server: pressing twice raises one queue item, not two.
+   * The person pressing it is anxious about failing, and it has to be safe to
+   * press again.
+   */
+  async requestRetake(courseId: string): Promise<RetakeRequestResult> {
+    const response = await api.post<RetakeRequestResult>(`/grades/my/${courseId}/retake-request`)
+    return response.data
   },
 
   /** The ведомость standing for this поток, or `null` if none is closed. */

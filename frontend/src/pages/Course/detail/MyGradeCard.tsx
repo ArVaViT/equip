@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCircle2, Circle, Clock, HeartHandshake, Loader2, Undo2 } from "lucide-react"
 import { gradesService } from "@/services/grades"
-import type { MyCourseGrade, MyGradeItem } from "@/types"
+import type { Module, MyCourseGrade, MyGradeItem } from "@/types"
+import { CertificateBlockers } from "./CertificateBlockers"
 import { myGradeDisplay, outstandingItems } from "./myGrade"
 
 const ICON_BY_STATUS: Record<MyGradeItem["status"], typeof Circle> = {
@@ -31,7 +32,7 @@ const TONE_BY_STATUS: Record<MyGradeItem["status"], string> = {
  * for this course" — which is the question they are actually asking, and the
  * one a refused certificate will one day answer for them.
  */
-export function MyGradeCard({ courseId }: { courseId: string }) {
+export function MyGradeCard({ courseId, modules }: { courseId: string; modules: Module[] }) {
   const { t } = useTranslation()
   const [grade, setGrade] = useState<MyCourseGrade | null>(null)
   const [loading, setLoading] = useState(true)
@@ -72,7 +73,10 @@ export function MyGradeCard({ courseId }: { courseId: string }) {
   // the only things that will ever appear on it.
   if (!grade) return null
   const hasAnythingToSay =
-    grade.items.length > 0 || grade.official_grade !== null || grade.comment !== null
+    grade.items.length > 0 ||
+    grade.official_grade !== null ||
+    grade.comment !== null ||
+    grade.certificate_blockers.length > 0
   if (!hasAnythingToSay) return null
 
   const display = myGradeDisplay(grade, t)
@@ -111,6 +115,15 @@ export function MyGradeCard({ courseId }: { courseId: string }) {
             {grade.comment}
           </blockquote>
         )}
+
+        {/* Directly above the item list, and directly above the certificate
+            card on the page: the student reads what is missing, then sees
+            which item it is, then meets the button. */}
+        <CertificateBlockers
+          blockers={grade.certificate_blockers}
+          modules={modules}
+          courseId={courseId}
+        />
 
         <ul className="space-y-1.5">
           {items.map((item) => {

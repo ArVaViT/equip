@@ -52,7 +52,7 @@ COMPLETION_PASS = "completion_pass"
 NOT_ATTESTED = "not_attested"
 
 
-def _row_result(
+def official_result(
     breakdown: Any,
     override_code: str | None,
     override_score: Decimal | None,
@@ -63,6 +63,12 @@ def _row_result(
     zachet: str | None = None,
 ) -> tuple[str, str | None, Decimal | None, bool]:
     """One student's line: ``(result_state, code, score, is_override)``.
+
+    Public because it is the single place that decides whether a student
+    passed, and everything that acts on that answer — the ведомость, the
+    certificate explainer, the gate — has to arrive at it the same way. Two
+    surfaces reaching that verdict independently is how a student is told
+    "you passed" on one screen and "не аттестован" on the next.
 
     Order matters and is the design's, not a convenience:
 
@@ -307,7 +313,7 @@ def finalize_sheet(db: Session, course: Course, cohort_id: UUID | None, closed_b
                 course_assignment_ids=sheet_assignments,
                 course_quizzes=sheet_quizzes,
             )
-        state, code, score, is_override = _row_result(
+        state, code, score, is_override = official_result(
             row["breakdown"],
             official.override_code if official else None,
             official.override_score if official else None,
