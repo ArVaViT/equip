@@ -8,13 +8,14 @@ import { Modal } from "@/components/patterns"
 import { toast } from "@/lib/toast"
 import { coursesService } from "@/services/courses"
 import { gradesService } from "@/services/grades"
-import type { StudentProgressDetail } from "@/types"
+import type { RetakeRequest, StudentProgressDetail } from "@/types"
 import {
   BookOpen,
   ChevronDown,
   ChevronRight,
   ClipboardList,
   FileText,
+  HandHelping,
   Loader2,
 } from "lucide-react"
 import { ChapterBreakdownRow } from "./ChapterBreakdownRow"
@@ -29,8 +30,29 @@ import {
   type StudentData,
 } from "./helpers"
 
+/**
+ * Blocker codes this build has words for. A code from a newer backend renders
+ * as nothing rather than as a raw key — the marker still says a student asked,
+ * and the work is listed below either way.
+ */
+const NAMED_BLOCKERS = new Set([
+  "course_not_complete",
+  "work_not_graded",
+  "work_returned",
+  "work_not_submitted",
+  "quizzes_not_passed",
+  "below_threshold",
+  "not_assessed",
+])
+
+function namedBlockers(codes: string[]): string[] {
+  return codes.filter((code) => NAMED_BLOCKERS.has(code))
+}
+
 interface Props {
   student: StudentData
+  /** Their open «запросить пересдачу», if they have one (D12). */
+  retakeRequest?: RetakeRequest
   isExpanded: boolean
   onToggle: () => void
   quizAvg: number | null
@@ -58,6 +80,7 @@ type ChapterEntry = {
  */
 export function StudentRow({
   student,
+  retakeRequest,
   isExpanded,
   onToggle,
   quizAvg,
@@ -244,7 +267,18 @@ export function StudentRow({
             <ChevronRight className="h-4 w-4 text-ink-muted" strokeWidth={1.75} />
           )}
         </td>
-        <td className="py-3 font-medium">{student.full_name}</td>
+        <td className="py-3 font-medium">
+          {student.full_name}
+          {retakeRequest && (
+            // The row a teacher should open first. A notification is read once
+            // and gone; this stays until the request is dealt with, which is
+            // the difference between a student being heard and being missed.
+            <span className="ml-2 inline-flex items-center gap-1 rounded-md bg-warning/15 px-1.5 py-0.5 align-middle text-xs font-medium text-warning">
+              <HandHelping className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+              {t("studentProgress.retake.asked")}
+            </span>
+          )}
+        </td>
         <td className="py-3 text-ink-muted">{student.email}</td>
         <td className="py-3">
           <ProgressBar value={student.progress} />
@@ -266,6 +300,19 @@ export function StudentRow({
         <tr>
           <td colSpan={8} className="p-0">
             <div className="bg-muted/30 border-y px-6 py-5 space-y-5">
+              {retakeRequest && (
+                <div className="rounded-lg border border-warning/40 bg-warning/5 px-3 py-2.5 text-sm">
+                  <p className="font-medium">{t("studentProgress.retake.title")}</p>
+                  <p className="mt-0.5 text-ink-muted">
+                    {/* What stopped them when they asked, so the teacher knows
+                        which of the four powers below this calls for instead of
+                        opening four screens to find out. */}
+                    {namedBlockers(retakeRequest.blockers)
+                      .map((code) => t(`studentProgress.retake.blocker.${code}`))
+                      .join(" · ") || t("studentProgress.retake.noDetail")}
+                  </p>
+                </div>
+              )}
               <div className="flex flex-wrap gap-6">
                 <SummaryStat label={t("studentProgress.row.overallGrade")}>
                   {/* The official grade, decided the same way the gradebook

@@ -1246,6 +1246,20 @@
       "notWeighted": "Graded work carries no weight",
       "notAssessed": "All work excused — needs a grade",
       "setByTeacher": "set by teacher"
+    },
+    "retake": {
+      "asked": "asked for a retake",
+      "title": "This student asked for a retake",
+      "noDetail": "The reason was not kept — see their work below",
+      "blocker": {
+        "below_threshold": "result below the pass mark",
+        "quizzes_not_passed": "a quiz was not passed",
+        "not_assessed": "nothing to assess — needs a final grade",
+        "course_not_complete": "course not finished",
+        "work_not_graded": "work still waiting to be marked",
+        "work_returned": "work returned for revision",
+        "work_not_submitted": "work not handed in"
+      }
     }
   },
   "teacherAnalytics": {

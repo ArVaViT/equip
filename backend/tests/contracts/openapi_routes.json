@@ -1692,6 +1692,21 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/grades/course/{course_id}/retake-requests",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/grades/course/{course_id}/scheme",
     "params": [
       [

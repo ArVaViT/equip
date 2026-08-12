@@ -636,6 +636,15 @@ export interface CertificateBlocker {
   chapter_ids: string[]
 }
 
+/** One open «запросить пересдачу», as the teacher's course pages see it. */
+export interface RetakeRequest {
+  student_id: string
+  requested_at: string | null
+  /** What was blocking them when they asked, so the teacher arrives already
+   *  knowing which of their four powers this calls for. */
+  blockers: string[]
+}
+
 /** The answer to «запросить пересдачу». `already_requested` is not an error:
  *  the teacher already has the request. */
 export interface RetakeRequestResult {

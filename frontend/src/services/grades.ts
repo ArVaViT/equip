@@ -5,6 +5,7 @@ import type {
   GradeSheet,
   PendingGrading,
   MyCourseGrade,
+  RetakeRequest,
   RetakeRequestResult,
   GradingConfig,
   GradeSummaryResponse,
@@ -126,6 +127,18 @@ export const gradesService = {
    */
   async requestRetake(courseId: string): Promise<RetakeRequestResult> {
     const response = await api.post<RetakeRequestResult>(`/grades/my/${courseId}/retake-request`)
+    return response.data
+  },
+
+  /**
+   * Who in this course has asked for a way forward (D12), teacher-side.
+   *
+   * Not cached: the point of it is that a request stays visible after the
+   * notification bell is cleared, and a stale answer here means a teacher
+   * acting on a request that is already handled — or missing one that is not.
+   */
+  async getRetakeRequests(courseId: string): Promise<RetakeRequest[]> {
+    const response = await api.get<RetakeRequest[]>(`/grades/course/${courseId}/retake-requests`)
     return response.data
   },
 
