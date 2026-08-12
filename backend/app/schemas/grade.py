@@ -489,6 +489,18 @@ class SheetReopenRequest(BaseModel):
     reason: str = Field(..., min_length=1, max_length=2000)
 
 
+class RetakeRequestResponse(BaseModel):
+    """The answer to «запросить пересдачу» (D12).
+
+    Idempotent by design: a student who taps twice, or who asks again the same
+    afternoon, gets the same answer rather than a second item in the teacher's
+    queue. The recovery path has to be safe to use when you are anxious about
+    failing, which is the state everybody who uses it is in.
+    """
+
+    status: Literal["requested", "already_requested"]
+
+
 class PendingGradingSummary(BaseModel):
     """What a teacher owes, counted once.
 

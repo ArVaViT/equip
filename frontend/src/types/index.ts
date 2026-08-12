@@ -636,6 +636,12 @@ export interface CertificateBlocker {
   chapter_ids: string[]
 }
 
+/** The answer to «запросить пересдачу». `already_requested` is not an error:
+ *  the teacher already has the request. */
+export interface RetakeRequestResult {
+  status: "requested" | "already_requested"
+}
+
 /**
  * A student's own standing in one course.
  *

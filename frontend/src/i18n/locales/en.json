@@ -2327,7 +2327,10 @@
         "below_threshold_provisional": "{{final_score}}% so far against a {{pass_threshold}}% pass mark — unmarked work counts as zero, so this will still rise",
         "not_assessed": "There is nothing to assess: your teacher needs to set a final grade",
         "unknown": "Something is still outstanding — ask your teacher"
-      }
+      },
+      "retakeAsk": "Request a retake",
+      "retakeSent": "Request sent to your teacher",
+      "retakeFailed": "Could not send the request"
     }
   },
   "vedomost": {

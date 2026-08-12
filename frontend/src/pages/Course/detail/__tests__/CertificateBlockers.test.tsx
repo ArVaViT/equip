@@ -2,8 +2,10 @@ import type { ReactNode } from "react"
 import { render, screen } from "@testing-library/react"
 import { I18nextProvider } from "react-i18next"
 import { MemoryRouter } from "react-router-dom"
-import { beforeEach, describe, expect, it } from "vitest"
+import userEvent from "@testing-library/user-event"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import i18n from "@/i18n/config"
+import { gradesService } from "@/services/grades"
 import { CertificateBlockers } from "../CertificateBlockers"
 import type { CertificateBlocker, Module } from "@/types"
 
@@ -44,6 +46,7 @@ function show(blockers: CertificateBlocker[]) {
 describe("CertificateBlockers", () => {
   beforeEach(async () => {
     await i18n.changeLanguage("ru")
+    vi.restoreAllMocks()
   })
 
   it("says nothing when nothing stands in the way", () => {
@@ -105,5 +108,46 @@ describe("CertificateBlockers", () => {
 
     expect(screen.getByText(/ещё не проверена/)).toBeInTheDocument()
     expect(screen.queryByRole("link")).not.toBeInTheDocument()
+  })
+
+  it("offers the recovery path when the student is genuinely stuck", async () => {
+    const request = vi
+      .spyOn(gradesService, "requestRetake")
+      .mockResolvedValue({ status: "requested" })
+    show([
+      {
+        code: "quizzes_not_passed",
+        params: { count: 1 },
+        chapter_ids: [],
+      },
+    ])
+
+    await userEvent.click(screen.getByRole("button", { name: /Запросить пересдачу/ }))
+
+    expect(request).toHaveBeenCalledWith("c1")
+    // And it stops offering, so an anxious student does not send it five times.
+    expect(await screen.findByRole("button", { name: /Запрос отправлен/ })).toBeDisabled()
+  })
+
+  it("does not offer a retake for work nobody has read yet", () => {
+    show([
+      { code: "work_not_graded", params: { count: 2 }, chapter_ids: [] },
+      {
+        code: "below_threshold",
+        params: { final_score: 0, pass_threshold: 70, provisional: true },
+        chapter_ids: [],
+      },
+    ])
+
+    // The score is a floor, not a verdict. A retake request against it asks the
+    // teacher to fix a number that is not yet their decision — which is a
+    // student chasing their own homework.
+    expect(screen.queryByRole("button")).not.toBeInTheDocument()
+  })
+
+  it("does not offer a retake for work that was never handed in", () => {
+    show([{ code: "work_not_submitted", params: { count: 1 }, chapter_ids: [] }])
+
+    expect(screen.queryByRole("button")).not.toBeInTheDocument()
   })
 })

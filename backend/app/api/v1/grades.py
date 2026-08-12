@@ -2,13 +2,14 @@ import csv
 import io
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -26,6 +27,7 @@ from app.models.course import Chapter, CourseStatus, Module
 from app.models.enrollment import Enrollment
 from app.models.grade_exemption import GradeExemption
 from app.models.grade_sheet import GradeSheet, GradeSheetRow
+from app.models.notification import Notification
 from app.models.quiz import Quiz
 from app.models.student_grade import StudentGrade
 from app.models.user import User, UserRole
@@ -42,12 +44,19 @@ from app.schemas.grade import (
     GradingSchemeUpdate,
     MyCourseGrade,
     PendingGradingSummary,
+    RetakeRequestResponse,
     SheetReopenRequest,
     SheetRowResponse,
     StudentCalculatedGrade,
     StudentGradeResponse,
 )
 from app.services.audit_service import log_action
+from app.services.certificate_readiness import (
+    RETAKE_REQUEST_COOLDOWN_HOURS,
+    RETAKE_REQUEST_NOTIFICATION,
+    certificate_blockers,
+    retake_would_help,
+)
 from app.services.grade_calculator import (
     calculate_all_student_grades,
     calculate_student_grade_for_course,
@@ -65,6 +74,7 @@ from app.services.grade_sheet_service import active_sheet, finalize_sheet, reope
 from app.services.grading_queue import pending_summary
 from app.services.grading_scheme import effective_bands, get_org_settings, validate_scheme_threshold
 from app.services.my_grade_service import build_my_course_grade, latest_enrollment
+from app.services.notification_service import create_notification
 from app.services.translation.resolve_for_display import populate_spine_texts
 
 logger = logging.getLogger(__name__)
@@ -894,6 +904,94 @@ def get_my_course_grade(
             context={"resource_type": "grade", "course_id": course_id},
         )
     return build_my_course_grade(db, course, enrollment, current_user.id)
+
+
+@router.post("/my/{course_id}/retake-request", response_model=RetakeRequestResponse)
+def request_retake(
+    course_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """«Запросить пересдачу» — the recovery path, from the student's side (D12).
+
+    "What does a student who failed actually do?" is a director's first
+    question, and until now the honest answer was "emails the teacher, if they
+    know which teacher". This does not add a grading power: it routes the student
+    to the four the teacher already has — gift an attempt, return the work,
+    excuse the item, set the grade by hand.
+
+    Refused when nothing is standing in the way, and when the only things
+    standing in the way are not the student's to clear. A request button next
+    to «работа ещё не проверена» invites a student to chase a teacher for
+    something already sitting in their queue.
+    """
+    course = get_live_course_or_404(db, course_id)
+    enrollment = latest_enrollment(db, current_user.id, course_id)
+    if not enrollment:
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="Not enrolled in this course",
+            context={"resource_type": "grade", "course_id": course_id},
+        )
+
+    blockers = certificate_blockers(db, course, enrollment, current_user.id)
+    if not retake_would_help(blockers):
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="There is nothing here for a retake to fix.",
+            context={"resource_type": "grade", "course_id": course_id},
+        )
+
+    # One item in the teacher's queue per student per course, not one per tap.
+    # Asking again the same afternoon is what an anxious person does, and it
+    # must not turn into three notifications a teacher has to dismiss.
+    since = datetime.now(UTC) - timedelta(hours=RETAKE_REQUEST_COOLDOWN_HOURS)
+    already = (
+        db.query(Notification.id)
+        .filter(
+            Notification.user_id == course.created_by,
+            Notification.type == RETAKE_REQUEST_NOTIFICATION,
+            Notification.meta["course_id"].as_string() == course_id,
+            Notification.meta["student_id"].as_string() == str(current_user.id),
+            or_(Notification.is_read.is_(False), Notification.created_at >= since),
+        )
+        .first()
+    )
+    if already is not None:
+        return {"status": "already_requested"}
+
+    student_name = current_user.full_name or current_user.email
+    # A live course always has an owner; the column is nullable only because
+    # the schema predates the constraint.
+    assert course.created_by is not None
+    create_notification(
+        db,
+        user_id=course.created_by,
+        type=RETAKE_REQUEST_NOTIFICATION,
+        title="Retake requested",
+        message=f"{student_name} is asking for a chance to retake work in this course.",
+        link=f"/teacher/courses/{course_id}/gradebook",
+        metadata={
+            "course_id": course_id,
+            "student_id": str(current_user.id),
+            # What is actually blocking them, so the teacher opens the drawer
+            # already knowing which of the four powers this calls for.
+            "blockers": [b.code for b in blockers],
+        },
+    )
+    db.commit()
+    log_action(
+        db,
+        current_user.id,
+        "retake_request",
+        "course",
+        course_id,
+        {"blockers": [b.code for b in blockers]},
+    )
+    db.commit()
+    return {"status": "requested"}
 
 
 @router.get("/course/{course_id}", response_model=list[GradeResponse])

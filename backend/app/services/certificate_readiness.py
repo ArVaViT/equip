@@ -66,6 +66,20 @@ QUIZZES_NOT_PASSED = "quizzes_not_passed"
 #: Nothing was assessed and nobody has decided — a teacher has to set a grade.
 NOT_ASSESSED = "not_assessed"
 
+#: The blockers a student cannot clear on their own, and therefore the only
+#: ones a пересдача request means anything for (D12).
+#:
+#: Unmarked work is not here: the answer to "nobody has read my essay" is to
+#: wait, and a request button next to it invites a student to chase a teacher
+#: for something already in their queue. Work never handed in is not here
+#: either — the student can simply hand it in.
+RETAKE_ACTIONABLE = frozenset({QUIZZES_NOT_PASSED, BELOW_THRESHOLD, NOT_ASSESSED})
+
+#: The notification a пересдача request raises, and how long the same student
+#: asking again folds into the existing one instead of adding another.
+RETAKE_REQUEST_NOTIFICATION = "retake_requested"
+RETAKE_REQUEST_COOLDOWN_HOURS = 24
+
 
 @dataclass(frozen=True)
 class Blocker:
@@ -196,7 +210,15 @@ def certificate_blockers(
         return blockers
 
     if state == NOT_ATTESTED:
-        blockers.append(Blocker(NOT_ASSESSED))
+        # "Not attested" covers two situations that need opposite sentences.
+        # Nothing has been marked *yet* — already listed above, item by item,
+        # and the answer is to wait. Or nothing is left to mark at all, and a
+        # teacher has to decide by hand. Only the second is this blocker; the
+        # first was already fully explained, and adding "your teacher must set
+        # a grade" under it sends a student to ask for something that would
+        # arrive on its own.
+        if not blockers:
+            blockers.append(Blocker(NOT_ASSESSED))
         return blockers
 
     if state == FAIL:
@@ -262,3 +284,15 @@ def _quizzes_awaiting_marking(db: Session, student_id: UUID, quiz_ids: list) -> 
         .all()
     )
     return {row[0] for row in rows}
+
+
+def retake_would_help(blockers: list[Blocker]) -> bool:
+    """Whether «запросить пересдачу» means anything for this student (D12).
+
+    Only for what they cannot clear alone, and only once the obstacle is real.
+    A score below the line while work is still unread is provisional — it
+    counts every unmarked essay as a zero and can only rise — so a request
+    raised against it asks a teacher to fix a number that is not yet their
+    verdict. That is a student chasing their own unread homework.
+    """
+    return any(b.code in RETAKE_ACTIONABLE and not b.params.get("provisional") for b in blockers)

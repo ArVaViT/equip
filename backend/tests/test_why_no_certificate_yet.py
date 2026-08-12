@@ -334,6 +334,22 @@ def test_a_student_excused_from_everything_needs_a_person_not_a_number(db: Sessi
     assert _codes(_blockers(db, course)) == [NOT_ASSESSED]
 
 
+def test_waiting_to_be_marked_is_not_the_same_as_nobody_will_ever_mark_it(db: Session, teacher, student) -> None:
+    """Both arrive as «не аттестован» from the calculator and need opposite
+    sentences. Nothing marked *yet* is already explained item by item and the
+    answer is to wait; nothing left to mark at all needs a teacher to decide.
+    Printing "your teacher must set a grade" under an essay sitting in that
+    teacher's queue sends the student to ask for what would arrive on its own."""
+    course, module = _course(db, "cert-not-yet")
+    assignment, _chapter = _assignment(db, module, "cert-not-yet")
+    _submit(db, assignment, status="submitted", grade=None)
+    db.commit()
+
+    codes = _codes(_blockers(db, course))
+
+    assert codes == [WORK_NOT_GRADED]
+
+
 # ---------------------------------------------------------------------------
 # pass/fail courses (D2) — no percentage participates
 # ---------------------------------------------------------------------------
