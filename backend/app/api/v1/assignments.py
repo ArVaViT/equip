@@ -42,6 +42,7 @@ from app.services.translation.resolve_for_display import (
     localize_assignment_rows,
     resolve_chapter_locale_context,
 )
+from app.services.zachet import latest_submissions
 
 router = APIRouter(prefix="/assignments", tags=["assignments"])
 
@@ -234,6 +235,29 @@ def delete_assignment(
     db.commit()
 
 
+def _refuse_if_already_marked(db: Session, assignment_id: UUID, student_id: UUID) -> None:
+    """A marked piece of work is finished until a teacher says otherwise.
+
+    ``returned`` is deliberately *not* a stop: handing work back for revision
+    is the invitation to submit again, and it is the teacher who issued it.
+    Only ``graded`` closes the door — and it closes it towards «запросить
+    пересдачу», which is the door that opens it.
+    """
+    latest = latest_submissions(db, student_id=student_id, assignment_ids=[assignment_id]).get(assignment_id)
+    if latest is None or latest["status"] != "graded":
+        return
+    raise equip_error(
+        ErrorCode.VALIDATION_FAILED,
+        status_code=status.HTTP_409_CONFLICT,
+        message="This work has already been marked. Ask your teacher for a retake if you want another attempt.",
+        context={
+            "resource_type": "assignment",
+            "assignment_id": str(assignment_id),
+            "reason": "already_graded",
+        },
+    )
+
+
 @router.post(
     "/{assignment_id}/submit",
     response_model=SubmissionResponse,
@@ -246,6 +270,7 @@ def delete_assignment(
         },
         403: {"description": "Student is not enrolled in the assignment's course"},
         404: {"description": "Assignment not found"},
+        409: {"description": "The work has already been marked; a retake is the teacher's to grant"},
     },
 )
 def submit_assignment(
@@ -256,11 +281,22 @@ def submit_assignment(
 ):
     """Submit a response to an assignment.
 
-    Resubmissions are allowed (a student can submit multiple times
-    before the teacher grades). The chapter-progress side effect runs
-    on every submit so a student who later resubmits doesn't lose
-    their "this chapter is done" badge. Grading then happens through
-    ``grade_submission`` on the teacher side.
+    Resubmission is allowed right up until a teacher marks the work, and
+    stops there. Once it is marked, the way back in is the teacher's —
+    they return it for revision, or they grant a retake (D12).
+
+    That boundary is the whole point. Before it, this route inserted a new
+    submission unconditionally, and ``latest_submissions`` resolves the newest
+    row as the one that counts — so a student marked 90 could press submit
+    again and the 90 stopped being their grade: the item went back to
+    «ждёт проверки», their итоговая fell (unmarked work counts as zero) and
+    the certificate gate refused them. It was a free re-grade on demand, it
+    let a student undo their own certificate by accident, and it put the last
+    word with the student rather than the teacher — which every document this
+    platform issues assumes is the other way round.
+
+    The chapter-progress side effect runs on every submit so a student who
+    resubmits before marking doesn't lose their "this chapter is done" badge.
     """
     assignment = _get_assignment_or_404(db, assignment_id)
 
@@ -273,6 +309,8 @@ def submit_assignment(
             message="You must be enrolled in this course to submit assignments",
             context={"resource_type": "assignment", "assignment_id": str(assignment_id), "course_id": course_id},
         )
+
+    _refuse_if_already_marked(db, assignment_id, current_user.id)
 
     submission = AssignmentSubmission(
         assignment_id=assignment_id,
