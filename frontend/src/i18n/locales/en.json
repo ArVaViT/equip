@@ -1260,6 +1260,23 @@
         "work_returned": "work returned for revision",
         "work_not_submitted": "work not handed in"
       }
+    },
+    "history": {
+      "title": "Grade history",
+      "show": "Show history",
+      "retry": "Failed to load — try again",
+      "empty": "The grade was never set by hand",
+      "unknownActor": "Unknown",
+      "computedWas": "(the system had computed {{score}}%)",
+      "action": {
+        "grade_override_set": "Grade set by hand: {{grade}}",
+        "grade_override_changed": "Grade changed by hand: {{grade}}",
+        "grade_override_cleared": "Hand-set grade removed",
+        "grade_exemption_created": "Work excused from the grade",
+        "grade_exemption_removed": "Exemption undone",
+        "retake_request": "The student asked for a retake",
+        "unknown": "A change to the grade"
+      }
     }
   },
   "teacherAnalytics": {
