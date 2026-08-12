@@ -862,6 +862,23 @@
         "work_returned": "работа на доработке",
         "work_not_submitted": "есть несданные работы"
       }
+    },
+    "history": {
+      "title": "История оценки",
+      "show": "Показать историю",
+      "retry": "Не загрузилось — ещё раз",
+      "empty": "Оценку вручную не меняли",
+      "unknownActor": "Неизвестно кто",
+      "computedWas": "(система считала {{score}}%)",
+      "action": {
+        "grade_override_set": "Оценка выставлена вручную: {{grade}}",
+        "grade_override_changed": "Оценка изменена вручную: {{grade}}",
+        "grade_override_cleared": "Ручная оценка снята",
+        "grade_exemption_created": "Работа освобождена от оценивания",
+        "grade_exemption_removed": "Освобождение отменено",
+        "retake_request": "Студент попросил пересдачу",
+        "unknown": "Изменение оценки"
+      }
     }
   },
   "teacherAnalytics": {

@@ -501,6 +501,42 @@ class RetakeRequestResponse(BaseModel):
     status: Literal["requested", "already_requested"]
 
 
+class GradeHistoryEntry(BaseModel):
+    """One thing that happened to this student's grade, and who did it.
+
+    A hand-set grade is the one number on the page nobody can reconstruct from
+    the work. Six months later, at the point where somebody signs a ведомость,
+    "why is this a B when the system says 64" has to have an answer that is not
+    a person's memory. The audit rows already existed; nothing read them.
+    """
+
+    id: UUID
+    action: str
+    at: datetime
+    actor_id: UUID | None = None
+    #: The name at the time of reading, not at the time of the act — a renamed
+    #: teacher is the same person, and this is a working screen, not a document.
+    actor_name: str | None = None
+
+    #: Override entries.
+    override_code: str | None = None
+    override_score: Decimal | None = None
+    #: What the calculator said when the grade was set by hand. "Teacher set B"
+    #: says little; "teacher set B where the system had computed 64%" is the
+    #: sentence a director actually needs.
+    computed_score: Decimal | None = None
+    #: The note written for the institution (D7). Teacher-facing only — this
+    #: schema never reaches a student, and `MyCourseGrade` has no such field.
+    reason: str | None = None
+
+    #: Exemption entries.
+    item_type: str | None = None
+    item_id: str | None = None
+
+    #: Retake-request entries: what was blocking them when they asked.
+    blockers: list[str] = []
+
+
 class RetakeRequest(BaseModel):
     """One open «запросить пересдачу», as the teacher's course pages see it."""
 

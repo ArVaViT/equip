@@ -5,6 +5,7 @@ import type {
   GradeSheet,
   PendingGrading,
   MyCourseGrade,
+  GradeHistoryEntry,
   RetakeRequest,
   RetakeRequestResult,
   GradingConfig,
@@ -139,6 +140,20 @@ export const gradesService = {
    */
   async getRetakeRequests(courseId: string): Promise<RetakeRequest[]> {
     const response = await api.get<RetakeRequest[]>(`/grades/course/${courseId}/retake-requests`)
+    return response.data
+  },
+
+  /**
+   * How this student's grade came to be what it is (D7) — overrides,
+   * exemptions and their own retake request, newest first.
+   *
+   * Teacher-facing: it carries the note written *about* the student for the
+   * institution, which no student-facing type has a field for.
+   */
+  async getGradeHistory(courseId: string, studentId: string): Promise<GradeHistoryEntry[]> {
+    const response = await api.get<GradeHistoryEntry[]>(
+      `/grades/course/${courseId}/student/${studentId}/history`,
+    )
     return response.data
   },
 

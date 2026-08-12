@@ -19,6 +19,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { ChapterBreakdownRow } from "./ChapterBreakdownRow"
+import { GradeHistory } from "./GradeHistory"
 import { officialGrade } from "./officialGrade"
 import { ProgressBar, ScoreBadge } from "./ProgressBar"
 import {
@@ -351,6 +352,8 @@ export function StudentRow({
                   <ProgressBar value={student.progress} />
                 </SummaryStat>
               </div>
+
+              <GradeHistory courseId={courseId} studentId={student.id} />
 
               {detailLoading && (
                 <div className="flex items-center gap-2 py-4 text-sm text-ink-muted">

@@ -1928,6 +1928,25 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/grades/course/{course_id}/student/{student_id}/history",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ],
+      [
+        "student_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/grades/course/{course_id}/summary",
     "params": [
       [

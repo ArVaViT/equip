@@ -636,6 +636,28 @@ export interface CertificateBlocker {
   chapter_ids: string[]
 }
 
+/**
+ * One thing that happened to a student's grade, and who did it.
+ *
+ * Teacher-facing only: `reason` is the note written about the student for the
+ * institution (D7) and never reaches the student.
+ */
+export interface GradeHistoryEntry {
+  id: string
+  action: string
+  at: string
+  actor_id: string | null
+  actor_name: string | null
+  override_code: string | null
+  override_score: string | null
+  /** What the calculator said when the grade was set by hand. */
+  computed_score: string | null
+  reason: string | null
+  item_type: string | null
+  item_id: string | null
+  blockers: string[]
+}
+
 /** One open «запросить пересдачу», as the teacher's course pages see it. */
 export interface RetakeRequest {
   student_id: string

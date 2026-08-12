@@ -10,7 +10,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -24,6 +24,8 @@ from app.api.dependencies import (
 )
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
+from app.core.ids import as_uuid
+from app.models.audit_log import AuditLog
 from app.models.course import Chapter, CourseStatus, Module
 from app.models.enrollment import Enrollment
 from app.models.grade_exemption import GradeExemption
@@ -35,6 +37,7 @@ from app.models.user import User, UserRole
 from app.schemas.grade import (
     ExemptionCreate,
     ExemptionResponse,
+    GradeHistoryEntry,
     GradeResponse,
     GradeSheetResponse,
     GradeSummaryResponse,
@@ -997,6 +1000,95 @@ def request_retake(
     )
     db.commit()
     return {"status": "requested"}
+
+
+#: Everything that changed this student's standing by hand, plus the one thing
+#: they did about it. Deliberately not "every event in the course": a history
+#: that includes each submission is a log, and nobody reads a log to answer
+#: "why is this a B".
+_HISTORY_ACTIONS = (
+    ACTION_SET,
+    ACTION_CHANGED,
+    ACTION_CLEARED,
+    "grade_exemption_created",
+    "grade_exemption_removed",
+)
+
+
+@router.get(
+    "/course/{course_id}/student/{student_id}/history",
+    response_model=list[GradeHistoryEntry],
+)
+def get_grade_history(
+    course_id: str,
+    student_id: str,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    """How this grade came to be what it is (D7 audit, read at last).
+
+    A hand-set grade is the one number on the page nobody can reconstruct from
+    the work. Six months later, when a director signs a ведомость, "why is this
+    a B when the system computed 64" needs an answer that is not somebody's
+    memory. The rows have been written since Phase 1; nothing has ever read
+    them back.
+
+    Teacher-facing only: it carries the note written *about* the student for
+    the institution, which never appears on a student-facing schema (D7).
+    """
+    verify_course_owner(db, course_id, teacher)
+    student_uuid = as_uuid(student_id)
+
+    rows = (
+        db.query(AuditLog, User.full_name)
+        .outerjoin(User, User.id == AuditLog.user_id)
+        .filter(
+            or_(
+                and_(
+                    AuditLog.action.in_(_HISTORY_ACTIONS),
+                    AuditLog.details["student_id"].as_string() == str(student_uuid),
+                    AuditLog.details["course_id"].as_string() == course_id,
+                ),
+                # The student's own move. It carries no `student_id` in its
+                # details because the actor *is* the student, and leaving it out
+                # of the history would tell the half of the story where only the
+                # teacher ever does anything.
+                and_(
+                    AuditLog.action == "retake_request",
+                    AuditLog.user_id == student_uuid,
+                    AuditLog.resource_id == course_id,
+                ),
+            )
+        )
+        # Newest first, tie-broken on id. `created_at` is a server default and
+        # therefore identical for rows written inside one transaction second,
+        # and an untied sort re-orders them differently on each read — the same
+        # drawer showing "set B" above "set C" one minute and below it the
+        # next. Arbitrary within a second, but stable.
+        .order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+        .all()
+    )
+
+    out: list[dict[str, Any]] = []
+    for row, actor_name in rows:
+        details = row.details or {}
+        out.append(
+            {
+                "id": row.id,
+                "action": row.action,
+                "at": row.created_at,
+                "actor_id": row.user_id,
+                "actor_name": actor_name,
+                "override_code": details.get("override_code"),
+                "override_score": details.get("override_score"),
+                "computed_score": details.get("computed_score"),
+                "reason": details.get("reason"),
+                "item_type": details.get("item_type"),
+                "item_id": details.get("item_id"),
+                "blockers": details.get("blockers") or [],
+            }
+        )
+    return out
 
 
 @router.get("/course/{course_id}/retake-requests", response_model=list[RetakeRequest])
