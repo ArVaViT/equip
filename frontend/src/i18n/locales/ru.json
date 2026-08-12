@@ -749,7 +749,8 @@
         "missingRating": "Выберите оценку",
         "submitted": "Отзыв отправлен!",
         "submitFailed": "Не удалось отправить отзыв"
-      }
+      },
+      "blocked": "Сертификат станет доступен, когда закроются пункты выше"
     }
   },
   "studentProgress": {
@@ -1041,7 +1042,11 @@
       "requestedPrefix": "Запрошен {{date}}",
       "requestedUnknown": "Запрошен (дата неизвестна)",
       "approve": "Одобрить",
-      "reject": "Отклонить"
+      "reject": "Отклонить",
+      "notEarnedYet_one": "Ещё не заработан: {{count}} невыполненное условие",
+      "notEarnedYet_few": "Ещё не заработан: {{count}} невыполненных условия",
+      "notEarnedYet_many": "Ещё не заработан: {{count}} невыполненных условий",
+      "notEarnedYet_other": "Ещё не заработан: {{count}} невыполненных условия"
     }
   },
   "teacherEditor": {

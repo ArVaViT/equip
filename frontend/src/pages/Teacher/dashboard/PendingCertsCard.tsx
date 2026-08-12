@@ -1,4 +1,4 @@
-import { Award, CheckCircle, Clock, XCircle } from "lucide-react"
+import { AlertTriangle, Award, CheckCircle, Clock, XCircle } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -49,6 +49,17 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
                       })
                     : t("teacherDashboard.pendingCerts.requestedUnknown")}
                 </p>
+                {cert.blockers && cert.blockers.length > 0 && (
+                  // Approving is a signature on a document saying the course
+                  // was passed. Whoever signs should not have to open the
+                  // gradebook in another tab to find out whether that is true.
+                  <p className="mt-1 flex items-start gap-1 text-xs font-medium text-warning">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
+                    {t("teacherDashboard.pendingCerts.notEarnedYet", {
+                      count: cert.blockers.length,
+                    })}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-2 shrink-0 ml-4">
                 <Button

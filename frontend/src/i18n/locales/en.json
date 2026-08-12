@@ -1153,7 +1153,8 @@
         "missingRating": "Please select a rating",
         "submitted": "Review submitted!",
         "submitFailed": "Failed to submit review"
-      }
+      },
+      "blocked": "The certificate opens once the points above are cleared"
     }
   },
   "studentProgress": {
@@ -1429,7 +1430,9 @@
       "requestedPrefix": "Requested {{date}}",
       "requestedUnknown": "Requested (unknown date)",
       "approve": "Approve",
-      "reject": "Reject"
+      "reject": "Reject",
+      "notEarnedYet_one": "Not earned yet: {{count}} thing outstanding",
+      "notEarnedYet_other": "Not earned yet: {{count}} things outstanding"
     }
   },
   "teacherEditor": {

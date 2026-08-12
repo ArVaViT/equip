@@ -312,7 +312,10 @@ export interface Certificate {
   student_name?: string | null
   student_email?: string | null
   course_title?: string | null
-  teacher_approver_name?: string | null
+  teacher_approver_name?: string | null  /** What still stands between this student and the certificate they asked
+   *  for (D9). Present only on the pending listings a reviewer sees; empty
+   *  means the request is earned. */
+  blockers?: CertificateBlocker[]
 }
 
 export type BlockType = 'text' | 'quiz' | 'assignment' | 'file'

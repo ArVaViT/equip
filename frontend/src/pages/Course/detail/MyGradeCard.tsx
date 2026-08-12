@@ -32,7 +32,18 @@ const TONE_BY_STATUS: Record<MyGradeItem["status"], string> = {
  * for this course" — which is the question they are actually asking, and the
  * one a refused certificate will one day answer for them.
  */
-export function MyGradeCard({ courseId, modules }: { courseId: string; modules: Module[] }) {
+export function MyGradeCard({
+  courseId,
+  modules,
+  onBlockersChange,
+}: {
+  courseId: string
+  modules: Module[]
+  /** Reported upward so the certificate card below can stop offering a button
+   *  whose only outcome is an error. Lifted rather than fetched twice: the two
+   *  cards must agree, and two fetches is how they stop agreeing. */
+  onBlockersChange?: (count: number) => void
+}) {
   const { t } = useTranslation()
   const [grade, setGrade] = useState<MyCourseGrade | null>(null)
   const [loading, setLoading] = useState(true)
@@ -43,7 +54,9 @@ export function MyGradeCard({ courseId, modules }: { courseId: string; modules: 
     gradesService
       .getMyCourseGrade(courseId)
       .then((g) => {
-        if (!cancelled) setGrade(g)
+        if (cancelled) return
+        setGrade(g)
+        onBlockersChange?.(g.certificate_blockers.length)
       })
       // A course with nothing gradable in it has nothing to say here, and a
       // failed fetch is not worth an error box on somebody's course page —
@@ -55,7 +68,7 @@ export function MyGradeCard({ courseId, modules }: { courseId: string; modules: 
     return () => {
       cancelled = true
     }
-  }, [courseId])
+  }, [courseId, onBlockersChange])
 
   if (loading) {
     return (

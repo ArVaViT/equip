@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import (
     get_current_user,
     get_live_course_or_404,
-    lookup_enrollment,
     require_admin,
     require_teacher,
 )
@@ -15,11 +14,13 @@ from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.certificate import Certificate, CertificateStatus
 from app.models.course import Course
+from app.models.enrollment import Enrollment
 from app.models.user import User
 from app.schemas.certificate import CertificateResponse, CertificateVerifyResponse
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services import certificate_service
-from app.services.grade_calculator import calculate_student_grade_for_course
+from app.services.certificate_readiness import certificate_blockers
+from app.services.my_grade_service import latest_enrollment
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 
 router = APIRouter(prefix="/certificates", tags=["certificates"])
@@ -47,6 +48,39 @@ def _localize_cert_responses(
     return out
 
 
+def _enforce_gate(db: Session, course: Course, enrollment: Enrollment, student_id: UUID) -> None:
+    """The certificate gate (D9), and the last thing this phase adds.
+
+    It ships behind the explanation on purpose (Принцип 2): the same list this
+    refusal carries has been on the student's own course page since #962, and
+    the recovery path since #963. Nobody meets this refusal for the first time
+    here.
+
+    The old check was `progress == 100`, and an assignment chapter completes on
+    *submission* — so a student could finish a course with every essay unread
+    and be handed a certificate certifying it. That loophole closes without any
+    "all items graded" machinery of its own: unmarked work holds итоговая under
+    the pass line, and under D2 unaccepted work is not зачёт.
+
+    The reasons travel in the error's context as codes, so the card that
+    already renders them renders this too, in whatever language the reader
+    has. A refusal a student cannot read is a message to their teacher.
+    """
+    blockers = certificate_blockers(db, course, enrollment, student_id)
+    if not blockers:
+        return
+    raise equip_error(
+        ErrorCode.VALIDATION_FAILED,
+        status_code=status.HTTP_400_BAD_REQUEST,
+        message="This course is not finished yet — see the list on your course page.",
+        context={
+            "resource_type": "certificate",
+            "course_id": course.id,
+            "blockers": [b.as_dict() for b in blockers],
+        },
+    )
+
+
 @router.post("/course/{course_id}", response_model=CertificateResponse, status_code=status.HTTP_201_CREATED)
 def request_certificate(
     course_id: str,
@@ -66,33 +100,15 @@ def request_certificate(
     # Soft-deleted courses must not accept new certificate requests.
     course = get_live_course_or_404(db, course_id)
 
-    enrollment = lookup_enrollment(db, current_user.id, course_id)
+    # The enrolment the grade is resolved against, not just any of them. A
+    # retaking student holds two, and gating this term's certificate on last
+    # term's progress is a decision made by row order.
+    enrollment = latest_enrollment(db, current_user.id, course_id)
     if not enrollment:
         raise equip_error(
             ErrorCode.VALIDATION_FAILED,
             status_code=status.HTTP_400_BAD_REQUEST,
             message="Not enrolled in this course",
-            context={"resource_type": "certificate", "course_id": course_id},
-        )
-    if enrollment.progress < 100:
-        raise equip_error(
-            ErrorCode.VALIDATION_FAILED,
-            status_code=status.HTTP_400_BAD_REQUEST,
-            message=f"Course not completed. Current progress: {enrollment.progress}%",
-            context={"resource_type": "certificate", "course_id": course_id, "progress": enrollment.progress},
-        )
-
-    # "Not assessed" (D6). Excusing an item also completes its chapter, so a
-    # student excused from every piece of work reaches progress 100 without a
-    # single thing having been assessed — and the check above would wave them
-    # through. Nobody set out to build that path; it is what the two halves of
-    # an exemption add up to, which is why it has to be closed here rather than
-    # trusted not to happen.
-    if calculate_student_grade_for_course(db, course, current_user.id).result_state == "not_assessed":
-        raise equip_error(
-            ErrorCode.VALIDATION_FAILED,
-            status_code=status.HTTP_400_BAD_REQUEST,
-            message="All of your work in this course was excused, so there is no grade to certify yet. Ask your teacher to set a final grade.",
             context={"resource_type": "certificate", "course_id": course_id},
         )
 
@@ -101,6 +117,9 @@ def request_certificate(
     )
     if existing is not None:
         if existing.status == CertificateStatus.REJECTED:
+            # A re-request is a new request and meets the same gate. Otherwise
+            # one rejection becomes the way around it.
+            _enforce_gate(db, course, enrollment, current_user.id)
             # Reopen the request rather than silently returning the
             # rejected row (which previously made the "request" button a
             # no-op for any student who had been rejected once).
@@ -111,7 +130,14 @@ def request_certificate(
             existing.admin_approved_by = None
             db.commit()
             db.refresh(existing)
+        # A certificate already pending or issued is not re-examined. The four
+        # issued before this gate existed keep standing, and so does every one
+        # issued under a rule that has since changed (D8.3): a document is
+        # judged by the rules in force when it was granted, or nobody can rely
+        # on holding one.
         return existing
+
+    _enforce_gate(db, course, enrollment, current_user.id)
 
     cert = Certificate(user_id=current_user.id, course_id=course_id, status=CertificateStatus.PENDING)
     db.add(cert)
@@ -190,6 +216,44 @@ def list_my_certificates(
     return _localize_cert_responses(db, rows, display_locale=display_locale)
 
 
+def _blockers_for(db: Session, certs: list[Certificate]) -> dict[UUID, list[dict]]:
+    """The gate's verdict for each pending request, keyed by certificate id.
+
+    Computed per row rather than cached anywhere: it is the same computation
+    the student's own page runs, and a stale copy of it is worse than none —
+    it would tell a reviewer the work is unmarked after they have just marked
+    it, or clear after they have not.
+
+    It costs a grade computation per pending request, which is why the courses
+    are fetched once for the page rather than per row. The listing is already
+    bounded (50 by default, 200 at most) and in practice holds a handful; a
+    school sitting on fifty unreviewed requests has a slower dashboard, and
+    that is the right trade against a reviewer signing blind.
+    """
+    course_ids = {c.course_id for c in certs if c.course_id}
+    if not course_ids:
+        return {}
+    courses = {c.id: c for c in db.query(Course).filter(Course.id.in_(course_ids), Course.deleted_at.is_(None)).all()}
+
+    out: dict[UUID, list[dict]] = {}
+    for cert in certs:
+        if not cert.course_id:
+            continue
+        course = courses.get(cert.course_id)
+        if course is None:
+            continue
+        enrollment = latest_enrollment(db, cert.user_id, cert.course_id)
+        # Unenrolled, or the course was deleted under them: the request cannot
+        # be judged, and inventing a verdict either way is worse than the card
+        # simply not warning. Approval is still a person's decision.
+        if enrollment is None:
+            continue
+        blockers = certificate_blockers(db, course, enrollment, cert.user_id)
+        if blockers:
+            out[cert.id] = [b.as_dict() for b in blockers]
+    return out
+
+
 def _enrich_pending_certs(
     db: Session,
     certs: list[Certificate],
@@ -222,6 +286,7 @@ def _enrich_pending_certs(
         ):
             user_meta[str(uid)] = (full_name, email)
     course_titles = fetch_course_titles_by_id(db, sorted(course_ids), display_locale=display_locale)
+    blockers_by_cert = _blockers_for(db, certs)
 
     out: list[CertificateResponse] = []
     for cert in certs:
@@ -237,6 +302,7 @@ def _enrich_pending_certs(
                         course_titles.get(str(cert.course_id)) if cert.course_id else cert.archived_course_title
                     ),
                     "teacher_approver_name": ((approver[0] or approver[1]) if approver else None),
+                    "blockers": blockers_by_cert.get(cert.id, []),
                 }
             )
         )
