@@ -8,6 +8,7 @@ import { toast } from "@/lib/toast"
 import type { Assignment, AssignmentSubmission } from "@/types"
 import { AssignmentForm } from "./AssignmentForm"
 import { SubmissionGrader } from "./SubmissionGrader"
+import { RubricEditor } from "@/components/rubric/RubricEditor"
 import {
   assignmentToFormState,
   formStateToPayload,
@@ -17,6 +18,7 @@ import { formatDate } from "@/i18n/format"
 
 interface Props {
   assignment: Assignment
+  courseId: string
   onDelete: (id: string) => void
   onUpdate: (updated: Assignment) => void
 }
@@ -25,7 +27,7 @@ interface Props {
  * Expandable row that shows an assignment, inline edit form, and its
  * list of student submissions (lazy-loaded on first expand).
  */
-export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
+export function AssignmentItem({ assignment, courseId, onDelete, onUpdate }: Props) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const [submissions, setSubmissions] = useState<AssignmentSubmission[]>([])
@@ -150,6 +152,14 @@ export function AssignmentItem({ assignment, onDelete, onUpdate }: Props) {
           {assignment.description && (
             <p className="text-xs text-ink-muted py-2">{assignment.description}</p>
           )}
+
+          {/* The marking standard, defined where the work is defined. Until
+              now a rubric could only be created by calling the API directly,
+              so the mechanism that makes marking tap-only on a phone was
+              unreachable by the person it was built for. */}
+          <div className="border-b border-edge pb-3 pt-1">
+            <RubricEditor courseId={courseId} assignmentId={assignment.id} />
+          </div>
 
           {loadingSubs ? (
             <div className="flex items-center justify-center py-6">

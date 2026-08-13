@@ -110,6 +110,7 @@ export function BlockRow({
           {block.block_type === "assignment" && (
             <AssignmentEditor
               chapterId={chapterId}
+              courseId={courseId}
               onAssignmentCreated={(id) => updateField("assignment_id", id)}
             />
           )}

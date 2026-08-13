@@ -9,6 +9,7 @@ import { ImageLightbox } from "@/components/chapter/ImageLightbox"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
+import { progressService } from "@/services/progress"
 import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
 import { useAuth } from "@/context/useAuth"
@@ -614,6 +615,8 @@ export default function ChapterView() {
     [sortedChapters, completedIds],
   )
 
+  const [markingRead, setMarkingRead] = useState(false)
+
   const refreshCompletion = useCallback(async () => {
     if (!chapter || !courseId) return
     try {
@@ -742,6 +745,43 @@ export default function ChapterView() {
           />
         )}
       </div>
+
+      {/* Reading chapters get an act of their own.
+          Until now a chapter of pure text could not be finished by the person
+          reading it — only a teacher could tick it — so the core act of the
+          product left no trace. The control is explicit rather than a scroll
+          heuristic: a heuristic credits the skimmer who reaches the bottom and
+          misses the careful reader on a phone who closes the tab. */}
+      {chapterType === "reading" && !hasAssignments && (
+        <div className="mt-8 border-t border-edge pt-5">
+          {isCompleted ? (
+            <p className="flex items-center gap-2 text-sm font-medium text-success">
+              <CheckCircle className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+              {t("chapter.markedRead")}
+            </p>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={markingRead}
+              onClick={async () => {
+                setMarkingRead(true)
+                try {
+                  await progressService.markRead(chapter.id)
+                  await refreshCompletion()
+                } catch {
+                  toast({ title: t("chapter.markReadFailed"), variant: "destructive" })
+                } finally {
+                  setMarkingRead(false)
+                }
+              }}
+            >
+              <CheckCircle className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+              {t("chapter.markRead")}
+            </Button>
+          )}
+        </div>
+      )}
 
       {hasAssignments && (
         <div className="mt-6 border-t border-edge pt-5">

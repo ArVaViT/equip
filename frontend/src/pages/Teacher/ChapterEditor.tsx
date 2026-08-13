@@ -374,7 +374,7 @@ export default function ChapterEditor() {
           )}
 
           {chapterType === "assignment" && (
-            <AssignmentEditor chapterId={chapter.id} />
+            <AssignmentEditor chapterId={chapter.id} courseId={courseId!} />
           )}
         </CardContent>
       </Card>

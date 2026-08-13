@@ -2375,6 +2375,21 @@
   },
   {
     "method": "PUT",
+    "path": "/api/v1/progress/chapter/{chapter_id}/read",
+    "params": [
+      [
+        "chapter_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
     "path": "/api/v1/progress/chapter/{chapter_id}/student/{student_id}/complete",
     "params": [
       [
