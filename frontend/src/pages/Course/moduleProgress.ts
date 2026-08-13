@@ -57,3 +57,24 @@ export function isModuleLocked(completed: CompletedIds, previousGradableIds: str
   if (previousGradableIds.length === 0) return false
   return !previousGradableIds.every((id) => completed.has(id))
 }
+
+/**
+ * A reading chapter the student has marked as read.
+ *
+ * Deliberately separate from `isChapterComplete`, and rendered differently: a
+ * lesson you have read is not an assessment you have passed, and one tick for
+ * both would blur the only distinction the progress percentage rests on.
+ *
+ * It exists because the read control shipped without it. A student could mark
+ * a chapter read, the server stored it, `getMyChapterProgress` returned it —
+ * and every list dropped it on the floor, because the row only drew state for
+ * gradable chapters. The button appeared to do nothing.
+ */
+export function isChapterRead(
+  completed: CompletedIds,
+  chapter: ChapterLike,
+  isGradable: boolean,
+): boolean {
+  if (completed === null) return false
+  return !isGradable && completed.has(chapter.id)
+}

@@ -754,10 +754,11 @@
     "overdue": "Overdue",
     "due": "Due",
     "moduleComplete": "Module complete — well done!",
-    "completedProgress": "{{done}}/{{total}} completed",
+    "completedProgress": "{{done}} of {{total}} assessments done",
     "chaptersHeading": "Chapters",
     "noChaptersYet": "No chapters added yet",
-    "progressUnknown": "Couldn't load your progress. Completed-chapter marks are not shown right now — reload the page."
+    "progressUnknown": "Couldn't load your progress. Completed-chapter marks are not shown right now — reload the page.",
+    "chapterRead": "Read"
   },
   "course": {
     "backToCourses": "Back to Courses",
