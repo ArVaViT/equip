@@ -519,24 +519,20 @@
   .course-cover-tint-5 {
     background-image: linear-gradient(135deg, hsl(var(--chart-5) / 0.32) 0%, hsl(var(--chart-5) / 0.1) 55%, transparent 100%);
   }
-  /* Solid (not blended-into-white) tint at high opacity — reads as a
-     clearly coloured monogram against the quiet wash above, the same
-     way the chart tokens already read clearly against both theme
-     backgrounds in data-viz contexts. */
-  .course-cover-tint-1 .course-cover-letter {
-    color: hsl(var(--chart-1) / 0.82);
-  }
-  .course-cover-tint-2 .course-cover-letter {
-    color: hsl(var(--chart-2) / 0.82);
-  }
-  .course-cover-tint-3 .course-cover-letter {
-    color: hsl(var(--chart-3) / 0.82);
-  }
-  .course-cover-tint-4 .course-cover-letter {
-    color: hsl(var(--chart-4) / 0.82);
-  }
-  .course-cover-tint-5 .course-cover-letter {
-    color: hsl(var(--chart-5) / 0.82);
+  /* The monogram is set in ink, not in its own colour.
+   *
+   * It used to be `hsl(var(--chart-N) / 0.82)` — the same hue as the wash
+   * behind it, softened. Measured against the densest point of that wash,
+   * **seven of the ten combinations failed even the 3:1 large-text
+   * threshold**, the worst at 2.16:1. A letter is what a course looks like on
+   * the catalogue when it has no cover image, so this is identity, not
+   * decoration.
+   *
+   * Ink on the same wash measures 6.4:1 to 11.5:1. It is also the rule the
+   * rest of the palette now follows: the colour carries the meaning, the ink
+   * carries the reading. */
+  .course-cover-letter {
+    color: hsl(var(--foreground));
   }
 }
 
@@ -731,10 +727,16 @@
    already written into existing chapter HTML. Only the visual language
    changes: a thin accent rule, a very light tinted surface, zero emoji. */
 .callout {
-  /* ``bg-muted/30`` was too faint in dark mode (--muted: 240 5% 15%
-   * at 30% opacity over a 240 6% 12% card surface ≈ no visible
-   * tint). Bump to ``/60`` so the block reads as a distinct surface
-   * in both themes. */
+  /* `/60` rather than `/30`, which was too faint to see.
+   *
+   * The note that used to be here cited `--muted: 240 5% 15%` over a
+   * `240 6% 12%` card — hue 240, the violet palette, two repaints ago. The
+   * numbers are now `30 6% 4%` over `30 5% 11%` in dark and `40 10% 94%` over
+   * white in light, and the relationship inverted with them: `--muted` used to
+   * be *lighter* than the card and is now darker, so a callout reads as sunken
+   * rather than raised. Still visible in both, which is what `/60` was for —
+   * but reasoning that describes a palette which no longer exists is worse
+   * than no reasoning at all. */
   @apply my-6 rounded-md border border-border bg-muted/60 px-5 py-4 text-foreground;
   border-left-width: 3px;
 }
