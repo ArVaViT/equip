@@ -14,12 +14,12 @@ const AlertDialogOverlay = React.forwardRef<
   <AlertDialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      // Frosted glass dim: softer than the previous near-black wash, paired
-      // with a real `backdrop-blur-md` so the page behind reads as context
-      // (not just darkness). The fallback `bg-black/60` keeps the contrast
-      // budget when backdrop-filter is unsupported; under `supports`, the
-      // dim drops to `/45` since the blur does the layering work.
-      "fixed inset-0 z-50 bg-black/60 backdrop-blur-md supports-[backdrop-filter]:bg-black/45 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      // One scrim token at one opacity, shared with the dialog and the sheet.
+      // This used to be a frosted-glass wash with a `supports-[backdrop-filter]`
+      // fallback: `backdrop-blur-md` forces a full-screen readback every frame,
+      // which is the most expensive thing on the phones our students read on,
+      // and it bought a texture nobody had asked for.
+      "fixed inset-0 z-50 bg-scrim/70 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}

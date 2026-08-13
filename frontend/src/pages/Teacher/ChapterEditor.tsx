@@ -404,7 +404,7 @@ export default function ChapterEditor() {
             role="status"
             aria-live="polite"
             aria-label={t("chapterEditor.unsavedChanges")}
-            className="pointer-events-auto animate-fade-in w-full max-w-2xl bg-card/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/85"
+            className="pointer-events-auto animate-fade-in w-full max-w-2xl border border-edge bg-card shadow-lg"
           >
             <CardContent className="flex items-center gap-3 px-4 py-3">
               <span

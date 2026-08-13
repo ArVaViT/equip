@@ -68,7 +68,7 @@ export const NotificationPanel = forwardRef<HTMLDivElement, Props>(
           // busy course/admin pages it floats over.
           isSheet
             ? "w-full bg-surface"
-            : "absolute right-0 top-full z-50 w-80 bg-surface/85 backdrop-blur-md sm:w-96 supports-[backdrop-filter]:bg-surface/75",
+            : "absolute right-0 top-full z-50 w-80 border border-edge bg-card shadow-lg sm:w-96",
         )}
       >
         <div className="flex items-center justify-between border-b border-edge px-4 py-3">

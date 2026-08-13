@@ -129,7 +129,7 @@ export default function CoursesPage() {
               onChange={(e) => setInput(e.target.value.slice(0, maxLength))}
               maxLength={maxLength}
               placeholder={t("courses.searchPlaceholder")}
-              className="rounded-md border-edge/80 bg-surface/85 pl-9 backdrop-blur-sm focus-visible:ring-2"
+              className="rounded-md pl-9 focus-visible:ring-2"
               aria-label={t("courses.searchPlaceholder")}
             />
           </div>

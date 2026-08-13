@@ -50,7 +50,7 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
       // ``z-[60]`` sits above the toolbar's z-20 and the modal
       // (z-50) that the rest of the app uses; the chapter image
       // lightbox is the highest meaningful surface.
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/95 p-4 animate-fade-in"
     >
       <button
         type="button"

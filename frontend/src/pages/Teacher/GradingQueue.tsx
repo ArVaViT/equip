@@ -11,6 +11,7 @@ import { toast } from "@/lib/toast"
 import { relativeTime } from "@/pages/Teacher/progress/helpers"
 import type { WaitingGroup } from "@/types"
 import { MarkOneByOne } from "./grading/MarkOneByOne"
+import { Section } from "@/components/layout/Section"
 
 /**
  * Where a teacher marks.
@@ -67,18 +68,18 @@ export default function GradingQueue() {
   if (openItem) {
     const group = groups?.find((g) => g.item_id === openItem)
     return (
-      <div className="container mx-auto max-w-3xl px-4 py-6">
+      <Section width="reading">
         <Button variant="ghost" size="sm" onClick={closeItem} className="mb-3 -ml-2">
           <ArrowLeft className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
           {t("grading.backToQueue")}
         </Button>
         <MarkOneByOne assignmentId={openItem} title={group?.title} onDone={closeItem} />
-      </div>
+      </Section>
     )
   }
 
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-6 sm:py-8">
+    <Section width="reading">
       <h1 className="mb-1 font-serif text-2xl font-bold tracking-tight sm:text-3xl">
         {t("grading.title")}
       </h1>
@@ -134,6 +135,6 @@ export default function GradingQueue() {
           ))}
         </div>
       )}
-    </div>
+    </Section>
   )
 }

@@ -113,6 +113,9 @@ export default {
           muted: "hsl(var(--color-ink-muted))",
           inverted: "hsl(var(--color-ink-inverted))",
         },
+        // The modal veil. One value, used at two opacities — see the note in
+        // index.css about the four that were there before.
+        scrim: "hsl(var(--scrim))",
         edge: {
           DEFAULT: "hsl(var(--color-edge))",
           strong: "hsl(var(--color-edge-strong))",

@@ -19,7 +19,7 @@ import { studentDashboardSteps } from "@/lib/tourSteps"
 import { firstNameOf } from "@/lib/names"
 import { PublicLanding } from "./PublicLanding"
 import { cn } from "@/lib/utils"
-import { EDITORIAL_EASE } from "@/lib/motion"
+import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
 
 interface MyCoursesSectionProps {
   /** Click handler wired by ``DashboardPage`` to start the dashboard
@@ -214,11 +214,13 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
                           className={cn("h-full rounded-full", progressColor)}
                           initial={{ width: 0 }}
                           animate={{ width: `${Math.min(enrollment.progress, 100)}%` }}
-                          transition={{
-                            duration: 0.9,
-                            delay: 0.15 + index * 0.045,
-                            ease: EDITORIAL_EASE,
-                          }}
+                          // Was 0.9s with a 45ms-per-row stagger. A progress
+                          // bar that fills is a nice touch; six of them
+                          // filling in sequence over most of a second, on the
+                          // screen you open every day, is a loading animation
+                          // pretending to be a feature. One duration from the
+                          // shared scale, no stagger.
+                          transition={{ duration: MOTION_DURATION.panel, ease: EDITORIAL_EASE }}
                         />
                       )}
                     </div>

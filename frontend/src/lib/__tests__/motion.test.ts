@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
 
+import { readFileSync } from "node:fs"
+import { dirname, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
 
 /**
@@ -41,36 +44,40 @@ describe("EDITORIAL_EASE", () => {
 })
 
 describe("MOTION_DURATION", () => {
-  it("exposes the five canonical tiers", () => {
-    expect(Object.keys(MOTION_DURATION).sort()).toEqual(
-      ["base", "entrance", "fast", "instant", "slow"].sort(),
-    )
+  it("has exactly the tiers the CSS tokens declare", () => {
+    // There used to be five here and three in CSS, and the two disagreed on
+    // the values they shared — JS `base` was 280ms, `--motion-base` is 200ms.
+    // A component got a different answer depending on which syntax it was
+    // written in. One scale now, and this is what keeps it one.
+    expect(Object.keys(MOTION_DURATION).sort()).toEqual(["base", "fast", "panel"])
   })
 
-  it("is in seconds (matches motion library default unit), not milliseconds", () => {
-    // Every tier should be < 1s — anything in the ms range would
-    // surface as 10+ seconds of motion in the actual library, which
-    // would be wildly wrong.
+  it("is in seconds (the motion library's unit), not milliseconds", () => {
     for (const value of Object.values(MOTION_DURATION)) {
       expect(value).toBeGreaterThan(0)
       expect(value).toBeLessThan(1)
     }
   })
 
-  it("tiers ascend in duration (instant < fast < base < entrance < slow)", () => {
-    expect(MOTION_DURATION.instant).toBeLessThan(MOTION_DURATION.fast)
+  it("ascends: fast < base < panel", () => {
     expect(MOTION_DURATION.fast).toBeLessThan(MOTION_DURATION.base)
-    expect(MOTION_DURATION.base).toBeLessThan(MOTION_DURATION.entrance)
-    expect(MOTION_DURATION.entrance).toBeLessThan(MOTION_DURATION.slow)
+    expect(MOTION_DURATION.base).toBeLessThan(MOTION_DURATION.panel)
   })
 
-  it("locks in the exact values (regression guard)", () => {
-    expect(MOTION_DURATION).toEqual({
-      instant: 0.12,
-      fast: 0.2,
-      base: 0.28,
-      entrance: 0.48,
-      slow: 0.55,
-    })
+  it("agrees with the CSS custom properties, to the millisecond", () => {
+    // Read the real declarations rather than restating the numbers, so a nudge
+    // to `--motion-base` that forgets the JS side fails at the source.
+    const css = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "index.css"),
+      "utf8",
+    )
+    const ms = (name: string) => {
+      const m = new RegExp(`--motion-${name}:\\s*(\\d+)ms`).exec(css)
+      expect(m, `--motion-${name} missing from index.css`).not.toBeNull()
+      return Number(m![1])
+    }
+    expect(MOTION_DURATION.fast * 1000).toBe(ms("fast"))
+    expect(MOTION_DURATION.base * 1000).toBe(ms("base"))
+    expect(MOTION_DURATION.panel * 1000).toBe(ms("panel"))
   })
 })

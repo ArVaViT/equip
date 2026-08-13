@@ -113,6 +113,18 @@
      * still be nudged without breaking.
      *
      * `contrast-floor.test.ts` recomputes all of it on every run. */
+    /* The scrim, once.
+     *
+     * There were four, none of them agreeing and none with a reason:
+     * `black/80` on the dialog, `black/60` falling back to `black/45` on the
+     * alert dialog, `black/40` (dark: `/60`) on the sheet, `black/85` on the
+     * lightbox. A modal veil is one idea, and the product had four opinions
+     * about it depending on which primitive you happened to open.
+     *
+     * Two now, and the second has an argument: `--scrim` veils the page while
+     * you deal with something in front of it, and `--scrim-heavy` is for the
+     * image lightbox, where the point is that the room goes dark. */
+    --scrim: 30 10% 6%;
     --brand-ink: 30 8% 11%;
     --destructive-ink: 0 70% 36.5%;
     --success-ink: 156 45% 26%;
@@ -180,6 +192,9 @@
     --warning-foreground: 240 12% 10%;
     --info: 215 72% 58%;
     --info-foreground: 240 12% 10%;
+    /* Same value both themes: a veil is the absence of the page, not a tint
+     * of it. See the note in the light block. */
+    --scrim: 30 10% 4%;
     --brand-ink: 40 12% 95%;
     --destructive-ink: 0 58% 69%;
     --success-ink: 156 38% 54%;

@@ -11,6 +11,7 @@ import { formatDateLong } from "@/i18n/format"
 import { useUserTour } from "@/hooks/useUserTour"
 import { useAsyncData } from "@/hooks/useAsyncData"
 import { certificatesSteps } from "@/lib/tourSteps"
+import { Section } from "@/components/layout/Section"
 
 export default function CertificatesPage() {
   const { t, i18n } = useTranslation()
@@ -57,7 +58,7 @@ export default function CertificatesPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
+    <Section>
       <Link to="/courses">
         <Button variant="ghost" size="sm" className="mb-6 h-8 text-xs">
           <ArrowLeft className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
@@ -179,7 +180,7 @@ export default function CertificatesPage() {
           })}
         </div>
       )}
-    </div>
+    </Section>
   )
 }
 
@@ -189,7 +190,7 @@ export default function CertificatesPage() {
  */
 function CertificatesPageSkeleton() {
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl" aria-busy="true">
+    <Section aria-busy="true">
       <Skeleton className="mb-6 h-7 w-32" />
       <div className="mb-10 space-y-2">
         <Skeleton className="h-3 w-24" />
@@ -216,6 +217,6 @@ function CertificatesPageSkeleton() {
           </Card>
         ))}
       </div>
-    </div>
+    </Section>
   )
 }
