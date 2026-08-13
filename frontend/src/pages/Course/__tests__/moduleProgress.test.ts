@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { isChapterComplete, isChapterLocked } from "../moduleProgress"
+import { isChapterComplete, isChapterLocked, isModuleLocked } from "../moduleProgress"
 
 const CH = { id: "ch-2", is_locked: true }
 const PREV = { id: "ch-1" }
@@ -35,5 +35,25 @@ describe("isChapterLocked", () => {
 
   it("never locks a chapter that is not gated", () => {
     expect(isChapterLocked(new Set(), { id: "ch-2" }, PREV, true)).toBe(false)
+  })
+})
+
+describe("isModuleLocked — it gates more than a chapter", () => {
+  it("locks the next module while the previous one is unfinished", () => {
+    expect(isModuleLocked(new Set(["a"]), ["a", "b"])).toBe(true)
+  })
+
+  it("opens it once the previous module is done", () => {
+    expect(isModuleLocked(new Set(["a", "b"]), ["a", "b"])).toBe(false)
+  })
+
+  it("never locks behind a module with nothing gradable in it", () => {
+    expect(isModuleLocked(new Set(), [])).toBe(false)
+  })
+
+  it("fails OPEN when progress is unknown", () => {
+    // The worst of the three sites: a failed request walled a student out of
+    // everything after the module they had actually completed.
+    expect(isModuleLocked(null, ["a", "b"])).toBe(false)
   })
 })

@@ -73,10 +73,12 @@ export default function ProfilePage() {
   const { t } = useTranslation()
   const [error, setError] = useState("")
   const [uploading, setUploading] = useState(false)
-  const [certificateCount, setCertificateCount] = useState(0)
-  const [completedCount, setCompletedCount] = useState(0)
-  const animatedCompleted = useCountUp(completedCount)
-  const animatedCertificates = useCountUp(certificateCount)
+  //: `null` until known, and again if the request fails. A statistic nobody
+  //: could read is not zero.
+  const [certificateCount, setCertificateCount] = useState<number | null>(null)
+  const [completedCount, setCompletedCount] = useState<number | null>(null)
+  const animatedCompleted = useCountUp(completedCount ?? 0)
+  const animatedCertificates = useCountUp(certificateCount ?? 0)
   const fileRef = useRef<HTMLInputElement>(null)
   useUserTour({
     tourId: "profile-v1",
@@ -89,13 +91,19 @@ export default function ProfilePage() {
     let cancelled = false
     const loadStats = async () => {
       try {
+        // `null`, not `[]`. These two numbers are the page's claim about what
+        // somebody has achieved, and they animate up from zero — so a failed
+        // request told a student with three certificates, emphatically and
+        // with a count-up, that they had none.
         const [certs, enrollments] = await Promise.all([
-          coursesService.getMyCertificates().catch(() => []),
-          coursesService.getMyCourses().catch(() => []),
+          coursesService.getMyCertificates().catch(() => null),
+          coursesService.getMyCourses().catch(() => null),
         ])
         if (cancelled) return
-        setCertificateCount(certs.length)
-        setCompletedCount(enrollments.filter((e) => e.progress >= 100).length)
+        setCertificateCount(certs === null ? null : certs.length)
+        setCompletedCount(
+          enrollments === null ? null : enrollments.filter((e) => e.progress >= 100).length,
+        )
       } catch { /* non-critical */ }
     }
     loadStats()
@@ -238,7 +246,9 @@ export default function ProfilePage() {
                   <BookOpen className="h-5 w-5 text-ink-muted" strokeWidth={1.75} aria-hidden />
                 </div>
                 <div>
-                  <p className="text-2xl font-semibold leading-none tabular-nums">{animatedCompleted}</p>
+                  <p className="text-2xl font-semibold leading-none tabular-nums">
+                    {completedCount === null ? "—" : animatedCompleted}
+                  </p>
                   <p className="mt-1 text-xs text-ink-muted">{t("profile.coursesCompleted")}</p>
                 </div>
               </div>
@@ -247,12 +257,14 @@ export default function ProfilePage() {
                   <Award className="h-5 w-5 text-ink-muted" strokeWidth={1.75} aria-hidden />
                 </div>
                 <div>
-                  <p className="text-2xl font-semibold leading-none tabular-nums">{animatedCertificates}</p>
+                  <p className="text-2xl font-semibold leading-none tabular-nums">
+                    {certificateCount === null ? "—" : animatedCertificates}
+                  </p>
                   <p className="mt-1 text-xs text-ink-muted">{t("profile.certificatesEarned")}</p>
                 </div>
               </div>
             </div>
-            {certificateCount > 0 && (
+            {certificateCount !== null && certificateCount > 0 && (
               <Link
                 to="/certificates"
                 className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-brand underline-offset-4 hover:underline"
