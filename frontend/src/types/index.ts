@@ -388,18 +388,31 @@ export interface Invitation {
   is_expired: boolean
 }
 
+/**
+ * The kinds the backend actually writes — mirrors `NOTIFICATION_TYPES` in
+ * `backend/app/schemas/notification.py`.
+ *
+ * `retake_requested` was missing from both sides, and on the server side its
+ * absence made `GET /api/v1/notifications` answer 500 for every user holding
+ * one. `course_update` and `enrollment_confirmed` were the opposite mistake:
+ * declared here and emitted by nothing.
+ */
 export type NotificationType =
   | 'certificate_approved'
   | 'certificate_rejected'
   | 'assignment_graded'
   | 'new_announcement'
-  | 'course_update'
-  | 'enrollment_confirmed'
+  | 'retake_requested'
 
 export interface Notification {
   id: string
   user_id: string
-  type: NotificationType
+  /**
+   * Deliberately widened past `NotificationType`: the server no longer
+   * validates this on read, so a kind added by a newer backend must render
+   * rather than break the list. `NOTIFICATION_ICONS` falls back to a bell.
+   */
+  type: NotificationType | (string & {})
   title: string
   message: string
   link: string | null

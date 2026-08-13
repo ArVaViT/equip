@@ -1,10 +1,10 @@
-import { Bell, Trash2 } from "lucide-react"
+import { Trash2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import type { Notification } from "@/types"
 import { cn } from "@/lib/utils"
 import {
-  NOTIFICATION_COLORS,
-  NOTIFICATION_ICONS,
+  colorFor,
+  iconFor,
   timeAgo,
 } from "./notificationMeta"
 
@@ -20,8 +20,8 @@ interface Props {
  */
 export function NotificationItem({ notification, onActivate, onDelete }: Props) {
   const { t } = useTranslation()
-  const Icon = NOTIFICATION_ICONS[notification.type] ?? Bell
-  const color = NOTIFICATION_COLORS[notification.type] ?? "text-ink-muted"
+  const Icon = iconFor(notification.type)
+  const color = colorFor(notification.type)
 
   return (
     <div
