@@ -66,7 +66,10 @@ def test_marked_work_cannot_be_overwritten_by_the_student(student_client, db: Se
     assignment = _assignment(db, "lw-graded")
     _existing(db, assignment, status="graded", grade=90)
 
-    response = student_client.post(SUBMIT.format(assignment.id), json={"content": "Вторая попытка"})
+    response = student_client.post(
+        SUBMIT.format(assignment.id),
+        json={"content": "Вторая попытка", "declaration": {"ai_use": "none", "statement": "Я написал эту работу сам."}},
+    )
 
     assert response.status_code == 409, response.text
     assert response.json()["detail"]["context"]["reason"] == "already_graded"
@@ -80,7 +83,10 @@ def test_the_refusal_points_at_the_way_back_in(student_client, db: Session, teac
     assignment = _assignment(db, "lw-points")
     _existing(db, assignment, status="graded", grade=40)
 
-    body = student_client.post(SUBMIT.format(assignment.id), json={"content": "Ещё раз"}).json()
+    body = student_client.post(
+        SUBMIT.format(assignment.id),
+        json={"content": "Ещё раз", "declaration": {"ai_use": "none", "statement": "Я написал эту работу сам."}},
+    ).json()
 
     assert "retake" in body["detail"]["message"].lower()
 
@@ -91,7 +97,10 @@ def test_work_handed_back_may_be_submitted_again(student_client, db: Session, te
     assignment = _assignment(db, "lw-returned")
     _existing(db, assignment, status="returned", grade=40)
 
-    response = student_client.post(SUBMIT.format(assignment.id), json={"content": "Исправил"})
+    response = student_client.post(
+        SUBMIT.format(assignment.id),
+        json={"content": "Исправил", "declaration": {"ai_use": "none", "statement": "Я написал эту работу сам."}},
+    )
 
     assert response.status_code == 201, response.text
 
@@ -101,7 +110,10 @@ def test_unmarked_work_may_still_be_replaced(student_client, db: Session, teache
     assignment = _assignment(db, "lw-unmarked")
     _existing(db, assignment, status="submitted", grade=None)
 
-    response = student_client.post(SUBMIT.format(assignment.id), json={"content": "Передумал"})
+    response = student_client.post(
+        SUBMIT.format(assignment.id),
+        json={"content": "Передумал", "declaration": {"ai_use": "none", "statement": "Я написал эту работу сам."}},
+    )
 
     assert response.status_code == 201, response.text
 
@@ -110,7 +122,13 @@ def test_a_first_submission_is_untouched(student_client, db: Session, teacher, s
     assignment = _assignment(db, "lw-first")
     db.commit()
 
-    assert student_client.post(SUBMIT.format(assignment.id), json={"content": "Сдаю"}).status_code == 201
+    assert (
+        student_client.post(
+            SUBMIT.format(assignment.id),
+            json={"content": "Сдаю", "declaration": {"ai_use": "none", "statement": "Я написал эту работу сам."}},
+        ).status_code
+        == 201
+    )
 
 
 def test_one_students_grade_does_not_block_another(student_client, db: Session, teacher, student) -> None:
@@ -134,7 +152,13 @@ def test_one_students_grade_does_not_block_another(student_client, db: Session, 
     )
     db.commit()
 
-    assert student_client.post(SUBMIT.format(assignment.id), json={"content": "Моя"}).status_code == 201
+    assert (
+        student_client.post(
+            SUBMIT.format(assignment.id),
+            json={"content": "Моя", "declaration": {"ai_use": "none", "statement": "Я написал эту работу сам."}},
+        ).status_code
+        == 201
+    )
 
 
 def test_the_check_is_per_assignment(student_client, db: Session, teacher, student) -> None:
@@ -144,4 +168,13 @@ def test_the_check_is_per_assignment(student_client, db: Session, teacher, stude
     db.add(second)
     _existing(db, first, status="graded", grade=88)
 
-    assert student_client.post(SUBMIT.format(second.id), json={"content": "Вторая работа"}).status_code == 201
+    assert (
+        student_client.post(
+            SUBMIT.format(second.id),
+            json={
+                "content": "Вторая работа",
+                "declaration": {"ai_use": "none", "statement": "Я написал эту работу сам."},
+            },
+        ).status_code
+        == 201
+    )

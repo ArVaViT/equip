@@ -315,12 +315,18 @@ def submit_assignment(
 
     course = db.query(Course).filter(Course.id == course_id).first()
     policy = (course.ai_policy if course else None) or "ai_with_disclosure"
-    # Deliberately not required yet. Making it required in the same release
-    # that teaches the client to send it leaves a window where a student on a
-    # stale bundle cannot hand in their work — and the honest alternative,
-    # recording an empty declaration for them, would put a statement in the
-    # record that nobody made. The requirement lands in the release after this
-    # one, when every client already sends it.
+    if policy != "ai_open" and data.declaration is None:
+        # Required now that every client sends it (#971 shipped the screen a
+        # release earlier for exactly this reason). A client that omits it is
+        # refused rather than quietly recorded as having said nothing —
+        # «nothing» is not a statement anybody made, and the whole value of the
+        # declaration is that it was made about this specific piece of work.
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="Confirm how this work was written before handing it in. Reload the page if you do not see the confirmation.",
+            context={"resource_type": "assignment", "assignment_id": str(assignment_id), "ai_policy": policy},
+        )
 
     submission = AssignmentSubmission(
         assignment_id=assignment_id,

@@ -1032,7 +1032,10 @@ def test_submit_quiz_empty_answers_rejected(student_client: TestClient, db: Sess
     _seed_course_with_enrollment(db)
     quiz, _, _ = _seed_quiz_with_questions(db)
 
-    resp = student_client.post(f"/api/v1/quizzes/{quiz.id}/submit", json={"answers": []})
+    resp = student_client.post(
+        f"/api/v1/quizzes/{quiz.id}/submit",
+        json={"answers": [], "declaration": {"ai_use": "none", "statement": "Я написал эту работу сам."}},
+    )
     assert resp.status_code == 422
 
 
@@ -1153,7 +1156,10 @@ def test_submit_quiz_extra_attempts_extend_limit(student_client: TestClient, db:
 
 
 def test_submit_quiz_anon_unauthorized(anon_client: TestClient):
-    resp = anon_client.post(f"/api/v1/quizzes/{uuid.uuid4()}/submit", json={"answers": []})
+    resp = anon_client.post(
+        f"/api/v1/quizzes/{uuid.uuid4()}/submit",
+        json={"answers": [], "declaration": {"ai_use": "none", "statement": "Я написал эту работу сам."}},
+    )
     assert resp.status_code == 401
 
 

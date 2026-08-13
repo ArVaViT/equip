@@ -662,7 +662,7 @@ class TestMigratedEndpointContractsUnchanged:
         db.refresh(assignment)
         resp = student_client.post(
             f"/api/v1/assignments/{assignment.id}/submit",
-            json={"content": "my answer"},
+            json={"content": "my answer", "declaration": {"ai_use": "none", "statement": "Я написал эту работу сам."}},
         )
         assert resp.status_code == status.HTTP_403_FORBIDDEN
         assert resp.json()["detail"]["message"] == "You must be enrolled in this course to submit assignments"
