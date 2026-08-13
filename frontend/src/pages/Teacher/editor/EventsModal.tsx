@@ -157,7 +157,7 @@ function EventRow({
           {formatDateTime(event.event_date)}
         </p>
         {event.description && (
-          <p className="text-xs text-ink-muted/70 mt-0.5 line-clamp-1">
+          <p className="text-xs text-ink-muted mt-0.5 line-clamp-1">
             {event.description}
           </p>
         )}

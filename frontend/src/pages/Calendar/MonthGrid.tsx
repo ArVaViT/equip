@@ -83,13 +83,13 @@ export function MonthGrid({
       <CardContent className="pt-2">
         <div className="mb-1 grid grid-cols-7">
           {dayLabels.map((d, i) => {
-            const isWeekend = i === 0 || i === 6;
             return (
+              // Weekend headers used to be a paler ink-muted; ink-muted has no
+              // paler. The row is uniform now — the weekend is already marked
+              // by the cells below it, not by the letter above them.
               <div
                 key={i}
-                className={`py-1.5 text-center text-xs font-medium uppercase tracking-[0.18em] ${
-                  isWeekend ? "text-ink-muted/60" : "text-ink-muted"
-                }`}
+                className="py-1.5 text-center text-xs font-medium uppercase tracking-[0.18em] text-ink-muted"
               >
                 {d}
               </div>
@@ -121,7 +121,7 @@ export function MonthGrid({
                   className={`
                     inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium tabular-nums
                     ${isToday ? "bg-brand text-brand-foreground" : ""}
-                    ${!inMonth ? "text-ink-muted/40" : ""}
+                    ${!inMonth ? "text-ink-muted" : ""}
                   `}
                 >
                   {date.getDate()}

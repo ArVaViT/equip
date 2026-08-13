@@ -258,7 +258,7 @@ function SingleAssignment({
           </span>
           {assignment.due_date && (
             <>
-              <span aria-hidden className="text-ink-muted/40">·</span>
+              <span aria-hidden className="text-ink-muted">·</span>
               <span className={`flex items-center gap-1 tabular-nums ${isOverdue ? "font-medium text-destructive" : ""}`}>
                 <Calendar className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
                 {t("assignment.due")}{" "}

@@ -232,7 +232,7 @@ export function CoursePickerStep({ firstName, onEnrolled, onBrowse, onSkip }: Pr
                           {course.description}
                         </p>
                       )}
-                      <p className="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-ink-muted/80">
+                      <p className="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
                         {t("firstRun.picker.modulesCount", { count: moduleCount })}
                       </p>
                     </div>

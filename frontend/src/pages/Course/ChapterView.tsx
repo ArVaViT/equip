@@ -311,7 +311,7 @@ function ChapterNavLink({
           {eyebrow}
           {side === "next" && <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />}
         </span>
-        <span className="mt-0.5 truncate text-sm text-ink-muted/70">
+        <span className="mt-0.5 truncate text-sm text-ink-muted">
           {fallbackLabel}
         </span>
       </div>
@@ -703,14 +703,14 @@ export default function ChapterView() {
             <ChapterTypeIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
             {t(CHAPTER_TYPE_LABEL_KEYS[chapterType])}
           </span>
-          <span aria-hidden className="text-ink-muted/40">·</span>
+          <span aria-hidden className="text-ink-muted">·</span>
           <span className="tabular-nums">
             {t("chapter.positionEyebrow", { current: currentIdx + 1, total: sortedChapters.length })}
           </span>
           {mod.title && (
             <>
-              <span aria-hidden className="text-ink-muted/40">·</span>
-              <span className="normal-case tracking-normal text-ink-muted/80 text-wrap-safe">
+              <span aria-hidden className="text-ink-muted">·</span>
+              <span className="normal-case tracking-normal text-ink-muted text-wrap-safe">
                 {mod.title}
               </span>
             </>

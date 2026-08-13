@@ -101,7 +101,7 @@ export function AnnouncementPager({ announcements, onDelete }: AnnouncementPager
               {current.content}
             </p>
           )}
-          <time className="mt-1 block text-xs text-ink-muted/60">
+          <time className="mt-1 block text-xs text-ink-muted">
             {formatDateTime(current.created_at)}
           </time>
         </div>

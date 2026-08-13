@@ -58,7 +58,7 @@ export function ChapterRow({
             <div className="flex items-center gap-2 sm:gap-3">
               <div
                 {...dragProvided.dragHandleProps}
-                className="-ml-1 flex h-11 w-8 shrink-0 cursor-grab items-center justify-center text-ink-muted/40 transition-colors hover:text-ink-muted active:cursor-grabbing sm:ml-0 sm:h-9"
+                className="-ml-1 flex h-11 w-8 shrink-0 cursor-grab items-center justify-center text-ink-muted transition-colors hover:text-ink active:cursor-grabbing sm:ml-0 sm:h-9"
                 role="button"
                 tabIndex={0}
                 aria-label={t("moduleEditor.dragChapterAria", { title: chapter.title })}

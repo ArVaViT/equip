@@ -305,7 +305,7 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
             aria-describedby={`${nameId}-hint`}
             className="mt-2"
           />
-          <p id={`${nameId}-hint`} className="mt-1.5 text-xs text-ink-muted/80">
+          <p id={`${nameId}-hint`} className="mt-1.5 text-xs text-ink-muted">
             {t("firstRun.setup.name.hint")}
           </p>
         </div>
@@ -327,7 +327,7 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
             tabIndex={-1}
             className="mt-2 cursor-not-allowed bg-muted/40 text-ink-muted"
           />
-          <p className="mt-1.5 text-xs text-ink-muted/80">
+          <p className="mt-1.5 text-xs text-ink-muted">
             {t("firstRun.setup.email.hint")}
           </p>
         </div>

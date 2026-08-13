@@ -241,7 +241,7 @@ export default function CertificateCard({ courseId, progress, blocked = false, c
                       className={`h-6 w-6 transition-colors ${
                         value <= (reviewHover || reviewRating)
                           ? "fill-warning text-warning"
-                          : "text-ink-muted/30"
+                          : "text-ink-muted"
                       }`}
                     strokeWidth={1.75} />
                   </button>

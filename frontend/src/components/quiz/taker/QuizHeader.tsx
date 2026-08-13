@@ -43,7 +43,7 @@ export function QuizHeader({
       )}
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
         <span className="tabular-nums">{questionsLabel}</span>
-        <span aria-hidden className="text-ink-muted/40">·</span>
+        <span aria-hidden className="text-ink-muted">·</span>
         <span className="tabular-nums">
           {pointsLabel}
           {manualMaxScore > 0 && autoMaxScore > 0 && (
@@ -53,11 +53,11 @@ export function QuizHeader({
             </>
           )}
         </span>
-        <span aria-hidden className="text-ink-muted/40">·</span>
+        <span aria-hidden className="text-ink-muted">·</span>
         <span className="tabular-nums">{t("quiz.passingShort", { score: quiz.passing_score })}</span>
         {maxAttempts !== null && (
           <>
-            <span aria-hidden className="text-ink-muted/40">·</span>
+            <span aria-hidden className="text-ink-muted">·</span>
             <span className="tabular-nums">{t("quiz.attemptsShort", { used: attemptsUsed, max: maxAttempts })}</span>
           </>
         )}

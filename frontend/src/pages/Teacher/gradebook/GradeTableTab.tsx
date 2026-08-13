@@ -347,7 +347,7 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
   const { t } = useTranslation()
   if (!chapter) {
     return (
-      <div className="flex items-center justify-center h-9 rounded bg-muted/30 text-ink-muted/40 text-xs">
+      <div className="flex items-center justify-center h-9 rounded bg-muted/30 text-ink-muted text-xs">
         —
       </div>
     )
@@ -419,7 +419,7 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
   }
 
   return (
-    <div className="flex items-center justify-center h-9 rounded bg-muted/20 text-ink-muted/30 text-xs">
+    <div className="flex items-center justify-center h-9 rounded bg-muted/20 text-ink-muted text-xs">
       —
     </div>
   )
@@ -427,7 +427,7 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
 
 function EmptyCell() {
   return (
-    <div className="flex items-center justify-center h-9 rounded bg-muted/30 text-ink-muted/50 text-xs">
+    <div className="flex items-center justify-center h-9 rounded bg-muted/30 text-ink-muted text-xs">
       <Circle className="h-3.5 w-3.5" strokeWidth={1.75} />
     </div>
   )
@@ -469,7 +469,7 @@ function GradeTableLegend() {
       </div>
       <div className="flex items-center gap-1.5">
         <div className="flex h-5 w-5 items-center justify-center rounded border bg-muted/30">
-          <Circle className="h-3 w-3 text-ink-muted/40" strokeWidth={1.75} />
+          <Circle className="h-3 w-3 text-ink-muted" strokeWidth={1.75} />
         </div>
         {t("gradebook.table.legend.notSubmitted")}
       </div>

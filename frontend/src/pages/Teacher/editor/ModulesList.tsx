@@ -77,7 +77,7 @@ export function ModulesList({ courseId, modules, onDragEnd, onAdd, onRemove }: P
                       >
                         <div
                           {...dragProvided.dragHandleProps}
-                          className="-ml-2 flex h-11 w-8 shrink-0 cursor-grab items-center justify-center text-ink-muted/40 transition-colors hover:text-ink-muted active:cursor-grabbing sm:h-9"
+                          className="-ml-2 flex h-11 w-8 shrink-0 cursor-grab items-center justify-center text-ink-muted transition-colors hover:text-ink active:cursor-grabbing sm:h-9"
                           onClick={(e) => e.stopPropagation()}
                           role="button"
                           tabIndex={0}
@@ -85,7 +85,7 @@ export function ModulesList({ courseId, modules, onDragEnd, onAdd, onRemove }: P
                         >
                           <GripVertical className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                         </div>
-                        <span className="text-xs font-mono text-ink-muted/50 w-6 text-right shrink-0">
+                        <span className="text-xs font-mono text-ink-muted w-6 text-right shrink-0">
                           {i + 1}
                         </span>
                         <div className="flex-1 min-w-0">

@@ -34,13 +34,13 @@ export function EmptyState({
         )}
       >
         {icon && (
-          <span className="text-ink-muted/80 [&_svg]:h-5 [&_svg]:w-5">
+          <span className="text-ink-muted [&_svg]:h-5 [&_svg]:w-5">
             {icon}
           </span>
         )}
         <p className="text-sm text-ink-muted">{title}</p>
         {description && (
-          <p className="max-w-md text-xs text-ink-muted/80">
+          <p className="max-w-md text-xs text-ink-muted">
             {description}
           </p>
         )}

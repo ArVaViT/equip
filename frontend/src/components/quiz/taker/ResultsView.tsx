@@ -56,7 +56,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
           </p>
           <p className="font-serif text-3xl font-semibold tabular-nums tracking-tight">
             {result.score ?? 0}
-            <span className="text-ink-muted/60"> / {result.max_score ?? 0}</span>
+            <span className="text-ink-muted"> / {result.max_score ?? 0}</span>
           </p>
           <p className="mt-2 text-sm text-ink-muted tabular-nums">
             {t("quiz.passingScoreLine", { percent: scorePercent, passing: quiz.passing_score })}

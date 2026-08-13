@@ -59,7 +59,7 @@ export function UpcomingEventsPanel({ events }: UpcomingEventsPanelProps) {
                     </p>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-ink-muted tabular-nums">
                       <span>{formatShortDate(evt.event_date)}</span>
-                      <span aria-hidden className="text-ink-muted/40">·</span>
+                      <span aria-hidden className="text-ink-muted">·</span>
                       <span>{formatTime(evt.event_date)}</span>
                       {overdue && (
                         <span className="rounded bg-destructive/10 px-1.5 py-0.5 font-medium text-destructive">
@@ -68,7 +68,7 @@ export function UpcomingEventsPanel({ events }: UpcomingEventsPanelProps) {
                       )}
                     </div>
                     {evt.course_title && (
-                      <p className="mt-0.5 truncate text-xs text-ink-muted/70">
+                      <p className="mt-0.5 truncate text-xs text-ink-muted">
                         {evt.course_title}
                       </p>
                     )}

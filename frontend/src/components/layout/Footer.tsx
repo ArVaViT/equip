@@ -16,6 +16,20 @@ import { SUPPORT_EMAIL } from "@/lib/brand"
  * 2. **One type size, hierarchy by colour.** Apple's footer is entirely 12px —
  *    section titles included — and sorts itself with three steps of opacity.
  *    Nothing is bolder or bigger; the eye is led by contrast alone.
+ *
+ *    The rungs are 100 / 80 / 65, and they are not free choices. The footer
+ *    inverts in *both* themes — a near-black band under a cream page, and a
+ *    cream band under a dark one — and the two inversions do not have the same
+ *    headroom. Dark is the binding side: the alpha floor for AA body text
+ *    there is 0.60 (4.55:1), against 0.50 in light. 65% is therefore the
+ *    quietest a line here may go and still be readable by someone who is
+ *    not me.
+ *
+ *    The first version set the colophon at 40%, which measures 3.6:1, and the
+ *    second at 55%, which passes in light and fails in dark. Both were
+ *    caught by machines rather than by looking — which is the whole argument
+ *    for `contrast-floor.test.ts` computing this from the palette instead of
+ *    anybody, including me, eyeballing it.
  * 3. **No dividers.** The columns are held by the grid. Rules between footer
  *    columns are what a sitemap does; a colophon does not need them.
  *
@@ -27,7 +41,7 @@ export default function Footer() {
   const year = new Date().getFullYear()
 
   const linkClass =
-    "text-ink-inverted/60 transition-colors duration-200 hover:text-ink-inverted/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-inverted/40 focus-visible:ring-offset-0 rounded-sm"
+    "text-ink-inverted/80 transition-colors duration-200 hover:text-ink-inverted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-inverted/70 focus-visible:ring-offset-0 rounded-sm"
 
   return (
     <footer className="mt-auto bg-ink text-ink-inverted">
@@ -40,7 +54,7 @@ export default function Footer() {
             >
               {t("common.appName")}
             </Link>
-            <p className="mt-2 text-sm leading-relaxed text-ink-inverted/60">
+            <p className="mt-2 text-sm leading-relaxed text-ink-inverted/80">
               {t("footer.tagline")}
             </p>
           </div>
@@ -51,7 +65,7 @@ export default function Footer() {
             </a>
             {/* The year and the name, last and quietest — a colophon line, not
                 a legal notice competing with the rest. */}
-            <p className="text-ink-inverted/40">
+            <p className="text-ink-inverted/65">
               © {year} {t("common.appName")}
             </p>
           </div>

@@ -134,7 +134,7 @@ export default function CertificatesPage() {
                         aria-hidden
                       />
                     </div>
-                    <span className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted/80">
+                    <span className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
                       {t("certificates.badge")}
                     </span>
                   </div>

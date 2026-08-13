@@ -7,7 +7,7 @@ export default function NotFound() {
   const { t } = useTranslation()
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
-      <h1 className="text-6xl font-bold text-ink-muted/30 mb-4">404</h1>
+      <h1 className="text-6xl font-bold text-ink-muted mb-4">404</h1>
       <h2 className="text-xl font-semibold mb-2">{t("notFound.title")}</h2>
       <p className="text-sm text-ink-muted mb-6 max-w-md">
         {t("notFound.description")}
