@@ -6,8 +6,10 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
+import { rubricsService } from "@/services/rubrics"
+import { RubricGrid } from "@/components/rubric/RubricGrid"
 import { toast } from "@/lib/toast"
-import type { Assignment, AssignmentSubmission } from "@/types"
+import type { Assignment, AssignmentSubmission, SubmissionRubric } from "@/types"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { formatDate } from "@/i18n/format"
 import {
@@ -125,10 +127,33 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
   const [content, setContent] = useState("")
   const [fileUrl, setFileUrl] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  // The same grid the teacher marked on. Not a summary of it: a student's
+  // «summary of your rubric» drifts from the thing the mark came from, and the
+  // drift is exactly where «почему у меня 70» stops having an answer.
+  const [rubric, setRubric] = useState<SubmissionRubric | null>(null)
 
   useEffect(() => {
     setSubmission(initialSubmission)
   }, [initialSubmission])
+
+  useEffect(() => {
+    if (!submission) {
+      setRubric(null)
+      return
+    }
+    let cancelled = false
+    rubricsService
+      .forSubmission(submission.id)
+      // Most assignments have no rubric today, and a failure here must not
+      // take the student's own work off their screen.
+      .catch(() => null)
+      .then((r) => {
+        if (!cancelled) setRubric(r)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [submission])
 
   const handleSubmit = async () => {
     if (!content.trim() && !fileUrl.trim()) return
@@ -231,6 +256,18 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
                   {submission.grade}
                   <span className="text-success/60"> / {assignment.max_score}</span>
                 </p>
+              </div>
+            )}
+
+            {/* Where the number came from, in the same grid the teacher used —
+                including the levels this work did not reach, which is the part
+                that answers «а что нужно было сделать». */}
+            {rubric?.rubric && submission.status === "graded" && (
+              <div className="rounded-md border border-edge px-4 py-3">
+                <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
+                  {t("rubric.yourGrid")}
+                </p>
+                <RubricGrid rubric={rubric.rubric} marks={rubric.marks} />
               </div>
             )}
 

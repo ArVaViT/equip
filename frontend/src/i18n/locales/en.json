@@ -2417,5 +2417,14 @@
     "percent": "percent",
     "five_point": "five-point",
     "letter": "letter"
+  },
+  "rubric": {
+    "total": "Rubric total",
+    "totalSoFar": "So far",
+    "incompleteHint": "Until every criterion has a level, the work is not graded and the student sees nothing.",
+    "loadFailed": "Could not load the rubric",
+    "saveFailed": "Could not save the marks",
+    "title": "Rubric",
+    "yourGrid": "How your work was marked"
   }
 }

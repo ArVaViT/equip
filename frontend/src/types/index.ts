@@ -703,6 +703,69 @@ export interface RetakeRequest {
   blockers: string[]
 }
 
+/** One rung on a criterion, and what it is worth. */
+export interface RubricLevel {
+  id: string
+  label: string
+  points: number
+  description: string | null
+  order_index: number
+}
+
+/** One thing being judged. «Аргумент опирается на текст», not «Качество». */
+export interface RubricCriterion {
+  id: string
+  title: string
+  description: string | null
+  order_index: number
+  levels: RubricLevel[]
+}
+
+/**
+ * A named marking standard.
+ *
+ * `max_score` is the sum of the best level of each criterion — and the
+ * assignment's maximum, because there cannot be two of those.
+ */
+export interface Rubric {
+  id: string
+  course_id: string
+  title: string
+  max_score: number
+  criteria: RubricCriterion[]
+}
+
+export interface RubricCreatePayload {
+  course_id: string
+  title: string
+  criteria: {
+    title: string
+    description?: string | null
+    levels: { label: string; points: number; description?: string | null }[]
+  }[]
+}
+
+/** What the teacher chose on one criterion. Points are the server's answer. */
+export interface RubricMark {
+  criterion_id: string
+  level_id: string
+  points: number
+  comment: string | null
+}
+
+/**
+ * The grid and the marks for one piece of work.
+ *
+ * `rubric === null` means the assignment is not marked by one at all, which is
+ * a different screen from «rubric, nothing chosen yet».
+ */
+export interface SubmissionRubric {
+  rubric: Rubric | null
+  marks: RubricMark[]
+  earned: number | null
+  out_of: number | null
+}
+
 /** The answer to «запросить пересдачу». `already_requested` is not an error:
  *  the teacher already has the request. */
 export interface RetakeRequestResult {

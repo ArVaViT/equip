@@ -29,14 +29,13 @@ from app.schemas.assignment import (
     SubmissionResponse,
 )
 from app.schemas.locale import LocaleCode, normalize_locale
-from app.services.audit_service import log_action
 from app.services.content_versions import (
     delete_entity_cv_rows,
     dual_write_entity_content,
     fetch_cv_entity_texts_with_fallback,
 )
 from app.services.course_service import sync_enrollment_progress
-from app.services.notification_service import create_notification
+from app.services.submission_grading import apply_grade
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import (
     localize_assignment_rows,
@@ -476,44 +475,15 @@ def grade_submission(
             },
         )
 
-    submission.grade = data.grade
-    submission.feedback = data.feedback
-    submission.status = data.status
-    submission.graded_by = teacher.id
-    submission.graded_at = datetime.now(UTC)
-
-    # Phase 5e3: assignment.title moved to cv — fetch the source-locale
-    # title for the notification message (any locale fallback covers
-    # edge cases where the source row hasn't been recorded yet).
-    source_locale_for_msg = _course_source_locale_for_chapter(db, assignment.chapter_id) or "en"
-    assignment_texts = fetch_cv_entity_texts_with_fallback(
+    apply_grade(
         db,
-        entity_type="assignment",
-        entity_ids=[str(assignment.id)],
-        fields=["title"],
-        display_locale=source_locale_for_msg,
-        source_locale=source_locale_for_msg,
-    )
-    assignment_title = assignment_texts.get((str(assignment.id), "title")) or "your assignment"
-    create_notification(
-        db,
-        user_id=submission.student_id,
-        type="assignment_graded",
-        title="Assignment Graded",
-        message=f'Your submission for "{assignment_title}" has been graded: {data.grade}/{assignment.max_score}.',
-        link=None,
-        metadata={"assignment_id": str(assignment.id), "submission_id": str(submission.id)},
-    )
-
-    db.commit()
-    db.refresh(submission)
-    log_action(
-        db,
-        teacher.id,
-        "grade",
-        "assignment_submission",
-        str(submission_id),
-        details={"grade": data.grade, "status": data.status},
+        submission=submission,
+        assignment=assignment,
+        grade=data.grade,
+        feedback=data.feedback,
+        new_status=data.status,
+        teacher_id=teacher.id,
+        source_locale=_course_source_locale_for_chapter(db, assignment.chapter_id),
         request=request,
     )
     return submission

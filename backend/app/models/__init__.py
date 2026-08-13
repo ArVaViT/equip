@@ -24,6 +24,13 @@ from app.models.quiz import (
     QuizQuestion,
 )
 from app.models.review import CourseReview
+from app.models.rubric import (
+    AssignmentRubric,
+    Rubric,
+    RubricCriterion,
+    RubricLevel,
+    RubricMark,
+)
 from app.models.student_grade import StudentGrade
 from app.models.user import User, UserRole
 
@@ -31,6 +38,7 @@ __all__ = [
     "DEFAULT_GRADE_BANDS",
     "Announcement",
     "Assignment",
+    "AssignmentRubric",
     "AssignmentSubmission",
     "AuditLog",
     "Certificate",
@@ -59,6 +67,10 @@ __all__ = [
     "QuizExtraAttempt",
     "QuizOption",
     "QuizQuestion",
+    "Rubric",
+    "RubricCriterion",
+    "RubricLevel",
+    "RubricMark",
     "StudentGrade",
     "User",
     "UserRole",
