@@ -756,7 +756,8 @@
     "moduleComplete": "Module complete — well done!",
     "completedProgress": "{{done}}/{{total}} completed",
     "chaptersHeading": "Chapters",
-    "noChaptersYet": "No chapters added yet"
+    "noChaptersYet": "No chapters added yet",
+    "progressUnknown": "Couldn't load your progress. Completed-chapter marks are not shown right now — reload the page."
   },
   "course": {
     "backToCourses": "Back to Courses",
