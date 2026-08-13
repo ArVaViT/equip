@@ -31,6 +31,20 @@ interface Props {
 }
 
 export function ModuleList({ courseId, modules, completedChapterIds }: Props) {
+  // Which row gets to explain the rule. Computed here rather than in the row,
+  // because "am I the first locked one" is a fact about the list.
+  const firstLockedIdx = modules.findIndex((_, idx) => {
+    if (idx === 0) return false
+    const prev = modules[idx - 1]
+    if (!prev) return false
+    const prevGradable = (prev.chapters ?? []).filter((ch) =>
+      isGradableChapterType(ch.chapter_type),
+    )
+    return isModuleLocked(
+      completedChapterIds,
+      prevGradable.map((ch) => ch.id),
+    )
+  })
   const { t } = useTranslation()
   return (
     <div>
@@ -50,6 +64,7 @@ export function ModuleList({ courseId, modules, completedChapterIds }: Props) {
               idx={idx}
               modules={modules}
               completedChapterIds={completedChapterIds}
+              isFirstLocked={idx === firstLockedIdx}
             />
           ))}
         </StaggerChildren>
@@ -68,6 +83,8 @@ interface ModuleRowProps {
   courseId: string
   module: Module
   idx: number
+  /** The first locked row is the only one that explains the rule. */
+  isFirstLocked?: boolean
   modules: Module[]
   /** `null` when the progress request failed. See `moduleProgress.ts`. */
   completedChapterIds: Set<string> | null
@@ -77,6 +94,7 @@ const ModuleRow = memo(function ModuleRow({
   courseId,
   module,
   idx,
+  isFirstLocked = false,
   modules,
   completedChapterIds,
 }: ModuleRowProps) {
@@ -157,7 +175,12 @@ const ModuleRow = memo(function ModuleRow({
             </span>
           )}
         </div>
-        {isLocked && (
+        {/* Only on the first locked row. A course with six modules and five
+            walls repeated this identical sentence five times down the page,
+            which reads as nagging rather than explaining — the rule is one
+            rule, and it is stated once, next to the first door it applies
+            to. The rest keep their «Locked» badge, which is the fact. */}
+        {isLocked && isFirstLocked && (
           <p className="text-xs text-ink-muted ml-8 mt-1">
             {t("courseDetail.moduleLockHint")}
           </p>
