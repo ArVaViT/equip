@@ -439,7 +439,7 @@ function GradeTableLegend() {
     <div className="mt-4 flex flex-wrap gap-4 border-t pt-4 text-xs text-ink-muted">
       <div className="flex items-center gap-1.5">
         <div className="flex h-5 w-5 items-center justify-center rounded border border-success/30 bg-success/10">
-          <CheckCircle2 className="h-3 w-3 text-success" strokeWidth={1.75} />
+          <CheckCircle2 className="h-3 w-3 text-success-ink" strokeWidth={1.75} />
         </div>
         {t("gradebook.table.legend.completed")}
       </div>

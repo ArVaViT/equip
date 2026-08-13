@@ -141,7 +141,7 @@ export function OverviewStats({ stats, loading, pendingActions }: Props) {
                 <p
                   className={cn(
                     "mt-1.5 inline-flex items-center gap-1 text-xs",
-                    warningTint ? "text-warning/90" : "text-ink-muted",
+                    warningTint ? "text-warning" : "text-ink-muted",
                   )}
                 >
                   {trending && (

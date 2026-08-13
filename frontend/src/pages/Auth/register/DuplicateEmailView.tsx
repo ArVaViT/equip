@@ -21,7 +21,7 @@ export function DuplicateEmailView({ email }: { email: string }) {
       <div className="space-y-6 animate-fade-in">
         <div className="flex flex-col items-center text-center gap-4 py-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-md bg-warning/10">
-            <Mail className="h-8 w-8 text-warning" strokeWidth={1.75} aria-hidden />
+            <Mail className="h-8 w-8 text-warning-ink" strokeWidth={1.75} aria-hidden />
           </div>
           <div className="space-y-2">
             <p className="text-sm text-ink-muted leading-relaxed">

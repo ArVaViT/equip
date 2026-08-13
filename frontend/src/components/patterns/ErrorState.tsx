@@ -43,7 +43,7 @@ export function ErrorState({
         className,
       )}
     >
-      <span className="text-destructive/60 [&_svg]:h-12 [&_svg]:w-12 [&_svg]:stroke-[1.75]">
+      <span className="text-destructive [&_svg]:h-12 [&_svg]:w-12 [&_svg]:stroke-[1.75]">
         {icon ?? <AlertTriangle strokeWidth={1.75} aria-hidden />}
       </span>
       <div className="space-y-1">

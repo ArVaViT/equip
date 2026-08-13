@@ -145,6 +145,48 @@ function chipPairs(line: string): { token: string; alpha: number; text: "default
   return out;
 }
 
+/**
+ * The same pairing, but across an element boundary.
+ *
+ * `chipPairs` only sees one line, and the commonest shape in this codebase
+ * puts the tint on a wrapper and the text on a child:
+ *
+ *     <div className="border-success/30 bg-success/5 px-4 py-3">
+ *       <p className="text-success">…</p>
+ *
+ * Nesting is approximated by indentation, which is exact here because the
+ * whole tree is Prettier-formatted: a line indented further than the tint line,
+ * before the first line indented the same or less, is inside that element. It
+ * is a heuristic, and it errs toward reporting — a false positive costs a
+ * glance, a false negative ships 2.8:1 to a student.
+ */
+function nestedChipPairs(
+  lines: string[],
+  want: "default" | "ink" = "default",
+): { line: number; token: string; alpha: number }[] {
+  const out: { line: number; token: string; alpha: number }[] = [];
+  lines.forEach((line, i) => {
+    const indent = line.length - line.trimStart().length;
+    for (const token of CHIP_TOKENS) {
+      const tint = new RegExp(`bg-${token}/(\\d+)`).exec(line);
+      if (!tint) continue;
+      for (let j = i + 1; j < lines.length; j++) {
+        const next = lines[j]!;
+        if (!next.trim()) continue;
+        if (next.length - next.trimStart().length <= indent) break;
+        const pattern =
+          want === "ink"
+            ? new RegExp(`\\btext-${token}-ink(?![\\w-])`)
+            : new RegExp(`\\btext-${token}(?![\\w-])`);
+        if (pattern.test(next)) {
+          out.push({ line: j + 1, token, alpha: Number(tint[1]) / 100 });
+        }
+      }
+    }
+  });
+  return out;
+}
+
 function sourceFiles(dir: string, acc: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
     const full = resolve(dir, entry);
@@ -182,18 +224,26 @@ describe("no source file paints below the floor", () => {
     expect(FILES.length).toBeGreaterThan(200);
   });
 
-  it("never puts an alpha modifier on a muted token", () => {
+  it("never puts an alpha modifier on a text colour", () => {
+    // The rule started as "nothing is quieter than ink-muted" and generalised
+    // once the semantic tokens were measured too: `text-brand/60` is 2.68:1,
+    // `text-destructive/40` is 1.99:1, `text-success/60` is 2.27:1. Not one
+    // alpha rung on any text colour in this palette survived — which makes the
+    // rule a single sentence instead of a table.
+    const TEXT_TOKENS = ["ink-muted", "muted-foreground", ...CHIP_TOKENS];
     const offenders: string[] = [];
     for (const file of FILES) {
       const text = readFileSync(file, "utf8");
-      for (const [match] of text.matchAll(/text-(?:ink-muted|muted-foreground)\/\d+/g)) {
-        offenders.push(`${file.replace(SRC, "src")}: ${match}`);
+      for (const token of TEXT_TOKENS) {
+        for (const [match] of text.matchAll(new RegExp(`text-${token}\\/\\d+`, "g"))) {
+          offenders.push(`${file.replace(SRC, "src")}: ${match}`);
+        }
       }
     }
     expect(
       offenders,
-      "There is nothing quieter than ink-muted. Every one of these measures " +
-        "below 4.5:1 in both themes — use size, position or removal instead:\n" +
+      "An alpha modifier on a text colour puts it under the floor. Use a " +
+        "different size, position or token — not a paler one:\n" +
         offenders.join("\n"),
     ).toEqual([]);
   });
@@ -225,13 +275,33 @@ describe("no source file paints below the floor", () => {
     ).toEqual([]);
   });
 
+  it("catches a tint on the wrapper and the token's own text on a child", () => {
+    const offenders: string[] = [];
+    for (const file of FILES) {
+      const lines = readFileSync(file, "utf8").split("\n");
+      for (const hit of nestedChipPairs(lines)) {
+        offenders.push(
+          `${file.replace(SRC, "src")}:${hit.line}: text-${hit.token} inside ` +
+            `bg-${hit.token}/${hit.alpha * 100}`,
+        );
+      }
+    }
+    expect(offenders, offenders.join("\n")).toEqual([]);
+  });
+
   it("keeps every -ink step readable on the tints it is actually used at", () => {
     const pairs = new Set<string>();
     for (const file of FILES) {
-      for (const line of readFileSync(file, "utf8").split("\n")) {
+      const lines = readFileSync(file, "utf8").split("\n");
+      for (const line of lines) {
         for (const pair of chipPairs(line)) {
           if (pair.text === "ink") pairs.add(`${pair.token}:${pair.alpha}`);
         }
+      }
+      // Wrapper-and-child too, or the alphas only ever used that way — `/5`
+      // among them — would go unmeasured.
+      for (const hit of nestedChipPairs(lines, "ink")) {
+        pairs.add(`${hit.token}:${hit.alpha}`);
       }
     }
     expect(pairs.size, "no chip pairs found — the scan is not finding source").toBeGreaterThan(0);

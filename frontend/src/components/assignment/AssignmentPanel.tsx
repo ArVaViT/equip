@@ -25,7 +25,17 @@ import {
   Loader2,
   MessageSquare,
   Link as LinkIcon,
+  AlertTriangle,
 } from "lucide-react"
+
+/**
+ * "We could not find out", as distinct from "there is nothing".
+ *
+ * A string rather than a Symbol so it survives the trip through a mocked
+ * service in a test without ceremony, and so a failure is legible in a React
+ * DevTools state dump instead of showing as `Symbol()`.
+ */
+const UNKNOWN = "unknown" as const
 
 interface AssignmentPanelProps {
   /** The course's AI policy, passed down so the declaration says the right
@@ -42,9 +52,19 @@ interface AssignmentPanelProps {
 export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, onCountLoaded, aiPolicy }: AssignmentPanelProps) {
   const { t } = useTranslation()
   const [assignments, setAssignments] = useState<Assignment[]>([])
-  const [submissionsMap, setSubmissionsMap] = useState<Record<string, AssignmentSubmission | null>>({})
+  // Three values, not two. `null` means the student has not handed anything in;
+  // `UNKNOWN` means the request to find out failed. Collapsing the second into
+  // the first is what re-showed the submit form to a student who had already
+  // submitted — see the note on the fetch below.
+  const [submissionsMap, setSubmissionsMap] =
+    useState<Record<string, AssignmentSubmission | null | typeof UNKNOWN>>({})
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
+
+  // `reloadKey` rather than exposing `load`: the effect owns the cancellation
+  // flag, and a retry that re-enters `load` directly would race the mount call
+  // it is retrying. Bumping the key tears the old run down first.
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -62,11 +82,17 @@ export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, 
         // When the panel is scoped to a single assignment we already know
         // the submissions endpoint we'll need — kick it off in parallel
         // with the assignment list instead of waterfalling behind it.
-        // Errors degrade to "no submission" exactly like the per-item
-        // fetches below (the .catch is attached at creation so a failed
-        // prefetch can never surface as an unhandled rejection).
+        // A failed fetch resolves to UNKNOWN, not to an empty list. The old
+        // `.catch(() => [])` was the difference between "you have not handed
+        // this in" and "we could not reach the server", and on a flaky
+        // connection the student was shown the first — an empty form over
+        // work they had already submitted, with no hint that anything was
+        // wrong. Some of them would have typed it again.
+        //
+        // The catch stays attached at creation so a failed prefetch can never
+        // surface as an unhandled rejection.
         const prefetchedSubmissions = assignmentId
-          ? coursesService.getMySubmissions(assignmentId).catch(() => [] as AssignmentSubmission[])
+          ? coursesService.getMySubmissions(assignmentId).catch(() => UNKNOWN)
           : null
         const all = await coursesService.getChapterAssignments(chapterId)
         if (cancelled) return
@@ -79,13 +105,17 @@ export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, 
             data.map((a) =>
               prefetchedSubmissions && a.id === assignmentId
                 ? prefetchedSubmissions
-                : coursesService.getMySubmissions(a.id).catch(() => [] as AssignmentSubmission[])
+                : coursesService.getMySubmissions(a.id).catch(() => UNKNOWN)
             )
           )
           if (cancelled) return
-          const map: Record<string, AssignmentSubmission | null> = {}
+          const map: Record<string, AssignmentSubmission | null | typeof UNKNOWN> = {}
           data.forEach((a, i) => {
-            const subs = subResults[i] ?? []
+            const subs = subResults[i]
+            if (subs === UNKNOWN || subs === undefined) {
+              map[a.id] = UNKNOWN
+              return
+            }
             map[a.id] = subs.length > 0 ? (subs[0] ?? null) : null
           })
           setSubmissionsMap(map)
@@ -102,7 +132,7 @@ export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, 
     // inputs: refetching when the parent renders a new handler reference
     // would cause spurious reloads on every chapter-level state change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chapterId, assignmentId])
+  }, [chapterId, assignmentId, reloadKey])
 
   if (loading) {
     return <PageSpinner variant="section" />
@@ -119,6 +149,7 @@ export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, 
           key={assignment.id}
           assignment={assignment}
           initialSubmission={submissionsMap[assignment.id] ?? null}
+          onRetry={() => setReloadKey((k) => k + 1)}
           onSubmitted={onSubmitted}
           aiPolicy={aiPolicy}
         />
@@ -131,17 +162,23 @@ function SingleAssignment({
   assignment,
   initialSubmission,
   onSubmitted,
+  onRetry,
   aiPolicy,
 }: {
   assignment: Assignment
-  initialSubmission: AssignmentSubmission | null
+  initialSubmission: AssignmentSubmission | null | typeof UNKNOWN
   onSubmitted?: () => void
+  /** Re-runs the panel's fetch. Only reachable from the unknown state. */
+  onRetry?: () => void
   /** The course's rule about what may be used. Defaults to disclosure, which
    *  is what the server assumes when a course predates the column. */
   aiPolicy?: AiPolicy
 }) {
   const { t } = useTranslation()
-  const [submission, setSubmission] = useState<AssignmentSubmission | null>(initialSubmission)
+  const unknown = initialSubmission === UNKNOWN
+  const [submission, setSubmission] = useState<AssignmentSubmission | null>(
+    unknown ? null : initialSubmission,
+  )
   const [content, setContent] = useState("")
   const [fileUrl, setFileUrl] = useState("")
   const [submitting, setSubmitting] = useState(false)
@@ -156,7 +193,7 @@ function SingleAssignment({
   })
 
   useEffect(() => {
-    setSubmission(initialSubmission)
+    setSubmission(initialSubmission === UNKNOWN ? null : initialSubmission)
   }, [initialSubmission])
 
   useEffect(() => {
@@ -211,7 +248,11 @@ function SingleAssignment({
   }
 
   const canResubmit = submission?.status === "returned"
-  const showForm = !submission || canResubmit
+  // Never offer the form while the answer is unknown. Handing a student an
+  // empty textarea over work they may already have submitted is the one
+  // outcome worth refusing outright — a second copy of an essay is a mess for
+  // them and for whoever marks it.
+  const showForm = !unknown && (!submission || canResubmit)
 
   const isOverdue = assignment.due_date && new Date(assignment.due_date) < new Date()
 
@@ -275,6 +316,29 @@ function SingleAssignment({
       </div>
 
       <div className="p-5">
+        {/* The honest third state. It says what is not known, why the form is
+            not there, and offers the one action that can change the answer.
+            Deliberately not a toast: a toast disappears, and the student is
+            left looking at a screen that has silently changed meaning. */}
+        {unknown && (
+          <div
+            role="status"
+            className="mb-5 rounded-md border border-warning/30 bg-warning/10 px-4 py-3"
+          >
+            <p className="flex items-center gap-2 text-sm font-medium text-warning-ink">
+              <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+              {t("assignment.statusUnknownTitle")}
+            </p>
+            <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
+              {t("assignment.statusUnknownHelp")}
+            </p>
+            {onRetry && (
+              <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
+                {t("assignment.statusUnknownRetry")}
+              </Button>
+            )}
+          </div>
+        )}
         {submission && (
           <div className="mb-5 space-y-3">
             <div className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${statusConfig[submission.status]?.color ?? ""}`}>
@@ -284,12 +348,12 @@ function SingleAssignment({
 
             {submission.status === "graded" && submission.grade !== null && (
               <div className="rounded-md border border-success/30 bg-success/5 px-4 py-3">
-                <p className="mb-1 text-xs font-medium uppercase tracking-[0.18em] text-success">
+                <p className="mb-1 text-xs font-medium uppercase tracking-[0.18em] text-success-ink">
                   {t("assignment.gradeEyebrow")}
                 </p>
-                <p className="font-serif text-2xl font-semibold tabular-nums tracking-tight text-success">
+                <p className="font-serif text-2xl font-semibold tabular-nums tracking-tight text-success-ink">
                   {submission.grade}
-                  <span className="text-success/60"> / {assignment.max_score}</span>
+                  <span className="text-success-ink"> / {assignment.max_score}</span>
                 </p>
               </div>
             )}

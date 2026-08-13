@@ -48,7 +48,7 @@ export default function AuthCallback() {
         {timedOut ? (
           <>
             <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center">
-              <span className="text-destructive text-lg font-bold">!</span>
+              <span className="text-destructive-ink text-lg font-bold">!</span>
             </div>
             <span className="text-sm text-destructive font-medium">{t("auth.callback.timedOut")}</span>
             <span className="text-xs text-ink-muted">{t("auth.callback.redirecting")}</span>

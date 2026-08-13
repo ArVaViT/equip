@@ -30,7 +30,7 @@ export function ModulesList({ courseId, modules, onDragEnd, onAdd, onRemove }: P
     <>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="font-serif text-xl font-semibold flex items-center gap-2">
-          <Layers className="h-5 w-5 text-brand/60" strokeWidth={1.75} />
+          <Layers className="h-5 w-5 text-brand" strokeWidth={1.75} />
           {t("teacherEditor.modulesHeading")}
         </h2>
         <Button onClick={onAdd} size="sm" variant="outline">

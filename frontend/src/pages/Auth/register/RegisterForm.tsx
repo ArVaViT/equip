@@ -209,7 +209,7 @@ export function RegisterForm({
           {t("authRegister.alreadyHaveAccount")}{" "}
           <Link
             to="/login"
-            className="text-brand font-medium hover:text-brand/80 transition-colors"
+            className="text-brand font-medium hover:text-brand-ink transition-colors"
           >
             {t("auth.signIn")}
           </Link>

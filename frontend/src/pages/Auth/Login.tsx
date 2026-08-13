@@ -118,7 +118,7 @@ export default function Login() {
               <Label htmlFor="password">{t("auth.password")}</Label>
               <Link
                 to="/forgot-password"
-                className="-my-2 inline-flex min-h-[44px] items-center px-1 text-sm text-brand transition-colors hover:text-brand/80 sm:min-h-0 sm:py-0 sm:text-xs"
+                className="-my-2 inline-flex min-h-[44px] items-center px-1 text-sm text-brand transition-colors hover:text-brand-ink sm:min-h-0 sm:py-0 sm:text-xs"
               >
                 {t("auth.forgotPasswordLink")}
               </Link>
@@ -150,7 +150,7 @@ export default function Login() {
 
         <p className="text-sm text-center text-ink-muted">
           {t("auth.noAccount")}{" "}
-          <Link to="/register" className="text-brand font-medium hover:text-brand/80 transition-colors">
+          <Link to="/register" className="text-brand font-medium hover:text-brand-ink transition-colors">
             {t("auth.createOne")}
           </Link>
         </p>

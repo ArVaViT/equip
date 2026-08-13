@@ -1103,7 +1103,10 @@
       "submitted": "Submitted",
       "graded": "Graded",
       "returned": "Returned"
-    }
+    },
+    "statusUnknownTitle": "Couldn't check whether this was handed in",
+    "statusUnknownHelp": "The form is hidden on purpose: if the work is already submitted, a second copy only confuses you and whoever marks it. Check your connection and try again.",
+    "statusUnknownRetry": "Check again"
   },
   "certificates": {
     "backToCourses": "Back to courses",

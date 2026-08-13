@@ -109,7 +109,7 @@ export default function CoursesPage() {
           <div className="bg-home-hero-glow h-full w-full blur-3xl" aria-hidden />
         </div>
         <div className="relative z-10 mx-auto max-w-2xl px-4 pb-2 pt-6 text-center md:pt-10">
-          <p className="animate-fade-in text-xs font-medium uppercase tracking-[0.22em] text-brand/90 mb-3">
+          <p className="animate-fade-in text-xs font-medium uppercase tracking-[0.22em] text-brand mb-3">
             {t("courses.academicPrograms")}
           </p>
           <h1
@@ -141,7 +141,7 @@ export default function CoursesPage() {
 
       {!user && (
         <div className="mb-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-md border-l-[3px] border-l-info bg-info/5 px-4 py-3 text-center sm:text-left">
-          <LogIn className="h-4 w-4 shrink-0 text-info" strokeWidth={1.75} aria-hidden="true" />
+          <LogIn className="h-4 w-4 shrink-0 text-info-ink" strokeWidth={1.75} aria-hidden="true" />
           <p className="text-sm text-ink">
             <Link
               to="/login"
