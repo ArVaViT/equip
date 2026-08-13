@@ -237,13 +237,11 @@ export default function CohortDetailPage() {
       <PageHeader
         backTo="/admin?tab=cohorts"
         backLabel={t("admin.cohorts.backToList")}
-        title={
+        eyebrow={t("admin.cohorts.eyebrow")}
+        titleSlot={
           <div className="space-y-2">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
-              {t("admin.cohorts.eyebrow")}
-            </p>
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="font-serif text-3xl font-bold tracking-tight text-wrap-safe">
+              <h1 className="font-serif text-2xl font-semibold tracking-tight text-wrap-safe text-ink sm:text-3xl">
                 {cohort.name}
               </h1>
               <CohortStatusPicker

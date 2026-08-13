@@ -90,12 +90,8 @@ export default function DailyChallengeArchivePage() {
   return (
     <Section width="wide">
       <PageHeader
-        title={
-          <h1 className="flex items-center gap-2 font-serif text-2xl font-bold tracking-tight sm:text-3xl">
-            <Sparkles className="h-6 w-6 text-brand" strokeWidth={1.75} aria-hidden />
-            {t("dailyChallenge.archive.title")}
-          </h1>
-        }
+        icon={Sparkles}
+        title={t("dailyChallenge.archive.title")}
         description={
           <p className="text-sm text-ink-muted">
             {t("dailyChallenge.archive.description")}

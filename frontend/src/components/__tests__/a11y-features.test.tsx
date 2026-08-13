@@ -78,7 +78,7 @@ describe("a11y — feature components", () => {
   it("PageHeader (title + description + meta) has no violations", async () => {
     const { container } = render(
       <PageHeader
-        title={<h1>All courses</h1>}
+        title="All courses"
         description="Catalog of published courses."
         meta={<span>42 courses</span>}
       />,

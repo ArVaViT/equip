@@ -107,15 +107,13 @@ export default function DailyChallengeReviewDetailPage() {
       <PageHeader
         backTo="/admin/daily-challenge/review"
         backLabel={t("admin.dailyChallenge.review.backToQueue")}
+        icon={Languages}
         title={
-          <h1 className="flex items-center gap-2 font-serif text-xl font-bold tracking-tight sm:text-2xl">
-            <Languages className="h-5 w-5 text-brand" strokeWidth={1.75} aria-hidden />
-            {view
-              ? `${view.bible_book} ${view.bible_chapter}${
-                  view.bible_verse_from != null ? `:${view.bible_verse_from}` : ""
-                }`
-              : t("admin.dailyChallenge.review.detailTitle")}
-          </h1>
+          view
+            ? `${view.bible_book} ${view.bible_chapter}${
+                view.bible_verse_from != null ? `:${view.bible_verse_from}` : ""
+              }`
+            : t("admin.dailyChallenge.review.detailTitle")
         }
         actions={
           view && (

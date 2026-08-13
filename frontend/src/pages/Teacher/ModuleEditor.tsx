@@ -78,7 +78,7 @@ export default function ModuleEditor() {
       <PageHeader
         backTo={`/teacher/courses/${courseId}`}
         backLabel={t("moduleEditor.backToCourse")}
-        title={
+        titleSlot={
           <InlineEdit
             size="h1"
             value={mod.title}

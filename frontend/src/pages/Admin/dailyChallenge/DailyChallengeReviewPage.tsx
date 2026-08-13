@@ -78,12 +78,8 @@ export default function DailyChallengeReviewPage() {
   return (
     <div className="container mx-auto max-w-5xl px-4 py-6 sm:py-8">
       <PageHeader
-        title={
-          <h1 className="flex items-center gap-2 font-serif text-2xl font-bold tracking-tight sm:text-3xl">
-            <Languages className="h-6 w-6 text-brand" strokeWidth={1.75} aria-hidden />
-            {t("admin.dailyChallenge.review.title")}
-          </h1>
-        }
+        icon={Languages}
+        title={t("admin.dailyChallenge.review.title")}
         description={
           <p className="text-sm text-ink-muted">
             {t("admin.dailyChallenge.review.description")}

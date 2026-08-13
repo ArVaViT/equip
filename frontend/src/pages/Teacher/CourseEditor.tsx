@@ -196,7 +196,7 @@ export default function CourseEditor() {
             />
           </div>
         }
-        title={
+        titleSlot={
           <InlineEdit
             size="h1"
             value={course.title}
