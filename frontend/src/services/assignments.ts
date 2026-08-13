@@ -52,7 +52,14 @@ export const assignmentsService = {
 
   async submitAssignment(
     id: string,
-    data: { content?: string; file_url?: string },
+    data: {
+      content?: string
+      file_url?: string
+      /** What the student says about this piece of work (§4.2). `statement` is
+       *  the text they were shown, sent back so the record holds that rather
+       *  than a key into a catalogue somebody edits next month. */
+      declaration?: { ai_use: "none" | "assisted"; statement: string; note?: string }
+    },
   ): Promise<AssignmentSubmission> {
     const response = await api.post<AssignmentSubmission>(`/assignments/${id}/submit`, data)
     cacheInvalidatePrefix("progress:my:")

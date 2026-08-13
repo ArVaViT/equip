@@ -7,9 +7,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { rubricsService } from "@/services/rubrics"
+import { SubmissionDeclaration, type DeclarationState } from "./SubmissionDeclaration"
+import { declarationStatement } from "./declarationStatement"
 import { RubricGrid } from "@/components/rubric/RubricGrid"
 import { toast } from "@/lib/toast"
-import type { Assignment, AssignmentSubmission, SubmissionRubric } from "@/types"
+import type { AiPolicy, Assignment, AssignmentSubmission, SubmissionRubric } from "@/types"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { formatDate } from "@/i18n/format"
 import {
@@ -26,6 +28,9 @@ import {
 } from "lucide-react"
 
 interface AssignmentPanelProps {
+  /** The course's AI policy, passed down so the declaration says the right
+   *  thing on the screen where the work is actually handed in. */
+  aiPolicy?: AiPolicy
   chapterId: string
   /** Filter down to a single assignment when rendered from a ChapterBlock. */
   assignmentId?: string
@@ -34,7 +39,7 @@ interface AssignmentPanelProps {
   onCountLoaded?: (count: number) => void
 }
 
-export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, onCountLoaded }: AssignmentPanelProps) {
+export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, onCountLoaded, aiPolicy }: AssignmentPanelProps) {
   const { t } = useTranslation()
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [submissionsMap, setSubmissionsMap] = useState<Record<string, AssignmentSubmission | null>>({})
@@ -115,13 +120,26 @@ export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, 
           assignment={assignment}
           initialSubmission={submissionsMap[assignment.id] ?? null}
           onSubmitted={onSubmitted}
+          aiPolicy={aiPolicy}
         />
       ))}
     </div>
   )
 }
 
-function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assignment: Assignment; initialSubmission: AssignmentSubmission | null; onSubmitted?: () => void }) {
+function SingleAssignment({
+  assignment,
+  initialSubmission,
+  onSubmitted,
+  aiPolicy,
+}: {
+  assignment: Assignment
+  initialSubmission: AssignmentSubmission | null
+  onSubmitted?: () => void
+  /** The course's rule about what may be used. Defaults to disclosure, which
+   *  is what the server assumes when a course predates the column. */
+  aiPolicy?: AiPolicy
+}) {
   const { t } = useTranslation()
   const [submission, setSubmission] = useState<AssignmentSubmission | null>(initialSubmission)
   const [content, setContent] = useState("")
@@ -131,6 +149,11 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
   // «summary of your rubric» drifts from the thing the mark came from, and the
   // drift is exactly where «почему у меня 70» stops having an answer.
   const [rubric, setRubric] = useState<SubmissionRubric | null>(null)
+  const [declaration, setDeclaration] = useState<DeclarationState>({
+    confirmed: false,
+    usedAi: false,
+    note: "",
+  })
 
   useEffect(() => {
     setSubmission(initialSubmission)
@@ -155,13 +178,25 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
     }
   }, [submission])
 
+  const policy = aiPolicy ?? "ai_with_disclosure"
+  const declarationNeeded = policy !== "ai_open"
+
   const handleSubmit = async () => {
     if (!content.trim() && !fileUrl.trim()) return
+    if (declarationNeeded && !declaration.confirmed) return
     setSubmitting(true)
     try {
       const sub = await coursesService.submitAssignment(assignment.id, {
         content: content.trim() || undefined,
         file_url: fileUrl.trim() || undefined,
+        declaration: declarationNeeded
+          ? {
+              ai_use: declaration.usedAi ? "assisted" : "none",
+              // The text as displayed, not a pointer to it.
+              statement: declarationStatement(policy, t),
+              note: declaration.usedAi ? declaration.note.trim() || undefined : undefined,
+            }
+          : undefined,
       })
       setSubmission(sub)
       setContent("")
@@ -294,6 +329,9 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
 
         {showForm && (
           <div className="space-y-4">
+            {/* Before the work, not after it: the reminder that was found to
+                work in unproctored settings is one shown ahead of the act. */}
+            <SubmissionDeclaration policy={policy} value={declaration} onChange={setDeclaration} />
             {canResubmit && (
               <div className="rounded-md border border-warning/30 border-l-stripe border-l-warning bg-warning/10 px-3 py-2 text-xs font-medium text-warning">
                 {t("assignment.returnedHint")}
@@ -326,7 +364,13 @@ function SingleAssignment({ assignment, initialSubmission, onSubmitted }: { assi
             </div>
             <Button
               onClick={handleSubmit}
-              disabled={submitting || (!content.trim() && !fileUrl.trim())}
+              // Never pre-ticked, and the button does nothing until it is —
+              // the same rule the legal agreements follow, for the same reason.
+              disabled={
+                submitting ||
+                (!content.trim() && !fileUrl.trim()) ||
+                (declarationNeeded && !declaration.confirmed)
+              }
             >
               {submitting ? (
                 <Loader2 className="mr-1.5 h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
