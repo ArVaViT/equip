@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,9 +15,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { FileText, Loader2, MessageSquare, Save, Star, User } from "lucide-react"
 import { coursesService } from "@/services/courses"
+import { rubricsService } from "@/services/rubrics"
+import { RubricGrid } from "@/components/rubric/RubricGrid"
 import { toast } from "@/lib/toast"
 import { isHttpUrl } from "@/lib/url"
-import type { AssignmentSubmission } from "@/types"
+import type { AssignmentSubmission, SubmissionRubric } from "@/types"
 
 interface Props {
   submission: AssignmentSubmission
@@ -39,6 +41,55 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
   const [feedback, setFeedback] = useState(submission.feedback ?? "")
   const [status, setStatus] = useState(submission.status)
   const [saving, setSaving] = useState(false)
+  // The rubric, when the assignment is marked by one. `null` after loading
+  // means it is not — which is a different screen from «rubric, nothing chosen».
+  const [rubric, setRubric] = useState<SubmissionRubric | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    rubricsService
+      .forSubmission(submission.id)
+      .then((r) => {
+        if (!cancelled) setRubric(r)
+      })
+      // An assignment without a rubric is the ordinary case today. A failure
+      // here must not take the number field down with it.
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [submission.id])
+
+  const choose = async (criterionId: string, levelId: string) => {
+    if (!rubric?.rubric) return
+    const next = [
+      ...rubric.marks.filter((m) => m.criterion_id !== criterionId),
+      { criterion_id: criterionId, level_id: levelId, points: 0, comment: null },
+    ]
+    setSaving(true)
+    try {
+      const updated = await rubricsService.setMarks(
+        submission.id,
+        next.map((m) => ({ criterion_id: m.criterion_id, level_id: m.level_id })),
+        feedback.trim() || undefined,
+      )
+      setRubric(updated)
+      // The row above is told it was graded only when the grid is complete —
+      // the same condition the server applies before it writes a number and
+      // notifies the student. Announcing a grade the server did not write is
+      // how the two sides start disagreeing about whether the student knows.
+      const complete = updated.rubric?.criteria.every((c) =>
+        updated.marks.some((m) => m.criterion_id === c.id),
+      )
+      if (complete && updated.earned !== null) {
+        onUpdate({ ...submission, grade: updated.earned, status: "graded" })
+      }
+    } catch {
+      toast({ title: t("rubric.saveFailed"), variant: "destructive" })
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const save = async () => {
     setSaving(true)
@@ -92,6 +143,22 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
           </a>
         )}
 
+        {rubric?.rubric && (
+          <div className="rounded-md border border-edge bg-surface p-2.5">
+            <p className="mb-2 text-xs font-medium text-ink-muted">{rubric.rubric.title}</p>
+            <RubricGrid
+              rubric={rubric.rubric}
+              marks={rubric.marks}
+              onChoose={choose}
+              disabled={saving}
+            />
+          </div>
+        )}
+
+        {/* Hidden when a rubric decides the number: two ways to set one mark on
+            one screen is an invitation to set them to different values, and the
+            rubric is the one with a record of why. */}
+        {!rubric?.rubric && (
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
             <Star className="h-3.5 w-3.5 text-ink-muted" strokeWidth={1.75} />
@@ -129,6 +196,7 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
             </SelectContent>
           </Select>
         </div>
+        )}
 
         <div className="space-y-1">
           <Label className="text-xs flex items-center gap-1">
