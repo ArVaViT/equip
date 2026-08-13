@@ -63,14 +63,38 @@ def lookup(ref: BibleRef, locale: LocaleCode) -> str | None:
     if not data:
         return None
     if ref.verse_end is None:
-        return data.get(f"{ref.book}.{ref.chapter}.{ref.verse_start}")
+        return _verse(data, ref.book, ref.chapter, ref.verse_start)
     parts: list[str] = []
     for v in range(ref.verse_start, ref.verse_end + 1):
-        text = data.get(f"{ref.book}.{ref.chapter}.{v}")
+        text = _verse(data, ref.book, ref.chapter, v)
         if text is None:
             return None
         parts.append(text)
     return " ".join(parts)
+
+
+#: Text that is present in the bundle but is not a verse.
+#:
+#: `kjv-en.json` carries `3john.1.15 == "[]"`. KJV numbers 3 John to fourteen
+#: verses; other traditions have fifteen, and the bundle marks the gap with a
+#: placeholder rather than omitting the key. `post_substitute` pastes whatever
+#: `lookup` returns into a student's blockquote, so a lesson citing 3 John 15
+#: printed a literal `[]` where Scripture should be.
+#:
+#: One verse rather than the Russian bundle's several thousand, and the same
+#: rule applies: a placeholder is an absence, and an absence is safe — the
+#: caller falls back to the author's own quotation.
+_PLACEHOLDERS = frozenset({"[]", "()", "-", "—"})
+
+
+def _verse(data: dict[str, str], book: str, chapter: int, verse: int) -> str | None:
+    text = data.get(f"{book}.{chapter}.{verse}")
+    if text is None:
+        return None
+    stripped = text.strip()
+    if not stripped or stripped in _PLACEHOLDERS:
+        return None
+    return text
 
 
 def is_locale_bundled(locale: LocaleCode) -> bool:

@@ -76,3 +76,18 @@ def test_this_guard_is_temporary_and_says_so() -> None:
         "If the Russian bundle was replaced, drop it from UNTRUSTED_QUOTE_LOCALES; "
         "if another locale was bundled, verify it before trusting it."
     )
+
+
+def test_a_placeholder_is_not_a_verse() -> None:
+    """`kjv-en.json` marks a versification gap with a literal `[]`.
+
+    KJV numbers 3 John to fourteen verses; other traditions have fifteen, and
+    the bundle keeps the key with `"[]"` as its text. Unguarded, a lesson
+    citing 3 John 15 pasted `[]` into a student's blockquote where Scripture
+    should be. One verse rather than the Russian bundle's thousands, and the
+    same rule: a placeholder is an absence, and an absence is safe.
+    """
+    assert lookup(_ref("3john", 1, 15), "en") is None
+    # And the verse before it, which is real, still resolves — the guard must
+    # not have quietly disabled the book.
+    assert lookup(_ref("3john", 1, 14), "en") is not None
