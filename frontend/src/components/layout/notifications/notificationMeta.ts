@@ -1,10 +1,9 @@
 import {
   Award,
   Bell,
-  BookOpen,
   ClipboardCheck,
   Megaphone,
-  UserCheck,
+  RotateCcw,
   XCircle,
 } from "lucide-react"
 import type { NotificationType } from "@/types"
@@ -23,8 +22,7 @@ export const NOTIFICATION_ICONS: Record<NotificationType, typeof Bell> = {
   certificate_rejected: XCircle,
   assignment_graded: ClipboardCheck,
   new_announcement: Megaphone,
-  course_update: BookOpen,
-  enrollment_confirmed: UserCheck,
+  retake_requested: RotateCcw,
 }
 
 export const NOTIFICATION_COLORS: Record<NotificationType, string> = {
@@ -32,8 +30,24 @@ export const NOTIFICATION_COLORS: Record<NotificationType, string> = {
   certificate_rejected: "text-destructive",
   assignment_graded: "text-info",
   new_announcement: "text-warning",
-  course_update: "text-ink-muted",
-  enrollment_confirmed: "text-success",
+  retake_requested: "text-warning",
+}
+
+/**
+ * Look up the icon and colour for a kind that may not be one we know.
+ *
+ * `Notification["type"]` is deliberately wider than `NotificationType`: the
+ * server stopped validating the kind on read (a list must not 500 because one
+ * row is unfamiliar), so a newer backend can send something this build has
+ * never heard of. The fallback lives here, once, rather than as a cast at
+ * every call site.
+ */
+export function iconFor(type: string): typeof Bell {
+  return NOTIFICATION_ICONS[type as NotificationType] ?? Bell
+}
+
+export function colorFor(type: string): string {
+  return NOTIFICATION_COLORS[type as NotificationType] ?? "text-ink-muted"
 }
 
 /** Translator type matches react-i18next's ``useTranslation().t``. */
