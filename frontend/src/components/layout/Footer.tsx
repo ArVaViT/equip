@@ -3,82 +3,106 @@ import { useTranslation } from "react-i18next"
 import { SUPPORT_EMAIL } from "@/lib/brand"
 
 /**
- * The end of the page, set as a colophon.
+ * The end of the public page — and only the public page.
  *
- * Before this it was a 12px legal strip: brand, tagline, support address,
- * copyright, all on one line. Correct, and it read as the bottom of a form.
+ * Two corrections here, both from being told the previous version was worse
+ * and then going to measure instead of arguing.
  *
- * Three mechanisms, all taken from places that do this well and all cheap:
+ * **It is not inverted.** The last one flipped to a hard tonal block, on the
+ * theory that inversion reads as a full stop. Linear's footer is
+ * `rgb(8,9,10)` — the same value as their page — separated by a single 1px
+ * border. Vercel's marketing footer does the same. An inverted slab under a
+ * page is what a 2013 site does to announce "the content is over"; a hairline
+ * does the same job without dropping a brick on the layout.
  *
- * 1. **A hard tonal inversion**, not a tinted band. Anthropic's footer flips to
- *    near-black under an ivory page, and that inversion is what makes it read
- *    as a full stop rather than as more page. It costs one background colour.
- * 2. **One type size, hierarchy by colour.** Apple's footer is entirely 12px —
- *    section titles included — and sorts itself with three steps of opacity.
- *    Nothing is bolder or bigger; the eye is led by contrast alone.
+ * **It has structure.** The last one was a serif wordmark, a tagline and a
+ * right-aligned column of four links — a magazine colophon, which is exactly
+ * the register that reads as old. Linear's footer has six columns and
+ * forty-three links under 13px headings. We do not have forty-three links,
+ * but we do have two distinct kinds, and saying so in two labelled columns is
+ * the difference between a footer and a leftover.
  *
- *    The rungs are 100 / 80 / 65, and they are not free choices. The footer
- *    inverts in *both* themes — a near-black band under a cream page, and a
- *    cream band under a dark one — and the two inversions do not have the same
- *    headroom. Dark is the binding side: the alpha floor for AA body text
- *    there is 0.60 (4.55:1), against 0.50 in light. 65% is therefore the
- *    quietest a line here may go and still be readable by someone who is
- *    not me.
- *
- *    The first version set the colophon at 40%, which measures 3.6:1, and the
- *    second at 55%, which passes in light and fails in dark. Both were
- *    caught by machines rather than by looking — which is the whole argument
- *    for `contrast-floor.test.ts` computing this from the palette instead of
- *    anybody, including me, eyeballing it.
- * 3. **No dividers.** The columns are held by the grid. Rules between footer
- *    columns are what a sitemap does; a colophon does not need them.
- *
- * The school's name is set in the serif at a size that means it — the one
- * place besides the masthead where the institution signs the page.
+ * It renders from `PublicLanding` and nowhere else. The application shell has
+ * no footer at all — see the note in `App.tsx`.
  */
 export default function Footer() {
   const { t } = useTranslation()
   const year = new Date().getFullYear()
 
   const linkClass =
-    "text-ink-inverted/80 transition-colors duration-200 hover:text-ink-inverted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-inverted/70 focus-visible:ring-offset-0 rounded-sm"
+    "rounded-sm text-ink-muted transition-colors duration-fast ease-out hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+  const headingClass = "text-xs font-medium uppercase tracking-[0.14em] text-ink"
 
   return (
-    <footer className="mt-auto bg-ink text-ink-inverted">
-      <div className="container mx-auto max-w-[1400px] px-4 py-10 md:px-6 md:py-14">
-        <div className="grid gap-8 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-          <div className="max-w-sm">
+    <footer className="mt-24 border-t border-edge">
+      <div className="container mx-auto max-w-5xl px-4 py-14 md:py-16">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+          <div className="max-w-xs">
             <Link
               to="/"
-              className="font-serif text-xl font-semibold tracking-[-0.01em] text-ink-inverted transition-opacity duration-200 hover:opacity-80 md:text-2xl"
+              className="font-serif text-xl font-semibold tracking-[-0.02em] text-ink transition-opacity duration-fast hover:opacity-70"
             >
               {t("common.appName")}
             </Link>
-            <p className="mt-2 text-sm leading-relaxed text-ink-inverted/80">
-              {t("footer.tagline")}
-            </p>
+            <p className="mt-3 text-sm leading-relaxed text-ink-muted">{t("footer.tagline")}</p>
           </div>
 
-          <div className="flex flex-col gap-1.5 text-sm sm:items-end">
-            <a href={`mailto:${SUPPORT_EMAIL}`} className={linkClass}>
-              {t("footer.support")}
-            </a>
-            {/* The privacy step has promised since the beginning that the full
-                version is «всегда доступна из футера». It was not, and there
-                was no full version to link to. Both are true now. */}
-            <Link to="/privacy" className={linkClass}>
-              {t("legal.privacy")}
-            </Link>
-            <Link to="/terms" className={linkClass}>
-              {t("legal.terms")}
-            </Link>
-            {/* The year and the name, last and quietest — a colophon line, not
-                a legal notice competing with the rest. */}
-            <p className="text-ink-inverted/65">
-              © {year} {t("common.appName")}
+          <nav aria-labelledby="footer-product">
+            <p id="footer-product" className={headingClass}>
+              {t("footer.product")}
             </p>
-          </div>
+            {/* Only destinations a signed-out visitor can actually reach.
+                `/calendar` and `/certificates` are behind `Gate mode="private"`,
+                so putting them here would send a stranger who is reading the
+                marketing page straight into a login wall. */}
+            <ul className="mt-4 space-y-2.5 text-sm">
+              <li>
+                <Link to="/courses" className={linkClass}>
+                  {t("header.courses")}
+                </Link>
+              </li>
+              <li>
+                <Link to="/register" className={linkClass}>
+                  {t("common.register")}
+                </Link>
+              </li>
+              <li>
+                <Link to="/login" className={linkClass}>
+                  {t("common.signIn")}
+                </Link>
+              </li>
+            </ul>
+          </nav>
+
+          <nav aria-labelledby="footer-legal">
+            <p id="footer-legal" className={headingClass}>
+              {t("footer.legal")}
+            </p>
+            <ul className="mt-4 space-y-2.5 text-sm">
+              <li>
+                <Link to="/privacy" className={linkClass}>
+                  {t("legal.privacy")}
+                </Link>
+              </li>
+              <li>
+                <Link to="/terms" className={linkClass}>
+                  {t("legal.terms")}
+                </Link>
+              </li>
+              <li>
+                <a href={`mailto:${SUPPORT_EMAIL}`} className={linkClass}>
+                  {t("footer.support")}
+                </a>
+              </li>
+            </ul>
+          </nav>
         </div>
+
+        {/* The colophon line, last and smallest. It is the only thing here
+            that is not a way of getting somewhere. */}
+        <p className="mt-12 border-t border-edge pt-6 text-xs text-ink-muted">
+          © {year} {t("common.appName")}
+        </p>
       </div>
     </footer>
   )

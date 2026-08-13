@@ -59,7 +59,9 @@
   "footer": {
     "tagline": "Structured biblical teaching for learners who take Scripture seriously.",
     "support": "Contact support",
-    "rightsReserved": "All rights reserved."
+    "rightsReserved": "All rights reserved.",
+    "product": "Product",
+    "legal": "Legal"
   },
   "landing": {
     "hero": {

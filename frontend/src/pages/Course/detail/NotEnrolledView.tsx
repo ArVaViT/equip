@@ -201,7 +201,7 @@ export function NotEnrolledView({
           // surfaced the prior conditional that hid Enroll from owners.
           <div className="flex flex-wrap items-center gap-3">
             <Link to={`/teacher/courses/${course.id}`}>
-              <Button size="lg" className="cta-glow">
+              <Button size="lg">
                 {t("courseDetail.manageCourse")}
               </Button>
             </Link>
@@ -235,7 +235,6 @@ export function NotEnrolledView({
               onClick={handleEnrollClick}
               disabled={enrolling || !canEnroll}
               size="lg"
-              className={!canEnroll ? undefined : "cta-glow"}
             >
               <Users className="mr-2 h-4 w-4" strokeWidth={1.75} aria-hidden />
               {!canEnroll
@@ -254,7 +253,7 @@ export function NotEnrolledView({
           </div>
         ) : (
           <Link to="/login">
-            <Button size="lg" className="cta-glow">
+            <Button size="lg">
               {t("courseDetail.signInToEnroll")}
             </Button>
           </Link>

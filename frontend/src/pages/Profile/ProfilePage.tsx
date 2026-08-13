@@ -354,7 +354,27 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <div className="border-t border-edge pt-6">
+        {/* The two documents used to hang off the app-shell footer. That
+            footer is gone — an application does not have one — so they live
+            here, one click from the avatar, which is where a signed-in person
+            looks for their own account's terms. They remain public at
+            `/privacy` and `/terms` for everybody else. */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-edge pt-5 text-sm">
+          <Link
+            to="/privacy"
+            className="text-ink-muted underline-offset-4 transition-colors duration-fast hover:text-ink hover:underline"
+          >
+            {t("legal.privacy")}
+          </Link>
+          <Link
+            to="/terms"
+            className="text-ink-muted underline-offset-4 transition-colors duration-fast hover:text-ink hover:underline"
+          >
+            {t("legal.terms")}
+          </Link>
+        </div>
+
+        <div className="pt-2">
           <Button
             variant="outline"
             className="w-full border-destructive/35 text-destructive-ink transition-colors duration-200 hover:bg-destructive/10 hover:text-destructive-ink"

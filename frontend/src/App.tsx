@@ -11,7 +11,6 @@ import ErrorBoundary from "./components/ErrorBoundary"
 import { Toaster } from "./components/ui/sonner"
 import { ConfirmProvider } from "./components/ui/alert-dialog"
 import Header from "./components/layout/Header"
-import Footer from "./components/layout/Footer"
 import AnnouncementBanner from "./components/announcements/AnnouncementBanner"
 import PageSpinner from "./components/ui/PageSpinner"
 import ScrollToTop from "./components/layout/ScrollToTop";
@@ -245,7 +244,19 @@ function AppRoutes() {
           </Suspense>
         </ErrorBoundary>
       </main>
-      <Footer />
+      {/* No footer in the application shell.
+       *
+       * There was an inverted colophon under every screen — a serif wordmark,
+       * a tagline and a right-aligned link list, on the dashboard, inside a
+       * chapter, under the grading queue. Vercel's dashboard has no footer.
+       * Linear's app has no footer. Notion has no footer. A footer is a
+       * marketing-page organ, and bolting one under an application is the
+       * clearest way to make the application look like a 2013 website.
+       *
+       * `Footer` still exists and is rendered by `PublicLanding`, which is the
+       * page it was written for. The two legal documents it used to carry are
+       * now in the account menu, where a signed-in person would look for them
+       * anyway. */}
       <ScrollToTop />
       <Toaster />
       {/* First-run gate: Privacy Policy + Quick Setup, blocking until

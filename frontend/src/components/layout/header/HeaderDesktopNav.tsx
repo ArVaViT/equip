@@ -25,7 +25,11 @@ export function HeaderDesktopNav({ isTeacher, role }: Props) {
   return (
     <nav
       data-tour="header-nav"
-      className="hidden min-w-0 flex-1 flex-wrap items-stretch justify-center md:flex"
+      // Left-aligned beside the wordmark, not centred. A centred row of links is
+      // a marketing-site navbar; this is application chrome, and every reference
+      // that people actually call modern anchors navigation to one edge so the
+      // eye has a fixed place to return to.
+      className="hidden min-w-0 flex-1 items-center gap-0.5 md:flex"
       aria-label={t("header.navAriaLabel")}
     >
       <HeaderNavLink to="/" active={location.pathname === "/"}>

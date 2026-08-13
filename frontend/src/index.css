@@ -49,20 +49,43 @@
     /* Symmetric, for things that open and close along the same path. */
     --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 
-    --background: 42 50% 96%;
-    --foreground: 22 13% 12%;
-    --card: 42 40% 93.5%;
-    --card-foreground: 22 13% 12%;
-    --popover: 42 36% 90.5%;
-    --popover-foreground: 22 13% 12%;
-    --primary: 9 54% 40%;
-    --primary-foreground: 42 50% 96%;
-    --secondary: 42 34% 87%;
-    --secondary-foreground: 22 13% 12%;
-    --muted: 42 44% 98%;
-    --muted-foreground: 35 11% 39%;
+    /* Surfaces are nearly neutral, and that is the whole correction.
+     *
+     * These were `42 50% 96%` — hue 42 at **fifty per cent saturation**, on
+     * every square inch of an application people read for an hour at a time.
+     * Measured against the thing it was supposedly referencing: anthropic.com
+     * is `48 33% 97%`, so ours was half again as saturated as the original.
+     * Linear's page is `rgb(8,9,10)`, Vercel's is pure black — both
+     * effectively zero. «Почему всё оранжевое» was never about the accent. It
+     * was the paper.
+     *
+     * 12% keeps the warmth as a temperature rather than as a colour: beside a
+     * true neutral it reads warm, and on its own it reads like paper.
+     *
+     * The card is **white**. A tinted card on a tinted page was five tonal
+     * steps of one hue with nothing to push against; white on warm off-white
+     * is the contrast Stripe, Linear and Vercel all use, and it is what makes
+     * a card read as an object rather than as a slightly different region of
+     * the background. */
+    --background: 40 12% 97%;
+    --foreground: 30 8% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 30 8% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 30 8% 11%;
+    /* Near-black, not a hue. The accent was terracotta — Anthropic's clay,
+     * borrowed rather than chosen, and Vadym said so. The modern answer is
+     * not a different hue but *no* hue: the primary action is the darkest
+     * thing on the page, and colour is spent only where it carries meaning —
+     * a pass, a fail, a piece of work waiting for a mark. */
+    --primary: 30 8% 11%;
+    --primary-foreground: 40 12% 97%;
+    --secondary: 40 10% 93%;
+    --secondary-foreground: 30 8% 11%;
+    --muted: 40 10% 94%;
+    --muted-foreground: 35 7% 40%;
     --accent: 133 17% 37%;
-    --accent-foreground: 42 50% 96%;
+    --accent-foreground: 40 12% 97%;
     --destructive: 0 70% 42%;
     --destructive-foreground: 0 0% 98%;
     --success: 156 45% 34%;
@@ -90,7 +113,7 @@
      * still be nudged without breaking.
      *
      * `contrast-floor.test.ts` recomputes all of it on every run. */
-    --brand-ink: 9 54% 36%;
+    --brand-ink: 30 8% 11%;
     --destructive-ink: 0 70% 36.5%;
     --success-ink: 156 45% 26%;
     --warning-ink: 30 85% 28.5%;
@@ -102,19 +125,19 @@
      * warm page and read as "white panels". Fix = put the clear gray hairline
      * back (87% L) AND give cards their border again (.surface-card +
      * ui/card.tsx) — the cohesive bordered-card look that read as normal. */
-    --border: 42 28% 79%;
-    --input: 42 28% 79%;
-    --ring: 9 54% 40%;
+    --border: 40 10% 89%;
+    --input: 40 10% 89%;
+    --ring: 30 8% 11%;
     --radius: 0.5rem;
 
-    --sidebar: 42 40% 92%;
-    --sidebar-foreground: 22 13% 12%;
-    --sidebar-border: 42 28% 79%;
-    --sidebar-accent: 42 34% 87%;
-    --sidebar-accent-foreground: 9 54% 40%;
-    --sidebar-ring: 9 54% 40%;
+    --sidebar: 40 10% 95%;
+    --sidebar-foreground: 30 8% 11%;
+    --sidebar-border: 40 10% 89%;
+    --sidebar-accent: 40 10% 93%;
+    --sidebar-accent-foreground: 30 8% 11%;
+    --sidebar-ring: 30 8% 11%;
 
-    --chart-1: 9 54% 40%;
+    --chart-1: 30 8% 25%;
     --chart-2: 133 17% 37%;
     --chart-3: 156 45% 34%;
     --chart-4: 30 85% 42%;
@@ -129,20 +152,26 @@
   }
 
   .dark {
-    --background: 26 16% 8%;
-    --foreground: 39 40% 92%;
-    --card: 27 15% 12%;
-    --card-foreground: 39 40% 92%;
-    --popover: 27 14% 16%;
-    --popover-foreground: 39 40% 92%;
-    --primary: 13 64% 67%;
-    --primary-foreground: 26 16% 8%;
-    --secondary: 27 14% 15%;
-    --secondary-foreground: 39 40% 92%;
-    --muted: 26 16% 5.5%;
-    --muted-foreground: 34 14% 60%;
+    /* Same correction, other end. `26 16% 8%` was a *brown* near-black and
+     * `39 40% 92%` a strongly warm cream for every word on screen — which is
+     * where «всё оранжевое» came from in the dark theme. 6% and 12% keep the
+     * temperature and drop the colour. */
+    --background: 30 6% 7%;
+    --foreground: 40 12% 93%;
+    --card: 30 5% 11%;
+    --card-foreground: 40 12% 93%;
+    --popover: 30 5% 13%;
+    --popover-foreground: 40 12% 93%;
+    /* Near-white: the inverse of the light theme's near-black, so the primary
+     * action is the brightest thing on the page rather than the reddest. */
+    --primary: 40 12% 95%;
+    --primary-foreground: 30 6% 7%;
+    --secondary: 30 5% 15%;
+    --secondary-foreground: 40 12% 93%;
+    --muted: 30 6% 4%;
+    --muted-foreground: 35 7% 62%;
     --accent: 129 17% 63%;
-    --accent-foreground: 26 16% 8%;
+    --accent-foreground: 30 6% 7%;
     --destructive: 0 58% 50%;
     --destructive-foreground: 0 0% 98%;
     --success: 156 38% 46%;
@@ -151,25 +180,25 @@
     --warning-foreground: 240 12% 10%;
     --info: 215 72% 58%;
     --info-foreground: 240 12% 10%;
-    --brand-ink: 13 64% 70.5%;
+    --brand-ink: 40 12% 95%;
     --destructive-ink: 0 58% 69%;
     --success-ink: 156 38% 54%;
     --warning-ink: 32 78% 58.5%;
     --info-ink: 215 72% 68.5%;
     /* Dark mode restored to the pre-overhaul 19% L hairline (matches --input),
      * the visible-divider value from "a couple days ago". */
-    --border: 30 15% 21%;
-    --input: 30 15% 21%;
-    --ring: 13 64% 67%;
+    --border: 30 6% 19%;
+    --input: 30 6% 19%;
+    --ring: 40 12% 95%;
 
-    --sidebar: 26 16% 8%;
-    --sidebar-foreground: 39 40% 92%;
-    --sidebar-border: 30 15% 21%;
-    --sidebar-accent: 27 14% 15%;
-    --sidebar-accent-foreground: 13 64% 67%;
+    --sidebar: 30 6% 7%;
+    --sidebar-foreground: 40 12% 93%;
+    --sidebar-border: 30 6% 19%;
+    --sidebar-accent: 30 5% 15%;
+    --sidebar-accent-foreground: 40 12% 95%;
     --sidebar-ring: 262 58% 72%;
 
-    --chart-1: 13 64% 67%;
+    --chart-1: 40 12% 80%;
     --chart-2: 129 17% 63%;
     --chart-3: 156 38% 46%;
     --chart-4: 32 78% 54%;
@@ -387,31 +416,16 @@
       transform: translateX(100%);
     }
   }
-  /* Full-bleed hero glow — soft mesh, no box border needed */
-  .bg-home-hero-glow {
-    border-radius: 9999px;
-    background-image:
-      radial-gradient(closest-side at 50% 40%, hsl(var(--primary) / 0.2) 0%, transparent 85%),
-      radial-gradient(closest-side at 70% 30%, hsl(var(--accent) / 0.14) 0%, transparent 80%),
-      radial-gradient(closest-side at 25% 60%, hsl(265 45% 82% / 0.35) 0%, transparent 75%);
-    animation: hero-breathe 18s ease-in-out infinite alternate;
-  }
-  html.dark .bg-home-hero-glow {
-    background-image:
-      radial-gradient(closest-side at 50% 38%, hsl(var(--primary) / 0.28) 0%, transparent 85%),
-      radial-gradient(closest-side at 72% 28%, hsl(146 30% 40% / 0.12) 0%, transparent 80%),
-      radial-gradient(closest-side at 22% 58%, hsl(265 40% 46% / 0.14) 0%, transparent 78%);
-  }
-  @keyframes hero-breathe {
-    0% {
-      opacity: 0.85;
-      transform: scale(0.96);
-    }
-    100% {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
+  /* The hero glow is gone, and it had survived one deletion already.
+   *
+   * Three stacked radial gradients — one of them still violet, `hsl(265 45%
+   * 82%)` — breathing on an 18-second loop behind the two most-visited public
+   * pages. An animated aurora blob is the single most-named marker of a
+   * template site in current practitioner discussion, and it was sitting under
+   * the word «Equip» while the art-direction note claimed it had been removed.
+   *
+   * It also cost the most: `blur-3xl` on a 700×400 element is a full-screen
+   * composite every frame, forever, on the phones our students read on. */
 
   @media (prefers-reduced-motion: reduce) {
     .animate-fade-in {
@@ -423,9 +437,6 @@
       animation: none !important;
       opacity: 1;
       transform: none;
-    }
-    .bg-home-hero-glow {
-      animation: none;
     }
   }
 
@@ -576,61 +587,17 @@
    Off by default. Apply on hero headlines, CTA hovers, success states,
    anywhere DESIGN.md sanctions as an "expressive moment". Do not blanket. */
 @layer utilities {
-  .text-gradient-primary {
-    background-image: linear-gradient(
-      120deg,
-      hsl(var(--primary)) 0%,
-      hsl(var(--accent)) 50%,
-      hsl(var(--primary)) 100%
-    );
-    background-size: 200% 100%;
-    background-clip: text;
-    color: transparent;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-  @media (prefers-reduced-motion: no-preference) {
-    .text-gradient-primary {
-      animation: text-gradient-shift 8s ease-in-out infinite alternate;
-    }
-  }
-  @keyframes text-gradient-shift {
-    from {
-      background-position: 0% 0%;
-    }
-    to {
-      background-position: 100% 0%;
-    }
-  }
+  /* `.text-gradient-primary` deleted along with `@keyframes
+   * text-gradient-shift`. It painted a heading in a three-stop gradient that
+   * slid on an eight-second loop — the second-most-named marker of a template
+   * site after the aurora blob, and it was on the catalogue heading, which is
+   * the first page a stranger sees. A heading is set in ink. */
 
-  .cta-glow {
-    position: relative;
-    isolation: isolate;
-  }
-  .cta-glow::after {
-    content: "";
-    position: absolute;
-    inset: -1px;
-    z-index: -1;
-    border-radius: inherit;
-    background: radial-gradient(
-      80% 120% at 50% 100%,
-      hsl(var(--primary) / 0.35) 0%,
-      transparent 70%
-    );
-    opacity: 0;
-    transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-    pointer-events: none;
-  }
-  .cta-glow:hover::after,
-  .cta-glow:focus-visible::after {
-    opacity: 1;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .cta-glow::after {
-      transition: none;
-    }
-  }
+  /* `.cta-glow` deleted. It painted a radial wash behind the primary button
+   * on hover — decorative light, the same family as the aurora blob, and it
+   * stopped making any sense at all once the accent became near-black: a dark
+   * smudge under a dark button. The button already answers a pointer by
+   * lightening and by taking a 1.5% press. That is the whole affordance. */
 }
 
 /* ===== Prose — editorial reader =====
