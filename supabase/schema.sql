@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict AdqbouUUiwdEl49L1U7ihyaR4jFDbDZ8j4WxNIh0b1pu6Xe8KvmX4BHaZM7Oq48
+\restrict oxcdr6h51K2kSOs6lB9c5zKZFlZg83KmndE3FRaPZf3CxvTIpbx0ooVHvnaDrLZ
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10 (Homebrew)
@@ -461,12 +461,14 @@ CREATE TABLE public.courses (
     grading_scheme text DEFAULT 'letter'::text NOT NULL,
     pass_threshold numeric(5,2) DEFAULT 70 NOT NULL,
     academic_hours integer,
+    ai_policy text DEFAULT 'ai_with_disclosure'::text NOT NULL,
     CONSTRAINT chk_courses_status CHECK ((status = ANY (ARRAY['draft'::text, 'published'::text]))),
     CONSTRAINT ck_courses_participation_retired CHECK ((participation_weight = 0)),
     CONSTRAINT ck_courses_scheme_threshold CHECK (((grading_scheme <> 'five_point'::text) OR (pass_threshold <= (75)::numeric))),
     CONSTRAINT ck_courses_weights_sum_100 CHECK ((((quiz_weight + assignment_weight) + participation_weight) = 100)),
     CONSTRAINT courses_academic_hours_check CHECK ((academic_hours > 0)),
     CONSTRAINT courses_access_mode_check CHECK ((access_mode = ANY (ARRAY['public'::text, 'institute'::text]))),
+    CONSTRAINT courses_ai_policy_check CHECK ((ai_policy = ANY (ARRAY['ai_forbidden'::text, 'ai_with_disclosure'::text, 'ai_open'::text]))),
     CONSTRAINT courses_grading_scheme_check CHECK ((grading_scheme = ANY (ARRAY['pass_fail'::text, 'percent'::text, 'five_point'::text, 'letter'::text]))),
     CONSTRAINT courses_pass_threshold_check CHECK (((pass_threshold >= (0)::numeric) AND (pass_threshold <= (100)::numeric))),
     CONSTRAINT courses_source_locale_check CHECK (((source_locale)::text = ANY (ARRAY[('ru'::character varying)::text, ('en'::character varying)::text])))
@@ -950,6 +952,23 @@ END) <= 1)),
 
 
 --
+-- Name: submission_declarations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.submission_declarations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    submission_id uuid NOT NULL,
+    policy text NOT NULL,
+    statement text NOT NULL,
+    ai_use text NOT NULL,
+    accepted_at timestamp with time zone DEFAULT now() NOT NULL,
+    ip text,
+    CONSTRAINT submission_declarations_ai_use_check CHECK ((ai_use = ANY (ARRAY['none'::text, 'assisted'::text]))),
+    CONSTRAINT submission_declarations_policy_check CHECK ((policy = ANY (ARRAY['ai_forbidden'::text, 'ai_with_disclosure'::text, 'ai_open'::text])))
+);
+
+
+--
 -- Name: translation_jobs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1369,6 +1388,14 @@ ALTER TABLE ONLY public.student_grades
 
 
 --
+-- Name: submission_declarations submission_declarations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.submission_declarations
+    ADD CONSTRAINT submission_declarations_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: translation_jobs translation_jobs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1382,6 +1409,14 @@ ALTER TABLE ONLY public.translation_jobs
 
 ALTER TABLE ONLY public.rubric_marks
     ADD CONSTRAINT uq_rubric_marks_submission_criterion UNIQUE (submission_id, criterion_id);
+
+
+--
+-- Name: submission_declarations uq_submission_declarations_submission; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.submission_declarations
+    ADD CONSTRAINT uq_submission_declarations_submission UNIQUE (submission_id);
 
 
 --
@@ -1949,6 +1984,13 @@ CREATE INDEX ix_student_grades_cohort_id ON public.student_grades USING btree (c
 --
 
 CREATE INDEX ix_student_grades_graded_by ON public.student_grades USING btree (graded_by);
+
+
+--
+-- Name: ix_submission_declarations_submission; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_submission_declarations_submission ON public.submission_declarations USING btree (submission_id);
 
 
 --
@@ -2779,6 +2821,14 @@ ALTER TABLE ONLY public.student_grades
 
 
 --
+-- Name: submission_declarations submission_declarations_submission_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.submission_declarations
+    ADD CONSTRAINT submission_declarations_submission_id_fkey FOREIGN KEY (submission_id) REFERENCES public.assignment_submissions(id) ON DELETE CASCADE;
+
+
+--
 -- Name: translation_jobs translation_jobs_course_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3311,5 +3361,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict AdqbouUUiwdEl49L1U7ihyaR4jFDbDZ8j4WxNIh0b1pu6Xe8KvmX4BHaZM7Oq48
+\unrestrict oxcdr6h51K2kSOs6lB9c5zKZFlZg83KmndE3FRaPZf3CxvTIpbx0ooVHvnaDrLZ
 

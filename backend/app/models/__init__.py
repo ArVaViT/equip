@@ -32,6 +32,7 @@ from app.models.rubric import (
     RubricMark,
 )
 from app.models.student_grade import StudentGrade
+from app.models.submission_declaration import SubmissionDeclaration
 from app.models.user import User, UserRole
 
 __all__ = [
@@ -72,6 +73,7 @@ __all__ = [
     "RubricLevel",
     "RubricMark",
     "StudentGrade",
+    "SubmissionDeclaration",
     "User",
     "UserRole",
 ]

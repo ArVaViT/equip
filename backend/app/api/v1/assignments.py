@@ -19,6 +19,7 @@ from app.core.metrics import increment
 from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Course, Module
+from app.models.submission_declaration import SubmissionDeclaration
 from app.models.user import User, UserRole
 from app.schemas.assignment import (
     AssignmentCreate,
@@ -275,6 +276,7 @@ def _refuse_if_already_marked(db: Session, assignment_id: UUID, student_id: UUID
 def submit_assignment(
     assignment_id: UUID,
     data: SubmissionCreate,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -311,6 +313,15 @@ def submit_assignment(
 
     _refuse_if_already_marked(db, assignment_id, current_user.id)
 
+    course = db.query(Course).filter(Course.id == course_id).first()
+    policy = (course.ai_policy if course else None) or "ai_with_disclosure"
+    # Deliberately not required yet. Making it required in the same release
+    # that teaches the client to send it leaves a window where a student on a
+    # stale bundle cannot hand in their work — and the honest alternative,
+    # recording an empty declaration for them, would put a statement in the
+    # record that nobody made. The requirement lands in the release after this
+    # one, when every client already sends it.
+
     submission = AssignmentSubmission(
         assignment_id=assignment_id,
         student_id=current_user.id,
@@ -318,6 +329,23 @@ def submit_assignment(
         file_url=data.file_url,
     )
     db.add(submission)
+    db.flush()
+
+    if data.declaration is not None:
+        # Recorded whatever it says. A student who declares they used AI where
+        # the course forbids it is telling the truth about a rule they broke —
+        # the work is accepted, the teacher sees it, and a person handles it.
+        # Refusing at the door teaches the next student to tick the other box.
+        db.add(
+            SubmissionDeclaration(
+                submission_id=submission.id,
+                policy=policy,
+                statement=data.declaration.statement
+                + (f"\n\n{data.declaration.note}" if data.declaration.note else ""),
+                ai_use=data.declaration.ai_use,
+                ip=request.client.host if request and request.client else None,
+            )
+        )
 
     progress = (
         db.query(ChapterProgress)

@@ -108,6 +108,10 @@ class Course(Base):
     # How this course is graded (D1). Four presets, never free-form: teachers
     # pick one, only the institution edits the bands behind them
     # (``org_settings.grade_bands``). New courses inherit the school default.
+    #: What a student may use on this course's work (§4.1). Disclosure by
+    #: default: a ban nobody can enforce is broken silently and teaches
+    #: concealment.
+    ai_policy: Mapped[str] = mapped_column(default="ai_with_disclosure", server_default="ai_with_disclosure")
     grading_scheme: Mapped[str] = mapped_column(default="letter", server_default="letter")
     # The course-result line for the band schemes — percent / five_point /
     # letter. Distinct from ``quizzes.passing_score``, which gates chapter

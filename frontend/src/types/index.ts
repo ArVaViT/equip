@@ -730,6 +730,14 @@ export interface WaitingSubmission {
   file_url: string | null
 }
 
+/**
+ * What a course allows a student to use (§4.1).
+ *
+ * Disclosure is the default rather than a ban: a ban nobody can enforce is
+ * broken silently, and it teaches students to conceal rather than to say.
+ */
+export type AiPolicy = "ai_forbidden" | "ai_with_disclosure" | "ai_open"
+
 /** One rung on a criterion, and what it is worth. */
 export interface RubricLevel {
   id: string

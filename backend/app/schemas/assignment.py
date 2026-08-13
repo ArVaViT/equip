@@ -34,9 +34,26 @@ class AssignmentResponse(BaseModel):
     updated_at: datetime | None = None
 
 
+class SubmissionDeclarationIn(BaseModel):
+    """What the student says about this piece of work (§4.2).
+
+    ``statement`` is the text they were actually shown, sent back so what is
+    stored is what was on their screen rather than what a catalogue says today.
+    """
+
+    ai_use: Literal["none", "assisted"]
+    statement: str = Field(..., min_length=1, max_length=4000)
+    #: Their own sentence about what they used it for, where the course asks
+    #: for disclosure. It tells a teacher more than any detector would.
+    note: str | None = Field(None, max_length=2000)
+
+
 class SubmissionCreate(BaseModel):
     content: str | None = Field(None, max_length=50_000)
     file_url: str | None = Field(None, max_length=2048)
+    #: Required when the course has a policy to declare against. Absent on an
+    #: ``ai_open`` course, where there is nothing to declare.
+    declaration: SubmissionDeclarationIn | None = None
 
     @field_validator("file_url")
     @classmethod
