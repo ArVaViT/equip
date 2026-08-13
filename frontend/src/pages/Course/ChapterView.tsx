@@ -466,7 +466,15 @@ export default function ChapterView() {
   const [course, setCourse] = useState<Course | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
+  /**
+   * `null` when the progress request failed. Not an empty set.
+   *
+   * `new Set(null)` is an empty Set rather than a throw, so the old fallback
+   * turned "we could not find out" into "you have completed nothing" without
+   * so much as an error — and `isChapterLocked` below then walled the student
+   * out of a chapter they had earned. See `moduleProgress.ts`.
+   */
+  const [completedIds, setCompletedIds] = useState<Set<string> | null>(null)
   const [chapterBlocks, setChapterBlocks] = useState<ChapterBlock[]>([])
   const [loadingBlocks, setLoadingBlocks] = useState(false)
   const [blocksLoadError, setBlocksLoadError] = useState(false)
@@ -495,7 +503,10 @@ export default function ChapterView() {
       try {
         const [m, completedChapterIds, fullCourse] = await Promise.all([
           coursesService.getModule(courseId, moduleId),
-          coursesService.getMyChapterProgress(courseId).catch(() => [] as string[]),
+          // See `moduleProgress.ts` — `[]` and "unknown" must not be the
+          // same value. Here it only drives the read tick, which now simply
+          // does not draw rather than drawing a false "not read".
+          coursesService.getMyChapterProgress(courseId).catch(() => null),
           // Only needed to answer "is there a NEXT module after this one?"
           // for the end-of-module nav tile. Cached 3min and usually warm
           // (the student navigated here from the course page). On failure
@@ -505,7 +516,7 @@ export default function ChapterView() {
         if (cancelled) return
         setMod(m)
         setCourse(fullCourse)
-        setCompletedIds(new Set(completedChapterIds))
+        setCompletedIds(completedChapterIds === null ? null : new Set(completedChapterIds))
       } catch {
         if (!cancelled) setError(t("errors.loadChapterFailed"))
       } finally {
@@ -611,6 +622,9 @@ export default function ChapterView() {
       if (idx === 0) return false
       const prev = sortedChapters[idx - 1]
       if (!prev || !isGradableChapterType(prev.chapter_type)) return false
+      // Fails open on unknown — the server is the real gate, and denying
+      // somebody their own progress is the worse way to be wrong.
+      if (completedIds === null) return false
       return !completedIds.has(prev.id)
     },
     [sortedChapters, completedIds],
@@ -659,7 +673,7 @@ export default function ChapterView() {
   }
 
   const locked = isChapterLocked(chapter, currentIdx)
-  const isCompleted = completedIds.has(chapter.id)
+  const isCompleted = completedIds !== null && completedIds.has(chapter.id)
 
   if (locked) {
     return (

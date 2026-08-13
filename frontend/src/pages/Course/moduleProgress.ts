@@ -44,3 +44,16 @@ export function isChapterLocked(
   if (completed === null) return false
   return Boolean(chapter.is_locked) && previous !== null && previousIsGradable && !completed.has(previous.id)
 }
+
+/**
+ * Whether a whole module is gated behind an unfinished predecessor.
+ *
+ * The same `[]`-on-failure fallback lived here too, and this was the worst of
+ * the three places: a failed request walled a student out of everything after
+ * the module they had actually completed, not merely one chapter.
+ */
+export function isModuleLocked(completed: CompletedIds, previousGradableIds: string[]): boolean {
+  if (completed === null) return false
+  if (previousGradableIds.length === 0) return false
+  return !previousGradableIds.every((id) => completed.has(id))
+}

@@ -33,7 +33,8 @@ interface Props {
   cohorts: Cohort[]
   sortedModules: Module[]
   totalChapters: number
-  completedChapterIds: Set<string>
+  /** `null` when the progress request failed. See `moduleProgress.ts`. */
+  completedChapterIds: Set<string> | null
   materials: CourseMaterial[]
   calendarEvents: CalendarEvent[]
   certificate: Certificate | null

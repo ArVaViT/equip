@@ -21,11 +21,13 @@ import { StaggerChildren } from "@/components/motion"
 import { isGradableChapterType } from "@/lib/chapterTypes"
 import type { Module } from "@/types"
 import { formatDate } from "./types"
+import { isModuleLocked } from "../moduleProgress"
 
 interface Props {
   courseId: string
   modules: Module[]
-  completedChapterIds: Set<string>
+  /** `null` when the progress request failed. See `moduleProgress.ts`. */
+  completedChapterIds: Set<string> | null
 }
 
 export function ModuleList({ courseId, modules, completedChapterIds }: Props) {
@@ -67,7 +69,8 @@ interface ModuleRowProps {
   module: Module
   idx: number
   modules: Module[]
-  completedChapterIds: Set<string>
+  /** `null` when the progress request failed. See `moduleProgress.ts`. */
+  completedChapterIds: Set<string> | null
 }
 
 const ModuleRow = memo(function ModuleRow({
@@ -92,12 +95,20 @@ const ModuleRow = memo(function ModuleRow({
       isGradableChapterType(ch.chapter_type),
     )
     if (prevChapters.length === 0) return false
-    return !prevChapters.every((ch) => completedChapterIds.has(ch.id))
+    return isModuleLocked(
+      completedChapterIds,
+      prevChapters.map((ch) => ch.id),
+    )
   })()
 
   const allComplete =
-    gradableCount > 0 && gradable.every((ch) => completedChapterIds.has(ch.id))
-  const completedInModule = gradable.filter((ch) => completedChapterIds.has(ch.id)).length
+    completedChapterIds !== null &&
+    gradableCount > 0 &&
+    gradable.every((ch) => completedChapterIds.has(ch.id))
+  const completedInModule =
+    completedChapterIds === null
+      ? 0
+      : gradable.filter((ch) => completedChapterIds.has(ch.id)).length
 
   return (
     <Card className={`group transition-colors ${isLocked ? "opacity-60" : "hover:border-brand/25"}`}>

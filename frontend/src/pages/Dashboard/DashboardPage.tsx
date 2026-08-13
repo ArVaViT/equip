@@ -54,6 +54,11 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
       try {
         const [enrollData, gradeData] = await Promise.all([
           coursesService.getMyCourses(),
+          // `[]` is honest here, unlike the same shape elsewhere. A missing
+          // grade renders nothing at all — identical to a course that has not
+          // been graded yet — so a failed request hides an optional badge
+          // rather than asserting something false. Checked rather than
+          // assumed: `grades` has exactly one consumer, the override chip.
           coursesService.getMyGrades().catch(() => []),
         ])
         if (cancelled) return

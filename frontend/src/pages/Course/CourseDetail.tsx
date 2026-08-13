@@ -31,7 +31,15 @@ export default function CourseDetail() {
   const [course, setCourse] = useState<Course | null>(null)
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null)
   const [certificate, setCertificate] = useState<Certificate | null>(null)
-  const [completedChapterIds, setCompletedChapterIds] = useState<Set<string>>(new Set())
+  /**
+   * `null` when the progress request failed. Not an empty set.
+   *
+   * This is the third place the same fallback lived, and the worst of the
+   * three: `ModuleList` locks an entire **module** when the previous one is
+   * unfinished, so a failed request walled a student out of everything after
+   * the module they had actually completed. See `moduleProgress.ts`.
+   */
+  const [completedChapterIds, setCompletedChapterIds] = useState<Set<string> | null>(null)
   const [materials, setMaterials] = useState<CourseMaterial[]>([])
   const [cohorts, setCohorts] = useState<Cohort[]>([])
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
@@ -73,7 +81,7 @@ export default function CourseDetail() {
           ? coursesService.getCourseCertificate(id).catch(() => null)
           : Promise.resolve(null)
         const progressP = user
-          ? coursesService.getMyChapterProgress(id).catch(() => [] as string[])
+          ? coursesService.getMyChapterProgress(id).catch(() => null)
           : Promise.resolve([] as string[])
         const matsP = user
           ? storageService.listCourseMaterials(id).catch(() => [] as CourseMaterial[])
@@ -98,7 +106,7 @@ export default function CourseDetail() {
         if (match) {
           setEnrollment(match)
           setCertificate(cert)
-          setCompletedChapterIds(new Set(progress))
+          setCompletedChapterIds(progress === null ? null : new Set(progress))
           setMaterials(mats)
           setCalendarEvents(evts)
         }
@@ -140,12 +148,12 @@ export default function CourseDetail() {
       setEnrollment(enrolled)
       const [cert, progress, mats, evts] = await Promise.all([
         coursesService.getCourseCertificate(id),
-        coursesService.getMyChapterProgress(id).catch(() => [] as string[]),
+        coursesService.getMyChapterProgress(id).catch(() => null),
         storageService.listCourseMaterials(id).catch(() => [] as CourseMaterial[]),
         coursesService.getCalendarEvents(id).catch(() => [] as CalendarEvent[]),
       ])
       setCertificate(cert)
-      setCompletedChapterIds(new Set(progress))
+      setCompletedChapterIds(progress === null ? null : new Set(progress))
       setMaterials(mats)
       setCalendarEvents(evts)
       toast({ title: t("toast.enrolledSuccess"), variant: "success" })
