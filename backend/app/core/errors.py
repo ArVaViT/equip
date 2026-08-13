@@ -150,6 +150,13 @@ class ErrorCode(enum.StrEnum):
     """Request body / params failed semantic validation beyond the
     Pydantic schema layer."""
 
+    LEGAL_DOCUMENT_CHANGED = "legal.document_changed"
+    """The client tried to accept a version of a policy we no longer serve —
+    a page left open across a deploy. Recording it would produce a consent row
+    pointing at a text nobody can now produce, which is the one thing the
+    acceptance record exists to prevent. The frontend reloads the document and
+    asks again rather than surfacing an error."""
+
 
 def equip_error(
     code: ErrorCode,

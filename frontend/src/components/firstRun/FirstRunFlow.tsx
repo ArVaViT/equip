@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useNavigate } from "react-router-dom"
+import { legalService } from "@/services/legal"
 import { useAuth } from "@/context/useAuth"
 import { setFirstRunActive } from "@/lib/tourState"
 import type { Course } from "@/types"
@@ -20,8 +21,8 @@ const FOCUSABLE_SELECTOR =
 import {
   firstRunPickerKey,
   firstRunSetupKey,
-  grandTourSeenKey,
   privacyAcceptedKey,
+  grandTourSeenKey,
 } from "@/lib/storageKeys"
 
 function readFlag(key: string): boolean {
@@ -42,11 +43,41 @@ function writeFlag(key: string): void {
   }
 }
 
+function clearFlag(key: string): void {
+  if (typeof window === "undefined") return
+  try {
+    window.localStorage.removeItem(key)
+  } catch {
+    /* private browsing — nothing was cached to begin with */
+  }
+}
+
 type Step = "privacy" | "setup" | "picker" | "splash" | "done"
 
-function decideInitialStep(userId: string | undefined): Step {
+/**
+ * Which step to show.
+ *
+ * The legal gate is decided by the server now — `legalService.status()` says
+ * what is still outstanding. The `localStorage` flag survives, demoted: it is
+ * a **cache**, not evidence. Without it the gate could only appear after a
+ * round-trip, which means the dashboard flashes at somebody who has not
+ * agreed to anything; and its absence is the safe direction to be wrong in,
+ * because being asked twice costs a click while being asked never is the bug
+ * this whole change exists to fix.
+ *
+ * So: trust the cache until the server answers, then believe the server and
+ * rewrite the cache. What the cache can no longer do is *prove* anything —
+ * clearing a browser erased it, a second device never had it, and that was
+ * the entire problem.
+ *
+ * The flags for setup and the picker stay purely local. They are preferences
+ * about whether to show a wizard again, not commitments, and nothing outside
+ * this component ever has to prove they happened.
+ */
+function decideInitialStep(userId: string | undefined, legalOutstanding: boolean | null): Step {
   if (!userId) return "done"
-  if (!readFlag(privacyAcceptedKey(userId))) return "privacy"
+  const stillOwed = legalOutstanding ?? !readFlag(privacyAcceptedKey(userId))
+  if (stillOwed) return "privacy"
   if (!readFlag(firstRunSetupKey(userId))) return "setup"
   if (!readFlag(firstRunPickerKey(userId))) return "picker"
   return "done"
@@ -78,7 +109,9 @@ export function FirstRunFlow() {
   const dialogRef = useRef<HTMLDivElement>(null)
   // ``useState`` initialiser runs once per mount; ``userId`` change
   // (sign-in, account switch) re-derives via the effect below.
-  const [step, setStep] = useState<Step>(() => decideInitialStep(userId))
+  //: null until the server has answered. See `decideInitialStep`.
+  const [legalOutstanding, setLegalOutstanding] = useState<boolean | null>(null)
+  const [step, setStep] = useState<Step>(() => decideInitialStep(userId, null))
   // The course the user enrolled in via the picker. Drives the
   // EnrollSplash celebration and the post-splash navigation. We
   // keep it as state (not a ref) so the splash re-renders on
@@ -86,8 +119,38 @@ export function FirstRunFlow() {
   const [enrolledCourse, setEnrolledCourse] = useState<Course | null>(null)
 
   useEffect(() => {
-    setStep(decideInitialStep(userId))
+    if (!userId) {
+      setLegalOutstanding(null)
+      return
+    }
+    let cancelled = false
+    legalService
+      .status()
+      .then((status) => {
+        if (cancelled) return
+        const owed = status.outstanding.length > 0
+        setLegalOutstanding(owed)
+        // Keep the cache honest in both directions, including the case that
+        // matters: somebody who accepted on their phone should not meet the
+        // gate again on the laptop just because this browser never saw it.
+        if (owed) clearFlag(privacyAcceptedKey(userId))
+        else writeFlag(privacyAcceptedKey(userId))
+      })
+      .catch(() => {
+        // A failed check must not become a gate nobody can pass, and must not
+        // become a silent pass either. Staying at `null` leaves the product
+        // usable and asks again on the next load — the same behaviour as
+        // somebody who closed the browser mid-gate.
+        if (!cancelled) setLegalOutstanding(null)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [userId])
+
+  useEffect(() => {
+    setStep(decideInitialStep(userId, legalOutstanding))
+  }, [userId, legalOutstanding])
 
   // Autofocus the first focusable element on each step transition so
   // keyboard users land inside the dialog. Otherwise focus stays on
@@ -161,6 +224,7 @@ export function FirstRunFlow() {
 
   const handlePrivacyAccept = useCallback(() => {
     if (userId) writeFlag(privacyAcceptedKey(userId))
+    setLegalOutstanding(false)
     setStep("setup")
   }, [userId])
 

@@ -2269,6 +2269,53 @@
     "body": false
   },
   {
+    "method": "POST",
+    "path": "/api/v1/legal/acceptances",
+    "params": [],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/legal/acceptances/me",
+    "params": [],
+    "responses": [
+      "200"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/legal/documents",
+    "params": [],
+    "responses": [
+      "200"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/legal/documents/{slug}",
+    "params": [
+      [
+        "locale",
+        "query"
+      ],
+      [
+        "slug",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
     "method": "GET",
     "path": "/api/v1/notifications",
     "params": [

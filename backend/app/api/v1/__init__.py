@@ -21,6 +21,7 @@ from app.api.v1 import (
     internal_daily_challenge_worker,
     internal_translation_worker,
     invitations,
+    legal,
     notifications,
     prerequisites,
     progress,
@@ -51,6 +52,7 @@ api_router.include_router(blocks.router)
 api_router.include_router(cohorts.router)
 api_router.include_router(notifications.router)
 api_router.include_router(audit.router)
+api_router.include_router(legal.router)
 api_router.include_router(calendar_mod.router)
 api_router.include_router(calendar_mod.event_router)
 api_router.include_router(calendar_ical.router)

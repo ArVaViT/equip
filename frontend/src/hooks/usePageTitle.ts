@@ -35,6 +35,8 @@ function matchTitleKey(pathname: string): string | null {
   if (/^\/courses\/[^/]+\/modules\//.test(pathname)) return "pageTitle.module"
   if (pathname.startsWith("/courses/")) return "pageTitle.course"
   if (pathname.startsWith("/admin")) return "pageTitle.admin"
+  if (pathname === "/privacy") return "pageTitle.privacy"
+  if (pathname === "/terms") return "pageTitle.terms"
 
   return null
 }

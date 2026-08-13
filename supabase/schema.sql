@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict oxcdr6h51K2kSOs6lB9c5zKZFlZg83KmndE3FRaPZf3CxvTIpbx0ooVHvnaDrLZ
+\restrict 6teu9P67wwduKQn6OrQgV76DZ3ndKFkKAo6s27FgWV0eMVzkUh87QniWr3P75bh
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10 (Homebrew)
@@ -272,6 +272,10 @@ CREATE TABLE public.certificates (
     official_code text,
     official_score numeric(5,2),
     graded_via text,
+    school_name text,
+    school_city text,
+    student_name text,
+    teacher_name text,
     CONSTRAINT certificates_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('teacher_approved'::character varying)::text, ('approved'::character varying)::text, ('rejected'::character varying)::text]))),
     CONSTRAINT ck_certificates_graded_via CHECK (((graded_via IS NULL) OR (graded_via = ANY (ARRAY['computed'::text, 'override'::text, 'completion'::text])))),
     CONSTRAINT ck_certificates_one_official_grade CHECK (((
@@ -686,6 +690,22 @@ CREATE TABLE public.invitations (
     expires_at timestamp with time zone DEFAULT (now() + '7 days'::interval) NOT NULL,
     CONSTRAINT invitations_role_check CHECK ((role = ANY (ARRAY['teacher'::text, 'student'::text]))),
     CONSTRAINT invitations_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'revoked'::text])))
+);
+
+
+--
+-- Name: legal_acceptances; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.legal_acceptances (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    document_slug text NOT NULL,
+    version text NOT NULL,
+    locale text NOT NULL,
+    content_sha256 text NOT NULL,
+    accepted_at timestamp with time zone DEFAULT now() NOT NULL,
+    ip text
 );
 
 
@@ -1260,6 +1280,14 @@ ALTER TABLE ONLY public.invitations
 
 
 --
+-- Name: legal_acceptances legal_acceptances_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.legal_acceptances
+    ADD CONSTRAINT legal_acceptances_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: modules modules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1401,6 +1429,14 @@ ALTER TABLE ONLY public.submission_declarations
 
 ALTER TABLE ONLY public.translation_jobs
     ADD CONSTRAINT translation_jobs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: legal_acceptances uq_legal_acceptances_user_doc_version; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.legal_acceptances
+    ADD CONSTRAINT uq_legal_acceptances_user_doc_version UNIQUE (user_id, document_slug, version);
 
 
 --
@@ -1858,6 +1894,13 @@ CREATE INDEX ix_invitations_email_role ON public.invitations USING btree (email,
 --
 
 CREATE UNIQUE INDEX ix_invitations_one_pending_per_email_role ON public.invitations USING btree (email, role) WHERE (status = 'pending'::text);
+
+
+--
+-- Name: ix_legal_acceptances_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_legal_acceptances_user ON public.legal_acceptances USING btree (user_id);
 
 
 --
@@ -2602,6 +2645,14 @@ ALTER TABLE ONLY public.grade_sheets
 
 ALTER TABLE ONLY public.invitations
     ADD CONSTRAINT invitations_invited_by_fkey FOREIGN KEY (invited_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: legal_acceptances legal_acceptances_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.legal_acceptances
+    ADD CONSTRAINT legal_acceptances_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
 
 
 --
@@ -3361,5 +3412,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict oxcdr6h51K2kSOs6lB9c5zKZFlZg83KmndE3FRaPZf3CxvTIpbx0ooVHvnaDrLZ
+\unrestrict 6teu9P67wwduKQn6OrQgV76DZ3ndKFkKAo6s27FgWV0eMVzkUh87QniWr3P75bh
 

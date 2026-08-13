@@ -41,6 +41,7 @@ const AuthCallback = lazy(() => import("./pages/Auth/AuthCallback"))
 const AcceptInvite = lazy(() => import("./pages/Invite/AcceptInvite"))
 const DashboardPage = lazy(() => import("./pages/Dashboard/DashboardPage"))
 const CoursesPage = lazy(() => import("./pages/Courses/CoursesPage"))
+const LegalDocumentPage = lazy(() => import("./pages/Legal/LegalDocumentPage"))
 const ProfilePage = lazy(() => import("./pages/Profile/ProfilePage"))
 const CourseDetail = lazy(() => import("./pages/Course/CourseDetail"))
 const ModuleView = lazy(() => import("./pages/Course/ModuleView"))
@@ -213,6 +214,11 @@ function AppRoutes() {
               <Route path="/" element={<DashboardPage />} />
               <Route path="/dashboard" element={<Navigate to="/" replace />} />
               <Route path="/courses" element={<CoursesPage />} />
+              {/* Public. A policy you can only read after accepting it is not
+                  a policy, and the consent checkbox has been naming these two
+                  documents since long before they existed. */}
+              <Route path="/privacy" element={<LegalDocumentPage slug="privacy" />} />
+              <Route path="/terms" element={<LegalDocumentPage slug="terms" />} />
               <Route path="/profile" element={<Gate mode="private"><ProfilePage /></Gate>} />
               <Route path="/calendar" element={<Gate mode="private"><CalendarPage /></Gate>} />
               <Route path="/daily-challenge/archive" element={<Gate mode="private"><DailyChallengeArchivePage /></Gate>} />
