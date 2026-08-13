@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next"
+import { Link } from "react-router-dom"
 import { Bell, BookOpen, ClipboardCheck, Eye } from "lucide-react"
 import { StatCard } from "@/components/patterns"
 import type { Course } from "@/types"
@@ -41,13 +42,17 @@ export function TeacherStatsRow({ courses, pendingActions, pendingGrading }: Pro
         variant="icon-leading"
       />
       {/* Replaces the module count, which nobody acts on. This is the number
-          that decides whether a teacher opens the app today. */}
-      <StatCard
-        label={t("teacherDashboard.stats.pendingGrading")}
-        value={pendingGrading}
-        icon={ClipboardCheck}
-        variant="icon-leading"
-      />
+          that decides whether a teacher opens the app today — and since #970 it
+          leads somewhere: a count that names work and cannot open it is a
+          count that gets read once and then ignored. */}
+      <Link to="/teach/grading" className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
+        <StatCard
+          label={t("teacherDashboard.stats.pendingGrading")}
+          value={pendingGrading}
+          icon={ClipboardCheck}
+          variant="icon-leading"
+        />
+      </Link>
       <StatCard
         label={t("teacherDashboard.stats.pendingActions")}
         value={pendingActions}

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { render, screen } from "@testing-library/react"
 import { I18nextProvider } from "react-i18next"
+import { MemoryRouter } from "react-router-dom"
 import { describe, expect, it } from "vitest"
 import i18n from "@/i18n/config"
 import { axe } from "@/test/a11y"
@@ -27,7 +28,13 @@ function makeCourse(overrides: Partial<Course> = {}): Course {
 }
 
 function TestWrapper({ children }: { children: ReactNode }) {
-  return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
+  return (
+    <I18nextProvider i18n={i18n}>
+      {/* The waiting-to-be-marked card is a link to the queue now: a count
+          that names work and cannot open it gets read once and then ignored. */}
+      <MemoryRouter>{children}</MemoryRouter>
+    </I18nextProvider>
+  )
 }
 
 describe("TeacherStatsRow", () => {

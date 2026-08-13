@@ -136,3 +136,150 @@ def pending_summary(db: Session, teacher_id: UUID) -> dict[str, Any]:
     """The rollup a teacher's dashboard shows: a total and a per-course map."""
     by_course = pending_by_course(db, teacher_id)
     return {"total": sum(by_course.values()), "by_course": by_course}
+
+
+# ---------------------------------------------------------------------------
+# The queue itself, not the count of it
+# ---------------------------------------------------------------------------
+#
+# Grouped by item rather than by student, because that is how the marking
+# actually goes: thirty answers to the same prompt in a row, the standard
+# loaded once. Read across a whole paper instead and the standard drifts
+# between question one and question four, which is the thing a rubric exists to
+# prevent and the thing a queue can prevent for free.
+#
+# The teacher's own phrase for this is «что мне сегодня проверить», and the
+# answer has to fit on a phone screen.
+
+
+def waiting_groups(db: Session, teacher_id: UUID) -> list[dict[str, Any]]:
+    """Every piece of work waiting on this teacher, gathered by the item it answers.
+
+    Two queries, one per kind. A group per course *and* item, because the same
+    prompt reused in two courses is two conversations with two cohorts.
+    """
+    groups: list[dict[str, Any]] = []
+
+    quiz_rows = (
+        db.query(
+            Module.course_id,
+            QuizQuestion.id.label("item_id"),
+            Chapter.id.label("chapter_id"),
+            Chapter.title.label("chapter_title"),
+            sqlfunc.count(QuizAnswer.id).label("waiting"),
+            sqlfunc.min(QuizAttempt.completed_at).label("oldest"),
+        )
+        .select_from(QuizAnswer)
+        .join(QuizQuestion, QuizQuestion.id == QuizAnswer.question_id)
+        .join(QuizAttempt, QuizAttempt.id == QuizAnswer.attempt_id)
+        .join(User, User.id == QuizAttempt.user_id)
+        .join(Quiz, Quiz.id == QuizAttempt.quiz_id)
+        .join(Chapter, Chapter.id == Quiz.chapter_id)
+        .join(Module, Module.id == Chapter.module_id)
+        .join(Course, Course.id == Module.course_id)
+        .filter(
+            Course.created_by == teacher_id,
+            Course.deleted_at.is_(None),
+            Module.deleted_at.is_(None),
+            Chapter.deleted_at.is_(None),
+            *unread_answer_filters(),
+            User.deactivated_at.is_(None),
+        )
+        .group_by(Module.course_id, QuizQuestion.id, Chapter.id, Chapter.title)
+        .all()
+    )
+    for row in quiz_rows:
+        groups.append(
+            {
+                "kind": "quiz_answer",
+                "item_id": str(row.item_id),
+                "course_id": row.course_id,
+                "chapter_id": row.chapter_id,
+                "title": row.chapter_title,
+                "waiting": int(row.waiting or 0),
+                "oldest": row.oldest,
+            }
+        )
+
+    assignment_rows = (
+        db.query(
+            Module.course_id,
+            Assignment.id.label("item_id"),
+            Chapter.id.label("chapter_id"),
+            Chapter.title.label("chapter_title"),
+            sqlfunc.count(AssignmentSubmission.id).label("waiting"),
+            sqlfunc.min(AssignmentSubmission.submitted_at).label("oldest"),
+        )
+        .select_from(AssignmentSubmission)
+        .join(Assignment, Assignment.id == AssignmentSubmission.assignment_id)
+        .join(User, User.id == AssignmentSubmission.student_id)
+        .join(Chapter, Chapter.id == Assignment.chapter_id)
+        .join(Module, Module.id == Chapter.module_id)
+        .join(Course, Course.id == Module.course_id)
+        .filter(
+            Course.created_by == teacher_id,
+            Course.deleted_at.is_(None),
+            Module.deleted_at.is_(None),
+            Chapter.deleted_at.is_(None),
+            AssignmentSubmission.status == "submitted",
+            AssignmentSubmission.grade.is_(None),
+            User.deactivated_at.is_(None),
+        )
+        .group_by(Module.course_id, Assignment.id, Chapter.id, Chapter.title)
+        .all()
+    )
+    for row in assignment_rows:
+        groups.append(
+            {
+                "kind": "assignment",
+                "item_id": str(row.item_id),
+                "course_id": row.course_id,
+                "chapter_id": row.chapter_id,
+                "title": row.chapter_title,
+                "waiting": int(row.waiting or 0),
+                "oldest": row.oldest,
+            }
+        )
+
+    # Oldest first. A queue sorted by size buries the essay that has been
+    # waiting three weeks under the assignment twelve people just handed in,
+    # and the three-week-old one is the one somebody is upset about.
+    return sorted(groups, key=lambda g: (g["oldest"] is None, g["oldest"]))
+
+
+def assignment_work(db: Session, teacher_id: UUID, assignment_id: UUID) -> list[dict[str, Any]]:
+    """The submissions waiting on one assignment, oldest first.
+
+    Ownership is enforced by the caller; the teacher filter here is defence in
+    depth rather than the only lock — a queue route that leaks is a route that
+    leaks somebody's essay.
+    """
+    rows = (
+        db.query(AssignmentSubmission, User.full_name, User.email)
+        .join(Assignment, Assignment.id == AssignmentSubmission.assignment_id)
+        .join(User, User.id == AssignmentSubmission.student_id)
+        .join(Chapter, Chapter.id == Assignment.chapter_id)
+        .join(Module, Module.id == Chapter.module_id)
+        .join(Course, Course.id == Module.course_id)
+        .filter(
+            Assignment.id == assignment_id,
+            Course.created_by == teacher_id,
+            Course.deleted_at.is_(None),
+            AssignmentSubmission.status == "submitted",
+            AssignmentSubmission.grade.is_(None),
+            User.deactivated_at.is_(None),
+        )
+        .order_by(AssignmentSubmission.submitted_at.asc(), AssignmentSubmission.id.asc())
+        .all()
+    )
+    return [
+        {
+            "submission_id": str(submission.id),
+            "student_id": str(submission.student_id),
+            "student_name": full_name or email,
+            "submitted_at": submission.submitted_at,
+            "content": submission.content,
+            "file_url": submission.file_url,
+        }
+        for submission, full_name, email in rows
+    ]
