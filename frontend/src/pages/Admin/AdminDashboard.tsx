@@ -14,6 +14,7 @@ import { PendingCertsCard } from "./dashboard/PendingCertsCard"
 import { UsersCard } from "./dashboard/UsersCard"
 import { useAdminOverview } from "./dashboard/useAdminOverview"
 import { useAdminAudit } from "./dashboard/useAdminAudit"
+import { Section } from "@/components/layout/Section"
 
 // The audit log and cohorts tabs are rarely the entry point — most admins
 // land on Overview. Splitting them off keeps the initial AdminDashboard
@@ -77,7 +78,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="animate-fade-in container mx-auto max-w-6xl px-4 py-6 sm:py-8">
+    <Section width="wide" className="animate-fade-in">
       <header className="mb-6 space-y-2">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
           {t("admin.eyebrow")}
@@ -217,6 +218,6 @@ export default function AdminDashboard() {
           <SchoolSettingsTab />
         </div>
       )}
-    </div>
+    </Section>
   )
 }

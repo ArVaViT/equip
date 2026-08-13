@@ -9,6 +9,7 @@ import { PageHeader, EmptyState, ErrorState, Eyebrow } from "@/components/patter
 import { OptionButton, RevealPanel } from "@/components/dailyChallenge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
+import { Section } from "@/components/layout/Section"
 import {
   dailyChallengeService,
   type DailyChallengeArchiveEntry,
@@ -87,7 +88,7 @@ export default function DailyChallengeArchivePage() {
   const attemptedCount = entries.filter((e) => e.attempted_is_correct !== null).length
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-6 sm:py-8">
+    <Section width="wide">
       <PageHeader
         title={
           <h1 className="flex items-center gap-2 font-serif text-2xl font-bold tracking-tight sm:text-3xl">
@@ -187,7 +188,7 @@ export default function DailyChallengeArchivePage() {
           t={t}
         />
       </div>
-    </div>
+    </Section>
   )
 }
 
