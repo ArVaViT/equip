@@ -162,6 +162,16 @@ export default function CertificatesPage() {
                         {statusLabel}
                       </p>
                     </div>
+                    {isApproved && (
+                      // The row exists to lead here. A certificate that can only
+                      // be read as a list item is not a certificate.
+                      <Link to={`/certificates/${cert.id}`} className="block pt-1">
+                        <Button size="sm" variant="outline" className="w-full">
+                          <ScrollText className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                          {t("certificates.document.open")}
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 </CardContent>
               </Card>

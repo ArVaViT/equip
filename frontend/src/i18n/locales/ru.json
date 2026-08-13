@@ -752,6 +752,20 @@
         "submitFailed": "Не удалось отправить отзыв"
       },
       "blocked": "Сертификат станет доступен, когда закроются пункты выше"
+    },
+    "document": {
+      "print": "Печать",
+      "back": "К свидетельствам",
+      "notIssued": "Это свидетельство ещё не выдано",
+      "schoolUnnamed": "Название школы не задано",
+      "open": "Открыть свидетельство",
+      "certificateOfCompletion": "Certificate of Completion",
+      "certifies": "This certifies that",
+      "hasCompleted": "has completed the course",
+      "issued": "Issued {{date}}",
+      "instructor": "Instructor",
+      "director": "Director",
+      "verifyAt": "Verify at equipbible.com/verify/{{number}}"
     }
   },
   "studentProgress": {

@@ -1156,6 +1156,20 @@
         "submitFailed": "Failed to submit review"
       },
       "blocked": "The certificate opens once the points above are cleared"
+    },
+    "document": {
+      "print": "Print",
+      "back": "Back to certificates",
+      "notIssued": "This certificate has not been issued yet",
+      "schoolUnnamed": "School name not set",
+      "open": "Open certificate",
+      "certificateOfCompletion": "Certificate of Completion",
+      "certifies": "This certifies that",
+      "hasCompleted": "has completed the course",
+      "issued": "Issued {{date}}",
+      "instructor": "Instructor",
+      "director": "Director",
+      "verifyAt": "Verify at equipbible.com/verify/{{number}}"
     }
   },
   "studentProgress": {
