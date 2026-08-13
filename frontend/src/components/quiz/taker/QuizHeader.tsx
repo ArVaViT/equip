@@ -8,7 +8,10 @@ interface Props {
   autoMaxScore: number
   manualMaxScore: number
   maxAttempts: number | null
-  attemptsUsed: number
+  /** `null` when the attempts request failed — render nothing, not a 0. */
+  attemptsUsed: number | null
+  /** True when a limit exists but the count behind it could not be read. */
+  attemptsUnverified?: boolean
 }
 
 export function QuizHeader({
@@ -18,6 +21,7 @@ export function QuizHeader({
   manualMaxScore,
   maxAttempts,
   attemptsUsed,
+  attemptsUnverified = false,
 }: Props) {
   const { t } = useTranslation()
   const totalMaxScore = autoMaxScore + manualMaxScore
@@ -55,13 +59,21 @@ export function QuizHeader({
         </span>
         <span aria-hidden className="text-ink-muted">·</span>
         <span className="tabular-nums">{t("quiz.passingShort", { score: quiz.passing_score })}</span>
-        {maxAttempts !== null && (
+        {maxAttempts !== null && attemptsUsed !== null && (
           <>
             <span aria-hidden className="text-ink-muted">·</span>
             <span className="tabular-nums">{t("quiz.attemptsShort", { used: attemptsUsed, max: maxAttempts })}</span>
           </>
         )}
       </div>
+      {/* Said before they start, not after they submit. A student out of
+          attempts who is shown a confident "0 used" can sit an entire exam
+          and have the submission refused at the end — with the work done. */}
+      {attemptsUnverified && (
+        <p role="status" className="mt-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning-ink">
+          {t("quiz.attemptsUnverified")}
+        </p>
+      )}
     </div>
   )
 }
