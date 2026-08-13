@@ -15,9 +15,29 @@ interface PageSpinnerProps {
   label?: string
 }
 
-// One shared spinner used everywhere we'd previously hand-rolled
+// One shared spinner, replacing the hand-rolled
 // `animate-spin rounded-full border-* border-brand border-t-transparent`.
-// Consolidating means theme tweaks (color, size) only need to land in one file.
+//
+// WHICH LOADING TREATMENT TO USE
+// ------------------------------
+// The product has three, and all three are correct — for different things.
+// What was missing was any statement of which goes where, so the choice was
+// whichever the neighbouring file happened to make. Counted: 121 `<Skeleton>`,
+// 21 `<PageSpinner>`, `Loader2` in 40 files.
+//
+//   `<Skeleton>`   — the shape of the content is known. Use it, always, in
+//                    preference to a spinner. It is not a nicer spinner; it is
+//                    a promise about layout, so the content lands where the
+//                    placeholder was and nothing jumps. The reading surface
+//                    has `<ReadingSkeleton>` for exactly this reason.
+//   `Loader2`      — inside a button, while an action the user just started is
+//                    in flight. The label stays; the icon spins beside it.
+//   `<PageSpinner>` — the shape is genuinely unknown: a route-level fallback
+//                    before the lazy chunk has told us what page this is, or
+//                    app bootstrap. If you can draw the shape, draw it.
+//
+// Seven `variant="section"` call sites remain where the shape *is* knowable.
+// They are a to-do, not a pattern to copy.
 //
 // `role="status"` + `aria-live="polite"` lets screen readers announce
 // the load state without interrupting whatever the user was doing. The

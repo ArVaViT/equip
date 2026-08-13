@@ -39,6 +39,7 @@ import { ErrorState } from "@/components/patterns"
 import { useUserTour } from "@/hooks/useUserTour"
 import { chapterViewSteps } from "@/lib/tourSteps"
 import { recordCourseView } from "@/lib/recentlyViewed"
+import { ReadingSkeleton } from "@/components/chapter/ReadingSkeleton"
 
 /**
  * Renders a sanitised text-block via ``dangerouslySetInnerHTML`` and
@@ -232,7 +233,7 @@ function ChapterBodyBlocks({
   onAssignmentCountLoaded?: (count: number) => void
 }) {
   const { t } = useTranslation()
-  if (loading) return <PageSpinner variant="section" />
+  if (loading) return <ReadingSkeleton />
   if (loadError) {
     // Reading a chapter whose blocks failed to load should NOT render
     // as "this chapter is empty" — that's how a teacher discovers a
