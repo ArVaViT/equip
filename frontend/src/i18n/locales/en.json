@@ -835,7 +835,8 @@
     "essayHelper": "Essay · graded by the teacher",
     "wordsCount_one": "{{count}} word",
     "wordsCount_other": "{{count}} words",
-    "wordsWithMin": "{{count}} / {{min}} required"
+    "wordsWithMin": "{{count}} / {{min}} required",
+    "attemptsUnverified": "Couldn't check how many attempts you have used. You can start, but if your attempts are spent the server will refuse the submission — reload the page first."
   },
   "quizEditor": {
     "validation": {

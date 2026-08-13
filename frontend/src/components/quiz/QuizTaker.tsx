@@ -18,6 +18,7 @@ import {
   type AnswerMap,
   type QuizAnswer,
 } from "./taker"
+import { attemptGate } from "./attemptGate"
 
 interface QuizTakerProps {
   chapterId: string
@@ -61,8 +62,10 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
     (a, b) => a.order_index - b.order_index,
   )
   const maxAttempts = quiz.max_attempts ?? null
-  const attemptsUsed = attempts.filter((a) => !!a.completed_at).length
-  const attemptsReached = maxAttempts !== null && attemptsUsed >= maxAttempts
+  const { used: attemptsUsed, exhausted: attemptsReached, countUnverified } = attemptGate(
+    attempts,
+    maxAttempts,
+  )
   const assessmentTypeKey = quiz.quiz_type === "exam" ? "quiz.exam" : "quiz.quiz"
 
   const setAnswer = (questionId: string, value: QuizAnswer) => {
@@ -110,7 +113,8 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
       const attempt = await coursesService.submitQuiz(quiz.id, payload)
       setResult(attempt)
       setShowResults(true)
-      setAttempts((prev) => [attempt, ...prev])
+      // Even from `null`: we may not know the history, but we know this one.
+      setAttempts((prev) => [attempt, ...(prev ?? [])])
       onSubmitted?.()
     } catch (error: unknown) {
       const detail = getErrorDetail(error)
@@ -152,6 +156,7 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
         manualMaxScore={manualMaxScore}
         maxAttempts={maxAttempts}
         attemptsUsed={attemptsUsed}
+        attemptsUnverified={countUnverified}
       />
 
       {showResults && result ? (
@@ -231,7 +236,7 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
         </div>
       )}
 
-      <PreviousAttempts attempts={attempts} autoMaxScore={autoMaxScore} />
+      <PreviousAttempts attempts={attempts ?? []} autoMaxScore={autoMaxScore} />
     </div>
   )
 }

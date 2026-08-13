@@ -422,7 +422,8 @@
     "wordsCount_few": "{{count}} слова",
     "wordsCount_many": "{{count}} слов",
     "wordsCount_other": "{{count}} слов",
-    "wordsWithMin": "{{count}} / {{min}} требуется"
+    "wordsWithMin": "{{count}} / {{min}} требуется",
+    "attemptsUnverified": "Не удалось проверить, сколько попыток вы уже использовали. Начать можно, но если попытки закончились, сервер не примет отправку — обновите страницу."
   },
   "quizEditor": {
     "validation": {

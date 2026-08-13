@@ -11,13 +11,15 @@ interface UseQuizTakerResult {
   loading: boolean
   fetchError: boolean
   quiz: Quiz | null
-  attempts: QuizAttempt[]
-  setAttempts: React.Dispatch<React.SetStateAction<QuizAttempt[]>>
+  /** `null` when the attempts request failed. Not an empty history. */
+  attempts: QuizAttempt[] | null
+  setAttempts: React.Dispatch<React.SetStateAction<QuizAttempt[] | null>>
 }
 
 export function useQuizTaker({ chapterId, quizId }: Params): UseQuizTakerResult {
   const [quiz, setQuiz] = useState<Quiz | null>(null)
-  const [attempts, setAttempts] = useState<QuizAttempt[]>([])
+  // Starts `null` — before the fetch lands we have not found out either.
+  const [attempts, setAttempts] = useState<QuizAttempt[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
 
@@ -33,7 +35,10 @@ export function useQuizTaker({ chapterId, quizId }: Params): UseQuizTakerResult 
         const [q, preloadedAttempts] = quizId
           ? await Promise.all([
               coursesService.getChapterQuiz(chapterId),
-              coursesService.getMyQuizAttempts(quizId).catch(() => [] as QuizAttempt[]),
+              // `null`, not `[]` — see `attemptGate`. An empty list means the
+              // student has sat this quiz none times; a failed request means we
+              // do not know, and the two must not open the same door.
+              coursesService.getMyQuizAttempts(quizId).catch(() => null),
             ])
           : [await coursesService.getChapterQuiz(chapterId), null]
         if (cancelled) return
@@ -42,9 +47,7 @@ export function useQuizTaker({ chapterId, quizId }: Params): UseQuizTakerResult 
         if (resolved) {
           const att =
             preloadedAttempts ??
-            (await coursesService
-              .getMyQuizAttempts(resolved.id)
-              .catch(() => [] as QuizAttempt[]))
+            (await coursesService.getMyQuizAttempts(resolved.id).catch(() => null))
           if (!cancelled) setAttempts(att)
         }
       } catch {
