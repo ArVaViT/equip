@@ -51,15 +51,15 @@
 
     --background: 42 50% 96%;
     --foreground: 22 13% 12%;
-    --card: 42 40% 92%;
+    --card: 42 40% 93.5%;
     --card-foreground: 22 13% 12%;
-    --popover: 42 50% 96%;
+    --popover: 42 36% 90.5%;
     --popover-foreground: 22 13% 12%;
     --primary: 9 54% 40%;
     --primary-foreground: 42 50% 96%;
     --secondary: 42 34% 87%;
     --secondary-foreground: 22 13% 12%;
-    --muted: 42 40% 92%;
+    --muted: 42 44% 98%;
     --muted-foreground: 35 11% 39%;
     --accent: 133 17% 37%;
     --accent-foreground: 42 50% 96%;
@@ -109,13 +109,13 @@
     --foreground: 39 40% 92%;
     --card: 27 15% 12%;
     --card-foreground: 39 40% 92%;
-    --popover: 27 14% 15%;
+    --popover: 27 14% 16%;
     --popover-foreground: 39 40% 92%;
     --primary: 13 64% 67%;
     --primary-foreground: 26 16% 8%;
     --secondary: 27 14% 15%;
     --secondary-foreground: 39 40% 92%;
-    --muted: 27 15% 12%;
+    --muted: 26 16% 5.5%;
     --muted-foreground: 34 14% 60%;
     --accent: 129 17% 63%;
     --accent-foreground: 26 16% 8%;
@@ -614,7 +614,15 @@
      the characters are Cyrillic, which I checked rather than assumed. We go a
      step larger and looser: Russian lowercase mirrors its capitals and carries
      far fewer ascenders and descenders, so the grey is denser and wants air. */
-  @apply text-foreground text-reading;
+  /* The serif, on the surface it was bought for.
+   *
+   * `.prose` set no family at all, so 3000 words of Russian inherited Golos
+   * Text — a UI sans commissioned for state-service forms — while the headings
+   * inside it were Literata. Decision 001 bought Literata precisely for this:
+   * an optical-size axis and Cyrillic drawn by Evstafieva. The reading surface
+   * was the one place it never reached. */
+  @apply font-serif text-foreground text-reading;
+  font-variation-settings: "opsz" 14;
   max-width: 68ch;
   overflow-wrap: anywhere;
   /* Chromium ships hyph-ru; Russian genuinely hyphenates, which matters at

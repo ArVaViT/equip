@@ -94,6 +94,24 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
   const save = async () => {
     setSaving(true)
     try {
+      if (rubric?.rubric) {
+        // A rubric owns the number. This button may only carry the note.
+        //
+        // It used to call `gradeSubmission` regardless, with `grade` still at
+        // its initial `submission.grade ?? 0` — and since the number field is
+        // hidden when a rubric is attached, nothing ever moved it off 0. So
+        // marking an unmarked essay through the grid (the server writing, say,
+        // 82) and then pressing Save wrote **0** over it and reported success.
+        // Shipped in #969; found by reading the file rather than by a failure.
+        const after = await rubricsService.setMarks(
+          submission.id,
+          rubric.marks.map((m) => ({ criterion_id: m.criterion_id, level_id: m.level_id })),
+          feedback.trim() || undefined,
+        )
+        setRubric(after)
+        toast({ title: t("assignmentEditor.toast.graded"), variant: "success" })
+        return
+      }
       const updated = await coursesService.gradeSubmission(submission.id, {
         grade,
         feedback: feedback.trim() || undefined,
