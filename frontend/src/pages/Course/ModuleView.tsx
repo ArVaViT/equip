@@ -22,12 +22,14 @@ import { isGradableChapterType } from "@/lib/chapterTypes"
 import ChapterTypeBadge from "@/components/course/ChapterTypeBadge"
 import { EmptyState, ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
+import { isChapterComplete, isChapterLocked } from "./moduleProgress"
 
 // Module ID + course ID come from the route, locale from i18n; bundle the
 // fetcher's deps in one tuple so useAsyncData re-runs at the right edges.
 interface ModuleFetchResult {
   module: Module | null
-  completedIds: Set<string>
+  /** `null` when the progress request failed — not the same as "none". */
+  completedIds: Set<string> | null
   invalidLink: boolean
 }
 
@@ -39,16 +41,24 @@ export default function ModuleView() {
   const { data, loading, error: fetchError } = useAsyncData<ModuleFetchResult>(
     async (isCancelled) => {
       if (!courseId || !moduleId) {
-        return { module: null, completedIds: new Set(), invalidLink: true }
+        return { module: null, completedIds: null, invalidLink: true }
       }
       const [mod, completedChapterIds] = await Promise.all([
         coursesService.getModule(courseId, moduleId),
-        coursesService.getMyChapterProgress(courseId).catch(() => [] as string[]),
+        // `null`, not `[]`. An empty list means the student has finished
+        // nothing; a failed request means we do not know. Rendering the second
+        // as the first shows somebody who completed this module a page of
+        // empty circles and a count of zero — see the note on `completedIds`.
+        coursesService.getMyChapterProgress(courseId).catch(() => null),
       ])
       if (isCancelled()) {
-        return { module: null, completedIds: new Set(), invalidLink: false }
+        return { module: null, completedIds: null, invalidLink: false }
       }
-      return { module: mod, completedIds: new Set(completedChapterIds), invalidLink: false }
+      return {
+        module: mod,
+        completedIds: completedChapterIds === null ? null : new Set(completedChapterIds),
+        invalidLink: false,
+      }
     },
     // ``i18n.language`` so a locale flip re-pulls the localised module
     // title / chapter list. ``user?.id`` so a sign-in/sign-out re-pulls
@@ -65,7 +75,14 @@ export default function ModuleView() {
       ? t("errors.loadModuleFailed")
       : null
   const module = data?.module ?? null
-  const completedIds = data?.completedIds ?? new Set<string>()
+  /**
+   * `null` means the progress request failed, and every consumer below has to
+   * say so rather than guess. The guess this replaces was that a failed fetch
+   * meant "nothing completed": a student who had finished the module saw empty
+   * circles, a count of zero, and no completion affordance.
+   */
+  const completedIds = data?.completedIds ?? null
+  const progressKnown = completedIds !== null
 
   const sortedChapters = useMemo(
     () => [...(module?.chapters ?? [])].sort((a, b) => a.order_index - b.order_index),
@@ -73,7 +90,8 @@ export default function ModuleView() {
   )
 
   const gradableChapters = sortedChapters.filter((c) => isGradableChapterType(c.chapter_type))
-  const allComplete = gradableChapters.length > 0 && gradableChapters.every((c) => completedIds.has(c.id))
+  const allComplete =
+    progressKnown && gradableChapters.length > 0 && gradableChapters.every((c) => completedIds.has(c.id))
 
   if (loading) {
     return (
@@ -109,7 +127,9 @@ export default function ModuleView() {
     )
   }
 
-  const completedCount = gradableChapters.filter((c) => completedIds.has(c.id)).length
+  const completedCount = progressKnown
+    ? gradableChapters.filter((c) => completedIds.has(c.id)).length
+    : 0
   const progressPercent = gradableChapters.length > 0 ? Math.round((completedCount / gradableChapters.length) * 100) : 100
 
   return (
@@ -120,6 +140,15 @@ export default function ModuleView() {
           {t("course.backToCourse")}
         </Button>
       </Link>
+
+      {/* Said out loud, not left to be inferred from a page of empty circles.
+          A student who finished this module and meets a blank one needs to
+          know the page is wrong, not conclude their work is gone. */}
+      {!progressKnown && (
+        <p role="status" className="mb-4 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning-ink">
+          {t("module.progressUnknown")}
+        </p>
+      )}
 
       <div className="mb-4">
         <h1 className="mb-1 font-serif text-2xl font-bold tracking-tight text-wrap-safe">{module.title}</h1>
@@ -200,11 +229,18 @@ export default function ModuleView() {
           <div className="space-y-3">
             {sortedChapters.map((chapter, idx) => {
               const isGradable = isGradableChapterType(chapter.chapter_type)
-              const isCompleted = isGradable && completedIds.has(chapter.id)
+              const isCompleted = isChapterComplete(completedIds, chapter, isGradable)
               const requiresTeacher = chapter.requires_completion
               const prevChapter = idx > 0 ? sortedChapters[idx - 1] : null
               const prevIsGradable = prevChapter ? isGradableChapterType(prevChapter.chapter_type) : false
-              const isLocked = chapter.is_locked && prevChapter != null && prevIsGradable && !completedIds.has(prevChapter.id)
+              // Fails **open** when progress is unknown, and that direction is
+              // deliberate. `!completedIds.has(...)` on a failed fetch is
+              // `true`, so the old code locked every gated chapter — a student
+              // who had earned their way through found a wall because a
+              // request timed out. The server gates this for real; guessing on
+              // the client can only be wrong in one of two directions, and
+              // wrongly denying somebody their own progress is the worse one.
+              const isLocked = isChapterLocked(completedIds, chapter, prevChapter ?? null, prevIsGradable)
 
               if (isLocked) {
                 return (
