@@ -355,6 +355,18 @@ def test_full_roundtrip_synodal_with_reference_inside():
     assert "(Acts 20:28)" in final
 
 
+# NOTE (2026-08-13): tests below that drive `post_substitute` with
+# `target_locale="ru"` no longer expect the Synodal verse to be swapped in.
+# `synodal-ru.json` is misaligned — `romans.1.1` returns James, `jude.1.1`
+# returns Hebrews — so quoting it prints the wrong passage of Scripture to a
+# student. See `UNTRUSTED_QUOTE_LOCALES` in `substitution.py` and
+# `test_wrong_scripture_is_never_quoted.py`.
+#
+# What these tests are really about — marker whitespace, reference-tail
+# localisation, round-trip plumbing — still holds, and still runs. When the
+# bundle is replaced, the verse assertions come back with it.
+
+
 def test_full_roundtrip_kjv_to_synodal():
     """Inverse direction — author wrote KJV, student reads RU."""
     canonical_en = lookup(BibleRef("acts", 1, 8), "en")
@@ -368,8 +380,11 @@ def test_full_roundtrip_kjv_to_synodal():
     markered, subs = pre_substitute(source_html, "en")
     assert len(subs) == 1
     final = post_substitute(markered, subs, "ru")
-    assert canonical_ru in final
-    assert canonical_en not in final
+    # Not swapped: the Russian bundle is refused. The author's own English
+    # survives — honestly odd beats silently wrong.
+    assert canonical_en in final
+    assert canonical_ru not in final
+    assert "Деян" in final
 
 
 # ---------------------------------------------------------------------------
@@ -417,10 +432,11 @@ def test_post_substitute_preserves_space_before_parenthesized_reference():
     # the opening paren of the reference.
     assert ".(" not in final
     assert ",(" not in final
-    # And the ref must immediately follow the canonical text, separated
-    # by a single ASCII space.
-    canonical_ru = lookup(BibleRef("matthew", 28, 19), "ru")
-    assert canonical_ru and canonical_ru + " (" in final
+    # And the ref must immediately follow the quoted text, separated by a
+    # single ASCII space. The quoted text is the author's own English here:
+    # the Russian bundle is refused (see `UNTRUSTED_QUOTE_LOCALES`), and the
+    # spacing this test guards is unaffected by which text lands.
+    assert canonical_en + "” (" in final
 
 
 def test_post_substitute_localizes_reference_book_name_to_target_locale():
@@ -468,7 +484,10 @@ def test_outside_blockquote_ref_localizes_into_target_locale():
     assert len(subs) == 1
     assert "Acts 1:8" in subs[0].ref_tail, "outside ref must be tracked on Substitution"
     final = post_substitute(markered, subs, "ru")
-    assert canonical_ru in final
+    # The verse is not swapped — the Russian bundle is refused — but the
+    # *reference tail* still localises, and that is what this test is about.
+    assert canonical_en in final
+    assert canonical_ru not in final
     assert "(Деян. 1:8)" in final
     assert "(Acts 1:8)" not in final
 

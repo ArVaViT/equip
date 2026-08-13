@@ -318,6 +318,43 @@ def pre_substitute(
     return "".join(out_parts), subs
 
 
+#: Bundles that must never be pasted into a student's page.
+#:
+#: `synodal-ru.json` ships misaligned. Its book slugs have shifted, so
+#: `romans.1.1` returns James, `jude.1.1` returns Hebrews, `3john.1.1` returns
+#: Philemon and `1kings.1.1` returns 2 Kings. Eight books are absent; 24 of 66
+#: disagree with the English bundle on verse count; 2,656 verses carry a
+#: `(22-1)` renumbering artifact inside the text.
+#:
+#: `post_substitute` pastes whatever `lookup` returns directly into a
+#: blockquote a student reads. Unguarded, that prints **the wrong passage of
+#: Scripture** — silently, with no error, in a Bible school. Not a broken
+#: page: a confident false statement about the Bible.
+#:
+#: **Why the whole bundle rather than the bad books.** The first version of
+#: this guard compared verse counts per book against the English bundle. It
+#: caught `romans` and missed `jude`, `3john` and `1kings`, because a shifted
+#: slug can land on a book of the same length. Structure cannot detect this —
+#: only content can, and cross-language content comparison is not available
+#: here. There is no honest way to certify any book in a file whose slugs have
+#: demonstrably moved.
+#:
+#: **Why here and not in `store.lookup`.** Blocking at the store also stopped
+#: the daily-challenge generator, which needs Synodal text to build a
+#: bilingual question — and that pipeline has doctrinal and bilingual review
+#: stages before anything is published. The harm being prevented is the
+#: *silent* paste into a lesson, so the guard belongs on that path alone.
+#:
+#: **What the fallback costs.** A miss keeps `sub.original_inner`, the
+#: author's own quotation. Russian-authored material is unaffected. An
+#: English-authored lesson rendered into Russian shows the English verse
+#: through — visibly odd, and honestly odd. A glitch a reader can see beats a
+#: doctrinal error nobody catches.
+#:
+#: Delete this when the bundle is replaced; the test fails if anyone forgets.
+UNTRUSTED_QUOTE_LOCALES: frozenset[str] = frozenset({"ru"})
+
+
 def post_substitute(
     html: str,
     subs: list[Substitution],
@@ -334,15 +371,21 @@ def post_substitute(
     survives instead of disappearing."""
     if not subs:
         return html
+    trusted = target_locale not in UNTRUSTED_QUOTE_LOCALES
     for sub in subs:
-        canonical_target = lookup(sub.ref, target_locale)
+        canonical_target = lookup(sub.ref, target_locale) if trusted else None
         replacement = canonical_target if canonical_target is not None else sub.original_inner
         html = html.replace(sub.marker, replacement)
         if sub.ref_tail:
             localized = _localize_ref_tail(sub.ref_tail, target_locale)
             if localized != sub.ref_tail:
                 html = html.replace(sub.ref_tail, localized, 1)
-    return html
+    # The fallback path restores the author's inner text *with* its closing
+    # quote, and the tail already carries a leading space — so a refused
+    # lookup left «…Духа:”  (Матф. 28:19)» with a double space. One space
+    # before an opening paren, always; the test that guards this predates the
+    # fallback and was right to keep failing.
+    return html.replace("  (", " (")
 
 
 __all__ = ["Substitution", "post_substitute", "pre_substitute"]
