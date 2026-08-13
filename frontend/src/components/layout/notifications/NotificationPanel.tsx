@@ -95,7 +95,7 @@ export const NotificationPanel = forwardRef<HTMLDivElement, Props>(
             <PageSpinner variant="section" />
           ) : loadError ? (
             <div className="flex flex-col items-center gap-2 py-10 text-ink-muted">
-              <AlertCircle className="h-8 w-8 text-destructive/70" strokeWidth={1.75} />
+              <AlertCircle className="h-8 w-8 text-destructive" strokeWidth={1.75} />
               <p className="text-sm text-destructive">{t("notifications.loadFailed")}</p>
               <button
                 type="button"

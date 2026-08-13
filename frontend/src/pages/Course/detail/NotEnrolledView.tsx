@@ -130,7 +130,7 @@ export function NotEnrolledView({
           </span>
           {chapterCount > 0 && (
             <>
-              <span aria-hidden className="text-ink-muted/40">·</span>
+              <span aria-hidden className="text-ink-muted">·</span>
               <span>{t("courseDetail.chapterCount", { count: chapterCount })}</span>
             </>
           )}

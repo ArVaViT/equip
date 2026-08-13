@@ -37,13 +37,13 @@ export function symbolRank(symbol: string, bands: GradeBand[]): number {
  * is impossible past five and was the wrong thing to ask for.
  */
 const TONES = [
-  "bg-success/15 text-success",
-  "bg-info/15 text-info",
+  "bg-success/15 text-success-ink",
+  "bg-info/15 text-info-ink",
   "bg-accent/20 text-ink",
-  "bg-warning/15 text-warning",
+  "bg-warning/15 text-warning-ink",
 ] as const
 
-const FAILING_TONE = "bg-destructive/15 text-destructive"
+const FAILING_TONE = "bg-destructive/15 text-destructive-ink"
 const UNKNOWN_TONE = "bg-muted text-ink-muted"
 
 /**

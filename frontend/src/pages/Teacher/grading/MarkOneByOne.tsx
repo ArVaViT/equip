@@ -169,8 +169,12 @@ export function MarkOneByOne({
       <Card>
         <CardContent className="space-y-3 p-4">
           <p className="text-xs text-ink-muted">{current.student_name}</p>
-          {/* The work gets the screen. */}
-          <div className="whitespace-pre-wrap text-wrap-safe text-sm">{current.content}</div>
+          {/* The work gets the screen — and the same reading treatment the
+              chapters get. The product's careful typography used to stop at
+              course text: the essay a teacher must actually read was set at
+              14px at full card width, which is the one surface where an
+              unreadable line length costs somebody an hour every week. */}
+          <div className="prose whitespace-pre-wrap text-wrap-safe">{current.content}</div>
         </CardContent>
       </Card>
 

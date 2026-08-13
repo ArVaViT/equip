@@ -46,7 +46,7 @@ export function RegisterForm({
         {serverError && (
           <div
             role="alert"
-            className="text-sm text-destructive bg-destructive/10 border border-destructive/20 p-3 rounded-lg"
+            className="text-sm text-destructive-ink bg-destructive/10 border border-destructive/20 p-3 rounded-lg"
           >
             {serverError}
           </div>
@@ -209,7 +209,7 @@ export function RegisterForm({
           {t("authRegister.alreadyHaveAccount")}{" "}
           <Link
             to="/login"
-            className="text-brand font-medium hover:text-brand/80 transition-colors"
+            className="text-brand font-medium hover:text-brand-ink transition-colors"
           >
             {t("auth.signIn")}
           </Link>

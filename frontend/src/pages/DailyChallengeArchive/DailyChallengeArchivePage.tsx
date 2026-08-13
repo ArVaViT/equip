@@ -271,7 +271,7 @@ function DayCell({ entry, selected, onSelect, t }: DayCellProps) {
         status,
       })}
       className={cn(
-        "group relative flex h-10 flex-col items-center justify-center rounded-md border text-[11px] font-medium tabular-nums transition-colors",
+        "group relative flex h-10 flex-col items-center justify-center rounded-md border text-xs font-medium tabular-nums transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
         correct && !replay && "border-success/50 bg-success/15 text-ink",
         correct && replay && "border-success/30 bg-success/5 text-ink",
@@ -429,7 +429,7 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
               }`
             : challengeDate}
         </h2>
-        <span className="ml-auto text-[11px] uppercase tracking-[0.14em] text-ink-muted">
+        <span className="ml-auto text-xs uppercase tracking-[0.14em] text-ink-muted">
           {t("dailyChallenge.archive.detail.replayBadge")}
         </span>
       </header>

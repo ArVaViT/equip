@@ -79,12 +79,12 @@ export default function AdminDashboard() {
   return (
     <div className="animate-fade-in container mx-auto max-w-6xl px-4 py-6 sm:py-8">
       <header className="mb-6 space-y-2">
-        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
           {t("admin.eyebrow")}
         </p>
         <div className="flex items-center gap-3">
           <div className="rounded-md bg-brand/10 p-2">
-            <Shield className="h-6 w-6 text-brand" strokeWidth={1.75} aria-hidden />
+            <Shield className="h-6 w-6 text-brand-ink" strokeWidth={1.75} aria-hidden />
           </div>
           <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">
             {t("admin.title")}

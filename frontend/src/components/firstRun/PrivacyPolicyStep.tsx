@@ -11,7 +11,7 @@ interface Props {
  * First-run Step 1 — Privacy Policy gate.
  *
  * Editorial composition matching the rest of the onboarding voice:
- * thin sage rule → eyebrow → Fraunces serif title → warm paragraph →
+ * thin sage rule → eyebrow → Literata serif title → warm paragraph →
  * three short bullets → checkbox → single primary CTA.
  *
  * No skip path. The user MUST accept before continuing — this is the
@@ -27,7 +27,7 @@ export function PrivacyPolicyStep({ onAccept }: Props) {
   return (
     <div className="flex w-full max-w-xl flex-col items-center gap-5 text-center">
       <span className="block h-px w-12 bg-accent/60" aria-hidden />
-      <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-accent">
+      <p className="text-xs font-medium uppercase tracking-[0.22em] text-accent">
         {t("firstRun.privacy.eyebrow")}
       </p>
       <h1 className="font-serif text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-3xl">

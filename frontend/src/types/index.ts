@@ -312,7 +312,12 @@ export interface Certificate {
   student_name?: string | null
   student_email?: string | null
   course_title?: string | null
-  teacher_approver_name?: string | null  /** What still stands between this student and the certificate they asked
+  teacher_approver_name?: string | null
+  /** The letterhead, frozen at issuance and never re-read. A school that
+   *  renames itself does not rewrite what it already certified. */
+  school_name?: string | null
+  school_city?: string | null
+  teacher_name?: string | null  /** What still stands between this student and the certificate they asked
    *  for (D9). Present only on the pending listings a reviewer sees; empty
    *  means the request is earned. */
   blockers?: CertificateBlocker[]

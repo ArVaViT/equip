@@ -784,7 +784,10 @@
     "imageLightbox": {
       "dialogAria": "Image preview",
       "closeAria": "Close image preview"
-    }
+    },
+    "markRead": "Mark as read",
+    "markedRead": "Chapter read",
+    "markReadFailed": "Could not mark it"
   },
   "quiz": {
     "exam": "Exam",
@@ -1100,7 +1103,12 @@
       "submitted": "Submitted",
       "graded": "Graded",
       "returned": "Returned"
-    }
+    },
+    "statusUnknownTitle": "Couldn't check whether this was handed in",
+    "statusUnknownHelp": "The form is hidden on purpose: if the work is already submitted, a second copy only confuses you and whoever marks it. Check your connection and try again.",
+    "statusUnknownRetry": "Check again",
+    "draftSaved": "Draft saved on this device",
+    "draftRestored": "Draft restored from this device"
   },
   "certificates": {
     "backToCourses": "Back to courses",
@@ -1156,6 +1164,20 @@
         "submitFailed": "Failed to submit review"
       },
       "blocked": "The certificate opens once the points above are cleared"
+    },
+    "document": {
+      "print": "Print",
+      "back": "Back to certificates",
+      "notIssued": "This certificate has not been issued yet",
+      "schoolUnnamed": "School name not set",
+      "open": "Open certificate",
+      "certificateOfCompletion": "Certificate of Completion",
+      "certifies": "This certifies that",
+      "hasCompleted": "has completed the course",
+      "issued": "Issued {{date}}",
+      "instructor": "Instructor",
+      "director": "Director",
+      "verifyAt": "Verify at equipbible.com/verify/{{number}}"
     }
   },
   "studentProgress": {
@@ -2462,5 +2484,25 @@
     "note": "Where and how exactly",
     "notePlaceholder": "Asked it to rephrase two paragraphs of the introduction",
     "required": "Tick the confirmation to hand your work in"
+  },
+  "rubricEditor": {
+    "defaultTitle": "Essay rubric",
+    "why": "A rubric is one standard: the same measure on the twentieth essay as on the first, and the only answer a school has to «why did he get 85 and I got 70».",
+    "create": "Create a rubric",
+    "criterionPlaceholder": "What is being judged — «argument rests on the text»",
+    "addCriterion": "Add criterion",
+    "removeCriterion": "Remove criterion",
+    "saveAndAttach": "Save and apply",
+    "attached": "Rubric applied",
+    "attachedHeading": "Marked against a rubric",
+    "attachFailed": "Could not apply the rubric",
+    "saveFailed": "Could not save the rubric",
+    "needCriterion": "Name at least one criterion",
+    "titleLabel": "Rubric name",
+    "levelLabel": "Level name",
+    "levelPoints": "Points for this level",
+    "levelWeak": "weak",
+    "levelOk": "good",
+    "levelStrong": "strong"
   }
 }

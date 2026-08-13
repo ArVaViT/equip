@@ -81,7 +81,7 @@ export default function ResetPassword() {
       >
         <div className="flex flex-col items-center text-center gap-4 py-6 animate-fade-in">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
-            <CheckCircle2 className="h-8 w-8 text-success" strokeWidth={1.75} aria-hidden />
+            <CheckCircle2 className="h-8 w-8 text-success-ink" strokeWidth={1.75} aria-hidden />
           </div>
           <p className="text-sm text-ink-muted">
             {t("auth.resetPassword.successBody")}
@@ -103,7 +103,7 @@ export default function ResetPassword() {
     >
       <div className="space-y-6 animate-fade-in">
         {serverError && (
-          <div role="alert" className="text-sm text-destructive bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
+          <div role="alert" className="text-sm text-destructive-ink bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
             {serverError}
           </div>
         )}

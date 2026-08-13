@@ -222,11 +222,11 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
                         />
                       )}
                     </div>
-                    <span className="shrink-0 text-[11px] font-medium tabular-nums text-ink-muted">
+                    <span className="shrink-0 text-xs font-medium tabular-nums text-ink-muted">
                       {enrollment.progress}%
                     </span>
                     {grade?.override_code ? (
-                      <span className="rounded-sm bg-surface/80 px-1.5 py-0 text-[10px] font-medium text-ink">
+                      <span className="rounded-sm bg-surface/80 px-1.5 py-0 text-xs font-medium text-ink">
                         {grade.override_code}
                       </span>
                     ) : null}

@@ -12,6 +12,7 @@ from app.api.dependencies import (
     verify_chapter_owner,
     verify_course_owner,
 )
+from app.constants import GRADABLE_CHAPTER_TYPES
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.metrics import increment
@@ -21,6 +22,7 @@ from app.models.enrollment import Enrollment
 from app.models.user import User
 from app.services.audit_service import log_action
 from app.services.course_service import sync_enrollment_progress
+from app.services.domain_access import resolve_chapter_course_id
 from app.services.student_progress_service import (
     build_course_gradebook_matrix,
     build_course_student_progress,
@@ -110,6 +112,79 @@ def get_student_progress_detail(
             context={"resource_type": "enrollment", "course_id": course_id},
         )
     return build_student_chapter_detail(db, course, course_id, str(student_id))
+
+
+@router.put("/chapter/{chapter_id}/read")
+def mark_chapter_read(
+    chapter_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """The student says they have read this chapter.
+
+    Reading is the core act of this product and, until now, the one act it did
+    not record. Quizzes and assignments complete their chapters by being done;
+    a reading chapter had no way to be finished at all, by anybody but a
+    teacher marking it on the student's behalf.
+
+    **Explicit, not inferred from scrolling.** A scroll heuristic guesses, and
+    guesses wrongly in both directions — a student who skims to the bottom is
+    credited, one who reads carefully on a phone and closes the tab is not.
+    An explicit control is one request, it is honest, and it leaves the
+    student deciding what they have read.
+
+    Only non-gradable chapters: a quiz is finished by taking it, and letting a
+    student declare it read would be a way around the work.
+    """
+    chapter = db.query(Chapter).filter(Chapter.id == chapter_id, Chapter.deleted_at.is_(None)).first()
+    if chapter is None:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Chapter not found",
+            context={"resource_type": "chapter", "chapter_id": chapter_id},
+        )
+    if chapter.chapter_type in GRADABLE_CHAPTER_TYPES:
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="This chapter is finished by doing the work in it, not by marking it read.",
+            context={"resource_type": "chapter", "chapter_id": chapter_id, "chapter_type": chapter.chapter_type},
+        )
+
+    course_id = resolve_chapter_course_id(db, chapter_id)
+    enrolled = (
+        db.query(Enrollment).filter(Enrollment.user_id == current_user.id, Enrollment.course_id == course_id).first()
+    )
+    if not enrolled:
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="You must be enrolled in this course",
+            context={"resource_type": "progress", "course_id": course_id},
+        )
+
+    progress = (
+        db.query(ChapterProgress)
+        .filter(ChapterProgress.user_id == current_user.id, ChapterProgress.chapter_id == chapter_id)
+        .first()
+    )
+    if progress is not None and progress.completed:
+        # Idempotent: pressing it twice is the same statement made twice, and
+        # the second press must not overwrite when it was first read.
+        return {"chapter_id": chapter_id, "completed": True, "completed_at": progress.completed_at}
+
+    if progress is None:
+        progress = ChapterProgress(user_id=current_user.id, chapter_id=chapter_id)
+        db.add(progress)
+    progress.completed = True
+    #: `self`, never `teacher` — the record has to say who decided, because a
+    #: chapter a teacher ticked and one a student read are different facts.
+    progress.completion_type = "self"
+    progress.completed_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(progress)
+    return {"chapter_id": chapter_id, "completed": True, "completed_at": progress.completed_at}
 
 
 @router.put("/chapter/{chapter_id}/student/{student_id}/complete")

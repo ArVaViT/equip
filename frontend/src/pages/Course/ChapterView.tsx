@@ -9,6 +9,7 @@ import { ImageLightbox } from "@/components/chapter/ImageLightbox"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
+import { progressService } from "@/services/progress"
 import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
 import { useAuth } from "@/context/useAuth"
@@ -90,7 +91,10 @@ function TextBlockRender({ html }: { html: string }) {
       <div
         ref={ref}
         onClick={handleClick}
-        className="prose max-w-none"
+        // `max-w-none` used to sit here and did nothing: `.prose{max-width:68ch}`
+        // is later in the built stylesheet at equal specificity, so the measure
+        // always won. One of the two was a lie; the measure is the one we meant.
+        className="prose"
         dangerouslySetInnerHTML={{ __html: html }}
       />
       {lightbox && (
@@ -198,7 +202,7 @@ function FileBlockLink({
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
           {t("chapter.attachmentEyebrow")}
         </p>
         <p className="mt-0.5 truncate text-sm font-medium text-ink">{label}</p>
@@ -302,12 +306,12 @@ function ChapterNavLink({
   if (!chapter) {
     return (
       <div className={`${disabledClass} ${alignment}`} aria-hidden="true">
-        <span className={`flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted ${justify}`}>
+        <span className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted ${justify}`}>
           {side === "prev" && <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.75} />}
           {eyebrow}
           {side === "next" && <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />}
         </span>
-        <span className="mt-0.5 truncate text-sm text-ink-muted/70">
+        <span className="mt-0.5 truncate text-sm text-ink-muted">
           {fallbackLabel}
         </span>
       </div>
@@ -317,7 +321,7 @@ function ChapterNavLink({
   if (locked) {
     return (
       <div className={`${disabledClass} ${alignment}`} aria-label={fallbackLabel}>
-        <span className={`flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted ${justify}`}>
+        <span className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted ${justify}`}>
           <Lock className="h-3.5 w-3.5" strokeWidth={1.75} />
           {eyebrow}
         </span>
@@ -338,7 +342,7 @@ function ChapterNavLink({
         className={`${enabledClass} ${alignment}`}
         aria-label={`${eyebrow}: ${chapter.title}`}
       >
-        <span className={`flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted transition-colors group-hover:text-brand ${justify}`}>
+        <span className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted transition-colors group-hover:text-brand ${justify}`}>
           {side === "prev" && <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.75} />}
           {eyebrow}
           {side === "next" && <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />}
@@ -382,7 +386,7 @@ function EndOfModuleNavLink({
         className="group flex min-w-0 flex-1 flex-col rounded-md bg-card px-3 py-2 text-right transition-colors hover:border-brand/40 hover:bg-muted/40"
         aria-label={`${eyebrow}: ${label}`}
       >
-        <span className="flex items-center justify-end gap-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted transition-colors group-hover:text-brand">
+        <span className="flex items-center justify-end gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted transition-colors group-hover:text-brand">
           {eyebrow}
           {isFinish ? (
             <CheckCircle className="h-3.5 w-3.5" strokeWidth={1.75} />
@@ -422,7 +426,7 @@ function ChapterNav({
       aria-label={t("chapter.navAriaLabel")}
       className="mt-10 border-t border-edge pt-6"
     >
-      <p className="mb-3 text-center text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted tabular-nums">
+      <p className="mb-3 text-center text-xs font-medium uppercase tracking-[0.18em] text-ink-muted tabular-nums">
         {t("chapter.positionEyebrow", { current: currentIdx + 1, total })}
       </p>
       <div className="flex items-stretch gap-2 sm:gap-3">
@@ -611,6 +615,8 @@ export default function ChapterView() {
     [sortedChapters, completedIds],
   )
 
+  const [markingRead, setMarkingRead] = useState(false)
+
   const refreshCompletion = useCallback(async () => {
     if (!chapter || !courseId) return
     try {
@@ -692,19 +698,19 @@ export default function ChapterView() {
       </Link>
 
       <header data-tour="chapter-header" className="mb-10">
-        <p className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+        <p className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
           <span className="inline-flex items-center gap-1.5">
             <ChapterTypeIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
             {t(CHAPTER_TYPE_LABEL_KEYS[chapterType])}
           </span>
-          <span aria-hidden className="text-ink-muted/40">·</span>
+          <span aria-hidden className="text-ink-muted">·</span>
           <span className="tabular-nums">
             {t("chapter.positionEyebrow", { current: currentIdx + 1, total: sortedChapters.length })}
           </span>
           {mod.title && (
             <>
-              <span aria-hidden className="text-ink-muted/40">·</span>
-              <span className="normal-case tracking-normal text-ink-muted/80 text-wrap-safe">
+              <span aria-hidden className="text-ink-muted">·</span>
+              <span className="normal-case tracking-normal text-ink-muted text-wrap-safe">
                 {mod.title}
               </span>
             </>
@@ -739,6 +745,43 @@ export default function ChapterView() {
           />
         )}
       </div>
+
+      {/* Reading chapters get an act of their own.
+          Until now a chapter of pure text could not be finished by the person
+          reading it — only a teacher could tick it — so the core act of the
+          product left no trace. The control is explicit rather than a scroll
+          heuristic: a heuristic credits the skimmer who reaches the bottom and
+          misses the careful reader on a phone who closes the tab. */}
+      {chapterType === "reading" && !hasAssignments && (
+        <div className="mt-8 border-t border-edge pt-5">
+          {isCompleted ? (
+            <p className="flex items-center gap-2 text-sm font-medium text-success">
+              <CheckCircle className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+              {t("chapter.markedRead")}
+            </p>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={markingRead}
+              onClick={async () => {
+                setMarkingRead(true)
+                try {
+                  await progressService.markRead(chapter.id)
+                  await refreshCompletion()
+                } catch {
+                  toast({ title: t("chapter.markReadFailed"), variant: "destructive" })
+                } finally {
+                  setMarkingRead(false)
+                }
+              }}
+            >
+              <CheckCircle className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+              {t("chapter.markRead")}
+            </Button>
+          )}
+        </div>
+      )}
 
       {hasAssignments && (
         <div className="mt-6 border-t border-edge pt-5">

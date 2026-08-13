@@ -43,6 +43,10 @@ class CertificateResponse(BaseModel):
     # source ORM row doesn't carry them, so the broader fan-out of
     # ``CertificateResponse`` consumers (student "my certs", course
     # detail, etc.) keeps its slim payload.
+    #: On an issued certificate this is the name frozen onto the document at
+    #: issuance, straight off the row. The pending listings deliberately
+    #: override it with the live name — a reviewer wants to know who this
+    #: person is now; a document says who they were when it was signed.
     student_name: str | None = None
     student_email: str | None = None
     course_title: str | None = None
@@ -57,6 +61,13 @@ class CertificateResponse(BaseModel):
     #: passed, and the person signing should not have to open the gradebook in
     #: another tab to find out whether that is true.
     blockers: list[CertificateBlockerOut] = []
+
+    #: The letterhead, frozen at issuance. Present only once the certificate is
+    #: a certificate — before that there is nothing to print and no school has
+    #: put its name to anything.
+    school_name: str | None = None
+    school_city: str | None = None
+    teacher_name: str | None = None
 
 
 class CertificateVerifyResponse(BaseModel):

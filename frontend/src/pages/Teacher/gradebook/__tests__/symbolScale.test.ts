@@ -89,11 +89,11 @@ describe("symbolTone across scale sizes", () => {
   // size. Requiring every band to differ is impossible past five and was the
   // wrong thing to ask.
   const SEVERITY = [
-    "bg-success/15 text-success",
-    "bg-info/15 text-info",
+    "bg-success/15 text-success-ink",
+    "bg-info/15 text-info-ink",
     "bg-accent/20 text-ink",
-    "bg-warning/15 text-warning",
-    "bg-destructive/15 text-destructive",
+    "bg-warning/15 text-warning-ink",
+    "bg-destructive/15 text-destructive-ink",
   ]
 
   it.each([1, 2, 3, 4, 5, 6, 7, 12])("never paints a lower band better (%i bands)", (n) => {

@@ -226,7 +226,7 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
   return (
     <div className="flex w-full max-w-xl flex-col items-center gap-5 text-center">
       <span className="block h-px w-12 bg-accent/60" aria-hidden />
-      <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-accent">
+      <p className="text-xs font-medium uppercase tracking-[0.22em] text-accent">
         {t("firstRun.setup.eyebrow")}
       </p>
       <h1 className="font-serif text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-3xl">
@@ -305,7 +305,7 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
             aria-describedby={`${nameId}-hint`}
             className="mt-2"
           />
-          <p id={`${nameId}-hint`} className="mt-1.5 text-xs text-ink-muted/80">
+          <p id={`${nameId}-hint`} className="mt-1.5 text-xs text-ink-muted">
             {t("firstRun.setup.name.hint")}
           </p>
         </div>
@@ -327,7 +327,7 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
             tabIndex={-1}
             className="mt-2 cursor-not-allowed bg-muted/40 text-ink-muted"
           />
-          <p className="mt-1.5 text-xs text-ink-muted/80">
+          <p className="mt-1.5 text-xs text-ink-muted">
             {t("firstRun.setup.email.hint")}
           </p>
         </div>

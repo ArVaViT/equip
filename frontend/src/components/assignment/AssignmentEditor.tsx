@@ -16,6 +16,9 @@ import {
 
 interface AssignmentEditorProps {
   chapterId: string
+  /** Needed by the rubric editor: rubrics belong to a course and are reused
+   *  across the assignments in it. */
+  courseId: string
   onAssignmentCreated?: (assignmentId: string) => void
 }
 
@@ -26,6 +29,7 @@ interface AssignmentEditorProps {
  */
 export default function AssignmentEditor({
   chapterId,
+  courseId,
   onAssignmentCreated,
 }: AssignmentEditorProps) {
   const confirm = useConfirm()
@@ -153,6 +157,7 @@ export default function AssignmentEditor({
         <AssignmentItem
           key={a.id}
           assignment={a}
+          courseId={courseId}
           onDelete={handleDelete}
           onUpdate={(updated) =>
             setAssignments((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))

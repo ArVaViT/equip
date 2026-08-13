@@ -7,6 +7,23 @@ import type {
 } from "@/types"
 
 export const progressService = {
+  /**
+   * The student's own statement that they have read a chapter.
+   *
+   * Explicit rather than inferred from scrolling: a heuristic credits the
+   * skimmer who reaches the bottom and misses the careful reader on a phone
+   * who closes the tab. One request, and the student decides.
+   */
+  async markRead(chapterId: string): Promise<void> {
+    await api.put(`/progress/chapter/${chapterId}/read`)
+    // Their own progress and every teacher-facing roll-up move together, so a
+    // student who marks a chapter read does not see one number change and
+    // another lag behind for a minute.
+    cacheInvalidatePrefix("progress:my:")
+    cacheInvalidatePrefix("progress:students:")
+    cacheInvalidatePrefix("progress:detail:")
+  },
+
   async teacherMarkComplete(chapterId: string, studentId: string): Promise<void> {
     await api.put(`/progress/chapter/${chapterId}/student/${studentId}/complete`)
     cacheInvalidatePrefix("progress:students:")

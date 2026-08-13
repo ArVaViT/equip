@@ -12,6 +12,7 @@
 #   ./scripts/gate.sh            # everything
 #   ./scripts/gate.sh backend    # backend only
 #   ./scripts/gate.sh frontend   # frontend only
+#   ./scripts/gate.sh a11y       # axe over the real pages (needs `npm run dev`)
 #
 # Deliberately NOT a pre-commit hook. A hook that runs a 20-second test suite on
 # every commit teaches people to pass --no-verify, and then it protects nothing.
@@ -72,6 +73,28 @@ if [[ "$SCOPE" == "all" || "$SCOPE" == "frontend" ]]; then
   LS_STORE="$(mktemp -d)/localstorage.json"
   run "vitest"            env -C frontend NODE_OPTIONS="--localstorage-file=$LS_STORE" npx vitest run
   rm -rf "$(dirname "$LS_STORE")"
+fi
+
+# The a11y check is opt-in — `./scripts/gate.sh a11y` — and not part of `all`.
+#
+# It is separate because it is the only check here that needs a running server,
+# and a gate that boots a dev server on every invocation is a gate that hangs
+# on a busy port and gets abandoned. It is *here at all* because on 2026-08-13
+# it caught two real defects on two consecutive pushes — a footer line at
+# 3.6:1 and a badge at 4.46:1 — and each cost a full CI round-trip to learn,
+# which is precisely the waste this script was written to stop.
+#
+# Most of what those two failures represented is now covered by
+# `contrast-floor.test.ts` under `vitest`, which needs no browser. This runs
+# the real page through axe, which is still the only thing that sees the
+# composited result.
+if [[ "$SCOPE" == "a11y" ]]; then
+  if ! curl -sf -o /dev/null http://localhost:3000; then
+    echo "a11y needs the dev server: run 'npm run dev' in frontend/ first" >&2
+    exit 1
+  fi
+  run "a11y" env -C frontend E2E_BASE_URL=http://localhost:3000 \
+    npx playwright test e2e/a11y.spec.ts --project=chromium
 fi
 
 echo

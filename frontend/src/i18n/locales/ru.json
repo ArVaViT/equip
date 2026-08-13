@@ -362,7 +362,10 @@
     "imageLightbox": {
       "dialogAria": "Предпросмотр изображения",
       "closeAria": "Закрыть предпросмотр"
-    }
+    },
+    "markRead": "Прочитано",
+    "markedRead": "Глава прочитана",
+    "markReadFailed": "Не удалось отметить"
   },
   "quiz": {
     "exam": "Экзамен",
@@ -694,7 +697,12 @@
       "submitted": "Сдано",
       "graded": "Оценено",
       "returned": "Возвращено"
-    }
+    },
+    "statusUnknownTitle": "Не удалось проверить, сдана ли работа",
+    "statusUnknownHelp": "Форма скрыта нарочно: если работа уже отправлена, вторая копия только запутает и вас, и преподавателя. Проверьте связь и повторите.",
+    "statusUnknownRetry": "Проверить снова",
+    "draftSaved": "Черновик сохранён на этом устройстве",
+    "draftRestored": "Восстановлен черновик с этого устройства"
   },
   "certificates": {
     "backToCourses": "К курсам",
@@ -752,6 +760,20 @@
         "submitFailed": "Не удалось отправить отзыв"
       },
       "blocked": "Сертификат станет доступен, когда закроются пункты выше"
+    },
+    "document": {
+      "print": "Печать",
+      "back": "К свидетельствам",
+      "notIssued": "Это свидетельство ещё не выдано",
+      "schoolUnnamed": "Название школы не задано",
+      "open": "Открыть свидетельство",
+      "certificateOfCompletion": "Certificate of Completion",
+      "certifies": "This certifies that",
+      "hasCompleted": "has completed the course",
+      "issued": "Issued {{date}}",
+      "instructor": "Instructor",
+      "director": "Director",
+      "verifyAt": "Verify at equipbible.com/verify/{{number}}"
     }
   },
   "studentProgress": {
@@ -2532,5 +2554,25 @@
     "note": "Где и как именно",
     "notePlaceholder": "Просил перефразировать два абзаца во введении",
     "required": "Отметьте подтверждение, чтобы сдать работу"
+  },
+  "rubricEditor": {
+    "defaultTitle": "Рубрика эссе",
+    "why": "Рубрика — это единый стандарт: одинаковая мерка на двадцатой работе и на первой, и единственный ответ студенту на вопрос «почему у него 85, а у меня 70».",
+    "create": "Создать рубрику",
+    "criterionPlaceholder": "Что оцениваем — например, «опора на текст»",
+    "addCriterion": "Ещё критерий",
+    "removeCriterion": "Убрать критерий",
+    "saveAndAttach": "Сохранить и применить",
+    "attached": "Рубрика применена",
+    "attachedHeading": "Оценивается по рубрике",
+    "attachFailed": "Не удалось применить рубрику",
+    "saveFailed": "Не удалось сохранить рубрику",
+    "needCriterion": "Назовите хотя бы один критерий",
+    "titleLabel": "Название рубрики",
+    "levelLabel": "Название уровня",
+    "levelPoints": "Баллы за уровень",
+    "levelWeak": "слабо",
+    "levelOk": "хорошо",
+    "levelStrong": "уверенно"
   }
 }

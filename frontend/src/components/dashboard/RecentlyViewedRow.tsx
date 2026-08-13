@@ -61,7 +61,7 @@ export function RecentlyViewedRow() {
                 to={`/courses/${course.id}`}
                 className="group flex w-44 items-center gap-2 rounded-md border border-edge bg-card px-3 py-2 transition-colors hover:border-brand/30 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand-ink">
                   <BookOpen className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1 truncate font-serif text-xs font-medium leading-tight text-ink transition-colors group-hover:text-brand">

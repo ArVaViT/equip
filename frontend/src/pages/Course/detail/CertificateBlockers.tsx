@@ -90,7 +90,7 @@ export function CertificateBlockers({
   return (
     <div className="rounded-lg border border-warning/40 bg-warning/5 px-3 py-2.5">
       <p className="flex items-center gap-1.5 text-sm font-medium">
-        <AlertCircle className="h-4 w-4 shrink-0 text-warning" strokeWidth={1.75} aria-hidden />
+        <AlertCircle className="h-4 w-4 shrink-0 text-warning-ink" strokeWidth={1.75} aria-hidden />
         {t("myGrade.certificate.notYetTitle")}
       </p>
       <ul className="mt-1.5 space-y-1 text-sm text-ink-muted">

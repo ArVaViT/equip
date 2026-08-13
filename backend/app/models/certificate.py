@@ -109,6 +109,15 @@ class Certificate(Base):
     #: The result in whichever form the scheme uses — a symbol or a percentage,
     #: never both, mirroring ``student_grades`` (D7).
     official_code: Mapped[str | None] = mapped_column(Text)
+    #: The letterhead, captured at issuance and never re-read. A school that
+    #: renames itself must not rewrite what it already certified, and a student
+    #: who changes her surname must not have last year's document re-issued in
+    #: a name she did not hold when she earned it. The grade was frozen for
+    #: exactly this reason (M6); the words are the part a person reads.
+    school_name: Mapped[str | None] = mapped_column(Text)
+    school_city: Mapped[str | None] = mapped_column(Text)
+    student_name: Mapped[str | None] = mapped_column(Text)
+    teacher_name: Mapped[str | None] = mapped_column(Text)
     official_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     #: How the grade was decided — the question a director asks when two
     #: certificates from one course disagree. ``computed`` | ``override`` |

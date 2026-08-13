@@ -155,7 +155,7 @@ export default function DailyChallengeReviewDetailPage() {
       ) : view ? (
         <div className="mt-6 space-y-6">
           {view.rejected && (
-            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive-ink">
               {t("admin.dailyChallenge.review.rejectedBanner", { reason: view.rejection_reason ?? "" })}
             </div>
           )}
@@ -264,7 +264,7 @@ function LocaleCellEditor({ locale, cell, saving, onSave }: LocaleCellEditorProp
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">
           {locale.toUpperCase()}
         </span>
         {missing ? (

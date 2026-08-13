@@ -61,7 +61,7 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
                     how long this has been waiting and who's already
                     signed off (the teacher must approve before this
                     list shows the row). */}
-                <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-[11px] text-ink-muted/90 sm:grid-cols-2">
+                <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-xs text-ink-muted sm:grid-cols-2">
                   {cert.requested_at && (
                     <div className="flex items-center gap-1.5">
                       <Clock className="h-3 w-3 shrink-0" strokeWidth={1.75} aria-hidden />
@@ -85,7 +85,7 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
                   )}
                   {cert.requested_at && (
                     <div
-                      className="hidden text-[10px] text-ink-muted/60 sm:col-span-2 sm:block"
+                      className="hidden text-xs text-ink-muted sm:col-span-2 sm:block"
                       title={cert.requested_at}
                     >
                       {t("admin.pendingCerts.requestedAtPrefix", {
@@ -117,7 +117,7 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
                   <XCircle className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
                   {t("admin.pendingCerts.reject")}
                 </Button>
-                <p className="text-[10px] leading-tight text-ink-muted/80">
+                <p className="text-xs leading-tight text-ink-muted">
                   {t("admin.pendingCerts.approveHint")}
                 </p>
               </div>

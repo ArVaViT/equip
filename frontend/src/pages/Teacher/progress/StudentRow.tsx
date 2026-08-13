@@ -274,7 +274,7 @@ export function StudentRow({
             // The row a teacher should open first. A notification is read once
             // and gone; this stays until the request is dealt with, which is
             // the difference between a student being heard and being missed.
-            <span className="ml-2 inline-flex items-center gap-1 rounded-md bg-warning/15 px-1.5 py-0.5 align-middle text-xs font-medium text-warning">
+            <span className="ml-2 inline-flex items-center gap-1 rounded-md bg-warning/15 px-1.5 py-0.5 align-middle text-xs font-medium text-warning-ink">
               <HandHelping className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
               {t("studentProgress.retake.asked")}
             </span>

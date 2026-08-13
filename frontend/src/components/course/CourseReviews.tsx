@@ -184,7 +184,7 @@ function StarDisplay({ rating, size = "sm" }: { rating: number; size?: "sm" | "l
             className={`${iconClass} ${
               filled
                 ? "fill-warning text-warning"
-                : "text-ink-muted/30"
+                : "text-ink-muted"
             }`}
           strokeWidth={1.75} />
         )

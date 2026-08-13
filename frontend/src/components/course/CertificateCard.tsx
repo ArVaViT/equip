@@ -126,7 +126,7 @@ export default function CertificateCard({ courseId, progress, blocked = false, c
         <CardContent className="py-6">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-warning/10">
-              <Clock className="h-6 w-6 text-warning" strokeWidth={1.75} aria-hidden="true" />
+              <Clock className="h-6 w-6 text-warning-ink" strokeWidth={1.75} aria-hidden="true" />
             </div>
             <div className="flex-1">
               <h3 className="font-serif text-base font-semibold">{t("certificates.card.pendingTitle")}</h3>
@@ -146,7 +146,7 @@ export default function CertificateCard({ courseId, progress, blocked = false, c
         <CardContent className="py-6">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-info/10">
-              <Clock className="h-6 w-6 text-info" strokeWidth={1.75} aria-hidden="true" />
+              <Clock className="h-6 w-6 text-info-ink" strokeWidth={1.75} aria-hidden="true" />
             </div>
             <div className="flex-1">
               <h3 className="font-serif text-base font-semibold">{t("certificates.card.adminPendingTitle")}</h3>
@@ -241,7 +241,7 @@ export default function CertificateCard({ courseId, progress, blocked = false, c
                       className={`h-6 w-6 transition-colors ${
                         value <= (reviewHover || reviewRating)
                           ? "fill-warning text-warning"
-                          : "text-ink-muted/30"
+                          : "text-ink-muted"
                       }`}
                     strokeWidth={1.75} />
                   </button>
@@ -282,7 +282,7 @@ export default function CertificateCard({ courseId, progress, blocked = false, c
         <CardContent className="py-6">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-destructive/10">
-              <XCircle className="h-6 w-6 text-destructive" strokeWidth={1.75} />
+              <XCircle className="h-6 w-6 text-destructive-ink" strokeWidth={1.75} />
             </div>
             <div className="flex-1">
               <h3 className="font-serif text-base font-semibold">

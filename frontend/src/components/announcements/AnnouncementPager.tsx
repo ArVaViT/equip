@@ -101,7 +101,7 @@ export function AnnouncementPager({ announcements, onDelete }: AnnouncementPager
               {current.content}
             </p>
           )}
-          <time className="mt-1 block text-xs text-ink-muted/60">
+          <time className="mt-1 block text-xs text-ink-muted">
             {formatDateTime(current.created_at)}
           </time>
         </div>
@@ -143,7 +143,7 @@ export function AnnouncementPager({ announcements, onDelete }: AnnouncementPager
             </div>
           ) : (
             <span
-              className="text-[10px] leading-none tabular-nums text-ink-muted"
+              className="text-xs leading-none tabular-nums text-ink-muted"
               aria-hidden
             >
               {t("teacherEditor.modals.announcements.position", {

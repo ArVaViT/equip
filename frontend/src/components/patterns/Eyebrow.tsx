@@ -7,7 +7,7 @@ interface EyebrowProps extends LabelHTMLAttributes<HTMLElement> {
   as?: ElementType
   /**
    * - `muted` (default): the canonical DESIGN.md eyebrow —
-   *   `text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted`.
+   *   `text-xs font-medium uppercase tracking-[0.18em] text-ink-muted`.
    * - `accent`: the celebration/first-run variant with wider tracking
    *   and the academic-gold accent color.
    */
@@ -24,7 +24,7 @@ export function Eyebrow({ as: Comp = "p", tone = "muted", className, ...props }:
   return (
     <Comp
       className={cn(
-        "text-[11px] font-medium uppercase",
+        "text-xs font-medium uppercase",
         tone === "muted" && "tracking-[0.18em] text-ink-muted",
         tone === "accent" && "tracking-[0.22em] text-accent",
         className,

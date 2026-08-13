@@ -29,20 +29,40 @@
  */
 @layer base {
   :root {
-    --background: 38 32% 97%;
-    --foreground: 265 28% 13%;
-    --card: 40 35% 99%;
-    --card-foreground: 265 28% 13%;
-    --popover: 40 35% 99%;
-    --popover-foreground: 265 28% 13%;
-    --primary: 262 56% 30%;
-    --primary-foreground: 40 40% 98%;
-    --secondary: 265 18% 93%;
-    --secondary-foreground: 265 28% 13%;
-    --muted: 38 22% 94%;
-    --muted-foreground: 265 12% 38%;
-    --accent: 146 28% 52%;
-    --accent-foreground: 265 28% 13%;
+    /* Motion, as three durations and two curves — nothing else.
+     *
+     * What makes motion read as expensive is consistency, not quantity: the
+     * sites people actually praise use a handful of values everywhere. Apple's
+     * whole shell runs on one curve at 0.32s; Anthropic's on 0.2s for every
+     * interaction and 0.4s for panels. The practitioner rule of thumb is
+     * blunter still — everything under 300ms, and never ease-in on UI.
+     *
+     *   --motion-fast    micro-feedback: press, hover, colour
+     *   --motion-base    interaction: menus, popovers, state changes
+     *   --motion-panel   panels, sheets, route-level movement
+     */
+    --motion-fast: 120ms;
+    --motion-base: 200ms;
+    --motion-panel: 400ms;
+    /* Decelerating. The default for anything entering or responding. */
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    /* Symmetric, for things that open and close along the same path. */
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
+    --background: 42 50% 96%;
+    --foreground: 22 13% 12%;
+    --card: 42 40% 93.5%;
+    --card-foreground: 22 13% 12%;
+    --popover: 42 36% 90.5%;
+    --popover-foreground: 22 13% 12%;
+    --primary: 9 54% 40%;
+    --primary-foreground: 42 50% 96%;
+    --secondary: 42 34% 87%;
+    --secondary-foreground: 22 13% 12%;
+    --muted: 42 44% 98%;
+    --muted-foreground: 35 11% 39%;
+    --accent: 133 17% 37%;
+    --accent-foreground: 42 50% 96%;
     --destructive: 0 70% 42%;
     --destructive-foreground: 0 0% 98%;
     --success: 156 45% 34%;
@@ -51,6 +71,30 @@
     --warning-foreground: 265 28% 13%;
     --info: 215 75% 42%;
     --info-foreground: 0 0% 98%;
+
+    /* The chip step.
+     *
+     * Every tinted chip in this product is `bg-X/15 text-X` — the token as a
+     * wash behind itself at full strength. It always *looks* coordinated,
+     * which is why nobody checked it, and axe eventually did: `bg-info/15
+     * text-info` measures 4.46:1. Measuring the rest found the pattern is
+     * broken almost everywhere — `warning` in the light theme is 2.71:1.
+     *
+     * The mistake is using one step of a colour for two jobs. Radix solves it
+     * with a scale (step 3 as the subtle background, step 11 as the text on
+     * it); this is the same idea at the size we need. The tint stays exactly
+     * as it was, so chips look unchanged; the *text* gets its own step,
+     * whose lightness was solved for — not picked — against the worst tint
+     * each token is actually used at (/10, /15 and /20, over both
+     * `--background` and `--card`), with a target of 5:1 so the palette can
+     * still be nudged without breaking.
+     *
+     * `contrast-floor.test.ts` recomputes all of it on every run. */
+    --brand-ink: 9 54% 36%;
+    --destructive-ink: 0 70% 36.5%;
+    --success-ink: 156 45% 26%;
+    --warning-ink: 30 85% 28.5%;
+    --info-ink: 215 75% 36.5%;
     /* 2026-06-06: restored to the pre-overhaul 87% L (Vadym: "a couple days
      * ago there were no white lines, it was normal"). The overhaul had BOTH
      * lightened this to 93% (a washed-out near-white line) AND stripped the
@@ -58,20 +102,20 @@
      * warm page and read as "white panels". Fix = put the clear gray hairline
      * back (87% L) AND give cards their border again (.surface-card +
      * ui/card.tsx) — the cohesive bordered-card look that read as normal. */
-    --border: 265 12% 87%;
-    --input: 265 12% 87%;
-    --ring: 262 56% 38%;
+    --border: 42 28% 79%;
+    --input: 42 28% 79%;
+    --ring: 9 54% 40%;
     --radius: 0.5rem;
 
-    --sidebar: 38 28% 96%;
-    --sidebar-foreground: 265 28% 13%;
-    --sidebar-border: 265 12% 88%;
-    --sidebar-accent: 265 18% 92%;
-    --sidebar-accent-foreground: 262 56% 30%;
-    --sidebar-ring: 262 56% 38%;
+    --sidebar: 42 40% 92%;
+    --sidebar-foreground: 22 13% 12%;
+    --sidebar-border: 42 28% 79%;
+    --sidebar-accent: 42 34% 87%;
+    --sidebar-accent-foreground: 9 54% 40%;
+    --sidebar-ring: 9 54% 40%;
 
-    --chart-1: 262 56% 32%;
-    --chart-2: 146 28% 52%;
+    --chart-1: 9 54% 40%;
+    --chart-2: 133 17% 37%;
     --chart-3: 156 45% 34%;
     --chart-4: 30 85% 42%;
     --chart-5: 215 75% 42%;
@@ -85,20 +129,20 @@
   }
 
   .dark {
-    --background: 240 7% 9%;
-    --foreground: 40 14% 96%;
-    --card: 240 6% 12%;
-    --card-foreground: 40 14% 96%;
-    --popover: 240 6% 12%;
-    --popover-foreground: 40 14% 96%;
-    --primary: 262 58% 72%;
-    --primary-foreground: 240 12% 10%;
-    --secondary: 240 5% 16%;
-    --secondary-foreground: 40 14% 96%;
-    --muted: 240 5% 15%;
-    --muted-foreground: 240 5% 58%;
-    --accent: 146 28% 52%;
-    --accent-foreground: 240 12% 10%;
+    --background: 26 16% 8%;
+    --foreground: 39 40% 92%;
+    --card: 27 15% 12%;
+    --card-foreground: 39 40% 92%;
+    --popover: 27 14% 16%;
+    --popover-foreground: 39 40% 92%;
+    --primary: 13 64% 67%;
+    --primary-foreground: 26 16% 8%;
+    --secondary: 27 14% 15%;
+    --secondary-foreground: 39 40% 92%;
+    --muted: 26 16% 5.5%;
+    --muted-foreground: 34 14% 60%;
+    --accent: 129 17% 63%;
+    --accent-foreground: 26 16% 8%;
     --destructive: 0 58% 50%;
     --destructive-foreground: 0 0% 98%;
     --success: 156 38% 46%;
@@ -107,21 +151,26 @@
     --warning-foreground: 240 12% 10%;
     --info: 215 72% 58%;
     --info-foreground: 240 12% 10%;
+    --brand-ink: 13 64% 70.5%;
+    --destructive-ink: 0 58% 69%;
+    --success-ink: 156 38% 54%;
+    --warning-ink: 32 78% 58.5%;
+    --info-ink: 215 72% 68.5%;
     /* Dark mode restored to the pre-overhaul 19% L hairline (matches --input),
      * the visible-divider value from "a couple days ago". */
-    --border: 240 5% 19%;
-    --input: 240 5% 19%;
-    --ring: 262 58% 72%;
+    --border: 30 15% 21%;
+    --input: 30 15% 21%;
+    --ring: 13 64% 67%;
 
-    --sidebar: 240 7% 8%;
-    --sidebar-foreground: 40 14% 96%;
-    --sidebar-border: 240 5% 19%;
-    --sidebar-accent: 240 5% 14%;
-    --sidebar-accent-foreground: 262 58% 72%;
+    --sidebar: 26 16% 8%;
+    --sidebar-foreground: 39 40% 92%;
+    --sidebar-border: 30 15% 21%;
+    --sidebar-accent: 27 14% 15%;
+    --sidebar-accent-foreground: 13 64% 67%;
     --sidebar-ring: 262 58% 72%;
 
-    --chart-1: 262 58% 72%;
-    --chart-2: 146 28% 52%;
+    --chart-1: 13 64% 67%;
+    --chart-2: 129 17% 63%;
     --chart-3: 156 38% 46%;
     --chart-4: 32 78% 54%;
     --chart-5: 215 72% 58%;
@@ -149,26 +198,22 @@
       color 0.3s ease;
     background-color: hsl(var(--background));
   }
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background-image:
-      radial-gradient(ellipse 120% 90% at 10% -25%, hsl(var(--primary) / 0.11) 0%, transparent 55%),
-      radial-gradient(ellipse 90% 70% at 92% 5%, hsl(var(--accent) / 0.09) 0%, transparent 52%),
-      radial-gradient(ellipse 70% 50% at 50% 100%, hsl(var(--muted) / 0.85) 0%, transparent 58%),
-      linear-gradient(180deg, hsl(var(--background)) 0%, hsl(38 28% 96%) 100%);
-    animation: ambient-mesh 26s ease-in-out infinite alternate;
-  }
-  html.dark body::before {
-    background-image:
-      radial-gradient(ellipse 110% 85% at 12% -20%, hsl(var(--primary) / 0.18) 0%, transparent 58%),
-      radial-gradient(ellipse 85% 65% at 88% 8%, hsl(146 25% 35% / 0.12) 0%, transparent 52%),
-      radial-gradient(ellipse 80% 55% at 48% 105%, hsl(240 8% 14%) 0%, transparent 55%),
-      linear-gradient(195deg, hsl(var(--background)) 0%, hsl(240 8% 11%) 100%);
-  }
+  /* The ambient mesh gradient is gone (2026-08-12).
+   *
+   * Two independent reasons, and the first is the one that matters. A slowly
+   * animating aurora/mesh gradient — especially in violet — is the single
+   * most-named marker of a generic AI-generated site in practitioner
+   * discussion right now. We had it in violet, animating on a 26-second loop,
+   * on every page. Whatever it was doing for us, it was also saying «шаблон».
+   *
+   * Second: it was the only thing in the product with depth, and it spent the
+   * entire motion budget on wallpaper — a full-viewport paint looping forever
+   * on the mid-range Android our students read on, while nothing animated when
+   * a grade was saved or a queue advanced.
+   *
+   * Depth now comes from tonal layering (page → card → raised), which is what
+   * the surfaces were always supposed to do.
+   */
 
   @media (prefers-reduced-motion: reduce) {
     body::before {
@@ -248,16 +293,6 @@
 }
 
 @layer utilities {
-  @keyframes ambient-mesh {
-    0% {
-      transform: scale(1) translate3d(0, 0, 0);
-      opacity: 1;
-    }
-    100% {
-      transform: scale(1.035) translate3d(-1.5%, 1.2%, 0);
-      opacity: 0.94;
-    }
-  }
   .animate-fade-in {
     animation: fade-in 0.55s ease-out both;
   }
@@ -600,15 +635,36 @@
 
 /* ===== Prose — editorial reader =====
    We re-establish just the bits Tailwind's Preflight resets.
-   Headings are serif (Fraunces), body is sans (Inter), colours come from
+   Headings are serif (Literata), body is sans (Golos Text), colours come from
    our semantic tokens so both themes work with one rule set. */
 .prose {
-  @apply text-foreground;
+  /* The reading surface. Measured against Anthropic's article pages, which set
+     17px at line-height 1.55 in a 640px column — 68 characters per line when
+     the characters are Cyrillic, which I checked rather than assumed. We go a
+     step larger and looser: Russian lowercase mirrors its capitals and carries
+     far fewer ascenders and descenders, so the grey is denser and wants air. */
+  /* The serif, on the surface it was bought for.
+   *
+   * `.prose` set no family at all, so 3000 words of Russian inherited Golos
+   * Text — a UI sans commissioned for state-service forms — while the headings
+   * inside it were Literata. Decision 001 bought Literata precisely for this:
+   * an optical-size axis and Cyrillic drawn by Evstafieva. The reading surface
+   * was the one place it never reached. */
+  @apply font-serif text-foreground text-reading;
+  font-variation-settings: "opsz" 14;
   max-width: 68ch;
   overflow-wrap: anywhere;
+  /* Chromium ships hyph-ru; Russian genuinely hyphenates, which matters at
+     this measure because Russian words are long. Never justified — left-flag
+     on the web, and WCAG AAA forbids justification outright. */
+  hyphens: auto;
+  text-align: left;
 }
 .prose h1 {
-  @apply font-serif text-3xl font-semibold tracking-tight mt-10 mb-4;
+  /* Was text-3xl and competing with the page title above it, which is also
+     3xl — two h1s at the same size, one of them lying. The chapter title owns
+     that size; a heading inside the text sits below it. */
+  @apply font-serif text-2xl font-semibold tracking-tight mt-10 mb-4;
 }
 .prose h2 {
   @apply font-serif text-2xl font-semibold tracking-tight mt-8 mb-3;
@@ -620,8 +676,8 @@
   @apply text-base font-semibold mt-5 mb-2;
 }
 .prose p {
+  /* Paragraph spacing, not indent — and never both. */
   @apply my-4;
-  line-height: 1.7;
 }
 .prose ul {
   @apply my-4 pl-6;

@@ -151,7 +151,7 @@ export function CalendarPopover({
                   className={cn(
                     "relative flex h-8 w-full items-center justify-center rounded-sm text-xs tabular-nums",
                     "transition-colors hover:bg-muted",
-                    inCurrentMonth ? "text-ink" : "text-ink-muted/40",
+                    inCurrentMonth ? "text-ink" : "text-ink-muted",
                     dayClass,
                   )}
                   aria-label={date.toLocaleDateString(i18n.language, {

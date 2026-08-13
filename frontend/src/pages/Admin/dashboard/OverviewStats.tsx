@@ -28,7 +28,7 @@ interface Props {
  * - small framed icon on the left (consistent with the dashboard side-
  *   rail headers so the visual vocabulary is shared)
  * - eyebrow label
- * - the number — Fraunces serif, large + tabular-nums so a trio of
+ * - the number — Literata serif, large + tabular-nums so a trio of
  *   3-digit metrics line up vertically across cards
  * - an optional secondary line for trend / context (e.g. ``+3 this
  *   week`` on the users card)
@@ -122,7 +122,7 @@ export function OverviewStats({ stats, loading, pendingActions }: Props) {
               />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
                 {label}
               </p>
               {loading ? (
@@ -141,7 +141,7 @@ export function OverviewStats({ stats, loading, pendingActions }: Props) {
                 <p
                   className={cn(
                     "mt-1.5 inline-flex items-center gap-1 text-xs",
-                    warningTint ? "text-warning/90" : "text-ink-muted",
+                    warningTint ? "text-warning" : "text-ink-muted",
                   )}
                 >
                   {trending && (

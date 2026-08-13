@@ -69,7 +69,7 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
                           <Clock className="h-3 w-3" strokeWidth={1.75} aria-hidden />
                           {formatTime(evt.event_date)}
                         </span>
-                        <span aria-hidden className="text-ink-muted/40">·</span>
+                        <span aria-hidden className="text-ink-muted">·</span>
                         <span>{t(`calendar.eventTypes.${evt.event_type}`, { defaultValue: evt.event_type.replace("_", " ") })}</span>
                       </div>
                       {evt.course_title && (

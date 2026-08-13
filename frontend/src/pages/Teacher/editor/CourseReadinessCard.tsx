@@ -278,7 +278,7 @@ function CheckRow({
         />
       ) : (
         <Circle
-          className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted/50"
+          className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted"
           strokeWidth={1.75}
           aria-hidden
         />

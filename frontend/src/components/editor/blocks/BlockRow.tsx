@@ -73,7 +73,7 @@ export function BlockRow({
         className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none"
         onClick={onExpandToggle}
       >
-        <GripVertical className="h-3.5 w-3.5 text-ink-muted/40 shrink-0 cursor-grab" strokeWidth={1.75} />
+        <GripVertical className="h-3.5 w-3.5 text-ink-muted shrink-0 cursor-grab" strokeWidth={1.75} />
         {expanded ? (
           <ChevronDown className="h-3.5 w-3.5 text-ink-muted shrink-0" strokeWidth={1.75} />
         ) : (
@@ -110,6 +110,7 @@ export function BlockRow({
           {block.block_type === "assignment" && (
             <AssignmentEditor
               chapterId={chapterId}
+              courseId={courseId}
               onAssignmentCreated={(id) => updateField("assignment_id", id)}
             />
           )}

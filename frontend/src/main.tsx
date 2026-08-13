@@ -7,8 +7,13 @@ import { initDatadogRum } from './lib/datadog'
 // `i18nReady` below so the very first render already has the active
 // locale's translations — no key flicker on cold start.
 import { i18nReady } from './i18n/config'
-import '@fontsource-variable/inter/index.css'
-import '@fontsource-variable/fraunces/index.css'
+// Literata sets Russian, English and biblical Greek in one family; Fraunces —
+// which this product used until 2026-08-12 — contains zero Cyrillic glyphs, so
+// every Russian heading was silently falling back to Georgia while every
+// English one rendered in Fraunces. Two languages, two typefaces, one page.
+// See equip-design/decisions/001-typography.md.
+import '@fontsource-variable/literata/index.css'
+import '@fontsource-variable/golos-text/index.css'
 import './index.css'
 
 // Initialize monitoring before React mounts so early boot errors

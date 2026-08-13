@@ -283,7 +283,7 @@ export default function TeacherDashboard() {
       ) : error ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <BookOpen className="h-12 w-12 text-destructive/40 mb-4" strokeWidth={1.75} />
+            <BookOpen className="h-12 w-12 text-destructive mb-4" strokeWidth={1.75} />
             <h3 className="text-lg font-medium mb-1">{t("teacher.somethingWrong")}</h3>
             <p className="text-sm text-ink-muted mb-4">{error}</p>
             <Button onClick={() => load()} size="sm" variant="outline">

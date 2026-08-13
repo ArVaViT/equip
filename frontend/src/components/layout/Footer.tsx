@@ -3,51 +3,71 @@ import { useTranslation } from "react-i18next"
 import { SUPPORT_EMAIL } from "@/lib/brand"
 
 /**
- * Minimalist footer.
+ * The end of the page, set as a colophon.
  *
- * Earlier revisions duplicated the header nav (Courses · Calendar ·
- * Certificates · Teacher · Admin) inside the footer. That doubled the
- * persistent surface area without giving the reader anything new — the
- * header already exposes every destination. The new shape keeps the
- * footer to its one job: brand mark, tagline, copyright, support
- * email. Anything else lives in the header.
+ * Before this it was a 12px legal strip: brand, tagline, support address,
+ * copyright, all on one line. Correct, and it read as the bottom of a form.
+ *
+ * Three mechanisms, all taken from places that do this well and all cheap:
+ *
+ * 1. **A hard tonal inversion**, not a tinted band. Anthropic's footer flips to
+ *    near-black under an ivory page, and that inversion is what makes it read
+ *    as a full stop rather than as more page. It costs one background colour.
+ * 2. **One type size, hierarchy by colour.** Apple's footer is entirely 12px —
+ *    section titles included — and sorts itself with three steps of opacity.
+ *    Nothing is bolder or bigger; the eye is led by contrast alone.
+ *
+ *    The rungs are 100 / 80 / 65, and they are not free choices. The footer
+ *    inverts in *both* themes — a near-black band under a cream page, and a
+ *    cream band under a dark one — and the two inversions do not have the same
+ *    headroom. Dark is the binding side: the alpha floor for AA body text
+ *    there is 0.60 (4.55:1), against 0.50 in light. 65% is therefore the
+ *    quietest a line here may go and still be readable by someone who is
+ *    not me.
+ *
+ *    The first version set the colophon at 40%, which measures 3.6:1, and the
+ *    second at 55%, which passes in light and fails in dark. Both were
+ *    caught by machines rather than by looking — which is the whole argument
+ *    for `contrast-floor.test.ts` computing this from the palette instead of
+ *    anybody, including me, eyeballing it.
+ * 3. **No dividers.** The columns are held by the grid. Rules between footer
+ *    columns are what a sitemap does; a colophon does not need them.
+ *
+ * The school's name is set in the serif at a size that means it — the one
+ * place besides the masthead where the institution signs the page.
  */
 export default function Footer() {
   const { t } = useTranslation()
   const year = new Date().getFullYear()
 
   const linkClass =
-    "text-ink-muted transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 rounded-sm"
+    "text-ink-inverted/80 transition-colors duration-200 hover:text-ink-inverted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-inverted/70 focus-visible:ring-offset-0 rounded-sm"
 
   return (
-    <footer className="mt-auto border-t border-edge bg-surface/95">
-      <div className="container mx-auto max-w-[1400px] px-4 py-5 md:px-6">
-        <div className="flex flex-col items-start justify-between gap-3 text-xs sm:flex-row sm:items-center sm:gap-x-6 sm:text-sm">
-          <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2">
+    <footer className="mt-auto bg-ink text-ink-inverted">
+      <div className="container mx-auto max-w-[1400px] px-4 py-10 md:px-6 md:py-14">
+        <div className="grid gap-8 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+          <div className="max-w-sm">
             <Link
               to="/"
-              className="shrink-0 font-serif text-sm font-semibold tracking-tight text-ink transition-opacity hover:opacity-85"
+              className="font-serif text-xl font-semibold tracking-[-0.01em] text-ink-inverted transition-opacity duration-200 hover:opacity-80 md:text-2xl"
             >
               {t("common.appName")}
             </Link>
-            <span className="hidden text-ink-muted/50 sm:inline" aria-hidden>
-              ·
-            </span>
-            <p className="max-w-prose text-xs leading-snug text-ink-muted sm:truncate">
+            <p className="mt-2 text-sm leading-relaxed text-ink-inverted/80">
               {t("footer.tagline")}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
+          <div className="flex flex-col gap-1.5 text-sm sm:items-end">
             <a href={`mailto:${SUPPORT_EMAIL}`} className={linkClass}>
               {t("footer.support")}
             </a>
-            <span aria-hidden className="text-ink-muted/40">
-              ·
-            </span>
-            <span>
+            {/* The year and the name, last and quietest — a colophon line, not
+                a legal notice competing with the rest. */}
+            <p className="text-ink-inverted/65">
               © {year} {t("common.appName")}
-            </span>
+            </p>
           </div>
         </div>
       </div>

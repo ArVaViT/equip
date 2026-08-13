@@ -18,38 +18,38 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
 
   return (
     <div className="flex min-h-screen">
-      {/* Marketing column — tokens from index.css */}
-      <div className="relative hidden overflow-hidden bg-[hsl(var(--auth-panel-bg))] lg:flex lg:w-[480px] xl:w-[560px]">
-        <div className="absolute inset-0">
-          <div className="absolute -left-10 top-20 h-72 w-72 rounded-full bg-[hsl(var(--auth-panel-glow-warm)/0.08)] blur-3xl" />
-          <div className="absolute bottom-32 right-10 h-56 w-56 rounded-full bg-[hsl(var(--auth-panel-glow-warm)/0.06)] blur-2xl" />
-        </div>
-
-        <div className="relative z-10 flex flex-col justify-between p-10 text-[hsl(var(--auth-panel-text)/0.92)]">
-          <Link to="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-85">
-            <BookOpen
-              className="h-6 w-6 shrink-0 text-[hsl(var(--auth-panel-accent-line)/0.95)]"
-              strokeWidth={1.75}
-              aria-hidden
-            />
-            <span className="font-serif text-xl font-bold tracking-tight">{t("common.appName")}</span>
+      {/* The title page.
+       *
+       * This was a violet panel with two blurred glow circles — a second
+       * accent, a decorative gradient and 288px of blur, which is three of the
+       * five things the art direction forbids, on the first screen anybody
+       * sees, in the violet everything else was moved away from. It was also
+       * `lg:` only, so the student on a mid-range Android never saw it and the
+       * director on a desktop saw a login page from a different design system.
+       *
+       * The instinct was right: a verse in the serif is exactly the register.
+       * What it needed was paper and ink instead of glow — set as the title
+       * page of a book, with the rule doing the work the gradient was doing. */}
+      <div className="relative hidden bg-card lg:flex lg:w-[480px] xl:w-[560px]">
+        <div className="relative z-10 flex flex-col justify-between p-12 text-ink">
+          <Link
+            to="/"
+            className="font-serif text-xl font-semibold tracking-[-0.01em] decoration-transparent underline-offset-4 transition-[text-decoration-color] duration-base hover:underline hover:decoration-ink/30"
+          >
+            {t("common.appName")}
           </Link>
 
-          <div className="space-y-8">
-            <div className="h-px w-12 bg-[hsl(var(--auth-panel-accent-line)/0.35)]" />
-            <blockquote className="font-serif text-2xl font-normal italic leading-relaxed text-[hsl(var(--auth-panel-text)/0.88)]">
+          <div>
+            <div className="h-px w-12 bg-border" />
+            <blockquote className="mt-8 font-serif text-2xl font-normal italic leading-snug">
               {t("auth.marketingQuote")}
             </blockquote>
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-[hsl(var(--auth-panel-text)/0.12)]" />
-              <span className="font-sans text-xs uppercase tracking-widest text-[hsl(var(--auth-panel-text-muted))]">
-                {t("auth.marketingReference")}
-              </span>
-              <div className="h-px flex-1 bg-[hsl(var(--auth-panel-text)/0.12)]" />
-            </div>
+            <p className="mt-5 text-xs uppercase tracking-[0.22em] text-ink-muted">
+              {t("auth.marketingReference")}
+            </p>
           </div>
 
-          <p className="font-sans text-xs text-[hsl(var(--auth-panel-text-muted))]">
+          <p className="text-xs text-ink-muted">
             {t("auth.marketingPanelFooter", { year, appName: t("common.appName") })}
           </p>
         </div>
@@ -57,7 +57,9 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
 
       {/* Form panel */}
       <div className="flex flex-1 flex-col">
-        <div className="flex items-center justify-between border-b border-edge/60 bg-surface/90 px-4 py-2 backdrop-blur-sm lg:hidden">
+        {/* Solid, not blurred: `backdrop-filter` is the most expensive property
+            on the phones this product is actually read on. */}
+        <div className="flex items-center justify-between bg-card px-4 py-2 lg:hidden">
           <Link
             to="/"
             className="-mx-1 inline-flex min-h-[44px] items-center gap-2.5 px-1 text-ink transition-opacity hover:opacity-80"

@@ -51,7 +51,7 @@ export default function ForgotPassword() {
         <div className="space-y-6 animate-fade-in">
           <div className="flex flex-col items-center text-center gap-4 py-4">
             <div className="h-16 w-16 rounded-full bg-brand/10 flex items-center justify-center">
-              <MailCheck className="h-8 w-8 text-brand" strokeWidth={1.75} aria-hidden />
+              <MailCheck className="h-8 w-8 text-brand-ink" strokeWidth={1.75} aria-hidden />
             </div>
             <p className="text-sm text-ink-muted leading-relaxed">
               <Trans
@@ -79,7 +79,7 @@ export default function ForgotPassword() {
     >
       <div className="space-y-6 animate-fade-in">
         {error && (
-          <div role="alert" className="text-sm text-destructive bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
+          <div role="alert" className="text-sm text-destructive-ink bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
             {error}
           </div>
         )}

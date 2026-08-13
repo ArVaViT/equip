@@ -165,8 +165,8 @@ export default function ModuleView() {
 
       {allComplete && (
         <div className="mb-4 flex items-center gap-2 rounded-md border-l-stripe border-l-success bg-success/10 px-3 py-2">
-          <CheckCircle className="h-4 w-4 shrink-0 text-success" strokeWidth={1.75} aria-hidden />
-          <span className="text-sm font-medium text-success">{t("module.moduleComplete")}</span>
+          <CheckCircle className="h-4 w-4 shrink-0 text-success-ink" strokeWidth={1.75} aria-hidden />
+          <span className="text-sm font-medium text-success-ink">{t("module.moduleComplete")}</span>
         </div>
       )}
 
@@ -215,14 +215,14 @@ export default function ModuleView() {
                   >
                     <CardHeader className="pb-2">
                       <CardTitle className="flex min-w-0 items-center gap-2 text-base">
-                        <Lock className="h-5 w-5 text-ink-muted/50 shrink-0" strokeWidth={1.75} aria-hidden />
+                        <Lock className="h-5 w-5 text-ink-muted shrink-0" strokeWidth={1.75} aria-hidden />
                         <span className="min-w-0 flex-1 truncate text-ink-muted">
                           {chapter.title}
                         </span>
                         {chapter.chapter_type && (
                           <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
                         )}
-                        <ChevronRight className="h-4 w-4 shrink-0 text-ink-muted/30" strokeWidth={1.75} aria-hidden />
+                        <ChevronRight className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
                       </CardTitle>
                     </CardHeader>
                   </Card>
@@ -247,7 +247,7 @@ export default function ModuleView() {
                           ) : requiresTeacher ? (
                             <Lock className="h-5 w-5 shrink-0 text-warning" strokeWidth={1.75} aria-hidden />
                           ) : (
-                            <Circle className="h-5 w-5 shrink-0 text-ink-muted/40" strokeWidth={1.75} aria-hidden />
+                            <Circle className="h-5 w-5 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
                           )
                         ) : null}
                         <span className={`min-w-0 flex-1 truncate ${isCompleted ? "text-ink-muted" : ""}`}>
@@ -256,7 +256,7 @@ export default function ModuleView() {
                         {chapter.chapter_type && (
                           <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
                         )}
-                        <ChevronRight className="h-4 w-4 shrink-0 text-ink-muted/40" strokeWidth={1.75} aria-hidden />
+                        <ChevronRight className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
                       </CardTitle>
                     </CardHeader>
                   </Card>

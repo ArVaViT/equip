@@ -49,7 +49,7 @@ export default function AcceptInvite() {
       <AuthLayout heading={t("invite.heading")}>
         <div className="flex flex-col items-center gap-4 py-4 text-center animate-fade-in">
           <div className="flex h-16 w-16 items-center justify-center rounded-md bg-destructive/10">
-            <XCircle className="h-8 w-8 text-destructive" strokeWidth={1.75} aria-hidden />
+            <XCircle className="h-8 w-8 text-destructive-ink" strokeWidth={1.75} aria-hidden />
           </div>
           <p className="text-sm text-ink-muted leading-relaxed">
             {phase === "invalid" ? t("invite.errors.notFound") : t("invite.errors.unusable")}
@@ -69,7 +69,7 @@ export default function AcceptInvite() {
       <AuthLayout heading={t("invite.heading")}>
         <div className="flex flex-col items-center gap-4 py-4 text-center animate-fade-in">
           <div className="flex h-16 w-16 items-center justify-center rounded-md bg-brand/10">
-            <MailCheck className="h-8 w-8 text-brand" strokeWidth={1.75} aria-hidden />
+            <MailCheck className="h-8 w-8 text-brand-ink" strokeWidth={1.75} aria-hidden />
           </div>
           <p className="text-sm text-ink-muted leading-relaxed">
             <Trans
@@ -90,7 +90,7 @@ export default function AcceptInvite() {
       <AuthLayout heading={t("invite.heading")}>
         <div className="flex flex-col items-center gap-4 py-4 text-center animate-fade-in">
           <div className="flex h-16 w-16 items-center justify-center rounded-md bg-success/10">
-            <CheckCircle2 className="h-8 w-8 text-success" strokeWidth={1.75} aria-hidden />
+            <CheckCircle2 className="h-8 w-8 text-success-ink" strokeWidth={1.75} aria-hidden />
           </div>
           <p className="text-sm text-ink-muted leading-relaxed">
             {acceptedRole
@@ -112,7 +112,7 @@ export default function AcceptInvite() {
       <AuthLayout heading={t("invite.heading")}>
         <div className="flex flex-col items-center gap-4 py-4 text-center animate-fade-in">
           <div className="flex h-16 w-16 items-center justify-center rounded-md bg-warning/10">
-            <XCircle className="h-8 w-8 text-warning" strokeWidth={1.75} aria-hidden />
+            <XCircle className="h-8 w-8 text-warning-ink" strokeWidth={1.75} aria-hidden />
           </div>
           <p className="text-sm text-ink-muted leading-relaxed">
             <Trans
@@ -134,7 +134,7 @@ export default function AcceptInvite() {
       <AuthLayout heading={t("invite.heading")}>
         <div className="flex flex-col items-center gap-4 py-4 text-center animate-fade-in">
           {serverError && (
-            <div role="alert" className="w-full text-sm text-destructive bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
+            <div role="alert" className="w-full text-sm text-destructive-ink bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
               {serverError}
             </div>
           )}
@@ -174,7 +174,7 @@ export default function AcceptInvite() {
     >
       <div className="space-y-6 animate-fade-in">
         {serverError && (
-          <div role="alert" className="text-sm text-destructive bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
+          <div role="alert" className="text-sm text-destructive-ink bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
             {serverError}
           </div>
         )}

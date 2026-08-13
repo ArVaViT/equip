@@ -1,0 +1,109 @@
+/* The certificate as a physical object.
+ *
+ * Two states, and the printed one is the real one: the screen version is a
+ * preview of a sheet of paper, so it is set on paper proportions and the print
+ * rules are the ones that matter.
+ *
+ * Landscape A4, which is what a свидетельство is, with margins wide enough to
+ * frame. Nothing here uses colour that a mono printer cannot render — a
+ * document that only looks right in colour is a document that looks wrong
+ * every time somebody actually prints it.
+ */
+
+.certificate-sheet {
+  /* √2 the other way round: A4 landscape. On screen this is a preview of the
+     sheet, so it holds the proportion rather than filling the viewport. */
+  aspect-ratio: 297 / 210;
+  max-width: 60rem;
+  margin-inline: auto;
+  padding: clamp(2rem, 5vw, 4.5rem) clamp(1.5rem, 6vw, 5rem);
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  /* One hairline frame, inset — the way a printed certificate is ruled. Not a
+     card border: it sits inside the sheet, not around a widget. */
+  outline: 1px solid hsl(var(--border));
+  outline-offset: -1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.certificate-rule {
+  width: 4rem;
+  margin: 1.25rem auto 0;
+  border: 0;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.certificate-signatures {
+  margin-top: auto;
+  padding-top: 3rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(2rem, 8vw, 6rem);
+}
+
+.certificate-signature-line {
+  border-top: 1px solid hsl(var(--foreground) / 0.45);
+}
+
+.certificate-signature-caption {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.certificate-signature-role {
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: hsl(var(--muted-foreground));
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    /* The frame is drawn on the sheet, so the page margin only has to clear
+       the printer's unprintable edge. */
+    margin: 12mm;
+  }
+
+  /* Everything that is not the document goes away — app chrome on a printed
+     certificate is the single clearest sign that nobody thought about paper. */
+  header:not(.certificate-sheet header),
+  footer:not(.certificate-sheet footer),
+  nav {
+    display: none !important;
+  }
+
+  .certificate-sheet {
+    aspect-ratio: auto;
+    max-width: none;
+    height: 100%;
+    padding: 10mm 14mm;
+    /* Black on white, always. A warm cream that reads beautifully on screen
+       becomes a grey wash on a laser printer, and the aubergine ink becomes
+       mud. */
+    background: #fff;
+    color: #000;
+    outline: 0.5pt solid #000;
+    outline-offset: -6mm;
+  }
+
+  .certificate-rule,
+  .certificate-signature-line {
+    border-color: #000;
+  }
+
+  .certificate-signature-role {
+    color: #333;
+  }
+
+  /* A certificate that breaks across two sheets is not a certificate. */
+  .certificate-sheet {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

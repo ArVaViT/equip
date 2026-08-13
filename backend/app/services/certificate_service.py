@@ -236,6 +236,7 @@ def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> 
     # Everything it is computed from stays editable afterwards, so a certificate
     # that recomputed on read would quietly change years later.
     snapshot_certificate_grade(db, cert, course)
+    _snapshot_letterhead(db, cert, course)
 
     recipient_locale = normalize_locale(_recipient_locale(db, cert.user_id))
     course_title = (
@@ -329,3 +330,27 @@ def reject(db: Session, cert_id: UUID, user: User, request: Request) -> Certific
 
     log_action(db, user.id, "reject", "certificate", str(cert_id), request=request)
     return cert
+
+
+def _snapshot_letterhead(db: Session, cert: Certificate, course: Course | None) -> None:
+    """Freeze the words on the document, the way M6 froze the number.
+
+    The school's name, the city under it, the student's name and the teacher's
+    — all as they stand at issuance. Read live instead and a school that
+    renames itself in March rewrites what it certified in February, which is
+    the same bug the ведомость had until it was fixed there.
+    """
+    from app.models.user import User as _User
+    from app.services.grading_scheme import get_org_settings
+
+    settings = get_org_settings(db)
+    cert.school_name = settings.school_name_en or settings.school_name_ru
+    cert.school_city = settings.city
+
+    student = db.query(_User).filter(_User.id == cert.user_id).first()
+    # The legal name once memberships carry one; the profile name until then.
+    cert.student_name = (student.full_name or student.email) if student else None
+
+    if course is not None and course.created_by is not None:
+        teacher = db.query(_User).filter(_User.id == course.created_by).first()
+        cert.teacher_name = (teacher.full_name or teacher.email) if teacher else None

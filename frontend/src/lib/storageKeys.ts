@@ -30,6 +30,7 @@ const PREFIX_FIRST_RUN_PICKER = "equip.first-run.completed"
 const PREFIX_GRAND_TOUR_SEEN = "equip.grand-tour.seen"
 const PREFIX_PER_PAGE_TOUR_SEEN = "equip.tour.seen"
 const PREFIX_COMPLETION_CELEBRATED = "equip.celebrated"
+const PREFIX_ASSIGNMENT_DRAFT = "equip.draft.assignment"
 
 /** Privacy Policy acceptance flag — gates step 1 of the first-run flow. */
 export function privacyAcceptedKey(userId: string): string {
@@ -79,4 +80,15 @@ export function perPageTourSeenKey(userId: string, tourId: string): string {
  */
 export function completionCelebratedKey(userId: string, courseId: string): string {
   return `${PREFIX_COMPLETION_CELEBRATED}.${userId}.${courseId}`
+}
+
+/**
+ * An unsent assignment draft — per ``(userId, assignmentId)``.
+ *
+ * User-scoped like the rest, and that matters more here than anywhere else in
+ * this file: these devices are shared. A brother opening the laptop after his
+ * sister must not find her half-written essay in his textarea.
+ */
+export function assignmentDraftKey(userId: string, assignmentId: string): string {
+  return `${PREFIX_ASSIGNMENT_DRAFT}.${userId}.${assignmentId}`
 }

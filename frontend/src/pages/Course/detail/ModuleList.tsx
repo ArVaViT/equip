@@ -109,8 +109,8 @@ const ModuleRow = memo(function ModuleRow({
                 isLocked
                   ? "bg-muted text-ink-muted"
                   : allComplete
-                    ? "bg-success/15 text-success"
-                    : "bg-brand/10 text-brand"
+                    ? "bg-success/15 text-success-ink"
+                    : "bg-brand/10 text-brand-ink"
               }`}
             >
               {isLocked ? (

@@ -267,7 +267,7 @@ function CertificateMock() {
   const { t } = useTranslation()
   return (
     <div className="surface-card mx-auto max-w-sm rounded-lg p-6 text-center">
-      <span className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand">
+      <span className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand-ink">
         <Award className="h-5 w-5" strokeWidth={1.75} aria-hidden />
       </span>
       <p className="mt-3 font-serif text-base font-semibold text-ink">
@@ -287,7 +287,7 @@ function BilingualMock() {
   return (
     <div className="surface-card mx-auto max-w-sm rounded-lg p-5 text-center">
       <div className="flex items-center justify-center gap-3">
-        <span className="rounded-md bg-brand/10 px-3 py-1.5 text-sm font-medium text-brand">RU</span>
+        <span className="rounded-md bg-brand/10 px-3 py-1.5 text-sm font-medium text-brand-ink">RU</span>
         <Languages className="h-4 w-4 text-ink-muted" strokeWidth={1.75} aria-hidden />
         <span className="rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-ink-muted">EN</span>
       </div>

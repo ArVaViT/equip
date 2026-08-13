@@ -26,7 +26,7 @@ function genId(): string {
 /**
  * One filter cell — eyebrow-styled label on top, control below.
  *
- * Uses the DESIGN.md eyebrow recipe verbatim (``text-[11px]
+ * Uses the DESIGN.md eyebrow recipe verbatim (``text-xs
  * font-medium uppercase tracking-[0.18em]`` per the
  * ``VerseOfTheDayCard`` / ``StreakCard`` pattern). Shared here so
  * every admin filter — audit log selects, cohorts status, cohort

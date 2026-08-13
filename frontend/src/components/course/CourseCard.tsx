@@ -121,7 +121,7 @@ function CourseCard({ course, style, progress }: CourseCardProps) {
       </CardContent>
       {isEnrolled && (
         <div className="px-6 pb-4 pt-0">
-          <div className="mb-1 flex items-center justify-between text-[11px] font-medium text-ink-muted">
+          <div className="mb-1 flex items-center justify-between text-xs font-medium text-ink-muted">
             <span className="inline-flex items-center gap-1">
               {isComplete && (
                 <CheckCircle className="h-3.5 w-3.5 text-success" strokeWidth={1.75} aria-hidden />
