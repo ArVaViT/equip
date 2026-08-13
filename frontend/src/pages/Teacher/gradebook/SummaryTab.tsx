@@ -323,7 +323,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
             <span
               className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
                 hasDifferentManual
-                  ? "bg-warning/15 text-warning ring-1 ring-warning/30"
+                  ? "bg-warning/15 text-warning-ink ring-1 ring-warning/30"
                   : "bg-muted text-ink-muted"
               }`}
             >

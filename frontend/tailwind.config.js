@@ -33,18 +33,34 @@ export default {
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
+          // The step for text sitting on this token's own tint — see the
+          // chip-step note in index.css. Never the DEFAULT: that pairing is
+          // the one axe failed us on.
+          ink: "hsl(var(--destructive-ink))",
         },
         success: {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
+          // The step for text sitting on this token's own tint — see the
+          // chip-step note in index.css. Never the DEFAULT: that pairing is
+          // the one axe failed us on.
+          ink: "hsl(var(--success-ink))",
         },
         warning: {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
+          // The step for text sitting on this token's own tint — see the
+          // chip-step note in index.css. Never the DEFAULT: that pairing is
+          // the one axe failed us on.
+          ink: "hsl(var(--warning-ink))",
         },
         info: {
           DEFAULT: "hsl(var(--info))",
           foreground: "hsl(var(--info-foreground))",
+          // The step for text sitting on this token's own tint — see the
+          // chip-step note in index.css. Never the DEFAULT: that pairing is
+          // the one axe failed us on.
+          ink: "hsl(var(--info-ink))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",
@@ -103,6 +119,7 @@ export default {
         },
         brand: {
           DEFAULT: "hsl(var(--color-accent))",
+          ink: "hsl(var(--brand-ink))",
           quiet: "hsl(var(--color-accent-quiet))",
           strong: "hsl(var(--color-accent-strong))",
           foreground: "hsl(var(--color-ink-inverted))",

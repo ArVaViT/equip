@@ -79,7 +79,7 @@ export function TableDropdown({
         className={cn(
           "flex items-center gap-0.5 rounded p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
           isInTable
-            ? "bg-brand/20 text-brand ring-1 ring-inset ring-brand/30"
+            ? "bg-brand/20 text-brand-ink ring-1 ring-inset ring-brand/30"
             : "text-ink-muted hover:bg-heritage hover:text-ink",
         )}
       >

@@ -79,7 +79,7 @@ export default function ForgotPassword() {
     >
       <div className="space-y-6 animate-fade-in">
         {error && (
-          <div role="alert" className="text-sm text-destructive bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
+          <div role="alert" className="text-sm text-destructive-ink bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
             {error}
           </div>
         )}

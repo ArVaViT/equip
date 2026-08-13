@@ -71,6 +71,30 @@
     --warning-foreground: 265 28% 13%;
     --info: 215 75% 42%;
     --info-foreground: 0 0% 98%;
+
+    /* The chip step.
+     *
+     * Every tinted chip in this product is `bg-X/15 text-X` — the token as a
+     * wash behind itself at full strength. It always *looks* coordinated,
+     * which is why nobody checked it, and axe eventually did: `bg-info/15
+     * text-info` measures 4.46:1. Measuring the rest found the pattern is
+     * broken almost everywhere — `warning` in the light theme is 2.71:1.
+     *
+     * The mistake is using one step of a colour for two jobs. Radix solves it
+     * with a scale (step 3 as the subtle background, step 11 as the text on
+     * it); this is the same idea at the size we need. The tint stays exactly
+     * as it was, so chips look unchanged; the *text* gets its own step,
+     * whose lightness was solved for — not picked — against the worst tint
+     * each token is actually used at (/10, /15 and /20, over both
+     * `--background` and `--card`), with a target of 5:1 so the palette can
+     * still be nudged without breaking.
+     *
+     * `contrast-floor.test.ts` recomputes all of it on every run. */
+    --brand-ink: 9 54% 36%;
+    --destructive-ink: 0 70% 36.5%;
+    --success-ink: 156 45% 26%;
+    --warning-ink: 30 85% 28.5%;
+    --info-ink: 215 75% 36.5%;
     /* 2026-06-06: restored to the pre-overhaul 87% L (Vadym: "a couple days
      * ago there were no white lines, it was normal"). The overhaul had BOTH
      * lightened this to 93% (a washed-out near-white line) AND stripped the
@@ -127,6 +151,11 @@
     --warning-foreground: 240 12% 10%;
     --info: 215 72% 58%;
     --info-foreground: 240 12% 10%;
+    --brand-ink: 13 64% 70.5%;
+    --destructive-ink: 0 58% 69%;
+    --success-ink: 156 38% 54%;
+    --warning-ink: 32 78% 58.5%;
+    --info-ink: 215 72% 68.5%;
     /* Dark mode restored to the pre-overhaul 19% L hairline (matches --input),
      * the visible-divider value from "a couple days ago". */
     --border: 30 15% 21%;

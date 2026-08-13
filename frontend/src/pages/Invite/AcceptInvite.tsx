@@ -134,7 +134,7 @@ export default function AcceptInvite() {
       <AuthLayout heading={t("invite.heading")}>
         <div className="flex flex-col items-center gap-4 py-4 text-center animate-fade-in">
           {serverError && (
-            <div role="alert" className="w-full text-sm text-destructive bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
+            <div role="alert" className="w-full text-sm text-destructive-ink bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
               {serverError}
             </div>
           )}
@@ -174,7 +174,7 @@ export default function AcceptInvite() {
     >
       <div className="space-y-6 animate-fade-in">
         {serverError && (
-          <div role="alert" className="text-sm text-destructive bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
+          <div role="alert" className="text-sm text-destructive-ink bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
             {serverError}
           </div>
         )}

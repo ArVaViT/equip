@@ -62,7 +62,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
             {t("quiz.passingScoreLine", { percent: scorePercent, passing: quiz.passing_score })}
           </p>
           {hasOpenEnded && (
-            <p className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning">
+            <p className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning-ink">
               {t("quiz.pendingTeacherReview")}
             </p>
           )}
@@ -139,9 +139,9 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                           key={opt.id}
                           className={`rounded px-2 py-1 text-xs ${
                             isRight
-                              ? "bg-success/15 font-medium text-success"
+                              ? "bg-success/15 font-medium text-success-ink"
                               : isSelected
-                                ? "bg-destructive/15 text-destructive"
+                                ? "bg-destructive/15 text-destructive-ink"
                                 : "text-ink-muted"
                           }`}
                         >
@@ -157,7 +157,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                 <div className="ml-7 space-y-1.5">
                   {hasGrade ? (
                     <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <span className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-2 py-1 font-medium text-success">
+                      <span className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-2 py-1 font-medium text-success-ink">
                         <CheckCircle className="h-3.5 w-3.5" strokeWidth={1.75} />
                         {t("quiz.gradedPoints", {
                           count: q.points,
@@ -172,7 +172,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                       )}
                     </div>
                   ) : (
-                    <div className="flex w-fit items-center gap-1.5 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-1.5 text-xs font-medium text-warning">
+                    <div className="flex w-fit items-center gap-1.5 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-1.5 text-xs font-medium text-warning-ink">
                       <BookOpen className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
                       {t("quiz.sentForReview")}
                     </div>

@@ -155,7 +155,7 @@ export default function DailyChallengeReviewDetailPage() {
       ) : view ? (
         <div className="mt-6 space-y-6">
           {view.rejected && (
-            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive-ink">
               {t("admin.dailyChallenge.review.rejectedBanner", { reason: view.rejection_reason ?? "" })}
             </div>
           )}

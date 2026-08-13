@@ -35,12 +35,12 @@ export function ScoreBadge({ value }: { value: number | null }) {
   if (value === null) return <span className="text-xs text-ink-muted">—</span>
   const color =
     value >= 90
-      ? "bg-success/15 text-success"
+      ? "bg-success/15 text-success-ink"
       : value >= 70
-        ? "bg-info/15 text-info"
+        ? "bg-info/15 text-info-ink"
         : value >= 50
-          ? "bg-warning/15 text-warning"
-          : "bg-destructive/15 text-destructive"
+          ? "bg-warning/15 text-warning-ink"
+          : "bg-destructive/15 text-destructive-ink"
   return (
     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${color}`}>
       {value}%

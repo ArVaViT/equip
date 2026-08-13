@@ -111,7 +111,7 @@ export default function GradingQueue() {
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
-                  <span className="rounded-md bg-warning/15 px-2 py-0.5 text-sm font-medium tabular-nums text-warning">
+                  <span className="rounded-md bg-warning/15 px-2 py-0.5 text-sm font-medium tabular-nums text-warning-ink">
                     {group.waiting}
                   </span>
                   {group.kind === "assignment" ? (

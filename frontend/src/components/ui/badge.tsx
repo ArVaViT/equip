@@ -31,12 +31,12 @@ const badgeVariants = cva(
           "border-transparent bg-muted text-ink-muted hover:bg-muted/80",
         accent:
           "border-transparent bg-heritage text-ink hover:bg-heritage/80",
-        successSubtle: "border-transparent bg-success/15 text-success",
-        warningSubtle: "border-transparent bg-warning/15 text-warning",
-        infoSubtle: "border-transparent bg-info/15 text-info",
+        successSubtle: "border-transparent bg-success/15 text-success-ink",
+        warningSubtle: "border-transparent bg-warning/15 text-warning-ink",
+        infoSubtle: "border-transparent bg-info/15 text-info-ink",
         destructiveSubtle:
-          "border-transparent bg-destructive/15 text-destructive",
-        primarySubtle: "border-transparent bg-brand/15 text-brand",
+          "border-transparent bg-destructive/15 text-destructive-ink",
+        primarySubtle: "border-transparent bg-brand/15 text-brand-ink",
       },
     },
     defaultVariants: { variant: "default" },

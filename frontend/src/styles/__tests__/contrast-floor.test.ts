@@ -41,6 +41,13 @@ const SRC = resolve(HERE, "..", "..");
 
 const AA_BODY = 4.5;
 
+/**
+ * Tokens that appear as a wash behind their own text. `brand` reads its value
+ * from `--primary` (the bridge maps `--color-accent` onto it), which is why it
+ * is spelled differently from the rest.
+ */
+const CHIP_TOKENS = ["brand", "destructive", "success", "warning", "info"] as const;
+
 type Rgb = [number, number, number];
 
 /** `42 50% 96%` — the channel triple Tailwind wraps in `hsl(...)`. */
@@ -106,6 +113,38 @@ function palette(block: "root" | "dark"): Record<string, Rgb> {
   return out;
 }
 
+/**
+ * Variant-aware pairing of a tint with the text that sits on it.
+ *
+ * `active:bg-destructive/85` does not pair with an unprefixed
+ * `text-destructive` — those two are never painted at the same moment. A
+ * dropdown item that is red at rest and inverts on `active` is correct, and a
+ * scan that ignores the prefix calls it a 1.5:1 catastrophe. So utilities are
+ * matched prefix-to-prefix: `""` with `""`, `hover:` with `hover:`.
+ */
+function chipPairs(line: string): { token: string; alpha: number; text: "default" | "ink" }[] {
+  const tints = new Map<string, number>();
+  const texts = new Map<string, "default" | "ink">();
+  for (const cls of line.split(/[\s"'`]+/)) {
+    const cut = cls.lastIndexOf(":");
+    const prefix = cut === -1 ? "" : cls.slice(0, cut + 1);
+    const util = cut === -1 ? cls : cls.slice(cut + 1);
+    for (const token of CHIP_TOKENS) {
+      const tint = new RegExp(`^bg-${token}/(\\d+)$`).exec(util);
+      if (tint) tints.set(`${prefix}${token}`, Number(tint[1]) / 100);
+      if (util === `text-${token}`) texts.set(`${prefix}${token}`, "default");
+      if (util === `text-${token}-ink`) texts.set(`${prefix}${token}`, "ink");
+    }
+  }
+  const out: { token: string; alpha: number; text: "default" | "ink" }[] = [];
+  for (const [key, alpha] of tints) {
+    const text = texts.get(key);
+    if (!text) continue;
+    out.push({ token: CHIP_TOKENS.find((t) => key.endsWith(t))!, alpha, text });
+  }
+  return out;
+}
+
 function sourceFiles(dir: string, acc: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
     const full = resolve(dir, entry);
@@ -157,6 +196,66 @@ describe("no source file paints below the floor", () => {
         "below 4.5:1 in both themes — use size, position or removal instead:\n" +
         offenders.join("\n"),
     ).toEqual([]);
+  });
+
+  it("never sets a token's text on the token's own tint", () => {
+    // `bg-info/15 text-info` — the token as a wash behind itself at full
+    // strength. It always looks coordinated, which is why it survived: both
+    // halves move together, so no amount of squinting shows the problem. axe
+    // measured that exact pair at 4.46:1, and the rest of the family is worse
+    // (`warning` in the light theme is 2.71:1). Every one of these must point
+    // at the `-ink` step instead.
+    const offenders: string[] = [];
+    for (const file of FILES) {
+      for (const line of readFileSync(file, "utf8").split("\n")) {
+        for (const pair of chipPairs(line)) {
+          if (pair.text === "default") {
+            offenders.push(
+              `${file.replace(SRC, "src")}: bg-${pair.token}/${pair.alpha * 100} ` +
+                `with text-${pair.token}`,
+            );
+          }
+        }
+      }
+    }
+    expect(
+      offenders,
+      "Text on a token's own tint needs the token's -ink step, not its " +
+        "DEFAULT:\n" + offenders.join("\n"),
+    ).toEqual([]);
+  });
+
+  it("keeps every -ink step readable on the tints it is actually used at", () => {
+    const pairs = new Set<string>();
+    for (const file of FILES) {
+      for (const line of readFileSync(file, "utf8").split("\n")) {
+        for (const pair of chipPairs(line)) {
+          if (pair.text === "ink") pairs.add(`${pair.token}:${pair.alpha}`);
+        }
+      }
+    }
+    expect(pairs.size, "no chip pairs found — the scan is not finding source").toBeGreaterThan(0);
+
+    const failures: string[] = [];
+    for (const theme of ["root", "dark"] as const) {
+      const p = palette(theme);
+      for (const pair of pairs) {
+        const [token, alphaText] = pair.split(":") as [string, string];
+        const base = p[token === "brand" ? "primary" : token]!;
+        const ink = p[`${token}-ink`];
+        expect(ink, `--${token}-ink missing from the ${theme} palette`).toBeDefined();
+        for (const surface of ["background", "card"] as const) {
+          const ratio = contrast(ink!, over(base, p[surface]!, Number(alphaText)));
+          if (ratio < AA_BODY) {
+            failures.push(
+              `${theme}: ${token}-ink on bg-${token}/${Number(alphaText) * 100} over ` +
+                `${surface} = ${ratio.toFixed(2)}:1`,
+            );
+          }
+        }
+      }
+    }
+    expect(failures, failures.join("\n")).toEqual([]);
   });
 
   it("keeps every ink-inverted alpha rung above the floor over ink", () => {

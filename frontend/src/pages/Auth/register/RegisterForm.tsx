@@ -46,7 +46,7 @@ export function RegisterForm({
         {serverError && (
           <div
             role="alert"
-            className="text-sm text-destructive bg-destructive/10 border border-destructive/20 p-3 rounded-lg"
+            className="text-sm text-destructive-ink bg-destructive/10 border border-destructive/20 p-3 rounded-lg"
           >
             {serverError}
           </div>

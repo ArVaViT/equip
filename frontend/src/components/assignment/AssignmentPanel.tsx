@@ -220,17 +220,17 @@ function SingleAssignment({
       submitted: {
         icon: <Clock className="h-4 w-4" strokeWidth={1.75} />,
         label: t("assignment.statusSubmitted"),
-        color: "border-info/30 bg-info/10 text-info",
+        color: "border-info/30 bg-info/10 text-info-ink",
       },
       graded: {
         icon: <CheckCircle className="h-4 w-4" strokeWidth={1.75} />,
         label: t("assignment.statusGraded"),
-        color: "border-success/30 bg-success/10 text-success",
+        color: "border-success/30 bg-success/10 text-success-ink",
       },
       returned: {
         icon: <RotateCcw className="h-4 w-4" strokeWidth={1.75} />,
         label: t("assignment.statusReturned"),
-        color: "border-warning/30 bg-warning/10 text-warning",
+        color: "border-warning/30 bg-warning/10 text-warning-ink",
       },
     }),
     [t],
@@ -264,7 +264,7 @@ function SingleAssignment({
                 {t("assignment.due")}{" "}
                 {formatDate(assignment.due_date)}
                 {isOverdue && (
-                  <span className="ml-1 rounded bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive">
+                  <span className="ml-1 rounded bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive-ink">
                     {t("assignment.overdue")}
                   </span>
                 )}
@@ -333,7 +333,7 @@ function SingleAssignment({
                 work in unproctored settings is one shown ahead of the act. */}
             <SubmissionDeclaration policy={policy} value={declaration} onChange={setDeclaration} />
             {canResubmit && (
-              <div className="rounded-md border border-warning/30 border-l-stripe border-l-warning bg-warning/10 px-3 py-2 text-xs font-medium text-warning">
+              <div className="rounded-md border border-warning/30 border-l-stripe border-l-warning bg-warning/10 px-3 py-2 text-xs font-medium text-warning-ink">
                 {t("assignment.returnedHint")}
               </div>
             )}

@@ -62,7 +62,7 @@ export function UpcomingEventsPanel({ events }: UpcomingEventsPanelProps) {
                       <span aria-hidden className="text-ink-muted">·</span>
                       <span>{formatTime(evt.event_date)}</span>
                       {overdue && (
-                        <span className="rounded bg-destructive/10 px-1.5 py-0.5 font-medium text-destructive">
+                        <span className="rounded bg-destructive/10 px-1.5 py-0.5 font-medium text-destructive-ink">
                           {t("calendar.overdue")}
                         </span>
                       )}

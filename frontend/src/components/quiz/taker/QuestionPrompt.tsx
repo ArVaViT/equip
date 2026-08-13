@@ -70,7 +70,7 @@ export function QuestionPrompt({ question, index, answer, onAnswer }: Props) {
               onClick={() => onAnswer({ selected_option_id: opt.id })}
               className={`rounded-md border px-3 py-2.5 text-sm font-medium transition-colors ${
                 answer?.selected_option_id === opt.id
-                  ? "border-brand/60 bg-brand/10 text-brand ring-1 ring-primary/30"
+                  ? "border-brand/60 bg-brand/10 text-brand-ink ring-1 ring-primary/30"
                   : "border-edge hover:bg-muted/40"
               }`}
             >

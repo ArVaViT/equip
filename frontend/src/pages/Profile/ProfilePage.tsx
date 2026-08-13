@@ -357,7 +357,7 @@ export default function ProfilePage() {
         <div className="border-t border-edge pt-6">
           <Button
             variant="outline"
-            className="w-full border-destructive/35 text-destructive transition-colors duration-200 hover:bg-destructive/10 hover:text-destructive"
+            className="w-full border-destructive/35 text-destructive-ink transition-colors duration-200 hover:bg-destructive/10 hover:text-destructive-ink"
             onClick={handleLogout}
           >
             <LogOut className="mr-2 h-4 w-4" strokeWidth={1.75} aria-hidden />

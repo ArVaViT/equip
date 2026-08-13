@@ -363,7 +363,7 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
       // nobody has looked at, on the screen that decides certificates.
       return (
         <div
-          className="flex h-9 flex-col items-center justify-center rounded border border-warning/30 bg-warning/10 px-1 text-xs font-medium text-warning"
+          className="flex h-9 flex-col items-center justify-center rounded border border-warning/30 bg-warning/10 px-1 text-xs font-medium text-warning-ink"
           title={t("gradebook.table.awaitingGradingTitle")}
         >
           <Clock className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
@@ -379,8 +379,8 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
         <div
           className={`flex h-9 flex-col items-center justify-center rounded border px-1 text-xs font-medium ${
             chapter.quiz_result.passed
-              ? "border-success/30 bg-success/10 text-success"
-              : "border-destructive/30 bg-destructive/10 text-destructive"
+              ? "border-success/30 bg-success/10 text-success-ink"
+              : "border-destructive/30 bg-destructive/10 text-destructive-ink"
           }`}
         >
           <span className="font-semibold">{pct}%</span>
@@ -400,8 +400,8 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
         <div
           className={`flex h-9 flex-col items-center justify-center rounded border px-1 text-xs font-medium ${
             graded
-              ? "border-info/30 bg-info/10 text-info"
-              : "border-warning/30 bg-warning/10 text-warning"
+              ? "border-info/30 bg-info/10 text-info-ink"
+              : "border-warning/30 bg-warning/10 text-warning-ink"
           }`}
         >
           {graded ? (
@@ -444,25 +444,25 @@ function GradeTableLegend() {
         {t("gradebook.table.legend.completed")}
       </div>
       <div className="flex items-center gap-1.5">
-        <div className="flex h-5 w-9 items-center justify-center rounded border border-success/30 bg-success/10 text-xs font-semibold text-success">
+        <div className="flex h-5 w-9 items-center justify-center rounded border border-success/30 bg-success/10 text-xs font-semibold text-success-ink">
           85%
         </div>
         {t("gradebook.table.legend.quizPassed")}
       </div>
       <div className="flex items-center gap-1.5">
-        <div className="flex h-5 w-9 items-center justify-center rounded border border-destructive/30 bg-destructive/10 text-xs font-semibold text-destructive">
+        <div className="flex h-5 w-9 items-center justify-center rounded border border-destructive/30 bg-destructive/10 text-xs font-semibold text-destructive-ink">
           40%
         </div>
         {t("gradebook.table.legend.quizFailed")}
       </div>
       <div className="flex items-center gap-1.5">
-        <div className="flex h-5 items-center justify-center rounded border border-info/30 bg-info/10 px-1.5 text-xs font-semibold text-info">
+        <div className="flex h-5 items-center justify-center rounded border border-info/30 bg-info/10 px-1.5 text-xs font-semibold text-info-ink">
           {t("gradebook.table.cellGraded")}
         </div>
         {t("gradebook.table.legend.assignmentGraded")}
       </div>
       <div className="flex items-center gap-1.5">
-        <div className="flex h-5 items-center justify-center rounded border border-warning/30 bg-warning/10 px-1.5 text-xs text-warning">
+        <div className="flex h-5 items-center justify-center rounded border border-warning/30 bg-warning/10 px-1.5 text-xs text-warning-ink">
           {t("gradebook.table.cellSubmitted")}
         </div>
         {t("gradebook.table.legend.assignmentSubmitted")}
