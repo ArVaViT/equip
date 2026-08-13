@@ -87,10 +87,18 @@ function makeUser(): User {
   }
 }
 
-function Wrapper({ children, userId = "user-1" }: { children: ReactNode; userId?: string | null }) {
+function Wrapper({
+  children,
+  userId = "user-1",
+  route = "/",
+}: {
+  children: ReactNode
+  userId?: string | null
+  route?: string
+}) {
   const user = userId ? { ...makeUser(), id: userId } : null
   return (
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[route]}>
       <I18nextProvider i18n={i18n}>
         {/* MotionConfig with reducedMotion="always" makes
             ``AnimatePresence`` enter/exit animations resolve
@@ -283,5 +291,34 @@ describe("FirstRunFlow", () => {
     )
     expect(screen.getByText(i18n.t("firstRun.privacy.title"))).toBeInTheDocument()
     expect(await axe(container)).toHaveNoViolations()
+  })
+
+  it("does not cover the documents it asks people to read", async () => {
+    // Found on production minutes after shipping: this component mounts on
+    // every route, so opening «Политика конфиденциальности» from the gate
+    // showed the gate again, on top of the document. Different mechanism from
+    // the bug the whole change was about, identical outcome — being asked to
+    // accept a text you cannot read.
+    for (const route of ["/privacy", "/terms"]) {
+      const { unmount } = render(
+        <Wrapper route={route}>
+          <FirstRunFlow />
+        </Wrapper>,
+      )
+      expect(screen.queryByText(i18n.t("firstRun.privacy.title"))).not.toBeInTheDocument()
+      // And the tour signal must stay off, or every per-page tour on those
+      // routes silently refuses to start.
+      expect(getFirstRunActive()).toBe(false)
+      unmount()
+    }
+  })
+
+  it("still gates every other route", () => {
+    render(
+      <Wrapper route="/courses">
+        <FirstRunFlow />
+      </Wrapper>,
+    )
+    expect(screen.getByText(i18n.t("firstRun.privacy.title"))).toBeInTheDocument()
   })
 })
