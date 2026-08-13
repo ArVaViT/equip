@@ -20,6 +20,7 @@ import { firstNameOf } from "@/lib/names"
 import { PublicLanding } from "./PublicLanding"
 import { cn } from "@/lib/utils"
 import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
+import { isNewcomer, visibleEnrollments } from "./myCourses"
 
 interface MyCoursesSectionProps {
   /** Click handler wired by ``DashboardPage`` to start the dashboard
@@ -76,13 +77,9 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
     }
   }, [user?.id, retryCount, i18n.language])
 
-  const filtered = enrollments.filter((e) => e.course?.created_by !== user?.id)
-  // Newcomers (zero enrollments after a successful load) get a warmer
-  // editorial welcome surface in place of the bare "no courses" empty
-  // state. The shell header label flips with it so a first-time user
-  // doesn't read "My Courses" above an empty rectangle.
-  const isNewcomer = !loading && !fetchError && filtered.length === 0
-  const headerLabel = isNewcomer
+  const filtered = visibleEnrollments(enrollments)
+  const newcomer = isNewcomer({ enrollments, loading, failed: fetchError })
+  const headerLabel = newcomer
     ? t("onboarding.student.eyebrow")
     : t("dashboard.myCourses")
 
