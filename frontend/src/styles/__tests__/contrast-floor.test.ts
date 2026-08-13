@@ -217,6 +217,39 @@ describe("the palette clears the floor at full strength", () => {
   }
 });
 
+/**
+ * Raw CSS was a blind spot until a thorough sweep went looking for one.
+ *
+ * Everything above scans `.ts`/`.tsx` for Tailwind class names. A `color:`
+ * declaration written directly in a stylesheet was invisible to all of it —
+ * and `index.css` has 600 lines of them, including the reading surface's
+ * callouts and the certificate's print rules.
+ *
+ * Checked when this was written: every alpha-modified token in raw CSS is a
+ * `background-color`, a `border-color` or a scrollbar, and every callout sets
+ * its text with `text-foreground`. Nothing was wrong. But "nothing is wrong
+ * right now" is not a guard, and the whole point of the ones above is that
+ * this exact class of defect is invisible to the eye in one theme.
+ */
+describe("stylesheets are not exempt from the floor", () => {
+  const CSS_FILES = [INDEX_CSS]
+
+  it("never sets a text colour from a token at partial alpha", () => {
+    const offenders: string[] = []
+    for (const file of CSS_FILES) {
+      const css = readFileSync(file, "utf8")
+      for (const m of css.matchAll(/(?<!-)color:\s*hsl\(var\(--([\w-]+)\)\s*\/\s*([\d.]+)\)/g)) {
+        offenders.push(`${m[0]} — ${file.split("/").pop()}`)
+      }
+    }
+    expect(
+      offenders,
+      "An alpha on a text colour puts it under the floor in a stylesheet just " +
+        "as surely as in a class name:\n" + offenders.join("\n"),
+    ).toEqual([])
+  })
+})
+
 describe("no source file paints below the floor", () => {
   const FILES = sourceFiles(SRC);
 
