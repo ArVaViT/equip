@@ -128,6 +128,50 @@ export default {
         // and no Greek: both stay in Literata.
         sans: ['"Golos Text Variable"', '"Golos Text"', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
+      // The ladder, measured against pages that are actually good rather than
+      // against a ratio picked from a generator.
+      //
+      // What looking at apple.com actually showed (measured, 2026-08-12): nine
+      // distinct sizes on the whole homepage and sixteen distinct
+      // size/weight/line-height/tracking combinations — and *72% of its text
+      // nodes are 14px or smaller*, almost exactly our own 85%. So «everything
+      // is too small» was the wrong diagnosis. Apple's 12px is footer and
+      // legal furniture; what it also has, and we do not, is a content ladder:
+      // 17 body → 21 deck → 24 tile → 34/40/56 headline, each size arriving
+      // with the line-height and tracking that belong to it.
+      //
+      // Ours jumped from 14 straight to 24 with almost nothing between —
+      // `text-base` 29 uses, `text-lg` 18, `text-xl` 18 against `text-sm` 306.
+      // That gap is what reads as an admin tool, not the floor.
+      //
+      // Tracking stays mild at the top: Cyrillic is denser and more
+      // rectangular than Latin, and the aggressive negative tracking that
+      // flatters English display type closes Russian counters up.
+      fontSize: {
+        // Furniture: captions, verse references, legal. Replaces the 46
+        // hardcoded uses of text-[10px] and text-[11px], which were below the
+        // floor at which Cyrillic stays legible on a mid-range phone.
+        xs: ["0.75rem", { lineHeight: "1rem" }],
+        // Meta, secondary, dense table cells.
+        sm: ["0.875rem", { lineHeight: "1.25rem" }],
+        // Body. The step that was missing: 17px, not 16, with the leading a
+        // Cyrillic paragraph needs.
+        base: ["1.0625rem", { lineHeight: "1.625rem", letterSpacing: "-0.006em" }],
+        // Deck / lead-in. This is the rung that did not exist.
+        lg: ["1.3125rem", { lineHeight: "1.875rem", letterSpacing: "-0.011em" }],
+        // Card and tile titles.
+        xl: ["1.5rem", { lineHeight: "1.875rem", letterSpacing: "-0.014em" }],
+        "2xl": ["1.75rem", { lineHeight: "2.125rem", letterSpacing: "-0.016em" }],
+        "3xl": ["2.125rem", { lineHeight: "2.5rem", letterSpacing: "-0.019em" }],
+        "4xl": ["2.625rem", { lineHeight: "2.875rem", letterSpacing: "-0.021em" }],
+        "5xl": ["3.25rem", { lineHeight: "3.5rem", letterSpacing: "-0.023em" }],
+        // Long-form: chapters, essays, anything somebody reads rather than
+        // scans. Anthropic sets its articles at 17px/1.55 in 640px, which
+        // measured out at 68 characters per line — in Cyrillic, checked.
+        // Ours goes slightly larger and slightly looser because Russian
+        // lowercase has fewer ascenders and descenders and needs the air.
+        reading: ["1.125rem", { lineHeight: "1.7" }],
+      },
       transitionDuration: {
         // The three durations, reachable as duration-fast / -base / -panel so
         // a component never has to invent 250ms.

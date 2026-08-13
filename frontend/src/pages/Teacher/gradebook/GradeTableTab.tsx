@@ -277,19 +277,19 @@ const GradeTableRow = memo(function GradeTableRow({
                 refused. */}
             {official.finalText && (
               <span
-                className="text-[10px] text-ink-muted leading-tight"
+                className="text-xs text-ink-muted leading-tight"
                 title={t("gradebook.pair.explainer")}
               >
                 {t("gradebook.pair.finalShort", { grade: official.finalText })}
               </span>
             )}
             {official.isManual && (
-              <span className="text-[10px] font-medium text-info">
+              <span className="text-xs font-medium text-info">
                 {t("gradebook.table.setByTeacher")}
               </span>
             )}
             {official.noteKey && (
-              <span className="text-[10px] text-ink-muted leading-tight">{t(official.noteKey)}</span>
+              <span className="text-xs text-ink-muted leading-tight">{t(official.noteKey)}</span>
             )}
           </div>
         </td>

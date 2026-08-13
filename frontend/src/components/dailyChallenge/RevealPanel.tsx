@@ -17,7 +17,7 @@ export function RevealPanel({ isCorrect, explanation }: RevealPanelProps) {
     <div className="space-y-1.5 rounded-md bg-muted/20 px-3 py-2.5">
       <p
         className={cn(
-          "text-[11px] font-semibold uppercase tracking-[0.14em]",
+          "text-xs font-semibold uppercase tracking-[0.14em]",
           isCorrect ? "text-success" : "text-ink-muted",
         )}
       >

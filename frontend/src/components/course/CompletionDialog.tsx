@@ -77,7 +77,7 @@ export default function CompletionDialog({
       <DialogContent className="sm:max-w-md">
         <div className="flex flex-col items-center gap-4 pt-2 text-center">
           <span className="block h-px w-12 bg-accent/60" aria-hidden />
-          <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.22em] text-accent">
+          <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.22em] text-accent">
             <Sparkles className="h-3 w-3" strokeWidth={1.75} aria-hidden />
             {t("completion.eyebrow")}
           </p>

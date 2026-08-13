@@ -70,7 +70,7 @@ export function EnrollSplash({ course, firstName, onComplete }: Props) {
         aria-hidden
       />
       <motion.p
-        className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.22em] text-accent"
+        className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.22em] text-accent"
         initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, delay: 0.1, ease: EDITORIAL_EASE }}

@@ -239,7 +239,7 @@ export default function CohortDetailPage() {
         backLabel={t("admin.cohorts.backToList")}
         title={
           <div className="space-y-2">
-            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
               {t("admin.cohorts.eyebrow")}
             </p>
             <div className="flex flex-wrap items-center gap-3">

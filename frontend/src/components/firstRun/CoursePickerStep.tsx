@@ -157,7 +157,7 @@ export function CoursePickerStep({ firstName, onEnrolled, onBrowse, onSkip }: Pr
   return (
     <div className="flex w-full max-w-3xl flex-col items-center gap-5 text-center">
       <span className="block h-px w-12 bg-accent/60" aria-hidden />
-      <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-accent">
+      <p className="text-xs font-medium uppercase tracking-[0.22em] text-accent">
         {t("firstRun.picker.eyebrow")}
       </p>
       <h1 className="font-serif text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-3xl">
@@ -232,7 +232,7 @@ export function CoursePickerStep({ firstName, onEnrolled, onBrowse, onSkip }: Pr
                           {course.description}
                         </p>
                       )}
-                      <p className="mt-2 text-[10px] font-medium uppercase tracking-[0.14em] text-ink-muted/80">
+                      <p className="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-ink-muted/80">
                         {t("firstRun.picker.modulesCount", { count: moduleCount })}
                       </p>
                     </div>

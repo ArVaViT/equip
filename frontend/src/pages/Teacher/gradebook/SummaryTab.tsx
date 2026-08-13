@@ -288,7 +288,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
           {hasScore ? `${b.current_score.toFixed(1)}%` : "—"}
           {hasScore && b.scores_differ && (
             <span
-              className="block text-[10px] font-normal text-ink-muted"
+              className="block text-xs font-normal text-ink-muted"
               title={t("gradebook.pair.explainer")}
             >
               {t("gradebook.pair.finalShort", { grade: `${b.final_score.toFixed(1)}%` })}

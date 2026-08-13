@@ -41,7 +41,7 @@ interface CandleStreakProps {
 function CandleStreak({ count, label }: CandleStreakProps) {
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full bg-surface/80 px-2 py-0.5 text-[11px] font-medium text-ink"
+      className="inline-flex items-center gap-1 rounded-full bg-surface/80 px-2 py-0.5 text-xs font-medium text-ink"
       aria-label={label}
     >
       <Flame className="h-3 w-3 text-brand" strokeWidth={1.75} aria-hidden />
@@ -196,7 +196,7 @@ export function DailyChallengeCard() {
           )}
           <Link
             to="/daily-challenge/archive"
-            className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-brand transition-opacity hover:opacity-80"
+            className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand transition-opacity hover:opacity-80"
           >
             {t("dailyChallenge.openArchive")}
             <ArrowRight className="h-3 w-3" strokeWidth={1.75} aria-hidden />

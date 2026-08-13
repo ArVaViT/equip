@@ -143,7 +143,7 @@ export function AnnouncementPager({ announcements, onDelete }: AnnouncementPager
             </div>
           ) : (
             <span
-              className="text-[10px] leading-none tabular-nums text-ink-muted"
+              className="text-xs leading-none tabular-nums text-ink-muted"
               aria-hidden
             >
               {t("teacherEditor.modals.announcements.position", {

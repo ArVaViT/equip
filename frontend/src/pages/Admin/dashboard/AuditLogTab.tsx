@@ -323,14 +323,14 @@ function AuditResourceCell({ type, id }: { type: string; id: string }) {
       {href ? (
         <Link
           to={href}
-          className="max-w-[160px] truncate font-mono text-[10px] text-brand hover:underline"
+          className="max-w-[160px] truncate font-mono text-xs text-brand hover:underline"
           title={id}
         >
           {shortId}
         </Link>
       ) : (
         <span
-          className="max-w-[160px] truncate font-mono text-[10px] text-ink-muted/70"
+          className="max-w-[160px] truncate font-mono text-xs text-ink-muted/70"
           title={id}
         >
           {shortId}

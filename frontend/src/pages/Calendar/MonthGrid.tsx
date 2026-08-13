@@ -48,7 +48,7 @@ export function MonthGrid({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted tabular-nums">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted tabular-nums">
               {year}
             </p>
             <CardTitle>
@@ -87,7 +87,7 @@ export function MonthGrid({
             return (
               <div
                 key={i}
-                className={`py-1.5 text-center text-[11px] font-medium uppercase tracking-[0.18em] ${
+                className={`py-1.5 text-center text-xs font-medium uppercase tracking-[0.18em] ${
                   isWeekend ? "text-ink-muted/60" : "text-ink-muted"
                 }`}
               >

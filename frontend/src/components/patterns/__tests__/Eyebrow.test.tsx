@@ -10,7 +10,7 @@ describe("Eyebrow", () => {
     // The DESIGN.md recipe — 11px is the one documented arbitrary-size
     // exception and the wide tracking is load-bearing.
     expect(el).toHaveClass(
-      "text-[11px]",
+      "text-xs",
       "font-medium",
       "uppercase",
       "tracking-[0.18em]",
@@ -47,6 +47,6 @@ describe("Eyebrow", () => {
     )
     const el = screen.getByText("Mon")
     expect(el.tagName).toBe("DIV")
-    expect(el).toHaveClass("pb-1", "text-center", "text-[11px]")
+    expect(el).toHaveClass("pb-1", "text-center", "text-xs")
   })
 })

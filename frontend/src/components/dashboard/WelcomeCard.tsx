@@ -38,7 +38,7 @@ export function WelcomeCard({ eyebrow, title, description, action, className }: 
     >
       <span className="block h-px w-12 bg-accent/60" aria-hidden />
       {eyebrow && (
-        <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-accent">
+        <p className="text-xs font-medium uppercase tracking-[0.22em] text-accent">
           {eyebrow}
         </p>
       )}

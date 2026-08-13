@@ -79,7 +79,7 @@ export default function AdminDashboard() {
   return (
     <div className="animate-fade-in container mx-auto max-w-6xl px-4 py-6 sm:py-8">
       <header className="mb-6 space-y-2">
-        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
           {t("admin.eyebrow")}
         </p>
         <div className="flex items-center gap-3">

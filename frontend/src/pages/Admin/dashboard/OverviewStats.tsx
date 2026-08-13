@@ -122,7 +122,7 @@ export function OverviewStats({ stats, loading, pendingActions }: Props) {
               />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
                 {label}
               </p>
               {loading ? (

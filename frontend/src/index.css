@@ -609,12 +609,25 @@
    Headings are serif (Literata), body is sans (Golos Text), colours come from
    our semantic tokens so both themes work with one rule set. */
 .prose {
-  @apply text-foreground;
+  /* The reading surface. Measured against Anthropic's article pages, which set
+     17px at line-height 1.55 in a 640px column — 68 characters per line when
+     the characters are Cyrillic, which I checked rather than assumed. We go a
+     step larger and looser: Russian lowercase mirrors its capitals and carries
+     far fewer ascenders and descenders, so the grey is denser and wants air. */
+  @apply text-foreground text-reading;
   max-width: 68ch;
   overflow-wrap: anywhere;
+  /* Chromium ships hyph-ru; Russian genuinely hyphenates, which matters at
+     this measure because Russian words are long. Never justified — left-flag
+     on the web, and WCAG AAA forbids justification outright. */
+  hyphens: auto;
+  text-align: left;
 }
 .prose h1 {
-  @apply font-serif text-3xl font-semibold tracking-tight mt-10 mb-4;
+  /* Was text-3xl and competing with the page title above it, which is also
+     3xl — two h1s at the same size, one of them lying. The chapter title owns
+     that size; a heading inside the text sits below it. */
+  @apply font-serif text-2xl font-semibold tracking-tight mt-10 mb-4;
 }
 .prose h2 {
   @apply font-serif text-2xl font-semibold tracking-tight mt-8 mb-3;
@@ -626,8 +639,8 @@
   @apply text-base font-semibold mt-5 mb-2;
 }
 .prose p {
+  /* Paragraph spacing, not indent — and never both. */
   @apply my-4;
-  line-height: 1.7;
 }
 .prose ul {
   @apply my-4 pl-6;

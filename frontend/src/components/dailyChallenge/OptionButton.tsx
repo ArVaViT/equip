@@ -53,7 +53,7 @@ export function OptionButton({ option, reveal, disabled, onClick }: OptionButton
       <span
         aria-hidden
         className={cn(
-          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold",
+          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs font-semibold",
           reveal === null && "border-edge text-ink-muted group-hover:border-brand/40",
           showAsCorrect && "border-success bg-success text-success-foreground",
           showAsWrong && "border-destructive bg-destructive text-destructive-foreground",

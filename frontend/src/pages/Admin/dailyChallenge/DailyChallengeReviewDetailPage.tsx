@@ -264,7 +264,7 @@ function LocaleCellEditor({ locale, cell, saving, onSave }: LocaleCellEditorProp
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">
           {locale.toUpperCase()}
         </span>
         {missing ? (
