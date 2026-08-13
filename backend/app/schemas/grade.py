@@ -550,6 +550,38 @@ class GradeHistoryEntry(BaseModel):
     blockers: list[str] = []
 
 
+class WaitingGroup(BaseModel):
+    """One item with work waiting on it, as the grading queue lists it.
+
+    Grouped by item rather than by student because that is how the marking
+    actually goes: thirty answers to the same prompt in a row, the standard
+    loaded once instead of thirty times.
+    """
+
+    kind: Literal["quiz_answer", "assignment"]
+    item_id: str
+    course_id: str
+    chapter_id: str
+    title: str
+    waiting: int
+    #: The oldest thing in the group. The queue is ordered by it, because a
+    #: queue sorted by size buries the essay that has been waiting three weeks
+    #: under the assignment twelve people just handed in — and the three-week
+    #: one is what somebody is upset about.
+    oldest: datetime | None = None
+
+
+class WaitingSubmission(BaseModel):
+    """One piece of work to mark, with what is needed to mark it."""
+
+    submission_id: str
+    student_id: str
+    student_name: str | None = None
+    submitted_at: datetime | None = None
+    content: str | None = None
+    file_url: str | None = None
+
+
 class RetakeRequest(BaseModel):
     """One open «запросить пересдачу», as the teacher's course pages see it."""
 

@@ -2426,5 +2426,23 @@
     "saveFailed": "Could not save the marks",
     "title": "Rubric",
     "yourGrid": "How your work was marked"
+  },
+  "grading": {
+    "title": "Marking queue",
+    "subtitle": "Grouped by task: thirty answers to one prompt in a row, not thirty whole papers.",
+    "emptyTitle": "Nothing waiting",
+    "emptyBody": "You are up to date.",
+    "waitingSince": "Oldest has waited {{when}}",
+    "mark": "Mark",
+    "openCourse": "Open course",
+    "backToQueue": "Back to the queue",
+    "groupDoneTitle": "This task is marked",
+    "saveAndNext": "Save and next",
+    "saveAndFinish": "Save and finish",
+    "feedbackPlaceholder": "What worked, what to fix, and how",
+    "points": "points",
+    "gradeAria": "Grade",
+    "loadFailed": "Could not load the queue",
+    "saveFailed": "Could not save"
   }
 }

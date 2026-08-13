@@ -20,11 +20,13 @@ from app.api.dependencies import (
     lookup_enrollment,
     require_admin,
     require_teacher,
+    verify_chapter_owner,
     verify_course_owner,
 )
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.ids import as_uuid
+from app.models.assignment import Assignment
 from app.models.audit_log import AuditLog
 from app.models.course import Chapter, CourseStatus, Module
 from app.models.enrollment import Enrollment
@@ -54,6 +56,8 @@ from app.schemas.grade import (
     SheetRowResponse,
     StudentCalculatedGrade,
     StudentGradeResponse,
+    WaitingGroup,
+    WaitingSubmission,
 )
 from app.services.audit_service import log_action
 from app.services.certificate_readiness import (
@@ -76,7 +80,7 @@ from app.services.grade_override import (
     validate_override,
 )
 from app.services.grade_sheet_service import active_sheet, finalize_sheet, reopen_sheet
-from app.services.grading_queue import pending_summary
+from app.services.grading_queue import assignment_work, pending_summary, waiting_groups
 from app.services.grading_scheme import effective_bands, get_org_settings, validate_scheme_threshold
 from app.services.my_grade_service import build_my_course_grade, latest_enrollment
 from app.services.notification_service import create_notification
@@ -1089,6 +1093,47 @@ def get_grade_history(
             }
         )
     return out
+
+
+@router.get("/queue", response_model=list[WaitingGroup])
+def get_grading_queue(
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    """What is waiting on this teacher, gathered by the item it answers.
+
+    The count shipped in #961 told a teacher there were seven; this is the
+    seven. Until now the grading interface lived inside the course editor —
+    dashboard, course, editor, module, chapter, quiz editor, submissions tab —
+    so the weekly task sat seven levels inside the occasional one, and the
+    count had nowhere good to lead.
+    """
+    return waiting_groups(db, teacher.id)
+
+
+@router.get("/queue/assignment/{assignment_id}", response_model=list[WaitingSubmission])
+def get_assignment_queue(
+    assignment_id: str,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    """The work waiting on one assignment, oldest first.
+
+    Oldest first is the whole ordering: a student who handed in three weeks ago
+    has been waiting three weeks, and marking newest-first is how they keep
+    waiting.
+    """
+    assignment_uuid = as_uuid(assignment_id)
+    assignment = db.query(Assignment).filter(Assignment.id == assignment_uuid).first() if assignment_uuid else None
+    if assignment is None or assignment_uuid is None:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Assignment not found",
+            context={"resource_type": "assignment", "assignment_id": assignment_id},
+        )
+    verify_chapter_owner(db, assignment.chapter_id, teacher)
+    return assignment_work(db, teacher.id, assignment_uuid)
 
 
 @router.get("/course/{course_id}/retake-requests", response_model=list[RetakeRequest])

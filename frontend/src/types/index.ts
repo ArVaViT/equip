@@ -703,6 +703,33 @@ export interface RetakeRequest {
   blockers: string[]
 }
 
+/**
+ * One item with work waiting on it, as the grading queue lists it.
+ *
+ * Grouped by item rather than by student because that is how marking goes:
+ * thirty answers to one prompt in a row, the standard loaded once.
+ */
+export interface WaitingGroup {
+  kind: "quiz_answer" | "assignment"
+  item_id: string
+  course_id: string
+  chapter_id: string
+  title: string
+  waiting: number
+  /** The oldest thing in the group — what the queue is ordered by. */
+  oldest: string | null
+}
+
+/** One piece of work to mark, with what is needed to mark it. */
+export interface WaitingSubmission {
+  submission_id: string
+  student_id: string
+  student_name: string | null
+  submitted_at: string | null
+  content: string | null
+  file_url: string | null
+}
+
 /** One rung on a criterion, and what it is worth. */
 export interface RubricLevel {
   id: string

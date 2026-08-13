@@ -2054,6 +2054,30 @@
     "body": false
   },
   {
+    "method": "GET",
+    "path": "/api/v1/grades/queue",
+    "params": [],
+    "responses": [
+      "200"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/grades/queue/assignment/{assignment_id}",
+    "params": [
+      [
+        "assignment_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
     "method": "POST",
     "path": "/api/v1/grades/sheet/{sheet_id}/reopen",
     "params": [
