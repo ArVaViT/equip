@@ -23,7 +23,7 @@ import {
 } from "lucide-react"
 import { useUserTour } from "@/hooks/useUserTour"
 import { profileSteps } from "@/lib/tourSteps"
-import { EDITORIAL_EASE } from "@/lib/motion"
+import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
 import { initialsOf } from "@/lib/names"
 
 function useCountUp(target: number, durationMs = 800) {
@@ -326,7 +326,7 @@ export default function ProfilePage() {
                       initial={{ rotate: -45, opacity: 0 }}
                       animate={{ rotate: 0, opacity: 1 }}
                       exit={{ rotate: 45, opacity: 0 }}
-                      transition={{ duration: 0.22, ease: EDITORIAL_EASE }}
+                      transition={{ duration: MOTION_DURATION.base, ease: EDITORIAL_EASE }}
                     >
                       {theme === "dark" ? (
                         <Sun className="h-4 w-4" strokeWidth={1.75} aria-hidden />

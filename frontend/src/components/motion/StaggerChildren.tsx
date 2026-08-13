@@ -13,7 +13,7 @@ type StaggerChildrenProps = {
 export function StaggerChildren({
   children,
   stagger = 0.045,
-  duration = MOTION_DURATION.entrance,
+  duration = MOTION_DURATION.panel,
   y = 8,
   className,
 }: StaggerChildrenProps) {

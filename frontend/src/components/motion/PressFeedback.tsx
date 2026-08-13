@@ -23,7 +23,7 @@ export function PressFeedback({
     <motion.div
       className={className}
       whileTap={{ scale }}
-      transition={{ duration: MOTION_DURATION.instant, ease: EDITORIAL_EASE }}
+      transition={{ duration: MOTION_DURATION.fast, ease: EDITORIAL_EASE }}
     >
       {children}
     </motion.div>
