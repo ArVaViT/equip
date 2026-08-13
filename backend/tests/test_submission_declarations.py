@@ -161,3 +161,30 @@ def test_the_default_policy_is_disclosure_not_a_ban(db: Session, teacher) -> Non
     db.refresh(course)
 
     assert course.ai_policy == "ai_with_disclosure"
+
+
+def test_work_without_a_declaration_is_refused(student_client, db: Session, teacher, student) -> None:
+    """Required from this release, not the one that shipped the screen.
+
+    Requiring it in the same release that teaches the client to send it would
+    have left a window where a student on a stale bundle could not hand in
+    their work — and the honest alternative, recording an empty declaration on
+    their behalf, would put a statement in the record that nobody made.
+    """
+    assignment = _assignment(db, "dec-required")
+
+    response = student_client.post(SUBMIT.format(assignment.id), json={"content": "Работа"})
+
+    assert response.status_code == 400, response.text
+    assert response.json()["detail"]["context"]["ai_policy"] == "ai_with_disclosure"
+
+
+def test_the_refusal_tells_a_stale_client_what_to_do(student_client, db: Session, teacher, student) -> None:
+    """The one person who can hit this is a student whose page has been open
+    since before the deploy. «Validation failed» would leave them stuck; the
+    message names the fix."""
+    assignment = _assignment(db, "dec-stale")
+
+    body = student_client.post(SUBMIT.format(assignment.id), json={"content": "Работа"}).json()
+
+    assert "reload" in body["detail"]["message"].lower()

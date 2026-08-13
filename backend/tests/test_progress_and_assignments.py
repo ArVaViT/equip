@@ -318,7 +318,7 @@ class TestListAssignmentSubmissions:
         db.commit()
         sub = student_client.post(
             f"/api/v1/assignments/{aid}/submit",
-            json={"content": "Here"},
+            json={"content": "Here", "declaration": {"ai_use": "none", "statement": "Я написал эту работу сам."}},
         )
         assert sub.status_code == 201, sub.text
         app.dependency_overrides[get_current_user] = lambda: teacher
@@ -361,7 +361,10 @@ class TestListAssignmentSubmissions:
         db.commit()
         sub = student_client.post(
             f"/api/v1/assignments/{aid}/submit",
-            json={"content": "Before deactivation"},
+            json={
+                "content": "Before deactivation",
+                "declaration": {"ai_use": "none", "statement": "Я написал эту работу сам."},
+            },
         )
         assert sub.status_code == 201, sub.text
         ghost = db.query(User).filter(User.id == STUDENT_ID).one()
@@ -393,7 +396,7 @@ class TestGradeSubmission:
         db.commit()
         sub_resp = student_client.post(
             f"/api/v1/assignments/{aid}/submit",
-            json={"content": "Answer"},
+            json={"content": "Answer", "declaration": {"ai_use": "none", "statement": "Я написал эту работу сам."}},
         )
         assert sub_resp.status_code == 201
         sid = sub_resp.json()["id"]
@@ -424,7 +427,7 @@ class TestGradeSubmission:
         db.commit()
         sub_resp = student_client.post(
             f"/api/v1/assignments/{aid}/submit",
-            json={"content": "x"},
+            json={"content": "x", "declaration": {"ai_use": "none", "statement": "Я написал эту работу сам."}},
         )
         sid = sub_resp.json()["id"]
         app.dependency_overrides[get_current_user] = lambda: teacher
@@ -523,7 +526,7 @@ def test_submit_assignment_survives_concurrent_chapter_progress_insert(student_c
     try:
         resp = student_client.post(
             f"/api/v1/assignments/{assignment.id}/submit",
-            json={"content": "x"},
+            json={"content": "x", "declaration": {"ai_use": "none", "statement": "Я написал эту работу сам."}},
         )
     finally:
         Query.first = real_first
@@ -565,7 +568,7 @@ def test_student_can_fetch_own_assignment_submissions(student_client: TestClient
 
     submit_response = student_client.post(
         f"/api/v1/assignments/{assignment.id}/submit",
-        json={"content": "My submission"},
+        json={"content": "My submission", "declaration": {"ai_use": "none", "statement": "Я написал эту работу сам."}},
     )
     assert submit_response.status_code == 201, submit_response.text
 
