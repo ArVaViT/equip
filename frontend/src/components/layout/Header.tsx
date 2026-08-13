@@ -43,20 +43,26 @@ export default function Header() {
   }, [location.pathname])
 
   return (
-    // No border, no shadow, no backdrop-blur, and no scroll state. The bar
-    // separates from the page by exactly one tonal step (`bg-card` on
-    // `bg-surface`), which is how Anthropic does it and why theirs reads as a
-    // publication rather than a 2016 navbar. It is also the cheap option:
-    // `backdrop-filter` forces a full-screen readback every frame on the
-    // mid-range Android our students actually use.
-    <header className="sticky top-0 z-50 bg-card">
+    // A hairline, no shadow, no backdrop-blur, no scroll state.
+    //
+    // The bar used to separate from the page by a tonal step alone. That works
+    // when the page is tinted and the bar is a different tint; it stops working
+    // now that cards are white — the bar and the content merge. Every reference
+    // measured has a hairline: Linear's is 1px at 8% white, and it is doing the
+    // same job.
+    //
+    // Still no blur. `backdrop-filter` forces a full-screen readback every
+    // frame on the mid-range Android our students actually read on, and it
+    // buys nothing over a solid surface plus a line.
+    <header className="sticky top-0 z-50 border-b border-edge bg-surface">
       <div className="container mx-auto max-w-[1400px] px-4">
-        <div className="flex h-14 items-stretch justify-between gap-2 md:h-16 md:gap-6">
+        <div className="flex h-14 items-center justify-between gap-3 md:h-16 md:gap-8">
           <Link
             to="/"
-            // The school's name, set like a masthead rather than a toolbar
-            // label: this is the one place the serif carries the institution.
-            className="flex shrink-0 items-center font-serif text-base font-semibold leading-none tracking-[-0.01em] text-ink decoration-transparent underline-offset-4 transition-[text-decoration-color] duration-200 hover:underline hover:decoration-ink/30 md:text-lg"
+            // The serif stays, and it is the only serif in the bar. Set beside
+            // grotesque navigation it reads as a masthead — the WSJ move — where
+            // a serif logo above serif links would just read as old.
+            className="flex shrink-0 items-center font-serif text-lg font-semibold leading-none tracking-[-0.02em] text-ink transition-opacity duration-fast hover:opacity-70"
           >
             {t("common.appName")}
           </Link>

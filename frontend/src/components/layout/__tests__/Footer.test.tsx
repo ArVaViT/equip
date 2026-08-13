@@ -35,12 +35,23 @@ describe("Footer (minimalist)", () => {
     expect(support).toHaveAttribute("href", expect.stringMatching(/^mailto:/))
   })
 
-  it("does NOT duplicate the header nav inside the footer", () => {
+  it("never links a signed-out visitor at a gated route", () => {
     render(<Footer />, { wrapper: Wrapper })
-    // Older revisions duplicated Courses / Calendar / Certificates /
-    // Teacher / Admin in the footer. The minimalist rewrite drops them
-    // — if a future edit re-adds them, this assertion will catch it.
+    // This assertion started life as "do not duplicate the header nav", back
+    // when the footer sat in the application shell. The footer now renders
+    // only on the public landing page, so duplication is no longer the
+    // problem — but the reason the original was right turns out to be
+    // sharper: `/calendar` and `/certificates` are behind
+    // `Gate mode="private"`, and a stranger reading the marketing page who
+    // clicks one lands on a login wall with no explanation.
     expect(screen.queryByRole("link", { name: /^calendar$|^календарь$/i })).toBeNull()
     expect(screen.queryByRole("link", { name: /^certificates$|^сертификат/i })).toBeNull()
+    // Everything that *is* here has to be reachable without an account.
+    const PUBLIC = ["/", "/courses", "/login", "/register", "/privacy", "/terms"]
+    for (const link of screen.getAllByRole("link")) {
+      const href = link.getAttribute("href")
+      if (!href || href.startsWith("mailto:")) continue
+      expect(PUBLIC, `footer links at gated route ${href}`).toContain(href)
+    }
   })
 })

@@ -105,16 +105,13 @@ export default function CoursesPage() {
   return (
     <div className="container mx-auto px-4 py-6 sm:py-10">
       <section className="relative mb-10 md:mb-20" aria-labelledby="courses-catalog-heading">
-        <div className="pointer-events-none absolute left-1/2 top-0 -z-0 h-[min(22rem,55vw)] w-[min(120vw,44rem)] -translate-x-1/2 md:h-[26rem] md:w-[52rem]">
-          <div className="bg-home-hero-glow h-full w-full blur-3xl" aria-hidden />
-        </div>
         <div className="relative z-10 mx-auto max-w-2xl px-4 pb-2 pt-6 text-center md:pt-10">
           <p className="animate-fade-in text-xs font-medium uppercase tracking-[0.22em] text-brand mb-3">
             {t("courses.academicPrograms")}
           </p>
           <h1
             id="courses-catalog-heading"
-            className="animate-fade-in animate-delay-100 text-balance font-serif text-3xl font-bold tracking-tight text-gradient-primary sm:text-4xl"
+            className="animate-fade-in animate-delay-100 text-balance font-serif text-3xl font-bold tracking-tight text-ink sm:text-4xl"
           >
             {user ? t("courses.pageTitleAuthed") : t("courses.pageTitle")}
           </h1>

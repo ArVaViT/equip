@@ -191,7 +191,7 @@ export function RegisterForm({
           <Button
             type="submit"
             size="lg"
-            className="cta-glow w-full font-medium rounded-md"
+            className="w-full rounded-md font-medium"
             disabled={loading}
           >
             {loading ? (
