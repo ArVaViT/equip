@@ -91,15 +91,33 @@ def _get_engine() -> Engine:
         if IS_SERVERLESS:
             # Vercel keeps the Python process warm across invocations (the
             # module-cached engine, JWT cache and Gemini client all rely on
-            # it), so a tiny per-instance pool amortises the TCP+TLS+auth
-            # handshake to the pooler (~10-30ms) instead of paying it on
-            # EVERY request as NullPool did. Bounded at 1+2 connections per
-            # warm instance against the transaction pooler; pool_recycle
-            # guards against the pooler silently dropping idle clients.
+            # it), so a per-instance pool amortises the TCP+TLS+auth handshake
+            # to the pooler (~10-30ms) instead of paying it on EVERY request
+            # as NullPool did. `pool_recycle` guards against the pooler
+            # silently dropping idle clients.
+            #
+            # This was 1+2, and that number was chosen when requests arrived
+            # one at a time. They do not: opening a single chapter fires
+            # **seven** concurrent calls — course, progress, blocks,
+            # announcements, notifications, legal, cohorts — so four of them
+            # queued behind three connections, and `pool_timeout` expiring
+            # showed up in production as
+            # `QueuePool limit of size 1 overflow 2 reached, connection timed
+            # out` (2026-08-12). Removing a request waterfall on the chapter
+            # page made it worse rather than better: the calls stopped
+            # serialising on each other and started serialising here.
+            #
+            # 5+5 is measured, not guessed. Postgres `max_connections` is 60
+            # with 16 in use; in front of it is a **transaction** pooler,
+            # which multiplexes many client sessions onto few backend
+            # connections, so ten client slots per warm instance cost the
+            # database almost nothing. It is enough for one page's seven
+            # parallel calls with headroom, and far under any limit either
+            # side of the pooler.
             pool_kwargs.update(
                 {
-                    "pool_size": 1,
-                    "max_overflow": 2,
+                    "pool_size": 5,
+                    "max_overflow": 5,
                     "pool_recycle": 300,
                     "pool_timeout": 10,
                 }
