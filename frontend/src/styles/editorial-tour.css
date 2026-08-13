@@ -5,7 +5,7 @@
  * black overlay). We import its base file for the structural rules —
  * positioning, the SVG overlay, pointer-events bookkeeping — and then
  * fully override the visible vocabulary here so the tour matches the
- * Equip editorial register (Fraunces serif title, sage accent eyebrow,
+ * Equip editorial register (Literata serif title, sage accent eyebrow,
  * paper-bg popover with a sage left stripe, primary-violet "next"
  * button, EDITORIAL_EASE motion).
  *
@@ -32,7 +32,7 @@
 
 .editorial-tour-popover .driver-popover-title {
   display: block;
-  font-family: "Fraunces Variable", Fraunces, Georgia, Cambria, "Times New Roman", Times, serif;
+  font-family: "Literata Variable", Literata, Georgia, Cambria, "Times New Roman", Times, serif;
   font-size: 1rem;
   font-weight: 600;
   line-height: 1.35;

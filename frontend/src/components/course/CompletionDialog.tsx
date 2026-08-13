@@ -31,7 +31,7 @@ interface Props {
  * Celebration dialog shown when a student reaches 100% progress on a
  * course for the first time on this device.
  *
- * Composition: sage rule → eyebrow → Fraunces serif title → one
+ * Composition: sage rule → eyebrow → Literata serif title → one
  * paragraph of warm body → one or two CTAs. Visual voice matches the
  * ``<WelcomeCard>`` first-time moment so completion and onboarding
  * share the same hand-set editorial register — no confetti, no

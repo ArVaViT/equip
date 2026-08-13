@@ -600,7 +600,7 @@
 
 /* ===== Prose — editorial reader =====
    We re-establish just the bits Tailwind's Preflight resets.
-   Headings are serif (Fraunces), body is sans (Inter), colours come from
+   Headings are serif (Literata), body is sans (Golos Text), colours come from
    our semantic tokens so both themes work with one rule set. */
 .prose {
   @apply text-foreground;

@@ -11,7 +11,7 @@ interface Props {
  * First-run Step 1 — Privacy Policy gate.
  *
  * Editorial composition matching the rest of the onboarding voice:
- * thin sage rule → eyebrow → Fraunces serif title → warm paragraph →
+ * thin sage rule → eyebrow → Literata serif title → warm paragraph →
  * three short bullets → checkbox → single primary CTA.
  *
  * No skip path. The user MUST accept before continuing — this is the

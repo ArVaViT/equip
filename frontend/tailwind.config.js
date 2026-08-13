@@ -113,8 +113,20 @@ export default {
         },
       },
       fontFamily: {
-        serif: ['"Fraunces Variable"', 'Fraunces', 'Georgia', 'Cambria', '"Times New Roman"', 'Times', 'serif'],
-        sans: ['"Inter Variable"', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        // Literata: Cyrillic drawn by Vera Evstafieva (Modern Cyrillic 2021),
+        // variable on opsz 7–72 and wght 200–900, and 233 polytonic Greek
+        // glyphs so biblical Greek sets in the same family. Georgia leads the
+        // fallback because its x-height/em (.481) is closest to Literata's
+        // (.503), so the page barely shifts when the webfont lands.
+        serif: ['"Literata Variable"', 'Literata', 'Georgia', 'Cambria', '"Times New Roman"', 'Times', 'serif'],
+        // Golos Text: by Alexandra Korolkova (ParaType), commissioned for
+        // Russian state services and drawn for continuous screen reading.
+        // Replaces Inter, whose Cyrillic is functional but publicly criticised
+        // — reverse contrast in Ии Уу к, fractured б, inconsistent descenders
+        // in ДЦЩ — and whose own author conceded the extension needed
+        // knowledge the project lacked (rsms/inter#567). Golos has no italic
+        // and no Greek: both stay in Literata.
+        sans: ['"Golos Text Variable"', '"Golos Text"', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       borderRadius: {
         lg: "var(--radius)",

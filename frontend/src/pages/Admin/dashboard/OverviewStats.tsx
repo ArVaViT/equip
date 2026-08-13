@@ -28,7 +28,7 @@ interface Props {
  * - small framed icon on the left (consistent with the dashboard side-
  *   rail headers so the visual vocabulary is shared)
  * - eyebrow label
- * - the number — Fraunces serif, large + tabular-nums so a trio of
+ * - the number — Literata serif, large + tabular-nums so a trio of
  *   3-digit metrics line up vertically across cards
  * - an optional secondary line for trend / context (e.g. ``+3 this
  *   week`` on the users card)
