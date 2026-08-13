@@ -128,13 +128,25 @@ export default {
         // and no Greek: both stay in Literata.
         sans: ['"Golos Text Variable"', '"Golos Text"', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
+      transitionDuration: {
+        // The three durations, reachable as duration-fast / -base / -panel so
+        // a component never has to invent 250ms.
+        fast: "var(--motion-fast)",
+        base: "var(--motion-base)",
+        panel: "var(--motion-panel)",
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
       transitionTimingFunction: {
+        // `editorial` predates the token pass and is kept: it is on 40-odd
+        // components and is close enough to --ease-out that swapping it in one
+        // go would be churn without a visible gain. New work uses out/in-out.
         editorial: "cubic-bezier(0.22, 1, 0.36, 1)",
+        out: "var(--ease-out)",
+        "in-out": "var(--ease-in-out)",
       },
     },
   },

@@ -43,12 +43,20 @@ export default function Header() {
   }, [location.pathname])
 
   return (
-    <header className="sticky top-0 z-50 border-b border-edge/90 bg-surface/90 backdrop-blur-md supports-[backdrop-filter]:bg-surface/75">
+    // No border, no shadow, no backdrop-blur, and no scroll state. The bar
+    // separates from the page by exactly one tonal step (`bg-card` on
+    // `bg-surface`), which is how Anthropic does it and why theirs reads as a
+    // publication rather than a 2016 navbar. It is also the cheap option:
+    // `backdrop-filter` forces a full-screen readback every frame on the
+    // mid-range Android our students actually use.
+    <header className="sticky top-0 z-50 bg-card">
       <div className="container mx-auto max-w-[1400px] px-4">
-        <div className="flex h-11 items-stretch justify-between gap-2 md:h-12 md:gap-4">
+        <div className="flex h-14 items-stretch justify-between gap-2 md:h-16 md:gap-6">
           <Link
             to="/"
-            className="flex shrink-0 items-center font-serif text-sm font-semibold leading-none tracking-tight text-ink transition-opacity hover:opacity-85 md:text-base"
+            // The school's name, set like a masthead rather than a toolbar
+            // label: this is the one place the serif carries the institution.
+            className="flex shrink-0 items-center font-serif text-base font-semibold leading-none tracking-[-0.01em] text-ink decoration-transparent underline-offset-4 transition-[text-decoration-color] duration-200 hover:underline hover:decoration-ink/30 md:text-lg"
           >
             {t("common.appName")}
           </Link>
