@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
-import { useNavigate } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import { legalService } from "@/services/legal"
 import { useAuth } from "@/context/useAuth"
 import { setFirstRunActive } from "@/lib/tourState"
@@ -103,15 +103,31 @@ function decideInitialStep(userId: string | undefined, legalOutstanding: boolean
 export function FirstRunFlow() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const prefersReducedMotion = useReducedMotion()
   const userId = user?.id
   const firstName = firstNameOf(user?.full_name)
   const dialogRef = useRef<HTMLDivElement>(null)
   // ``useState`` initialiser runs once per mount; ``userId`` change
   // (sign-in, account switch) re-derives via the effect below.
+  /**
+   * The two routes the gate itself points at.
+   *
+   * Found on production within minutes of shipping: this component mounts on
+   * every route, so clicking «Политика конфиденциальности» from the gate
+   * opened the document in a new tab — where the gate mounted again and
+   * covered it. Different mechanism from the original bug, identical outcome:
+   * the platform asking somebody to accept a text they cannot read.
+   *
+   * A gate that blocks its own escape hatch is not a gate, it is a wall.
+   */
+  const exempt = pathname === "/privacy" || pathname === "/terms"
+
   //: null until the server has answered. See `decideInitialStep`.
   const [legalOutstanding, setLegalOutstanding] = useState<boolean | null>(null)
-  const [step, setStep] = useState<Step>(() => decideInitialStep(userId, null))
+  const [step, setStep] = useState<Step>(() =>
+    pathname === "/privacy" || pathname === "/terms" ? "done" : decideInitialStep(userId, null),
+  )
   // The course the user enrolled in via the picker. Drives the
   // EnrollSplash celebration and the post-splash navigation. We
   // keep it as state (not a ref) so the splash re-renders on
@@ -149,8 +165,8 @@ export function FirstRunFlow() {
   }, [userId])
 
   useEffect(() => {
-    setStep(decideInitialStep(userId, legalOutstanding))
-  }, [userId, legalOutstanding])
+    setStep(exempt ? "done" : decideInitialStep(userId, legalOutstanding))
+  }, [userId, legalOutstanding, exempt])
 
   // Autofocus the first focusable element on each step transition so
   // keyboard users land inside the dialog. Otherwise focus stays on

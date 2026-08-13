@@ -168,7 +168,7 @@
         "share": "We don't sell your data and we don't share it with third parties for advertising. Anonymous performance telemetry helps us spot bugs (Datadog).",
         "control": "You can edit or delete your account at any time from your profile."
       },
-      "checkbox": "I have read and agree to the Privacy Policy and Terms of Service",
+      "checkbox": "I have read and accept the Privacy Policy and the Terms of Use",
       "next": "Continue",
       "saveFailed": "Couldn't record your acceptance. Check your connection and try again."
     },
