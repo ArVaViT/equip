@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 import { I18nextProvider } from "react-i18next"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import i18n from "@/i18n/config"
+import { AuthContext } from "@/context/auth-context"
 import { coursesService } from "@/services/courses"
 import { rubricsService } from "@/services/rubrics"
 import AssignmentPanel from "../AssignmentPanel"
@@ -39,8 +40,28 @@ const SUBMITTED: AssignmentSubmission = {
   feedback: null,
 } as AssignmentSubmission
 
+const STUDENT = { id: "student-1", email: "s@example.org" } as never
+
 function Wrapper({ children }: { children: ReactNode }) {
-  return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
+  return (
+    <I18nextProvider i18n={i18n}>
+      {/* The panel keeps a per-user draft key, so it needs a user. */}
+      <AuthContext.Provider
+        value={{
+          user: STUDENT,
+          loading: false,
+          login: vi.fn(),
+          register: vi.fn(),
+          signInWithGoogle: vi.fn(),
+          resetPassword: vi.fn(),
+          logout: vi.fn(),
+          refreshUser: vi.fn().mockResolvedValue(undefined),
+        }}
+      >
+        {children}
+      </AuthContext.Provider>
+    </I18nextProvider>
+  )
 }
 
 function show() {

@@ -7,6 +7,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { rubricsService } from "@/services/rubrics"
+import { useAuth } from "@/context/useAuth"
+import { useLocalDraft } from "@/hooks/useLocalDraft"
+import { assignmentDraftKey } from "@/lib/storageKeys"
 import { SubmissionDeclaration, type DeclarationState } from "./SubmissionDeclaration"
 import { declarationStatement } from "./declarationStatement"
 import { RubricGrid } from "@/components/rubric/RubricGrid"
@@ -180,6 +183,16 @@ function SingleAssignment({
     unknown ? null : initialSubmission,
   )
   const [content, setContent] = useState("")
+  const { user } = useAuth()
+  // Nine hundred words used to live only in this component's state, so a
+  // reload — or a phone dropping the tab out of memory — took the lot.
+  const { restored, savedAt, clear: clearDraft } = useLocalDraft(
+    user ? assignmentDraftKey(user.id, assignment.id) : null,
+    content,
+  )
+  useEffect(() => {
+    if (restored) setContent(restored)
+  }, [restored])
   const [fileUrl, setFileUrl] = useState("")
   const [submitting, setSubmitting] = useState(false)
   // The same grid the teacher marked on. Not a summary of it: a student's
@@ -238,6 +251,7 @@ function SingleAssignment({
       setSubmission(sub)
       setContent("")
       setFileUrl("")
+      clearDraft()
       onSubmitted?.()
     } catch (error: unknown) {
       const detail = getErrorDetail(error)
@@ -412,6 +426,14 @@ function SingleAssignment({
                 placeholder={t("assignment.responsePlaceholder")}
                 className="min-h-[160px] leading-relaxed"
               />
+              {/* Quiet, and only once there is something to say. A student who
+                  has typed one word does not need reassurance; one who comes
+                  back to find their essay still there needs to know why. */}
+              {savedAt !== null && (
+                <p className="text-xs text-ink-muted" role="status">
+                  {restored ? t("assignment.draftRestored") : t("assignment.draftSaved")}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">

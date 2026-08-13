@@ -1,0 +1,129 @@
+import { useState } from "react"
+import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { useLocalDraft } from "../useLocalDraft"
+
+const KEY = "equip.draft.assignment.student-1.a-1"
+
+function Harness({ storageKey = KEY as string | null }: { storageKey?: string | null }) {
+  const [value, setValue] = useState("")
+  const { restored, savedAt, clear } = useLocalDraft(storageKey, value, { delay: 0 })
+  return (
+    <div>
+      <textarea aria-label="essay" value={value} onChange={(e) => setValue(e.target.value)} />
+      <button onClick={() => setValue(restored ?? "")}>restore</button>
+      <button onClick={clear}>clear</button>
+      <span data-testid="saved">{savedAt === null ? "no" : "yes"}</span>
+      <span data-testid="restored">{restored ?? ""}</span>
+    </div>
+  )
+}
+
+/**
+ * Replaces `window.localStorage` wholesale rather than spying on its methods.
+ *
+ * Under this Node build `window.localStorage` is not the plain jsdom object a
+ * `vi.spyOn` would patch — the spy installs cleanly and then never fires, so
+ * the "storage throws" test passes for the wrong reason and proves nothing.
+ * Swapping the property is the only interception that actually holds.
+ */
+function swapStorage(partial: Partial<Storage>) {
+  const stub = {
+    getItem: () => null,
+    setItem: () => undefined,
+    removeItem: () => undefined,
+    clear: () => undefined,
+    key: () => null,
+    length: 0,
+    ...partial,
+  } as Storage
+  Object.defineProperty(window, "localStorage", { configurable: true, value: stub })
+}
+
+describe("useLocalDraft", () => {
+  const real = window.localStorage
+
+  beforeEach(() => {
+    Object.defineProperty(window, "localStorage", { configurable: true, value: real })
+    window.localStorage.clear()
+    vi.restoreAllMocks()
+  })
+  afterEach(() => {
+    Object.defineProperty(window, "localStorage", { configurable: true, value: real })
+    window.localStorage.clear()
+  })
+
+  it("writes what was typed so a reload cannot take it", async () => {
+    render(<Harness />)
+    await userEvent.type(screen.getByLabelText("essay"), "Деяния 2")
+
+    await waitFor(() => expect(window.localStorage.getItem(KEY)).toBe("Деяния 2"))
+    expect(screen.getByTestId("saved")).toHaveTextContent("yes")
+  })
+
+  it("offers back what a previous session left behind", async () => {
+    window.localStorage.setItem(KEY, "написано вчера")
+    render(<Harness />)
+
+    await waitFor(() => expect(screen.getByTestId("restored")).toHaveTextContent("написано вчера"))
+  })
+
+  it("does not offer a draft over text that is already on screen", async () => {
+    // Restoring into a non-empty field would overwrite something newer — the
+    // resubmission of a returned assignment, say, already populated by its own
+    // load. Silence is correct here.
+    window.localStorage.setItem(KEY, "старое")
+    function Prefilled() {
+      const [value] = useState("уже здесь")
+      const { restored } = useLocalDraft(KEY, value, { delay: 0 })
+      return <span data-testid="restored">{restored ?? "none"}</span>
+    }
+    render(<Prefilled />)
+
+    await waitFor(() => expect(screen.getByTestId("restored")).toHaveTextContent("none"))
+  })
+
+  it("clears the draft when asked, which is what a successful submit does", async () => {
+    window.localStorage.setItem(KEY, "черновик")
+    render(<Harness />)
+    await userEvent.click(screen.getByRole("button", { name: "clear" }))
+
+    await waitFor(() => expect(window.localStorage.getItem(KEY)).toBeNull())
+  })
+
+  it("removes the entry when the field is emptied rather than storing nothing", async () => {
+    render(<Harness />)
+    const field = screen.getByLabelText("essay")
+    await userEvent.type(field, "x")
+    await waitFor(() => expect(window.localStorage.getItem(KEY)).toBe("x"))
+    await userEvent.clear(field)
+
+    await waitFor(() => expect(window.localStorage.getItem(KEY)).toBeNull())
+  })
+
+  it("writes nothing at all when there is no user to scope the key to", async () => {
+    const setItem = vi.fn()
+    swapStorage({ setItem })
+    render(<Harness storageKey={null} />)
+    await userEvent.type(screen.getByLabelText("essay"), "аноним")
+
+    await waitFor(() => expect(screen.getByLabelText("essay")).toHaveValue("аноним"))
+    expect(setItem).not.toHaveBeenCalled()
+  })
+
+  it("keeps the student typing when storage throws", async () => {
+    // Private mode, a full quota, a locked-down profile. None of them is a
+    // reason to interrupt somebody writing an essay.
+    swapStorage({
+      setItem: () => {
+        throw new DOMException("QuotaExceededError")
+      },
+    })
+    render(<Harness />)
+    await userEvent.type(screen.getByLabelText("essay"), "всё равно пишу")
+
+    expect(screen.getByLabelText("essay")).toHaveValue("всё равно пишу")
+    await waitFor(() => expect(screen.getByTestId("saved")).toHaveTextContent("no"))
+  })
+})

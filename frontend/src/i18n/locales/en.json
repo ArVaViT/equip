@@ -1106,7 +1106,9 @@
     },
     "statusUnknownTitle": "Couldn't check whether this was handed in",
     "statusUnknownHelp": "The form is hidden on purpose: if the work is already submitted, a second copy only confuses you and whoever marks it. Check your connection and try again.",
-    "statusUnknownRetry": "Check again"
+    "statusUnknownRetry": "Check again",
+    "draftSaved": "Draft saved on this device",
+    "draftRestored": "Draft restored from this device"
   },
   "certificates": {
     "backToCourses": "Back to courses",
