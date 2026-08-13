@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { isChapterComplete, isChapterLocked, isModuleLocked } from "../moduleProgress"
+import {
+  isChapterComplete,
+  isChapterLocked,
+  isChapterRead,
+  isModuleLocked,
+} from "../moduleProgress"
 
 const CH = { id: "ch-2", is_locked: true }
 const PREV = { id: "ch-1" }
@@ -55,5 +60,25 @@ describe("isModuleLocked — it gates more than a chapter", () => {
     // The worst of the three sites: a failed request walled a student out of
     // everything after the module they had actually completed.
     expect(isModuleLocked(null, ["a", "b"])).toBe(false)
+  })
+})
+
+describe("isChapterRead", () => {
+  const LESSON = { id: "ch-1" }
+
+  it("marks a lesson the student said they had read", () => {
+    // The read control shipped without this: the server stored the fact, the
+    // API returned it, and every list dropped it — so the button looked dead.
+    expect(isChapterRead(new Set(["ch-1"]), LESSON, false)).toBe(true)
+  })
+
+  it("never claims it for an assessment", () => {
+    // Passing a quiz and reading a page are different facts, and the progress
+    // percentage rests on the difference.
+    expect(isChapterRead(new Set(["ch-1"]), LESSON, true)).toBe(false)
+  })
+
+  it("claims nothing when progress is unknown", () => {
+    expect(isChapterRead(null, LESSON, false)).toBe(false)
   })
 })

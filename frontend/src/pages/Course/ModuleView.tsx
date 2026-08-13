@@ -11,6 +11,7 @@ import type { Module } from "@/types"
 import {
   ArrowLeft,
   Book,
+  Check,
   CheckCircle,
   Circle,
   ChevronRight,
@@ -22,7 +23,7 @@ import { isGradableChapterType } from "@/lib/chapterTypes"
 import ChapterTypeBadge from "@/components/course/ChapterTypeBadge"
 import { EmptyState, ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
-import { isChapterComplete, isChapterLocked } from "./moduleProgress"
+import { isChapterComplete, isChapterLocked, isChapterRead } from "./moduleProgress"
 
 // Module ID + course ID come from the route, locale from i18n; bundle the
 // fetcher's deps in one tuple so useAsyncData re-runs at the right edges.
@@ -203,6 +204,10 @@ export default function ModuleView() {
         <div className="mb-4">
           <div className="flex items-center justify-between text-xs mb-1">
             <span className="font-medium">
+              {/* Names what it counts. It used to read «0/1 completed» above a
+                  list of three chapters — the two lessons are not gradable, so
+                  they are not in the denominator, and a student had no way to
+                  know that from the number. */}
               {t("module.completedProgress", { done: completedCount, total: gradableChapters.length })}
             </span>
             <span className="text-ink-muted">{progressPercent}%</span>
@@ -241,6 +246,7 @@ export default function ModuleView() {
               // the client can only be wrong in one of two directions, and
               // wrongly denying somebody their own progress is the worse one.
               const isLocked = isChapterLocked(completedIds, chapter, prevChapter ?? null, prevIsGradable)
+              const isRead = isChapterRead(completedIds, chapter, isGradable)
 
               if (isLocked) {
                 return (
@@ -285,6 +291,16 @@ export default function ModuleView() {
                           ) : (
                             <Circle className="h-5 w-5 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
                           )
+                        ) : isRead ? (
+                          // Quieter than the assessment tick, and a different
+                          // glyph: read is not passed. Before this the row drew
+                          // nothing at all for a lesson, so marking one read
+                          // left no trace anywhere and the control looked dead.
+                          <Check
+                            className="h-5 w-5 shrink-0 text-ink-muted"
+                            strokeWidth={1.75}
+                            aria-label={t("module.chapterRead")}
+                          />
                         ) : null}
                         <span className={`min-w-0 flex-1 truncate ${isCompleted ? "text-ink-muted" : ""}`}>
                           {chapter.title}
