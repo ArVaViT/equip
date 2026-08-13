@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitForElementToBeRemoved } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor, waitForElementToBeRemoved } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { ReactNode } from "react"
 import { I18nextProvider } from "react-i18next"
@@ -45,6 +45,30 @@ vi.mock("@/services/enrollments", () => ({
 }))
 vi.mock("@/lib/toast", () => ({
   toast: vi.fn(),
+}))
+// The legal gate is server-driven now: the flow asks what is still
+// outstanding rather than reading a localStorage flag. Default here is
+// "everything outstanding", which is what a brand-new user sees.
+vi.mock("@/services/legal", () => ({
+  legalService: {
+    documents: vi.fn().mockResolvedValue([
+      { slug: "privacy", version: "1.0" },
+      { slug: "terms", version: "1.0" },
+    ]),
+    status: vi.fn().mockResolvedValue({
+      accepted: [],
+      outstanding: [
+        { slug: "privacy", version: "1.0" },
+        { slug: "terms", version: "1.0" },
+      ],
+    }),
+    accept: vi.fn().mockResolvedValue({
+      slug: "privacy",
+      version: "1.0",
+      locale: "en",
+      accepted_at: "2026-08-13T00:00:00Z",
+    }),
+  },
 }))
 vi.mock("@/lib/images", () => ({
   toProxyImage: (url: string) => url,
@@ -138,7 +162,8 @@ describe("FirstRunFlow", () => {
     expect(next).not.toBeDisabled()
   })
 
-  it("accepting Privacy writes the flag and advances to Setup", async () => {
+  it("records the acceptance on the server, then advances to Setup", async () => {
+    const { legalService } = await import("@/services/legal")
     render(
       <Wrapper>
         <FirstRunFlow />
@@ -146,7 +171,20 @@ describe("FirstRunFlow", () => {
     )
     fireEvent.click(screen.getByRole("checkbox"))
     fireEvent.click(screen.getByRole("button", { name: i18n.t("firstRun.privacy.next") }))
-    expect(window.localStorage.getItem("equip.privacy.accepted.user-1")).toBe("1")
+
+    // Both documents, because that is what the checkbox sentence names.
+    // Recording only the privacy policy would make the record narrower than
+    // what the person actually agreed to.
+    await waitFor(() => expect(legalService.accept).toHaveBeenCalledTimes(2))
+    expect(vi.mocked(legalService.accept).mock.calls.map((c) => c[0])).toEqual([
+      "privacy",
+      "terms",
+    ])
+    // The flag is still written, but it is a cache now — it stops the gate
+    // flashing before the server answers, and proves nothing on its own.
+    await waitFor(() =>
+      expect(window.localStorage.getItem("equip.privacy.accepted.user-1")).toBe("1"),
+    )
     // ``findByText`` (async) waits for AnimatePresence's exit-then-
     // enter sequence to settle. ``mode="wait"`` makes the new
     // step mount only AFTER the old one's exit resolves; even with

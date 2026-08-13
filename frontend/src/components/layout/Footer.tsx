@@ -63,6 +63,15 @@ export default function Footer() {
             <a href={`mailto:${SUPPORT_EMAIL}`} className={linkClass}>
               {t("footer.support")}
             </a>
+            {/* The privacy step has promised since the beginning that the full
+                version is «всегда доступна из футера». It was not, and there
+                was no full version to link to. Both are true now. */}
+            <Link to="/privacy" className={linkClass}>
+              {t("legal.privacy")}
+            </Link>
+            <Link to="/terms" className={linkClass}>
+              {t("legal.terms")}
+            </Link>
             {/* The year and the name, last and quietest — a colophon line, not
                 a legal notice competing with the rest. */}
             <p className="text-ink-inverted/65">
