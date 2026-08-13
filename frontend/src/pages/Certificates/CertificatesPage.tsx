@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { EmptyState, ErrorState, Eyebrow } from "@/components/patterns"
+import { EmptyState, ErrorState, Eyebrow, PageHeader } from "@/components/patterns"
 import { coursesService } from "@/services/courses"
 import type { Certificate, Enrollment } from "@/types"
 import { Award, ArrowLeft, RefreshCw, ScrollText } from "lucide-react"
@@ -66,19 +66,16 @@ export default function CertificatesPage() {
         </Button>
       </Link>
 
-      <header data-tour="certs-header" className="mb-10">
-        <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
-          {t("certificates.eyebrow")}
-        </p>
-        <h1 className="font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
-          {t("certificates.title")}
-        </h1>
-        {certificates.length > 0 && (
-          <p className="mt-2 text-sm text-ink-muted">
-            {t("certificates.subtitle", { count: certificates.length })}
-          </p>
-        )}
-      </header>
+      <PageHeader
+        data-tour="certs-header"
+        eyebrow={t("certificates.eyebrow")}
+        title={t("certificates.title")}
+        description={
+          certificates.length > 0
+            ? t("certificates.subtitle", { count: certificates.length })
+            : undefined
+        }
+      />
 
       {loadError ? (
         <ErrorState

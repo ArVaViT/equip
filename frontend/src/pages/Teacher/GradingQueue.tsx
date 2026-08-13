@@ -12,6 +12,7 @@ import { relativeTime } from "@/pages/Teacher/progress/helpers"
 import type { WaitingGroup } from "@/types"
 import { MarkOneByOne } from "./grading/MarkOneByOne"
 import { Section } from "@/components/layout/Section"
+import { PageHeader } from "@/components/patterns"
 
 /**
  * Where a teacher marks.
@@ -80,10 +81,7 @@ export default function GradingQueue() {
 
   return (
     <Section width="reading">
-      <h1 className="mb-1 font-serif text-2xl font-bold tracking-tight sm:text-3xl">
-        {t("grading.title")}
-      </h1>
-      <p className="mb-6 text-sm text-ink-muted">{t("grading.subtitle")}</p>
+      <PageHeader title={t("grading.title")} description={t("grading.subtitle")} />
 
       {loading ? (
         <div className="flex items-center gap-2 py-8 text-sm text-ink-muted">
