@@ -1,5 +1,6 @@
-# ruff: noqa: RUF001
-# Mixed-script literals are the material under test.
+# ruff: noqa: RUF001, RUF003
+# Mixed-script literals and en dashes inside verse ranges are the
+# material under test.
 """What ``status='ok'`` is allowed to mean.
 
 Before ``app.services.translation.validation``, an ``ok`` row meant the
@@ -167,19 +168,43 @@ class TestPlaceholdersAndNumbers:
         )
         assert "placeholder_mismatch" in codes(issues)
 
-    def test_lost_verse_number_is_caught(self):
+    def test_lost_verse_reference_is_caught(self):
         issues = validate_translation(
             source="Прочитайте Бытие 1:26 и запишите свои наблюдения об образе Божьем.",
             translated="Read Genesis and write down your observations about the image of God.",
             source_locale="ru",
             target_locale="en",
         )
-        assert "numbers_lost" in codes(issues)
+        assert "verse_reference_lost" in codes(issues)
 
-    def test_thousands_separators_do_not_trip_it(self):
+    def test_verse_reference_survives_spacing_differences(self):
+        issues = validate_translation(
+            source="Прочитайте Бытие 1:26–27 и запишите свои наблюдения об образе Божьем.",
+            translated="Read Genesis 1:26–27 and write down your observations about the image of God.",
+            source_locale="ru",
+            target_locale="en",
+        )
+        assert issues == []
+
+    def test_book_numbering_differences_are_not_flagged(self):
+        # Production case. The Slavic tradition numbers these books
+        # differently from the English one: "3–4 Царств" IS "1–2 Kings".
+        # A faithful translation changes the digits, and a check on
+        # bare numbers called it a defect.
+        issues = validate_translation(
+            source="Третья и четвёртая книги Царств рассказывают о Соломоне и о падении обоих царств.",
+            translated="First and Second Kings tell of Solomon and the fall of both kingdoms.",
+            source_locale="ru",
+            target_locale="en",
+        )
+        assert issues == []
+
+    def test_a_year_that_moves_is_not_flagged(self):
+        # Years are not references; a translation may render or drop
+        # one without breaking anything a student needs to look up.
         issues = validate_translation(
             source="Около 1 000 человек услышали проповедь в тот день в Иерусалиме.",
-            translated="About 1,000 people heard the sermon that day in Jerusalem.",
+            translated="About a thousand people heard the sermon that day in Jerusalem.",
             source_locale="ru",
             target_locale="en",
         )
@@ -243,6 +268,19 @@ class TestModelMisbehaviour:
             target_locale="en",
         )
         assert "length_suspicious" in codes(issues)
+
+    def test_a_one_letter_title_may_grow(self):
+        # Production case: a quiz titled "Q" renders as "Вопрос" —
+        # six times the length, and obviously fine. Growth has to be
+        # large in absolute terms too before it means anything.
+        issues = validate_translation(
+            source="Q",
+            translated="Вопрос",
+            source_locale="en",
+            target_locale="ru",
+            content_kind="title",
+        )
+        assert issues == []
 
     def test_expanded_quiz_option_is_caught(self):
         issues = validate_translation(

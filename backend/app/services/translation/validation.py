@@ -1,3 +1,7 @@
+# ruff: noqa: RUF001, RUF003
+# The rules here are about characters: an en dash inside a verse range
+# and a Cyrillic book name in the comment explaining it are the
+# subject matter, not typos.
 """Structural validation of a translation against its source.
 
 Why this exists
@@ -69,12 +73,17 @@ _PLACEHOLDER_RE: Final[re.Pattern[str]] = re.compile(
     r"|\[\d+\]"  # [1]
 )
 
-# Integers, which in this corpus are almost always chapter and verse
-# numbers. Thousands separators differ by language ("1,000" / "1.000" /
-# "1 000"), so only runs of digits are compared and a run is normalised
-# by dropping separators between digits first.
-_NUMBER_RE: Final[re.Pattern[str]] = re.compile(r"\d+")
-_THOUSANDS_RE: Final[re.Pattern[str]] = re.compile(r"(?<=\d)[  .,](?=\d{3}\b)")
+# Chapter-and-verse references ("1:26", "3.16"), and only those.
+#
+# Bare integers were checked here first, and a run over the production
+# corpus showed why they cannot be: the source table lists "3–4 Царств"
+# and the correct English is "1–2 Kings" — the Slavic and English
+# traditions number the books of Kings differently, so a faithful
+# translation legitimately changes the digits. Years and counts move
+# for related reasons. A verse reference does not: Genesis 1:26 is
+# 1:26 in every language we serve, and losing one is what leaves a
+# student unable to find the passage.
+_VERSE_REF_RE: Final[re.Pattern[str]] = re.compile(r"\d+\s*[:.]\s*\d+(?:\s*[-–]\s*\d+)?")
 
 # The fence the user prompt wraps content in. If either shape comes
 # back, the model echoed the scaffolding instead of translating inside
@@ -100,6 +109,11 @@ _MIN_CHARS_FOR_IDENTITY: Final[int] = 25
 # an expansion is itself the failure the prompt warns about.
 _SHORT_KINDS: Final[frozenset[str]] = frozenset({"title", "quiz_option"})
 _SHORT_KIND_MAX_RATIO: Final[float] = 3.0
+
+# …and only when the growth is also large in absolute terms. A quiz
+# titled "Q" renders as "Вопрос" in Russian: six times the length, and
+# obviously fine. Production had exactly that row.
+_SHORT_KIND_MIN_GROWTH_CHARS: Final[int] = 40
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,8 +141,8 @@ def _placeholders(text: str) -> list[str]:
     return sorted(_PLACEHOLDER_RE.findall(text))
 
 
-def _numbers(text: str) -> list[str]:
-    return sorted(_NUMBER_RE.findall(_THOUSANDS_RE.sub("", text)))
+def _verse_refs(text: str) -> list[str]:
+    return sorted(re.sub(r"\s+", "", ref) for ref in _VERSE_REF_RE.findall(text))
 
 
 def _normalised_for_identity(text: str) -> str:
@@ -190,23 +204,21 @@ def _check_placeholders(source: str, translated: str) -> ValidationIssue | None:
     )
 
 
-def _check_numbers(source: str, translated: str) -> ValidationIssue | None:
-    expected = _numbers(source)
+def _check_verse_refs(source: str, translated: str) -> ValidationIssue | None:
+    expected = _verse_refs(source)
     if not expected:
         return None
-    got = _numbers(translated)
-    if expected == got:
-        return None
-    missing = sorted(set(expected) - set(got))
+    missing = sorted(set(expected) - set(_verse_refs(translated)))
     if not missing:
-        # Extra numbers where none were lost is usually a rendered
-        # ordinal ("first" → "1."); not worth stopping a course over.
+        # Extra references where none were lost is usually a reference
+        # the model spelled out; not worth stopping a course over.
         return None
     return ValidationIssue(
-        code="numbers_lost",
+        code="verse_reference_lost",
         detail=(
-            f"Numbers present in the source are missing from the translation: "
-            f"{', '.join(missing[:5])}. In this corpus those are chapter and verse numbers."
+            f"Chapter-and-verse references present in the source are missing from the "
+            f"translation: {', '.join(missing[:5])}. A student cannot look up a passage "
+            "whose reference did not survive."
         ),
     )
 
@@ -271,8 +283,10 @@ def _check_length(
     source_text = _normalised_for_identity(source)
     if len(source_text) < _MIN_CHARS_FOR_RATIO:
         if content_kind in _SHORT_KINDS and source_text:
-            ratio = len(_normalised_for_identity(translated)) / len(source_text)
-            if ratio > _SHORT_KIND_MAX_RATIO:
+            translated_length = len(_normalised_for_identity(translated))
+            ratio = translated_length / len(source_text)
+            grew_by = translated_length - len(source_text)
+            if ratio > _SHORT_KIND_MAX_RATIO and grew_by >= _SHORT_KIND_MIN_GROWTH_CHARS:
                 return ValidationIssue(
                     code="length_suspicious",
                     detail=(
@@ -324,7 +338,7 @@ def validate_translation(
         _check_markers(source, translated),
         _check_tags(source, translated),
         _check_placeholders(source, translated),
-        _check_numbers(source, translated),
+        _check_verse_refs(source, translated),
         _check_identity(
             source,
             translated,
