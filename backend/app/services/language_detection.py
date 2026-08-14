@@ -66,6 +66,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Final, NamedTuple
 
+from app.core.sanitize import strip_tags
 from app.schemas.locale import LOCALE_CODES
 
 if TYPE_CHECKING:
@@ -103,7 +104,6 @@ _MAX_HITS_PER_KIND: Final[int] = 5
 _CYRILLIC = "cyrillic"
 _LATIN = "latin"
 
-_TAG_RE: Final[re.Pattern[str]] = re.compile(r"<[^>]+>")
 _WORD_RE: Final[re.Pattern[str]] = re.compile(r"[^\W\d_]+", re.UNICODE)
 
 _CYRILLIC_START: Final[int] = 0x0400
@@ -236,17 +236,6 @@ class _Counted(NamedTuple):
     latin: int
 
 
-def _strip_markup(text: str) -> str:
-    """Drop HTML tags so ``<p>`` and ``<strong>`` stop voting Latin.
-
-    Course bodies are sanitised HTML. The old counter let tag names
-    contribute Latin letters and relied on the body outweighing them;
-    on a short Cyrillic paragraph inside nested markup that margin
-    could vanish.
-    """
-    return _TAG_RE.sub(" ", text)
-
-
 def _is_latin(ch: str, codepoint: int) -> bool:
     """ASCII letters plus the accented Latin blocks.
 
@@ -335,7 +324,9 @@ def detect_locale(text: str | None) -> LocaleCode | None:
     if not text:
         return None
 
-    stripped = _strip_markup(text)
+    # Tag names are Latin letters: `<strong>` used to vote against a
+    # short Cyrillic paragraph wrapped in markup.
+    stripped = strip_tags(text)
     counted = _count_scripts(stripped)
 
     total = counted.cyrillic + counted.latin

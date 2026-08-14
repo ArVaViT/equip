@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from app.core import sanitize as sanitize_mod
-from app.core.sanitize import sanitize_string
+from app.core.sanitize import sanitize_string, strip_tags
 
 if TYPE_CHECKING:
     import pytest
@@ -340,3 +340,32 @@ class TestRegexFallback:
     def test_regex_path_strips_surrounding_whitespace(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(sanitize_mod, "_HAS_BLEACH", False)
         assert sanitize_string("   hello   ") == "hello"
+
+
+class TestStripTags:
+    """``strip_tags`` reads prose out of markup. It is not a sanitizer —
+    it exists for the callers that count letters, measure similarity,
+    or lay out a PDF and only need the text."""
+
+    def test_tags_become_spaces(self) -> None:
+        assert strip_tags("<p>one<strong>two</strong></p>").split() == ["one", "two"]
+
+    def test_self_closing_and_attributes(self) -> None:
+        assert strip_tags('<img src="x.png"/>text<br/>').strip() == "text"
+
+    def test_comments_are_dropped(self) -> None:
+        assert strip_tags("<!-- note -->body").strip() == "body"
+
+    def test_less_than_in_prose_survives(self) -> None:
+        # The regex this replaced would eat everything after a bare
+        # "<" to the end of the string — or, on a paste that is mostly
+        # "<", backtrack quadratically. A teacher can write "5 < 10".
+        assert strip_tags("5 < 10 and that is true") == "5 < 10 and that is true"
+
+    def test_unterminated_tag_stops_at_the_tag(self) -> None:
+        assert strip_tags("before<div class=").strip() == "before"
+
+    def test_pathological_input_is_linear(self) -> None:
+        # 50k bare "<" used to be the quadratic case. This asserts it
+        # returns at all; the point is that it does so immediately.
+        assert strip_tags("<" * 50_000).count("<") == 50_000

@@ -193,3 +193,39 @@ def sanitize_string(value: str) -> str:
     cleaned = _EVENT_ATTR_RE.sub("", cleaned)
     cleaned = _JS_PROTO_RE.sub("", cleaned)
     return cleaned.strip()
+
+
+def strip_tags(html: str) -> str:
+    """Return the text content of ``html``, with tags replaced by spaces.
+
+    Not a sanitizer — use ``sanitize_string`` for anything that will be
+    rendered. This exists for the places that only want to *read* the
+    prose: counting letters to detect a language, measuring similarity
+    against a scripture verse, laying out a PDF.
+
+    Written as a single linear pass rather than the obvious
+    ``re.sub(r"<[^>]+>", " ", html)`` because that pattern backtracks
+    quadratically on input that is mostly ``<`` — a string a teacher
+    can paste into a lesson body. CodeQL flags it as a polynomial
+    regular expression on uncontrolled data, and it is right to.
+
+    A ``<`` only opens a tag when what follows looks like one (a
+    letter, ``/``, or ``!``), so prose like "5 < 10" keeps its text
+    instead of losing everything to the end of the paragraph.
+    """
+    out: list[str] = []
+    i = 0
+    length = len(html)
+    while i < length:
+        ch = html[i]
+        if ch == "<" and i + 1 < length and (html[i + 1].isalpha() or html[i + 1] in "/!"):
+            end = html.find(">", i + 1)
+            if end == -1:
+                # Unterminated tag: the rest is markup, not prose.
+                break
+            out.append(" ")
+            i = end + 1
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
