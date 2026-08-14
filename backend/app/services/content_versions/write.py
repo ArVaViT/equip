@@ -156,6 +156,8 @@ def record_mt_version(
     source_locale: str,
     source_hash: str,
     source_version_id: uuid.UUID | None = None,
+    status: ContentVersionStatus = ContentVersionStatus.OK,
+    review_reason: str | None = None,
 ) -> ContentVersion:
     """Insert (or supersede + insert) a machine-translated version.
 
@@ -164,12 +166,19 @@ def record_mt_version(
     row is returned. The orchestrator should be skipping this call
     in that case; the guard here is belt-and-braces.
 
-    Idempotent on ``(text, source_hash)`` match — re-running MT on
-    unchanged source is free.
+    Idempotent on ``(text, source_hash, status)`` match — re-running
+    MT on unchanged source is free.
 
     ``source_version_id`` is the FK back to the source human row's
     version id. When set, cascade invalidation can find every MT
     row derived from a now-superseded source.
+
+    ``status`` is ``ok`` for a translation that passed the structural
+    check and ``needs_review`` for one that came back and did not (see
+    ``services/translation/validation.py``). A ``needs_review`` row
+    keeps its text — whoever reviews it has to see what the model
+    actually said — but readers filter on ``ok``, so it is not served.
+    ``review_reason`` is that check's account of what is wrong.
     """
     if not text:
         raise ValueError("record_mt_version called with empty text")
@@ -196,9 +205,12 @@ def record_mt_version(
         and existing.origin == "mt"
         and existing.text == text
         and existing.source_hash == source_hash
-        and existing.status == "ok"
+        and existing.status == status
     ):
         # Identical MT output on an unchanged source — nothing to do.
+        # Status is part of the comparison: the same text arriving
+        # after a failed structural check has to be able to move the
+        # row from ``ok`` to ``needs_review``.
         return existing
 
     new_id = uuid.uuid4()
@@ -214,7 +226,8 @@ def record_mt_version(
         locale=locale,
         text=text,
         origin="mt",
-        status=ContentVersionStatus.OK,
+        status=status,
+        review_reason=review_reason,
         source_locale=source_locale,
         source_hash=source_hash,
         source_version_id=source_version_id,

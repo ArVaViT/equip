@@ -16,7 +16,7 @@ def test_enum_values_mirror_the_check_constraint():
     the allowed values. The Python enum must match exactly — adding a
     new state in code without the migration to extend the CHECK would
     silently fail INSERT in prod."""
-    expected = {"ok", "failed", "failed_permanent"}
+    expected = {"ok", "needs_review", "failed", "failed_permanent"}
     assert {member.value for member in ContentVersionStatus} == expected
 
     # And the CHECK constraint string itself uses the same set.
@@ -35,6 +35,7 @@ def test_enum_is_str_subclass():
     is what lets every legacy ``Status.X == 'ok'`` comparison keep
     working without churn during the migration. Pin the contract."""
     assert ContentVersionStatus.OK == "ok"
+    assert ContentVersionStatus.NEEDS_REVIEW == "needs_review"
     assert ContentVersionStatus.FAILED == "failed"
     assert ContentVersionStatus.FAILED_PERMANENT == "failed_permanent"
     assert isinstance(ContentVersionStatus.OK, str)

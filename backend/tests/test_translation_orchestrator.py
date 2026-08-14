@@ -31,6 +31,7 @@ from app.services.translation.protocol import (
     TranslationResult,
 )
 from app.services.translation.service import reset_translation_provider_cache
+from tests._fake_translation import fake_translate
 from tests.conftest import TEACHER_ID
 
 if TYPE_CHECKING:
@@ -55,7 +56,10 @@ class _RecordingProvider:
             raise TranslationError(f"forced failure for {request.text!r}")
         # Return a deterministic, distinguishable string per target locale so
         # assertions can pinpoint which row a translation produced.
-        return TranslationResult(text=f"[{request.target_locale}]{request.text}", model="test")
+        return TranslationResult(
+            text=fake_translate(request.text, target_locale=request.target_locale),
+            model="test",
+        )
 
 
 # ---------------------------------------------------------------------------
