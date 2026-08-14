@@ -84,6 +84,13 @@ class ContentVersionStatus(enum.StrEnum):
     """
 
     OK = "ok"
+    # The provider answered, and the answer failed a structural check
+    # against its source — a lost scripture marker, halved markup, the
+    # wrong language. The text is kept (a human reviewing it needs to
+    # see what came back) but it is not servable: readers filter on
+    # ``ok``, so this row shows as "not translated yet" until someone
+    # accepts or replaces it. See ``services/translation/validation.py``.
+    NEEDS_REVIEW = "needs_review"
     FAILED = "failed"
     FAILED_PERMANENT = "failed_permanent"
 
@@ -123,6 +130,14 @@ class ContentVersion(Base):
             sqlite_where=text("superseded_by IS NULL AND status = 'ok'"),
         ),
         Index("ix_content_versions_entity", "entity_type", "entity_id"),
+        # The review queue: rows a human still has to accept or replace.
+        Index(
+            "ix_content_versions_needs_review",
+            "locale",
+            "created_at",
+            postgresql_where="superseded_by IS NULL AND status = 'needs_review'",
+            sqlite_where=text("superseded_by IS NULL AND status = 'needs_review'"),
+        ),
         Index(
             "ix_content_versions_source_version",
             "source_version_id",
@@ -131,7 +146,7 @@ class ContentVersion(Base):
         ),
         CheckConstraint("origin IN ('human', 'mt')", name="content_versions_origin_check"),
         CheckConstraint(
-            "status IN ('ok', 'failed', 'failed_permanent')",
+            "status IN ('ok', 'needs_review', 'failed', 'failed_permanent')",
             name="content_versions_status_check",
         ),
         CheckConstraint("attempts >= 0", name="content_versions_attempts_check"),
@@ -148,6 +163,11 @@ class ContentVersion(Base):
 
     origin: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(Text, default="ok", server_default="ok")
+
+    # Why a ``needs_review`` row is not servable, in words a person can
+    # act on ("[scripture_marker_mismatch] lost 1 (VERSE_a3f9c2b1)").
+    # NULL on every other status.
+    review_reason: Mapped[str | None] = mapped_column(Text)
 
     source_hash: Mapped[str | None] = mapped_column(Text)
     source_locale: Mapped[str | None] = mapped_column(Text)

@@ -44,6 +44,7 @@ from app.services.translation.service import (
     get_translation_provider,
     is_translation_enabled,
 )
+from app.services.translation.validation import summarise, validate_translation
 
 if TYPE_CHECKING:
     import uuid
@@ -91,11 +92,17 @@ class OrchestratorReport:
 
     Useful both in tests and in admin endpoints that surface a quick "X
     fields translated, Y skipped" toast in the UI.
+
+    ``needs_review`` counts rows where the provider answered but the
+    answer failed the structural check — text stored, not servable.
+    They are counted apart from ``failed`` because the two need
+    different work: a failure is retried, a review is read.
     """
 
     translated: int = 0
     skipped: int = 0
     failed: int = 0
+    needs_review: int = 0
 
 
 def other_locales(source_locale: LocaleCode) -> tuple[LocaleCode, ...]:
@@ -140,6 +147,7 @@ def translate_entity_fields(
     translated = 0
     skipped = 0
     failed = 0
+    needs_review = 0
 
     for spec in fields:
         text = (spec.text or "").strip()
@@ -180,6 +188,8 @@ def translate_entity_fields(
                 translated += 1
             elif outcome == "skipped":
                 skipped += 1
+            elif outcome == "needs_review":
+                needs_review += 1
             else:
                 failed += 1
 
@@ -190,14 +200,20 @@ def translate_entity_fields(
         raise
 
     logger.info(
-        "Translation orchestrator finished entity=%s:%s translated=%d skipped=%d failed=%d",
+        "Translation orchestrator finished entity=%s:%s translated=%d skipped=%d failed=%d needs_review=%d",
         entity_type,
         entity_id,
         translated,
         skipped,
         failed,
+        needs_review,
     )
-    return OrchestratorReport(translated=translated, skipped=skipped, failed=failed)
+    return OrchestratorReport(
+        translated=translated,
+        skipped=skipped,
+        failed=failed,
+        needs_review=needs_review,
+    )
 
 
 def translate_course_metadata(
@@ -266,8 +282,14 @@ def _dual_write_mt_success(
     text: str,
     source_locale: str,
     source_hash: str,
+    status: ContentVersionStatus = ContentVersionStatus.OK,
+    review_reason: str | None = None,
 ) -> None:
-    """Mirror a successful MT row into ``content_versions``.
+    """Mirror an MT row that produced text into ``content_versions``.
+
+    ``status`` distinguishes a translation that passed the structural
+    check from one that came back and failed it — both have text worth
+    storing, only one is servable.
 
     No-op if the upstream call would fail (empty text); the legacy
     ``content_translations`` write has already happened, so this
@@ -292,6 +314,8 @@ def _dual_write_mt_success(
         source_locale=source_locale,
         source_hash=source_hash,
         source_version_id=source_version_id,
+        status=status,
+        review_reason=review_reason,
     )
 
 
@@ -366,6 +390,15 @@ def _translate_one_field(
         return "skipped"
 
     if existing is not None and existing.status == "ok" and existing.source_hash == source_hash:
+        return "skipped"
+
+    # A row parked for review is not retried on its own. Gemini runs at
+    # temperature=0, so the same source would produce the same output
+    # and the same verdict — re-asking would burn quota on every save
+    # to arrive back where we are. It moves when the source changes
+    # (different hash, falls through to a real call) or when a human
+    # accepts or replaces it.
+    if existing is not None and existing.status == "needs_review" and existing.source_hash == source_hash:
         return "skipped"
 
     # Rows that hit the retry cap (``failed_permanent``) are terminal as far
@@ -445,6 +478,29 @@ def _translate_one_field(
         )
         return "failed"
 
+    # The provider only checked that the response was well-formed.
+    # Whether what came back is a translation OF THIS TEXT — same
+    # scripture markers, same markup, same numbers, the language we
+    # asked for — is decided here. A row that fails is stored with its
+    # text and parked as ``needs_review``: readers filter on ``ok``, so
+    # it reads as "not translated yet" instead of being served.
+    issues = validate_translation(
+        source=text,
+        translated=result.text,
+        source_locale=source_locale,
+        target_locale=target_locale,
+        content_kind=content_kind,
+    )
+    if issues:
+        logger.warning(
+            "Translation failed validation entity=%s:%s field=%s locale=%s issues=%s",
+            entity_type,
+            entity_id,
+            field,
+            target_locale,
+            ",".join(issue.code for issue in issues),
+        )
+
     # Phase 5c: cv is the only MT store. record_mt_version inserts
     # (or supersedes) the active row and resets attempts to 0 on
     # success.
@@ -457,8 +513,10 @@ def _translate_one_field(
         text=result.text,
         source_locale=source_locale,
         source_hash=source_hash,
+        status=ContentVersionStatus.NEEDS_REVIEW if issues else ContentVersionStatus.OK,
+        review_reason=summarise(issues) if issues else None,
     )
-    return "translated"
+    return "needs_review" if issues else "translated"
 
 
 __all__ = [
