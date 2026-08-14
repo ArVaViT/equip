@@ -729,6 +729,7 @@
     "certificateDeclined": "Certificate request declined",
     "certificateRejectFailed": "Failed to reject certificate",
     "coursePublished": "Course published",
+    "coursePublishing": "Course will go out once every language has it",
     "courseUnpublished": "Course unpublished",
     "statusUpdateFailed": "Failed to update status",
     "courseCreated": "Course created",
@@ -1406,6 +1407,7 @@
       "pendingGrading": "Waiting to be marked"
     },
     "courseCard": {
+      "statusPublishing": "Publishing",
       "statusPublished": "Published",
       "statusDraft": "Draft",
       "modules_one": "{{count}} module",
@@ -2319,6 +2321,7 @@
     "checks": {
       "hasDescription": "The course has a description for the catalog.",
       "hasCoverImage": "The course has a cover image.",
+      "translationsComplete": "Every language has this course. It goes into the catalog once they all do.",
       "hasEnrollmentWindow": "Enrollment open / close dates are set.",
       "hasAtLeastOneModule": "The course has at least one module.",
       "hasMultipleModules": "The course has two or more modules.",

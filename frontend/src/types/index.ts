@@ -39,7 +39,12 @@ export interface Course {
   title: string
   description: string | null
   image_url: string | null
-  status: 'draft' | 'published'
+  // 'publishing' is a course the teacher has sent out that is not in the
+  // catalog yet: some language does not have it, or a translation is
+  // waiting on a person. Invisible to students — every check compares
+  // against 'published' — and promoted by the translation worker once
+  // every language has it.
+  status: 'draft' | 'publishing' | 'published'
   // Controls enrollment policy independently from `status` (ADR-010):
   // - 'public'    catalog enroll button works (subject to enrollment_start/end)
   // - 'institute' enroll button is shown disabled with the

@@ -35,6 +35,7 @@ from app.api.dependencies import require_worker_secret
 from app.core.database import get_db
 from app.core.metrics import gauge, timing
 from app.services.course_service import get_course
+from app.services.translation.completeness import promote_if_complete
 from app.services.translation.course_pipeline import translate_course_content
 from app.services.translation.queue import (
     claim_next_job,
@@ -183,6 +184,23 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
 
     _emit_translation_duration(tick_start, outcome="done")
     mark_job_done(db, job)
+
+    # A course the teacher sent out sits in ``publishing`` until every
+    # language has it and every translation has passed its check. This
+    # pass may be the one that completed it — that is what makes
+    # publication a state the course reaches rather than a flag someone
+    # flipped ahead of the work. Never blocks the job's completion: the
+    # translations are written either way.
+    try:
+        promote_if_complete(db, course)
+    except SQLAlchemyError:
+        db.rollback()
+        logger.exception(
+            "translation_worker: promotion check failed for course %s after job %s",
+            course_id,
+            job_id,
+        )
+
     return WorkerTickResponse(
         status="done",
         job_id=job_id,

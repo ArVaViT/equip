@@ -52,7 +52,13 @@ export function CourseCard({
   const { t } = useTranslation()
   const moduleCount = course.modules?.length ?? 0
   const isPublished = course.status === "published"
-  const togglePublishLabel = isPublished
+  // A course the teacher sent out that is not in the catalog yet: some
+  // language does not have it, or a translation needs a person to look
+  // at it. Its own badge, because "Draft" would be a lie — the teacher
+  // did publish it — and "Published" would be a worse one.
+  const isPublishing = course.status === "publishing"
+  const isOut = isPublished || isPublishing
+  const togglePublishLabel = isOut
     ? t("teacherDashboard.courseCard.actionUnpublish")
     : t("teacherDashboard.courseCard.actionPublish")
 
@@ -74,10 +80,15 @@ export function CourseCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <h3 className="min-w-0 flex-1 truncate text-base font-semibold sm:text-lg">{course.title}</h3>
-            <Badge variant={isPublished ? "success" : "warning"} className="shrink-0">
+            <Badge
+              variant={isPublished ? "success" : isPublishing ? "warningSubtle" : "warning"}
+              className="shrink-0"
+            >
               {isPublished
                 ? t("teacherDashboard.courseCard.statusPublished")
-                : t("teacherDashboard.courseCard.statusDraft")}
+                : isPublishing
+                  ? t("teacherDashboard.courseCard.statusPublishing")
+                  : t("teacherDashboard.courseCard.statusDraft")}
             </Badge>
             {pendingGrading > 0 && (
               <Link
@@ -156,7 +167,7 @@ export function CourseCard({
             disabled={togglingId === course.id}
             onClick={() => onToggleStatus(course)}
           >
-            {isPublished ? (
+            {isOut ? (
               <EyeOff className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             ) : (
               <Eye className="h-4 w-4" strokeWidth={1.75} aria-hidden />
