@@ -151,52 +151,60 @@ class _Profile(NamedTuple):
     hallmark_letters: frozenset[str] = frozenset()
 
 
+# Function-word lists, written as prose and split at import. Same data
+# as a set literal, but readable as a list of words and left alone by
+# the formatter — which prints a set literal one word per line and
+# buries the module under 400 lines of nouns.
+_RU_WORDS = """
+и в во не что он на я с со как а то все она так его но да ты к у же вы за бы по
+только ее мне было вот от меня еще нет о из ему теперь когда даже ну вдруг ли
+если уже или ни быть был него до вас опять уж вам ведь там потом себя ничего ей
+может они тут где есть надо ней для мы тебя их чем была сам чтоб без будто чего
+раз тоже себе под будет тогда кто этот того потому этого какой совсем ним здесь
+этом один почти мой тем чтобы нее были куда зачем всех никогда можно при наконец
+два об другой хоть после над больше тот через эти нас про всего них какая много
+разве три эту моя впрочем хорошо свою этой перед иногда лучше чуть том нельзя
+такой им более всегда конечно всю между
+"""
+
+_UK_WORDS = """
+і та що як це для не в у на з із зі до від або який яка які яке є був була було
+були ми ви вони він вона воно щоб коли тому бо ще вже де тільки але також ні так
+її його їх цей ця цього цьому може має треба потрібно після перед між через про
+над під при без усі всі нам вам їм мене тебе себе свій своя своє більше менше
+дуже чи хто кожен жодного
+"""
+
+_EN_WORDS = """
+the and is of to in a for with that this on are was were it as be by from or an
+we you they he she his her their but not have has had will would can could what
+when which who how there these those been than then them its our your about into
+over after before between through each all any some one two first also more
+other such only own same so if because while during against without within upon
+"""
+
+_DE_WORDS = """
+der die das und ist nicht ein eine einen einem einer eines für mit zu zur zum den
+dem des sich auf von vom im in an am wir sie er es aber oder auch wenn wie dass
+war waren sind haben hat hatte werden wird kann können nach bei über durch noch
+nur schon als so man ihr ihre sein seine diese dieser dieses alle mehr sehr
+wieder hier dort damit weil denn beim unter gegen ohne um vor aus ich du mir
+mich dich
+"""
+
 _PROFILES: Final[dict[str, _Profile]] = {
     "ru": _Profile(
         script=_CYRILLIC,
         # Ukrainian has none of these; they are the cleanest ru/uk split.
         exclusive_letters=frozenset("ыэъё"),
-        function_words=frozenset(
-            {
-                "и", "в", "во", "не", "что", "он", "на", "я", "с", "со", "как", "а",
-                "то", "все", "она", "так", "его", "но", "да", "ты", "к", "у", "же",
-                "вы", "за", "бы", "по", "только", "ее", "мне", "было", "вот", "от",
-                "меня", "еще", "нет", "о", "из", "ему", "теперь", "когда", "даже",
-                "ну", "вдруг", "ли", "если", "уже", "или", "ни", "быть", "был",
-                "него", "до", "вас", "нибудь", "опять", "уж", "вам", "ведь", "там",
-                "потом", "себя", "ничего", "ей", "может", "они", "тут", "где",
-                "есть", "надо", "ней", "для", "мы", "тебя", "их", "чем", "была",
-                "сам", "чтоб", "без", "будто", "чего", "раз", "тоже", "себе",
-                "под", "будет", "ж", "тогда", "кто", "этот", "того", "потому",
-                "этого", "какой", "совсем", "ним", "здесь", "этом", "один",
-                "почти", "мой", "тем", "чтобы", "нее", "были", "куда", "зачем",
-                "всех", "никогда", "можно", "при", "наконец", "два", "об",
-                "другой", "хоть", "после", "над", "больше", "тот", "через",
-                "эти", "нас", "про", "всего", "них", "какая", "много", "разве",
-                "три", "эту", "моя", "впрочем", "хорошо", "свою", "этой",
-                "перед", "иногда", "лучше", "чуть", "том", "нельзя", "такой",
-                "им", "более", "всегда", "конечно", "всю", "между",
-            }
-        ),
+        function_words=frozenset(_RU_WORDS.split()),
         sequences=("ого", "ому", "ться", "ешь", "ает", "ение", "ый", "ий", "ах", "ями"),
     ),
     "uk": _Profile(
         script=_CYRILLIC,
         # Russian has none of these. "ґ" is rare but decisive.
         exclusive_letters=frozenset("іїєґ"),
-        function_words=frozenset(
-            {
-                "і", "та", "що", "як", "це", "для", "не", "в", "у", "на", "з", "із",
-                "зі", "до", "від", "або", "який", "яка", "які", "яке", "є", "був",
-                "була", "було", "були", "ми", "ви", "вони", "він", "вона", "воно",
-                "щоб", "коли", "тому", "бо", "ще", "вже", "де", "тільки", "але",
-                "також", "ні", "так", "її", "його", "їх", "цей", "ця", "цього",
-                "цьому", "може", "має", "треба", "потрібно", "після", "перед",
-                "між", "через", "про", "над", "під", "при", "без", "усі", "всі",
-                "нам", "вам", "їм", "мене", "тебе", "себе", "свій", "своя", "своє",
-                "більше", "менше", "дуже", "чи", "хто", "кожен", "жодного",
-            }
-        ),
+        function_words=frozenset(_UK_WORDS.split()),
         sequences=("ння", "ський", "ої", "ими", "ють", "ати", "ність", "ів", "ах"),
         # "і" is the second most frequent letter in Ukrainian. A
         # Ukrainian paragraph without one does not realistically occur.
@@ -206,44 +214,18 @@ _PROFILES: Final[dict[str, _Profile]] = {
         script=_LATIN,
         # English has no letter German lacks; it wins on words.
         exclusive_letters=frozenset(),
-        function_words=frozenset(
-            {
-                "the", "and", "is", "of", "to", "in", "a", "for", "with", "that",
-                "this", "on", "are", "was", "were", "it", "as", "be", "by", "from",
-                "or", "an", "we", "you", "they", "he", "she", "his", "her", "their",
-                "but", "not", "have", "has", "had", "will", "would", "can", "could",
-                "what", "when", "which", "who", "how", "there", "these", "those",
-                "been", "than", "then", "them", "its", "our", "your", "about",
-                "into", "over", "after", "before", "between", "through", "each",
-                "all", "any", "some", "one", "two", "first", "also", "more",
-                "other", "such", "only", "own", "same", "so", "if", "because",
-                "while", "during", "against", "without", "within", "upon",
-            }
-        ),
+        function_words=frozenset(_EN_WORDS.split()),
         # Deliberately excludes "tion" and "ing": German has Lektion,
-        # Information, Ding, bringen. A sequence that both languages
-        # own is not evidence, it is noise that cancels a real signal
-        # — "Lektion 3. Das Gebet" scored 2:1 for German and fell
-        # below the margin because of "tion" alone.
+        # Information, Ding, bringen. A sequence both languages own is
+        # not evidence, it is noise that cancels a real signal —
+        # "Lektion 3. Das Gebet" scored 2:1 for German and fell below
+        # the margin because of "tion" alone.
         sequences=("ough", "igh", "th", "wh", "ness", "ould", "ay"),
     ),
     "de": _Profile(
         script=_LATIN,
         exclusive_letters=frozenset("äöüß"),
-        function_words=frozenset(
-            {
-                "der", "die", "das", "und", "ist", "nicht", "ein", "eine", "einen",
-                "einem", "einer", "eines", "für", "mit", "zu", "zur", "zum", "den",
-                "dem", "des", "sich", "auf", "von", "vom", "im", "in", "an", "am",
-                "wir", "sie", "er", "es", "aber", "oder", "auch", "wenn", "wie",
-                "dass", "war", "waren", "sind", "haben", "hat", "hatte", "werden",
-                "wird", "kann", "können", "nach", "bei", "über", "durch", "noch",
-                "nur", "schon", "als", "so", "man", "ihr", "ihre", "sein", "seine",
-                "diese", "dieser", "dieses", "alle", "mehr", "sehr", "wieder",
-                "hier", "dort", "damit", "weil", "denn", "beim", "unter", "gegen",
-                "ohne", "um", "vor", "aus", "ich", "du", "mir", "mich", "dich",
-            }
-        ),
+        function_words=frozenset(_DE_WORDS.split()),
         sequences=("sch", "ung", "keit", "heit", "cht", "eit", "lich", "chen", "ei", "eu"),
     ),
 }
