@@ -18,7 +18,21 @@ class CourseStatus(enum.StrEnum):
 
     ``draft`` — only the course owner + admins can see it. Self-enrollment
     is blocked.
+    ``publishing`` — the teacher asked for it to go out and it is not
+    ready: some language does not have it yet, or a translation came
+    back and failed its check. Treated as unpublished everywhere —
+    every reader compares against ``published`` — so the course is
+    invisible to students until it is whole. The worker promotes it as
+    soon as it is (see ``services/translation/completeness.py``).
     ``published`` — visible in the public catalog; students can enroll.
+
+    Why the middle state exists: publishing used to be an event that
+    flipped a flag and started translating afterwards, which meant a
+    course was in the catalog while some of its languages were empty.
+    A platform whose promise is that a German writes a course and
+    Ukrainians take it cannot ship a course that is whole in one
+    language and partial in another. Publication is a state the course
+    reaches, not a button that fires.
 
     Stored as a raw string in Postgres (CHECK-constrained); the enum
     just gives Python code a single source of truth so a typo in
@@ -27,6 +41,7 @@ class CourseStatus(enum.StrEnum):
     """
 
     DRAFT = "draft"
+    PUBLISHING = "publishing"
     PUBLISHED = "published"
 
 
@@ -77,7 +92,7 @@ class Course(Base):
             name="ck_courses_scheme_threshold",
         ),
         # Mirror prod CHECK constraints (catalog status, enroll access mode, authoring locale).
-        CheckConstraint("status IN ('draft', 'published')", name="chk_courses_status"),
+        CheckConstraint("status IN ('draft', 'publishing', 'published')", name="chk_courses_status"),
         CheckConstraint("access_mode IN ('public', 'institute')", name="courses_access_mode_check"),
         CheckConstraint("source_locale IN ('ru', 'en')", name="courses_source_locale_check"),
     )

@@ -323,32 +323,26 @@ ENTITY_MODEL: dict[EntityType, type] = {
 # ---------------------------------------------------------------------------
 
 
-def reconcile_entity(
+def entity_field_specs(
     db: Session,
     entity_type: EntityType,
     entity: object,
-    *,
-    provider: TranslationProvider | None = None,
-) -> OrchestratorReport:
-    """Translate one entity into every locale ≠ its course's source_locale.
+    course: Course,
+) -> list[TranslationFieldSpec]:
+    """Return the translatable fields of ``entity`` with their source text
+    and the language that text is actually in.
 
-    Idempotent: ``translate_entity_fields`` short-circuits unchanged
-    fields via ``source_hash``, so re-calling on the same entity costs
-    zero Gemini calls. Returns a per-entity report counting translated /
-    skipped / failed rows.
+    Split out of ``reconcile_entity`` because publication needs the same
+    answer for a different question. Translating asks "what do I send to
+    the model"; the publication gate asks "what must exist in every
+    locale before this course is servable". Both need the identical
+    notion of which fields count and what language each one is in — a
+    second implementation would be a second implementation that drifts.
 
-    Skipped (returns empty report) when:
-    * Translation provider not configured.
-    * Entity has no associated course (orphan announcement, unattached
-      quiz). No source locale → nothing to do.
-    * All entity fields are empty / whitespace.
+    Empty and whitespace-only fields are dropped: there is nothing to
+    translate and nothing to wait for.
     """
-    if not is_translation_enabled():
-        return OrchestratorReport()
     reg = REGISTRY[entity_type]
-    course = reg.resolve_course(db, entity)
-    if course is None:
-        return OrchestratorReport()
     course_source: LocaleCode = normalize_locale(course.source_locale)
 
     # Phase 5e/5f: source text columns are dropped on several entities
@@ -400,6 +394,38 @@ def reconcile_entity(
                 source_locale=field_source,
             )
         )
+    return fields
+
+
+def reconcile_entity(
+    db: Session,
+    entity_type: EntityType,
+    entity: object,
+    *,
+    provider: TranslationProvider | None = None,
+) -> OrchestratorReport:
+    """Translate one entity into every locale ≠ its field's source locale.
+
+    Idempotent: ``translate_entity_fields`` short-circuits unchanged
+    fields via ``source_hash``, so re-calling on the same entity costs
+    zero Gemini calls. Returns a per-entity report counting translated /
+    skipped / failed / needs-review rows.
+
+    Skipped (returns empty report) when:
+    * Translation provider not configured.
+    * Entity has no associated course (orphan announcement, unattached
+      quiz). No source locale → nothing to do.
+    * All entity fields are empty / whitespace.
+    """
+    if not is_translation_enabled():
+        return OrchestratorReport()
+    reg = REGISTRY[entity_type]
+    course = reg.resolve_course(db, entity)
+    if course is None:
+        return OrchestratorReport()
+    course_source: LocaleCode = normalize_locale(course.source_locale)
+
+    fields = entity_field_specs(db, entity_type, entity, course)
     if not fields:
         return OrchestratorReport()
 
@@ -439,5 +465,6 @@ __all__ = [
     "REGISTRY",
     "EntityRegistration",
     "FieldSpec",
+    "entity_field_specs",
     "reconcile_entity",
 ]

@@ -44,6 +44,7 @@ from app.models.chapter_block import ChapterBlock
 # in annotations.
 from app.models.course import Chapter, Course  # noqa: TC001
 from app.models.quiz import Quiz, QuizOption, QuizQuestion
+from app.services.translation.completeness import course_translation_completeness
 from app.services.translation.resolve_for_display import populate_spine_texts
 
 Severity = Literal["critical", "recommended", "polish"]
@@ -205,6 +206,20 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
             passed=bool((course.image_url or "").strip()),
             message_key="courseReadiness.checks.hasCoverImage",
             action=ReadinessAction(type="set_cover_image", params={}),
+        )
+    )
+
+    # Every language, or the course does not go out. This is the only
+    # check here the teacher cannot act on directly — no deep link,
+    # because there is nothing for them to fix. It is either still
+    # running, or a translation needs a person to look at it.
+    completeness = course_translation_completeness(db, course)
+    checks.append(
+        ReadinessCheck(
+            id="translations_complete",
+            severity="critical",
+            passed=completeness.is_complete,
+            message_key="courseReadiness.checks.translationsComplete",
         )
     )
 

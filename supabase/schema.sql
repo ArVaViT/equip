@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict iSVKOQKkFzOujbbd6Zs83UguwUSxPyCqacNiZjxe82VsZDxGqdrnEMq5KBhfxSR
+\restrict JfTfNqWsnWEasPQZgnNnpCSAPB98lw1SNLfxyvgwKK8uA80Omive6yV44gVRJYH
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10 (Homebrew)
@@ -467,7 +467,7 @@ CREATE TABLE public.courses (
     pass_threshold numeric(5,2) DEFAULT 70 NOT NULL,
     academic_hours integer,
     ai_policy text DEFAULT 'ai_with_disclosure'::text NOT NULL,
-    CONSTRAINT chk_courses_status CHECK ((status = ANY (ARRAY['draft'::text, 'published'::text]))),
+    CONSTRAINT chk_courses_status CHECK ((status = ANY (ARRAY['draft'::text, 'publishing'::text, 'published'::text]))),
     CONSTRAINT ck_courses_participation_retired CHECK ((participation_weight = 0)),
     CONSTRAINT ck_courses_scheme_threshold CHECK (((grading_scheme <> 'five_point'::text) OR (pass_threshold <= (75)::numeric))),
     CONSTRAINT ck_courses_weights_sum_100 CHECK ((((quiz_weight + assignment_weight) + participation_weight) = 100)),
@@ -3420,5 +3420,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict iSVKOQKkFzOujbbd6Zs83UguwUSxPyCqacNiZjxe82VsZDxGqdrnEMq5KBhfxSR
+\unrestrict JfTfNqWsnWEasPQZgnNnpCSAPB98lw1SNLfxyvgwKK8uA80Omive6yV44gVRJYH
 

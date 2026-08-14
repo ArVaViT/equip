@@ -23,6 +23,7 @@ from app.services.course_service import (
     restore_course,
     update_course,
 )
+from app.services.translation.completeness import course_translation_completeness
 from app.services.translation.pipeline_hooks import (
     run_course_translation_pipeline_if_published,
 )
@@ -113,6 +114,26 @@ def update_existing_course(
     # Special-case draft→published so the audit log distinguishes a
     # publication event from a generic update.
     is_publish_event = data.status == CourseStatus.PUBLISHED and old_status != CourseStatus.PUBLISHED
+
+    # Publication is a state the course reaches, not a button that
+    # fires. A course going out for the first time only enters the
+    # catalog once every language has it and every translation has
+    # passed its check; until then it sits in ``publishing``, which
+    # every reader treats as unpublished. The worker promotes it.
+    #
+    # This applies to the first publication only. An already-published
+    # course whose teacher fixes a typo is NOT pulled back — that would
+    # take a live course away from every student in every language
+    # until the machine caught up. Their text is replaced field by
+    # field as each translation passes.
+    if is_publish_event:
+        completeness = course_translation_completeness(db, result)
+        if not completeness.is_complete:
+            result.status = CourseStatus.PUBLISHING
+            db.flush()
+            details["new_status"] = CourseStatus.PUBLISHING.value
+            details["translations_ready"] = f"{completeness.present}/{completeness.required}"
+
     action = "publish" if is_publish_event else "update"
     log_action(db, teacher.id, action, "course", course_id, details=details or None, request=request)
 

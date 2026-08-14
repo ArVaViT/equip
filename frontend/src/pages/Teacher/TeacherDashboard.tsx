@@ -131,15 +131,27 @@ export default function TeacherDashboard() {
   }
 
   const handleToggleStatus = async (course: Course) => {
-    const newStatus = course.status === "published" ? "draft" : "published"
+    // Anything that is not a draft is on its way out, so the toggle
+    // takes it back to draft. A course sitting in ``publishing`` has
+    // been published by its teacher; asking again would change nothing.
+    const requested = course.status === "draft" ? "published" : "draft"
     setTogglingId(course.id)
     try {
-      await coursesService.updateCourse(course.id, { status: newStatus })
+      const updated = await coursesService.updateCourse(course.id, { status: requested })
+      // The server decides the resulting state: asking to publish a
+      // course whose languages are not all ready lands it in
+      // ``publishing``, not ``published``. Take its word, not ours.
+      const newStatus = updated?.status ?? requested
       setCourses((prev) =>
         prev.map((c) => (c.id === course.id ? { ...c, status: newStatus } : c)),
       )
       toast({
-        title: newStatus === "published" ? t("toast.coursePublished") : t("toast.courseUnpublished"),
+        title:
+          newStatus === "published"
+            ? t("toast.coursePublished")
+            : newStatus === "publishing"
+              ? t("toast.coursePublishing")
+              : t("toast.courseUnpublished"),
         variant: "success",
       })
     } catch (err) {

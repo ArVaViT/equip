@@ -306,6 +306,7 @@
     "certificateDeclined": "Запрос на сертификат отклонён",
     "certificateRejectFailed": "Не удалось отклонить запрос",
     "coursePublished": "Курс опубликован",
+    "coursePublishing": "Курс выйдет, когда будет готов на всех языках",
     "courseUnpublished": "Курс снят с публикации",
     "statusUpdateFailed": "Не удалось обновить статус",
     "courseCreated": "Курс создан",
@@ -1013,6 +1014,7 @@
       "pendingGrading": "Ждёт проверки"
     },
     "courseCard": {
+      "statusPublishing": "Публикуется",
       "statusPublished": "Опубликован",
       "statusDraft": "Черновик",
       "modules_one": "{{count}} модуль",
@@ -1948,6 +1950,7 @@
     "checks": {
       "hasDescription": "У курса есть описание для каталога.",
       "hasCoverImage": "У курса есть обложка.",
+      "translationsComplete": "Курс есть на всех языках. В каталог он попадёт, когда будет готов на каждом.",
       "hasEnrollmentWindow": "Установлены даты открытия и закрытия записи.",
       "hasAtLeastOneModule": "В курсе есть хотя бы один модуль.",
       "hasMultipleModules": "В курсе два модуля или больше.",

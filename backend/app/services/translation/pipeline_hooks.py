@@ -113,7 +113,10 @@ def run_course_translation_pipeline_if_published(db: Session, course_id: str) ->
     # read ``status`` is wasted I/O. Only pay for the full tree when we
     # actually intend to translate.
     course_status = db.query(Course.status).filter(Course.id == course_id, Course.deleted_at.is_(None)).scalar()
-    if course_status != CourseStatus.PUBLISHED:
+    # ``publishing`` is a course on its way out that is not whole yet —
+    # it is exactly the course that most needs translating. Only a
+    # draft is left alone.
+    if course_status not in (CourseStatus.PUBLISHED, CourseStatus.PUBLISHING):
         return
 
     if settings.TRANSLATION_QUEUE_ENABLED:
@@ -173,7 +176,7 @@ def reconcile_entity_if_course_published(
         return
     reg = REGISTRY[entity_type]
     course = reg.resolve_course(db, entity)
-    if not course or course.status != CourseStatus.PUBLISHED:
+    if not course or course.status not in (CourseStatus.PUBLISHED, CourseStatus.PUBLISHING):
         return
     entity_id = getattr(entity, "id", None)
     try:

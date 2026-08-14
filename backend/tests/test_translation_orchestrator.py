@@ -568,7 +568,14 @@ def test_publishing_does_not_translate_again_on_idempotent_update(monkeypatch, c
 
 
 def test_publish_hook_swallows_translation_failures(monkeypatch, client: TestClient):
-    """A Gemini outage must not block ``draft → published``."""
+    """A Gemini outage must not cost the teacher their save.
+
+    It does cost the course its place in the catalog, and that is the
+    point: with no translations, publishing would put a course in front
+    of students in a language it does not have. The save succeeds, the
+    course waits in ``publishing``, and the worker promotes it when the
+    translations land.
+    """
 
     def _boom(_db, _course):
         raise RuntimeError("simulated translation outage")
@@ -579,7 +586,7 @@ def test_publish_hook_swallows_translation_failures(monkeypatch, client: TestCli
     course = client.post("/api/v1/courses", json={"title": "Genesis"}).json()
     resp = client.put(f"/api/v1/courses/{course['id']}", json={"status": "published"})
     assert resp.status_code == 200, resp.text
-    assert resp.json()["status"] == "published"
+    assert resp.json()["status"] == "publishing"
 
 
 def test_manual_translate_endpoint_backfills_existing_courses(monkeypatch, client: TestClient):
