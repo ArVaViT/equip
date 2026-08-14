@@ -466,7 +466,7 @@ class TestCatalogLocalizedMetadata:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
-            "app.api.v1.courses.crud.translate_course_content",
+            "app.services.translation.pipeline_hooks.translate_course_content",
             lambda *args, **kwargs: OrchestratorReport(),
         )
         course = _create_course(
@@ -503,7 +503,7 @@ class TestCatalogLocalizedMetadata:
         # ``app.dependency_overrides`` and whichever fixture runs last would
         # clobber the other's ``get_optional_user`` override.
         monkeypatch.setattr(
-            "app.api.v1.courses.crud.translate_course_content",
+            "app.services.translation.pipeline_hooks.translate_course_content",
             lambda *args, **kwargs: OrchestratorReport(),
         )
         course = _create_course(
@@ -530,7 +530,7 @@ class TestCatalogLocalizedMetadata:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
-            "app.api.v1.courses.crud.translate_course_content",
+            "app.services.translation.pipeline_hooks.translate_course_content",
             lambda *args, **kwargs: OrchestratorReport(),
         )
         course = _create_course(
@@ -625,7 +625,7 @@ class TestCatalogLocalizedMetadata:
         ``title`` column with English.
         """
         monkeypatch.setattr(
-            "app.api.v1.courses.crud.translate_course_content",
+            "app.services.translation.pipeline_hooks.translate_course_content",
             lambda *args, **kwargs: OrchestratorReport(),
         )
         course = _create_course(
@@ -662,7 +662,7 @@ class TestCatalogLocalizedMetadata:
         editor surfaces. ``client`` seeds the teacher + course; ``admin_client``
         then opens the same course."""
         monkeypatch.setattr(
-            "app.api.v1.courses.crud.translate_course_content",
+            "app.services.translation.pipeline_hooks.translate_course_content",
             lambda *args, **kwargs: OrchestratorReport(),
         )
         course = _create_course(
@@ -723,7 +723,7 @@ class TestCatalogLocalizedMetadata:
         each module via ``ModuleEditor``) must hand back source columns even
         when the viewer is in EN UI."""
         monkeypatch.setattr(
-            "app.api.v1.courses.crud.translate_course_content",
+            "app.services.translation.pipeline_hooks.translate_course_content",
             lambda *args, **kwargs: OrchestratorReport(),
         )
         course = _create_course(client, title="RU course", description="RU desc")
@@ -813,7 +813,7 @@ class TestCatalogLocalizedMetadata:
         removed so the test only mutates state that actually exists.
         """
         monkeypatch.setattr(
-            "app.api.v1.courses.crud.translate_course_content",
+            "app.services.translation.pipeline_hooks.translate_course_content",
             lambda *args, **kwargs: OrchestratorReport(),
         )
         course = _create_course(

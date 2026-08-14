@@ -521,7 +521,7 @@ def _patch_provider(monkeypatch, provider: _RecordingProvider) -> None:
         return translate_course_content(db, course, provider=provider)
 
     monkeypatch.setattr(
-        "app.api.v1.courses.crud.translate_course_content",
+        "app.services.translation.pipeline_hooks.translate_course_content",
         _wrapped,
     )
     monkeypatch.setattr(
@@ -569,7 +569,7 @@ def test_publish_hook_swallows_translation_failures(monkeypatch, client: TestCli
     def _boom(_db, _course):
         raise RuntimeError("simulated translation outage")
 
-    monkeypatch.setattr("app.api.v1.courses.crud.translate_course_content", _boom)
+    monkeypatch.setattr("app.services.translation.pipeline_hooks.translate_course_content", _boom)
     monkeypatch.setattr("app.api.v1.courses.translate.translate_course_content", _boom)
 
     course = client.post("/api/v1/courses", json={"title": "Genesis"}).json()
@@ -591,7 +591,7 @@ def test_manual_translate_endpoint_backfills_existing_courses(monkeypatch, clien
     # published, no translations yet" state that prod is in for legacy
     # courses.
     monkeypatch.setattr(
-        "app.api.v1.courses.crud.translate_course_content",
+        "app.services.translation.pipeline_hooks.translate_course_content",
         lambda db, course: None,
     )
     client.put(f"/api/v1/courses/{course['id']}", json={"status": "published"})
