@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 6teu9P67wwduKQn6OrQgV76DZ3ndKFkKAo6s27FgWV0eMVzkUh87QniWr3P75bh
+\restrict iSVKOQKkFzOujbbd6Zs83UguwUSxPyCqacNiZjxe82VsZDxGqdrnEMq5KBhfxSR
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10 (Homebrew)
@@ -396,9 +396,10 @@ CREATE TABLE public.content_versions (
     superseded_by uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    review_reason text,
     CONSTRAINT content_versions_attempts_check CHECK ((attempts >= 0)),
     CONSTRAINT content_versions_origin_check CHECK ((origin = ANY (ARRAY['human'::text, 'mt'::text]))),
-    CONSTRAINT content_versions_status_check CHECK ((status = ANY (ARRAY['ok'::text, 'failed'::text, 'failed_permanent'::text])))
+    CONSTRAINT content_versions_status_check CHECK ((status = ANY (ARRAY['ok'::text, 'needs_review'::text, 'failed'::text, 'failed_permanent'::text])))
 );
 
 
@@ -1677,6 +1678,13 @@ CREATE INDEX ix_content_versions_authored_by ON public.content_versions USING bt
 --
 
 CREATE INDEX ix_content_versions_entity ON public.content_versions USING btree (entity_type, entity_id);
+
+
+--
+-- Name: ix_content_versions_needs_review; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_content_versions_needs_review ON public.content_versions USING btree (locale, created_at DESC) WHERE ((superseded_by IS NULL) AND (status = 'needs_review'::text));
 
 
 --
@@ -3412,5 +3420,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 6teu9P67wwduKQn6OrQgV76DZ3ndKFkKAo6s27FgWV0eMVzkUh87QniWr3P75bh
+\unrestrict iSVKOQKkFzOujbbd6Zs83UguwUSxPyCqacNiZjxe82VsZDxGqdrnEMq5KBhfxSR
 
