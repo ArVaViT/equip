@@ -22,6 +22,8 @@ import pytest
 
 # The module doesn't exist yet — import will fail and every test in
 # this file errors. That's the red phase of the TDD cycle.
+from app.schemas.locale import LOCALE_CODES
+from app.services import language_detection as lang_mod
 from app.services.language_detection import detect_locale
 
 
@@ -148,3 +150,105 @@ class TestDetectLocaleEdgeCases:
     )
     def test_assorted_realistic_inputs(self, text: str, expected: str):
         assert detect_locale(text) == expected
+
+
+@pytest.fixture
+def four_locales(monkeypatch: pytest.MonkeyPatch):
+    """Run the detector as if ``de`` and ``uk`` were already served.
+
+    ``LOCALE_CODES`` is read at call time precisely so this is
+    possible: the tests below are the contract the detector must
+    already satisfy on the day those two locales are switched on, not
+    a description of today's two-locale behaviour.
+    """
+    monkeypatch.setattr(lang_mod, "LOCALE_CODES", ("ru", "en", "de", "uk"))
+
+
+class TestDetectLocaleUkrainianVsRussian:
+    """Both are Cyrillic. Counting scripts made Ukrainian answer ``ru``,
+    which told ``pick_overlay_value`` to serve raw Ukrainian source to
+    a Ukrainian student while the Russian translation went unread."""
+
+    def test_ukrainian_sentence_returns_uk(self, four_locales):
+        assert detect_locale("Вивчаємо першу книгу Біблії разом") == "uk"
+
+    def test_russian_sentence_still_returns_ru(self, four_locales):
+        assert detect_locale("Изучаем первую книгу Библии вместе") == "ru"
+
+    def test_ukrainian_exclusive_letters_decide(self, four_locales):
+        # "ї" and "є" do not occur in Russian orthography.
+        assert detect_locale("Історія Церкви") == "uk"
+
+    def test_russian_exclusive_letters_decide(self, four_locales):
+        # "ы" and "ъ" do not occur in Ukrainian orthography.
+        assert detect_locale("Объясняем язык веры") == "ru"
+
+    def test_ambiguous_cyrillic_returns_none(self, four_locales):
+        # "Тайтл" is spelled identically in both languages. With only
+        # one of them supported the script settles it; with both, the
+        # honest answer is "no signal" and the caller's declared
+        # locale decides. Guessing here is how a student gets served
+        # the wrong language.
+        assert detect_locale("Тайтл") is None
+
+
+class TestDetectLocaleGermanVsEnglish:
+    """Both are Latin. Counting scripts made German answer ``en``."""
+
+    def test_german_sentence_returns_de(self, four_locales):
+        assert detect_locale("Wir lesen das erste Buch der Bibel zusammen") == "de"
+
+    def test_english_sentence_still_returns_en(self, four_locales):
+        assert detect_locale("Studying the first book of the Bible together") == "en"
+
+    def test_umlaut_decides(self, four_locales):
+        assert detect_locale("Einführung für Schüler") == "de"
+
+    def test_german_without_umlauts_returns_de(self, four_locales):
+        # No umlaut in sight; the articles carry it.
+        assert detect_locale("Das Evangelium und die Apostel") == "de"
+
+    def test_proper_nouns_alone_return_none(self, four_locales):
+        # "Genesis Exodus" is the same string in both languages.
+        assert detect_locale("Genesis Exodus") is None
+
+
+class TestDetectLocaleRespectsSupportedSet:
+    """The detector never names a language the platform does not
+    serve, and never keeps a stale profile map silently."""
+
+    def test_never_returns_an_unsupported_locale(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(lang_mod, "LOCALE_CODES", ("ru",))
+        # Latin script, but ``en`` is not served in this configuration.
+        assert detect_locale("Book of Genesis") is None
+        assert detect_locale("Книга Бытия") == "ru"
+
+    def test_locale_without_a_profile_stops_detection(self, monkeypatch: pytest.MonkeyPatch):
+        # A language added to LOCALE_CODES but not to _PROFILES must
+        # not be quietly detected as whichever locale shares its
+        # script — French text would come back "en" and be served raw.
+        monkeypatch.setattr(lang_mod, "LOCALE_CODES", ("ru", "en", "fr"))
+        assert detect_locale("Book of Genesis") is None
+
+    def test_every_supported_locale_has_a_profile(self):
+        # The live configuration must never be in the state the test
+        # above simulates.
+        missing = [code for code in LOCALE_CODES if code not in lang_mod._PROFILES]
+        assert not missing, f"add a detection profile for {missing} in language_detection.py"
+
+    def test_profiles_agree_with_display_names(self):
+        # Both maps are keyed by locale; drift between them means one
+        # of the five "adding a language" steps was half-done.
+        assert set(lang_mod._PROFILES) >= set(LOCALE_CODES)
+
+
+class TestDetectLocaleMarkup:
+    """Tag names are Latin letters. Stripping markup keeps a short
+    Cyrillic paragraph inside nested HTML from tipping Latin."""
+
+    def test_nested_markup_does_not_tip_the_count(self):
+        html = "<div><p><strong>Бог</strong></p></div>"
+        assert detect_locale(html) == "ru"
+
+    def test_markup_only_input_returns_none(self):
+        assert detect_locale("<div><br/></div>") is None
