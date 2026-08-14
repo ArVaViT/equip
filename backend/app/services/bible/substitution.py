@@ -46,6 +46,7 @@ from dataclasses import dataclass
 from difflib import SequenceMatcher
 from typing import TYPE_CHECKING
 
+from app.services.bible.api_source import API_BIBLE_IDS, fetch_verse
 from app.services.bible.books import display_book_name
 from app.services.bible.references import BibleRef, parse_references
 from app.services.bible.store import is_locale_bundled, lookup
@@ -318,41 +319,36 @@ def pre_substitute(
     return "".join(out_parts), subs
 
 
-#: Bundles that must never be pasted into a student's page.
+#: Locales whose canonical text comes from the API rather than a bundled file.
 #:
-#: `synodal-ru.json` ships misaligned. Its book slugs have shifted, so
-#: `romans.1.1` returns James, `jude.1.1` returns Hebrews, `3john.1.1` returns
-#: Philemon and `1kings.1.1` returns 2 Kings. Eight books are absent; 24 of 66
-#: disagree with the English bundle on verse count; 2,656 verses carry a
-#: `(22-1)` renumbering artifact inside the text.
+#: Replaces the blanket refusal that #990 put here. That guard was right and
+#: is no longer the best available answer: `synodal-ru.json` is misaligned —
+#: `romans.1.1` returns James — so the choice was between a wrong verse and no
+#: verse. The API is a third option, and a better one. It is the publisher's
+#: own copy rather than a rotting duplicate of it, and it carries the two
+#: things a bundle cannot: the licence, and the versification.
 #:
-#: `post_substitute` pastes whatever `lookup` returns directly into a
-#: blockquote a student reads. Unguarded, that prints **the wrong passage of
-#: Scripture** — silently, with no error, in a Bible school. Not a broken
-#: page: a confident false statement about the Bible.
+#: German and Ukrainian arrive the same way, so all three new locales share
+#: one path instead of each acquiring a file nobody can verify.
 #:
-#: **Why the whole bundle rather than the bad books.** The first version of
-#: this guard compared verse counts per book against the English bundle. It
-#: caught `romans` and missed `jude`, `3john` and `1kings`, because a shifted
-#: slug can land on a book of the same length. Structure cannot detect this —
-#: only content can, and cross-language content comparison is not available
-#: here. There is no honest way to certify any book in a file whose slugs have
-#: demonstrably moved.
+#: English keeps its bundle. It is healthy — 31,103 verses, 66 books, no
+#: misattribution — and an in-memory dict beats a network call on the hot
+#: path, which this is: the pipeline resolves one lookup per quoted verse,
+#: synchronously.
 #:
-#: **Why here and not in `store.lookup`.** Blocking at the store also stopped
-#: the daily-challenge generator, which needs Synodal text to build a
-#: bilingual question — and that pipeline has doctrinal and bilingual review
-#: stages before anything is published. The harm being prevented is the
-#: *silent* paste into a lesson, so the guard belongs on that path alone.
-#:
-#: **What the fallback costs.** A miss keeps `sub.original_inner`, the
-#: author's own quotation. Russian-authored material is unaffected. An
-#: English-authored lesson rendered into Russian shows the English verse
-#: through — visibly odd, and honestly odd. A glitch a reader can see beats a
-#: doctrinal error nobody catches.
-#:
-#: Delete this when the bundle is replaced; the test fails if anyone forgets.
-UNTRUSTED_QUOTE_LOCALES: frozenset[str] = frozenset({"ru"})
+#: If the API cannot answer — no key, timeout, a verse absent from that
+#: edition — the result is `None`, and `None` still means what it meant
+#: before: keep the author's own quotation. The safe fallback did not change,
+#: only what sits in front of it.
+
+
+def _canonical_for_display(ref: BibleRef, locale: str) -> str | None:
+    """Canonical text for a student's page: API where we have one, file where
+    the file is sound, and `None` — meaning "keep what the author wrote" —
+    whenever neither can answer."""
+    if locale in API_BIBLE_IDS:
+        return fetch_verse(ref, locale)  # type: ignore[arg-type]
+    return lookup(ref, locale)  # type: ignore[arg-type]
 
 
 def post_substitute(
@@ -371,9 +367,8 @@ def post_substitute(
     survives instead of disappearing."""
     if not subs:
         return html
-    trusted = target_locale not in UNTRUSTED_QUOTE_LOCALES
     for sub in subs:
-        canonical_target = lookup(sub.ref, target_locale) if trusted else None
+        canonical_target = _canonical_for_display(sub.ref, target_locale)
         replacement = canonical_target if canonical_target is not None else sub.original_inner
         html = html.replace(sub.marker, replacement)
         if sub.ref_tail:
