@@ -18,9 +18,10 @@ author's own quotation, which was right to begin with.
 
 from __future__ import annotations
 
+from app.services.bible.api_source import API_BIBLE_IDS
 from app.services.bible.references import BibleRef
 from app.services.bible.store import lookup
-from app.services.bible.substitution import UNTRUSTED_QUOTE_LOCALES, post_substitute
+from app.services.bible.substitution import post_substitute
 
 
 def _ref(book: str, chapter: int, verse: int) -> BibleRef:
@@ -59,23 +60,22 @@ def test_english_is_unaffected() -> None:
     assert lookup(_ref("romans", 1, 1), "en") is not None
 
 
-def test_the_whole_bundle_is_refused_not_just_the_obvious_books() -> None:
+def test_the_corrupt_bundle_is_bypassed_entirely_for_russian() -> None:
     # The first guard compared verse counts per book. It caught `romans` and
     # missed `jude`, `3john` and `1kings`, because a shifted slug can land on a
     # book of the same length. Structure cannot detect this; only content can.
     # There is no honest way to certify any book in a file whose slugs moved.
-    assert "ru" in UNTRUSTED_QUOTE_LOCALES
-    assert "ru" in UNTRUSTED_QUOTE_LOCALES
+    assert "ru" in API_BIBLE_IDS
+    assert "ru" in API_BIBLE_IDS
 
 
-def test_this_guard_is_temporary_and_says_so() -> None:
-    # It exists because of one bad data file, not as a design. Replacing the
-    # bundle should mean deleting an entry here — and this fails if somebody
-    # replaces the file and forgets, which is the point.
-    assert frozenset({"ru"}) == UNTRUSTED_QUOTE_LOCALES, (
-        "If the Russian bundle was replaced, drop it from UNTRUSTED_QUOTE_LOCALES; "
-        "if another locale was bundled, verify it before trusting it."
-    )
+def test_every_api_locale_bypasses_a_file_we_lack_or_distrust() -> None:
+    # Why each locale is on the API path: `ru` because its bundle is
+    # misaligned, `de` and `uk` because no bundle exists at all. English is
+    # deliberately absent — its file is sound, and an in-memory dict beats a
+    # network call on a path the pipeline walks once per quoted verse.
+    assert set(API_BIBLE_IDS) == {"ru", "de", "uk"}
+    assert "en" not in API_BIBLE_IDS
 
 
 def test_a_placeholder_is_not_a_verse() -> None:
