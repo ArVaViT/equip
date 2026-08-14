@@ -23,7 +23,9 @@ from app.services.course_service import (
     restore_course,
     update_course,
 )
-from app.services.translation.course_pipeline import translate_course_content
+from app.services.translation.pipeline_hooks import (
+    run_course_translation_pipeline_if_published,
+)
 from app.services.translation.resolve_for_display import populate_spine_texts
 
 from ._router import router
@@ -114,16 +116,22 @@ def update_existing_course(
     action = "publish" if is_publish_event else "update"
     log_action(db, teacher.id, action, "course", course_id, details=details or None, request=request)
 
-    # Full-course translation when published (initial publish or edits while live).
-    # Runs synchronously so the catalog and chapter surfaces stay consistent.
-    # Failures must NOT block the save — failed rows are persisted for retry.
-    # ``result`` is the same SQLAlchemy instance ``update_course`` mutated, so
-    # there's no need to re-load the full course tree just to translate it.
-    if result.status == CourseStatus.PUBLISHED:
-        try:
-            translate_course_content(db, result)
-        except Exception:
-            logger.exception("Translation hook failed for course %s", course_id)
+    # Full-course translation when published (initial publish or edits
+    # while live). This goes through the pipeline hook rather than
+    # calling the orchestrator directly, so it honours
+    # ``TRANSLATION_QUEUE_ENABLED``: one INSERT into ``translation_jobs``
+    # and the cron worker drains it out of band.
+    #
+    # It used to call ``translate_course_content`` from inside the
+    # request. On a course of any size that is a Gemini round-trip per
+    # field, in series, while the teacher's browser waits — and past 300
+    # seconds Vercel returns 504 to a teacher whose save had in fact
+    # succeeded. Worse, with the queue enabled in production the same
+    # work was ALSO being enqueued by the entity hooks, so the slow path
+    # was buying nothing.
+    #
+    # Failures still never block the save; the hook logs and swallows.
+    run_course_translation_pipeline_if_published(db, str(course_id))
 
     # Re-hydrate spine texts here: ``translate_course_content`` and the
     # audit log writes both commit, expiring SQLAlchemy's attribute cache
