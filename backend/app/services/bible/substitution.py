@@ -50,7 +50,7 @@ from app.core.sanitize import html_to_plain_text
 from app.services.bible.api_source import API_BIBLE_IDS, fetch_verse
 from app.services.bible.books import display_book_name
 from app.services.bible.references import BibleRef, parse_references
-from app.services.bible.store import is_locale_bundled, lookup
+from app.services.bible.store import lookup
 
 if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
@@ -188,7 +188,7 @@ def pre_substitute(
     * No blockquote / reference pair is detected.
     * The author paraphrased (similarity < 0.80).
     """
-    if not html or not is_locale_bundled(source_locale):
+    if not html:
         return html, []
 
     subs: list[Substitution] = []
@@ -259,7 +259,7 @@ def pre_substitute(
         if ref is None:
             continue
 
-        canonical_source = lookup(ref, source_locale)
+        canonical_source = canonical_for_source(ref, source_locale)
         if canonical_source is None:
             continue
 
@@ -315,11 +315,119 @@ def pre_substitute(
         )
 
     if cursor == 0:
-        # No substitutions made — return the original to avoid any
+        # No blockquote substitutions — the original string, so the
+        # inline pass sees exactly what the author wrote.
+        markered = html
+    else:
+        out_parts.append(html[cursor:])
+        markered = "".join(out_parts)
+
+    markered = _substitute_inline_quotes(markered, source_locale, subs)
+    if not subs:
+        # Nothing matched at all — return the original to avoid any
         # incidental whitespace / encoding fiddling.
         return html, []
-    out_parts.append(html[cursor:])
-    return "".join(out_parts), subs
+    return markered, subs
+
+
+# A verse quoted inside a sentence rather than set in a blockquote:
+#
+#     John 3:17 states, "For God did not send his Son…"
+#     «Ибо так возлюбил Бог мир…» (Ин. 3:16)
+#
+# Both orders occur, and both are common in the Daily Challenge
+# explanations, where there is no markup at all to hang a blockquote on.
+# Until this existed, those verses went to the model as ordinary prose
+# and came back as ordinary prose — which for a German reader meant an
+# English verse sitting inside a German sentence, because the prompt
+# tells the model to leave quoted Scripture untouched. Rightly: the
+# alternative is a model reciting Scripture from memory, and that was
+# tried and abandoned.
+_QUOTED_SPAN = re.compile(
+    r"(?P<open>[\"«“‘'])(?P<inner>[^\"«»“”]{16,900}?)(?P<close>[\"»”’'])",
+)
+
+# How far from the reference a quotation may sit and still be read as
+# that reference's text. Wide enough for "John 3:17 states, " on one
+# side and " — John 3:17" on the other; narrow enough that the next
+# sentence's quotation does not get attached to the wrong verse.
+_INLINE_WINDOW = 60
+
+
+def _substitute_inline_quotes(
+    text: str,
+    source_locale: LocaleCode,
+    subs: list[Substitution],
+) -> str:
+    """Marker-replace quoted verses that sit inside ordinary prose.
+
+    Appends to ``subs`` in place and returns the markered text. Same
+    similarity rule as the blockquote pass: a paraphrase is left alone,
+    because substituting one would silently replace what the author
+    meant to say with what the edition says.
+    """
+    refs = parse_references(text)
+    if not refs:
+        return text
+
+    for parsed in refs:
+        ref_start, ref_end = parsed.span
+        # Look on both sides: the reference may introduce the quotation
+        # or follow it.
+        for span_start, span_end in (
+            (ref_end, min(len(text), ref_end + _INLINE_WINDOW + 900)),
+            (max(0, ref_start - _INLINE_WINDOW - 900), ref_start),
+        ):
+            window = text[span_start:span_end]
+            match = _closest_quoted_span(window, anchor_at_start=span_start == ref_end)
+            if match is None:
+                continue
+            inner = match.group("inner")
+            canonical_source = canonical_for_source(parsed.ref, source_locale)
+            if canonical_source is None:
+                continue
+            ratio = SequenceMatcher(
+                None,
+                _normalize_for_compare(inner),
+                _normalize_for_compare(canonical_source),
+            ).ratio()
+            if ratio < _SIMILARITY_THRESHOLD:
+                continue
+
+            marker = _marker_token()
+            absolute_start = span_start + match.start("inner")
+            absolute_end = span_start + match.end("inner")
+            text = text[:absolute_start] + marker + text[absolute_end:]
+            subs.append(
+                Substitution(
+                    marker=marker,
+                    ref=parsed.ref,
+                    original_inner=inner,
+                    ref_tail=parsed.raw_text,
+                )
+            )
+            # One quotation per reference; a second would be a different
+            # verse and will have its own reference.
+            break
+
+    return text
+
+
+def _closest_quoted_span(window: str, *, anchor_at_start: bool) -> re.Match[str] | None:
+    """The quoted span nearest the reference within ``window``.
+
+    ``anchor_at_start`` means the reference sits immediately before the
+    window (``John 3:17 states, "…"``), so the first quotation wins; the
+    other direction (``"…" (John 3:17)``) wants the last one.
+    """
+    matches = list(_QUOTED_SPAN.finditer(window))
+    if not matches:
+        return None
+    if anchor_at_start:
+        first = matches[0]
+        return first if first.start() <= _INLINE_WINDOW else None
+    last = matches[-1]
+    return last if len(window) - last.end() <= _INLINE_WINDOW else None
 
 
 #: Locales whose canonical text comes from the API rather than a bundled file.
@@ -346,11 +454,39 @@ def pre_substitute(
 
 
 def _canonical_for_display(ref: BibleRef, locale: str) -> str | None:
-    """Canonical text for a student's page: API where we have one, file where
-    the file is sound, and `None` — meaning "keep what the author wrote" —
-    whenever neither can answer."""
+    """Canonical text for a student's page: API where we have one, file
+    where the file is sound, and `None` — meaning "keep what the author
+    wrote" — whenever neither can answer.
+
+    No bundle fallback for the API locales. The Russian file is
+    misaligned (#990: `romans.1.1` returns James), and a wrong verse
+    shown to a student is the one outcome worse than the author's own
+    quotation surviving in the wrong language.
+    """
     if locale in API_BIBLE_IDS:
         return fetch_verse(ref, locale)  # type: ignore[arg-type]
+    return lookup(ref, locale)  # type: ignore[arg-type]
+
+
+def canonical_for_source(ref: BibleRef, locale: str) -> str | None:
+    """Canonical text used only to decide "did the author quote this
+    verse?" — never rendered.
+
+    Reading the source used to go through the bundled files alone,
+    which left a course written in German invisible to this layer:
+    nothing to compare against, so nothing recognised as Scripture, so
+    every quotation reached every other language as the model's own
+    prose.
+
+    Unlike the display direction this one does fall back to the bundle.
+    The text is thrown away after a similarity comparison, so a
+    misaligned file cannot mislead a reader — at worst it fails to
+    recognise a quote and the old behaviour stands.
+    """
+    if locale in API_BIBLE_IDS:
+        from_api = fetch_verse(ref, locale)  # type: ignore[arg-type]
+        if from_api is not None:
+            return from_api
     return lookup(ref, locale)  # type: ignore[arg-type]
 
 

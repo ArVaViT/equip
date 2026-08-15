@@ -72,6 +72,17 @@ def test_system_prompt_does_not_ask_model_to_emit_bible_text():
     assert "leave the original verse text untouched" in prompt_ru
 
 
+def test_system_prompt_asks_for_the_reference_in_the_target_language():
+    """A reference carries no scripture, so rewriting it invents nothing —
+    and leaving it alone is how "According to John 3:16" ended up inside
+    German prose. The rule names the target language explicitly because
+    "translate it" is not what a reference needs; a German Bible prints
+    Joh 3,16, not John 3:16."""
+    prompt_de = build_system_prompt(source_locale="en", target_locale="de")
+    assert "the form a German Bible prints it" in prompt_de
+    assert "Never add the verse text to a bare reference" in prompt_de
+
+
 def test_user_prompt_wraps_text_in_randomized_fences():
     body1 = build_user_prompt(text="Acts 1:8", content_kind="plain", context=None)
     body2 = build_user_prompt(text="Acts 1:8", content_kind="plain", context=None)

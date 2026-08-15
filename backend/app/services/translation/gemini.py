@@ -39,6 +39,13 @@ _API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 _RETRYABLE_STATUSES = frozenset({408, 429, 500, 502, 503, 504})
 
 
+# Where a Bible quotation can plausibly live. ``plain`` covers the
+# Daily Challenge explanations, which quote constantly and have no
+# markup at all to hang a blockquote on — the case that showed English
+# verses to German readers in production.
+_KINDS_THAT_CAN_QUOTE_SCRIPTURE: frozenset[str] = frozenset({"html", "plain", "quiz_question"})
+
+
 class GeminiTranslationProvider:
     """Synchronous Gemini provider with bounded retries.
 
@@ -112,16 +119,19 @@ class GeminiTranslationProvider:
         if request.source_locale == request.target_locale or not request.text.strip():
             return TranslationResult(text=request.text, model=self._model)
 
-        # For HTML content, swap canonical Bible quotes with sentinel
-        # markers BEFORE sending to Gemini, then restore them AFTER with
-        # the target-locale canonical text. This guarantees Bible quotes
-        # always come back as KJV / Synodal verbatim — never paraphrased
-        # by the model. Non-HTML content kinds (titles, descriptions,
-        # quiz options) skip this entirely. The system prompt's
-        # "preserve placeholders verbatim" rule covers the markers.
+        # Swap canonical Bible quotes for sentinel markers BEFORE sending
+        # to Gemini, then restore them AFTER with the target-locale
+        # canonical text. This is what guarantees a quoted verse comes
+        # back as KJV / Luther / Kulish verbatim rather than as the
+        # model's own rendering — the prompt tells it to leave quoted
+        # Scripture untouched, which without this layer means an English
+        # verse arriving intact in the middle of German prose.
+        #
+        # Prose kinds only. A title or an answer option is too short to
+        # carry a quotation, and the marker would be most of the string.
         bible_subs: list = []
         request_text = request.text
-        if request.content_kind == "html":
+        if request.content_kind in _KINDS_THAT_CAN_QUOTE_SCRIPTURE:
             request_text, bible_subs = pre_substitute(request_text, request.source_locale)
             if bible_subs:
                 request = TranslationRequest(
