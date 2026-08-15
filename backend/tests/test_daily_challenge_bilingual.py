@@ -140,15 +140,36 @@ def test_queue_lists_by_status(db: Session, author: User, teacher: User, client:
     assert all(i["status"] == "doctrinally_reviewed" for i in body["items"])
 
 
-def test_queue_missing_ru_filter(db: Session, author: User, teacher: User, client: TestClient):
+def test_queue_missing_locale_filter(db: Session, author: User, teacher: User, client: TestClient):
     _seed_question(db, author_id=author.id, ru_text=None)  # missing RU
     _seed_question(db, author_id=author.id)  # has both
-    resp = client.get("/api/v1/admin/daily-challenge/questions?only_missing_ru=true")
+    resp = client.get("/api/v1/admin/daily-challenge/questions?missing_locale=ru")
     assert resp.status_code == 200
     body = resp.json()
     assert len(body["items"]) == 1
-    assert body["items"][0]["has_ru"] is False
-    assert body["items"][0]["has_en"] is True
+    assert body["items"][0]["has_locale"]["ru"] is False
+    assert body["items"][0]["has_locale"]["en"] is True
+    # Every served language is reported, not just the two the queue was
+    # written for — a reviewer has to see that German is missing too.
+    assert set(body["items"][0]["has_locale"]) == {"ru", "en", "de", "uk"}
+
+
+def test_queue_filters_on_a_language_nobody_wrote_by_hand(db: Session, author: User, teacher: User, client: TestClient):
+    # German arrived after these questions were written, so every one of
+    # them is missing it. The filter has to work for the languages added
+    # later — that is the case it exists for.
+    _seed_question(db, author_id=author.id)
+    _seed_question(db, author_id=author.id)
+    resp = client.get("/api/v1/admin/daily-challenge/questions?missing_locale=de")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["items"]) == 2
+    assert all(item["has_locale"]["de"] is False for item in body["items"])
+
+
+def test_queue_refuses_a_language_it_does_not_serve(db: Session, author: User, teacher: User, client: TestClient):
+    resp = client.get("/api/v1/admin/daily-challenge/questions?missing_locale=fr")
+    assert resp.status_code == 422
 
 
 def test_queue_excludes_rejected_by_default(db: Session, author: User, teacher: User, client: TestClient):
@@ -171,10 +192,10 @@ def test_bilingual_view_returns_parallel_cells(db: Session, author: User, teache
     assert body["question_text"]["en"]["text"].startswith("Romans 8")
     assert "Римлянам" in body["question_text"]["ru"]["text"]
     assert body["question_text"]["en"]["origin"] == "human"
-    assert all(o["en"]["text"] for o in body["options"])
+    assert all(o["texts"]["en"]["text"] for o in body["options"])
     # Options have no RU cv → empty cells.
-    assert all(o["ru"]["text"] == "" for o in body["options"])
-    assert all(o["ru"]["cv_id"] is None for o in body["options"])
+    assert all(o["texts"]["ru"]["text"] == "" for o in body["options"])
+    assert all(o["texts"]["ru"]["cv_id"] is None for o in body["options"])
 
 
 def test_bilingual_view_returns_empty_cell_when_locale_missing(
@@ -246,7 +267,7 @@ def test_cv_upsert_option_text_with_valid_option_persists(db: Session, author: U
     assert resp.status_code == 200
     view = client.get(f"/api/v1/admin/daily-challenge/questions/{q.id}/bilingual").json()
     edited = next(o for o in view["options"] if o["id"] == str(option_id))
-    assert edited["ru"]["text"] == "Вариант на русском"
+    assert edited["texts"]["ru"]["text"] == "Вариант на русском"
 
 
 def test_cv_upsert_refuses_rejected_question(db: Session, author: User, teacher: User, client: TestClient):

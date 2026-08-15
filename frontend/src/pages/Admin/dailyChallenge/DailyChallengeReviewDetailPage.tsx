@@ -14,6 +14,7 @@ import {
   type AdminDailyChallengeCvCell,
 } from "@/services/adminDailyChallenge"
 import { getErrorDetail } from "@/lib/errorDetail"
+import { LOCALE_NATIVE_LABELS, SUPPORTED_LOCALES, type SupportedLocale } from "@/i18n/config"
 
 type Field = "question_text" | "explanation"
 
@@ -55,7 +56,12 @@ export default function DailyChallengeReviewDetailPage() {
   }, [load])
 
   const saveCv = useCallback(
-    async (params: { field: "question_text" | "explanation" | "option_text"; locale: "en" | "ru"; text: string; option_id?: string }) => {
+    async (params: {
+      field: "question_text" | "explanation" | "option_text"
+      locale: SupportedLocale
+      text: string
+      option_id?: string
+    }) => {
       if (!questionId) return
       setSaving(true)
       try {
@@ -190,7 +196,7 @@ export default function DailyChallengeReviewDetailPage() {
                   </span>
                 }
                 field="option_text"
-                cells={{ en: opt.en, ru: opt.ru }}
+                cells={opt.texts}
                 optionId={opt.id}
                 saving={saving}
                 onSave={saveCv}
@@ -206,41 +212,51 @@ export default function DailyChallengeReviewDetailPage() {
 interface FieldEditorProps {
   label: React.ReactNode
   field: Field | "option_text"
-  cells: Record<"en" | "ru", AdminDailyChallengeCvCell>
+  cells: Record<SupportedLocale, AdminDailyChallengeCvCell>
   optionId?: string
   saving: boolean
   onSave: (params: {
     field: "question_text" | "explanation" | "option_text"
-    locale: "en" | "ru"
+    locale: SupportedLocale
     text: string
     option_id?: string
   }) => Promise<void>
 }
 
+/**
+ * One field, side by side in every language the platform serves.
+ *
+ * This was two hardcoded columns, EN and RU. The pipeline had been
+ * writing German and Ukrainian rows since those languages shipped, and
+ * this screen — the one place a person reviews them — could not show
+ * them. So the questions went out to readers unreviewed in half the
+ * languages they were published in.
+ *
+ * Two columns on a wide screen rather than four: a reviewer compares a
+ * translation against its source, one pair at a time, and four columns
+ * of prose side by side is unreadable at any width.
+ */
 function FieldEditor({ label, field, cells, optionId, saving, onSave }: FieldEditorProps) {
   return (
     <div className="rounded-md border border-edge dark:border-transparent bg-card p-4">
       <div className="mb-3 text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">{label}</div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <LocaleCellEditor
-          locale="en"
-          cell={cells.en}
-          saving={saving}
-          onSave={(text) => onSave({ field, locale: "en", text, option_id: optionId })}
-        />
-        <LocaleCellEditor
-          locale="ru"
-          cell={cells.ru}
-          saving={saving}
-          onSave={(text) => onSave({ field, locale: "ru", text, option_id: optionId })}
-        />
+        {SUPPORTED_LOCALES.map((locale) => (
+          <LocaleCellEditor
+            key={locale}
+            locale={locale}
+            cell={cells[locale]}
+            saving={saving}
+            onSave={(text) => onSave({ field, locale, text, option_id: optionId })}
+          />
+        ))}
       </div>
     </div>
   )
 }
 
 interface LocaleCellEditorProps {
-  locale: "en" | "ru"
+  locale: SupportedLocale
   cell: AdminDailyChallengeCvCell
   saving: boolean
   onSave: (text: string) => Promise<void>
@@ -264,6 +280,12 @@ function LocaleCellEditor({ locale, cell, saving, onSave }: LocaleCellEditorProp
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">
           {locale.toUpperCase()}
+          {/* The code is what a reviewer scans for; the language's own
+              name is what makes it unambiguous when the codes are close
+              (uk / ru both Cyrillic, de / en both Latin). */}
+          <span className="ml-2 normal-case tracking-normal opacity-70">
+            {LOCALE_NATIVE_LABELS[locale]}
+          </span>
         </span>
         {missing ? (
           <Badge variant="destructiveSubtle">

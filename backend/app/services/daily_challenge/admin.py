@@ -44,6 +44,7 @@ from app.models.daily_challenge import (
     DailyChallengeQuestionStatus,
     DailyChallengeSchedule,
 )
+from app.schemas.locale import LOCALE_CODES, LocaleCode
 from app.services.content_versions.write import record_human_version
 from app.services.language_detection import detect_locale
 
@@ -431,15 +432,19 @@ class BilingualOption:
     id: uuid.UUID
     order_index: int
     is_correct: bool
-    en: CvCellView
-    ru: CvCellView
+    #: One cell per served locale, keyed by locale code. This was ``en``
+    #: and ``ru`` as named fields, which stopped being the whole picture
+    #: the day the platform served four languages: the pipeline was
+    #: translating these questions into German and Ukrainian and the
+    #: review screen could not show them.
+    texts: dict[LocaleCode, CvCellView]
 
 
 @dataclass(frozen=True, slots=True)
 class BilingualView:
     question: DailyChallengeQuestion
-    question_text: dict[str, CvCellView]
-    explanation: dict[str, CvCellView]
+    question_text: dict[LocaleCode, CvCellView]
+    explanation: dict[LocaleCode, CvCellView]
     options: list[BilingualOption]
 
 
@@ -481,9 +486,16 @@ def _active_cv_rows(
 
 
 def fetch_bilingual_view(db: Session, *, question: DailyChallengeQuestion) -> BilingualView:
-    """Return parallel EN + RU cv cells for a question's translatable
-    fields. Cells are ``empty`` (cv_id=None, text="") when the locale
-    has no row yet — the UI renders these as "MISSING" placeholders."""
+    """Return parallel cv cells, one per served locale, for a question's
+    translatable fields.
+
+    Cells are ``empty`` (cv_id=None, text="") when the locale has no row
+    yet — the UI renders those as "missing". Reading the locale set from
+    ``LOCALE_CODES`` rather than naming two is what makes the review
+    screen show a German question at all: the pipeline had been writing
+    German and Ukrainian rows since the languages shipped, and this view
+    simply did not ask for them.
+    """
     q_id = str(question.id)
     option_ids = [str(o.id) for o in question.options]
 
@@ -514,21 +526,16 @@ def fetch_bilingual_view(db: Session, *, question: DailyChallengeQuestion) -> Bi
 
     return BilingualView(
         question=question,
-        question_text={
-            "en": cell(q_rows, eid=q_id, field="question_text", locale="en"),
-            "ru": cell(q_rows, eid=q_id, field="question_text", locale="ru"),
-        },
-        explanation={
-            "en": cell(q_rows, eid=q_id, field="explanation", locale="en"),
-            "ru": cell(q_rows, eid=q_id, field="explanation", locale="ru"),
-        },
+        question_text={locale: cell(q_rows, eid=q_id, field="question_text", locale=locale) for locale in LOCALE_CODES},
+        explanation={locale: cell(q_rows, eid=q_id, field="explanation", locale=locale) for locale in LOCALE_CODES},
         options=[
             BilingualOption(
                 id=o.id,
                 order_index=o.order_index,
                 is_correct=o.is_correct,
-                en=cell(o_rows, eid=str(o.id), field="option_text", locale="en"),
-                ru=cell(o_rows, eid=str(o.id), field="option_text", locale="ru"),
+                texts={
+                    locale: cell(o_rows, eid=str(o.id), field="option_text", locale=locale) for locale in LOCALE_CODES
+                },
             )
             for o in sorted(question.options, key=lambda o: o.order_index)
         ],
@@ -601,29 +608,36 @@ def upsert_cv_for_question(
 
 @dataclass(frozen=True, slots=True)
 class QueueItem:
-    """One row in the bilingual review queue list. ``has_en``/``has_ru``
-    are precomputed booleans over the question_text + explanation cv
-    rows so a "needs RU" filter on the UI doesn't have to fan out into
-    N+1 cv queries."""
+    """One row in the review queue.
+
+    ``has_locale`` is precomputed over the question_text cv rows so a
+    "still missing a language" filter does not fan out into N+1
+    queries. It was two booleans, ``has_en`` and ``has_ru``; a reviewer
+    now needs to know which of four languages is missing, and the next
+    language should not require another field.
+    """
 
     question: DailyChallengeQuestion
-    has_en: bool
-    has_ru: bool
+    has_locale: dict[LocaleCode, bool]
 
 
 def list_review_queue(
     db: Session,
     *,
     status_filter: str | None = None,
-    only_missing_ru: bool = False,
+    missing_locale: LocaleCode | None = None,
     rejected: bool = False,
     limit: int = 25,
     offset: int = 0,
 ) -> tuple[list[QueueItem], int]:
-    """Paginated list of editorial questions, with EN/RU presence
-    annotation per row. ``only_missing_ru`` filters in Python rather
-    than via SQL so the helper stays simple — the queue size is
-    capped at ~hundreds, the join cost is trivial."""
+    """Paginated list of editorial questions, annotated with which
+    languages each one already has.
+
+    ``missing_locale`` narrows the queue to questions still lacking that
+    language — the reviewer's actual question ("what is left to do in
+    German?"). It filters in Python rather than via SQL so the helper
+    stays simple; the queue is capped at hundreds of rows.
+    """
     q = db.query(DailyChallengeQuestion).filter(
         DailyChallengeQuestion.rejected.is_(rejected),
     )
@@ -643,9 +657,8 @@ def list_review_queue(
     )
     items: list[QueueItem] = []
     for r in rows:
-        has_en = (str(r.id), "question_text", "en") in cv_rows
-        has_ru = (str(r.id), "question_text", "ru") in cv_rows
-        if only_missing_ru and has_ru:
+        has_locale = {locale: (str(r.id), "question_text", locale) in cv_rows for locale in LOCALE_CODES}
+        if missing_locale and has_locale.get(missing_locale, False):
             continue
-        items.append(QueueItem(question=r, has_en=has_en, has_ru=has_ru))
+        items.append(QueueItem(question=r, has_locale=has_locale))
     return items, total

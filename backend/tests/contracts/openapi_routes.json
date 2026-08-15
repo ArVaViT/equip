@@ -28,11 +28,11 @@
         "query"
       ],
       [
-        "offset",
+        "missing_locale",
         "query"
       ],
       [
-        "only_missing_ru",
+        "offset",
         "query"
       ],
       [

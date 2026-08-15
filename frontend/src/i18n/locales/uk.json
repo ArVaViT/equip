@@ -1925,19 +1925,35 @@
     "subtitle": "Керуйте людьми та ролями, стежте за активністю платформи",
     "dailyChallenge": {
       "review": {
-        "title": "Двомовна перевірка завдання дня",
+        "approve": "Схвалити й передати далі",
+        "backToQueue": "Назад до черги",
+        "correct": "Правильна",
         "description": "Редактор EN / RU поруч. Схвалення переводить на наступний етап; відхилення з причиною повертає назад.",
-        "refresh": "Оновити",
-        "filterStatus": "Стан",
-        "filterMissingRu": "Лише без RU",
-        "missingEn": "Немає EN",
-        "missingRu": "Немає RU",
-        "totalCount": "{{count}} запитань",
-        "loadError": "Не вдалося завантажити чергу — спробуйте ще раз.",
+        "detailTitle": "Двомовна перевірка",
         "empty": {
           "title": "Черга порожня",
           "body": "За цим фільтром перевіряти нічого."
         },
+        "field": {
+          "questionText": "Текст запитання",
+          "explanation": "Пояснення"
+        },
+        "fillPlaceholder": "Перекладу ще немає — напишіть його тут.",
+        "filterMissing": "Бракує:",
+        "filterMissingAny": "Будь-яка мова",
+        "filterStatus": "Стан",
+        "loadError": "Не вдалося завантажити чергу — спробуйте ще раз.",
+        "localeMissing": "{{language}} — немає",
+        "localePresent": "{{language}} — є",
+        "missing": "Немає",
+        "options": "Варіанти",
+        "originHuman": "Людина",
+        "originMt": "Машина",
+        "refresh": "Оновити",
+        "reject": "Відхилити",
+        "rejectPrompt": "Причина відхилення (лишається в журналі):",
+        "rejectedBanner": "Це запитання відхилено. Причина: {{reason}}",
+        "save": "Зберегти",
         "status": {
           "draft": "Чернетка",
           "scripture_validated": "Писання перевірено",
@@ -1947,23 +1963,7 @@
           "published": "Опубліковано",
           "archived": "Заархівовано"
         },
-        "detailTitle": "Двомовна перевірка",
-        "backToQueue": "Назад до черги",
-        "approve": "Схвалити й передати далі",
-        "reject": "Відхилити",
-        "save": "Зберегти",
-        "correct": "Правильна",
-        "options": "Варіанти",
-        "missing": "Немає",
-        "fillPlaceholder": "Перекладу ще немає — напишіть його тут.",
-        "originHuman": "Людина",
-        "originMt": "Машина",
-        "rejectPrompt": "Причина відхилення (лишається в журналі):",
-        "rejectedBanner": "Це запитання відхилено. Причина: {{reason}}",
-        "field": {
-          "questionText": "Текст запитання",
-          "explanation": "Пояснення"
-        },
+        "title": "Двомовна перевірка завдання дня",
         "toast": {
           "saved": "Збережено.",
           "saveError": "Не вдалося зберегти — спробуйте ще раз.",
@@ -1971,7 +1971,8 @@
           "promoteError": "Не вдалося передати далі — спробуйте ще раз.",
           "rejected": "Відхилено.",
           "rejectError": "Не вдалося відхилити — спробуйте ще раз."
-        }
+        },
+        "totalCount": "{{count}} запитань"
       }
     },
     "tabOverview": "Огляд",

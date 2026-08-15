@@ -42,3 +42,34 @@ if (!globalThis.IntersectionObserver) {
   }
   globalThis.IntersectionObserver = IntersectionObserverShim as unknown as typeof IntersectionObserver
 }
+
+// Node 26 ships its own `localStorage` global, and it answers `undefined`
+// unless the process was started with `--localstorage-file`. That getter sits
+// on globalThis, which under the jsdom environment *is* `window` — so it
+// shadows the storage jsdom provides, and `window.localStorage.clear()`
+// throws "cannot read properties of undefined". CI runs Node 22 and never
+// sees it; a developer on a newer Node saw 43 tests fail for a reason that
+// had nothing to do with their change.
+//
+// Only installed when the platform left us without one. An in-memory store
+// is if anything the better test double: it starts empty per file instead of
+// being shared through a file on disk.
+if (typeof localStorage === "undefined" || localStorage === null) {
+  class MemoryStorage implements Storage {
+    #entries = new Map<string, string>()
+    get length(): number { return this.#entries.size }
+    clear(): void { this.#entries.clear() }
+    getItem(key: string): string | null { return this.#entries.get(String(key)) ?? null }
+    key(index: number): string | null { return [...this.#entries.keys()][index] ?? null }
+    removeItem(key: string): void { this.#entries.delete(String(key)) }
+    setItem(key: string, value: string): void { this.#entries.set(String(key), String(value)) }
+    [name: string]: unknown
+  }
+  for (const name of ["localStorage", "sessionStorage"] as const) {
+    Object.defineProperty(globalThis, name, {
+      value: new MemoryStorage(),
+      configurable: true,
+      writable: true,
+    })
+  }
+}

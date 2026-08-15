@@ -1871,19 +1871,35 @@
     "subtitle": "Manage users, roles, and monitor platform activity",
     "dailyChallenge": {
       "review": {
-        "title": "Daily Challenge bilingual review",
+        "approve": "Approve & promote",
+        "backToQueue": "Back to queue",
+        "correct": "Correct",
         "description": "Side-by-side EN / RU editor. Approve to promote to the next stage; reject with a reason if anything needs to go back.",
-        "refresh": "Refresh",
-        "filterStatus": "Status",
-        "filterMissingRu": "Only items missing RU",
-        "missingEn": "EN missing",
-        "missingRu": "RU missing",
-        "totalCount": "{{count}} question(s)",
-        "loadError": "Couldn't load the queue — please try again.",
+        "detailTitle": "Bilingual review",
         "empty": {
           "title": "Queue is empty",
           "body": "Nothing to review for this filter."
         },
+        "field": {
+          "questionText": "Question text",
+          "explanation": "Explanation"
+        },
+        "fillPlaceholder": "No translation yet — write one here.",
+        "filterMissing": "Missing:",
+        "filterMissingAny": "Any language",
+        "filterStatus": "Status",
+        "loadError": "Couldn't load the queue — please try again.",
+        "localeMissing": "{{language}} is missing",
+        "localePresent": "{{language}} is present",
+        "missing": "Missing",
+        "options": "Options",
+        "originHuman": "Human",
+        "originMt": "MT",
+        "refresh": "Refresh",
+        "reject": "Reject",
+        "rejectPrompt": "Reason for rejection (kept in audit trail):",
+        "rejectedBanner": "This question is rejected. Reason: {{reason}}",
+        "save": "Save",
         "status": {
           "draft": "Draft",
           "scripture_validated": "Scripture validated",
@@ -1893,23 +1909,7 @@
           "published": "Published",
           "archived": "Archived"
         },
-        "detailTitle": "Bilingual review",
-        "backToQueue": "Back to queue",
-        "approve": "Approve & promote",
-        "reject": "Reject",
-        "save": "Save",
-        "correct": "Correct",
-        "options": "Options",
-        "missing": "Missing",
-        "fillPlaceholder": "No translation yet — write one here.",
-        "originHuman": "Human",
-        "originMt": "MT",
-        "rejectPrompt": "Reason for rejection (kept in audit trail):",
-        "rejectedBanner": "This question is rejected. Reason: {{reason}}",
-        "field": {
-          "questionText": "Question text",
-          "explanation": "Explanation"
-        },
+        "title": "Daily Challenge bilingual review",
         "toast": {
           "saved": "Saved.",
           "saveError": "Couldn't save — please try again.",
@@ -1917,7 +1917,8 @@
           "promoteError": "Couldn't promote — please try again.",
           "rejected": "Rejected.",
           "rejectError": "Couldn't reject — please try again."
-        }
+        },
+        "totalCount": "{{count}} question(s)"
       }
     },
     "tabOverview": "Overview",

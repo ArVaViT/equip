@@ -1871,19 +1871,35 @@
     "subtitle": "Personen und Rollen verwalten, Aktivität im Blick behalten",
     "dailyChallenge": {
       "review": {
-        "title": "Tagesaufgabe — zweisprachige Prüfung",
+        "approve": "Bestätigen und weitergeben",
+        "backToQueue": "Zurück zur Warteschlange",
+        "correct": "Richtig",
         "description": "Editor mit EN und RU nebeneinander. Bestätigen hebt auf die nächste Stufe; bei Ablehnung mit Grund geht es zurück.",
-        "refresh": "Aktualisieren",
-        "filterStatus": "Status",
-        "filterMissingRu": "Nur Einträge ohne RU",
-        "missingEn": "EN fehlt",
-        "missingRu": "RU fehlt",
-        "totalCount": "{{count}} Frage(n)",
-        "loadError": "Die Warteschlange konnte nicht geladen werden — bitte erneut versuchen.",
+        "detailTitle": "Zweisprachige Prüfung",
         "empty": {
           "title": "Warteschlange ist leer",
           "body": "Für diesen Filter gibt es nichts zu prüfen."
         },
+        "field": {
+          "questionText": "Fragetext",
+          "explanation": "Erklärung"
+        },
+        "fillPlaceholder": "Noch keine Übersetzung — schreiben Sie sie hier.",
+        "filterMissing": "Fehlt:",
+        "filterMissingAny": "Beliebige Sprache",
+        "filterStatus": "Status",
+        "loadError": "Die Warteschlange konnte nicht geladen werden — bitte erneut versuchen.",
+        "localeMissing": "{{language}} fehlt",
+        "localePresent": "{{language}} ist vorhanden",
+        "missing": "Fehlt",
+        "options": "Antworten",
+        "originHuman": "Mensch",
+        "originMt": "Maschine",
+        "refresh": "Aktualisieren",
+        "reject": "Ablehnen",
+        "rejectPrompt": "Grund der Ablehnung (bleibt im Protokoll):",
+        "rejectedBanner": "Diese Frage ist abgelehnt. Grund: {{reason}}",
+        "save": "Speichern",
         "status": {
           "draft": "Entwurf",
           "scripture_validated": "Schriftstelle geprüft",
@@ -1893,23 +1909,7 @@
           "published": "Veröffentlicht",
           "archived": "Archiviert"
         },
-        "detailTitle": "Zweisprachige Prüfung",
-        "backToQueue": "Zurück zur Warteschlange",
-        "approve": "Bestätigen und weitergeben",
-        "reject": "Ablehnen",
-        "save": "Speichern",
-        "correct": "Richtig",
-        "options": "Antworten",
-        "missing": "Fehlt",
-        "fillPlaceholder": "Noch keine Übersetzung — schreiben Sie sie hier.",
-        "originHuman": "Mensch",
-        "originMt": "Maschine",
-        "rejectPrompt": "Grund der Ablehnung (bleibt im Protokoll):",
-        "rejectedBanner": "Diese Frage ist abgelehnt. Grund: {{reason}}",
-        "field": {
-          "questionText": "Fragetext",
-          "explanation": "Erklärung"
-        },
+        "title": "Tagesaufgabe — zweisprachige Prüfung",
         "toast": {
           "saved": "Gespeichert.",
           "saveError": "Konnte nicht gespeichert werden — bitte erneut versuchen.",
@@ -1917,7 +1917,8 @@
           "promoteError": "Konnte nicht weitergegeben werden — bitte erneut versuchen.",
           "rejected": "Abgelehnt.",
           "rejectError": "Konnte nicht abgelehnt werden — bitte erneut versuchen."
-        }
+        },
+        "totalCount": "{{count}} Frage(n)"
       }
     },
     "tabOverview": "Überblick",
