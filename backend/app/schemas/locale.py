@@ -31,9 +31,9 @@ from __future__ import annotations
 
 from typing import Final, Literal
 
-LocaleCode = Literal["ru", "en"]
+LocaleCode = Literal["ru", "en", "de", "uk"]
 
-LOCALE_CODES: Final[tuple[LocaleCode, ...]] = ("ru", "en")
+LOCALE_CODES: Final[tuple[LocaleCode, ...]] = ("ru", "en", "de", "uk")
 DEFAULT_LOCALE: Final[LocaleCode] = "ru"
 
 # Human-readable language names used by the translation prompt builder
@@ -44,6 +44,8 @@ DEFAULT_LOCALE: Final[LocaleCode] = "ru"
 LOCALE_DISPLAY_NAMES: Final[dict[LocaleCode, str]] = {
     "ru": "Russian",
     "en": "English",
+    "de": "German",
+    "uk": "Ukrainian",
 }
 
 

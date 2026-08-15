@@ -94,7 +94,7 @@ class Course(Base):
         # Mirror prod CHECK constraints (catalog status, enroll access mode, authoring locale).
         CheckConstraint("status IN ('draft', 'publishing', 'published')", name="chk_courses_status"),
         CheckConstraint("access_mode IN ('public', 'institute')", name="courses_access_mode_check"),
-        CheckConstraint("source_locale IN ('ru', 'en')", name="courses_source_locale_check"),
+        CheckConstraint("source_locale IN ('ru', 'en', 'de', 'uk')", name="courses_source_locale_check"),
     )
 
     id: Mapped[str] = mapped_column(primary_key=True)

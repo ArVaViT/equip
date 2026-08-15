@@ -4,6 +4,7 @@ import contextlib
 import uuid
 from datetime import UTC, datetime, timedelta
 
+import pytest
 import sqlalchemy.types as _sa_types
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -14,6 +15,10 @@ from app.models.enrollment import Enrollment
 from app.models.notification import Notification
 from tests.conftest import ADMIN_ID, STUDENT_ID, TEACHER_ID
 
+# These tests count rows and provider calls, so the size of the
+# supported set is one of their inputs. They describe the "ru" + "en"
+# set they were written against; the wider set has tests of its own.
+pytestmark = pytest.mark.usefixtures("two_locales")
 # ---------------------------------------------------------------------------
 # SQLite compatibility: Uuid.bind_processor expects uuid.UUID objects but
 # routers pass plain strings for UUID path parameters.  PostgreSQL casts

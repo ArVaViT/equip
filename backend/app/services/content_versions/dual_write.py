@@ -13,6 +13,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
+from app.models.content_version import ContentVersion
 from app.services.content_versions.write import record_human_version
 from app.services.language_detection import detect_locale
 
@@ -56,7 +57,9 @@ def dual_write_entity_content(
         if not raw or not str(raw).strip():
             continue
         text_str = str(raw)
-        locale = detect_locale(text_str) or fallback_locale
+        locale = (
+            detect_locale(text_str) or _locale_of_existing_text(db, entity_type, entity_id, field) or fallback_locale
+        )
         if locale is None:
             continue
         record_human_version(
@@ -68,6 +71,33 @@ def dual_write_entity_content(
             text=text_str,
             authored_by=author_uuid,
         )
+
+
+def _locale_of_existing_text(db: Session, entity_type: str, entity_id: str, field: str) -> str | None:
+    """The locale this field is already written in, if a person wrote it.
+
+    Editing a field is editing a language version of it. When the
+    detector has no signal — a short heading, a proper noun, anything
+    ambiguous between two languages of one script — the honest answer is
+    "the same language as before", not "the language of the course".
+
+    Without this, a teacher rewording an English heading in a Russian
+    course would file the new text as Russian, leaving the previous
+    English text active and served: the edit would appear to have done
+    nothing. That could not happen while the platform served one
+    language per script; it can now.
+    """
+    return (
+        db.query(ContentVersion.locale)
+        .filter(
+            ContentVersion.entity_type == entity_type,
+            ContentVersion.entity_id == entity_id,
+            ContentVersion.field == field,
+            ContentVersion.origin == "human",
+            ContentVersion.superseded_by.is_(None),
+        )
+        .scalar()
+    )
 
 
 def _coerce_uuid(value: str | uuid.UUID | None) -> uuid.UUID | None:

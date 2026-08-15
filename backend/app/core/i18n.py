@@ -1,3 +1,6 @@
+# ruff: noqa: RUF001
+# This module is four languages of user-facing strings; Cyrillic
+# letters that look like Latin ones are the content, not a slip.
 """Backend-side i18n catalog for strings the server must localize before
 the frontend gets a chance to.
 
@@ -79,6 +82,26 @@ _CATALOG: Final[dict[LocaleCode, dict[str, str]]] = {
         "notif.cert_approved.body": "Ваш сертификат за «{course}» одобрен!",
         "notif.cert_rejected.title": "Сертификат отклонён",
         "notif.cert_rejected.body": "Ваша заявка на сертификат за «{course}» отклонена.",
+        "fallback.course": "курс",
+        "fallback.your_course": "ваш курс",
+    },
+    "de": {
+        "notif.new_announcement.title": "Neue Ankündigung",
+        "notif.new_announcement.body": "{title} — in „{course}“",
+        "notif.cert_approved.title": "Zertifikat bestätigt",
+        "notif.cert_approved.body": "Ihr Zertifikat für „{course}“ wurde bestätigt!",
+        "notif.cert_rejected.title": "Zertifikat abgelehnt",
+        "notif.cert_rejected.body": "Ihr Antrag auf ein Zertifikat für „{course}“ wurde abgelehnt.",
+        "fallback.course": "ein Kurs",
+        "fallback.your_course": "Ihr Kurs",
+    },
+    "uk": {
+        "notif.new_announcement.title": "Нове оголошення",
+        "notif.new_announcement.body": "{title} — у «{course}»",
+        "notif.cert_approved.title": "Сертифікат схвалено",
+        "notif.cert_approved.body": "Ваш сертифікат за «{course}» схвалено!",
+        "notif.cert_rejected.title": "Сертифікат відхилено",
+        "notif.cert_rejected.body": "Вашу заявку на сертифікат за «{course}» відхилено.",
         "fallback.course": "курс",
         "fallback.your_course": "ваш курс",
     },

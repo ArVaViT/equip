@@ -116,6 +116,10 @@ class TestDualWriteShortCircuits:
             lambda _text: None,
         )
         db = MagicMock()
+        # …and the field has no existing human row to inherit a language
+        # from either. That lookup is the second of the three answers
+        # ``dual_write`` tries before giving up.
+        db.query.return_value.filter.return_value.scalar.return_value = None
         dual_write_entity_content(
             db,
             entity_type="course",

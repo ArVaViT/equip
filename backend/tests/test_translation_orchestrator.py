@@ -34,6 +34,10 @@ from app.services.translation.service import reset_translation_provider_cache
 from tests._fake_translation import fake_translate
 from tests.conftest import TEACHER_ID
 
+# These tests count rows and provider calls, so the size of the
+# supported set is one of their inputs. They describe the "ru" + "en"
+# set they were written against; the wider set has tests of its own.
+pytestmark = pytest.mark.usefixtures("two_locales")
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
     from sqlalchemy.orm import Session
