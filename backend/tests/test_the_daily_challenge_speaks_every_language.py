@@ -279,6 +279,33 @@ class TestTheSweep:
 
         assert question.id not in {q.id for q in found}
 
+    def test_a_row_an_operator_re_opened_is_picked_up_again(self, db: Session, author: User):
+        # ``POST /admin/translations/retry-reviewed`` parks a row at
+        # ``failed`` — the one status the orchestrator retries. If the
+        # sweep read that as settled, the rows somebody just asked to be
+        # redone would be exactly the rows it never went back for.
+        from app.models.content_version import ContentVersion, ContentVersionStatus
+
+        question = _seed_question(db, author_id=author.id)
+        translate_question(db, question, provider=_Provider())
+        row = (
+            db.query(ContentVersion)
+            .filter(
+                ContentVersion.entity_type == "daily_challenge_question",
+                ContentVersion.entity_id == str(question.id),
+                ContentVersion.field == "question_text",
+                ContentVersion.locale == "uk",
+            )
+            .one()
+        )
+        row.status = ContentVersionStatus.FAILED
+        row.attempts = 0
+        db.commit()
+
+        found = questions_missing_a_language(db, limit=10)
+
+        assert question.id in {q.id for q in found}
+
     def test_it_repairs_what_it_finds(self, db: Session, author: User):
         _seed_question(db, author_id=author.id)
         _seed_question(db, author_id=author.id)

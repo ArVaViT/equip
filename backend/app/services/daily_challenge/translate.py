@@ -167,15 +167,23 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
     misses cost nothing to catch on a later pass. The gate that decides
     what a reader may see is ``question_translation_completeness``.
 
-    "Has a row" rather than "has a good row", and the difference is the
-    whole behaviour of the sweep. A row parked at ``needs_review`` is
-    not retried by the orchestrator — the model runs at temperature 0,
-    so asking again returns the same text and the same verdict. Counting
-    those as missing put the sweep in a loop: the same two questions
-    selected every night, every field skipped, no progress, and the
-    day's budget spent on questions a person has to look at anyway.
+    "Has a settled row" rather than "has a good row", and the
+    difference is the whole behaviour of the sweep. A row parked at
+    ``needs_review`` is not retried by the orchestrator — the model runs
+    at temperature 0, so asking again returns the same text and the same
+    verdict. Counting those as missing put the sweep in a loop: the same
+    two questions selected every night, every field skipped, no
+    progress, and the day's budget spent on questions a person has to
+    look at anyway.
+
+    ``failed`` is the exception, because it is the one status the
+    orchestrator does retry. It is also what
+    ``POST /admin/translations/retry-reviewed`` leaves behind when an
+    operator re-opens rows after a prompt or validator change — so
+    treating it as settled would mean the sweep never went back for
+    exactly the rows somebody just asked it to redo.
     """
-    from app.models.content_version import ContentVersion
+    from app.models.content_version import ContentVersion, ContentVersionStatus
     from app.models.daily_challenge import DailyChallengeQuestion
 
     # The two sides are compared in Python, not in SQL:
@@ -191,6 +199,14 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
             ContentVersion.entity_type == "daily_challenge_question",
             ContentVersion.field == "question_text",
             ContentVersion.superseded_by.is_(None),
+            # ``failed`` is the one status the orchestrator retries, so a
+            # row sitting in it is not a language that has been dealt
+            # with — it is work waiting. This is also how a row re-opened
+            # by ``POST /admin/translations/retry-reviewed`` finds its way
+            # back into the sweep: the endpoint parks it at ``failed``,
+            # and without this the question would look settled and never
+            # be picked up again.
+            ContentVersion.status != ContentVersionStatus.FAILED,
         )
         .group_by(ContentVersion.entity_id)
         .having(func.count(func.distinct(ContentVersion.locale)) >= len(LOCALE_CODES))
