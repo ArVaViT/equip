@@ -401,3 +401,47 @@ class TestAClauseThatWasNeverTranslated:
             target_locale="en",
         )
         assert "untranslated_run" not in [issue.code for issue in issues]
+
+
+class TestAReferenceIsTheNumbersNotThePunctuation:
+    """Every language served here writes a reference its own way, and the
+    prompt now asks for that. The check has to read them as the same
+    reference or it parks a correct translation for review — which it
+    did, in production, for every German explanation that carried one.
+    """
+
+    def test_the_german_comma_is_not_a_lost_reference(self):
+        issues = validate_translation(
+            source="What does the passage promise, as stated in John 3:16?",
+            translated="Was verspricht die Stelle, wie in Johannes 3,16 beschrieben?",
+            source_locale="en",
+            target_locale="de",
+        )
+        assert "verse_reference_lost" not in [issue.code for issue in issues]
+
+    def test_an_en_dash_range_is_not_a_lost_reference(self):
+        issues = validate_translation(
+            source="What is promised to anyone who believes, as stated in John 3:14-16?",
+            translated="Яким є обіцяний результат для кожного, хто вірить, як зазначено в Івана 3:14–16?",
+            source_locale="en",
+            target_locale="uk",
+        )
+        assert "verse_reference_lost" not in [issue.code for issue in issues]
+
+    def test_a_reference_that_really_vanished_is_still_caught(self):
+        issues = validate_translation(
+            source="What is promised to anyone who believes, as stated in John 3:14-16?",
+            translated="Was wird jedem versprochen, der glaubt, wie die Stelle beschreibt?",
+            source_locale="en",
+            target_locale="de",
+        )
+        assert "verse_reference_lost" in [issue.code for issue in issues]
+
+    def test_a_different_verse_is_not_the_same_reference(self):
+        issues = validate_translation(
+            source="What does the passage promise, as stated in John 3:16?",
+            translated="Was verspricht die Stelle, wie in Johannes 3,17 beschrieben?",
+            source_locale="en",
+            target_locale="de",
+        )
+        assert "verse_reference_lost" in [issue.code for issue in issues]
