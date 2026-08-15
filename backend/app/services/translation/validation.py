@@ -83,7 +83,7 @@ _PLACEHOLDER_RE: Final[re.Pattern[str]] = re.compile(
 # for related reasons. A verse reference does not: Genesis 1:26 is
 # 1:26 in every language we serve, and losing one is what leaves a
 # student unable to find the passage.
-_VERSE_REF_RE: Final[re.Pattern[str]] = re.compile(r"\d+\s*[:.]\s*\d+(?:\s*[-–]\s*\d+)?")
+_VERSE_REF_RE: Final[re.Pattern[str]] = re.compile(r"\d+\s*[:.,]\s*\d+(?:\s*[-–]\s*\d+)?")
 
 # The fence the user prompt wraps content in. If either shape comes
 # back, the model echoed the scaffolding instead of translating inside
@@ -142,7 +142,16 @@ def _placeholders(text: str) -> list[str]:
 
 
 def _verse_refs(text: str) -> list[str]:
-    return sorted(re.sub(r"\s+", "", ref) for ref in _VERSE_REF_RE.findall(text))
+    """Chapter-and-verse pairs, in a form the languages can be compared in.
+
+    A German Bible prints Johannes 3,16 where an English one prints John
+    3:16 — same verse, different punctuation, and the prompt now asks
+    for the target language's own form. Comparing the raw strings made
+    every correctly-localized German reference look like a lost one, and
+    parked the row for review. The separator is normalised away; the
+    numbers are what has to survive.
+    """
+    return sorted(re.sub(r"[\s]+", "", ref).replace(",", ":").replace(".", ":") for ref in _VERSE_REF_RE.findall(text))
 
 
 def _normalised_for_identity(text: str) -> str:
