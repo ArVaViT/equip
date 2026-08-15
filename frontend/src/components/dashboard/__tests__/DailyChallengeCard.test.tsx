@@ -100,6 +100,30 @@ describe("DailyChallengeCard", () => {
     expect(await screen.findByText(/no question today/i)).toBeInTheDocument()
   })
 
+  it("says the question is not translated yet rather than rendering blanks", async () => {
+    // Before the daily challenge was wired into the translation
+    // pipeline, a reader in a language the question had not reached got
+    // a 200 with empty strings: a card with no question and four blank
+    // buttons. The backend now refuses to serve that, and this is what
+    // the reader sees instead.
+    const err = new AxiosError("not translated", "ERR_BAD_REQUEST")
+    Object.assign(err, {
+      response: {
+        status: 404,
+        data: {
+          detail: {
+            code: "daily_challenge.not_translated",
+            message: "not translated yet",
+          },
+        },
+      },
+    })
+    stub({ getToday: vi.fn().mockRejectedValue(err) })
+    render(<DailyChallengeCard />, { wrapper: Wrapper })
+
+    expect(await screen.findByText(/not in your language yet/i)).toBeInTheDocument()
+  })
+
   it("submits a selection and reveals the correct option + streak chip", async () => {
     const getToday = vi.fn().mockResolvedValue(todayPayload())
     const submitAttempt = vi.fn().mockResolvedValue({

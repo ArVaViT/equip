@@ -492,25 +492,6 @@
     }
   },
   "dailyChallenge": {
-    "eyebrow": "Daily Challenge",
-    "title": "Today's question",
-    "streakAriaLabel": "{{count}}-day streak",
-    "loadError": "Couldn't load today's challenge",
-    "notScheduled": {
-      "title": "No question today",
-      "body": "Tomorrow's challenge unlocks at midnight UTC."
-    },
-    "reveal": {
-      "correct": "Correct",
-      "wrong": "Not quite"
-    },
-    "toast": {
-      "correct": "Nice — that's the one.",
-      "wrong": "Close, but not today.",
-      "invalidOption": "That choice doesn't belong to today's question.",
-      "submitError": "Couldn't submit — please try again."
-    },
-    "openArchive": "Archive",
     "archive": {
       "title": "Daily Challenge archive",
       "description": "Past questions, with the days you played highlighted. Replays don't change your streak.",
@@ -545,6 +526,29 @@
         "submitError": "Couldn't submit replay — please try again.",
         "dateNotAllowed": "That date is owned by today's challenge — use the dashboard card."
       }
+    },
+    "eyebrow": "Daily Challenge",
+    "loadError": "Couldn't load today's challenge",
+    "notScheduled": {
+      "title": "No question today",
+      "body": "Tomorrow's challenge unlocks at midnight UTC."
+    },
+    "notTranslated": {
+      "title": "Not in your language yet",
+      "body": "Today's question is being translated. It will appear here as soon as it is ready."
+    },
+    "openArchive": "Archive",
+    "reveal": {
+      "correct": "Correct",
+      "wrong": "Not quite"
+    },
+    "streakAriaLabel": "{{count}}-day streak",
+    "title": "Today's question",
+    "toast": {
+      "correct": "Nice — that's the one.",
+      "wrong": "Close, but not today.",
+      "invalidOption": "That choice doesn't belong to today's question.",
+      "submitError": "Couldn't submit — please try again."
     }
   },
   "notifications": {

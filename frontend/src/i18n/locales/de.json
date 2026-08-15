@@ -492,25 +492,6 @@
     }
   },
   "dailyChallenge": {
-    "eyebrow": "Tagesaufgabe",
-    "title": "Die Frage von heute",
-    "streakAriaLabel": "Serie von {{count}} Tagen",
-    "loadError": "Die heutige Aufgabe konnte nicht geladen werden",
-    "notScheduled": {
-      "title": "Heute keine Frage",
-      "body": "Die Aufgabe von morgen öffnet um Mitternacht UTC."
-    },
-    "reveal": {
-      "correct": "Richtig",
-      "wrong": "Nicht ganz"
-    },
-    "toast": {
-      "correct": "Gut — genau die.",
-      "wrong": "Knapp, aber heute nicht.",
-      "invalidOption": "Diese Antwort gehört nicht zur heutigen Frage.",
-      "submitError": "Konnte nicht gesendet werden — bitte erneut versuchen."
-    },
-    "openArchive": "Archiv",
     "archive": {
       "title": "Archiv der Tagesaufgaben",
       "description": "Frühere Fragen, mit hervorgehobenen Tagen, an denen Sie gespielt haben. Wiederholungen ändern Ihre Serie nicht.",
@@ -545,6 +526,29 @@
         "submitError": "Wiederholung konnte nicht gesendet werden — bitte erneut versuchen.",
         "dateNotAllowed": "Dieses Datum gehört zur heutigen Aufgabe — nutzen Sie die Karte auf der Startseite."
       }
+    },
+    "eyebrow": "Tagesaufgabe",
+    "loadError": "Die heutige Aufgabe konnte nicht geladen werden",
+    "notScheduled": {
+      "title": "Heute keine Frage",
+      "body": "Die Aufgabe von morgen öffnet um Mitternacht UTC."
+    },
+    "notTranslated": {
+      "title": "Noch nicht in Ihrer Sprache",
+      "body": "Die heutige Frage wird gerade übersetzt. Sie erscheint hier, sobald sie fertig ist."
+    },
+    "openArchive": "Archiv",
+    "reveal": {
+      "correct": "Richtig",
+      "wrong": "Nicht ganz"
+    },
+    "streakAriaLabel": "Serie von {{count}} Tagen",
+    "title": "Die Frage von heute",
+    "toast": {
+      "correct": "Gut — genau die.",
+      "wrong": "Knapp, aber heute nicht.",
+      "invalidOption": "Diese Antwort gehört nicht zur heutigen Frage.",
+      "submitError": "Konnte nicht gesendet werden — bitte erneut versuchen."
     }
   },
   "notifications": {

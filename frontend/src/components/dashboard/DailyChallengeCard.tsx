@@ -58,6 +58,10 @@ function CandleStreak({ count, label }: CandleStreakProps) {
  *  - not scheduled (404 ``daily_challenge.not_scheduled``): muted empty
  *    state ("no question today"). The card stays mounted so the
  *    Dashboard grid keeps its layout, but the body switches.
+ *  - not translated (404 ``daily_challenge.not_translated``): there is a
+ *    question today, it just has not reached this language yet. Said out
+ *    loud rather than hidden — the reader may well know somebody who
+ *    already answered today's.
  *  - fresh: 4 option buttons, the user can pick one
  *  - already attempted: reveal-mode with the user's prior selection,
  *    the correct answer, the explanation, and the streak chip with
@@ -74,6 +78,11 @@ export function DailyChallengeCard() {
   const [reveal, setReveal] = useState<RevealState | null>(null)
   const [loading, setLoading] = useState(true)
   const [notScheduled, setNotScheduled] = useState(false)
+  // Scheduled, but not in this reader's language yet. A different state
+  // from "no question today": there IS one, and everybody else can see
+  // it. Saying so is the honest version of what used to render as an
+  // empty question with four blank buttons.
+  const [notTranslated, setNotTranslated] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [streakAfter, setStreakAfter] = useState<number | null>(null)
 
@@ -113,8 +122,11 @@ export function DailyChallengeCard() {
         }
       } catch (err) {
         if (cancelled) return
-        if (getErrorCode(err) === "daily_challenge.not_scheduled") {
+        const code = getErrorCode(err)
+        if (code === "daily_challenge.not_scheduled") {
           setNotScheduled(true)
+        } else if (code === "daily_challenge.not_translated") {
+          setNotTranslated(true)
         } else {
           // The card is non-critical surface; log via toast and let
           // the empty-error state handle the render.
@@ -219,6 +231,12 @@ export function DailyChallengeCard() {
             className="py-2"
             title={t("dailyChallenge.notScheduled.title")}
             description={t("dailyChallenge.notScheduled.body")}
+          />
+        ) : notTranslated ? (
+          <EmptyState
+            className="py-2"
+            title={t("dailyChallenge.notTranslated.title")}
+            description={t("dailyChallenge.notTranslated.body")}
           />
         ) : data ? (
           <>

@@ -114,6 +114,14 @@ class ErrorCode(enum.StrEnum):
     team has gaps in the schedule. Frontend should hide the daily card
     instead of showing an error toast."""
 
+    DAILY_CHALLENGE_NOT_TRANSLATED = "daily_challenge.not_translated"
+    """A question is scheduled, but not in the language this reader
+    asked for. The platform serves no substitute language, so there is
+    nothing to render — the alternative is a card with an empty question
+    and blank buttons. Frontend shows "not available in your language
+    yet" rather than hiding the card silently, because the reader can
+    see other people have a challenge today."""
+
     DAILY_CHALLENGE_ALREADY_ATTEMPTED = "daily_challenge.already_attempted"
     """User already submitted a live attempt for the current UTC date.
     Frontend re-renders the post-submit state from the returned

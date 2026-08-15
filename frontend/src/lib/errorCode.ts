@@ -50,6 +50,7 @@ export type ErrorCode =
   | "quiz.attempts_exhausted"
   // daily challenge
   | "daily_challenge.not_scheduled"
+  | "daily_challenge.not_translated"
   | "daily_challenge.already_attempted"
   | "daily_challenge.invalid_option"
   | "daily_challenge.archive_date_not_allowed"

@@ -84,6 +84,16 @@ def get_today(
         question=question,
         display_locale=display_locale,
     )
+    if not bundle.is_servable:
+        # Scheduled, but not in this reader's language. Say so; the pool
+        # is swept for missing languages every tick, so this is a wait,
+        # not a permanent state.
+        raise equip_error(
+            ErrorCode.DAILY_CHALLENGE_NOT_TRANSLATED,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Today's Daily Challenge is not available in this language yet",
+            context={"challenge_date": today.isoformat(), "locale": display_locale},
+        )
 
     options_view = [
         DailyChallengeOptionStudentView(

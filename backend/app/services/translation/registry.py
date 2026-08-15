@@ -327,7 +327,7 @@ def entity_field_specs(
     db: Session,
     entity_type: EntityType,
     entity: object,
-    course: Course,
+    source_locale: LocaleCode,
 ) -> list[TranslationFieldSpec]:
     """Return the translatable fields of ``entity`` with their source text
     and the language that text is actually in.
@@ -343,7 +343,10 @@ def entity_field_specs(
     translate and nothing to wait for.
     """
     reg = REGISTRY[entity_type]
-    course_source: LocaleCode = normalize_locale(course.source_locale)
+    # Declared language of whatever owns this entity — the course for
+    # course content, the question itself for a platform-wide Daily
+    # Challenge row. Per-field detection below can still override it.
+    declared: LocaleCode = normalize_locale(source_locale)
 
     # Phase 5e/5f: source text columns are dropped on several entities
     # (cohort, chapter_block, assignment, course_event, announcement,
@@ -362,8 +365,8 @@ def entity_field_specs(
             entity_type=entity_type,
             entity_ids=[str(entity.id)],  # type: ignore[attr-defined]
             fields=field_names_needing_cv,
-            display_locale=course_source,
-            source_locale=course_source,
+            display_locale=declared,
+            source_locale=declared,
         )
         cv_source_texts = {
             field: bulk.get((str(entity.id), field))  # type: ignore[attr-defined]
@@ -385,7 +388,7 @@ def entity_field_specs(
         # back to the course-level source so the existing behaviour
         # is preserved for ambiguous fields.
         detected = detect_locale(str(text))
-        field_source: LocaleCode = detected or course_source
+        field_source: LocaleCode = detected or declared
         fields.append(
             TranslationFieldSpec(
                 field=fs.name,
@@ -425,7 +428,7 @@ def reconcile_entity(
         return OrchestratorReport()
     course_source: LocaleCode = normalize_locale(course.source_locale)
 
-    fields = entity_field_specs(db, entity_type, entity, course)
+    fields = entity_field_specs(db, entity_type, entity, course_source)
     if not fields:
         return OrchestratorReport()
 
