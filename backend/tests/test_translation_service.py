@@ -60,16 +60,31 @@ def test_system_prompt_includes_translate_only_directive():
     assert "Translate ONLY" in prompt
 
 
-def test_system_prompt_does_not_ask_model_to_emit_bible_text():
-    """We pivoted away from "output the KJV/Synodal exact text" because models
-    hallucinate verses confidently; the prompt should now instruct the model
-    to leave quoted scripture untouched instead."""
+def test_system_prompt_never_asks_the_model_to_recite_scripture():
+    """The thing #990 stopped, and that stays stopped: no edition is named,
+    and a verse the substitution layer recognised arrives as a token the
+    model is told to keep in place rather than fill in. Reciting a verse
+    from memory is what models do confidently and wrongly."""
     prompt_en = build_system_prompt(source_locale="ru", target_locale="en")
     prompt_ru = build_system_prompt(source_locale="en", target_locale="ru")
     assert "King James" not in prompt_en
     assert "Synodal" not in prompt_ru
-    assert "leave the original verse text untouched" in prompt_en
-    assert "leave the original verse text untouched" in prompt_ru
+    for prompt in (prompt_en, prompt_ru):
+        assert "Never write scripture in its place" in prompt
+        assert "keep the token exactly where it is" in prompt
+
+
+def test_a_quotation_the_layer_could_not_match_is_translated():
+    """The other half, and the reason it changed. The old rule left every
+    quotation in the source language. Between two languages of different
+    alphabets that still reads as a citation; in German it is a sentence
+    the reader cannot read, and 43 of the first 50 Daily Challenge
+    explanations were parked for review because of it."""
+    prompt_de = build_system_prompt(source_locale="en", target_locale="de")
+    assert "must be translated into German" in prompt_de
+    # The guard against filling in the rest of the verse from memory.
+    assert "never extend it" in prompt_de
+    assert "translate that half and stop" in prompt_de
 
 
 def test_system_prompt_asks_for_the_reference_in_the_target_language():
