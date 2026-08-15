@@ -266,3 +266,56 @@ class TestDetectLocaleMarkup:
 
     def test_markup_only_input_returns_none(self):
         assert detect_locale("<div><br/></div>") is None
+
+
+class TestAWordTwoLanguagesShare:
+    @pytest.fixture(autouse=True)
+    def _all_four(self, monkeypatch: pytest.MonkeyPatch):
+        """This class is about German against English, so it needs the
+        set the platform actually serves — the file's default of ru+en
+        would score German prose against Russian and English only."""
+        monkeypatch.setattr(lang_mod, "LOCALE_CODES", ("ru", "en", "de", "uk"))
+
+    """The rule that stops a common word from deciding a language.
+
+    "was" is German's most ordinary interrogative and English's past
+    tense of "to be". It sat in the English list and not the German
+    one, so *Was wurde laut 1. Mose 2,1 vollendet?* — six German words
+    — scored 1:0 for English. The row was written, validated as the
+    wrong language, and parked for review, in production.
+
+    Adding "was" to German alone would have swapped the error. Dropping
+    every word the profiles share is the rule that holds, and it scales
+    to a fifth language that overlaps a fourth.
+    """
+
+    def test_the_sentence_that_started_it(self):
+        assert detect_locale("Was wurde laut 1. Mose 2,1 vollendet?") == "de"
+
+    def test_english_still_reads_as_english(self):
+        assert detect_locale("What was completed according to Genesis 2:1?") == "en"
+
+    def test_the_shared_words_are_excluded_from_scoring(self):
+        from app.services.language_detection import _AMBIGUOUS_WORDS
+
+        assert "was" in _AMBIGUOUS_WORDS
+        assert "in" in _AMBIGUOUS_WORDS
+
+    def test_a_word_only_one_language_has_still_counts(self):
+        from app.services.language_detection import _AMBIGUOUS_WORDS
+
+        assert "wurde" not in _AMBIGUOUS_WORDS
+        assert "the" not in _AMBIGUOUS_WORDS
+
+    def test_short_german_questions_read_as_german(self):
+        for text in (
+            "Wer schrieb den Brief an die Römer?",
+            "Was sagt der Vers über den Glauben?",
+            "Wem wurde diese Verheißung gegeben?",
+        ):
+            assert detect_locale(text) == "de", text
+
+    def test_the_detector_still_refuses_to_guess_on_nothing(self):
+        # The whole design: no signal means no answer, not a coin flip.
+        assert detect_locale("Amen") is None
+        assert detect_locale("1:1") is None
