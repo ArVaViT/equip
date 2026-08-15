@@ -1,10 +1,11 @@
+import type { SupportedLocale } from "@/i18n/config"
 import api from "./api"
 
 export interface VerseOfTheDay {
   reference: string
   text: string
   version: string
-  locale: "en" | "ru"
+  locale: SupportedLocale
   date: string
 }
 
@@ -15,7 +16,7 @@ export interface VerseOfTheDay {
  * the dashboard hides the card rather than blocking the page.
  */
 export const verseOfTheDayService = {
-  async get(locale: "en" | "ru"): Promise<VerseOfTheDay> {
+  async get(locale: SupportedLocale): Promise<VerseOfTheDay> {
     const { data } = await api.get<VerseOfTheDay>("/verse-of-the-day", {
       params: { locale },
     })

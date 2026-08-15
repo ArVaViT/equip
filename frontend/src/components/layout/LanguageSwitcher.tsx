@@ -5,6 +5,7 @@ import { Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/context/useAuth"
 import {
+  DEFAULT_LOCALE,
   SUPPORTED_LOCALES,
   isSupportedLocale,
   type SupportedLocale,
@@ -22,9 +23,14 @@ interface LanguageSwitcherProps {
   variant?: "compact" | "full"
 }
 
+// Each language names itself. A person looking for their own language scans
+// for the word they know, not for its translation into the language they are
+// currently stuck in.
 const LABELS: Record<SupportedLocale, { native: string; short: string }> = {
   ru: { native: "Русский", short: "RU" },
   en: { native: "English", short: "EN" },
+  de: { native: "Deutsch", short: "DE" },
+  uk: { native: "Українська", short: "UK" },
 }
 
 export default function LanguageSwitcher({ variant = "full" }: LanguageSwitcherProps) {
@@ -73,7 +79,12 @@ export default function LanguageSwitcher({ variant = "full" }: LanguageSwitcherP
   }
 
   if (variant === "compact") {
-    const next: SupportedLocale = active === "ru" ? "en" : "ru"
+    // With two languages this was a toggle. With four it is a cycle: one tap
+    // moves to the next language and keeps going round, so every language is
+    // reachable from the header without a menu.
+    const index = SUPPORTED_LOCALES.indexOf(active)
+    const next: SupportedLocale =
+      SUPPORTED_LOCALES[(index + 1) % SUPPORTED_LOCALES.length] ?? DEFAULT_LOCALE
     return (
       <Button
         variant="ghost"

@@ -1,3 +1,4 @@
+import { DEFAULT_LOCALE, type SupportedLocale } from "@/i18n/config"
 import { supabase } from "@/lib/supabase"
 import type { Session } from "@supabase/supabase-js"
 
@@ -14,7 +15,7 @@ export const authService = {
      * The DB CHECK whitelists this value; passing anything else
      * silently falls back to 'ru' at the trigger level.
      */
-    preferredLocale: "en" | "ru" = "ru",
+    preferredLocale: SupportedLocale = DEFAULT_LOCALE,
   ): Promise<void> {
     // Self-service signup always lands as student. Teacher / admin
     // promotion is admin-only via the role-change endpoint.

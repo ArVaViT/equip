@@ -22,7 +22,7 @@ import i18n, { type BackendModule, type ReadCallback } from "i18next"
 import { initReactI18next } from "react-i18next"
 import LanguageDetector from "i18next-browser-languagedetector"
 
-export const SUPPORTED_LOCALES = ["ru", "en"] as const
+export const SUPPORTED_LOCALES = ["ru", "en", "de", "uk"] as const
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
 export const DEFAULT_LOCALE: SupportedLocale = "ru"
 
@@ -46,6 +46,21 @@ if (typeof window !== "undefined") {
   }
 }
 
+/**
+ * Each language named in itself.
+ *
+ * A person hunting for their own language scans for the word they know — not
+ * for its translation into whichever language the interface is currently
+ * stuck in. Kept here rather than in a component because both the switcher
+ * and the first-run setup screen offer the same list.
+ */
+export const LOCALE_NATIVE_LABELS: Record<SupportedLocale, string> = {
+  ru: "Русский",
+  en: "English",
+  de: "Deutsch",
+  uk: "Українська",
+}
+
 export function isSupportedLocale(value: unknown): value is SupportedLocale {
   return typeof value === "string" && (SUPPORTED_LOCALES as readonly string[]).includes(value)
 }
@@ -55,6 +70,8 @@ export function isSupportedLocale(value: unknown): value is SupportedLocale {
 const LOCALE_LOADERS: Record<SupportedLocale, () => Promise<{ default: object }>> = {
   ru: () => import("./locales/ru.json"),
   en: () => import("./locales/en.json"),
+  de: () => import("./locales/de.json"),
+  uk: () => import("./locales/uk.json"),
 }
 
 /**

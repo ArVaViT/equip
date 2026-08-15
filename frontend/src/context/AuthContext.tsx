@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import { supabase } from "@/lib/supabase"
 import { authService } from "@/services/auth"
-import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
+import { DEFAULT_LOCALE, isSupportedLocale, type SupportedLocale } from "@/i18n/config"
 import type { User } from "@/types"
 import { AuthContext } from "./auth-context"
 import { setDatadogUser, clearDatadogUser } from "@/lib/datadog"
@@ -213,7 +213,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: string,
       password: string,
       fullName: string,
-      preferredLocale: "en" | "ru",
+      preferredLocale: SupportedLocale,
     ) => {
       await authService.register(email, password, fullName, preferredLocale)
     },

@@ -11,9 +11,14 @@
  *      JSON entry blows up at PR time, even if no other test happens to
  *      render the component.
  *
- * Plural-aware: a key may exist only as `key_one`/`key_other` on the EN side
- * or `key_one`/`key_few`/`key_many`/`key_other` on the RU side — i18next
- * resolves the base key at render time via the active plural rule.
+ * Plural-aware: a key may exist only as `key_one`/`key_other` in a two-form
+ * language (en, de) or `key_one`/`key_few`/`key_many`/`key_other` in a
+ * four-form one (ru, uk) — i18next resolves the base key at render time via
+ * the active plural rule.
+ *
+ * Every served language is checked, not just the first two. A missing key
+ * does not throw for the person reading in German any less than it does for
+ * the person reading in Russian.
  */
 
 import { describe, expect, it } from "vitest"
@@ -22,6 +27,8 @@ import { join, resolve, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 import en from "../locales/en.json"
 import ru from "../locales/ru.json"
+import de from "../locales/de.json"
+import uk from "../locales/uk.json"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -40,11 +47,16 @@ function flatten(obj: Json, prefix = "", out = new Set<string>()): Set<string> {
   return out
 }
 
-const enKeys = flatten(en as Json)
-const ruKeys = flatten(ru as Json)
+const TWO_FORM_SUFFIXES = ["_one", "_other"]
+const FOUR_FORM_SUFFIXES = ["_one", "_few", "_many", "_other"]
 
-const EN_PLURAL_SUFFIXES = ["_one", "_other"]
-const RU_PLURAL_SUFFIXES = ["_one", "_few", "_many", "_other"]
+/** Every language the platform serves, with the plural forms it uses. */
+const BUNDLES: ReadonlyArray<{ locale: string; keys: Set<string>; suffixes: readonly string[] }> = [
+  { locale: "en", keys: flatten(en as Json), suffixes: TWO_FORM_SUFFIXES },
+  { locale: "ru", keys: flatten(ru as Json), suffixes: FOUR_FORM_SUFFIXES },
+  { locale: "de", keys: flatten(de as Json), suffixes: TWO_FORM_SUFFIXES },
+  { locale: "uk", keys: flatten(uk as Json), suffixes: FOUR_FORM_SUFFIXES },
+]
 
 function existsWithPlurals(key: string, set: Set<string>, suffixes: readonly string[]): boolean {
   if (set.has(key)) return true
@@ -107,31 +119,20 @@ describe("i18n key coverage", () => {
     expect(usedKeys.size).toBeGreaterThan(50)
   })
 
-  it("every literal t() key resolves in en.json (or its plural variants)", () => {
-    const missing: string[] = []
-    for (const key of usedKeys) {
-      if (!existsWithPlurals(key, enKeys, EN_PLURAL_SUFFIXES)) missing.push(key)
-    }
-    if (missing.length > 0) {
-      missing.sort()
-      throw new Error(
-        `Missing in en.json:\n${missing.map((k) => `  ${k}`).join("\n")}\n` +
-          `(${missing.length} key${missing.length === 1 ? "" : "s"})`,
-      )
-    }
-  })
-
-  it("every literal t() key resolves in ru.json (or its plural variants)", () => {
-    const missing: string[] = []
-    for (const key of usedKeys) {
-      if (!existsWithPlurals(key, ruKeys, RU_PLURAL_SUFFIXES)) missing.push(key)
-    }
-    if (missing.length > 0) {
-      missing.sort()
-      throw new Error(
-        `Missing in ru.json:\n${missing.map((k) => `  ${k}`).join("\n")}\n` +
-          `(${missing.length} key${missing.length === 1 ? "" : "s"})`,
-      )
-    }
-  })
+  it.each(BUNDLES.map((b) => [b.locale, b] as const))(
+    "every literal t() key resolves in %s.json (or its plural variants)",
+    (locale, bundle) => {
+      const missing: string[] = []
+      for (const key of usedKeys) {
+        if (!existsWithPlurals(key, bundle.keys, bundle.suffixes)) missing.push(key)
+      }
+      if (missing.length > 0) {
+        missing.sort()
+        throw new Error(
+          `Missing in ${locale}.json:\n${missing.map((k) => `  ${k}`).join("\n")}\n` +
+            `(${missing.length} key${missing.length === 1 ? "" : "s"})`,
+        )
+      }
+    },
+  )
 })
