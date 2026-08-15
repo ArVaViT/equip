@@ -20,6 +20,7 @@ from app.schemas.certificate import CertificateResponse, CertificateVerifyRespon
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services import certificate_service
 from app.services.certificate_readiness import certificate_blockers
+from app.services.certificate_service import CERTIFICATE_LOCALE
 from app.services.my_grade_service import latest_enrollment
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 
@@ -32,9 +33,19 @@ def _localize_cert_responses(
     *,
     display_locale: LocaleCode,
 ) -> list[CertificateResponse]:
-    """Build ``CertificateResponse`` instances with the course title
-    overlaid into the requested display locale. Falls back to the
-    course's source title when no translation row exists.
+    """Build ``CertificateResponse`` instances carrying the course title
+    that is printed on the document.
+
+    An issued certificate has its own title — English, frozen at
+    issuance — and that is what comes back, whatever language the
+    reader's interface is in. The alternative is a page where the
+    certificate shows one course name and the document below it shows
+    another.
+
+    ``display_locale`` still resolves the title for certificates that
+    have no snapshot: rows issued before the snapshot existed, and rows
+    that are not issued at all (pending / teacher-approved), which are
+    listings rather than documents.
     """
     if not certs:
         return []
@@ -43,7 +54,7 @@ def _localize_cert_responses(
     out: list[CertificateResponse] = []
     for cert in certs:
         base = CertificateResponse.model_validate(cert, from_attributes=True)
-        title = title_by_course.get(str(cert.course_id)) if cert.course_id else None
+        title = cert.course_title or (title_by_course.get(str(cert.course_id)) if cert.course_id else None)
         out.append(base.model_copy(update={"course_title": title}) if title else base)
     return out
 
@@ -298,8 +309,12 @@ def _enrich_pending_certs(
                 update={
                     "student_name": student[0] if student else None,
                     "student_email": student[1] if student else None,
+                    # Issued certificates carry their own title; the
+                    # rest of this queue is pending work, where the
+                    # reviewer's own language is the useful one.
                     "course_title": (
-                        course_titles.get(str(cert.course_id)) if cert.course_id else cert.archived_course_title
+                        cert.course_title
+                        or (course_titles.get(str(cert.course_id)) if cert.course_id else cert.archived_course_title)
                     ),
                     "teacher_approver_name": ((approver[0] or approver[1]) if approver else None),
                     "blockers": blockers_by_cert.get(cert.id, []),
@@ -506,17 +521,22 @@ def verify_certificate(
     # ``permanently_delete_course`` per Phase 5g, was a Postgres trigger
     # before) when the source course has been deleted — the credential
     # still has to verify even after the underlying course is gone.
-    # Phase 5ak: course title is resolved at the verifier's locale (an
-    # English-speaking employer hits ``Accept-Language: en`` and sees
-    # "Genesis Overview"; a Russian student verifying their own cert
-    # gets "Обзор Бытия"). Previously hardcoded ``display_locale="en"``,
-    # which broke verification for the recipient's own locale and for
-    # any non-English employer.
-    display_locale = normalize_locale(accept_language)
-    response.headers["Vary"] = "Accept-Language"
-    course_title: str | None = None
-    if course is not None:
-        course_title = fetch_course_titles_by_id(db, [course.id], display_locale=display_locale).get(course.id) or None
+    # The document carries its own title now: English, captured at
+    # issuance (``_snapshot_letterhead``). It used to be resolved at the
+    # verifier's language, so an employer in Berlin and an employer in
+    # Kyiv checking the same credential were shown different course
+    # names — and both would change again the next time the translation
+    # was re-run. The one field a stranger actually reads was the one
+    # that could still move. No ``Vary`` header: this response no longer
+    # depends on who is asking.
+    #
+    # Certificates issued before that snapshot existed fall back the way
+    # they always did.
+    course_title: str | None = cert.course_title
+    if course_title is None and course is not None:
+        course_title = (
+            fetch_course_titles_by_id(db, [course.id], display_locale=CERTIFICATE_LOCALE).get(course.id) or None
+        )
     if course_title is None:
         course_title = cert.archived_course_title
     return CertificateVerifyResponse(

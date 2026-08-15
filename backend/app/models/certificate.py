@@ -71,6 +71,11 @@ class Certificate(Base):
     # ``20260516020225_certificates_course_set_null_with_archive.sql``.
     course_id: Mapped[str | None] = mapped_column(ForeignKey("courses.id", ondelete="SET NULL"), nullable=True)
     archived_course_title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The course name as printed on the document: English, captured at
+    # issuance, never re-read. Every other word on the certificate was
+    # already frozen; this was the one field a stranger actually reads
+    # and the one that could still move under them.
+    course_title: Mapped[str | None] = mapped_column(Text, nullable=True)
     # No server_default: the previous ``func.now()`` populated this column
     # on certificate REQUEST (status='pending'), exposing a fake "issued"
     # datetime months before ``admin_approve`` actually issues the cert.
