@@ -1,3 +1,6 @@
+# ruff: noqa: RUF003
+# Edition names and probe text are Cyrillic on purpose — НРТ and Куліш
+# are what those bibles are called.
 """Verse of the Day service backed by the YouVersion Platform API.
 
 Selects one of ~250 curated, doctrinally-neutral, evergreen passages by
@@ -31,14 +34,23 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 YOUVERSION_API_BASE = "https://api.youversion.com/v1"
-# Bible IDs (verified 2026-05-14 via /v1/bibles?language_ranges[]=eng/rus):
+# Bible IDs, one per served locale. The route answers 404 for any locale
+# missing from this map, so it has to cover ``LOCALE_CODES`` —
+# ``test_verse_of_the_day_speaks_every_language`` fails if it drifts.
+#
 #  * 3034 — Berean Standard Bible (public domain, modern English)
 #  * 143  — Новый Русский Перевод (modern Russian)
-# If we add more locales, extend this map; the route will respond 404 for
-# any locale not represented here.
+#  * 51   — Luther 1912 (public domain; the same edition the scripture
+#           substitution layer quotes, so a verse reads identically
+#           whether it arrives here or inside a lesson)
+#  * 188  — Куліш & Пулюй 1905, the only complete Ukrainian edition the
+#           API offers. Pre-1928 orthography is a real readability cost,
+#           accepted because the alternative is no Ukrainian Scripture.
 _BIBLE_ID_BY_LOCALE: dict[str, int] = {
     "en": 3034,
     "ru": 143,
+    "de": 51,
+    "uk": 188,
 }
 
 # 250 well-known, evergreen passages covering salvation, hope, comfort,
@@ -347,6 +359,19 @@ class VerseNotInBible(Exception):
 # "complex" range raise ``VerseNotInBible`` for Septuagint-numbered
 # bibles, which triggers the walk-forward to the next clean entry.
 _SEPTUAGINT_PSALM_OFFSET_RANGE = (11, 113, 117, 146)
+
+# Which editions number the Psalms the Septuagint way. Checked against the
+# live API on 2026-08-15 rather than assumed, at the five references where
+# the two systems disagree — Hebrew 10 (LXX folds it into 9), 51, 116 (LXX
+# splits into 114+115), 147 (LXX splits into 146+147) and 148 (identical) —
+# plus the shepherd psalm, Hebrew 23 / LXX 22.
+#
+# НРТ answers Hebrew 23 with "Господня земля" (that is Hebrew 24) and gives
+# the shepherd at 22: Septuagint. Luther 1912 and Куліш both answer every
+# probe the way the Hebrew-numbered English edition does, so neither is
+# remapped. Guessing would have been reasonable and wrong for Ukrainian:
+# a Slavic edition is not automatically Septuagint-numbered, and a wrong
+# guess makes the platform quote a different psalm than the one it names.
 _SEPTUAGINT_LOCALES = frozenset({"ru"})
 
 
@@ -393,7 +418,7 @@ class VerseOfTheDay:
     """Short translation abbreviation (``BSB``, ``NRT``)."""
 
     locale: LocaleCode
-    """The locale this verse was rendered in (``en`` or ``ru``)."""
+    """The locale this verse was rendered in."""
 
     date: str
     """ISO-8601 date this verse was selected for, in UTC. Two clients
