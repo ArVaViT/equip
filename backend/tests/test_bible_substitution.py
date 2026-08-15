@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import pytest
 
+from app.schemas.locale import LOCALE_CODES
 from app.services.bible.books import all_canonical_slugs, display_book_name, find_book
 from app.services.bible.references import BibleRef, parse_references
 from app.services.bible.store import is_locale_bundled, lookup, reset_cache
@@ -95,18 +96,24 @@ def test_display_book_name_renders_local_short_forms():
 
 def test_display_book_name_returns_none_for_unknown_inputs():
     assert display_book_name("nonexistent", "ru") is None
-    assert display_book_name("matthew", "uk") is None
+    # A language the platform does not serve — Ukrainian used to be one
+    # of these, and the caller's silent English fallback is why nobody
+    # noticed for a week. See ``test_every_language_names_the_books``.
+    assert display_book_name("matthew", "fr") is None
     assert display_book_name("", "ru") is None
 
 
 def test_every_canonical_slug_has_a_display_name_in_each_locale():
     """The translation pipeline cannot localize a reference whose
     canonical slug has no display entry in the target locale, so this
-    test pins the contract — every book covered by the parser must
-    also be covered by the renderer for both bundled locales."""
+    test pins the contract — every book covered by the parser must also
+    be covered by the renderer, in every language the platform serves.
+    ``test_every_language_names_the_books`` covers the same ground with
+    the reasoning; this stays because it is where the parser's authors
+    will look."""
     for slug in all_canonical_slugs():
-        assert display_book_name(slug, "ru") is not None, slug
-        assert display_book_name(slug, "en") is not None, slug
+        for locale in LOCALE_CODES:
+            assert display_book_name(slug, locale) is not None, f"{locale}/{slug}"
 
 
 # ---------------------------------------------------------------------------
