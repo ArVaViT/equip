@@ -1,5 +1,7 @@
 """Tests for the /api/v1/courses endpoints."""
 
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -200,8 +202,13 @@ class TestAdminManagesForeignCourse:
         from app.models.user import User, UserRole
 
         course = _create_course(client)
+        # A real UUID, not the string that looks like one: the column is a
+        # uuid type and its bind processor reaches for ``.hex``. This only
+        # ever passed because another file seeded the same id first and the
+        # suite happened to run that file earlier — the test failed on its
+        # own, which is the shape of a test that is not really passing.
         other = User(
-            id="dddddddd-dddd-dddd-dddd-dddddddddddd",
+            id=uuid.UUID("dddddddd-dddd-dddd-dddd-dddddddddddd"),
             email="other-teacher@example.com",
             full_name="Other Teacher",
             role=UserRole.TEACHER.value,
@@ -211,7 +218,14 @@ class TestAdminManagesForeignCourse:
 
         app.dependency_overrides[get_current_user] = lambda: other
         app.dependency_overrides[get_optional_user] = lambda: other
-        resp = client.put(f"{PREFIX}/{course['id']}", json={"title": "Steal"})
+        try:
+            resp = client.put(f"{PREFIX}/{course['id']}", json={"title": "Steal"})
+        finally:
+            # The fixture clears these on teardown, but only if we reach
+            # teardown: an assertion failure here would otherwise leave
+            # every later test in this file authenticated as a stranger.
+            app.dependency_overrides.pop(get_current_user, None)
+            app.dependency_overrides.pop(get_optional_user, None)
         assert resp.status_code == 403, resp.text
 
 
