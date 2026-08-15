@@ -1,0 +1,2525 @@
+{
+  "common": {
+    "appName": "Equip",
+    "cancel": "Abbrechen",
+    "confirm": "Bestätigen",
+    "ok": "OK",
+    "continue": "Weiter",
+    "tryAgain": "Erneut versuchen",
+    "loading": "Wird geladen …",
+    "loadingAccessible": "Wird geladen",
+    "somethingWentWrong": "Etwas ist schiefgelaufen",
+    "view": "Öffnen",
+    "signIn": "Anmelden",
+    "signOut": "Abmelden",
+    "register": "Registrieren",
+    "close": "Schließen",
+    "scrollToTop": "Nach oben",
+    "skipToContent": "Zum Inhalt springen",
+    "dismissAnnouncement": "Ankündigung schließen",
+    "save": "Speichern"
+  },
+  "inlineEdit": {
+    "defaultPlaceholder": "Zum Bearbeiten klicken",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "editAria": "{{what}} bearbeiten",
+    "cover": {
+      "replace": "Ersetzen",
+      "remove": "Entfernen",
+      "empty": "Bild anklicken oder hierher ziehen",
+      "disabled": "Kein Titelbild",
+      "unsupportedTitle": "Dateiformat nicht unterstützt",
+      "unsupportedDescription": "Wählen Sie eine Bilddatei.",
+      "tooLargeTitle": "Bild zu groß",
+      "tooLargeDescription": "Höchstens {{max}} MB.",
+      "uploadFailedTitle": "Hochladen fehlgeschlagen",
+      "removeConfirmTitle": "Titelbild entfernen?",
+      "removeConfirmDescription": "Damit wird das Titelbild des Kurses gelöscht.",
+      "removeConfirmAction": "Entfernen"
+    }
+  },
+  "header": {
+    "home": "Start",
+    "courses": "Kurse",
+    "calendar": "Kalender",
+    "certificates": "Zertifikate",
+    "manage": "Verwalten",
+    "manageCourses": "Kurse verwalten",
+    "admin": "Admin",
+    "adminPanel": "Administration",
+    "profile": "Profil",
+    "profileAndSettings": "Profil und Einstellungen",
+    "menu": "Menü",
+    "navAriaLabel": "Hauptnavigation",
+    "mobileMenuTitle": "Navigation",
+    "mobileMenuDescription": "Bereiche, Benachrichtigungen und Konto.",
+    "notifications": "Benachrichtigungen"
+  },
+  "footer": {
+    "tagline": "Systematische Bibellehre für alle, die es mit der Schrift ernst meinen.",
+    "support": "Support kontaktieren",
+    "rightsReserved": "Alle Rechte vorbehalten.",
+    "product": "Produkt",
+    "legal": "Rechtliches"
+  },
+  "landing": {
+    "hero": {
+      "registerCta": "Konto erstellen"
+    },
+    "trust": {
+      "openSource": "Kostenlos und quelloffen",
+      "bilingual": "Vier Sprachen: RU · EN · DE · UK",
+      "certificates": "Überprüfbare Zertifikate"
+    },
+    "value": {
+      "heading": "Was Equip bietet",
+      "subheading": "Werkzeuge für ernsthaftes Schriftstudium — ohne Ablenkung, ohne verlorenen Fortschritt.",
+      "structure": {
+        "eyebrow": "Kursaufbau",
+        "title": "Ein Kurs, kein Haufen Videos",
+        "body": "Jeder Kurs besteht aus Modulen und Kapiteln in fester Reihenfolge. Sie sehen jederzeit, was erledigt ist, was noch aussteht und was als Nächstes kommt.",
+        "module": "Modul 1 · 1. Mose 1–11",
+        "chapter1": "Kapitel 1 — Die Schöpfung",
+        "chapter2": "Kapitel 2 — Der Sündenfall",
+        "chapter3": "Kapitel 3 — Kain und Abel"
+      },
+      "assessment": {
+        "eyebrow": "Prüfung",
+        "title": "Mehr als Multiple Choice",
+        "body": "Vier Aufgabentypen, darunter Aufsatz und Kurzantwort — bewertet von einem echten Dozenten, nicht nur automatisch.",
+        "sampleQuestion": "Fassen Sie den Hauptgedanken dieses Kapitels in eigenen Worten zusammen.",
+        "gradedBadge": "Vom Dozenten bewertet"
+      },
+      "certificates": {
+        "eyebrow": "Zertifizierung",
+        "title": "Ein Zertifikat, das sich prüfen lässt",
+        "body": "Schließen Sie einen Kurs ab und erhalten Sie ein Zertifikat mit einer eindeutigen Nummer. Jeder kann anhand dieser Nummer seine Echtheit prüfen.",
+        "certTitle": "Abschlusszertifikat",
+        "verifyLabel": "Nach Nummer prüfen"
+      },
+      "bilingual": {
+        "eyebrow": "Sprache",
+        "title": "Mehrsprachig vom ersten Tag an",
+        "body": "Der russischsprachige Kurs einer Dozentin steht automatisch auf Englisch, Deutsch und Ukrainisch bereit — ohne manuelle Übersetzung, ohne Wartezeit.",
+        "caption": "Kursmaterialien werden automatisch übersetzt"
+      }
+    },
+    "how": {
+      "heading": "So funktioniert es",
+      "step1": "Registrieren — dauert eine Minute, E-Mail oder Google genügt.",
+      "step2": "Katalog öffnen und sich für den gewünschten Kurs einschreiben.",
+      "step3": "Kapitel durcharbeiten, Tests schreiben, am Ende das Zertifikat anfordern."
+    },
+    "finalCta": {
+      "heading": "Bereit anzufangen?",
+      "body": "In einer Minute registriert — die Kurse sind kostenlos, der Fortschritt wird automatisch gespeichert.",
+      "primary": "Konto erstellen"
+    }
+  },
+  "dashboard": {
+    "myCourses": "Meine Kurse",
+    "myCoursesEmptyTitle": "Noch keine Einschreibungen",
+    "loadCoursesError": "Ihre Kurse konnten nicht geladen werden. Bitte laden Sie die Seite neu.",
+    "noEnrollments": "Sie haben sich noch für keinen Kurs eingeschrieben. Schauen Sie sich den Katalog an.",
+    "course": "Kurs",
+    "grade": "Note: {{grade}}",
+    "browseAllCta": "Alle Kurse ansehen",
+    "recentlyViewed": "Zuletzt angesehen",
+    "votd": {
+      "eyebrow": "Heute",
+      "title": "Vers des Tages"
+    },
+    "today": {
+      "eyebrow": "Heute",
+      "openFull": "Ganzer Kalender",
+      "empty": "Für heute ist nichts geplant.",
+      "emptyDescription": "Öffnen Sie den Kalender, um zu sehen, was diese Woche ansteht."
+    }
+  },
+  "onboarding": {
+    "student": {
+      "eyebrow": "Willkommen",
+      "title": "Willkommen bei Equip, {{name}}",
+      "titleNoName": "Willkommen bei Equip",
+      "body": "Ein ruhiger Ort, um die Bibel im eigenen Tempo zu studieren. Jeder Kurs hier ist von einem echten Dozenten geschrieben — wählen Sie ein Thema, das Sie anzieht, und fangen Sie an.",
+      "primaryCta": "Katalog durchsehen"
+    },
+    "teacher": {
+      "eyebrow": "Willkommen",
+      "title": "Ihr erster Kurs beginnt hier",
+      "body": "Equip ist Ihr Unterrichtsraum. Gliedern Sie einen Kurs in Kapitel, schreiben Sie eigene Tests, unterschreiben Sie Zertifikate, wenn Studierende fertig sind — und behalten Sie dabei jedes Wort in Ihrer Hand.",
+      "primaryCta": "Ersten Kurs erstellen"
+    }
+  },
+  "completion": {
+    "eyebrow": "Kurs abgeschlossen",
+    "title": "Sie haben {{courseTitle}} abgeschlossen",
+    "body": "Nehmen Sie sich einen Moment. Wenn Sie so weit sind, können Sie Ihr Abschlusszertifikat anfordern.",
+    "bodyHasCert": "Nehmen Sie sich einen Moment. Ihr Zertifikat steht direkt unten auf dieser Seite — es wird in Kürze geprüft.",
+    "requestCta": "Zertifikat anfordern",
+    "continueCta": "Weiter"
+  },
+  "firstRun": {
+    "privacy": {
+      "eyebrow": "Datenschutzerklärung",
+      "title": "Bevor wir beginnen",
+      "intro": "Kurz gelesen, damit Sie wissen, was Equip speichert und was nicht. Die vollständigen Texte sind unten verlinkt und stehen immer im Seitenfuß.",
+      "bullets": {
+        "collect": "Wir speichern Ihren Namen, Ihre E-Mail-Adresse, Ihr Bild und Ihre Kursaktivität (Fortschritt, Testantworten, Zertifikate) — nur das, was zum Betrieb der Plattform nötig ist.",
+        "share": "Wir verkaufen Ihre Daten nicht und geben sie nicht zu Werbezwecken an Dritte weiter. Anonyme Leistungsdaten helfen uns, Fehler zu finden (Datadog).",
+        "control": "Sie können Ihr Konto jederzeit im Profil ändern oder löschen."
+      },
+      "checkbox": "Ich habe die Datenschutzerklärung und die Nutzungsbedingungen gelesen und akzeptiere sie",
+      "next": "Weiter",
+      "saveFailed": "Ihre Zustimmung konnte nicht gespeichert werden. Prüfen Sie die Verbindung und versuchen Sie es erneut."
+    },
+    "setup": {
+      "eyebrow": "Kurze Einrichtung",
+      "title": "Richten Sie Equip für sich ein",
+      "titleNamed": "Richten Sie Equip für sich ein, {{name}}",
+      "intro": "Ein paar Einstellungen zum Start. Jede davon können Sie später im Profil ändern.",
+      "avatar": {
+        "label": "Profilbild",
+        "change": "Bild wählen",
+        "tooBig": "Das Bild darf höchstens 2 MB groß sein."
+      },
+      "name": {
+        "label": "Anzeigename",
+        "placeholder": "Zum Ändern tippen",
+        "hint": "Aus Ihrer Registrierung übernommen — ändern Sie ihn, wenn Sie anders heißen möchten."
+      },
+      "email": {
+        "label": "E-Mail",
+        "hint": "Ihre E-Mail-Adresse ändern Sie nach der Einrichtung im Profil."
+      },
+      "theme": {
+        "label": "Darstellung",
+        "light": "Hell",
+        "dark": "Dunkel"
+      },
+      "language": {
+        "label": "Sprache"
+      },
+      "submit": "Loslegen",
+      "skip": "Später",
+      "saveFailed": "Ihre Änderungen konnten nicht gespeichert werden — es bleibt bei den bisherigen Werten. Sie können sie im Profil anpassen.",
+      "saveSuccess": "Ihre Einrichtung ist gespeichert."
+    },
+    "picker": {
+      "eyebrow": "Ihr erster Kurs",
+      "title": "Wählen Sie einen Kurs zum Anfangen",
+      "titleNamed": "{{name}}, wählen Sie einen Kurs zum Anfangen",
+      "intro": "Tippen Sie auf eine Karte, um den Kurs in Ihr Regal zu legen. Sie dürfen mehrere wählen. Den ersten öffnen wir gleich für Sie.",
+      "modulesCount_one": "{{count}} Modul",
+      "modulesCount_other": "{{count}} Module",
+      "enrollOne": "Einschreiben und Kurs öffnen",
+      "enrollMany": "In {{count}} einschreiben und den ersten öffnen",
+      "browseAll": "Ganzen Katalog ansehen",
+      "skip": "Vielleicht später",
+      "loadFailed": "Der Katalog konnte nicht geladen werden — prüfen Sie die Verbindung und versuchen Sie es erneut.",
+      "enrollAllFailed": "Einschreiben nicht möglich — bitte erneut versuchen oder den Katalog von Hand durchsehen.",
+      "enrollSomeFailed": "Nur ein Teil Ihrer Auswahl wurde eingeschrieben. Den Rest öffnen Sie über den Katalog."
+    },
+    "splash": {
+      "eyebrow": "Ihr Regal steht bereit",
+      "eyebrowNamed": "Ihr Regal steht bereit, {{name}}",
+      "body": "Atmen Sie durch. Wir öffnen das erste Kapitel."
+    }
+  },
+  "grandTour": {
+    "welcome": {
+      "title": "Willkommen bei Equip — sehen wir uns kurz um",
+      "body": "Wir gehen die wichtigsten Bereiche gemeinsam durch. Jeder Klick auf „Weiter“ führt zur nächsten Station; Sie können die Tour jederzeit verlassen."
+    },
+    "headerNav": {
+      "title": "Ihre Hauptbereiche",
+      "body": "Start, Kurse, Kalender, Zertifikate — über diese obere Leiste wechseln Sie jederzeit. Was auch immer geöffnet ist, die Leiste bleibt."
+    },
+    "headerProfile": {
+      "title": "Ihr Konto",
+      "body": "Bild, Name, Sprache, Darstellung, Abmelden — all das liegt hinter dieser Schaltfläche. Am Ende der Tour kommen wir noch einmal vorbei."
+    },
+    "calendar": {
+      "title": "Ihr Kalender",
+      "body": "Alles Fällige und Geplante aus all Ihren Kursen — Aufgaben, Unterricht, Termine — erscheint hier. Ohne Kurse bleibt er leer."
+    },
+    "finale": {
+      "title": "Das ist Equip",
+      "body": "Sie haben die wichtigsten Bereiche gesehen. Öffnen Sie einen Kurs aus dem Katalog, wenn Sie so weit sind. Die Willkommenskarte auf Ihrer Startseite hat einen Link „Tour starten“, falls Sie eine einzelne Seite noch einmal ansehen möchten."
+    }
+  },
+  "tour": {
+    "next": "Weiter",
+    "previous": "Zurück",
+    "done": "Fertig",
+    "progress": "Schritt {{current}} von {{total}}",
+    "takeATour": "Tour starten",
+    "student": {
+      "myCourses": {
+        "title": "Ihre Kurse",
+        "body": "Jeder Kurs, in den Sie sich einschreiben, landet hier. Tippen Sie einen an, um dort weiterzumachen, wo Sie aufgehört haben."
+      },
+      "verse": {
+        "title": "Vers des Tages",
+        "body": "Jeden Morgen ein neuer Abschnitt — ein stiller Anfang vor dem Lernplan."
+      },
+      "today": {
+        "title": "Kalender für heute",
+        "body": "Alles, was heute fällig oder geplant ist — Aufgaben, Unterricht, Termine — steht hier."
+      },
+      "streak": {
+        "title": "Tägliche Übung",
+        "body": "Eine ruhige Serie der Tage, an denen Sie mit Equip gearbeitet haben. Ein ausgelassener Tag ist kein Vorwurf."
+      },
+      "finale": {
+        "title": "Das war die Tour",
+        "body": "Sehen Sie sich den Katalog an, wenn Sie sich einschreiben möchten. Diese Tour können Sie jederzeit über die Willkommenskarte wiederholen."
+      }
+    },
+    "catalog": {
+      "search": {
+        "title": "Einen Kurs finden",
+        "body": "Tippen Sie ein Wort aus dem Titel oder der Beschreibung — die Suche greift beim Tippen. Nichts gefunden? Sehen Sie sich das Raster unten nach Thema an."
+      },
+      "grid": {
+        "title": "Nach Karten stöbern",
+        "body": "Jeder veröffentlichte Kurs erscheint als Karte mit Titel, kurzer Beschreibung und Einschreibe-Schaltfläche. Tippen Sie eine an, um sie zu öffnen."
+      },
+      "finale": {
+        "title": "Viel Freude im Katalog",
+        "body": "Wenn Sie etwas Interessantes finden, öffnen Sie es und schreiben Sie sich ein. Ihre Startseite füllt sich dann mit Ihren Kursen."
+      }
+    },
+    "courseDetail": {
+      "header": {
+        "title": "Kursüberblick",
+        "body": "Titel, Beschreibung und eine Einschreibe-Schaltfläche, solange Sie nicht dabei sind — danach Ihr Fortschrittsbalken. Alles, was Sie zum Start brauchen."
+      },
+      "modules": {
+        "title": "Module und Kapitel",
+        "body": "Der Kurs ist in Module gegliedert; jedes Modul hat Kapitel. Klicken Sie ein Kapitel an, um es zu öffnen. Gesperrte öffnen sich mit Ihrem Fortschritt."
+      },
+      "finale": {
+        "title": "Bereit, wenn Sie es sind",
+        "body": "Beginnen Sie mit dem ersten Kapitel. Wir merken uns Ihren Fortschritt und zeigen den nächsten Schritt von selbst."
+      }
+    },
+    "chapter": {
+      "header": {
+        "title": "Wo Sie gerade sind",
+        "body": "Die Zeile darüber sagt Ihnen, in welchem Kapitel Sie sind (etwa „Kapitel 2 von 7“) und welcher Art es ist — Lektion, Test, Prüfung oder Aufgabe."
+      },
+      "body": {
+        "title": "Der Kapitelinhalt",
+        "body": "Je nach Kapiteltyp lesen Sie, schreiben einen Test oder reichen eine Aufgabe ein. Ihr Fortschritt wird unterwegs automatisch gespeichert."
+      },
+      "nav": {
+        "title": "Zwischen Kapiteln wechseln",
+        "body": "Mit diesen Schaltflächen springen Sie zum vorigen oder nächsten Kapitel, ohne zur Modulliste zurückzugehen."
+      },
+      "finale": {
+        "title": "Lassen Sie sich Zeit",
+        "body": "Es läuft keine Uhr. Arbeiten Sie das Kapitel in Ihrem Tempo durch und klicken Sie auf „Weiter“, wenn Sie so weit sind."
+      }
+    },
+    "certs": {
+      "header": {
+        "title": "Ihre Zertifikate",
+        "body": "Jeder abgeschlossene Kurs landet hier. Bestätigte Zertifikate tragen eine eindeutige Nummer, die Sie weitergeben oder prüfen lassen können."
+      },
+      "finale": {
+        "title": "Verdienen Sie sich das erste",
+        "body": "Schließen Sie einen Kurs ab und fordern Sie auf der Kursseite ein Zertifikat an. Sobald Dozent und Administration es bestätigen, erscheint es hier."
+      }
+    },
+    "calendar": {
+      "grid": {
+        "title": "Der Monat auf einen Blick",
+        "body": "Jeder Termin aus jedem Ihrer Kurse erscheint hier. Klicken Sie einen Tag an, um zu sehen, was ansteht."
+      },
+      "upcoming": {
+        "title": "Was als Nächstes kommt",
+        "body": "Eine Liste der nächsten Termine in zeitlicher Reihenfolge, damit Sie nicht durch die Monate blättern müssen."
+      },
+      "finale": {
+        "title": "Behalten Sie den Überblick",
+        "body": "Filtern Sie oben nach Kurs, wenn Sie nur einen sehen möchten. Alles andere aktualisiert sich, sobald Ihre Dozenten Termine veröffentlichen."
+      }
+    },
+    "profile": {
+      "form": {
+        "title": "Ihr Profil",
+        "body": "Hier ändern Sie Name, Bild und Sprache. Änderungen werden gespeichert, sobald Sie neben das Feld klicken."
+      },
+      "finale": {
+        "title": "Ganz Ihres",
+        "body": "Ihr Name und Ihr Bild erscheinen auf Zertifikaten und für Ihre Dozenten. Die Spracheinstellung stellt die ganze Anwendung um."
+      }
+    },
+    "teacher": {
+      "newCourse": {
+        "title": "Einen Kurs erstellen",
+        "body": "Hier öffnen Sie den Editor. Sie gliedern Module, schreiben Kapitel und Tests und veröffentlichen, wenn alles bereit ist."
+      },
+      "pendingCerts": {
+        "title": "Offene Zertifikate",
+        "body": "Studierende, die Ihre Kurse abgeschlossen haben, fordern hier Zertifikate an. Bestätigen oder ablehnen in zwei Klicks."
+      },
+      "coursesList": {
+        "title": "Ihre Kurse",
+        "body": "Sobald Sie Material veröffentlicht haben, erscheint jeder Kurs hier — mit schnellen Schaltern für Veröffentlichen, Kopieren, Bearbeiten und Auswertung."
+      },
+      "finale": {
+        "title": "Das war die Tour",
+        "body": "Sie können diese Tour jederzeit über die Willkommenskarte wiederholen."
+      }
+    },
+    "courseEditor": {
+      "header": {
+        "title": "Kurseinstellungen",
+        "body": "Titel, Beschreibung, Titelbild, Veröffentlichungsstand — alles direkt hier bearbeitbar. Gespeichert wird automatisch, sobald Sie danebenklicken."
+      },
+      "tabs": {
+        "title": "Weitere Kurswerkzeuge",
+        "body": "Ankündigungen, Materialien, Termine, Gruppeneinschreibung — alle weiteren Werkzeuge liegen hinter diesem Menü."
+      },
+      "modules": {
+        "title": "Module und Kapitel",
+        "body": "Fügen Sie ein Modul hinzu und darin Kapitel. Zum Umsortieren ziehen. Ein Klick auf ein Kapitel öffnet dessen Editor."
+      },
+      "finale": {
+        "title": "Bauen Sie in Ihrem Tempo",
+        "body": "Früh als Entwurf speichern, veröffentlichen, wenn es so weit ist. Studierende sehen keine Entwürfe; Sie können sie jederzeit ansehen."
+      }
+    },
+    "moduleEditor": {
+      "title": {
+        "title": "Moduldetails",
+        "body": "Titel, Beschreibung und Fälligkeitsdatum des Moduls direkt bearbeiten. Änderungen werden gespeichert, sobald Sie neben das Feld klicken."
+      },
+      "chapters": {
+        "title": "Kapitel in diesem Modul",
+        "body": "Kapitel hinzufügen (Lektion, Test, Prüfung oder Aufgabe), zum Umsortieren ziehen, zum Bearbeiten anklicken. Sperren Sie Kapitel, die der Reihe nach freigegeben werden sollen."
+      },
+      "finale": {
+        "title": "Modul auf Kurs",
+        "body": "Wenn Sie fertig sind, gehen Sie zurück in den Kurseditor und sehen, wie sich dieses Modul ins Ganze fügt."
+      }
+    },
+    "chapterEditor": {
+      "header": {
+        "title": "Kapiteleinstellungen",
+        "body": "Titel, Art (Lektion / Test / Prüfung / Aufgabe), Sperrstatus. Davon hängt ab, was Studierende beim Öffnen sehen."
+      },
+      "blocks": {
+        "title": "Inhaltsblöcke",
+        "body": "Bauen Sie das Kapitel aus Blöcken: Text, Dateien, ein Test oder eine Aufgabe. Zum Umsortieren ziehen. Jeder Block speichert für sich."
+      },
+      "finale": {
+        "title": "Schreiben Sie in Ihrem Tempo",
+        "body": "Sie können jederzeit über die Kursseite die Studierendenansicht prüfen. Entwürfe bleiben verborgen, bis Sie den Kurs veröffentlichen."
+      }
+    },
+    "gradebook": {
+      "table": {
+        "title": "Ihr Notenbuch",
+        "body": "Jede eingeschriebene Person bekommt eine Zeile, jedes bewertbare Kapitel eine Spalte. Klicken Sie in eine Zelle, um eine Note einzutragen oder zu ändern."
+      },
+      "finale": {
+        "title": "Noten kommen an",
+        "body": "Studierende sehen ihre Noten auf der Kursseite und auf ihrer Startseite. Änderungen hier erscheinen sofort."
+      }
+    },
+    "analytics": {
+      "stats": {
+        "title": "Der Kurs auf einen Blick",
+        "body": "Einschreibungen, durchschnittlicher Fortschritt, Abschlussquote, Durchschnittsnote — die wichtigsten Zahlen zu diesem Kurs."
+      },
+      "finale": {
+        "title": "Sehen Sie, wie es ankommt",
+        "body": "Die Zahlen aktualisieren sich laufend, während Studierende sich einschreiben, Kapitel abschließen und Arbeiten einreichen. Kein Neuladen nötig."
+      }
+    },
+    "studentProgress": {
+      "table": {
+        "title": "Fortschritt je Person",
+        "body": "Alle eingeschriebenen Studierenden mit Fortschritt in Prozent und letzter Aktivität. Ein Klick öffnet die ausführliche Ansicht."
+      },
+      "finale": {
+        "title": "Blick zum Begleiten",
+        "body": "Erkennen Sie, wer sich länger nicht angemeldet hat oder an einem Kapitel hängt. Ein Anstoß von Ihnen macht oft den Unterschied."
+      }
+    }
+  },
+  "courses": {
+    "academicPrograms": "Studienangebot",
+    "pageTitle": "Kurskatalog",
+    "pageTitleAuthed": "Kurse durchsehen",
+    "pageSubtitle": "Sehen Sie sich unsere Seminarkurse an und vertiefen Sie Ihre Bibelkenntnis",
+    "pageSubtitleAuthed": "Entdecken Sie weitere Kurse und erweitern Sie Ihr Wissen",
+    "searchPlaceholder": "Kurse suchen …",
+    "signInLink": "Anmelden",
+    "signInToEnroll": ", um sich für Kurse einzuschreiben",
+    "noCoursesFound": "Keine Kurse gefunden",
+    "noCoursesYet": "Noch keine Kurse",
+    "tryDifferentSearch": "Versuchen Sie einen anderen Suchbegriff",
+    "checkBackSoon": "Schauen Sie bald wieder vorbei — neue Kurse kommen",
+    "loadFailed": "Kurse konnten nicht geladen werden. Bitte später erneut versuchen.",
+    "loadMore": "Weitere Kurse laden",
+    "loadingMore": "Wird geladen …",
+    "loadMoreFailed": "Konnte nicht mehr laden — erneut versuchen."
+  },
+  "streak": {
+    "eyebrow": "Täglich",
+    "title": "Übung für heute",
+    "weekAriaLabel": "Tage der laufenden Woche",
+    "comingSoon": "Tägliche Aufgaben kommen bald — dies ist der Platzhalter.",
+    "days": {
+      "mon": "Mo",
+      "tue": "Di",
+      "wed": "Mi",
+      "thu": "Do",
+      "fri": "Fr",
+      "sat": "Sa",
+      "sun": "So"
+    },
+    "tasksPreview": {
+      "questionOfDay": "Die Frage des Tages beantworten",
+      "readChapter": "Das heutige Kapitel lesen",
+      "memoryVerse": "Den Merkvers aufsagen"
+    }
+  },
+  "dailyChallenge": {
+    "eyebrow": "Tagesaufgabe",
+    "title": "Die Frage von heute",
+    "streakAriaLabel": "Serie von {{count}} Tagen",
+    "loadError": "Die heutige Aufgabe konnte nicht geladen werden",
+    "notScheduled": {
+      "title": "Heute keine Frage",
+      "body": "Die Aufgabe von morgen öffnet um Mitternacht UTC."
+    },
+    "reveal": {
+      "correct": "Richtig",
+      "wrong": "Nicht ganz"
+    },
+    "toast": {
+      "correct": "Gut — genau die.",
+      "wrong": "Knapp, aber heute nicht.",
+      "invalidOption": "Diese Antwort gehört nicht zur heutigen Frage.",
+      "submitError": "Konnte nicht gesendet werden — bitte erneut versuchen."
+    },
+    "openArchive": "Archiv",
+    "archive": {
+      "title": "Archiv der Tagesaufgaben",
+      "description": "Frühere Fragen, mit hervorgehobenen Tagen, an denen Sie gespielt haben. Wiederholungen ändern Ihre Serie nicht.",
+      "gridHeading": "Letzte 90 Tage",
+      "gridStats": "{{correct}} von {{attempted}} richtig",
+      "cellAriaLabel": "{{date}} — {{status}}",
+      "cellStatus": {
+        "correct": "richtig",
+        "wrong": "falsch",
+        "notAttempted": "nicht versucht"
+      },
+      "loadError": "Das Archiv konnte nicht geladen werden — bitte erneut versuchen.",
+      "loadEarlier": "Frühere laden",
+      "empty": {
+        "title": "Hier ist noch nichts",
+        "body": "Frühere Fragen erscheinen hier, sobald einige Tage geplant sind."
+      },
+      "notScheduled": {
+        "title": "Für dieses Datum gibt es keine Frage",
+        "body": "Wählen Sie im Kalender ein anderes Datum."
+      },
+      "detail": {
+        "pickDate": "Datum wählen",
+        "pickDateHint": "Tippen Sie im Kalender einen Tag an, um die Frage zu sehen.",
+        "back": "Zurück zum Kalender",
+        "replayBadge": "Wiederholung"
+      },
+      "toast": {
+        "correct": "Schöne Wiederholung — immer noch die richtige Antwort.",
+        "wrong": "Diesmal nicht die richtige Antwort.",
+        "invalidOption": "Diese Antwort gehört nicht zu dieser Frage.",
+        "submitError": "Wiederholung konnte nicht gesendet werden — bitte erneut versuchen.",
+        "dateNotAllowed": "Dieses Datum gehört zur heutigen Aufgabe — nutzen Sie die Karte auf der Startseite."
+      }
+    }
+  },
+  "notifications": {
+    "menuAriaLabel": "Benachrichtigungen",
+    "panelAriaLabel": "Benachrichtigungen",
+    "title": "Benachrichtigungen",
+    "markAllRead": "Alle als gelesen markieren",
+    "empty": "Noch keine Benachrichtigungen",
+    "loadFailed": "Benachrichtigungen konnten nicht geladen werden.",
+    "tryAgain": "Erneut versuchen",
+    "loadMore": "Mehr laden",
+    "loadingMore": "Wird geladen …",
+    "deleteAriaLabel": "Benachrichtigung löschen",
+    "timeAgo": {
+      "justNow": "gerade eben",
+      "minutesAgo_one": "vor {{count}} Min.",
+      "minutesAgo_other": "vor {{count}} Min.",
+      "hoursAgo_one": "vor {{count}} Std.",
+      "hoursAgo_other": "vor {{count}} Std.",
+      "daysAgo_one": "vor {{count}} Tag",
+      "daysAgo_other": "vor {{count}} Tagen"
+    }
+  },
+  "language": {
+    "label": "Sprache",
+    "russian": "Russisch",
+    "english": "Englisch",
+    "german": "Deutsch",
+    "ukrainian": "Ukrainisch",
+    "switchTo": "Zu {{language}} wechseln"
+  },
+  "auth": {
+    "welcomeBack": "Willkommen zurück",
+    "signInSubheading": "Melden Sie sich an, um weiterzulernen",
+    "continueWithGoogle": "Mit Google fortfahren",
+    "connecting": "Verbindung wird hergestellt …",
+    "orContinueWithEmail": "oder mit E-Mail fortfahren",
+    "email": "E-Mail",
+    "emailPlaceholder": "sie@beispiel.de",
+    "password": "Passwort",
+    "forgotPasswordLink": "Passwort vergessen?",
+    "signIn": "Anmelden",
+    "signingIn": "Anmeldung läuft …",
+    "noAccount": "Noch kein Konto?",
+    "createOne": "Jetzt erstellen",
+    "loginFailed": "Anmeldung fehlgeschlagen. Bitte erneut versuchen.",
+    "googleLoginFailed": "Anmeldung mit Google fehlgeschlagen.",
+    "marketingQuote": "Befleißige dich, Gott zu erzeigen einen rechtschaffenen, unsträflichen Arbeiter, der da recht teile das Wort der Wahrheit.",
+    "marketingReference": "2. Timotheus 2,15",
+    "marketingPanelFooter": "© {{year}} {{appName}}",
+    "toggleColorTheme": "Darstellung umschalten",
+    "errors": {
+      "registrationFailed": "Registrierung fehlgeschlagen. Bitte erneut versuchen.",
+      "googleSignUpFailed": "Registrierung mit Google fehlgeschlagen."
+    },
+    "callback": {
+      "completing": "Anmeldung wird abgeschlossen …",
+      "timedOut": "Die Anmeldung wurde nicht abgeschlossen. Bitte erneut versuchen.",
+      "redirecting": "Weiterleitung zur Anmeldung …"
+    },
+    "forgotPassword": {
+      "heading": "Passwort zurücksetzen",
+      "subheading": "Geben Sie Ihre E-Mail-Adresse ein, wir senden Ihnen einen Link",
+      "emailLabel": "E-Mail-Adresse",
+      "submit": "Link senden",
+      "sending": "Wird gesendet …",
+      "backToSignIn": "Zurück zur Anmeldung",
+      "sentHeading": "Sehen Sie in Ihr Postfach",
+      "sentSubheading": "Wir haben Ihnen einen Link zum Zurücksetzen geschickt",
+      "sentBody": "Falls für <strong>{{email}}</strong> ein Konto besteht, erhalten Sie in Kürze einen Link. Sehen Sie in Ihrem Posteingang nach.",
+      "errors": {
+        "emailRequired": "Bitte geben Sie Ihre E-Mail-Adresse ein",
+        "emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
+        "sendFailed": "Die E-Mail konnte nicht gesendet werden. Bitte gleich noch einmal versuchen."
+      }
+    },
+    "resetPassword": {
+      "heading": "Neues Passwort setzen",
+      "subheading": "Wählen Sie ein starkes Passwort für Ihr Konto",
+      "newPassword": "Neues Passwort",
+      "confirmNewPassword": "Neues Passwort bestätigen",
+      "submit": "Passwort ändern",
+      "submitting": "Wird geändert …",
+      "successHeading": "Passwort geändert",
+      "successSubheading": "Alles erledigt",
+      "successBody": "Ihr Passwort wurde erfolgreich geändert.",
+      "redirecting": "Weiterleitung zur Startseite …",
+      "errors": {
+        "passwordTooShort": "Das Passwort muss mindestens 6 Zeichen haben",
+        "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein",
+        "resetFailed": "Das Passwort konnte nicht zurückgesetzt werden."
+      }
+    }
+  },
+  "profile": {
+    "fullName": "Vollständiger Name",
+    "changeAvatar": "Profilbild ändern",
+    "uploadFailed": "Profilbild konnte nicht hochgeladen werden",
+    "imageTooLarge": "Das Bild muss kleiner als 2 MB sein",
+    "updateFailed": "Profil konnte nicht aktualisiert werden",
+    "learningProgress": "Lernfortschritt",
+    "learningProgressDescription": "Ihre Ergebnisse auf einen Blick",
+    "coursesCompleted": "Abgeschlossene Kurse",
+    "certificatesEarned": "Erhaltene Zertifikate",
+    "viewAllCertificates": "Alle Zertifikate ansehen",
+    "accountDetails": "Kontodaten",
+    "memberSince": "Dabei seit",
+    "preferences": "Einstellungen",
+    "theme": "Darstellung",
+    "themeDark": "Dunkler Modus",
+    "themeLight": "Heller Modus",
+    "switchToLight": "Hell",
+    "switchToDark": "Dunkel",
+    "invalidInput": "Ungültige Eingabe",
+    "editName": "Namen bearbeiten",
+    "avatarAlt": "Profilbild von {{name}}"
+  },
+  "courseCard": {
+    "opensOn": "Öffnet am {{date}}",
+    "enrollmentClosed": "Einschreibung geschlossen",
+    "enrollingNow": "Einschreibung läuft",
+    "byInvitation": "Auf Einladung",
+    "openCourse": "Öffnen",
+    "modulesLabel_one": "{{count}} Modul",
+    "modulesLabel_other": "{{count}} Module",
+    "inProgress": "Läuft",
+    "completed": "Abgeschlossen",
+    "progressLabel": "{{percent}} % abgeschlossen"
+  },
+  "pageTitle": {
+    "login": "Anmelden",
+    "register": "Konto erstellen",
+    "forgotPassword": "Passwort vergessen",
+    "resetPassword": "Passwort zurücksetzen",
+    "authCallback": "Anmeldung läuft …",
+    "authConfirm": "E-Mail wird bestätigt …",
+    "dashboard": "Kurse",
+    "profile": "Mein Profil",
+    "certificates": "Meine Zertifikate",
+    "calendar": "Kalender",
+    "teacher": "Dozentenbereich",
+    "admin": "Administration",
+    "home": "Start",
+    "editChapter": "Kapitel bearbeiten",
+    "editModule": "Modul bearbeiten",
+    "gradebook": "Notenbuch",
+    "studentProgress": "Fortschritt der Studierenden",
+    "courseAnalytics": "Kursauswertung",
+    "courseEditor": "Kurseditor",
+    "chapter": "Kapitel",
+    "module": "Modul",
+    "course": "Kurs",
+    "courses": "Kurse",
+    "privacy": "Datenschutzerklärung",
+    "terms": "Nutzungsbedingungen"
+  },
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "description": "Die gesuchte Seite gibt es nicht oder sie wurde verschoben.",
+    "goHome": "Zur Startseite"
+  },
+  "errors": {
+    "invalidCourseLink": "Ungültiger Link zu Kurs oder Modul.",
+    "loadChapterFailed": "Kapitel konnte nicht geladen werden. Bitte erneut versuchen.",
+    "loadModuleFailed": "Modul konnte nicht geladen werden. Bitte erneut versuchen.",
+    "loadCourseFailed": "Kurs konnte nicht geladen werden. Bitte erneut versuchen.",
+    "loadTeacherCoursesFailed": "Ihre Kurse konnten nicht geladen werden. Bitte erneut versuchen.",
+    "boundary": {
+      "heading": "Etwas ist schiefgelaufen",
+      "body": "Ein unerwarteter Fehler ist aufgetreten. Bitte erneut versuchen.",
+      "tryAgain": "Erneut versuchen",
+      "refresh": "Seite neu laden"
+    }
+  },
+  "toast": {
+    "enrolledSuccess": "Einschreibung erfolgreich",
+    "enrolledFailed": "Einschreibung fehlgeschlagen. Bitte erneut versuchen.",
+    "courseNotFound": "Kurs nicht gefunden",
+    "chapterNotFound": "Kapitel nicht gefunden",
+    "moduleNotFound": "Modul nicht gefunden",
+    "certificateApproved": "Zertifikat bestätigt",
+    "certificateApproveFailed": "Zertifikat konnte nicht bestätigt werden",
+    "certificateDeclined": "Zertifikatsantrag abgelehnt",
+    "certificateRejectFailed": "Zertifikat konnte nicht abgelehnt werden",
+    "coursePublished": "Kurs veröffentlicht",
+    "coursePublishing": "Der Kurs erscheint, sobald ihn jede Sprache hat",
+    "courseUnpublished": "Veröffentlichung zurückgenommen",
+    "statusUpdateFailed": "Status konnte nicht geändert werden",
+    "courseCreated": "Kurs erstellt",
+    "courseCreateFailed": "Kurs konnte nicht erstellt werden",
+    "courseMovedToTrash": "Kurs in den Papierkorb verschoben",
+    "deleteCourseFailed": "Kurs konnte nicht gelöscht werden",
+    "courseCloned": "Kurs erfolgreich kopiert",
+    "cloneFailed": "Kurs konnte nicht kopiert werden",
+    "gradingWeightsSaved": "Gewichtung gespeichert",
+    "gradingConfigSaveFailed": "Bewertungseinstellungen konnten nicht gespeichert werden",
+    "gradeSaved": "Note gespeichert",
+    "gradeCleared": "Handnote entfernt — es gilt wieder die berechnete",
+    "gradeSaveFailed": "Note konnte nicht gespeichert werden",
+    "exportGradesFailed": "Noten konnten nicht exportiert werden",
+    "certificatesLoadFailed": "Zertifikate konnten nicht geladen werden",
+    "openFileFailed": "Datei konnte nicht geöffnet werden. Bitte erneut versuchen.",
+    "assignmentSubmitFailed": "Aufgabe konnte nicht eingereicht werden",
+    "gradeFailed": "Bewerten fehlgeschlagen",
+    "quizSaved": "Test gespeichert",
+    "quizSaveFailed": "Test konnte nicht gespeichert werden"
+  },
+  "module": {
+    "overdue": "Überfällig",
+    "due": "Fällig",
+    "moduleComplete": "Modul abgeschlossen — gut gemacht!",
+    "completedProgress": "{{done}} von {{total}} Leistungen erbracht",
+    "chaptersHeading": "Kapitel",
+    "noChaptersYet": "Noch keine Kapitel angelegt",
+    "progressUnknown": "Ihr Fortschritt konnte nicht geladen werden. Die Häkchen an abgeschlossenen Kapiteln fehlen gerade — laden Sie die Seite neu.",
+    "chapterRead": "Gelesen"
+  },
+  "course": {
+    "backToCourses": "Zurück zu den Kursen",
+    "backToCourse": "Zurück zum Kurs",
+    "backToModule": "Zurück zum Modul",
+    "goHome": "Zur Startseite"
+  },
+  "chapter": {
+    "lockedTitle": "Kapitel gesperrt",
+    "lockedHint": "Schließen Sie das vorige Kapitel ab, um dieses zu öffnen.",
+    "goToPreviousChapter": "Zum vorigen Kapitel",
+    "chapterOf": "Kapitel {{current}} von {{total}}",
+    "positionEyebrow": "Kapitel {{current}} von {{total}}",
+    "emptyContent": "Zu diesem Kapitel wurde noch kein Inhalt hinzugefügt.",
+    "blocksLoadFailed": "Dieses Kapitel konnte nicht geladen werden",
+    "blocksLoadFailedDescription": "Der Lektionsinhalt ließ sich nicht laden. Meist ist das ein vorübergehendes Netzproblem — versuchen Sie es erneut.",
+    "prevChapter": "Voriges Kapitel",
+    "nextChapter": "Nächstes Kapitel",
+    "prevEyebrow": "Zurück",
+    "nextEyebrow": "Weiter",
+    "nextModuleEyebrow": "Nächstes Modul",
+    "finishEyebrow": "Kurs abschließen",
+    "finishCourseLabel": "Kursübersicht und Zertifikat",
+    "navAriaLabel": "Kapitelnavigation",
+    "completed": "Abgeschlossen",
+    "submitAssignmentToComplete": "Reichen Sie die Aufgabe ein, um dieses Kapitel abzuschließen",
+    "downloadFile": "Datei herunterladen",
+    "downloadFileAria": "Anhang herunterladen: {{name}}",
+    "attachmentEyebrow": "Anhang",
+    "imageLightbox": {
+      "dialogAria": "Bildvorschau",
+      "closeAria": "Bildvorschau schließen"
+    },
+    "markRead": "Als gelesen markieren",
+    "markedRead": "Kapitel gelesen",
+    "markReadFailed": "Konnte nicht markiert werden"
+  },
+  "quiz": {
+    "exam": "Prüfung",
+    "quiz": "Test",
+    "failedLoad": "Test konnte nicht geladen werden. Bitte laden Sie die Seite neu.",
+    "submitFailedQuiz": "Test konnte nicht abgegeben werden",
+    "submitFailedExam": "Prüfung konnte nicht abgegeben werden",
+    "tryAgain": "Erneut versuchen",
+    "maxAttemptsReached": "Für diesen {{type}} sind keine Versuche mehr übrig.",
+    "submitting": "Wird abgegeben …",
+    "submitQuiz": "Test abgeben",
+    "submitExam": "Prüfung abgeben",
+    "answerAll": "Beantworten Sie alle Fragen, um abzugeben",
+    "progressEyebrow": "{{current}} / {{total}} beantwortet",
+    "passedTitle": "Bestanden!",
+    "notPassedTitle": "Nicht ganz",
+    "passingScoreLine": "{{percent}} % — Bestehensgrenze: {{passing}} %",
+    "pendingTeacherReview": "Offene Antworten warten auf die Bewertung durch den Dozenten",
+    "reviewAnswers": "Antworten ansehen",
+    "gradedPoints_one": "Bewertet · {{earned}}/{{max}} Punkt",
+    "gradedPoints_other": "Bewertet · {{earned}}/{{max}} Punkte",
+    "sentForReview": "Zur Bewertung an den Dozenten geschickt",
+    "yourAnswer": "Ihre Antwort:",
+    "previousAttempts": "Frühere Versuche",
+    "questionPoints_one": "{{count}} Punkt",
+    "questionPoints_other": "{{count}} Punkte",
+    "typeAnswerPlaceholder": "Antwort eingeben …",
+    "nQuestions_one": "{{count}} Frage",
+    "nQuestions_other": "{{count}} Fragen",
+    "nPoints_one": "{{count}} Punkt",
+    "nPoints_other": "{{count}} Punkte",
+    "pointsBreakdown": "({{auto}} automatisch + {{manual}} bewertet)",
+    "passingShort": "Bestehensgrenze: {{score}} %",
+    "attemptsShort": "Versuche: {{used}}/{{max}}",
+    "inProgress": "Läuft",
+    "attemptPoints": "{{score}}/{{max}} Punkte",
+    "essayPlaceholder": "Schreiben Sie Ihren Aufsatz …",
+    "essayPlaceholderMin": "Schreiben Sie mindestens {{count}} Wörter. Ihre Antwort wird vom Dozenten geprüft.",
+    "essayHelper": "Aufsatz · vom Dozenten bewertet",
+    "wordsCount_one": "{{count}} Wort",
+    "wordsCount_other": "{{count}} Wörter",
+    "wordsWithMin": "{{count}} / {{min}} nötig",
+    "attemptsUnverified": "Es ließ sich nicht prüfen, wie viele Versuche Sie schon verbraucht haben. Sie können beginnen, aber wenn keine Versuche übrig sind, weist der Server die Abgabe zurück — laden Sie die Seite lieber neu."
+  },
+  "quizEditor": {
+    "validation": {
+      "titleRequired": "Der Titel des Tests ist erforderlich",
+      "addAtLeastOneQuestion": "Fügen Sie mindestens eine Frage hinzu",
+      "validScoreRequired": "Geben Sie eine gültige Punktzahl ein (0 oder mehr)",
+      "scoreCantExceed": "Die Punktzahl darf für diese Frage {{max}} nicht überschreiten"
+    },
+    "toast": {
+      "quizSaved": "Test gespeichert",
+      "quizSaveFailed": "Test konnte nicht gespeichert werden",
+      "quizDeleted": "Test gelöscht",
+      "quizDeleteFailed": "Test konnte nicht gelöscht werden",
+      "gradeSaved": "Note gespeichert",
+      "gradeSaveFailed": "Note konnte nicht gespeichert werden"
+    },
+    "confirmDelete": {
+      "title": "Diesen Test löschen?",
+      "description": "Studierende verlieren den Zugang zum Test und zu ihren Versuchen.",
+      "confirm": "Test löschen"
+    },
+    "heading": {
+      "editQuiz": "Test bearbeiten",
+      "editExam": "Prüfung bearbeiten",
+      "createQuiz": "Test erstellen",
+      "createExam": "Prüfung erstellen"
+    },
+    "fields": {
+      "quizTitle": "Titel des Tests",
+      "titlePlaceholder": "z. B. Wiederholung zum Kapitel",
+      "description": "Beschreibung (optional)",
+      "descriptionPlaceholder": "Kurze Beschreibung des Tests …",
+      "passingScore": "Bestehensgrenze (%)",
+      "maxAttempts": "Maximale Versuche"
+    },
+    "questions": {
+      "heading": "Fragen ({{count}})",
+      "addQuestion": "Frage hinzufügen",
+      "emptyTitle": "Noch keine Fragen",
+      "empty": "Klicken Sie auf „Frage hinzufügen“, um diesen Test aufzubauen.",
+      "questionPrefix": "F{{n}}",
+      "questionPlaceholder": "Fragetext …",
+      "types": {
+        "multiple_choice": "Auswahl",
+        "true_false": "Richtig / Falsch",
+        "short_answer": "Kurzantwort",
+        "essay": "Aufsatz"
+      },
+      "minWords": "Mindestwörter:",
+      "points": "Punkte:",
+      "markCorrect": "Als richtig markieren",
+      "optionPlaceholder": "Antwort {{n}}",
+      "addOption": "Antwort hinzufügen",
+      "shortAnswerHint": "Studierende schreiben eine freie Antwort. Wird von Hand bewertet.",
+      "essayHint": "Ausführliche schriftliche Antwort. Wird im Reiter „Abgaben“ von Hand bewertet.",
+      "removeQuestionAria": "Frage {{n}} entfernen",
+      "removeOptionAria": "Antwort {{n}} entfernen",
+      "questionTypeAria": "Fragetyp",
+      "trueFalseOption": {
+        "True": "Richtig",
+        "False": "Falsch"
+      }
+    },
+    "save": {
+      "saving": "Wird gespeichert …",
+      "saveQuiz": "Test speichern",
+      "saveExam": "Prüfung speichern",
+      "deleteQuiz": "Test löschen",
+      "deleteExam": "Prüfung löschen"
+    },
+    "modeToggle": {
+      "edit": "Bearbeiten",
+      "submissions": "Abgaben"
+    },
+    "review": {
+      "loadFailed": "Abgaben konnten nicht geladen werden. Bitte erneut versuchen.",
+      "emptyAlready": "Noch keine offenen Antworten.",
+      "emptyAlreadyDescription": "Sobald Studierende Kurzantworten oder Aufsätze abgeben, erscheinen sie hier zur Bewertung.",
+      "emptyAllGraded": "Nichts zu bewerten — Sie sind durch.",
+      "emptyAllGradedDescription": "Neue Abgaben landen hier, während Studierende den Test abschließen. Schalten Sie „Bereits bewertete zeigen“ ein, um frühere Noten anzusehen.",
+      "openEndedCount_one": "{{count}} offene Antwort",
+      "openEndedCount_other": "{{count}} offene Antworten",
+      "showAlreadyGraded": "Bereits bewertete zeigen",
+      "essay": "Aufsatz",
+      "shortAnswer": "Kurzantwort",
+      "upToPoints_one": "bis zu {{count}} Punkt",
+      "upToPoints_other": "bis zu {{count}} Punkte",
+      "wordsWithMin": "{{count}} / {{min}} Wörter",
+      "wordsCount": "{{count}} Wörter",
+      "emptyAnswer": "(leer)",
+      "pointsLabel": "Punkte (0–{{max}})",
+      "commentLabel": "Kommentar (optional)",
+      "commentPlaceholder": "Rückmeldung, die die Studierenden sehen …",
+      "saved": "Gespeichert",
+      "saveGrade": "Note speichern"
+    }
+  },
+  "blockEditor": {
+    "loadFailed": "Blöcke konnten nicht geladen werden: {{detail}}",
+    "addedSuccess": "Block „{{type}}“ hinzugefügt",
+    "addFailed": "Block konnte nicht hinzugefügt werden: {{detail}}",
+    "deleted": "Block gelöscht",
+    "deleteFailed": "Block konnte nicht gelöscht werden",
+    "confirmDelete": {
+      "title": "Diesen Block löschen?",
+      "description": "Der Block und sein gesamter Inhalt werden endgültig entfernt. Das lässt sich nicht rückgängig machen.",
+      "confirm": "Löschen"
+    },
+    "reorderFailed": "Reihenfolge konnte nicht geändert werden",
+    "updateFailed": "Block konnte nicht aktualisiert werden",
+    "contentBlocks": "Inhaltsblöcke",
+    "blocksCount_one": "{{count}} Block",
+    "blocksCount_other": "{{count}} Blöcke",
+    "empty": "Noch keine Blöcke.",
+    "emptyHint": "Fügen Sie mit der Schaltfläche unten Text, einen Test, eine Aufgabe oder eine Datei hinzu.",
+    "addBlock": "Block hinzufügen",
+    "types": {
+      "text": "Text",
+      "quiz": "Test",
+      "assignment": "Aufgabe",
+      "file": "Datei"
+    },
+    "text": {
+      "autoSaveFailed": "Automatisches Speichern fehlgeschlagen",
+      "saved": "Block gespeichert",
+      "saveFailed": "Block konnte nicht gespeichert werden",
+      "placeholder": "Inhalt des Blocks schreiben …",
+      "saveButton": "Text speichern",
+      "statusUnsaved": "Nicht gespeicherte Änderungen …",
+      "statusAutoSaving": "Wird automatisch gespeichert …",
+      "statusSaved": "Gespeichert"
+    },
+    "file": {
+      "uploaded": "Datei hochgeladen",
+      "uploadFailedDefault": "Hochladen fehlgeschlagen",
+      "removeFailed": "Datei konnte nicht entfernt werden",
+      "attachedFile": "Angehängte Datei",
+      "replace": "Ersetzen",
+      "removeAria": "Datei entfernen",
+      "uploading": "Wird hochgeladen …",
+      "uploadCta": "Datei hochladen"
+    },
+    "toolbar": {
+      "ariaLabel": "Textformatierung",
+      "bold": "Fett",
+      "italic": "Kursiv",
+      "heading2": "Überschrift 2",
+      "heading3": "Überschrift 3",
+      "bulletList": "Aufzählung",
+      "numberedList": "Nummerierte Liste",
+      "blockquote": "Zitat",
+      "horizontalRule": "Trennlinie",
+      "insertImage": "Bild einfügen",
+      "insertYoutube": "YouTube-Video einfügen",
+      "insertAudio": "Audio einfügen",
+      "link": "Link",
+      "undo": "Rückgängig",
+      "redo": "Wiederholen",
+      "characters": "{{count}} / {{limit}} Zeichen",
+      "insertMath": "Formel einfügen",
+      "dragHandle": "Ziehen, um den Block zu verschieben"
+    },
+    "callout": {
+      "trigger": "Hinweisblock",
+      "remove": "Block entfernen",
+      "info": "Information",
+      "verse": "Bibelvers",
+      "takeaway": "Kernaussage",
+      "warning": "Achtung",
+      "toggle": "Aufklappbar (zum Öffnen klicken)"
+    },
+    "table": {
+      "trigger": "Tabelle",
+      "insert": "Tabelle 3×3 einfügen",
+      "addRowBefore": "Zeile darüber einfügen",
+      "addRowAfter": "Zeile darunter einfügen",
+      "addColumnBefore": "Spalte links einfügen",
+      "addColumnAfter": "Spalte rechts einfügen",
+      "toggleHeaderRow": "Kopfzeile umschalten",
+      "deleteRow": "Zeile löschen",
+      "deleteColumn": "Spalte löschen",
+      "deleteTable": "Tabelle löschen"
+    },
+    "codeBlock": {
+      "insert": "Codeblock einfügen",
+      "changeLanguage": "Sprache ändern",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "copyAriaLabel": "Code in die Zwischenablage kopieren"
+    },
+    "deleteBlockAria": "Block „{{label}}“ löschen"
+  },
+  "assignmentEditor": {
+    "validation": {
+      "titleRequired": "Der Titel der Aufgabe ist erforderlich"
+    },
+    "toast": {
+      "created": "Aufgabe erstellt",
+      "createFailed": "Aufgabe konnte nicht erstellt werden",
+      "updated": "Aufgabe aktualisiert",
+      "updateFailed": "Aufgabe konnte nicht aktualisiert werden",
+      "deleted": "Aufgabe gelöscht",
+      "deleteFailed": "Aufgabe konnte nicht gelöscht werden",
+      "graded": "Abgabe bewertet",
+      "gradeFailed": "Bewerten fehlgeschlagen"
+    },
+    "confirmDelete": {
+      "title": "Diese Aufgabe löschen?",
+      "description": "Alle Abgaben der Studierenden werden ebenfalls gelöscht.",
+      "confirm": "Aufgabe löschen"
+    },
+    "loadFailed": "Aufgaben konnten nicht geladen werden. Bitte neu laden.",
+    "heading": "Aufgaben ({{count}})",
+    "newAssignment": "Neue Aufgabe",
+    "empty": "Keine Aufgaben in diesem Kapitel.",
+    "form": {
+      "title": "Titel",
+      "titlePlaceholder": "z. B. Aufsatz zum Kapitel",
+      "description": "Beschreibung (optional)",
+      "descriptionPlaceholder": "Anweisungen zur Aufgabe …",
+      "maxScore": "Höchstpunktzahl",
+      "dueDate": "Fällig am (optional)",
+      "creating": "Wird erstellt …",
+      "create": "Aufgabe erstellen",
+      "updating": "Wird aktualisiert …",
+      "update": "Aufgabe aktualisieren",
+      "cancel": "Abbrechen"
+    },
+    "item": {
+      "maxPts": "Höchstens {{max}} Punkte",
+      "due": "Fällig: {{date}}",
+      "noSubmissions": "Noch keine Abgaben.",
+      "submissionsCount": "Abgaben ({{count}})",
+      "editAria": "Aufgabe {{title}} bearbeiten",
+      "deleteAria": "Aufgabe {{title}} löschen"
+    },
+    "grader": {
+      "viewFile": "Angehängte Datei ansehen",
+      "statusGrade": "Bewerten",
+      "statusReturn": "Zur Überarbeitung zurückgeben",
+      "statusAria": "Bewertungsaktion",
+      "feedback": "Rückmeldung",
+      "feedbackPlaceholder": "Optionale Rückmeldung für die Studierenden …",
+      "saving": "Wird gespeichert …",
+      "save": "Note speichern"
+    }
+  },
+  "assignment": {
+    "eyebrow": "Aufgabe",
+    "loadFailed": "Aufgaben konnten nicht geladen werden. Bitte neu laden.",
+    "statusSubmitted": "Eingereicht — wartet auf Bewertung",
+    "statusGraded": "Bewertet",
+    "statusReturned": "Zurückgegeben — Überarbeitung erbeten",
+    "maxPoints": "Höchstens {{max}} Punkte",
+    "due": "Fällig:",
+    "overdue": "Überfällig",
+    "submit": "Aufgabe einreichen",
+    "resubmit": "Erneut einreichen",
+    "points": "Punkte",
+    "gradeEyebrow": "Note",
+    "instructorFeedback": "Rückmeldung des Dozenten",
+    "yourSubmission": "Ihre Abgabe",
+    "returnedHint": "Ihr Dozent hat diese Aufgabe zurückgegeben. Bitte überarbeiten Sie sie und reichen Sie sie erneut ein.",
+    "yourResponse": "Ihre Antwort",
+    "responsePlaceholder": "Schreiben Sie hier Ihre Antwort zur Aufgabe …",
+    "fileLinkOptional": "Link zur Datei (optional)",
+    "submitting": "Wird eingereicht …",
+    "fileLinkPlaceholder": "https://drive.google.com/…",
+    "statusValue": {
+      "pending": "Offen",
+      "submitted": "Eingereicht",
+      "graded": "Bewertet",
+      "returned": "Zurückgegeben"
+    },
+    "statusUnknownTitle": "Es ließ sich nicht prüfen, ob dies schon eingereicht wurde",
+    "statusUnknownHelp": "Das Formular ist absichtlich verborgen: Ist die Arbeit bereits eingereicht, verwirrt eine zweite Fassung nur Sie und die Person, die bewertet. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+    "statusUnknownRetry": "Erneut prüfen",
+    "draftSaved": "Entwurf auf diesem Gerät gespeichert",
+    "draftRestored": "Entwurf von diesem Gerät wiederhergestellt"
+  },
+  "certificates": {
+    "backToCourses": "Zurück zu den Kursen",
+    "title": "Meine Zertifikate",
+    "eyebrow": "Erreichtes",
+    "subtitle_one": "{{count}} Zertifikat erhalten",
+    "subtitle_other": "{{count}} Zertifikate erhalten",
+    "emptyTitle": "Noch keine Zertifikate",
+    "emptyDescription": "Schließen Sie einen Kurs ab, um Ihr erstes Zertifikat zu erhalten. Bleiben Sie dran!",
+    "loadErrorDescription": "Ihre Zertifikate konnten nicht geladen werden. Meist ist das vorübergehend — versuchen Sie es erneut.",
+    "browseCourses": "Kurse ansehen",
+    "badge": "Zertifikat",
+    "courseFallback": "Kurs {{id}}",
+    "certificateNo": "Zertifikat Nr.",
+    "issuedOrStatus": "Ausgestellt",
+    "statusColumn": "Status",
+    "pendingApproval": "Wartet auf Bestätigung",
+    "awaitingAdmin": "Wartet auf die Administration",
+    "rejected": "Abgelehnt",
+    "pending": "Offen",
+    "card": {
+      "completedTitle": "Sie haben diesen Kurs abgeschlossen",
+      "completedDescription": "Fordern Sie Ihr Abschlusszertifikat zur Prüfung an.",
+      "requesting": "Wird angefordert …",
+      "request": "Zertifikat anfordern",
+      "requestSuccess": "Zertifikat angefordert!",
+      "requestFailed": "Zertifikat konnte nicht angefordert werden",
+      "pendingTitle": "Wartet auf die Bestätigung des Dozenten",
+      "pendingDescription": "Ihr Antrag wurde eingereicht. Ihr Dozent prüft ihn in Kürze.",
+      "adminPendingTitle": "Wartet auf die Bestätigung der Administration",
+      "adminPendingDescription": "Ihr Dozent hat das Zertifikat bestätigt. Es wartet nun auf die abschließende Bestätigung der Administration.",
+      "approvedEyebrow": "Verliehen",
+      "approvedTitle": "Zertifikat bestätigt",
+      "approvedDescription": "Herzlichen Glückwunsch! Ihr Zertifikat wurde bestätigt.",
+      "certificateNumber": "Zertifikatsnummer",
+      "copyAria": "Zertifikatsnummer kopieren",
+      "copyFailed": "Kopieren fehlgeschlagen",
+      "issueDate": "Ausstellungsdatum",
+      "issuePending": "Offen",
+      "rejectedTitle": "Der Zertifikatsantrag wurde nicht bestätigt",
+      "rejectedDescription": "Ihr Antrag wurde leider abgelehnt. Sie können ihn erneut stellen, sobald die offenen Punkte erledigt sind.",
+      "rerequest": "Erneut anfordern",
+      "review": {
+        "eyebrow": "Sie sind dran",
+        "heading": "Wie war dieser Kurs? Hinterlassen Sie eine Bewertung",
+        "starAria": "{{value}} von 5 bewerten",
+        "commentPlaceholder": "Teilen Sie Ihre Gedanken zu diesem Kurs … (optional)",
+        "submitting": "Wird gesendet …",
+        "submit": "Bewertung senden",
+        "thanks": "Danke für Ihre Bewertung!",
+        "missingRating": "Bitte wählen Sie eine Bewertung",
+        "submitted": "Bewertung gesendet!",
+        "submitFailed": "Bewertung konnte nicht gesendet werden"
+      },
+      "blocked": "Das Zertifikat öffnet sich, sobald die Punkte oben erledigt sind"
+    },
+    "document": {
+      "print": "Drucken",
+      "back": "Zurück zu den Zertifikaten",
+      "notIssued": "Dieses Zertifikat wurde noch nicht ausgestellt",
+      "schoolUnnamed": "Kein Schulname hinterlegt",
+      "open": "Zertifikat öffnen",
+      "certificateOfCompletion": "Certificate of Completion",
+      "certifies": "This certifies that",
+      "hasCompleted": "has completed the course",
+      "issued": "Issued {{date}}",
+      "instructor": "Instructor",
+      "director": "Director",
+      "verifyAt": "Verify at equipbible.com/verify/{{number}}"
+    }
+  },
+  "studentProgress": {
+    "loadFailed": "Fortschritt der Studierenden konnte nicht geladen werden",
+    "loadFailedDescription": "Der Server ist möglicherweise vorübergehend nicht erreichbar. Bitte erneut versuchen.",
+    "retry": "Erneut versuchen",
+    "backToCourses": "Zurück zu den Kursen",
+    "breadcrumb": {
+      "myCourses": "Meine Kurse",
+      "courseFallback": "Kurs"
+    },
+    "heading": "Fortschritt der Studierenden",
+    "analytics": "Auswertung",
+    "gradebook": "Notenbuch",
+    "searchPlaceholder": "Studierende nach Name oder E-Mail suchen …",
+    "table": {
+      "heading": "Studierende",
+      "description": "Klicken Sie eine Zeile an, um die Aufschlüsselung zu sehen",
+      "name": "Name",
+      "email": "E-Mail",
+      "progress": "Fortschritt",
+      "chapters": "Kapitel",
+      "quizAvg": "Ø Test",
+      "assignAvg": "Ø Aufgaben",
+      "lastActive": "Zuletzt aktiv",
+      "emptyNoMatch": "Keine Studierenden passen zur Suche",
+      "emptyNoStudents": "Noch niemand eingeschrieben"
+    },
+    "row": {
+      "markedIncomplete": "Als nicht abgeschlossen markiert",
+      "markedComplete": "Als abgeschlossen markiert",
+      "toggleFailed": "Abschluss konnte nicht geändert werden",
+      "extraAttemptGranted": "Zusätzlicher Versuch gewährt",
+      "extraAttemptFailed": "Zusätzlicher Versuch konnte nicht gewährt werden",
+      "overallGrade": "Gesamtnote",
+      "overallGradeNa": "–",
+      "enrolled": "Eingeschrieben",
+      "chaptersCompleted": "Abgeschlossene Kapitel",
+      "chaptersCompletedValue": "{{done}} von {{total}}",
+      "progress": "Fortschritt",
+      "chapterBreakdown": "Aufschlüsselung nach Kapiteln",
+      "loadingDetail": "Aufschlüsselung wird geladen …",
+      "detailFailed": "Die Aufschlüsselung konnte nicht geladen werden.",
+      "retry": "Erneut versuchen",
+      "gradebookButton": "Notenbuch",
+      "viewAnalytics": "Auswertung ansehen",
+      "excused": "Von dieser Arbeit befreit",
+      "excuseFailed": "Die Befreiung konnte nicht eingetragen werden",
+      "exemptionRemoved": "Die Arbeit zählt wieder",
+      "exemptionRemoveFailed": "Die Arbeit konnte nicht zurückgegeben werden"
+    },
+    "chapterRow": {
+      "notCompleted": "Nicht abgeschlossen",
+      "quizScore": "Test: {{score}}/{{max}}",
+      "extraAttemptTitle": "Zusätzlichen Versuch gewähren",
+      "completedByTeacher": "Vom Dozenten abgeschlossen",
+      "completedByQuiz": "Über den Test abgeschlossen",
+      "completedBySubmission": "Über die Abgabe abgeschlossen",
+      "undo": "Rückgängig",
+      "complete": "Abschließen",
+      "excused": "Vom Dozenten befreit",
+      "excuse": "Befreien",
+      "excuseTitle": "Diese Person von der Arbeit befreien",
+      "returnWork": "Arbeit zurückgeben"
+    },
+    "stats": {
+      "totalStudents": "Studierende gesamt",
+      "averageProgress": "Durchschnittlicher Fortschritt",
+      "completionRate": "Abschlussquote"
+    },
+    "relative": {
+      "never": "Nie",
+      "minutesAgo_one": "vor {{count}} Min.",
+      "minutesAgo_other": "vor {{count}} Min.",
+      "hoursAgo_one": "vor {{count}} Std.",
+      "hoursAgo_other": "vor {{count}} Std.",
+      "daysAgo_one": "vor {{count}} Tag",
+      "daysAgo_other": "vor {{count}} Tagen"
+    },
+    "excuse": {
+      "title": "Befreiung von „{{chapter}}“",
+      "explainer": "Die Arbeit zählt nicht mehr für die Note, und das Kapitel gilt als erledigt — der Fortschritt kann also 100 % erreichen und das Zertifikat bleibt erreichbar. Sie können die Arbeit jederzeit zurückgeben.",
+      "reasonLabel": "Grund (optional, für die Leitung sichtbar)",
+      "reasonPlaceholder": "Krankheit, Trauerfall, später eingestiegen …",
+      "confirm": "Befreien"
+    },
+    "grade": {
+      "byCompletion": "Nach Abschluss — siehe Fortschritt",
+      "notGradedYet": "Noch nichts bewertet",
+      "notWeighted": "Bewertete Arbeit hat kein Gewicht",
+      "notAssessed": "Alle Arbeiten befreit — braucht eine Note",
+      "setByTeacher": "vom Dozenten gesetzt"
+    },
+    "retake": {
+      "asked": "hat um eine Wiederholung gebeten",
+      "title": "Diese Person bittet um eine Wiederholung",
+      "noDetail": "Der Grund wurde nicht festgehalten — sehen Sie sich die Arbeit unten an",
+      "blocker": {
+        "below_threshold": "Ergebnis unter der Bestehensgrenze",
+        "quizzes_not_passed": "ein Test wurde nicht bestanden",
+        "not_assessed": "nichts zu bewerten — braucht eine Abschlussnote",
+        "course_not_complete": "Kurs nicht abgeschlossen",
+        "work_not_graded": "Arbeit wartet noch auf die Bewertung",
+        "work_returned": "Arbeit zur Überarbeitung zurückgegeben",
+        "work_not_submitted": "Arbeit nicht eingereicht"
+      }
+    },
+    "history": {
+      "title": "Notenverlauf",
+      "show": "Verlauf anzeigen",
+      "retry": "Laden fehlgeschlagen — erneut versuchen",
+      "empty": "Die Note wurde nie von Hand gesetzt",
+      "unknownActor": "Unbekannt",
+      "computedWas": "(berechnet waren {{score}} %)",
+      "action": {
+        "grade_override_set": "Note von Hand gesetzt: {{grade}}",
+        "grade_override_changed": "Note von Hand geändert: {{grade}}",
+        "grade_override_cleared": "Handnote entfernt",
+        "grade_exemption_created": "Arbeit von der Note befreit",
+        "grade_exemption_removed": "Befreiung aufgehoben",
+        "retake_request": "Die Person hat um eine Wiederholung gebeten",
+        "unknown": "Eine Änderung an der Note"
+      }
+    }
+  },
+  "teacherAnalytics": {
+    "courseFallback": "Kurs",
+    "loadFailed": "Auswertung konnte nicht geladen werden",
+    "backToCourses": "Zurück zu den Kursen",
+    "breadcrumb": {
+      "myCourses": "Meine Kurse",
+      "courseFallback": "Kurs"
+    },
+    "heading": "Kursauswertung",
+    "studentProgress": "Fortschritt der Studierenden",
+    "gradebook": "Notenbuch",
+    "stats": {
+      "totalStudents": "Studierende gesamt",
+      "averageProgress": "Durchschnittlicher Fortschritt",
+      "completed": "Abgeschlossen (100 %)",
+      "enrolledThisMonth": "Einschreibungen diesen Monat"
+    },
+    "enrollments": {
+      "heading": "Einschreibungen",
+      "subheadingCount_one": "{{count}} Person eingeschrieben",
+      "subheadingCount_other": "{{count}} Personen eingeschrieben",
+      "emptyText": "Es hat sich noch niemand eingeschrieben.",
+      "name": "Name",
+      "email": "E-Mail",
+      "progress": "Fortschritt",
+      "enrolled": "Eingeschrieben",
+      "unknown": "Unbekannt"
+    }
+  },
+  "reviews": {
+    "loadFailed": "Bewertungen konnten nicht geladen werden",
+    "deleted": "Bewertung gelöscht",
+    "deleteFailed": "Bewertung konnte nicht gelöscht werden",
+    "heading": "Bewertungen",
+    "outOf5": "von 5",
+    "reviewCount_one": "{{count}} Bewertung",
+    "reviewCount_other": "{{count}} Bewertungen",
+    "loadFailedInline": "Bewertungen konnten nicht geladen werden.",
+    "retry": "Erneut versuchen",
+    "empty": "Noch keine Bewertungen.",
+    "emptyDescription": "Seien Sie die erste Person, die schreibt, was sie aus diesem Kurs mitgenommen hat.",
+    "anonymous": "Anonym",
+    "confirmDeletePrefix": "Löschen?",
+    "confirmDeleteLoading": "…",
+    "confirmDeleteYes": "Ja",
+    "confirmDeleteNo": "Nein",
+    "deleteAria": "Bewertung löschen"
+  },
+  "calendar": {
+    "title": "Kalender",
+    "eyebrow": "Termine",
+    "filterByCourse": "Nach Kurs filtern",
+    "allCourses": "Alle Kurse",
+    "retry": "Erneut versuchen",
+    "prevMonth": "Voriger Monat",
+    "nextMonth": "Nächster Monat",
+    "today": "Heute",
+    "moreEvents": "+{{count}} weitere",
+    "selectedDayEmpty": "An diesem Tag keine Termine",
+    "eventCount_one": "{{count}} Termin",
+    "eventCount_other": "{{count}} Termine",
+    "upcomingEyebrow": "Nächste 14 Tage",
+    "upcomingTitle": "Demnächst",
+    "upcomingEmpty": "Keine anstehenden Termine",
+    "overdue": "Überfällig",
+    "loadError": "Kalendertermine konnten nicht geladen werden. Bitte erneut versuchen.",
+    "noEnrollmentsTitle": "Ihr Kalender ist leer",
+    "noEnrollmentsDescription": "Schreiben Sie sich in einen Kurs ein, um dessen Fristen, Prüfungen und Termine hier zu sehen.",
+    "browseCourses": "Kurse ansehen",
+    "eventTypes": {
+      "deadline": "Frist",
+      "live_session": "Live-Termin",
+      "exam": "Prüfung",
+      "other": "Sonstiges"
+    }
+  },
+  "teacher": {
+    "dashboardTitle": "Meine Kurse",
+    "newCourse": "Neuer Kurs",
+    "searchPlaceholder": "Kurse suchen …",
+    "somethingWrong": "Etwas ist schiefgelaufen",
+    "confirmTrashTitle": "Kurs in den Papierkorb verschieben?",
+    "confirmTrashDescription": "Sie können ihn später aus dem Papierkorb wiederherstellen.",
+    "confirmTrashConfirm": "In den Papierkorb",
+    "backToCourses": "Zurück zu den Kursen"
+  },
+  "teacherDashboard": {
+    "stats": {
+      "totalCourses": "Kurse",
+      "published": "Veröffentlicht",
+      "modules": "Module",
+      "pendingActions": "Braucht Aufmerksamkeit",
+      "pendingGrading": "Wartet auf Bewertung"
+    },
+    "courseCard": {
+      "statusPublishing": "Wird veröffentlicht",
+      "statusPublished": "Veröffentlicht",
+      "statusDraft": "Entwurf",
+      "modules_one": "{{count}} Modul",
+      "modules_other": "{{count}} Module",
+      "createdOn": "Erstellt {{date}}",
+      "thumbnailAlt": "Vorschaubild: {{title}}",
+      "actionAnalytics": "Auswertung",
+      "actionGradebook": "Notenbuch",
+      "actionStudentProgress": "Fortschritt der Studierenden",
+      "actionPublish": "Veröffentlichen",
+      "actionUnpublish": "Veröffentlichung zurücknehmen",
+      "actionClone": "Kurs kopieren",
+      "actionEditCourse": "Kurs bearbeiten",
+      "actionDelete": "Löschen",
+      "actionMore": "Weitere Aktionen",
+      "pendingGrading_one": "{{count}} zu bewerten",
+      "pendingGrading_other": "{{count}} zu bewerten"
+    },
+    "createForm": {
+      "title": "Neuen Kurs erstellen",
+      "titleLabel": "Titel",
+      "titlePlaceholder": "Einführung in die Theologie",
+      "descriptionLabel": "Beschreibung",
+      "descriptionPlaceholder": "Eine kurze Beschreibung des Kurses …",
+      "optional": "optional",
+      "editorHint": "Titelbild, Module, Kalender und alles Weitere richten Sie gleich danach im Editor ein.",
+      "creating": "Wird erstellt …",
+      "submit": "Kurs erstellen",
+      "cancel": "Abbrechen"
+    },
+    "trash": {
+      "show": "Papierkorb anzeigen",
+      "hide": "Papierkorb ausblenden",
+      "empty": "Der Papierkorb ist leer.",
+      "loadFailed": "Papierkorb konnte nicht geladen werden",
+      "restored": "Kurs wiederhergestellt",
+      "restoreFailed": "Kurs konnte nicht wiederhergestellt werden",
+      "confirmDelete": {
+        "title": "Diesen Kurs endgültig löschen?",
+        "description": "Der Kurs und alle seine Daten (Module, Kapitel, Einschreibungen, Noten) werden endgültig gelöscht. Das lässt sich nicht rückgängig machen.",
+        "confirm": "Endgültig löschen"
+      },
+      "deleted": "Kurs endgültig gelöscht",
+      "deleteFailed": "Kurs konnte nicht gelöscht werden",
+      "deletedAt": "Gelöscht {{date}}",
+      "restore": "Wiederherstellen",
+      "deleteForever": "Endgültig löschen"
+    },
+    "pendingCerts": {
+      "title": "Offene Zertifikate",
+      "studentFallback": "Studierende Person",
+      "courseFallback": "Kurs",
+      "requestedPrefix": "Angefordert {{date}}",
+      "requestedUnknown": "Angefordert (Datum unbekannt)",
+      "approve": "Bestätigen",
+      "reject": "Ablehnen",
+      "notEarnedYet_one": "Noch nicht erreicht: {{count}} Punkt offen",
+      "notEarnedYet_other": "Noch nicht erreicht: {{count}} Punkte offen"
+    }
+  },
+  "teacherEditor": {
+    "badges": {
+      "notSet": "Nicht gesetzt",
+      "upcoming": "Demnächst",
+      "closed": "Geschlossen",
+      "open": "Offen"
+    },
+    "defaults": {
+      "moduleTitle": "Modul {{n}}"
+    },
+    "modulesHeading": "Module",
+    "addModule": "Modul hinzufügen",
+    "noModulesYet": "Noch keine Module",
+    "noModulesYetDescription": "Fügen Sie Ihr erstes Modul hinzu, um den Kurs aufzubauen.",
+    "chapterCount_one": "{{count}} Kapitel",
+    "chapterCount_other": "{{count}} Kapitel",
+    "dragModuleAria": "Modul {{title}} umsortieren",
+    "deleteModuleAria": "Modul {{title}} löschen",
+    "modals": {
+      "enrollment": {
+        "title": "Einschreibezeitraum",
+        "status": "Status",
+        "start": "Beginn",
+        "end": "Ende",
+        "save": "Speichern",
+        "saving": "Wird gespeichert …"
+      },
+      "announcements": {
+        "title": "Ankündigungen",
+        "titlePlaceholder": "Titel",
+        "contentPlaceholder": "Inhalt (optional)",
+        "post": "Veröffentlichen",
+        "posting": "Wird veröffentlicht …",
+        "empty": "Noch keine Ankündigungen.",
+        "deleteAria": "Ankündigung {{title}} löschen",
+        "carouselRole": "Karussell",
+        "prevAria": "Vorige Ankündigung",
+        "nextAria": "Nächste Ankündigung",
+        "position": "{{current}} / {{total}}"
+      },
+      "materials": {
+        "title": "Kursmaterialien",
+        "upload": "Datei hochladen",
+        "empty": "Noch keine Materialien hochgeladen.",
+        "sizeBytes": "{{b}} B",
+        "sizeKb": "{{kb}} KB",
+        "sizeMb": "{{mb}} MB",
+        "downloadAria": "{{name}} herunterladen",
+        "deleteAria": "{{name}} löschen"
+      },
+      "events": {
+        "title": "Kurstermine",
+        "editEvent": "Termin bearbeiten",
+        "createEvent": "Termin erstellen",
+        "titlePlaceholder": "Titel des Termins",
+        "descriptionPlaceholder": "Beschreibung (optional)",
+        "type": "Art",
+        "dateTime": "Datum und Uhrzeit",
+        "saving": "Wird gespeichert …",
+        "update": "Termin aktualisieren",
+        "create": "Termin erstellen",
+        "cancel": "Abbrechen",
+        "empty": "Noch keine Termine.",
+        "types": {
+          "deadline": "Frist",
+          "live_session": "Live-Termin",
+          "exam": "Prüfung",
+          "other": "Sonstiges"
+        },
+        "editAria": "Termin {{title}} bearbeiten",
+        "deleteAria": "Termin {{title}} löschen"
+      }
+    },
+    "toast": {
+      "saved": "Gespeichert",
+      "saveFailed": "Speichern fehlgeschlagen",
+      "coverUpdated": "Titelbild aktualisiert",
+      "coverRemoved": "Titelbild entfernt",
+      "coverRemoveFailed": "Titelbild konnte nicht entfernt werden",
+      "enrollmentSaved": "Einschreibezeitraum gespeichert",
+      "published": "Veröffentlicht",
+      "unpublished": "Veröffentlichung zurückgenommen",
+      "publishFailed": "Veröffentlichungsstatus konnte nicht geändert werden",
+      "moduleAdded": "Modul hinzugefügt",
+      "moduleAddFailed": "Modul konnte nicht hinzugefügt werden",
+      "moduleRemoveFailed": "Modul konnte nicht entfernt werden",
+      "moduleOrderFailed": "Reihenfolge der Module konnte nicht gespeichert werden",
+      "announcementPostFailed": "Ankündigung konnte nicht veröffentlicht werden",
+      "announcementDeleteFailed": "Ankündigung konnte nicht gelöscht werden",
+      "eventCreated": "Termin erstellt",
+      "eventUpdated": "Termin aktualisiert",
+      "eventDeleted": "Termin gelöscht",
+      "eventSaveFailed": "Termin konnte nicht gespeichert werden",
+      "eventDeleteFailed": "Termin konnte nicht gelöscht werden",
+      "materialUploadFailed": "Hochladen fehlgeschlagen",
+      "materialDownloadFailed": "Herunterladen fehlgeschlagen",
+      "materialDeleteFailed": "Material konnte nicht gelöscht werden"
+    },
+    "confirm": {
+      "deleteModuleTitle": "Dieses Modul löschen?",
+      "deleteModuleDescription": "Alle Kapitel im Modul werden ebenfalls entfernt.",
+      "deleteModuleAction": "Löschen",
+      "deleteAnnouncementTitle": "Diese Ankündigung löschen?",
+      "deleteAnnouncementAction": "Löschen",
+      "deleteEventTitle": "Diesen Termin löschen?",
+      "deleteEventAction": "Löschen",
+      "deleteMaterialTitle": "Material löschen?",
+      "deleteMaterialDescription": "„{{name}}“ wird endgültig entfernt.",
+      "deleteMaterialAction": "Löschen"
+    }
+  },
+  "moduleEditor": {
+    "defaults": {
+      "chapterTitle": "Kapitel {{n}}",
+      "readingTitle": "Lektion {{n}}",
+      "quizTitle": "Test {{n}}",
+      "examTitle": "Prüfung {{n}}",
+      "assignmentTitle": "Aufgabe {{n}}"
+    },
+    "toast": {
+      "moduleNotFound": "Modul nicht gefunden",
+      "failedSaveModule": "Modul konnte nicht gespeichert werden",
+      "failedSaveDueDate": "Fälligkeitsdatum konnte nicht gespeichert werden",
+      "chapterAdded": "Kapitel hinzugefügt",
+      "failedAddChapter": "Kapitel konnte nicht hinzugefügt werden",
+      "failedRenameChapter": "Kapitel konnte nicht umbenannt werden",
+      "chapterDeleted": "Kapitel gelöscht",
+      "failedDeleteChapter": "Kapitel konnte nicht gelöscht werden",
+      "chapterLocked": "Kapitel gesperrt",
+      "chapterUnlocked": "Kapitel entsperrt",
+      "failedToggleLock": "Sperre konnte nicht umgeschaltet werden: {{detail}}",
+      "failedReorderChapters": "Reihenfolge der Kapitel konnte nicht gespeichert werden"
+    },
+    "invalidField": "Ungültig: {{field}}",
+    "invalidChapterTitle": "Ungültiger Kapiteltitel",
+    "unknownError": "Unbekannter Fehler",
+    "confirmDelete": {
+      "title": "Dieses Kapitel löschen?",
+      "description": "Das Kapitel und sein Inhalt werden entfernt.",
+      "confirm": "Löschen"
+    },
+    "notFound": {
+      "title": "Modul nicht gefunden",
+      "description": "Das Modul wurde möglicherweise gelöscht, oder Sie haben keinen Zugriff.",
+      "backToCourse": "Zurück zum Kurs"
+    },
+    "backToCourse": "Zurück zum Kurs",
+    "untitledModule": "Modul ohne Titel",
+    "addDescription": "Beschreibung des Moduls hinzufügen",
+    "editTitle": "Modultitel bearbeiten",
+    "editDescription": "Modulbeschreibung bearbeiten",
+    "dueDate": "Fällig am",
+    "clear": "Leeren",
+    "noChapters": {
+      "title": "Noch keine Kapitel",
+      "description": "Wählen Sie unten eine Kapitelart, um dieses Modul aufzubauen. Lektionen tragen Ihren geschriebenen und visuellen Inhalt; Tests, Prüfungen und Aufgaben messen das Verständnis jeweils anders.",
+      "action": "Kapitel hinzufügen"
+    },
+    "addChapter": "Kapitel hinzufügen",
+    "addBar": {
+      "reading": {
+        "description": "Text, Bilder, Video, Hinweise, Code, Formeln."
+      },
+      "quiz": {
+        "description": "Auswahl-, Kurzantwort- und Aufsatzfragen."
+      },
+      "exam": {
+        "description": "Prüfung mit Gewicht, standardmäßig ein Versuch."
+      },
+      "assignment": {
+        "description": "Studierende reichen Arbeit ein; Sie bewerten sie von Hand."
+      }
+    },
+    "lockChapterTooltip": "Kapitel sperren",
+    "unlockChapterTooltip": "Kapitel entsperren",
+    "editChapterAria": "Kapitel {{title}} bearbeiten",
+    "deleteChapterAria": "Kapitel {{title}} löschen",
+    "dragChapterAria": "Kapitel {{title}} umsortieren"
+  },
+  "courseEditor": {
+    "notFound": {
+      "title": "Kurs nicht gefunden",
+      "description": "Der Kurs wurde möglicherweise gelöscht, oder Sie haben keinen Zugriff.",
+      "backToCourses": "Zurück zu den Kursen"
+    },
+    "myCourses": "Meine Kurse",
+    "untitledCourse": "Kurs ohne Titel",
+    "addDescription": "Beschreibung des Kurses hinzufügen",
+    "editTitle": "Kurstitel bearbeiten",
+    "editDescription": "Kursbeschreibung bearbeiten",
+    "published": "Veröffentlicht",
+    "draft": "Entwurf",
+    "publish": "Veröffentlichen",
+    "unpublish": "Veröffentlichung zurücknehmen",
+    "moreActions": "Weitere Aktionen",
+    "menu": {
+      "enrollment": "Einschreibung",
+      "announcements": "Ankündigungen",
+      "materials": "Materialien",
+      "events": "Termine",
+      "accessMode": "Zugangsart"
+    },
+    "accessMode": {
+      "title": "Zugang zum Kurs",
+      "publicLabel": "Öffentlich",
+      "publicDescription": "Alle Angemeldeten können sich selbst einschreiben, im Rahmen des Einschreibezeitraums.",
+      "instituteLabel": "Institut (nur auf Einladung)",
+      "instituteDescription": "Studierende können sich nicht selbst einschreiben. Fügen Sie sie über eine Gruppe in der Administration hinzu.",
+      "save": "Speichern",
+      "saving": "Wird gespeichert …"
+    }
+  },
+  "chapterEditor": {
+    "notFound": {
+      "title": "Kapitel nicht gefunden",
+      "description": "Das Kapitel wurde möglicherweise gelöscht, oder Sie haben keinen Zugriff.",
+      "backToModule": "Zurück zum Modul"
+    },
+    "moduleFallback": "Modul",
+    "chapterFallback": "Kapitel",
+    "breadcrumb": {
+      "myCourses": "Meine Kurse",
+      "course": "Kurs"
+    },
+    "toast": {
+      "chapterNotFound": "Kapitel nicht gefunden",
+      "loadFailed": "Kapitel konnte nicht geladen werden",
+      "invalidData": "Ungültige Kapiteldaten",
+      "saved": "Kapitel gespeichert",
+      "saveFailed": "Speichern fehlgeschlagen: {{detail}}"
+    },
+    "unknownError": "Unbekannter Fehler",
+    "leaveConfirm": {
+      "title": "Ohne Speichern verlassen?",
+      "description": "Sie haben ungespeicherte Änderungen. Sie gehen verloren, wenn Sie jetzt gehen.",
+      "confirm": "Verlassen"
+    },
+    "back": "Zurück",
+    "titlePlaceholder": "Kapiteltitel",
+    "editTitleAria": "Kapiteltitel bearbeiten",
+    "chapterType": "Kapitelart",
+    "save": "Kapitel speichern",
+    "saving": "Wird gespeichert …",
+    "saveHint": "Strg+S zum Speichern",
+    "unsavedChanges": "Sie haben ungespeicherte Änderungen"
+  },
+  "courseDetail": {
+    "allCourses": "Alle Kurse",
+    "manageCourse": "Kurs verwalten",
+    "enrollInCourse": "In den Kurs einschreiben",
+    "enrolling": "Einschreibung läuft …",
+    "enrollmentNotAvailable": "Einschreibung nicht möglich",
+    "signInToEnroll": "Zum Einschreiben anmelden",
+    "byInvitationOnly": "Nur auf Einladung",
+    "byInvitationOnlyHint": "Dieser Kurs gehört zu einem Institutsprogramm. Die Programmleitung schreibt die Studierenden direkt ein — bitte wenden Sie sich an sie.",
+    "enrollmentClosedAllCohorts": "Der Einschreibezeitraum ist für alle verfügbaren Gruppen geschlossen.",
+    "noCohortsAvailable": "Für diesen Kurs ist derzeit keine Gruppe verfügbar.",
+    "enrollmentRangeLabel": "Einschreibung: {{start}} — {{end}}",
+    "studentsEnrolledOfMax": "{{enrolled}}/{{max}} Studierende eingeschrieben",
+    "moduleCount_one": "{{count}} Modul",
+    "moduleCount_other": "{{count}} Module",
+    "chapterCount_one": "{{count}} Kapitel",
+    "chapterCount_other": "{{count}} Kapitel",
+    "percentComplete": "{{percent}} % abgeschlossen",
+    "modulesHeading": "Module",
+    "noModulesAddedYet": "Noch keine Module angelegt",
+    "noModulesAddedYetDescription": "Der Dozent hat für diesen Kurs noch keine Module veröffentlicht. Schauen Sie bald wieder vorbei — sie erscheinen hier, sobald sie hinzugefügt werden.",
+    "openModule": "Öffnen",
+    "moduleLocked": "Gesperrt",
+    "moduleLockHint": "Schließen Sie alle Leistungen des vorigen Moduls ab, um es zu öffnen.",
+    "due": "Fällig",
+    "overdue": "Überfällig",
+    "downloadFailed": "Datei konnte nicht heruntergeladen werden",
+    "materialsButton": "Materialien ({{count}})",
+    "reviewsButton": "Bewertungen",
+    "reviewsModalTitle": "Kursbewertungen",
+    "materialsModal": {
+      "title": "Kursmaterialien",
+      "empty": "Keine Materialien vorhanden."
+    },
+    "cohortSelect": {
+      "title": "Gruppe wählen",
+      "intro": "Es stehen mehrere Gruppen zur Wahl. Wählen Sie eine zum Einschreiben:",
+      "spotsFilled": "{{enrolled}}/{{max}} Plätze belegt",
+      "enrolling": "Einschreibung läuft …",
+      "enroll": "Einschreiben"
+    },
+    "upcoming": {
+      "heading": "Anstehende Fristen und Termine"
+    }
+  },
+  "gradebook": {
+    "summaryTab": "Gesamtnoten",
+    "tableTab": "Notentabelle",
+    "failedLoad": "Notenbuch konnte nicht geladen werden. Bitte erneut versuchen.",
+    "breadcrumbCourses": "Meine Kurse",
+    "breadcrumbCourseFallback": "Kurs",
+    "pageHeading": "Notenbuch",
+    "exportCsv": "CSV exportieren",
+    "exporting": "Wird exportiert …",
+    "stats": {
+      "students": "Studierende",
+      "classAverage": "Kursdurchschnitt",
+      "manuallyGraded": "Von Hand bewertet",
+      "weights": "Gewichtung angewendet",
+      "weightsDiffer": "die Einstellungen sagen {{configured}} — siehe Hinweis über den Reitern"
+    },
+    "config": {
+      "title": "Bewertungseinstellungen",
+      "description": "Legen Sie fest, wie Tests und Aufgaben die Kursnote aufteilen",
+      "quizWeight": "Gewicht der Tests (%)",
+      "assignmentWeight": "Gewicht der Aufgaben (%)",
+      "split": "Tests {{quiz}} % · Aufgaben {{assignment}} %",
+      "saving": "Wird gespeichert …",
+      "save": "Gewichtung speichern"
+    },
+    "summary": {
+      "title": "Noten der Studierenden",
+      "description": "Automatisch berechnet aus Testergebnissen, Aufgabennoten und abgeschlossenen Kapiteln. Klicken Sie eine Person an, um die Note von Hand zu setzen.",
+      "empty": "Noch niemand eingeschrieben.",
+      "thStudent": "Studierende Person",
+      "thQuiz": "Test",
+      "thAssignment": "Aufgabe",
+      "thParticipation": "Teilnahme",
+      "thFinal": "Endnote",
+      "thGrade": "Note",
+      "thManual": "Von Hand",
+      "unknownStudent": "Unbekannt",
+      "breakdownQuiz": "Ø Test:",
+      "breakdownAssignment": "Ø Aufgaben:",
+      "noScoreForStudent": "Für diese Person gibt es noch keinen Prozentwert — siehe Hinweis über der Tabelle.",
+      "byCompletionBadge": "Nach Abschluss",
+      "notGradedYetBadge": "Nicht bewertet",
+      "notWeightedBadge": "Ohne Gewicht",
+      "assignmentsNotCounted": "Aufgaben stehen in diesem Kurs auf 0 %, ihre Noten werden also angezeigt, wirken sich aber nicht auf das Gesamtergebnis aus — die Note kommt allein aus den Tests. Ändern Sie die Gewichtung in den Bewertungseinstellungen, wenn Aufgaben zählen sollen.",
+      "quizzesNotCounted": "Tests stehen in diesem Kurs auf 0 %, ihre Ergebnisse werden also angezeigt, wirken sich aber nicht auf das Gesamtergebnis aus — die Note kommt allein aus den Aufgaben. Ändern Sie die Gewichtung in den Bewertungseinstellungen, wenn Tests zählen sollen.",
+      "notGradedYetCourse": "In diesem Kurs wurde noch nichts bewertet, es gibt also keine Prozentwerte. Sie erscheinen, sobald der erste Test geschrieben oder die erste Aufgabe bewertet ist.",
+      "chaptersNotFilledIn": "Dieser Kurs hat Kapitel, die bewertet werden sollen, aber weder Test noch Aufgabe sind bisher ausgefüllt — ein Test wird erst gespeichert, wenn er Fragen hat. Prozentwerte erscheinen, sobald der Inhalt da ist. Bis dahin werden Studierende an nichts gemessen.",
+      "completionPassCourse": "Dieser Kurs hat weder Tests noch Aufgaben, es lässt sich also kein Prozentwert berechnen. Er wird durch Abschluss bestanden: wer jedes Kapitel erledigt, besteht. Das ist so gewollt, kein Fehler.",
+      "quizzesWeighZero": "Sie haben Tests in diesem Kurs auf 0 % gesetzt, sie ergeben also keinen Prozentwert — ihre Ergebnisse sehen Sie im Reiter „Notentabelle“. Ein Prozentwert erscheint, sobald Sie die erste Aufgabe bewerten: hier tragen die Aufgaben die ganze Note. Damit Tests zählen, ändern Sie die Gewichtung in den Bewertungseinstellungen.",
+      "quizzesWeighZeroNoAssignments": "Sie haben Tests auf 0 % gesetzt, und dieser Kurs hat keine Aufgaben — es gibt also nichts, woraus sich ein Prozentwert berechnen ließe. Die Testergebnisse sehen Sie im Reiter „Notentabelle“. Für eine Note fügen Sie eine Aufgabe hinzu oder geben Sie den Tests Gewicht.",
+      "assignmentsWeighZeroNoQuizzes": "Sie haben Aufgaben auf 0 % gesetzt, und dieser Kurs hat keine Tests — es gibt also nichts, woraus sich ein Prozentwert berechnen ließe. Die Aufgabennoten sehen Sie im Reiter „Notentabelle“. Für einen Prozentwert fügen Sie einen Test hinzu oder geben Sie den Aufgaben Gewicht.",
+      "assignmentsWeighZero": "Sie haben Aufgaben in diesem Kurs auf 0 % gesetzt, sie ergeben also keinen Prozentwert — ihre Noten sehen Sie im Reiter „Notentabelle“. Ein Prozentwert erscheint, sobald ein Test abgeschlossen ist: hier tragen die Tests die ganze Note. Damit Aufgaben zählen, ändern Sie die Gewichtung in den Bewertungseinstellungen.",
+      "assignmentsUnmarked": "Dieser Kurs hat Aufgaben, aber noch ist keine bewertet, deshalb wird die Note allein aus den Tests berechnet (Tests: 100 %). Sobald Sie die erste bewerten, greift Ihre eingestellte Aufteilung — und bei Studierenden mit unbewerteten Aufgaben fällt der Prozentwert, denn eine unbewertete Aufgabe zählt als null.",
+      "quizzesUntaken": "Dieser Kurs hat Tests, aber noch hat niemand einen abgeschlossen, deshalb wird die Note allein aus den Aufgaben berechnet (Aufgaben: 100 %). Sobald ein Test geschrieben ist, greift Ihre eingestellte Aufteilung — und bei Studierenden, die ihn nicht geschrieben haben, fällt der Prozentwert, denn ein nicht geschriebener Test zählt als null.",
+      "noAssignmentsCourse": "Dieser Kurs enthält keine Aufgaben, deshalb wird die Note allein aus den Tests berechnet (Tests: 100 %). Ihre eingestellte Aufteilung gilt, sobald Sie eine Aufgabe hinzufügen und die erste Abgabe bewerten.",
+      "noQuizzesCourse": "Dieser Kurs enthält keine Tests, deshalb wird die Note allein aus den Aufgaben berechnet (Aufgaben: 100 %). Ihre eingestellte Aufteilung gilt, sobald Sie einen Test hinzufügen und jemand ihn abschließt.",
+      "breakdownParticipation": "Teilnahme:",
+      "manualDiffers": "Handnote <strong>{{manual}}</strong> weicht von der berechneten <strong>{{calc}}</strong> ab ({{pct}} %)",
+      "overrideGrade": "Note von Hand setzen",
+      "overridePlaceholder": "A, B, C, D, F",
+      "comment": "Kommentar",
+      "commentPlaceholder": "Notiz des Dozenten …",
+      "savingManual": "Wird gespeichert …",
+      "clearManual": "Note entfernen",
+      "saveManual": "Handnote speichern",
+      "classAverageRow_one": "Kursdurchschnitt ({{count}} Person)",
+      "classAverageRow_other": "Kursdurchschnitt ({{count}} Personen)",
+      "notAssessedBadge": "Nicht bewertet",
+      "notAssessedCourse": "Alle Arbeiten dieser Person wurden befreit, es gibt also nichts zu mitteln. Setzen Sie die Endnote von Hand — bis dahin bleibt das Zertifikat zurückgestellt.",
+      "classAverageOfRoster": "von {{total}} eingeschriebenen"
+    },
+    "table": {
+      "title": "Notentabelle",
+      "description": "Lese-/Videokapitel = 1 Punkt für den Abschluss · Test/Prüfung = Punktzahl · Aufgabe = vom Dozenten vergebene Punkte",
+      "thStudent": "Studierende Person",
+      "thTotal": "Gesamt",
+      "overrideGrade": "Note von Hand setzen",
+      "overridePlaceholder": "A, B, C, D, F",
+      "comment": "Kommentar",
+      "commentPlaceholder": "Notiz des Dozenten …",
+      "saving": "Wird gespeichert …",
+      "saveGrade": "Note speichern",
+      "cellGraded": "bewertet",
+      "cellSubmitted": "eingereicht",
+      "legend": {
+        "completed": "Abgeschlossen (1 Punkt)",
+        "quizPassed": "Test bestanden",
+        "quizFailed": "Test nicht bestanden",
+        "assignmentGraded": "Aufgabe bewertet",
+        "assignmentSubmitted": "Aufgabe eingereicht",
+        "notSubmitted": "Nicht eingereicht"
+      },
+      "byCompletion": "nach Abschluss",
+      "notGradedYet": "noch nicht bewertet",
+      "notWeighted": "Gewicht 0 %",
+      "notAssessed": "alles befreit",
+      "setByTeacher": "vom Dozenten",
+      "awaitingGradingTitle": "Eingereicht — wartet darauf, dass Sie die offenen Antworten bewerten"
+    },
+    "pair": {
+      "explainer": "Nicht eingereichte Arbeit zählt in der Endnote als 0",
+      "finalShort": "Endnote {{grade}}"
+    },
+    "vedomost": "Notenliste"
+  },
+  "admin": {
+    "title": "Administration",
+    "eyebrow": "Verwaltung",
+    "subtitle": "Personen und Rollen verwalten, Aktivität im Blick behalten",
+    "dailyChallenge": {
+      "review": {
+        "title": "Tagesaufgabe — zweisprachige Prüfung",
+        "description": "Editor mit EN und RU nebeneinander. Bestätigen hebt auf die nächste Stufe; bei Ablehnung mit Grund geht es zurück.",
+        "refresh": "Aktualisieren",
+        "filterStatus": "Status",
+        "filterMissingRu": "Nur Einträge ohne RU",
+        "missingEn": "EN fehlt",
+        "missingRu": "RU fehlt",
+        "totalCount": "{{count}} Frage(n)",
+        "loadError": "Die Warteschlange konnte nicht geladen werden — bitte erneut versuchen.",
+        "empty": {
+          "title": "Warteschlange ist leer",
+          "body": "Für diesen Filter gibt es nichts zu prüfen."
+        },
+        "status": {
+          "draft": "Entwurf",
+          "scripture_validated": "Schriftstelle geprüft",
+          "doctrinally_reviewed": "Lehrmäßig geprüft",
+          "bilingually_reviewed": "Zweisprachig geprüft",
+          "pilot_passed": "Pilot bestanden",
+          "published": "Veröffentlicht",
+          "archived": "Archiviert"
+        },
+        "detailTitle": "Zweisprachige Prüfung",
+        "backToQueue": "Zurück zur Warteschlange",
+        "approve": "Bestätigen und weitergeben",
+        "reject": "Ablehnen",
+        "save": "Speichern",
+        "correct": "Richtig",
+        "options": "Antworten",
+        "missing": "Fehlt",
+        "fillPlaceholder": "Noch keine Übersetzung — schreiben Sie sie hier.",
+        "originHuman": "Mensch",
+        "originMt": "Maschine",
+        "rejectPrompt": "Grund der Ablehnung (bleibt im Protokoll):",
+        "rejectedBanner": "Diese Frage ist abgelehnt. Grund: {{reason}}",
+        "field": {
+          "questionText": "Fragetext",
+          "explanation": "Erklärung"
+        },
+        "toast": {
+          "saved": "Gespeichert.",
+          "saveError": "Konnte nicht gespeichert werden — bitte erneut versuchen.",
+          "promoted": "Bestätigt und weitergegeben.",
+          "promoteError": "Konnte nicht weitergegeben werden — bitte erneut versuchen.",
+          "rejected": "Abgelehnt.",
+          "rejectError": "Konnte nicht abgelehnt werden — bitte erneut versuchen."
+        }
+      }
+    },
+    "tabOverview": "Überblick",
+    "tabCohorts": "Gruppen",
+    "tabAudit": "Prüfprotokoll",
+    "cohorts": {
+      "title": "Gruppen",
+      "loadError": "Gruppen konnten nicht geladen werden",
+      "searchPlaceholder": "Nach Namen suchen …",
+      "allStatuses": "Alle Status",
+      "statusUpcoming": "Demnächst",
+      "statusActive": "Aktiv",
+      "statusCompleted": "Abgeschlossen",
+      "statusArchived": "Archiviert",
+      "createButton": "Neue Gruppe",
+      "create": "Erstellen",
+      "creating": "Wird erstellt …",
+      "createTitle": "Gruppe erstellen",
+      "namePlaceholder": "Herbst 2026 — 1. Mose",
+      "maxStudentsPlaceholder": "Leer lassen für unbegrenzt",
+      "unlimited": "Unbegrenzt",
+      "fieldName": "Name",
+      "fieldStatus": "Status",
+      "fieldStart": "Beginn",
+      "fieldEnd": "Ende",
+      "fieldEnrollStart": "Einschreibung öffnet",
+      "fieldEnrollEnd": "Einschreibung schließt",
+      "fieldMaxStudents": "Höchstzahl Studierender",
+      "fieldEmail": "E-Mail",
+      "emailPlaceholder": "person@beispiel.de",
+      "thName": "Name",
+      "thStatus": "Status",
+      "thDates": "Zeitraum",
+      "thCourses": "Kurse",
+      "thStudents": "Studierende",
+      "thStudentName": "Studierende Person",
+      "thStudentEmail": "E-Mail",
+      "thEnrolledCourses": "Eingeschrieben in",
+      "thActions": "Aktionen",
+      "emptyNoCohorts": "Noch keine Gruppen. Legen Sie eine an, um Studierende in Gruppen einzuschreiben.",
+      "emptyNoMatch": "Keine Gruppe passt zur Suche.",
+      "backToList": "Zurück zu den Gruppen",
+      "notFoundTitle": "Gruppe nicht gefunden",
+      "notFoundDescription": "Diese Gruppe wurde möglicherweise gelöscht.",
+      "detailsHeading": "Details",
+      "coursesHeading": "Zugeordnete Kurse ({{count}})",
+      "studentsHeading": "Studierende ({{count}})",
+      "attachCourseButton": "Kurs zuordnen",
+      "attachCourseTitle": "Kurs zuordnen",
+      "pickCourse": "Kurs",
+      "noMoreCourses": "Alle Kurse sind bereits zugeordnet.",
+      "draftTag": "Entwurf",
+      "attach": "Zuordnen",
+      "attaching": "Wird zugeordnet …",
+      "addStudentButton": "Person hinzufügen",
+      "addStudentTitle": "Person hinzufügen",
+      "addStudentHint": "Geben Sie die E-Mail-Adresse ein. Die Person braucht bereits ein Equip-Konto — laden Sie sie sonst zuerst zur Registrierung ein.",
+      "add": "Hinzufügen",
+      "adding": "Wird hinzugefügt …",
+      "errorUserNotFound": "Kein Equip-Konto mit dieser Adresse — bitten Sie die Person, sich zuerst zu registrieren.",
+      "errorCohortFull": "Die Gruppe hat ihre Höchstzahl erreicht.",
+      "eyebrow": "Gruppe",
+      "noCoursesAttachedTitle": "Noch keine Kurse zugeordnet",
+      "noCoursesAttached": "Ordnen Sie einen Kurs zu, damit er den Studierenden dieser Gruppe zur Verfügung steht.",
+      "noStudentsTitle": "Noch keine Studierenden",
+      "noStudents": "Fügen Sie Personen per E-Mail hinzu, um sie in alle zugeordneten Kurse einzuschreiben.",
+      "studentSearchNoMatchHint": "Versuchen Sie einen anderen Namen oder eine andere Adresse.",
+      "deleteButton": "Gruppe löschen",
+      "completeConfirmTitle": "Diese Gruppe als abgeschlossen markieren?",
+      "completeConfirmDescription": "Studierende behalten Einschreibungen und Noten; die Gruppe lässt sich nur nicht mehr bearbeiten.",
+      "completeConfirmAction": "Abschließen",
+      "deleteConfirmTitle": "Diese Gruppe löschen?",
+      "deleteConfirmDescription": "Einschreibungen und Noten bleiben erhalten (nur die Zuordnung zur Gruppe entfällt). Das lässt sich nicht rückgängig machen.",
+      "deleteConfirmAction": "Löschen",
+      "detachConfirmTitle": "„{{name}}“ aus dieser Gruppe lösen?",
+      "detachConfirmDescription": "Bestehende Einschreibungen in diesen Kurs bleiben erhalten (nur die Zuordnung entfällt), damit die Noten bestehen bleiben.",
+      "detachConfirmAction": "Lösen",
+      "detachAriaPrefix": "{{name}} lösen",
+      "removeStudentConfirmTitle": "{{name}} aus dieser Gruppe entfernen?",
+      "removeStudentConfirmDescription": "Einschreibungen und Noten bleiben — nur die Zuordnung zur Gruppe entfällt.",
+      "removeStudentConfirmAction": "Entfernen",
+      "removeStudentAriaPrefix": "{{name}} entfernen",
+      "toast": {
+        "created": "Gruppe erstellt",
+        "createFailed": "Gruppe konnte nicht erstellt werden",
+        "saved": "Gespeichert",
+        "saveFailed": "Speichern fehlgeschlagen",
+        "invalidMaxStudents": "Die Höchstzahl muss eine ganze Zahl zwischen 1 und 99.999 sein.",
+        "invalidDateRange": "Das Startdatum muss vor dem Enddatum liegen.",
+        "loadFailed": "Gruppe konnte nicht geladen werden",
+        "loadCoursesFailed": "Kurse konnten nicht geladen werden",
+        "someCoursesFailed_one": "{{count}} zugeordneter Kurs konnte nicht geladen werden; er fehlt möglicherweise in der Liste unten.",
+        "someCoursesFailed_other": "{{count}} zugeordnete Kurse konnten nicht geladen werden; sie fehlen möglicherweise in der Liste unten.",
+        "courseAttached": "Kurs zugeordnet",
+        "attachFailed": "Kurs konnte nicht zugeordnet werden",
+        "detached": "Kurs gelöst",
+        "detachFailed": "Kurs konnte nicht gelöst werden",
+        "studentAdded": "Person hinzugefügt",
+        "addStudentFailed": "Person konnte nicht hinzugefügt werden",
+        "studentRemoved": "Person entfernt",
+        "removeFailed": "Person konnte nicht entfernt werden",
+        "deleted": "Gruppe gelöscht",
+        "deleteFailed": "Gruppe konnte nicht gelöscht werden"
+      },
+      "filterStatus": "Status",
+      "filterStartRange": "Startdatum",
+      "searchLabel": "Suche",
+      "totalShown": "{{shown}} von {{total}} angezeigt",
+      "capacityLabel": "{{pct}} % belegt",
+      "studentSearchPlaceholder": "Studierende suchen …",
+      "studentSearchNoMatch": "Keine Treffer."
+    },
+    "users": {
+      "title": "Personen",
+      "selectAllAria": "Alle auswählen",
+      "selectAriaPrefix": "{{name}} auswählen",
+      "deleteAriaPrefix": "{{name}} löschen",
+      "deleteSelfTooltip": "Sie können Ihr eigenes Konto nicht löschen",
+      "deleteTooltip": "Konto löschen",
+      "avatarAltPrefix": "Profilbild von {{name}}",
+      "searchPlaceholder": "Nach Name oder E-Mail suchen …",
+      "roleFilterAria": "Nach Rolle filtern",
+      "roleFilterAll": "Alle Rollen",
+      "thName": "Name",
+      "thEmail": "E-Mail",
+      "thRole": "Rolle",
+      "thJoined": "Dabei seit",
+      "thActions": "Aktionen",
+      "selectAllN": "Alle {{count}} auswählen",
+      "selected": "{{count}} ausgewählt",
+      "bulkUpdating": "Wird aktualisiert …",
+      "bulkApply": "Anwenden",
+      "bulkClear": "Aufheben",
+      "emptyNoMatch": "Niemand passt zur Suche",
+      "emptyNoUsers": "Keine Konten gefunden",
+      "showing": "{{shown}} von {{total}} Konten angezeigt",
+      "missingName": "—",
+      "changeRoleAria": "Rolle für {{name}} ändern",
+      "deactivatedBadge": "Deaktiviert",
+      "restoreTooltip": "Konto wiederherstellen",
+      "restoreAriaPrefix": "{{name}} wiederherstellen"
+    },
+    "pendingCerts": {
+      "title": "Zertifikate bestätigen",
+      "studentFallback": "Studierende Person",
+      "courseFallback": "Kurs",
+      "approvedBy": "Bestätigt von {{name}}",
+      "teacherSignOff": "Dozent {{name}} hat {{relative}} freigegeben",
+      "requestedRelative": "Angefordert {{relative}}",
+      "requestedAtPrefix": "Angefordert am {{ts}}",
+      "approveHint": "Mit der Bestätigung entsteht eine öffentliche Zertifikatsnummer, sichtbar unter /verify/<num>.",
+      "approve": "Bestätigen",
+      "reject": "Ablehnen",
+      "toast": {
+        "approved": "Zertifikat bestätigt",
+        "approveFailed": "Zertifikat konnte nicht bestätigt werden",
+        "rejected": "Zertifikat abgelehnt",
+        "rejectFailed": "Zertifikat konnte nicht abgelehnt werden"
+      }
+    },
+    "overview": {
+      "totalUsers": "Konten gesamt",
+      "totalCourses": "Kurse gesamt",
+      "totalEnrollments": "Einschreibungen gesamt",
+      "pendingActions": "Zu erledigen",
+      "pendingHint": "Freigaben für Dozenten und Zertifikate warten auf Sie",
+      "pendingClear": "Alles erledigt — nichts wartet",
+      "loadError": "Verwaltungsdaten konnten nicht geladen werden. Bitte erneut versuchen.",
+      "toast": {
+        "roleUpdated": "Rolle geändert",
+        "roleUpdateFailed": "Rolle konnte nicht geändert werden",
+        "userDeleted": "Konto gelöscht",
+        "deleteUserFailed": "Konto konnte nicht gelöscht werden",
+        "cannotDeleteSelf": "Ihr eigenes Konto können Sie hier nicht löschen.",
+        "bulkUpdated": "{{count}} Konto/Konten auf {{role}} gesetzt",
+        "bulkUpdateFailed": "Sammeländerung fehlgeschlagen",
+        "userDeactivated": "Konto deaktiviert",
+        "userRestored": "Konto wiederhergestellt",
+        "restoreUserFailed": "Konto konnte nicht wiederhergestellt werden"
+      },
+      "confirm": {
+        "deleteUserTitle": "{{name}} löschen?",
+        "deleteUserDescription": "Damit werden Konto, Einschreibungen, Abgaben, Noten, Zertifikate und Benachrichtigungen endgültig entfernt. Erstellte Kurse bleiben erhalten, aber ohne Zuordnung. Das lässt sich nicht rückgängig machen.",
+        "deleteUserAction": "Konto löschen",
+        "bulkRoleTitle": "Rolle der ausgewählten Konten ändern?",
+        "bulkRoleDescription": "{{count}} Konto/Konten erhalten die Rolle „{{role}}“.",
+        "bulkRoleAction": "Anwenden"
+      },
+      "usersLast7Days_one": "+{{count}} diese Woche",
+      "usersLast7Days_other": "+{{count}} diese Woche",
+      "usersLast7Days_zero": "Diese Woche keine Neuanmeldungen"
+    },
+    "pagination": {
+      "pageSizeLabel": "Zeilen pro Seite",
+      "page": "Seite {{page}} von {{total}}",
+      "prevPageAria": "Vorige Seite",
+      "nextPageAria": "Nächste Seite",
+      "filterClear": "Filter zurücksetzen"
+    },
+    "audit": {
+      "filterAction": "Aktion",
+      "filterResource": "Objekt",
+      "filterClear": "Filter zurücksetzen",
+      "filterAllActions": "Alle Aktionen",
+      "filterAllResources": "Alle Objekte",
+      "title": "Prüfprotokoll",
+      "entriesCount": "{{count}} Einträge",
+      "empty": "Keine Protokolleinträge gefunden",
+      "page": "Seite {{page}} von {{total}}",
+      "thDate": "Datum",
+      "thUser": "Person",
+      "thAction": "Aktion",
+      "thResource": "Objekt",
+      "thIp": "IP",
+      "prevPageAria": "Vorige Seite",
+      "nextPageAria": "Nächste Seite",
+      "errorPrefix": "Fehler im Prüfprotokoll",
+      "errorTableMissing": "Die Tabelle audit_logs existiert möglicherweise noch nicht. Spielen Sie die neueste Migration ein.",
+      "actionValue": {
+        "create": "Erstellt",
+        "update": "Geändert",
+        "delete": "Gelöscht",
+        "publish": "Veröffentlicht",
+        "enroll": "Eingeschrieben",
+        "approve": "Bestätigt",
+        "reject": "Abgelehnt",
+        "grade": "Bewertet"
+      },
+      "resourceValue": {
+        "course": "Kurs",
+        "module": "Modul",
+        "chapter": "Kapitel",
+        "enrollment": "Einschreibung",
+        "certificate": "Zertifikat",
+        "assignment_submission": "Aufgabenabgabe",
+        "user": "Konto"
+      },
+      "filterRange": "Zeitraum",
+      "thDetails": "Details",
+      "pageSizeLabel": "Zeilen pro Seite",
+      "detailsEmpty": "Keine Details",
+      "summaryLabel": "Auf dieser Seite"
+    },
+    "tabInvitations": "Einladungen",
+    "invitations": {
+      "title": "Einladungen",
+      "loadError": "Einladungen konnten nicht geladen werden",
+      "inviteButton": "Einladung erzeugen",
+      "filterRole": "Rolle",
+      "allRoles": "Alle Rollen",
+      "filterStatus": "Status",
+      "allStatuses": "Alle Status",
+      "statusPending": "Offen",
+      "statusAccepted": "Angenommen",
+      "statusRevoked": "Zurückgezogen",
+      "statusExpired": "Abgelaufen",
+      "emptyTitle": "Noch keine Einladungen verschickt",
+      "thEmail": "E-Mail",
+      "thRole": "Rolle",
+      "thStatus": "Status",
+      "thSent": "Gesendet",
+      "resend": "Erneut senden",
+      "createTitle": "Einladung erzeugen",
+      "fieldEmail": "E-Mail",
+      "emailPlaceholder": "person@beispiel.de",
+      "fieldRole": "Rolle",
+      "sending": "Wird gesendet …",
+      "send": "Einladung senden",
+      "toast": {
+        "created": "Einladung gesendet",
+        "createFailed": "Einladung konnte nicht gesendet werden",
+        "resent": "Einladung erneut gesendet",
+        "resendFailed": "Einladung konnte nicht erneut gesendet werden"
+      }
+    },
+    "tabSchool": "Schule",
+    "school": {
+      "title": "Angaben zur Schule",
+      "description": "Diese Felder stehen auf jeder Notenliste. Nur für die Administration.",
+      "nameRu": "Name auf Russisch",
+      "nameEn": "Name auf Englisch",
+      "nameEnHint": "Die Notenliste wird auf Englisch gedruckt — dieser Name landet auf dem Dokument",
+      "city": "Stadt",
+      "saved": "Gespeichert",
+      "saveFailed": "Speichern nicht möglich",
+      "loadFailed": "Die Einstellungen konnten nicht geladen werden",
+      "gradingTitle": "Bewertung der Schule",
+      "gradingSummary": "Standard: {{scheme}}, Bestehensgrenze {{threshold}} %",
+      "gradingNote": "Die Skala wird über die API bearbeitet: eine verschobene Grenze benennt jede aktuelle Note neu, und das gehört nicht neben ein Textfeld für die Stadt."
+    }
+  },
+  "roles": {
+    "student": "Studierende Person",
+    "teacher": "Dozent",
+    "admin": "Administration"
+  },
+  "authRegister": {
+    "heading": "Konto erstellen",
+    "subheading": "Fangen Sie heute an zu lernen",
+    "orRegisterEmail": "oder mit E-Mail registrieren",
+    "fullName": "Vollständiger Name",
+    "fullNamePlaceholder": "Max Mustermann",
+    "confirmPasswordShort": "Bestätigen",
+    "alreadyHaveAccount": "Sie haben bereits ein Konto?",
+    "creatingAccount": "Konto wird erstellt …",
+    "createAccount": "Konto erstellen",
+    "errors": {
+      "fullNameTooShort": "Der Name muss mindestens 2 Zeichen haben",
+      "emailInvalid": "Ungültige E-Mail-Adresse",
+      "passwordTooShort": "Das Passwort muss mindestens 6 Zeichen haben",
+      "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein"
+    },
+    "duplicate": {
+      "heading": "Konto besteht möglicherweise",
+      "subheading": "Diese Adresse ist vielleicht schon registriert",
+      "bodyExists": "Ein Konto mit <strong>{{email}}</strong> besteht möglicherweise bereits.",
+      "bodyHint": "Versuchen Sie sich anzumelden, oder nutzen Sie „Passwort vergessen“, wenn Sie Ihre Zugangsdaten nicht mehr wissen.",
+      "goToSignIn": "Zur Anmeldung",
+      "forgotPassword": "Passwort vergessen?",
+      "contactSupport": "Support kontaktieren"
+    },
+    "success": {
+      "headingDefault": "Sehen Sie in Ihr Postfach",
+      "subheadingDefault": "Fast geschafft — nur noch ein Schritt",
+      "body": "Wir haben einen Bestätigungslink an <strong>{{email}}</strong> geschickt.",
+      "clickLinkToActivate": "Klicken Sie den Link in der E-Mail, um Ihr Konto zu aktivieren.",
+      "backToSignIn": "Zurück zur Anmeldung"
+    }
+  },
+  "validation": {
+    "titleRequired": "Der Titel ist erforderlich",
+    "titleTooLong": "Der Titel darf höchstens 300 Zeichen haben",
+    "nameTooShort": "Der Name muss mindestens 2 Zeichen haben"
+  },
+  "editor": {
+    "toast": {
+      "imageUploadFailed": "Bild konnte nicht hochgeladen werden",
+      "imageUploadFailedDetail": "Bild konnte nicht hochgeladen werden: {{detail}}",
+      "imageWrongType": "Diese Datei ist kein Bild ({{type}}). Wählen Sie JPG, PNG, WebP oder GIF.",
+      "imageTooLarge": "Das Bild ist zu groß. Höchstens {{maxMb}} MB.",
+      "audioUrlInvalid": "Die Audio-Adresse muss mit http(s) beginnen",
+      "invalidUrl": "Das sieht nicht nach einer gültigen Adresse aus. Nutzen Sie eine vollständige wie https://example.com/seite."
+    },
+    "prompt": {
+      "addLinkTitle": "Link einfügen",
+      "addLinkDescription": "Fügen Sie die Adresse ein, auf die verlinkt werden soll. Leer lassen, um einen bestehenden Link zu entfernen.",
+      "addLinkConfirm": "Übernehmen",
+      "uploadFailedTitle": "Hochladen fehlgeschlagen",
+      "uploadFailedDescription": "Die Datei ließ sich nicht hochladen. Fügen Sie stattdessen eine Bildadresse ein oder brechen Sie ab.",
+      "uploadFailedConfirm": "Einfügen",
+      "youtubeTitle": "YouTube-Video einbetten",
+      "youtubeDescription": "Fügen Sie die vollständige YouTube-Adresse ein (https://www.youtube.com/watch?v=…).",
+      "youtubePlaceholder": "https://www.youtube.com/watch?v=…",
+      "youtubeConfirm": "Einbetten",
+      "audioTitle": "Audio einbetten",
+      "audioDescription": "Fügen Sie eine direkte https://-Adresse zu einer Audiodatei ein (mp3, m4a, ogg).",
+      "audioPlaceholder": "https://example.com/lektion.mp3",
+      "audioConfirm": "Einbetten",
+      "mathTitle": "Formel einfügen",
+      "mathDescription": "Geben Sie einen LaTeX-Ausdruck ein (ohne $-Zeichen). Beispiel: \\frac{1}{2}.",
+      "mathPlaceholder": "x^2 + y^2 = z^2",
+      "mathConfirm": "Einfügen",
+      "imageUrlPlaceholder": "https://…"
+    }
+  },
+  "chapterTypes": {
+    "reading": {
+      "label": "Lektion",
+      "description": "Text, Video, Audio, Dateien und mehr in einer Lektion verbinden"
+    },
+    "quiz": {
+      "label": "Test",
+      "description": "Wissen der Studierenden prüfen"
+    },
+    "exam": {
+      "label": "Prüfung",
+      "description": "Abschließende Prüfung mit begrenzten Versuchen"
+    },
+    "assignment": {
+      "label": "Aufgabe",
+      "description": "Arbeit zur Bewertung einreichen"
+    }
+  },
+  "courseReadiness": {
+    "title": "Bereitschaft des Kurses",
+    "fix": "Beheben",
+    "allPassed": "Alles in Ordnung — der Kurs ist bereit zur Veröffentlichung.",
+    "summary": "{{passing}} von {{total}} Prüfungen bestanden",
+    "criticalCount_one": "{{count}} kritischer Punkt fehlt noch",
+    "criticalCount_other": "{{count}} kritische Punkte fehlen noch",
+    "severity": {
+      "critical": "Kritisch",
+      "recommended": "Empfohlen",
+      "polish": "Feinschliff"
+    },
+    "publishConfirm": {
+      "title": "Trotz fehlender Punkte veröffentlichen?",
+      "description_one": "Diesem Kurs fehlt noch {{count}} kritischer Punkt, den Studierende bemerken würden. Sie können trotzdem veröffentlichen, besser ist es aber, das zuerst zu beheben.",
+      "description_other": "Diesem Kurs fehlen noch {{count}} kritische Punkte, die Studierende bemerken würden. Sie können trotzdem veröffentlichen, besser ist es aber, das zuerst zu beheben.",
+      "confirm": "Trotzdem veröffentlichen"
+    },
+    "checks": {
+      "hasDescription": "Der Kurs hat eine Beschreibung für den Katalog.",
+      "hasCoverImage": "Der Kurs hat ein Titelbild.",
+      "translationsComplete": "Jede Sprache hat diesen Kurs. In den Katalog kommt er, sobald das für alle gilt.",
+      "hasEnrollmentWindow": "Beginn und Ende der Einschreibung sind gesetzt.",
+      "hasAtLeastOneModule": "Der Kurs hat mindestens ein Modul.",
+      "hasMultipleModules": "Der Kurs hat zwei oder mehr Module.",
+      "moduleHasChapters": "„{{title}}“ hat mindestens ein Kapitel.",
+      "readingHasContent": "„{{title}}“ hat Inhalt zum Lesen.",
+      "quizHasQuestion": "Der Test in „{{title}}“ hat mindestens eine Frage.",
+      "examHasQuestion": "Die Prüfung in „{{title}}“ hat mindestens eine Frage.",
+      "quizQuestionsComplete": "Jede Frage in „{{title}}“ hat, was sie braucht (Antworten, Markierung der richtigen).",
+      "assignmentHasBrief": "Die Aufgabe in „{{title}}“ hat eine Beschreibung.",
+      "quizThresholdAboveCourse": "Ein Test verlangt eine höhere Punktzahl als der Kurs. Studierende können den Kurs auf dem Papier bestehen und das Kapitel doch nie abschließen — das Zertifikat bleibt außer Reichweite.",
+      "quizWeightNonzero": "Tests zählen für die Endnote.",
+      "assignmentWeightNonzero": "Aufgaben zählen für die Endnote.",
+      "quizThresholdBelowCourse": "Manche Tests bestehen bei einer niedrigeren Punktzahl als der Kurs. Man kann jeden Test schaffen und trotzdem unter der Bestehensgrenze des Kurses landen."
+    }
+  },
+  "dateRangePicker": {
+    "placeholder": "Zeitraum wählen",
+    "clear": "Leeren",
+    "prevMonth": "Voriger Monat",
+    "nextMonth": "Nächster Monat"
+  },
+  "datePicker": {
+    "placeholder": "Datum wählen"
+  },
+  "dateTimePicker": {
+    "placeholder": "Datum und Uhrzeit wählen",
+    "hourAria": "Stunde",
+    "minuteAria": "Minute"
+  },
+  "invite": {
+    "heading": "Equip beitreten",
+    "formSubheading": "Sie wurden eingeladen, Equip als {{role}} beizutreten",
+    "readyBody": "Sie sind als <strong>{{email}}</strong> angemeldet. Nehmen Sie die Einladung an, um Equip als {{role}} beizutreten.",
+    "acceptButton": "Einladung annehmen",
+    "createAccountButton": "Konto erstellen",
+    "confirmThenReturn": "Klicken Sie den Link in der E-Mail und kehren Sie dann auf diese Seite zurück, um den Beitritt abzuschließen.",
+    "accepted": "Alles erledigt.",
+    "acceptedAs": "Alles erledigt — Sie sind Equip als {{role}} beigetreten.",
+    "goToDashboard": "Zur Startseite",
+    "logOutAndSwitch": "Abmelden und Konto wechseln",
+    "errors": {
+      "notFound": "Dieser Einladungslink ist ungültig. Prüfen Sie den Link oder bitten Sie die einladende Person, ihn erneut zu senden.",
+      "unusable": "Diese Einladung wurde bereits genutzt, zurückgezogen oder ist abgelaufen. Bitten Sie um eine neue.",
+      "emailMismatch": "Diese Einladung ging an eine andere E-Mail-Adresse.",
+      "emailMismatchDetail": "Diese Einladung ging an <strong>{{invited}}</strong>, angemeldet sind Sie aber als <strong>{{current}}</strong>.",
+      "acceptFailed": "Die Einladung konnte nicht angenommen werden. Bitte erneut versuchen.",
+      "accountExists": "Sie haben mit dieser Adresse bereits ein Equip-Konto. Melden Sie sich an und öffnen Sie den Einladungslink dann erneut."
+    }
+  },
+  "myGrade": {
+    "title": "Ihre Note",
+    "loading": "Ihre Note wird geladen …",
+    "setByTeacher": "vom Dozenten gesetzt",
+    "finalIs": "Endnote: {{grade}}",
+    "state": {
+      "byCompletion": "Dieser Kurs wird nach Abschluss bewertet — siehe Ihren Fortschritt oben.",
+      "notGradedYet": "Es wurde noch nichts bewertet.",
+      "notWeighted": "Die bewertete Arbeit hat kein Gewicht für die Endnote.",
+      "notAssessed": "Alle Ihre Arbeiten hier wurden befreit, es gibt also nichts zu berechnen. Ihr Dozent setzt die Note."
+    },
+    "status": {
+      "graded": "bewertet",
+      "pending_review": "wartet auf Bewertung",
+      "not_submitted": "nicht eingereicht",
+      "excused": "befreit",
+      "returned": "zur Überarbeitung zurückgegeben"
+    },
+    "zachet": {
+      "zachet": "Bestanden",
+      "nezachet": "Noch nicht bestanden",
+      "not_attested": "Nicht attestiert"
+    },
+    "certificate": {
+      "notYetTitle": "Zertifikat noch nicht verfügbar",
+      "reason": {
+        "course_not_complete": "Der Kurs ist zu {{progress}} % abgeschlossen — nötig sind 100 %",
+        "work_not_graded_one": "{{count}} Arbeit wartet noch auf die Bewertung",
+        "work_not_graded_other": "{{count}} Arbeiten warten noch auf die Bewertung",
+        "work_returned_one": "{{count}} Arbeit wurde zur Überarbeitung zurückgegeben",
+        "work_returned_other": "{{count}} Arbeiten wurden zur Überarbeitung zurückgegeben",
+        "work_not_submitted_one": "{{count}} Arbeit wurde nicht eingereicht",
+        "work_not_submitted_other": "{{count}} Arbeiten wurden nicht eingereicht",
+        "quizzes_not_passed_one": "{{count}} Test nicht bestanden — muss wiederholt werden",
+        "quizzes_not_passed_other": "{{count}} Tests nicht bestanden — müssen wiederholt werden",
+        "below_threshold": "Das Endergebnis {{final_score}} % liegt unter der Bestehensgrenze von {{pass_threshold}} %",
+        "below_threshold_provisional": "Bisher {{final_score}} % bei einer Bestehensgrenze von {{pass_threshold}} % — unbewertete Arbeit zählt als null, der Wert steigt also noch",
+        "not_assessed": "Es gibt nichts zu bewerten: Ihr Dozent muss eine Endnote setzen",
+        "unknown": "Etwas ist noch offen — fragen Sie Ihren Dozenten"
+      },
+      "retakeAsk": "Wiederholung beantragen",
+      "retakeSent": "Antrag an Ihren Dozenten geschickt",
+      "retakeFailed": "Der Antrag konnte nicht gesendet werden"
+    }
+  },
+  "vedomost": {
+    "title": "Notenliste",
+    "loading": "Die Notenliste wird geladen …",
+    "notClosedTitle": "Diese Notenliste ist nicht abgeschlossen",
+    "notClosedBody": "Mit dem Abschließen wird das Ergebnis jeder Person so festgehalten, wie es heute steht. Der Ausdruck liest aus dieser Momentaufnahme, spätere Neubewertungen ändern also kein bereits unterschriebenes Dokument.",
+    "close": "Notenliste abschließen",
+    "print": "Drucken",
+    "closedOn": "Abgeschlossen {{date}}",
+    "wasReopened": "Diese Liste ersetzt eine wieder geöffnete. Grund: {{reason}}",
+    "schoolUnnamed": "(kein Schulname hinterlegt)",
+    "course": "Kurs",
+    "teacher": "Dozent",
+    "cohort": "Gruppe",
+    "noCohort": "Ohne Gruppe",
+    "hours": "Unterrichtsstunden",
+    "passLine": "Bestehensgrenze",
+    "student": "Studierende Person",
+    "resultHeader": "Ergebnis",
+    "byHand": "H",
+    "byHandLegend": "H — Note vom Dozenten gesetzt, nicht berechnet.",
+    "signTeacher": "Dozent (Unterschrift)",
+    "signDirector": "Leitung (Unterschrift)",
+    "result": {
+      "pass": "Bestanden",
+      "fail": "Nicht bestanden",
+      "completionPass": "Bestanden (nach Abschluss)",
+      "notAttested": "Nicht attestiert"
+    }
+  },
+  "gradingScheme": {
+    "pass_fail": "bestanden/nicht bestanden",
+    "percent": "Prozent",
+    "five_point": "Fünf-Punkte-Skala",
+    "letter": "Buchstaben"
+  },
+  "rubric": {
+    "total": "Summe des Bewertungsrasters",
+    "totalSoFar": "Bisher",
+    "incompleteHint": "Solange nicht jedes Kriterium eine Stufe hat, ist die Arbeit nicht bewertet und die studierende Person sieht nichts.",
+    "loadFailed": "Das Bewertungsraster konnte nicht geladen werden",
+    "saveFailed": "Die Bewertung konnte nicht gespeichert werden",
+    "title": "Bewertungsraster",
+    "yourGrid": "So wurde Ihre Arbeit bewertet"
+  },
+  "grading": {
+    "title": "Bewertungsliste",
+    "subtitle": "Nach Aufgabe gruppiert: dreißig Antworten auf eine Frage hintereinander, nicht dreißig ganze Arbeiten.",
+    "emptyTitle": "Nichts offen",
+    "emptyBody": "Sie sind auf dem aktuellen Stand.",
+    "waitingSince": "Das Älteste wartet seit {{when}}",
+    "mark": "Bewerten",
+    "openCourse": "Kurs öffnen",
+    "backToQueue": "Zurück zur Liste",
+    "groupDoneTitle": "Diese Aufgabe ist bewertet",
+    "saveAndNext": "Speichern und weiter",
+    "saveAndFinish": "Speichern und beenden",
+    "feedbackPlaceholder": "Was gelungen ist, was zu ändern ist und wie",
+    "points": "Punkte",
+    "gradeAria": "Note",
+    "loadFailed": "Die Liste konnte nicht geladen werden",
+    "saveFailed": "Speichern nicht möglich"
+  },
+  "declaration": {
+    "heading": "Bevor Sie einreichen",
+    "ai_forbidden": {
+      "policy": "Diese Arbeit muss von Ihnen geschrieben sein. KI ist nicht erlaubt.",
+      "example": "Lesen, denken, mit dem Text ringen und ihn in eigenen Worten schreiben — das ist die Arbeit.",
+      "consequence": "Wird die Regel gebrochen, klärt Ihr Dozent das persönlich: ein Gespräch, keine automatische Null."
+    },
+    "ai_with_disclosure": {
+      "policy": "Sie dürfen KI nutzen, wenn Sie sagen, wo und wie.",
+      "example": "«Habe die Einleitung umformulieren lassen», «habe die Bedeutung eines Wortes nachgeschlagen» — das genügt.",
+      "consequence": "Verschwiegene Nutzung ist eine Frage der Ehrlichkeit. Offengelegte Nutzung ist ein ganz normaler Teil der Arbeit."
+    },
+    "confirm": "Ich bestätige das Obenstehende",
+    "usedAi": "Ich habe KI genutzt",
+    "note": "Wo und wie genau",
+    "notePlaceholder": "Habe zwei Absätze der Einleitung umformulieren lassen",
+    "required": "Setzen Sie das Häkchen, um Ihre Arbeit einzureichen"
+  },
+  "rubricEditor": {
+    "defaultTitle": "Bewertungsraster für Aufsätze",
+    "why": "Ein Bewertungsraster ist ein Maßstab: beim zwanzigsten Aufsatz derselbe wie beim ersten — und die einzige Antwort, die eine Schule auf «warum bekam er 85 und ich 70» hat.",
+    "create": "Bewertungsraster erstellen",
+    "criterionPlaceholder": "Was beurteilt wird — «die Argumentation stützt sich auf den Text»",
+    "addCriterion": "Kriterium hinzufügen",
+    "removeCriterion": "Kriterium entfernen",
+    "saveAndAttach": "Speichern und anwenden",
+    "attached": "Bewertungsraster angewendet",
+    "attachedHeading": "Nach einem Bewertungsraster beurteilt",
+    "attachFailed": "Das Bewertungsraster konnte nicht angewendet werden",
+    "saveFailed": "Das Bewertungsraster konnte nicht gespeichert werden",
+    "needCriterion": "Nennen Sie mindestens ein Kriterium",
+    "titleLabel": "Name des Bewertungsrasters",
+    "levelLabel": "Name der Stufe",
+    "levelPoints": "Punkte für diese Stufe",
+    "levelWeak": "schwach",
+    "levelOk": "gut",
+    "levelStrong": "stark"
+  },
+  "legal": {
+    "loadFailed": "Das Dokument konnte nicht geladen werden. Laden Sie die Seite neu oder schreiben Sie uns.",
+    "fingerprint": "Fassung {{version}} · Textprüfsumme {{sha}}",
+    "privacy": "Datenschutzerklärung",
+    "terms": "Nutzungsbedingungen"
+  }
+}

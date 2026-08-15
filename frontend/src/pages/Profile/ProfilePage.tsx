@@ -26,6 +26,16 @@ import { profileSteps } from "@/lib/tourSteps"
 import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
 import { initialsOf } from "@/lib/names"
 
+// The line under "Language" names the language the person is set to. It used
+// to be a ternary over two locales; with four it needs a map, and an unknown
+// value falls back rather than mislabelling.
+const LANGUAGE_NAME_KEYS: Record<string, string> = {
+  ru: "language.russian",
+  en: "language.english",
+  de: "language.german",
+  uk: "language.ukrainian",
+}
+
 function useCountUp(target: number, durationMs = 800) {
   const prefersReducedMotion = useReducedMotion()
   // Initialize to ``target`` (not 0) so the first render — and StrictMode's
@@ -357,7 +367,7 @@ export default function ProfilePage() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium">{t("language.label")}</p>
                   <p className="text-xs text-ink-muted">
-                    {user.preferred_locale === "en" ? t("language.english") : t("language.russian")}
+                    {t(LANGUAGE_NAME_KEYS[user.preferred_locale] ?? "language.russian")}
                   </p>
                 </div>
               </div>

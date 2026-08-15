@@ -2,7 +2,11 @@ import { useEffect, useId, useRef, useState } from "react"
 import type { Theme } from "@/context/theme-context"
 import { useTranslation } from "react-i18next"
 import { Camera, Check, Loader2, Moon, Sun, User as UserIcon } from "lucide-react"
-import i18n, { type SupportedLocale } from "@/i18n/config"
+import i18n, {
+  LOCALE_NATIVE_LABELS,
+  SUPPORTED_LOCALES,
+  type SupportedLocale,
+} from "@/i18n/config"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -371,29 +375,25 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
           <Label className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
             {t("firstRun.setup.language.label")}
           </Label>
+          {/* Every language the platform serves, each named in itself. This
+              was two hardcoded buttons; deriving it from SUPPORTED_LOCALES
+              means the day a fifth language ships, this screen already
+              offers it. */}
           <div className="mt-2 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleLocaleChange("en")}
-              aria-pressed={locale === "en"}
-              className={toggleButtonClasses(locale === "en")}
-            >
-              <span className="flex-1 text-left">{t("firstRun.setup.language.en")}</span>
-              {locale === "en" && (
-                <Check className="h-4 w-4 shrink-0 text-brand" strokeWidth={2.25} aria-hidden />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleLocaleChange("ru")}
-              aria-pressed={locale === "ru"}
-              className={toggleButtonClasses(locale === "ru")}
-            >
-              <span className="flex-1 text-left">{t("firstRun.setup.language.ru")}</span>
-              {locale === "ru" && (
-                <Check className="h-4 w-4 shrink-0 text-brand" strokeWidth={2.25} aria-hidden />
-              )}
-            </button>
+            {SUPPORTED_LOCALES.map((code) => (
+              <button
+                key={code}
+                type="button"
+                onClick={() => handleLocaleChange(code)}
+                aria-pressed={locale === code}
+                className={toggleButtonClasses(locale === code)}
+              >
+                <span className="flex-1 text-left">{LOCALE_NATIVE_LABELS[code]}</span>
+                {locale === code && (
+                  <Check className="h-4 w-4 shrink-0 text-brand" strokeWidth={2.25} aria-hidden />
+                )}
+              </button>
+            ))}
           </div>
         </div>
       </div>

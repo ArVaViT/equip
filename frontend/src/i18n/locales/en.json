@@ -69,7 +69,7 @@
     },
     "trust": {
       "openSource": "Free & open-source",
-      "bilingual": "Bilingual: RU ⇄ EN",
+      "bilingual": "Four languages: RU · EN · DE · UK",
       "certificates": "Certificates you can verify"
     },
     "value": {
@@ -100,8 +100,8 @@
       },
       "bilingual": {
         "eyebrow": "Language",
-        "title": "Bilingual from day one",
-        "body": "A teacher's Russian-language course becomes available in English automatically — no manual translation, no delay.",
+        "title": "Multilingual from day one",
+        "body": "A teacher's Russian-language course becomes available in English, German, and Ukrainian automatically — no manual translation, no delay.",
         "caption": "Course materials translated automatically"
       }
     },
@@ -199,9 +199,7 @@
         "dark": "Dark"
       },
       "language": {
-        "label": "Language",
-        "en": "English",
-        "ru": "Русский"
+        "label": "Language"
       },
       "submit": "Get started",
       "skip": "Skip for now",
@@ -573,6 +571,8 @@
     "label": "Language",
     "russian": "Russian",
     "english": "English",
+    "german": "German",
+    "ukrainian": "Ukrainian",
     "switchTo": "Switch to {{language}}"
   },
   "auth": {
