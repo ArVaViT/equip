@@ -10,10 +10,12 @@ from app.core.config import settings
 from app.core.errors import ErrorCode, equip_error
 from app.models.invitation import Invitation, InvitationStatus
 from app.models.user import User
+from app.schemas.locale import DEFAULT_LOCALE, LocaleCode, normalize_locale
 from app.services.audit_service import log_action
 from app.services.email_service import send_invitation_email
 
 if TYPE_CHECKING:
+    import uuid
     from uuid import UUID
 
     from fastapi import Request
@@ -37,6 +39,22 @@ def is_invitation_expired(invitation: Invitation) -> bool:
 
 def _accept_url(token: str) -> str:
     return f"{settings.FRONTEND_URL.rstrip('/')}/invite/accept?token={token}"
+
+
+def _inviter_locale(db: Session, invited_by: uuid.UUID | str | None) -> LocaleCode:
+    """The language to write the invitation in.
+
+    The person being invited has no account yet, so there is no
+    preference to read. The next best thing is the language of whoever
+    is doing the inviting: an admin writing to their own community
+    almost always shares its language, and it beats defaulting everyone
+    to English — which is what happened before, including for the
+    German and Ukrainian schools this platform now serves.
+    """
+    if invited_by is None:
+        return DEFAULT_LOCALE
+    raw = db.query(User.preferred_locale).filter(User.id == invited_by).scalar()
+    return normalize_locale(raw)
 
 
 def create_or_resend_invitation(
@@ -71,7 +89,12 @@ def create_or_resend_invitation(
         .first()
     )
     if existing is not None and not is_invitation_expired(existing):
-        send_invitation_email(to_email=normalized_email, role=role, accept_url=_accept_url(existing.token))
+        send_invitation_email(
+            to_email=normalized_email,
+            role=role,
+            accept_url=_accept_url(existing.token),
+            locale=_inviter_locale(db, invited_by),
+        )
         return existing, False
 
     if existing is not None:
@@ -97,7 +120,12 @@ def create_or_resend_invitation(
         request=request,
     )
 
-    send_invitation_email(to_email=normalized_email, role=role, accept_url=_accept_url(invitation.token))
+    send_invitation_email(
+        to_email=normalized_email,
+        role=role,
+        accept_url=_accept_url(invitation.token),
+        locale=_inviter_locale(db, invited_by),
+    )
     return invitation, True
 
 

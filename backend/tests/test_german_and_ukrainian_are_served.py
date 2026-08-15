@@ -52,11 +52,22 @@ class TestTheSupportedSet:
 
     @pytest.mark.parametrize("code", EXPECTED)
     def test_the_backend_catalog_speaks_every_language(self, code: str):
-        # Notification text is written at fan-out time, in the
+        # Notification and email text is written server-side, in the
         # recipient's language, before the frontend ever sees it.
+        #
+        # Placeholders are filled from the string itself rather than from a
+        # fixed list: a key that introduces a new one should fail this test
+        # for being untranslated, never for being unexpected.
+        import re
+
+        from app.core.i18n import _CATALOG
+
         for key in catalog_keys():
-            rendered = t(code, key, title="T", course="C")
+            template = _CATALOG[code].get(key) or _CATALOG["en"][key]
+            args = {name: "x" for name in re.findall(r"\{(\w+)\}", template)}
+            rendered = t(code, key, **args)
             assert rendered != key, f"{code} is missing {key}"
+            assert "{" not in rendered, f"{code}:{key} left a placeholder unfilled"
 
     @pytest.mark.parametrize(
         "header,expected",

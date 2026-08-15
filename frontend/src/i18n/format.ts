@@ -16,7 +16,7 @@
  *
  *   1. The string is **identical across locales**. EN and RU users see
  *      the same characters. Unambiguous, sortable, no day/month
- *      confusion across the en-US / ru-RU split.
+ *      confusion across locales that order day and month differently.
  *   2. The wall-clock time is **the browser's local zone**, not UTC.
  *      Backend writes are always UTC; the moment they cross to the
  *      client, JS's ``getFullYear()`` / ``getHours()`` etc. project
@@ -35,7 +35,7 @@
  * If you find yourself reaching for `formatDateLong` outside an
  * editorial context, you probably want `formatDate` instead.
  */
-import i18n from "./config"
+import i18n, { activeIntlTag } from "./config"
 
 function pad(value: number, width = 2): string {
   return value.toString().padStart(width, "0")
@@ -95,8 +95,7 @@ export function formatRelative(date: Date | string | number | null | undefined):
   if (date == null) return ""
   const d = toDate(date)
   if (!d) return ""
-  const lang = (i18n.resolvedLanguage ?? i18n.language ?? "en").toLowerCase()
-  const locale = lang.startsWith("ru") ? "ru-RU" : "en-US"
+  const locale = activeIntlTag(i18n.resolvedLanguage ?? i18n.language)
   const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto", style: "short" })
   const diffMs = d.getTime() - Date.now()
   const absSec = Math.abs(diffMs) / 1000
@@ -130,8 +129,7 @@ export function formatDateLong(
   if (date == null) return ""
   const d = toDate(date)
   if (!d) return ""
-  const lang = (i18n.resolvedLanguage ?? i18n.language ?? "en").toLowerCase()
-  const locale = lang.startsWith("ru") ? "ru-RU" : "en-US"
+  const locale = activeIntlTag(i18n.resolvedLanguage ?? i18n.language)
   return d.toLocaleString(locale, {
     year: "numeric",
     month: "long",

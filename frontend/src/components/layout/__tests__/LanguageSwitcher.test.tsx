@@ -3,7 +3,7 @@ import { render, screen, waitFor, act } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { I18nextProvider } from "react-i18next"
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest"
-import i18n from "@/i18n/config"
+import i18n, { LOCALE_NATIVE_LABELS, SUPPORTED_LOCALES } from "@/i18n/config"
 import type { User } from "@/types"
 
 // Mocks must be declared before importing the SUT.
@@ -49,6 +49,20 @@ function I18nWrapper({ children }: { children: ReactNode }) {
   return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
 }
 
+
+/**
+ * Open the menu and choose a language.
+ *
+ * The switcher used to be one button per language, so a test could click
+ * "the button" and mean it. It is a menu now — the same three steps a
+ * person takes: open it, find the language, choose it.
+ */
+async function chooseLanguage(user: ReturnType<typeof userEvent.setup>, native: string) {
+  await user.click(screen.getByRole("button"))
+  const option = await screen.findByRole("menuitemradio", { name: new RegExp(native, "i") })
+  await user.click(option)
+}
+
 describe("LanguageSwitcher", () => {
   beforeEach(async () => {
     setPreferredLocale.mockReset()
@@ -73,8 +87,7 @@ describe("LanguageSwitcher", () => {
 
     render(<LanguageSwitcher variant="compact" />, { wrapper: I18nWrapper })
 
-    const button = screen.getByRole("button")
-    await user.click(button)
+    await chooseLanguage(user, "English")
 
     await waitFor(() => {
       expect(setPreferredLocale).toHaveBeenCalledWith("en")
@@ -90,8 +103,7 @@ describe("LanguageSwitcher", () => {
 
     render(<LanguageSwitcher variant="compact" />, { wrapper: I18nWrapper })
 
-    const button = screen.getByRole("button")
-    await user.click(button)
+    await chooseLanguage(user, "English")
 
     await waitFor(() => {
       expect(setPreferredLocale).toHaveBeenCalledWith("en")
@@ -122,10 +134,9 @@ describe("LanguageSwitcher", () => {
 
     render(<LanguageSwitcher variant="compact" />, { wrapper: I18nWrapper })
 
-    const button = screen.getByRole("button")
     // userEvent's promise won't resolve until the PATCH does, so fire and
-    // assert without awaiting the click.
-    void user.click(button)
+    // assert without awaiting the choice.
+    void chooseLanguage(user, "English")
 
     await waitFor(() => {
       expect(getDesiredLocale()).toBe("en")
@@ -152,10 +163,39 @@ describe("LanguageSwitcher", () => {
 
     render(<LanguageSwitcher variant="compact" />, { wrapper: I18nWrapper })
 
-    await user.click(screen.getByRole("button"))
+    await chooseLanguage(user, "English")
 
     expect(setPreferredLocale).not.toHaveBeenCalled()
     expect(i18n.language).toBe("en")
     expect(getDesiredLocale()).toBeNull()
+  })
+
+  it("offers every served language, each named in itself", async () => {
+    const user = userEvent.setup()
+    render(<LanguageSwitcher variant="full" />, { wrapper: I18nWrapper })
+
+    await user.click(screen.getByRole("button"))
+
+    const options = await screen.findAllByRole("menuitemradio")
+    // Derived from SUPPORTED_LOCALES rather than hardcoded: the point of
+    // the menu is that a fifth language needs no change here.
+    expect(options).toHaveLength(SUPPORTED_LOCALES.length)
+    for (const locale of SUPPORTED_LOCALES) {
+      expect(
+        screen.getByRole("menuitemradio", { name: new RegExp(LOCALE_NATIVE_LABELS[locale], "i") }),
+      ).toBeInTheDocument()
+    }
+  })
+
+  it("marks the active language as chosen", async () => {
+    const user = userEvent.setup()
+    render(<LanguageSwitcher variant="full" />, { wrapper: I18nWrapper })
+
+    await user.click(screen.getByRole("button"))
+
+    const russian = await screen.findByRole("menuitemradio", { name: /Русский/i })
+    expect(russian).toHaveAttribute("aria-checked", "true")
+    const english = screen.getByRole("menuitemradio", { name: /English/i })
+    expect(english).toHaveAttribute("aria-checked", "false")
   })
 })
