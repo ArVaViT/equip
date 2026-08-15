@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict JfTfNqWsnWEasPQZgnNnpCSAPB98lw1SNLfxyvgwKK8uA80Omive6yV44gVRJYH
+\restrict 7ICPeyZXhnZpGqVTUiKwwCDLry4HLGIvLHlUjAIiWyRLNTQpBODc199kiPf4mBr
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10 (Homebrew)
@@ -276,6 +276,7 @@ CREATE TABLE public.certificates (
     school_city text,
     student_name text,
     teacher_name text,
+    course_title text,
     CONSTRAINT certificates_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('teacher_approved'::character varying)::text, ('approved'::character varying)::text, ('rejected'::character varying)::text]))),
     CONSTRAINT ck_certificates_graded_via CHECK (((graded_via IS NULL) OR (graded_via = ANY (ARRAY['computed'::text, 'override'::text, 'completion'::text])))),
     CONSTRAINT ck_certificates_one_official_grade CHECK (((
@@ -3420,5 +3421,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict JfTfNqWsnWEasPQZgnNnpCSAPB98lw1SNLfxyvgwKK8uA80Omive6yV44gVRJYH
+\unrestrict 7ICPeyZXhnZpGqVTUiKwwCDLry4HLGIvLHlUjAIiWyRLNTQpBODc199kiPf4mBr
 

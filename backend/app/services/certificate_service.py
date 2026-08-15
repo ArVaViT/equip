@@ -29,12 +29,18 @@ from app.core.i18n import t
 from app.models.certificate import Certificate, CertificateStatus
 from app.models.course import Course
 from app.models.user import User, UserRole
-from app.schemas.locale import normalize_locale
+from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.audit_service import log_action
 from app.services.certificate_grade_snapshot import snapshot_certificate_grade
 from app.services.domain_access import assert_course_owner
 from app.services.notification_service import create_notification
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
+
+# The language of the document itself. A certificate is read by people
+# with no account here — an employer, a pastor — and possibly years
+# later. It says one thing to all of them. Matches the grade sheet's
+# ``SHEET_LOCALE``.
+CERTIFICATE_LOCALE: LocaleCode = "en"
 
 
 def _recipient_locale(db: Session, user_id: uuid.UUID | str) -> str:
@@ -335,10 +341,17 @@ def reject(db: Session, cert_id: UUID, user: User, request: Request) -> Certific
 def _snapshot_letterhead(db: Session, cert: Certificate, course: Course | None) -> None:
     """Freeze the words on the document, the way M6 froze the number.
 
-    The school's name, the city under it, the student's name and the teacher's
-    — all as they stand at issuance. Read live instead and a school that
-    renames itself in March rewrites what it certified in February, which is
-    the same bug the ведомость had until it was fixed there.
+    The school's name, the city under it, the student's name, the teacher's,
+    and the course title — all as they stand at issuance. Read live instead
+    and a school that renames itself in March rewrites what it certified in
+    February, which is the same bug the ведомость had until it was fixed
+    there.
+
+    The course title is captured in English, not in the recipient's language.
+    A certificate is the one artefact of this platform that leaves it: read by
+    people with no account here, possibly years later. It has to say the same
+    thing to all of them. The grade sheet already works this way
+    (``SHEET_LOCALE``).
     """
     from app.models.user import User as _User
     from app.services.grading_scheme import get_org_settings
@@ -354,3 +367,15 @@ def _snapshot_letterhead(db: Session, cert: Certificate, course: Course | None) 
     if course is not None and course.created_by is not None:
         teacher = db.query(_User).filter(_User.id == course.created_by).first()
         cert.teacher_name = (teacher.full_name or teacher.email) if teacher else None
+
+    if course is not None:
+        # ``fetch_course_titles_by_id`` falls back to the course's own source
+        # text when no English row exists — a course from before the
+        # publication gate, or one whose English is still being checked. A
+        # title in the wrong language is still better than a blank line on a
+        # document someone has to show an employer.
+        cert.course_title = fetch_course_titles_by_id(
+            db,
+            [course.id],
+            display_locale=CERTIFICATE_LOCALE,
+        ).get(course.id)
