@@ -10,6 +10,7 @@ import { CourseCoverFallback } from "./CourseCoverFallback"
 import { toProxyImage } from "@/lib/images"
 import { formatDate } from "@/i18n/format"
 import { EDITORIAL_EASE } from "@/lib/motion"
+import { orNotTranslated } from "@/lib/untranslated"
 
 interface CourseCardProps {
   course: Course
@@ -100,7 +101,7 @@ function CourseCard({ course, style, progress }: CourseCardProps) {
       </div>
       <CardHeader className="pb-2">
         <CardTitle className="leading-snug line-clamp-2 text-wrap-safe">
-          {course.title}
+          {orNotTranslated(t, course.title)}
         </CardTitle>
         {course.description && (
           <CardDescription className="line-clamp-2 text-sm leading-relaxed text-wrap-safe sm:text-xs">

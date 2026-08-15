@@ -363,3 +363,30 @@ def detect_locale(text: str | None) -> LocaleCode | None:
     if best_score <= 0 or best_score - runner_up_score < _MIN_SCORE_MARGIN:
         return None
     return best_code  # type: ignore[return-value]
+
+
+# Enough letters that the text is prose rather than a label. Two or three
+# words: below it sit the strings that read the same in every language we
+# serve — "OK", "2026", "Genesis", a person's name, a course code.
+_PROSE_MIN_LETTERS: Final[int] = 12
+
+
+def carries_language(text: str | None) -> bool:
+    """Whether this text is written in *a* language, whoever's it is.
+
+    ``detect_locale`` answers "which language"; this answers the prior
+    question, and the two disagree in a way that matters. A detector that
+    returns ``None`` on "Апостол Павло написав це послання" — a Ukrainian
+    sentence that happens to avoid і, ї and є — has not established that the
+    text is language-neutral. It has only failed to name the language.
+
+    The resolve path leans on the difference. Text that carries no language
+    is served to everyone, because it is the same string in every language.
+    Text that carries one the reader did not choose is not served at all,
+    even when we cannot say which language it is: an unnamed foreign
+    language is still foreign.
+    """
+    if not text:
+        return False
+    counted = _count_scripts(strip_tags(text))
+    return counted.cyrillic + counted.latin >= _PROSE_MIN_LETTERS

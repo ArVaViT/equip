@@ -40,6 +40,7 @@ import { useUserTour } from "@/hooks/useUserTour"
 import { chapterViewSteps } from "@/lib/tourSteps"
 import { recordCourseView } from "@/lib/recentlyViewed"
 import { ReadingSkeleton } from "@/components/chapter/ReadingSkeleton"
+import { orNotTranslated } from "@/lib/untranslated"
 
 /**
  * Renders a sanitised text-block via ``dangerouslySetInnerHTML`` and
@@ -327,7 +328,7 @@ function ChapterNavLink({
           {eyebrow}
         </span>
         <span className="mt-0.5 truncate text-sm font-medium text-ink-muted">
-          {chapter.title}
+          {orNotTranslated(t, chapter.title)}
         </span>
       </div>
     )
@@ -341,7 +342,7 @@ function ChapterNavLink({
           navigate(`/courses/${courseId}/modules/${moduleId}/chapters/${chapter.id}`)
         }
         className={`${enabledClass} ${alignment}`}
-        aria-label={`${eyebrow}: ${chapter.title}`}
+        aria-label={`${eyebrow}: ${orNotTranslated(t, chapter.title)}`}
       >
         <span className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted transition-colors group-hover:text-brand ${justify}`}>
           {side === "prev" && <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.75} />}
@@ -349,7 +350,7 @@ function ChapterNavLink({
           {side === "next" && <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />}
         </span>
         <span className="mt-0.5 truncate text-sm font-medium text-ink">
-          {chapter.title}
+          {orNotTranslated(t, chapter.title)}
         </span>
       </button>
     </PressFeedback>
@@ -753,7 +754,7 @@ export default function ChapterView() {
           )}
         </p>
         <h1 className="font-serif text-3xl font-semibold tracking-tight text-wrap-safe sm:text-4xl">
-          {chapter.title}
+          {orNotTranslated(t, chapter.title)}
         </h1>
       </header>
 

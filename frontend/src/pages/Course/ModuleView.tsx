@@ -24,6 +24,7 @@ import ChapterTypeBadge from "@/components/course/ChapterTypeBadge"
 import { EmptyState, ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
 import { isChapterComplete, isChapterLocked, isChapterRead } from "./moduleProgress"
+import { orNotTranslated } from "@/lib/untranslated"
 
 // Module ID + course ID come from the route, locale from i18n; bundle the
 // fetcher's deps in one tuple so useAsyncData re-runs at the right edges.
@@ -152,7 +153,7 @@ export default function ModuleView() {
       )}
 
       <div className="mb-4">
-        <h1 className="mb-1 font-serif text-2xl font-bold tracking-tight text-wrap-safe">{module.title}</h1>
+        <h1 className="mb-1 font-serif text-2xl font-bold tracking-tight text-wrap-safe">{orNotTranslated(t, module.title)}</h1>
         {module.description && (
           <p className="text-sm leading-relaxed text-ink-muted text-wrap-safe whitespace-pre-line">
             {module.description}
