@@ -149,7 +149,12 @@ def _usfm_ref(ref: BibleRef) -> str | None:
         return None
     if ref.verse_end is None:
         return f"{book}.{ref.chapter}.{ref.verse_start}"
-    return f"{book}.{ref.chapter}.{ref.verse_start}-{book}.{ref.chapter}.{ref.verse_end}"
+    # ``JHN.3.14-15``, not ``JHN.3.14-JHN.3.15``. The fully-qualified form
+    # reads like the obvious one and answers 404 for every range — which
+    # meant every quotation spanning two verses fell back to the author's
+    # own language. Verified against the live API on 2026-08-15: the short
+    # form returns both verses joined, the long form returns nothing.
+    return f"{book}.{ref.chapter}.{ref.verse_start}-{ref.verse_end}"
 
 
 def fetch_verse(ref: BibleRef, locale: LocaleCode) -> str | None:
