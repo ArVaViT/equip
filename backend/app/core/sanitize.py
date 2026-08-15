@@ -229,3 +229,27 @@ def strip_tags(html: str) -> str:
         out.append(ch)
         i += 1
     return "".join(out)
+
+
+# Space stranded against punctuation when a tag that hugged the word is
+# replaced by one: "<b>Бог</b>, сказал" would read "Бог , сказал", and
+# "(<i>так</i>)" would read "( так)". Both sides, because an opening
+# bracket collects the space after it and a closing one before.
+_SPACE_BEFORE_PUNCT = re.compile(r"\s+([,.;:!?)»”\]])")
+_SPACE_AFTER_OPENING = re.compile(r"([(«“\[])\s+")
+
+
+def html_to_plain_text(html: str | None) -> str:
+    """Collapse ``html`` to a single line of prose.
+
+    ``strip_tags`` plus whitespace folding — the shape three call sites
+    had each written for themselves: the verse-of-the-day card, the
+    scripture similarity comparison, and the course PDF. All three used
+    the same `<[^>]+>` regex, which is the one CodeQL flagged as
+    quadratic on hostile input.
+    """
+    if not html:
+        return ""
+    text = " ".join(strip_tags(html).split())
+    text = _SPACE_BEFORE_PUNCT.sub(r"\1", text)
+    return _SPACE_AFTER_OPENING.sub(r"\1", text)

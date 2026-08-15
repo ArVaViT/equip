@@ -28,6 +28,8 @@ import io
 import re
 from typing import TYPE_CHECKING
 
+from app.core.sanitize import html_to_plain_text
+
 if TYPE_CHECKING:
     from reportlab.lib.styles import ParagraphStyle
 
@@ -39,12 +41,13 @@ _WHITESPACE_RUN = re.compile(r"\s+")
 
 
 def _to_plain_text(html: str | None) -> str:
-    """Collapse HTML to clean prose. We use bleach-style sanitised
-    input as the source, so a naive tag strip is safe."""
-    if not html:
-        return ""
-    text = _TAG_STRIP.sub("", html)
-    return _WHITESPACE_RUN.sub(" ", text).strip()
+    """Collapse HTML to clean prose for the PDF.
+
+    One shared implementation in ``core.sanitize`` — the same job the
+    verse card and the scripture comparison were each doing with their
+    own copy of the same regex.
+    """
+    return html_to_plain_text(html)
 
 
 def _build_styles() -> dict[str, ParagraphStyle]:

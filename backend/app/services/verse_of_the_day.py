@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 import httpx
 
 from app.core.config import settings
+from app.core.sanitize import html_to_plain_text
 
 if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
@@ -432,15 +433,13 @@ def _pick_reference_offset(date: dt.date, offset: int) -> str:
 def _strip_html(html: str) -> str:
     """YouVersion ``content`` may include a single ``<p>`` wrapper and
     occasional ``<span>`` markers. We render scripture as plain prose in
-    the card, so collapse to text. The verse references themselves never
-    contain user-supplied markup, so a naive strip is safe."""
-    import re
+    the card, so collapse to text.
 
-    text = re.sub(r"<[^>]+>", "", html)
-    # Collapse whitespace runs (some YouVersion responses contain
-    # newlines inside <p>) so the card renders as a single tidy line.
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
+    The naive `<[^>]+>` this used to run is now one shared linear pass
+    in ``core.sanitize`` — same output, and it cannot be made to
+    backtrack.
+    """
+    return html_to_plain_text(html)
 
 
 def _fetch_passage(api_key: str, bible_id: int, ref: str) -> tuple[str, str]:
