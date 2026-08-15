@@ -189,7 +189,9 @@ dem des sich auf von vom im in an am wir sie er es aber oder auch wenn wie dass
 war waren sind haben hat hatte werden wird kann können nach bei über durch noch
 nur schon als so man ihr ihre sein seine diese dieser dieses alle mehr sehr
 wieder hier dort damit weil denn beim unter gegen ohne um vor aus ich du mir
-mich dich
+mich dich was wurde wurden würde laut dann dazu jeder jede jedes kein keine
+welche welcher welches soll sollen muss müssen wem wen wessen weil zwischen
+darauf worin wodurch heißt gibt geben nun etwa
 """
 
 _PROFILES: Final[dict[str, _Profile]] = {
@@ -229,6 +231,26 @@ _PROFILES: Final[dict[str, _Profile]] = {
         sequences=("sch", "ung", "keit", "heit", "cht", "eit", "lich", "chen", "ei", "eu"),
     ),
 }
+
+
+# A word two languages share is not evidence about which one this is.
+#
+# "was" is the case that cost a production row: German's most ordinary
+# interrogative and English's past tense of "to be". It sat in the
+# English list and not the German one, so "Was wurde laut 1. Mose 2,1
+# vollendet?" — six German words — scored 1:0 for English and was
+# parked as the wrong language.
+#
+# Adding it to German alone would have swapped the error. Computing the
+# overlap and dropping it from every profile is the rule that holds:
+# what remains in each list is what only that language says. It also
+# scales — a fifth language that shares half its closed class with a
+# fourth cannot poison either.
+_AMBIGUOUS_WORDS: Final[frozenset[str]] = frozenset(
+    word
+    for word in {w for profile in _PROFILES.values() for w in profile.function_words}
+    if sum(word in profile.function_words for profile in _PROFILES.values()) > 1
+)
 
 
 class _Counted(NamedTuple):
@@ -302,7 +324,7 @@ def _absence_bonus(code: str, candidates: list[str], letters: str, letter_count:
 
 def _score(profile: _Profile, letters: str, words: set[str], haystack: str) -> int:
     exclusive = sum(1 for ch in letters if ch in profile.exclusive_letters)
-    function_words = len(words & profile.function_words)
+    function_words = len(words & profile.function_words - _AMBIGUOUS_WORDS)
     sequences = sum(1 for seq in profile.sequences if seq in haystack)
 
     return (
