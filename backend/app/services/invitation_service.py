@@ -10,9 +10,10 @@ from app.core.config import settings
 from app.core.errors import ErrorCode, equip_error
 from app.models.invitation import Invitation, InvitationStatus
 from app.models.user import User
-from app.schemas.locale import DEFAULT_LOCALE, LocaleCode, normalize_locale
+from app.schemas.locale import LocaleCode  # noqa: TC001 — annotation is evaluated at runtime by FastAPI
 from app.services.audit_service import log_action
 from app.services.email_service import send_invitation_email
+from app.services.user_locale import preferred_locale_of
 
 if TYPE_CHECKING:
     import uuid
@@ -51,10 +52,7 @@ def _inviter_locale(db: Session, invited_by: uuid.UUID | str | None) -> LocaleCo
     to English — which is what happened before, including for the
     German and Ukrainian schools this platform now serves.
     """
-    if invited_by is None:
-        return DEFAULT_LOCALE
-    raw = db.query(User.preferred_locale).filter(User.id == invited_by).scalar()
-    return normalize_locale(raw)
+    return preferred_locale_of(db, invited_by)
 
 
 def create_or_resend_invitation(

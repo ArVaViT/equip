@@ -25,6 +25,7 @@ from app.api.dependencies import (
 )
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
+from app.core.i18n import t
 from app.core.ids import as_uuid
 from app.models.assignment import Assignment
 from app.models.audit_log import AuditLog
@@ -84,7 +85,8 @@ from app.services.grading_queue import assignment_work, pending_summary, waiting
 from app.services.grading_scheme import effective_bands, get_org_settings, validate_scheme_threshold
 from app.services.my_grade_service import build_my_course_grade, latest_enrollment
 from app.services.notification_service import create_notification
-from app.services.translation.resolve_for_display import populate_spine_texts
+from app.services.translation.resolve_for_display import fetch_course_titles_by_id, populate_spine_texts
+from app.services.user_locale import preferred_locale_of
 
 logger = logging.getLogger(__name__)
 
@@ -975,12 +977,23 @@ def request_retake(
     # A live course always has an owner; the column is nullable only because
     # the schema predates the constraint.
     assert course.created_by is not None
+    teacher_locale = preferred_locale_of(db, course.created_by)
+    course_title_for_teacher = fetch_course_titles_by_id(db, [course.id], display_locale=teacher_locale).get(
+        course.id
+    ) or t(teacher_locale, "fallback.course")
     create_notification(
         db,
         user_id=course.created_by,
         type=RETAKE_REQUEST_NOTIFICATION,
-        title="Retake requested",
-        message=f"{student_name} is asking for a chance to retake work in this course.",
+        # The teacher's language, not the student's: this one arrives in
+        # the teacher's notification list next to everything else.
+        title=t(teacher_locale, "notif.retake_requested.title"),
+        message=t(
+            teacher_locale,
+            "notif.retake_requested.body",
+            student=student_name,
+            course=course_title_for_teacher,
+        ),
         # The progress page, not the gradebook: three of the four powers this
         # request routes to live there (excuse, gift an attempt, return the
         # work), and the student is opened rather than searched for.

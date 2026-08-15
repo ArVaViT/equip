@@ -19,9 +19,11 @@ from typing import TYPE_CHECKING
 from fastapi import status as http_status
 
 from app.core.errors import ErrorCode, equip_error
+from app.core.i18n import t
 from app.services.audit_service import log_action
 from app.services.notification_service import create_notification
 from app.services.translation.resolve_for_display import fetch_cv_entity_texts_with_fallback
+from app.services.user_locale import preferred_locale_of
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -71,22 +73,32 @@ def apply_grade(
     submission.graded_by = teacher_id
     submission.graded_at = datetime.now(UTC)
 
-    locale = source_locale or "en"
+    # The notification goes to the student, so it is written in the
+    # student's language — not the course's. Those differ by design: the
+    # whole point of the platform is that a German writes the course and
+    # a Ukrainian takes it.
+    reader_locale = preferred_locale_of(db, submission.student_id)
     texts = fetch_cv_entity_texts_with_fallback(
         db,
         entity_type="assignment",
         entity_ids=[str(assignment.id)],
         fields=["title"],
-        display_locale=locale,
-        source_locale=locale,
+        display_locale=reader_locale,
+        source_locale=source_locale or reader_locale,
     )
-    title = texts.get((str(assignment.id), "title")) or "your assignment"
+    title = texts.get((str(assignment.id), "title")) or t(reader_locale, "fallback.your_assignment")
     create_notification(
         db,
         user_id=submission.student_id,
         type="assignment_graded",
-        title="Assignment Graded",
-        message=f'Your submission for "{title}" has been graded: {grade}/{assignment.max_score}.',
+        title=t(reader_locale, "notif.assignment_graded.title"),
+        message=t(
+            reader_locale,
+            "notif.assignment_graded.body",
+            title=title,
+            grade=str(grade),
+            max_score=str(assignment.max_score),
+        ),
         link=None,
         metadata={"assignment_id": str(assignment.id), "submission_id": str(submission.id)},
     )
