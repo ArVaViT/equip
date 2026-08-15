@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from app.core import sanitize as sanitize_mod
-from app.core.sanitize import sanitize_string, strip_tags
+from app.core.sanitize import html_to_plain_text, sanitize_string, strip_tags
 
 if TYPE_CHECKING:
     import pytest
@@ -369,3 +369,25 @@ class TestStripTags:
         # 50k bare "<" used to be the quadratic case. This asserts it
         # returns at all; the point is that it does so immediately.
         assert strip_tags("<" * 50_000).count("<") == 50_000
+
+
+class TestHtmlToPlainText:
+    """One implementation for the three call sites that read prose out
+    of markup: the verse card, the scripture similarity comparison, and
+    the course PDF. All three had written the same `<[^>]+>` regex."""
+
+    def test_tags_and_whitespace_collapse_to_one_line(self) -> None:
+        assert html_to_plain_text("<p>Line one</p>\n<p>Line two</p>") == "Line one Line two"
+
+    def test_a_tag_hugging_a_word_does_not_leave_a_gap(self) -> None:
+        # The tag becomes a space, which would otherwise strand it in
+        # front of the comma: "Бог , сказал".
+        assert html_to_plain_text("<p><b>Бог</b>, сказал</p>") == "Бог, сказал"
+
+    def test_closing_punctuation_of_every_kind(self) -> None:
+        assert html_to_plain_text("<i>да</i>. <i>нет</i>! <i>как</i>? (<i>так</i>)") == "да. нет! как? (так)"
+
+    def test_empty_and_none(self) -> None:
+        assert html_to_plain_text(None) == ""
+        assert html_to_plain_text("") == ""
+        assert html_to_plain_text("<br/>") == ""

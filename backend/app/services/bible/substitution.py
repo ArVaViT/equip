@@ -46,6 +46,7 @@ from dataclasses import dataclass
 from difflib import SequenceMatcher
 from typing import TYPE_CHECKING
 
+from app.core.sanitize import html_to_plain_text
 from app.services.bible.api_source import API_BIBLE_IDS, fetch_verse
 from app.services.bible.books import display_book_name
 from app.services.bible.references import BibleRef, parse_references
@@ -96,10 +97,12 @@ class Substitution:
 
 
 def _strip_html(html: str) -> str:
-    """Crude HTML → plain text. Sufficient for similarity comparison —
-    we collapse tags into spaces, then fold whitespace runs."""
-    no_tags = re.sub(r"<[^>]+>", " ", html)
-    return " ".join(no_tags.split())
+    """Crude HTML → plain text. Sufficient for similarity comparison.
+
+    The tag pass lives in ``core.sanitize`` now — one implementation
+    for the three places that read prose out of markup.
+    """
+    return html_to_plain_text(html)
 
 
 def _normalize_for_compare(s: str) -> str:
