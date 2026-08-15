@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { toProxyImage } from "@/lib/images"
 import type { Cohort, Course, Enrollment } from "@/types"
+import { orNotTranslated } from "@/lib/untranslated"
 
 interface Props {
   course: Course
@@ -52,7 +53,7 @@ export function EnrolledHeader({
         )}
         <div className="flex-1 min-w-0">
           <h1 className="mb-1 font-serif text-xl font-semibold tracking-tight text-wrap-safe sm:text-2xl">
-            {course.title}
+            {orNotTranslated(t, course.title)}
           </h1>
           <div className="flex flex-wrap items-center gap-3 text-xs text-ink-muted">
             {enrolledCohort && (

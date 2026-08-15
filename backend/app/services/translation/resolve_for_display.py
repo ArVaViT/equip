@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from typing import Literal
 
 from sqlalchemy.orm import Session  # noqa: TC002
 
@@ -44,7 +45,8 @@ from app.services.content_versions import (
     fetch_cv_entity_texts_with_fallback,
     fetch_cv_text_bulk,
 )
-from app.services.language_detection import detect_locale
+from app.services.language_detection import carries_language, detect_locale
+from app.services.translation.service import is_translation_enabled
 
 
 def _str_uuid(v: str | uuid.UUID) -> str:
@@ -67,13 +69,18 @@ def fetch_course_titles_by_id(
     course_ids: list[str],
     *,
     display_locale: LocaleCode,
+    fallback: Literal["auto", "none", "source_then_any"] = "auto",
 ) -> dict[str, str]:
-    """Return ``{course_id -> course title}`` resolved against
-    ``content_versions`` with per-course source_locale fallback.
+    """Return ``{course_id -> course title}`` at ``display_locale``.
 
-    One bulk query per source_locale group; the caller's display_locale
-    is the preferred read tier, then the course's own ``source_locale``,
-    then any-locale. Empty when no course_ids supplied.
+    One bulk query per source_locale group. Empty when no course_ids
+    supplied; a course with no title in this language comes back as ``""``.
+
+    ``fallback`` is passed straight through to the cv reader. Readers take
+    the default and get nothing rather than another language. A caller that
+    must print *something* — the certificate, which would otherwise leave a
+    blank line on a document somebody hands an employer — asks for
+    ``"source_then_any"`` and says why at the call site.
 
     Used by every endpoint that needs to label a course in its title
     column without paying the cost of loading the full Course ORM tree
@@ -94,6 +101,7 @@ def fetch_course_titles_by_id(
             fields=["title"],
             display_locale=display_locale,
             source_locale=src_locale,
+            fallback=fallback,
         )
         for cid in ids:
             out[cid] = texts.get((cid, "title")) or ""
@@ -347,9 +355,39 @@ def pick_overlay_value(
     key = (entity_type, entity_id, field)
     if key in overlay:
         return overlay[key]
-    if base is None:
-        return None
-    return overlay.get(key, base)
+
+    # Nothing translated for this locale.
+    #
+    # Where nothing translates, there is only one language, and serving the
+    # text that exists is not substituting a language for the reader's — it
+    # is the only language on the platform. Local development, CI, a deploy
+    # without a provider key.
+    if not is_translation_enabled():
+        return base
+
+    # Text that carries no language at all — "OK", "2026", "Genesis", a
+    # person's name — is the same string in every language we serve, so it is
+    # served to everyone. Note the question: not "which language is this"
+    # but "is this in a language". A detector that cannot name the language
+    # of a Ukrainian sentence has not shown the sentence to be neutral.
+    if not carries_language(base):
+        return base
+
+    # Otherwise the base text IS in a language, and it is not this reader's.
+    #
+    # This used to serve it anyway. That reads as helpful and is not: it
+    # decides for the reader that some language beats nothing, and decides it
+    # silently. A Ukrainian student would open a lesson, find Russian, and
+    # have nothing telling them the platform simply had not translated it
+    # yet. There is no principal language here and no spare one; what a
+    # person sees follows from what they chose.
+    #
+    # ``None`` means "not in your language", and the surface above decides
+    # how to say so. It is not a common state: a course cannot enter the
+    # catalog until every language has it (``translation/completeness.py``),
+    # so a reader meets this in the gap between a teacher posting an
+    # announcement and the worker translating it.
+    return None
 
 
 @dataclass(frozen=True, slots=True)

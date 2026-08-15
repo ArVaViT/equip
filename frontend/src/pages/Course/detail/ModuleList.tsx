@@ -22,6 +22,7 @@ import { isGradableChapterType } from "@/lib/chapterTypes"
 import type { Module } from "@/types"
 import { formatDate } from "./types"
 import { isModuleLocked } from "../moduleProgress"
+import { orNotTranslated } from "@/lib/untranslated"
 
 interface Props {
   courseId: string
@@ -150,7 +151,7 @@ const ModuleRow = memo(function ModuleRow({
                 idx + 1
               )}
             </span>
-            <span className="min-w-0 flex-1 truncate">{module.title}</span>
+            <span className="min-w-0 flex-1 truncate">{orNotTranslated(t, module.title)}</span>
             <span className="shrink-0 whitespace-nowrap text-xs font-normal text-ink-muted">
               {gradableCount > 0
                 ? `${completedInModule}/${gradableCount}`

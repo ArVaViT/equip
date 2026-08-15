@@ -378,4 +378,8 @@ def _snapshot_letterhead(db: Session, cert: Certificate, course: Course | None) 
             db,
             [course.id],
             display_locale=CERTIFICATE_LOCALE,
+            # The one place that asks for another language on purpose. A
+            # certificate is a document: a blank where the course name goes
+            # is worse than a name in the language the teacher wrote it in.
+            fallback="source_then_any",
         ).get(course.id)

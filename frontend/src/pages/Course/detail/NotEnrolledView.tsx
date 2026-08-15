@@ -9,6 +9,7 @@ import { toProxyImage } from "@/lib/images"
 import type { Course, Cohort } from "@/types"
 import { formatDate, isEnrollableCohort } from "./types"
 import { CohortSelectModal } from "./CohortSelectModal"
+import { orNotTranslated } from "@/lib/untranslated"
 
 interface Props {
   course: Course
@@ -115,7 +116,7 @@ export function NotEnrolledView({
       )}
 
       <h1 className="mb-3 font-serif text-3xl font-bold tracking-tight text-wrap-safe sm:text-4xl">
-        {course.title}
+        {orNotTranslated(t, course.title)}
       </h1>
 
       {/* Course-at-a-glance: editorial eyebrow with module/chapter counts.
