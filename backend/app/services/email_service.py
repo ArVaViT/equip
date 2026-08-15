@@ -22,6 +22,8 @@ import logging
 import httpx
 
 from app.core.config import settings
+from app.core.i18n import t
+from app.schemas.locale import DEFAULT_LOCALE, LocaleCode
 
 logger = logging.getLogger(__name__)
 
@@ -40,22 +42,44 @@ _H1_STYLE = "color: #1a1a2e; font-size: 24px; margin-bottom: 16px;"
 _P_STYLE = "color: #4a4a6a; font-size: 16px; line-height: 1.6;"
 _SMALL_STYLE = "color: #8888a8; font-size: 13px;"
 
-_ROLE_LABEL = {"teacher": "teacher", "student": "student"}
+
+def _role_label(role: str, locale: LocaleCode) -> str:
+    """The role as the recipient's language names it.
+
+    Falls back to the raw value for a role with no catalog entry rather
+    than raising: an invitation with an odd role should still arrive.
+    """
+    key = f"role.{role}"
+    label = t(locale, key)
+    return role if label == key else label
 
 
-def _invitation_html(role: str, accept_url: str) -> str:
-    role_label = _ROLE_LABEL.get(role, role)
+def _invitation_html(role: str, accept_url: str, locale: LocaleCode) -> str:
+    """The invite email, in the recipient's language.
+
+    It used to be English for everyone. An invitation is the first thing
+    a person ever receives from this platform — a German teacher being
+    asked to join a Bible school should not have to read English to
+    find out what they are being asked.
+    """
+    role_label = _role_label(role, locale)
     return f"""
       <div style="{_WRAP_STYLE}">
-        <h1 style="{_H1_STYLE}">You're invited to {_BRAND}</h1>
-        <p style="{_P_STYLE}">You've been invited to join {_BRAND} as a {role_label}. Click below to accept the invitation and set up your account.</p>
-        <a href="{accept_url}" style="{_BTN_STYLE}">Accept Invitation</a>
-        <p style="{_SMALL_STYLE}">This invitation expires in 7 days. If you weren't expecting this, you can safely ignore this email.</p>
+        <h1 style="{_H1_STYLE}">{t(locale, "email.invitation.heading", brand=_BRAND)}</h1>
+        <p style="{_P_STYLE}">{t(locale, "email.invitation.body", brand=_BRAND, role=role_label)}</p>
+        <a href="{accept_url}" style="{_BTN_STYLE}">{t(locale, "email.invitation.cta")}</a>
+        <p style="{_SMALL_STYLE}">{t(locale, "email.invitation.footer")}</p>
       </div>
     """
 
 
-def send_invitation_email(*, to_email: str, role: str, accept_url: str) -> bool:
+def send_invitation_email(
+    *,
+    to_email: str,
+    role: str,
+    accept_url: str,
+    locale: LocaleCode = DEFAULT_LOCALE,
+) -> bool:
     """Send the invite email via Resend. Returns whether it was sent.
 
     Never raises -- a delivery failure is logged and swallowed so the
@@ -68,7 +92,7 @@ def send_invitation_email(*, to_email: str, role: str, accept_url: str) -> bool:
         logger.warning("RESEND_API_KEY not configured; skipping invitation email to %s", to_email)
         return False
 
-    role_label = _ROLE_LABEL.get(role, role)
+    role_label = _role_label(role, locale)
     try:
         resp = httpx.post(
             _RESEND_URL,
@@ -76,8 +100,8 @@ def send_invitation_email(*, to_email: str, role: str, accept_url: str) -> bool:
             json={
                 "from": _FROM,
                 "to": [to_email],
-                "subject": f"You're invited to join {_BRAND} as a {role_label}",
-                "html": _invitation_html(role, accept_url),
+                "subject": t(locale, "email.invitation.subject", brand=_BRAND, role=role_label),
+                "html": _invitation_html(role, accept_url, locale),
             },
             timeout=10.0,
         )

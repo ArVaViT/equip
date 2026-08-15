@@ -61,6 +61,28 @@ export const LOCALE_NATIVE_LABELS: Record<SupportedLocale, string> = {
   uk: "Українська",
 }
 
+/**
+ * BCP-47 tag per locale, for `Intl` — date and number formatting.
+ *
+ * `Intl` wants a region to pick a format: bare "de" works, but the tags
+ * here are the ones the audience actually reads in. Before this existed
+ * the code asked `lang.startsWith("ru") ? "ru-RU" : "en-US"`, so German
+ * and Ukrainian readers were shown American dates — "August 15, 2026"
+ * where they expect "15. August 2026" and "15 серпня 2026".
+ */
+export const LOCALE_INTL_TAGS: Record<SupportedLocale, string> = {
+  ru: "ru-RU",
+  en: "en-US",
+  de: "de-DE",
+  uk: "uk-UA",
+}
+
+/** The Intl tag for whatever language is active right now. */
+export function activeIntlTag(language?: string): string {
+  const lang = (language ?? "").toLowerCase().split("-")[0]
+  return isSupportedLocale(lang) ? LOCALE_INTL_TAGS[lang] : LOCALE_INTL_TAGS[DEFAULT_LOCALE]
+}
+
 export function isSupportedLocale(value: unknown): value is SupportedLocale {
   return typeof value === "string" && (SUPPORTED_LOCALES as readonly string[]).includes(value)
 }
