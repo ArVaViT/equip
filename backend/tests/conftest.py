@@ -268,3 +268,29 @@ def anon_client(db: Session, teacher: User) -> TestClient:
         yield tc
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def two_locales(monkeypatch: pytest.MonkeyPatch):
+    """Run a test against the ``ru`` + ``en`` set.
+
+    Several suites describe how a mechanism behaves — how many rows a
+    translation writes, how many provider calls a publish costs — and
+    counted those against the live ``LOCALE_CODES``. That made them
+    quietly change meaning the day German and Ukrainian were switched
+    on: the mechanism was fine, the arithmetic was not.
+
+    The number of languages is a parameter of those tests, so this
+    fixture states it. Tests that are *about* the wider set say so
+    themselves.
+
+    ``LOCALE_CODES`` is imported by name into a dozen modules, so this
+    patches every module that holds a reference rather than the one
+    definition.
+    """
+    import sys
+
+    for module in list(sys.modules.values()):
+        name = getattr(module, "__name__", "")
+        if name.startswith("app.") and hasattr(module, "LOCALE_CODES"):
+            monkeypatch.setattr(module, "LOCALE_CODES", ("ru", "en"), raising=False)

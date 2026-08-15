@@ -43,6 +43,13 @@ if TYPE_CHECKING:
     from fastapi.testclient import TestClient
     from sqlalchemy.orm import Session
 
+# The gate's mechanics are described here against the two-locale set
+# they were written for; counting one target language keeps the
+# assertions about the gate rather than about arithmetic. That the
+# set is now four is the subject of
+# ``test_german_and_ukrainian_are_served``.
+pytestmark = pytest.mark.usefixtures("two_locales")
+
 
 @pytest.fixture(autouse=True)
 def _translation_enabled(monkeypatch: pytest.MonkeyPatch):

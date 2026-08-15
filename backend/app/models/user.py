@@ -24,7 +24,7 @@ class User(Base):
         # Mirror the prod CHECK constraints so the SQLite test path and the
         # Postgres schema-smoke job enforce the same value domains.
         CheckConstraint("role IN ('admin', 'teacher', 'student')", name="chk_profiles_role"),
-        CheckConstraint("preferred_locale IN ('ru', 'en')", name="profiles_preferred_locale_check"),
+        CheckConstraint("preferred_locale IN ('ru', 'en', 'de', 'uk')", name="profiles_preferred_locale_check"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
@@ -36,7 +36,7 @@ class User(Base):
     # Per-user UI/content language. Drives both the i18n bundle on the
     # frontend and which translated copy of course content gets served.
     # The CHECK constraint in supabase/migrations/...add_profile_preferred_locale
-    # restricts this to ('ru', 'en'); keep the schema Literal in sync.
+    # restricts this to ('ru', 'en', 'de', 'uk'); keep the schema Literal in sync.
     preferred_locale: Mapped[str] = mapped_column(default="ru")
     # Floor for iCal token ``iat`` claims. When a user rotates their
     # subscription token via ``POST /calendar/ical/token``, we stamp

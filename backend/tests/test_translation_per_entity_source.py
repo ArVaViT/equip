@@ -34,6 +34,10 @@ from app.models.user import User, UserRole
 from app.services.translation.registry import reconcile_entity
 from app.services.translation.service import reset_translation_provider_cache
 
+# These tests count rows and provider calls, so the size of the
+# supported set is one of their inputs. They describe the "ru" + "en"
+# set they were written against; the wider set has tests of its own.
+pytestmark = pytest.mark.usefixtures("two_locales")
 TEACHER_ID = uuid.UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
 
 

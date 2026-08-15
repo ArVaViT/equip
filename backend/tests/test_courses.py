@@ -8,6 +8,10 @@ from app.models.course import Course
 from app.services.translation.orchestrator import OrchestratorReport
 from tests.conftest import TEACHER_ID
 
+# These tests count rows and provider calls, so the size of the
+# supported set is one of their inputs. They describe the "ru" + "en"
+# set they were written against; the wider set has tests of its own.
+pytestmark = pytest.mark.usefixtures("two_locales")
 PREFIX = "/api/v1/courses"
 
 

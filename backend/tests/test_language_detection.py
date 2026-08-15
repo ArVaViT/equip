@@ -27,6 +27,20 @@ from app.services import language_detection as lang_mod
 from app.services.language_detection import detect_locale
 
 
+@pytest.fixture(autouse=True)
+def _two_locales(monkeypatch: pytest.MonkeyPatch):
+    """Most of this file describes the detector on the set it shipped
+    with: ``ru`` + ``en``, one language per script, where the script
+    alone settles it.
+
+    That is a property of the SET, not of the detector, and pinning it
+    to the live ``LOCALE_CODES`` made these tests quietly change meaning
+    the day German and Ukrainian were switched on. The classes below
+    that describe four locales override this fixture.
+    """
+    monkeypatch.setattr(lang_mod, "LOCALE_CODES", ("ru", "en"))
+
+
 class TestDetectLocaleHappyPath:
     def test_pure_russian_returns_ru(self):
         assert detect_locale("Книга Бытия") == "ru"

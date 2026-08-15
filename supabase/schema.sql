@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 7ICPeyZXhnZpGqVTUiKwwCDLry4HLGIvLHlUjAIiWyRLNTQpBODc199kiPf4mBr
+\restrict Eamc1YQ6cgnejJgZch42HgZhz3mXw3iilQtN1i02fucqNjlijBfuCI6z3brFOhC
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10 (Homebrew)
@@ -101,7 +101,7 @@ BEGIN
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', ''),
     safe_role,
     CASE
-      WHEN NEW.raw_user_meta_data->>'preferred_locale' IN ('ru', 'en')
+      WHEN NEW.raw_user_meta_data->>'preferred_locale' IN ('ru', 'en', 'de', 'uk')
         THEN NEW.raw_user_meta_data->>'preferred_locale'
       ELSE 'ru'
     END
@@ -477,7 +477,7 @@ CREATE TABLE public.courses (
     CONSTRAINT courses_ai_policy_check CHECK ((ai_policy = ANY (ARRAY['ai_forbidden'::text, 'ai_with_disclosure'::text, 'ai_open'::text]))),
     CONSTRAINT courses_grading_scheme_check CHECK ((grading_scheme = ANY (ARRAY['pass_fail'::text, 'percent'::text, 'five_point'::text, 'letter'::text]))),
     CONSTRAINT courses_pass_threshold_check CHECK (((pass_threshold >= (0)::numeric) AND (pass_threshold <= (100)::numeric))),
-    CONSTRAINT courses_source_locale_check CHECK (((source_locale)::text = ANY (ARRAY[('ru'::character varying)::text, ('en'::character varying)::text])))
+    CONSTRAINT courses_source_locale_check CHECK (((source_locale)::text = ANY (ARRAY['ru'::text, 'en'::text, 'de'::text, 'uk'::text])))
 );
 
 
@@ -777,7 +777,7 @@ CREATE TABLE public.profiles (
     calendar_ical_min_iat bigint,
     deactivated_at timestamp with time zone,
     CONSTRAINT chk_profiles_role CHECK ((role = ANY (ARRAY['admin'::text, 'teacher'::text, 'student'::text]))),
-    CONSTRAINT profiles_preferred_locale_check CHECK (((preferred_locale)::text = ANY (ARRAY[('ru'::character varying)::text, ('en'::character varying)::text])))
+    CONSTRAINT profiles_preferred_locale_check CHECK (((preferred_locale)::text = ANY (ARRAY['ru'::text, 'en'::text, 'de'::text, 'uk'::text])))
 )
 WITH (autovacuum_vacuum_threshold='25', autovacuum_analyze_threshold='25');
 
@@ -3421,5 +3421,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 7ICPeyZXhnZpGqVTUiKwwCDLry4HLGIvLHlUjAIiWyRLNTQpBODc199kiPf4mBr
+\unrestrict Eamc1YQ6cgnejJgZch42HgZhz3mXw3iilQtN1i02fucqNjlijBfuCI6z3brFOhC
 
