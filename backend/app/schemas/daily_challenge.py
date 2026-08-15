@@ -21,6 +21,10 @@ from uuid import UUID  # noqa: TC003 — Pydantic runtime resolution
 
 from pydantic import BaseModel, ConfigDict, Field
 
+# Runtime import, not a typing-only one: Pydantic resolves these
+# annotations at class-construction time to build the validators.
+from app.schemas.locale import LocaleCode  # noqa: TC001
+
 # Mirrors ``daily_challenge_questions.question_type`` CHECK.
 DailyChallengeQuestionType = Literal["multiple_choice", "true_false"]
 
@@ -321,10 +325,11 @@ class DailyChallengeQuestionQueueItem(BaseModel):
     bible_verse_from: int | None
     bible_verse_to: int | None
     source_locale: str | None
-    # Quick "does each locale have any cv row" indicator so the editor
-    # can filter the queue without opening every item.
-    has_en: bool
-    has_ru: bool
+    # Which locales have any cv row at all, so the editor can filter the
+    # queue without opening every item. A dict rather than has_en/has_ru:
+    # the queue has to answer the same question for however many
+    # languages the platform serves.
+    has_locale: dict[LocaleCode, bool]
     created_at: datetime
     updated_at: datetime
 
@@ -342,22 +347,28 @@ class DailyChallengeCvCell(BaseModel):
     cv_id: UUID | None
     text: str
     origin: Literal["human", "mt"] | None
-    locale: Literal["en", "ru"]
+    locale: LocaleCode
     updated_at: datetime | None
 
 
 class DailyChallengeBilingualOption(BaseModel):
-    """One option viewed bilingually."""
+    """One option with its text in every served language."""
 
     id: UUID
     order_index: int = Field(..., ge=0, le=5)
     is_correct: bool
-    en: DailyChallengeCvCell
-    ru: DailyChallengeCvCell
+    # Keyed by locale rather than two named fields: an option has as many
+    # texts as the platform has languages.
+    texts: dict[LocaleCode, DailyChallengeCvCell]
 
 
 class DailyChallengeBilingualView(BaseModel):
-    """GET /admin/daily-challenge/questions/{id}/bilingual payload."""
+    """GET /admin/daily-challenge/questions/{id}/bilingual payload.
+
+    Named "bilingual" when the platform had two languages. It carries
+    every served locale now; the route keeps its path so existing links
+    into the review queue do not break.
+    """
 
     id: UUID
     status: DailyChallengeStatus
@@ -368,8 +379,8 @@ class DailyChallengeBilingualView(BaseModel):
     bible_verse_from: int | None
     bible_verse_to: int | None
     source_locale: str | None
-    question_text: dict[Literal["en", "ru"], DailyChallengeCvCell]
-    explanation: dict[Literal["en", "ru"], DailyChallengeCvCell]
+    question_text: dict[LocaleCode, DailyChallengeCvCell]
+    explanation: dict[LocaleCode, DailyChallengeCvCell]
     options: list[DailyChallengeBilingualOption]
 
 
@@ -377,7 +388,7 @@ class DailyChallengeCvUpsertRequest(BaseModel):
     """POST /admin/daily-challenge/questions/{id}/cv body."""
 
     field: Literal["question_text", "explanation", "option_text"]
-    locale: Literal["en", "ru"]
+    locale: LocaleCode
     text: str = Field(..., min_length=1, max_length=4000)
     # Required iff field == "option_text"; ignored otherwise.
     option_id: UUID | None = None

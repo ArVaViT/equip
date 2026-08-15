@@ -1,3 +1,4 @@
+import type { SupportedLocale } from "@/i18n/config"
 import api from "./api"
 
 export type DailyChallengeStatus =
@@ -18,8 +19,8 @@ export interface AdminDailyChallengeQueueItem {
   bible_verse_from: number | null
   bible_verse_to: number | null
   source_locale: string | null
-  has_en: boolean
-  has_ru: boolean
+  /** Which languages this question already has text in. */
+  has_locale: Record<SupportedLocale, boolean>
   created_at: string
   updated_at: string
 }
@@ -33,7 +34,7 @@ export interface AdminDailyChallengeCvCell {
   cv_id: string | null
   text: string
   origin: "human" | "mt" | null
-  locale: "en" | "ru"
+  locale: SupportedLocale
   updated_at: string | null
 }
 
@@ -41,8 +42,7 @@ export interface AdminDailyChallengeBilingualOption {
   id: string
   order_index: number
   is_correct: boolean
-  en: AdminDailyChallengeCvCell
-  ru: AdminDailyChallengeCvCell
+  texts: Record<SupportedLocale, AdminDailyChallengeCvCell>
 }
 
 export interface AdminDailyChallengeBilingualView {
@@ -55,21 +55,21 @@ export interface AdminDailyChallengeBilingualView {
   bible_verse_from: number | null
   bible_verse_to: number | null
   source_locale: string | null
-  question_text: Record<"en" | "ru", AdminDailyChallengeCvCell>
-  explanation: Record<"en" | "ru", AdminDailyChallengeCvCell>
+  question_text: Record<SupportedLocale, AdminDailyChallengeCvCell>
+  explanation: Record<SupportedLocale, AdminDailyChallengeCvCell>
   options: AdminDailyChallengeBilingualOption[]
 }
 
 export interface AdminDailyChallengeCvUpsertRequest {
   field: "question_text" | "explanation" | "option_text"
-  locale: "en" | "ru"
+  locale: SupportedLocale
   text: string
   option_id?: string
 }
 
 export interface AdminDailyChallengeQueueParams {
   status?: DailyChallengeStatus
-  only_missing_ru?: boolean
+  missing_locale?: SupportedLocale
   rejected?: boolean
   limit?: number
   offset?: number

@@ -49,7 +49,7 @@ from app.schemas.daily_challenge import (
     DailyChallengeScheduleResponse,
     DailyChallengeStatus,
 )
-from app.schemas.locale import normalize_locale
+from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.daily_challenge import (
     CvCellView,
     GeminiPromptClient,
@@ -392,7 +392,10 @@ def _cv_cell(view: CvCellView) -> DailyChallengeCvCell:
 )
 def list_questions_route(
     status_filter: DailyChallengeStatus | None = Query(default=None, alias="status"),
-    only_missing_ru: bool = Query(default=False),
+    # "What is still missing in German?" — the reviewer's actual question.
+    # Was ``only_missing_ru``, a boolean that could only ever ask it about
+    # Russian.
+    missing_locale: LocaleCode | None = Query(default=None),
     rejected: bool = Query(default=False),
     limit: int = Query(default=25, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
@@ -402,7 +405,7 @@ def list_questions_route(
     items, total = list_review_queue(
         db,
         status_filter=status_filter,
-        only_missing_ru=only_missing_ru,
+        missing_locale=missing_locale,
         rejected=rejected,
         limit=limit,
         offset=offset,
@@ -418,8 +421,7 @@ def list_questions_route(
                 bible_verse_from=i.question.bible_verse_from,
                 bible_verse_to=i.question.bible_verse_to,
                 source_locale=i.question.source_locale,
-                has_en=i.has_en,
-                has_ru=i.has_ru,
+                has_locale=i.has_locale,
                 created_at=i.question.created_at,
                 updated_at=i.question.updated_at,
             )
@@ -451,15 +453,14 @@ def get_bilingual_view_route(
         bible_verse_from=q.bible_verse_from,
         bible_verse_to=q.bible_verse_to,
         source_locale=q.source_locale,
-        question_text={"en": _cv_cell(view.question_text["en"]), "ru": _cv_cell(view.question_text["ru"])},
-        explanation={"en": _cv_cell(view.explanation["en"]), "ru": _cv_cell(view.explanation["ru"])},
+        question_text={locale: _cv_cell(cell) for locale, cell in view.question_text.items()},
+        explanation={locale: _cv_cell(cell) for locale, cell in view.explanation.items()},
         options=[
             DailyChallengeBilingualOption(
                 id=o.id,
                 order_index=o.order_index,
                 is_correct=o.is_correct,
-                en=_cv_cell(o.en),
-                ru=_cv_cell(o.ru),
+                texts={locale: _cv_cell(cell) for locale, cell in o.texts.items()},
             )
             for o in view.options
         ],

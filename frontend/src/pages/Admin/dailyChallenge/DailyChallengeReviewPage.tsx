@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState, ErrorState, PageHeader } from "@/components/patterns"
 import { Badge } from "@/components/ui/badge"
+import { LOCALE_NATIVE_LABELS, SUPPORTED_LOCALES, isSupportedLocale } from "@/i18n/config"
 import {
   adminDailyChallengeService,
   type AdminDailyChallengeQueueItem,
@@ -34,7 +35,11 @@ export default function DailyChallengeReviewPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const status = (searchParams.get("status") as DailyChallengeStatus | null) ?? "doctrinally_reviewed"
-  const missingRu = searchParams.get("missing_ru") === "1"
+  // "Show me what still has no German" — one filter that works for any
+  // language, where it used to be a checkbox that could only ask about
+  // Russian.
+  const missingParam = searchParams.get("missing")
+  const missingLocale = isSupportedLocale(missingParam) ? missingParam : null
 
   const [items, setItems] = useState<AdminDailyChallengeQueueItem[]>([])
   const [total, setTotal] = useState(0)
@@ -47,7 +52,7 @@ export default function DailyChallengeReviewPage() {
     try {
       const res = await adminDailyChallengeService.listQueue({
         status,
-        only_missing_ru: missingRu || undefined,
+        missing_locale: missingLocale ?? undefined,
       })
       setItems(res.items)
       setTotal(res.total)
@@ -56,7 +61,7 @@ export default function DailyChallengeReviewPage() {
     } finally {
       setLoading(false)
     }
-  }, [status, missingRu])
+  }, [status, missingLocale])
 
   useEffect(() => {
     void load()
@@ -68,10 +73,10 @@ export default function DailyChallengeReviewPage() {
     setSearchParams(params, { replace: false })
   }
 
-  const setMissingRuFilter = (next: boolean) => {
+  const setMissingFilter = (next: string) => {
     const params = new URLSearchParams(searchParams)
-    if (next) params.set("missing_ru", "1")
-    else params.delete("missing_ru")
+    if (isSupportedLocale(next)) params.set("missing", next)
+    else params.delete("missing")
     setSearchParams(params, { replace: false })
   }
 
@@ -111,12 +116,19 @@ export default function DailyChallengeReviewPage() {
               ))}
             </select>
             <label className="ml-3 flex items-center gap-1.5 text-xs text-ink-muted">
-              <input
-                type="checkbox"
-                checked={missingRu}
-                onChange={(e) => setMissingRuFilter(e.target.checked)}
-              />
-              {t("admin.dailyChallenge.review.filterMissingRu")}
+              {t("admin.dailyChallenge.review.filterMissing")}
+              <select
+                value={missingLocale ?? ""}
+                onChange={(e) => setMissingFilter(e.target.value)}
+                className="h-7 rounded-md bg-surface px-2 text-xs"
+              >
+                <option value="">{t("admin.dailyChallenge.review.filterMissingAny")}</option>
+                {SUPPORTED_LOCALES.map((locale) => (
+                  <option key={locale} value={locale}>
+                    {LOCALE_NATIVE_LABELS[locale]}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
           {!loading && !loadError && (
@@ -190,14 +202,29 @@ interface CvBadgesProps {
 }
 
 function CvBadges({ item, t }: CvBadgesProps) {
+  // One badge per served language. Two hardcoded badges could not say
+  // that a question is missing its German, which is the state the review
+  // queue exists to surface.
   return (
     <div className="hidden items-center gap-1.5 sm:flex">
-      <Badge variant={item.has_en ? "primarySubtle" : "destructiveSubtle"}>
-        {item.has_en ? "EN ✓" : t("admin.dailyChallenge.review.missingEn")}
-      </Badge>
-      <Badge variant={item.has_ru ? "primarySubtle" : "destructiveSubtle"}>
-        {item.has_ru ? "RU ✓" : t("admin.dailyChallenge.review.missingRu")}
-      </Badge>
+      {SUPPORTED_LOCALES.map((locale) => {
+        const present = item.has_locale?.[locale] ?? false
+        return (
+          <Badge key={locale} variant={present ? "primarySubtle" : "destructiveSubtle"}>
+            {locale.toUpperCase()}
+            {present ? " ✓" : " —"}
+            <span className="sr-only">
+              {present
+                ? t("admin.dailyChallenge.review.localePresent", {
+                    language: LOCALE_NATIVE_LABELS[locale],
+                  })
+                : t("admin.dailyChallenge.review.localeMissing", {
+                    language: LOCALE_NATIVE_LABELS[locale],
+                  })}
+            </span>
+          </Badge>
+        )
+      })}
     </div>
   )
 }
