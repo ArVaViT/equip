@@ -331,3 +331,73 @@ def test_every_content_kind_is_accepted(kind):
         target_locale="en",
         content_kind=kind,
     )
+
+
+class TestAClauseThatWasNeverTranslated:
+    """``not_translated`` catches a whole string that came back as it went
+    in. The failure production actually produced was one clause inside an
+    otherwise good translation — a German sentence wrapping an English
+    verse, because the model is told to leave quoted Scripture alone and
+    nothing restored it in German. To the reader that is not a citation.
+    """
+
+    def test_a_quotation_left_in_the_source_language_is_caught(self):
+        source = (
+            "John 3:17 states, 'For God did not send his Son into the world to condemn "
+            "the world, but in order that the world might be saved through him.'"
+        )
+        translated = (
+            "Johannes 3:17 besagt: 'For God did not send his Son into the world to condemn "
+            "the world, but in order that the world might be saved through him.'"
+        )
+        issues = validate_translation(
+            source=source,
+            translated=translated,
+            source_locale="en",
+            target_locale="de",
+        )
+        assert [issue.code for issue in issues if issue.code == "untranslated_run"]
+
+    def test_a_fully_translated_sentence_passes(self):
+        issues = validate_translation(
+            source="The letter names its author in the opening verse, and the argument follows from it.",
+            translated="Der Brief nennt seinen Verfasser im ersten Vers, und die Beweisführung folgt daraus.",
+            source_locale="en",
+            target_locale="de",
+        )
+        assert [issue.code for issue in issues] == []
+
+    def test_a_short_source_cannot_trigger_it(self):
+        # Ten words is the bar; a title or an answer option never reaches
+        # it, so a proper name repeated verbatim is not a defect.
+        issues = validate_translation(
+            source="Paul writes to the Romans",
+            translated="Paul writes to the Romans",
+            source_locale="en",
+            target_locale="de",
+            content_kind="title",
+        )
+        assert "untranslated_run" not in [issue.code for issue in issues]
+
+    def test_scripture_markers_are_not_evidence(self):
+        # Markers are identical on both sides by design — they are what
+        # the canonical text is restored into afterwards.
+        marker = "VERSE_0123456789abcdef"
+        source = f"According to the passage: {marker} and the argument that follows from it here."
+        translated = f"Laut der Stelle: {marker} und die daraus folgende Beweisführung hier."
+        issues = validate_translation(
+            source=source,
+            translated=translated,
+            source_locale="en",
+            target_locale="de",
+        )
+        assert "untranslated_run" not in [issue.code for issue in issues]
+
+    def test_the_same_language_is_not_a_translation(self):
+        issues = validate_translation(
+            source="A sentence that is long enough to have ten words in it, easily.",
+            translated="A sentence that is long enough to have ten words in it, easily.",
+            source_locale="en",
+            target_locale="en",
+        )
+        assert "untranslated_run" not in [issue.code for issue in issues]

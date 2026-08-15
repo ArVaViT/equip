@@ -311,6 +311,79 @@ def _check_length(
     )
 
 
+# A run of source words long enough that finding it verbatim in the
+# translation means it was not translated. Ten words is roughly a
+# clause; below that, legitimate coincidence is common — proper names,
+# a list of book titles, a formula.
+_UNTRANSLATED_RUN_WORDS: Final[int] = 10
+
+# ...and long enough in characters that ten short tokens (numbers, a
+# reference list, initials) cannot reach the bar on their own.
+#
+# 45 rather than 60: ten English words are shorter than ten Russian
+# ones, and at 60 the rule caught the Russian verse left inside English
+# prose but not the English verse left inside German. Measured over
+# every machine translation in production (2164 pairs) — six flagged,
+# all six genuine, none false.
+_UNTRANSLATED_RUN_CHARS: Final[int] = 45
+
+
+def _words_for_runs(text: str) -> list[str]:
+    """Words of prose, with markup and sentinels removed.
+
+    Markers stand in for canonical scripture and are identical on both
+    sides by design; a placeholder is meant to survive verbatim. Neither
+    is evidence of anything.
+    """
+    plain = _PLACEHOLDER_RE.sub(" ", _MARKER_RE.sub(" ", strip_tags(text)))
+    return plain.lower().split()
+
+
+def _check_untranslated_run(
+    source: str,
+    translated: str,
+    *,
+    source_locale: LocaleCode,
+    target_locale: LocaleCode,
+) -> ValidationIssue | None:
+    """Catch a clause of the source surviving verbatim in the translation.
+
+    The whole-string version of this (``not_translated``) only fires
+    when nothing was translated at all. What production actually
+    produced was subtler and worse: a German sentence wrapping an
+    English verse, because the prompt tells the model to leave quoted
+    Scripture untouched and the substitution layer had not yet learned
+    to recognise a quotation outside a blockquote. To a German reader
+    that is not a citation — it is a sentence they cannot read, in the
+    middle of one they can.
+
+    Ten consecutive words is the bar, and the pair of languages has to
+    actually differ; ``en``→``en`` is not a translation.
+    """
+    if source_locale == target_locale:
+        return None
+
+    source_words = _words_for_runs(source)
+    if len(source_words) < _UNTRANSLATED_RUN_WORDS:
+        return None
+    haystack = " ".join(_words_for_runs(translated))
+
+    for start in range(len(source_words) - _UNTRANSLATED_RUN_WORDS + 1):
+        run = " ".join(source_words[start : start + _UNTRANSLATED_RUN_WORDS])
+        if len(run) < _UNTRANSLATED_RUN_CHARS:
+            continue
+        if run in haystack:
+            return ValidationIssue(
+                code="untranslated_run",
+                detail=(
+                    f"A run of {_UNTRANSLATED_RUN_WORDS} words survives verbatim from the "
+                    f"{source_locale} source: {run[:80]!r}. Usually a quotation the model "
+                    "was told to leave alone and nothing restored in the target language."
+                ),
+            )
+    return None
+
+
 def validate_translation(
     *,
     source: str,
@@ -346,6 +419,12 @@ def validate_translation(
             target_locale=target_locale,
         ),
         _check_language(translated, target_locale=target_locale),
+        _check_untranslated_run(
+            source,
+            translated,
+            source_locale=source_locale,
+            target_locale=target_locale,
+        ),
         _check_length(source, translated, content_kind=content_kind),
     ]
     return [issue for issue in issues if issue is not None]
