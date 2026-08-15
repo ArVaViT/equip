@@ -9,9 +9,14 @@ permanent failure: safety filter, oversize input) but trap-shaped for
 the operator: a transient outage that ran out the budget leaves rows
 stuck until someone touches the DB directly.
 
-This module exposes the admin-only escape hatch: reset a list of cv
-rows from ``failed_permanent`` back to ``failed`` and ``attempts=0``,
-so the next reconcile pass picks them up.
+This module exposes the admin-only escape hatches. One resets
+``failed_permanent`` rows back to ``failed`` with ``attempts=0`` so the
+next reconcile pass picks them up. The other re-opens rows parked at
+``needs_review`` — same mechanism, different reason: those are not
+retried by design, and that design assumes the pipeline has not
+changed. When a validator rule is corrected or the prompt rewritten,
+every row parked under the old behaviour needs asking again, and
+"UPDATE production by hand" is not an answer.
 """
 
 from __future__ import annotations
@@ -179,6 +184,97 @@ def reset_by_entity(
         "content_version",
         f"{payload.entity_type}:{payload.entity_id}:{payload.field}:{payload.locale}",
         details={"count": affected},
+        request=request,
+    )
+    return ResetResponse(reset=affected)
+
+
+class RetryReviewedRequest(BaseModel):
+    """Re-open rows parked at ``needs_review`` so the pipeline redoes them.
+
+    The selector is deliberately coarse — a whole entity type, optionally
+    one locale — because the case this exists for is coarse: the
+    validator or the prompt changed, and everything parked under the old
+    behaviour should be asked again.
+    """
+
+    entity_type: str = Field(..., max_length=64)
+    locale: str | None = Field(default=None, max_length=10)
+    limit: int = Field(default=200, ge=1, le=2000)
+
+
+@router.post(
+    "/retry-reviewed",
+    response_model=ResetResponse,
+    summary="Re-open needs_review cv rows so the next pass redoes them",
+    responses={
+        200: {"description": "Rows re-opened; ``reset`` counts those actually touched."},
+        404: {"description": "No needs_review row matched the selector."},
+    },
+)
+def retry_reviewed(
+    payload: RetryReviewedRequest,
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> ResetResponse:
+    """Flip ``needs_review`` rows to ``failed`` with ``attempts=0``.
+
+    A row parked for review is never retried on its own, and that is
+    right: the model runs at temperature 0, so the same source produces
+    the same text and the same verdict, and re-asking would burn quota
+    to arrive back where we are. It stops being right the moment the
+    *pipeline* changes. When a validator rule is corrected or the prompt
+    is rewritten, every row parked under the old behaviour is a row
+    nobody will ever look at again — the reader sees nothing, and the
+    only tooling was a hand-written UPDATE against production.
+
+    ``failed`` rather than deleting the row: the text and its
+    ``review_reason`` stay readable in the audit trail, and ``failed``
+    is the one status the orchestrator retries.
+
+    Never touches ``origin='human'``. A person's own translation is not
+    the pipeline's to redo.
+    """
+    query = db.query(ContentVersion).filter(
+        ContentVersion.entity_type == payload.entity_type,
+        ContentVersion.status == "needs_review",
+        ContentVersion.origin != "human",
+        ContentVersion.superseded_by.is_(None),
+    )
+    if payload.locale is not None:
+        query = query.filter(ContentVersion.locale == payload.locale)
+
+    ids = [row.id for row in query.order_by(ContentVersion.created_at).limit(payload.limit).all()]
+    if not ids:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="No needs_review row matched the selector.",
+            context={"resource_type": "content_version"},
+        )
+
+    try:
+        affected = (
+            db.query(ContentVersion)
+            .filter(ContentVersion.id.in_(ids))
+            .update(
+                {ContentVersion.status: "failed", ContentVersion.attempts: 0},
+                synchronize_session=False,
+            )
+        )
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise
+
+    log_action(
+        db,
+        admin.id,
+        "retry_needs_review",
+        "content_version",
+        f"{payload.entity_type}:{payload.locale or 'all'}",
+        details={"count": affected, "limit": payload.limit},
         request=request,
     )
     return ResetResponse(reset=affected)

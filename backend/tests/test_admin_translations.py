@@ -144,3 +144,108 @@ def test_reset_by_ids_rejects_empty_id_list(admin_client: TestClient):
         json={"ids": []},
     )
     assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# retry-reviewed — re-open rows parked by a validator rule that has changed
+# ---------------------------------------------------------------------------
+
+
+def _seed_needs_review(
+    db: Session,
+    *,
+    entity_type: str = "daily_challenge_question",
+    locale: str = "de",
+    origin: str = "mt",
+) -> ContentVersion:
+    row = ContentVersion(
+        id=uuid.uuid4(),
+        entity_type=entity_type,
+        entity_id=str(uuid.uuid4()),
+        field="explanation",
+        locale=locale,
+        text="Johannes 3,17 besagt: 'For God did not send his Son…'",
+        origin=origin,
+        status="needs_review",
+        attempts=1,
+        source_locale="en",
+        source_hash="y" * 64,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def test_retry_reviewed_reopens_parked_rows(admin_client: TestClient, db: Session):
+    row = _seed_needs_review(db)
+    resp = admin_client.post(
+        "/api/v1/admin/translations/retry-reviewed",
+        json={"entity_type": "daily_challenge_question"},
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {"reset": 1}
+
+    db.refresh(row)
+    # ``failed`` rather than deleted: the text and its review_reason stay
+    # readable, and ``failed`` is the one status the orchestrator retries.
+    assert row.status == "failed"
+    assert row.attempts == 0
+
+
+def test_retry_reviewed_can_be_scoped_to_one_language(admin_client: TestClient, db: Session):
+    german = _seed_needs_review(db, locale="de")
+    ukrainian = _seed_needs_review(db, locale="uk")
+
+    resp = admin_client.post(
+        "/api/v1/admin/translations/retry-reviewed",
+        json={"entity_type": "daily_challenge_question", "locale": "de"},
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {"reset": 1}
+
+    db.refresh(german)
+    db.refresh(ukrainian)
+    assert german.status == "failed"
+    assert ukrainian.status == "needs_review"
+
+
+def test_retry_reviewed_never_touches_a_persons_own_translation(admin_client: TestClient, db: Session):
+    human = _seed_needs_review(db, origin="human")
+
+    resp = admin_client.post(
+        "/api/v1/admin/translations/retry-reviewed",
+        json={"entity_type": "daily_challenge_question"},
+    )
+
+    assert resp.status_code == 404
+    db.refresh(human)
+    assert human.status == "needs_review"
+
+
+def test_retry_reviewed_honours_the_limit(admin_client: TestClient, db: Session):
+    for _ in range(3):
+        _seed_needs_review(db)
+
+    resp = admin_client.post(
+        "/api/v1/admin/translations/retry-reviewed",
+        json={"entity_type": "daily_challenge_question", "limit": 2},
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {"reset": 2}
+
+
+def test_retry_reviewed_404s_when_nothing_is_parked(admin_client: TestClient, db: Session):
+    resp = admin_client.post(
+        "/api/v1/admin/translations/retry-reviewed",
+        json={"entity_type": "course"},
+    )
+    assert resp.status_code == 404
+
+
+def test_retry_reviewed_is_admin_only(student_client: TestClient):
+    resp = student_client.post(
+        "/api/v1/admin/translations/retry-reviewed",
+        json={"entity_type": "daily_challenge_question"},
+    )
+    assert resp.status_code in (401, 403)
