@@ -1,4 +1,4 @@
-# ruff: noqa: RUF001, RUF003
+# ruff: noqa: RUF001, RUF002, RUF003
 # The rules here are about characters: an en dash inside a verse range
 # and a Cyrillic book name in the comment explaining it are the
 # subject matter, not typos.
@@ -151,7 +151,19 @@ def _verse_refs(text: str) -> list[str]:
     parked the row for review. The separator is normalised away; the
     numbers are what has to survive.
     """
-    return sorted(re.sub(r"[\s]+", "", ref).replace(",", ":").replace(".", ":") for ref in _VERSE_REF_RE.findall(text))
+    return sorted(_canonical_ref_form(ref) for ref in _VERSE_REF_RE.findall(text))
+
+
+def _canonical_ref_form(ref: str) -> str:
+    """One shape for a reference, whatever punctuation a language uses.
+
+    Two conventions differ across the languages served, and both cost a
+    production row before this existed: German separates chapter from
+    verse with a comma (Johannes 3,16), and every language but English
+    tends to render a verse range with an en dash (3,14–16 against
+    3:14-16). Neither is a lost reference. Only the numbers are.
+    """
+    return re.sub(r"\s+", "", ref).replace(",", ":").replace(".", ":").replace("–", "-")
 
 
 def _normalised_for_identity(text: str) -> str:
