@@ -35,6 +35,7 @@ from app.services.certificate_grade_snapshot import snapshot_certificate_grade
 from app.services.domain_access import assert_course_owner
 from app.services.notification_service import create_notification
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
+from app.services.user_locale import preferred_locale_of
 
 # The language of the document itself. A certificate is read by people
 # with no account here — an employer, a pastor — and possibly years
@@ -44,8 +45,8 @@ CERTIFICATE_LOCALE: LocaleCode = "en"
 
 
 def _recipient_locale(db: Session, user_id: uuid.UUID | str) -> str:
-    raw = db.query(User.preferred_locale).filter(User.id == user_id).scalar()
-    return normalize_locale(raw)
+    """Kept as a name local readers know; the query lives in one place now."""
+    return preferred_locale_of(db, user_id)
 
 
 if TYPE_CHECKING:
