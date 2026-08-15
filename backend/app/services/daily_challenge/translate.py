@@ -157,7 +157,7 @@ def question_translation_completeness(
 
 
 def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChallengeQuestion]:
-    """Questions whose ``question_text`` is not present in every locale.
+    """Questions whose ``question_text`` has no row at all in some locale.
 
     A cheap prefilter, not the gate: it counts distinct locales on one
     field rather than walking every option, so it can miss a question
@@ -166,8 +166,16 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
     so the questions it does find get fully repaired, and the ones it
     misses cost nothing to catch on a later pass. The gate that decides
     what a reader may see is ``question_translation_completeness``.
+
+    "Has a row" rather than "has a good row", and the difference is the
+    whole behaviour of the sweep. A row parked at ``needs_review`` is
+    not retried by the orchestrator — the model runs at temperature 0,
+    so asking again returns the same text and the same verdict. Counting
+    those as missing put the sweep in a loop: the same two questions
+    selected every night, every field skipped, no progress, and the
+    day's budget spent on questions a person has to look at anyway.
     """
-    from app.models.content_version import ContentVersion, ContentVersionStatus
+    from app.models.content_version import ContentVersion
     from app.models.daily_challenge import DailyChallengeQuestion
 
     # The two sides are compared in Python, not in SQL:
@@ -182,7 +190,6 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
         .filter(
             ContentVersion.entity_type == "daily_challenge_question",
             ContentVersion.field == "question_text",
-            ContentVersion.status == ContentVersionStatus.OK,
             ContentVersion.superseded_by.is_(None),
         )
         .group_by(ContentVersion.entity_id)

@@ -49,7 +49,7 @@ from typing import TYPE_CHECKING
 from app.core.sanitize import html_to_plain_text
 from app.services.bible.api_source import API_BIBLE_IDS, fetch_verse
 from app.services.bible.books import display_book_name
-from app.services.bible.references import BibleRef, parse_references
+from app.services.bible.references import BibleRef, ParsedReference, parse_references
 from app.services.bible.store import lookup
 
 if TYPE_CHECKING:
@@ -347,11 +347,29 @@ _QUOTED_SPAN = re.compile(
     r"(?P<open>[\"«“‘'])(?P<inner>[^\"«»“”]{16,900}?)(?P<close>[\"»”’'])",
 )
 
-# How far from the reference a quotation may sit and still be read as
-# that reference's text. Wide enough for "John 3:17 states, " on one
-# side and " — John 3:17" on the other; narrow enough that the next
-# sentence's quotation does not get attached to the wrong verse.
-_INLINE_WINDOW = 60
+# How far a quotation may sit from its reference and still be read as
+# that reference's text. Real prose puts a clause between them —
+# "John 3:14 links the lifting up of the Son of Man directly to the
+# wilderness event: '…'" is 73 characters of lead-in — so this is
+# generous. Attaching to the *nearest* reference is what actually
+# prevents a mis-pairing; the distance is a backstop for a quotation
+# that belongs to no reference at all.
+_INLINE_WINDOW = 300
+
+# The inline path is more forgiving than the blockquote path, and
+# deliberately.
+#
+# Quotation marks next to a reference are the author asserting "these
+# are the words of this verse". They may be the words of a different
+# English edition than the one bundled — the Daily Challenge generator
+# quotes ESV-ish wording, which scores 0.79 against KJV for John 3:17
+# and would fail the blockquote bar by a hair. Refusing there means the
+# German reader gets the English sentence, which is the worse outcome
+# by a wide margin: the source is untouched either way, and what
+# changes is only whether the *translation* carries Luther or English.
+#
+# Below this, it is a paraphrase and the author's own words stand.
+_INLINE_SIMILARITY_THRESHOLD = 0.65
 
 
 def _substitute_inline_quotes(
@@ -361,96 +379,95 @@ def _substitute_inline_quotes(
 ) -> str:
     """Marker-replace quoted verses that sit inside ordinary prose.
 
-    Appends to ``subs`` in place and returns the markered text. Same
-    similarity rule as the blockquote pass: a paraphrase is left alone,
-    because substituting one would silently replace what the author
-    meant to say with what the edition says.
+    Appends to ``subs`` in place and returns the markered text. Walks
+    quotations rather than references, and pairs each with the nearest
+    reference: a paragraph that cites three verses and quotes two of
+    them has to get both pairings right, and "nearest" is the rule a
+    reader applies too.
     """
     refs = parse_references(text)
     if not refs:
         return text
 
-    for parsed in refs:
-        ref_start, ref_end = parsed.span
-        # Look on both sides: the reference may introduce the quotation
-        # or follow it.
-        for span_start, span_end in (
-            (ref_end, min(len(text), ref_end + _INLINE_WINDOW + 900)),
-            (max(0, ref_start - _INLINE_WINDOW - 900), ref_start),
-        ):
-            window = text[span_start:span_end]
-            match = _closest_quoted_span(window, anchor_at_start=span_start == ref_end)
-            if match is None:
-                continue
-            inner = match.group("inner")
+    replacements: list[tuple[int, int, Substitution]] = []
+    claimed: set[int] = set()
+
+    for match in _QUOTED_SPAN.finditer(text):
+        span_start, span_end = match.span("inner")
+        for index, parsed in _candidate_references(refs, span_start, span_end, claimed):
             canonical_source = canonical_for_source(parsed.ref, source_locale)
             if canonical_source is None:
                 continue
             ratio = SequenceMatcher(
                 None,
-                _normalize_for_compare(inner),
+                _normalize_for_compare(match.group("inner")),
                 _normalize_for_compare(canonical_source),
             ).ratio()
-            if ratio < _SIMILARITY_THRESHOLD:
+            if ratio < _INLINE_SIMILARITY_THRESHOLD:
                 continue
 
-            marker = _marker_token()
-            absolute_start = span_start + match.start("inner")
-            absolute_end = span_start + match.end("inner")
-            text = text[:absolute_start] + marker + text[absolute_end:]
-            subs.append(
-                Substitution(
-                    marker=marker,
-                    ref=parsed.ref,
-                    original_inner=inner,
-                    ref_tail=parsed.raw_text,
+            claimed.add(index)
+            replacements.append(
+                (
+                    span_start,
+                    span_end,
+                    Substitution(
+                        marker=_marker_token(),
+                        ref=parsed.ref,
+                        original_inner=match.group("inner"),
+                        ref_tail=parsed.raw_text,
+                    ),
                 )
             )
-            # One quotation per reference; a second would be a different
-            # verse and will have its own reference.
             break
 
+    if not replacements:
+        return text
+
+    # Right to left, so the earlier offsets stay valid.
+    for span_start, span_end, sub in reversed(replacements):
+        text = text[:span_start] + sub.marker + text[span_end:]
+    subs.extend(sub for _, _, sub in replacements)
     return text
 
 
-def _closest_quoted_span(window: str, *, anchor_at_start: bool) -> re.Match[str] | None:
-    """The quoted span nearest the reference within ``window``.
+def _candidate_references(
+    refs: list[ParsedReference],
+    span_start: int,
+    span_end: int,
+    claimed: set[int],
+) -> list[tuple[int, ParsedReference]]:
+    """References this quotation could belong to, nearest first.
 
-    ``anchor_at_start`` means the reference sits immediately before the
-    window (``John 3:17 states, "…"``), so the first quotation wins; the
-    other direction (``"…" (John 3:17)``) wants the last one.
+    Nearest alone is not enough. In "Ин. 3:16 говорит: «…» А в Деян. 1:8
+    сказано: «…»" the *second* reference sits two characters after the
+    *first* quotation, closer than the reference that introduced it — so
+    a greedy nearest-wins pairing hands John's words to Acts, fails the
+    similarity check, and drops a verse it could have matched. The
+    caller therefore walks these in order and takes the first that the
+    text actually resembles. Distance decides the order; the words
+    decide the answer.
+
+    A reference already claimed by an earlier quotation is not offered
+    again, and one sitting inside the quotation is not a pairing — that
+    is the citation being quoted along with the verse.
     """
-    matches = list(_QUOTED_SPAN.finditer(window))
-    if not matches:
-        return None
-    if anchor_at_start:
-        first = matches[0]
-        return first if first.start() <= _INLINE_WINDOW else None
-    last = matches[-1]
-    return last if len(window) - last.end() <= _INLINE_WINDOW else None
-
-
-#: Locales whose canonical text comes from the API rather than a bundled file.
-#:
-#: Replaces the blanket refusal that #990 put here. That guard was right and
-#: is no longer the best available answer: `synodal-ru.json` is misaligned —
-#: `romans.1.1` returns James — so the choice was between a wrong verse and no
-#: verse. The API is a third option, and a better one. It is the publisher's
-#: own copy rather than a rotting duplicate of it, and it carries the two
-#: things a bundle cannot: the licence, and the versification.
-#:
-#: German and Ukrainian arrive the same way, so all three new locales share
-#: one path instead of each acquiring a file nobody can verify.
-#:
-#: English keeps its bundle. It is healthy — 31,103 verses, 66 books, no
-#: misattribution — and an in-memory dict beats a network call on the hot
-#: path, which this is: the pipeline resolves one lookup per quoted verse,
-#: synchronously.
-#:
-#: If the API cannot answer — no key, timeout, a verse absent from that
-#: edition — the result is `None`, and `None` still means what it meant
-#: before: keep the author's own quotation. The safe fallback did not change,
-#: only what sits in front of it.
+    scored: list[tuple[int, int, ParsedReference]] = []
+    for index, parsed in enumerate(refs):
+        if index in claimed:
+            continue
+        ref_start, ref_end = parsed.span
+        if ref_end <= span_start:
+            distance = span_start - ref_end
+        elif ref_start >= span_end:
+            distance = ref_start - span_end
+        else:
+            continue
+        if distance > _INLINE_WINDOW:
+            continue
+        scored.append((distance, index, parsed))
+    scored.sort(key=lambda item: item[0])
+    return [(index, parsed) for _distance, index, parsed in scored]
 
 
 def _canonical_for_display(ref: BibleRef, locale: str) -> str | None:

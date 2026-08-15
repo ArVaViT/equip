@@ -252,6 +252,33 @@ class TestTheSweep:
         found = questions_missing_a_language(db, limit=10)
         assert question.id not in {q.id for q in found}
 
+    def test_a_question_waiting_on_a_person_is_not_swept_again(self, db: Session, author: User):
+        # A row parked at needs_review is not retried — same model, same
+        # temperature, same verdict. Counting it as missing put the
+        # sweep in a loop: the same questions every night, every field
+        # skipped, the budget spent on questions a person has to read
+        # anyway.
+        from app.models.content_version import ContentVersion, ContentVersionStatus
+
+        question = _seed_question(db, author_id=author.id)
+        translate_question(db, question, provider=_Provider())
+        row = (
+            db.query(ContentVersion)
+            .filter(
+                ContentVersion.entity_type == "daily_challenge_question",
+                ContentVersion.entity_id == str(question.id),
+                ContentVersion.field == "question_text",
+                ContentVersion.locale == "de",
+            )
+            .one()
+        )
+        row.status = ContentVersionStatus.NEEDS_REVIEW
+        db.commit()
+
+        found = questions_missing_a_language(db, limit=10)
+
+        assert question.id not in {q.id for q in found}
+
     def test_it_repairs_what_it_finds(self, db: Session, author: User):
         _seed_question(db, author_id=author.id)
         _seed_question(db, author_id=author.id)

@@ -72,8 +72,44 @@ class TestTheQuoteIsFound:
 
     def test_a_quotation_far_from_the_reference_is_not_claimed_by_it(self):
         verse = _verse("john", 3, 16, "ru")
-        filler = "Дальше идёт длинный абзац, который никак не связан с этой ссылкой. " * 3
+        # Half a page of unrelated prose. Real citations put a clause
+        # between reference and quotation, not a paragraph.
+        filler = "Дальше идёт длинный абзац, который никак не связан с этой ссылкой. " * 6
         text = f"Ин. 3:16 — важный стих. {filler} А вот другая цитата: «{verse}»"
+
+        _, subs = pre_substitute(text, "ru")
+
+        assert subs == []
+
+    def test_each_quotation_takes_the_nearest_reference(self):
+        john = _verse("john", 3, 16, "ru")
+        acts = _verse("acts", 1, 8, "ru")
+        text = f"Ин. 3:16 говорит: «{john}» А в Деян. 1:8 сказано: «{acts}»"
+
+        _, subs = pre_substitute(text, "ru")
+
+        assert [sub.ref.book for sub in subs] == ["john", "acts"]
+
+    def test_a_quotation_in_another_edition_is_still_that_verse(self):
+        # The Daily Challenge generator quotes wording close to but not
+        # identical with the bundled edition — 0.79 against KJV for
+        # John 3:17, under the blockquote bar by a hair. Refusing there
+        # means the German reader gets the English sentence, which is
+        # the worse outcome by a wide margin.
+        quoted = (
+            "For God did not send his Son into the world to condemn the world, "
+            "but in order that the world might be saved through him."
+        )
+        text = f"John 3:17 states, '{quoted}'"
+
+        _, subs = pre_substitute(text, "en")
+
+        assert len(subs) == 1
+
+    def test_a_reference_inside_the_quotation_is_not_a_pairing(self):
+        # «…слова из Ин. 3:16…» — the citation quoted along with the
+        # verse, not a reference the quotation hangs off.
+        text = "Он писал: «здесь идёт длинная цитата, где упомянут Ин. 3:16 внутри самой цитаты»"
 
         _, subs = pre_substitute(text, "ru")
 
