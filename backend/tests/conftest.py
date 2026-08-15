@@ -89,6 +89,28 @@ def _disable_translation(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.fixture(autouse=True)
+def _restore_dependency_overrides():
+    """Give every test back the dependency overrides it started with.
+
+    A test that swaps ``get_current_user`` to check a permission
+    boundary, then fails its assertion, never reaches its own cleanup —
+    and every test after it in that file runs authenticated as somebody
+    else. That is how an order-dependent suite is born: the failure
+    surfaces three files later, in a test that is not wrong.
+
+    Snapshot-and-restore rather than ``clear()``: the client fixtures
+    install their own overrides, and clearing would pull them out from
+    under a test that is still running.
+    """
+    from app.main import app
+
+    snapshot = dict(app.dependency_overrides)
+    yield
+    app.dependency_overrides.clear()
+    app.dependency_overrides.update(snapshot)
+
+
+@pytest.fixture(autouse=True)
 def _clear_rate_limit():
     """Reset in-memory rate-limiter between tests to prevent 429s."""
     from app.middleware.rate_limit import RateLimitMiddleware
