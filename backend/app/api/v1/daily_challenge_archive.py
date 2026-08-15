@@ -136,6 +136,16 @@ def get_archive(
 
     locale = normalize_locale(accept_language)
     bundle = fetch_question_text_bundle(db, question=question, display_locale=locale)
+    if not bundle.is_servable:
+        # Same rule as the live card: no substitute language, and an
+        # empty question is not an answer. An archive day that has not
+        # been translated reads as missing rather than as broken.
+        raise equip_error(
+            ErrorCode.DAILY_CHALLENGE_NOT_TRANSLATED,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="That Daily Challenge is not available in this language yet",
+            context={"challenge_date": challenge_date.isoformat(), "locale": locale},
+        )
     options_view = [
         DailyChallengeOptionStudentView(
             id=o.id,

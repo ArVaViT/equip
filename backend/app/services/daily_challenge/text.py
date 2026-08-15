@@ -1,4 +1,4 @@
-"""Bilingual text resolution for Daily Challenge questions + options.
+"""Text resolution for Daily Challenge questions + options, per language.
 
 Question text + option text + explanation all live in
 ``content_versions``. The pattern mirrors what the quiz tree does in
@@ -6,11 +6,12 @@ Question text + option text + explanation all live in
 ``fetch_cv_entity_texts_with_fallback`` (one per entity_type) so each
 gets its own ``fields=[...]`` list and the SQL is one tuple-IN per type.
 
-Tier order (managed by ``fetch_cv_entity_texts_with_fallback``):
-
-1. ``display_locale`` row.
-2. ``source_locale`` row.
-3. Any active+ok locale (earliest created — deterministic).
+There is no tier order any more. ``fetch_cv_entity_texts_with_fallback``
+serves the ``display_locale`` row and nothing else while translation is
+configured: a reader who chose German is not shown Russian because the
+German row is late. What that leaves — an empty string — is not
+renderable either, which is what ``QuestionTextBundle.is_servable``
+exists to say out loud.
 
 For the editor's ``?source=1`` view we'd set
 ``prefer_human=True`` so an MT row never masks a human-authored source.
@@ -35,7 +36,7 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class QuestionTextBundle:
-    """Resolved bilingual texts for one question + its options.
+    """Resolved texts for one question + its options, in one language.
 
     ``options`` maps the option's ``id`` to its locale-resolved text.
     Missing ids resolve to ``None`` — the caller decides whether to
@@ -45,6 +46,24 @@ class QuestionTextBundle:
     question_text: str
     explanation: str | None
     options: dict[uuid.UUID, str]
+
+    @property
+    def is_servable(self) -> bool:
+        """Whether this is a question a person can actually answer.
+
+        Since the fallback chain was removed, a locale with no rows
+        resolves to empty strings rather than to somebody else's
+        language. Empty strings render: the card appears, with no
+        question and four blank buttons, and the reader is invited to
+        answer nothing. That is worse than an absent card, because it
+        looks like a bug in their browser rather than a gap in ours.
+
+        The explanation is not part of the test — it is nullable by
+        design, and a question with none is still answerable.
+        """
+        if not self.question_text.strip():
+            return False
+        return all(text.strip() for text in self.options.values())
 
 
 def fetch_question_text_bundle(

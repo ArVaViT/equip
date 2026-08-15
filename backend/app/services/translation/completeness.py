@@ -49,7 +49,7 @@ from sqlalchemy import tuple_
 
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.course import CourseStatus
-from app.schemas.locale import LOCALE_CODES
+from app.schemas.locale import LOCALE_CODES, LocaleCode, normalize_locale
 from app.services.translation.course_tree import iter_course_entities
 from app.services.translation.registry import entity_field_specs
 from app.services.translation.service import is_translation_enabled
@@ -119,17 +119,34 @@ def course_translation_completeness(db: Session, course: Course) -> TranslationC
         # out of the catalog, not to make the catalog unreachable.
         return TranslationCompleteness(required=0, present=0, gaps=())
 
+    course_source: LocaleCode = normalize_locale(course.source_locale)
+
     # (entity_type, entity_id, field) -> {target locale, …}
     wanted: dict[tuple[str, str, str], set[str]] = {}
 
     for entity_type, entity in iter_course_entities(db, course):
         entity_id = str(entity.id)  # type: ignore[attr-defined]
-        for spec in entity_field_specs(db, entity_type, entity, course):
+        for spec in entity_field_specs(db, entity_type, entity, course_source):
             targets: set[str] = {code for code in LOCALE_CODES if code != spec.source_locale}
             if not targets:
                 continue
             wanted[(entity_type, entity_id, spec.field)] = targets
 
+    return completeness_of(db, wanted)
+
+
+def completeness_of(
+    db: Session,
+    wanted: dict[tuple[str, str, str], set[str]],
+) -> TranslationCompleteness:
+    """Resolve "which of these (entity, field, locale) rows are servable?"
+
+    Split out of the course walk because the course is not the only
+    thing that has to be whole in every language. A Daily Challenge
+    question has no course — it is a platform-wide rotation — and it
+    still cannot be shown to a German reader in Russian. Same question,
+    same answer, one implementation.
+    """
     if not wanted:
         return TranslationCompleteness(required=0, present=0, gaps=())
 
@@ -218,6 +235,7 @@ def promote_if_complete(db: Session, course: Course) -> bool:
 __all__ = [
     "TranslationCompleteness",
     "TranslationGap",
+    "completeness_of",
     "course_translation_completeness",
     "promote_if_complete",
 ]

@@ -305,6 +305,8 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
   const [loading, setLoading] = useState(false)
   const [reveal, setReveal] = useState<RevealState | null>(null)
   const [notScheduled, setNotScheduled] = useState(false)
+  // That day had a question; this language does not have it yet.
+  const [notTranslated, setNotTranslated] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -337,6 +339,8 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
         const code = getErrorCode(err)
         if (code === "daily_challenge.not_scheduled") {
           setNotScheduled(true)
+        } else if (code === "daily_challenge.not_translated") {
+          setNotTranslated(true)
         } else if (code === "daily_challenge.archive_date_not_allowed") {
           toast.error(t("dailyChallenge.archive.toast.dateNotAllowed"))
         } else {
@@ -446,6 +450,12 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
             variant="compact"
             title={t("dailyChallenge.archive.notScheduled.title")}
             description={t("dailyChallenge.archive.notScheduled.body")}
+          />
+        ) : notTranslated ? (
+          <EmptyState
+            variant="compact"
+            title={t("dailyChallenge.notTranslated.title")}
+            description={t("dailyChallenge.notTranslated.body")}
           />
         ) : data ? (
           <>

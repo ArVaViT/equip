@@ -24,6 +24,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.services.daily_challenge.llm import GeminiPromptClient
 from app.services.daily_challenge.replenish import replenish_one_question
+from app.services.daily_challenge.translate import translate_pending_questions
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,10 @@ router = APIRouter(prefix="/internal", tags=["internal"])
 # headroom. On a paid key this is harmless headroom.
 _THROTTLE_SECONDS = 4.0
 _MAX_RETRIES = 4
+
+# Questions repaired per tick by the translation sweep. See the comment
+# at the call site for why the number is small.
+_TRANSLATION_SWEEP_LIMIT = 2
 
 
 class ReplenishResponse(BaseModel):
@@ -50,6 +55,11 @@ class ReplenishResponse(BaseModel):
     challenge_date: str | None = None
     passage: str | None = None
     detail: str | None = None
+    # How much of the backlog this tick repaired. Reported so the cron
+    # log answers "is the pool catching up or falling behind?" without a
+    # database query.
+    translated_rows: int = 0
+    questions_swept: int = 0
 
 
 def _run_one_tick(db: Session) -> ReplenishResponse:
@@ -60,6 +70,7 @@ def _run_one_tick(db: Session) -> ReplenishResponse:
         return ReplenishResponse(status="unconfigured", detail="GEMINI_API_KEY not set on this deployment")
 
     model = settings.GEMINI_MODEL or "gemini-2.5-flash-lite"
+
     with GeminiPromptClient(
         api_key=api_key,
         default_model=model,
@@ -70,12 +81,35 @@ def _run_one_tick(db: Session) -> ReplenishResponse:
     ) as client:
         outcome = replenish_one_question(db, client=client)
 
+    # Then repair a little of the backlog. Questions written before a
+    # language existed have nobody to translate them — the generator only
+    # ever produces English and Russian, and there is no course above a
+    # Daily Challenge question for the edit-triggered pipeline to hang
+    # off. Without this sweep the gap is permanent for every question
+    # already in the bank.
+    #
+    # Two per tick, deliberately: one question costs ~12 provider calls
+    # (question text, explanation, four options, each into three
+    # languages), and this worker shares a daily Gemini budget with the
+    # generation run above it. Sipping, not gulping.
+    swept = 0
+    translated = 0
+    try:
+        sweep = translate_pending_questions(db, limit=_TRANSLATION_SWEEP_LIMIT)
+        translated = sweep.rows.translated
+        swept = sweep.questions
+    except Exception as exc:
+        db.rollback()
+        logger.warning("daily-challenge worker: translation sweep failed: %s", exc)
+
     return ReplenishResponse(
         status=outcome.status,
         question_id=outcome.question_id,
         challenge_date=outcome.challenge_date,
         passage=outcome.passage,
         detail=outcome.detail,
+        translated_rows=translated,
+        questions_swept=swept,
     )
 
 

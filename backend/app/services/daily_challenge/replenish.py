@@ -55,6 +55,7 @@ from app.services.daily_challenge.admin import (
 )
 from app.services.daily_challenge.orchestrator import GenerationRequest, run_generation
 from app.services.daily_challenge.seed_passages import SEED_PASSAGES
+from app.services.daily_challenge.translate import translate_question
 
 if TYPE_CHECKING:
     import uuid
@@ -202,6 +203,29 @@ def replenish_one_question(
         db.rollback()
         logger.warning("replenish: schedule failed for %s on %s: %s", qid, cursor, exc)
         return ReplenishOutcome(status="error", question_id=str(qid), passage=label, detail=f"schedule: {exc}")
+
+    # The generator produces English and a Russian rendering — two of its
+    # rounds happen to. Every other language the platform serves has to be
+    # asked for, and this is the moment to ask: the question is final, the
+    # text will not change again, and the reader who will need it in German
+    # is a scheduled date away, not a request away.
+    #
+    # Best-effort on purpose. A published, scheduled question that is not
+    # yet translated is inventory the sweep will finish; a tick that fails
+    # here after publishing would be a tick that threw away a good question
+    # over a provider hiccup.
+    try:
+        report = translate_question(db, question)
+        logger.info(
+            "replenish: translated %s (%d rows, %d needs review, %d failed)",
+            qid,
+            report.translated,
+            report.needs_review,
+            report.failed,
+        )
+    except Exception as exc:
+        db.rollback()
+        logger.warning("replenish: translation failed for %s: %s", qid, exc)
 
     logger.info("replenish: scheduled %s (%s) for %s", qid, label, cursor.isoformat())
     return ReplenishOutcome(status="scheduled", question_id=str(qid), challenge_date=cursor.isoformat(), passage=label)
