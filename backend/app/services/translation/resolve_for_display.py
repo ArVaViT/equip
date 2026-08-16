@@ -55,13 +55,34 @@ def _str_uuid(v: str | uuid.UUID) -> str:
 
 
 def should_apply_course_translation_overlay(*, course: Course, current_user: User | None) -> bool:
-    """Return True when the API should show localized metadata to this caller."""
-    if current_user is None:
-        return True
-    if current_user.role == UserRole.ADMIN.value:
-        return False
-    is_owner = course.created_by is not None and _str_uuid(course.created_by) == _str_uuid(current_user.id)
-    return not is_owner
+    """Whether a *read* shows this caller the translation. Always, now.
+
+    This used to answer False for admins and for the course's owner, so
+    that a teacher viewing their Russian course in an English UI could
+    not accidentally save the English translation back over their source
+    text. The risk is real, but the guard was in the wrong place: it
+    applied to every read, not to editing.
+
+    What it produced is a platform that lies to the people responsible
+    for it. The admin who switches the interface to German — to see what
+    a German student sees — is served Russian, on every page, and
+    concludes the translations are broken. So does the teacher checking
+    their own course. The two people most able to catch a translation
+    defect were the two who could never see one.
+
+    Editing is protected by the thing that was always the real answer:
+    an explicit ``?source=1``, gated to owner and admin, which every
+    editor surface in the web app already sends
+    (``getCourseForEdit``, ``getModuleForEdit``, blocks, quizzes,
+    assignments, announcements, calendar). Reading is reading, and a
+    reader gets the language they chose.
+
+    Kept as a function rather than deleted at the call sites: it is the
+    one place to state the rule, and a future surface that genuinely
+    needs the source has somewhere to argue its case.
+    """
+    del course, current_user  # the rule no longer depends on either
+    return True
 
 
 def fetch_course_titles_by_id(
