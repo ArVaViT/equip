@@ -1219,6 +1219,10 @@
     "path": "/api/v1/courses/{course_id}/enroll",
     "params": [
       [
+        "Accept-Language",
+        "header"
+      ],
+      [
         "course_id",
         "path"
       ]

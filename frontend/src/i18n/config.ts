@@ -219,15 +219,41 @@ function catalogIsMissing(): boolean {
   return Boolean(active) && !i18n.hasResourceBundle(active, "translation")
 }
 
+/**
+ * Forget that this language already failed.
+ *
+ * i18next records the outcome of every load in
+ * `backendConnector.state` — `-1` for a failure — and `queueLoad`
+ * checks that *before* it honours `reload: true`. So
+ * `reloadResources()` on a language that failed resolves happily
+ * having made no request at all. Measured against the real library:
+ * zero calls to the backend, and the page stays in key mode.
+ *
+ * Clearing the entry is what makes the retry a retry. The cast is
+ * deliberate — this is i18next's internal bookkeeping, so the code
+ * checks its shape at runtime rather than trusting a type.
+ */
+function forgetPreviousFailure(language: string): void {
+  const connector = (
+    i18n.services as { backendConnector?: { state?: Record<string, number> } } | undefined
+  )?.backendConnector
+  const state = connector?.state
+  if (!state) return
+  for (const key of Object.keys(state)) {
+    if (key.startsWith(`${language}|`)) delete state[key]
+  }
+}
+
 function healCatalogWhenPossible(): void {
   if (typeof window === "undefined") return
   const attempt = () => {
     if (!catalogIsMissing()) return
     const active = i18n.resolvedLanguage || i18n.language
-    // The namespace has to be named. ``reloadResources([lang])`` and
-    // ``loadLanguages([lang])` both resolve without putting the bundle
-    // back — measured, after the first version of this shipped doing
-    // exactly nothing.
+    // Two things are needed, and the first version of this had only
+    // one of them. The namespace has to be named — ``reloadResources
+    // ([lang])`` alone restores nothing — and the previous failure has
+    // to be forgotten first, or the request is never made.
+    forgetPreviousFailure(active)
     void i18n.reloadResources([active], ["translation"]).catch(() => {
       /* still no network; the next event tries again */
     })

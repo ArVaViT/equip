@@ -17,6 +17,7 @@ on every row, and adding a column to a production table for the sake of
 a nested dict is a migration nobody needs.
 """
 
+import logging
 import uuid
 from collections.abc import Iterable
 from typing import Any
@@ -26,6 +27,8 @@ from sqlalchemy.orm import Session
 
 from app.core.i18n import t
 from app.models.notification import Notification
+
+logger = logging.getLogger(__name__)
 
 #: Where the render recipe lives inside ``meta``.
 I18N_KEY = "i18n"
@@ -53,10 +56,28 @@ def render_notification(notification: Notification, locale: str) -> tuple[str, s
     params = recipe.get("params") or {}
     if not isinstance(params, dict):
         params = {}
-    title = t(locale, f"{key}.title", **params)
-    message = t(locale, f"{key}.body", **params)
+    try:
+        title = t(locale, f"{key}.title", **params)
+        message = t(locale, f"{key}.body", **params)
+    except (KeyError, IndexError, ValueError):
+        # The recipe and the catalog disagree about what this template
+        # needs. That happens the moment somebody adds a placeholder to
+        # an existing key — every row written before the change is now
+        # short a value.
+        #
+        # ``t`` formats with ``str.format``, which raises on a missing
+        # name, and this is the notification LIST: one bad row would
+        # 500 the whole bell for that reader, and the row is in the
+        # database, so it would 500 forever. The stored text is what it
+        # is there for.
+        logger.info("notification %s: recipe %s does not fit the catalog", notification.id, key)
+        return notification.title, notification.message
     # ``t`` returns the key itself when it knows nothing about it.
     if title == f"{key}.title" or message == f"{key}.body":
+        return notification.title, notification.message
+    # A template that still has braces in it lost an argument quietly —
+    # ``{title} — in „{course}“`` is not a sentence anybody should read.
+    if "{" in title or "{" in message:
         return notification.title, notification.message
     return title, message
 

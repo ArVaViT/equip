@@ -394,19 +394,21 @@ def create_announcement(
                 fetch_course_titles_by_id(db, [course.id], display_locale=normalized).get(course.id) if course else None
             ) or t(locale, "fallback.course")
             # Resolve the announcement title at THIS recipient's locale.
-            # Reconcile ran above so MT rows are present; the resolver
-            # falls back to source-locale text if anything went wrong.
-            ann_title_for_locale = (
-                fetch_cv_entity_texts_with_fallback(
-                    db,
-                    entity_type="announcement",
-                    entity_ids=[str(announcement.id)],
-                    fields=["title"],
-                    display_locale=normalized,
-                    source_locale=normalize_locale(ann_source_locale),
-                ).get((str(announcement.id), "title"))
-                or safe_title
-            )
+            # Reconcile ran above, so an MT row is usually there — but
+            # when it is not (an unpublished course, a provider failure,
+            # a language added after the announcement) the answer is not
+            # the author's title. A notification's text is frozen into
+            # the recipient's bell, so a Russian title sent to a German
+            # reader stays there for good; ``fallback.announcement``
+            # says what happened instead.
+            ann_title_for_locale = fetch_cv_entity_texts_with_fallback(
+                db,
+                entity_type="announcement",
+                entity_ids=[str(announcement.id)],
+                fields=["title"],
+                display_locale=normalized,
+                source_locale=normalize_locale(ann_source_locale),
+            ).get((str(announcement.id), "title")) or t(locale, "fallback.announcement")
             notif_title = t(locale, "notif.new_announcement.title")
             notif_message = t(
                 locale,

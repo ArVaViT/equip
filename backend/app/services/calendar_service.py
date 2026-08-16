@@ -73,17 +73,22 @@ def build_calendar_events(
     # Modules straddle multiple courses with potentially different
     # source_locales; group + bulk-hydrate so each module's title /
     # description land via cv.
-    modules_by_src: dict[LocaleCode, list[Module]] = {}
-    for m in modules:
-        modules_by_src.setdefault(course_source_locales.get(m.course_id, display_locale), []).append(m)
-    for src_locale, mods in modules_by_src.items():
-        populate_module_texts(db, mods, source_locale=src_locale)
+    # ``populate_module_texts`` hydrates at the locale it is given, so
+    # passing each course's source locale filled every calendar entry
+    # with the author's language: a German student's calendar read
+    # «Модуль 3. Толкование Писания — Due» for every module deadline.
+    # The reader's locale is what a calendar entry is for.
+    populate_module_texts(db, modules, source_locale=display_locale)
     for m in modules:
         assert m.due_date is not None
         events.append(
             CalendarEvent(
                 id=f"module-{m.id}",
-                title=f"{m.title} — Due",
+                # The title is the module's own; "this is a deadline" is
+                # already carried by ``event_type`` and rendered by the
+                # client in its own language. Welding " — Due" on here
+                # put an English word in every locale's calendar.
+                title=m.title,
                 description=m.description,
                 event_type="deadline",
                 event_date=m.due_date,
@@ -155,18 +160,13 @@ def build_calendar_events(
             assert a.due_date is not None
             crs_id = ch_to_course.get(a.chapter_id, "")
             aid = str(a.id)
-            asg_source = course_source_locales.get(crs_id, display_locale)
-            asg_title = (
-                asg_rows_by_pair_locale.get((aid, "title", display_locale))
-                or asg_rows_by_pair_locale.get((aid, "title", asg_source))
-                or any_for_pair.get((aid, "title"))
-                or ""
-            )
-            asg_description = (
-                asg_rows_by_pair_locale.get((aid, "description", display_locale))
-                or asg_rows_by_pair_locale.get((aid, "description", asg_source))
-                or any_for_pair.get((aid, "description"))
-            )
+            # Reader's locale or nothing. This used to walk
+            # display → the course's source → any locale at all, a spare
+            # language written out by hand in the one subsystem the
+            # resolver does not cover — so a German student's calendar
+            # listed Russian assignment names.
+            asg_title = asg_rows_by_pair_locale.get((aid, "title", display_locale)) or ""
+            asg_description = asg_rows_by_pair_locale.get((aid, "description", display_locale))
             events.append(
                 CalendarEvent(
                     id=f"assignment-{a.id}",
@@ -214,19 +214,13 @@ def build_calendar_events(
             ce_any_for_pair.setdefault((eid, fld), txt)
 
     for ce in course_events:
-        course_src = course_source_locales.get(ce.course_id, normalize_locale(None))
         ce_id = str(ce.id)
-        title = (
-            ce_rows_by_pair_locale.get((ce_id, "title", display_locale))
-            or ce_rows_by_pair_locale.get((ce_id, "title", course_src))
-            or ce_any_for_pair.get((ce_id, "title"))
-            or ""
-        )
-        description = (
-            ce_rows_by_pair_locale.get((ce_id, "description", display_locale))
-            or ce_rows_by_pair_locale.get((ce_id, "description", course_src))
-            or ce_any_for_pair.get((ce_id, "description"))
-        )
+        # ``GET /courses/{id}/events`` resolves these correctly through
+        # ``localize_course_event_rows``; this route served the same rows
+        # through its own three-tier chain and handed a German reader the
+        # teacher's Russian.
+        title = ce_rows_by_pair_locale.get((ce_id, "title", display_locale)) or ""
+        description = ce_rows_by_pair_locale.get((ce_id, "description", display_locale))
         events.append(
             CalendarEvent(
                 id=str(ce.id),

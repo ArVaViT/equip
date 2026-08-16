@@ -23,6 +23,7 @@ from app.models.course import Course, CourseStatus
 from app.models.enrollment import Enrollment
 from app.models.user import UserRole
 from app.schemas.locale import LocaleCode, normalize_locale
+from app.services.content_versions import fetch_cv_entity_texts_with_fallback
 from app.services.course_pdf import render_course_pdf
 from app.services.course_service import get_course
 from app.services.translation.resolve_for_display import (
@@ -55,6 +56,22 @@ def _attach_localized_blocks(db: Session, course: Course, *, display_locale: Loc
     chapters = [chapter for module in course.modules for chapter in module.chapters]
     if not chapters:
         return
+
+    # Chapter titles are a live column on the row (source-language
+    # storage), and nothing hydrates them — so the export printed every
+    # lesson heading in the author's language whatever the reader asked
+    # for. One bulk read at the reader's locale, same rule as the rest
+    # of the tree: what this language does not have, it does not get.
+    chapter_titles = fetch_cv_entity_texts_with_fallback(
+        db,
+        entity_type="chapter",
+        entity_ids=[str(c.id) for c in chapters],
+        fields=["title"],
+        display_locale=display_locale,
+        source_locale=normalize_locale(course.source_locale),
+    )
+    for chapter in chapters:
+        chapter.title = chapter_titles.get((str(chapter.id), "title")) or ""
     rows = (
         db.query(ChapterBlock)
         .filter(ChapterBlock.chapter_id.in_([str(c.id) for c in chapters]))

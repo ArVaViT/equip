@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from fastapi import Depends, Request, status
+from fastapi import Depends, Header, Request, Response, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -14,6 +14,7 @@ from app.models.course import Course, CourseAccessMode, CourseStatus
 from app.models.enrollment import Enrollment
 from app.models.user import User
 from app.schemas.course import EnrollmentResponse
+from app.schemas.locale import normalize_locale
 from app.services.audit_service import log_action
 from app.services.cohort_capacity import assert_cohort_has_capacity
 from app.services.course_service import enroll_user_in_course
@@ -119,7 +120,9 @@ def _enforce_cohort_gates(db: Session, course_id: str, cohort_id: str, user_id: 
 def enroll_course(
     course_id: str,
     request: Request,
+    response: Response,
     body: EnrollRequest = EnrollRequest(),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Enrollment:
@@ -206,6 +209,16 @@ def enroll_course(
     )
     # Phase 5g: hydrate the lazy-loaded course relationship so the
     # response serializer sees title/description (no longer columns).
+    #
+    # At the student's language, not the course's. This response carries
+    # the whole course tree, and hydrating at the author's locale handed
+    # a German student a Russian title to show in their own confirmation
+    # screen — the first thing they see after joining.
     if enrollment.course is not None:
-        populate_spine_texts(db, [enrollment.course])
+        response.headers["Vary"] = "Accept-Language"
+        populate_spine_texts(
+            db,
+            [enrollment.course],
+            display_locale=normalize_locale(accept_language or current_user.preferred_locale),
+        )
     return enrollment

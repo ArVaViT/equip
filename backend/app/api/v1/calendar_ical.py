@@ -243,7 +243,12 @@ def serve_feed(
         user=user,
         course_id=None,
         limit=1000,
-        display_locale=normalize_locale(accept_language),
+        # A calendar client does not send Accept-Language — it is Apple
+        # Calendar polling a URL, not a browser. Reading the header alone
+        # collapsed to the platform default, so a German subscriber got a
+        # permanently Russian feed. The account's stated preference is
+        # the only thing that knows better here.
+        display_locale=normalize_locale(accept_language or user.preferred_locale),
     )
     body = render_calendar(events, user_email=user.email)
     response.headers["Content-Type"] = "text/calendar; charset=utf-8"
