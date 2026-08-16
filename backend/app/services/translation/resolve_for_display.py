@@ -513,7 +513,21 @@ def build_localized_course_response_with_tree(
     course: Course,
     display_locale: LocaleCode,
 ) -> CourseResponse:
-    """Localized course title/description plus module and chapter titles for students."""
+    """Localized course title/description plus module and chapter titles for students.
+
+    Every title resolves to ``""`` when this language does not have one.
+    It used to fall back to ``mod.title`` — the source column, in the
+    author's language — which is how a German reader opening a Russian
+    course got the whole tree in Russian: module names, lesson names,
+    the course title itself. ``pick`` was doing its job and returning
+    ``None``; the ``or`` after it put the other language straight back.
+
+    An empty string is what the reader-facing clients already know how
+    to render: ``orNotTranslated`` in the web app turns it into "not
+    translated yet". A course nobody has translated is not a course in
+    that language, and saying so is the whole point of not having a
+    spare one.
+    """
     specs: list[tuple[str, str, str]] = [
         ("course", course.id, "title"),
         ("course", course.id, "description"),
@@ -556,14 +570,14 @@ def build_localized_course_response_with_tree(
     # tripping the static type checker.
     new_modules: list[ModuleResponse] = []
     for mod in course.modules:
-        mt = loc.pick("module", str(mod.id), "title", mod.title) or mod.title
+        mt = loc.pick("module", str(mod.id), "title", mod.title)
         md = loc.pick("module", str(mod.id), "description", mod.description)
         new_chapters = [
             ChapterResponse.model_validate(
                 {
                     "id": str(ch.id),
                     "module_id": str(ch.module_id),
-                    "title": loc.pick("chapter", str(ch.id), "title", ch.title) or ch.title,
+                    "title": loc.pick("chapter", str(ch.id), "title", ch.title) or "",
                     "order_index": ch.order_index,
                     "chapter_type": ch.chapter_type or "reading",
                     "requires_completion": ch.requires_completion,
@@ -577,7 +591,7 @@ def build_localized_course_response_with_tree(
                 {
                     "id": str(mod.id),
                     "course_id": str(mod.course_id),
-                    "title": mt,
+                    "title": mt or "",
                     "description": md,
                     "order_index": mod.order_index,
                     "due_date": mod.due_date,
@@ -589,7 +603,7 @@ def build_localized_course_response_with_tree(
     return CourseResponse.model_validate(
         {
             "id": course.id,
-            "title": loc.pick("course", course.id, "title", course.title) or course.title,
+            "title": loc.pick("course", course.id, "title", course.title) or "",
             "description": loc.pick("course", course.id, "description", course.description),
             "image_url": course.image_url,
             "status": course.status,
@@ -919,11 +933,11 @@ def build_localized_module_response(
     ]
     loc = Localizer.build(db, specs, source_locale=source_locale, display_locale=display_locale)
 
-    mt = loc.pick("module", str(module.id), "title", module.title) or module.title
+    mt = loc.pick("module", str(module.id), "title", module.title) or ""
     md = loc.pick("module", str(module.id), "description", module.description)
     new_chapters: list[ChapterResponse] = []
     for ch in module.chapters:
-        cht = loc.pick("chapter", str(ch.id), "title", ch.title) or ch.title
+        cht = loc.pick("chapter", str(ch.id), "title", ch.title) or ""
         ch_base = ChapterResponse.model_validate(ch, from_attributes=True)
         new_chapters.append(ch_base.model_copy(update={"title": cht}))
     base = ModuleResponse.model_validate(module, from_attributes=True)
