@@ -511,7 +511,7 @@ class TestCatalogLocalizedMetadata:
         assert row_en["title"] == "English catalog title"
         assert row_en["description"] == "English catalog description"
 
-    def test_get_detail_owner_sees_source_when_ui_is_en(
+    def test_get_detail_owner_reading_sees_the_translation_like_everyone_else(
         self,
         client: TestClient,
         db: Session,
@@ -538,7 +538,22 @@ class TestCatalogLocalizedMetadata:
             headers={"Accept-Language": "en"},
         )
         assert owner.status_code == 200
-        assert owner.json()["title"] == "Заголовок RU"
+        # Reading is reading. The owner used to be served their own
+        # source text here, which meant the person most able to notice a
+        # bad translation was the one person who never saw one — and an
+        # admin switching the UI to German to check the German build got
+        # Russian on every page and concluded the pipeline was broken.
+        assert owner.json()["title"] == "English catalog title"
+
+        # Editing still binds to the source, through the explicit
+        # parameter every editor surface already sends.
+        editing = client.get(
+            f"{PREFIX}/{cid}",
+            params={"source": 1},
+            headers={"Accept-Language": "en"},
+        )
+        assert editing.status_code == 200
+        assert editing.json()["title"] == "Заголовок RU"
 
     def test_get_detail_anon_sees_translated_metadata_with_accept_language(
         self,
