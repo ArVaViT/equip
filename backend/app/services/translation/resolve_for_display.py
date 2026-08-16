@@ -159,16 +159,23 @@ def build_localized_course_summaries(
                 source_locale=src_locale,
             )
         )
-    # Module titles ride along inside every catalog card, and they were
-    # never localized: they come off the ORM, hydrated at the course's
-    # own language by ``get_courses``. So an English catalog carried
+    # The whole tree rides along inside every catalog card — module
+    # titles, module descriptions, chapter titles — and none of it was
+    # localized: it comes off the ORM, hydrated at the course's own
+    # language by ``get_courses``. So an English catalog carried
     # "Модуль 1. Как узнать, что значит слово" inside every card, and so
-    # did the German and Ukrainian ones. Found by reading a live
-    # response rather than by reading the code.
-    module_specs: list[tuple[str, str, str]] = [
-        ("module", str(module.id), "title") for course in courses for module in course.modules
-    ]
-    module_titles = fetch_overlay_triples_bulk(db, module_specs, display_locale) if module_specs else {}
+    # did the German and Ukrainian ones.
+    #
+    # Found twice, by two runs of the live audit: the first pass here
+    # localized titles and left descriptions, which the next run
+    # promptly caught. Fields, not the field you noticed.
+    tree_specs: list[tuple[str, str, str]] = []
+    for course in courses:
+        for module in course.modules:
+            tree_specs.append(("module", str(module.id), "title"))
+            tree_specs.append(("module", str(module.id), "description"))
+            tree_specs.extend(("chapter", str(chapter.id), "title") for chapter in module.chapters)
+    tree_texts = fetch_overlay_triples_bulk(db, tree_specs, display_locale) if tree_specs else {}
 
     out: list[CourseSummary] = []
     for c in courses:
@@ -180,7 +187,18 @@ def build_localized_course_summaries(
         summary = summary.model_copy(
             update={
                 "modules": [
-                    module.model_copy(update={"title": module_titles.get(("module", str(module.id), "title"), "")})
+                    module.model_copy(
+                        update={
+                            "title": tree_texts.get(("module", str(module.id), "title"), ""),
+                            "description": tree_texts.get(("module", str(module.id), "description")),
+                            "chapters": [
+                                chapter.model_copy(
+                                    update={"title": tree_texts.get(("chapter", str(chapter.id), "title"), "")}
+                                )
+                                for chapter in module.chapters
+                            ],
+                        }
+                    )
                     for module in summary.modules
                 ]
             }

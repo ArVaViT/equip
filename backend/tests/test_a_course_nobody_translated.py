@@ -239,3 +239,38 @@ class TestTheCatalogCard:
         summaries = build_localized_course_summaries(db, [course], "ru")
 
         assert [m.title for m in summaries[0].modules] == ["Модуль 1. Введение"]
+
+    def test_every_field_of_the_card_and_not_just_the_one_i_noticed(self, db: Session):
+        # The first fix here localized module titles and left module
+        # descriptions, and the next run of the live audit caught the
+        # description sitting in Russian inside the English catalog.
+        # Chapter titles ride in the same payload.
+        course = _russian_course(db)
+        module = db.query(Module).filter(Module.course_id == course.id).one()
+        record_human_version(
+            db,
+            entity_type="module",
+            entity_id=str(module.id),
+            field="description",
+            locale="ru",
+            text="Навык вместо списка: как проверить значение слова самому.",
+            authored_by=course.created_by,
+        )
+        chapter = Chapter(id=str(uuid.uuid4()), module_id=module.id, title="Урок 1", order_index=0)
+        db.add(chapter)
+        db.commit()
+        record_human_version(
+            db,
+            entity_type="chapter",
+            entity_id=str(chapter.id),
+            field="title",
+            locale="ru",
+            text="Урок 1. Слова, которые обманывают",
+            authored_by=course.created_by,
+        )
+        db.commit()
+
+        card = build_localized_course_summaries(db, [course], "de")[0]
+
+        assert card.modules[0].description in (None, "")
+        assert [c.title for c in card.modules[0].chapters] == [""]
