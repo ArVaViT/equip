@@ -58,6 +58,12 @@ LEGAL_DOCUMENTS: dict[str, str] = {
 }
 
 
+#: Every file that may ever be read here, keyed by what may ask for it.
+_DOCUMENT_PATHS: dict[tuple[str, str], Path] = {
+    (slug, locale): DOCUMENTS_DIR / f"{slug}.{locale}.md" for slug in LEGAL_DOCUMENTS for locale in LOCALES
+}
+
+
 def required_slugs() -> tuple[str, ...]:
     """What a person must have accepted to use the platform."""
     return tuple(LEGAL_DOCUMENTS)
@@ -80,7 +86,12 @@ def document_for(slug: str, locale: str) -> LegalDocument:
     if slug not in LEGAL_DOCUMENTS:
         raise KeyError(f"unknown legal document: {slug}")
     served = locale if locale in LOCALES else GOVERNING_LOCALE
-    path = DOCUMENTS_DIR / f"{slug}.{served}.md"
+    # Looked up, not built. The filename used to be interpolated from the
+    # arguments behind an ``if locale not in LOCALES: raise``, and dropping
+    # that check for the fallback dropped the only thing standing between a
+    # request parameter and a path on disk. Selecting from a table built out
+    # of constants means an unexpected value can miss, and cannot escape.
+    path = _DOCUMENT_PATHS[slug, served]
     if not path.is_file():
         # Deliberately fatal rather than falling back to another language:
         # one of the two required documents is missing from the build.
