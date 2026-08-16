@@ -157,15 +157,17 @@ def question_translation_completeness(
 
 
 def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChallengeQuestion]:
-    """Questions whose ``question_text`` has no row at all in some locale.
+    """Questions with work outstanding in some locale.
 
-    A cheap prefilter, not the gate: it counts distinct locales on one
-    field rather than walking every option, so it can miss a question
-    whose text is complete but whose fourth answer option is not. That
-    is the right trade for a sweep — ``translate_question`` is idempotent,
-    so the questions it does find get fully repaired, and the ones it
-    misses cost nothing to catch on a later pass. The gate that decides
-    what a reader may see is ``question_translation_completeness``.
+    Two things put a question here: a locale with no ``question_text``
+    row at all, and a row of any field still sitting at ``failed``.
+
+    The first half used to be the whole of it, described as a cheap
+    prefilter that a later pass would correct. There is no later pass —
+    this is the only thing that selects work, so what it missed was
+    missed permanently. The gate that decides what a reader may see is
+    ``question_translation_completeness``; this decides what ever gets
+    looked at again.
 
     "Has a settled row" rather than "has a good row", and the
     difference is the whole behaviour of the sweep. A row parked at
@@ -184,7 +186,7 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
     exactly the rows somebody just asked it to redo.
     """
     from app.models.content_version import ContentVersion, ContentVersionStatus
-    from app.models.daily_challenge import DailyChallengeQuestion
+    from app.models.daily_challenge import DailyChallengeOption, DailyChallengeQuestion
 
     # The two sides are compared in Python, not in SQL:
     # ``content_versions.entity_id`` is text while a question's id is a
@@ -212,6 +214,56 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
         .having(func.count(func.distinct(ContentVersion.locale)) >= len(LOCALE_CODES))
         .all()
     }
+
+    # A question is not settled because its *question text* is settled.
+    #
+    # Counting one field was described as a cheap prefilter that a later
+    # pass would correct, and there is no later pass — this is the only
+    # thing that selects work. On 2026-08-16 that meant 57 explanations
+    # carrying an English KJV quotation inside German and Ukrainian prose
+    # sat at ``failed`` while the sweep reported "nothing left to
+    # translate", because every one of those questions had its four
+    # question_text rows in place. They were invisible, and would have
+    # stayed invisible.
+    #
+    # So anything still marked ``failed`` — on either field, or on any of
+    # the question's answer options — takes its question back out of the
+    # settled set.
+    unsettled: set[str] = {
+        row[0]
+        for row in db.query(ContentVersion.entity_id)
+        .filter(
+            ContentVersion.entity_type == "daily_challenge_question",
+            ContentVersion.superseded_by.is_(None),
+            ContentVersion.status == ContentVersionStatus.FAILED,
+        )
+        .distinct()
+        .all()
+    }
+    failed_option_ids: set[str] = {
+        row[0]
+        for row in db.query(ContentVersion.entity_id)
+        .filter(
+            ContentVersion.entity_type == "daily_challenge_option",
+            ContentVersion.superseded_by.is_(None),
+            ContentVersion.status == ContentVersionStatus.FAILED,
+        )
+        .distinct()
+        .all()
+    }
+    if failed_option_ids:
+        # Compared in Python for the reason given above: an option id is
+        # text on one side of this and a uuid on the other, and asking
+        # the database to bridge that is a dialect-dependent answer —
+        # Postgres refuses it, SQLite silently matches nothing. The
+        # second is what would hurt: this branch would go back to doing
+        # nothing at all, and look like it worked.
+        unsettled |= {
+            str(question_id)
+            for option_id, question_id in db.query(DailyChallengeOption.id, DailyChallengeOption.question_id).all()
+            if str(option_id) in failed_option_ids
+        }
+    complete -= unsettled
 
     # Oldest first: the questions already in the schedule are the ones a
     # reader hits first, and they were created first.
