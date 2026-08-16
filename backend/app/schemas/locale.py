@@ -58,11 +58,26 @@ def normalize_locale(value: str | None, *, fallback: LocaleCode = DEFAULT_LOCALE
     """
     if not value:
         return fallback
-    head = value.replace("_", "-").split("-", 1)[0].strip().lower()
-    # Compare element-wise so the returned value is the typed ``LocaleCode``
-    # element from the tuple itself — no cast or ``type: ignore`` needed,
-    # and mypy versions that narrow ``in`` checks won't flag a redundancy.
-    for code in LOCALE_CODES:
-        if head == code:
-            return code
+
+    # A real ``Accept-Language`` is a ranked list, not one tag:
+    # ``de,en-US;q=0.7,en;q=0.3`` is what Firefox sends. Splitting the
+    # whole header on the first "-" produced "de,en" — a language nobody
+    # serves — and every such reader silently got the default. The web
+    # app was unaffected because it sends a bare code, which is exactly
+    # why this survived: the client that trusts the platform's own
+    # convention was the one getting it wrong.
+    #
+    # Ranked in the order the client stated. ``q`` is deliberately not
+    # parsed: browsers list their preference first, and a served language
+    # further down the list is still a language this reader reads.
+    for entry in value.split(","):
+        tag = entry.split(";", 1)[0]
+        head = tag.replace("_", "-").split("-", 1)[0].strip().lower()
+        # Compare element-wise so the returned value is the typed
+        # ``LocaleCode`` element from the tuple itself — no cast or
+        # ``type: ignore`` needed, and mypy versions that narrow ``in``
+        # checks won't flag a redundancy.
+        for code in LOCALE_CODES:
+            if head == code:
+                return code
     return fallback

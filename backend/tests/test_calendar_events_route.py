@@ -84,9 +84,13 @@ def _seed_published_course_with_assignment(
 
 class TestCalendarEvents:
     """``GET /calendar/events`` aggregates module deadlines, assignment
-    deadlines, and course events from every enrolled course. The
-    assignment-loop pulls cv title/description rows in one bulk SELECT
-    and falls back through display → source → any locale."""
+    deadlines, and course events from every enrolled course.
+
+    Every title resolves at the reader's language and nowhere else. The
+    loop used to walk display → the course's source → any locale at all
+    — a spare language written out by hand in the one subsystem the
+    shared resolver does not cover — so a German student's calendar
+    listed Russian assignment names beside German course names."""
 
     def test_assignment_with_due_date_surfaces_as_deadline_event(
         self,
@@ -95,7 +99,7 @@ class TestCalendarEvents:
     ) -> None:
         _seed_published_course_with_assignment(db, course_id="cal-assign-1")
 
-        r = student_client.get("/api/v1/calendar/events")
+        r = student_client.get("/api/v1/calendar/events", headers={"Accept-Language": "en"})
         assert r.status_code == 200
         events = r.json()
         # At minimum the module deadline + the assignment deadline.
@@ -105,14 +109,15 @@ class TestCalendarEvents:
         assert assignment_events[0]["description"] == "Do the thing"
         assert assignment_events[0]["event_type"] == "deadline"
 
-    def test_assignment_title_falls_back_when_display_locale_missing(
+    def test_a_language_with_no_row_gets_no_title_rather_than_another_language(
         self,
         student_client: TestClient,
         db: Session,
     ) -> None:
-        """When the student requests RU but the assignment cv only has
-        an EN row, the picker falls back to source-locale (EN) then
-        any-locale rather than rendering an empty title."""
+        """The assignment has an English row and nothing else. A reader
+        asking in Russian is owed silence, not English — the client
+        renders an empty title as "not translated yet", and a calendar
+        entry in a language nobody chose is worse than a dated one."""
         _seed_published_course_with_assignment(db, course_id="cal-assign-2")
 
         r = student_client.get(
@@ -122,8 +127,7 @@ class TestCalendarEvents:
         assert r.status_code == 200
         assignment_events = [e for e in r.json() if e["source"] == "assignment_deadline"]
         assert len(assignment_events) == 1
-        # Falls back to the EN cv row rather than empty string.
-        assert assignment_events[0]["title"] == "Sample Assignment"
+        assert assignment_events[0]["title"] == ""
 
     def test_no_enrolled_courses_returns_empty(
         self,

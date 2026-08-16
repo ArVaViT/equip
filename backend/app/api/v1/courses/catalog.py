@@ -219,12 +219,12 @@ def get_module_detail(
         module.description = human_by_field.get("description") or any_by_field.get("description")
         return ModuleResponse.model_validate(module, from_attributes=True)
 
-    # Owner + admin always see source for editorial accuracy (matches the
-    # rule in ``should_apply_course_translation_overlay`` for the parent
-    # course-detail endpoint). Everyone else (students, anonymous catalog
-    # browsers, other teachers) gets the locale overlay.
-    if is_owner or is_admin:
-        return ModuleResponse.model_validate(module, from_attributes=True)
+    # No implicit bypass. Reading is reading, whoever is reading — the
+    # editor asks for source text with ``?source=1``, which every editor
+    # surface in the web app already sends. This route kept the old
+    # role-based bypass after the course-detail route dropped it, so an
+    # admin checking the German build got the module and every chapter
+    # under it in Russian.
 
     display_locale: LocaleCode = normalize_locale(accept_language)
     source_locale: LocaleCode = normalize_locale(course_source_locale)

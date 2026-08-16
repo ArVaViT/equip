@@ -1126,7 +1126,14 @@ class TestCalendarAggregatedEvents:
         client.post(f"{COURSES_PREFIX}/{c1['id']}/events", json=_event_payload(title="E1"))
         client.post(f"{COURSES_PREFIX}/{c2['id']}/events", json=_event_payload(title="E2"))
 
-        resp = client.get(f"{CALENDAR_PREFIX}/events", params={"course_id": c1["id"]})
+        # Asked for in the language the events were written in: the
+        # aggregated feed resolves at the reader's locale and no longer
+        # reaches for the author's when the reader's is absent.
+        resp = client.get(
+            f"{CALENDAR_PREFIX}/events",
+            params={"course_id": c1["id"]},
+            headers={"Accept-Language": "en"},
+        )
         assert resp.status_code == 200
         titles = [e["title"] for e in resp.json()]
         assert "E1" in titles

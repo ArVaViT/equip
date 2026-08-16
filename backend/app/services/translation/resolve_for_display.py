@@ -269,9 +269,20 @@ def populate_spine_texts(
     display lookup is absent). Any-locale tier rescues content authored
     in a locale that's neither the display nor course-declared source.
 
-    Idempotent: hydrating an already-hydrated entity overwrites with
-    the same value.
+    Idempotent for a given locale — but note that hydrating twice at two
+    different locales is not idempotent in the way it looks. When a
+    caller asks for German and cv has no German row, the answer is
+    ``None``, and leaving whatever was there before means leaving the
+    previous locale's text. That is how the PDF export came out in the
+    author's language after being hydrated a second time at the
+    reader's: the first pass had already filled in Russian, and the
+    second had nothing to overwrite it with.
+
+    So an explicit ``display_locale`` clears what it cannot fill. The
+    source-hydration path (no ``display_locale``) keeps the old
+    behaviour, because there is nothing else it could mean.
     """
+    overlay_requested = display_locale is not None
     if not courses:
         return
     # ── courses ───────────────────────────────────────────────────────
@@ -294,15 +305,16 @@ def populate_spine_texts(
         # Only overwrite an existing runtime value when cv actually has a
         # row — keeps test fixtures that pre-attach title/description for
         # entities they haven't seeded in cv from being silently wiped.
+        # Unless a locale was asked for: then "no row" is an answer.
         cv_title = course_texts.get((c.id, "title"))
         if cv_title is not None:
             c.title = cv_title
-        elif not hasattr(c, "title"):
+        elif overlay_requested or not hasattr(c, "title"):
             c.title = ""
         cv_desc = course_texts.get((c.id, "description"))
         if cv_desc is not None:
             c.description = cv_desc
-        elif not hasattr(c, "description"):
+        elif overlay_requested or not hasattr(c, "description"):
             c.description = None
 
     # ── modules (every module attached to every course, grouped by the
@@ -336,12 +348,12 @@ def populate_spine_texts(
             cv_t = bulk.get((str(m.id), "title"))
             if cv_t is not None:
                 m.title = cv_t
-            elif not hasattr(m, "title"):
+            elif overlay_requested or not hasattr(m, "title"):
                 m.title = ""
             cv_d = bulk.get((str(m.id), "description"))
             if cv_d is not None:
                 m.description = cv_d
-            elif not hasattr(m, "description"):
+            elif overlay_requested or not hasattr(m, "description"):
                 m.description = None
 
 
@@ -361,16 +373,11 @@ def populate_module_texts(db: Session, modules: list[Module], *, source_locale: 
         source_locale=source_locale,
     )
     for m in modules:
-        cv_t = bulk.get((str(m.id), "title"))
-        if cv_t is not None:
-            m.title = cv_t
-        elif not hasattr(m, "title"):
-            m.title = ""
-        cv_d = bulk.get((str(m.id), "description"))
-        if cv_d is not None:
-            m.description = cv_d
-        elif not hasattr(m, "description"):
-            m.description = None
+        # Same rule as ``populate_spine_texts``: this function is always
+        # asked for one specific locale, so "cv has nothing here" is an
+        # answer and not a reason to leave a previous hydration standing.
+        m.title = bulk.get((str(m.id), "title")) or ""
+        m.description = bulk.get((str(m.id), "description"))
 
 
 def fetch_overlay_triples_bulk(

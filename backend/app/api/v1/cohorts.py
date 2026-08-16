@@ -839,7 +839,12 @@ def list_cohorts_for_course(
     )
     serialized = _serialize_many(db, cohorts)
     for resp in serialized:
-        localized = loc.pick("cohort", str(resp.id), "title", resp.name)
-        if localized:
-            resp.name = localized
+        # ``_serialize_many`` fills ``name`` from whichever locale row was
+        # created first — deliberately locale-agnostic, because the admin
+        # CRUD surface needs a representative. On this route, which is
+        # the enroll dialog a student sees, that meant a German reader
+        # was offered «Весенний поток 2026» in a dropdown. ``pick``
+        # returning None means this language has no name, and the honest
+        # answer is an empty one.
+        resp.name = loc.pick("cohort", str(resp.id), "title", resp.name) or ""
     return serialized

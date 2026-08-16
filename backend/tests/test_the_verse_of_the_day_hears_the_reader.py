@@ -73,3 +73,45 @@ class TestTheHeaderIsHeard:
             resp = client.get("/api/v1/verse-of-the-day", headers={"Accept-Language": "ru"})
 
         assert "Accept-Language" in resp.headers.get("Vary", "")
+
+
+class TestARealAcceptLanguageHeader:
+    """``Accept-Language`` is a ranked list, not a tag.
+
+    ``de,en-US;q=0.7,en;q=0.3`` is what Firefox sends. Splitting the
+    whole header on its first "-" produced "de,en" — a language nobody
+    serves — so every such reader silently got the platform default.
+
+    The web app was unaffected because it sends a bare code, which is
+    exactly why this survived: the client trusting the platform's own
+    convention was the one getting it wrong.
+    """
+
+    @pytest.mark.parametrize(
+        ("header", "expected"),
+        [
+            ("de,en-US;q=0.7,en;q=0.3", "de"),
+            ("uk,ru;q=0.9,en;q=0.8", "uk"),
+            ("en,de;q=0.9", "en"),
+            ("de-DE,de;q=0.9", "de"),
+            ("ru-RU", "ru"),
+            ("EN-GB", "en"),
+        ],
+    )
+    def test_the_first_served_language_in_the_list_wins(self, header: str, expected: str):
+        from app.schemas.locale import normalize_locale
+
+        assert normalize_locale(header) == expected
+
+    def test_a_list_of_languages_we_do_not_serve_falls_back(self):
+        from app.schemas.locale import normalize_locale
+
+        assert normalize_locale("fr-FR,fr;q=0.9,es;q=0.8") == "ru"
+
+    def test_but_a_served_language_further_down_the_list_is_still_found(self):
+        # q-values are deliberately not parsed: a reader who lists
+        # French first and English third reads English, and English is
+        # the only one of the two this platform has.
+        from app.schemas.locale import normalize_locale
+
+        assert normalize_locale("fr-FR,fr;q=0.9,en;q=0.8") == "en"

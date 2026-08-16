@@ -135,7 +135,10 @@ def render_course_pdf(course: Course) -> bytes:
         rightMargin=0.75 * inch,
         topMargin=0.75 * inch,
         bottomMargin=0.75 * inch,
-        title=course.title or "Equip Course",
+        # The PDF metadata title, not a heading: a document with no
+        # title at all confuses a file manager, and the brand is the one
+        # word that reads the same in every language served.
+        title=course.title or "Equip",
         author="Equip",
     )
     styles = _build_styles()
@@ -143,7 +146,7 @@ def render_course_pdf(course: Course) -> bytes:
 
     # Title page.
     story.append(Spacer(1, 2 * inch))
-    story.append(Paragraph(course.title or "Untitled Course", styles["title"]))
+    story.append(Paragraph(course.title or "", styles["title"]))
     if course.description:
         story.append(Paragraph(_to_plain_text(course.description), styles["subtitle"]))
     story.append(Spacer(1, 0.5 * inch))
@@ -154,11 +157,11 @@ def render_course_pdf(course: Course) -> bytes:
     story.append(Paragraph("Contents", styles["heading_module"]))
     modules = list(course.modules or [])
     for module in modules:
-        story.append(Paragraph(module.title or "Untitled Module", styles["body"]))
+        story.append(Paragraph(module.title or "", styles["body"]))
         for chapter in module.chapters or []:
             story.append(
                 Paragraph(
-                    chapter.title or "Untitled Chapter",
+                    chapter.title or "",
                     styles["toc_entry"],
                 )
             )
@@ -166,11 +169,11 @@ def render_course_pdf(course: Course) -> bytes:
 
     # Module + chapter body.
     for module in modules:
-        story.append(Paragraph(module.title or "Untitled Module", styles["heading_module"]))
+        story.append(Paragraph(module.title or "", styles["heading_module"]))
         if module.description:
             story.append(Paragraph(_to_plain_text(module.description), styles["body"]))
         for chapter in module.chapters or []:
-            story.append(Paragraph(chapter.title or "Untitled Chapter", styles["heading_chapter"]))
+            story.append(Paragraph(chapter.title or "", styles["heading_chapter"]))
             # Render any text blocks the chapter carries. We sort by
             # ``order_index`` so the printed sequence matches the
             # student-facing chapter view.
