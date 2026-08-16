@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import Depends, Query, status
+from fastapi import Depends, Header, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import require_teacher
@@ -12,6 +12,7 @@ from app.core.errors import ErrorCode, equip_error
 from app.core.metrics import increment, timing
 from app.models.quiz import QuizAnswer, QuizAttempt, QuizQuestion
 from app.models.user import User
+from app.schemas.locale import normalize_locale
 from app.schemas.quiz import (
     PendingAnswerInfo,
     QuizAnswerGradeRequest,
@@ -20,13 +21,14 @@ from app.schemas.quiz import (
 from app.services import quiz_service
 from app.services.content_versions import fetch_cv_entity_texts_with_fallback
 
-from ._deps import get_quiz_or_404, verify_quiz_owner
+from ._deps import course_source_locale_for_chapter, get_quiz_or_404, verify_quiz_owner
 from ._router import router
 
 
 @router.get("/{quiz_id}/pending-answers", response_model=list[PendingAnswerInfo])
 def list_pending_answers(
     quiz_id: UUID,
+    response: Response,
     include_graded: bool = Query(
         False,
         description="If true, return already-graded open-ended answers too.",
@@ -38,6 +40,7 @@ def list_pending_answers(
         le=500,
         description="Max rows per page (caps response size; default 200, max 500).",
     ),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
@@ -83,14 +86,22 @@ def list_pending_answers(
     # from cv for the rendering pass (any-locale fallback covers source-only
     # rows from a non-default course locale).
     question_ids = list({str(q.id) for _, q, _, _ in pending_rows})
+    # The teacher's own language, like every other surface. This read was
+    # pinned to English, so a German teacher marked German essays against
+    # English questions — and where a course had no English at all, against
+    # nothing. ``source_then_any`` because a marker has to be able to see the
+    # question whatever language it exists in: showing them a blank would be
+    # hiding the work they are being asked to judge.
+    response.headers["Vary"] = "Accept-Language"
     question_texts = (
         fetch_cv_entity_texts_with_fallback(
             db,
             entity_type="quiz_question",
             entity_ids=question_ids,
             fields=["question_text"],
-            display_locale="en",
-            source_locale="en",
+            display_locale=normalize_locale(accept_language or teacher.preferred_locale),
+            source_locale=normalize_locale(course_source_locale_for_chapter(db, quiz.chapter_id)),
+            fallback="source_then_any",
         )
         if question_ids
         else {}

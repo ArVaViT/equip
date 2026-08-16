@@ -1773,3 +1773,61 @@ def test_grade_answer_not_found(client: TestClient, db: Session):
         json={"points_earned": 1},
     )
     assert resp.status_code == 404
+
+
+class TestTheGradingQueueSpeaksTheTeachersLanguage:
+    """A teacher marks essays against the question that was asked.
+
+    This one read was pinned to English — ``display_locale="en",
+    source_locale="en"`` written at the call site — so a German teacher
+    grading German essays saw English questions, and on a course with no
+    English rows at all saw nothing where the question should be. The queue
+    now resolves at the marker's own language, and keeps the author's
+    language as the last resort rather than a blank: hiding the question
+    would hide the work they are being asked to judge.
+    """
+
+    def _seed_question_in(self, db: Session, question_id, locale: str, text: str) -> None:
+        from ._cv_helpers import _seed_text_row
+
+        _seed_text_row(
+            db,
+            entity_type="quiz_question",
+            entity_id=question_id,
+            field="question_text",
+            locale=locale,
+            text=text,
+        )
+        db.commit()
+
+    def test_a_german_teacher_reads_the_german_question(self, client: TestClient, student, db: Session):
+        _seed_course_with_enrollment(db)
+        quiz, essay, _attempt, _answer = _seed_submitted_essay_attempt(db)
+        self._seed_question_in(db, essay.id, "de", "Denke über die Apostelgeschichte nach.")
+
+        pending = client.get(
+            f"/api/v1/quizzes/{quiz.id}/pending-answers",
+            headers={"Accept-Language": "de"},
+        ).json()
+
+        assert [row["question_text"] for row in pending] == ["Denke über die Apostelgeschichte nach."]
+
+    def test_the_response_says_it_varies_by_language(self, client: TestClient, student, db: Session):
+        _seed_course_with_enrollment(db)
+        quiz, _essay, _attempt, _answer = _seed_submitted_essay_attempt(db)
+
+        response = client.get(f"/api/v1/quizzes/{quiz.id}/pending-answers", headers={"Accept-Language": "de"})
+
+        # Without this a cache can hand one teacher another teacher's language.
+        assert response.headers.get("Vary") == "Accept-Language"
+
+    def test_a_question_in_no_other_language_still_reaches_the_marker(self, client: TestClient, student, db: Session):
+        _seed_course_with_enrollment(db)
+        quiz, _essay, _attempt, _answer = _seed_submitted_essay_attempt(db)
+
+        pending = client.get(
+            f"/api/v1/quizzes/{quiz.id}/pending-answers",
+            headers={"Accept-Language": "uk"},
+        ).json()
+
+        assert [row["question_text"] for row in pending] == ["Reflect on the book of Acts (≥300 words)."]

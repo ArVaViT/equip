@@ -33,6 +33,13 @@ APP = Path(__file__).resolve().parent.parent / "app"
 EDITOR_SURFACES = {
     "app/api/v1/blocks.py",
     "app/services/certificate_service.py",
+    # The grading queue. A marker is not a reader being served content —
+    # they are being asked to judge an answer to a specific question, and
+    # a blank where the question should be hides the thing they are
+    # judging. It resolves at the teacher's own language first; this is
+    # only the last resort. (Before this it was pinned to English at the
+    # call site, which is neither.)
+    "app/api/v1/quizzes/grading.py",
 }
 
 

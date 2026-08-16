@@ -17,7 +17,7 @@ from app.api.dependencies import (
 )
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
-from app.models.course import Chapter, Course, Module
+from app.models.course import Course
 from app.models.quiz import Quiz, QuizExtraAttempt, QuizOption, QuizQuestion
 from app.models.user import User
 from app.schemas.locale import LocaleCode, normalize_locale
@@ -42,26 +42,12 @@ from app.services.translation.resolve_for_display import (
     resolve_chapter_locale_context,
 )
 
-from ._deps import get_quiz_or_404, verify_quiz_owner
+from ._deps import course_source_locale_for_chapter, get_quiz_or_404, verify_quiz_owner
 from ._router import router
 
 _TRANSLATABLE_QUIZ_FIELDS = ("title", "description")
 _TRANSLATABLE_QUESTION_FIELDS = ("question_text",)
 _TRANSLATABLE_OPTION_FIELDS = ("option_text",)
-
-
-def _course_source_locale_for_chapter(db: Session, chapter_id: str) -> str | None:
-    """Walk ``Quiz -> Chapter -> Module -> Course`` to find the parent
-    course's source locale for use as the dual-write fallback when a
-    short / non-letter field can't be classified by the detector.
-    """
-    return (
-        db.query(Course.source_locale)
-        .join(Module, Module.course_id == Course.id)
-        .join(Chapter, Chapter.module_id == Module.id)
-        .filter(Chapter.id == chapter_id)
-        .scalar()
-    )
 
 
 @router.get("/chapter/{chapter_id}", response_model=QuizStudentResponse | None)
@@ -169,7 +155,7 @@ def get_quiz_detail(
     quiz = get_quiz_or_404(db, quiz_id, load_questions=True)
     verify_quiz_owner(db, quiz, teacher.id)
     return build_quiz_response_from_cv(
-        db, quiz, source_locale=normalize_locale(_course_source_locale_for_chapter(db, quiz.chapter_id))
+        db, quiz, source_locale=normalize_locale(course_source_locale_for_chapter(db, quiz.chapter_id))
     )
 
 
@@ -232,7 +218,7 @@ def create_quiz(
         questions_with_options.append((question, q_data.question_text, question_options))
 
     db.flush()
-    fallback_locale = _course_source_locale_for_chapter(db, data.chapter_id)
+    fallback_locale = course_source_locale_for_chapter(db, data.chapter_id)
     dual_write_entity_content(
         db,
         entity_type="quiz",
@@ -290,7 +276,7 @@ def update_quiz(
         quiz.max_attempts = 1
 
     db.flush()
-    source_locale = _course_source_locale_for_chapter(db, quiz.chapter_id)
+    source_locale = course_source_locale_for_chapter(db, quiz.chapter_id)
     if text_patch:
         dual_write_entity_content(
             db,
