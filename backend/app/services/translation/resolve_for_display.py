@@ -159,13 +159,33 @@ def build_localized_course_summaries(
                 source_locale=src_locale,
             )
         )
+    # Module titles ride along inside every catalog card, and they were
+    # never localized: they come off the ORM, hydrated at the course's
+    # own language by ``get_courses``. So an English catalog carried
+    # "Модуль 1. Как узнать, что значит слово" inside every card, and so
+    # did the German and Ukrainian ones. Found by reading a live
+    # response rather than by reading the code.
+    module_specs: list[tuple[str, str, str]] = [
+        ("module", str(module.id), "title") for course in courses for module in course.modules
+    ]
+    module_titles = fetch_overlay_triples_bulk(db, module_specs, display_locale) if module_specs else {}
+
     out: list[CourseSummary] = []
     for c in courses:
         # Set runtime attrs so ``model_validate(course, from_attributes=True)``
         # picks them up via Pydantic's attribute reader.
         c.title = texts.get((c.id, "title")) or ""
         c.description = texts.get((c.id, "description"))
-        out.append(CourseSummary.model_validate(c, from_attributes=True))
+        summary = CourseSummary.model_validate(c, from_attributes=True)
+        summary = summary.model_copy(
+            update={
+                "modules": [
+                    module.model_copy(update={"title": module_titles.get(("module", str(module.id), "title"), "")})
+                    for module in summary.modules
+                ]
+            }
+        )
+        out.append(summary)
     return out
 
 
