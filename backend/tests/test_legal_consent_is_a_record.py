@@ -122,3 +122,47 @@ def test_the_locale_recorded_is_the_one_they_read(student_client: TestClient, db
     # And the two translations are genuinely different texts, so recording
     # which one was read is not bookkeeping for its own sake.
     assert document_for("terms", "en").sha256 != document_for("terms", "ru").sha256
+
+
+class TestTheLanguageAPersonIsActuallyReading:
+    """The platform speaks four languages; these documents exist in two.
+
+    A German or Ukrainian reader used to be handed the *Russian* privacy
+    policy — the frontend collapsed every non-English language to ``ru`` —
+    which is a text they cannot read, presented as the thing they are
+    agreeing to. They get English now, and the response says so, because a
+    page cannot tell somebody "this one is in English" unless the server
+    tells the page which language it sent.
+    """
+
+    def test_a_reader_whose_language_we_have_gets_their_own(self, anon_client: TestClient) -> None:
+        for locale in ("ru", "en"):
+            body = anon_client.get(f"{DOCS}/privacy", params={"locale": locale}).json()
+            assert body["locale"] == locale
+
+    def test_a_reader_whose_language_we_lack_gets_english_not_russian(self, anon_client: TestClient) -> None:
+        russian = anon_client.get(f"{DOCS}/privacy", params={"locale": "ru"}).json()
+        english = anon_client.get(f"{DOCS}/privacy", params={"locale": "en"}).json()
+        for locale in ("de", "uk"):
+            body = anon_client.get(f"{DOCS}/privacy", params={"locale": locale}).json()
+            assert body["locale"] == "en", f"{locale} was answered in {body['locale']}"
+            assert body["body"] == english["body"]
+            assert body["body"] != russian["body"]
+
+    def test_a_bare_request_is_not_answered_in_russian(self, anon_client: TestClient) -> None:
+        # The default used to be ``ru``, which made the language a person got
+        # depend on whether the client remembered to ask.
+        assert anon_client.get(f"{DOCS}/terms").json()["locale"] == "en"
+
+    def test_the_record_names_the_text_they_saw_not_the_one_they_asked_for(
+        self, student_client: TestClient, db: Session
+    ) -> None:
+        response = student_client.post(ACCEPT, json={"slug": "privacy", "version": "1.0", "locale": "de"})
+        assert response.status_code == 201
+        assert response.json()["locale"] == "en"
+
+        row = db.query(LegalAcceptance).filter_by(user_id=STUDENT_ID, document_slug="privacy").one()
+        assert row.locale == "en"
+        # And the fingerprint is of the English text, so "you agreed to this"
+        # still points at something reproducible.
+        assert row.content_sha256 == hashlib.sha256(document_for("privacy", "en").body.encode()).hexdigest()

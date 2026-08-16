@@ -9,7 +9,7 @@ from app.api.dependencies import get_current_user
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.http import get_client_ip
-from app.legal import LEGAL_DOCUMENTS, document_for, required_slugs
+from app.legal import GOVERNING_LOCALE, LEGAL_DOCUMENTS, document_for, required_slugs
 from app.models.legal_acceptance import LegalAcceptance
 from app.models.user import User
 from app.schemas.legal import (
@@ -30,12 +30,18 @@ def list_documents() -> list[LegalDocumentSummary]:
 
 
 @router.get("/documents/{slug}", response_model=LegalDocumentOut)
-def get_document(slug: str, locale: str = "ru") -> LegalDocumentOut:
+def get_document(slug: str, locale: str = GOVERNING_LOCALE) -> LegalDocumentOut:
     """One document, in one language.
 
     Unauthenticated by design: a person deciding whether to sign up has to be
     able to read what they would be agreeing to, and a policy you can only see
     after accepting it is not a policy.
+
+    ``locale`` is what the reader asked for; the response's ``locale`` is what
+    they got, and the two differ for a language these documents do not exist
+    in. The default used to be Russian, which meant a bare request — and every
+    reader whose language was not English — was answered in a language they
+    may not read.
     """
     try:
         doc = document_for(slug, locale)

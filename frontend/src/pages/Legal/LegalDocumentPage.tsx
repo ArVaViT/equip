@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Link, useParams } from "react-router-dom"
 import { ArrowLeft } from "lucide-react"
 import { legalService, type LegalDocument } from "@/services/legal"
+import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import { renderLegalMarkdown } from "@/components/legal/renderLegalMarkdown"
 import PageSpinner from "@/components/ui/PageSpinner"
 
@@ -24,7 +25,13 @@ export default function LegalDocumentPage({ slug }: { slug?: LegalSlug }) {
   const params = useParams<{ slug?: string }>()
   const resolved = (slug ?? params.slug ?? "privacy") as LegalSlug
   const { i18n, t } = useTranslation()
-  const locale = i18n.language.startsWith("en") ? "en" : "ru"
+  // The reader's own language, whole. Collapsing everything that is not
+  // English to Russian handed a German or Ukrainian reader the Russian
+  // privacy policy — a text they cannot read, presented as the thing they
+  // are agreeing to. The server answers in their language where these
+  // documents exist in it and in English where they do not, and says which
+  // one it sent.
+  const locale = isSupportedLocale(i18n.language) ? i18n.language : DEFAULT_LOCALE
   const [doc, setDoc] = useState<LegalDocument | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -65,6 +72,12 @@ export default function LegalDocumentPage({ slug }: { slug?: LegalSlug }) {
       {!doc && !failed && <PageSpinner variant="section" />}
       {doc && (
         <article className="mt-8">
+          {doc.locale !== locale && (
+            // Said plainly, in their language: the alternative is a reader
+            // who thinks the English text in front of them is a rendering
+            // fault rather than the document itself.
+            <p className="mb-8 border-l-2 border-edge pl-4 text-sm text-ink-muted">{t("legal.englishOnly")}</p>
+          )}
           {renderLegalMarkdown(doc.body)}
           {/* The fingerprint is on the page on purpose. It is what an
               acceptance record points at, and printing it means a person can

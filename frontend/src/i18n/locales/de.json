@@ -2526,6 +2526,7 @@
   },
   "legal": {
     "loadFailed": "Das Dokument konnte nicht geladen werden. Laden Sie die Seite neu oder schreiben Sie uns.",
+    "englishOnly": "Dieses Dokument ist nur auf Englisch verfügbar.",
     "fingerprint": "Fassung {{version}} · Textprüfsumme {{sha}}",
     "privacy": "Datenschutzerklärung",
     "terms": "Nutzungsbedingungen"

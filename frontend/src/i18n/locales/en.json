@@ -2526,6 +2526,7 @@
   },
   "legal": {
     "loadFailed": "Couldn't load the document. Reload the page, or write to us.",
+    "englishOnly": "This document is available in English only.",
     "fingerprint": "Version {{version}} · text fingerprint {{sha}}",
     "privacy": "Privacy Policy",
     "terms": "Terms of Use"

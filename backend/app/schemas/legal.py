@@ -2,7 +2,9 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+
+from app.schemas.locale import LocaleCode
 
 
 class LegalDocumentOut(BaseModel):
@@ -32,7 +34,12 @@ class LegalAcceptanceIn(BaseModel):
 
     slug: str
     version: str
-    locale: str = Field(pattern="^(ru|en)$")
+    #: The reader's language, not the document's. It used to be pinned to the
+    #: two languages the documents exist in, so a German reader could only
+    #: consent by claiming to have read the Russian policy — and the record
+    #: then said exactly that. The server answers with the language it
+    #: actually served and stores that.
+    locale: LocaleCode
 
 
 class LegalAcceptanceOut(BaseModel):
