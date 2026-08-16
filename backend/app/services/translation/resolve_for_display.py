@@ -842,6 +842,7 @@ def localize_chapter_block_rows(
     display_locale: LocaleCode,
     source_locale: LocaleCode,
     prefer_human: bool = False,
+    fallback: Literal["auto", "none", "source_then_any"] = "auto",
 ) -> list[BlockResponse]:
     """Apply stored translations to TipTap HTML stored on chapter blocks.
 
@@ -850,15 +851,30 @@ def localize_chapter_block_rows(
     now. Build the response manually because ``model_validate(block)``
     would try to read ``block.content`` (no longer an attribute).
 
-    Three-tier fallback: display_locale → source_locale → any-locale.
-    The any-locale tier rescues blocks whose content was authored in a
-    locale that's neither display nor course-declared source (an edge
-    case from the per-field-detection world). When ``prefer_human`` is
-    set, the any-locale tier prefers human-authored rows over MT ones —
-    used by the ``?source=1`` editor view so a teacher never sees a
-    stale MT row as the "source" content for a block whose source-locale
-    row went missing.
+    ``fallback`` decides what a missing translation means, and this is
+    the lesson body — the longest thing anybody reads on the platform.
+
+    * ``"none"`` (what a reader gets where the platform translates):
+      the block comes back empty rather than in somebody else's
+      language. The chapter view renders that as "not translated yet".
+    * ``"source_then_any"``: display → source → any locale. For the
+      people who must see the text whatever language it is in — the
+      teacher editing their own lesson, the ``?source=1`` view.
+    * ``"auto"`` (default): ``"none"`` where the platform translates,
+      ``"source_then_any"`` where it does not.
+
+    The three-tier chain used to be unconditional, which is how a
+    German student reading a Russian course got the whole lesson in
+    Russian while every title around it correctly said the course was
+    not available in German.
+
+    When ``prefer_human`` is set, the any-locale tier prefers
+    human-authored rows over MT ones — used by the ``?source=1`` editor
+    view so a teacher never sees a stale MT row as the "source" content
+    for a block whose source-locale row went missing.
     """
+    if fallback == "auto":
+        fallback = "none" if is_translation_enabled() else "source_then_any"
     if not blocks:
         return []
     block_ids = [str(b.id) for b in blocks]
@@ -888,8 +904,10 @@ def localize_chapter_block_rows(
     out: list[BlockResponse] = []
     for b in blocks:
         bid = str(b.id)
-        any_tier = human_by_block.get(bid) or any_by_block.get(bid) if prefer_human else any_by_block.get(bid)
-        content = by_block_locale.get((bid, display_locale)) or by_block_locale.get((bid, source_locale)) or any_tier
+        content = by_block_locale.get((bid, display_locale))
+        if content is None and fallback == "source_then_any":
+            any_tier = human_by_block.get(bid) or any_by_block.get(bid) if prefer_human else any_by_block.get(bid)
+            content = by_block_locale.get((bid, source_locale)) or any_tier
         out.append(
             BlockResponse.model_validate(
                 {

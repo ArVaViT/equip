@@ -30,12 +30,14 @@ from typing import TYPE_CHECKING
 import pytest
 from pydantic import SecretStr
 
-from app.models.course import Course, Module
+from app.models.chapter_block import ChapterBlock
+from app.models.course import Chapter, Course, Module
 from app.models.user import User, UserRole
 from app.services.content_versions.write import record_human_version
 from app.services.translation.resolve_for_display import (
     build_localized_course_response_with_tree,
     build_localized_course_summaries,
+    localize_chapter_block_rows,
     populate_spine_texts,
 )
 from app.services.translation.service import reset_translation_provider_cache
@@ -148,3 +150,67 @@ class TestTheCatalog:
         summaries = build_localized_course_summaries(db, [course], "ru")
 
         assert summaries[0].title == "Книга Деяний Апостолов"
+
+
+class TestTheLessonBody:
+    """The longest thing anybody reads, and the last place the spare
+    language was still living.
+
+    ``localize_chapter_block_rows`` resolved display → source → any
+    locale, unconditionally. So a German student opening a Russian
+    lesson got the entire lesson in Russian — while every title around
+    it correctly said the course was not available in German.
+    """
+
+    def _block(self, db: Session, course: Course) -> ChapterBlock:
+        module = db.query(Module).filter(Module.course_id == course.id).one()
+        chapter = Chapter(id=str(uuid.uuid4()), module_id=module.id, title="Урок 1", order_index=0)
+        db.add(chapter)
+        db.flush()
+        block = ChapterBlock(id=uuid.uuid4(), chapter_id=chapter.id, block_type="text", order_index=0)
+        db.add(block)
+        db.flush()
+        record_human_version(
+            db,
+            entity_type="chapter_block",
+            entity_id=str(block.id),
+            field="content",
+            locale="ru",
+            text="<p>Пётр встал среди братьев и сказал.</p>",
+            authored_by=course.created_by,
+        )
+        db.commit()
+        return block
+
+    def test_a_german_reader_gets_nothing_rather_than_russian(self, db: Session):
+        course = _russian_course(db)
+        block = self._block(db, course)
+
+        rows = localize_chapter_block_rows(db, [block], display_locale="de", source_locale="ru")
+
+        assert rows[0].content in (None, ""), f"served the Russian lesson to a German reader: {rows[0].content!r}"
+
+    def test_the_russian_reader_gets_the_lesson(self, db: Session):
+        course = _russian_course(db)
+        block = self._block(db, course)
+
+        rows = localize_chapter_block_rows(db, [block], display_locale="ru", source_locale="ru")
+
+        assert "Пётр" in (rows[0].content or "")
+
+    def test_the_editor_still_sees_their_own_lesson(self, db: Session):
+        # A teacher editing their Russian course in a German UI must see
+        # what they wrote. Hiding their own material from them would be
+        # a different kind of broken.
+        course = _russian_course(db)
+        block = self._block(db, course)
+
+        rows = localize_chapter_block_rows(
+            db,
+            [block],
+            display_locale="de",
+            source_locale="ru",
+            fallback="source_then_any",
+        )
+
+        assert "Пётр" in (rows[0].content or "")
