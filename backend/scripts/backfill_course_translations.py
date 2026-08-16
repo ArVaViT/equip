@@ -45,7 +45,7 @@ import logging
 import sys
 import time
 
-from sqlalchemy.exc import DBAPIError, OperationalError
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import sessionmaker
 
 from app.core.database import _get_engine
@@ -53,15 +53,10 @@ from app.models.course import Course
 from app.services.translation.completeness import course_translation_completeness
 from app.services.translation.course_pipeline import translate_course_content
 from app.services.translation.service import is_translation_enabled
+from scripts.db_resilience import run_with_reconnect
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("backfill-courses")
-
-# Same reasoning as the Daily Challenge backfill: this runs for hours on
-# a laptop, and a VPN reconnect is enough to make the database name stop
-# resolving for a few seconds.
-_DB_RETRIES = 6
-_DB_BACKOFF_SECONDS = 15.0
 
 
 def main() -> int:
@@ -106,38 +101,36 @@ def main() -> int:
                 done += 1
                 continue
 
-            for attempt in range(_DB_RETRIES):
-                try:
-                    report = translate_course_content(db, course)
-                except (OperationalError, DBAPIError) as exc:
-                    db.rollback()
-                    if attempt == _DB_RETRIES - 1:
-                        raise
-                    wait = _DB_BACKOFF_SECONDS * (attempt + 1)
-                    logger.warning(
-                        "database unreachable on %s (%s); retrying in %.0fs", label, exc.__class__.__name__, wait
-                    )
-                    time.sleep(wait)
-                    continue
-                except Exception as exc:
-                    # One bad course must not end the run.
-                    db.rollback()
-                    failed += 1
-                    logger.warning("failed %s: %s", label, exc)
-                    break
-                done += 1
-                logger.info(
-                    "%s: %d translated, %d skipped, %d needs review, %d failed (%d done)",
-                    label,
-                    report.translated,
-                    report.skipped,
-                    report.needs_review,
-                    report.failed,
-                    done,
+            try:
+                report = run_with_reconnect(
+                    lambda course=course: translate_course_content(db, course),  # type: ignore[misc]
+                    label=label,
+                    logger=logger,
+                    db=db,
                 )
-                if args.sleep:
-                    time.sleep(args.sleep)
-                break
+            except DBAPIError:
+                # The database never came back. Anything further would
+                # fail the same way, and pretending otherwise would end
+                # the run reporting success.
+                raise
+            except Exception as exc:
+                # One bad course must not end the run.
+                db.rollback()
+                failed += 1
+                logger.warning("failed %s: %s", label, exc)
+                continue
+            done += 1
+            logger.info(
+                "%s: %d translated, %d skipped, %d needs review, %d failed (%d done)",
+                label,
+                report.translated,
+                report.skipped,
+                report.needs_review,
+                report.failed,
+                done,
+            )
+            if args.sleep:
+                time.sleep(args.sleep)
     finally:
         db.close()
 
