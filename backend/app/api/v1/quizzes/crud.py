@@ -115,6 +115,7 @@ def get_chapter_quiz(
         resp = build_localized_quiz_student_response(
             db, quiz, display_locale=display_locale, source_locale=ctx.source_locale
         )
+        _refuse_untranslated_quiz(resp, quiz_id=str(quiz.id), locale=display_locale)
     if resp.max_attempts is not None:
         extra = (
             db.query(QuizExtraAttempt)
@@ -127,6 +128,36 @@ def get_chapter_quiz(
         if extra:
             resp.max_attempts = resp.max_attempts + extra.extra_attempts
     return resp
+
+
+def _refuse_untranslated_quiz(resp: QuizStudentResponse, *, quiz_id: str, locale: str) -> None:
+    """Do not hand a student a graded quiz they cannot read.
+
+    Since the spare language was removed, a quiz with no rows in the
+    reader's language resolves to empty strings — and empty strings
+    render. The student would be shown a blank question with blank
+    options, and this one is graded: they answer nothing and the
+    attempt counts.
+
+    The Daily Challenge takes the same position for the same reason
+    (``daily_challenge.not_translated``). A missing translation is a
+    wait, not a failure, and the reader is told which it is.
+    """
+    if not resp.questions:
+        return
+    unreadable = [
+        q
+        for q in resp.questions
+        if not (q.question_text or "").strip() or any(not (o.option_text or "").strip() for o in q.options)
+    ]
+    if not unreadable:
+        return
+    raise equip_error(
+        ErrorCode.QUIZ_NOT_TRANSLATED,
+        status_code=status.HTTP_409_CONFLICT,
+        message="This quiz is not available in your language yet",
+        context={"resource_type": "quiz", "resource_id": quiz_id, "locale": locale},
+    )
 
 
 @router.get("/{quiz_id}", response_model=QuizResponse)
