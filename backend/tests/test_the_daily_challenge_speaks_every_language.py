@@ -306,6 +306,63 @@ class TestTheSweep:
 
         assert question.id in {q.id for q in found}
 
+    def test_a_failure_on_another_field_still_counts_as_work(self, db: Session, author: User):
+        # The sweep looked at ``question_text`` and nothing else, so a
+        # question whose four question_text rows were in place counted as
+        # settled however badly its explanation had gone. On 2026-08-16
+        # that was 57 explanations carrying an English KJV quotation
+        # inside German and Ukrainian prose, sitting at ``failed`` while
+        # the sweep reported "nothing left to translate". They were
+        # invisible to the only thing that selects work.
+        from app.models.content_version import ContentVersion, ContentVersionStatus
+
+        question = _seed_question(db, author_id=author.id)
+        translate_question(db, question, provider=_Provider())
+        assert question.id not in {q.id for q in questions_missing_a_language(db, limit=10)}
+
+        row = (
+            db.query(ContentVersion)
+            .filter(
+                ContentVersion.entity_type == "daily_challenge_question",
+                ContentVersion.entity_id == str(question.id),
+                ContentVersion.field == "explanation",
+                ContentVersion.locale == "de",
+            )
+            .one()
+        )
+        row.status = ContentVersionStatus.FAILED
+        row.attempts = 0
+        db.commit()
+
+        assert question.id in {q.id for q in questions_missing_a_language(db, limit=10)}
+
+    def test_a_failed_answer_option_brings_its_question_back(self, db: Session, author: User):
+        # Same hole, one level down: the options are separate rows and
+        # were not looked at either. A question with four legible
+        # question_texts and one blank answer is worse than an
+        # untranslated one, because it looks answerable.
+        from app.models.content_version import ContentVersion, ContentVersionStatus
+
+        question = _seed_question(db, author_id=author.id)
+        translate_question(db, question, provider=_Provider())
+        option_ids = [str(option.id) for option in question.options]
+
+        row = (
+            db.query(ContentVersion)
+            .filter(
+                ContentVersion.entity_type == "daily_challenge_option",
+                ContentVersion.entity_id.in_(option_ids),
+                ContentVersion.locale == "uk",
+            )
+            .first()
+        )
+        assert row is not None
+        row.status = ContentVersionStatus.FAILED
+        row.attempts = 0
+        db.commit()
+
+        assert question.id in {q.id for q in questions_missing_a_language(db, limit=10)}
+
     def test_it_repairs_what_it_finds(self, db: Session, author: User):
         _seed_question(db, author_id=author.id)
         _seed_question(db, author_id=author.id)
