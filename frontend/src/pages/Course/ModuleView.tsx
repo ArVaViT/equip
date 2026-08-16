@@ -260,7 +260,7 @@ export default function ModuleView() {
                       <CardTitle className="flex min-w-0 items-center gap-2 text-base">
                         <Lock className="h-5 w-5 text-ink-muted shrink-0" strokeWidth={1.75} aria-hidden />
                         <span className="min-w-0 flex-1 truncate text-ink-muted">
-                          {chapter.title}
+                          {orNotTranslated(t, chapter.title)}
                         </span>
                         {chapter.chapter_type && (
                           <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
@@ -304,7 +304,7 @@ export default function ModuleView() {
                           />
                         ) : null}
                         <span className={`min-w-0 flex-1 truncate ${isCompleted ? "text-ink-muted" : ""}`}>
-                          {chapter.title}
+                          {orNotTranslated(t, chapter.title)}
                         </span>
                         {chapter.chapter_type && (
                           <ChapterTypeBadge type={chapter.chapter_type} size="sm" />

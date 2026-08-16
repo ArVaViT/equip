@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/patterns"
 import { CheckCheck, CheckCircle2, GraduationCap, Inbox, Loader2, Save, Users } from "lucide-react"
 import { formatDateTime } from "@/i18n/format"
 import { countWords } from "@/lib/text"
+import { orNotTranslated } from "@/lib/untranslated"
 
 type EditableAnswer = PendingAnswer & {
   draftPoints: string
@@ -169,7 +170,7 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-wrap-safe whitespace-pre-line">
-                  {item.question_text}
+                  {orNotTranslated(t, item.question_text)}
                 </p>
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
                   <span className="inline-flex items-center gap-1">

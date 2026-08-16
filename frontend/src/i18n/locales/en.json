@@ -18,7 +18,8 @@
     "scrollToTop": "Scroll to top",
     "skipToContent": "Skip to main content",
     "dismissAnnouncement": "Dismiss announcement",
-    "save": "Save"
+    "save": "Save",
+    "back": "Back"
   },
   "inlineEdit": {
     "defaultPlaceholder": "Click to edit",

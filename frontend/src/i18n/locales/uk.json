@@ -18,7 +18,8 @@
     "scrollToTop": "Вгору",
     "skipToContent": "Перейти до вмісту",
     "dismissAnnouncement": "Закрити оголошення",
-    "save": "Зберегти"
+    "save": "Зберегти",
+    "back": "Назад"
   },
   "inlineEdit": {
     "defaultPlaceholder": "Натисніть, щоб редагувати",

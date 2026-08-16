@@ -17,6 +17,7 @@ import { toast } from "@/lib/toast"
 import type { AiPolicy, Assignment, AssignmentSubmission, SubmissionRubric } from "@/types"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { formatDate } from "@/i18n/format"
+import { orNotTranslated } from "@/lib/untranslated"
 import {
   FileText,
   Calendar,
@@ -299,7 +300,7 @@ function SingleAssignment({
           {t("assignment.eyebrow")}
         </p>
         <h3 className="font-serif text-lg font-semibold tracking-tight text-wrap-safe">
-          {assignment.title}
+          {orNotTranslated(t, assignment.title)}
         </h3>
         {assignment.description && (
           <p className="mt-1.5 text-sm leading-relaxed text-ink-muted text-wrap-safe whitespace-pre-line">
