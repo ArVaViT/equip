@@ -55,6 +55,10 @@ from app.services.language_detection import carries_language, detect_locale
 API = os.getenv("EQUIP_API", "https://api.equipbible.com")
 ACCOUNT = os.getenv("EQUIP_AUDIT_EMAIL", "arvavitcorp@gmail.com")
 
+# Enough of each course to be representative without turning the audit
+# into a crawl of every lesson on the platform four times over.
+_CHAPTERS_PER_COURSE = 4
+
 # Fields worth reading on each surface: the ones a person actually reads.
 TEXT_KEYS = (
     "title",
@@ -132,6 +136,12 @@ def _inspect(report: Report, surface: str, locale: str, response: httpx.Response
     except ValueError:
         return
 
+    # ``null`` and ``[]`` mean the surface does not exist for this
+    # chapter — no quiz, no assignment — not that it is untranslated.
+    # Counting those as missing buried the real gaps under noise.
+    if payload is None or payload == [] or payload == {}:
+        return
+
     strings: list[str] = []
     _texts(payload, strings)
     if not strings:
@@ -170,8 +180,27 @@ def main() -> int:
             ("verse of the day", "/api/v1/verse-of-the-day"),
             ("my grades", "/api/v1/grades/my"),
             ("calendar", "/api/v1/calendar/events"),
+            ("notifications", "/api/v1/notifications"),
         ]
         surfaces += [(f"course {cid[:8]}", f"/api/v1/courses/{cid}") for cid in course_ids]
+
+        # Down into the lesson itself. The tree is where the text lives —
+        # a course page can look perfectly translated while every chapter
+        # under it is in another language, which is exactly what was
+        # happening.
+        for cid in course_ids:
+            detail = client.get(f"{API}/api/v1/courses/{cid}", headers={**auth, "Accept-Language": "en"})
+            if detail.status_code != 200:
+                continue
+            chapter_ids = [
+                str(chapter["id"])
+                for module in detail.json().get("modules", [])
+                for chapter in module.get("chapters", [])
+            ]
+            for chapter_id in chapter_ids[:_CHAPTERS_PER_COURSE]:
+                surfaces.append((f"lesson {chapter_id[:8]}", f"/api/v1/blocks/chapter/{chapter_id}"))
+                surfaces.append((f"quiz {chapter_id[:8]}", f"/api/v1/quizzes/chapter/{chapter_id}"))
+                surfaces.append((f"assignments {chapter_id[:8]}", f"/api/v1/assignments/chapter/{chapter_id}"))
 
         for locale in LOCALE_CODES:
             headers = {**auth, "Accept-Language": locale}
