@@ -686,9 +686,13 @@ def _fetch_quiz_tree_texts(
     source_locale: LocaleCode,
     prefer_human: bool = False,
 ) -> tuple[dict[tuple[str, str], str | None], dict[tuple[str, str], str | None], dict[tuple[str, str], str | None]]:
-    """Bulk-fetch every cv text for ``quiz`` + its questions + their options
-    at display→source→any locale fallback. Returns three (entity_id, field)
-    → text dicts so callers can build whichever response shape they need.
+    """Bulk-fetch every cv text for ``quiz`` + its questions + their options.
+
+    Resolution follows ``fetch_cv_entity_texts_with_fallback``: for a
+    reader, the display locale or nothing. (It said display→source→any
+    here for a while after that stopped being true.) Returns three
+    (entity_id, field) → text dicts so callers can build whichever
+    response shape they need.
 
     Phase 5f: ``quizzes.title``, ``quizzes.description``,
     ``quiz_questions.question_text`` and ``quiz_options.option_text``
@@ -859,8 +863,14 @@ def localize_assignment_rows(
     prefer_human: bool = False,
 ) -> list[AssignmentResponse]:
     """Phase 5e3: ``assignments.title`` + ``description`` columns dropped.
-    Both texts live in ``content_versions`` now. Resolve each via a
-    three-tier fallback (display → source → any-locale).
+    Both texts live in ``content_versions`` now.
+
+    Resolution is whatever ``fetch_cv_entity_texts_with_fallback``
+    decides for a reader — nothing, where the platform translates. The
+    docstring used to promise a three-tier display → source → any
+    fallback, which stopped being true when the spare language was
+    removed and was worth correcting: a comment that describes the
+    behaviour somebody wants back is how it comes back.
     """
     if not assignments:
         return []

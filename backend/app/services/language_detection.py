@@ -117,12 +117,29 @@ _LATIN_EXTENDED_RANGES: Final[tuple[tuple[int, int], ...]] = (
 )
 
 
-# Above this many letters of the script, the *absence* of a
-# language's hallmark letters becomes evidence against it — see
-# ``_absence_bonus``. Twenty letters is roughly three words: long
-# enough that a Ukrainian text without a single "і/ї/є" would be a
-# freak occurrence, short enough to cover a course title.
-_ABSENCE_MIN_LETTERS: Final[int] = 20
+# Above this many letters of the script, the *absence* of a language's
+# hallmark letters becomes evidence against it — see ``_absence_bonus``.
+#
+# This was 20 on the reasoning that a Ukrainian text of three words
+# without a single "і/ї/є" would be a freak occurrence. Measured
+# against every Ukrainian string in production, that reasoning is
+# simply wrong:
+#
+#     letters   strings   without і/ї/є
+#      20-39       584      61   (10%)
+#      40-59       355       9   (2.5%)
+#      60-79       180       0
+#      80+         ~380      1
+#
+# One in ten. "Модуль 3. Друга половина: чотири групи" and "Уздовж
+# узбережжя Середземного моря" are ordinary Ukrainian, and the rule
+# read them as Russian — which the validator then reported as the wrong
+# language, on correct translations, in production.
+#
+# 60 is where the measurement says the absence starts meaning
+# something. Even there it is not a proof, which is why it stays worth
+# less than a matched function word rather than more.
+_ABSENCE_MIN_LETTERS: Final[int] = 60
 
 
 class _Profile(NamedTuple):
@@ -164,7 +181,7 @@ _RU_WORDS = """
 этом один почти мой тем чтобы нее были куда зачем всех никогда можно при наконец
 два об другой хоть после над больше тот через эти нас про всего них какая много
 разве три эту моя впрочем хорошо свою этой перед иногда лучше чуть том нельзя
-такой им более всегда конечно всю между
+такой им более всегда конечно всю между тебе
 """
 
 _UK_WORDS = """
@@ -173,7 +190,28 @@ _UK_WORDS = """
 її його їх цей ця цього цьому може має треба потрібно після перед між через про
 над під при без усі всі нам вам їм мене тебе себе свій своя своє більше менше
 дуже чи хто кожен жодного
+а за нас вас ним нею них той ті ці тут там тоді потім знову завжди ніколи
+можна буде будуть мають серед крім проти разом майже теж лише навколо довкола
+замість щодо попри задля поруч один два три
 """
+# Why the second block exists: the first list was written as "the words
+# a course title uses", and it left out the ordinary connective tissue —
+# "а", "за", "той", "все". Those are in the Russian list, so a Ukrainian
+# sentence built out of them scored 4:0 for Russian. "Урок 10. Листи
+# Павла: порядок за довжиною, а не за часом" was read as Russian in
+# production, on a correct translation, for exactly that reason.
+#
+# Most of the additions are words the two languages share ("а", "за",
+# "тут", "все"), so the ambiguity rule below drops them from scoring
+# for both — which is the point. A word only helps when it belongs to
+# one language.
+#
+# The first attempt at this list also carried content words — слово,
+# люди, сказав, такий — and they made it worse in the other direction:
+# "Слово Божие" is Russian and scored for Ukrainian on "слово" alone.
+# Measured over every string in production, that turned 1 Russian row
+# read as Ukrainian into 17. Closed class only, and nothing that a
+# Russian sentence says just as often.
 
 _EN_WORDS = """
 the and is of to in a for with that this on are was were it as be by from or an
@@ -200,7 +238,14 @@ _PROFILES: Final[dict[str, _Profile]] = {
         # Ukrainian has none of these; they are the cleanest ru/uk split.
         exclusive_letters=frozenset("ыэъё"),
         function_words=frozenset(_RU_WORDS.split()),
-        sequences=("ого", "ому", "ться", "ешь", "ает", "ение", "ый", "ий", "ах", "ями"),
+        # The last five are the vowel pairs Russian writes where
+        # Ukrainian writes an "і" form: Библии / Біблії, послание /
+        # послання, первую / першу. They carry a Russian sentence that
+        # happens to contain none of "ы э ъ ё" — "Изучаем первую книгу
+        # Библии вместе" is exactly that, and with the absence rule now
+        # requiring real length, orthography is what is left to argue
+        # from.
+        sequences=("ого", "ому", "ться", "ешь", "ает", "ение", "ый", "ий", "ах", "ями", "ии", "ие", "ию", "ую", "ые"),
     ),
     "uk": _Profile(
         script=_CYRILLIC,

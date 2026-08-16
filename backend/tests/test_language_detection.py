@@ -1,4 +1,4 @@
-# ruff: noqa: RUF001
+# ruff: noqa: RUF001, RUF002, RUF003
 # These tests EXIST to exercise Cyrillic-vs-Latin detection, so the
 # mixed-script literals (and any docstring describing them) are the
 # whole point.
@@ -319,3 +319,59 @@ class TestAWordTwoLanguagesShare:
         # The whole design: no signal means no answer, not a coin flip.
         assert detect_locale("Amen") is None
         assert detect_locale("1:1") is None
+
+
+class TestTheEvidenceWasMeasuredNotImagined:
+    """Every rule here was checked against every string in production.
+
+    The absence rule — "a Ukrainian text without і/ї/є does not occur" —
+    was set at 20 letters on reasoning alone, and the reasoning was
+    wrong: 10% of Ukrainian strings between 20 and 39 letters have no
+    hallmark at all. It read them as Russian, and the validator then
+    reported correct translations as the wrong language.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _all_four(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(lang_mod, "LOCALE_CODES", ("ru", "en", "de", "uk"))
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "Модуль 3. Друга половина: чотири групи",
+            "Урок 10. Листи Павла: порядок за довжиною, а не за часом",
+            "Уздовж узбережжя Середземного моря",
+            "За авторами, а не за адресатами",
+        ],
+    )
+    def test_ukrainian_without_a_hallmark_letter_is_not_called_russian(self, text: str):
+        # Production strings, all four of them. None contains і, ї or є.
+        assert lang_mod.detect_locale(text) != "ru"
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "Изучаем первую книгу Библии вместе",
+            "Кто написал послание к римлянам?",
+            "Согласно Матфею 4:1, кто повёл Иисуса в пустыню?",
+        ],
+    )
+    def test_russian_is_still_russian(self, text: str):
+        assert lang_mod.detect_locale(text) == "ru"
+
+    @pytest.mark.parametrize(
+        "text",
+        ["Слово Божие", "Вся карта на одной странице", "Сколько тебе лет?", "Через три роки", "Три"],
+    )
+    def test_a_few_words_are_not_enough_to_name_a_language(self, text: str):
+        # The first three are Russian, the fourth Ukrainian, and none of
+        # them carries evidence either way. Refusing is the answer; a
+        # wrong guess here is what parks a correct translation for
+        # review.
+        assert lang_mod.detect_locale(text) is None
+
+    def test_a_word_both_languages_use_decides_nothing(self):
+        from app.services.language_detection import _AMBIGUOUS_WORDS
+
+        for word in ("а", "за", "три", "тебе", "не", "на"):
+            assert word in _AMBIGUOUS_WORDS, word

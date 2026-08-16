@@ -49,7 +49,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final
 
 from app.core.sanitize import strip_tags
-from app.services.language_detection import detect_locale
+from app.services.language_detection import carries_language, detect_locale
 
 if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
@@ -280,6 +280,12 @@ def _check_identity(
 
 
 def _check_language(translated: str, *, target_locale: LocaleCode) -> ValidationIssue | None:
+    # "Три", "Amen", "1 Kor. 13" — a string with no prose in it is the
+    # same string in every language, and asking which language it is in
+    # is asking the wrong question. The detector will sometimes answer
+    # anyway; this is where we decline to listen.
+    if not carries_language(translated):
+        return None
     detected = detect_locale(translated)
     if detected is None or detected == target_locale:
         # ``None`` means the detector had no signal — short strings,
