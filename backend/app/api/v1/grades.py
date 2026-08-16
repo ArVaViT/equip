@@ -84,7 +84,7 @@ from app.services.grade_sheet_service import active_sheet, finalize_sheet, reope
 from app.services.grading_queue import assignment_work, pending_summary, waiting_groups
 from app.services.grading_scheme import effective_bands, get_org_settings, validate_scheme_threshold
 from app.services.my_grade_service import build_my_course_grade, latest_enrollment
-from app.services.notification_service import create_notification
+from app.services.notification_service import create_notification, notification_text
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id, populate_spine_texts
 from app.services.user_locale import preferred_locale_of
 
@@ -991,6 +991,11 @@ def request_retake(
         message=t(
             teacher_locale,
             "notif.retake_requested.body",
+            student=student_name,
+            course=course_title_for_teacher,
+        ),
+        i18n=notification_text(
+            "notif.retake_requested",
             student=student_name,
             course=course_title_for_teacher,
         ),

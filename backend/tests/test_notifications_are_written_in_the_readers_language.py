@@ -120,3 +120,78 @@ class TestWhoseLanguageItIs:
         # System-issued mail and notifications have no author behind
         # them and still have to go out.
         assert preferred_locale_of(db, None) == "ru"
+
+
+class TestTheBellFollowsTheReader:
+    """A notification used to be finished text, written once in whatever
+    language the writer resolved at the time. Switch your language and
+    the bell stayed in the old one — for every notification you had
+    already received, forever.
+
+    It now carries the recipe as well as the text: the catalog key and
+    the values. The list route renders it in the language being asked
+    for right now.
+    """
+
+    def _notify(self, db: Session, user_id, **kwargs):
+        from app.services.notification_service import create_notification, notification_text
+
+        return create_notification(
+            db,
+            user_id=user_id,
+            type="certificate_approved",
+            title="Certificate Approved",
+            message='Your certificate for "Acts" has been approved!',
+            i18n=notification_text("notif.cert_approved", course="Acts"),
+            **kwargs,
+        )
+
+    def test_the_same_row_reads_in_whichever_language_is_asked_for(self, db: Session):
+        from app.services.notification_service import render_notification
+
+        user_id = uuid.uuid4()
+        db.add(User(id=user_id, email=f"{user_id}@example.com", role="student", preferred_locale="ru"))
+        db.commit()
+        row = self._notify(db, user_id)
+        db.commit()
+
+        rendered = {locale: render_notification(row, locale) for locale in LOCALE_CODES}
+
+        assert len({title for title, _ in rendered.values()}) == len(LOCALE_CODES)
+        assert rendered["de"][0] == t("de", "notif.cert_approved.title")
+        assert "Acts" in rendered["uk"][1]
+
+    def test_a_row_written_before_the_recipe_keeps_its_text(self, db: Session):
+        from app.services.notification_service import create_notification, render_notification
+
+        user_id = uuid.uuid4()
+        db.add(User(id=user_id, email=f"{user_id}@example.com", role="student", preferred_locale="ru"))
+        db.commit()
+        row = create_notification(
+            db,
+            user_id=user_id,
+            type="certificate_approved",
+            title="Certificate Approved",
+            message="Your certificate has been approved!",
+        )
+        db.commit()
+
+        assert render_notification(row, "de") == ("Certificate Approved", "Your certificate has been approved!")
+
+    def test_a_key_that_left_the_catalog_falls_back_rather_than_showing_the_key(self, db: Session):
+        from app.services.notification_service import create_notification, notification_text, render_notification
+
+        user_id = uuid.uuid4()
+        db.add(User(id=user_id, email=f"{user_id}@example.com", role="student", preferred_locale="ru"))
+        db.commit()
+        row = create_notification(
+            db,
+            user_id=user_id,
+            type="certificate_approved",
+            title="Stored title",
+            message="Stored message",
+            i18n=notification_text("notif.no_longer_exists"),
+        )
+        db.commit()
+
+        assert render_notification(row, "de") == ("Stored title", "Stored message")
