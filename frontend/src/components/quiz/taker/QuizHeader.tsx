@@ -1,6 +1,7 @@
 import { GraduationCap, HelpCircle } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import type { Quiz } from "@/types"
+import { orNotTranslated } from "@/lib/untranslated"
 
 interface Props {
   quiz: Quiz
@@ -38,7 +39,7 @@ export function QuizHeader({
         {typeLabel}
       </p>
       <h3 className="font-serif text-lg font-semibold tracking-tight text-wrap-safe">
-        {quiz.title}
+        {orNotTranslated(t, quiz.title)}
       </h3>
       {quiz.description && (
         <p className="mt-1.5 text-sm leading-relaxed text-ink-muted text-wrap-safe whitespace-pre-line">

@@ -10,6 +10,7 @@ import { toProxyImage } from "@/lib/images"
 import { toast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
 import type { Course } from "@/types"
+import { orNotTranslated } from "@/lib/untranslated"
 
 interface Props {
   /** First name from the user's profile (when known). When present,
@@ -225,7 +226,7 @@ export function CoursePickerStep({ firstName, onEnrolled, onBrowse, onSkip }: Pr
                     )}
                     <div className="min-w-0 flex-1">
                       <h2 className="line-clamp-2 font-serif text-base font-semibold leading-tight tracking-tight text-ink">
-                        {course.title}
+                        {orNotTranslated(t, course.title)}
                       </h2>
                       {course.description && (
                         <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-ink-muted">

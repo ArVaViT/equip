@@ -2,6 +2,7 @@ import { Trash2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import type { Notification } from "@/types"
 import { cn } from "@/lib/utils"
+import { orNotTranslated } from "@/lib/untranslated"
 import {
   colorFor,
   iconFor,
@@ -33,7 +34,7 @@ export function NotificationItem({ notification, onActivate, onDelete }: Props) 
       <button
         onClick={() => onActivate(notification)}
         className="flex gap-3 flex-1 min-w-0 text-left cursor-pointer bg-transparent border-0 p-0"
-        aria-label={notification.title}
+        aria-label={orNotTranslated(t, notification.title)}
       >
         <div className={cn("mt-0.5 shrink-0", color)}>
           <Icon className="h-4 w-4" />
@@ -48,14 +49,14 @@ export function NotificationItem({ notification, onActivate, onDelete }: Props) 
                   : "text-ink-muted",
               )}
             >
-              {notification.title}
+              {orNotTranslated(t, notification.title)}
             </p>
             {!notification.is_read && (
               <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />
             )}
           </div>
           <p className="mt-0.5 text-xs text-ink-muted line-clamp-2">
-            {notification.message}
+            {orNotTranslated(t, notification.message)}
           </p>
           <p className="mt-1 text-xs text-ink-muted">
             {timeAgo(notification.created_at, t)}

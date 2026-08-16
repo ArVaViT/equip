@@ -47,8 +47,11 @@ export default function CertificatesPage() {
   const courseTitle = (courseId: string | null) => {
     if (!courseId) return t("certificates.courseFallback", { id: "—" })
     const enrollment = enrollments.find((e) => e.course_id === courseId)
+    // ``??`` only catches null. A course with no title in this reader's
+    // language now comes back as an empty string, which slipped straight
+    // through and printed a certificate row with no course on it.
     return (
-      enrollment?.course?.title ??
+      enrollment?.course?.title?.trim() ||
       t("certificates.courseFallback", { id: `${courseId.slice(0, 8)}…` })
     )
   }

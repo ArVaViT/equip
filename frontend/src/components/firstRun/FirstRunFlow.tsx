@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { legalService } from "@/services/legal"
@@ -102,6 +103,7 @@ function decideInitialStep(userId: string | undefined, legalOutstanding: boolean
  */
 export function FirstRunFlow() {
   const { user } = useAuth()
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const prefersReducedMotion = useReducedMotion()
@@ -332,12 +334,16 @@ export function FirstRunFlow() {
       aria-labelledby="first-run-heading"
       className="fixed inset-0 z-[2147483646] flex items-start justify-center overflow-y-auto bg-surface px-4 py-10 sm:items-center sm:py-16"
     >
+      {/* The name a screen reader announces for this dialog. It was written
+          in English at the call site, so every reader who is not reading in
+          English had the one part of the first-run flow they cannot see
+          announced in a language they did not choose. */}
       <h1 id="first-run-heading" className="sr-only">
         {step === "privacy"
-          ? "Privacy policy"
+          ? t("firstRun.privacy.eyebrow")
           : step === "setup"
-            ? "Quick setup"
-            : "Pick your first course"}
+            ? t("firstRun.setup.eyebrow")
+            : t("firstRun.picker.eyebrow")}
       </h1>
       <AnimatePresence mode="wait" initial={false}>
         {step === "privacy" && (

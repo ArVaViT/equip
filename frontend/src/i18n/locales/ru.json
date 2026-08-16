@@ -18,7 +18,8 @@
     "scrollToTop": "Наверх",
     "skipToContent": "Перейти к содержимому",
     "dismissAnnouncement": "Закрыть объявление",
-    "save": "Сохранить"
+    "save": "Сохранить",
+    "back": "Назад"
   },
   "inlineEdit": {
     "defaultPlaceholder": "Нажмите для редактирования",

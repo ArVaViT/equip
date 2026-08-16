@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { ChevronLeft, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useTranslation } from "react-i18next"
 
 /**
  * The top of a page: what it is, and what you can do to it.
@@ -53,9 +54,14 @@ export function PageHeader({
   meta,
   actions,
   backTo,
-  backLabel = "Back",
+  backLabel,
   className,
 }: PageHeaderProps) {
+  // The default used to be the English word "Back", written into the
+  // signature. No caller relied on it, which is the only reason nobody saw
+  // it — the next caller to omit the label would have shipped one English
+  // word into every language.
+  const { t } = useTranslation()
   return (
     <header className={cn("mb-8 space-y-4", className)}>
       {backTo && (
@@ -64,7 +70,7 @@ export function PageHeader({
           className="-mx-2 inline-flex min-h-[44px] items-center gap-1 rounded-md px-2 text-xs text-ink-muted transition-colors duration-fast hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 sm:mx-0 sm:min-h-0 sm:px-0"
         >
           <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-          {backLabel}
+          {backLabel ?? t("common.back")}
         </Link>
       )}
       {cover && <div className="max-w-4xl">{cover}</div>}

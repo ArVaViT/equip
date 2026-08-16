@@ -18,7 +18,8 @@
     "scrollToTop": "Nach oben",
     "skipToContent": "Zum Inhalt springen",
     "dismissAnnouncement": "Ankündigung schließen",
-    "save": "Speichern"
+    "save": "Speichern",
+    "back": "Zurück"
   },
   "inlineEdit": {
     "defaultPlaceholder": "Zum Bearbeiten klicken",

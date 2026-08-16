@@ -5,6 +5,7 @@ import { BookOpen, Sparkles } from "lucide-react"
 import { toProxyImage } from "@/lib/images"
 import type { Course } from "@/types"
 import { EDITORIAL_EASE } from "@/lib/motion"
+import { orNotTranslated } from "@/lib/untranslated"
 
 interface Props {
   /** The course the user just enrolled in. We use its title + cover
@@ -98,7 +99,7 @@ export function EnrollSplash({ course, firstName, onComplete }: Props) {
           </div>
         )}
         <h1 className="max-w-2xl text-balance font-serif text-3xl font-semibold leading-tight tracking-tight text-ink sm:text-4xl">
-          {course.title}
+          {orNotTranslated(t, course.title)}
         </h1>
       </motion.div>
       <motion.p
