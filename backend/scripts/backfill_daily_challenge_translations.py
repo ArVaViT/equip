@@ -43,6 +43,7 @@ import logging
 import sys
 import time
 
+from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.orm import sessionmaker
 
 from app.core.database import _get_engine
@@ -59,6 +60,14 @@ logger = logging.getLogger("backfill-dc-translations")
 # Large enough to be worth the round trip, small enough that a stopped
 # run has not read a thousand rows it will never use.
 _PAGE = 25
+
+# A laptop's network is not a datacentre's. This run takes hours, and a
+# VPN reconnect is enough to make the database name stop resolving for a
+# few seconds — which killed a run at question three with
+# ``could not translate host name``. The work is idempotent and the
+# batch query is cheap, so waiting and asking again is always right.
+_DB_RETRIES = 6
+_DB_BACKOFF_SECONDS = 15.0
 
 
 def main() -> int:
@@ -84,12 +93,27 @@ def main() -> int:
 
     session_factory = sessionmaker(bind=_get_engine(), expire_on_commit=False)
     db = session_factory()
+
+    def next_batch(wanted: int):
+        """The page of work, through a network that comes and goes."""
+        for attempt in range(_DB_RETRIES):
+            try:
+                return questions_missing_a_language(db, limit=wanted)
+            except (OperationalError, DBAPIError) as exc:
+                db.rollback()
+                if attempt == _DB_RETRIES - 1:
+                    raise
+                wait = _DB_BACKOFF_SECONDS * (attempt + 1)
+                logger.warning("database unreachable (%s); retrying in %.0fs", exc.__class__.__name__, wait)
+                time.sleep(wait)
+        return []
+
     done = 0
     failed = 0
     try:
         while args.limit == 0 or done < args.limit:
             wanted = _PAGE if args.limit == 0 else min(_PAGE, args.limit - done)
-            batch = questions_missing_a_language(db, limit=wanted)
+            batch = next_batch(wanted)
             if not batch:
                 logger.info("nothing left to translate")
                 break
@@ -103,6 +127,13 @@ def main() -> int:
                     continue
                 try:
                     report = translate_question(db, question)
+                except (OperationalError, DBAPIError) as exc:
+                    # The database, not the question. Wait for it rather
+                    # than counting a failure the question did not cause.
+                    db.rollback()
+                    logger.warning("database unreachable on %s (%s); waiting", label, exc.__class__.__name__)
+                    time.sleep(_DB_BACKOFF_SECONDS)
+                    continue
                 except Exception as exc:
                     # One bad question must not end the run — the point of
                     # a catch-up pass is that it finishes.
