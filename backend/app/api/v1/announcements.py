@@ -30,7 +30,7 @@ from app.services.content_versions import (
     dual_write_entity_content,
     fetch_cv_entity_texts_with_fallback,
 )
-from app.services.notification_service import create_notifications_bulk
+from app.services.notification_service import create_notifications_bulk, notification_text
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import localize_announcement_rows
 
@@ -425,6 +425,11 @@ def create_announcement(
                 # markdown in notifications" feature would silently inherit
                 # any unsanitised payload that lived in the message column.
                 message=notif_message,
+                i18n=notification_text(
+                    "notif.new_announcement",
+                    title=ann_title_for_locale,
+                    course=title_for_locale,
+                ),
                 link=f"/courses/{data.course_id}",
                 metadata={"course_id": data.course_id, "announcement_id": str(announcement.id)},
             )

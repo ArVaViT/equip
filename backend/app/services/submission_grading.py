@@ -21,7 +21,7 @@ from fastapi import status as http_status
 from app.core.errors import ErrorCode, equip_error
 from app.core.i18n import t
 from app.services.audit_service import log_action
-from app.services.notification_service import create_notification
+from app.services.notification_service import create_notification, notification_text
 from app.services.translation.resolve_for_display import fetch_cv_entity_texts_with_fallback
 from app.services.user_locale import preferred_locale_of
 
@@ -95,6 +95,16 @@ def apply_grade(
         message=t(
             reader_locale,
             "notif.assignment_graded.body",
+            title=title,
+            grade=str(grade),
+            max_score=str(assignment.max_score),
+        ),
+        # …and the recipe, so the row can be read in another language
+        # later. The assignment title is captured as it read at the
+        # moment of grading; re-resolving it per request would be a
+        # query per notification on the bell.
+        i18n=notification_text(
+            "notif.assignment_graded",
             title=title,
             grade=str(grade),
             max_score=str(assignment.max_score),

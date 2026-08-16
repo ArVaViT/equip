@@ -33,7 +33,7 @@ from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.audit_service import log_action
 from app.services.certificate_grade_snapshot import snapshot_certificate_grade
 from app.services.domain_access import assert_course_owner
-from app.services.notification_service import create_notification
+from app.services.notification_service import create_notification, notification_text
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 from app.services.user_locale import preferred_locale_of
 
@@ -257,6 +257,7 @@ def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> 
         type="certificate_approved",
         title=notif_title,
         message=notif_message,
+        i18n=notification_text("notif.cert_approved", course=course_title),
         link="/certificates",
         metadata={"course_id": cert.course_id, "certificate_id": str(cert.id)},
     )
@@ -328,6 +329,7 @@ def reject(db: Session, cert_id: UUID, user: User, request: Request) -> Certific
         type="certificate_rejected",
         title=notif_title,
         message=notif_message,
+        i18n=notification_text("notif.cert_rejected", course=course_title),
         link="/certificates",
         metadata={"course_id": cert.course_id, "certificate_id": str(cert.id)},
     )

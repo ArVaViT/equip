@@ -2331,6 +2331,10 @@
     "path": "/api/v1/notifications",
     "params": [
       [
+        "Accept-Language",
+        "header"
+      ],
+      [
         "page",
         "query"
       ],

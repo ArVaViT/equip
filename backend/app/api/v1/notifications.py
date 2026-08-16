@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Header, Query, Response, status
 from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
@@ -9,19 +9,23 @@ from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.notification import Notification
 from app.models.user import User
+from app.schemas.locale import normalize_locale
 from app.schemas.notification import (
     NotificationListResponse,
     NotificationResponse,
     UnreadCountResponse,
 )
+from app.services.notification_service import render_notification
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
 @router.get("", response_model=NotificationListResponse)
 def list_notifications(
+    response: Response,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -36,12 +40,25 @@ def list_notifications(
         .all()
     )
 
-    # Return a plain dict so FastAPI can wrap the ORM rows into
-    # ``NotificationListResponse`` via ``from_attributes``; constructing the
-    # Pydantic envelope directly would need an explicit ``model_validate``
-    # and fight with our mypy config.
+    # Rendered per request, not per write. A notification used to be
+    # stored as finished text in whatever language the writer resolved
+    # at the time, which froze the reader's language at the moment of
+    # the event: switch to German and the bell stays Russian. Rows
+    # written before this carry no recipe and fall back to their stored
+    # text.
+    response.headers["Vary"] = "Accept-Language"
+    locale = normalize_locale(accept_language or current_user.preferred_locale)
+    rendered = []
+    for item in items:
+        title, message = render_notification(item, locale)
+        rendered.append(
+            NotificationResponse.model_validate(item, from_attributes=True).model_copy(
+                update={"title": title, "message": message}
+            )
+        )
+
     return {
-        "items": items,
+        "items": rendered,
         "total": total,
         "page": page,
         "page_size": page_size,
