@@ -35,6 +35,10 @@ class ChapterUpdate(BaseModel):
 class ChapterResponse(ChapterBase):
     model_config = ConfigDict(from_attributes=True)
 
+    # A lesson the reader's language does not have yet resolves to "".
+    # The constraint on ``ChapterBase.title`` belongs to what a teacher
+    # submits, not to what a reader receives. See ``_ReadTitle``.
+    title: str = ""
     id: str
     module_id: str
 
@@ -48,7 +52,7 @@ class ChapterSummary(BaseModel):
 
     id: str
     module_id: str
-    title: str
+    title: str = ""
     order_index: int = 0
     chapter_type: CHAPTER_TYPES = "reading"
     requires_completion: bool = False
@@ -76,6 +80,7 @@ class ModuleUpdate(BaseModel):
 class ModuleResponse(ModuleBase):
     model_config = ConfigDict(from_attributes=True)
 
+    title: str = ""
     id: str
     course_id: str
     chapters: list[ChapterResponse] = []
@@ -86,7 +91,7 @@ class ModuleSummary(BaseModel):
 
     id: str
     course_id: str
-    title: str
+    title: str = ""
     description: str | None = None
     order_index: int = 0
     due_date: datetime | None = None
@@ -95,6 +100,25 @@ class ModuleSummary(BaseModel):
 
 class CourseBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=300)
+    description: str | None = Field(None, max_length=10_000)
+    image_url: str | None = Field(None, max_length=2048)
+
+
+class _ReadTitle(BaseModel):
+    """A title on the way out, which may be a title this reader does not have.
+
+    ``CourseBase`` constrains ``title`` to at least one character, and
+    that is right for what a teacher submits. It is wrong for what a
+    reader receives: since the spare language was removed, a course with
+    no row in the reader's language resolves to ``""`` — and a required
+    non-empty field turned that into a 500 on the catalog for every
+    German and Ukrainian visitor, which is how this was found.
+
+    Read models carry the field without the length rule and let the
+    client say "not translated yet".
+    """
+
+    title: str = ""
     description: str | None = Field(None, max_length=10_000)
     image_url: str | None = Field(None, max_length=2048)
 
@@ -127,7 +151,7 @@ class CourseUpdate(BaseModel):
         return validate_safe_media_url(value)
 
 
-class CourseResponse(CourseBase):
+class CourseResponse(_ReadTitle):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -144,7 +168,7 @@ class CourseResponse(CourseBase):
     modules: list[ModuleResponse] = []
 
 
-class CourseSummary(CourseBase):
+class CourseSummary(_ReadTitle):
     """Catalog / list-view course. Kept as a separate shape from
     ``CourseResponse`` so that if we later decide to, say, omit modules/
     chapters from list responses entirely, we can do that in one place.
@@ -176,7 +200,7 @@ class EnrollmentResponse(BaseModel):
     course: CourseResponse | None = None
 
 
-class CourseDashboardSummary(CourseBase):
+class CourseDashboardSummary(_ReadTitle):
     """Course shape for the student-dashboard list (``/users/me/courses``).
 
     Deliberately omits ``modules`` (and therefore the chapter level): the

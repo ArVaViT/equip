@@ -18,14 +18,15 @@ from fastapi.responses import Response as RawResponse
 from app.api.dependencies import get_current_user
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
-from app.models.course import CourseStatus
+from app.models.chapter_block import ChapterBlock
+from app.models.course import Course, CourseStatus
 from app.models.enrollment import Enrollment
 from app.models.user import UserRole
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.course_pdf import render_course_pdf
 from app.services.course_service import get_course
 from app.services.translation.resolve_for_display import (
-    build_localized_course_response_with_tree,
+    localize_chapter_block_rows,
     populate_spine_texts,
 )
 
@@ -35,6 +36,44 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
     from app.models.user import User
+
+
+def _attach_localized_blocks(db: Session, course: Course, *, display_locale: LocaleCode) -> None:
+    """Give every chapter in the tree a ``blocks`` list the renderer can read.
+
+    Two things were wrong here at once. ``Chapter`` has no ``blocks``
+    relationship, so the renderer's ``getattr(chapter, "blocks", None)
+    or []`` was always empty — the export had never contained a line of
+    lesson text, in any language. And ``chapter_blocks.content`` was
+    dropped in Phase 5e2, so even with the rows in hand the content has
+    to come from ``content_versions``.
+
+    One query for the blocks, one bulk resolve for their text, at the
+    reader's language. A block with nothing in this language gets ``""``
+    and the renderer prints nothing for it.
+    """
+    chapters = [chapter for module in course.modules for chapter in module.chapters]
+    if not chapters:
+        return
+    rows = (
+        db.query(ChapterBlock)
+        .filter(ChapterBlock.chapter_id.in_([str(c.id) for c in chapters]))
+        .order_by(ChapterBlock.order_index)
+        .all()
+    )
+    resolved = localize_chapter_block_rows(
+        db,
+        rows,
+        display_locale=display_locale,
+        source_locale=normalize_locale(course.source_locale),
+    )
+    content_by_id = {str(row.id): (row.content or "") for row in resolved}
+    by_chapter: dict[str, list[ChapterBlock]] = {}
+    for block in rows:
+        block.content = content_by_id.get(str(block.id), "")  # type: ignore[attr-defined]
+        by_chapter.setdefault(str(block.chapter_id), []).append(block)
+    for chapter in chapters:
+        chapter.blocks = by_chapter.get(str(chapter.id), [])  # type: ignore[attr-defined]
 
 
 @router.get(
@@ -97,18 +136,24 @@ def export_course_pdf(
             context={"resource_type": "course", "resource_id": course_id},
         )
 
-    # Hydrate title / description / module + chapter titles at the
-    # requested locale. The PDF renderer is locale-blind — it just
-    # reads ``course.title`` / ``course.description`` /
-    # ``module.title`` / ``chapter.title`` directly.
+    # The renderer is locale-blind: it reads ``course.title``,
+    # ``module.title``, ``chapter.title`` and ``block.content`` straight
+    # off the ORM objects. Everything locale-aware has to happen here.
     display_locale: LocaleCode = normalize_locale(accept_language)
-    # populate_spine_texts already bulk-hydrates every module's
-    # title/description at the course's source locale (hydrate_modules
-    # defaults to True), so no per-module hydration pass is needed.
-    populate_spine_texts(db, [course])
-    # build_localized_course_response_with_tree applies the overlay in
-    # place via .title attribute hydration on each module + chapter.
-    _ = build_localized_course_response_with_tree(db, course, display_locale)
+
+    # Titles, at the reader's language rather than the author's. This
+    # used to hydrate at the course's source locale and then call
+    # ``build_localized_course_response_with_tree`` for its "side
+    # effects" — but that function builds fresh Pydantic objects and
+    # deliberately never writes back to the ORM, so the export came out
+    # in the author's language whoever asked for it.
+    populate_spine_texts(db, [course], display_locale=display_locale)
+
+    # Lesson bodies. ``chapter_blocks.content`` was dropped in Phase
+    # 5e2, so ``getattr(block, "content", None)`` — which is what the
+    # renderer does — was ``None`` for every block: the export had been
+    # shipping with no lesson text in it at all, in any language.
+    _attach_localized_blocks(db, course, display_locale=display_locale)
 
     pdf_bytes = render_course_pdf(course)
 

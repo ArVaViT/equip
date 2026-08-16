@@ -513,7 +513,21 @@ def build_localized_course_response_with_tree(
     course: Course,
     display_locale: LocaleCode,
 ) -> CourseResponse:
-    """Localized course title/description plus module and chapter titles for students."""
+    """Localized course title/description plus module and chapter titles for students.
+
+    Every title resolves to ``""`` when this language does not have one.
+    It used to fall back to ``mod.title`` — the source column, in the
+    author's language — which is how a German reader opening a Russian
+    course got the whole tree in Russian: module names, lesson names,
+    the course title itself. ``pick`` was doing its job and returning
+    ``None``; the ``or`` after it put the other language straight back.
+
+    An empty string is what the reader-facing clients already know how
+    to render: ``orNotTranslated`` in the web app turns it into "not
+    translated yet". A course nobody has translated is not a course in
+    that language, and saying so is the whole point of not having a
+    spare one.
+    """
     specs: list[tuple[str, str, str]] = [
         ("course", course.id, "title"),
         ("course", course.id, "description"),
@@ -556,14 +570,14 @@ def build_localized_course_response_with_tree(
     # tripping the static type checker.
     new_modules: list[ModuleResponse] = []
     for mod in course.modules:
-        mt = loc.pick("module", str(mod.id), "title", mod.title) or mod.title
+        mt = loc.pick("module", str(mod.id), "title", mod.title)
         md = loc.pick("module", str(mod.id), "description", mod.description)
         new_chapters = [
             ChapterResponse.model_validate(
                 {
                     "id": str(ch.id),
                     "module_id": str(ch.module_id),
-                    "title": loc.pick("chapter", str(ch.id), "title", ch.title) or ch.title,
+                    "title": loc.pick("chapter", str(ch.id), "title", ch.title) or "",
                     "order_index": ch.order_index,
                     "chapter_type": ch.chapter_type or "reading",
                     "requires_completion": ch.requires_completion,
@@ -577,7 +591,7 @@ def build_localized_course_response_with_tree(
                 {
                     "id": str(mod.id),
                     "course_id": str(mod.course_id),
-                    "title": mt,
+                    "title": mt or "",
                     "description": md,
                     "order_index": mod.order_index,
                     "due_date": mod.due_date,
@@ -589,7 +603,7 @@ def build_localized_course_response_with_tree(
     return CourseResponse.model_validate(
         {
             "id": course.id,
-            "title": loc.pick("course", course.id, "title", course.title) or course.title,
+            "title": loc.pick("course", course.id, "title", course.title) or "",
             "description": loc.pick("course", course.id, "description", course.description),
             "image_url": course.image_url,
             "status": course.status,
@@ -828,6 +842,7 @@ def localize_chapter_block_rows(
     display_locale: LocaleCode,
     source_locale: LocaleCode,
     prefer_human: bool = False,
+    fallback: Literal["auto", "none", "source_then_any"] = "auto",
 ) -> list[BlockResponse]:
     """Apply stored translations to TipTap HTML stored on chapter blocks.
 
@@ -836,15 +851,30 @@ def localize_chapter_block_rows(
     now. Build the response manually because ``model_validate(block)``
     would try to read ``block.content`` (no longer an attribute).
 
-    Three-tier fallback: display_locale → source_locale → any-locale.
-    The any-locale tier rescues blocks whose content was authored in a
-    locale that's neither display nor course-declared source (an edge
-    case from the per-field-detection world). When ``prefer_human`` is
-    set, the any-locale tier prefers human-authored rows over MT ones —
-    used by the ``?source=1`` editor view so a teacher never sees a
-    stale MT row as the "source" content for a block whose source-locale
-    row went missing.
+    ``fallback`` decides what a missing translation means, and this is
+    the lesson body — the longest thing anybody reads on the platform.
+
+    * ``"none"`` (what a reader gets where the platform translates):
+      the block comes back empty rather than in somebody else's
+      language. The chapter view renders that as "not translated yet".
+    * ``"source_then_any"``: display → source → any locale. For the
+      people who must see the text whatever language it is in — the
+      teacher editing their own lesson, the ``?source=1`` view.
+    * ``"auto"`` (default): ``"none"`` where the platform translates,
+      ``"source_then_any"`` where it does not.
+
+    The three-tier chain used to be unconditional, which is how a
+    German student reading a Russian course got the whole lesson in
+    Russian while every title around it correctly said the course was
+    not available in German.
+
+    When ``prefer_human`` is set, the any-locale tier prefers
+    human-authored rows over MT ones — used by the ``?source=1`` editor
+    view so a teacher never sees a stale MT row as the "source" content
+    for a block whose source-locale row went missing.
     """
+    if fallback == "auto":
+        fallback = "none" if is_translation_enabled() else "source_then_any"
     if not blocks:
         return []
     block_ids = [str(b.id) for b in blocks]
@@ -874,8 +904,10 @@ def localize_chapter_block_rows(
     out: list[BlockResponse] = []
     for b in blocks:
         bid = str(b.id)
-        any_tier = human_by_block.get(bid) or any_by_block.get(bid) if prefer_human else any_by_block.get(bid)
-        content = by_block_locale.get((bid, display_locale)) or by_block_locale.get((bid, source_locale)) or any_tier
+        content = by_block_locale.get((bid, display_locale))
+        if content is None and fallback == "source_then_any":
+            any_tier = human_by_block.get(bid) or any_by_block.get(bid) if prefer_human else any_by_block.get(bid)
+            content = by_block_locale.get((bid, source_locale)) or any_tier
         out.append(
             BlockResponse.model_validate(
                 {
@@ -919,11 +951,11 @@ def build_localized_module_response(
     ]
     loc = Localizer.build(db, specs, source_locale=source_locale, display_locale=display_locale)
 
-    mt = loc.pick("module", str(module.id), "title", module.title) or module.title
+    mt = loc.pick("module", str(module.id), "title", module.title) or ""
     md = loc.pick("module", str(module.id), "description", module.description)
     new_chapters: list[ChapterResponse] = []
     for ch in module.chapters:
-        cht = loc.pick("chapter", str(ch.id), "title", ch.title) or ch.title
+        cht = loc.pick("chapter", str(ch.id), "title", ch.title) or ""
         ch_base = ChapterResponse.model_validate(ch, from_attributes=True)
         new_chapters.append(ch_base.model_copy(update={"title": cht}))
     base = ModuleResponse.model_validate(module, from_attributes=True)

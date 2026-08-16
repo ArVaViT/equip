@@ -123,7 +123,13 @@ def list_blocks(
         # editor never surfaces an MT row in the any-locale fallback
         # tier — teachers edit human text, not machine output.
         return localize_chapter_block_rows(
-            db, rows, display_locale=ctx.source_locale, source_locale=ctx.source_locale, prefer_human=True
+            db,
+            rows,
+            display_locale=ctx.source_locale,
+            source_locale=ctx.source_locale,
+            prefer_human=True,
+            # The editor must see the lesson whatever language it is in.
+            fallback="source_then_any",
         )
     display_locale: LocaleCode = normalize_locale(accept_language)
     return localize_chapter_block_rows(db, rows, display_locale=display_locale, source_locale=ctx.source_locale)
@@ -331,4 +337,10 @@ def reorder_blocks(
     # this teacher-only endpoint (the editor reorders source blocks).
     ctx = resolve_chapter_locale_context(db, chapter_id=chapter_id, current_user=teacher)
     rows = db.query(ChapterBlock).filter(ChapterBlock.chapter_id == chapter_id).order_by(ChapterBlock.order_index).all()
-    return localize_chapter_block_rows(db, rows, display_locale=ctx.source_locale, source_locale=ctx.source_locale)
+    return localize_chapter_block_rows(
+        db,
+        rows,
+        display_locale=ctx.source_locale,
+        source_locale=ctx.source_locale,
+        fallback="source_then_any",
+    )
