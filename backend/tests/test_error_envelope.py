@@ -60,6 +60,7 @@ def test_enum_values_are_stable_strings():
         "translation.worker_unconfigured",
         "quiz.not_open",
         "quiz.attempts_exhausted",
+        "quiz.not_translated",
         "daily_challenge.not_scheduled",
         "daily_challenge.not_translated",
         "daily_challenge.already_attempted",

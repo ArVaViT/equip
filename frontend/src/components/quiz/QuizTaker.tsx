@@ -37,7 +37,7 @@ interface QuizTakerProps {
 
 export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerProps) {
   const { t } = useTranslation()
-  const { loading, fetchError, quiz, attempts, setAttempts } = useQuizTaker({
+  const { loading, fetchError, notTranslated, quiz, attempts, setAttempts } = useQuizTaker({
     chapterId,
     quizId,
   })
@@ -48,6 +48,16 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
 
   if (loading) {
     return <PageSpinner variant="section" />
+  }
+  if (notTranslated) {
+    // The quiz exists; this language does not have it yet. Not an error
+    // and not an empty chapter — a wait, said out loud, because the
+    // alternative was a graded attempt on blank questions.
+    return (
+      <p className="text-sm text-ink-muted py-4 text-center">
+        {t("quiz.notTranslated")}
+      </p>
+    )
   }
   if (fetchError) {
     return (

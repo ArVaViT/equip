@@ -104,6 +104,12 @@ class ErrorCode(enum.StrEnum):
     QUIZ_NOT_OPEN = "quiz.not_open"
     """Quiz is not currently accepting submissions."""
 
+    QUIZ_NOT_TRANSLATED = "quiz.not_translated"
+    """The quiz exists but not in the language this student reads. Serving
+    it anyway would mean blank questions and blank options on a graded
+    attempt. Frontend says "not available in your language yet" — this is
+    a wait, not a failure."""
+
     QUIZ_ATTEMPTS_EXHAUSTED = "quiz.attempts_exhausted"
     """Student has hit the per-quiz attempt cap."""
 

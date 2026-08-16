@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { getErrorCode } from "@/lib/errorCode"
 import { coursesService } from "@/services/courses"
 import type { Quiz, QuizAttempt } from "@/types"
 
@@ -10,6 +11,8 @@ interface Params {
 interface UseQuizTakerResult {
   loading: boolean
   fetchError: boolean
+  /** The quiz exists, but not in this reader's language. A wait, not a failure. */
+  notTranslated: boolean
   quiz: Quiz | null
   /** `null` when the attempts request failed. Not an empty history. */
   attempts: QuizAttempt[] | null
@@ -22,11 +25,13 @@ export function useQuizTaker({ chapterId, quizId }: Params): UseQuizTakerResult 
   const [attempts, setAttempts] = useState<QuizAttempt[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
+  const [notTranslated, setNotTranslated] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setFetchError(false)
+    setNotTranslated(false)
     setAttempts([])
     setQuiz(null)
 
@@ -50,8 +55,14 @@ export function useQuizTaker({ chapterId, quizId }: Params): UseQuizTakerResult 
             (await coursesService.getMyQuizAttempts(resolved.id).catch(() => null))
           if (!cancelled) setAttempts(att)
         }
-      } catch {
-        if (!cancelled) setFetchError(true)
+      } catch (err: unknown) {
+        if (cancelled) return
+        // A quiz that exists but not in this reader's language. The
+        // backend refuses rather than handing over blank questions on a
+        // graded attempt; this is a wait, not a failure, and it reads
+        // differently to the student.
+        if (getErrorCode(err) === "quiz.not_translated") setNotTranslated(true)
+        else setFetchError(true)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -62,5 +73,5 @@ export function useQuizTaker({ chapterId, quizId }: Params): UseQuizTakerResult 
     }
   }, [chapterId, quizId])
 
-  return { loading, fetchError, quiz, attempts, setAttempts }
+  return { loading, fetchError, notTranslated, quiz, attempts, setAttempts }
 }

@@ -48,6 +48,7 @@ export type ErrorCode =
   // quiz / assignment
   | "quiz.not_open"
   | "quiz.attempts_exhausted"
+  | "quiz.not_translated"
   // daily challenge
   | "daily_challenge.not_scheduled"
   | "daily_challenge.not_translated"
