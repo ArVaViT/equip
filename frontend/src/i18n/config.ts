@@ -97,6 +97,35 @@ const LOCALE_LOADERS: Record<SupportedLocale, () => Promise<{ default: object }>
 }
 
 /**
+ * How many times to ask for a catalog before giving up on it.
+ *
+ * Without this, one failed chunk fetch left the whole app in raw-key
+ * mode — `header.home`, `courses.pageTitleAuthed`, `common.appName` on
+ * screen — until the reader thought to reload. i18next asks its backend
+ * once per language and caches the failure; a dynamic import that lost
+ * its network round trip is not a permanent fact about the world.
+ *
+ * Seen in production on 2026-08-16, which is how this got written.
+ */
+const CATALOG_ATTEMPTS = 3
+const CATALOG_RETRY_MS = 400
+
+async function loadCatalog(locale: SupportedLocale): Promise<object> {
+  let lastError: unknown
+  for (let attempt = 0; attempt < CATALOG_ATTEMPTS; attempt += 1) {
+    try {
+      return (await LOCALE_LOADERS[locale]()).default
+    } catch (err) {
+      lastError = err
+      if (attempt < CATALOG_ATTEMPTS - 1) {
+        await new Promise((resolve) => setTimeout(resolve, CATALOG_RETRY_MS * (attempt + 1)))
+      }
+    }
+  }
+  throw lastError
+}
+
+/**
  * Minimal i18next backend that resolves catalogs through the dynamic
  * imports above. Going through the backend API (instead of manual
  * `addResourceBundle` calls) means i18next itself awaits the catalog
@@ -116,8 +145,8 @@ const lazyLocaleBackend: BackendModule = {
       callback(null, {})
       return
     }
-    LOCALE_LOADERS[language]().then(
-      (mod) => callback(null, mod.default as Parameters<ReadCallback>[1]),
+    loadCatalog(language).then(
+      (catalog) => callback(null, catalog as Parameters<ReadCallback>[1]),
       (err) => callback(err as Error, null),
     )
   },
@@ -171,6 +200,48 @@ export const i18nReady: Promise<unknown> = i18n
           console.error(msg)
         },
   })
+
+/**
+ * If the catalog never arrived, keep trying — quietly.
+ *
+ * i18next asks its backend once per language and remembers a failure
+ * forever. The reader is left looking at `header.home` and
+ * `courses.pageTitleAuthed` with no way back except a reload they have
+ * no reason to think of. Retrying inside the loader covers a lost round
+ * trip; this covers being offline when the app started, which the
+ * loader's three attempts cannot outlast.
+ *
+ * Cheap to run: it only does anything when the active language has no
+ * resource bundle, which is the broken state and nothing else.
+ */
+function catalogIsMissing(): boolean {
+  const active = i18n.resolvedLanguage || i18n.language
+  return Boolean(active) && !i18n.hasResourceBundle(active, "translation")
+}
+
+function healCatalogWhenPossible(): void {
+  if (typeof window === "undefined") return
+  const attempt = () => {
+    if (!catalogIsMissing()) return
+    const active = i18n.resolvedLanguage || i18n.language
+    // The namespace has to be named. ``reloadResources([lang])`` and
+    // ``loadLanguages([lang])` both resolve without putting the bundle
+    // back — measured, after the first version of this shipped doing
+    // exactly nothing.
+    void i18n.reloadResources([active], ["translation"]).catch(() => {
+      /* still no network; the next event tries again */
+    })
+  }
+  window.addEventListener("online", attempt)
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") attempt()
+  })
+  // And once shortly after boot, for the reader who is already looking
+  // at a page of keys and will not switch tabs to fix it.
+  window.setTimeout(attempt, 2_000)
+}
+
+void i18nReady.finally(healCatalogWhenPossible)
 
 // Keep <html lang> in sync with the active locale so screen readers, browser
 // translation toolbars, and CSS `:lang(...)` selectors all align. With the
