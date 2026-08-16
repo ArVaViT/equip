@@ -21,15 +21,13 @@ import datetime as dt
 import logging
 import threading
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import httpx
 
 from app.core.config import settings
 from app.core.sanitize import html_to_plain_text
-
-if TYPE_CHECKING:
-    from app.schemas.locale import LocaleCode
+from app.schemas.locale import LocaleCode  # noqa: TC001 — annotations are evaluated at runtime here
+from app.services.bible.psalm_numbering import remap_usfm
 
 logger = logging.getLogger(__name__)
 
@@ -358,51 +356,16 @@ class VerseNotInBible(Exception):
 # rather than serve a different verse. Catalog references in the
 # "complex" range raise ``VerseNotInBible`` for Septuagint-numbered
 # bibles, which triggers the walk-forward to the next clean entry.
-_SEPTUAGINT_PSALM_OFFSET_RANGE = (11, 113, 117, 146)
-
-# Which editions number the Psalms the Septuagint way. Checked against the
-# live API on 2026-08-15 rather than assumed, at the five references where
-# the two systems disagree — Hebrew 10 (LXX folds it into 9), 51, 116 (LXX
-# splits into 114+115), 147 (LXX splits into 146+147) and 148 (identical) —
-# plus the shepherd psalm, Hebrew 23 / LXX 22.
-#
-# НРТ answers Hebrew 23 with "Господня земля" (that is Hebrew 24) and gives
-# the shepherd at 22: Septuagint. Luther 1912 and Куліш both answer every
-# probe the way the Hebrew-numbered English edition does, so neither is
-# remapped. Guessing would have been reasonable and wrong for Ukrainian:
-# a Slavic edition is not automatically Septuagint-numbered, and a wrong
-# guess makes the platform quote a different psalm than the one it names.
-_SEPTUAGINT_LOCALES = frozenset({"ru"})
-
-
 def _remap_ref_for_locale(ref: str, locale: LocaleCode) -> str | None:
-    """Translate a catalog (Hebrew-numbered) reference into the
-    upstream-bible's numbering for the given locale.
+    """Translate a catalog (Hebrew-numbered) reference into this
+    locale's edition numbering.
 
-    Returns ``None`` when the reference falls in a chapter where
-    Hebrew↔Septuagint psalm splits/combines (Hebrew 9, 10, 114, 115,
-    116, 147) — the caller treats that as "not in this bible" and
-    advances. Everything else maps cleanly: 1-8 and 148-150 are
-    identical across both numbering systems; 11-113 and 117-146 take
-    a -1 offset for Septuagint-numbered bibles like NRT.
+    The rule and the measurements behind it live in
+    ``bible.psalm_numbering`` — one definition, because the substitution
+    layer needs the identical answer and two copies would drift into
+    quoting different psalms on different pages.
     """
-    if locale not in _SEPTUAGINT_LOCALES:
-        return ref
-    if not ref.startswith("PSA."):
-        return ref
-    try:
-        _, chapter_str, verse_str = ref.split(".", 2)
-        chapter = int(chapter_str)
-    except (ValueError, IndexError):
-        return ref
-    low_a, high_a, low_b, high_b = _SEPTUAGINT_PSALM_OFFSET_RANGE
-    if 1 <= chapter <= 8 or 148 <= chapter <= 150:
-        return ref
-    if low_a <= chapter <= high_a or low_b <= chapter <= high_b:
-        return f"PSA.{chapter - 1}.{verse_str}"
-    # Complex chapters (Hebrew 9, 10, 114, 115, 116, 147) where the
-    # split/combine boundary makes a clean per-verse remap impossible.
-    return None
+    return remap_usfm(ref, locale)
 
 
 @dataclass(frozen=True)

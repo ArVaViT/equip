@@ -34,6 +34,7 @@ from typing import TYPE_CHECKING
 import httpx
 
 from app.services.bible.books import _BOOKS
+from app.services.bible.psalm_numbering import remap_psalm
 
 if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
@@ -167,7 +168,14 @@ def fetch_verse(ref: BibleRef, locale: LocaleCode) -> str | None:
     bible_id = API_BIBLE_IDS.get(locale)
     if bible_id is None:
         return None
-    usfm = _usfm_ref(ref)
+    # Hebrew numbers in, this edition's numbers out. A Septuagint-numbered
+    # bible does not refuse a Hebrew psalm reference — it answers a
+    # different psalm, fluently, and nothing reports a problem. ``None``
+    # means the two systems split that psalm and no honest mapping exists.
+    localized = remap_psalm(ref, locale)
+    if localized is None:
+        return None
+    usfm = _usfm_ref(localized)
     if usfm is None:
         return None
 
