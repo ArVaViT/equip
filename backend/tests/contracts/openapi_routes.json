@@ -3012,6 +3012,10 @@
     "path": "/api/v1/verse-of-the-day",
     "params": [
       [
+        "Accept-Language",
+        "header"
+      ],
+      [
         "locale",
         "query"
       ]

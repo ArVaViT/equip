@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Header, Query, Response, status
 
 from app.core.errors import ErrorCode, equip_error
 from app.schemas.locale import normalize_locale
@@ -30,13 +30,24 @@ router = APIRouter(prefix="/verse-of-the-day", tags=["verse-of-the-day"])
 
 @router.get("", response_model=VerseOfTheDayResponse)
 def read_verse_of_the_day(
-    locale: str = Query(
-        default="en",
-        description="Locale to render the verse in (e.g. 'en', 'ru', 'en-US').",
+    response: Response,
+    locale: str | None = Query(
+        default=None,
+        description="Locale to render the verse in (e.g. 'en', 'ru', 'en-US'). Defaults to Accept-Language.",
     ),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
 ) -> VerseOfTheDayResponse:
-    """Return today's curated verse, localized."""
-    normalized: LocaleCode = normalize_locale(locale, fallback="en")
+    """Return today's curated verse, localized.
+
+    The explicit parameter wins — the web app sends it, because its
+    language is a stored preference rather than whatever the browser
+    announces. Everything else on the platform reads ``Accept-Language``,
+    though, and this route used to ignore it and answer English: a
+    Russian reader calling it without the parameter got an English
+    verse, silently, and so did every other client.
+    """
+    response.headers["Vary"] = "Accept-Language"
+    normalized: LocaleCode = normalize_locale(locale or accept_language, fallback="en")
     try:
         verse = get_verse_of_the_day(normalized)
     except VerseOfTheDayUnavailable as exc:

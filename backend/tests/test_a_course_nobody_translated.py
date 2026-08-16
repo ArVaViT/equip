@@ -214,3 +214,28 @@ class TestTheLessonBody:
         )
 
         assert "Пётр" in (rows[0].content or "")
+
+
+class TestTheCatalogCard:
+    """Module titles ride inside every catalog card, and nobody had
+    localized them: they come off the ORM, hydrated at the course's own
+    language. So an English catalog carried "Модуль 1…" inside every
+    card, and so did the German and Ukrainian ones.
+
+    Found by reading a live production response, not by reading the
+    code — which is the point of the audit script this test came from.
+    """
+
+    def test_a_module_title_is_not_smuggled_in_in_the_authors_language(self, db: Session):
+        course = _russian_course(db)
+
+        summaries = build_localized_course_summaries(db, [course], "de")
+
+        assert [m.title for m in summaries[0].modules] == [""]
+
+    def test_and_it_is_there_for_the_reader_who_has_it(self, db: Session):
+        course = _russian_course(db)
+
+        summaries = build_localized_course_summaries(db, [course], "ru")
+
+        assert [m.title for m in summaries[0].modules] == ["Модуль 1. Введение"]
