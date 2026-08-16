@@ -141,6 +141,10 @@ def _inspect(report: Report, surface: str, locale: str, response: httpx.Response
     # Counting those as missing buried the real gaps under noise.
     if payload is None or payload == [] or payload == {}:
         return
+    # A paged envelope with nothing in it is the same answer: no
+    # certificates, no announcements, nothing to translate.
+    if isinstance(payload, dict) and payload.get("items") == []:
+        return
 
     strings: list[str] = []
     _texts(payload, strings)
@@ -181,8 +185,11 @@ def main() -> int:
             ("my grades", "/api/v1/grades/my"),
             ("calendar", "/api/v1/calendar/events"),
             ("notifications", "/api/v1/notifications"),
+            ("my courses", "/api/v1/users/me/enrollments"),
+            ("certificates", "/api/v1/certificates/my"),
         ]
         surfaces += [(f"course {cid[:8]}", f"/api/v1/courses/{cid}") for cid in course_ids]
+        surfaces += [(f"announcements {cid[:8]}", f"/api/v1/announcements?course_id={cid}") for cid in course_ids]
 
         # Down into the lesson itself. The tree is where the text lives —
         # a course page can look perfectly translated while every chapter
