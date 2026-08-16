@@ -5,7 +5,26 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.dependencies import verify_chapter_owner
 from app.core.errors import ErrorCode, equip_error
+from app.models.course import Chapter, Course, Module
 from app.models.quiz import Quiz, QuizQuestion
+
+
+def course_source_locale_for_chapter(db: Session, chapter_id: str) -> str | None:
+    """Walk ``Quiz -> Chapter -> Module -> Course`` for the language the
+    course was written in.
+
+    Two callers need it and for different reasons: the editor, as the
+    dual-write fallback when a short field cannot be classified by the
+    detector, and the grading queue, which must be able to show a teacher
+    text that exists in no other language than the author's.
+    """
+    return (
+        db.query(Course.source_locale)
+        .join(Module, Module.course_id == Course.id)
+        .join(Chapter, Chapter.module_id == Module.id)
+        .filter(Chapter.id == chapter_id)
+        .scalar()
+    )
 
 
 def verify_quiz_owner(db: Session, quiz: Quiz, teacher_id) -> None:

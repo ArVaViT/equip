@@ -2738,6 +2738,10 @@
     "path": "/api/v1/quizzes/{quiz_id}/pending-answers",
     "params": [
       [
+        "Accept-Language",
+        "header"
+      ],
+      [
         "include_graded",
         "query"
       ],
