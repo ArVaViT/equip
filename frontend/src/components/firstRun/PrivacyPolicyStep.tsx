@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { legalService, type LegalDocumentSummary } from "@/services/legal"
+import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import { toast } from "@/lib/toast"
 
 interface Props {
@@ -33,7 +34,11 @@ interface Props {
  */
 export function PrivacyPolicyStep({ onAccept }: Props) {
   const { i18n, t } = useTranslation()
-  const locale = i18n.language.startsWith("en") ? "en" : "ru"
+  // The language the reader is actually in. It used to collapse to "ru" for
+  // everyone but English readers, so a German student's consent record said
+  // they had read the Russian policy — a claim the record exists to make
+  // checkable, stated wrongly. The server records the language it served.
+  const locale = isSupportedLocale(i18n.language) ? i18n.language : DEFAULT_LOCALE
   const [accepted, setAccepted] = useState(false)
   const [saving, setSaving] = useState(false)
   const [documents, setDocuments] = useState<LegalDocumentSummary[] | null>(null)

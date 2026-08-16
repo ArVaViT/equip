@@ -67,3 +67,45 @@ describe("LegalDocumentPage", () => {
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument()
   })
 })
+
+describe("the language the reader is actually being shown", () => {
+  const ENGLISH = {
+    slug: "privacy",
+    version: "1.0",
+    locale: "en",
+    body: "# Privacy Policy\n\nWe do not sell your data.",
+    sha256: "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+  }
+
+  beforeEach(async () => {
+    vi.restoreAllMocks()
+  })
+
+  it("asks for the reader's own language rather than collapsing to Russian", async () => {
+    // A German reader used to be sent to the Russian policy, because every
+    // language that was not English was treated as Russian.
+    await i18n.changeLanguage("de")
+    const spy = vi.spyOn(legalService, "document").mockResolvedValue(ENGLISH)
+    render(<LegalDocumentPage slug="privacy" />, { wrapper: Wrapper })
+
+    await screen.findByRole("heading", { level: 1 })
+    expect(spy).toHaveBeenCalledWith("privacy", "de")
+  })
+
+  it("says in the reader's language that the document is English", async () => {
+    await i18n.changeLanguage("de")
+    vi.spyOn(legalService, "document").mockResolvedValue(ENGLISH)
+    render(<LegalDocumentPage slug="privacy" />, { wrapper: Wrapper })
+
+    expect(await screen.findByText("Dieses Dokument ist nur auf Englisch verfügbar.")).toBeInTheDocument()
+  })
+
+  it("says nothing extra when the document is already in the reader's language", async () => {
+    await i18n.changeLanguage("en")
+    vi.spyOn(legalService, "document").mockResolvedValue(ENGLISH)
+    render(<LegalDocumentPage slug="privacy" />, { wrapper: Wrapper })
+
+    await screen.findByRole("heading", { level: 1 })
+    expect(screen.queryByText("This document is available in English only.")).not.toBeInTheDocument()
+  })
+})
