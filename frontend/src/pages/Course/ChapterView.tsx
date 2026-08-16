@@ -218,7 +218,7 @@ function FileBlockLink({
  * Renders the reading chapter body — loader, list of blocks, empty state.
  * Centralised so the page component stays declarative.
  */
-function ChapterBodyBlocks({
+export function ChapterBodyBlocks({
   loading,
   blocks,
   loadError,
@@ -259,6 +259,21 @@ function ChapterBodyBlocks({
         <p className="text-sm text-ink-muted">
           {t("chapter.emptyContent")}
         </p>
+      </div>
+    )
+  }
+  // Blocks exist but none of them has anything to read in this
+  // language. An empty text block renders as nothing, so without this
+  // the lesson was a blank page under a heading — indistinguishable
+  // from a bug in the reader's browser. "Nothing here" and "nothing
+  // here *yet, in your language*" are different sentences.
+  const hasSomethingToRead = blocks.some(
+    (block) => block.block_type !== "text" || (block.content ?? "").trim().length > 0,
+  )
+  if (!hasSomethingToRead) {
+    return (
+      <div className="rounded-md border border-dashed border-edge bg-muted/20 px-5 py-12 text-center">
+        <p className="text-sm text-ink-muted">{t("chapter.notTranslated")}</p>
       </div>
     )
   }
