@@ -375,3 +375,54 @@ class TestTheEvidenceWasMeasuredNotImagined:
 
         for word in ("а", "за", "три", "тебе", "не", "на"):
             assert word in _AMBIGUOUS_WORDS, word
+
+
+class TestAWordThatMeansSomethingOnBothSides:
+    """The overlap rule can only cancel a word both lists carry, and the
+    lists are written by hand. German declares "man", "war", "die",
+    "am", "den", "hat", "nun" because they are German function words;
+    nobody put them in the English list because in English they are
+    content words. So the rule never saw them.
+
+    "Lesson 7. Man and war" scored 4:0 for German. The validator then
+    reported a correct English translation as the wrong language — and
+    ``orchestrator`` treats ``needs_review`` at an unchanged source hash
+    as terminal, so that translation was parked for good.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _all_four(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(lang_mod, "LOCALE_CODES", ("ru", "en", "de", "uk"))
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "Lesson 7. Man and war",
+            "Man of war, man of peace",
+            "The die is cast and the war is over",
+        ],
+    )
+    def test_english_prose_built_from_homographs_is_not_german(self, text: str):
+        assert lang_mod.detect_locale(text) != "de"
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "Was wurde laut 1. Mose 2,1 vollendet?",
+            "Wer schrieb den Brief an die Römer?",
+            "Der Brief nennt seinen Verfasser im ersten Vers.",
+        ],
+    )
+    def test_german_prose_is_still_german(self, text: str):
+        assert lang_mod.detect_locale(text) == "de"
+
+    def test_the_list_holds_only_words_that_live_in_both_languages(self):
+        from app.services.language_detection import _LATIN_HOMOGRAPHS
+
+        # The first version swept in "the", "to", "is", "can" — English
+        # words with no German life at all — and threw away real
+        # evidence to fix a different problem.
+        for english_only in ("the", "to", "is", "can", "and", "with"):
+            assert english_only not in _LATIN_HOMOGRAPHS, english_only
+        for both in ("man", "war", "die", "was", "in"):
+            assert both in _LATIN_HOMOGRAPHS, both

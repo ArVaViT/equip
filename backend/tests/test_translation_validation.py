@@ -445,3 +445,77 @@ class TestAReferenceIsTheNumbersNotThePunctuation:
             target_locale="de",
         )
         assert "verse_reference_lost" in [issue.code for issue in issues]
+
+
+class TestANumberIsNotAlwaysAReference:
+    """Broadening the separator to ``[:.,]`` so a German "Johannes 3,16"
+    compares equal to "John 3:16" swept in everything else written as
+    two numbers with a comma between them. And a row parked at
+    ``needs_review`` with an unchanged source hash is never retried, so
+    each false positive retired a correct translation permanently.
+    """
+
+    def test_a_date_is_not_a_lost_verse(self):
+        issues = validate_translation(
+            source="Enrolment closes on August 15, 2026, and places are limited.",
+            translated="Die Anmeldung endet am 15. August 2026, und die Plätze sind begrenzt.",
+            source_locale="en",
+            target_locale="de",
+        )
+        assert [issue.code for issue in issues] == []
+
+    def test_a_thousands_separator_is_not_a_lost_verse(self):
+        issues = validate_translation(
+            source="The church had about 1,000 households.",
+            translated="Die Gemeinde hatte etwa 1000 Haushalte.",
+            source_locale="en",
+            target_locale="de",
+        )
+        assert [issue.code for issue in issues] == []
+
+    @pytest.mark.parametrize("dash", ["-", "–", "—", "‑", "−"])
+    def test_every_dash_a_range_might_use(self, dash: str):
+        # A model reaches for a non-breaking hyphen so the range does not
+        # break across a line. That is not a lost reference.
+        issues = validate_translation(
+            source="See John 3:14-16 for the promise.",
+            translated=f"Siehe Johannes 3,14{dash}16 für die Verheißung.",
+            source_locale="en",
+            target_locale="de",
+        )
+        assert "verse_reference_lost" not in [issue.code for issue in issues]
+
+    def test_a_reference_that_really_vanished_is_still_caught(self):
+        issues = validate_translation(
+            source="What is promised in John 3:14-16?",
+            translated="Was wird in Johannes verheißen?",
+            source_locale="en",
+            target_locale="de",
+        )
+        assert "verse_reference_lost" in [issue.code for issue in issues]
+
+
+class TestWhatIsNotProse:
+    def test_a_code_block_that_survives_is_not_an_untranslated_run(self):
+        code = "<pre><code>for chapter in course.chapters: print(chapter.title)</code></pre>"
+        issues = validate_translation(
+            source=f"<p>Run this to list the lessons:</p>{code}",
+            translated=f"<p>Führen Sie dies aus, um die Lektionen aufzulisten:</p>{code}",
+            source_locale="en",
+            target_locale="de",
+            content_kind="html",
+        )
+        assert "untranslated_run" not in [issue.code for issue in issues]
+
+    def test_a_run_matches_only_at_word_boundaries(self):
+        # "near" inside "nearby" used to count, which widened the net of
+        # every false positive this rule can produce.
+        from app.services.translation.validation import _check_untranslated_run
+
+        issue = _check_untranslated_run(
+            "the near the near the near the near the near",
+            "Xthe nearby Xthe nearby Xthe nearby Xthe nearby Xthe nearby",
+            source_locale="en",
+            target_locale="de",
+        )
+        assert issue is None

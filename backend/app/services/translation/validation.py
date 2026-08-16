@@ -83,7 +83,13 @@ _PLACEHOLDER_RE: Final[re.Pattern[str]] = re.compile(
 # for related reasons. A verse reference does not: Genesis 1:26 is
 # 1:26 in every language we serve, and losing one is what leaves a
 # student unable to find the passage.
-_VERSE_REF_RE: Final[re.Pattern[str]] = re.compile(r"\d+\s*[:.,]\s*\d+(?:\s*[-–]\s*\d+)?")
+_VERSE_REF_RE: Final[re.Pattern[str]] = re.compile(r"\d+\s*[:.,]\s*\d+(?:\s*[-–—‑−]\s*\d+)?")
+
+# The largest chapter and verse there are: Psalm 119 has 176 verses, and
+# the Psalter ends at 150. Anything past those is a number that merely
+# looks like a reference.
+_MAX_CHAPTER: Final[int] = 150
+_MAX_VERSE: Final[int] = 176
 
 # The fence the user prompt wraps content in. If either shape comes
 # back, the model echoed the scaffolding instead of translating inside
@@ -141,6 +147,30 @@ def _placeholders(text: str) -> list[str]:
     return sorted(_PLACEHOLDER_RE.findall(text))
 
 
+def _is_a_reference(chapter: str, verse: str) -> bool:
+    """Whether this number pair can be a chapter and a verse at all.
+
+    Broadening the separator to ``[:.,]`` — so that a German
+    "Johannes 3,16" compares equal to "John 3:16" — swept in every other
+    thing written as two numbers with a comma or a dot between them:
+
+        "closes on August 15, 2026"   ->  15:2026
+        "about 1,000 households"      ->  1:000
+
+    Both were then reported as references the translation had lost, and
+    a row parked at ``needs_review`` with an unchanged source hash is
+    never retried — so one date in an announcement silently retired a
+    correct translation. A year is past the end of the Psalter and a
+    thousands group has a leading zero; neither is a verse.
+    """
+    if verse.startswith("0") and len(verse) > 1:
+        return False
+    try:
+        return int(chapter) <= _MAX_CHAPTER and int(verse) <= _MAX_VERSE
+    except ValueError:
+        return False
+
+
 def _verse_refs(text: str) -> list[str]:
     """Chapter-and-verse pairs, in a form the languages can be compared in.
 
@@ -151,7 +181,14 @@ def _verse_refs(text: str) -> list[str]:
     parked the row for review. The separator is normalised away; the
     numbers are what has to survive.
     """
-    return sorted(_canonical_ref_form(ref) for ref in _VERSE_REF_RE.findall(text))
+    refs = []
+    for raw in _VERSE_REF_RE.findall(text):
+        canonical = _canonical_ref_form(raw)
+        chapter, _, rest = canonical.partition(":")
+        verse = rest.split("-", 1)[0]
+        if _is_a_reference(chapter, verse):
+            refs.append(canonical)
+    return sorted(refs)
 
 
 def _canonical_ref_form(ref: str) -> str:
@@ -163,7 +200,14 @@ def _canonical_ref_form(ref: str) -> str:
     tends to render a verse range with an en dash (3,14–16 against
     3:14-16). Neither is a lost reference. Only the numbers are.
     """
-    return re.sub(r"\s+", "", ref).replace(",", ":").replace(".", ":").replace("–", "-")
+    normalised = re.sub(r"\s+", "", ref).replace(",", ":").replace(".", ":")
+    # Every dash a language or a model might use for a range: en dash,
+    # em dash, non-breaking hyphen, minus. A model reaches for U+2011 so
+    # the range does not break across a line, and the check read the
+    # result as a lost reference.
+    for dash in ("–", "—", "‑", "−"):
+        normalised = normalised.replace(dash, "-")
+    return normalised
 
 
 def _normalised_for_identity(text: str) -> str:
@@ -355,14 +399,20 @@ _UNTRANSLATED_RUN_WORDS: Final[int] = 10
 _UNTRANSLATED_RUN_CHARS: Final[int] = 45
 
 
+#: Code is not prose and is not translated. A ``<pre>`` block that comes
+#: back identical is a correct translation, not an untranslated one.
+_CODE_BLOCK_RE: Final[re.Pattern[str]] = re.compile(r"<pre\b.*?</pre>", re.IGNORECASE | re.DOTALL)
+
+
 def _words_for_runs(text: str) -> list[str]:
-    """Words of prose, with markup and sentinels removed.
+    """Words of prose, with markup, code and sentinels removed.
 
     Markers stand in for canonical scripture and are identical on both
-    sides by design; a placeholder is meant to survive verbatim. Neither
-    is evidence of anything.
+    sides by design; a placeholder is meant to survive verbatim; a code
+    block is not prose. None of them is evidence of anything.
     """
-    plain = _PLACEHOLDER_RE.sub(" ", _MARKER_RE.sub(" ", strip_tags(text)))
+    without_code = _CODE_BLOCK_RE.sub(" ", text)
+    plain = _PLACEHOLDER_RE.sub(" ", _MARKER_RE.sub(" ", strip_tags(without_code)))
     return plain.lower().split()
 
 
@@ -393,13 +443,16 @@ def _check_untranslated_run(
     source_words = _words_for_runs(source)
     if len(source_words) < _UNTRANSLATED_RUN_WORDS:
         return None
-    haystack = " ".join(_words_for_runs(translated))
+    # Padded on both sides so a run only matches at word boundaries:
+    # without it "near" matches inside "nearby" and every run built from
+    # short words finds itself somewhere.
+    haystack = " " + " ".join(_words_for_runs(translated)) + " "
 
     for start in range(len(source_words) - _UNTRANSLATED_RUN_WORDS + 1):
         run = " ".join(source_words[start : start + _UNTRANSLATED_RUN_WORDS])
         if len(run) < _UNTRANSLATED_RUN_CHARS:
             continue
-        if run in haystack:
+        if f" {run} " in haystack:
             return ValidationIssue(
                 code="untranslated_run",
                 detail=(

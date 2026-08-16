@@ -291,10 +291,39 @@ _PROFILES: Final[dict[str, _Profile]] = {
 # what remains in each list is what only that language says. It also
 # scales — a fifth language that shares half its closed class with a
 # fourth cannot poison either.
-_AMBIGUOUS_WORDS: Final[frozenset[str]] = frozenset(
-    word
-    for word in {w for profile in _PROFILES.values() for w in profile.function_words}
-    if sum(word in profile.function_words for profile in _PROFILES.values()) > 1
+# Words that are ordinary in two of the languages served but that only
+# one list happens to name.
+#
+# The overlap rule below can only cancel a word both lists carry, and
+# these lists are written by hand: German declares "man", "war", "die",
+# "am", "den", "hat", "nun" because they are German function words, and
+# nobody added them to English because in English they are content
+# words — a noun, a verb, an article. So the rule never saw them, and
+# "Lesson 7. Man and war" scored 4:0 for German. The validator then
+# reported a correct English translation as the wrong language, and the
+# overlay resolver handed the reader the English base while a German
+# translation sat unused beside it.
+#
+# Listing them is the honest fix: a word that means something in both
+# languages is not evidence for either, whichever list it lives in.
+# Only words that are genuinely ordinary in BOTH Latin languages, and
+# that at least one profile actually declares. The first version of this
+# list swept in "the", "to", "is", "can" — English words with no German
+# life at all — which threw away real evidence to fix a different
+# problem. A homograph is a word that means something on both sides.
+_HOMOGRAPH_WORDS = """
+am an den die hat in man nun so um war was
+"""
+
+_LATIN_HOMOGRAPHS: Final[frozenset[str]] = frozenset(_HOMOGRAPH_WORDS.split())
+
+_AMBIGUOUS_WORDS: Final[frozenset[str]] = (
+    frozenset(
+        word
+        for word in {w for profile in _PROFILES.values() for w in profile.function_words}
+        if sum(word in profile.function_words for profile in _PROFILES.values()) > 1
+    )
+    | _LATIN_HOMOGRAPHS
 )
 
 
