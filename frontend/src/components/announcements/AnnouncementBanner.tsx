@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
+
+import { orNotTranslated } from "@/lib/untranslated"
 import { coursesService } from "@/services/courses"
 import { useAuth } from "@/context/useAuth"
 import type { Announcement } from "@/types"
@@ -54,7 +56,9 @@ export default function AnnouncementBanner() {
       <div className="container mx-auto flex items-center gap-3 px-4 py-2.5">
         <Megaphone className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden="true" />
         <div className="min-w-0 flex-1 text-wrap-safe">
-          <span className="text-sm font-medium text-ink">{announcement.title}</span>
+          <span className="text-sm font-medium text-ink">
+            {orNotTranslated(t, announcement.title)}
+          </span>
           {announcement.content && (
             <span className="ml-2 text-sm text-ink-muted">
               {announcement.content.length > 150
