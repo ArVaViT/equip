@@ -49,6 +49,7 @@ from typing import TYPE_CHECKING
 from app.core.sanitize import html_to_plain_text
 from app.services.bible.api_source import API_BIBLE_IDS, fetch_verse
 from app.services.bible.books import display_book_name
+from app.services.bible.psalm_numbering import remap_psalm
 from app.services.bible.references import BibleRef, ParsedReference, parse_references
 from app.services.bible.store import lookup
 
@@ -131,14 +132,24 @@ def _normalize_for_compare(s: str) -> str:
     return " ".join(s.split())
 
 
-def _localize_ref_tail(tail: str, target_locale: LocaleCode) -> str:
+def _localize_ref_tail(tail: str, target_locale: LocaleCode, *, renumber: bool = False) -> str:
     """Rewrite the book name in a parenthesized reference like
     ``(Matt. 28:19)`` so it reads naturally in ``target_locale``
     (``(Матф. 28:19)``). Uses the locale's conventional short form
     from ``books.display_book_name``. Falls back to the original tail
     when no parsable reference is found or no display name exists for
     the target locale — never raises, so a stray edge case can't break
-    the whole post-substitute pass."""
+    the whole post-substitute pass.
+
+    ``renumber`` moves the chapter and verse into the target edition's
+    own numbering as well. It belongs on exactly when the quoted text
+    beside the label came from that edition: the Russian edition
+    answers a request for Psalm 23:1 with its own 22:1, so a label
+    reading "(Пс. 23:1)" over that text sends a reader who wants to
+    check it to a different psalm. It belongs off on the fallback path,
+    where the author's own quotation survived and their own numbers
+    still describe it.
+    """
     parsed = parse_references(tail)
     if not parsed:
         return tail
@@ -146,10 +157,16 @@ def _localize_ref_tail(tail: str, target_locale: LocaleCode) -> str:
     display = display_book_name(p.ref.book, target_locale)
     if not display:
         return tail
-    if p.ref.verse_end is not None:
-        formatted = f"{display} {p.ref.chapter}:{p.ref.verse_start}-{p.ref.verse_end}"
+    ref = p.ref
+    if renumber:
+        renumbered = remap_psalm(ref, target_locale)
+        if renumbered is None:
+            return tail
+        ref = renumbered
+    if ref.verse_end is not None:
+        formatted = f"{display} {ref.chapter}:{ref.verse_start}-{ref.verse_end}"
     else:
-        formatted = f"{display} {p.ref.chapter}:{p.ref.verse_start}"
+        formatted = f"{display} {ref.chapter}:{ref.verse_start}"
     start, end = p.span
     return tail[:start] + formatted + tail[end:]
 
@@ -528,7 +545,13 @@ def post_substitute(
         replacement = canonical_target if canonical_target is not None else sub.original_inner
         html = html.replace(sub.marker, replacement)
         if sub.ref_tail:
-            localized = _localize_ref_tail(sub.ref_tail, target_locale)
+            # The numbers follow the text: they move only when the text
+            # beside them came from an edition that numbers differently.
+            localized = _localize_ref_tail(
+                sub.ref_tail,
+                target_locale,
+                renumber=canonical_target is not None and target_locale in API_BIBLE_IDS,
+            )
             if localized != sub.ref_tail:
                 html = html.replace(sub.ref_tail, localized, 1)
     # The fallback path restores the author's inner text *with* its closing

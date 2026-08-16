@@ -1,3 +1,5 @@
+# ruff: noqa: RUF002
+# Edition and psalm text quoted in the prose is Cyrillic because that is what it is.
 """Unit + route tests for the verse-of-the-day feature.
 
 We never hit YouVersion in tests — both the service-level cases and the
@@ -232,17 +234,27 @@ def test_remap_psalm_for_ru_simple_offset_range() -> None:
 
 
 def test_remap_psalm_for_ru_identical_range() -> None:
-    """Hebrew Psalms 1-8 and 148-150 match Septuagint numbering."""
+    """Hebrew Psalms 1, 2 and 148-150 match Septuagint numbering.
+
+    Only those. Psalms 3 through 8 keep their chapter number and still
+    shift a verse, because the Slavic tradition numbers the heading —
+    Hebrew 4:8 is 4:9 there, and calling the whole 1-8 band identical
+    quoted every one of them one verse early.
+    """
     assert svc._remap_ref_for_locale("PSA.1.1", "ru") == "PSA.1.1"
-    assert svc._remap_ref_for_locale("PSA.4.8", "ru") == "PSA.4.8"
+    assert svc._remap_ref_for_locale("PSA.4.8", "ru") == "PSA.4.9"
     assert svc._remap_ref_for_locale("PSA.148.1", "ru") == "PSA.148.1"
 
 
-def test_remap_psalm_for_ru_complex_boundary_refuses() -> None:
-    """Hebrew Psalms 9, 10, 114, 115, 116, 147 split/combine across
-    the boundary — remap returns None so the walk advances."""
-    for ch in (9, 10, 114, 115, 116, 147):
-        assert svc._remap_ref_for_locale(f"PSA.{ch}.1", "ru") is None
+def test_remap_psalm_for_ru_split_chapters_now_have_an_answer() -> None:
+    """Hebrew 9, 10, 114, 115, 116 and 147 are split or joined across
+    the two traditions. That used to mean "no honest mapping" and a
+    Russian reader saw the author's untranslated verse; the per-verse
+    table names each one. Read off НРТ on 2026-08-16."""
+    assert svc._remap_ref_for_locale("PSA.9.1", "ru") == "PSA.9.2"
+    assert svc._remap_ref_for_locale("PSA.10.1", "ru") == "PSA.9.22"
+    assert svc._remap_ref_for_locale("PSA.116.1", "ru") == "PSA.114.1"
+    assert svc._remap_ref_for_locale("PSA.147.1", "ru") == "PSA.146.1"
 
 
 def test_remap_non_psalm_or_non_ru_is_identity() -> None:
@@ -251,10 +263,10 @@ def test_remap_non_psalm_or_non_ru_is_identity() -> None:
     assert svc._remap_ref_for_locale("PSA.23.1", "en") == "PSA.23.1"
 
 
-def test_walk_skips_complex_psalm_chapters_for_ru(monkeypatch) -> None:
-    """When today's catalog ref falls on a complex psalm boundary
-    for RU, the walk must advance to the next catalog entry rather
-    than serving wrong content."""
+def test_walk_skips_a_reference_the_edition_cannot_hold(monkeypatch) -> None:
+    """A span that straddles a seam cannot be named in the other
+    tradition — Hebrew 116 is two psalms there — so the walk advances to
+    the next catalog entry rather than quoting the wrong half."""
     monkeypatch.setattr(settings, "YOUVERSION_API_KEY", SecretStr("test-key"))
     today = dt.date(2026, 5, 31)
     # Find an offset where the catalog hits a complex chapter; fall
@@ -263,7 +275,7 @@ def test_walk_skips_complex_psalm_chapters_for_ru(monkeypatch) -> None:
 
     def _picker(d: dt.date, offset: int) -> str:
         # offset 0 returns a complex psalm; offset 1 returns a clean one.
-        return ["PSA.9.1", "JHN.3.16"][offset]
+        return ["PSA.116.1-19", "JHN.3.16"][offset]
 
     def _stub_fetch(api_key: str, bible_id: int, ref: str) -> tuple[str, str]:
         seen_refs.append(ref)
@@ -273,7 +285,7 @@ def test_walk_skips_complex_psalm_chapters_for_ru(monkeypatch) -> None:
     monkeypatch.setattr(svc, "_fetch_passage", _stub_fetch)
     verse = svc.get_verse_of_the_day("ru", today=today)
     assert verse.reference == "От Иоанна 3:16"
-    # The complex PSA.9.1 was skipped without even hitting the API.
+    # The straddling span was skipped without even hitting the API.
     assert seen_refs == ["JHN.3.16"]
 
 

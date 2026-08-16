@@ -59,10 +59,12 @@ class TestPsalmNumbering:
         # has to be asked for as 22.
         assert svc._remap_ref_for_locale("PSA.23.1", "ru") == "PSA.22.1"
 
-    def test_russian_still_refuses_the_split_chapters(self):
-        # Hebrew 116 is two psalms in the Septuagint; no per-verse remap
-        # is honest, so the walk moves to the next catalog entry.
-        assert svc._remap_ref_for_locale("PSA.116.1", "ru") is None
+    def test_russian_maps_the_split_chapters_instead_of_refusing(self):
+        # Hebrew 116 is two psalms in the Septuagint. Its first verse
+        # lands in the first of them; only a span across the seam has
+        # no honest answer, and that is what the walk skips.
+        assert svc._remap_ref_for_locale("PSA.116.1", "ru") == "PSA.114.1"
+        assert svc._remap_ref_for_locale("PSA.116.1-19", "ru") is None
 
     def test_non_psalms_are_untouched_everywhere(self):
         for code in LOCALE_CODES:
