@@ -101,23 +101,30 @@ class TestRemapRefForLocale:
         assert svc._remap_ref_for_locale("PSA.139.14", "ru") == "PSA.138.14"
 
     def test_identical_chapters_outside_offset_range(self) -> None:
-        """Hebrew 1-8 + 148-150 share Septuagint numbering — pass through."""
+        """Hebrew 1, 2 and 148-150 share Septuagint numbering.
+
+        Psalm 8 does not, despite keeping its number: its heading is a
+        verse in the Slavic tradition and everything after it moves."""
         assert svc._remap_ref_for_locale("PSA.1.1", "ru") == "PSA.1.1"
-        assert svc._remap_ref_for_locale("PSA.8.1", "ru") == "PSA.8.1"
+        assert svc._remap_ref_for_locale("PSA.8.1", "ru") == "PSA.8.2"
         # 148-150 has no entry in the current catalog so we just sanity
         # check the function doesn't crash on these.
         assert svc._remap_ref_for_locale("PSA.150.1", "ru") == "PSA.150.1"
 
-    def test_complex_boundary_returns_none(self) -> None:
-        """Hebrew 9, 10, 114, 115, 116, 147 sit at split/combine
-        boundaries — no clean per-verse remap. ``None`` signals the
-        caller to walk to the next ref."""
-        assert svc._remap_ref_for_locale("PSA.9.10", "ru") is None
-        assert svc._remap_ref_for_locale("PSA.10.1", "ru") is None
-        assert svc._remap_ref_for_locale("PSA.114.1", "ru") is None
-        assert svc._remap_ref_for_locale("PSA.115.1", "ru") is None
-        assert svc._remap_ref_for_locale("PSA.116.1", "ru") is None
-        assert svc._remap_ref_for_locale("PSA.147.1", "ru") is None
+    def test_split_chapters_are_mapped_rather_than_refused(self) -> None:
+        """Hebrew 9, 10, 114, 115, 116 and 147 sit where one tradition
+        splits what the other joins. A per-verse table can say where
+        each one lands; the chapter rule could not, and refusing meant
+        the reader saw the verse in the author's language instead."""
+        assert svc._remap_ref_for_locale("PSA.9.10", "ru") == "PSA.9.11"
+        assert svc._remap_ref_for_locale("PSA.10.1", "ru") == "PSA.9.22"
+        assert svc._remap_ref_for_locale("PSA.114.1", "ru") == "PSA.113.1"
+        assert svc._remap_ref_for_locale("PSA.115.1", "ru") == "PSA.113.9"
+        assert svc._remap_ref_for_locale("PSA.116.1", "ru") == "PSA.114.1"
+        assert svc._remap_ref_for_locale("PSA.147.1", "ru") == "PSA.146.1"
+
+    def test_only_a_straddling_span_is_refused(self) -> None:
+        assert svc._remap_ref_for_locale("PSA.116.1-19", "ru") is None
 
     def test_malformed_ref_falls_through_unchanged(self) -> None:
         """A catalog entry that doesn't parse as ``BOOK.CH.VERSE``
