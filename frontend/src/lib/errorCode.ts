@@ -62,6 +62,8 @@ export type ErrorCode =
   | "invitation.email_mismatch"
   // validation
   | "validation.failed"
+  // legal
+  | "legal.document_changed"
 
 interface StructuredErrorDetail {
   code: ErrorCode

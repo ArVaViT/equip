@@ -297,6 +297,41 @@
       "body": "Произошла непредвиденная ошибка. Попробуйте снова.",
       "tryAgain": "Попробовать снова",
       "refresh": "Перезагрузить страницу"
+    },
+    "generic": "Что-то пошло не так.",
+    "byCode": {
+      "auth_required": "Войдите снова.",
+      "auth_forbidden": "У вас нет прав на это действие.",
+      "account_deactivated": "Эта учётная запись отключена.",
+      "resource_not_found": "Не удалось это найти.",
+      "course_not_published": "Этот курс ещё не опубликован.",
+      "course_already_enrolled": "Вы уже записаны на этот курс.",
+      "course_enrolment_closed": "Запись на этот курс закрыта.",
+      "translation_disabled": "Перевод не настроен.",
+      "translation_worker_unauthorized": "Обработчик переводов не авторизован.",
+      "translation_worker_unconfigured": "Обработчик переводов не настроен.",
+      "quiz_not_open": "Этот тест сейчас закрыт.",
+      "quiz_attempts_exhausted": "Попытки закончились.",
+      "quiz_not_translated": "Этого теста ещё нет на вашем языке.",
+      "daily_challenge_not_scheduled": "На сегодня вопроса нет.",
+      "daily_challenge_not_translated": "Сегодняшнего вопроса ещё нет на вашем языке.",
+      "daily_challenge_already_attempted": "Вы уже отвечали сегодня.",
+      "daily_challenge_invalid_option": "Этот ответ не от сегодняшнего вопроса.",
+      "daily_challenge_archive_date_not_allowed": "Эта дата недоступна в архиве.",
+      "invitation_not_found": "Приглашение не найдено.",
+      "invitation_expired": "Срок приглашения истёк.",
+      "invitation_already_used": "Это приглашение уже использовано.",
+      "invitation_email_mismatch": "Приглашение отправлено на другой адрес.",
+      "validation_failed": "Что-то введено неверно.",
+      "legal_document_changed": "Документ изменился. Обновите страницу и прочитайте заново."
+    },
+    "byStatus": {
+      "401": "Войдите снова.",
+      "403": "У вас нет прав на это действие.",
+      "404": "Не удалось это найти.",
+      "409": "Данные изменились. Обновите страницу и повторите.",
+      "429": "Слишком много запросов. Помедленнее.",
+      "500": "Ошибка сервера. Попробуйте позже."
     }
   },
   "toast": {

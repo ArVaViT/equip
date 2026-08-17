@@ -732,6 +732,41 @@
       "body": "Сталася непередбачена помилка. Спробуйте ще раз.",
       "tryAgain": "Спробувати знову",
       "refresh": "Перезавантажити сторінку"
+    },
+    "generic": "Щось пішло не так.",
+    "byCode": {
+      "auth_required": "Увійдіть ще раз.",
+      "auth_forbidden": "У вас немає прав на цю дію.",
+      "account_deactivated": "Цей обліковий запис вимкнено.",
+      "resource_not_found": "Не вдалося це знайти.",
+      "course_not_published": "Цей курс ще не опубліковано.",
+      "course_already_enrolled": "Ви вже записані на цей курс.",
+      "course_enrolment_closed": "Запис на цей курс закрито.",
+      "translation_disabled": "Переклад не налаштовано.",
+      "translation_worker_unauthorized": "Обробник перекладів не авторизовано.",
+      "translation_worker_unconfigured": "Обробник перекладів не налаштовано.",
+      "quiz_not_open": "Цей тест зараз закрито.",
+      "quiz_attempts_exhausted": "Спроби вичерпано.",
+      "quiz_not_translated": "Цього тесту ще немає вашою мовою.",
+      "daily_challenge_not_scheduled": "На сьогодні питання немає.",
+      "daily_challenge_not_translated": "Сьогоднішнього питання ще немає вашою мовою.",
+      "daily_challenge_already_attempted": "Ви вже відповідали сьогодні.",
+      "daily_challenge_invalid_option": "Ця відповідь не від сьогоднішнього питання.",
+      "daily_challenge_archive_date_not_allowed": "Ця дата недоступна в архіві.",
+      "invitation_not_found": "Запрошення не знайдено.",
+      "invitation_expired": "Термін запрошення минув.",
+      "invitation_already_used": "Це запрошення вже використано.",
+      "invitation_email_mismatch": "Запрошення надіслано на іншу адресу.",
+      "validation_failed": "Щось введено неправильно.",
+      "legal_document_changed": "Документ змінився. Оновіть сторінку та прочитайте його знову."
+    },
+    "byStatus": {
+      "401": "Увійдіть ще раз.",
+      "403": "У вас немає прав на цю дію.",
+      "404": "Не вдалося це знайти.",
+      "409": "Дані змінилися. Оновіть сторінку та спробуйте ще раз.",
+      "429": "Забагато запитів. Повільніше.",
+      "500": "Помилка сервера. Спробуйте пізніше."
     }
   },
   "toast": {
