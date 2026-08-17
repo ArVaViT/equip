@@ -363,6 +363,43 @@ class TestTheSweep:
 
         assert question.id in {q.id for q in questions_missing_a_language(db, limit=10)}
 
+    def test_a_row_re_opened_by_clearing_its_hash_is_selected(self, db: Session, author: User):
+        # Clearing ``source_hash`` is how a settled row is asked for
+        # again while its current text keeps serving — better than
+        # parking it at ``failed``, which takes the text away from
+        # readers while it waits. It only makes the row eligible; if
+        # nothing selects its question, the re-opening does nothing, and
+        # that is what happened to the first rows re-opened this way.
+        from app.models.content_version import ContentVersion
+
+        question = _seed_question(db, author_id=author.id)
+        translate_question(db, question, provider=_Provider())
+        assert question.id not in {q.id for q in questions_missing_a_language(db, limit=10)}
+
+        row = (
+            db.query(ContentVersion)
+            .filter(
+                ContentVersion.entity_type == "daily_challenge_question",
+                ContentVersion.entity_id == str(question.id),
+                ContentVersion.field == "explanation",
+                ContentVersion.locale == "de",
+            )
+            .one()
+        )
+        row.source_hash = None
+        db.commit()
+
+        assert question.id in {q.id for q in questions_missing_a_language(db, limit=10)}
+
+    def test_the_authors_own_row_is_not_work(self, db: Session, author: User):
+        # Source rows carry no ``source_hash`` — there is nothing above
+        # them to hash. Reading that as "asked for again" would put every
+        # question in the sweep forever.
+        question = _seed_question(db, author_id=author.id)
+        translate_question(db, question, provider=_Provider())
+
+        assert question.id not in {q.id for q in questions_missing_a_language(db, limit=10)}
+
     def test_it_repairs_what_it_finds(self, db: Session, author: User):
         _seed_question(db, author_id=author.id)
         _seed_question(db, author_id=author.id)
