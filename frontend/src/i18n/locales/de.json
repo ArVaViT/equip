@@ -2570,5 +2570,15 @@
   "meta": {
     "documentTitle": "Equip — Bibelstudium online",
     "description": "Equip ist systematisches Bibelstudium für alle, die die Schrift ernst nehmen. Kurse, Fortschritt, Zertifikate. Deutsch, Englisch, Russisch, Ukrainisch."
+  },
+  "courseTranslation": {
+    "title": "Sprachen des Kurses",
+    "complete": "Dieser Kurs liegt in allen Sprachen vor und wurde geprüft",
+    "remaining": "Noch zu übersetzen: {{count}}",
+    "prepare": "Für die Veröffentlichung vorbereiten",
+    "behindBy": "— {{count}} fehlen",
+    "heldEdits": "{{count}} Änderungen warten auf die Übersetzung. Studierende sehen sie, sobald alle Sprachen bereit sind.",
+    "blockedEdits": "{{count}} Änderungen hängen fest. Eine Übersetzung hat die Prüfung nicht bestanden und braucht einen Menschen.",
+    "needsReview": "{{count}} Übersetzungen brauchen eine Durchsicht. Von allein lösen sie sich nicht."
   }
 }

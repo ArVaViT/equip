@@ -244,9 +244,54 @@ class CourseTranslationResponse(BaseModel):
     Mirrors ``OrchestratorReport`` from the translation service so the
     teacher UI can show "X translated, Y skipped, Z failed" without having
     to re-shape the payload on the client.
+
+    ``queued`` means the work was handed to the worker rather than done
+    inside the request — the counters are then zero because nothing has
+    happened yet, and the caller should poll
+    ``GET /courses/{id}/translation-progress``.
     """
 
     translated: int = 0
     skipped: int = 0
     failed: int = 0
+    enabled: bool = True
+    queued: bool = False
+
+
+class TranslationGapSummary(BaseModel):
+    """Why a course is not ready, in the three shapes that need different
+    work from a person: waiting, reading, retrying."""
+
+    missing: int = 0
+    needs_review: int = 0
+    failed: int = 0
+
+
+class CourseTranslationProgress(BaseModel):
+    """How far along a course is toward being servable in every language.
+
+    What the teacher's "prepare for publication" panel renders, and what
+    the publish button reads to decide whether it can be enabled. The
+    counts are (field, locale) pairs — the same unit the publication gate
+    itself uses, so the number on screen and the decision agree.
+    """
+
+    course_id: str
+    status: str
+    required: int
+    present: int
+    is_complete: bool
+    #: Remaining work per language, so "German is 12 behind" is visible
+    #: rather than one aggregate that hides which audience is waiting.
+    by_locale: dict[str, int] = {}
+    gaps: TranslationGapSummary = TranslationGapSummary()
+    #: Edits to a live course that are held until every language has them.
+    #: Non-zero only for a published course being edited.
+    held_edits: int = 0
+    #: Held edits that will not resolve on their own — a translation came
+    #: back and failed its check. These need a person, and silence about
+    #: them reads to the teacher as an edit that did nothing.
+    blocked_edits: int = 0
+    #: False when no provider is configured (local dev, a deploy without
+    #: a key). Nothing will translate, and the gate does not block.
     enabled: bool = True

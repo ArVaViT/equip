@@ -36,6 +36,7 @@ import {
   AnnouncementsModal,
   CourseEditorSkeleton,
   CourseReadinessCard,
+  CourseTranslationCard,
   EnrollmentModal,
   EventsModal,
   MaterialsModal,
@@ -43,6 +44,7 @@ import {
   useAnnouncementsSection,
   useCourseData,
   useCourseReadiness,
+  useCourseTranslation,
   useEventsSection,
   useMaterialsSection,
 } from "./editor"
@@ -78,6 +80,7 @@ export default function CourseEditor() {
   // gradebook filter for their course.
   const events = useEventsSection(courseId, confirm)
   const readiness = useCourseReadiness(courseId)
+  const translation = useCourseTranslation(courseId)
   const descriptionAnchorRef = useRef<HTMLDivElement | null>(null)
   const coverAnchorRef = useRef<HTMLDivElement | null>(null)
   useUserTour({
@@ -279,6 +282,17 @@ export default function CourseEditor() {
         report={readiness.report}
         loading={readiness.loading}
         onFix={handleFix}
+      />
+
+      {/* Readiness answers "is this course finished?" for the author.
+          This answers the same question for everybody who does not read
+          the language it was written in — which, on this platform, is
+          most of the audience. */}
+      <CourseTranslationCard
+        progress={translation.progress}
+        loading={translation.loading}
+        preparing={translation.preparing}
+        onPrepare={() => void translation.prepare()}
       />
 
       <div data-tour="course-editor-modules">
