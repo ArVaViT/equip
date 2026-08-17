@@ -2,6 +2,7 @@ import { useEffect } from "react"
 import { useTranslation } from "react-i18next"
 
 import { useAuth } from "@/context/useAuth"
+import { preferencesService } from "@/services/preferences"
 
 import { isSupportedLocale, type SupportedLocale } from "./config"
 
@@ -52,6 +53,30 @@ export function useLocaleSync(): void {
     const profileLocale = user.preferred_locale
     if (!isSupportedLocale(profileLocale)) return
 
+    // The profile has a language nobody ever chose.
+    //
+    // ``preferred_locale`` is NOT NULL, so every account has one from the
+    // moment it exists — including accounts created by a Google sign-in,
+    // which carries no language into the signup trigger and lands on the
+    // fallback. Treating that as a preference is how a German who read
+    // the whole landing page in German got Russian handed to them one
+    // second after joining: the profile is the source of truth, and the
+    // profile said Russian.
+    //
+    // So when the server says nobody chose it, the browser wins, and we
+    // tell the server what the browser said. It records it as detected —
+    // still yielding to any real choice made later.
+    if (user.locale_source === "default") {
+      const detected = i18n.resolvedLanguage ?? i18n.language
+      if (isSupportedLocale(detected)) {
+        void preferencesService.reportDetectedLocale(detected).catch(() => {
+          // Nothing to recover: the UI is already in the right language,
+          // and the next load reports it again.
+        })
+      }
+      return
+    }
+
     // A switch is in progress and the profile hasn't caught up yet — defer.
     if (desiredLocale !== null && desiredLocale !== profileLocale) return
     // Profile now matches the user's pending desire (PATCH succeeded and the
@@ -67,6 +92,9 @@ export function useLocaleSync(): void {
     // object doesn't re-trigger the locale-sync work — the locale
     // hasn't actually changed. Login (undefined → "ru") and a
     // PreferencesService PATCH ("ru" → "en") both still flow.
+    // ``locale_source`` joins the deps because the profile can move from
+    // "nobody chose this" to "detected" without the locale itself
+    // changing, and the effect must not keep re-reporting after that.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.preferred_locale, i18n])
+  }, [user?.preferred_locale, user?.locale_source, i18n])
 }

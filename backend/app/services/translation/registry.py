@@ -53,6 +53,7 @@ if TYPE_CHECKING:
 
     from app.models.content_version import ContentVersionField as TranslationField
     from app.schemas.locale import LocaleCode
+    from app.services.translation.budget import TranslationBudget
     from app.services.translation.protocol import (
         ContentKind,
         EntityType,
@@ -459,6 +460,7 @@ def reconcile_entity(
     entity: object,
     *,
     provider: TranslationProvider | None = None,
+    budget: TranslationBudget | None = None,
 ) -> OrchestratorReport:
     """Translate one entity into every locale ≠ its field's source locale.
 
@@ -513,6 +515,7 @@ def reconcile_entity(
         fields=fields,
         context=context,
         provider=provider,
+        budget=budget,
     )
 
 

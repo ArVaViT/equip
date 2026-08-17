@@ -87,7 +87,9 @@ for (const locale of TARGETS) {
 }
 
 const wantJson = process.argv.includes("--json")
-const ok =
+// ``let`` because the generated-file check at the bottom can also fail
+// the run — key parity is no longer the only thing this script asserts.
+let ok =
   emptyValues.length === 0 &&
   TARGETS.every((locale) => results[locale].missing.length === 0 && results[locale].extra.length === 0)
 
@@ -126,6 +128,23 @@ if (wantJson) {
     console.log("✓ Locale bundles in parity.")
   } else {
     console.log("Locale drift detected — fix before merging.")
+  }
+}
+
+// `public/locale-boot.js` carries a copy of two strings per language —
+// the tab title and the page description — because they have to be on
+// screen before the bundle that owns the catalogs exists. A copy is only
+// safe while something checks it, so: regenerate in memory and compare.
+{
+  const { buildLocaleBoot, OUT_FILE } = await import("./build-locale-boot.mjs")
+  const { readFileSync, existsSync } = await import("node:fs")
+  const expected = buildLocaleBoot()
+  const actual = existsSync(OUT_FILE) ? readFileSync(OUT_FILE, "utf8") : ""
+  if (actual !== expected) {
+    ok = false
+    console.log("")
+    console.log("❌ public/locale-boot.js is out of date with the locale catalogs.")
+    console.log("   Run: node scripts/build-locale-boot.mjs")
   }
 }
 

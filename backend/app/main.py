@@ -260,9 +260,17 @@ def _emit_activity_metric(request: Request, response: object, duration_ms: float
     """
     try:
         from app.core import metrics  # local import keeps cold-start cheap
+        from app.schemas.locale import normalize_locale
 
+        # Every language the platform serves, not two. This read
+        # ``"ru" if accept-language starts with ru else "en"`` — written
+        # when there were exactly two — so from the day German and
+        # Ukrainian shipped, every German and Ukrainian request was
+        # counted as English. The one dashboard that could have shown
+        # whether anybody outside ru/en was using the product reported
+        # that nobody was.
         accept_language = request.headers.get("accept-language") or ""
-        locale = "ru" if accept_language.lower().startswith("ru") else "en"
+        locale = normalize_locale(accept_language)
         course_id = _extract_course_id(request.url.path)
         status_code = getattr(response, "status_code", 0)
         metrics.increment(

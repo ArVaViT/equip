@@ -9,6 +9,14 @@ vi.mock("@/context/useAuth", () => ({
   useAuth: () => authState,
 }))
 
+const reportDetectedLocale = vi.fn((locale: string) => Promise.resolve(makeUser({ preferred_locale: locale as User["preferred_locale"] })))
+vi.mock("@/services/preferences", () => ({
+  preferencesService: {
+    reportDetectedLocale: (locale: string) => reportDetectedLocale(locale),
+    setPreferredLocale: vi.fn(),
+  },
+}))
+
 import { useLocaleSync, setDesiredLocale, getDesiredLocale } from "../useLocaleSync"
 
 function Probe() {
@@ -33,6 +41,7 @@ function makeUser(overrides: Partial<User> = {}): User {
 describe("useLocaleSync", () => {
   beforeEach(async () => {
     setDesiredLocale(null)
+    reportDetectedLocale.mockClear()
     await act(async () => {
       await i18n.changeLanguage("ru")
     })
@@ -115,5 +124,72 @@ describe("useLocaleSync", () => {
     })
 
     expect(i18n.language).toBe("ru")
+  })
+
+  describe("a profile language nobody chose", () => {
+    it("does not overwrite the language the visitor was already reading", async () => {
+      // The scenario this exists for: a German reads the landing page in
+      // German, signs in with Google — which carries no language into the
+      // signup trigger — and the profile is created with the fallback
+      // locale. Before this, the first thing the product did after they
+      // joined was switch them to Russian.
+      await act(async () => {
+        await i18n.changeLanguage("de")
+      })
+      authState = {
+        user: makeUser({ preferred_locale: "ru", locale_source: "default" }),
+      }
+
+      await act(async () => {
+        render(
+          <I18nextProvider i18n={i18n}>
+            <Probe />
+          </I18nextProvider>,
+        )
+      })
+
+      expect(i18n.language).toBe("de")
+    })
+
+    it("reports the browser's language back so the profile stops guessing", async () => {
+      await act(async () => {
+        await i18n.changeLanguage("de")
+      })
+      authState = {
+        user: makeUser({ preferred_locale: "ru", locale_source: "default" }),
+      }
+
+      await act(async () => {
+        render(
+          <I18nextProvider i18n={i18n}>
+            <Probe />
+          </I18nextProvider>,
+        )
+      })
+
+      expect(reportDetectedLocale).toHaveBeenCalledWith("de")
+    })
+
+    it("leaves a chosen language alone", async () => {
+      // The other half of the rule: a real preference outranks the
+      // browser, which is what the profile was always meant to mean.
+      await act(async () => {
+        await i18n.changeLanguage("de")
+      })
+      authState = {
+        user: makeUser({ preferred_locale: "uk", locale_source: "chosen" }),
+      }
+
+      await act(async () => {
+        render(
+          <I18nextProvider i18n={i18n}>
+            <Probe />
+          </I18nextProvider>,
+        )
+      })
+
+      expect(i18n.language).toBe("uk")
+      expect(reportDetectedLocale).not.toHaveBeenCalled()
+    })
   })
 })

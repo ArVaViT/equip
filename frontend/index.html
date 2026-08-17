@@ -6,8 +6,18 @@
     <link rel="apple-touch-icon" href="/icon.svg" />
     <link rel="canonical" href="https://equipbible.com/" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Equip — системное изучение Библии для тех, кто относится к Писанию серьёзно. Курсы, прогресс, сертификаты. Русский и английский." />
+    <meta name="description" content="Equip — системное изучение Библии для тех, кто относится к Писанию серьёзно. Курсы, прогресс, сертификаты. Русский, английский, немецкий, украинский." />
     <meta name="theme-color" content="#422277" />
+
+    <!-- Alternates for search engines. The app is one URL per page in
+         every language (the locale lives in the profile, not the path),
+         so x-default points at the same place: the site itself decides,
+         from the visitor's browser, which language to open in. -->
+    <link rel="alternate" hreflang="ru" href="https://equipbible.com/" />
+    <link rel="alternate" hreflang="en" href="https://equipbible.com/" />
+    <link rel="alternate" hreflang="de" href="https://equipbible.com/" />
+    <link rel="alternate" hreflang="uk" href="https://equipbible.com/" />
+    <link rel="alternate" hreflang="x-default" href="https://equipbible.com/" />
 
     <!-- Open Graph + Twitter share-preview cards. Static defaults are
          intentional: the SPA renders client-side, so anything dynamic
@@ -25,6 +35,8 @@
     <meta property="og:site_name" content="Equip" />
     <meta property="og:locale" content="ru_RU" />
     <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:locale:alternate" content="de_DE" />
+    <meta property="og:locale:alternate" content="uk_UA" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Equip — изучение Библии" />
     <meta name="twitter:description" content="Системное изучение Библии: курсы, главы, тесты, сертификаты. Бесплатно." />
@@ -80,6 +92,16 @@
     </script>
 
     <title>Equip — изучение Библии онлайн</title>
+
+    <!-- Decides the visitor's language before the bundle loads, and sets
+         the three things that exist this early: <html lang>, the tab
+         title, and the description above. Without it every visitor got
+         the Russian title until React booted and corrected it — which is
+         the render-then-translate flicker this product does not accept
+         anywhere else. Generated from the locale catalogs by
+         scripts/build-locale-boot.mjs; a file rather than an inline
+         block because the CSP is script-src 'self'. -->
+    <script src="/locale-boot.js"></script>
   </head>
   <body>
     <div id="root"></div>

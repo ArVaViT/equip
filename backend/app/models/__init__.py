@@ -32,6 +32,7 @@ from app.models.rubric import (
     RubricLevel,
     RubricMark,
 )
+from app.models.staged_content_version import StagedContentVersion
 from app.models.student_grade import StudentGrade
 from app.models.submission_declaration import SubmissionDeclaration
 from app.models.user import User, UserRole
@@ -74,6 +75,7 @@ __all__ = [
     "RubricCriterion",
     "RubricLevel",
     "RubricMark",
+    "StagedContentVersion",
     "StudentGrade",
     "SubmissionDeclaration",
     "User",

@@ -154,6 +154,54 @@ def run_course_translation_pipeline_if_published(db: Session, course_id: str) ->
         _log_pipeline_failure(scope="course-pipeline", entity_type="course", entity_id=course_id, exc=exc)
 
 
+def _translate_and_release_edits(
+    db: Session,
+    course: Course,
+    *,
+    entity_type: str,
+    entity_id: object,
+) -> None:
+    """Translate whatever this save put on hold, then release what is whole.
+
+    Two delivery modes, the same pair the full-course path has:
+
+    * **Queue mode** — one INSERT and the cron worker picks it up.
+      Preferred in production: a one-line edit still costs one Gemini
+      round trip per language, and doing that inside the teacher's
+      request means their save is as slow as the provider is that
+      minute.
+    * **Sync mode** — do it here. On an edit this is a handful of calls
+      (one field, three languages), not the hundreds a course walk can
+      be, so the legacy path stays honest for a deploy without a cron.
+
+    Either way the teacher's save is never failed by it: the edit is
+    already recorded and will be picked up by the next worker pass even
+    if everything below throws.
+    """
+    from app.services.staged_edits import promote_ready_fields
+    from app.services.translation.staged_pipeline import translate_staged_edits
+
+    course_id = str(course.id)
+    if settings.TRANSLATION_QUEUE_ENABLED:
+        try:
+            enqueue_course_translation(db, course_id)
+        except SQLAlchemyError as exc:
+            _safe_rollback(db)
+            _log_pipeline_failure(scope="staged-enqueue", entity_type=entity_type, entity_id=entity_id, exc=exc)
+        except Exception as exc:
+            _log_pipeline_failure(scope="staged-enqueue", entity_type=entity_type, entity_id=entity_id, exc=exc)
+        return
+
+    try:
+        translate_staged_edits(db, course)
+        promote_ready_fields(db, course)
+    except SQLAlchemyError as exc:
+        _safe_rollback(db)
+        _log_pipeline_failure(scope="staged-edit", entity_type=entity_type, entity_id=entity_id, exc=exc)
+    except Exception as exc:
+        _log_pipeline_failure(scope="staged-edit", entity_type=entity_type, entity_id=entity_id, exc=exc)
+
+
 def reconcile_entity_if_course_published(
     db: Session,
     entity_type: EntityType,
@@ -179,6 +227,18 @@ def reconcile_entity_if_course_published(
     if not course or course.status not in (CourseStatus.PUBLISHED, CourseStatus.PUBLISHING):
         return
     entity_id = getattr(entity, "id", None)
+
+    # On a published course the teacher's new text did not go into
+    # ``content_versions`` at all — it is held in the staging table
+    # until every language has it (see ``services/staged_edits``). So
+    # the thing to translate is the held edit, not the entity, and
+    # reconciling the entity here would re-check text that has not
+    # changed and leave the edit untranslated. Which is how an edit
+    # would sit invisible forever.
+    if course.status == CourseStatus.PUBLISHED:
+        _translate_and_release_edits(db, course, entity_type=str(entity_type), entity_id=entity_id)
+        return
+
     try:
         reconcile_entity(db, entity_type, entity)
     except SQLAlchemyError as exc:

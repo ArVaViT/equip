@@ -38,6 +38,10 @@ def _course_event_to_response(db: Session, event: CourseEvent, *, source_locale:
     cv. Used by the single-entity create / update routes; the list /
     calendar routes use ``localize_course_event_rows`` which is
     locale-aware.
+
+    ``include_author_edits`` because this answers the teacher about the
+    text they just saved: on a published course that text waits for its
+    translations before readers see it, but its author sees it now.
     """
     texts = fetch_cv_entity_texts_with_fallback(
         db,
@@ -46,6 +50,7 @@ def _course_event_to_response(db: Session, event: CourseEvent, *, source_locale:
         fields=list(_TRANSLATABLE_COURSE_EVENT_FIELDS),
         display_locale=source_locale,
         source_locale=source_locale,
+        include_author_edits=True,
     )
     title = texts.get((str(event.id), "title")) or ""
     description = texts.get((str(event.id), "description"))

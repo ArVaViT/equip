@@ -74,6 +74,12 @@ def _assignment_to_response(db: Session, assignment: Assignment, *, source_local
     cv (preferring source_locale, falling back to any active locale).
     Used by the single-entity routes (create / update); list / source
     routes use ``localize_assignment_rows`` which is locale-aware.
+
+    ``include_author_edits`` because these are the create/update routes:
+    the teacher is being answered about the text they just sent, and on
+    a published course that text is held back from readers until its
+    translations arrive. Showing them the released version instead
+    would read as a save that did nothing.
     """
     texts = fetch_cv_entity_texts_with_fallback(
         db,
@@ -82,6 +88,7 @@ def _assignment_to_response(db: Session, assignment: Assignment, *, source_local
         fields=list(_TRANSLATABLE_ASSIGNMENT_FIELDS),
         display_locale=source_locale,
         source_locale=source_locale,
+        include_author_edits=True,
     )
     title = texts.get((str(assignment.id), "title")) or ""
     description = texts.get((str(assignment.id), "description"))
@@ -138,7 +145,18 @@ def list_chapter_assignments(
             db, rows, display_locale=ctx.source_locale, source_locale=ctx.source_locale, prefer_human=True
         )
     display_locale: LocaleCode = normalize_locale(accept_language)
-    return localize_assignment_rows(db, rows, display_locale=display_locale, source_locale=ctx.source_locale)
+    return localize_assignment_rows(
+        db,
+        rows,
+        display_locale=display_locale,
+        source_locale=ctx.source_locale,
+        # The owner sees their own work whichever route they came in by.
+        # They are not always on the ``?source=1`` editor path — the
+        # course builder lists assignments through this one — and a
+        # teacher who cannot see the assignment they just wrote will
+        # write it again.
+        include_author_edits=ctx.is_owner_or_admin,
+    )
 
 
 def _course_source_locale_for_chapter(db: Session, chapter_id: str) -> str | None:

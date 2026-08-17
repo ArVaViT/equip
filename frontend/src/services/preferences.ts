@@ -16,4 +16,22 @@ export const preferencesService = {
     })
     return data
   },
+
+  /**
+   * Tell the server what the browser asked for, for an account that was
+   * never asked.
+   *
+   * A Google sign-up carries no language into the signup trigger, so the
+   * profile is created with the fallback locale no matter what the person
+   * was reading a second earlier. `detected: true` marks this as a report
+   * rather than a decision: the server records it, and refuses it outright
+   * if the account already has a language somebody picked.
+   */
+  async reportDetectedLocale(locale: SupportedLocale): Promise<User> {
+    const { data } = await api.patch<User>("/users/me/preferences", {
+      preferred_locale: locale,
+      detected: true,
+    })
+    return data
+  },
 }

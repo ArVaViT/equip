@@ -344,6 +344,11 @@ def delete_entity_cv_rows(
         .filter(ContentVersion.entity_type == entity_type, ContentVersion.entity_id == eid_str)
         .delete(synchronize_session=False)
     )
+    # An unreleased edit to a deleted entity is text nobody can ever
+    # see, promote, or find. Cleared here rather than at the five call
+    # sites so a sixth one cannot forget: "delete this entity's text"
+    # has to mean all of it.
+    _delete_staged_rows(db, entity_type=entity_type, entity_ids=[eid_str])
     return deleted
 
 
@@ -366,4 +371,24 @@ def delete_entities_cv_rows(
         .filter(ContentVersion.entity_type == entity_type, ContentVersion.entity_id.in_(id_strs))
         .delete(synchronize_session=False)
     )
+    _delete_staged_rows(db, entity_type=entity_type, entity_ids=id_strs)
     return deleted
+
+
+def _delete_staged_rows(db: Session, *, entity_type: str, entity_ids: list[str]) -> int:
+    """Drop any in-flight edits for these entities.
+
+    Imported locally: ``staged_edits`` reads from this module's
+    ``record_human_version`` when it promotes, and a module-level
+    import in both directions is a cycle.
+    """
+    from app.models.staged_content_version import StagedContentVersion
+
+    return (
+        db.query(StagedContentVersion)
+        .filter(
+            StagedContentVersion.entity_type == entity_type,
+            StagedContentVersion.entity_id.in_(entity_ids),
+        )
+        .delete(synchronize_session=False)
+    )

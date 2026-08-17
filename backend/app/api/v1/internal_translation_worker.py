@@ -32,18 +32,26 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session  # noqa: TC002 — used by FastAPI Depends at runtime
 
 from app.api.dependencies import require_worker_secret
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.metrics import gauge, timing
 from app.services.course_service import get_course
+from app.services.staged_edits import promote_ready_fields
+from app.services.translation.budget import worker_budget
 from app.services.translation.completeness import promote_if_complete
-from app.services.translation.course_pipeline import translate_course_content
+from app.services.translation.course_pipeline import (
+    merge_orchestrator_reports,
+    translate_course_content,
+)
 from app.services.translation.queue import (
     claim_next_job,
     get_queue_status,
     mark_job_done,
     mark_job_failed,
+    mark_job_paused,
     record_job_failure,
 )
+from app.services.translation.staged_pipeline import translate_staged_edits
 
 if TYPE_CHECKING:
     from app.models.translation_job import TranslationJob
@@ -57,9 +65,10 @@ router = APIRouter(prefix="/internal", tags=["internal"])
 class WorkerTickResponse(BaseModel):
     """Worker reports back so the cron driver can log + alert.
 
-    ``status`` is one of ``"idle"`` (queue empty), ``"done"``, or
-    ``"failed"``. ``job_id`` is null only when idle. ``attempts``
-    is the post-tick count on the job.
+    ``status`` is one of ``"idle"`` (queue empty), ``"done"``,
+    ``"paused"`` (budget spent mid-course, job re-queued to continue on
+    the next tick), or ``"failed"``. ``job_id`` is null only when idle.
+    ``attempts`` is the post-tick count on the job.
     """
 
     status: str
@@ -144,8 +153,24 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
     # is correct here (not affected by NTP / system clock jumps); we want
     # elapsed wall time, not absolute timestamps.
     tick_start = time.monotonic()
+    budget = worker_budget(
+        seconds=settings.TRANSLATION_WORKER_BUDGET_SECONDS,
+        gemini_timeout_seconds=settings.GEMINI_TIMEOUT_SECONDS,
+    )
     try:
-        translate_course_content(db, course)
+        # Held edits first. They are what a teacher is actively waiting
+        # on — a correction they made to a live course, invisible to
+        # students until every language has it — and there are only ever
+        # a handful. The course walk behind them can be thousands of
+        # fields, and letting it go first would put a one-line fix
+        # behind a full re-check of the whole tree.
+        report = translate_staged_edits(db, course, budget=budget)
+        promote_ready_fields(db, course)
+        if not report.incomplete:
+            report = merge_orchestrator_reports(
+                report,
+                translate_course_content(db, course, budget=budget),
+            )
     except SQLAlchemyError as exc:
         # A SQLAlchemyError poisons the transaction, so we must rollback
         # before writing the status flip. But a plain rollback would also
@@ -180,6 +205,32 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
             job_id=job_id,
             course_id=course_id,
             attempts=attempts,
+        )
+
+    # The pass stopped on the clock, not on the work. Everything it
+    # translated is committed; the job goes back in the queue and the
+    # next tick — a minute later — resumes where this one left off, at
+    # no cost for what is already done. A large course is now a course
+    # that takes several ticks, which is the thing it always was; what
+    # changed is that we no longer mistake that for failure.
+    if report.incomplete:
+        _emit_translation_duration(tick_start, outcome="paused")
+        mark_job_paused(db, job, made_progress=report.made_progress)
+        logger.info(
+            "translation_worker: job %s paused mid-course %s after %.0fs "
+            "(translated=%d needs_review=%d failed=%d)",
+            job_id,
+            course_id,
+            budget.elapsed,
+            report.translated,
+            report.needs_review,
+            report.failed,
+        )
+        return WorkerTickResponse(
+            status="paused",
+            job_id=job_id,
+            course_id=course_id,
+            attempts=job.attempts,
         )
 
     _emit_translation_duration(tick_start, outcome="done")

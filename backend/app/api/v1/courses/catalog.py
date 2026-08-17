@@ -215,8 +215,27 @@ def get_module_detail(
             any_by_field.setdefault(field, text)
             if origin == "human":
                 human_by_field.setdefault(field, text)
-        module.title = human_by_field.get("title") or any_by_field.get("title") or ""
-        module.description = human_by_field.get("description") or any_by_field.get("description")
+        # ``?source=1`` is the editor asking for its own material. An
+        # edit held back from readers until its translations land is
+        # still this teacher's own text, and it outranks what is
+        # currently released — otherwise the editor reopens the module
+        # and finds the wording it replaced.
+        from app.services.staged_edits import author_texts_bulk
+
+        held = author_texts_bulk(
+            db,
+            entity_type="module",
+            entity_ids=[str(module.id)],
+            fields=["title", "description"],
+        )
+        module.title = (
+            held.get((str(module.id), "title")) or human_by_field.get("title") or any_by_field.get("title") or ""
+        )
+        module.description = (
+            held.get((str(module.id), "description"))
+            or human_by_field.get("description")
+            or any_by_field.get("description")
+        )
         return ModuleResponse.model_validate(module, from_attributes=True)
 
     # No implicit bypass. Reading is reading, whoever is reading — the

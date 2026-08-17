@@ -6,7 +6,12 @@ import globals from 'globals'
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', 'coverage/**'],
+    // ``public/locale-boot.js`` is generated (scripts/build-locale-boot.mjs)
+    // and is plain browser ES5 that runs before any module system exists —
+    // linting it as project source reports globals it is entitled to use.
+    // Its correctness is asserted instead by ``npm run i18n:check``, which
+    // regenerates it and fails on any drift.
+    ignores: ['dist/**', 'node_modules/**', 'coverage/**', 'public/locale-boot.js'],
   },
   {
     files: ['scripts/**/*.{js,mjs,cjs}'],

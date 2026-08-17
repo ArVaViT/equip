@@ -15,6 +15,7 @@ from app.models.user import User
 from app.schemas.chapter_block import BlockCreate, BlockReorderItem, BlockResponse, BlockUpdate
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.content_versions import delete_entity_cv_rows, dual_write_entity_content
+from app.services.staged_edits import author_text
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import (
     localize_chapter_block_rows,
@@ -34,19 +35,25 @@ def _block_to_response(db: Session, block: ChapterBlock) -> BlockResponse:
     block; the list/get routes use ``localize_chapter_block_rows``
     which is locale-aware.
     """
-    row = (
-        db.query(ContentVersion.text)
-        .filter(
-            ContentVersion.entity_type == "chapter_block",
-            ContentVersion.entity_id == str(block.id),
-            ContentVersion.field == "content",
-            ContentVersion.superseded_by.is_(None),
-            ContentVersion.status == ContentVersionStatus.OK,
+    # An edit to a live course is held back from readers until every
+    # language has it — but never from the person who just made it.
+    # This route answers a teacher about their own save, so their text
+    # wins over whatever is currently released.
+    content = author_text(db, entity_type="chapter_block", entity_id=str(block.id), field="content")
+    if content is None:
+        row = (
+            db.query(ContentVersion.text)
+            .filter(
+                ContentVersion.entity_type == "chapter_block",
+                ContentVersion.entity_id == str(block.id),
+                ContentVersion.field == "content",
+                ContentVersion.superseded_by.is_(None),
+                ContentVersion.status == ContentVersionStatus.OK,
+            )
+            .order_by(ContentVersion.created_at)
+            .first()
         )
-        .order_by(ContentVersion.created_at)
-        .first()
-    )
-    content = row.text if row is not None else None
+        content = row.text if row is not None else None
     # ``model_validate(dict)`` so Pydantic handles the ``created_at``
     # nullability coercion (the ORM column is ``Optional[datetime]``
     # at type-time but server_default=now() means it's set by the time

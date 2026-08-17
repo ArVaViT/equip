@@ -103,6 +103,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             preferred_locale: isSupportedLocale(data.preferred_locale)
               ? data.preferred_locale
               : DEFAULT_LOCALE,
+            // "default" means the signup never carried a language and the
+            // column just had to hold something — `useLocaleSync` then
+            // keeps the browser's language instead of switching to a
+            // preference nobody expressed. An older server that does not
+            // send the field is read as "chosen", which is the safe
+            // reading: never overwrite what might be a real preference.
+            locale_source: data.locale_source ?? "chosen",
             created_at: data.created_at,
             updated_at: data.updated_at,
           }

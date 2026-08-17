@@ -2566,5 +2566,9 @@
     "fingerprint": "Fassung {{version}} · Textprüfsumme {{sha}}",
     "privacy": "Datenschutzerklärung",
     "terms": "Nutzungsbedingungen"
+  },
+  "meta": {
+    "documentTitle": "Equip — Bibelstudium online",
+    "description": "Equip ist systematisches Bibelstudium für alle, die die Schrift ernst nehmen. Kurse, Fortschritt, Zertifikate. Deutsch, Englisch, Russisch, Ukrainisch."
   }
 }
