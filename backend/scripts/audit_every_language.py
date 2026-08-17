@@ -122,6 +122,15 @@ def _texts(payload: Any, out: list[str]) -> None:
             _texts(item, out)
 
 
+# Documents whose language the response states outright, and which are
+# deliberately served in another language when they do not exist in the
+# reader's. Reading the prose would report the fallback as a defect;
+# what matters is that the server said which language it sent, and that
+# it is not some third language nobody chose.
+_SAYS_ITS_OWN_LOCALE = {"privacy policy", "terms of use"}
+_GOVERNING_LOCALE = "en"
+
+
 def _inspect(report: Report, surface: str, locale: str, response: httpx.Response, *, verbose: bool) -> None:
     report.checked += 1
     if response.status_code >= 500:
@@ -144,6 +153,12 @@ def _inspect(report: Report, surface: str, locale: str, response: httpx.Response
     # A paged envelope with nothing in it is the same answer: no
     # certificates, no announcements, nothing to translate.
     if isinstance(payload, dict) and payload.get("items") == []:
+        return
+
+    if surface in _SAYS_ITS_OWN_LOCALE:
+        served = payload.get("locale") if isinstance(payload, dict) else None
+        if served not in (locale, _GOVERNING_LOCALE):
+            report.add(surface, locale, "foreign", f"served in {served}")
         return
 
     strings: list[str] = []
@@ -180,6 +195,12 @@ def main() -> int:
 
         surfaces: list[tuple[str, str]] = [
             ("catalog", "/api/v1/courses"),
+            # The two documents a person is asked to agree to. They were
+            # not in this walk, which is why nobody noticed that every
+            # reader who was not English got the Russian privacy policy —
+            # including the German and Ukrainian ones who cannot read it.
+            ("privacy policy", "/api/v1/legal/documents/privacy"),
+            ("terms of use", "/api/v1/legal/documents/terms"),
             ("daily challenge", "/api/v1/daily-challenge/today"),
             ("verse of the day", "/api/v1/verse-of-the-day"),
             ("my grades", "/api/v1/grades/my"),
