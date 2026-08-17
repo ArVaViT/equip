@@ -1,7 +1,19 @@
 import type { ChapterType } from '@/lib/chapterTypes'
+import type { SupportedLocale } from '@/i18n/config'
 
 export type UserRole = 'admin' | 'teacher' | 'student'
-type PreferredLocale = 'ru' | 'en'
+/**
+ * The language on a profile.
+ *
+ * Was a hand-written `'ru' | 'en'` and stayed that way through the
+ * release that added German and Ukrainian — so TypeScript had no idea
+ * those were possible values, and every place that switched on a
+ * profile's locale was being checked against a set two languages short.
+ * Now it follows `SUPPORTED_LOCALES`, which the rest of the i18n layer
+ * already derives from, and adding the fifth language updates this with
+ * it.
+ */
+type PreferredLocale = SupportedLocale
 
 /**
  * Single source of truth for role string literals. Use ``ROLES.ADMIN``
@@ -26,6 +38,17 @@ export interface User {
   avatar_url: string | null
   role: UserRole
   preferred_locale: PreferredLocale
+  /**
+   * Whether anybody actually chose that language.
+   *
+   * `default` means the column simply had to hold a value — a Google
+   * sign-up carries no locale into the signup trigger, so the profile
+   * is created Russian regardless of what the person was reading. Left
+   * optional so an older cached profile shape does not break typing;
+   * absent is treated as `chosen`, which is the safe reading (never
+   * overwrite what might be a real preference).
+   */
+  locale_source?: 'default' | 'detected' | 'chosen'
   created_at: string
   updated_at: string
   // Present on the admin user-list rows; non-null when the account is

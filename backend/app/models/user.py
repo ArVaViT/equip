@@ -25,6 +25,10 @@ class User(Base):
         # Postgres schema-smoke job enforce the same value domains.
         CheckConstraint("role IN ('admin', 'teacher', 'student')", name="chk_profiles_role"),
         CheckConstraint("preferred_locale IN ('ru', 'en', 'de', 'uk')", name="profiles_preferred_locale_check"),
+        CheckConstraint(
+            "locale_source IN ('default', 'detected', 'chosen')",
+            name="profiles_locale_source_check",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
@@ -38,6 +42,18 @@ class User(Base):
     # The CHECK constraint in supabase/migrations/...add_profile_preferred_locale
     # restricts this to ('ru', 'en', 'de', 'uk'); keep the schema Literal in sync.
     preferred_locale: Mapped[str] = mapped_column(default="ru")
+    # How ``preferred_locale`` got its value: 'default' (nobody was asked
+    # — the column is NOT NULL and had to hold something), 'detected'
+    # (the browser's language, good enough to serve), or 'chosen' (a
+    # person picked it, and nothing automatic may overwrite it).
+    #
+    # Without this the column could not tell "Russian" from "we had to
+    # write something and Russian was the fallback", so a German who
+    # signed in with Google — which carries no locale into
+    # ``handle_new_user`` — had the interface switched to Russian the
+    # moment their profile loaded. See
+    # ``supabase/migrations/20260817131500_a_language_nobody_chose_is_not_a_choice.sql``.
+    locale_source: Mapped[str] = mapped_column(default="default", server_default="default")
     # Floor for iCal token ``iat`` claims. When a user rotates their
     # subscription token via ``POST /calendar/ical/token``, we stamp
     # this to the new ``iat``; the feed verifier refuses tokens whose

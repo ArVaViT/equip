@@ -51,7 +51,14 @@ logger = logging.getLogger(__name__)
 # never re-claimed, never failed, and it blocks re-enqueue of that course.
 # A single serverless invocation is capped well under this window, so any
 # job still ``processing`` past it is certainly dead and safe to re-claim.
-_PROCESSING_STALE_AFTER = timedelta(minutes=15)
+#
+# Eight minutes, down from fifteen: a tick now bounds itself with
+# ``TRANSLATION_WORKER_BUDGET_SECONDS`` plus the worst case of the one
+# call it may still have started, so the longest a live tick can run is
+# under five minutes. The window only has to outlast that, and every
+# minute above it is a minute a killed job spends waiting instead of
+# translating.
+_PROCESSING_STALE_AFTER = timedelta(minutes=8)
 
 
 def enqueue_course_translation(
@@ -165,6 +172,44 @@ def mark_job_done(db: Session, job: TranslationJob) -> TranslationJob:
     job.last_error = None
     db.commit()
     db.refresh(job)
+    return job
+
+
+def mark_job_paused(db: Session, job: TranslationJob, *, made_progress: bool) -> TranslationJob:
+    """Hand the job back unfinished — it ran out of time, not out of luck.
+
+    A course too large for one worker invocation used to be
+    indistinguishable from a course that breaks the worker: both left a
+    row that never reached ``done``. The difference is whether the tick
+    accomplished anything, and it decides what happens to ``attempts``:
+
+    * **Progress made** — reset the counter. The course is moving, one
+      budget's worth of fields per tick, and it must not be declared
+      permanently failed for being long. This is what the August 2026
+      incident needed and did not have.
+    * **Nothing moved** — leave the counter where ``claim_next_job`` put
+      it. A job that keeps waking up and achieving nothing is not
+      merely large, and the attempt cap should still catch it.
+
+    Back to ``queued`` rather than left in ``processing`` so the next
+    cron tick claims it immediately instead of waiting out the stale
+    window. ``started_at`` is cleared for the same reason.
+    """
+    job.status = TranslationJobStatus.QUEUED
+    job.started_at = None
+    job.finished_at = None
+    job.last_error = None
+    if made_progress:
+        job.attempts = 0
+    db.commit()
+    db.refresh(job)
+    logger.info(
+        "translation_queue: job %s paused for course %s (progress=%s, attempts=%d)",
+        job.id,
+        job.course_id,
+        made_progress,
+        job.attempts,
+    )
     return job
 
 

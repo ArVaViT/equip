@@ -32,7 +32,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.schemas.locale import LOCALE_CODES, LocaleCode, normalize_locale
-from app.services.content_versions import record_mt_failure, record_mt_version
+from app.services.translation.budget import NoBudget, TranslationBudget
 from app.services.translation.hash import compute_source_hash
 from app.services.translation.protocol import (
     ContentKind,
@@ -44,11 +44,10 @@ from app.services.translation.service import (
     get_translation_provider,
     is_translation_enabled,
 )
+from app.services.translation.stores import LIVE_STORE, VersionStore
 from app.services.translation.validation import summarise, validate_translation
 
 if TYPE_CHECKING:
-    import uuid
-
     from sqlalchemy.orm import Session
 
     from app.models.content_version import (
@@ -97,12 +96,31 @@ class OrchestratorReport:
     answer failed the structural check — text stored, not servable.
     They are counted apart from ``failed`` because the two need
     different work: a failure is retried, a review is read.
+
+    ``incomplete`` means the pass stopped early because its time budget
+    ran out, not because it finished. Whatever it did translate is
+    committed; what remains is still there to do. The worker reads this
+    to decide whether the job is done or merely paused — see
+    ``translation/budget.py`` for why that distinction is the whole
+    difference between a large course and a broken one.
     """
 
     translated: int = 0
     skipped: int = 0
     failed: int = 0
     needs_review: int = 0
+    incomplete: bool = False
+
+    @property
+    def made_progress(self) -> bool:
+        """Did this pass move anything at all?
+
+        A tick that translated, parked for review, or even recorded a
+        failure has advanced the course's state and earns another tick
+        without spending an attempt. A tick that only skipped — or did
+        nothing — has not.
+        """
+        return bool(self.translated or self.needs_review or self.failed)
 
 
 def other_locales(source_locale: LocaleCode) -> tuple[LocaleCode, ...]:
@@ -125,12 +143,25 @@ def translate_entity_fields(
     target_locales: tuple[LocaleCode, ...] | None = None,
     context: str | None = None,
     provider: TranslationProvider | None = None,
+    budget: TranslationBudget | None = None,
+    store: VersionStore | None = None,
 ) -> OrchestratorReport:
     """Translate ``fields`` of ``(entity_type, entity_id)`` into each target.
 
     Returns a per-call summary. Never raises for ordinary translation
     failures — those become ``status='failed'`` rows. Re-raises only on
     SQLAlchemy errors, which surface bugs that the caller does want to see.
+
+    ``budget`` bounds how long the pass may run. When it runs out the
+    loop stops at the next field that would need a provider call, and
+    the report comes back ``incomplete``; the caller commits what was
+    done and picks the rest up later. Callers with no deadline — a
+    teacher saving one block, a test, an admin retry — pass nothing.
+
+    ``store`` decides where the results land: ``content_versions``
+    (the default, servable at once) or the staging table, for an edit
+    to a course students are currently reading. See
+    ``translation/stores.py``.
     """
     if not is_translation_enabled():
         # Don't burn DB writes when there's no real provider configured;
@@ -144,12 +175,17 @@ def translate_entity_fields(
     # ``reconcile_entity``) — that's what makes mixed-language entities
     # translate in the correct direction per field.
     active_provider = provider or get_translation_provider()
+    active_budget = budget or NoBudget()
+    active_store = store or LIVE_STORE
     translated = 0
     skipped = 0
     failed = 0
     needs_review = 0
+    incomplete = False
 
     for spec in fields:
+        if incomplete:
+            break
         text = (spec.text or "").strip()
         if not text:
             # Empty source has nothing to translate; we also actively avoid
@@ -183,6 +219,8 @@ def translate_entity_fields(
                 source_hash=source_hash,
                 context=context,
                 provider=active_provider,
+                budget=active_budget,
+                store=active_store,
             )
             if outcome == "translated":
                 translated += 1
@@ -190,6 +228,16 @@ def translate_entity_fields(
                 skipped += 1
             elif outcome == "needs_review":
                 needs_review += 1
+            elif outcome == "deferred":
+                # Out of time, and this row would have needed a provider
+                # call. Stop here rather than walking the rest of the
+                # fields for their short-circuits: the cheap ones cost a
+                # query each, and on a large course that is thousands of
+                # queries buying nothing. The next tick starts where this
+                # one stopped, for free, because the fields already done
+                # match on ``source_hash``.
+                incomplete = True
+                break
             else:
                 failed += 1
 
@@ -200,19 +248,22 @@ def translate_entity_fields(
         raise
 
     logger.info(
-        "Translation orchestrator finished entity=%s:%s translated=%d skipped=%d failed=%d needs_review=%d",
+        "Translation orchestrator finished entity=%s:%s translated=%d skipped=%d failed=%d "
+        "needs_review=%d incomplete=%s",
         entity_type,
         entity_id,
         translated,
         skipped,
         failed,
         needs_review,
+        incomplete,
     )
     return OrchestratorReport(
         translated=translated,
         skipped=skipped,
         failed=failed,
         needs_review=needs_review,
+        incomplete=incomplete,
     )
 
 
@@ -243,112 +294,6 @@ def translate_course_metadata(
     )
 
 
-def _find_active_source_version_id(
-    db: Session,
-    *,
-    entity_type: str,
-    entity_id: str,
-    field: str,
-    source_locale: str,
-) -> uuid.UUID | None:
-    """Return the id of the active ``content_versions`` row that
-    represents the human source this MT row is being derived from,
-    or ``None`` if no source row has been recorded yet (the dual-
-    write into content_versions for the entity hasn't fired yet —
-    expected during Phase 1 rollout because backfill comes later
-    in Phase 3). The MT row is still recorded so the cascade
-    invalidation path becomes precise once the source row exists.
-    """
-    return (
-        db.query(ContentVersion.id)
-        .filter(
-            ContentVersion.entity_type == entity_type,
-            ContentVersion.entity_id == entity_id,
-            ContentVersion.field == field,
-            ContentVersion.locale == source_locale,
-            ContentVersion.superseded_by.is_(None),
-        )
-        .scalar()
-    )
-
-
-def _dual_write_mt_success(
-    db: Session,
-    *,
-    entity_type: str,
-    entity_id: str,
-    field: str,
-    target_locale: str,
-    text: str,
-    source_locale: str,
-    source_hash: str,
-    status: ContentVersionStatus = ContentVersionStatus.OK,
-    review_reason: str | None = None,
-) -> None:
-    """Mirror an MT row that produced text into ``content_versions``.
-
-    ``status`` distinguishes a translation that passed the structural
-    check from one that came back and failed it — both have text worth
-    storing, only one is servable.
-
-    No-op if the upstream call would fail (empty text); the legacy
-    ``content_translations`` write has already happened, so this
-    is purely additive shadow state during Phase 1.
-    """
-    if not text:
-        return
-    source_version_id = _find_active_source_version_id(
-        db,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        field=field,
-        source_locale=source_locale,
-    )
-    record_mt_version(
-        db,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        field=field,
-        locale=target_locale,
-        text=text,
-        source_locale=source_locale,
-        source_hash=source_hash,
-        source_version_id=source_version_id,
-        status=status,
-        review_reason=review_reason,
-    )
-
-
-def _dual_write_mt_failure(
-    db: Session,
-    *,
-    entity_type: str,
-    entity_id: str,
-    field: str,
-    target_locale: str,
-    source_locale: str,
-    source_hash: str,
-) -> None:
-    """Mirror an MT failure into ``content_versions``."""
-    source_version_id = _find_active_source_version_id(
-        db,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        field=field,
-        source_locale=source_locale,
-    )
-    record_mt_failure(
-        db,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        field=field,
-        locale=target_locale,
-        source_locale=source_locale,
-        source_hash=source_hash,
-        source_version_id=source_version_id,
-    )
-
-
 def _translate_one_field(
     db: Session,
     *,
@@ -362,26 +307,28 @@ def _translate_one_field(
     source_hash: str,
     context: str | None,
     provider: TranslationProvider,
+    budget: TranslationBudget,
+    store: VersionStore,
 ) -> str:
     """Translate (or up-to-date short-circuit) one ``(field, target)`` row.
 
-    Returns ``"translated" | "skipped" | "failed"`` so the orchestrator can
-    aggregate counters without inspecting the DB row again.
+    Returns ``"translated" | "skipped" | "failed" | "deferred"`` so the
+    orchestrator can aggregate counters without inspecting the DB row
+    again. ``"deferred"`` means this row needs a provider call and the
+    budget has no room for one — nothing was written and nothing was
+    charged.
     """
-    # Phase 5c: skip-decisions now read from content_versions. The
-    # legacy content_translations table is no longer written by this
-    # function — record_mt_version / record_mt_failure are the only
-    # MT writers post-5c.
-    existing = (
-        db.query(ContentVersion)
-        .filter(
-            ContentVersion.entity_type == entity_type,
-            ContentVersion.entity_id == entity_id,
-            ContentVersion.field == field,
-            ContentVersion.locale == target_locale,
-            ContentVersion.superseded_by.is_(None),
-        )
-        .one_or_none()
+    # Skip-decisions read from whichever store this pass is writing to:
+    # ``content_versions`` for work that is servable immediately, the
+    # staging table for an edit to a course students are reading. The
+    # rules below are identical either way — that is the point of the
+    # store abstraction (see ``translation/stores.py``).
+    existing = store.active_row(
+        db,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        field=field,
+        locale=target_locale,
     )
 
     # ``origin='human'`` means a teacher manually wrote a localized copy;
@@ -434,17 +381,36 @@ def _translate_one_field(
         .scalar()
     )
     if twin is not None:
-        _dual_write_mt_success(
+        store.record_success(
             db,
             entity_type=entity_type,
             entity_id=entity_id,
             field=field,
-            target_locale=target_locale,
+            locale=target_locale,
             text=twin,
             source_locale=source_locale,
             source_hash=source_hash,
+            status=ContentVersionStatus.OK,
+            review_reason=None,
         )
         return "translated"
+
+    # Everything above this line is cheap: an indexed lookup, maybe a
+    # reuse of an identical translation already paid for. Below it is a
+    # network call that can take its timeout on each of its retries. So
+    # this is where the deadline is enforced — a call is only started
+    # when its whole worst case still fits inside the invocation. The
+    # row is left exactly as it was; the next tick finds it unchanged
+    # and does the work then.
+    if not budget.can_afford_one_call():
+        logger.info(
+            "Translation deferred (budget spent) entity=%s:%s field=%s locale=%s",
+            entity_type,
+            entity_id,
+            field,
+            target_locale,
+        )
+        return "deferred"
 
     request = TranslationRequest(
         text=text,
@@ -464,15 +430,14 @@ def _translate_one_field(
             target_locale,
             exc,
         )
-        # Phase 5c: cv is the only MT store. ``record_mt_failure``
-        # bumps attempts in place and promotes to failed_permanent
-        # at the threshold.
-        _dual_write_mt_failure(
+        # The store bumps ``attempts`` in place and promotes to
+        # ``failed_permanent`` at the threshold.
+        store.record_failure(
             db,
             entity_type=entity_type,
             entity_id=entity_id,
             field=field,
-            target_locale=target_locale,
+            locale=target_locale,
             source_locale=source_locale,
             source_hash=source_hash,
         )
@@ -501,15 +466,15 @@ def _translate_one_field(
             ",".join(issue.code for issue in issues),
         )
 
-    # Phase 5c: cv is the only MT store. record_mt_version inserts
-    # (or supersedes) the active row and resets attempts to 0 on
-    # success.
-    _dual_write_mt_success(
+    # The live store supersedes the active row and resets attempts on
+    # success; the staged store overwrites its single row. Either way
+    # the text is now recorded with the verdict the check gave it.
+    store.record_success(
         db,
         entity_type=entity_type,
         entity_id=entity_id,
         field=field,
-        target_locale=target_locale,
+        locale=target_locale,
         text=result.text,
         source_locale=source_locale,
         source_hash=source_hash,

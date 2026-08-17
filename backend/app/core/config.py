@@ -154,6 +154,23 @@ class Settings(BaseSettings):
         default=False,
         description="Use the queue-based publish path instead of sync orchestrator calls",
     )
+    # How long one worker tick may spend translating before it hands the
+    # job back unfinished. Must leave room, inside the function's
+    # ``maxDuration`` (300 s in backend/vercel.json), for the one
+    # provider call the budget may still authorise — worst case
+    # ``GEMINI_TIMEOUT_SECONDS`` on each of three attempts plus backoff,
+    # which ``worker_budget`` reserves automatically. 180 + ~96 leaves
+    # roughly twenty seconds of headroom for the commit and the
+    # promotion check.
+    #
+    # This is the setting that makes a large course finish. Without a
+    # budget the tick simply ran until the platform killed it, which
+    # left the job in ``processing`` with nothing recorded — 161 such
+    # attempts on one course in August 2026.
+    TRANSLATION_WORKER_BUDGET_SECONDS: float = Field(
+        default=180.0,
+        description="Wall-clock allowance for one translation worker tick",
+    )
 
     @model_validator(mode="after")
     def load_alternative_env_vars(self):

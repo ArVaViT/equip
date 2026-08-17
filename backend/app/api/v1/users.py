@@ -128,11 +128,31 @@ def update_my_preferences(
     elevated users (teachers/admins) flipping languages can affect what they
     see in the editor and we want a paper trail for support tickets.
     """
+    # A guess never overrules a decision. The client reports the browser's
+    # language for accounts whose locale nobody ever set — a Google
+    # sign-up, where no language reaches ``handle_new_user`` at all — and
+    # that report must not touch the locale of somebody who has since
+    # picked one. Refused silently: the client is not doing anything
+    # wrong, it simply has less information than the profile does.
+    if body.detected and current_user.locale_source == "chosen":
+        return current_user
+
+    new_source = "detected" if body.detected else "chosen"
     if current_user.preferred_locale == body.preferred_locale:
+        # Same language, but possibly a stronger claim to it: confirming a
+        # detected value in the first-run screen is a person choosing it,
+        # and a 'default' row is upgraded by any signal at all. No audit
+        # entry — nothing a reader of the log would care about changed.
+        upgrade = not body.detected or current_user.locale_source == "default"
+        if upgrade and current_user.locale_source != new_source:
+            current_user.locale_source = new_source
+            db.commit()
+            db.refresh(current_user)
         return current_user
 
     previous = current_user.preferred_locale
     current_user.preferred_locale = body.preferred_locale
+    current_user.locale_source = new_source
 
     # ``log_action`` COMMITS the session itself (its trailing commit is
     # load-bearing — see audit_service.py). Calling it here, after the

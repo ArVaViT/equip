@@ -23,6 +23,7 @@ from app.services.course_service import (
     restore_course,
     update_course,
 )
+from app.services.staged_edits import promote_staged_entity_unconditionally
 from app.services.translation.completeness import course_translation_completeness
 from app.services.translation.pipeline_hooks import (
     run_course_translation_pipeline_if_published,
@@ -133,6 +134,19 @@ def update_existing_course(
             db.flush()
             details["new_status"] = CourseStatus.PUBLISHING.value
             details["translations_ready"] = f"{completeness.present}/{completeness.required}"
+
+    # Coming back off the catalog: edits that were being held for the
+    # sake of students now have no students to be held from, and leaving
+    # them in the staging table would hide the teacher's own work from
+    # their own draft. Release them as they are — half-translated
+    # fields simply mean the publication gate will keep the course in
+    # ``publishing`` until the pipeline finishes, which is exactly what
+    # that gate is for.
+    left_publication = old_status == CourseStatus.PUBLISHED and result.status != CourseStatus.PUBLISHED
+    if left_publication:
+        released = promote_staged_entity_unconditionally(db, course_id=str(course_id))
+        if released:
+            details["released_held_edits"] = released
 
     action = "publish" if is_publish_event else "update"
     log_action(db, teacher.id, action, "course", course_id, details=details or None, request=request)

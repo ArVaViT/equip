@@ -2566,5 +2566,9 @@
     "fingerprint": "Version {{version}} · text fingerprint {{sha}}",
     "privacy": "Privacy Policy",
     "terms": "Terms of Use"
+  },
+  "meta": {
+    "documentTitle": "Equip — study the Bible online",
+    "description": "Equip is systematic Bible study for people who take Scripture seriously. Courses, progress, certificates. English, Russian, German, Ukrainian."
   }
 }

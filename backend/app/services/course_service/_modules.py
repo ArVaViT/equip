@@ -99,7 +99,7 @@ def update_module(db: Session, module: Module, data: ModuleUpdate) -> Module:
     # Hydrate runtime attrs from cv so the caller's serialization picks
     # up the new text immediately.
     src = _course_source_locale(db, module.course_id) or "en"
-    populate_module_texts(db, [module], source_locale=normalize_locale(src))
+    populate_module_texts(db, [module], source_locale=normalize_locale(src), for_author=True)
     return module
 
 

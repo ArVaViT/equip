@@ -357,10 +357,21 @@ def populate_spine_texts(
                 m.description = None
 
 
-def populate_module_texts(db: Session, modules: list[Module], *, source_locale: LocaleCode) -> None:
+def populate_module_texts(
+    db: Session,
+    modules: list[Module],
+    *,
+    source_locale: LocaleCode,
+    for_author: bool = False,
+) -> None:
     """Like ``populate_spine_texts`` but for a flat list of modules where
     the caller already knows the shared source_locale (e.g. when iterating
     modules of one course).
+
+    ``for_author`` is set by the write path, which re-hydrates the row it
+    just saved in order to serialise it back to the teacher. Their own
+    unreleased edit is what they must see there; every other caller is a
+    reader and gets what has actually been released.
     """
     if not modules:
         return
@@ -371,6 +382,7 @@ def populate_module_texts(db: Session, modules: list[Module], *, source_locale: 
         fields=["title", "description"],
         display_locale=source_locale,
         source_locale=source_locale,
+        include_author_edits=for_author,
     )
     for m in modules:
         # Same rule as ``populate_spine_texts``: this function is always
@@ -868,6 +880,7 @@ def localize_assignment_rows(
     display_locale: LocaleCode,
     source_locale: LocaleCode,
     prefer_human: bool = False,
+    include_author_edits: bool | None = None,
 ) -> list[AssignmentResponse]:
     """Phase 5e3: ``assignments.title`` + ``description`` columns dropped.
     Both texts live in ``content_versions`` now.
@@ -890,6 +903,7 @@ def localize_assignment_rows(
         display_locale=display_locale,
         source_locale=source_locale,
         prefer_human=prefer_human,
+        include_author_edits=include_author_edits,
     )
     out: list[AssignmentResponse] = []
     for a in assignments:

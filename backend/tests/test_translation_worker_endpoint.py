@@ -31,6 +31,7 @@ from app.models.translation_job import (
     TranslationJob,
     TranslationJobStatus,
 )
+from app.services.translation.orchestrator import OrchestratorReport
 from app.services.translation.queue import enqueue_course_translation
 
 if TYPE_CHECKING:
@@ -118,7 +119,10 @@ def test_drains_one_job_to_done_on_success(client: TestClient, db: Session, teac
     course = _make_course(db, teacher.id)
     job = enqueue_course_translation(db, course.id)
 
-    with patch("app.api.v1.internal_translation_worker.translate_course_content") as orchestrator:
+    with patch(
+        "app.api.v1.internal_translation_worker.translate_course_content",
+        return_value=OrchestratorReport(translated=1),
+    ) as orchestrator:
         resp = client.post(_WORKER_PATH, headers={"X-Worker-Secret": _GOOD_SECRET})
 
     assert resp.status_code == 200
@@ -219,7 +223,10 @@ def test_concurrent_workers_dont_claim_the_same_row(client: TestClient, db: Sess
     enqueue_course_translation(db, c1.id)
     enqueue_course_translation(db, c2.id)
 
-    with patch("app.api.v1.internal_translation_worker.translate_course_content"):
+    with patch(
+        "app.api.v1.internal_translation_worker.translate_course_content",
+        return_value=OrchestratorReport(translated=1),
+    ):
         first = client.post(_WORKER_PATH, headers={"X-Worker-Secret": _GOOD_SECRET}).json()
         second = client.post(_WORKER_PATH, headers={"X-Worker-Secret": _GOOD_SECRET}).json()
 

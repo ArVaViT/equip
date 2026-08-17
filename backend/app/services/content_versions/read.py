@@ -77,6 +77,7 @@ def fetch_cv_entity_texts_with_fallback(
     source_locale: str,
     prefer_human: bool = False,
     fallback: Literal["auto", "none", "source_then_any"] = "auto",
+    include_author_edits: bool | None = None,
 ) -> dict[tuple[str, str], str | None]:
     """Read every active+ok ``content_versions`` row for the given
     entities + fields and resolve each (entity, field) to one text.
@@ -159,4 +160,26 @@ def fetch_cv_entity_texts_with_fallback(
                 else any_for_pair.get((eid, field))
             )
             resolved[(eid, field)] = by_locale.get((eid, field, source_locale)) or any_tier
+
+    if include_author_edits is None:
+        include_author_edits = prefer_human
+    if include_author_edits:
+        # This is the author's own view of their own text: the
+        # ``?source=1`` editor routes (which is what ``prefer_human``
+        # marks) and the responses to a save. An edit held back from
+        # readers (see ``staged_edits``) has to win here — a save that
+        # answers with the previous wording reads as a lost edit, and
+        # the teacher retypes what they already wrote.
+        #
+        # Readers never take this branch, and the staging table is
+        # named nowhere else in the reading path.
+        from app.services.staged_edits.read import author_texts_bulk
+
+        for key, text in author_texts_bulk(
+            db,
+            entity_type=entity_type,
+            entity_ids=entity_ids,
+            fields=fields,
+        ).items():
+            resolved[key] = text
     return resolved

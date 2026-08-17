@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Eamc1YQ6cgnejJgZch42HgZhz3mXw3iilQtN1i02fucqNjlijBfuCI6z3brFOhC
+\restrict UD0WNeJD60UDD1nGbLUExbTqPvpOEQXAZPabjMpYZwmj8l6YREnxJfIxia6iBrc
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10 (Homebrew)
@@ -87,24 +87,25 @@ CREATE FUNCTION public.handle_new_user() RETURNS trigger
     AS $$
 DECLARE
   claimed_role text := NEW.raw_user_meta_data->>'role';
+  claimed_locale text := NEW.raw_user_meta_data->>'preferred_locale';
   safe_role text;
+  has_locale boolean;
 BEGIN
   safe_role := CASE
     WHEN claimed_role = 'student' THEN 'student'
     ELSE 'student'
   END;
 
-  INSERT INTO public.profiles (id, email, full_name, role, preferred_locale)
+  has_locale := claimed_locale IN ('ru', 'en', 'de', 'uk');
+
+  INSERT INTO public.profiles (id, email, full_name, role, preferred_locale, locale_source)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', ''),
     safe_role,
-    CASE
-      WHEN NEW.raw_user_meta_data->>'preferred_locale' IN ('ru', 'en', 'de', 'uk')
-        THEN NEW.raw_user_meta_data->>'preferred_locale'
-      ELSE 'ru'
-    END
+    CASE WHEN has_locale THEN claimed_locale ELSE 'ru' END,
+    CASE WHEN has_locale THEN 'chosen' ELSE 'default' END
   )
   ON CONFLICT (id) DO UPDATE
   SET
@@ -776,7 +777,9 @@ CREATE TABLE public.profiles (
     preferred_locale character varying(8) DEFAULT 'ru'::character varying NOT NULL,
     calendar_ical_min_iat bigint,
     deactivated_at timestamp with time zone,
+    locale_source text DEFAULT 'default'::text NOT NULL,
     CONSTRAINT chk_profiles_role CHECK ((role = ANY (ARRAY['admin'::text, 'teacher'::text, 'student'::text]))),
+    CONSTRAINT profiles_locale_source_check CHECK ((locale_source = ANY (ARRAY['default'::text, 'detected'::text, 'chosen'::text]))),
     CONSTRAINT profiles_preferred_locale_check CHECK (((preferred_locale)::text = ANY (ARRAY['ru'::text, 'en'::text, 'de'::text, 'uk'::text])))
 )
 WITH (autovacuum_vacuum_threshold='25', autovacuum_analyze_threshold='25');
@@ -939,6 +942,33 @@ CREATE TABLE public.rubrics (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     archived_at timestamp with time zone
+);
+
+
+--
+-- Name: staged_content_versions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.staged_content_versions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    entity_type text NOT NULL,
+    entity_id text NOT NULL,
+    field text NOT NULL,
+    locale text NOT NULL,
+    course_id character varying NOT NULL,
+    text text NOT NULL,
+    origin text NOT NULL,
+    status text DEFAULT 'ok'::text NOT NULL,
+    review_reason text,
+    source_hash text,
+    source_locale text,
+    authored_by uuid,
+    attempts integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT staged_content_versions_attempts_check CHECK ((attempts >= 0)),
+    CONSTRAINT staged_content_versions_origin_check CHECK ((origin = ANY (ARRAY['human'::text, 'mt'::text]))),
+    CONSTRAINT staged_content_versions_status_check CHECK ((status = ANY (ARRAY['ok'::text, 'needs_review'::text, 'failed'::text, 'failed_permanent'::text])))
 );
 
 
@@ -1399,6 +1429,14 @@ ALTER TABLE ONLY public.rubric_marks
 
 ALTER TABLE ONLY public.rubrics
     ADD CONSTRAINT rubrics_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: staged_content_versions staged_content_versions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staged_content_versions
+    ADD CONSTRAINT staged_content_versions_pkey PRIMARY KEY (id);
 
 
 --
@@ -2025,6 +2063,27 @@ CREATE INDEX ix_rubrics_course ON public.rubrics USING btree (course_id);
 
 
 --
+-- Name: ix_staged_content_versions_course; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_staged_content_versions_course ON public.staged_content_versions USING btree (course_id);
+
+
+--
+-- Name: ix_staged_content_versions_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_staged_content_versions_created ON public.staged_content_versions USING btree (created_at);
+
+
+--
+-- Name: ix_staged_content_versions_entity; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_staged_content_versions_entity ON public.staged_content_versions USING btree (entity_type, entity_id);
+
+
+--
 -- Name: ix_student_grades_cohort_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2092,6 +2151,13 @@ CREATE UNIQUE INDEX uniq_content_versions_active ON public.content_versions USIN
 --
 
 CREATE UNIQUE INDEX uniq_dc_attempts_live_per_day ON public.daily_challenge_attempts USING btree (user_id, challenge_date) WHERE (is_archive = false);
+
+
+--
+-- Name: uniq_staged_content_versions_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX uniq_staged_content_versions_key ON public.staged_content_versions USING btree (entity_type, entity_id, field, locale);
 
 
 --
@@ -2849,6 +2915,22 @@ ALTER TABLE ONLY public.rubrics
 
 
 --
+-- Name: staged_content_versions staged_content_versions_authored_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staged_content_versions
+    ADD CONSTRAINT staged_content_versions_authored_by_fkey FOREIGN KEY (authored_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: staged_content_versions staged_content_versions_course_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staged_content_versions
+    ADD CONSTRAINT staged_content_versions_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id) ON DELETE CASCADE;
+
+
+--
 -- Name: student_grades student_grades_cohort_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3381,6 +3463,12 @@ CREATE POLICY reviews_select_all ON public.course_reviews FOR SELECT TO authenti
 
 
 --
+-- Name: staged_content_versions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.staged_content_versions ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: student_grades; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -3421,5 +3509,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Eamc1YQ6cgnejJgZch42HgZhz3mXw3iilQtN1i02fucqNjlijBfuCI6z3brFOhC
+\unrestrict UD0WNeJD60UDD1nGbLUExbTqPvpOEQXAZPabjMpYZwmj8l6YREnxJfIxia6iBrc
 

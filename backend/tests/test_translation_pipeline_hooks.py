@@ -29,10 +29,10 @@ from app.services.translation.pipeline_hooks import (
 from app.services.translation.protocol import TranslationError
 
 
-def _seed_published_course(db: Session, teacher_id) -> Course:
+def _seed_published_course(db: Session, teacher_id, *, status: str = "published") -> Course:
     course = Course(
         id=f"hook-{uuid.uuid4().hex[:8]}",
-        status="published",
+        status=status,
         source_locale="ru",
         created_by=teacher_id,
     )
@@ -102,7 +102,12 @@ def test_course_pipeline_rolls_back_on_sqlalchemy_error(db: Session, teacher, ca
 
 
 def test_entity_reconcile_swallows_translation_error(db: Session, teacher, caplog):
-    course = _seed_published_course(db, teacher.id)
+    # ``publishing`` rather than ``published``: on a live course an edit
+    # is held for its translations and goes down the staged path
+    # instead, which has its own suppression test below. This one is
+    # about ``reconcile_entity``, which is what a course on its way out
+    # still uses.
+    course = _seed_published_course(db, teacher.id, status="publishing")
     ann = Announcement(course_id=course.id, created_by=teacher.id)
     db.add(ann)
     db.flush()
@@ -125,7 +130,7 @@ def test_entity_reconcile_swallows_translation_error(db: Session, teacher, caplo
 
 
 def test_entity_reconcile_swallows_unexpected_error_with_traceback(db: Session, teacher, caplog):
-    course = _seed_published_course(db, teacher.id)
+    course = _seed_published_course(db, teacher.id, status="publishing")
     ann = Announcement(course_id=course.id, created_by=teacher.id)
     db.add(ann)
     db.flush()
@@ -147,7 +152,7 @@ def test_entity_reconcile_swallows_unexpected_error_with_traceback(db: Session, 
 
 
 def test_entity_reconcile_rolls_back_on_sqlalchemy_error(db: Session, teacher):
-    course = _seed_published_course(db, teacher.id)
+    course = _seed_published_course(db, teacher.id, status="publishing")
     ann = Announcement(course_id=course.id, created_by=teacher.id)
     db.add(ann)
     db.flush()
@@ -162,6 +167,55 @@ def test_entity_reconcile_rolls_back_on_sqlalchemy_error(db: Session, teacher):
         reconcile_entity_if_course_published(db, "announcement", ann)
 
     rollback.assert_called_once()
+
+
+def test_staged_edit_path_swallows_its_failures_too(db: Session, teacher, caplog):
+    """The rule the hooks exist for holds on the new path as well: a
+    teacher's save must survive the pipeline failing.
+
+    It matters more here, not less. The edit is already recorded in the
+    staging table by the time this runs, so a failure means the
+    translation is late — the next worker tick picks it up — whereas a
+    raised exception would mean the save itself came back an error for
+    work that had in fact succeeded."""
+    course = _seed_published_course(db, teacher.id)
+    ann = Announcement(course_id=course.id, created_by=teacher.id)
+    db.add(ann)
+    db.flush()
+    with (
+        patch(
+            "app.services.translation.staged_pipeline.translate_staged_edits",
+            side_effect=TranslationError("gemini exploded"),
+        ),
+        patch("app.services.translation.pipeline_hooks.is_translation_enabled", return_value=True),
+        patch("app.core.config.settings.TRANSLATION_QUEUE_ENABLED", False),
+        caplog.at_level(logging.INFO, logger="app.services.translation.pipeline_hooks"),
+    ):
+        reconcile_entity_if_course_published(db, "announcement", ann)
+
+    records = [r for r in caplog.records if r.name == "app.services.translation.pipeline_hooks"]
+    assert records, "expected the failure to be logged rather than raised"
+    assert records[-1].scope == "staged-edit"
+
+
+def test_a_live_course_enqueues_rather_than_translating_in_the_request(db: Session, teacher):
+    """With the queue on, an edit to a live course costs the teacher one
+    INSERT. The Gemini round trips — one per language, per field —
+    happen on the worker, not inside their save."""
+    course = _seed_published_course(db, teacher.id)
+    ann = Announcement(course_id=course.id, created_by=teacher.id)
+    db.add(ann)
+    db.flush()
+    with (
+        patch("app.services.translation.pipeline_hooks.is_translation_enabled", return_value=True),
+        patch("app.core.config.settings.TRANSLATION_QUEUE_ENABLED", True),
+        patch("app.services.translation.staged_pipeline.translate_staged_edits") as translate,
+    ):
+        reconcile_entity_if_course_published(db, "announcement", ann)
+
+    translate.assert_not_called()
+    jobs = db.query(TranslationJob).filter(TranslationJob.course_id == course.id).all()
+    assert [j.status for j in jobs] == [TranslationJobStatus.QUEUED]
 
 
 def test_course_pipeline_skips_draft(db: Session, teacher):
