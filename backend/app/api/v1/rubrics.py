@@ -42,7 +42,7 @@ from app.services.audit_service import log_action
 from app.services.content_versions import dual_write_entity_content
 from app.services.domain_access import resolve_chapter_course_id
 from app.services.submission_grading import apply_grade
-from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
+from app.services.translation.pipeline_hooks import run_course_translation_pipeline_if_published
 from app.services.translation.protocol import EntityType
 
 router = APIRouter(prefix="/rubrics", tags=["rubrics"])
@@ -81,22 +81,6 @@ def _dual_write(
         authored_by=teacher.id,
         texts=texts,
     )
-
-
-def _translatable_parts(db: Session, rubric: Rubric) -> list[tuple[EntityType, object]]:
-    """The rubric and everything under it, in walk order.
-
-    Each is its own entity in ``content_versions`` and therefore its own
-    reconcile call — a criterion without its levels is a heading with no
-    marks under it, which is why they travel together.
-    """
-    parts: list[tuple[EntityType, object]] = [("rubric", rubric)]
-    criteria = rubric_service.live_criteria(db, rubric.id)
-    levels = rubric_service.live_levels(db, [c.id for c in criteria])
-    for criterion in criteria:
-        parts.append(("rubric_criterion", criterion))
-        parts.extend(("rubric_level", level) for level in levels.get(criterion.id, []))
-    return parts
 
 
 @router.post("", response_model=RubricResponse, status_code=status.HTTP_201_CREATED)
@@ -166,8 +150,14 @@ def create_rubric(
                 teacher,
             )
     db.commit()
-    for entity_type, entity in _translatable_parts(db, rubric):
-        reconcile_entity_if_course_published(db, entity_type, entity)
+    # One course-level call rather than one per criterion and level. The
+    # per-entity hook is right for an announcement — a single entity, a
+    # couple of fields — and wrong here: a rubric is twenty-odd entities,
+    # and firing the hook for each would put twenty-odd rounds of
+    # translation inside the teacher's request. The course hook enqueues
+    # once where the queue is on and walks the course where it is not,
+    # short-circuiting on every hash that has not changed.
+    run_course_translation_pipeline_if_published(db, data.course_id)
     log_action(
         db,
         teacher.id,

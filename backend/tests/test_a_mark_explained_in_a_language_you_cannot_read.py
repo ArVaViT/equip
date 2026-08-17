@@ -105,6 +105,35 @@ class TestTheRubricIsTranslatableAtAll:
         assert ("rubric_level", str(level.id)) in walked
 
 
+class TestWritingOneDoesNotBlockTheTeacher:
+    """A rubric is twenty-odd entities, not one.
+
+    Every other write hook here is per-entity, which is right for an
+    announcement — one row, two fields. Firing it once per criterion and
+    once per level would have put twenty-odd rounds of translation inside
+    the teacher's request, on a platform where that path is already the
+    known reason a big course save times out. One course-level call
+    instead: it enqueues where the queue is on, and where it is not it
+    walks the course and short-circuits on every hash that has not moved.
+    """
+
+    def test_the_route_asks_once_at_the_course_level(self):
+        import ast
+        from pathlib import Path
+
+        source = Path(__file__).resolve().parent.parent / "app" / "api" / "v1" / "rubrics.py"
+        tree = ast.parse(source.read_text(encoding="utf-8"))
+        called = {
+            node.func.id if isinstance(node.func, ast.Name) else getattr(node.func, "attr", "")
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+        }
+        assert "run_course_translation_pipeline_if_published" in called
+        assert "reconcile_entity_if_course_published" not in called, (
+            "per-entity translation inside a rubric write puts a round trip per level in the request"
+        )
+
+
 class TestWhatTheStudentReads:
     def test_the_criterion_arrives_in_their_own_language(self, db: Session, teacher, student):
         rubric, criterion, level, _submission = _course_with_graded_essay(db)
