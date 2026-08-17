@@ -30,7 +30,6 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import selectinload
 
 from app.schemas.locale import LOCALE_CODES, LocaleCode, normalize_locale
@@ -159,127 +158,135 @@ def question_translation_completeness(
 def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChallengeQuestion]:
     """Questions with work outstanding in some locale.
 
-    Three things put a question here: a locale with no ``question_text``
-    row at all, a row of any field still sitting at ``failed``, and a
-    machine-translated row whose ``source_hash`` has been cleared, which
-    is how a settled row is asked for again without taking its text away
-    from readers in the meantime.
+    What counts as outstanding, per (entity, field):
 
-    The first half used to be the whole of it, described as a cheap
-    prefilter that a later pass would correct. There is no later pass —
-    this is the only thing that selects work, so what it missed was
-    missed permanently. The gate that decides what a reader may see is
-    ``question_translation_completeness``; this decides what ever gets
-    looked at again.
+    * a locale with no servable row at all, and no row parked for review
+      standing in for it — nothing exists, and nothing will unless the
+      sweep asks;
+    * a machine translation whose ``source_hash`` has been cleared, which
+      is how a settled row is asked for again while its old text keeps
+      serving in the meantime.
 
-    "Has a settled row" rather than "has a good row", and the
-    difference is the whole behaviour of the sweep. A row parked at
-    ``needs_review`` is not retried by the orchestrator — the model runs
-    at temperature 0, so asking again returns the same text and the same
-    verdict. Counting those as missing put the sweep in a loop: the same
-    two questions selected every night, every field skipped, no
-    progress, and the day's budget spent on questions a person has to
-    look at anyway.
+    A locale sitting at ``needs_review`` is NOT outstanding. The model
+    runs at temperature 0, so asking again returns the same text and the
+    same verdict; counting those would put the sweep in a loop, spending
+    every night's budget on the two questions a person has to look at
+    anyway. Those move through ``POST /admin/translations/accept-reviewed``
+    or ``/retry-reviewed``, and the second parks them at ``failed``,
+    which has no servable row — so they come straight back here.
 
-    ``failed`` is the exception, because it is the one status the
-    orchestrator does retry. It is also what
-    ``POST /admin/translations/retry-reviewed`` leaves behind when an
-    operator re-opens rows after a prompt or validator change — so
-    treating it as settled would mean the sweep never went back for
-    exactly the rows somebody just asked it to redo.
+    Why this reads every field of every option
+    ------------------------------------------
+
+    Because the previous version did not, twice, and each time the part
+    it did not read was invisible for as long as it was wrong.
+
+    First it counted only ``question_text``: on 2026-08-16, 57
+    explanations carrying an English KJV quotation inside German and
+    Ukrainian prose sat unfixed while the sweep reported nothing to do,
+    because every one of those questions had its four question_text rows.
+
+    Then it counted ``failed`` on any field, including options — which
+    is a different thing from "the row is missing". Production today has
+    five answer options with no German or Ukrainian row at all, on two
+    *published* questions. Nothing failed; nothing was ever attempted.
+    The sweep considered those questions settled, so a German opening
+    the card on those days gets a legible question and blank buttons —
+    the exact failure this module was written to end.
+
+    The rule that survives both: a question is settled when every field
+    of the question AND of every one of its options has a servable row in
+    every language. Nothing narrower is safe, because this is the only
+    thing that selects work — there is no later pass to correct it.
     """
     from app.models.content_version import ContentVersion, ContentVersionStatus
     from app.models.daily_challenge import DailyChallengeOption, DailyChallengeQuestion
 
-    # The two sides are compared in Python, not in SQL:
-    # ``content_versions.entity_id`` is text while a question's id is a
-    # uuid, and the dialects disagree about what that comparison means.
-    # Postgres refuses it; SQLite accepts it and matches nothing, which
-    # is the worse failure — the sweep would call every question
-    # untranslated forever and re-translate the same rows every night.
-    complete: set[str] = {
-        row[0]
-        for row in db.query(ContentVersion.entity_id)
-        .filter(
-            ContentVersion.entity_type == "daily_challenge_question",
-            ContentVersion.field == "question_text",
-            ContentVersion.superseded_by.is_(None),
-            # ``failed`` is the one status the orchestrator retries, so a
-            # row sitting in it is not a language that has been dealt
-            # with — it is work waiting. This is also how a row re-opened
-            # by ``POST /admin/translations/retry-reviewed`` finds its way
-            # back into the sweep: the endpoint parks it at ``failed``,
-            # and without this the question would look settled and never
-            # be picked up again.
-            ContentVersion.status != ContentVersionStatus.FAILED,
+    wanted_locales = set(LOCALE_CODES)
+
+    # One read of every Daily Challenge row, grouped per (entity, field).
+    # Cheaper than it looks — the table is indexed on entity_type — and
+    # far cheaper than resolving field specs per question, which runs the
+    # language detector over every field of all five hundred.
+    rows = (
+        db.query(
+            ContentVersion.entity_type,
+            ContentVersion.entity_id,
+            ContentVersion.field,
+            ContentVersion.locale,
+            ContentVersion.status,
+            ContentVersion.origin,
+            ContentVersion.source_hash,
         )
-        .group_by(ContentVersion.entity_id)
-        .having(func.count(func.distinct(ContentVersion.locale)) >= len(LOCALE_CODES))
+        .filter(
+            ContentVersion.entity_type.in_(("daily_challenge_question", "daily_challenge_option")),
+            ContentVersion.superseded_by.is_(None),
+        )
         .all()
+    )
+
+    servable: dict[tuple[str, str], set[str]] = {}
+    parked: dict[tuple[str, str], set[str]] = {}
+    reopened: set[str] = set()
+    for _entity_type, entity_id, field, locale, status, origin, source_hash in rows:
+        if status == ContentVersionStatus.OK:
+            servable.setdefault((entity_id, field), set()).add(locale)
+            if origin == "mt" and source_hash is None:
+                reopened.add(entity_id)
+        elif status == ContentVersionStatus.NEEDS_REVIEW:
+            parked.setdefault((entity_id, field), set()).add(locale)
+
+    def _entity_has_work(entity_id: str) -> bool:
+        if entity_id in reopened:
+            return True
+        fields = {field for (eid, field) in servable if eid == entity_id}
+        fields |= {field for (eid, field) in parked if eid == entity_id}
+        for field in fields:
+            have = servable.get((entity_id, field), set())
+            waiting_on_a_person = parked.get((entity_id, field), set())
+            if wanted_locales - have - waiting_on_a_person:
+                return True
+        return False
+
+    # ``content_versions.entity_id`` is text while an option's id is a
+    # uuid, and the dialects disagree about that comparison: Postgres
+    # refuses it, SQLite accepts it and matches nothing — the worse
+    # failure, because the sweep would silently stop finding option work
+    # and look like it was fine. Bridged in Python, deliberately.
+    question_of_option: dict[str, str] = {
+        str(option_id): str(question_id)
+        for option_id, question_id in db.query(DailyChallengeOption.id, DailyChallengeOption.question_id).all()
     }
 
-    # A question is not settled because its *question text* is settled.
-    #
-    # Counting one field was described as a cheap prefilter that a later
-    # pass would correct, and there is no later pass — this is the only
-    # thing that selects work. On 2026-08-16 that meant 57 explanations
-    # carrying an English KJV quotation inside German and Ukrainian prose
-    # sat at ``failed`` while the sweep reported "nothing left to
-    # translate", because every one of those questions had its four
-    # question_text rows in place. They were invisible, and would have
-    # stayed invisible.
-    #
-    # So anything still marked ``failed`` — on either field, or on any of
-    # the question's answer options — takes its question back out of the
-    # settled set.
-    # A machine translation whose ``source_hash`` has been cleared is the
-    # other kind of outstanding work. That is how an operator re-opens a
-    # settled row — ``scripts/reopen_foreign_quotes`` does it, so a row
-    # keeps serving its old text while waiting for better — and clearing
-    # the hash only makes the row *eligible*. Without this, nothing ever
-    # selected its question again and the re-opening did nothing at all.
-    def _outstanding(entity_type: str) -> set[str]:
-        return {
-            row[0]
-            for row in db.query(ContentVersion.entity_id)
-            .filter(
-                ContentVersion.entity_type == entity_type,
-                ContentVersion.superseded_by.is_(None),
-                or_(
-                    ContentVersion.status == ContentVersionStatus.FAILED,
-                    and_(ContentVersion.origin == "mt", ContentVersion.source_hash.is_(None)),
-                ),
-            )
-            .distinct()
-            .all()
-        }
+    entity_ids = {eid for (eid, _field) in servable} | {eid for (eid, _field) in parked}
+    unsettled: set[str] = set()
+    for entity_id in entity_ids:
+        if not _entity_has_work(entity_id):
+            continue
+        unsettled.add(question_of_option.get(entity_id, entity_id))
 
-    unsettled: set[str] = _outstanding("daily_challenge_question")
-    failed_option_ids: set[str] = _outstanding("daily_challenge_option")
-    if failed_option_ids:
-        # Compared in Python for the reason given above: an option id is
-        # text on one side of this and a uuid on the other, and asking
-        # the database to bridge that is a dialect-dependent answer —
-        # Postgres refuses it, SQLite silently matches nothing. The
-        # second is what would hurt: this branch would go back to doing
-        # nothing at all, and look like it worked.
-        unsettled |= {
-            str(question_id)
-            for option_id, question_id in db.query(DailyChallengeOption.id, DailyChallengeOption.question_id).all()
-            if str(option_id) in failed_option_ids
-        }
-    complete -= unsettled
+    # A question whose options exist but have no rows at all would be
+    # invisible above — nothing to group. Catch it from the other side:
+    # any option with no content rows whatsoever belongs to a question
+    # that is certainly not settled.
+    known_entities = entity_ids
+    for option_id, question_id in question_of_option.items():
+        if option_id not in known_entities:
+            unsettled.add(question_id)
+
+    if not unsettled:
+        return []
 
     # Oldest first: the questions already in the schedule are the ones a
     # reader hits first, and they were created first.
-    candidates = [
+    pending = [
         row[0]
         for row in db.query(DailyChallengeQuestion.id)
         .filter(DailyChallengeQuestion.rejected.is_(False))
         .order_by(DailyChallengeQuestion.created_at)
         .all()
-    ]
-    pending = [qid for qid in candidates if str(qid) not in complete][:limit]
+        if str(row[0]) in unsettled
+    ][:limit]
     if not pending:
         return []
 

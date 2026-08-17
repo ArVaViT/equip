@@ -363,6 +363,38 @@ class TestTheSweep:
 
         assert question.id in {q.id for q in questions_missing_a_language(db, limit=10)}
 
+    def test_an_answer_option_with_no_translation_at_all_brings_its_question_back(self, db: Session, author: User):
+        # The hole the ``failed`` check did not cover, found in
+        # production on 2026-08-17: five answer options on two PUBLISHED
+        # questions had no German or Ukrainian row at all. Nothing had
+        # failed — nothing had ever been attempted — so the sweep saw no
+        # failed rows, called the questions settled, and moved on. A
+        # German opening the card on those days got a legible question
+        # and blank buttons.
+        #
+        # "Failed" and "never existed" are different states and only one
+        # of them was being looked for.
+        from app.models.content_version import ContentVersion
+
+        question = _seed_question(db, author_id=author.id)
+        translate_question(db, question, provider=_Provider())
+        assert question.id not in {q.id for q in questions_missing_a_language(db, limit=10)}
+
+        option_ids = [str(option.id) for option in question.options]
+        deleted = (
+            db.query(ContentVersion)
+            .filter(
+                ContentVersion.entity_type == "daily_challenge_option",
+                ContentVersion.entity_id.in_(option_ids),
+                ContentVersion.locale == "de",
+            )
+            .delete(synchronize_session=False)
+        )
+        db.commit()
+        assert deleted, "expected the German option rows to exist before deleting them"
+
+        assert question.id in {q.id for q in questions_missing_a_language(db, limit=10)}
+
     def test_a_row_re_opened_by_clearing_its_hash_is_selected(self, db: Session, author: User):
         # Clearing ``source_hash`` is how a settled row is asked for
         # again while its current text keeps serving — better than
