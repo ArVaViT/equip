@@ -217,8 +217,7 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
         _emit_translation_duration(tick_start, outcome="paused")
         mark_job_paused(db, job, made_progress=report.made_progress)
         logger.info(
-            "translation_worker: job %s paused mid-course %s after %.0fs "
-            "(translated=%d needs_review=%d failed=%d)",
+            "translation_worker: job %s paused mid-course %s after %.0fs (translated=%d needs_review=%d failed=%d)",
             job_id,
             course_id,
             budget.elapsed,

@@ -340,18 +340,19 @@ jobs:
           COUNT=$(psql -tA -h localhost -p 5432 -U ci -d ci \
             -c "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';")
           echo "public base tables after replay: $COUNT"
-          # Prod has 45 public base tables (see schema.sql) — 38, plus the five
+          # Prod has 46 public base tables (see schema.sql) — 38, plus the five
           # rubric tables and submission_declarations (2026-08-12), plus
-          # legal_acceptances (2026-08-13). Guard against a silently-truncated
-          # dump or a partial load.
+          # legal_acceptances (2026-08-13), plus staged_content_versions
+          # (2026-08-17). Guard against a silently-truncated dump or a
+          # partial load.
           #
           # Worth knowing what this guard does NOT catch: it counts tables, so
           # the four certificate-letterhead COLUMNS added to prod on
           # 2026-08-13 were missing from schema.sql for a day without anything
           # going red. Regenerating the dump is the step that catches column
           # drift, and it is not optional after a prod change.
-          if [ "$COUNT" -ne 45 ]; then
-            echo "::error::Expected 45 public tables after replay, got $COUNT — schema.sql may be stale or partial." >&2
+          if [ "$COUNT" -ne 46 ]; then
+            echo "::error::Expected 46 public tables after replay, got $COUNT — schema.sql may be stale or partial." >&2
             exit 1
           fi
           echo "OK: prod schema replays cleanly from supabase/schema.sql"
