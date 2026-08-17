@@ -71,6 +71,18 @@ class ResetResponse(BaseModel):
     reset: int
 
 
+class AcceptReviewedRequest(BaseModel):
+    """Accept specific ``needs_review`` rows as servable, by primary key.
+
+    By id and not by selector, deliberately: accepting is the operator
+    saying "I read this one and it is fine", and that claim cannot be
+    made about a set nobody enumerated. The ids come from the review
+    queue, which shows the text and the reason beside each row.
+    """
+
+    ids: list[UUID] = Field(..., min_length=1, max_length=200)
+
+
 @router.post(
     "/reset-by-ids",
     response_model=ResetResponse,
@@ -275,6 +287,93 @@ def retry_reviewed(
         "content_version",
         f"{payload.entity_type}:{payload.locale or 'all'}",
         details={"count": affected, "limit": payload.limit},
+        request=request,
+    )
+    return ResetResponse(reset=affected)
+
+
+@router.post(
+    "/accept-reviewed",
+    response_model=ResetResponse,
+    summary="Accept needs_review cv rows as servable",
+    responses={
+        200: {"description": "Rows accepted; ``reset`` counts those actually flipped."},
+        404: {"description": "No needs_review row matched the given ids."},
+    },
+)
+def accept_reviewed(
+    payload: AcceptReviewedRequest,
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> ResetResponse:
+    """Flip ``needs_review`` rows to ``ok`` — a person looked, and the
+    check was wrong about this one.
+
+    The structural check is deliberately strict, and strictness has a
+    cost that lands entirely on the reader: a row it parks is invisible
+    until somebody acts, and until now the only actions were "redo it"
+    (which at temperature 0 returns the same text and the same verdict)
+    and "edit production by hand". So a correct translation the checker
+    misread stayed unreadable forever.
+
+    That is not hypothetical. The language rule reports a short
+    Ukrainian answer option as Russian — the two share most of a short
+    phrase's letters, and on four words there is not enough evidence to
+    tell them apart. Measured across production the detector is right
+    to about one error in thirteen thousand lines, which is excellent
+    and still means a handful of rows a person has to overrule.
+
+    Accepting keeps ``review_reason`` on the row. The audit entry
+    records who accepted what, because "a human decided this was fine"
+    is exactly the kind of claim that should have a name attached.
+
+    Never touches ``origin='human'``: those are not parked in the first
+    place, and the guard costs nothing.
+    """
+    rows = (
+        db.query(ContentVersion)
+        .filter(
+            ContentVersion.id.in_(payload.ids),
+            ContentVersion.status == "needs_review",
+            ContentVersion.origin != "human",
+            ContentVersion.superseded_by.is_(None),
+        )
+        .all()
+    )
+    if not rows:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="No needs_review row matched the given ids.",
+            context={"resource_type": "content_version"},
+        )
+
+    accepted = [(str(row.id), row.entity_type, row.locale, row.review_reason) for row in rows]
+    try:
+        affected = (
+            db.query(ContentVersion)
+            .filter(ContentVersion.id.in_([row.id for row in rows]))
+            .update({ContentVersion.status: "ok"}, synchronize_session=False)
+        )
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise
+
+    log_action(
+        db,
+        admin.id,
+        "accept_needs_review",
+        "content_version",
+        ",".join(item[0] for item in accepted)[:200],
+        details={
+            "count": affected,
+            "rows": [
+                {"id": rid, "entity_type": etype, "locale": locale, "reason": reason}
+                for rid, etype, locale, reason in accepted
+            ],
+        },
         request=request,
     )
     return ResetResponse(reset=affected)

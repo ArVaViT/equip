@@ -180,6 +180,17 @@
     "body": true
   },
   {
+    "method": "POST",
+    "path": "/api/v1/admin/translations/accept-reviewed",
+    "params": [],
+    "responses": [
+      "200",
+      "404",
+      "422"
+    ],
+    "body": true
+  },
+  {
     "method": "GET",
     "path": "/api/v1/admin/translations/queue-status",
     "params": [

@@ -249,3 +249,66 @@ def test_retry_reviewed_is_admin_only(student_client: TestClient):
         json={"entity_type": "daily_challenge_question"},
     )
     assert resp.status_code in (401, 403)
+
+
+# ---------------------------------------------------------------------------
+# accept-reviewed — a person read the row and the check was wrong about it
+# ---------------------------------------------------------------------------
+
+
+def test_accept_reviewed_makes_the_row_servable(admin_client: TestClient, db: Session):
+    """The structural check is strict on purpose, and its cost lands on
+    the reader: a row it parks is invisible until somebody acts. Redoing
+    it is no help — at temperature 0 the same source returns the same
+    text and the same verdict — so without this, a correct translation
+    the checker misread stays unreadable forever."""
+    row = _seed_needs_review(db, locale="uk")
+
+    resp = admin_client.post(
+        "/api/v1/admin/translations/accept-reviewed",
+        json={"ids": [str(row.id)]},
+    )
+
+    assert resp.status_code == 200
+    assert resp.json() == {"reset": 1}
+    db.refresh(row)
+    assert row.status == "ok"
+
+
+def test_accept_reviewed_keeps_the_reason_on_the_row(admin_client: TestClient, db: Session):
+    """Accepting is a person overruling the check, not the check having
+    been right. What it objected to stays on the row so the next reader
+    of this history can see what was overruled."""
+    row = _seed_needs_review(db, locale="uk")
+    row.review_reason = "[wrong_language] reads as ru, not uk"
+    db.commit()
+
+    admin_client.post("/api/v1/admin/translations/accept-reviewed", json={"ids": [str(row.id)]})
+
+    db.refresh(row)
+    assert row.status == "ok"
+    assert row.review_reason == "[wrong_language] reads as ru, not uk"
+
+
+def test_accept_reviewed_ignores_rows_that_were_never_parked(admin_client: TestClient, db: Session):
+    """Only ``needs_review`` is acceptable. A row that failed outright
+    has no text worth serving, and one that is already ``ok`` needs
+    nothing."""
+    ok_row = _seed_needs_review(db)
+    ok_row.status = "ok"
+    db.commit()
+
+    resp = admin_client.post(
+        "/api/v1/admin/translations/accept-reviewed",
+        json={"ids": [str(ok_row.id)]},
+    )
+
+    assert resp.status_code == 404
+
+
+def test_accept_reviewed_is_admin_only(student_client: TestClient):
+    resp = student_client.post(
+        "/api/v1/admin/translations/accept-reviewed",
+        json={"ids": [str(uuid.uuid4())]},
+    )
+    assert resp.status_code in (401, 403)
