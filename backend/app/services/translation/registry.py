@@ -36,6 +36,7 @@ from app.models.course import Chapter, Course, Module
 from app.models.course_event import CourseEvent
 from app.models.daily_challenge import DailyChallengeOption, DailyChallengeQuestion
 from app.models.quiz import Quiz, QuizOption, QuizQuestion
+from app.models.rubric import Rubric, RubricCriterion, RubricLevel
 from app.schemas.locale import normalize_locale
 from app.services.language_detection import detect_locale
 from app.services.translation.orchestrator import (
@@ -183,6 +184,28 @@ def _resolve_course_via_cohort_courses(db: Session, entity: Any) -> Course | Non
     return db.query(Course).filter(Course.id == course_id).first()
 
 
+def _resolve_course_via_rubric(db: Session, entity: Any) -> Course | None:
+    """For a criterion: criterion -> rubric -> course."""
+    rubric_id = getattr(entity, "rubric_id", None)
+    if not rubric_id:
+        return None
+    return db.query(Course).join(Rubric, Rubric.course_id == Course.id).filter(Rubric.id == rubric_id).first()
+
+
+def _resolve_course_via_criterion(db: Session, entity: Any) -> Course | None:
+    """For a level: level -> criterion -> rubric -> course."""
+    criterion_id = getattr(entity, "criterion_id", None)
+    if not criterion_id:
+        return None
+    return (
+        db.query(Course)
+        .join(Rubric, Rubric.course_id == Course.id)
+        .join(RubricCriterion, RubricCriterion.rubric_id == Rubric.id)
+        .filter(RubricCriterion.id == criterion_id)
+        .first()
+    )
+
+
 def _resolve_course_via_option(db: Session, entity: Any) -> Course | None:
     """QuizOption -> question -> quiz -> chapter -> ... -> course."""
     question_id = getattr(entity, "question_id", None)
@@ -266,6 +289,33 @@ REGISTRY: dict[EntityType, EntityRegistration] = {
         resolve_course=_resolve_course_via_cohort_courses,
         build_context=lambda _co, c: f"Student cohort name in course «{c.title}»",
     ),
+    # A rubric is the sentence a student is given for their mark. It was
+    # the last reader-facing text with no translation path at all: a
+    # German student read "Аргумент опирается на текст" and the level
+    # they were given under it, in Russian, as the explanation of their
+    # own grade.
+    "rubric": EntityRegistration(
+        entity_type="rubric",
+        fields=(FieldSpec("title", "title"),),
+        resolve_course=_resolve_course_via_attr("course_id"),
+        build_context=lambda _r, c: f"Marking rubric in course «{c.title}»",
+    ),
+    "rubric_criterion": EntityRegistration(
+        entity_type="rubric_criterion",
+        fields=(FieldSpec("title", "title"), FieldSpec("description", "plain")),
+        resolve_course=_resolve_course_via_rubric,
+        build_context=lambda _c, c: f"One thing a marking rubric judges, in course «{c.title}»",
+    ),
+    "rubric_level": EntityRegistration(
+        entity_type="rubric_level",
+        # ``label`` is the column; ``title`` is what content_versions
+        # calls a short heading, and the cohort entry above sets the
+        # same precedent rather than growing the field vocabulary for
+        # one synonym.
+        fields=(FieldSpec("title", "title", model_attr="label"), FieldSpec("description", "plain")),
+        resolve_course=_resolve_course_via_criterion,
+        build_context=lambda _lv, c: f"One rung of a marking rubric criterion, in course «{c.title}»",
+    ),
     # Phase 5c — Daily Challenge platform surface. Questions are
     # course-less by design (they're a platform-wide rotation, not
     # course content). ``reconcile_entity`` skips orphans, so the
@@ -315,6 +365,9 @@ ENTITY_MODEL: dict[EntityType, type] = {
     "cohort": Cohort,
     "daily_challenge_question": DailyChallengeQuestion,
     "daily_challenge_option": DailyChallengeOption,
+    "rubric": Rubric,
+    "rubric_criterion": RubricCriterion,
+    "rubric_level": RubricLevel,
 }
 
 
