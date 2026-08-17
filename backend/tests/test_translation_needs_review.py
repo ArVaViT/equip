@@ -186,6 +186,85 @@ class TestABadTranslationIsParked:
         assert "length_suspicious" in (row.review_reason or "")
 
 
+class TestABadRollIsNotAVerdict:
+    """A structural failure gets one second chance before it is parked.
+
+    The parking rule was built on "temperature 0 means the same answer,
+    so asking again is waste". Measured against the real model on
+    2026-08-17, that premise is false: a one-sentence block came back
+    from production with its <p> wrapper stripped and was parked, and
+    the identical text — same model, same prompt — came back clean nine
+    times out of nine on the next attempts.
+
+    So the first bad answer is treated as what it usually is, a bad
+    roll. The second is treated as what it looks like by then: something
+    about this text the model cannot do, which a person should see.
+    """
+
+    def test_a_failure_that_passes_on_the_second_ask_is_served(self, db: Session):
+        course = _make_course(db)
+
+        class _FailsOnce:
+            name = "flaky"
+
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def translate(self, request: TranslationRequest) -> TranslationResult:
+                self.calls += 1
+                # First answer echoes the Russian source (wrong language);
+                # the second is a real translation.
+                text = RU_SOURCE if self.calls == 1 else GOOD_EN
+                return TranslationResult(text=text, model="test")
+
+        provider = _FailsOnce()
+        translate_entity_fields(
+            db,
+            entity_type="course",
+            entity_id=str(course.id),
+            source_locale="ru",
+            fields=[TranslationFieldSpec(field="description", text=RU_SOURCE, content_kind="plain")],
+            target_locales=("en",),
+            provider=provider,
+        )
+
+        assert provider.calls == 2, "the orchestrator should have asked a second time"
+        row = _row(db, course)
+        assert row is not None
+        assert row.status == ContentVersionStatus.OK
+        assert row.text == GOOD_EN
+
+    def test_a_failure_that_repeats_is_still_parked(self, db: Session):
+        """Two bad answers is not luck. The row is kept and parked, and
+        the retry must not turn a genuine defect into an endless loop."""
+        course = _make_course(db)
+
+        class _AlwaysWrong(_FixedProvider):
+            def __init__(self) -> None:
+                super().__init__(RU_SOURCE)
+                self.calls = 0
+
+            def translate(self, request: TranslationRequest) -> TranslationResult:
+                self.calls += 1
+                return super().translate(request)
+
+        provider = _AlwaysWrong()
+        translate_entity_fields(
+            db,
+            entity_type="course",
+            entity_id=str(course.id),
+            source_locale="ru",
+            fields=[TranslationFieldSpec(field="description", text=RU_SOURCE, content_kind="plain")],
+            target_locales=("en",),
+            provider=provider,
+        )
+
+        assert provider.calls == 2, "exactly one retry, not a loop"
+        row = _row(db, course)
+        assert row is not None
+        assert row.status == ContentVersionStatus.NEEDS_REVIEW
+
+
 class TestParkedRowsDoNotChurn:
     def test_unchanged_source_is_not_re_asked(self, db: Session):
         course = _make_course(db)
