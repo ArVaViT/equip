@@ -62,9 +62,24 @@ def _comparable(value: str) -> str:
 
 
 def _english_half(candidate: str, russian_row: str | None) -> str | None:
-    """The English half, or ``None`` when this row cannot be proved."""
-    if not russian_row:
-        return None
+    """The English half, or ``None`` when this row cannot be proved.
+
+    Two proofs, and either is enough.
+
+    The first is the strongest: the tail is character-for-character the
+    Russian row already stored for this field, so the split is not a
+    reading of the text — it is the text saying where it was cut.
+
+    The second exists because the first is stricter than the data. One
+    row reads "Clear as crystal / Светлая (прозрачная), как кристалл"
+    while its Russian row says "Светлая, как кристалл" — the halves
+    disagree by one parenthetical, the exact match fails, and the row
+    stayed broken with an English reader looking at both languages. So:
+    a head that does not read as Russian, a tail that does, and a
+    separator between them is a proof of its own. It says nothing about
+    which Russian is right, only that the English half ends where the
+    Russian begins, and that is all this is deciding.
+    """
     for separator in _SEPARATORS:
         if separator not in candidate:
             continue
@@ -72,11 +87,12 @@ def _english_half(candidate: str, russian_row: str | None) -> str | None:
         head, tail = head.strip(), tail.strip()
         if not head or not tail:
             continue
-        if _comparable(tail) != _comparable(russian_row):
-            continue
         if carries_language(head) and detect_locale(head) == "ru":
             continue
-        return head
+        if russian_row and _comparable(tail) == _comparable(russian_row):
+            return head
+        if carries_language(tail) and detect_locale(tail) == "ru":
+            return head
     return None
 
 
@@ -130,6 +146,19 @@ def main() -> int:
                     field=row.field,
                     locale="en",
                     text=english,
+                )
+                # Whatever was translated from this row was translated
+                # from both languages at once — the German for this one
+                # carries the Russian half's parenthetical. Clearing the
+                # hash asks for those again, and leaves their current
+                # text serving until better arrives.
+                db.execute(
+                    text("""
+                        update content_versions set source_hash = null
+                        where entity_type = :et and entity_id = :eid and field = :f
+                          and origin = 'mt' and superseded_by is null
+                    """),
+                    {"et": row.entity_type, "eid": row.entity_id, "f": row.field},
                 )
 
         if args.apply:
