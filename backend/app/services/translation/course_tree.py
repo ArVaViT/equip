@@ -31,6 +31,7 @@ from app.models.chapter_block import ChapterBlock
 from app.models.cohort import Cohort, CohortCourse
 from app.models.course_event import CourseEvent
 from app.models.quiz import Quiz, QuizQuestion
+from app.models.rubric import Rubric, RubricCriterion, RubricLevel
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -134,6 +135,29 @@ def iter_course_entities(db: Session, course: Course) -> Iterator[tuple[EntityTy
 def _iter_course_side_entities(db: Session, course: Course) -> Iterator[tuple[EntityType, object]]:
     """Course-bound entities outside the chapter tree: announcements,
     calendar events, and the cohorts this course is attached to."""
+    # A rubric is course-scoped and lives outside the chapter tree, like
+    # the announcements below it. It reached this walk last of all the
+    # reader-facing text on the platform: until it did, a student's mark
+    # was explained to them in whatever language the teacher wrote in.
+    for rubric in db.query(Rubric).filter(Rubric.course_id == course.id, Rubric.archived_at.is_(None)).all():
+        yield "rubric", rubric
+        criteria = (
+            db.query(RubricCriterion)
+            .filter(RubricCriterion.rubric_id == rubric.id, RubricCriterion.archived_at.is_(None))
+            .order_by(RubricCriterion.order_index)
+            .all()
+        )
+        for criterion in criteria:
+            yield "rubric_criterion", criterion
+            levels = (
+                db.query(RubricLevel)
+                .filter(RubricLevel.criterion_id == criterion.id, RubricLevel.archived_at.is_(None))
+                .order_by(RubricLevel.order_index)
+                .all()
+            )
+            for level in levels:
+                yield "rubric_level", level
+
     for ann in db.query(Announcement).filter(Announcement.course_id == course.id).all():
         yield "announcement", ann
     for ev in db.query(CourseEvent).filter(CourseEvent.course_id == course.id).all():

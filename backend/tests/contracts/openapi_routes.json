@@ -2883,6 +2883,10 @@
     "path": "/api/v1/rubrics/submission/{submission_id}",
     "params": [
       [
+        "Accept-Language",
+        "header"
+      ],
+      [
         "submission_id",
         "path"
       ]

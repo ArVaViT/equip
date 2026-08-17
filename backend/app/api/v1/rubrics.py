@@ -20,15 +20,17 @@ would look like a normal mark in every record afterwards.
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_teacher, verify_chapter_owner
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.assignment import Assignment, AssignmentSubmission
+from app.models.course import Course
 from app.models.rubric import AssignmentRubric, Rubric, RubricCriterion, RubricLevel, RubricMark
 from app.models.user import User
+from app.schemas.locale import normalize_locale
 from app.schemas.rubric import (
     RubricCreate,
     RubricMarksRequest,
@@ -37,8 +39,11 @@ from app.schemas.rubric import (
 )
 from app.services import rubric_service
 from app.services.audit_service import log_action
+from app.services.content_versions import dual_write_entity_content
 from app.services.domain_access import resolve_chapter_course_id
 from app.services.submission_grading import apply_grade
+from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
+from app.services.translation.protocol import EntityType
 
 router = APIRouter(prefix="/rubrics", tags=["rubrics"])
 
@@ -59,6 +64,41 @@ def _get_assignment_or_404(db: Session, assignment_id: UUID) -> Assignment:
     return assignment
 
 
+def _dual_write(
+    db: Session,
+    entity_type: EntityType,
+    entity_id: UUID,
+    texts: dict[str, str | None],
+    fallback_locale: str | None,
+    teacher: User,
+) -> None:
+    """Record the author's own text for one piece of a rubric."""
+    dual_write_entity_content(
+        db,
+        entity_type=entity_type,
+        entity_id=str(entity_id),
+        fallback_locale=fallback_locale,
+        authored_by=teacher.id,
+        texts=texts,
+    )
+
+
+def _translatable_parts(db: Session, rubric: Rubric) -> list[tuple[EntityType, object]]:
+    """The rubric and everything under it, in walk order.
+
+    Each is its own entity in ``content_versions`` and therefore its own
+    reconcile call — a criterion without its levels is a heading with no
+    marks under it, which is why they travel together.
+    """
+    parts: list[tuple[EntityType, object]] = [("rubric", rubric)]
+    criteria = rubric_service.live_criteria(db, rubric.id)
+    levels = rubric_service.live_levels(db, [c.id for c in criteria])
+    for criterion in criteria:
+        parts.append(("rubric_criterion", criterion))
+        parts.extend(("rubric_level", level) for level in levels.get(criterion.id, []))
+    return parts
+
+
 @router.post("", response_model=RubricResponse, status_code=status.HTTP_201_CREATED)
 def create_rubric(
     data: RubricCreate,
@@ -77,9 +117,18 @@ def create_rubric(
 
     verify_course_owner(db, data.course_id, teacher)
 
+    course = db.query(Course).filter(Course.id == data.course_id).first()
+    fallback = course.source_locale if course is not None else teacher.preferred_locale
+
     rubric = Rubric(course_id=data.course_id, title=data.title, created_by=teacher.id)
     db.add(rubric)
     db.flush()
+    # A rubric is the sentence a student is given for their mark, and it
+    # had no translation path at all: the columns were the only copy, so
+    # a German student read the Russian criterion that explained their
+    # own grade. Every piece of it goes to content_versions like the
+    # rest of the course's text, and the pipeline takes it from there.
+    _dual_write(db, "rubric", rubric.id, {"title": data.title}, fallback, teacher)
 
     for c_index, criterion_in in enumerate(data.criteria):
         criterion = RubricCriterion(
@@ -90,17 +139,35 @@ def create_rubric(
         )
         db.add(criterion)
         db.flush()
+        _dual_write(
+            db,
+            "rubric_criterion",
+            criterion.id,
+            {"title": criterion_in.title, "description": criterion_in.description},
+            fallback,
+            teacher,
+        )
         for l_index, level_in in enumerate(criterion_in.levels):
-            db.add(
-                RubricLevel(
-                    criterion_id=criterion.id,
-                    label=level_in.label,
-                    points=level_in.points,
-                    description=level_in.description,
-                    order_index=l_index,
-                )
+            level = RubricLevel(
+                criterion_id=criterion.id,
+                label=level_in.label,
+                points=level_in.points,
+                description=level_in.description,
+                order_index=l_index,
+            )
+            db.add(level)
+            db.flush()
+            _dual_write(
+                db,
+                "rubric_level",
+                level.id,
+                {"title": level_in.label, "description": level_in.description},
+                fallback,
+                teacher,
             )
     db.commit()
+    for entity_type, entity in _translatable_parts(db, rubric):
+        reconcile_entity_if_course_published(db, entity_type, entity)
     log_action(
         db,
         teacher.id,
@@ -183,6 +250,8 @@ def attach_rubric(
 @router.get("/submission/{submission_id}", response_model=SubmissionRubricResponse)
 def read_submission_rubric(
     submission_id: UUID,
+    response: Response,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -211,8 +280,18 @@ def read_submission_rubric(
         return {"rubric": None, "marks": [], "earned": None, "out_of": None}
 
     earned, out_of = rubric_service.score_from_marks(db, submission_id)
+    # The reader's own language. This is the sentence a student is given
+    # for their mark, and it used to arrive in whichever language the
+    # rubric was written in — for a German student, Russian.
+    response.headers["Vary"] = "Accept-Language"
+    course = db.query(Course).filter(Course.id == rubric.course_id).first()
     return {
-        "rubric": rubric_service.rubric_payload(db, rubric),
+        "rubric": rubric_service.rubric_payload(
+            db,
+            rubric,
+            display_locale=normalize_locale(accept_language or current_user.preferred_locale),
+            source_locale=normalize_locale(course.source_locale if course is not None else None),
+        ),
         "marks": rubric_service.marks_payload(db, submission_id),
         "earned": earned,
         "out_of": out_of,

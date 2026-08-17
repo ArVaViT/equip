@@ -58,6 +58,9 @@ ContentVersionEntityType = Literal[
     "cohort",
     "daily_challenge_question",
     "daily_challenge_option",
+    "rubric",
+    "rubric_criterion",
+    "rubric_level",
 ]
 
 ContentVersionField = Literal[

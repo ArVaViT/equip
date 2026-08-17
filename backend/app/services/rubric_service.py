@@ -27,11 +27,14 @@ from app.models.rubric import (
     RubricLevel,
     RubricMark,
 )
+from app.services.translation.resolve_for_display import fetch_overlay_triples_bulk, pick_overlay_value
 
 if TYPE_CHECKING:
     from uuid import UUID
 
     from sqlalchemy.orm import Session
+
+    from app.schemas.locale import LocaleCode
 
 
 def rubric_for_assignment(db: Session, assignment_id: UUID) -> Rubric | None:
@@ -124,31 +127,75 @@ def sync_assignment_max_score(db: Session, assignment_id: UUID, rubric_id: UUID)
         assignment.max_score = total
 
 
-def rubric_payload(db: Session, rubric: Rubric) -> dict[str, Any]:
+def rubric_payload(
+    db: Session,
+    rubric: Rubric,
+    *,
+    display_locale: LocaleCode | None = None,
+    source_locale: LocaleCode | None = None,
+) -> dict[str, Any]:
     """The rubric as both sides see it — the same grid for teacher and student.
 
     A rubric shown only to the person marking is a private opinion with
     arithmetic on it (§6.3).
+
+    ``display_locale`` is the reader's. Without it the author's own text
+    is returned, which is what the teacher writing the rubric wants and
+    what every caller did before there was anywhere else to read from.
+
+    Where a piece has no translation yet, the author's text stands
+    rather than a blank. This is the same judgement the grading queue
+    makes and for the mirrored reason: a rubric is the explanation of a
+    mark that has already been given, so a student left with an empty
+    criterion cannot see what they were judged on. Browsable content is
+    the opposite case and is deliberately blank when untranslated.
     """
     criteria = live_criteria(db, rubric.id)
     levels = live_levels(db, [c.id for c in criteria])
+
+    overlay: dict[tuple[str, str, str], str] = {}
+    if display_locale is not None:
+        keys: list[tuple[str, str, str]] = [("rubric", str(rubric.id), "title")]
+        for c in criteria:
+            keys.append(("rubric_criterion", str(c.id), "title"))
+            keys.append(("rubric_criterion", str(c.id), "description"))
+            for lvl in levels.get(c.id, []):
+                keys.append(("rubric_level", str(lvl.id), "title"))
+                keys.append(("rubric_level", str(lvl.id), "description"))
+        overlay = fetch_overlay_triples_bulk(db, keys, display_locale)
+
+    def _text(entity_type: str, entity_id: Any, field: str, base: str | None) -> str | None:
+        if display_locale is None:
+            return base
+        return pick_overlay_value(
+            overlay,
+            entity_type,
+            str(entity_id),
+            field,
+            base,
+            source_locale=source_locale or display_locale,
+            display_locale=display_locale,
+        )
+
     return {
         "id": rubric.id,
         "course_id": rubric.course_id,
-        "title": rubric.title,
+        "title": _text("rubric", rubric.id, "title", rubric.title),
         "max_score": rubric_max_score(db, rubric.id),
         "criteria": [
             {
                 "id": c.id,
-                "title": c.title,
-                "description": c.description,
+                "title": _text("rubric_criterion", c.id, "title", c.title),
+                "description": _text("rubric_criterion", c.id, "description", c.description),
                 "order_index": c.order_index,
                 "levels": [
                     {
                         "id": lvl.id,
-                        "label": lvl.label,
+                        # ``label`` on the model, ``title`` in the store:
+                        # content_versions has one name for a short heading.
+                        "label": _text("rubric_level", lvl.id, "title", lvl.label),
                         "points": lvl.points,
-                        "description": lvl.description,
+                        "description": _text("rubric_level", lvl.id, "description", lvl.description),
                         "order_index": lvl.order_index,
                     }
                     for lvl in levels.get(c.id, [])
