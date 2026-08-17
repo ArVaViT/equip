@@ -457,6 +457,48 @@ def _translate_one_field(
         content_kind=content_kind,
     )
     if issues:
+        # Ask once more before parking it.
+        #
+        # The rule that a ``needs_review`` row is never retried rests on
+        # "temperature 0 means the same answer", and that turns out to be
+        # false. Measured on 2026-08-17: a one-sentence block came back
+        # from production stripped of its <p> wrapper and was parked; the
+        # identical text, same model, same prompt, came back clean nine
+        # times out of nine on the next attempts. The model is not
+        # deterministic, so a structural failure is often a coin landing
+        # badly rather than a fact about the text.
+        #
+        # One retry, and only when the first answer actually failed —
+        # which costs a call on the rare bad roll and saves a person
+        # having to accept a row by hand. A second failure is treated as
+        # what it looks like: something about this text the model cannot
+        # do, and a human should see it.
+        if budget.can_afford_one_call():
+            logger.info(
+                "Translation failed validation, retrying once entity=%s:%s field=%s locale=%s issues=%s",
+                entity_type,
+                entity_id,
+                field,
+                target_locale,
+                ",".join(issue.code for issue in issues),
+            )
+            try:
+                retry = provider.translate(request)
+            except TranslationError:
+                retry = None
+            if retry is not None:
+                retry_issues = validate_translation(
+                    source=text,
+                    translated=retry.text,
+                    source_locale=source_locale,
+                    target_locale=target_locale,
+                    content_kind=content_kind,
+                )
+                if not retry_issues:
+                    result = retry
+                    issues = []
+
+    if issues:
         logger.warning(
             "Translation failed validation entity=%s:%s field=%s locale=%s issues=%s",
             entity_type,

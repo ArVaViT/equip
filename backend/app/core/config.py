@@ -6,6 +6,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
+# Models whose cost, speed and translation quality have actually been
+# measured against production strings — see the ``GEMINI_MODEL`` field
+# for the numbers and the date. Anything else boots with a warning:
+# running an unmeasured model is allowed, running one by accident is
+# what happened for 81 days.
+MEASURED_GEMINI_MODELS = frozenset({"gemini-2.5-flash-lite"})
+
 
 def env_flag(*names: str) -> bool:
     """True when any of the named environment variables is set non-empty.
@@ -92,14 +99,35 @@ class Settings(BaseSettings):
     # calendar_ical.py). Kept as a real setting (not another hardcode) so
     # a preview/staging deployment can point invite links at itself.
     FRONTEND_URL: str = Field(default="https://equipbible.com", description="Public frontend origin for email links")
-    # gemini-2.5-flash-lite: no "thinking" tokens (translation doesn't need
-    # them) so the full GEMINI_MAX_OUTPUT_TOKENS budget goes to the actual
-    # translation. The previous default ``gemini-flash-latest`` resolves to
-    # the thinking-enabled 2.5-Flash, which consumed the budget on long
-    # course blocks and tripped finishReason=MAX_TOKENS. Lite is also
-    # cheaper for our volume. Switch to ``gemini-2.5-flash`` only if a
-    # specific course needs the higher quality and you've raised the
-    # output cap accordingly (or set thinkingConfig in the payload).
+    # ``gemini-2.5-flash-lite``, measured rather than assumed. Numbers
+    # from 2026-08-17, twelve real production strings translated into
+    # German and judged by our own ``validation.py``:
+    #
+    #   model                  passed   per string   thinking tokens
+    #   gemini-2.5-flash-lite   12/12       0.5 s              0
+    #   gemini-flash-latest     12/12       3.1 s         10,046 (total)
+    #
+    # Same verdicts from the validator, six times faster, and ~840
+    # "thinking" tokens per string that nobody reads and everyone pays
+    # for — they bill as output.
+    #
+    # Two things that were believed here and are not true:
+    #
+    # * "Lite has no thinking tokens." Every model the API lists today,
+    #   lite included, reports ``thinking: true``. Lite happens to spend
+    #   none on this work, which is the property we want, but it is a
+    #   measurement and not a guarantee — re-measure when changing model.
+    # * "Set thinkingConfig to switch it off." On ``gemini-flash-latest``,
+    #   ``thinkingBudget: 0`` moved the count from 1227 to 1066. It does
+    #   not turn thinking off; only choosing a different model does.
+    #
+    # Pin a version rather than riding ``-latest``: the alias moves under
+    # you, and the families disagree about the payload — Gemini 3.x
+    # rejects ``thinkingConfig.thinkingBudget`` with a 400.
+    #
+    # This default was already correct in the code and wrong in
+    # production for 81 days, because the Vercel env var overrode it.
+    # A default nobody deploys is a comment.
     GEMINI_MODEL: str = Field(default="gemini-2.5-flash-lite", description="Gemini model id used for translations")
     # 30s headroom: a 5 KB Russian HTML block (lesson-overview callout in
     # the Acts course backfill) on ``gemini-flash-latest`` regularly takes
@@ -181,6 +209,24 @@ class Settings(BaseSettings):
         # returns 404. Treat blank as "use the default" instead.
         if not self.GEMINI_MODEL or not self.GEMINI_MODEL.strip():
             self.GEMINI_MODEL = Settings.model_fields["GEMINI_MODEL"].default
+
+        # Say so when the deployment is not running the model we measured.
+        #
+        # Not a refusal — an operator swapping models deliberately is a
+        # legitimate thing to do, and a deploy that will not boot over a
+        # model name is worse than one that translates differently. But
+        # it must not be silent: production spent 81 days on
+        # ``gemini-flash-latest`` while this file said flash-lite, at
+        # roughly 840 wasted "thinking" tokens per string and six times
+        # the latency, and nothing anywhere said a word. WARNING ships to
+        # Datadog, so the next divergence is one search away.
+        if self.GEMINI_MODEL not in MEASURED_GEMINI_MODELS:
+            logger.warning(
+                "GEMINI_MODEL is %r, which is not one of the measured models (%s). "
+                "Cost, latency and translation quality are unverified for it.",
+                self.GEMINI_MODEL,
+                ", ".join(sorted(MEASURED_GEMINI_MODELS)),
+            )
 
         if not self.SUPABASE_SERVICE_ROLE_KEY:
             # Accept the legacy SUPABASE_KEY name from older deployments.

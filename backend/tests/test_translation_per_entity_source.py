@@ -141,9 +141,18 @@ class _RecordingProvider:
             }
         )
         from app.services.translation.protocol import TranslationResult
+        from tests._fake_translation import fake_translate
 
+        # Transliterate rather than echo the source with a locale tag.
+        # ``f"[en] Введение..."`` is Russian text presented as an English
+        # translation — exactly what ``validation.py`` exists to catch —
+        # so the orchestrator now (correctly) treats it as a bad answer
+        # and asks again, and a test counting provider calls sees two.
+        # The shared fake produces something that reads as the language
+        # it claims to be, which is what a recording provider should be
+        # standing in for.
         return TranslationResult(
-            text=f"[{request.target_locale}] {request.text}",
+            text=fake_translate(request.text, target_locale=request.target_locale),
             model="recording",
         )
 
