@@ -2570,5 +2570,15 @@
   "meta": {
     "documentTitle": "Equip — study the Bible online",
     "description": "Equip is systematic Bible study for people who take Scripture seriously. Courses, progress, certificates. English, Russian, German, Ukrainian."
+  },
+  "courseTranslation": {
+    "title": "Course languages",
+    "complete": "This course exists in every language and has been checked",
+    "remaining": "{{count}} still to translate",
+    "prepare": "Prepare for publication",
+    "behindBy": "— {{count}} missing",
+    "heldEdits": "{{count}} edits waiting on translation. Students see them once every language is ready.",
+    "blockedEdits": "{{count}} edits are stuck. A translation failed its check and needs a person.",
+    "needsReview": "{{count}} translations need review. They will not resolve on their own."
   }
 }

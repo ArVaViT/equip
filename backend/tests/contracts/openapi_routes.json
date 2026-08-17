@@ -1552,6 +1552,21 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/courses/{course_id}/translation-progress",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/daily-challenge/archive",
     "params": [
       [
