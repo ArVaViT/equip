@@ -722,6 +722,41 @@
       "body": "Ein unerwarteter Fehler ist aufgetreten. Bitte erneut versuchen.",
       "tryAgain": "Erneut versuchen",
       "refresh": "Seite neu laden"
+    },
+    "generic": "Etwas ist schiefgelaufen.",
+    "byCode": {
+      "auth_required": "Bitte melden Sie sich erneut an.",
+      "auth_forbidden": "Sie haben dafür keine Berechtigung.",
+      "account_deactivated": "Dieses Konto ist deaktiviert.",
+      "resource_not_found": "Das konnten wir nicht finden.",
+      "course_not_published": "Dieser Kurs ist noch nicht veröffentlicht.",
+      "course_already_enrolled": "Sie sind bereits für diesen Kurs angemeldet.",
+      "course_enrolment_closed": "Die Anmeldung für diesen Kurs ist geschlossen.",
+      "translation_disabled": "Die Übersetzung ist nicht eingerichtet.",
+      "translation_worker_unauthorized": "Der Übersetzungsdienst ist nicht autorisiert.",
+      "translation_worker_unconfigured": "Der Übersetzungsdienst ist nicht eingerichtet.",
+      "quiz_not_open": "Dieses Quiz ist nicht geöffnet.",
+      "quiz_attempts_exhausted": "Sie haben alle Versuche aufgebraucht.",
+      "quiz_not_translated": "Dieses Quiz gibt es noch nicht in Ihrer Sprache.",
+      "daily_challenge_not_scheduled": "Für heute gibt es keine Frage.",
+      "daily_challenge_not_translated": "Die heutige Frage gibt es noch nicht in Ihrer Sprache.",
+      "daily_challenge_already_attempted": "Sie haben heute bereits geantwortet.",
+      "daily_challenge_invalid_option": "Diese Antwort gehört nicht zur heutigen Frage.",
+      "daily_challenge_archive_date_not_allowed": "Dieses Datum ist im Archiv nicht verfügbar.",
+      "invitation_not_found": "Diese Einladung wurde nicht gefunden.",
+      "invitation_expired": "Diese Einladung ist abgelaufen.",
+      "invitation_already_used": "Diese Einladung wurde bereits verwendet.",
+      "invitation_email_mismatch": "Diese Einladung wurde an eine andere Adresse geschickt.",
+      "validation_failed": "Etwas an Ihrer Eingabe stimmt nicht.",
+      "legal_document_changed": "Dieses Dokument hat sich geändert. Bitte laden Sie die Seite neu und lesen Sie es erneut."
+    },
+    "byStatus": {
+      "401": "Bitte melden Sie sich erneut an.",
+      "403": "Sie haben dafür keine Berechtigung.",
+      "404": "Das konnten wir nicht finden.",
+      "409": "Das steht im Widerspruch zu neueren Daten. Bitte neu laden und erneut versuchen.",
+      "429": "Zu viele Anfragen. Bitte langsamer.",
+      "500": "Serverfehler. Bitte später erneut versuchen."
     }
   },
   "toast": {
