@@ -30,7 +30,7 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import selectinload
 
 from app.schemas.locale import LOCALE_CODES, LocaleCode, normalize_locale
@@ -159,8 +159,11 @@ def question_translation_completeness(
 def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChallengeQuestion]:
     """Questions with work outstanding in some locale.
 
-    Two things put a question here: a locale with no ``question_text``
-    row at all, and a row of any field still sitting at ``failed``.
+    Three things put a question here: a locale with no ``question_text``
+    row at all, a row of any field still sitting at ``failed``, and a
+    machine-translated row whose ``source_hash`` has been cleared, which
+    is how a settled row is asked for again without taking its text away
+    from readers in the meantime.
 
     The first half used to be the whole of it, described as a cheap
     prefilter that a later pass would correct. There is no later pass —
@@ -229,28 +232,30 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
     # So anything still marked ``failed`` — on either field, or on any of
     # the question's answer options — takes its question back out of the
     # settled set.
-    unsettled: set[str] = {
-        row[0]
-        for row in db.query(ContentVersion.entity_id)
-        .filter(
-            ContentVersion.entity_type == "daily_challenge_question",
-            ContentVersion.superseded_by.is_(None),
-            ContentVersion.status == ContentVersionStatus.FAILED,
-        )
-        .distinct()
-        .all()
-    }
-    failed_option_ids: set[str] = {
-        row[0]
-        for row in db.query(ContentVersion.entity_id)
-        .filter(
-            ContentVersion.entity_type == "daily_challenge_option",
-            ContentVersion.superseded_by.is_(None),
-            ContentVersion.status == ContentVersionStatus.FAILED,
-        )
-        .distinct()
-        .all()
-    }
+    # A machine translation whose ``source_hash`` has been cleared is the
+    # other kind of outstanding work. That is how an operator re-opens a
+    # settled row — ``scripts/reopen_foreign_quotes`` does it, so a row
+    # keeps serving its old text while waiting for better — and clearing
+    # the hash only makes the row *eligible*. Without this, nothing ever
+    # selected its question again and the re-opening did nothing at all.
+    def _outstanding(entity_type: str) -> set[str]:
+        return {
+            row[0]
+            for row in db.query(ContentVersion.entity_id)
+            .filter(
+                ContentVersion.entity_type == entity_type,
+                ContentVersion.superseded_by.is_(None),
+                or_(
+                    ContentVersion.status == ContentVersionStatus.FAILED,
+                    and_(ContentVersion.origin == "mt", ContentVersion.source_hash.is_(None)),
+                ),
+            )
+            .distinct()
+            .all()
+        }
+
+    unsettled: set[str] = _outstanding("daily_challenge_question")
+    failed_option_ids: set[str] = _outstanding("daily_challenge_option")
     if failed_option_ids:
         # Compared in Python for the reason given above: an option id is
         # text on one side of this and a uuid on the other, and asking

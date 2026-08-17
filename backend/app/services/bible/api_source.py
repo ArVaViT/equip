@@ -201,9 +201,18 @@ def fetch_verse(ref: BibleRef, locale: LocaleCode) -> str | None:
             if isinstance(content, str) and content.strip():
                 text = " ".join(content.split())
         elif response.status_code != 404:
-            # 404 means the verse is genuinely absent from this edition —
-            # a versification difference, which is data rather than a fault.
+            # Anything that is not 200 or 404 is the service having a
+            # moment — rate limiting, a bad gateway, an expired key — and
+            # says nothing about whether this verse exists. Returning
+            # without caching is the whole point: a 429 during a backfill
+            # would otherwise mean "this verse has no text" for the rest
+            # of the run, and every quotation of it would quietly fall
+            # back to the author's language.
             logger.info("Bible API %s for %s in %s", response.status_code, usfm, locale)
+            return None
+        # 404 means the verse is genuinely absent from this edition — a
+        # versification difference, which is data rather than a fault, and
+        # worth remembering so we do not ask again.
     except (httpx.HTTPError, ValueError):
         logger.info("Bible API unreachable for %s in %s", usfm, locale)
         return None  # Not cached: a transient outage must not poison the verse.
