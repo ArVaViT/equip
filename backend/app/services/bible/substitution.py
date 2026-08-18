@@ -276,18 +276,24 @@ def pre_substitute(
         if ref is None:
             continue
 
-        canonical_source = canonical_for_source(ref, source_locale)
-        if canonical_source is None:
+        candidates = canonical_candidates_for_source(ref, source_locale)
+        if not candidates:
             continue
 
         author_text = _strip_html(verse_text_inner)
         if not author_text:
             continue
-        ratio = SequenceMatcher(
-            None,
-            _normalize_for_compare(author_text),
-            _normalize_for_compare(canonical_source),
-        ).ratio()
+        # Best of every wording we hold, not the first one that answered:
+        # the author quoted *some* edition, and which one is not ours to
+        # assume.
+        ratio = max(
+            SequenceMatcher(
+                None,
+                _normalize_for_compare(author_text),
+                _normalize_for_compare(candidate),
+            ).ratio()
+            for candidate in candidates
+        )
         if ratio < _SIMILARITY_THRESHOLD:
             logger.debug(
                 "Bible quote similarity %.2f below threshold for %s — leaving as-is",
@@ -412,14 +418,17 @@ def _substitute_inline_quotes(
     for match in _QUOTED_SPAN.finditer(text):
         span_start, span_end = match.span("inner")
         for index, parsed in _candidate_references(refs, span_start, span_end, claimed):
-            canonical_source = canonical_for_source(parsed.ref, source_locale)
-            if canonical_source is None:
+            candidates = canonical_candidates_for_source(parsed.ref, source_locale)
+            if not candidates:
                 continue
-            ratio = SequenceMatcher(
-                None,
-                _normalize_for_compare(match.group("inner")),
-                _normalize_for_compare(canonical_source),
-            ).ratio()
+            ratio = max(
+                SequenceMatcher(
+                    None,
+                    _normalize_for_compare(match.group("inner")),
+                    _normalize_for_compare(candidate),
+                ).ratio()
+                for candidate in candidates
+            )
             if ratio < _INLINE_SIMILARITY_THRESHOLD:
                 continue
 
@@ -502,26 +511,43 @@ def _canonical_for_display(ref: BibleRef, locale: str) -> str | None:
     return lookup(ref, locale)  # type: ignore[arg-type]
 
 
-def canonical_for_source(ref: BibleRef, locale: str) -> str | None:
-    """Canonical text used only to decide "did the author quote this
-    verse?" — never rendered.
+def canonical_candidates_for_source(ref: BibleRef, locale: str) -> list[str]:
+    """Every wording of this verse worth comparing an author against.
 
-    Reading the source used to go through the bundled files alone,
-    which left a course written in German invisible to this layer:
-    nothing to compare against, so nothing recognised as Scripture, so
-    every quotation reached every other language as the model's own
-    prose.
+    Used only to answer "did the author quote this verse?" — never
+    rendered, so more candidates can only help.
 
-    Unlike the display direction this one does fall back to the bundle.
-    The text is thrown away after a similarity comparison, so a
-    misaligned file cannot mislead a reader — at worst it fails to
-    recognise a quote and the old behaviour stands.
+    Why a list rather than one text. The Russian edition behind the API
+    is a modern paraphrase; the authors here quote the Synodal text, and
+    the two disagree far more than the 0.80 bar allows. Acts 8:4 as an
+    author writes it scores **0.42** against the API wording and
+    **0.89** against the bundled Synodal one. Asking the API first and
+    stopping there meant no Russian quotation was ever recognised — and
+    Russian is the language this catalogue is written in. Every quoted
+    verse went to the model to be re-worded, in every course, which is
+    exactly the failure this whole layer exists to prevent.
+
+    Returning both and taking the best match costs one dictionary lookup
+    and cannot mislead a reader: the text is discarded after the
+    comparison. That is also why the bundle is safe here while it stays
+    barred from the display direction, where a misaligned file (#990)
+    would put the wrong verse in front of a student.
     """
+    candidates: list[str] = []
     if locale in API_BIBLE_IDS:
         from_api = fetch_verse(ref, locale)  # type: ignore[arg-type]
         if from_api is not None:
-            return from_api
-    return lookup(ref, locale)  # type: ignore[arg-type]
+            candidates.append(from_api)
+    from_bundle = lookup(ref, locale)  # type: ignore[arg-type]
+    if from_bundle is not None and from_bundle not in candidates:
+        candidates.append(from_bundle)
+    return candidates
+
+
+def canonical_for_source(ref: BibleRef, locale: str) -> str | None:
+    """First candidate, kept for callers that want a single text."""
+    candidates = canonical_candidates_for_source(ref, locale)
+    return candidates[0] if candidates else None
 
 
 def post_substitute(
