@@ -18,8 +18,8 @@ name: Production language check
 
 on:
   schedule:
-    # 09:17 UTC — 05:17 in America/Indianapolis, before Vadym's morning
-    # briefing, so a failure is known by the time he reads anything.
+    # 09:17 UTC — early morning in America/Indianapolis, where the
+    # operator is, so a break is known before the working day starts.
     # Off the hour on purpose: :00 is where every scheduled job on the
     # platform piles up.
     - cron: "17 9 * * *"
