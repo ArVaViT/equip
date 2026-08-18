@@ -51,6 +51,7 @@ from app.services.translation.queue import (
     mark_job_paused,
     record_job_failure,
 )
+from app.services.translation.reconciler import sweep_courses
 from app.services.translation.staged_pipeline import translate_staged_edits
 
 if TYPE_CHECKING:
@@ -65,7 +66,9 @@ router = APIRouter(prefix="/internal", tags=["internal"])
 class WorkerTickResponse(BaseModel):
     """Worker reports back so the cron driver can log + alert.
 
-    ``status`` is one of ``"idle"`` (queue empty), ``"done"``,
+    ``status`` is one of ``"idle"`` (queue empty and nothing behind),
+    ``"swept"`` (queue was empty, and the sweep found courses to
+    translate), ``"done"``,
     ``"paused"`` (budget spent mid-course, job re-queued to continue on
     the next tick), or ``"failed"``. ``job_id`` is null only when idle.
     ``attempts`` is the post-tick count on the job.
@@ -128,6 +131,20 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
     _emit_queue_gauges(db)
     job: TranslationJob | None = claim_next_job(db)
     if job is None:
+        # Nothing queued — so go looking rather than going back to sleep.
+        #
+        # The queue only ever holds what an event put there, and two
+        # things never raise an event: a language switched on after the
+        # content was written, and a pass that failed and was never
+        # retried. Both are invisible to a worker that only drains.
+        # The sweep re-examines the least recently checked courses, a
+        # few per tick, and queues anything with a gap — so "somebody
+        # has to remember to re-translate everything" stops being a
+        # step anyone performs. See ``translation/reconciler.py``.
+        sweep = sweep_courses(db)
+        if sweep.found_work:
+            logger.info("worker: idle queue, sweep queued %d course(s)", sweep.queued)
+            return WorkerTickResponse(status="swept")
         return WorkerTickResponse(status="idle")
 
     course_id = job.course_id

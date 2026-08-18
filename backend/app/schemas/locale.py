@@ -20,11 +20,26 @@ Adding a new language is a **five-step change** — all in this order:
   4. Add the frontend bundle ``frontend/src/i18n/locales/<code>.json``
      with full key coverage (the ``keyCoverage`` test enforces parity).
      Wire it into ``frontend/src/i18n/config.ts::SUPPORTED_LOCALES``.
-  5. Re-translate existing content into the new locale by triggering
-     ``POST /api/v1/courses/{id}/translate`` on every published course
-     (or wait for the next teacher save — the orchestrator will run
-     the new target automatically because ``other_locales`` derives
-     from ``LOCALE_CODES``).
+  5. Nothing. Existing content re-translates itself.
+
+     This step used to read "trigger ``POST /courses/{id}/translate``
+     on every published course, or wait for the next teacher save" —
+     a list somebody maintains by hand, which is fine for three
+     courses and impossible for a thousand. The sweep in
+     ``services/translation/reconciler.py`` now re-examines the least
+     recently checked live courses a few per worker tick, and every
+     course missing the new locale is queued without anyone asking.
+     A catalogue of a thousand comes round in about five hours.
+
+     Platform content that belongs to no course — the Daily Challenge
+     rotation — has its own nightly sweep in
+     ``services/daily_challenge/translate.py``.
+
+     What still needs a person, and why: steps 2 and 4 are the
+     interface catalogs, which are product copy rather than course
+     content — a wrong word in a lesson is a bad translation, a wrong
+     word on a button is a bug. ``scripts/translate_catalog.py``
+     drafts them so the work is reviewing rather than typing.
 """
 
 from __future__ import annotations
