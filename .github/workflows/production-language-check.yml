@@ -1,0 +1,97 @@
+name: Production language check
+
+# Does a stranger arriving at equipbible.com get their own language?
+#
+# This is the one failure the rest of the monitoring cannot see. If the
+# language decision breaks, nothing errors: the site returns 200, the
+# synthetics stay green, the logs stay quiet, and a German visitor
+# simply reads Russian and leaves. There is no signal anywhere inside
+# the system, because from the inside everything worked.
+#
+# So it is checked from outside, against production, every day — with a
+# real browser, not a curl, because the decision runs in JavaScript
+# before the app boots and a fetched HTML file cannot show it.
+#
+# (A cloud routine was tried first and could not reach the site: the
+# agent sandbox blocks egress to equipbible.com. GitHub's runners do
+# not, which is why this lives here.)
+
+on:
+  schedule:
+    # 09:17 UTC — 05:17 in America/Indianapolis, before Vadym's morning
+    # briefing, so a failure is known by the time he reads anything.
+    # Off the hour on purpose: :00 is where every scheduled job on the
+    # platform piles up.
+    - cron: "17 9 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/e2e/the-language-you-arrived-in.spec.ts"
+      - "frontend/public/locale-boot.js"
+      - "frontend/scripts/build-locale-boot.mjs"
+      - ".github/workflows/production-language-check.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-language-check
+  cancel-in-progress: false
+
+jobs:
+  language:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version: 22.18.0
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Resolve Playwright version
+        id: playwright-version
+        run: >-
+          echo "version=$(node -p
+          "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
+          >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browser archive
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Check production in four languages
+        # No preview server and no secrets: this runs against the live
+        # site as an anonymous visitor, which is exactly the thing being
+        # tested. The spec asserts the first frame (tab title and
+        # <html lang>, set before the bundle loads) and the rendered
+        # page, and fails if a visitor is shown words from another
+        # language.
+        env:
+          E2E_BASE_URL: https://equipbible.com
+        run: npx playwright test e2e/the-language-you-arrived-in.spec.ts --reporter=line
+
+      - name: Upload the report when it fails
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: language-check-report
+          path: frontend/playwright-report/
+          retention-days: 7
