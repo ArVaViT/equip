@@ -96,10 +96,6 @@ class Blocker:
         return {"code": self.code, "params": self.params, "chapter_ids": self.chapter_ids}
 
 
-def _item_chapters(items: list[Any], wanted_ids: set) -> list[str]:
-    return sorted({str(i.chapter_id) for i in items if i.id in wanted_ids and i.chapter_id})
-
-
 def certificate_blockers(
     db: Session,
     course: Course,

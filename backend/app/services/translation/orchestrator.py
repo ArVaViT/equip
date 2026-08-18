@@ -30,22 +30,14 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.schemas.locale import LOCALE_CODES, LocaleCode, normalize_locale
 from app.services.translation.executor import TranslationTask, execute_plan
 from app.services.translation.hash import compute_source_hash
-from app.services.translation.protocol import (
-    ContentKind,
-    TranslationError,
-    TranslationProvider,
-    TranslationRequest,
-)
 from app.services.translation.service import (
     get_translation_provider,
     is_translation_enabled,
 )
 from app.services.translation.stores import LIVE_STORE, VersionStore
-from app.services.translation.validation import summarise, validate_translation
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -58,6 +50,7 @@ if TYPE_CHECKING:
     )
     from app.models.course import Course
     from app.services.translation.budget import TranslationBudget
+    from app.services.translation.protocol import ContentKind, TranslationProvider
 
 logger = logging.getLogger(__name__)
 
@@ -294,238 +287,6 @@ def translate_course_metadata(
         context=f"Course title: {course.title}" if course.title else None,
         provider=provider,
     )
-
-
-def _translate_one_field(
-    db: Session,
-    *,
-    entity_type: TranslationEntityType,
-    entity_id: str,
-    field: TranslationField,
-    source_locale: LocaleCode,
-    target_locale: LocaleCode,
-    text: str,
-    content_kind: ContentKind,
-    source_hash: str,
-    context: str | None,
-    provider: TranslationProvider,
-    budget: TranslationBudget,
-    store: VersionStore,
-) -> str:
-    """Translate (or up-to-date short-circuit) one ``(field, target)`` row.
-
-    Returns ``"translated" | "skipped" | "failed" | "deferred"`` so the
-    orchestrator can aggregate counters without inspecting the DB row
-    again. ``"deferred"`` means this row needs a provider call and the
-    budget has no room for one — nothing was written and nothing was
-    charged.
-    """
-    # Skip-decisions read from whichever store this pass is writing to:
-    # ``content_versions`` for work that is servable immediately, the
-    # staging table for an edit to a course students are reading. The
-    # rules below are identical either way — that is the point of the
-    # store abstraction (see ``translation/stores.py``).
-    existing = store.active_row(
-        db,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        field=field,
-        locale=target_locale,
-    )
-
-    # ``origin='human'`` means a teacher manually wrote a localized copy;
-    # the auto-pipeline must never clobber that, even if the source mutated.
-    if existing is not None and existing.origin == "human":
-        return "skipped"
-
-    if existing is not None and existing.status == "ok" and existing.source_hash == source_hash:
-        return "skipped"
-
-    # A row parked for review is not retried on its own. Gemini runs at
-    # temperature=0, so the same source would produce the same output
-    # and the same verdict — re-asking would burn quota on every save
-    # to arrive back where we are. It moves when the source changes
-    # (different hash, falls through to a real call) or when a human
-    # accepts or replaces it.
-    if existing is not None and existing.status == "needs_review" and existing.source_hash == source_hash:
-        return "skipped"
-
-    # Rows that hit the retry cap (``failed_permanent``) are terminal as far
-    # as the auto-pipeline is concerned. They stay terminal even if the
-    # source text mutates — a row that fails for a permanent reason (safety
-    # filter, oversize input) won't suddenly succeed because the prompt
-    # changed by one word. An operator who wants to retry must explicitly
-    # reset ``status='ok'`` / ``status='failed'`` + ``attempts=0`` from
-    # admin tooling.
-    if existing is not None and existing.status == "failed_permanent":
-        return "skipped"
-
-    # Phase 5s: duplicate-source dedupe. Gemini at temperature=0 is
-    # not strictly deterministic — identical RU source text can render
-    # to "Do not move..." 4x and "Don't move..." 1x across a quiz's
-    # answer options. Before paying a Gemini call, look for any other
-    # active+ok row with the same (target_locale, source_hash) and
-    # reuse its text. This costs one indexed query but eliminates an
-    # entire class of intra-question inconsistency (and one Gemini
-    # call per duplicate). Same-entity rows are excluded so we don't
-    # collide with the in-place ``existing`` branch above.
-    twin = (
-        db.query(ContentVersion.text)
-        .filter(
-            ContentVersion.locale == target_locale,
-            ContentVersion.source_hash == source_hash,
-            ContentVersion.status == ContentVersionStatus.OK,
-            ContentVersion.superseded_by.is_(None),
-            ~((ContentVersion.entity_type == entity_type) & (ContentVersion.entity_id == entity_id)),
-        )
-        .order_by(ContentVersion.created_at)
-        .limit(1)
-        .scalar()
-    )
-    if twin is not None:
-        store.record_success(
-            db,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            field=field,
-            locale=target_locale,
-            text=twin,
-            source_locale=source_locale,
-            source_hash=source_hash,
-            status=ContentVersionStatus.OK,
-            review_reason=None,
-        )
-        return "translated"
-
-    # Everything above this line is cheap: an indexed lookup, maybe a
-    # reuse of an identical translation already paid for. Below it is a
-    # network call that can take its timeout on each of its retries. So
-    # this is where the deadline is enforced — a call is only started
-    # when its whole worst case still fits inside the invocation. The
-    # row is left exactly as it was; the next tick finds it unchanged
-    # and does the work then.
-    if not budget.can_afford_one_call():
-        logger.info(
-            "Translation deferred (budget spent) entity=%s:%s field=%s locale=%s",
-            entity_type,
-            entity_id,
-            field,
-            target_locale,
-        )
-        return "deferred"
-
-    request = TranslationRequest(
-        text=text,
-        source_locale=source_locale,
-        target_locale=target_locale,
-        content_kind=content_kind,
-        context=context,
-    )
-    try:
-        result = provider.translate(request)
-    except TranslationError as exc:
-        logger.warning(
-            "Translation failed entity=%s:%s field=%s locale=%s err=%s",
-            entity_type,
-            entity_id,
-            field,
-            target_locale,
-            exc,
-        )
-        # The store bumps ``attempts`` in place and promotes to
-        # ``failed_permanent`` at the threshold.
-        store.record_failure(
-            db,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            field=field,
-            locale=target_locale,
-            source_locale=source_locale,
-            source_hash=source_hash,
-        )
-        return "failed"
-
-    # The provider only checked that the response was well-formed.
-    # Whether what came back is a translation OF THIS TEXT — same
-    # scripture markers, same markup, same numbers, the language we
-    # asked for — is decided here. A row that fails is stored with its
-    # text and parked as ``needs_review``: readers filter on ``ok``, so
-    # it reads as "not translated yet" instead of being served.
-    issues = validate_translation(
-        source=text,
-        translated=result.text,
-        source_locale=source_locale,
-        target_locale=target_locale,
-        content_kind=content_kind,
-    )
-    if issues:
-        # Ask once more before parking it.
-        #
-        # The rule that a ``needs_review`` row is never retried rests on
-        # "temperature 0 means the same answer", and that turns out to be
-        # false. Measured on 2026-08-17: a one-sentence block came back
-        # from production stripped of its <p> wrapper and was parked; the
-        # identical text, same model, same prompt, came back clean nine
-        # times out of nine on the next attempts. The model is not
-        # deterministic, so a structural failure is often a coin landing
-        # badly rather than a fact about the text.
-        #
-        # One retry, and only when the first answer actually failed —
-        # which costs a call on the rare bad roll and saves a person
-        # having to accept a row by hand. A second failure is treated as
-        # what it looks like: something about this text the model cannot
-        # do, and a human should see it.
-        if budget.can_afford_one_call():
-            logger.info(
-                "Translation failed validation, retrying once entity=%s:%s field=%s locale=%s issues=%s",
-                entity_type,
-                entity_id,
-                field,
-                target_locale,
-                ",".join(issue.code for issue in issues),
-            )
-            try:
-                retry = provider.translate(request)
-            except TranslationError:
-                retry = None
-            if retry is not None:
-                retry_issues = validate_translation(
-                    source=text,
-                    translated=retry.text,
-                    source_locale=source_locale,
-                    target_locale=target_locale,
-                    content_kind=content_kind,
-                )
-                if not retry_issues:
-                    result = retry
-                    issues = []
-
-    if issues:
-        logger.warning(
-            "Translation failed validation entity=%s:%s field=%s locale=%s issues=%s",
-            entity_type,
-            entity_id,
-            field,
-            target_locale,
-            ",".join(issue.code for issue in issues),
-        )
-
-    # The live store supersedes the active row and resets attempts on
-    # success; the staged store overwrites its single row. Either way
-    # the text is now recorded with the verdict the check gave it.
-    store.record_success(
-        db,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        field=field,
-        locale=target_locale,
-        text=result.text,
-        source_locale=source_locale,
-        source_hash=source_hash,
-        status=ContentVersionStatus.NEEDS_REVIEW if issues else ContentVersionStatus.OK,
-        review_reason=summarise(issues) if issues else None,
-    )
-    return "needs_review" if issues else "translated"
 
 
 __all__ = [
