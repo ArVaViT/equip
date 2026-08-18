@@ -1,0 +1,23 @@
+{
+  "name": "[Equip] Gemini calls are failing",
+  "type": "metric alert",
+  "query": "sum(last_30m):sum:equip.gemini.calls_total{env:production,outcome:transport}.as_count() + sum:equip.gemini.calls_total{env:production,outcome:retry}.as_count() > 20",
+  "message": "The translation provider is refusing or timing out.\n\nThe provider retries transient failures itself (408/429/500/502/503/504, bounded), so this firing means the retries are not clearing it. Translations stop landing; nothing is lost — rows sit at `failed` and the sweep comes back for them — but a course being published now will sit in `publishing`, invisible to students, until it clears.\n\nWhere to look:\n* `status_code` on the metric separates a rate limit (429) from an outage (5xx) from a network problem (0).\n* A sustained 429 means the key's quota, not ours: measured 2026-08-17, the key handled 1,626 requests/minute at width 16 without one refusal, so a real 429 storm is a change on Google's side or a runaway loop on ours.\n\n@arvavitcorp@gmail.com",
+  "tags": [
+    "env:production",
+    "project:equip",
+    "area:translation",
+    "managed_by:claude"
+  ],
+  "priority": 2,
+  "options": {
+    "evaluation_delay": 120,
+    "thresholds": {
+      "warning": 10.0,
+      "critical": 20.0
+    },
+    "notify_no_data": false,
+    "renotify_interval": 0,
+    "include_tags": true
+  }
+}

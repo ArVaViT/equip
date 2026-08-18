@@ -1,0 +1,22 @@
+{
+  "name": "[Equip] Translation queue is not draining",
+  "type": "metric alert",
+  "query": "min(last_2h):min:equip.translation.queue_depth{env:production} > 0",
+  "message": "The translation queue has had work in it continuously for two hours.\n\nThe worker runs every minute and pauses itself on a time budget, so a large course legitimately takes several ticks — but never two hours of never reaching empty. That pattern means the queue is being refilled as fast as it drains, or a job is failing and being re-queued.\n\nWhere to look:\n* `GET /api/v1/internal/translation-queue/health` — per-status counts.\n* `POST /api/v1/admin/translations/queue-status` — `stuck_jobs` and each job's `attempts` and `last_error`; `last_error` names the cause directly.\n* A course whose every tick reports progress but never finishes is the sweep and the worker fighting over the same course; check `courses.translations_checked_at`.\n\n@arvavitcorp@gmail.com",
+  "tags": [
+    "env:production",
+    "project:equip",
+    "area:translation",
+    "managed_by:claude"
+  ],
+  "priority": 3,
+  "options": {
+    "evaluation_delay": 300,
+    "thresholds": {
+      "critical": 0.0
+    },
+    "notify_no_data": false,
+    "renotify_interval": 0,
+    "include_tags": true
+  }
+}

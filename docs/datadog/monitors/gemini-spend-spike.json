@@ -1,0 +1,23 @@
+{
+  "name": "[Equip] Gemini spend jumped",
+  "type": "metric alert",
+  "query": "sum(last_1h):sum:equip.gemini.tokens_output_total{env:production}.as_count() + sum:equip.gemini.tokens_thinking_total{env:production}.as_count() > 2000000",
+  "message": "Billed output tokens (answers plus thinking) crossed 2M in an hour.\n\nA normal hour is a few thousand: the pipeline only translates what changed, and a whole 870-field course is roughly 400k output tokens all in. Two million means one of three things, in order of likelihood:\n\n1. **The model changed.** A thinking model spends ~840 hidden tokens per string and bills them as output — six times the answer. Check GEMINI_MODEL against MEASURED_GEMINI_MODELS in app/core/config.py; the backend also logs a warning at boot when it is running an unmeasured model.\n2. **A loop.** A job re-translating the same course, or the sweep queueing a course it can never complete. Check /api/v1/admin/translations/queue-status for a course with climbing attempts.\n3. **Real work.** A bulk import or a newly switched-on language. Legitimate — and worth knowing about anyway.\n\n@arvavitcorp@gmail.com",
+  "tags": [
+    "env:production",
+    "project:equip",
+    "area:translation",
+    "managed_by:claude"
+  ],
+  "priority": 2,
+  "options": {
+    "evaluation_delay": 300,
+    "thresholds": {
+      "warning": 1000000.0,
+      "critical": 2000000.0
+    },
+    "notify_no_data": false,
+    "renotify_interval": 0,
+    "include_tags": true
+  }
+}

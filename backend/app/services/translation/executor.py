@@ -302,26 +302,63 @@ def execute_plan(
             )
             translated += 1
 
+    # Identical text, asked once.
+    #
+    # 27% of the production corpus is duplicate source text — 970 of
+    # 3,562 rows share a hash with another row, because answer options
+    # repeat ("True", "Yes", "Neither of these") across quizzes. The
+    # serial path got this for free: the first row was written, and the
+    # twin lookup answered the rest. Concurrency broke that, because
+    # the duplicates are in flight together and none of them is written
+    # yet — so the same string went to the provider several times, paid
+    # for several times, and could come back worded differently each
+    # time (temperature 0 is not determinism; measured).
+    #
+    # So the batch is built from distinct (source text, target
+    # language), and the answer is recorded for every task that shares
+    # it.
+    by_text: dict[tuple[str, str], list[TranslationTask]] = {}
+    for task in pending:
+        by_text.setdefault((task.source_hash, task.target_locale), []).append(task)
+    representatives = [group[0] for group in by_text.values()]
+
     # Phases 2 and 3, one batch at a time. The batch boundary is where
     # the budget is honoured: a pass never begins work it cannot pay
     # for, and what it did finish is already recorded.
     width = max(1, max_workers)
-    for start in range(0, len(pending), width):
+    for start in range(0, len(representatives), width):
         if not active_budget.can_afford_one_call():
             incomplete = True
-            logger.info("Translation plan paused: budget spent with %d tasks left", len(pending) - start)
+            logger.info(
+                "Translation plan paused: budget spent with %d distinct texts left",
+                len(representatives) - start,
+            )
             break
-        batch = pending[start : start + width]
+        batch = representatives[start : start + width]
         with ThreadPoolExecutor(max_workers=width) as pool:
             answers = list(pool.map(lambda task: _ask(task, provider), batch))
         for answer in answers:
-            outcome = _record(db, answer, store)
-            if outcome == "translated":
-                translated += 1
-            elif outcome == "needs_review":
-                needs_review += 1
-            elif outcome == "failed":
-                failed += 1
+            siblings = by_text[(answer.task.source_hash, answer.task.target_locale)]
+            for task in siblings:
+                # Same answer, recorded against each row that asked for
+                # it — which is also how two quizzes end up agreeing on
+                # what "True" is in German.
+                outcome = _record(
+                    db,
+                    _Answer(
+                        task=task,
+                        text=answer.text,
+                        issues_summary=answer.issues_summary,
+                        failed=answer.failed,
+                    ),
+                    store,
+                )
+                if outcome == "translated":
+                    translated += 1
+                elif outcome == "needs_review":
+                    needs_review += 1
+                elif outcome == "failed":
+                    failed += 1
 
     return PlanResult(
         translated=translated,
