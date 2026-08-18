@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict UD0WNeJD60UDD1nGbLUExbTqPvpOEQXAZPabjMpYZwmj8l6YREnxJfIxia6iBrc
+\restrict VIvtL9s32hNdPmNht2zLai8vu2PqNRwzAHCDZR34MGeWUllkggnvUhOYgbOBjf2
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10 (Homebrew)
@@ -469,6 +469,7 @@ CREATE TABLE public.courses (
     pass_threshold numeric(5,2) DEFAULT 70 NOT NULL,
     academic_hours integer,
     ai_policy text DEFAULT 'ai_with_disclosure'::text NOT NULL,
+    translations_checked_at timestamp with time zone,
     CONSTRAINT chk_courses_status CHECK ((status = ANY (ARRAY['draft'::text, 'publishing'::text, 'published'::text]))),
     CONSTRAINT ck_courses_participation_retired CHECK ((participation_weight = 0)),
     CONSTRAINT ck_courses_scheme_threshold CHECK (((grading_scheme <> 'five_point'::text) OR (pass_threshold <= (75)::numeric))),
@@ -1773,6 +1774,13 @@ CREATE INDEX ix_courses_created_by ON public.courses USING btree (created_by);
 --
 
 CREATE INDEX ix_courses_deleted_at ON public.courses USING btree (deleted_at) WHERE (deleted_at IS NOT NULL);
+
+
+--
+-- Name: ix_courses_translations_checked; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_courses_translations_checked ON public.courses USING btree (translations_checked_at NULLS FIRST) WHERE ((deleted_at IS NULL) AND (status = ANY (ARRAY['published'::text, 'publishing'::text])));
 
 
 --
@@ -3509,5 +3517,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict UD0WNeJD60UDD1nGbLUExbTqPvpOEQXAZPabjMpYZwmj8l6YREnxJfIxia6iBrc
+\unrestrict VIvtL9s32hNdPmNht2zLai8vu2PqNRwzAHCDZR34MGeWUllkggnvUhOYgbOBjf2
 
