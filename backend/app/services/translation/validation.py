@@ -133,6 +133,14 @@ class ValidationIssue:
 
     code: str
     detail: str
+    #: Blocking issues keep the row out of the reader's hands: something
+    #: is lost, wrong, or in the wrong language, and serving it would be
+    #: worse than showing nothing. Non-blocking ones are style — the
+    #: translation is correct but reads as translated. Those earn a
+    #: retry (the model is not deterministic, and a second pass often
+    #: comes back clean) and are then served anyway, because a slightly
+    #: stiff sentence still teaches and a blank does not.
+    blocking: bool = True
 
 
 def _markers(text: str) -> list[str]:
@@ -464,6 +472,66 @@ def _check_untranslated_run(
     return None
 
 
+# Ukrainian does not form active participles in -ючий/-уючий; every one
+# of them is a Russian pattern carried across whole, and a native reader
+# hears it at once. Production had "зобов'язуюча обіцянка" where Ukrainian
+# wants "обіцянка, що зобов'язує".
+#
+# Two words survived into the standard language and are not errors, so
+# they are named rather than guessed at. Everything else ending this way
+# is flagged — as a note, not a blocker: the sentence is understandable,
+# and refusing to serve it would hurt the reader more than the calque
+# does.
+_UKRAINIAN_ESTABLISHED = frozenset(
+    {
+        # The two that survived into the standard language. Named rather
+        # than guessed at, so the check stays honest about its own scope.
+        "віруючий",
+        "віруюча",
+        "віруюче",
+        "віруючі",
+        "віруючих",
+        "віруючим",
+        "віруючими",
+        "віруючою",
+        "віруючої",
+        "віруючому",
+        "віруючого",
+        "завідувач",
+    }
+)
+
+# The apostrophe matters: production's real defect was "зобов'язуюча", and
+# a pattern built from \w alone walks straight past it, because an
+# apostrophe is not a word character. So the word class carries all three
+# apostrophes Ukrainian text actually arrives with.
+_UKRAINIAN_ACTIVE_PARTICIPLE = re.compile(
+    r"[\w'\u2019\u02bc]*юч(?:ий|ого|ому|им|ім|их|ими|а|ої|ій|у|ою|е|і)\b",
+    re.IGNORECASE,
+)
+
+
+def _check_ukrainian_calques(translated: str, target_locale: str) -> ValidationIssue | None:
+    if target_locale != "uk":
+        return None
+    hits = [
+        word for word in _UKRAINIAN_ACTIVE_PARTICIPLE.findall(translated) if word.lower() not in _UKRAINIAN_ESTABLISHED
+    ]
+    if not hits:
+        return None
+    return ValidationIssue(
+        code="ukrainian_calque",
+        detail=(
+            "Active participles Ukrainian does not form: "
+            + ", ".join(sorted(set(hits))[:5])
+            + ". This is a Russian pattern carried across; Ukrainian uses a "
+            "relative clause instead. The text is readable, so it is served — "
+            "but it reads as translated."
+        ),
+        blocking=False,
+    )
+
+
 def validate_translation(
     *,
     source: str,
@@ -507,6 +575,7 @@ def validate_translation(
         ),
         _check_length(source, translated, content_kind=content_kind),
     ]
+    issues.append(_check_ukrainian_calques(translated, target_locale))
     return [issue for issue in issues if issue is not None]
 
 

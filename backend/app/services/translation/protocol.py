@@ -76,6 +76,14 @@ class TranslationRequest:
     # E.g. "course on the Acts of the Apostles" — improves accuracy on
     # ambiguous theological terms without bloating every row.
     context: str | None = None
+    # What was wrong with the previous answer to this same request, in
+    # the model's own output. Empty on a first ask. A retry is another
+    # roll of the dice; this is a correction — the model is shown the
+    # words it chose and told to choose differently. Used where the
+    # defect is stable rather than random: the model does not stumble
+    # into "зобов'язуюча", it prefers it, and asking again the same way
+    # gets the same answer.
+    rewrite_notes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

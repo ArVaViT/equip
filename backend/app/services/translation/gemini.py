@@ -43,7 +43,19 @@ _RETRYABLE_STATUSES = frozenset({408, 429, 500, 502, 503, 504})
 # Daily Challenge explanations, which quote constantly and have no
 # markup at all to hang a blockquote on — the case that showed English
 # verses to German readers in production.
-_KINDS_THAT_CAN_QUOTE_SCRIPTURE: frozenset[str] = frozenset({"html", "plain", "quiz_question"})
+#
+# ``quiz_option`` was left out on the reasoning that an answer option is
+# too short to carry a quotation. Production disagreed: options quote
+# Acts 8:4 and Acts 10:34 in full, with the reference in brackets, and
+# every one of them was going to the model to be re-worded rather than
+# to the canonical text. An option that quotes is the case where getting
+# it wrong is most visible — the student is being asked to recognise the
+# verse.
+#
+# Nothing is lost by including it. ``pre_substitute`` only acts when it
+# finds a reference AND matches the text against the canon at ≥ 0.80; an
+# option that merely paraphrases is left exactly as it was.
+_KINDS_THAT_CAN_QUOTE_SCRIPTURE: frozenset[str] = frozenset({"html", "plain", "quiz_question", "quiz_option"})
 
 
 class GeminiTranslationProvider:
@@ -286,6 +298,9 @@ class GeminiTranslationProvider:
             text=request.text,
             content_kind=request.content_kind,
             context=request.context,
+            source_locale=request.source_locale,
+            target_locale=request.target_locale,
+            rewrite_notes=request.rewrite_notes,
         )
         return {
             "systemInstruction": {"parts": [{"text": system_prompt}]},
