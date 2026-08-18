@@ -33,7 +33,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, Text, func, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, SmallInteger, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -185,6 +185,13 @@ class ContentVersion(Base):
     )
 
     attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
+    #: Which generation of the translation pipeline produced this row.
+    #: Lower than ``TRANSLATOR_VERSION`` means the row predates the rules
+    #: now in force — the glossary, the per-language calque notes, the
+    #: correcting pass — and is due for another attempt. Human rows keep
+    #: 0 and are never re-translated.
+    translator_version: Mapped[int] = mapped_column(SmallInteger, default=0, server_default="0")
 
     superseded_by: Mapped[uuid.UUID | None] = mapped_column(
         PgUUID(as_uuid=True),

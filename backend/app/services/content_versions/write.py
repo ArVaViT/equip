@@ -39,6 +39,7 @@ from app.models.content_version import (
     ContentVersion,
     ContentVersionStatus,
 )
+from app.services.translation.version import TRANSLATOR_VERSION
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -211,6 +212,13 @@ def record_mt_version(
         # Status is part of the comparison: the same text arriving
         # after a failed structural check has to be able to move the
         # row from ``ok`` to ``needs_review``.
+        #
+        # The stamp is still refreshed. A newer pipeline that produces
+        # the same words has confirmed them, and leaving the old number
+        # in place would make the row look unexamined forever — the
+        # sweep would pick it up on every cycle and pay for the same
+        # answer again.
+        existing.translator_version = TRANSLATOR_VERSION
         return existing
 
     new_id = uuid.uuid4()
@@ -231,6 +239,7 @@ def record_mt_version(
         source_locale=source_locale,
         source_hash=source_hash,
         source_version_id=source_version_id,
+        translator_version=TRANSLATOR_VERSION,
     )
     db.add(new_row)
     db.flush()

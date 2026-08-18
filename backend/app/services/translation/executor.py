@@ -39,10 +39,13 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Literal
 
+from sqlalchemy import or_
+
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.services.translation.budget import NoBudget
 from app.services.translation.protocol import TranslationError, TranslationRequest
 from app.services.translation.validation import ValidationIssue, summarise, validate_translation
+from app.services.translation.version import TRANSLATOR_VERSION
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -118,11 +121,20 @@ def _decide(
     if existing is not None:
         if existing.origin == "human":
             return "skipped", None
-        if existing.status == "ok" and existing.source_hash == task.source_hash:
+        # A row made by an older pipeline is not up to date, however
+        # unchanged its source is. This is the whole mechanism by which
+        # a prompt improvement reaches the several thousand translations
+        # already stored: they stop counting as answers.
+        current = existing.translator_version >= TRANSLATOR_VERSION
+        if current and existing.status == "ok" and existing.source_hash == task.source_hash:
             return "skipped", None
-        if existing.status == "needs_review" and existing.source_hash == task.source_hash:
+        if current and existing.status == "needs_review" and existing.source_hash == task.source_hash:
             return "skipped", None
         if existing.status == "failed_permanent":
+            # Terminal regardless of version: something about this text
+            # defeats translation, and a new prompt is not a reason to
+            # spend the retries again automatically. Clearing these is a
+            # deliberate act.
             return "skipped", None
 
     # Identical source, already translated somewhere else: reuse it
@@ -135,6 +147,14 @@ def _decide(
             ContentVersion.source_hash == task.source_hash,
             ContentVersion.status == ContentVersionStatus.OK,
             ContentVersion.superseded_by.is_(None),
+            # A twin is only worth copying if it is at least as good as
+            # what we would produce now. A human translation always is;
+            # a machine one has to have been made by the current
+            # pipeline, or the old wording would simply propagate.
+            or_(
+                ContentVersion.origin == "human",
+                ContentVersion.translator_version >= TRANSLATOR_VERSION,
+            ),
             ~((ContentVersion.entity_type == task.entity_type) & (ContentVersion.entity_id == task.entity_id)),
         )
         .order_by(ContentVersion.created_at)

@@ -39,6 +39,7 @@ from typing import TYPE_CHECKING, Protocol
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.staged_content_version import StagedContentVersion
 from app.services.content_versions import record_mt_failure, record_mt_version
+from app.services.translation.version import TRANSLATOR_VERSION
 
 if TYPE_CHECKING:
     import uuid
@@ -52,13 +53,16 @@ class ActiveRow:
 
     Deliberately not the ORM object: the two stores hold different
     types, and the decisions being made — human or machine, up to date
-    or not, terminally failed or retryable — need exactly these three
+    or not, terminally failed or retryable — need exactly these four
     facts.
     """
 
     origin: str
     status: str
     source_hash: str | None
+    #: Which pipeline generation produced it. A row below the current
+    #: version is not an answer, however unchanged its source is.
+    translator_version: int = 0
 
 
 class VersionStore(Protocol):
@@ -169,7 +173,12 @@ class LiveStore:
         row = _live_active(db, entity_type=entity_type, entity_id=entity_id, field=field, locale=locale)
         if row is None:
             return None
-        return ActiveRow(origin=row.origin, status=row.status, source_hash=row.source_hash)
+        return ActiveRow(
+            origin=row.origin,
+            status=row.status,
+            source_hash=row.source_hash,
+            translator_version=row.translator_version,
+        )
 
     def record_success(
         self,
@@ -264,7 +273,12 @@ class StagedStore:
     ) -> ActiveRow | None:
         staged = _staged_row(db, entity_type=entity_type, entity_id=entity_id, field=field, locale=locale)
         if staged is not None:
-            return ActiveRow(origin=staged.origin, status=staged.status, source_hash=staged.source_hash)
+            return ActiveRow(
+                origin=staged.origin,
+                status=staged.status,
+                source_hash=staged.source_hash,
+                translator_version=staged.translator_version,
+            )
 
         # Nothing staged for this locale yet. One live row still binds
         # us: a translation a person typed. The machine never overwrites
@@ -274,7 +288,14 @@ class StagedStore:
         # this edit replaces, which is precisely what we are redoing.)
         live = _live_active(db, entity_type=entity_type, entity_id=entity_id, field=field, locale=locale)
         if live is not None and live.origin == "human":
-            return ActiveRow(origin="human", status=live.status, source_hash=live.source_hash)
+            # A human translation is authoritative regardless of which
+            # pipeline generation is current — it was never made by one.
+            return ActiveRow(
+                origin="human",
+                status=live.status,
+                source_hash=live.source_hash,
+                translator_version=TRANSLATOR_VERSION,
+            )
         return None
 
     def record_success(
@@ -403,6 +424,11 @@ def _upsert_staged(
             source_hash=source_hash,
             attempts=attempts,
             authored_by=authored_by,
+            # A staged machine row carries its generation for the same
+            # reason a live one does: an edit sitting in review must not
+            # be promoted carrying the quality of an older pipeline.
+            # Human rows are stamped too and simply never re-translated.
+            translator_version=TRANSLATOR_VERSION,
         )
         db.add(row)
     else:
@@ -413,6 +439,7 @@ def _upsert_staged(
         row.source_locale = source_locale
         row.source_hash = source_hash
         row.attempts = attempts
+        row.translator_version = TRANSLATOR_VERSION
         if authored_by is not None:
             row.authored_by = authored_by
     db.flush()

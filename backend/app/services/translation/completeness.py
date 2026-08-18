@@ -53,6 +53,7 @@ from app.schemas.locale import LOCALE_CODES, LocaleCode, normalize_locale
 from app.services.translation.course_tree import iter_course_entities
 from app.services.translation.registry import entity_field_specs
 from app.services.translation.service import is_translation_enabled
+from app.services.translation.version import TRANSLATOR_VERSION
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -61,7 +62,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-GapReason = Literal["missing", "needs_review", "failed"]
+# "stale" is a translation that exists, reads fine, and was made by a
+# pipeline we have since improved on. It counts as a gap because that is
+# what makes the sweep pick the course up again — see
+# ``translation/version.py``.
+GapReason = Literal["missing", "needs_review", "failed", "stale"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -157,6 +162,8 @@ def completeness_of(
             ContentVersion.field,
             ContentVersion.locale,
             ContentVersion.status,
+            ContentVersion.origin,
+            ContentVersion.translator_version,
         )
         .filter(
             tuple_(
@@ -168,9 +175,13 @@ def completeness_of(
         )
         .all()
     )
-    status_by_key: dict[tuple[str, str, str, str], str] = {
-        (entity_type, entity_id, field, locale): status for entity_type, entity_id, field, locale, status in rows
-    }
+    status_by_key: dict[tuple[str, str, str, str], str] = {}
+    stale_keys: set[tuple[str, str, str, str]] = set()
+    for entity_type, entity_id, field, locale, status, origin, translator_version in rows:
+        row_key = (entity_type, entity_id, field, locale)
+        status_by_key[row_key] = status
+        if origin == "mt" and translator_version < TRANSLATOR_VERSION:
+            stale_keys.add(row_key)
 
     required = 0
     present = 0
@@ -179,8 +190,10 @@ def completeness_of(
         wanted_type, wanted_id, wanted_field = key
         for locale in sorted(wanted_locales):
             required += 1
-            status = status_by_key.get((wanted_type, wanted_id, wanted_field, locale))
-            if status == ContentVersionStatus.OK:
+            row_key = (wanted_type, wanted_id, wanted_field, locale)
+            status = status_by_key.get(row_key)
+            stale = row_key in stale_keys
+            if status == ContentVersionStatus.OK and not stale:
                 present += 1
                 continue
             gaps.append(
@@ -189,7 +202,7 @@ def completeness_of(
                     entity_id=wanted_id,
                     field=wanted_field,
                     locale=locale,
-                    reason=_REASON_BY_STATUS.get(status or "", "missing"),
+                    reason="stale" if stale else _REASON_BY_STATUS.get(status or "", "missing"),
                 )
             )
 
