@@ -1,0 +1,22 @@
+{
+  "name": "[Equip] An edit has been waiting on translation too long",
+  "type": "log alert",
+  "query": "logs(\"service:equip-backend \\\"staged_edits\\\" \\\"blocked\\\"\").index(\"*\").rollup(\"count\").last(\"1h\") >= 3",
+  "message": "Edits to a live course are being held back and cannot resolve on their own.\n\nAn edit to a published course waits until every language has it — that is deliberate, so readers never see a sentence whose other languages describe a different one. But a translation that failed its structural check does not retry itself (temperature 0 returns the same verdict), so the edit stays invisible to students indefinitely and the teacher sees nothing happen.\n\nWhat to do:\n* `GET /api/v1/courses/{id}/translation-progress` — `blocked_edits` and which locales.\n* If the translation is actually fine and the checker misread it (short strings in two close languages are the usual case): `POST /api/v1/admin/translations/accept-reviewed` with the row ids.\n* If it is genuinely wrong: fix the source text, which re-opens the field.\n\n@arvavitcorp@gmail.com",
+  "tags": [
+    "env:production",
+    "project:equip",
+    "area:translation",
+    "managed_by:claude"
+  ],
+  "priority": 3,
+  "options": {
+    "evaluation_delay": 60,
+    "thresholds": {
+      "critical": 3.0
+    },
+    "notify_no_data": false,
+    "renotify_interval": 0,
+    "include_tags": true
+  }
+}

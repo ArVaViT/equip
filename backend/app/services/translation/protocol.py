@@ -86,6 +86,13 @@ class TranslationResult:
     # Tokens reported by the provider (``None`` when unavailable).
     input_tokens: int | None = None
     output_tokens: int | None = None
+    # Tokens the model spent thinking before answering. Billed as output
+    # and invisible in the reply, which is exactly why they are recorded
+    # separately: on 2026-08-17 production was running a thinking model
+    # that spent ~840 of these per translated string — six times the
+    # output it actually produced — and no metric would have shown it.
+    # A cost we cannot see is a cost nobody stops.
+    thinking_tokens: int | None = None
     # Provider-specific model id actually used (so logs can pin a row to a
     # version of the upstream service).
     model: str | None = None

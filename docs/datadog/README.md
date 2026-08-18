@@ -84,9 +84,23 @@ Emitted in logs but **no generated-metric rule yet** (logged values
 are queryable in Log Explorer, not as metrics):
 
 * `equip.gemini.tokens_input_total` + `equip.gemini.tokens_output_total`
-  — `app/services/translation/gemini.py` uses the token count as the
+  + `equip.gemini.tokens_thinking_total` —
+  `app/services/translation/gemini.py` uses the token count as the
   log value; add a distribution rule on the pipeline if $-burn
   tracking should move from logs to metrics.
+
+  The **thinking** count is the one to watch, and the reason it exists
+  as its own series. Those tokens are spent before the model answers,
+  never appear in the reply, and are billed as output. Production ran
+  81 days on a thinking model at roughly 840 of them per translated
+  string — six times the output it actually produced — and nothing
+  showed it, because nothing measured it. It is emitted on every
+  successful call including as zero, so the chart is a flat line at
+  nought rather than an absent series, and a model change that brings
+  thinking back is visible the same hour.
+
+  `docs/datadog/monitors/gemini-thinking-tokens-returned.json` and
+  `gemini-spend-spike.json` alert on these.
 
 ## Derived / replaced panels
 

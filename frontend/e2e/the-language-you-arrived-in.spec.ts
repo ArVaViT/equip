@@ -1,0 +1,134 @@
+import { test, expect } from "@playwright/test";
+
+/**
+ * A stranger opens the site and reads it in their own language.
+ *
+ * This is the promise the product is built on, and the one place it can
+ * be broken silently: the visitor has never been here, has nothing
+ * stored, and all the site knows about them is the language their
+ * browser asks for. If a German lands on Russian, or an American on
+ * Ukrainian, nothing errors and nothing alerts — they just leave.
+ *
+ * The existing language spec seeds `localStorage` first, so it tests a
+ * returning reader. This one tests arrival: a fresh browser context per
+ * language, no storage, nothing but `Accept-Language` and
+ * `navigator.language`.
+ *
+ * Two things are asserted, and both matter:
+ *
+ * 1. The **first frame**. `<html lang>`, the tab title and the meta
+ *    description are set by `/locale-boot.js` before the bundle loads,
+ *    so they are checked immediately after `domcontentloaded` — the
+ *    state a visitor on a slow connection actually stares at.
+ * 2. The **rendered page**, once React has booted: real words from
+ *    that language's catalog, and none of the tell-tale words of
+ *    another one.
+ */
+
+type Probe = {
+  /** What the browser asks for. */
+  browser: string;
+  /** What the site must decide. */
+  expected: "ru" | "en" | "de" | "uk";
+  /** A word only this language's catalog produces on the public page. */
+  expectWord: RegExp;
+  /** Words that would mean the visitor was handed the wrong language. */
+  rejectWords: RegExp;
+  /** Part of the tab title `/locale-boot.js` sets before React exists. */
+  expectTitle: RegExp;
+};
+
+const PROBES: Probe[] = [
+  {
+    browser: "de-DE",
+    expected: "de",
+    expectWord: /Bibel|Anmelden|Kurse/i,
+    rejectWords: /Библии|Войти|Курсы|Вивчення/i,
+    expectTitle: /Bibelstudium/i,
+  },
+  {
+    browser: "en-US",
+    expected: "en",
+    expectWord: /Bible|Sign in|Courses/i,
+    rejectWords: /Библии|Войти|Bibelstudium|Вивчення/i,
+    expectTitle: /study the Bible/i,
+  },
+  {
+    browser: "uk-UA",
+    expected: "uk",
+    expectWord: /Біблії|Увійти|Курси/i,
+    rejectWords: /Bibelstudium|изучение Библии/i,
+    expectTitle: /вивчення Біблії/i,
+  },
+  {
+    browser: "ru-RU",
+    expected: "ru",
+    expectWord: /Библии|Войти|Курсы/i,
+    rejectWords: /Bibelstudium|вивчення Біблії/i,
+    expectTitle: /изучение Библии/i,
+  },
+];
+
+for (const probe of PROBES) {
+  test.describe(`a visitor whose browser says ${probe.browser}`, () => {
+    test.use({ locale: probe.browser });
+
+    test("gets that language, from the first frame onward", async ({ page }) => {
+      // No stored choice, no session: this is the first visit.
+      await page.context().clearCookies();
+
+      await page.goto("/", { waitUntil: "domcontentloaded" });
+
+      // ── the first frame, before the bundle has had a chance to run ──
+      expect(await page.title(), `tab title for ${probe.browser}`).toMatch(probe.expectTitle);
+      expect(
+        await page.locator("html").getAttribute("lang"),
+        `<html lang> for ${probe.browser}`,
+      ).toBe(probe.expected);
+
+      // ── and once the app is up ──
+      await page.waitForLoadState("networkidle");
+      const body = await page.locator("body").innerText();
+
+      expect(body, `visible copy for ${probe.browser}`).toMatch(probe.expectWord);
+      expect(body, `a ${probe.browser} visitor was shown another language`).not.toMatch(
+        probe.rejectWords,
+      );
+      expect(await page.locator("html").getAttribute("lang")).toBe(probe.expected);
+    });
+  });
+}
+
+test.describe("a visitor whose language the platform does not serve", () => {
+  test.use({ locale: "pl-PL" });
+
+  test("gets a language it does serve, not a blank or a key", async ({ page }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+
+    const lang = await page.locator("html").getAttribute("lang");
+    expect(["ru", "en", "de", "uk"], "fell back to a served language").toContain(lang);
+
+    await page.waitForLoadState("networkidle");
+    const body = await page.locator("body").innerText();
+    expect(body.trim().length, "the page rendered something").toBeGreaterThan(20);
+    // A raw i18next key would look like `header.home`; ordinary copy does not.
+    expect(body).not.toMatch(/\b[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*){1,}\b/);
+  });
+});
+
+test.describe("a returning reader outranks the browser", () => {
+  test.use({ locale: "de-DE" });
+
+  test("keeps the language they chose last time", async ({ page }) => {
+    // The rule: a stated preference beats a detected one. A German
+    // browser must not undo somebody's explicit switch to Ukrainian.
+    await page.addInitScript(() => {
+      window.localStorage.setItem("equip:locale", "uk");
+    });
+
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+
+    expect(await page.locator("html").getAttribute("lang")).toBe("uk");
+    expect(await page.title()).toMatch(/вивчення Біблії/i);
+  });
+});

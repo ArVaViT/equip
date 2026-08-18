@@ -32,7 +32,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.schemas.locale import LOCALE_CODES, LocaleCode, normalize_locale
-from app.services.translation.budget import NoBudget, TranslationBudget
+from app.services.translation.executor import TranslationTask, execute_plan
 from app.services.translation.hash import compute_source_hash
 from app.services.translation.protocol import (
     ContentKind,
@@ -57,6 +57,7 @@ if TYPE_CHECKING:
         ContentVersionField as TranslationField,
     )
     from app.models.course import Course
+    from app.services.translation.budget import TranslationBudget
 
 logger = logging.getLogger(__name__)
 
@@ -175,71 +176,23 @@ def translate_entity_fields(
     # ``reconcile_entity``) — that's what makes mixed-language entities
     # translate in the correct direction per field.
     active_provider = provider or get_translation_provider()
-    active_budget = budget or NoBudget()
     active_store = store or LIVE_STORE
-    translated = 0
-    skipped = 0
-    failed = 0
-    needs_review = 0
-    incomplete = False
 
-    for spec in fields:
-        if incomplete:
-            break
-        text = (spec.text or "").strip()
-        if not text:
-            # Empty source has nothing to translate; we also actively avoid
-            # creating empty translation rows that would later round-trip
-            # back into the UI as blanks. Empty-source fields are not
-            # counted in ``skipped`` — that counter tracks rows we
-            # *consciously* short-circuited (human override, hash match),
-            # not rows that never had work to do.
-            continue
-
-        # Per-field source-locale override (set by ``reconcile_entity``
-        # after running the language detector on this field's text).
-        # Falls back to the entity-level source_locale when unset, which
-        # preserves the existing single-language behaviour for callers
-        # that haven't opted into per-field detection.
-        field_source: LocaleCode = spec.source_locale or source_locale
-        field_targets = target_locales if target_locales is not None else other_locales(field_source)
-        if not field_targets:
-            continue
-        source_hash = compute_source_hash(text, locale=field_source)
-        for target in field_targets:
-            outcome = _translate_one_field(
-                db,
-                entity_type=entity_type,
-                entity_id=entity_id,
-                field=spec.field,
-                source_locale=field_source,
-                target_locale=target,
-                text=text,
-                content_kind=spec.content_kind,
-                source_hash=source_hash,
-                context=context,
-                provider=active_provider,
-                budget=active_budget,
-                store=active_store,
-            )
-            if outcome == "translated":
-                translated += 1
-            elif outcome == "skipped":
-                skipped += 1
-            elif outcome == "needs_review":
-                needs_review += 1
-            elif outcome == "deferred":
-                # Out of time, and this row would have needed a provider
-                # call. Stop here rather than walking the rest of the
-                # fields for their short-circuits: the cheap ones cost a
-                # query each, and on a large course that is thousands of
-                # queries buying nothing. The next tick starts where this
-                # one stopped, for free, because the fields already done
-                # match on ``source_hash``.
-                incomplete = True
-                break
-            else:
-                failed += 1
+    tasks = build_tasks(
+        entity_type=entity_type,
+        entity_id=entity_id,
+        source_locale=source_locale,
+        fields=fields,
+        target_locales=target_locales,
+        context=context,
+    )
+    result = execute_plan(
+        db,
+        tasks,
+        provider=active_provider,
+        store=active_store,
+        budget=budget,
+    )
 
     try:
         db.commit()
@@ -252,19 +205,68 @@ def translate_entity_fields(
         "needs_review=%d incomplete=%s",
         entity_type,
         entity_id,
-        translated,
-        skipped,
-        failed,
-        needs_review,
-        incomplete,
+        result.translated,
+        result.skipped,
+        result.failed,
+        result.needs_review,
+        result.incomplete,
     )
     return OrchestratorReport(
-        translated=translated,
-        skipped=skipped,
-        failed=failed,
-        needs_review=needs_review,
-        incomplete=incomplete,
+        translated=result.translated,
+        skipped=result.skipped,
+        failed=result.failed,
+        needs_review=result.needs_review,
+        incomplete=result.incomplete,
     )
+
+
+def build_tasks(
+    *,
+    entity_type: TranslationEntityType,
+    entity_id: str,
+    source_locale: LocaleCode,
+    fields: list[TranslationFieldSpec],
+    target_locales: tuple[LocaleCode, ...] | None = None,
+    context: str | None = None,
+) -> list[TranslationTask]:
+    """Turn one entity's field specs into (field, target) work items.
+
+    Split out so a whole course can be planned in one go: the executor
+    runs a list, and a list assembled from every entity under a course
+    is what turns eight concurrent calls into eight concurrent calls on
+    real work rather than on the three locales of a single block.
+
+    Empty fields are dropped here — nothing to translate, and an empty
+    row would round-trip into the UI as a blank.
+    """
+    tasks: list[TranslationTask] = []
+    for spec in fields:
+        text = (spec.text or "").strip()
+        if not text:
+            continue
+        # Per-field source locale (set by ``reconcile_entity`` from the
+        # detector) decides the direction; the entity-level value is the
+        # fallback for fields the detector could not read.
+        field_source: LocaleCode = spec.source_locale or source_locale
+        field_targets = target_locales if target_locales is not None else other_locales(field_source)
+        if not field_targets:
+            continue
+        source_hash = compute_source_hash(text, locale=field_source)
+        tasks.extend(
+            TranslationTask(
+                entity_type=entity_type,
+                entity_id=entity_id,
+                field=spec.field,
+                source_locale=field_source,
+                target_locale=target,
+                text=text,
+                content_kind=spec.content_kind,
+                source_hash=source_hash,
+                context=context,
+            )
+            for target in field_targets
+        )
+    return tasks
 
 
 def translate_course_metadata(

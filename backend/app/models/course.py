@@ -146,6 +146,18 @@ class Course(Base):
     # never sees a blank screen when only the RU row exists yet.
     source_locale: Mapped[str] = mapped_column(default="ru", server_default="ru")
 
+    # When the translation sweep last verified this course has every
+    # language. NULL means never, and sorts first.
+    #
+    # The pipeline is otherwise entirely reactive — a save fires a hook,
+    # a publish fires a hook — which leaves two holes that only get
+    # worse with scale. A newly added language makes every existing
+    # course incomplete with no event to notice it, and a pass that
+    # failed once has nothing scheduled to come back for it. The sweep
+    # closes both by re-examining the least recently checked courses on
+    # a fixed cycle; this column is where it left off.
+    translations_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     # ``order_by`` guarantees deterministic ordering whenever the relationship is
     # accessed, including via ``joinedload`` in ``get_course``. Without it
     # Postgres returns rows in whatever order the query plan chose, which

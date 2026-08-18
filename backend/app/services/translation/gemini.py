@@ -178,7 +178,22 @@ class GeminiTranslationProvider:
                     )
             else:
                 if response.status_code == 200:
-                    result = self._parse_response(response.json())
+                    try:
+                        body = response.json()
+                    except ValueError as exc:
+                        # A 200 whose body is not JSON: a proxy error page,
+                        # a truncated response, an upstream incident served
+                        # as HTML. Rare, and it used to escape as a raw
+                        # ValueError — which the caller does not catch,
+                        # because everything else here arrives as
+                        # TranslationError. Since the pass now runs calls
+                        # concurrently, one of those would surface out of a
+                        # worker thread and take the whole plan down
+                        # instead of failing a single row.
+                        raise TranslationError(
+                            f"Gemini returned 200 with a non-JSON body ({response.text[:200]!r})"
+                        ) from exc
+                    result = self._parse_response(body)
                     # Emit Gemini cost metrics on every successful 200.
                     # Tagged with model so a future model migration
                     # (e.g. flash → pro) keeps the curves separable.
@@ -201,6 +216,18 @@ class GeminiTranslationProvider:
                                 float(result.output_tokens),
                                 model=self._model,
                             )
+                        # Billed as output, absent from the reply, and the
+                        # single largest thing that ever went wrong with
+                        # this bill. Always emitted — including as zero —
+                        # so the dashboard shows a flat line at nought
+                        # rather than no line at all, and a model change
+                        # that reintroduces thinking is visible the same
+                        # hour instead of at the end of the month.
+                        emit(
+                            "equip.gemini.tokens_thinking_total",
+                            float(result.thinking_tokens or 0),
+                            model=self._model,
+                        )
                     except Exception:
                         pass
                     if bible_subs:
@@ -211,6 +238,7 @@ class GeminiTranslationProvider:
                             text=post_substitute(result.text, bible_subs, request.target_locale),
                             input_tokens=result.input_tokens,
                             output_tokens=result.output_tokens,
+                            thinking_tokens=result.thinking_tokens,
                             model=result.model,
                         )
                     return result
@@ -309,6 +337,7 @@ class GeminiTranslationProvider:
             text=text,
             input_tokens=usage.get("promptTokenCount"),
             output_tokens=usage.get("candidatesTokenCount"),
+            thinking_tokens=usage.get("thoughtsTokenCount"),
             model=self._model,
         )
 

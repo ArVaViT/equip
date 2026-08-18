@@ -1,3 +1,7 @@
+# ruff: noqa: RUF001
+# Russian test content: the courses this measures are written in one
+# language and served in four, and a Latin stand-in would not exercise
+# the same path.
 """A course too big for one worker tick must still finish.
 
 In August 2026 one course sat in the queue for two days across 161
@@ -162,6 +166,40 @@ def _make_course(db: Session, **overrides: Any) -> Course:
     return course
 
 
+def _add_blocks(db: Session, course: Course, count: int) -> None:
+    """Give the course enough fields that a pass cannot finish it in one
+    batch — which is what makes "stopped early" observable at all now
+    that calls go out concurrently."""
+    from app.models.chapter_block import ChapterBlock
+    from app.models.course import Chapter, Module
+
+    module = Module(id=f"m-{uuid.uuid4().hex[:8]}", course_id=course.id, title="Модуль", order_index=0)
+    db.add(module)
+    db.commit()
+    chapter = Chapter(
+        id=f"ch-{uuid.uuid4().hex[:8]}",
+        module_id=module.id,
+        title="Урок",
+        order_index=0,
+        chapter_type="reading",
+    )
+    db.add(chapter)
+    db.commit()
+    for i in range(count):
+        block = ChapterBlock(chapter_id=chapter.id, block_type="text", order_index=i)
+        db.add(block)
+        db.flush()
+        record_human_version(
+            db,
+            entity_type="chapter_block",
+            entity_id=str(block.id),
+            field="content",
+            locale="ru",
+            text=f"<p>Абзац {i}: Павел пишет церкви о единстве и о любви.</p>",
+        )
+    db.commit()
+
+
 # ---------------------------------------------------------------------------
 # The budget itself
 # ---------------------------------------------------------------------------
@@ -223,10 +261,17 @@ def test_a_spent_budget_buys_nothing_and_writes_nothing(db: Session):
 
 
 def test_the_walk_stops_mid_course_and_says_so(db: Session):
-    """Two fields, one call's worth of budget: the first is translated,
-    the second is left for the next tick, and the report is honest
-    about it."""
+    """A pass that runs out of clock stops, keeps what it did, and says
+    it is not finished.
+
+    The budget is now checked at the boundary of a batch rather than
+    before every single call, because the calls go out concurrently —
+    a batch is one round trip's worth of wall time, not eight. The
+    guarantee is unchanged where it matters: nothing is started that
+    the invocation cannot finish, and what was finished is recorded.
+    """
     course = _make_course(db)
+    _add_blocks(db, course, 8)  # 8 blocks + title + description = 30 tasks
     provider = _CountingProvider()
 
     report = translate_course_content(
@@ -236,9 +281,9 @@ def test_the_walk_stops_mid_course_and_says_so(db: Session):
         budget=_BudgetAfterNCalls(1),
     )
 
-    assert len(provider.calls) == 1
     assert report.incomplete is True
-    assert report.translated == 1
+    assert report.translated >= 1, "the batch it could afford should have been done"
+    assert len(provider.calls) < 30, "it should not have translated the whole course"
     # Something moved — this earns another tick without spending an
     # attempt, which is the whole distinction the incident lacked.
     assert report.made_progress is True
