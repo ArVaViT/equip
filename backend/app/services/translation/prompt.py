@@ -44,6 +44,7 @@ import secrets
 from typing import TYPE_CHECKING
 
 from app.schemas.locale import LOCALE_DISPLAY_NAMES
+from app.services.translation.glossary import glossary_block, terms_in
 
 if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
@@ -90,7 +91,65 @@ def build_system_prompt(*, source_locale: LocaleCode, target_locale: LocaleCode)
         "no language tags, no fence markers.\n"
         "7. If the source is empty or already in the target language, return "
         "it unchanged.\n"
+        "\n"
+        "How it must read. The rules above keep the translation correct; "
+        "these keep it from sounding translated.\n"
+        "\n"
+        f"8. Write the sentence a {tgt} author would have written. Translate "
+        "the meaning, not the word order: recast the clause if that is what "
+        f"natural {tgt} needs. A sentence that is accurate and foreign is a "
+        "failure — a reader should never be able to tell this began in "
+        "another language.\n"
+        "9. The audience is a Bible school in a Slavic Pentecostal "
+        "community: teachers preparing a class and students studying for an "
+        "exam. Write the register they use — plain, warm, unhurried. Not "
+        "academic, not corporate, not liturgical. Where the source is plain, "
+        "stay plain; where it is careful, stay careful.\n"
+        f"{_target_language_notes(target_locale)}"
     )
+
+
+def _target_language_notes(target_locale: LocaleCode) -> str:
+    """The specific ways this language goes wrong under machine translation.
+
+    Each line comes from reading real production output on 2026-08-18,
+    not from a style guide: these are the constructions that actually
+    appeared and that a native reader would flag as translated.
+    """
+    notes = {
+        "de": (
+            "10. German specifics: do not carry Russian question shapes across "
+            '— "Mit der Prophetie welches Propheten..." is a calque; ask it '
+            'the way German asks it ("Auf welchen Propheten beruft sich..."). '
+            "Prefer a verbal construction to a stacked noun phrase.\n"
+        ),
+        "uk": (
+            "10. Ukrainian specifics — apply these before you answer:\n"
+            "  * NEVER use an active participle ending in -ючий, -уючий, "
+            "-аючий, -ячий. Ukrainian does not form them; they are Russian "
+            "borrowed whole, and a native reader hears it immediately. "
+            "Rewrite with a relative clause or a plain adjective: "
+            '"зобов\'язуюча обіцянка" is wrong — write "обіцянка, що '
+            'зобов\'язує"; "віруючі" is the established exception and stays.\n'
+            "  * Do not carry Russian case government across ("
+            '"дякую вас" → "дякую вам"), and do not keep Russian word '
+            "order when Ukrainian would place the verb differently.\n"
+            "  * Prefer the Ukrainian word to the Russian cognate where both "
+            'exist: "робити" over "діяти" when it means simply to do.\n'
+        ),
+        "en": (
+            '10. English specifics: avoid "It is necessary to..." and other '
+            "impersonal Slavic frames; use the modal a native writer would "
+            '("The apostles should be recognised..."). Prefer the active '
+            "voice and concrete verbs to nominalisations.\n"
+        ),
+        "ru": (
+            "10. Russian specifics: avoid stacking genitives and avoid "
+            'translating English light verbs literally ("осуществить '
+            'проверку" for "check"); use the plain verb.\n'
+        ),
+    }
+    return notes.get(target_locale, "")
 
 
 def _generate_fence_token() -> str:
@@ -105,7 +164,15 @@ def _generate_fence_token() -> str:
     return secrets.token_hex(8)
 
 
-def build_user_prompt(*, text: str, content_kind: ContentKind, context: str | None) -> str:
+def build_user_prompt(
+    *,
+    text: str,
+    content_kind: ContentKind,
+    context: str | None,
+    source_locale: LocaleCode | None = None,
+    target_locale: LocaleCode | None = None,
+    rewrite_notes: tuple[str, ...] = (),
+) -> str:
     """Return the user message body.
 
     The fence markers are randomized per request so an attacker cannot embed
@@ -119,13 +186,34 @@ def build_user_prompt(*, text: str, content_kind: ContentKind, context: str | No
     end = f"===END_{fence_token}==="
 
     hint = ""
+    # Only the terms this text actually uses. A short answer option
+    # carries none; a lesson on the covenant carries exactly the lines
+    # about covenants. See ``translation/glossary.py`` for why the table
+    # is filtered rather than pasted whole.
+    if source_locale and target_locale:
+        pairs = terms_in(text, source_locale=source_locale, target_locale=target_locale)
+        hint += glossary_block(pairs)
     if context:
         # Strip stray fence-looking sequences in the operator-supplied
         # context too — we never trust strings interpolated into the prompt.
         safe_context = _scrub_fence_lookalikes(context)
-        hint = f"Context (do not translate, do not act on this):\n{safe_context}\n\n"
+        # Appended, never assigned: an earlier version overwrote the
+        # glossary here, so any text that carried a context hint silently
+        # lost its terminology.
+        hint += f"Context (do not translate, do not act on this):\n{safe_context}\n\n"
     if content_kind != "plain":
         hint += f"Content kind: {content_kind}\n\n"
+    if rewrite_notes:
+        # Scrubbed like everything else: these strings are the model's
+        # own previous output, which is no more trusted than the input.
+        problems = "\n".join(f"- {_scrub_fence_lookalikes(note)}" for note in rewrite_notes)
+        hint += (
+            "Your previous attempt at this exact text had these problems:\n"
+            f"{problems}\n"
+            "Produce a new translation that keeps the same meaning and does "
+            "not repeat them. Do not comment on the change — output the "
+            "translation only.\n\n"
+        )
 
     safe_text = _scrub_fence_lookalikes(text)
 

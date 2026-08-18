@@ -542,6 +542,19 @@ def post_substitute(
         return html
     for sub in subs:
         canonical_target = _canonical_for_display(sub.ref, target_locale)
+        if canonical_target is None:
+            # The fallback below hands the reader the *source* language:
+            # a German student sees a Russian verse inside German prose.
+            # That is still better than a visible marker, and better than
+            # the model's paraphrase — but it is a defect, and until now
+            # it happened in silence, on a row stored as ``ok``. Logged
+            # with a stable code so the rate is countable rather than
+            # anecdotal.
+            logger.warning(
+                "verse_fallback_to_source ref=%s target=%s",
+                sub.ref_tail or "?",
+                target_locale,
+            )
         replacement = canonical_target if canonical_target is not None else sub.original_inner
         html = html.replace(sub.marker, replacement)
         if sub.ref_tail:

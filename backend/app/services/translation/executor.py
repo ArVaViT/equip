@@ -36,13 +36,13 @@ from __future__ import annotations
 
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Literal
 
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.services.translation.budget import NoBudget
 from app.services.translation.protocol import TranslationError, TranslationRequest
-from app.services.translation.validation import summarise, validate_translation
+from app.services.translation.validation import ValidationIssue, summarise, validate_translation
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -184,8 +184,17 @@ def _ask(task: TranslationTask, provider: TranslationProvider) -> _Answer:
         content_kind=task.content_kind,
     )
     if issues:
+        # Two different remedies, and which one applies depends on why
+        # the first answer was wrong.
+        #
+        # Sampling is at temperature 0, so asking the identical question
+        # a second time returns the identical answer — a plain retry
+        # only ever helps when the failure was in the trip rather than
+        # in the judgement (a truncated response, a network fault). For
+        # a defect the model actively prefers, the question has to
+        # change: show it the words it chose and ask for different ones.
         try:
-            retry = provider.translate(request)
+            retry = provider.translate(replace(request, rewrite_notes=tuple(issue.detail for issue in issues)))
         except TranslationError:
             retry = None
         if retry is not None:
@@ -196,14 +205,42 @@ def _ask(task: TranslationTask, provider: TranslationProvider) -> _Answer:
                 target_locale=task.target_locale,
                 content_kind=task.content_kind,
             )
-            if not retry_issues:
-                return _Answer(task=task, text=retry.text, issues_summary=None, failed=False)
+            # Keep whichever answer is less wrong. The model is not
+            # deterministic, so a second pass is a second roll, not a
+            # correction — and a retry that fixed the calque but broke a
+            # placeholder must not be preferred to the first answer.
+            if _rank(retry_issues) < _rank(issues):
+                result, issues = retry, retry_issues
+
+    blocking = [issue for issue in issues if issue.blocking]
+    style = [issue for issue in issues if not issue.blocking]
+    if style and not blocking:
+        # Correct but stiff. Served, because a reader gains more from a
+        # slightly translated-sounding sentence than from a gap — and
+        # logged with a stable code, so the rate is a number on a
+        # dashboard rather than an impression.
+        logger.warning(
+            "translation_style entity=%s:%s field=%s locale=%s notes=%s",
+            task.entity_type,
+            task.entity_id,
+            task.field,
+            task.target_locale,
+            summarise(style),
+        )
 
     return _Answer(
         task=task,
         text=result.text,
-        issues_summary=summarise(issues) if issues else None,
+        issues_summary=summarise(blocking) if blocking else None,
         failed=False,
+    )
+
+
+def _rank(issues: list[ValidationIssue]) -> tuple[int, int]:
+    """How bad a set of issues is: blocking defects first, then style."""
+    return (
+        sum(1 for issue in issues if issue.blocking),
+        sum(1 for issue in issues if not issue.blocking),
     )
 
 
