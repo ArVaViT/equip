@@ -74,7 +74,7 @@ def test_system_prompt_never_asks_the_model_to_recite_scripture():
         # The instruction the model must not be able to misread: the
         # token is copied, not translated. Its wording changed when the
         # prefix moved off the English word VERSE, which a Ukrainian
-        # pass duly translated to "ВЕРС_".
+        # pass duly translated it into Cyrillic letters.
         assert "copy the token through" in prompt
 
 
