@@ -503,7 +503,7 @@ def _candidate_references(
     return [(index, parsed) for _distance, index, parsed in scored]
 
 
-def _canonical_for_display(ref: BibleRef, locale: str) -> str | None:
+def canonical_for_display(ref: BibleRef, locale: str) -> str | None:
     """Canonical text for a student's page: API where we have one, file
     where the file is sound, and `None` — meaning "keep what the author
     wrote" — whenever neither can answer.
@@ -585,7 +585,7 @@ def post_substitute(
     if not subs:
         return html
     for sub in subs:
-        canonical_target = _canonical_for_display(sub.ref, target_locale)
+        canonical_target = canonical_for_display(sub.ref, target_locale)
         if canonical_target is None:
             # The fallback below hands the reader the *source* language:
             # a German student sees a Russian verse inside German prose.
@@ -619,4 +619,9 @@ def post_substitute(
     return html.replace("  (", " (")
 
 
-__all__ = ["Substitution", "post_substitute", "pre_substitute"]
+__all__ = [
+    "Substitution",
+    "canonical_for_display",
+    "post_substitute",
+    "pre_substitute",
+]

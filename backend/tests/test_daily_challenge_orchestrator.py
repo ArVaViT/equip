@@ -37,6 +37,31 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
+@pytest.fixture(autouse=True)
+def _canonical_texts_without_a_network(monkeypatch):
+    """The generator now reads the editions the reader is shown.
+
+    Those come from the API — the English bundle is the King James
+    Version, and handing KJV to the model is what produced 62 questions
+    written in Early Modern English. Russian has no usable bundle at all
+    (its file is misaligned), so there is nothing local to fall back to
+    and nothing to fall back to is correct: a wrong verse handed to the
+    generator produces a wrong question.
+
+    Tests have no API key, so they say what the passage is.
+    """
+    from app.services.bible import substitution
+
+    def _stub(ref, locale):
+        return {
+            "en": "For God so loved the world that He gave His one and only Son.",
+            "ru": "Ибо так возлюбил Бог мир, что отдал Сына Своего Единородного.",
+        }.get(locale)
+
+    monkeypatch.setattr("app.services.daily_challenge.orchestrator.canonical_for_display", _stub)
+    assert substitution.canonical_for_display is not None
+
+
 @pytest.fixture
 def author(db: Session) -> User:
     u = User(
