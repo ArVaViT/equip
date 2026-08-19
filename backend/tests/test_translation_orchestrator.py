@@ -558,9 +558,14 @@ def test_publishing_does_not_translate_again_on_idempotent_update(monkeypatch, c
     provider = _RecordingProvider()
     _patch_provider(monkeypatch, provider)
 
+    # No glossary term in either field. The fake provider transliterates
+    # rather than translates, so a registered term in the source would
+    # come back missing from the answer and earn a correcting pass — a
+    # third call, correct behaviour, and noise in a test counting hook
+    # invocations.
     course = client.post(
         "/api/v1/courses",
-        json={"title": "Acts", "description": "Course."},
+        json={"title": "Acts", "description": "A short introduction."},
     ).json()
 
     client.put(f"/api/v1/courses/{course['id']}", json={"status": "published"})

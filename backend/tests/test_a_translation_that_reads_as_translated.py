@@ -147,7 +147,7 @@ class TestUkrainianCalque:
         [
             # The apostrophe form production actually produced. A pattern
             # built from \w alone walks straight past it.
-            ("A serious binding promise", "Серйозна зобов'язуюча обіцянка"),
+            ("A promise that holds you to it", "Серйозна зобов'язуюча обіцянка"),
             ("The surrounding world", "Оточуючий світ"),
             ("The man leading the congregation", "Керуючий громадою чоловік"),
         ],
@@ -179,7 +179,9 @@ class TestUkrainianCalque:
     def test_correct_ukrainian_is_left_alone(self, translated: str) -> None:
         assert (
             validate_translation(
-                source="A serious binding promise made to the people",
+                # Length has to be in the same ballpark or the ratio
+                # check answers instead of the one being measured.
+                source="Believers scattered by persecution went about",
                 translated=translated,
                 source_locale="en",
                 target_locale="uk",
@@ -249,3 +251,71 @@ class TestAnAnswerOptionThatQuotesScripture:
         # sentence about a verse, not the verse.
         _, subs = pre_substitute("«Апостолы решили идти в Самарию» (Деян. 8:4)", "ru")
         assert subs == []
+
+
+class TestAWordSwappedForAnotherWord:
+    """The one defect class structural validation is blind to by design.
+
+    Everything else in `validation.py` asks whether the shape survived:
+    markup, placeholders, numbers, length, language. A word replaced by
+    another word passes every one of them. Nothing is lost, nothing is
+    malformed, the length is right — the sentence simply says something
+    else.
+
+    That is how the Ethiopian eunuch of Acts 8 reached Ukrainian readers
+    as "п'ятидесятник", the word this school's readers use for
+    themselves, in a row marked ok, and stayed there until a person read
+    it. The glossary already knew the answer; it was only being used as
+    a request to the model, never as a check on the reply.
+    """
+
+    def test_a_replaced_term_is_caught(self) -> None:
+        from app.services.translation.glossary import missing_terms
+
+        assert missing_terms(
+            "Филипп и эфиопский евнух",
+            "Филип та ефіопський п'ятидесятник",
+            source_locale="ru",
+            target_locale="uk",
+        ) == [("евнух", "скопець")]
+
+    def test_the_right_word_passes(self) -> None:
+        from app.services.translation.glossary import missing_terms
+
+        assert (
+            missing_terms(
+                "Филипп и эфиопский евнух",
+                "Филип та ефіопський скопець",
+                source_locale="ru",
+                target_locale="uk",
+            )
+            == []
+        )
+
+    def test_an_inflected_form_passes(self) -> None:
+        # German declines and Ukrainian declines; demanding the
+        # dictionary form would flag correct prose all day.
+        from app.services.translation.glossary import missing_terms
+
+        assert (
+            missing_terms(
+                "Церковь в Коринфе",
+                "Der Gemeinde in Korinth",
+                source_locale="ru",
+                target_locale="de",
+            )
+            == []
+        )
+
+    def test_it_does_not_stop_the_reader(self) -> None:
+        # A translator may reach for a synonym. Refusing to serve the
+        # page over a word choice trades a small wrong for a blank one —
+        # what it earns is a correcting pass.
+        issues = validate_translation(
+            source="Филипп встретил эфиопского евнуха в пустыне",
+            translated="Филип зустрів ефіопського п'ятидесятника в пустелі",
+            source_locale="ru",
+            target_locale="uk",
+        )
+        assert [i.code for i in issues] == ["glossary_term_missing"]
+        assert issues[0].blocking is False
