@@ -36,7 +36,16 @@ from __future__ import annotations
 import uuid
 from datetime import datetime  # noqa: TC003 — Mapped[] runtime resolution
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, Text, func
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    SmallInteger,
+    Text,
+    func,
+)
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -93,6 +102,11 @@ class StagedContentVersion(Base):
     )
 
     attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
+    #: See ``ContentVersion.translator_version``. A staged row carries it
+    #: too, so an edit held for review is not promoted carrying the
+    #: quality of an older pipeline.
+    translator_version: Mapped[int] = mapped_column(SmallInteger, default=0, server_default="0")
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
