@@ -31,11 +31,16 @@ from pydantic import SecretStr
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.course import Course, CourseStatus
 from app.models.user import User
-from app.services.content_versions import record_human_version, record_mt_version
+from app.services.content_versions import (
+    fetch_cv_entity_texts_with_fallback,
+    record_human_version,
+    record_mt_version,
+)
 from app.services.translation.completeness import (
     course_translation_completeness,
     promote_if_complete,
 )
+from app.services.translation.hash import compute_source_hash
 from app.services.translation.service import reset_translation_provider_cache
 from tests.conftest import TEACHER_ID
 
@@ -107,6 +112,19 @@ def _author(db: Session, course: Course, field: str, text: str) -> None:
 
 
 def _translate(db: Session, course: Course, field: str, text: str, *, status=ContentVersionStatus.OK) -> None:
+    # The hash of the text this is a translation OF, not a placeholder.
+    # completeness now compares it against the current source, so a
+    # stand-in value reads — correctly — as a translation of something
+    # that has since been rewritten.
+    source = fetch_cv_entity_texts_with_fallback(
+        db,
+        entity_type="course",
+        entity_ids=[str(course.id)],
+        fields=[field],
+        display_locale="ru",
+        source_locale="ru",
+        fallback="source_then_any",
+    ).get((str(course.id), field))
     record_mt_version(
         db,
         entity_type="course",
@@ -115,7 +133,7 @@ def _translate(db: Session, course: Course, field: str, text: str, *, status=Con
         locale="en",
         text=text,
         source_locale="ru",
-        source_hash="hash",
+        source_hash=compute_source_hash(source or "", locale="ru"),
         status=status,
         review_reason="[wrong_language] sample" if status == ContentVersionStatus.NEEDS_REVIEW else None,
     )

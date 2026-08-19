@@ -59,6 +59,7 @@ from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.course import CourseStatus
 from app.schemas.locale import LOCALE_CODES, LocaleCode, normalize_locale
 from app.services.translation.course_tree import iter_course_entities
+from app.services.translation.hash import compute_source_hash
 from app.services.translation.registry import entity_field_specs
 from app.services.translation.service import is_translation_enabled
 from app.services.translation.version import TRANSLATOR_VERSION
@@ -147,6 +148,8 @@ def course_translation_completeness(db: Session, course: Course) -> TranslationC
 
     # (entity_type, entity_id, field) -> {target locale, …}
     wanted: dict[tuple[str, str, str], set[str]] = {}
+    # …and the hash of the text those translations are supposed to be of.
+    expected: dict[tuple[str, str, str], str] = {}
 
     for entity_type, entity in iter_course_entities(db, course):
         entity_id = str(entity.id)  # type: ignore[attr-defined]
@@ -155,13 +158,18 @@ def course_translation_completeness(db: Session, course: Course) -> TranslationC
             if not targets:
                 continue
             wanted[(entity_type, entity_id, spec.field)] = targets
+            expected[(entity_type, entity_id, spec.field)] = compute_source_hash(
+                spec.text or "", locale=spec.source_locale
+            )
 
-    return completeness_of(db, wanted)
+    return completeness_of(db, wanted, expected_source_hashes=expected)
 
 
 def completeness_of(
     db: Session,
     wanted: dict[tuple[str, str, str], set[str]],
+    *,
+    expected_source_hashes: dict[tuple[str, str, str], str] | None = None,
 ) -> TranslationCompleteness:
     """Resolve "which of these (entity, field, locale) rows are servable?"
 
@@ -170,6 +178,19 @@ def completeness_of(
     question has no course — it is a platform-wide rotation — and it
     still cannot be shown to a German reader in Russian. Same question,
     same answer, one implementation.
+
+    ``expected_source_hashes`` is what the translations are supposed to
+    be *of*. Without it this function answers "does a servable row
+    exist", which is not the same question as "is this course
+    translated" — a row can be perfectly servable and be a translation
+    of a sentence the author has since rewritten. The executor has
+    always compared hashes before deciding to re-ask; the completeness
+    check did not, so the two disagreed, and the disagreement went one
+    way only: the gate said complete, the plan said work to do, and
+    ``promote_if_complete`` published a course whose other three
+    languages carried the previous wording. Callers that have no source
+    text to hash — the Daily Challenge pool reads its rows from
+    elsewhere — pass nothing and get the old behaviour.
     """
     if not wanted:
         return TranslationCompleteness(required=0, present=0, gaps=())
@@ -183,6 +204,7 @@ def completeness_of(
             ContentVersion.status,
             ContentVersion.origin,
             ContentVersion.translator_version,
+            ContentVersion.source_hash,
         )
         .filter(
             tuple_(
@@ -196,8 +218,14 @@ def completeness_of(
     )
     status_by_key: dict[tuple[str, str, str, str], str] = {}
     stale_keys: set[tuple[str, str, str, str]] = set()
-    for entity_type, entity_id, field, locale, status, origin, translator_version in rows:
+    expected_source_hashes = expected_source_hashes or {}
+    for entity_type, entity_id, field, locale, status, origin, translator_version, source_hash in rows:
         row_key = (entity_type, entity_id, field, locale)
+        expected_hash = expected_source_hashes.get((entity_type, entity_id, field))
+        if origin == "mt" and expected_hash is not None and source_hash != expected_hash:
+            # Translated, servable, and translated from text that has
+            # since changed.
+            stale_keys.add(row_key)
         status_by_key[row_key] = status
         if origin == "mt" and translator_version < TRANSLATOR_VERSION:
             stale_keys.add(row_key)
