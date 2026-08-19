@@ -2213,6 +2213,7 @@
       "summaryLabel": "On this page"
     },
     "tabInvitations": "Invitations",
+    "tabTranslations": "Translations",
     "invitations": {
       "title": "Invitations",
       "loadError": "Failed to load invitations",
@@ -2258,6 +2259,36 @@
       "gradingTitle": "The school's grading",
       "gradingSummary": "Default: {{scheme}}, pass mark {{threshold}}%",
       "gradingNote": "The scale is edited through the API: moving a boundary re-labels every current grade at once, and that does not belong beside a text box for the city."
+    },
+    "translationReview": {
+      "title": "Translations awaiting review",
+      "description": "A machine translation that failed its check is kept but not served, and nothing resolves it on its own. Read it against its source: accept it if the check was wrong, or send it back to the pipeline.",
+      "filterLocale": "Language:",
+      "filterLocaleAny": "Any language",
+      "clearCourseFilter": "All courses",
+      "totalCount": "{{count}} waiting",
+      "refresh": "Refresh",
+      "loadError": "Couldn't load the queue — please try again.",
+      "empty": {
+        "title": "Nothing is waiting",
+        "body": "No translation is parked for review under this filter."
+      },
+      "dailyChallenge": "Daily Challenge",
+      "unknownCourse": "No course",
+      "sourceLabel": "Source ({{language}})",
+      "sourceGone": "The source text is no longer available.",
+      "translationLabel": "Translation ({{language}})",
+      "accept": "Accept",
+      "retry": "Retry",
+      "page": "Page {{page}} of {{total}}",
+      "prevPageAria": "Previous page",
+      "nextPageAria": "Next page",
+      "toast": {
+        "accepted": "Accepted — readers can see it now.",
+        "retried": "Sent back to the pipeline.",
+        "acceptError": "Couldn't accept it — please try again.",
+        "retryError": "Couldn't send it back — please try again."
+      }
     }
   },
   "roles": {
@@ -2587,6 +2618,7 @@
     "behindBy": "— {{count}} missing",
     "heldEdits": "{{count}} edits waiting on translation. Students see them once every language is ready.",
     "blockedEdits": "{{count}} edits are stuck. A translation failed its check and needs a person.",
-    "needsReview": "{{count}} translations need review. They will not resolve on their own."
+    "needsReview": "{{count}} translations need review. They will not resolve on their own.",
+    "openReviewQueue": "Open the review queue"
   }
 }

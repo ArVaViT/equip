@@ -293,6 +293,7 @@ export default function CourseEditor() {
         loading={translation.loading}
         preparing={translation.preparing}
         onPrepare={() => void translation.prepare()}
+        reviewHref={isAdmin && courseId ? `/admin?tab=translations&course=${courseId}` : null}
       />
 
       <div data-tour="course-editor-modules">

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next"
-import { Users, GraduationCap, Mail, FileText, School } from "lucide-react"
+import { Users, GraduationCap, Mail, FileText, Languages, School } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ADMIN_TAB_PANEL_ID, ADMIN_TAB_TRIGGER_ID, type AdminTab } from "./constants"
 
@@ -40,6 +40,13 @@ export function AdminTabs({ active, onChange }: Props) {
         onClick={() => onChange("invitations")}
         icon={<Mail className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
         label={t("admin.tabInvitations")}
+      />
+      <TabButton
+        name="translations"
+        active={active === "translations"}
+        onClick={() => onChange("translations")}
+        icon={<Languages className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
+        label={t("admin.tabTranslations")}
       />
       <TabButton
         name="audit"

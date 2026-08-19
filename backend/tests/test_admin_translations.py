@@ -312,3 +312,52 @@ def test_accept_reviewed_is_admin_only(student_client: TestClient):
         json={"ids": [str(uuid.uuid4())]},
     )
     assert resp.status_code in (401, 403)
+
+
+# ---------------------------------------------------------------------------
+# retry-reviewed by id — one row, named by the person reading it
+# ---------------------------------------------------------------------------
+
+
+def test_retry_reviewed_can_name_one_row(admin_client: TestClient, db: Session):
+    """Retrying from the review queue is a decision about the row the
+    reviewer is looking at. The narrowest request this endpoint used to
+    accept was "every parked row of this entity type in this language" —
+    far too much collateral for a button beside a single line of text."""
+    mine = _seed_needs_review(db)
+    bystander = _seed_needs_review(db)
+
+    resp = admin_client.post(
+        "/api/v1/admin/translations/retry-reviewed",
+        json={"ids": [str(mine.id)]},
+    )
+
+    assert resp.status_code == 200
+    assert resp.json() == {"reset": 1}
+    db.refresh(mine)
+    db.refresh(bystander)
+    assert mine.status == "failed"
+    assert bystander.status == "needs_review"
+
+
+def test_retry_reviewed_by_id_still_refuses_a_persons_own_translation(admin_client: TestClient, db: Session):
+    """Naming a row explicitly does not buy past the guard: an id is not
+    an argument that the pipeline should redo someone's own typing."""
+    human = _seed_needs_review(db, origin="human")
+
+    resp = admin_client.post(
+        "/api/v1/admin/translations/retry-reviewed",
+        json={"ids": [str(human.id)]},
+    )
+
+    assert resp.status_code == 404
+    db.refresh(human)
+    assert human.status == "needs_review"
+
+
+def test_retry_reviewed_refuses_a_request_that_selects_nothing(admin_client: TestClient):
+    """An empty body would otherwise mean "every parked row on the
+    platform", which is not a request anybody makes on purpose."""
+    resp = admin_client.post("/api/v1/admin/translations/retry-reviewed", json={})
+
+    assert resp.status_code == 422

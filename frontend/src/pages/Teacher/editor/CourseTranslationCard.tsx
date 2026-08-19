@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next"
+import { Link } from "react-router-dom"
 import { AlertTriangle, CheckCircle2, Globe, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -12,6 +13,14 @@ interface Props {
   loading: boolean
   preparing: boolean
   onPrepare: () => void
+  /**
+   * Where to go to read the parked translations for this course.
+   * ``null`` for a teacher who is not an admin — the queue is
+   * admin-only, and a link that ends in a redirect is worse than no
+   * link. Passed in rather than derived here so the card stays a
+   * presentational component.
+   */
+  reviewHref?: string | null
 }
 
 /**
@@ -34,8 +43,19 @@ interface Props {
  * 3. **When an edit is stuck.** A held edit whose translation failed its
  *    check does not resolve on its own. Left unsaid, the teacher reads
  *    it as a save that did nothing and retypes the same words.
+ *
+ * The last of those used to be where the card stopped: it said the
+ * translations needed review and offered nowhere to review them, because
+ * there was nowhere. Now the count is a link into the queue, filtered to
+ * this course.
  */
-export function CourseTranslationCard({ progress, loading, preparing, onPrepare }: Props) {
+export function CourseTranslationCard({
+  progress,
+  loading,
+  preparing,
+  onPrepare,
+  reviewHref = null,
+}: Props) {
   const { t } = useTranslation()
 
   if (loading) {
@@ -132,7 +152,12 @@ export function CourseTranslationCard({ progress, loading, preparing, onPrepare 
         <p className="border-t border-edge px-5 py-3 text-sm text-destructive dark:border-white/5">
           {progress.blocked_edits > 0
             ? t("courseTranslation.blockedEdits", { count: progress.blocked_edits })
-            : t("courseTranslation.needsReview", { count: progress.gaps.needs_review })}
+            : t("courseTranslation.needsReview", { count: progress.gaps.needs_review })}{" "}
+          {reviewHref && progress.gaps.needs_review > 0 && (
+            <Link to={reviewHref} className="font-medium underline underline-offset-2">
+              {t("courseTranslation.openReviewQueue")}
+            </Link>
+          )}
         </p>
       )}
     </section>
