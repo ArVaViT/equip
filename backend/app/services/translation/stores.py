@@ -36,6 +36,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
+from sqlalchemy import tuple_
+
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.staged_content_version import StagedContentVersion
 from app.services.content_versions import record_mt_failure, record_mt_version
@@ -79,6 +81,12 @@ class VersionStore(Protocol):
         field: str,
         locale: str,
     ) -> ActiveRow | None: ...
+
+    def active_rows(
+        self,
+        db: Session,
+        keys: list[tuple[str, str, str, str]],
+    ) -> dict[tuple[str, str, str, str], ActiveRow]: ...
 
     def record_success(
         self,
@@ -179,6 +187,61 @@ class LiveStore:
             source_hash=row.source_hash,
             translator_version=row.translator_version,
         )
+
+    def active_rows(
+        self,
+        db: Session,
+        keys: list[tuple[str, str, str, str]],
+    ) -> dict[tuple[str, str, str, str], ActiveRow]:
+        """Every one of these rows in as few queries as the driver allows.
+
+        The per-row version of this asked the database once per task,
+        which reads fine for a course of thirty fields and stops being
+        a detail at three thousand: at a round trip apiece it spent the
+        worker's entire budget deciding what to do and never got as far
+        as doing it. A whole catalogue re-translation exposed that in
+        the first minute.
+
+        Chunked because a query is not a place to put ten thousand
+        parameters — bind-parameter limits are real and the planner
+        stops helping long before them.
+        """
+        if not keys:
+            return {}
+        found: dict[tuple[str, str, str, str], ActiveRow] = {}
+        chunk = 500
+        for start in range(0, len(keys), chunk):
+            window = keys[start : start + chunk]
+            rows = (
+                db.query(
+                    ContentVersion.entity_type,
+                    ContentVersion.entity_id,
+                    ContentVersion.field,
+                    ContentVersion.locale,
+                    ContentVersion.origin,
+                    ContentVersion.status,
+                    ContentVersion.source_hash,
+                    ContentVersion.translator_version,
+                )
+                .filter(
+                    tuple_(
+                        ContentVersion.entity_type,
+                        ContentVersion.entity_id,
+                        ContentVersion.field,
+                        ContentVersion.locale,
+                    ).in_(window),
+                    ContentVersion.superseded_by.is_(None),
+                )
+                .all()
+            )
+            for entity_type, entity_id, field, locale, origin, status, source_hash, version in rows:
+                found[(entity_type, entity_id, field, locale)] = ActiveRow(
+                    origin=origin,
+                    status=status,
+                    source_hash=source_hash,
+                    translator_version=version,
+                )
+        return found
 
     def record_success(
         self,
@@ -297,6 +360,90 @@ class StagedStore:
                 translator_version=TRANSLATOR_VERSION,
             )
         return None
+
+    def active_rows(
+        self,
+        db: Session,
+        keys: list[tuple[str, str, str, str]],
+    ) -> dict[tuple[str, str, str, str], ActiveRow]:
+        """Staged rows first, then the live human rows that still bind us.
+
+        A staged edit is a course at a time, so the volume here is
+        smaller than the live path's — but the same round-trip
+        arithmetic applies, and one shape for both stores is one shape
+        to reason about.
+        """
+        if not keys:
+            return {}
+        found: dict[tuple[str, str, str, str], ActiveRow] = {}
+        chunk = 500
+        for start in range(0, len(keys), chunk):
+            window = keys[start : start + chunk]
+            staged_rows = (
+                db.query(
+                    StagedContentVersion.entity_type,
+                    StagedContentVersion.entity_id,
+                    StagedContentVersion.field,
+                    StagedContentVersion.locale,
+                    StagedContentVersion.origin,
+                    StagedContentVersion.status,
+                    StagedContentVersion.source_hash,
+                    StagedContentVersion.translator_version,
+                )
+                .filter(
+                    tuple_(
+                        StagedContentVersion.entity_type,
+                        StagedContentVersion.entity_id,
+                        StagedContentVersion.field,
+                        StagedContentVersion.locale,
+                    ).in_(window),
+                    StagedContentVersion.course_id == self.course_id,
+                )
+                .all()
+            )
+            for entity_type, entity_id, field, locale, origin, status, source_hash, version in staged_rows:
+                found[(entity_type, entity_id, field, locale)] = ActiveRow(
+                    origin=origin,
+                    status=status,
+                    source_hash=source_hash,
+                    translator_version=version,
+                )
+
+        # Only for keys nothing was staged against: a live *machine* row
+        # says nothing here, because it translates the text this edit
+        # replaces. A live human row does — it is never overwritten.
+        remaining = [key for key in keys if key not in found]
+        for start in range(0, len(remaining), chunk):
+            window = remaining[start : start + chunk]
+            live_rows = (
+                db.query(
+                    ContentVersion.entity_type,
+                    ContentVersion.entity_id,
+                    ContentVersion.field,
+                    ContentVersion.locale,
+                    ContentVersion.status,
+                    ContentVersion.source_hash,
+                )
+                .filter(
+                    tuple_(
+                        ContentVersion.entity_type,
+                        ContentVersion.entity_id,
+                        ContentVersion.field,
+                        ContentVersion.locale,
+                    ).in_(window),
+                    ContentVersion.superseded_by.is_(None),
+                    ContentVersion.origin == "human",
+                )
+                .all()
+            )
+            for entity_type, entity_id, field, locale, status, source_hash in live_rows:
+                found[(entity_type, entity_id, field, locale)] = ActiveRow(
+                    origin="human",
+                    status=status,
+                    source_hash=source_hash,
+                    translator_version=TRANSLATOR_VERSION,
+                )
+        return found
 
     def record_success(
         self,
