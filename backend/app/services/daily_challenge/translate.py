@@ -165,7 +165,13 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
       sweep asks;
     * a machine translation whose ``source_hash`` has been cleared, which
       is how a settled row is asked for again while its old text keeps
-      serving in the meantime.
+      serving in the meantime;
+    * a machine translation made by an older generation of the pipeline.
+      The courses re-translate themselves through the reconciler sweep
+      when ``TRANSLATOR_VERSION`` rises; the question pool has no
+      reconciler, so without this line it would keep the quality of the
+      day it was written while every course moved on. Three thousand
+      rows sat exactly there.
 
     A locale sitting at ``needs_review`` is NOT outstanding. The model
     runs at temperature 0, so asking again returns the same text and the
@@ -201,6 +207,7 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
     """
     from app.models.content_version import ContentVersion, ContentVersionStatus
     from app.models.daily_challenge import DailyChallengeOption, DailyChallengeQuestion
+    from app.services.translation.version import TRANSLATOR_VERSION
 
     wanted_locales = set(LOCALE_CODES)
 
@@ -217,6 +224,7 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
             ContentVersion.status,
             ContentVersion.origin,
             ContentVersion.source_hash,
+            ContentVersion.translator_version,
         )
         .filter(
             ContentVersion.entity_type.in_(("daily_challenge_question", "daily_challenge_option")),
@@ -228,10 +236,15 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
     servable: dict[tuple[str, str], set[str]] = {}
     parked: dict[tuple[str, str], set[str]] = {}
     reopened: set[str] = set()
-    for _entity_type, entity_id, field, locale, status, origin, source_hash in rows:
+    for _entity_type, entity_id, field, locale, status, origin, source_hash, translator_version in rows:
         if status == ContentVersionStatus.OK:
             servable.setdefault((entity_id, field), set()).add(locale)
             if origin == "mt" and source_hash is None:
+                reopened.add(entity_id)
+            if origin == "mt" and translator_version < TRANSLATOR_VERSION:
+                # Serving fine, made by rules we have since improved on.
+                # It keeps serving until the new answer arrives — this
+                # only puts it back in the queue.
                 reopened.add(entity_id)
         elif status == ContentVersionStatus.NEEDS_REVIEW:
             parked.setdefault((entity_id, field), set()).add(locale)
