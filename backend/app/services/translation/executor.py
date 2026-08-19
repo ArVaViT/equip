@@ -54,7 +54,7 @@ if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
     from app.services.translation.budget import TranslationBudget
     from app.services.translation.protocol import ContentKind, EntityType, TranslationProvider
-    from app.services.translation.stores import VersionStore
+    from app.services.translation.stores import ActiveRow, VersionStore
 
 logger = logging.getLogger(__name__)
 
@@ -97,34 +97,34 @@ class _Answer:
 
 
 def _decide(
-    db: Session,
     task: TranslationTask,
-    store: VersionStore,
+    existing: ActiveRow | None,
+    twins: dict[tuple[str, str], str],
 ) -> tuple[Outcome, str | None] | None:
     """Is this task already answered? Returns the settled outcome, plus
     the text to record when a twin supplies one — or ``None`` when the
     provider has to be asked.
 
+    Pure: everything the database could say has already been said, in
+    two queries for the whole plan rather than two per task. That is not
+    an optimisation detail — at three thousand tasks the per-task
+    version spent the worker's entire budget deciding and never reached
+    the asking.
+
     Identical rules to the serial path, in the same order, because they
     are the rules and not an implementation detail: a human translation
     is never overwritten, an up-to-date row is not re-asked, a row
-    parked for review moves only when its source changes, and a row that
-    exhausted its retries is terminal.
+    parked for review moves only when its source changes, a row that
+    exhausted its retries is terminal — and a row made by an older
+    pipeline is none of those things, however unchanged its source is.
     """
-    existing = store.active_row(
-        db,
-        entity_type=task.entity_type,
-        entity_id=task.entity_id,
-        field=task.field,
-        locale=task.target_locale,
-    )
     if existing is not None:
         if existing.origin == "human":
             return "skipped", None
-        # A row made by an older pipeline is not up to date, however
-        # unchanged its source is. This is the whole mechanism by which
-        # a prompt improvement reaches the several thousand translations
-        # already stored: they stop counting as answers.
+        # A row made by an older pipeline is not up to date. This is the
+        # whole mechanism by which a prompt improvement reaches the
+        # thousands of translations already stored: they stop counting
+        # as answers. See ``translation/version.py``.
         current = existing.translator_version >= TRANSLATOR_VERSION
         if current and existing.status == "ok" and existing.source_hash == task.source_hash:
             return "skipped", None
@@ -133,37 +133,58 @@ def _decide(
         if existing.status == "failed_permanent":
             # Terminal regardless of version: something about this text
             # defeats translation, and a new prompt is not a reason to
-            # spend the retries again automatically. Clearing these is a
-            # deliberate act.
+            # spend the retries again automatically.
             return "skipped", None
 
     # Identical source, already translated somewhere else: reuse it
     # rather than pay again, and gain consistency between an answer
     # option and its twin in another quiz as a side effect.
-    twin = (
-        db.query(ContentVersion.text)
-        .filter(
-            ContentVersion.locale == task.target_locale,
-            ContentVersion.source_hash == task.source_hash,
-            ContentVersion.status == ContentVersionStatus.OK,
-            ContentVersion.superseded_by.is_(None),
-            # A twin is only worth copying if it is at least as good as
-            # what we would produce now. A human translation always is;
-            # a machine one has to have been made by the current
-            # pipeline, or the old wording would simply propagate.
-            or_(
-                ContentVersion.origin == "human",
-                ContentVersion.translator_version >= TRANSLATOR_VERSION,
-            ),
-            ~((ContentVersion.entity_type == task.entity_type) & (ContentVersion.entity_id == task.entity_id)),
-        )
-        .order_by(ContentVersion.created_at)
-        .limit(1)
-        .scalar()
-    )
+    twin = twins.get((task.source_hash, task.target_locale))
     if twin is not None:
         return "translated", twin
     return None
+
+
+def _load_twins(
+    db: Session,
+    tasks: list[TranslationTask],
+) -> dict[tuple[str, str], str]:
+    """One usable translation per (source text, language), for the whole plan.
+
+    "Usable" means human, or machine made by the pipeline now in force —
+    an older machine wording is exactly what we are here to replace, and
+    copying it around would spread the thing being fixed.
+    """
+    wanted = {(task.source_hash, task.target_locale) for task in tasks}
+    if not wanted:
+        return {}
+    hashes = sorted({source_hash for source_hash, _ in wanted})
+    locales = sorted({locale for _, locale in wanted})
+    found: dict[tuple[str, str], str] = {}
+    chunk = 500
+    for start in range(0, len(hashes), chunk):
+        rows = (
+            db.query(
+                ContentVersion.source_hash,
+                ContentVersion.locale,
+                ContentVersion.text,
+            )
+            .filter(
+                ContentVersion.source_hash.in_(hashes[start : start + chunk]),
+                ContentVersion.locale.in_(locales),
+                ContentVersion.status == ContentVersionStatus.OK,
+                ContentVersion.superseded_by.is_(None),
+                or_(
+                    ContentVersion.origin == "human",
+                    ContentVersion.translator_version >= TRANSLATOR_VERSION,
+                ),
+            )
+            .order_by(ContentVersion.created_at)
+            .all()
+        )
+        for source_hash, locale, text in rows:
+            found.setdefault((source_hash, locale), text)
+    return {key: value for key, value in found.items() if key in wanted}
 
 
 def _ask(task: TranslationTask, provider: TranslationProvider) -> _Answer:
@@ -334,10 +355,22 @@ def execute_plan(
     translated = skipped = failed = needs_review = 0
     incomplete = False
 
-    # Phase 1 — everything the database can answer without asking anyone.
+    # Phase 1 — everything the database can answer without asking anyone,
+    # read in two queries for the entire plan. Per-task reads were what
+    # made a full-catalogue pass burn its whole budget on deciding.
+    existing_rows = store.active_rows(
+        db,
+        [(task.entity_type, task.entity_id, task.field, task.target_locale) for task in tasks],
+    )
+    twins = _load_twins(db, tasks)
+
     pending: list[TranslationTask] = []
     for task in tasks:
-        settled = _decide(db, task, store)
+        settled = _decide(
+            task,
+            existing_rows.get((task.entity_type, task.entity_id, task.field, task.target_locale)),
+            twins,
+        )
         if settled is None:
             pending.append(task)
             continue
