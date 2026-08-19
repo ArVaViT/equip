@@ -2213,6 +2213,7 @@
       "summaryLabel": "Auf dieser Seite"
     },
     "tabInvitations": "Einladungen",
+    "tabTranslations": "Übersetzungen",
     "invitations": {
       "title": "Einladungen",
       "loadError": "Einladungen konnten nicht geladen werden",
@@ -2258,6 +2259,36 @@
       "gradingTitle": "Bewertung der Schule",
       "gradingSummary": "Standard: {{scheme}}, Bestehensgrenze {{threshold}} %",
       "gradingNote": "Die Skala wird über die API bearbeitet: eine verschobene Grenze benennt jede aktuelle Note neu, und das gehört nicht neben ein Textfeld für die Stadt."
+    },
+    "translationReview": {
+      "title": "Übersetzungen zur Durchsicht",
+      "description": "Eine maschinelle Übersetzung, die ihre Prüfung nicht bestanden hat, bleibt gespeichert, wird aber nicht ausgeliefert, und von allein ändert sich daran nichts. Lesen Sie sie neben dem Original: annehmen, wenn die Prüfung falsch lag, oder zurück an die Pipeline geben.",
+      "filterLocale": "Sprache:",
+      "filterLocaleAny": "Alle Sprachen",
+      "clearCourseFilter": "Alle Kurse",
+      "totalCount": "{{count}} warten",
+      "refresh": "Aktualisieren",
+      "loadError": "Die Liste konnte nicht geladen werden — bitte erneut versuchen.",
+      "empty": {
+        "title": "Es wartet nichts",
+        "body": "Zu diesem Filter liegt keine Übersetzung zur Durchsicht."
+      },
+      "dailyChallenge": "Tagesfrage",
+      "unknownCourse": "Ohne Kurs",
+      "sourceLabel": "Original ({{language}})",
+      "sourceGone": "Der Ausgangstext ist nicht mehr verfügbar.",
+      "translationLabel": "Übersetzung ({{language}})",
+      "accept": "Annehmen",
+      "retry": "Erneut übersetzen",
+      "page": "Seite {{page}} von {{total}}",
+      "prevPageAria": "Vorherige Seite",
+      "nextPageAria": "Nächste Seite",
+      "toast": {
+        "accepted": "Angenommen — Lesende sehen sie jetzt.",
+        "retried": "Zurück an die Pipeline gegeben.",
+        "acceptError": "Konnte nicht angenommen werden — bitte erneut versuchen.",
+        "retryError": "Konnte nicht zurückgegeben werden — bitte erneut versuchen."
+      }
     }
   },
   "roles": {
@@ -2587,6 +2618,7 @@
     "behindBy": "— {{count}} fehlen",
     "heldEdits": "{{count}} Änderungen warten auf die Übersetzung. Studierende sehen sie, sobald alle Sprachen bereit sind.",
     "blockedEdits": "{{count}} Änderungen hängen fest. Eine Übersetzung hat die Prüfung nicht bestanden und braucht einen Menschen.",
-    "needsReview": "{{count}} Übersetzungen brauchen eine Durchsicht. Von allein lösen sie sich nicht."
+    "needsReview": "{{count}} Übersetzungen brauchen eine Durchsicht. Von allein lösen sie sich nicht.",
+    "openReviewQueue": "Prüfliste öffnen"
   }
 }

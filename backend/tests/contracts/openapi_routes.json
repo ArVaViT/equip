@@ -192,6 +192,34 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/admin/translations/needs-review",
+    "params": [
+      [
+        "course_id",
+        "query"
+      ],
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "locale",
+        "query"
+      ],
+      [
+        "offset",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "404",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/admin/translations/queue-status",
     "params": [
       [

@@ -30,6 +30,9 @@ const CohortsTab = lazy(() =>
 const InvitationsTab = lazy(() =>
   import("./invitations/InvitationsTab").then((m) => ({ default: m.InvitationsTab })),
 )
+const TranslationReviewTab = lazy(() =>
+  import("./translations/TranslationReviewTab").then((m) => ({ default: m.TranslationReviewTab })),
+)
 
 /**
  * Admin dashboard orchestrator. Delegates every piece of state to
@@ -173,6 +176,21 @@ export default function AdminDashboard() {
         >
           <Suspense fallback={<PageSpinner />}>
             <InvitationsTab />
+          </Suspense>
+        </div>
+      )}
+
+      {tab === "translations" && (
+        <div
+          role="tabpanel"
+          id={ADMIN_TAB_PANEL_ID.translations}
+          aria-labelledby={ADMIN_TAB_TRIGGER_ID.translations}
+        >
+          {/* Not gated on ``overview.error``: the parked translations
+              load from their own endpoint, and a failed user list is no
+              reason to hide the queue that is holding courses back. */}
+          <Suspense fallback={<PageSpinner />}>
+            <TranslationReviewTab />
           </Suspense>
         </div>
       )}
