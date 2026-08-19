@@ -79,6 +79,19 @@ class WorkerTickResponse(BaseModel):
     course_id: str | None = None
     attempts: int | None = None
 
+    # What the tick actually did. The pipeline logs this at INFO, and on
+    # this deployment INFO from application loggers does not reach the
+    # log drain — only the platform's own request lines do. That left
+    # the only externally visible signal as a status word, and "done"
+    # covers both "translated four hundred fields" and "walked the whole
+    # tree and wrote nothing". Those need telling apart from outside,
+    # without a log search and without database access.
+    translated: int | None = None
+    skipped: int | None = None
+    failed_fields: int | None = None
+    needs_review: int | None = None
+    planned: int | None = None
+
 
 def _emit_queue_gauges(db: Session) -> None:
     """Emit per-status queue depth gauges so the Datadog dashboard +
@@ -247,6 +260,11 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
             job_id=job_id,
             course_id=course_id,
             attempts=job.attempts,
+            translated=report.translated,
+            skipped=report.skipped,
+            failed_fields=report.failed,
+            needs_review=report.needs_review,
+            planned=report.translated + report.skipped + report.failed + report.needs_review,
         )
 
     _emit_translation_duration(tick_start, outcome="done")
@@ -273,6 +291,11 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
         job_id=job_id,
         course_id=course_id,
         attempts=attempts,
+        translated=report.translated,
+        skipped=report.skipped,
+        failed_fields=report.failed,
+        needs_review=report.needs_review,
+        planned=report.translated + report.skipped + report.failed + report.needs_review,
     )
 
 
