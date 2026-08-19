@@ -36,6 +36,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.metrics import emit, gauge, timing
 from app.services.course_service import get_course
+from app.services.daily_challenge.translate import SweepReport as PoolSweepReport
 from app.services.daily_challenge.translate import translate_pending_questions
 from app.services.staged_edits import promote_ready_fields
 from app.services.translation.budget import worker_budget
@@ -44,6 +45,7 @@ from app.services.translation.course_pipeline import (
     merge_orchestrator_reports,
     translate_course_content,
 )
+from app.services.translation.orchestrator import OrchestratorReport
 from app.services.translation.queue import (
     claim_next_job,
     get_queue_status,
@@ -57,7 +59,6 @@ from app.services.translation.staged_pipeline import translate_staged_edits
 
 if TYPE_CHECKING:
     from app.models.translation_job import TranslationJob
-    from app.services.translation.orchestrator import OrchestratorReport
 
 
 logger = logging.getLogger(__name__)
@@ -193,10 +194,24 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
         # few per tick, and queues anything with a gap — so "somebody
         # has to remember to re-translate everything" stops being a
         # step anyone performs. See ``translation/reconciler.py``.
-        sweep = sweep_courses(db)
+        #
+        # One clock for the whole idle tick. The sweep's platform-wide
+        # announcement pass and the pool sweep below both make provider
+        # calls, and they spend the same invocation — two independent
+        # budgets would each believe it had the full 180 seconds.
+        idle_budget = worker_budget(
+            seconds=settings.TRANSLATION_WORKER_BUDGET_SECONDS,
+            gemini_timeout_seconds=settings.GEMINI_TIMEOUT_SECONDS,
+        )
+        sweep = sweep_courses(db, budget=idle_budget)
         if sweep.found_work:
             logger.info("worker: idle queue, sweep queued %d course(s)", sweep.queued)
-            return WorkerTickResponse(status="swept")
+            return WorkerTickResponse(
+                status="swept",
+                translated=sweep.announcement_rows.translated,
+                needs_review=sweep.announcement_rows.needs_review,
+                failed_fields=sweep.announcement_rows.failed,
+            )
 
         # Still nothing. The Daily Challenge pool has the same kind of
         # backlog and no minute-by-minute worker of its own: its sweep
@@ -209,28 +224,28 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
         # This tick is idle and paid for either way. Sweeping the pool
         # here costs nothing extra and leaves the nightly budget alone,
         # and the time budget keeps it inside one invocation.
-        pool_budget = worker_budget(
-            seconds=settings.TRANSLATION_WORKER_BUDGET_SECONDS,
-            gemini_timeout_seconds=settings.GEMINI_TIMEOUT_SECONDS,
-        )
         try:
-            pool = translate_pending_questions(db, limit=_IDLE_POOL_SWEEP_LIMIT, budget=pool_budget)
+            pool = translate_pending_questions(db, limit=_IDLE_POOL_SWEEP_LIMIT, budget=idle_budget)
         except Exception as exc:
             db.rollback()
             logger.warning("worker: idle pool sweep failed: %s", exc)
-            return WorkerTickResponse(status="idle")
-        if pool.questions:
+            pool = PoolSweepReport(questions=0, rows=OrchestratorReport())
+        # An announcement the sweep repaired is work this tick did, and
+        # "idle" would be a lie about it — the same lie "done" told about
+        # a tick that walked a thousand fields and wrote none.
+        swept_rows = merge_orchestrator_reports(sweep.announcement_rows, pool.rows)
+        if pool.questions or swept_rows.translated or swept_rows.needs_review or swept_rows.failed:
             logger.info(
                 "worker: idle queue, swept %d question(s) from the pool (%d rows)",
                 pool.questions,
-                pool.rows.translated,
+                swept_rows.translated,
             )
             return WorkerTickResponse(
                 status="swept",
-                translated=pool.rows.translated,
-                skipped=pool.rows.skipped,
-                failed_fields=pool.rows.failed,
-                needs_review=pool.rows.needs_review,
+                translated=swept_rows.translated,
+                skipped=swept_rows.skipped,
+                failed_fields=swept_rows.failed,
+                needs_review=swept_rows.needs_review,
             )
         return WorkerTickResponse(status="idle")
 

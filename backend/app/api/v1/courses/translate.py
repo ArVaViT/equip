@@ -155,7 +155,12 @@ def read_translation_progress(
         gaps=TranslationGapSummary(
             missing=len(completeness.by_reason("missing")),
             needs_review=len(completeness.by_reason("needs_review")),
-            failed=len(completeness.by_reason("failed")),
+            # Both failure reasons, because the teacher's question is
+            # "what is stuck", and a row that has spent its retries is
+            # the most stuck thing on the panel. Splitting the count
+            # here would silently subtract those from a number the
+            # frontend already renders.
+            failed=len(completeness.by_reason("failed")) + len(completeness.by_reason("failed_permanent")),
         ),
         held_edits=len(held),
         blocked_edits=sum(1 for item in held if item.state == "blocked"),

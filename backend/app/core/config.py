@@ -14,6 +14,27 @@ logger = logging.getLogger(__name__)
 MEASURED_GEMINI_MODELS = frozenset({"gemini-2.5-flash-lite"})
 
 
+def call_reserve_seconds(gemini_timeout_seconds: float, gemini_max_retries: int = 2) -> float:
+    """The worst case for one Gemini call, in seconds.
+
+    A call can take its read timeout on each of ``max_retries + 1``
+    attempts, plus the backoff between them, and a couple of seconds go
+    to the commit and the promotion check that follow the last one.
+    ``services/translation/budget.py`` keeps exactly this much back
+    before authorising a call, so the invocation is never killed with a
+    request in flight.
+
+    It lives here, rather than next to the budget it serves, because the
+    validator below has to refuse a deployment whose worker budget is
+    smaller than this — and importing the budget module from config
+    closes a cycle through ``app.services.translation.__init__``. One
+    copy of the arithmetic, in the layer that both sides can see.
+    """
+    attempts = gemini_max_retries + 1
+    backoff = float(sum(2**n for n in range(gemini_max_retries)))
+    return gemini_timeout_seconds * attempts + backoff + 2.0
+
+
 def env_flag(*names: str) -> bool:
     """True when any of the named environment variables is set non-empty.
 
@@ -195,6 +216,11 @@ class Settings(BaseSettings):
     # budget the tick simply ran until the platform killed it, which
     # left the job in ``processing`` with nothing recorded — 161 such
     # attempts on one course in August 2026.
+    #
+    # It is also half of a pair: set it below the reserve and the worker
+    # can never start a call at all. See
+    # ``refuse_a_worker_budget_that_cannot_afford_one_call`` below, which
+    # will not let the process boot in that state.
     TRANSLATION_WORKER_BUDGET_SECONDS: float = Field(
         default=180.0,
         description="Wall-clock allowance for one translation worker tick",
@@ -259,6 +285,39 @@ class Settings(BaseSettings):
         # startup warning in ``app.main`` plus per-request 503s via the DB
         # / auth dependencies cover that without spamming the error stream.
 
+        return self
+
+    @model_validator(mode="after")
+    def refuse_a_worker_budget_that_cannot_afford_one_call(self):
+        """Refuse to boot when the tick can never authorise a single call.
+
+        ``worker_budget`` keeps back the worst case for one provider
+        call — ``GEMINI_TIMEOUT_SECONDS`` on each of three attempts plus
+        backoff plus two seconds. When that reserve is as large as
+        ``TRANSLATION_WORKER_BUDGET_SECONDS``, ``can_afford_one_call()``
+        is already False at t=0: the pass sets ``incomplete`` before
+        making a single call, ``made_progress`` is False, and the job
+        goes back to ``queued`` while the worker answers ``"paused"``.
+        Paused reads as healthy. Nothing translates, nothing errors, and
+        the same job is re-claimed every minute for as long as the
+        deployment stands.
+
+        The values are one raise apart. ``GEMINI_TIMEOUT_SECONDS`` has
+        already been raised once in this file (15 → 30, for a 5 KB
+        Russian block); at the 180 s default budget the next such raise
+        crosses at 58.33 s. This is why the check exists at boot, where
+        an operator sees it, rather than as a silence in production.
+        """
+        reserve = call_reserve_seconds(self.GEMINI_TIMEOUT_SECONDS)
+        if reserve >= self.TRANSLATION_WORKER_BUDGET_SECONDS:
+            raise ValueError(
+                f"TRANSLATION_WORKER_BUDGET_SECONDS={self.TRANSLATION_WORKER_BUDGET_SECONDS} is too small for "
+                f"GEMINI_TIMEOUT_SECONDS={self.GEMINI_TIMEOUT_SECONDS}: one provider call reserves "
+                f"{reserve} s (timeout on each of 3 attempts + 3 s backoff + 2 s), so the worker could never "
+                f"start a call. Raise TRANSLATION_WORKER_BUDGET_SECONDS above {reserve} (staying under the "
+                f"function's maxDuration) or lower GEMINI_TIMEOUT_SECONDS below "
+                f"{(self.TRANSLATION_WORKER_BUDGET_SECONDS - 5.0) / 3.0:.2f}."
+            )
         return self
 
     def runtime_ready_errors(self) -> list[str]:
