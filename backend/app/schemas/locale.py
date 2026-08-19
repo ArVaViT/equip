@@ -31,9 +31,11 @@ Adding a new language is a **five-step change** — all in this order:
      course missing the new locale is queued without anyone asking.
      A catalogue of a thousand comes round in about five hours.
 
-     Platform content that belongs to no course — the Daily Challenge
-     rotation — has its own nightly sweep in
-     ``services/daily_challenge/translate.py``.
+     Platform content that belongs to no course is swept too: the
+     Daily Challenge rotation nightly and on every idle worker tick
+     (``services/daily_challenge/translate.py``), and the site-wide
+     announcement banner through ``sweep_global_announcements`` in
+     ``services/translation/reconciler.py``.
 
      What still needs a person, and why: steps 2 and 4 are the
      interface catalogs, which are product copy rather than course

@@ -23,12 +23,20 @@ Three ways it can be missing, and they are different problems:
   the field was edited and the new text has not been translated.
 * ``needs_review`` — a translation came back and failed the structural
   check (``validation.py``). A person has to look at it.
-* ``failed`` — the provider call did not produce text. Retryable, or
-  terminal at ``failed_permanent``.
+* ``failed`` — the provider call did not produce text. The next pass
+  asks again.
+* ``failed_permanent`` — it asked five times and stopped. Nothing the
+  pipeline does on its own will change this row.
 
 Reported separately because they need different work: waiting, reading,
-and retrying are not the same thing, and a teacher staring at "not
-ready" deserves to know which one they are in.
+retrying and giving up are not the same thing, and a teacher staring at
+"not ready" deserves to know which one they are in.
+
+``failed`` and ``failed_permanent`` were one reason until 2026-08-19,
+and the difference is the whole difference between work and a loop. The
+executor never retries a ``failed_permanent`` row; the sweep, seeing
+only "failed", queued its course every single tick for a job that
+planned everything and translated nothing.
 
 Cost
 ----
@@ -66,7 +74,7 @@ logger = logging.getLogger(__name__)
 # pipeline we have since improved on. It counts as a gap because that is
 # what makes the sweep pick the course up again — see
 # ``translation/version.py``.
-GapReason = Literal["missing", "needs_review", "failed", "stale"]
+GapReason = Literal["missing", "needs_review", "failed", "failed_permanent", "stale"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,11 +111,22 @@ class TranslationCompleteness:
         return dict(counts)
 
 
+# One status, one reason. Collapsing the two failure statuses here is
+# what hid ``failed_permanent`` from every caller that asked "is there
+# anything left for the pipeline to do?".
 _REASON_BY_STATUS: dict[str, GapReason] = {
     ContentVersionStatus.NEEDS_REVIEW: "needs_review",
     ContentVersionStatus.FAILED: "failed",
-    ContentVersionStatus.FAILED_PERMANENT: "failed",
+    ContentVersionStatus.FAILED_PERMANENT: "failed_permanent",
 }
+
+# Gaps no amount of worker ticks will close. Both are real gaps — the
+# reader has nothing servable — and both move only when a person acts:
+# ``needs_review`` through ``POST /admin/translations/accept-reviewed``
+# or ``/retry-reviewed``, ``failed_permanent`` through the admin re-queue
+# that resets ``attempts``. Ordinary ``failed`` is not here: the executor
+# does retry it, and it is how a re-opened row comes back.
+UNACTIONABLE_GAP_REASONS: frozenset[GapReason] = frozenset({"needs_review", "failed_permanent"})
 
 
 def course_translation_completeness(db: Session, course: Course) -> TranslationCompleteness:
@@ -246,6 +265,7 @@ def promote_if_complete(db: Session, course: Course) -> bool:
 
 
 __all__ = [
+    "UNACTIONABLE_GAP_REASONS",
     "TranslationCompleteness",
     "TranslationGap",
     "completeness_of",

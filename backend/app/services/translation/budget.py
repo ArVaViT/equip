@@ -44,6 +44,8 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 
+from app.core.config import call_reserve_seconds
+
 
 @dataclass
 class TranslationBudget:
@@ -117,16 +119,15 @@ def worker_budget(
 ) -> TranslationBudget:
     """Build the budget for one worker tick.
 
-    The reserve is derived, not guessed: a provider call can take its
-    read timeout on each of ``max_retries + 1`` attempts, plus the
-    backoff between them, and we add a couple of seconds for the commit
-    and the promotion check that follow the last call.
+    The reserve is derived, not guessed — see ``call_reserve_seconds``,
+    which lives in ``core/config.py`` because the settings validator
+    needs the same arithmetic to refuse a deployment whose budget is
+    smaller than one call, and importing this module from there would
+    close a cycle through ``app.services.translation.__init__``.
     """
-    attempts = gemini_max_retries + 1
-    backoff = float(sum(2**n for n in range(gemini_max_retries)))
     return TranslationBudget(
         seconds=seconds,
-        reserve_seconds=gemini_timeout_seconds * attempts + backoff + 2.0,
+        reserve_seconds=call_reserve_seconds(gemini_timeout_seconds, gemini_max_retries),
     )
 
 

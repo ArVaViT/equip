@@ -161,9 +161,9 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
 
     What counts as outstanding, per (entity, field):
 
-    * a locale with no servable row at all, and no row parked for review
-      standing in for it — nothing exists, and nothing will unless the
-      sweep asks;
+    * a locale with no servable row at all, and nothing standing in for
+      it that the pipeline could not move anyway — nothing exists, and
+      nothing will unless the sweep asks;
     * a machine translation whose ``source_hash`` has been cleared, which
       is how a settled row is asked for again while its old text keeps
       serving in the meantime;
@@ -181,6 +181,17 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
     anyway. Those move through ``POST /admin/translations/accept-reviewed``
     or ``/retry-reviewed``, and the second parks them at ``failed``,
     which has no servable row — so they come straight back here.
+
+    Neither is a locale sitting at ``failed_permanent``, for the same
+    reason arrived at from the other end: the row spent its five
+    attempts and the executor refuses to spend more. Counting it was
+    worse here than in the course sweep, because this list is ordered
+    oldest-first and cut to ``limit``: five dead questions at the head of
+    the pool filled every sweep, and the one genuinely fixable question
+    behind them was never reached. Ordinary ``failed`` must stay
+    outstanding — that one IS retried, and clearing ``attempts`` from the
+    admin surface is how a re-opened row finds its way back into this
+    list.
 
     Why this reads every field of every option
     ------------------------------------------
@@ -235,7 +246,12 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
     )
 
     servable: dict[tuple[str, str], set[str]] = {}
-    parked: dict[tuple[str, str], set[str]] = {}
+    # Locales the sweep cannot move: parked for a person to read, or out
+    # of attempts. Held together because the question they answer is the
+    # same one — "is there anything here a worker tick would change?" —
+    # and separating them would invite the next reader to handle one and
+    # forget the other, which is how ``failed_permanent`` got missed.
+    settled_without_us: dict[tuple[str, str], set[str]] = {}
     reopened: set[str] = set()
     for _entity_type, entity_id, field, locale, status, origin, source_hash, translator_version in rows:
         if status == ContentVersionStatus.OK:
@@ -247,18 +263,18 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
                 # It keeps serving until the new answer arrives — this
                 # only puts it back in the queue.
                 reopened.add(entity_id)
-        elif status == ContentVersionStatus.NEEDS_REVIEW:
-            parked.setdefault((entity_id, field), set()).add(locale)
+        elif status in (ContentVersionStatus.NEEDS_REVIEW, ContentVersionStatus.FAILED_PERMANENT):
+            settled_without_us.setdefault((entity_id, field), set()).add(locale)
 
     def _entity_has_work(entity_id: str) -> bool:
         if entity_id in reopened:
             return True
         fields = {field for (eid, field) in servable if eid == entity_id}
-        fields |= {field for (eid, field) in parked if eid == entity_id}
+        fields |= {field for (eid, field) in settled_without_us if eid == entity_id}
         for field in fields:
             have = servable.get((entity_id, field), set())
-            waiting_on_a_person = parked.get((entity_id, field), set())
-            if wanted_locales - have - waiting_on_a_person:
+            not_ours = settled_without_us.get((entity_id, field), set())
+            if wanted_locales - have - not_ours:
                 return True
         return False
 
@@ -272,7 +288,7 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
         for option_id, question_id in db.query(DailyChallengeOption.id, DailyChallengeOption.question_id).all()
     }
 
-    entity_ids = {eid for (eid, _field) in servable} | {eid for (eid, _field) in parked}
+    entity_ids = {eid for (eid, _field) in servable} | {eid for (eid, _field) in settled_without_us}
     unsettled: set[str] = set()
     for entity_id in entity_ids:
         if not _entity_has_work(entity_id):
