@@ -7,6 +7,7 @@ import type { Module, MyCourseGrade, MyGradeItem } from "@/types"
 import { CertificateBlockers } from "./CertificateBlockers"
 import { myGradeDisplay, outstandingItems } from "./myGrade"
 import { orNotTranslated } from "@/lib/untranslated"
+import { formatPercent } from "@/i18n/number"
 
 const ICON_BY_STATUS: Record<MyGradeItem["status"], typeof Circle> = {
   graded: CheckCircle2,
@@ -155,7 +156,7 @@ export function MyGradeCard({
                   <span className="flex-1 truncate">{orNotTranslated(t, item.title)}</span>
                   <span className="text-xs text-ink-muted">
                     {item.status === "graded" && item.score !== null
-                      ? `${item.score.toFixed(0)}%`
+                      ? formatPercent(item.score, 0)
                       : t(`myGrade.status.${item.status}`)}
                   </span>
                 </div>

@@ -11,6 +11,11 @@
  * says 90 is an A. The teacher is left holding two facts that contradict each
  * other, and the one they can see is the wrong one.
  */
+import { formatPercent } from "@/i18n/number"
+
 export function formatGradePercent(score: number): string {
-  return `${score.toFixed(1)}%`
+  // One decimal, in the reader's own notation. `toFixed` always emits a
+  // period; ru, de and uk all write 86,5. This is the number that ends up
+  // printed on a signed grade sheet.
+  return formatPercent(score, 1)
 }

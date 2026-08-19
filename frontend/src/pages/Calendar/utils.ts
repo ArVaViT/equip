@@ -1,4 +1,4 @@
-import i18n from "@/i18n/config";
+import i18n, { activeIntlTag } from "@/i18n/config";
 import { formatDateLong } from "@/i18n/format";
 
 export function isSameDay(a: Date, b: Date): boolean {
@@ -16,8 +16,13 @@ export function formatTime(dateStr: string): string {
   // while every other timestamp in the app rendered as ru-RU. Wire
   // through the same i18n language the rest of the format helpers
   // already use so the calendar reads as one app.
-  const lang = (i18n.resolvedLanguage ?? i18n.language ?? "en").toLowerCase();
-  const locale = lang.startsWith("ru") ? "ru-RU" : "en-US";
+  //
+  // That wiring went through this file's own ``startsWith("ru") ? "ru-RU"
+  // : "en-US"`` map, which was true when the app served two languages.
+  // Once it served four it quietly sent German and Ukrainian readers to
+  // ``en-US``: a 14:30 lesson announced as "02:30 PM" to people who do not
+  // use a 12-hour clock. ``activeIntlTag`` is the one map now.
+  const locale = activeIntlTag(i18n.resolvedLanguage ?? i18n.language);
   return new Date(dateStr).toLocaleTimeString(locale, {
     hour: "2-digit",
     minute: "2-digit",

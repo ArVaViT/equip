@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Download, Loader2, Paperclip, X } from "lucide-react"
 import { EmptyState, Modal } from "@/components/patterns"
 import type { MaterialFile } from "./types"
+import { formatNumber } from "@/i18n/number"
 
 interface Props {
   open: boolean
@@ -31,11 +32,15 @@ const MB = KB * 1024
  * ``0 KB`` (rounded down via ``toFixed(0)``) and a 2 MB PDF showed as
  * ``2048 KB``. This picks B / KB / MB so the number always looks
  * sensible at a glance.
+ *
+ * The number itself goes through ``formatNumber`` because ``toFixed``
+ * writes a period and ru / de / uk all write a comma — ``1.5 MB`` beside
+ * a German file name is a small thing that reads as carelessness.
  */
 function formatFileSize(bytes: number, t: TFunction): string {
   if (bytes < KB) return t("teacherEditor.modals.materials.sizeBytes", { b: bytes })
-  if (bytes < MB) return t("teacherEditor.modals.materials.sizeKb", { kb: (bytes / KB).toFixed(0) })
-  return t("teacherEditor.modals.materials.sizeMb", { mb: (bytes / MB).toFixed(1) })
+  if (bytes < MB) return t("teacherEditor.modals.materials.sizeKb", { kb: formatNumber(bytes / KB, 0) })
+  return t("teacherEditor.modals.materials.sizeMb", { mb: formatNumber(bytes / MB, 1) })
 }
 
 export function MaterialsModal({
