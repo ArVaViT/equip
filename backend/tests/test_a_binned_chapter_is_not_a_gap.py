@@ -85,7 +85,12 @@ def course_with_a_binned_chapter(db: Session) -> Course:
                 order_index=1,
                 deleted_at=datetime.now(UTC),
             ),
-            Chapter(id=f"ch-{uuid.uuid4().hex[:8]}", module_id=binned_module.id, title="Глава удалённого модуля", order_index=0),
+            Chapter(
+                id=f"ch-{uuid.uuid4().hex[:8]}",
+                module_id=binned_module.id,
+                title="Глава удалённого модуля",
+                order_index=0,
+            ),
         ]
     )
     db.commit()
