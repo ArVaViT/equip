@@ -43,7 +43,7 @@ from sqlalchemy import or_
 
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.services.translation.budget import NoBudget
-from app.services.translation.protocol import TranslationError, TranslationRequest
+from app.services.translation.protocol import TranslationError, TranslationRequest, TranslationResult
 from app.services.translation.validation import ValidationIssue, summarise, validate_translation
 from app.services.translation.version import TRANSLATOR_VERSION
 
@@ -217,13 +217,7 @@ def _ask(task: TranslationTask, provider: TranslationProvider) -> _Answer:
         )
         return _Answer(task=task, text=None, issues_summary=None, failed=True)
 
-    issues = validate_translation(
-        source=task.text,
-        translated=result.text,
-        source_locale=task.source_locale,
-        target_locale=task.target_locale,
-        content_kind=task.content_kind,
-    )
+    issues = _issues_in(task, result)
     if issues:
         # Two different remedies, and which one applies depends on why
         # the first answer was wrong.
@@ -239,13 +233,7 @@ def _ask(task: TranslationTask, provider: TranslationProvider) -> _Answer:
         except TranslationError:
             retry = None
         if retry is not None:
-            retry_issues = validate_translation(
-                source=task.text,
-                translated=retry.text,
-                source_locale=task.source_locale,
-                target_locale=task.target_locale,
-                content_kind=task.content_kind,
-            )
+            retry_issues = _issues_in(task, retry)
             # Keep whichever answer is less wrong. The model is not
             # deterministic, so a second pass is a second roll, not a
             # correction — and a retry that fixed the calque but broke a
@@ -275,6 +263,42 @@ def _ask(task: TranslationTask, provider: TranslationProvider) -> _Answer:
         issues_summary=summarise(blocking) if blocking else None,
         failed=False,
     )
+
+
+def _issues_in(task: TranslationTask, result: TranslationResult) -> list[ValidationIssue]:
+    """Everything wrong with this answer — structural, stylistic, and one
+    thing only the provider can see.
+
+    ``lost_scripture`` cannot be found by comparing source to
+    translation: the provider swaps a quoted verse for a placeholder and
+    restores the canonical text afterwards, so neither the text we sent
+    nor the text we got back contains a marker. When the model drops the
+    placeholder the verse is silently deleted and the reference is left
+    behind, which reads as complete. The provider says so; this is where
+    it becomes a defect like any other, and it is blocking — a student
+    asked to recognise a verse must not be shown a citation with nothing
+    behind it.
+    """
+    issues = validate_translation(
+        source=task.text,
+        translated=result.text,
+        source_locale=task.source_locale,
+        target_locale=task.target_locale,
+        content_kind=task.content_kind,
+    )
+    if result.lost_scripture:
+        issues.insert(
+            0,
+            ValidationIssue(
+                code="scripture_dropped",
+                detail=(
+                    "The quoted Scripture was left out of the translation. "
+                    "A verse handed to you as a VERSE_ placeholder must come "
+                    "back exactly as it was given, in the same position."
+                ),
+            ),
+        )
+    return issues
 
 
 def _rank(issues: list[ValidationIssue]) -> tuple[int, int]:

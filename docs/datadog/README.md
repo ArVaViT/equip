@@ -77,7 +77,8 @@ Consequences for queries:
 | `equip.enrollments.created_total` | `course_id`, `cohort_id` | — | `app/services/course_service/_enrollment.py::enroll_user_in_course`, once per NEW row |
 | `equip.completion.course_avg_pct` | `course_id` | — | `..._enrollment.py::sync_enrollment_progress`, gauge on every progress recompute |
 | `equip.translation.queue_depth` / `equip.translation.queue_processing` / `equip.translation.queue_failed_permanent` | (none) | — | `app/api/v1/internal_translation_worker.py::_emit_queue_gauges` on every cron tick; drives the `translation-queue-backlog` monitor |
-| `equip.translation.duration_ms` | `outcome` (`done`/`failed`) | yes | `..._emit_translation_duration` times each `translate_course_content` run |
+| `equip.translation.duration_ms` | `outcome` (`done`/`failed`/`paused`) | yes | `..._emit_translation_duration` times each `translate_course_content` run. `paused` is the *normal* outcome for a course larger than one invocation's budget — it was missing from this table and from the dashboard, which therefore could not see the pipeline's most common tick |
+| `equip.translation.fields_total` | `outcome` (`translated`/`skipped`/`failed`/`needs_review`) | yes | `..._emit_field_outcomes` after every tick. The only metric that says whether the pipeline *did* anything: every other translation metric describes the queue, so a worker that walked a thousand fields and wrote none of them was indistinguishable from a worker with nothing to do. Production span that way for an hour on 2026-08-19 |
 | `equip.gemini.calls_total` | `model`, `outcome` (`success`/`retry`/`fatal`/`transport`) | — | `app/services/translation/gemini.py::translate` per Gemini API call |
 
 Emitted in logs but **no generated-metric rule yet** (logged values

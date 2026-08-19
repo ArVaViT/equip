@@ -119,6 +119,13 @@ def translate_course_content(
     field that still needs work.
     """
     if not is_translation_enabled():
+        # No provider configured. Every caller treats this as "nothing to
+        # do", the job is marked done, the queue drains and the metrics
+        # look healthy — so a key that is missing, expired or rotated in
+        # production is indistinguishable from a fully translated
+        # catalogue. WARNING, because it ships to Datadog and INFO does
+        # not, and because a pipeline that cannot run is not routine.
+        logger.warning("translation disabled: no provider configured; course %s not translated", course.id)
         return OrchestratorReport()
 
     active_budget = budget or NoBudget()

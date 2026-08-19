@@ -1,8 +1,8 @@
 {
   "name": "[Equip] Translation queue is not draining",
   "type": "metric alert",
-  "query": "min(last_2h):min:equip.translation.queue_depth{env:production} > 0",
-  "message": "The translation queue has had work in it continuously for two hours.\n\nThe worker runs every minute and pauses itself on a time budget, so a large course legitimately takes several ticks — but never two hours of never reaching empty. That pattern means the queue is being refilled as fast as it drains, or a job is failing and being re-queued.\n\nWhere to look:\n* `GET /api/v1/internal/translation-queue/health` — per-status counts.\n* `POST /api/v1/admin/translations/queue-status` — `stuck_jobs` and each job's `attempts` and `last_error`; `last_error` names the cause directly.\n* A course whose every tick reports progress but never finishes is the sweep and the worker fighting over the same course; check `courses.translations_checked_at`.\n\n@arvavitcorp@gmail.com",
+  "query": "min(last_2h):min:equip.translation.queue_depth{*} > 0",
+  "message": "The translation queue has had work in it continuously for two hours.\n\nThe worker runs every minute and pauses itself on a time budget, so a large course legitimately takes several ticks — but never two hours of never reaching empty. That pattern means the queue is being refilled as fast as it drains, or a job is failing and being re-queued.\n\nWhere to look:\n* `GET /api/v1/internal/translation-queue/health` — per-status counts.\n* `POST /api/v1/admin/translations/queue-status` — `stuck_jobs` and each job's `attempts` and `last_error`; `last_error` names the cause directly.\n* A course whose every tick reports progress but never finishes is the sweep and the worker fighting over the same course; check `courses.translations_checked_at`.\n\n@arvavitcorp@gmail.com\n\nNO DATA IS AN ALERT HERE, deliberately, against the house rule that every monitor sets notify_no_data=false. That rule is right for a spike monitor and wrong for this one: `equip.translation.queue_depth` is emitted only by the worker tick itself, so the metric going quiet does not mean the queue is empty — it means the worker stopped running, which is the most severe failure this monitor exists to catch and the one it would otherwise answer with silence.",
   "tags": [
     "env:production",
     "project:equip",
@@ -15,8 +15,9 @@
     "thresholds": {
       "critical": 0.0
     },
-    "notify_no_data": false,
+    "notify_no_data": true,
     "renotify_interval": 0,
-    "include_tags": true
+    "include_tags": true,
+    "no_data_timeframe": 20
   }
 }

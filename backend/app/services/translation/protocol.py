@@ -101,6 +101,14 @@ class TranslationResult:
     # output it actually produced — and no metric would have shown it.
     # A cost we cannot see is a cost nobody stops.
     thinking_tokens: int | None = None
+    # A quoted verse left for the model as a ``VERSE_`` placeholder and
+    # did not come back. The verse is then simply gone: the placeholder
+    # is what the canonical target-language text is restored into, and
+    # with no placeholder there is nothing to restore into. Structural
+    # validation cannot see this — it compares the text *before*
+    # substitution with the text *after* restoration, and neither of
+    # those contains a marker — so the provider has to say so itself.
+    lost_scripture: bool = False
     # Provider-specific model id actually used (so logs can pin a row to a
     # version of the upstream service).
     model: str | None = None

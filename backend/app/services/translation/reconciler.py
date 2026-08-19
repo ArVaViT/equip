@@ -87,6 +87,7 @@ def sweep_courses(db: Session, *, limit: int = DEFAULT_SWEEP_LIMIT) -> SweepRepo
     the queue is not queued twice.
     """
     if not is_translation_enabled():
+        logger.warning("translation disabled: no provider configured; sweep did nothing")
         return SweepReport()
 
     courses = (

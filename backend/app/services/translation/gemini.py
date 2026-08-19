@@ -243,6 +243,21 @@ class GeminiTranslationProvider:
                     except Exception:
                         pass
                     if bible_subs:
+                        # A marker that went out and did not come back
+                        # takes the verse with it: production had a
+                        # German answer option come back as "Matthäus
+                        # 5,9" where the source read "Matthew 5:9
+                        # ('Blessed are the peacemakers…')" — reference
+                        # kept, Scripture deleted. Only the length check
+                        # noticed, and only because the string was short.
+                        lost = [sub.marker for sub in bible_subs if sub.marker not in result.text]
+                        if lost:
+                            logger.warning(
+                                "scripture_marker_dropped locale=%s markers=%d kind=%s",
+                                request.target_locale,
+                                len(lost),
+                                request.content_kind,
+                            )
                         # Restore Bible quote markers with the canonical
                         # target-locale text. Falls back to source if the
                         # target-locale lookup misses (see ``post_substitute``).
@@ -252,6 +267,7 @@ class GeminiTranslationProvider:
                             output_tokens=result.output_tokens,
                             thinking_tokens=result.thinking_tokens,
                             model=result.model,
+                            lost_scripture=bool(lost),
                         )
                     return result
                 if response.status_code in _RETRYABLE_STATUSES:
