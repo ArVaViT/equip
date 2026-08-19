@@ -91,10 +91,10 @@ Datadog inbox are the routes.
 | 19728705 | Synthetics alert | Backend `/api/v1/courses` non-200 or non-JSON | crit |
 | 19728791 | RUM alert | ≥ 10 frontend errors in 10 min (warn at 5) | `priority:2` |
 | 19728792 | RUM alert | ≥ 5 rage clicks in 30 min (warn at 3) | warn |
-| 19728793 | RUM alert | avg LCP > 4 s over 15 min (warn 2.5 s). LCP is in **nanoseconds** in RUM events -- never use ms thresholds | warn |
+| 19728793 | RUM alert | p75 LCP > 4 s over 1 h (warn 3.5 s) -- retuned in the UI 2026-06-13, robust to a single cold-start view. LCP is in **nanoseconds** in RUM events -- never use ms thresholds | warn |
 | 19730778 | Log alert | ≥ 10 ERROR / CRITICAL backend log lines in 10 min (warn at 6), scoped `source:python` | `priority:2` |
 | 19730779 | Log alert | ≥ 20 WARNING backend log lines in 15 min (warn at 10) -- usually IntegrityError noise. Scoped `source:python` | warn |
-| 19761387 | Log alert | ≥ 3 error logs from `service:send-email status:error` in 10 min (warn at 1) | `priority:2` |
+| 20393855 | Log alert | ≥ 3 error logs from `service:send-email status:error` in 15 min | `priority:2` |
 | 20465339 | Log alert | Translation jobs stuck in `processing` -- watches the worker's "jobs stuck in processing" WARNING line. (Replaced metric monitor `20393856`, deleted 2026-06-11 -- the metric it queried never existed, so it could never fire.) | `priority:3` |
 | 20391511 | Log alert | Daily Challenge schedule ran dry -- watches the "auto-filled schedule" line, now logged at WARNING so it reaches Datadog (at INFO the monitor was blind) | warn |
 
@@ -202,21 +202,28 @@ These are deliberate omissions; revisit when traffic or budget grows.
 ## Source-controlled monitor JSONs
 
 Per project policy we never auto-create Datadog monitors from agent
-sessions, but we DO ship importable JSON specs under
+sessions, but we DO ship JSON specs under
 [`docs/datadog/monitors/`](datadog/monitors/) so the next regression
-has a paging gate ready. See that directory's README for the import
-flow (Datadog UI → Monitors → New → Import) and the editing
-convention (tweak in UI, re-export JSON to git in the same PR).
+has a paging gate ready. That directory's README holds the current
+inventory -- it is the one place the list lives, because a second copy
+here went stale the moment five specs were retired in #777 and this
+table went on advertising them for two months.
 
-Shipped JSON specs (each one Vadym imports manually):
+Applying them is one command, run deliberately by a human with a
+write-scoped key:
 
-| File | What it catches | Priority |
-|---|---|---|
-| `backend-5xx-rate.json` | Backend 5xx rate > 5% over 10 min | P1 |
-| `backend-unhandled-exception-rate.json` | `equip.errors.unhandled_total` count > 10 / 10 min — distinct from 5xx-rate (this catches uncategorised exceptions, the "a real bug just shipped" signal) | P1 |
-| `translation-worker-401-rate.json` | Cron is firing but auth fails (≥ 5 401s in 15 min) | P2 |
-| `worker-cron-silent.json` | Cron is NOT firing at all (≥ 15 min with no log line) | P2 |
-| `translation-queue-backlog.json` | `equip.translation.queue_depth > 50` for > 1 h | P3 |
+```
+cd backend
+python scripts/apply_datadog_monitors.py            # dry run
+python scripts/apply_datadog_monitors.py --apply    # writes
+```
+
+The editing convention is unchanged: tweak in the UI, re-export the
+JSON to git in the same PR. Dry-run before applying -- the script
+pushes files to Datadog and never pulls a UI edit back, so an
+un-exported retune would be silently reverted. The application key
+needs `monitors_read` + `monitors_write` and nothing else; see
+[`docs/datadog/README.md`](datadog/README.md).
 
 Still useful to add manually when Vadym has time:
 

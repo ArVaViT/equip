@@ -20,11 +20,11 @@ dashboard-only.** Concretely:
   email per incident, never a "no data" page, never re-nags.
 
 The live set is **12 monitors, 9 email / 3 dashboard-only**, plus the five
-translation monitors below, which are committed here and **not yet applied**
-(the Datadog key in 1Password is deliberately read-only, so they need a human
-to import them — see "Applying" at the bottom). The 4 synthetic uptime checks
-(`/health`, frontend `/`, `/api/v1/courses`, Supabase) are managed in the
-Synthetics UI and are not mirrored here.
+translation monitors below, four of which are committed here and **not yet
+applied** — `scripts/apply_datadog_monitors.py --apply` creates them the
+moment a write-scoped application key exists (see "Applying" at the bottom).
+The 4 synthetic uptime checks (`/health`, frontend `/`, `/api/v1/courses`,
+Supabase) are managed in the Synthetics UI and are not mirrored here.
 
 ## Inventory (the mirrored monitors)
 
@@ -36,7 +36,7 @@ Synthetics UI and are not mirrored here.
 | `translation-jobs-stuck-processing.json` | jobs piling up in `processing` (workers dying mid-run) | **email** |
 | `equip-frontend-rum-error-spike.json` | spike in real-user JS errors (RUM) | **email** |
 | `equip-backend-warning-log-spike.json` | ≥20 backend `status:warning` logs in 15 min | dashboard-only |
-| `equip-frontend-slow-page-load-avg-lcp-4s.json` | avg LCP > 4s (client-rendered SPA — noisy by nature) | dashboard-only |
+| `equip-frontend-slow-page-load-p75-lcp-4s.json` | p75 LCP > 4s over an hour (client-rendered SPA — noisy by nature) | dashboard-only |
 | `equip-frontend-frustration-signals-rage-clicks.json` | ≥5 rage-clicks in 30 min | dashboard-only |
 
 ### Translation and spend (added 2026-08-17, not yet applied)
@@ -47,8 +47,8 @@ unread tokens per string without anyone noticing.
 
 | File | What it catches | Notify |
 |---|---|---|
-| `gemini-spend-spike.json` | billed output + thinking tokens over 2M in an hour — a model change, a loop, or a genuine bulk import | **email** |
-| `gemini-thinking-tokens-returned.json` | the model is spending "thinking" tokens again: invisible in the reply, billed as output, and unnecessary for translation | **email** |
+| `gemini-spend-spike.json` | billed output tokens over 500k in an hour — a model change, a loop, or a genuine bulk import | **email** |
+| `gemini-thinking-tokens-returned.json` | **BLOCKED** — the metric it queries has no log-based-metric rule, so it cannot fire and the apply script refuses to create it. `docs/datadog/README.md` has the recipe | **email** |
 | `gemini-call-failures.json` | the provider timing out or refusing past its own retries — translations stop landing and a publishing course stays invisible | **email** |
 | `translation-backlog-not-draining.json` | the queue never reaches empty for two hours: refilled as fast as it drains, or a job failing and re-queuing | **email** |
 | `edits-held-too-long.json` | edits to a live course blocked on a translation that cannot resolve itself — invisible to students, silent to the teacher | **email** |
@@ -59,24 +59,69 @@ unread tokens per string without anyone noticing.
 > `@http.status_code`, which our logs don't carry, so they sat in No-Data;
 > those were retired in favour of this set.
 
-## Applying a new monitor
+### Checked against production, 2026-08-19
+
+Every file in this directory was read back against the live org before the
+apply script went in. A monitor that reads correctly and queries nothing is
+the failure mode this whole directory exists to avoid, so the check is worth
+repeating whenever a query changes.
+
+* **Metrics.** Fourteen `equip.*` metrics reported in the last thirty days.
+  `tokens_output_total`,
+  `calls_total` (tagged `model` and `outcome` — `success`, `retry`,
+  `transport` all seen) and `translation.queue_depth` all return points.
+  `tokens_thinking_total` does not exist at all — see the BLOCKED row above.
+* **Log lines.** `staged_edits_blocked`, `auto-filled schedule` and `jobs
+  stuck in processing` each match nothing in thirty days, which is the
+  correct answer: all three are emitted at WARNING (so they ship in-process,
+  not via the drain) and all three describe things that have not happened.
+  The emitter for each was read in `app/` rather than inferred from the
+  absence of logs. `status:warn` is the value the index actually carries —
+  286 of them on `service:equip-backend` in the last week.
+* **Thresholds.** `min(last_2h):min:equip.translation.queue_depth > 0` never
+  had a two-hour window without a zero in the last seven days, so it is quiet
+  by construction. The spend threshold was 2M output tokens an hour against a
+  busiest-observed eight-hour window of 92,478, and was lowered to 500k /
+  250k; the reasoning is in the monitor's own message.
+* **Two real defects found.** The live Daily Challenge monitor's query
+  carries PowerShell backticks where quotes belong — ``logs("service:equip-
+  backend `"auto-filled schedule`"")`` — so the monitor that watches for a
+  silent editorial outage has itself been silent since 2026-06-09. Applying
+  the committed file fixes it. And `gemini-call-failures.json` added two
+  metric series together, which Datadog joins on timestamp, so the sum was
+  empty whenever only one outcome had points — i.e. almost always. It is one
+  query with an OR scope now.
+
+## Applying
+
+```
+cd backend
+python scripts/apply_datadog_monitors.py            # dry run — prints the diff
+python scripts/apply_datadog_monitors.py --apply    # writes it
+```
+
+One command for the whole directory: it creates what is missing, updates what
+has drifted, and stays quiet about what already matches. Running it twice is a
+no-op the second time.
 
 The committed key is read-only by design (least privilege — it reads logs,
-metrics, dashboards and monitors, and nothing else), so importing needs a key
-that can write. Either paste the JSON in the UI (`Monitors` → `New Monitor` →
-`Import Monitor from JSON`), or with a write-scoped key:
+metrics, dashboards and monitors, and nothing else), so `--apply` needs a
+new application key with exactly `monitors_read` + `monitors_write`.
+[`docs/datadog/README.md`](../README.md) has the scope list, the `op run`
+form of the command, and why the API key is not the application key.
 
-```
-curl -X POST "https://api.us5.datadoghq.com/api/v1/monitor" \
-  -H "DD-API-KEY: $DD_API_KEY" -H "DD-APPLICATION-KEY: $DD_APP_KEY" \
-  -H "Content-Type: application/json" \
-  -d @docs/datadog/monitors/gemini-spend-spike.json
-```
-
-Then record the returned `id` in this table, so the next person can find the
-live monitor from the file.
+Nothing needs recording in this table afterwards — the script matches by
+name, not by id, which is what lets the file be the source of truth without a
+hand-maintained id column.
 
 ## Re-export after a UI change
+
+This is the half the script cannot do for you. It pushes files *to* Datadog;
+it never pulls a UI edit *back*. Drift is real and it is quiet: the LCP
+monitor was retuned in the UI from `avg` over 15 minutes to `p75` over an
+hour on 2026-06-13 and the file still said `avg` two months later — so the
+one thing a run of the script would have done is silently undo a deliberate
+improvement. Dry-run first, always, and read the diff before `--apply`.
 
 ```
 GET https://api.us5.datadoghq.com/api/v1/monitor/<id>

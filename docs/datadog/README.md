@@ -39,6 +39,137 @@ it back into the file in this directory in the SAME PR — keeping
 source-of-truth out of sync with prod is the fastest way for
 dashboards to silently rot.
 
+## Applying the monitors
+
+The monitor JSONs in `monitors/` used to be imported by hand, one
+paste at a time, which is why five of them sat committed and unapplied
+for two days: the definitions read like coverage and fired at nothing.
+There is now one command instead.
+
+```
+cd backend
+python scripts/apply_datadog_monitors.py            # dry run — prints the diff
+python scripts/apply_datadog_monitors.py --apply    # writes it
+```
+
+The script reads every JSON in `monitors/`, matches the live monitor
+**by name**, creates it if it is absent, updates it if the file has
+drifted from what is live, and says nothing about the ones that
+already match. It is safe to run twice — the second run is silent —
+and it exits non-zero if any monitor failed, so a half-applied run is
+visible instead of scrolling past.
+
+It reads `DD_API_KEY`, `DD_APP_KEY` and `DD_SITE` from the environment
+and nowhere else; it never prints a key. With 1Password:
+
+```
+DD_API_KEY="op://Equip/<item-id>/DD_API_KEY" \
+DD_APP_KEY="op://Equip/<item-id>/DD_APP_KEY" \
+DD_SITE=us5 op run -- python scripts/apply_datadog_monitors.py --apply
+```
+
+`op run` resolves those references in the child process only — the
+values never reach the shell history or the disk. Address the item by
+**id**, not by title: the entry is called "Datadog API Keys (Equip)"
+and an `op://` reference containing parentheses does not resolve.
+`DD_SITE` accepts `us5` or `us5.datadoghq.com`.
+
+### The key the script needs
+
+**`DD_API_KEY` and `DD_APP_KEY` are two different things.** The API
+key identifies the org and is what the backend already uses to ship
+logs; it carries no permissions of its own and cannot create a
+monitor. The **application** key is the one that carries scopes, and
+the pair is sent together on every request. Adding scopes means
+issuing a new application key — `Organization Settings` →
+`Application Keys` → `New Key` → set scopes — not editing the API key.
+
+The application key currently in 1Password is deliberately read-only
+(16 scopes: logs, metrics, dashboards, monitors, APM, RUM, incidents,
+SLOs) and therefore cannot apply anything. A key that can run
+`--apply` needs exactly two scopes:
+
+| Scope | Why |
+|---|---|
+| `monitors_read` | The script lists the live monitors to decide create-vs-update. Without it every run stops at a 403 on the very first call. |
+| `monitors_write` | Creating and updating. |
+
+That is the whole list. In particular **`dashboards_write` is not
+needed** — this script does not touch dashboards; those are still
+imported by hand (see "Importing a dashboard" above). Do not grant
+`monitors_downtime`, `logs_write_config`, `api_keys_write` or
+`org_management`: the key before the 2026-08-09 rotation carried every
+permission in the org, including `billing_edit`, while no Equip code
+used it at all, and it leaked.
+
+Two notes the script cannot tell you itself:
+
+* **Nested options compare as a subset.** Datadog fills in options a
+  file never mentioned, and reporting those defaults as drift would
+  make every run noisy. The consequence is that *deleting* a key from
+  a committed JSON does not revert it in Datadog — remove such a
+  setting in the UI too.
+* **A monitor whose message opens with `BLOCKED` is skipped, not
+  created.** That marker means the monitor cannot fire as written —
+  usually a metric with no emitter or no log-based-metric rule — and a
+  monitor parked in No Data forever teaches the reader to ignore No
+  Data. `monitors/gemini-thinking-tokens-returned.json` is the
+  standing example; see the next section for what unblocks it.
+
+## Creating the missing thinking-token metric
+
+`equip.gemini.tokens_thinking_total` is emitted on every successful
+Gemini call and **does not exist as a metric**. Verified 2026-08-19 by
+listing every `equip.*` metric that reported in the last thirty days:
+fourteen came back and this is not one of them, while
+`equip.gemini.tokens_output_total` returns points over the same window
+and a direct query for the thinking series returns no series at all. Nothing but a UI change fixes this — no
+key scope, no code change — and until it is done the
+`[Equip] Gemini is thinking again` monitor cannot fire, and
+`[Equip] Gemini spend jumped` has to count output alone while thinking
+tokens are billed as output.
+
+In `Logs` → `Configuration` → `Generate Metrics` → `New Metric`:
+
+| Field | Value |
+|---|---|
+| Filter query | `@metric:equip.gemini.tokens_thinking_total` |
+| Metric name | `equip.gemini.tokens_thinking_total` |
+| Value | `@value` — the numeric field, **not** "count of logs" |
+| Group by | `model`, and nothing else |
+| Percentiles | off |
+
+The result should be a **distribution** metric with `origin: Logs /
+Log Metrics`, matching `equip.gemini.tokens_output_total` exactly —
+that one is the template, and the fastest way to get this right is to
+open its rule and copy the filter verbatim, changing only the name.
+Do open it: the application key in 1Password **cannot** read
+log-metric rules (`GET /api/v2/logs/config/metrics` answers 403 — it
+lacks `logs_read_config`), so this is the one step nothing here can
+verify for you.
+
+`model` is the only tag worth keeping, and the rest are actively
+harmful. A log-based metric bills by timeseries, so a `course_id`
+group-by multiplies the series count by the whole catalogue, and
+`locale`, `entity_id` and `field` do the same again. `model` is the
+dimension the metric exists to separate: production ran 81 days on
+`gemini-flash-latest` at ~840 thinking tokens per translated string
+and `gemini-2.5-flash-lite` spends zero on the same work, so a
+model-tagged series makes a regression visible the same hour.
+
+Do not go looking for the source lines in Log Explorer first — you
+will find nothing and conclude the emitter is broken. The
+`equip.metric` INFO lines carry one of the `main` index's three
+exclusion filters, so they are never indexed. **Log-based metrics are
+generated before index exclusion**, which is exactly why the other
+fourteen work.
+
+Once the rule exists and has a few hours of points: delete the
+`BLOCKED` paragraph from
+`monitors/gemini-thinking-tokens-returned.json`, add the thinking term
+back into `monitors/gemini-spend-spike.json`, raise both of its
+thresholds by the measured thinking ratio, and run the apply script.
+
 ## How the metrics work
 
 All `equip.*` custom metrics are **log-based distribution metrics**:

@@ -1,8 +1,8 @@
 {
   "name": "[Equip] Gemini spend jumped",
   "type": "metric alert",
-  "query": "sum(last_1h):sum:equip.gemini.tokens_output_total{*}.as_count() > 2000000",
-  "message": "Billed output tokens (answers plus thinking) crossed 2M in an hour.\n\nA normal hour is a few thousand: the pipeline only translates what changed, and a whole 870-field course is roughly 400k output tokens all in. Two million means one of three things, in order of likelihood:\n\n1. **The model changed.** A thinking model spends ~840 hidden tokens per string and bills them as output — six times the answer. Check GEMINI_MODEL against MEASURED_GEMINI_MODELS in app/core/config.py; the backend also logs a warning at boot when it is running an unmeasured model.\n2. **A loop.** A job re-translating the same course, or the sweep queueing a course it can never complete. Check /api/v1/admin/translations/queue-status for a course with climbing attempts.\n3. **Real work.** A bulk import or a newly switched-on language. Legitimate — and worth knowing about anyway.\n\n@arvavitcorp@gmail.com\n\nNOTE: thinking tokens are billed as output and are NOT in this sum. `equip.gemini.tokens_thinking_total` is emitted by the backend but has no log-based-metric rule in Datadog, so it does not exist as a metric and a query summing it returns nothing at all — which is why this monitor counted output alone. Add the rule, then add the term back.",
+  "query": "sum(last_1h):sum:equip.gemini.tokens_output_total{*}.as_count() > 500000",
+  "message": "Billed output tokens crossed 500k in an hour.\n\nThat is more than a whole 870-field course (roughly 400k output tokens all in) produced inside sixty minutes, and several times anything production has actually done. Three explanations, in order of likelihood:\n\n1. **The model changed.** A thinking model spends ~840 hidden tokens per string and bills them as output — six times the answer. Check GEMINI_MODEL against MEASURED_GEMINI_MODELS in app/core/config.py; the backend also logs a warning at boot when it is running an unmeasured model.\n2. **A loop.** A job re-translating the same course, or the sweep queueing a course it can never complete. Check /api/v1/admin/translations/queue-status for a course with climbing attempts.\n3. **Real work.** A bulk import or a newly switched-on language. Legitimate — and worth knowing about anyway.\n\n@arvavitcorp@gmail.com\n\nWHY THIS NUMBER. The threshold was 2M/h when this file was written, chosen from nothing. Measured against the metric on 2026-08-19: the busiest eight-hour window in thirty days produced 92,478 output tokens in total, so 2M could not have fired on any event short of a catastrophe, including the very model regression the monitor exists to catch. 500k critical is above every legitimate hour on record with room for one large course, and 250k warning is roughly three times the busiest hour ever observed.\n\nNOTE: thinking tokens are billed as output and are NOT in this sum. `equip.gemini.tokens_thinking_total` is emitted by the backend but has no log-based-metric rule in Datadog, so it does not exist as a metric and a query summing it returns nothing at all — verified again on 2026-08-19 — which is why this monitor counts output alone. `docs/datadog/README.md` has the recipe for creating the rule; add it, then add the term back and raise both thresholds by the measured thinking ratio.",
   "tags": [
     "env:production",
     "project:equip",
@@ -13,8 +13,8 @@
   "options": {
     "evaluation_delay": 300,
     "thresholds": {
-      "warning": 1000000.0,
-      "critical": 2000000.0
+      "warning": 250000.0,
+      "critical": 500000.0
     },
     "notify_no_data": false,
     "renotify_interval": 0,
