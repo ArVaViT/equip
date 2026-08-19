@@ -69,6 +69,7 @@ from typing import TYPE_CHECKING, Any
 from app.services.bible.books import find_book
 from app.services.bible.references import BibleRef
 from app.services.bible.store import is_locale_bundled, lookup
+from app.services.bible.substitution import canonical_for_display
 from app.services.daily_challenge.admin import OptionDraft, _log_event, create_question
 from app.services.daily_challenge.llm import GeminiPromptClient, LLMError
 from app.services.daily_challenge.prompts import (
@@ -129,16 +130,27 @@ def _fetch_canonical_texts(
     Callers pass the canonical-ish book name from the request body;
     we resolve it through ``find_book`` so 'Romans' / 'Rom.' / 'Рим.'
     all hit the same lowercase slug the bundled JSON is keyed on."""
-    if not is_locale_bundled("en") or not is_locale_bundled("ru"):
-        return None, None
     slug = find_book(book)
     if slug is None:
         return None, None
     v_start = verse_from or 1
     v_end = verse_to or verse_from or v_start
     ref = BibleRef(book=slug, chapter=chapter, verse_start=v_start, verse_end=v_end)
-    en = lookup(ref, "en")
-    ru = lookup(ref, "ru")
+
+    # The same editions the reader is shown, not the ones that happen to
+    # be on disk.
+    #
+    # This used to read the bundled files, which for English is the King
+    # James Version — and a model handed KJV text quotes KJV back. 62 of
+    # the questions in production carry `spake`, `saith`, `unto`, `thee`
+    # inside otherwise contemporary English prose, and they are not
+    # translation defects: the questions were written that way. The
+    # translation layer had already moved to a modern edition; the
+    # generator had not, so it kept manufacturing the problem.
+    en = canonical_for_display(ref, "en")
+    ru = canonical_for_display(ref, "ru")
+    if en is None and is_locale_bundled("en"):
+        en = lookup(ref, "en")
     return en, ru
 
 
