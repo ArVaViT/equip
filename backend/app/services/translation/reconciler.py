@@ -121,12 +121,33 @@ def sweep_courses(db: Session, *, limit: int = DEFAULT_SWEEP_LIMIT) -> SweepRepo
         if completeness.is_complete:
             complete += 1
             continue
+
+        # A row parked for review is a gap, and it is not this sweep's
+        # gap. Sampling runs at temperature 0, so asking again returns
+        # the same text and the same verdict; those rows move when a
+        # person accepts or retries them through the admin surface.
+        #
+        # Queueing them anyway is how the worker ends up running once a
+        # minute, planning a thousand fields, skipping all of them and
+        # reporting success — which is precisely what production did.
+        # The course stays incomplete, which is true and is what keeps
+        # it out of the catalogue; it just stops being re-queued for a
+        # job with nothing to do.
+        actionable = [gap for gap in completeness.gaps if gap.reason != "needs_review"]
+        if not actionable:
+            logger.info(
+                "sweep: course %s is waiting on a person for %d field(s), not on the pipeline",
+                course.id,
+                len(completeness.gaps),
+            )
+            continue
+
         enqueue_course_translation(db, str(course.id))
         queued += 1
         logger.info(
             "sweep: course %s is missing %d of %d translations %s; queued",
             course.id,
-            completeness.required - completeness.present,
+            len(actionable),
             completeness.required,
             completeness.by_locale(),
         )
