@@ -18,7 +18,7 @@ author's own quotation, which was right to begin with.
 
 from __future__ import annotations
 
-from app.services.bible.api_source import API_BIBLE_IDS
+from app.services.bible.api_source import API_BIBLE_IDS, TRUSTED_BUNDLE_LOCALES
 from app.services.bible.references import BibleRef
 from app.services.bible.store import lookup
 from app.services.bible.substitution import post_substitute
@@ -69,13 +69,25 @@ def test_the_corrupt_bundle_is_bypassed_entirely_for_russian() -> None:
     assert "ru" in API_BIBLE_IDS
 
 
-def test_every_api_locale_bypasses_a_file_we_lack_or_distrust() -> None:
+def test_every_locale_reads_scripture_from_somewhere_defensible() -> None:
     # Why each locale is on the API path: `ru` because its bundle is
-    # misaligned, `de` and `uk` because no bundle exists at all. English is
-    # deliberately absent — its file is sound, and an in-memory dict beats a
-    # network call on a path the pipeline walks once per quoted verse.
-    assert set(API_BIBLE_IDS) == {"ru", "de", "uk"}
-    assert "en" not in API_BIBLE_IDS
+    # misaligned, `de` and `uk` because no bundle exists at all, and `en`
+    # because its bundle — sound and complete — is the King James Version.
+    # An editor reading the corpus found `spake`, `saith`, `unto` and `thee`
+    # in 80 of 252 English explanations: Early Modern English quoted inside
+    # a product whose every other sentence is contemporary. A file being
+    # correct is not the same as it being the right book.
+    assert set(API_BIBLE_IDS) == {"ru", "de", "uk", "en"}
+
+
+def test_only_english_may_fall_back_to_its_file() -> None:
+    # The fallback exists so a network failure does not leave a blank where
+    # a verse belongs. It is English-only on purpose: archaic Scripture is
+    # still Scripture, while the Russian bundle would confidently print
+    # James where the lesson said Romans, and German and Ukrainian have
+    # nothing to fall back to.
+    assert set(TRUSTED_BUNDLE_LOCALES) == {"en"}
+    assert "ru" not in TRUSTED_BUNDLE_LOCALES
 
 
 def test_a_placeholder_is_not_a_verse() -> None:

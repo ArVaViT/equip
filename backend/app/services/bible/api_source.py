@@ -47,18 +47,52 @@ API_BASE = "https://api.youversion.com/v1"
 #: Locale → YouVersion bible id. Adding a locale is one line here; it is
 #: deliberately not derived from `LOCALE_CODES`, because a UI language the
 #: product speaks is not the same thing as a Bible edition somebody chose.
+#: Locales whose bundled file may stand in when the API cannot answer.
+#: Only English qualifies: its file is complete and verified against the
+#: reference. Russian's is misaligned and would quote the wrong book;
+#: German and Ukrainian have no file at all.
+TRUSTED_BUNDLE_LOCALES: frozenset[str] = frozenset({"en"})
+
 API_BIBLE_IDS: dict[str, int] = {
     "ru": 143,  # Новый Русский Перевод — modern, and what verse-of-the-day
     # already uses. Ends the split where two subsystems served
     # two different Russian Bibles.
-    "de": 51,  # Luther 1912. Public domain and canonical for German
-    # Protestants. Known cost: it renders διαθήκη as *Testament*
-    # rather than *Bund* in most NT occurrences, so the glossary
-    # must not try to override quoted Scripture.
-    "uk": 188,  # Кулиш & Пулюй 1905 — the only Ukrainian edition the API
-    # offers, and it is complete. Pre-1928 orthography
-    # («сьвіт», «пастирь») is a real readability cost, accepted
-    # because the alternative is no Ukrainian Scripture at all.
+    "de": 2351,  # Elberfelder (bibelkommentare.de edition). Literal, which
+    # is what a Bible school quoting a verse to study it needs,
+    # and — the reason for the change — written in current
+    # orthography.
+    #
+    # This was Luther 1912 (id 51) until an editor read the
+    # German corpus and counted `daß` in 35 of 252 Daily
+    # Challenge explanations, alongside `ward`, `gen Himmel`
+    # and `Jesu Christo`. To a German reader that is not
+    # biblical register; the 1996 reform abolished it, so it
+    # reads as a spelling mistake — in the one part of the page
+    # that is supposed to be authoritative. Verified against
+    # the live API: Luther 1912 returns "daß er seinen
+    # eingeborenen Sohn gab", this edition returns "dass".
+    #
+    # Hoffnung für alle (id 73) was the other candidate and is
+    # the more familiar book in German free churches, but it
+    # is a dynamic paraphrase — "Gott hat die Menschen so sehr
+    # geliebt" for John 3:16 — and a course that teaches how to
+    # read a verse closely cannot quote a translation that has
+    # already done the reading.
+    "en": 3034,  # Berean Standard Bible. English previously had no API
+    # edition at all and fell through to the bundled KJV, which
+    # is why 80 of 252 English explanations carry `spake`,
+    # `saith`, `unto`, `thee` — Early Modern English inside a
+    # product whose every other sentence is contemporary.
+    # BSB is modern, close to the text, and freely licensed.
+    "uk": 188,  # Кулиш & Пулюй 1905 — still the ONLY Ukrainian edition the
+    # API offers (verified 2026-08-19: one result for `ukr`).
+    # Its pre-1928 orthography is a genuine cost — 90 of 252
+    # Ukrainian explanations carry `ї` inside words (`малолїток`,
+    # `дїло`), 16 carry `сьв`. A Ukrainian reader does not see an
+    # old translation; they see a broken one. There is nothing to
+    # switch to, so this stays until the API offers Огієнко or
+    # a modern edition, and it is the strongest argument for
+    # asking for one.
 }
 
 #: USFM book codes in the canonical 66-book order, aligned position-by-position

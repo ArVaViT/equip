@@ -22,12 +22,25 @@ History
     back at temperature 0, answer options included in verse
     substitution, and matching an author's quotation against every
     edition held rather than the first one that answers.
+2   The Bible editions quoted to the reader. German moved from Luther
+    1912 to Elberfelder, because `daß` and `ward` are not biblical
+    register to a German — the 1996 reform abolished them, so they read
+    as spelling mistakes. English moved from the bundled King James to
+    the Berean Standard Bible, because `spake`, `saith` and `unto`
+    appeared in 80 of 252 explanations inside a product that is
+    otherwise written in contemporary English. Ukrainian stays on Kulish
+    1905, orthography and all: it is the only edition the API offers,
+    and a real translation reads better here than a machine rendering
+    of one — the owner's call, made 2026-08-19.
+
+    Every stored quotation predates that decision, which is exactly what
+    this number is for.
 """
 
 from __future__ import annotations
 
 from typing import Final
 
-TRANSLATOR_VERSION: Final[int] = 1
+TRANSLATOR_VERSION: Final[int] = 2
 
 __all__ = ["TRANSLATOR_VERSION"]
