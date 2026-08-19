@@ -47,7 +47,7 @@ from difflib import SequenceMatcher
 from typing import TYPE_CHECKING
 
 from app.core.sanitize import html_to_plain_text
-from app.services.bible.api_source import API_BIBLE_IDS, fetch_verse
+from app.services.bible.api_source import API_BIBLE_IDS, TRUSTED_BUNDLE_LOCALES, fetch_verse
 from app.services.bible.books import display_book_name
 from app.services.bible.psalm_numbering import remap_psalm
 from app.services.bible.references import BibleRef, ParsedReference, parse_references
@@ -507,7 +507,18 @@ def _canonical_for_display(ref: BibleRef, locale: str) -> str | None:
     quotation surviving in the wrong language.
     """
     if locale in API_BIBLE_IDS:
-        return fetch_verse(ref, locale)  # type: ignore[arg-type]
+        from_api = fetch_verse(ref, locale)  # type: ignore[arg-type]
+        if from_api is not None or locale not in TRUSTED_BUNDLE_LOCALES:
+            return from_api
+        # English only, and only when the API could not answer. Its
+        # bundle is the King James Version: sound, complete, verified —
+        # and four centuries old, which is why the API edition is
+        # preferred now. But "the network was down" is not a reason to
+        # show a student nothing where a verse belongs, and archaic
+        # English is still Scripture. Russian gets no such fallback: its
+        # bundle is misaligned (#990) and would print James where the
+        # lesson said Romans, which is worse than a gap. German and
+        # Ukrainian have no bundle at all.
     return lookup(ref, locale)  # type: ignore[arg-type]
 
 
