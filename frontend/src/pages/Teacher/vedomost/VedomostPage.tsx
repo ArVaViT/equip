@@ -7,6 +7,7 @@ import { FileText, Loader2, Printer } from "lucide-react"
 import { gradesService } from "@/services/grades"
 import type { GradeSheet } from "@/types"
 import { printedResult } from "./resultLabel"
+import { formatPercent } from "@/i18n/number"
 import "./print.css"
 
 /** `dd.mm.yyyy` — the form every Russian-language document uses. */
@@ -130,7 +131,7 @@ export function VedomostPage() {
             </>
           )}
           <dt className="font-medium">{t("vedomost.passLine")}</dt>
-          <dd>{sheet.pass_threshold ? `${Number(sheet.pass_threshold).toFixed(0)}%` : "—"}</dd>
+          <dd>{sheet.pass_threshold ? formatPercent(Number(sheet.pass_threshold), 0) : "—"}</dd>
         </dl>
 
         {/* A document that changed after signature has to say so on its face. */}

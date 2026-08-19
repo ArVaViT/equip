@@ -1,4 +1,5 @@
 import type { SheetRow } from "@/types"
+import { formatPercent } from "@/i18n/number"
 
 export interface PrintedResult {
   /** What goes in the result column. Already the document's own words. */
@@ -36,7 +37,7 @@ export function printedResult(row: SheetRow, t: (key: string) => string): Printe
     return { text: row.official_code, isOverride: row.is_override }
   }
   if (row.official_score !== null && row.official_score !== undefined) {
-    return { text: `${Number(row.official_score).toFixed(1)}%`, isOverride: row.is_override }
+    return { text: formatPercent(Number(row.official_score), 1), isOverride: row.is_override }
   }
   return {
     text: t(STATE_KEY[row.result_state] ?? "vedomost.result.notAttested"),

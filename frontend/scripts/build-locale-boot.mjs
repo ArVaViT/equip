@@ -43,6 +43,18 @@ export const DEFAULT_LOCALE = "ru"
 // Must match LOCALE_STORAGE_KEY in src/i18n/config.ts — this script reads
 // the choice the app wrote on a previous visit.
 export const STORAGE_KEY = "equip:locale"
+// And LEGACY_LOCALE_STORAGE_KEY. `src/i18n/config.ts` migrates the
+// pre-rebrand key onto the current one — but it does that at module load,
+// which is after this script has already painted. A returning reader who
+// still had only the old key was therefore decided by their browser for one
+// frame, then flipped by the bundle to the language they had actually
+// chosen: exactly the "renders in one language and then translates"
+// behaviour this file exists to remove, and the more jarring version of it
+// because it happens to the people who have been here longest.
+//
+// Reading both keys here — and only reading; the migration write stays in
+// config.ts, where it can fail safely — closes the window.
+export const LEGACY_STORAGE_KEY = "bible-school:locale"
 
 export function buildLocaleBoot() {
   const meta = {}
@@ -65,9 +77,14 @@ export function buildLocaleBoot() {
   var META = ${JSON.stringify(meta, null, 2)};
   var DEFAULT = ${JSON.stringify(DEFAULT_LOCALE)};
 
+  // The current key first, then the pre-rebrand one the bundle migrates
+  // away a moment later. Without the second lookup a returning reader got
+  // one frame of whatever their browser asks for before the app corrected
+  // it to the language they chose.
   function stored() {
     try {
-      return window.localStorage.getItem(${JSON.stringify(STORAGE_KEY)});
+      return window.localStorage.getItem(${JSON.stringify(STORAGE_KEY)})
+        || window.localStorage.getItem(${JSON.stringify(LEGACY_STORAGE_KEY)});
     } catch (e) {
       // Private mode, disabled storage, quota — not knowing is fine.
       return null;

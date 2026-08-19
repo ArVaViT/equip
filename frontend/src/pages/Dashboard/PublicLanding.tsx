@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Eyebrow } from "@/components/patterns";
 import Footer from "@/components/layout/Footer";
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/i18n/config";
 
 /**
  * Marketing landing rendered at ``/`` for unauthenticated visitors.
@@ -140,7 +141,7 @@ export function PublicLanding() {
               eyebrow={t("landing.value.bilingual.eyebrow")}
               title={t("landing.value.bilingual.title")}
               body={t("landing.value.bilingual.body")}
-              visual={<BilingualMock />}
+              visual={<MultilingualMock />}
               reverse
             />
           </div>
@@ -310,23 +311,42 @@ function CertificateMock() {
   );
 }
 
-/** Mini locale toggle — illustrates the auto-translation pipeline. */
-function BilingualMock() {
+/**
+ * Mini locale fan-out — illustrates the auto-translation pipeline.
+ *
+ * It was called ``BilingualMock`` and it drew two badges, RU and EN, which
+ * is what the product was when it was written. It sat a few centimetres
+ * under a trust badge reading "Four languages: RU · EN · DE · UK" and body
+ * copy promising English, German and Ukrainian — so the picture contradicted
+ * the sentence above it, on the page whose whole job is to be believed.
+ *
+ * Derived from ``SUPPORTED_LOCALES`` rather than listed, so the picture
+ * cannot fall behind the product a second time: the source language on the
+ * left, everything it fans out into on the right.
+ */
+function MultilingualMock() {
   const { t } = useTranslation();
+  const targets = SUPPORTED_LOCALES.filter((code) => code !== DEFAULT_LOCALE);
   return (
     <div className="surface-card mx-auto max-w-sm rounded-lg p-5 text-center">
-      <div className="flex items-center justify-center gap-3">
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {/* The language courses are authored in — the input to the pipeline. */}
         <span className="rounded-md bg-brand/10 px-3 py-1.5 text-sm font-medium text-brand-ink">
-          RU
+          {DEFAULT_LOCALE.toUpperCase()}
         </span>
         <Languages
-          className="h-4 w-4 text-ink-muted"
+          className="h-4 w-4 shrink-0 text-ink-muted"
           strokeWidth={1.75}
           aria-hidden
         />
-        <span className="rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-ink-muted">
-          EN
-        </span>
+        {targets.map((code) => (
+          <span
+            key={code}
+            className="rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-ink-muted"
+          >
+            {code.toUpperCase()}
+          </span>
+        ))}
       </div>
       <p className="mt-3 text-xs text-ink-muted">
         {t("landing.value.bilingual.caption")}

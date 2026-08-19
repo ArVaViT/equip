@@ -10,6 +10,7 @@ import { Star, Trash2, MessageSquare } from "lucide-react"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { EmptyState } from "@/components/patterns"
 import { formatDate } from "@/i18n/format"
+import { formatNumber } from "@/i18n/number"
 
 interface Props {
   courseId: string
@@ -81,7 +82,7 @@ export default function CourseReviews({ courseId }: Props) {
         {reviews.length > 0 && (
           <div className="flex items-center gap-2 mt-2">
             <StarDisplay rating={avgRating} size="lg" />
-            <span className="text-sm font-medium">{avgRating.toFixed(1)}</span>
+            <span className="text-sm font-medium">{formatNumber(avgRating, 1)}</span>
             <span className="text-xs text-ink-muted">
               {t("reviews.outOf5")} · {t("reviews.reviewCount", { count: reviews.length })}
             </span>

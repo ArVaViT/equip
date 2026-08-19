@@ -23,6 +23,7 @@ import { EMPTY_FORM } from "./helpers"
 import { symbolRank, symbolTone, type GradeBand } from "./symbolScale"
 import { classAverages } from "./classAverages"
 import { gradePillLabel } from "./notice"
+import { formatNumber, formatPercent } from "@/i18n/number"
 
 interface Props {
   summary: GradeSummaryResponse | null
@@ -276,22 +277,22 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
             student in a class where anyone had been marked read 0.0% — "nobody
             has opened theirs" printed as a failing figure. */}
         <p className="text-sm tabular-nums text-right">
-          {b.student_has_quiz_marks ? `${b.quiz_avg.toFixed(1)}%` : "—"}
+          {b.student_has_quiz_marks ? formatPercent(b.quiz_avg, 1) : "—"}
         </p>
         <p className="text-sm tabular-nums text-right">
-          {b.student_has_assignment_marks ? `${b.assignment_avg.toFixed(1)}%` : "—"}
+          {b.student_has_assignment_marks ? formatPercent(b.assignment_avg, 1) : "—"}
         </p>
         {/* «Текущая» leads — it is the number the student sees, so it is the
             one that makes a conversation with them possible. «Итоговая» sits
             under it the moment they differ, with the reason on hover (D10). */}
         <p className="text-sm font-semibold tabular-nums text-right">
-          {hasScore ? `${b.current_score.toFixed(1)}%` : "—"}
+          {hasScore ? formatPercent(b.current_score, 1) : "—"}
           {hasScore && b.scores_differ && (
             <span
               className="block text-xs font-normal text-ink-muted"
               title={t("gradebook.pair.explainer")}
             >
-              {t("gradebook.pair.finalShort", { grade: `${b.final_score.toFixed(1)}%` })}
+              {t("gradebook.pair.finalShort", { grade: formatPercent(b.final_score, 1) })}
             </span>
           )}
         </p>
@@ -380,7 +381,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
                 values={{
                   manual: manualGrade?.override_code ?? "",
                   calc: b.letter_grade,
-                  pct: b.final_score.toFixed(1),
+                  pct: formatNumber(b.final_score, 1),
                 }}
                 components={{ strong: <strong /> }}
               />
@@ -455,9 +456,9 @@ function BreakdownEntry({
   return (
     <div>
       <span className="text-ink-muted">{label}</span>{" "}
-      <span className="font-medium">{pct.toFixed(1)}%</span>
+      <span className="font-medium">{formatPercent(pct, 1)}</span>
       <span className="text-ink-muted text-xs ml-1">
-        (×{weight}% = {weighted.toFixed(1)})
+        (×{weight}% = {formatNumber(weighted, 1)})
       </span>
     </div>
   )
@@ -495,12 +496,12 @@ function ClassAverageRow({
         )}
       </span>
       <p className="tabular-nums text-right">
-        {averages.quiz !== null ? `${averages.quiz.toFixed(1)}%` : "—"}
+        {averages.quiz !== null ? formatPercent(averages.quiz, 1) : "—"}
       </p>
       <p className="tabular-nums text-right">
-        {averages.assignment !== null ? `${averages.assignment.toFixed(1)}%` : "—"}
+        {averages.assignment !== null ? formatPercent(averages.assignment, 1) : "—"}
       </p>
-      <p className="tabular-nums text-right">{hasNumbers ? `${classAvg.toFixed(1)}%` : "—"}</p>
+      <p className="tabular-nums text-right">{hasNumbers ? formatPercent(classAvg, 1) : "—"}</p>
       <span />
       <span />
     </div>

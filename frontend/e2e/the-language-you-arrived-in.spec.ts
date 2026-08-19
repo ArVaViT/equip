@@ -73,14 +73,18 @@ for (const probe of PROBES) {
   test.describe(`a visitor whose browser says ${probe.browser}`, () => {
     test.use({ locale: probe.browser });
 
-    test("gets that language, from the first frame onward", async ({ page }) => {
+    test("gets that language, from the first frame onward", async ({
+      page,
+    }) => {
       // No stored choice, no session: this is the first visit.
       await page.context().clearCookies();
 
       await page.goto("/", { waitUntil: "domcontentloaded" });
 
       // ── the first frame, before the bundle has had a chance to run ──
-      expect(await page.title(), `tab title for ${probe.browser}`).toMatch(probe.expectTitle);
+      expect(await page.title(), `tab title for ${probe.browser}`).toMatch(
+        probe.expectTitle,
+      );
       expect(
         await page.locator("html").getAttribute("lang"),
         `<html lang> for ${probe.browser}`,
@@ -90,11 +94,16 @@ for (const probe of PROBES) {
       await page.waitForLoadState("networkidle");
       const body = await page.locator("body").innerText();
 
-      expect(body, `visible copy for ${probe.browser}`).toMatch(probe.expectWord);
-      expect(body, `a ${probe.browser} visitor was shown another language`).not.toMatch(
-        probe.rejectWords,
+      expect(body, `visible copy for ${probe.browser}`).toMatch(
+        probe.expectWord,
       );
-      expect(await page.locator("html").getAttribute("lang")).toBe(probe.expected);
+      expect(
+        body,
+        `a ${probe.browser} visitor was shown another language`,
+      ).not.toMatch(probe.rejectWords);
+      expect(await page.locator("html").getAttribute("lang")).toBe(
+        probe.expected,
+      );
     });
   });
 }
@@ -102,15 +111,22 @@ for (const probe of PROBES) {
 test.describe("a visitor whose language the platform does not serve", () => {
   test.use({ locale: "pl-PL" });
 
-  test("gets a language it does serve, not a blank or a key", async ({ page }) => {
+  test("gets a language it does serve, not a blank or a key", async ({
+    page,
+  }) => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
 
     const lang = await page.locator("html").getAttribute("lang");
-    expect(["ru", "en", "de", "uk"], "fell back to a served language").toContain(lang);
+    expect(
+      ["ru", "en", "de", "uk"],
+      "fell back to a served language",
+    ).toContain(lang);
 
     await page.waitForLoadState("networkidle");
     const body = await page.locator("body").innerText();
-    expect(body.trim().length, "the page rendered something").toBeGreaterThan(20);
+    expect(body.trim().length, "the page rendered something").toBeGreaterThan(
+      20,
+    );
     // A raw i18next key would look like `header.home`; ordinary copy does not.
     expect(body).not.toMatch(/\b[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*){1,}\b/);
   });
@@ -129,6 +145,19 @@ test.describe("a returning reader outranks the browser", () => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
 
     expect(await page.locator("html").getAttribute("lang")).toBe("uk");
-    expect(await page.title()).toMatch(/вивчення Біблії/i);
+
+    // Two titles are correct here, and which one you catch is a race the
+    // test should not be trying to win: locale-boot sets the marketing
+    // title before the bundle loads, and the router replaces it with the
+    // page's own the moment it does. Both are Ukrainian, which is the
+    // thing being asserted. Pinning the first one made this fail against
+    // a perfectly correct app that had simply finished loading — the
+    // received title was "Головна — Equip".
+    expect(await page.title()).toMatch(/вивчення Біблії|Головна/i);
+    // And it must not be either of the languages that could have won
+    // instead: the browser's German, or the default Russian.
+    expect(await page.title()).not.toMatch(
+      /Bibel|Startseite|Главная|изучение/i,
+    );
   });
 });

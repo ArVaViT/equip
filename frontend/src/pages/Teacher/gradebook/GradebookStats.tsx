@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next"
 import { Users, Award, TrendingUp, Calculator } from "lucide-react"
 import { StatCard } from "@/components/patterns"
+import { formatPercent } from "@/i18n/number"
 import type { GradingConfig } from "@/types"
 
 interface Props {
@@ -25,7 +26,7 @@ export function GradebookStats({ studentCount, classAverage, gradedCount, config
       />
       <StatCard
         label={t("gradebook.stats.classAverage")}
-        value={classAverage === null ? "—" : `${classAverage.toFixed(1)}%`}
+        value={classAverage === null ? "—" : formatPercent(classAverage, 1)}
         icon={TrendingUp}
       />
       <StatCard

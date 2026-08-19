@@ -603,7 +603,14 @@
     "toggleColorTheme": "Toggle color theme",
     "errors": {
       "registrationFailed": "Registration failed. Please try again.",
-      "googleSignUpFailed": "Google sign-up failed."
+      "googleSignUpFailed": "Google sign-up failed.",
+      "invalidCredentials": "Incorrect email or password.",
+      "emailNotConfirmed": "Confirm your email address first — the link is in your inbox.",
+      "rateLimited": "Too many attempts. Wait a minute and try again.",
+      "weakPassword": "That password is too weak. Use at least 6 characters.",
+      "samePassword": "That is your current password. Choose a different one.",
+      "linkExpired": "This link has expired. Request a new one.",
+      "serverError": "Something went wrong on our side. Try again in a moment."
     },
     "callback": {
       "completing": "Completing sign in...",
@@ -1886,6 +1893,7 @@
       "saveGrade": "Save Grade",
       "cellGraded": "graded",
       "cellSubmitted": "submitted",
+      "cellPoints": "{{points}} pt",
       "legend": {
         "completed": "Completed (1 pt)",
         "quizPassed": "Quiz passed",
@@ -2239,10 +2247,10 @@
     "tabSchool": "School",
     "school": {
       "title": "School details",
-      "description": "These fields are printed on every ведомость. Admin only.",
+      "description": "These fields are printed on every grade sheet. Admin only.",
       "nameRu": "Name in Russian",
       "nameEn": "Name in English",
-      "nameEnHint": "The ведомость prints in English — this is the name that lands on the document",
+      "nameEnHint": "The grade sheet prints in English — this is the name that lands on the document",
       "city": "City",
       "saved": "Saved",
       "saveFailed": "Could not save",

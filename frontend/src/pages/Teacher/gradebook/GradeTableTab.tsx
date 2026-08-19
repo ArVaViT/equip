@@ -406,7 +406,13 @@ function ChapterCell({ chapter }: { chapter: ChapterInfo | undefined }) {
         >
           {graded ? (
             <>
-              <span className="font-semibold">{chapter.assignment_result.grade}pt</span>
+              {/* "pt" was hardcoded English, glued straight onto the
+                  number with no space — so a Russian teacher's gradebook
+                  read "8pt" in a cell whose caption underneath was already
+                  Russian. The unit is a word and words are translated. */}
+              <span className="font-semibold">
+                {t("gradebook.table.cellPoints", { points: chapter.assignment_result.grade })}
+              </span>
               <span className="text-xs opacity-70">{t("gradebook.table.cellGraded")}</span>
             </>
           ) : (

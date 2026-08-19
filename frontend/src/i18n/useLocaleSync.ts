@@ -45,7 +45,7 @@ export function getDesiredLocale(): SupportedLocale | null {
  * Mounted once in `App` near the auth provider.
  */
 export function useLocaleSync(): void {
-  const { user } = useAuth()
+  const { user, applyUser } = useAuth()
   const { i18n } = useTranslation()
 
   useEffect(() => {
@@ -69,10 +69,23 @@ export function useLocaleSync(): void {
     if (user.locale_source === "default") {
       const detected = i18n.resolvedLanguage ?? i18n.language
       if (isSupportedLocale(detected)) {
-        void preferencesService.reportDetectedLocale(detected).catch(() => {
-          // Nothing to recover: the UI is already in the right language,
-          // and the next load reports it again.
-        })
+        void preferencesService.reportDetectedLocale(detected).then(
+          (updated) => {
+            // The response is the profile the server now holds —
+            // ``preferred_locale`` the browser's language,
+            // ``locale_source`` "detected". Dropping it left the cached
+            // profile still saying "ru / default" until some unrelated
+            // ``refreshUser``, and the cached profile is what the rest of
+            // the app reads: the first-run setup screen picks the language
+            // to pre-select from exactly these two fields, so it went on
+            // offering Russian to the German this branch had just rescued.
+            applyUser(updated)
+          },
+          () => {
+            // Nothing to recover: the UI is already in the right language,
+            // and the next load reports it again.
+          },
+        )
       }
       return
     }
@@ -96,5 +109,5 @@ export function useLocaleSync(): void {
     // "nobody chose this" to "detected" without the locale itself
     // changing, and the effect must not keep re-reporting after that.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.preferred_locale, user?.locale_source, i18n])
+  }, [user?.preferred_locale, user?.locale_source, i18n, applyUser])
 }

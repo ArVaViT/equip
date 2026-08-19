@@ -1,3 +1,4 @@
+import { formatPercent } from "@/i18n/number"
 import type { MyCourseGrade, MyGradeItem } from "@/types"
 
 export interface MyGradeDisplay {
@@ -18,9 +19,14 @@ const NOTE_BY_STATE: Record<string, string> = {
   not_assessed: "myGrade.state.notAssessed",
 }
 
-/** Percent with one decimal, matching every teacher surface exactly. */
+/**
+ * Percent with one decimal, matching every teacher surface exactly —
+ * including the decimal separator, which is a comma for three of the four
+ * languages served and was a hard period here.
+ */
 function formatScore(score: number, symbol: string | null): string {
-  return symbol ? `${score.toFixed(1)}% ${symbol}` : `${score.toFixed(1)}%`
+  const pct = formatPercent(score, 1)
+  return symbol ? `${pct} ${symbol}` : pct
 }
 
 /**

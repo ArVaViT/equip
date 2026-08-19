@@ -4,12 +4,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import i18n from "@/i18n/config"
 import type { User } from "@/types"
 
-let authState: { user: User | null } = { user: null }
+const applyUser = vi.fn()
+let authState: { user: User | null; applyUser: (u: User) => void } = {
+  user: null,
+  applyUser: (u: User) => applyUser(u),
+}
 vi.mock("@/context/useAuth", () => ({
   useAuth: () => authState,
 }))
 
-const reportDetectedLocale = vi.fn((locale: string) => Promise.resolve(makeUser({ preferred_locale: locale as User["preferred_locale"] })))
+// The real endpoint answers with the profile as it now stands: the
+// reported language, and ``locale_source`` moved off "default" so the hook
+// never reports it a second time.
+const reportDetectedLocale = vi.fn((locale: string) =>
+  Promise.resolve(
+    makeUser({ preferred_locale: locale as User["preferred_locale"], locale_source: "detected" }),
+  ),
+)
 vi.mock("@/services/preferences", () => ({
   preferencesService: {
     reportDetectedLocale: (locale: string) => reportDetectedLocale(locale),
@@ -42,10 +53,11 @@ describe("useLocaleSync", () => {
   beforeEach(async () => {
     setDesiredLocale(null)
     reportDetectedLocale.mockClear()
+    applyUser.mockClear()
     await act(async () => {
       await i18n.changeLanguage("ru")
     })
-    authState = { user: null }
+    authState = { user: null, applyUser: (u: User) => applyUser(u) }
   })
 
   afterEach(() => {
@@ -53,7 +65,7 @@ describe("useLocaleSync", () => {
   })
 
   it("syncs i18n to the profile's preferred_locale on login", async () => {
-    authState = { user: makeUser({ preferred_locale: "en" }) }
+    authState = { ...authState, user: makeUser({ preferred_locale: "en" }) }
 
     await act(async () => {
       render(
@@ -74,7 +86,7 @@ describe("useLocaleSync", () => {
       await i18n.changeLanguage("en")
     })
     setDesiredLocale("en")
-    authState = { user: makeUser({ preferred_locale: "ru" }) }
+    authState = { ...authState, user: makeUser({ preferred_locale: "ru" }) }
 
     await act(async () => {
       render(
@@ -96,7 +108,7 @@ describe("useLocaleSync", () => {
     })
     setDesiredLocale("en")
     // Profile now matches the desired locale (PATCH succeeded + refresh ran).
-    authState = { user: makeUser({ preferred_locale: "en" }) }
+    authState = { ...authState, user: makeUser({ preferred_locale: "en" }) }
 
     await act(async () => {
       render(
@@ -112,6 +124,7 @@ describe("useLocaleSync", () => {
 
   it("ignores unsupported preferred_locale values", async () => {
     authState = {
+      ...authState,
       user: makeUser({ preferred_locale: "fr" as unknown as User["preferred_locale"] }),
     }
 
@@ -137,6 +150,7 @@ describe("useLocaleSync", () => {
         await i18n.changeLanguage("de")
       })
       authState = {
+        ...authState,
         user: makeUser({ preferred_locale: "ru", locale_source: "default" }),
       }
 
@@ -156,6 +170,7 @@ describe("useLocaleSync", () => {
         await i18n.changeLanguage("de")
       })
       authState = {
+        ...authState,
         user: makeUser({ preferred_locale: "ru", locale_source: "default" }),
       }
 
@@ -170,6 +185,34 @@ describe("useLocaleSync", () => {
       expect(reportDetectedLocale).toHaveBeenCalledWith("de")
     })
 
+    it("applies the profile the server sends back instead of discarding it", async () => {
+      // The PATCH answers with the profile as it now stands — German,
+      // ``locale_source: "detected"``. Throwing that away left every other
+      // consumer reading the stale "ru / default", and the first-run setup
+      // screen decides which language to pre-select from exactly those two
+      // fields.
+      await act(async () => {
+        await i18n.changeLanguage("de")
+      })
+      authState = {
+        ...authState,
+        user: makeUser({ preferred_locale: "ru", locale_source: "default" }),
+      }
+
+      await act(async () => {
+        render(
+          <I18nextProvider i18n={i18n}>
+            <Probe />
+          </I18nextProvider>,
+        )
+      })
+
+      expect(applyUser).toHaveBeenCalledTimes(1)
+      expect(applyUser).toHaveBeenCalledWith(
+        expect.objectContaining({ preferred_locale: "de", locale_source: "detected" }),
+      )
+    })
+
     it("leaves a chosen language alone", async () => {
       // The other half of the rule: a real preference outranks the
       // browser, which is what the profile was always meant to mean.
@@ -177,6 +220,7 @@ describe("useLocaleSync", () => {
         await i18n.changeLanguage("de")
       })
       authState = {
+        ...authState,
         user: makeUser({ preferred_locale: "uk", locale_source: "chosen" }),
       }
 

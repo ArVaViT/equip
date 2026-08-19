@@ -67,6 +67,7 @@ function renderWithUser(userId: string | null, tourId: string) {
           resetPassword: vi.fn(),
           logout: vi.fn(),
           refreshUser: vi.fn(),
+          applyUser: vi.fn(),
         }}
       >
         {children}

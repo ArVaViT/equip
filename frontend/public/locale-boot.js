@@ -23,9 +23,14 @@
 };
   var DEFAULT = "ru";
 
+  // The current key first, then the pre-rebrand one the bundle migrates
+  // away a moment later. Without the second lookup a returning reader got
+  // one frame of whatever their browser asks for before the app corrected
+  // it to the language they chose.
   function stored() {
     try {
-      return window.localStorage.getItem("equip:locale");
+      return window.localStorage.getItem("equip:locale")
+        || window.localStorage.getItem("bible-school:locale");
     } catch (e) {
       // Private mode, disabled storage, quota — not knowing is fine.
       return null;
