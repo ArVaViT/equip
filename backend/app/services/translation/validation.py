@@ -534,6 +534,45 @@ def _check_ukrainian_calques(translated: str, target_locale: str) -> ValidationI
     )
 
 
+def _check_glossary(source: str, translated: str, source_locale: str, target_locale: str) -> ValidationIssue | None:
+    """A register term the source used and the translation dropped.
+
+    This is the only check here that looks at meaning, and it can only
+    do so where meaning has been written down: the glossary. Everything
+    else in this module asks whether the shape survived — markup,
+    placeholders, numbers, length. A word swapped for another word
+    passes all of them. The Ethiopian eunuch of Acts 8 was served to
+    Ukrainian readers as a Pentecostal, in a row marked ok, for as long
+    as it took a person to read it.
+
+    Not blocking. A translator may legitimately reach for a synonym, and
+    refusing to serve the page over a word choice would trade a small
+    wrong for a blank one. But it does earn a correcting pass, which is
+    where most of these get fixed: the model is shown the term it
+    dropped and asked again.
+    """
+    from app.services.translation.glossary import missing_terms
+
+    absent = missing_terms(
+        source,
+        translated,
+        source_locale=source_locale,  # type: ignore[arg-type]
+        target_locale=target_locale,  # type: ignore[arg-type]
+    )
+    if not absent:
+        return None
+    named = ", ".join(f"{src} → {tgt}" for src, tgt in absent[:4])
+    return ValidationIssue(
+        code="glossary_term_missing",
+        detail=(
+            f"The source uses terms this school renders a fixed way, and the "
+            f"translation does not contain them: {named}. Use the school's "
+            f"wording, in whatever form the sentence needs."
+        ),
+        blocking=False,
+    )
+
+
 def validate_translation(
     *,
     source: str,
@@ -578,6 +617,7 @@ def validate_translation(
         _check_length(source, translated, content_kind=content_kind),
     ]
     issues.append(_check_ukrainian_calques(translated, target_locale))
+    issues.append(_check_glossary(source, translated, source_locale, target_locale))
     return [issue for issue in issues if issue is not None]
 
 

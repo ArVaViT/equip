@@ -86,6 +86,20 @@ _TERMS: Final[tuple[tuple[str, str, str, str], ...]] = (
     ("экзамен", "exam", "Abschlussprüfung", "іспит"),
     ("эссе", "essay", "Essay", "есе"),
     ("оценка", "grade", "Note", "оцінка"),
+    # People and things a reader would notice being renamed. Each of
+    # these was got wrong somewhere in production, and none of them is a
+    # matter of taste: an editor reading the Ukrainian corpus found the
+    # Ethiopian eunuch of Acts 8 turned into a Pentecostal —
+    # "п'ятидесятник" — which is what the readers of this school call
+    # themselves.
+    ("евнух", "eunuch", "Kämmerer", "скопець"),
+    ("наставник", "mentor", "Mentor", "наставник"),
+    ("притча", "parable", "Gleichnis", "притча"),
+    ("праведность", "righteousness", "Gerechtigkeit", "праведність"),
+    ("искупление", "redemption", "Erlösung", "викуплення"),
+    ("первосвященник", "high priest", "Hohepriester", "первосвященик"),
+    ("язычник", "Gentile", "Heide", "язичник"),
+    ("родословие", "genealogy", "Geschlechtsregister", "родовід"),
 )
 
 _INDEX: Final[dict[str, tuple[str, str, str, str]]] = {}
@@ -147,4 +161,39 @@ def glossary_block(pairs: list[tuple[str, str]]) -> str:
     )
 
 
-__all__ = ["glossary_block", "terms_in"]
+def missing_terms(
+    source: str,
+    translation: str,
+    *,
+    source_locale: LocaleCode,
+    target_locale: LocaleCode,
+) -> list[tuple[str, str]]:
+    """Register entries the source used and the translation did not.
+
+    The same table, read the other way round. As a prompt it is a
+    request; here it is a check, and it catches the one class of defect
+    structural validation is blind to by design — a word swapped for
+    another word. Nothing is lost, nothing is malformed, the markup
+    matches and the length is right; the sentence simply says something
+    else. That is how the Ethiopian eunuch became a Pentecostal and
+    stayed that way, servable and wrong, until a person read it.
+
+    Deliberately forgiving in one direction: a term is satisfied by any
+    inflection of the target form, because German declines and Ukrainian
+    declines and demanding the dictionary form would flag correct prose
+    all day. It reports what is absent entirely.
+    """
+    if not source or not translation:
+        return []
+    absent: list[tuple[str, str]] = []
+    for source_form, target_form in terms_in(source, source_locale=source_locale, target_locale=target_locale):
+        # The first few characters carry the stem; the pattern already
+        # allows a suffix. A term whose stem is nowhere in the answer was
+        # not translated, it was replaced.
+        stem = target_form[: max(4, len(target_form) - 3)]
+        if stem.lower() not in translation.lower():
+            absent.append((source_form, target_form))
+    return absent
+
+
+__all__ = ["glossary_block", "missing_terms", "terms_in"]
