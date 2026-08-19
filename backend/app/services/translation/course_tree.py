@@ -56,17 +56,35 @@ def iter_course_entities(db: Session, course: Course) -> Iterator[tuple[EntityTy
     One pass, bulk-fetched: blocks in one query, every quiz and
     assignment in one query each (both the chapter-bound and the
     block-linked shape), questions and options eagerly loaded.
+
+    Binned modules and chapters are skipped here rather than left to the
+    caller's loader, and that is load-bearing. ``get_course`` filters
+    them out through its relationship options; a plain ``db.get`` does
+    not. The pipeline used both — the worker planned through
+    ``get_course`` and the completeness check walked a course fetched by
+    the sweep's own query — so the two disagreed about how large the
+    course was. The result was a gap nothing could ever close: the check
+    demanded translations for chapters in the bin, the plan never
+    produced them, and the sweep re-queued the course every tick for a
+    job that had nothing to do. It cost nothing while every course was
+    complete, and became a permanent spin the moment anything counted as
+    missing.
+
+    A binned chapter has no readers, so it needs no translations. One
+    walk, one answer, whichever way the course arrived.
     """
     yield "course", course
 
-    for module in course.modules:
+    modules = [module for module in course.modules if module.deleted_at is None]
+    for module in modules:
         yield "module", module
 
-    for module in course.modules:
+    for module in modules:
         for chapter in module.chapters:
-            yield "chapter", chapter
+            if chapter.deleted_at is None:
+                yield "chapter", chapter
 
-    chapter_ids = [ch.id for mod in course.modules for ch in mod.chapters]
+    chapter_ids = [ch.id for mod in modules for ch in mod.chapters if ch.deleted_at is None]
     if chapter_ids:
         blocks = (
             db.query(ChapterBlock)
