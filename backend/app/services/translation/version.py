@@ -35,12 +35,20 @@ History
 
     Every stored quotation predates that decision, which is exactly what
     this number is for.
+3   The verse placeholder stopped being an English word. It was
+    ``VERSE_<hex>``, and a model asked for Ukrainian translated it:
+    production holds the same token spelled in Cyrillic letters where
+    Scripture belongs — the marker matched nothing on the way back, so the verse
+    was dropped and only the reference remained. The prefix is now
+    ``EQV``, which is a word in no language we serve. Rows made before
+    this are re-fetched because a lost verse cannot be seen by looking
+    at them: what is left reads like a finished sentence.
 """
 
 from __future__ import annotations
 
 from typing import Final
 
-TRANSLATOR_VERSION: Final[int] = 2
+TRANSLATOR_VERSION: Final[int] = 3
 
 __all__ = ["TRANSLATOR_VERSION"]
