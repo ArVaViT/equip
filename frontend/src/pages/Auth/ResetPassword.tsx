@@ -9,6 +9,7 @@ import AuthLayout from "@/components/layout/AuthLayout"
 import { z } from "zod"
 import { Loader2, CheckCircle2 } from "lucide-react"
 import i18n from "@/i18n/config"
+import { authErrorMessage } from "@/lib/authError"
 
 /**
  * Build the schema fresh on each submit so error messages match the
@@ -65,9 +66,13 @@ export default function ResetPassword() {
       await authService.updatePassword(result.data.password)
       setSuccess(true)
       redirectTimer.current = setTimeout(() => navigate("/", { replace: true }), 2500)
-    } catch (err: unknown) {
-      const supaErr = err as { message?: string }
-      setServerError(supaErr.message || t("auth.resetPassword.errors.resetFailed"))
+    } catch (err) {
+      // Same rule as the sign-in screen: translate, and keep the server's
+      // English for the dev console. This one has two outcomes worth
+      // telling apart on their own — a password too weak to accept, and a
+      // reset link that expired while the tab sat open — and the helper
+      // reads GoTrue's `code` for both.
+      setServerError(authErrorMessage(err, "auth.resetPassword.errors.resetFailed"))
     } finally {
       setLoading(false)
     }

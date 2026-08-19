@@ -8,6 +8,7 @@ import { useAuth } from "@/context/useAuth"
 import { makeLoginSchema, type LoginFormData } from "@/lib/validations/auth"
 import AuthLayout from "@/components/layout/AuthLayout"
 import { Loader2 } from "lucide-react"
+import { authErrorMessage } from "@/lib/authError"
 import { GoogleIcon } from "./register/GoogleIcon"
 
 export default function Login() {
@@ -42,9 +43,14 @@ export default function Login() {
     setLoading(true)
     try {
       await login(result.data.email, result.data.password)
-    } catch (err: unknown) {
-      const supaErr = err as { message?: string }
-      setServerError(supaErr.message || t("auth.loginFailed"))
+    } catch (err) {
+      // Never the server's own words. GoTrue always supplies a `message`,
+      // so the `|| t(...)` that used to sit here was unreachable and a
+      // German signing in read "Invalid login credentials" on an otherwise
+      // entirely German page. The helper also tells "wrong password" apart
+      // from "too many attempts", which need different things from the
+      // reader.
+      setServerError(authErrorMessage(err, "auth.loginFailed"))
     } finally {
       setLoading(false)
     }
@@ -54,9 +60,8 @@ export default function Login() {
     setGoogleLoading(true)
     try {
       await signInWithGoogle()
-    } catch (err: unknown) {
-      const supaErr = err as { message?: string }
-      setServerError(supaErr.message || t("auth.googleLoginFailed"))
+    } catch (err) {
+      setServerError(authErrorMessage(err, "auth.googleLoginFailed"))
     } finally {
       setGoogleLoading(false)
     }

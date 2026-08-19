@@ -2,6 +2,7 @@ import { useCallback, useState } from "react"
 import { useAuth } from "@/context/useAuth"
 import { makeRegisterSchema } from "@/lib/validations/auth"
 import i18n, { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
+import { authErrorMessage, isDuplicateEmail } from "@/lib/authError"
 
 export type FormState = {
   full_name: string
@@ -75,12 +76,17 @@ export function useRegister() {
         preferredLocale,
       )
       setSuccess(true)
-    } catch (err: unknown) {
-      const supaErr = err as { message?: string }
-      if (supaErr.message === "DUPLICATE_EMAIL") {
+    } catch (err) {
+      if (isDuplicateEmail(err)) {
+        // Its own panel, not a red sentence — the reader almost certainly
+        // has an account and wants the sign-in link, not an error.
         setDuplicateEmail(true)
       } else {
-        setServerError(supaErr.message || i18n.t("auth.errors.registrationFailed"))
+        // The server's `message` is always there, so the fallback after the
+        // old `||` never ran: a German creating an account was told
+        // "Password should be at least 6 characters" in English on a German
+        // form. Translated now; the raw text goes to the dev console.
+        setServerError(authErrorMessage(err, "auth.errors.registrationFailed"))
       }
     } finally {
       setLoading(false)
@@ -91,9 +97,8 @@ export function useRegister() {
     setGoogleLoading(true)
     try {
       await signInWithGoogle()
-    } catch (err: unknown) {
-      const supaErr = err as { message?: string }
-      setServerError(supaErr.message || i18n.t("auth.errors.googleSignUpFailed"))
+    } catch (err) {
+      setServerError(authErrorMessage(err, "auth.errors.googleSignUpFailed"))
     } finally {
       setGoogleLoading(false)
     }

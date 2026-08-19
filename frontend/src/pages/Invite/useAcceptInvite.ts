@@ -5,6 +5,7 @@ import { invitationsService, type InvitationPreview } from "@/services/invitatio
 import { makeAcceptInviteSchema } from "@/lib/validations/auth"
 import { setPendingInviteToken, takePendingInviteToken } from "@/lib/pendingInvite"
 import { getErrorCode } from "@/lib/errorCode"
+import { authErrorMessage, isDuplicateEmail } from "@/lib/authError"
 import i18n, { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 
 export type FormState = {
@@ -141,11 +142,14 @@ export function useAcceptInvite() {
       // the stashed token rather than leaving it to misfire on some
       // unrelated later sign-in.
       takePendingInviteToken()
-      const supaErr = err as { message?: string }
+      // An invited person is being asked to create an account they were
+      // told to expect; getting an English GoTrue sentence back on a
+      // German invitation page is the worst possible first impression of a
+      // school that invited them. Translate, always.
       setServerError(
-        supaErr.message === "DUPLICATE_EMAIL"
+        isDuplicateEmail(err)
           ? i18n.t("invite.errors.accountExists")
-          : supaErr.message || i18n.t("auth.errors.registrationFailed"),
+          : authErrorMessage(err, "auth.errors.registrationFailed"),
       )
     } finally {
       setSubmitting(false)
@@ -159,8 +163,7 @@ export function useAcceptInvite() {
       await signInWithGoogle()
     } catch (err: unknown) {
       takePendingInviteToken()
-      const supaErr = err as { message?: string }
-      setServerError(supaErr.message || i18n.t("auth.errors.googleSignUpFailed"))
+      setServerError(authErrorMessage(err, "auth.errors.googleSignUpFailed"))
       setGoogleLoading(false)
     }
   }, [signInWithGoogle, token])

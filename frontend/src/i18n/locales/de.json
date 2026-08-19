@@ -603,7 +603,14 @@
     "toggleColorTheme": "Darstellung umschalten",
     "errors": {
       "registrationFailed": "Registrierung fehlgeschlagen. Bitte erneut versuchen.",
-      "googleSignUpFailed": "Registrierung mit Google fehlgeschlagen."
+      "googleSignUpFailed": "Registrierung mit Google fehlgeschlagen.",
+      "invalidCredentials": "E-Mail-Adresse oder Passwort ist falsch.",
+      "emailNotConfirmed": "Bestätigen Sie zuerst Ihre E-Mail-Adresse — der Link liegt in Ihrem Posteingang.",
+      "rateLimited": "Zu viele Versuche. Warten Sie eine Minute und versuchen Sie es erneut.",
+      "weakPassword": "Dieses Passwort ist zu schwach. Verwenden Sie mindestens 6 Zeichen.",
+      "samePassword": "Das ist Ihr aktuelles Passwort. Wählen Sie ein anderes.",
+      "linkExpired": "Dieser Link ist abgelaufen. Fordern Sie einen neuen an.",
+      "serverError": "Bei uns ist etwas schiefgelaufen. Versuchen Sie es gleich noch einmal."
     },
     "callback": {
       "completing": "Anmeldung wird abgeschlossen …",
@@ -1886,6 +1893,7 @@
       "saveGrade": "Note speichern",
       "cellGraded": "bewertet",
       "cellSubmitted": "eingereicht",
+      "cellPoints": "{{points}} Pkt.",
       "legend": {
         "completed": "Abgeschlossen (1 Punkt)",
         "quizPassed": "Test bestanden",
