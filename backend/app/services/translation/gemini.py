@@ -329,6 +329,33 @@ class GeminiTranslationProvider:
             },
         }
 
+    @staticmethod
+    def _unwrap_echoed_fence(text: str) -> str:
+        """Take the translation out of a reply that repeated the prompt.
+
+        Asked to translate a short line that opens with a quotation, the
+        model sometimes answers twice: the source verbatim, then the
+        fence markers it was given, then the actual translation. The
+        answer is in there and it is correct — production hit this on
+        «Злачное место» in the shepherd psalm, where the second half
+        read „Grüne Auen“, exactly right, and the first half was the
+        untouched Russian.
+
+        Structural validation rejects the whole thing, and rightly: a
+        reply containing the scaffolding is not a translation. But
+        throwing it away costs a call and gets the same answer, because
+        sampling is at temperature 0. So the scaffolding is removed and
+        the result validated on its merits — if what is left is still
+        wrong, every check that would have failed still fails.
+        """
+        if "===BEGIN" not in text:
+            return text
+        after_begin = text.rsplit("===BEGIN", 1)[-1]
+        # The token itself runs to the end of its line; the content
+        # starts on the next one.
+        _, _, body = after_begin.partition("\n")
+        return (body.split("===END", 1)[0] or after_begin).strip() or text
+
     def _parse_response(self, body: dict[str, Any]) -> TranslationResult:
         candidates = body.get("candidates") or []
         if not candidates:
@@ -342,7 +369,7 @@ class GeminiTranslationProvider:
         try:
             content = candidates[0].get("content") or {}
             parts = content.get("parts") or []
-            text = "".join(p.get("text", "") for p in parts).strip()
+            text = self._unwrap_echoed_fence("".join(p.get("text", "") for p in parts).strip())
             finish_reason = candidates[0].get("finishReason")
         except (AttributeError, KeyError, TypeError, IndexError) as exc:
             raise TranslationError(f"Gemini returned malformed candidate: {body!r}") from exc
