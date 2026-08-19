@@ -1,8 +1,8 @@
 {
   "name": "[Equip] An edit has been waiting on translation too long",
   "type": "log alert",
-  "query": "logs(\"service:equip-backend \\\"staged_edits\\\" \\\"blocked\\\"\").index(\"*\").rollup(\"count\").last(\"1h\") >= 3",
-  "message": "Edits to a live course are being held back and cannot resolve on their own.\n\nAn edit to a published course waits until every language has it — that is deliberate, so readers never see a sentence whose other languages describe a different one. But a translation that failed its structural check does not retry itself (temperature 0 returns the same verdict), so the edit stays invisible to students indefinitely and the teacher sees nothing happen.\n\nWhat to do:\n* `GET /api/v1/courses/{id}/translation-progress` — `blocked_edits` and which locales.\n* If the translation is actually fine and the checker misread it (short strings in two close languages are the usual case): `POST /api/v1/admin/translations/accept-reviewed` with the row ids.\n* If it is genuinely wrong: fix the source text, which re-opens the field.\n\n@arvavitcorp@gmail.com",
+  "query": "logs(\"service:equip-backend status:warn \\\"staged_edits_blocked\\\"\").index(\"*\").rollup(\"count\").last(\"1h\") >= 3",
+  "message": "Edits a teacher has made are held back because some language cannot be produced. They are invisible to students until every language has them, so a long hold is a correction nobody can see.\n\nPreviously this searched for an INFO line containing the word \"blocked\" — which never reaches the index (INFO is dropped) and which a perfectly healthy promotion also emits, as `blocked=0`. Wrong on both sides. It now watches a WARNING logged only when something is actually held.\n\nRunbook: GET /api/v1/admin/translations/queue-status, then the course's translation progress panel to see which field and language is stuck.",
   "tags": [
     "env:production",
     "project:equip",

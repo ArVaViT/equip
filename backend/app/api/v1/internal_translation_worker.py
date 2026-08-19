@@ -34,7 +34,7 @@ from sqlalchemy.orm import Session  # noqa: TC002 — used by FastAPI Depends at
 from app.api.dependencies import require_worker_secret
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.metrics import gauge, timing
+from app.core.metrics import emit, gauge, timing
 from app.services.course_service import get_course
 from app.services.daily_challenge.translate import translate_pending_questions
 from app.services.staged_edits import promote_ready_fields
@@ -57,6 +57,7 @@ from app.services.translation.staged_pipeline import translate_staged_edits
 
 if TYPE_CHECKING:
     from app.models.translation_job import TranslationJob
+    from app.services.translation.orchestrator import OrchestratorReport
 
 
 logger = logging.getLogger(__name__)
@@ -113,13 +114,45 @@ def _emit_queue_gauges(db: Session) -> None:
         gauge("equip.translation.queue_depth", float(counts.get("queued", 0) + counts.get("failed", 0)))
         gauge("equip.translation.queue_processing", float(processing))
         gauge("equip.translation.queue_failed_permanent", float(counts.get("failed_permanent", 0)))
-        if processing > 3:
+        if processing:
             # WARNING so it actually ships to Datadog (the in-process handler
             # is WARNING+; the INFO gauge lines above only reach stdout). The
             # "[Equip] Translation jobs stuck in processing" monitor watches
             # this message — its previous form queried a custom metric that
             # no pipeline ever produced, so it could never fire.
+            # Any job still claimed when a tick begins has outlived the
+            # invocation that claimed it: the reaper releases them after
+            # eight minutes, so a healthy queue shows zero here at tick
+            # start. The old threshold of "more than three" put the
+            # realistic case — one or two permanently wedged jobs —
+            # below the floor, where it was invisible.
             logger.warning("translation worker: %s jobs stuck in processing", processing)
+    except Exception:
+        return
+
+
+def _emit_field_outcomes(report: OrchestratorReport) -> None:
+    """How many fields this tick actually moved, by outcome.
+
+    Until now the only record of that lived in one INFO line — which the
+    Datadog index drops — and in the HTTP response body, which nobody
+    reads. Every metric the pipeline had described the *queue*, so a
+    worker that walked a thousand fields and wrote none of them looked
+    identical to a worker with nothing to do: queue empty, duration
+    healthy, status "done". Production span that way for an hour.
+
+    With this, "translated is flat while the queue is not" is a
+    condition a monitor can express.
+    """
+    try:
+        for outcome, count in (
+            ("translated", report.translated),
+            ("skipped", report.skipped),
+            ("failed", report.failed),
+            ("needs_review", report.needs_review),
+        ):
+            if count:
+                emit("equip.translation.fields_total", float(count), outcome=outcome)
     except Exception:
         return
 
@@ -284,6 +317,7 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
     # no cost for what is already done. A large course is now a course
     # that takes several ticks, which is the thing it always was; what
     # changed is that we no longer mistake that for failure.
+    _emit_field_outcomes(report)
     if report.incomplete:
         _emit_translation_duration(tick_start, outcome="paused")
         mark_job_paused(db, job, made_progress=report.made_progress)

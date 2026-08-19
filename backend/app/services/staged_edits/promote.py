@@ -91,6 +91,17 @@ def promote_ready_fields(db: Session, course: Course) -> PromotionReport:
             waiting,
             blocked,
         )
+    if blocked:
+        # A correction the teacher has already made, held back from every
+        # student because one language cannot be produced. Its own line,
+        # at WARNING, with a token nothing else emits: the monitor used
+        # to search INFO for the word "blocked", which never reaches the
+        # index and which a healthy promotion also writes as "blocked=0".
+        logger.warning(
+            "staged_edits_blocked course=%s fields=%d",
+            course.id,
+            blocked,
+        )
     return PromotionReport(promoted_fields=promoted, waiting_fields=waiting, blocked_fields=blocked)
 
 

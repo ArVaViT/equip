@@ -1,7 +1,7 @@
 {
   "name": "[Equip] Daily Challenge schedule ran dry (serving fallback)",
   "type": "log alert",
-  "query": "logs(\"service:equip-backend `\"auto-filled schedule`\"\").index(\"*\").rollup(\"count\").last(\"1d\") >= 1",
+  "query": "logs(\"service:equip-backend status:warn \\\"auto-filled schedule\\\"\").index(\"*\").rollup(\"count\").last(\"1d\") >= 1",
   "message": "The Daily Challenge editorial schedule ran out and the live path is auto-filling from the published pool (recycled questions). Seed fresh questions. @arvavitcorp@gmail.com",
   "tags": [],
   "priority": 4,

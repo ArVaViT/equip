@@ -1,8 +1,8 @@
 {
   "name": "[Equip] Gemini is thinking again (paid tokens nobody reads)",
   "type": "metric alert",
-  "query": "sum(last_4h):sum:equip.gemini.tokens_thinking_total{env:production}.as_count() > 10000",
-  "message": "The translation model is spending 'thinking' tokens. Translation does not need them, they are invisible in the reply, and they are billed as output.\n\nProduction ran on `gemini-flash-latest` for 81 days at ~840 thinking tokens per translated string — six times the output it actually produced — and nothing showed it, because nothing measured it. This monitor is that measurement.\n\nMeasured on 2026-08-17: `gemini-2.5-flash-lite` spends **zero** on this work. Setting `thinkingBudget: 0` does NOT switch it off on a thinking model (1227 → 1066); only choosing a different model does.\n\nWhat to check: `GEMINI_MODEL` in the backend's Vercel production environment.\n\n@arvavitcorp@gmail.com",
+  "query": "sum(last_4h):sum:equip.gemini.tokens_thinking_total{*}.as_count() > 10000",
+  "message": "BLOCKED — DO NOT IMPORT YET. `equip.gemini.tokens_thinking_total` is written to the logs by `app/services/translation/gemini.py` but has no log-based-metric rule in Datadog, so the metric does not exist and this monitor can never fire. Verified 2026-08-19 by querying the metric directly: no data, while `tokens_output_total` returns points. Create the rule first.\n\nThe translation model is spending 'thinking' tokens. Translation does not need them, they are invisible in the reply, and they are billed as output.\n\nProduction ran on `gemini-flash-latest` for 81 days at ~840 thinking tokens per translated string — six times the output it actually produced — and nothing showed it, because nothing measured it. This monitor is that measurement.\n\nMeasured on 2026-08-17: `gemini-2.5-flash-lite` spends **zero** on this work. Setting `thinkingBudget: 0` does NOT switch it off on a thinking model (1227 → 1066); only choosing a different model does.\n\nWhat to check: `GEMINI_MODEL` in the backend's Vercel production environment.\n\n@arvavitcorp@gmail.com",
   "tags": [
     "env:production",
     "project:equip",
