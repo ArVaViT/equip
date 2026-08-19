@@ -219,6 +219,7 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
     """
     from app.models.content_version import ContentVersion, ContentVersionStatus
     from app.models.daily_challenge import DailyChallengeOption, DailyChallengeQuestion
+    from app.services.translation.hash import compute_source_hash
     from app.services.translation.version import TRANSLATOR_VERSION
 
     wanted_locales = set(LOCALE_CODES)
@@ -237,6 +238,7 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
             ContentVersion.origin,
             ContentVersion.source_hash,
             ContentVersion.translator_version,
+            ContentVersion.text,
         )
         .filter(
             ContentVersion.entity_type.in_(("daily_challenge_question", "daily_challenge_option")),
@@ -244,6 +246,18 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
         )
         .all()
     )
+
+    # What each field's human text hashes to right now. A machine row
+    # whose ``source_hash`` disagrees is a translation of a sentence that
+    # has since been edited — servable, and no longer true. The course
+    # path learned to check this; the pool did not, so an edited question
+    # kept serving its old translation in three languages until somebody
+    # noticed. Thirty-eight of them did exactly that after the bilingual
+    # English sources were cleaned up on 2026-08-19.
+    current_hash: dict[tuple[str, str], str] = {}
+    for _entity_type, entity_id, field, locale, status, origin, _hash, _version, text in rows:
+        if origin == "human" and status == ContentVersionStatus.OK and text:
+            current_hash[(entity_id, field)] = compute_source_hash(text, locale=locale)
 
     servable: dict[tuple[str, str], set[str]] = {}
     # Locales the sweep cannot move: parked for a person to read, or out
@@ -253,10 +267,13 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
     # forget the other, which is how ``failed_permanent`` got missed.
     settled_without_us: dict[tuple[str, str], set[str]] = {}
     reopened: set[str] = set()
-    for _entity_type, entity_id, field, locale, status, origin, source_hash, translator_version in rows:
+    for _entity_type, entity_id, field, locale, status, origin, source_hash, translator_version, _text in rows:
         if status == ContentVersionStatus.OK:
             servable.setdefault((entity_id, field), set()).add(locale)
             if origin == "mt" and source_hash is None:
+                reopened.add(entity_id)
+            expected = current_hash.get((entity_id, field))
+            if origin == "mt" and expected is not None and source_hash != expected:
                 reopened.add(entity_id)
             if origin == "mt" and translator_version < TRANSLATOR_VERSION:
                 # Serving fine, made by rules we have since improved on.
