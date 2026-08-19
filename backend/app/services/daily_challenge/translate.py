@@ -47,6 +47,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
     from app.models.daily_challenge import DailyChallengeQuestion
+    from app.services.translation.budget import TranslationBudget
     from app.services.translation.protocol import TranslationProvider
 
 logger = logging.getLogger(__name__)
@@ -328,6 +329,7 @@ def translate_pending_questions(
     *,
     limit: int = 2,
     provider: TranslationProvider | None = None,
+    budget: TranslationBudget | None = None,
 ) -> SweepReport:
     """Translate up to ``limit`` questions that are missing a language.
 
@@ -344,7 +346,14 @@ def translate_pending_questions(
 
     total = OrchestratorReport()
     pending = questions_missing_a_language(db, limit=limit)
+    done = 0
     for question in pending:
+        # A caller that runs inside a request (the idle worker tick)
+        # passes a clock as well as a count: whichever runs out first
+        # ends the sweep, and everything already written stays written.
+        if budget is not None and not budget.can_afford_one_call():
+            break
+        done += 1
         report = translate_question(db, question, provider=provider)
         total = OrchestratorReport(
             translated=total.translated + report.translated,
@@ -352,7 +361,7 @@ def translate_pending_questions(
             failed=total.failed + report.failed,
             needs_review=total.needs_review + report.needs_review,
         )
-    return SweepReport(questions=len(pending), rows=total)
+    return SweepReport(questions=done, rows=total)
 
 
 __all__ = [

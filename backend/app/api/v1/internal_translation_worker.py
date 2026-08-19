@@ -36,6 +36,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.metrics import gauge, timing
 from app.services.course_service import get_course
+from app.services.daily_challenge.translate import translate_pending_questions
 from app.services.staged_edits import promote_ready_fields
 from app.services.translation.budget import worker_budget
 from app.services.translation.completeness import promote_if_complete
@@ -59,6 +60,11 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+# Questions the idle sweep repairs per tick. One question is about a
+# dozen provider calls, so this is roughly a minute of work — and it only
+# ever runs on a tick that had nothing else to do.
+_IDLE_POOL_SWEEP_LIMIT = 5
 
 router = APIRouter(prefix="/internal", tags=["internal"])
 
@@ -158,6 +164,41 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
         if sweep.found_work:
             logger.info("worker: idle queue, sweep queued %d course(s)", sweep.queued)
             return WorkerTickResponse(status="swept")
+
+        # Still nothing. The Daily Challenge pool has the same kind of
+        # backlog and no minute-by-minute worker of its own: its sweep
+        # rides along with the nightly generator, two questions a night,
+        # which is right for catching a question written before a
+        # language existed and hopeless for anything larger. Raising
+        # TRANSLATOR_VERSION left three thousand rows behind it — at two
+        # questions a night, four months.
+        #
+        # This tick is idle and paid for either way. Sweeping the pool
+        # here costs nothing extra and leaves the nightly budget alone,
+        # and the time budget keeps it inside one invocation.
+        pool_budget = worker_budget(
+            seconds=settings.TRANSLATION_WORKER_BUDGET_SECONDS,
+            gemini_timeout_seconds=settings.GEMINI_TIMEOUT_SECONDS,
+        )
+        try:
+            pool = translate_pending_questions(db, limit=_IDLE_POOL_SWEEP_LIMIT, budget=pool_budget)
+        except Exception as exc:
+            db.rollback()
+            logger.warning("worker: idle pool sweep failed: %s", exc)
+            return WorkerTickResponse(status="idle")
+        if pool.questions:
+            logger.info(
+                "worker: idle queue, swept %d question(s) from the pool (%d rows)",
+                pool.questions,
+                pool.rows.translated,
+            )
+            return WorkerTickResponse(
+                status="swept",
+                translated=pool.rows.translated,
+                skipped=pool.rows.skipped,
+                failed_fields=pool.rows.failed,
+                needs_review=pool.rows.needs_review,
+            )
         return WorkerTickResponse(status="idle")
 
     course_id = job.course_id
