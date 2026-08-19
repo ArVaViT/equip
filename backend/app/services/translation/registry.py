@@ -48,6 +48,7 @@ from app.services.translation.service import is_translation_enabled
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from datetime import datetime
 
     from sqlalchemy.orm import Session
 
@@ -405,33 +406,45 @@ def entity_field_specs(
     # Phase 5e/5f: source text columns are dropped on several entities
     # (cohort, chapter_block, assignment, course_event, announcement,
     # quiz, quiz_question, quiz_option). ``getattr`` returns None for
-    # those fields, so we fetch the source from cv as a fallback before
-    # falling back to "no source → skip". One bulk query covers every
-    # field on the entity at the course's declared source_locale (with
-    # any-locale fallback for entities authored in a non-default locale).
-    cv_source_texts: dict[str, str | None] = {}
+    # those fields, so the author's text has to come from cv.
+    #
+    # It is read here at ANY locale, not at the course's declared one,
+    # and that is the whole point. The reader-facing helper answers at
+    # the display locale and returns None otherwise — correct for a
+    # reader, catastrophic here. A teacher who pastes an English
+    # paragraph into a Russian course has that paragraph filed under
+    # ``en`` (``dual_write`` files by detected language, not by declared
+    # one), so asking at ``ru`` got None, the field was dropped, and it
+    # then existed for nobody: ``plan_course_tasks`` produced no task for
+    # it, and ``course_translation_completeness`` required no locale for
+    # it, so the publication gate — written precisely to stop a
+    # half-translated course reaching the catalogue — counted the hole as
+    # nothing at all. Measured: the same block authored in Russian
+    # yielded three tasks; authored in English, zero tasks and zero gaps.
+    #
+    # Human rows only, and this is not a preference either: an mt row
+    # answering here would make the pipeline translate its own output,
+    # and a course would drift a language further from its author with
+    # every pass.
+    cv_source_texts: dict[str, tuple[str, LocaleCode] | None] = {}
     field_names_needing_cv: list[str] = [fs.name for fs in reg.fields if getattr(entity, fs.attr, None) is None]
     if field_names_needing_cv:
-        from app.services.content_versions import fetch_cv_entity_texts_with_fallback
-
-        bulk = fetch_cv_entity_texts_with_fallback(
+        cv_source_texts = _authored_texts(
             db,
             entity_type=entity_type,
-            entity_ids=[str(entity.id)],  # type: ignore[attr-defined]
+            entity_id=str(entity.id),  # type: ignore[attr-defined]
             fields=field_names_needing_cv,
-            display_locale=declared,
-            source_locale=declared,
+            preferred_locale=declared,
         )
-        cv_source_texts = {
-            field: bulk.get((str(entity.id), field))  # type: ignore[attr-defined]
-            for field in field_names_needing_cv
-        }
 
     fields: list[TranslationFieldSpec] = []
     for fs in reg.fields:
         text = getattr(entity, fs.attr, None)
+        authored_locale: LocaleCode | None = None
         if text is None:
-            text = cv_source_texts.get(fs.name)
+            found = cv_source_texts.get(fs.name)
+            if found is not None:
+                text, authored_locale = found
         if text is None or not str(text).strip():
             continue
         # Per-field language detection: the entity's actual content
@@ -441,8 +454,14 @@ def entity_field_specs(
         # on sub-threshold or no-signal input; in that case we fall
         # back to the course-level source so the existing behaviour
         # is preserved for ambiguous fields.
+        # Three answers, in order of how much they know. The locale the
+        # author's row is actually filed under is a fact; the detector is
+        # a measurement of the text; the course's declared source is a
+        # default. Preferring the filed locale also keeps this function
+        # agreeing with the row it just read, which is what stops a field
+        # from being planned as one language and stored as another.
         detected = detect_locale(str(text))
-        field_source: LocaleCode = detected or declared
+        field_source: LocaleCode = authored_locale or detected or declared
         fields.append(
             TranslationFieldSpec(
                 field=fs.name,
@@ -452,6 +471,60 @@ def entity_field_specs(
             )
         )
     return fields
+
+
+def _authored_texts(
+    db: Session,
+    *,
+    entity_type: str,
+    entity_id: str,
+    fields: list[str],
+    preferred_locale: LocaleCode,
+) -> dict[str, tuple[str, LocaleCode] | None]:
+    """The human-written text for each field, and the language it is in.
+
+    One query, and deliberately not the reader-facing resolver: that one
+    answers "what may this person be shown", which is a different
+    question from "what did the author write". Here the answer must
+    exist whatever language it is in, because a field nobody can read in
+    their own language is exactly the field that needs translating.
+
+    Where a field has human rows in more than one locale — a hand
+    translation alongside the original — the course's declared locale
+    wins, then the earliest written. Both tie-breaks are arbitrary in
+    isolation and matter only in that they are stable: the same field
+    must not be planned from Russian on one tick and from English on the
+    next.
+    """
+    from app.models.content_version import ContentVersion, ContentVersionStatus
+
+    rows = (
+        db.query(
+            ContentVersion.field,
+            ContentVersion.locale,
+            ContentVersion.text,
+            ContentVersion.created_at,
+        )
+        .filter(
+            ContentVersion.entity_type == entity_type,
+            ContentVersion.entity_id == entity_id,
+            ContentVersion.field.in_(fields),
+            ContentVersion.origin == "human",
+            ContentVersion.status == ContentVersionStatus.OK,
+            ContentVersion.superseded_by.is_(None),
+        )
+        .all()
+    )
+    best: dict[str, tuple[str, LocaleCode]] = {}
+    ranked: dict[str, tuple[int, datetime]] = {}
+    for field, locale, text, created_at in rows:
+        if not text or not str(text).strip():
+            continue
+        rank = (0 if locale == preferred_locale else 1, created_at)
+        if field not in ranked or rank < ranked[field]:
+            ranked[field] = rank
+            best[field] = (text, normalize_locale(locale))
+    return {field: best.get(field) for field in fields}
 
 
 def reconcile_entity(
