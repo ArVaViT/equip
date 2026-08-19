@@ -102,6 +102,54 @@ def _mt_rows(db: Session, course: Course) -> list[ContentVersion]:
     )
 
 
+def _daily_challenge_question(db: Session):
+    """A question complete in every language, made by the current pipeline."""
+    from app.models.content_version import ContentVersion
+    from app.models.daily_challenge import DailyChallengeOption, DailyChallengeQuestion
+    from app.services.content_versions.write import record_human_version, record_mt_version
+    from app.services.translation.hash import compute_source_hash
+
+    if db.get(User, TEACHER_ID) is None:
+        db.add(User(id=TEACHER_ID, email="teacher@example.com", full_name="T", role="teacher"))
+        db.commit()
+    question = DailyChallengeQuestion(
+        id=uuid.uuid4(),
+        question_type="multiple_choice",
+        status="published",
+        bible_book="Acts",
+        bible_chapter=2,
+        category="passage_exegesis",
+        source_locale="ru",
+        created_by=TEACHER_ID,
+    )
+    db.add(question)
+    db.flush()
+    option = DailyChallengeOption(id=uuid.uuid4(), question_id=question.id, order_index=0, is_correct=True)
+    db.add(option)
+    db.commit()
+
+    for entity_type, entity_id, field, text in (
+        ("daily_challenge_question", str(question.id), "question_text", "Что произошло в день Пятидесятницы?"),
+        ("daily_challenge_option", str(option.id), "option_text", "Сошёл Святой Дух"),
+    ):
+        record_human_version(db, entity_type=entity_type, entity_id=entity_id, field=field, locale="ru", text=text)
+        source_hash = compute_source_hash(text, locale="ru")
+        for locale in ("en", "de", "uk"):
+            record_mt_version(
+                db,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                field=field,
+                locale=locale,
+                text=f"{text} [{locale}]",
+                source_locale="ru",
+                source_hash=source_hash,
+            )
+    db.commit()
+    assert db.query(ContentVersion).filter(ContentVersion.entity_id == str(question.id)).count()
+    return question
+
+
 class TestARowRemembersWhoMadeIt:
     def test_a_fresh_translation_carries_the_current_generation(
         self, db: Session, course_with_one_translated_title: Course
@@ -182,3 +230,43 @@ class TestAnOlderGenerationCountsAsAGap:
             .one()
         )
         assert refreshed.translator_version == TRANSLATOR_VERSION
+
+
+class TestTheQuestionPoolIsSweptToo:
+    """Courses re-translate themselves; the Daily Challenge has to as well.
+
+    The reconciler walks courses, and the question pool is not a course.
+    Without a rule of its own, three thousand question and option rows
+    would keep the quality of the day they were written while every
+    course in the catalogue moved on — and nobody would see it, because
+    those rows serve perfectly well. They are just older than the rules.
+    """
+
+    def test_a_question_translated_by_an_older_pipeline_is_picked_up(self, db: Session, monkeypatch) -> None:
+        from app.models.content_version import ContentVersion
+        from app.services.daily_challenge.translate import questions_missing_a_language
+
+        question = _daily_challenge_question(db)
+
+        # Complete in every language, by the current pipeline: settled.
+        assert questions_missing_a_language(db, limit=10) == []
+
+        db.query(ContentVersion).filter(
+            ContentVersion.entity_id == str(question.id),
+            ContentVersion.origin == "mt",
+        ).update({"translator_version": TRANSLATOR_VERSION - 1})
+        db.commit()
+
+        picked = questions_missing_a_language(db, limit=10)
+        assert [q.id for q in picked] == [question.id]
+
+    def test_a_human_translation_is_not_dragged_back_in(self, db: Session) -> None:
+        from app.models.content_version import ContentVersion
+        from app.services.daily_challenge.translate import questions_missing_a_language
+
+        question = _daily_challenge_question(db)
+        db.query(ContentVersion).filter(
+            ContentVersion.entity_id == str(question.id),
+        ).update({"origin": "human", "translator_version": 0})
+        db.commit()
+        assert questions_missing_a_language(db, limit=10) == []
