@@ -431,9 +431,20 @@ def execute_plan(
     # So the batch is built from distinct (source text, target
     # language), and the answer is recorded for every task that shares
     # it.
-    by_text: dict[tuple[str, str], list[TranslationTask]] = {}
+    #
+    # The key carries the content kind and the context as well as the
+    # text, because those change the question being asked. A sentence
+    # sent as ``html`` is told to preserve markup; the same sentence sent
+    # as ``quiz_option`` is told not to grow into a paragraph. Grouping
+    # on the text alone let the first task's kind answer for both, and
+    # the second row was written having never been checked under its own
+    # rules — validation runs once, on the representative.
+    by_text: dict[tuple[str, str, str, str | None], list[TranslationTask]] = {}
     for task in pending:
-        by_text.setdefault((task.source_hash, task.target_locale), []).append(task)
+        by_text.setdefault(
+            (task.source_hash, task.target_locale, task.content_kind, task.context),
+            [],
+        ).append(task)
     representatives = [group[0] for group in by_text.values()]
 
     # Phases 2 and 3, one batch at a time. The batch boundary is where
@@ -452,7 +463,14 @@ def execute_plan(
         with ThreadPoolExecutor(max_workers=width) as pool:
             answers = list(pool.map(lambda task: _ask(task, provider), batch))
         for answer in answers:
-            siblings = by_text[(answer.task.source_hash, answer.task.target_locale)]
+            siblings = by_text[
+                (
+                    answer.task.source_hash,
+                    answer.task.target_locale,
+                    answer.task.content_kind,
+                    answer.task.context,
+                )
+            ]
             for task in siblings:
                 # Same answer, recorded against each row that asked for
                 # it — which is also how two quizzes end up agreeing on

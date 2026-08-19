@@ -79,11 +79,25 @@ def enqueue_course_translation(
     Commits before returning so the row is visible to a worker reading
     from a different session immediately.
     """
+    # Only a job that has not started yet stands in for this one.
+    #
+    # A job already ``processing`` used to count too, and that quietly
+    # dropped edits. The worker reads held edits once, at the start of
+    # its tick, and marks the job done at the end; an edit saved in
+    # between was staged, found a "pending" job, enqueued nothing, and
+    # was then left with no job at all — invisible to the reconciler as
+    # well, which reads content_versions while the edit sits in staging.
+    # The window is a whole tick, and a large course is processing for
+    # most of every tick.
+    #
+    # Enqueuing anyway is close to free: the worker's own decide phase
+    # skips everything already done, so a redundant job costs one plan
+    # and no provider calls.
     existing = (
         db.execute(
             select(TranslationJob)
             .where(TranslationJob.course_id == course_id)
-            .where(TranslationJob.status.in_([TranslationJobStatus.QUEUED, TranslationJobStatus.PROCESSING]))
+            .where(TranslationJob.status == TranslationJobStatus.QUEUED)
             .order_by(TranslationJob.enqueued_at)
             .limit(1)
         )
@@ -92,10 +106,9 @@ def enqueue_course_translation(
     )
     if existing is not None:
         logger.info(
-            "translation_queue: course %s already has pending job %s (status=%s); skipping enqueue",
+            "translation_queue: course %s already has a queued job %s; skipping enqueue",
             course_id,
             existing.id,
-            existing.status,
         )
         return existing
 
