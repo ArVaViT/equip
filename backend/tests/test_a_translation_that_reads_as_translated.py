@@ -138,7 +138,7 @@ class TestPromptRules:
         # Style guidance was added to a prompt that already had promises
         # to keep. Adding rule 8 must not have pushed rule 1 out.
         prompt = build_system_prompt(source_locale="ru", target_locale="de")
-        assert "VERSE_" in prompt
+        assert "EQV" in prompt
 
 
 class TestUkrainianCalque:
