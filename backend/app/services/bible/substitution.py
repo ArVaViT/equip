@@ -182,14 +182,21 @@ def _marker_token() -> str:
     * Valid in Postgres TEXT (unlike NUL bytes, which the type
       explicitly rejects — that was the v1 bug that left raw markers
       visible in students' EN view of the Acts course).
-    * Distinctive prefix ``VERSE_`` keeps it greppable in logs and
-      makes the token "identifier-shaped" so the prompt's
-      "preserve placeholders verbatim" rule applies.
+    * The prefix is ``EQV`` and not ``VERSE_``, which is the whole
+      point of this note. ``VERSE`` is an English word, and a
+      translator asked for Ukrainian translated it: production has a
+      row reading ``"ВЕРС_0c0214d57ac3a0bb"`` where Scripture belongs.
+      The marker then matches nothing on the way back, the verse is
+      dropped, and the reference is left standing over an empty space.
+      ``EQV`` is a word in none of the four languages, so there is
+      nothing to translate — and it is still greppable and still
+      identifier-shaped, so the prompt's "preserve placeholders
+      verbatim" rule applies.
     * The random hex suffix lets multiple substitutions in one
       document round-trip independently and means an attacker can't
       pre-craft a marker to confuse ``post_substitute``.
     """
-    return f"VERSE_{secrets.token_hex(8)}"
+    return f"EQV{secrets.token_hex(8)}"
 
 
 def pre_substitute(

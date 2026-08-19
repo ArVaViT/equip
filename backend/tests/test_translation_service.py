@@ -71,7 +71,11 @@ def test_system_prompt_never_asks_the_model_to_recite_scripture():
     assert "Synodal" not in prompt_ru
     for prompt in (prompt_en, prompt_ru):
         assert "Never write scripture in its place" in prompt
-        assert "keep the token exactly where it is" in prompt
+        # The instruction the model must not be able to misread: the
+        # token is copied, not translated. Its wording changed when the
+        # prefix moved off the English word VERSE, which a Ukrainian
+        # pass duly translated it into Cyrillic letters.
+        assert "copy the token through" in prompt
 
 
 def test_a_quotation_the_layer_could_not_match_is_translated():

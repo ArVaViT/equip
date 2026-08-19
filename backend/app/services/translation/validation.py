@@ -35,7 +35,7 @@ research on this is consistent that quality in the general case is not
 measurable without a reader of the language. What it does is catch the
 failures that are structural, and those are the ones that silently
 corrupt a lesson — a lost verse marker leaves a student reading
-``VERSE_a3f9c2`` where scripture should be.
+``EQVa3f9c2`` where scripture should be.
 
 The output is advisory to the caller: a list of issues, each with a
 code and a sentence. The orchestrator decides what to do with them —
@@ -55,11 +55,13 @@ if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
     from app.services.translation.protocol import ContentKind
 
-# ``VERSE_<hex>`` sentinels from ``app.services.bible.substitution``.
+# Sentinels from ``app.services.bible.substitution``. Both spellings are
+# matched: rows written before the prefix changed still carry ``VERSE_``,
+# and they must keep validating the same way.
 # These stand in for canonical scripture during the model call and are
 # restored afterwards; one that does not come back means a student
 # reads the raw token where the verse belongs.
-_MARKER_RE: Final[re.Pattern[str]] = re.compile(r"VERSE_[0-9a-f]+")
+_MARKER_RE: Final[re.Pattern[str]] = re.compile(r"(?:EQV|VERSE_)[0-9a-f]+")
 
 # Tag names only — attributes get rewritten by translation (an
 # ``alt=""`` legitimately changes language), the structure must not.
