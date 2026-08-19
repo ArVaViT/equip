@@ -88,7 +88,12 @@ def plan_course_tasks(db: Session, course: Course) -> list[TranslationTask]:
         fields = entity_field_specs(db, entity_type, entity, course_source)
         if not fields:
             continue
-        context = reg.build_context(entity, course) if reg.build_context is not None else None
+        if reg.build_context_with_db is not None:
+            context = reg.build_context_with_db(db, entity, course)
+        elif reg.build_context is not None:
+            context = reg.build_context(entity, course)
+        else:
+            context = None
         tasks.extend(
             build_tasks(
                 entity_type=entity_type,
