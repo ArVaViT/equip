@@ -40,6 +40,13 @@ EDITOR_SURFACES = {
     # only the last resort. (Before this it was pinned to English at the
     # call site, which is neither.)
     "app/api/v1/quizzes/grading.py",
+    # Not a surface at all: this reads a quiz question so the translator
+    # can be told what an answer option is answering. An option is a
+    # fragment, and a fragment has to agree with the sentence that
+    # introduces it — translated alone, the model picks the dictionary
+    # form and the option stops reading with its stem. Nobody is served
+    # this text; it goes into a prompt and is thrown away.
+    "app/services/translation/registry.py",
 }
 
 

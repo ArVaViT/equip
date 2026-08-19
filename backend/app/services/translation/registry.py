@@ -99,6 +99,10 @@ class EntityRegistration:
     # Entity arg is ``Any`` because the lambda is paired with the entity_type
     # at registration time; mypy can't statically prove the type pairing.
     build_context: Callable[[Any, Course], str | None] | None = None
+    #: Context that needs a query of its own — an answer option has to
+    #: be told which question it answers, and the question's text lives
+    #: in ``content_versions`` rather than on the row.
+    build_context_with_db: Callable[[Session, Any, Course | None], str | None] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -219,6 +223,64 @@ def _resolve_course_via_option(db: Session, entity: Any) -> Course | None:
     return _resolve_course_via_question(db, question)
 
 
+def _question_text_for_option(db: Session, option: Any, *, entity_type: str) -> str | None:
+    """The question an answer option belongs to, in the source language."""
+    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+
+    question_id = getattr(option, "question_id", None)
+    if not question_id:
+        return None
+    field = "question_text"
+    texts = fetch_cv_entity_texts_with_fallback(
+        db,
+        entity_type=entity_type,
+        entity_ids=[str(question_id)],
+        fields=[field],
+        display_locale="ru",
+        source_locale="ru",
+        fallback="source_then_any",
+    )
+    return texts.get((str(question_id), field))
+
+
+def _option_context(db: Session, option: Any, course: Course | None) -> str | None:
+    """Tell the translator what this option is an answer to.
+
+    An answer option is a fragment, and a fragment has to agree with the
+    sentence that introduces it. Translated alone — which is how it was
+    translated, with the context line "Answer option for a Bible-study
+    quiz question" — the model has no way to know whether the stem ends
+    in a colon and governs a case, so it picks the dictionary form.
+    An editor counted the damage across one course: eight German options
+    that do not read with their stem, nine English, four Ukrainian.
+    Russian keeps the case in all four options every time, because the
+    author wrote them together.
+
+    So the question comes along. The model is told not to translate it —
+    it is there to be agreed with.
+    """
+    question = _question_text_for_option(db, option, entity_type="quiz_question")
+    if not question:
+        return "Answer option for a Bible-study quiz question."
+    return (
+        "This is one answer option to the question below. Do not translate "
+        "the question; make the option read grammatically as a continuation "
+        "of it — the case, preposition and sentence shape the question "
+        f"requires.\nQuestion: {question}"
+    )
+
+
+def _daily_challenge_option_context(db: Session, option: Any, _course: Course | None) -> str | None:
+    question = _question_text_for_option(db, option, entity_type="daily_challenge_question")
+    if not question:
+        return "Answer option for a daily Bible question."
+    return (
+        "This is one answer option to the question below. Do not translate "
+        "the question; make the option read grammatically as a continuation "
+        f"of it.\nQuestion: {question}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Registry — list every translatable entity once.
 # ---------------------------------------------------------------------------
@@ -265,7 +327,7 @@ REGISTRY: dict[EntityType, EntityRegistration] = {
         entity_type="quiz_option",
         fields=(FieldSpec("option_text", "quiz_option"),),
         resolve_course=_resolve_course_via_option,
-        build_context=lambda _o, _c: "Answer option for a Bible-study quiz question.",
+        build_context_with_db=_option_context,
     ),
     "assignment": EntityRegistration(
         entity_type="assignment",
@@ -347,7 +409,7 @@ REGISTRY: dict[EntityType, EntityRegistration] = {
         entity_type="daily_challenge_option",
         fields=(FieldSpec("option_text", "quiz_option"),),
         resolve_course=lambda _db, _o: None,  # platform-wide; no course
-        build_context=lambda _o, _c: "Answer option for an Equip Daily Challenge question.",
+        build_context_with_db=_daily_challenge_option_context,
     ),
 }
 
@@ -572,7 +634,9 @@ def reconcile_entity(
     populate_spine_texts(db, [course])
 
     context: str | None = None
-    if reg.build_context is not None:
+    if reg.build_context_with_db is not None:
+        context = reg.build_context_with_db(db, entity, course)
+    elif reg.build_context is not None:
         context = reg.build_context(entity, course)
 
     return translate_entity_fields(
