@@ -56,6 +56,7 @@ function Wrapper({ children }: { children: ReactNode }) {
           resetPassword: vi.fn(),
           logout: vi.fn(),
           refreshUser: vi.fn().mockResolvedValue(undefined),
+          applyUser: vi.fn(),
         }}
       >
         {children}

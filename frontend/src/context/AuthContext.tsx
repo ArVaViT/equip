@@ -244,6 +244,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     enrichProfile(session.user.id, session.user.email ?? "")
   }, [enrichProfile])
 
+  // See ``AuthContextValue.applyUser``. Same two guards ``enrichProfile``
+  // applies to its own result: don't write after unmount, and don't write a
+  // profile that belongs to a session we have already left.
+  const applyUser = useCallback((next: User) => {
+    if (!mounted.current) return
+    if (activeUserId.current !== null && activeUserId.current !== next.id) return
+    setUser(next)
+  }, [])
+
   const logout = useCallback(async () => {
     try { await authService.logout() } catch { /* ignore */ }
     setUser(null)
@@ -251,8 +260,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, loading, login, register, signInWithGoogle, resetPassword, logout, refreshUser }),
-    [user, loading, login, register, signInWithGoogle, resetPassword, logout, refreshUser],
+    () => ({ user, loading, login, register, signInWithGoogle, resetPassword, logout, refreshUser, applyUser }),
+    [user, loading, login, register, signInWithGoogle, resetPassword, logout, refreshUser, applyUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

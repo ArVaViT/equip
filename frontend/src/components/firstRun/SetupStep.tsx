@@ -19,6 +19,7 @@ import { toProxyImage } from "@/lib/images"
 import { toast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
 import { initialsOf } from "@/lib/names"
+import { initialSetupLocale } from "./setupLocale"
 
 /**
  * Selected vs unselected styling for the theme / locale toggle
@@ -111,10 +112,10 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
   // user.preferred_locale ?? ...`` would silently rebind to the
   // refreshed value, defeating the snapshot semantics ``handleSkip``
   // relies on.
-  const initialLocaleSnapshot: SupportedLocale =
-    (user?.preferred_locale as SupportedLocale | undefined) ??
-    (i18n.resolvedLanguage as SupportedLocale | undefined) ??
-    "en"
+  const initialLocaleSnapshot: SupportedLocale = initialSetupLocale(
+    user,
+    i18n.resolvedLanguage ?? i18n.language,
+  )
   // ``useRef(initialLocaleSnapshot)`` works because ``useRef``'s
   // initial value is captured on first call only; subsequent renders
   // ignore the argument. So even if ``user.preferred_locale``
@@ -174,7 +175,13 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
     // locale that another effect had already PATCHed away). The fix
     // is to always send the user's CURRENT chosen values on submit;
     // the backend is idempotent and the extra PATCH costs nothing.
-    const initialServerLocale = user.preferred_locale
+    //
+    // The rollback target is the mount-time snapshot, NOT
+    // ``user.preferred_locale``: for a profile whose language nobody chose
+    // (``locale_source === "default"``) the column holds the fallback, so
+    // rolling back to it would hand a German Russian on the way out of a
+    // *failed* save — the same defect the snapshot above exists to close.
+    const rollbackLocale = initialLocaleRef.current
     let nameFailed = false
     let localeFailed = false
     try {
@@ -189,11 +196,10 @@ export function SetupStep({ firstName, onComplete, onSkip }: Props) {
       await preferencesService.setPreferredLocale(locale)
     } catch {
       localeFailed = true
-      // Roll the live i18n bundle back to whatever the server
-      // actually has so the user doesn't see a language they
-      // didn't manage to save. ``initialServerLocale`` is the
-      // pre-submit truth.
-      void i18n.changeLanguage(initialServerLocale)
+      // Roll the live i18n bundle back to the language the user was
+      // being served before they touched this screen, so they don't
+      // sit in a language they didn't manage to save.
+      void i18n.changeLanguage(rollbackLocale)
     }
     try {
       await refreshUser()
