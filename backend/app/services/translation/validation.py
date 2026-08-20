@@ -158,6 +158,22 @@ class ValidationIssue:
     #: edition from a locale. A check that is sometimes wrong may name
     #: what it saw; it may not withhold the lesson over it.
     blocking: bool = True
+    #: Advisory issues are named and not acted on. The distinction is
+    #: not severity — it is whether a second attempt could carry
+    #: information the first did not have.
+    #:
+    #: ``glossary_term_missing`` is the case that needed it. The
+    #: register was already in the first prompt; the model read it and
+    #: chose another word. Sending the same instruction back under
+    #: "your previous attempt had these problems" adds no fact, only
+    #: pressure — and where the model was right to decline (a grace
+    #: period, a Minister of Finance) the pressure is pressure toward
+    #: the wrong word, which ``_rank`` then prefers because it counts
+    #: the complaint as a defect the retry fixed. So the issue is
+    #: reported, logged and counted, and it neither spends a retry nor
+    #: stands in front of the editorial review — the one reader in this
+    #: pipeline that can tell the two cases apart.
+    advisory: bool = False
 
 
 def _markers(text: str) -> list[str]:
@@ -773,11 +789,19 @@ def _check_glossary(source: str, translated: str, source_locale: str, target_loc
     Ukrainian readers as a Pentecostal, in a row marked ok, for as long
     as it took a person to read it.
 
-    Not blocking. A translator may legitimately reach for a synonym, and
-    refusing to serve the page over a word choice would trade a small
-    wrong for a blank one. But it does earn a correcting pass, which is
-    where most of these get fixed: the model is shown the term it
-    dropped and asked again.
+    Not blocking, and not acted on. A translator may legitimately reach
+    for a synonym, and refusing to serve the page over a word choice
+    would trade a small wrong for a blank one.
+
+    It used to earn a correcting pass. It no longer does, because the
+    pass could only ever push one way. This check cannot tell a dropped
+    term from a declined one — `grace` is also a period a lender allows,
+    `minister` is also in the cabinet — and the model had the register
+    in front of it when it chose. Asking again with "you did not use
+    this word" adds no information to a decision that was already
+    informed; it adds pressure, and on the strings where declining was
+    right the pressure produced *Gnade* for a grace period. So this
+    names what it saw and stops there: see ``ValidationIssue.advisory``.
     """
     from app.services.translation.glossary import missing_terms
 
@@ -801,6 +825,7 @@ def _check_glossary(source: str, translated: str, source_locale: str, target_loc
             f"what you wrote."
         ),
         blocking=False,
+        advisory=True,
     )
 
 

@@ -55,9 +55,9 @@ def task() -> TranslationTask:
         field="content",
         source_locale="ru",
         target_locale="de",
-        # No glossary term in the source: the register check is cheaper
-        # than a review and fires first, which is correct and would make
-        # this test measure the wrong thing.
+        # No glossary term in the source, so these tests measure the
+        # reviewer and nothing else. The register no longer stands in
+        # front of it either — see TestANoteTheModelHasAlreadyHeard.
         text="Он пришёл рано утром",
         content_kind="plain",
         source_hash="h",
@@ -174,3 +174,55 @@ class TestStructureIsSettledFirst:
         )
         _ask(html_task, provider)
         assert provider.reviewed == [], "structural failure short-circuits the review"
+
+
+class TestANoteTheModelHasAlreadyHeard:
+    """The register names a word; it does not argue for one.
+
+    `glossary_term_missing` used to go back to the model wrapped in
+    "your previous attempt at this exact text had these problems".
+    Nothing in that second ask was new — the pair was in the first
+    prompt and the model read it and chose otherwise — so the only thing
+    the retry added was pressure, and the keep-the-better-answer rule
+    then preferred whichever answer gave in. On a Bible course that is
+    usually right. On "a 30-day grace period" it buys *Gnade*.
+
+    Worse, the note stood in front of the editorial reader below: a row
+    was skipped for review because the register had an opinion about a
+    word, and the reader is the only part of this pipeline that could
+    have said whether the opinion applied.
+    """
+
+    @pytest.fixture
+    def task_with_a_term(self) -> TranslationTask:
+        return TranslationTask(
+            entity_type="chapter_block",
+            entity_id="b2",
+            field="content",
+            source_locale="ru",
+            target_locale="de",
+            text="Он пришёл рано утром на собрание",
+            content_kind="plain",
+            source_hash="h2",
+        )
+
+    def test_a_register_note_does_not_spend_a_second_call(self, task_with_a_term: TranslationTask) -> None:
+        provider = _Provider(verdicts=[ReviewVerdict()], answers=["Er kam früh am Morgen zur Sitzung"])
+        answer = _ask(task_with_a_term, provider)
+        assert answer.text == "Er kam früh am Morgen zur Sitzung"
+        assert len(provider.requests) == 1, "the register was already in the first prompt"
+
+    def test_a_register_note_does_not_keep_the_row_from_the_reader(self, task_with_a_term: TranslationTask) -> None:
+        provider = _Provider(verdicts=[ReviewVerdict()], answers=["Er kam früh am Morgen zur Sitzung"])
+        _ask(task_with_a_term, provider)
+        assert provider.reviewed == ["Er kam früh am Morgen zur Sitzung"], (
+            "an advisory note must not be the reason a row skips review"
+        )
+
+    def test_the_register_still_says_what_it_saw(self, task_with_a_term: TranslationTask) -> None:
+        # Advisory is not silent. The row is served, the objection is
+        # logged under its stable code, and the rate stays a number.
+        provider = _Provider(verdicts=[ReviewVerdict()], answers=["Er kam früh am Morgen zur Sitzung"])
+        answer = _ask(task_with_a_term, provider)
+        assert answer.failed is False
+        assert answer.issues_summary is None, "an advisory note does not park a row"
