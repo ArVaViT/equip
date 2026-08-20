@@ -794,17 +794,36 @@ def execute_plan(
     # language), and the answer is recorded for every task that shares
     # it.
     #
-    # The key carries the content kind and the context as well as the
-    # text, because those change the question being asked. A sentence
-    # sent as ``html`` is told to preserve markup; the same sentence sent
-    # as ``quiz_option`` is told not to grow into a paragraph. Grouping
-    # on the text alone let the first task's kind answer for both, and
-    # the second row was written having never been checked under its own
+    # The key carries the content kind as well as the text, because the
+    # kind changes the question being asked. A sentence sent as ``html``
+    # is told to preserve markup; the same sentence sent as
+    # ``quiz_option`` is told not to grow into a paragraph. Grouping on
+    # the text alone let the first task's kind answer for both, and the
+    # second row was written having never been checked under its own
     # rules — validation runs once, on the representative.
-    by_text: dict[tuple[str, str, str, str | None], list[TranslationTask]] = {}
+    #
+    # The context is deliberately NOT in the key, and that is a fix, not
+    # an omission. It was in the key, and it is what made «Проверьте
+    # себя» four different German headings: the heading is its own field,
+    # its context is the paragraph above it, and that paragraph differs
+    # in every lesson — so 23 identical strings landed in 23 groups and
+    # were asked 23 times. Nothing downstream noticed, because each
+    # answer was individually fine.
+    #
+    # The recorded behaviour was never context-sensitive either:
+    # ``_load_twins`` answers by ``(source_hash, target_locale)`` alone,
+    # so the same heading translated last week is reused this week no
+    # matter what stands above it. Keeping context in the in-flight key
+    # made one pass stricter than the pipeline it feeds, which is how a
+    # rule meant to hold the catalogue together produced the divergence
+    # instead. Context still reaches the model — the representative
+    # carries its own — it just no longer decides who counts as the same
+    # string. Validation does not read the context, so a sibling is
+    # checked under the rules that apply to it.
+    by_text: dict[tuple[str, str, str], list[TranslationTask]] = {}
     for task in pending:
         by_text.setdefault(
-            (task.source_hash, task.target_locale, task.content_kind, task.context),
+            (task.source_hash, task.target_locale, task.content_kind),
             [],
         ).append(task)
     representatives = [group[0] for group in by_text.values()]
@@ -853,7 +872,6 @@ def execute_plan(
                     answer.task.source_hash,
                     answer.task.target_locale,
                     answer.task.content_kind,
-                    answer.task.context,
                 )
             ]
             for task in siblings:
