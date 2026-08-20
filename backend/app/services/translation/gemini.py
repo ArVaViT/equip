@@ -21,7 +21,11 @@ import httpx
 if TYPE_CHECKING:
     from types import TracebackType
 
+    from app.schemas.locale import LocaleCode
+    from app.services.translation.protocol import ContentKind
+
 from app.core.metrics import emit, increment
+from app.schemas.locale import LOCALE_DISPLAY_NAMES
 from app.services.bible.substitution import post_substitute, pre_substitute
 from app.services.translation.prompt import build_system_prompt, build_user_prompt
 from app.services.translation.protocol import (
@@ -30,6 +34,7 @@ from app.services.translation.protocol import (
     TranslationRequest,
     TranslationResult,
 )
+from app.services.translation.reviewer import ReviewVerdict, build_review_prompt, parse_review
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +88,7 @@ class GeminiTranslationProvider:
         max_output_tokens: int,
         max_retries: int = 2,
         min_interval_seconds: float = 0.0,
+        review_model: str | None = None,
         client: httpx.Client | None = None,
     ) -> None:
         if not api_key:
@@ -91,6 +97,11 @@ class GeminiTranslationProvider:
             raise ValueError("GeminiTranslationProvider requires a non-empty api_key")
         self._api_key = api_key
         self._model = model
+        # The model that reads the finished translation. Falls back to the
+        # translating model, which is better than no review at all — but
+        # measurably worse at it, which is why production names a
+        # different one.
+        self._review_model = review_model or model
         self._max_output_tokens = max_output_tokens
         self._max_retries = max_retries
         # Min wall-time between two successive ``translate()`` calls on this
@@ -304,6 +315,69 @@ class GeminiTranslationProvider:
                 time.sleep(min(0.5, 0.1 * (2**attempt)))
 
         raise TranslationError(f"Gemini call failed after retries: {last_error!r}")
+
+    def review(
+        self,
+        *,
+        source: str,
+        translation: str,
+        source_locale: LocaleCode,
+        target_locale: LocaleCode,
+        content_kind: ContentKind,
+        context: str | None = None,
+    ) -> ReviewVerdict:
+        """Read the translation back and say whether it would pass.
+
+        A separate call on purpose. Asking the translator to grade its
+        own answer gets agreement, not review — the defects that survive
+        are precisely the ones it cannot see in itself. This call knows
+        only the two texts.
+
+        Every failure here means "no opinion". A reviewer that cannot be
+        reached must not hold up a translation: it exists to raise the
+        floor, and the floor without it is what the pipeline shipped
+        yesterday.
+        """
+        if not source.strip() or not translation.strip():
+            return ReviewVerdict()
+
+        prompt = build_review_prompt(
+            source=source,
+            translation=translation,
+            source_language=LOCALE_DISPLAY_NAMES[source_locale],
+            target_language=LOCALE_DISPLAY_NAMES[target_locale],
+            content_kind=content_kind,
+            context=context,
+        )
+        payload: dict[str, Any] = {
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {
+                # Same reasoning as translation: one answer, the most
+                # likely one. A reviewer that disagrees with itself
+                # between runs would make the queue a lottery.
+                "temperature": 0,
+                "maxOutputTokens": 512,
+                "responseMimeType": "application/json",
+            },
+        }
+        url = f"{_API_BASE}/models/{self._review_model}:generateContent"
+        headers = {"Content-Type": "application/json", "X-goog-api-key": self._api_key}
+        try:
+            response = self._client.post(url, json=payload, headers=headers)
+            if response.status_code != 200:
+                logger.info("reviewer: HTTP %s, no opinion", response.status_code)
+                return ReviewVerdict()
+            body = response.json()
+            candidates = body.get("candidates") or []
+            parts = (candidates[0].get("content") or {}).get("parts") or []
+            reply = "".join(part.get("text", "") for part in parts)
+        except Exception as exc:
+            logger.info("reviewer: unreachable (%s), no opinion", type(exc).__name__)
+            return ReviewVerdict()
+
+        with contextlib.suppress(Exception):
+            increment("equip.gemini.calls_total", model=self._review_model, outcome="review")
+        return parse_review(reply)
 
     def _build_payload(self, request: TranslationRequest) -> dict[str, Any]:
         system_prompt = build_system_prompt(

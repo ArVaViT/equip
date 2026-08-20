@@ -44,6 +44,7 @@ from sqlalchemy import or_
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.services.translation.budget import NoBudget
 from app.services.translation.protocol import TranslationError, TranslationRequest, TranslationResult
+from app.services.translation.reviewer import ReviewVerdict, TranslationReviewer
 from app.services.translation.validation import ValidationIssue, summarise, validate_translation
 from app.services.translation.version import TRANSLATOR_VERSION
 
@@ -241,6 +242,22 @@ def _ask(task: TranslationTask, provider: TranslationProvider) -> _Answer:
             if _rank(retry_issues) < _rank(issues):
                 result, issues = retry, retry_issues
 
+    # Structure is settled; now somebody reads it.
+    #
+    # Every check above asks whether the shape survived. None of them
+    # reads the sentence, which is why a passage calling the Ethiopian
+    # eunuch a Pentecostal sat in production marked ok. A second model
+    # reads the source and the answer together and objects the way an
+    # editor would, and what it objects to goes back through the same
+    # correction loop — the translator is shown the notes and asked
+    # again.
+    #
+    # Only when nothing structural is outstanding: a reply that lost its
+    # markup does not need an opinion on its register, and paying for
+    # one would be paying twice for the same rejection.
+    if not issues:
+        result, issues = _review_and_correct(task, result, provider, request)
+
     blocking = [issue for issue in issues if issue.blocking]
     style = [issue for issue in issues if not issue.blocking]
     if style and not blocking:
@@ -263,6 +280,89 @@ def _ask(task: TranslationTask, provider: TranslationProvider) -> _Answer:
         issues_summary=summarise(blocking) if blocking else None,
         failed=False,
     )
+
+
+def _review_and_correct(
+    task: TranslationTask,
+    result: TranslationResult,
+    provider: TranslationProvider,
+    request: TranslationRequest,
+) -> tuple[TranslationResult, list[ValidationIssue]]:
+    """Have the answer read, and act on what the reader says.
+
+    One review, one correction, one re-review, then a person. The bound
+    is the point: a loop that keeps going until a reviewer is happy will
+    spend a budget arguing about a synonym, and a reviewer that objects
+    to everything would put the whole catalogue in front of a human —
+    which is the situation this pipeline exists to end.
+
+    A reviewer that cannot be reached, cannot be parsed, or rejects
+    without saying why returns no opinion, and no opinion changes
+    nothing. This layer can only raise the floor; it must never be a new
+    way for the pipeline to fail.
+    """
+    reviewer = provider if isinstance(provider, TranslationReviewer) else None
+    if reviewer is None:
+        return result, []
+
+    verdict = reviewer.review(
+        source=task.text,
+        translation=result.text,
+        source_locale=task.source_locale,
+        target_locale=task.target_locale,
+        content_kind=task.content_kind,
+        context=task.context,
+    )
+    if not verdict.has_objections:
+        return result, []
+
+    try:
+        corrected = provider.translate(replace(request, rewrite_notes=verdict.notes))
+    except TranslationError:
+        corrected = None
+
+    if corrected is None:
+        return result, _from_review(verdict)
+
+    # The corrected answer has to clear the structural checks on its own
+    # merits — a fix for register that drops a placeholder is not a fix.
+    corrected_issues = _issues_in(task, corrected)
+    if corrected_issues:
+        return result, _from_review(verdict)
+
+    second = reviewer.review(
+        source=task.text,
+        translation=corrected.text,
+        source_locale=task.source_locale,
+        target_locale=task.target_locale,
+        content_kind=task.content_kind,
+        context=task.context,
+    )
+    if not second.has_objections:
+        logger.info(
+            "review_corrected entity=%s:%s field=%s locale=%s",
+            task.entity_type,
+            task.entity_id,
+            task.field,
+            task.target_locale,
+        )
+        return corrected, []
+
+    # Still objected to after a correction. Served anyway — the reviewer
+    # is an opinion, not a structural fact, and an editor's second
+    # thoughts are not worth a blank page to a student — but recorded so
+    # the rate is visible and the row can be read by a person.
+    return corrected, _from_review(second)
+
+
+def _from_review(verdict: ReviewVerdict) -> list[ValidationIssue]:
+    return [
+        ValidationIssue(
+            code="review_objection",
+            detail=" ".join(verdict.notes),
+            blocking=False,
+        )
+    ]
 
 
 def _issues_in(task: TranslationTask, result: TranslationResult) -> list[ValidationIssue]:

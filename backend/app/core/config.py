@@ -150,6 +150,24 @@ class Settings(BaseSettings):
     # production for 81 days, because the Vercel env var overrode it.
     # A default nobody deploys is a comment.
     GEMINI_MODEL: str = Field(default="gemini-2.5-flash-lite", description="Gemini model id used for translations")
+    #: The model that reads a finished translation and objects to it.
+    #:
+    #: Deliberately not the same one that wrote it — asking a model to
+    #: grade its own answer gets agreement, and the defects that survive
+    #: are exactly the ones it cannot see in itself.
+    #:
+    #: Deliberately a different generation, too, and this was measured
+    #: rather than assumed. On the defects an editor actually found in
+    #: production — the Ethiopian eunuch turned into a Pentecostal, "the
+    #: first half" of the Bible rendered as an accounting half-year, the
+    #: invented word "Unabgewaschen" — the translation model catches four
+    #: of six and this one catches five, with no false objections on
+    #: correct text in either case. A reviewer that flags good work is
+    #: worse than none: every row it touches becomes a person's problem.
+    GEMINI_REVIEW_MODEL: str = Field(
+        default="gemini-3.5-flash-lite",
+        description="Gemini model id used to review finished translations",
+    )
     # 30s headroom: a 5 KB Russian HTML block (lesson-overview callout in
     # the Acts course backfill) on ``gemini-flash-latest`` regularly takes
     # 18-25s to translate to English. The earlier 15s default produced
