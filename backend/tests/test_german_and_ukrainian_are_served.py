@@ -77,7 +77,9 @@ class TestTheSupportedSet:
             ("de-AT,de;q=0.9", "de"),
             ("uk", "uk"),
             ("uk-UA", "uk"),
-            ("fr", "ru"),  # unsupported falls back rather than 500s
+            # A language we do not serve is answered in English, not in
+            # Russian — and it is answered, rather than 500ing.
+            ("fr", "en"),
         ],
     )
     def test_accept_language_resolves(self, header: str, expected: str):

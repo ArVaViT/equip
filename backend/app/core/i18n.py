@@ -53,7 +53,7 @@ from __future__ import annotations
 
 from typing import Final
 
-from app.schemas.locale import DEFAULT_LOCALE, LOCALE_CODES, LocaleCode, normalize_locale
+from app.schemas.locale import LOCALE_CODES, LocaleCode, normalize_locale
 
 # Single source of truth for every backend-rendered string. Keys use
 # dot-notation by feature (``notif.<type>.<title|body>``,
@@ -160,6 +160,15 @@ _CATALOG: Final[dict[LocaleCode, dict[str, str]]] = {
 }
 
 
+#: The block every lookup falls through to. English, and named here rather
+#: than reached through ``DEFAULT_LOCALE`` so the two facts stay separable:
+#: this one is "the catalogue that is guaranteed complete" — the same
+#: reference role English plays in ``frontend/scripts/i18n-check.mjs``,
+#: where ``REFERENCE = "en"`` — and it stays English even if the platform's
+#: last resort were ever to move again.
+_FALLBACK_CATALOG: Final[dict[str, str]] = _CATALOG["en"]
+
+
 def t(locale: str | None, key: str, /, **kwargs: str) -> str:
     """Resolve ``key`` in ``locale``'s catalog and format with ``kwargs``.
 
@@ -174,8 +183,16 @@ def t(locale: str | None, key: str, /, **kwargs: str) -> str:
     without a translation in every supported locale.
     """
     normalized = normalize_locale(locale)
-    catalog = _CATALOG.get(normalized) or _CATALOG[DEFAULT_LOCALE]
-    template = catalog.get(key) or _CATALOG["en"].get(key) or key
+    # ``_CATALOG.get(normalized, {})`` rather than a whole-catalog default.
+    # This line read ``or _CATALOG[DEFAULT_LOCALE]``, and while that constant
+    # was ``"ru"`` it quietly broke the promise two paragraphs up: a locale
+    # with no catalog took the Russian block entire, found the key there, and
+    # never reached the English branch below — ``t("es", ...)`` answered a
+    # Spanish speaker in Russian. Missing the catalog and missing the key are
+    # the same situation ("we do not have this in your language") and both now
+    # land in the same place: English, the one block guaranteed complete.
+    catalog = _CATALOG.get(normalized, {})
+    template = catalog.get(key) or _FALLBACK_CATALOG.get(key) or key
     if not kwargs:
         return template
     return template.format(**kwargs)

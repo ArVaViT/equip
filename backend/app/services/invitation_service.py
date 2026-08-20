@@ -51,6 +51,10 @@ def _inviter_locale(db: Session, invited_by: uuid.UUID | str | None) -> LocaleCo
     almost always shares its language, and it beats defaulting everyone
     to English — which is what happened before, including for the
     German and Ukrainian schools this platform now serves.
+
+    Only when there is no inviter to read does this land on the
+    platform's last resort, which is English again — but by then it is
+    an answer to "we know nothing", not a substitute for asking.
     """
     return preferred_locale_of(db, invited_by)
 

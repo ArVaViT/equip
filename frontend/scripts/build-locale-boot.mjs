@@ -39,7 +39,13 @@ const outFile = resolve(here, "../public/locale-boot.js")
 // Kept in step with SUPPORTED_LOCALES in src/i18n/config.ts. The
 // i18n-check script asserts the two agree.
 export const LOCALES = ["ru", "en", "de", "uk"]
-export const DEFAULT_LOCALE = "ru"
+// And in step with DEFAULT_LOCALE in src/i18n/config.ts. This is the same
+// fact written twice — it has to be decided before the bundle exists and
+// again inside it — so a disagreement here paints the first frame in one
+// language and the second in another. `__tests__/localeBoot.test.ts`
+// asserts the two constants are equal, and that the committed
+// public/locale-boot.js carries the same value.
+export const DEFAULT_LOCALE = "en"
 // Must match LOCALE_STORAGE_KEY in src/i18n/config.ts — this script reads
 // the choice the app wrote on a previous visit.
 export const STORAGE_KEY = "equip:locale"

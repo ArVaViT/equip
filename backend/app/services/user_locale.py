@@ -9,7 +9,9 @@ other notifications that *are* in the reader's language.
 
 ``preferred_locale`` is nullable — an account can predate the column or
 belong to somebody who never chose. ``normalize_locale`` turns that,
-and any value the platform no longer serves, into the default.
+and any value the platform no longer serves, into ``DEFAULT_LOCALE``:
+English, because a row that says nothing about the reader is not
+evidence that they read Russian.
 """
 
 from __future__ import annotations

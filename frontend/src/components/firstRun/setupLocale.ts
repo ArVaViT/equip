@@ -7,7 +7,7 @@ import type { User } from "@/types"
  *
  * ``profiles.preferred_locale`` is NOT NULL, so every account has one from
  * the moment it exists. A Google sign-up carries no language into the signup
- * trigger, so those accounts get the fallback ``ru`` with
+ * trigger, so those accounts get the column default with
  * ``locale_source = "default"`` — a value nobody chose. Seeding the screen
  * from it pre-selected Russian for a German who had just read the whole
  * landing page in German, and then both exits made it stick: Submit PATCHed
@@ -34,8 +34,10 @@ export function initialSetupLocale(
   }
   if (isSupportedLocale(detected)) return detected
   // Last rung of the precedence rule. Practically unreachable — i18next has
-  // always resolved a language by the time this screen mounts — but the
-  // ``ru`` here is the same ``ru`` the rest of the stack falls back to,
-  // rather than the ``en`` this line used to guess at.
+  // always resolved a language by the time this screen mounts — but reading
+  // the constant means this rung is the same last resort the rest of the
+  // stack lands on, whatever that value is, rather than a literal that has
+  // to be remembered when it changes. It has changed once already: ``ru``
+  // until English became the answer for a reader we know nothing about.
   return DEFAULT_LOCALE
 }

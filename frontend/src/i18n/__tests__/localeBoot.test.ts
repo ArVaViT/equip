@@ -18,7 +18,12 @@
 
 import { beforeEach, describe, expect, it } from "vitest"
 
-import { LEGACY_STORAGE_KEY, STORAGE_KEY, buildLocaleBoot } from "../../../scripts/build-locale-boot.mjs"
+import {
+  DEFAULT_LOCALE as BOOT_DEFAULT_LOCALE,
+  LEGACY_STORAGE_KEY,
+  STORAGE_KEY,
+  buildLocaleBoot,
+} from "../../../scripts/build-locale-boot.mjs"
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "../config"
 
 const SCRIPT = buildLocaleBoot()
@@ -96,6 +101,17 @@ describe("locale-boot picks the language before the bundle can", () => {
     expect(boot({}).lang).toBe(DEFAULT_LOCALE)
   })
 
+  it("answers a visitor whose language we do not serve in English", () => {
+    // Spelled out rather than left to DEFAULT_LOCALE, because the value is
+    // the point: the last resort was `ru` from the Russian-only days, so a
+    // French or Polish visitor — somebody we know nothing about — was
+    // handed Russian, tab title and all. Asserting only "equals the
+    // constant" would keep passing if the constant went back.
+    const frame = boot({ languages: ["fr-FR", "es-ES"] })
+    expect(frame.lang).toBe("en")
+    expect(frame.title).toMatch(/study the Bible/i)
+  })
+
   it("survives a browser that refuses storage entirely", () => {
     // Private mode, blocked cookies — not knowing has to be survivable, the
     // script runs before anything that could catch a throw.
@@ -132,5 +148,33 @@ describe("the generator and the committed file agree", () => {
     // well means a developer who edits the generator and forgets to run it
     // finds out from the test suite they were already running.
     expect(committed).toBe(SCRIPT)
+  })
+})
+
+describe("the last resort is one fact, held in two files", () => {
+  /**
+   * `DEFAULT_LOCALE` in `i18n/config.ts` and `var DEFAULT` in
+   * `public/locale-boot.js` are the same decision written twice — it has to
+   * be made before the bundle exists and again inside it. Nothing forces
+   * them to agree, and they are exactly the kind of pair that drifts: a
+   * disagreement paints the first frame in one language and every frame
+   * after it in another, and neither file looks wrong on its own.
+   */
+  it("the generator's constant and the app's constant are the same value", () => {
+    expect(BOOT_DEFAULT_LOCALE).toBe(DEFAULT_LOCALE)
+  })
+
+  it("the committed boot script carries that value verbatim", async () => {
+    // Reading the shipped file, not the generator's output: this is the
+    // copy the browser actually runs.
+    const { readFileSync } = await import("node:fs")
+    const { OUT_FILE } = await import("../../../scripts/build-locale-boot.mjs")
+    expect(readFileSync(OUT_FILE, "utf8")).toContain(
+      `var DEFAULT = ${JSON.stringify(DEFAULT_LOCALE)};`,
+    )
+  })
+
+  it("and the decision they hold is English", () => {
+    expect(DEFAULT_LOCALE).toBe("en")
   })
 })

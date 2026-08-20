@@ -6,8 +6,7 @@
  *      Synchronised by `LocaleSync` once the user logs in.
  *   2. Persisted choice in `localStorage` (cross-session memory for guests).
  *   3. Browser language (`navigator.language`).
- *   4. Hard-coded fallback `ru` — the project was launched in Russian and
- *      every existing course is authored in it.
+ *   4. Hard-coded fallback `en` — see `DEFAULT_LOCALE`.
  *
  * Catalogs are loaded lazily, one locale per visitor (~20 KB gzip each):
  * a tiny backend plugin resolves each language through a per-locale
@@ -24,7 +23,37 @@ import LanguageDetector from "i18next-browser-languagedetector"
 
 export const SUPPORTED_LOCALES = ["ru", "en", "de", "uk"] as const
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
-export const DEFAULT_LOCALE: SupportedLocale = "ru"
+/**
+ * The last resort: what a visitor is shown when nothing tells us who they
+ * are — no stored choice, no profile, and a browser asking for a language
+ * this platform does not serve.
+ *
+ * It was `ru`, set when the platform was Russian-only and the fallback and
+ * the authoring language were the same fact. They are not the same fact.
+ * A visitor whose browser says `fr` or `es` is not a Russian speaker; they
+ * are somebody we know nothing about, and the language to answer an unknown
+ * reader in is English. English is already the reference catalogue —
+ * `scripts/i18n-check.mjs` measures every other language against it — and
+ * the constant is simply catching up with that.
+ *
+ * Two files hold this one fact, because the decision has to be made before
+ * the bundle exists: this constant and `var DEFAULT` in
+ * `public/locale-boot.js` (generated from `scripts/build-locale-boot.mjs`).
+ * If they disagree the first paint is in one language and the second in
+ * another. `src/i18n/__tests__/localeBoot.test.ts` asserts they agree.
+ */
+export const DEFAULT_LOCALE: SupportedLocale = "en"
+
+/**
+ * The language courses are written in — a different fact that happens to
+ * have worn the same value.
+ *
+ * Every course on this platform is authored in Russian and translated out
+ * of it; that is what the landing page's fan-out picture illustrates. It
+ * used to read `DEFAULT_LOCALE`, which was true only by coincidence, and
+ * the coincidence ended when the last resort became English.
+ */
+export const AUTHORING_LOCALE: SupportedLocale = "ru"
 
 const LOCALE_STORAGE_KEY = "equip:locale"
 const LEGACY_LOCALE_STORAGE_KEY = "bible-school:locale"
@@ -160,7 +189,7 @@ const isProd = mode === "production"
 const isTest = mode === "test"
 
 /**
- * Resolves once the detected locale's catalog (plus the `ru` fallback when
+ * Resolves once the detected locale's catalog (plus the `en` fallback when
  * they differ) is registered. `main.tsx` gates the first render on this;
  * the vitest setup awaits it (plus `loadLanguages`) so tests keep their
  * synchronous-resources assumption.

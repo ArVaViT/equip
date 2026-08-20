@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Eyebrow } from "@/components/patterns";
 import Footer from "@/components/layout/Footer";
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/i18n/config";
+import { AUTHORING_LOCALE, SUPPORTED_LOCALES } from "@/i18n/config";
 
 /**
  * Marketing landing rendered at ``/`` for unauthenticated visitors.
@@ -323,16 +323,21 @@ function CertificateMock() {
  * Derived from ``SUPPORTED_LOCALES`` rather than listed, so the picture
  * cannot fall behind the product a second time: the source language on the
  * left, everything it fans out into on the right.
+ *
+ * The badge on the left is ``AUTHORING_LOCALE``, not ``DEFAULT_LOCALE``.
+ * They were the same value until the last resort became English, and this
+ * picture is about the language courses are *written* in — flipping it to
+ * EN would claim the pipeline translates out of English, which it does not.
  */
 function MultilingualMock() {
   const { t } = useTranslation();
-  const targets = SUPPORTED_LOCALES.filter((code) => code !== DEFAULT_LOCALE);
+  const targets = SUPPORTED_LOCALES.filter((code) => code !== AUTHORING_LOCALE);
   return (
     <div className="surface-card mx-auto max-w-sm rounded-lg p-5 text-center">
       <div className="flex flex-wrap items-center justify-center gap-2">
         {/* The language courses are authored in — the input to the pipeline. */}
         <span className="rounded-md bg-brand/10 px-3 py-1.5 text-sm font-medium text-brand-ink">
-          {DEFAULT_LOCALE.toUpperCase()}
+          {AUTHORING_LOCALE.toUpperCase()}
         </span>
         <Languages
           className="h-4 w-4 shrink-0 text-ink-muted"

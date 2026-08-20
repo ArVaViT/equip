@@ -52,17 +52,29 @@ def test_locale_display_names_cover_every_locale():
     )
 
 
-def test_t_falls_back_to_default_locale_on_unknown_locale():
-    # Caller passed a locale not registered in LOCALE_CODES. The
-    # normalize step folds it to ``DEFAULT_LOCALE`` so the recipient
-    # sees the default-locale text rather than a crash. The English
-    # tier of the fallback chain only kicks in if a key is missing
-    # from the requested locale's block (caught by
-    # ``test_every_locale_has_every_key``).
-    from app.schemas.locale import DEFAULT_LOCALE
+def test_a_recipient_whose_language_we_do_not_serve_is_written_to_in_english():
+    # Caller passed a locale not registered in LOCALE_CODES — a
+    # notification for somebody whose language this platform does not
+    # have. They get English, which is what ``t``'s own docstring has
+    # always promised.
+    #
+    # It did not do that. The lookup read
+    # ``_CATALOG.get(normalized) or _CATALOG[DEFAULT_LOCALE]``, and with
+    # that constant set to "ru" the unknown locale took the *Russian*
+    # block whole, found the key in it, and never reached the English
+    # branch: ``t("es", "notif.cert_approved.title")`` returned
+    # 'Сертификат одобрен'. Measured, not hypothesised.
+    assert t("fr", "notif.new_announcement.title") == _CATALOG["en"]["notif.new_announcement.title"]
+    assert t("es", "notif.cert_approved.title") == "Certificate Approved"
 
-    expected = _CATALOG[DEFAULT_LOCALE]["notif.new_announcement.title"]
-    assert t("fr", "notif.new_announcement.title") == expected
+
+def test_a_served_language_is_still_written_in_that_language():
+    # The other half of the same rule: falling back to English must not
+    # mean drifting to English. A recipient we *do* serve gets their own
+    # catalog, untouched by any of the above.
+    assert t("ru", "notif.cert_approved.title") == _CATALOG["ru"]["notif.cert_approved.title"]
+    assert t("de", "notif.cert_approved.title") == _CATALOG["de"]["notif.cert_approved.title"]
+    assert t("uk", "notif.cert_approved.title") == _CATALOG["uk"]["notif.cert_approved.title"]
 
 
 def test_t_falls_back_to_english_on_unknown_key():

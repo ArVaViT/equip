@@ -1,4 +1,4 @@
-import i18n from "@/i18n/config"
+import i18n, { DEFAULT_LOCALE } from "@/i18n/config"
 
 const DEFAULT_TTL = 5 * 60 * 1000
 const MAX_ENTRIES = 200
@@ -15,7 +15,7 @@ const MAX_ENTRIES = 200
  * unchanged and so any future cache user inherits the same guarantee.
  */
 function localeScoped(key: string): string {
-  const locale = i18n.language || "ru"
+  const locale = i18n.language || DEFAULT_LOCALE
   return `${key}::${locale}`
 }
 
