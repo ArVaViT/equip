@@ -210,16 +210,77 @@ Consequences for queries:
 | `equip.translation.queue_depth` / `equip.translation.queue_processing` / `equip.translation.queue_failed_permanent` | (none) | — | `app/api/v1/internal_translation_worker.py::_emit_queue_gauges` on every cron tick; drives the `translation-queue-backlog` monitor |
 | `equip.translation.duration_ms` | `outcome` (`done`/`failed`/`paused`) | yes | `..._emit_translation_duration` times each `translate_course_content` run. `paused` is the *normal* outcome for a course larger than one invocation's budget — it was missing from this table and from the dashboard, which therefore could not see the pipeline's most common tick |
 | `equip.translation.fields_total` | `outcome` (`translated`/`skipped`/`failed`/`needs_review`) | yes | `..._emit_field_outcomes` after every tick. The only metric that says whether the pipeline *did* anything: every other translation metric describes the queue, so a worker that walked a thousand fields and wrote none of them was indistinguishable from a worker with nothing to do. Production span that way for an hour on 2026-08-19 |
-| `equip.gemini.calls_total` | `model`, `outcome` (`success`/`retry`/`fatal`/`transport`) | — | `app/services/translation/gemini.py::translate` per Gemini API call |
+| `equip.gemini.calls_total` | `model`, `outcome` (`success`/`retry`/`rate_limited`/`unavailable`/`rejected`/`transport`/`review`/`review_failed`) | — | `app/services/translation/gemini.py`, once per Gemini API call — the review call included |
 
-Emitted in logs but **no generated-metric rule yet** (logged values
-are queryable in Log Explorer, not as metrics):
+### The `status_code` tag on `equip.gemini.calls_total` is a lie
 
-* `equip.gemini.tokens_input_total` + `equip.gemini.tokens_output_total`
-  + `equip.gemini.tokens_thinking_total` —
-  `app/services/translation/gemini.py` uses the token count as the
-  log value; add a distribution rule on the pipeline if $-burn
-  tracking should move from logs to metrics.
+`gemini.py` passes `status_code` on every emit and has done for
+months. **It is not queryable.** Every series comes back `N/A`:
+
+```
+sum:equip.gemini.calls_total{*} by {outcome,status_code,model}.as_count()
+  → six series over 30 days, all of them status_code:N/A
+```
+
+Verified 2026-08-20. The log pipeline is not at fault —
+`equip.activity.requests_total` carries a real `status_code` with ten
+distinct values over the same window. It is **this one rule's group-by
+list**, which is `model` and `outcome` and nothing else, and no change
+to the backend can add to it.
+
+That is why `outcome` carries the diagnosis instead. A 429 is
+`rate_limited` rather than another `retry`, because "the prepaid
+balance ran out" and "the model is briefly overloaded" arrived under
+the same name on 2026-08-19 while `outcome:retry` went 0 → 1,685 in an
+hour, and nothing anywhere said which it was. `unavailable` and
+`rejected` replace the old `fatal`, splitting a shut door (401/403/404,
+an unretried 5xx) from a payload the API looked at and refused
+(400/413) — the same line `TranslationUnavailable` and
+`TranslationError` already draw in `translation/protocol.py`.
+
+**The UI fix, if it is ever wanted:** `Logs` → `Configuration` →
+`Generate Metrics` → open the `equip.gemini.calls_total` rule → add
+`status_code` to Group by. Bounded cardinality (`0`, `200`, `400`,
+`401`, `403`, `404`, `408`, `429`, `5xx`), so it multiplies the series
+count by well under ten. Nothing here can verify the rule's current
+contents — the application key in 1Password lacks `logs_read_config`
+and `GET /api/v2/logs/config/metrics` answers 403.
+
+
+Token metrics, all three emitted by
+`app/services/translation/gemini.py` with the token count as the log
+value:
+
+| Metric | Rule exists? | Tags |
+|---|---|---|
+| `equip.gemini.tokens_input_total` | yes — returns points, verified 2026-08-20 | `model` (queryable), `role` (not queryable) |
+| `equip.gemini.tokens_output_total` | yes — returns points, verified 2026-08-20 | same |
+| `equip.gemini.tokens_thinking_total` | **no** — see the recipe above | same |
+
+Both calls the provider makes now report what they spent. Until
+2026-08-20 only the translator did: `review()` emitted a bare
+`calls_total` and no tokens at all, so a query grouped by `model`
+returned `gemini-2.5-flash-lite` and `gemini-flash-latest` and never
+the reviewer's `gemini-3.5-flash-lite`, across 1,756 review calls in
+thirty days. The reviewer costs $0.30/M in and $2.50/M out against the
+translator's $0.10 and $0.40 — 3× and 6.25× — and accounts for roughly
+**52% of a full rebuild's bill**. Half the spend, none of the series.
+
+`role` is `translate` or `review`. In production `model` already
+separates the two, and `role` is the fallback for a deployment with no
+`GEMINI_REVIEW_MODEL`, where the reviewer runs the translating model
+and the two are otherwise one number. Like `status_code` on
+`calls_total`, it is emitted and dropped until a rule groups by it —
+worth adding to the token rules' Group by, at a cost of exactly two
+series per metric.
+
+**These thresholds move.** `monitors/gemini-spend-spike.json` counts
+`tokens_output_total`, which now includes the reviewer's output for the
+first time. The reviewer answers a capped 512-token JSON verdict, so
+the expected shift is roughly a doubling of the output series against
+translator-only history — the busiest eight-hour window on record was
+92,478 output tokens, so ~185k, still under the 250k warning. Re-check
+against a week of the widened series before trusting the numbers.
 
   The **thinking** count is the one to watch, and the reason it exists
   as its own series. Those tokens are spent before the model answers,

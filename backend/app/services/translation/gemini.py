@@ -80,6 +80,52 @@ def _is_unavailable(status_code: int) -> bool:
     return status_code in _UNAVAILABLE_STATUSES or 500 <= status_code < 600
 
 
+# What the ``outcome`` tag on ``equip.gemini.calls_total`` is allowed to
+# say, and why the vocabulary is what it is.
+#
+# The tag has to carry the whole story on its own. ``status_code`` is
+# passed on every emit below and it is NOT queryable: the log-based
+# metric rule in Datadog groups ``equip.gemini.calls_total`` by ``model``
+# and ``outcome`` and nothing else, so every series comes back with
+# ``status_code:N/A`` no matter what the code puts in the log line —
+# verified against thirty days of production on 2026-08-20, across all
+# six live series. (``equip.activity.requests_total`` does carry a real
+# ``status_code``, so this is that one rule's group-by list and not the
+# log pipeline. ``docs/datadog/README.md`` has the one-line UI fix.)
+#
+# So the distinction that matters has to live in ``outcome``:
+#
+# * ``rate_limited`` — a 429, and its own value rather than another
+#   ``retry`` because 429 is the money one. A prepaid balance that has
+#   run out and a model that is briefly overloaded both used to arrive
+#   as ``outcome:retry``, and on 2026-08-19 that count went 0 → 1,685 in
+#   an hour with successes collapsing and nothing anywhere saying why.
+#   Only two things produce a sustained 429 — our quota, or a runaway
+#   loop of ours — and both are bills.
+# * ``retry`` — 408 or a 5xx, another attempt follows. Genuinely "the
+#   service is having a moment".
+# * ``unavailable`` / ``rejected`` — the split that ``protocol.py``
+#   already draws between ``TranslationUnavailable`` (the provider could
+#   not answer: 401, 403, 404, an unretried 5xx) and ``TranslationError``
+#   (it looked at this request and refused it: 400, 413). These replace
+#   the old ``fatal``, which merged the two — a disabled key and an
+#   oversized block looked identical, and only one of them is fixed by
+#   editing the text.
+# * ``transport`` — no HTTP status at all; the call never landed.
+# * ``review`` / ``review_failed`` — the reviewer's call, kept under its
+#   own names so ``sum:…{outcome:success}`` keeps meaning "translations"
+#   the way every existing query assumes.
+
+
+def _failure_outcome(status_code: int, *, will_retry: bool) -> str:
+    """The ``outcome`` tag for a Gemini response we cannot use."""
+    if status_code == 429:
+        return "rate_limited"
+    if will_retry:
+        return "retry"
+    return "unavailable" if _is_unavailable(status_code) else "rejected"
+
+
 # Where a Bible quotation can plausibly live. ``plain`` covers the
 # Daily Challenge explanations, which quote constantly and have no
 # markup at all to hang a blockquote on — the case that showed English
@@ -494,37 +540,20 @@ class GeminiTranslationProvider:
                     # (e.g. flash → pro) keeps the curves separable.
                     # Wrapped in try/except — metric failure must NEVER
                     # break the translation pipeline.
-                    try:
-                        increment("equip.gemini.calls_total", model=self._model, outcome="success")
-                        # ``emit`` lets us pass the token count as the metric
-                        # value directly — Datadog ``sum:`` over this gives
-                        # the cumulative token spend.
-                        if result.input_tokens:
-                            emit(
-                                "equip.gemini.tokens_input_total",
-                                float(result.input_tokens),
-                                model=self._model,
-                            )
-                        if result.output_tokens:
-                            emit(
-                                "equip.gemini.tokens_output_total",
-                                float(result.output_tokens),
-                                model=self._model,
-                            )
-                        # Billed as output, absent from the reply, and the
-                        # single largest thing that ever went wrong with
-                        # this bill. Always emitted — including as zero —
-                        # so the dashboard shows a flat line at nought
-                        # rather than no line at all, and a model change
-                        # that reintroduces thinking is visible the same
-                        # hour instead of at the end of the month.
-                        emit(
-                            "equip.gemini.tokens_thinking_total",
-                            float(result.thinking_tokens or 0),
+                    with contextlib.suppress(Exception):
+                        increment(
+                            "equip.gemini.calls_total",
                             model=self._model,
+                            outcome="success",
+                            status_code="200",
                         )
-                    except Exception:
-                        pass
+                        self._emit_token_metrics(
+                            model=self._model,
+                            role="translate",
+                            input_tokens=result.input_tokens,
+                            output_tokens=result.output_tokens,
+                            thinking_tokens=result.thinking_tokens,
+                        )
                     return result
                 if response.status_code in _RETRYABLE_STATUSES:
                     last_error = TranslationUnavailable(
@@ -540,7 +569,7 @@ class GeminiTranslationProvider:
                         increment(
                             "equip.gemini.calls_total",
                             model=self._model,
-                            outcome="retry",
+                            outcome=_failure_outcome(response.status_code, will_retry=True),
                             status_code=str(response.status_code),
                         )
                 else:
@@ -548,7 +577,7 @@ class GeminiTranslationProvider:
                         increment(
                             "equip.gemini.calls_total",
                             model=self._model,
-                            outcome="fatal",
+                            outcome=_failure_outcome(response.status_code, will_retry=False),
                             status_code=str(response.status_code),
                         )
                     # A status we do not retry still has to be sorted into
@@ -574,6 +603,46 @@ class GeminiTranslationProvider:
         # above. So this is always ``TranslationUnavailable``.
         raise TranslationUnavailable(f"Gemini call failed after retries: {last_error!r}")
 
+    @staticmethod
+    def _emit_token_metrics(
+        *,
+        model: str,
+        role: str,
+        input_tokens: int | None,
+        output_tokens: int | None,
+        thinking_tokens: int | None,
+    ) -> None:
+        """What this one call cost, in the units Gemini bills in.
+
+        ``emit`` rather than ``increment`` so the token count IS the
+        metric value — Datadog ``sum:`` over the window then gives
+        cumulative spend directly.
+
+        ``role`` says which of the two calls this was. ``model`` is what
+        separates them in production today, where the reviewer runs a
+        different model id, but the provider falls back to the
+        translating model when no review model is configured, and in
+        that deployment ``model`` alone cannot tell a $0.10-per-million
+        translation from a $0.30-per-million review of it. Cheap to
+        record now, impossible to recover later. It is not queryable
+        until the log-based metric rule groups by it — see
+        ``docs/datadog/README.md``.
+
+        The caller wraps this in a suppression: a metric that fails must
+        never fail a translation.
+        """
+        if input_tokens:
+            emit("equip.gemini.tokens_input_total", float(input_tokens), model=model, role=role)
+        if output_tokens:
+            emit("equip.gemini.tokens_output_total", float(output_tokens), model=model, role=role)
+        # Billed as output, absent from the reply, and the single largest
+        # thing that ever went wrong with this bill. Always emitted —
+        # including as zero — so the dashboard shows a flat line at
+        # nought rather than no line at all, and a model change that
+        # reintroduces thinking is visible the same hour instead of at
+        # the end of the month.
+        emit("equip.gemini.tokens_thinking_total", float(thinking_tokens or 0), model=model, role=role)
+
     def review(
         self,
         *,
@@ -595,6 +664,17 @@ class GeminiTranslationProvider:
         reached must not hold up a translation: it exists to raise the
         floor, and the floor without it is what the pipeline shipped
         yesterday.
+
+        It is also the expensive half of the bill, and until 2026-08-20
+        none of it was measured. This method counted its own calls and
+        stopped there — no ``tokens_input_total``, no
+        ``tokens_output_total``, no thinking count — while running a
+        model that costs 3x the translator on input and 6.25x on output
+        and accounting for roughly 52% of a full rebuild. Thirty days of
+        production carried 1,756 review calls and not one token of
+        theirs appeared in Datadog. Half a bill that nobody can see is
+        half a bill nobody can stop, so the same three metrics come out
+        of here now, under the reviewer's own model tag.
         """
         if not source.strip() or not translation.strip():
             return ReviewVerdict()
@@ -625,17 +705,54 @@ class GeminiTranslationProvider:
             response = self._client.post(url, json=payload, headers=headers)
             if response.status_code != 200:
                 logger.info("reviewer: HTTP %s, no opinion", response.status_code)
+                # A reviewer that answers nothing and a reviewer that is
+                # never called look the same from outside — both are
+                # simply an absence of ``outcome:review``. So the refusal
+                # gets counted too, with the status that caused it: a
+                # review model id that no longer exists (404) would
+                # otherwise silently turn every review off and leave the
+                # translations shipping unread.
+                with contextlib.suppress(Exception):
+                    increment(
+                        "equip.gemini.calls_total",
+                        model=self._review_model,
+                        outcome="review_failed",
+                        status_code=str(response.status_code),
+                    )
                 return ReviewVerdict()
             body = response.json()
             candidates = body.get("candidates") or []
             parts = (candidates[0].get("content") or {}).get("parts") or []
             reply = "".join(part.get("text", "") for part in parts)
+            usage = body.get("usageMetadata") or {}
         except Exception as exc:
             logger.info("reviewer: unreachable (%s), no opinion", type(exc).__name__)
+            with contextlib.suppress(Exception):
+                increment(
+                    "equip.gemini.calls_total",
+                    model=self._review_model,
+                    outcome="review_failed",
+                    status_code="0",
+                )
             return ReviewVerdict()
 
         with contextlib.suppress(Exception):
-            increment("equip.gemini.calls_total", model=self._review_model, outcome="review")
+            increment(
+                "equip.gemini.calls_total",
+                model=self._review_model,
+                outcome="review",
+                status_code="200",
+            )
+            # The reviewer bills exactly like the translator and was
+            # never asked what it spent. ``usageMetadata`` has been in
+            # every reply all along; nothing read it.
+            self._emit_token_metrics(
+                model=self._review_model,
+                role="review",
+                input_tokens=usage.get("promptTokenCount"),
+                output_tokens=usage.get("candidatesTokenCount"),
+                thinking_tokens=usage.get("thoughtsTokenCount"),
+            )
         return parse_review(reply)
 
     def _build_payload(self, request: TranslationRequest) -> dict[str, Any]:
