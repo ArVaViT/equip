@@ -143,8 +143,73 @@ class TestTheSameHoldsForTheDailyChallenge:
 
 
 class TestNothingElseChanged:
-    def test_a_block_keeps_its_own_context(self, db: Session, an_option: QuizOption) -> None:
-        # Only options gained a database-backed context; everything else
-        # still builds its own from the course.
-        assert REGISTRY["chapter_block"].build_context_with_db is None
+    def test_a_course_keeps_the_simple_context_it_had(self, db: Session, an_option: QuizOption) -> None:
+        # Only the entities that need a neighbour to be judged by gained a
+        # database-backed context. A course title is judged on its own.
+        assert REGISTRY["course"].build_context_with_db is None
+        assert REGISTRY["course"].build_context is not None
         assert ChapterBlock is not None
+
+
+class TestABlockIsJudgedBesideItsNeighbour:
+    """A paragraph translated alone cannot be checked alone.
+
+    A lesson block was described to the model as "HTML fragment from
+    course X" — enough to translate the words, not enough to judge the
+    result. Production shows both halves of that gap: the teaching point
+    "usage determines meaning" came back as its own opposite in German
+    (English and Ukrainian got it right, and the sentence that settles it
+    is in the next block), and the Sanhedrin is three different German
+    words across one course because each occurrence was decided alone.
+    """
+
+    def test_the_previous_paragraph_travels_with_it(self, db: Session) -> None:
+        from app.models.chapter_block import ChapterBlock as Block
+        from app.models.course import Chapter as Ch
+        from app.models.course import Course as C
+        from app.models.course import CourseStatus as CS
+        from app.models.course import Module as M
+
+        if db.get(User, TEACHER_ID) is None:
+            db.add(User(id=TEACHER_ID, email="stem@example.com", full_name="T", role="teacher"))
+            db.commit()
+        course = C(
+            id=f"course-{uuid.uuid4().hex[:8]}",
+            status=CS.PUBLISHED,
+            source_locale="ru",
+            created_by=TEACHER_ID,
+        )
+        db.add(course)
+        db.flush()
+        module = M(id=f"mod-{uuid.uuid4().hex[:8]}", course_id=course.id, title="Модуль", order_index=0)
+        db.add(module)
+        db.flush()
+        chapter = Ch(id=f"ch-{uuid.uuid4().hex[:8]}", module_id=module.id, title="Глава", order_index=0)
+        db.add(chapter)
+        db.flush()
+        first = Block(id=uuid.uuid4(), chapter_id=chapter.id, block_type="text", order_index=0)
+        second = Block(id=uuid.uuid4(), chapter_id=chapter.id, block_type="text", order_index=1)
+        db.add_all([first, second])
+        db.commit()
+
+        record_human_version(
+            db,
+            entity_type="chapter_block",
+            entity_id=str(first.id),
+            field="content",
+            locale="ru",
+            text="<p>Словарь показывает диапазон значений слова.</p>",
+        )
+        db.commit()
+
+        context = REGISTRY["chapter_block"].build_context_with_db(db, second, course)
+        assert "Словарь показывает диапазон" in context
+        assert "<p>" not in context, "the neighbour is quoted as prose, not as markup to copy"
+
+    def test_the_first_block_of_a_chapter_manages_without_one(self, db: Session) -> None:
+        from app.models.chapter_block import ChapterBlock as Block
+
+        orphan = Block(id=uuid.uuid4(), chapter_id="ch-nothing", block_type="text", order_index=0)
+        context = REGISTRY["chapter_block"].build_context_with_db(db, orphan, None)
+        assert context
+        assert "Lesson block" in context

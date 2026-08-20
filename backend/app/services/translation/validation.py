@@ -534,6 +534,41 @@ def _check_ukrainian_calques(translated: str, target_locale: str) -> ValidationI
     )
 
 
+def _check_numerals(source: str, translated: str, source_locale: str, target_locale: str) -> ValidationIssue | None:
+    """A number the source spells out and the translation does not.
+
+    The digit checks above are careful about chapter-and-verse
+    references, years and counts. None of them sees a number written as
+    a word, and production had the Russian answer «Двенадцать» come back
+    in German as *Fünf* — five for twelve, in a question where the number
+    IS the answer. Marked ok, served, and invisible to every check
+    including the reviewer, because "Fünf" is a perfectly good word in a
+    perfectly good sentence.
+
+    Blocking. A wrong number is not a matter of register: a student
+    reading it is being told something false, and it is the one class of
+    defect where serving a gap is better than serving the text.
+    """
+    from app.services.translation.numerals import numbers_lost
+
+    missing = numbers_lost(
+        source,
+        translated,
+        source_locale=source_locale,  # type: ignore[arg-type]
+        target_locale=target_locale,  # type: ignore[arg-type]
+    )
+    if not missing:
+        return None
+    named = ", ".join(f"{src} → {tgt}" for src, tgt in missing[:4])
+    return ValidationIssue(
+        code="numeral_lost",
+        detail=(
+            f"The source counts with a number the translation does not "
+            f"contain: {named}. Numbers must survive translation exactly."
+        ),
+    )
+
+
 def _check_glossary(source: str, translated: str, source_locale: str, target_locale: str) -> ValidationIssue | None:
     """A register term the source used and the translation dropped.
 
@@ -618,6 +653,7 @@ def validate_translation(
     ]
     issues.append(_check_ukrainian_calques(translated, target_locale))
     issues.append(_check_glossary(source, translated, source_locale, target_locale))
+    issues.append(_check_numerals(source, translated, source_locale, target_locale))
     return [issue for issue in issues if issue is not None]
 
 

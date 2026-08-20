@@ -25,8 +25,9 @@ migration vs Pydantic ``Literal``) at the same level of abstraction.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 
 from app.models.announcement import Announcement
 from app.models.assignment import Assignment
@@ -223,6 +224,75 @@ def _resolve_course_via_option(db: Session, entity: Any) -> Course | None:
     return _resolve_course_via_question(db, question)
 
 
+def _block_context(db: Session, block: Any, course: Course | None) -> str | None:
+    """A lesson block, and enough of what surrounds it to judge by.
+
+    A block is translated on its own and, until now, described only as
+    "HTML fragment from course X". That is enough to translate the words
+    and not enough to check the result, which is the half that matters:
+    an editor reading a paragraph in isolation cannot see that its
+    teaching point has been turned around, and a translator cannot see
+    that the term it is choosing was already chosen differently one
+    paragraph earlier.
+
+    Production has both. "Значение задаёт употребление" — usage
+    determines meaning — came back as its own opposite in German while
+    English and Ukrainian got it right, and the sentence that settles it
+    is in the next block. The Sanhedrin is three different German words
+    across one course, "Проверьте себя" is four, because each was decided
+    alone.
+
+    So the block before it comes along, trimmed: enough to place the
+    text, not so much that it becomes the thing being translated. The
+    prompt already tells the model that context is not to be translated.
+    """
+    from app.models.chapter_block import ChapterBlock
+    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+
+    # ``course.title`` is hydrated from content_versions rather than
+    # stored on the row, and a caller that has not hydrated it raises
+    # AttributeError — which the pipeline hook swallows, leaving the
+    # entity silently untranslated. The registry has a comment about
+    # exactly this trap; getattr keeps this path out of it.
+    title = getattr(course, "title", None) if course is not None else None
+    course_line = f"Lesson block from the course «{title}»" if title else "Lesson block"
+    chapter_id = getattr(block, "chapter_id", None)
+    order_index = getattr(block, "order_index", None)
+    if chapter_id is None or order_index is None:
+        return course_line
+
+    previous = (
+        db.query(ChapterBlock)
+        .filter(
+            ChapterBlock.chapter_id == chapter_id,
+            ChapterBlock.order_index < order_index,
+        )
+        .order_by(ChapterBlock.order_index.desc())
+        .first()
+    )
+    if previous is None:
+        return course_line
+
+    texts = fetch_cv_entity_texts_with_fallback(
+        db,
+        entity_type="chapter_block",
+        entity_ids=[str(previous.id)],
+        fields=["content"],
+        display_locale="ru",
+        source_locale="ru",
+        fallback="source_then_any",
+    )
+    before = texts.get((str(previous.id), "content"))
+    if not before:
+        return course_line
+
+    stripped = _PLAIN_TEXT.sub(" ", before).strip()
+    stripped = " ".join(stripped.split())
+    if not stripped:
+        return course_line
+    return f"{course_line}. The paragraph immediately before it reads: {stripped[:400]}"
+
+
 def _question_text_for_option(db: Session, option: Any, *, entity_type: str) -> str | None:
     """The question an answer option belongs to, in the source language."""
     from app.services.content_versions import fetch_cv_entity_texts_with_fallback
@@ -309,7 +379,7 @@ REGISTRY: dict[EntityType, EntityRegistration] = {
         entity_type="chapter_block",
         fields=(FieldSpec("content", "html"),),
         resolve_course=_resolve_course_via_chapter,
-        build_context=lambda _b, c: f"HTML fragment from course «{c.title}»",
+        build_context_with_db=_block_context,
     ),
     "quiz": EntityRegistration(
         entity_type="quiz",
@@ -533,6 +603,12 @@ def entity_field_specs(
             )
         )
     return fields
+
+
+#: Tags stripped when a neighbouring block is quoted as context — the
+#: model is being shown what the lesson is talking about, not asked to
+#: reproduce its markup.
+_PLAIN_TEXT: Final[re.Pattern[str]] = re.compile(r"<[^>]+>")
 
 
 def _authored_texts(
