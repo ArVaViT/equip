@@ -266,14 +266,23 @@ def _blank_scripture_references(text: str, locale: str) -> str:
     ``_NOT_A_TERM_HERE`` — and one of them is spelled like a term this
     table decides. «Притчи 3:1» is the book of Proverbs, *Sprüche*,
     «Приповісті»; it is not a parable and must not be told to become
-    *Gleichnis*. Measured on the live catalogue, that is 25 of the
-    register's complaints, every one of them wrong.
+    *Gleichnis*.
 
     ``bible/references.py`` already knows every book in every language
     this school serves, so this asks it rather than growing a second
     list of names that would go stale the first time a book was
     renamed. Blanked in place, not deleted, because the caller still
     holds offsets into this string.
+
+    Only citations, and knowingly. A reference needs a chapter and a
+    verse to be recognised, so «Иов, Притчи и Екклесиаст» — a bare list
+    of book names — still reaches the table and still produces a note.
+    That is 21 advisory notes across the 9 463 translated pairs in
+    production, and chasing them means keeping a list of every book
+    name that is also an ordinary word, which is the kind of list this
+    module has just finished getting rid of. The prompt tells the model
+    the word may be part of a name, and the note it produces is
+    advisory; both were built for exactly this residue.
     """
     parsed = parse_references(text, locale)
     if not parsed:
