@@ -1,16 +1,31 @@
-"""Canonical 66-book Bible map + RU/EN alias lookup.
+"""Canonical 66-book Bible map + alias lookup for every served language.
 
 Each canonical slug (lower-case, no spaces — e.g. ``acts``,
-``1corinthians``) maps to a set of aliases used in Russian and English
-print abbreviations. ``find_book`` is a fast normalize-and-lookup that
-returns the canonical slug for any reasonable spelling, or ``None``.
+``1corinthians``) maps to a set of aliases used in printed references.
+``find_book`` is a fast normalize-and-lookup that returns the canonical
+slug for any reasonable spelling, or ``None``.
 
-Aliases are conservative: only forms commonly used in printed
-references (Деян. / Деяния / Acts / Acts.) are accepted. Extending this
-map is a one-line change per new alias — keep additions tested.
+This file used to *write* a German or Ukrainian reference and be unable
+to *read* one back. ``_DISPLAY_NAMES`` already knew to print ``Apg.``,
+``1. Mose`` and ``Дії``; the alias table listed Russian and English
+only, so ``find_book("Apg.")`` was ``None``. The consequence was not a
+crash anywhere: ``pre_substitute`` simply never fired for a German- or
+Ukrainian-authored course, so every quoted verse went to the model as
+ordinary prose to be re-worded — precisely the failure the whole
+substitution layer exists to prevent (#990). It never bit because all
+four live courses are ``source_locale='ru'``.
+
+So the abbreviations are no longer written twice: every entry of
+``_DISPLAY_NAMES`` is registered as an alias automatically, which makes
+"what we print is what we can read" true by construction rather than by
+diligence. ``_LOCALE_ALIASES`` adds only what a display table cannot
+hold — the full names (``Apostelgeschichte``, ``Дії апостолів``) and the
+second spellings a real author uses (``Hoheslied`` / ``Hohelied``).
 """
 
 from __future__ import annotations
+
+import re
 
 # Canonical book ordering follows the Protestant 66-book canon used by
 # both KJV and Synodal RU. Slug strings double as the keys in the
@@ -122,38 +137,139 @@ _BOOKS: tuple[tuple[str, tuple[str, ...]], ...] = (
 )
 
 
+# A numbered book is printed four different ways in four languages —
+# ``1 Samuel``, ``1. Mose``, ``1Цар``, ``1-е Коринтян`` — and they are
+# the same name. Folding the ordinal marker here means the index holds
+# one key per book rather than one per typographic habit.
+_LEADING_ORDINAL = re.compile(r"^([1-5])\s*[.\-]?\s*(?:ше|ге|тє|е)?\s*")
+
+# Ukrainian writes an apostrophe inside ``Об'явлення`` and ``Филип'ян``,
+# and which apostrophe depends on the keyboard the author used.
+_APOSTROPHES = str.maketrans({"’": "'", "ʼ": "'", "‘": "'", "`": "'"})
+
+
 def _normalize(s: str) -> str:
     """Lower-case, strip dots/whitespace, collapse internal runs of
-    whitespace to a single space. Keeps Cyrillic vs Latin distinct
-    intentionally — ё/е normalization is handled by the alias list
-    when we add the variant explicitly."""
+    whitespace to a single space, fold the apostrophe variants, and
+    reduce a leading book number to ``"1 "``. Keeps Cyrillic vs Latin
+    distinct intentionally — ё/е normalization is handled by the alias
+    list when we add the variant explicitly.
+
+    Whatever this does, ``references.py`` has to undo when it builds its
+    regex out of the same keys — the two are a pair, and
+    ``test_the_platform_reads_the_references_it_writes`` walks every
+    alias through both to prove they still agree.
+    """
     s = s.strip().lower().rstrip(".")
-    return " ".join(s.split())
+    s = " ".join(s.split())
+    s = s.translate(_APOSTROPHES)
+    return _LEADING_ORDINAL.sub(r"\1 ", s)
 
 
-# Build the alias → slug index at import time. This is a small pure-Python
-# dict (a few hundred entries) so import cost is negligible.
-_ALIAS_INDEX: dict[str, str] = {}
-for slug, aliases in _BOOKS:
-    for alias in aliases:
-        _ALIAS_INDEX[_normalize(alias)] = slug
-    # The slug itself is always a valid alias.
-    _ALIAS_INDEX[slug] = slug
+# Short aliases that are also ordinary words, and what saves them.
+#
+# The alias table is a list of strings the parser will believe when it
+# finds one in front of two numbers, and some of those strings are
+# words. Before this file grew German and Ukrainian, "The ratio is 1:2"
+# already parsed as Isaiah 1:2 — ``is`` is a declared alias for Isaiah.
+# Widening the table to four languages multiplies the hazard: German
+# ``am`` (Amos) sits in every second sentence, ``Mi`` (Micha) is also
+# Mittwoch, and Ukrainian ``об`` (Об'явлення) is how a Ukrainian says
+# "at" before a time — "об 11:30" is half past eleven, not Revelation.
+#
+# The rule: a printed citation capitalises the book name, always, in all
+# four languages, and prose does not capitalise a preposition mid
+# sentence. So an alias that is also a word is read as a book only when
+# it is written as one. For the ordinary-word cases the capital alone is
+# not enough — "Am 10:30" and "Mi 10:30" are both perfectly ordinary
+# German — so those additionally have to carry the dot that their
+# printed form carries anyway (``Am. 5,24``, ``Mi. 6,8``).
+#
+# This costs us nothing on a real citation and it is deliberately not
+# applied to every alias: ``acts 1:8`` in lower case is somebody's
+# sloppy typing, not an ambiguity, and it has always parsed.
+_WORDS_NEEDING_A_CAPITAL = frozenset(
+    {
+        "job",  # English "job"
+        "song",  # English "song"
+        "дії",  # Ukrainian "дії" — "actions"
+    }
+)
+_WORDS_NEEDING_THE_PRINTED_DOT = frozenset(
+    {
+        "is",  # English "is" — "The ratio is 1:2" was parsing as Isaiah
+        "am",  # German "am" — "am 10:30 Uhr"
+        "mi",  # German "Mi" — Mittwoch
+        "nah",  # German "nah" — "near"
+        "hab",  # German "hab" — "ich hab"
+        "об",  # Ukrainian "об" — "об 11:30"
+        "як",  # Ukrainian "як" — "how", "as"
+    }
+)
 
 
-def find_book(name: str) -> str | None:
+def written_as_a_book_name(raw: str) -> bool:
+    """Whether ``raw`` — exactly as it stood in the running text, dot and
+    all — may be read as a book name at all.
+
+    Only the aliases that are also ordinary words can answer ``False``;
+    see the note above them. Callers that already know they hold a book
+    name (the Daily Challenge stores one in a column) want ``find_book``
+    and not this.
+    """
+    key = _normalize(raw)
+    if key not in _WORDS_NEEDING_A_CAPITAL and key not in _WORDS_NEEDING_THE_PRINTED_DOT:
+        return True
+    stripped = raw.strip()
+    first_letter = next((ch for ch in stripped if ch.isalpha()), "")
+    if not first_letter.isupper():
+        return False
+    return key not in _WORDS_NEEDING_THE_PRINTED_DOT or stripped.endswith(".")
+
+
+def find_book(name: str, locale: str | None = None) -> str | None:
     """Return the canonical book slug for a printed book name / abbreviation,
     or ``None`` if no match. Tolerant of trailing dots, whitespace, and
     case. Returns the project's canonical lowercase slug (``acts``,
-    ``1corinthians``)."""
+    ``1corinthians``).
+
+    ``locale`` settles the one abbreviation the languages genuinely
+    disagree about. Synodal Russian numbers Samuel and Kings straight
+    through — ``1 Цар.`` is 1 Samuel and Kings begins at ``3 Цар.`` —
+    while Ukrainian numbers them the way English does, so ``1 Цар.`` is
+    1 Kings. The same eight characters, two different books. Without a
+    locale the Russian reading wins, because Russian is what the whole
+    live catalogue is written in; a caller that knows the language of
+    the text it is reading should say so. ``_LOCALE_OVERRIDES`` holds
+    every such disagreement and is asserted whole in the tests, so a
+    future alias cannot quietly steal a book from another language.
+    """
     if not name:
         return None
-    return _ALIAS_INDEX.get(_normalize(name))
+    key = _normalize(name)
+    if locale is not None:
+        override = _LOCALE_OVERRIDES.get(locale)
+        if override is not None and key in override:
+            return override[key]
+    return _ALIAS_INDEX.get(key)
 
 
 def all_canonical_slugs() -> tuple[str, ...]:
     """Test-time helper: every canonical book slug in canon order."""
     return tuple(slug for slug, _ in _BOOKS)
+
+
+def all_aliases() -> tuple[str, ...]:
+    """Every normalized alias the lookup knows, longest first.
+
+    ``references.py`` builds its regex from exactly this, so a name that
+    can be looked up is a name that can be found in running text — the
+    single source of truth the original module comment promised.
+    """
+    keys = set(_ALIAS_INDEX)
+    for override in _LOCALE_OVERRIDES.values():
+        keys.update(override)
+    return tuple(sorted(keys, key=lambda a: (-len(a), a)))
 
 
 # Display abbreviation per locale — what we render in a localized
@@ -459,4 +575,194 @@ def display_book_name(slug: str, locale: str) -> str | None:
     return _DISPLAY_NAMES.get(locale, {}).get(slug)
 
 
-__all__ = ["all_canonical_slugs", "display_book_name", "find_book"]
+# What a display table cannot hold: the full name, and the second
+# spelling. ``_DISPLAY_NAMES`` carries one abbreviation per book because
+# that is what we print, but an author writes "Apostelgeschichte 1,8" as
+# readily as "Apg. 1,8", and Ukrainian genitive endings vary by edition
+# ("Матвія" in Kulish, "Від Матвія" as a heading). Everything derivable
+# from the display table is left out of this one on purpose — the two
+# are merged below, and duplicating a row here would only create a place
+# for the two to drift apart.
+_LOCALE_ALIASES: dict[str, dict[str, tuple[str, ...]]] = {
+    "de": {
+        "genesis": ("Genesis",),
+        "exodus": ("Exodus",),
+        "leviticus": ("Levitikus",),
+        "numbers": ("Numeri",),
+        "deuteronomy": ("Deuteronomium",),
+        "joshua": ("Josua",),
+        "judges": ("Richter",),
+        "ruth": ("Ruth",),
+        "1samuel": ("1. Samuel",),
+        "2samuel": ("2. Samuel",),
+        "1kings": ("1. Könige",),
+        "2kings": ("2. Könige",),
+        "1chronicles": ("1. Chronik",),
+        "2chronicles": ("2. Chronik",),
+        "ezra": ("Esr.",),
+        "nehemiah": ("Nehemia",),
+        "esther": ("Ester",),
+        "job": ("Ijob",),
+        "psalms": ("Psalm", "Psalmen"),
+        "proverbs": ("Sprüche", "Sprichwörter"),
+        "ecclesiastes": ("Prediger", "Kohelet"),
+        "songofsolomon": ("Hoheslied", "Hohelied", "Hohes Lied"),
+        "isaiah": ("Jesaja",),
+        "jeremiah": ("Jeremia",),
+        "lamentations": ("Klagelieder",),
+        "ezekiel": ("Hesekiel", "Ezechiel"),
+        "hosea": ("Hos.",),
+        "amos": ("Am.",),
+        "obadiah": ("Obadja",),
+        "micah": ("Micha",),
+        "habakkuk": ("Habakuk",),
+        "zephaniah": ("Zefanja", "Zephanja"),
+        "zechariah": ("Sacharja",),
+        "malachi": ("Maleachi",),
+        "matthew": ("Matthäus",),
+        "mark": ("Markus",),
+        "luke": ("Lukas",),
+        "john": ("Johannes",),
+        "acts": ("Apostelgeschichte",),
+        "romans": ("Römer",),
+        "1corinthians": ("1. Korinther",),
+        "2corinthians": ("2. Korinther",),
+        "galatians": ("Galater",),
+        "ephesians": ("Epheser",),
+        "philippians": ("Philipper",),
+        "colossians": ("Kolosser",),
+        "1thessalonians": ("1. Thessalonicher",),
+        "2thessalonians": ("2. Thessalonicher",),
+        "1timothy": ("1. Timotheus",),
+        "2timothy": ("2. Timotheus",),
+        "philemon": ("Phlm.",),
+        "hebrews": ("Hebräer",),
+        "james": ("Jakobus",),
+        "1peter": ("1. Petrus",),
+        "2peter": ("2. Petrus",),
+        "1john": ("1. Johannes",),
+        "2john": ("2. Johannes",),
+        "3john": ("3. Johannes",),
+        "jude": ("Judas",),
+        "revelation": ("Offenbarung",),
+    },
+    "uk": {
+        "genesis": ("Буття",),
+        "exodus": ("Вихід",),
+        "leviticus": ("Левит",),
+        "numbers": ("Числа",),
+        "deuteronomy": ("Повторення Закону",),
+        "joshua": ("Ісус Навин", "Навин"),
+        "judges": ("Судді",),
+        "1samuel": ("1 Самуїлова", "1 Самуїла"),
+        "2samuel": ("2 Самуїлова", "2 Самуїла"),
+        "1kings": ("1 Царів",),
+        "2kings": ("2 Царів",),
+        "1chronicles": ("1 Хроніки", "1 Хронік"),
+        "2chronicles": ("2 Хроніки", "2 Хронік"),
+        "ezra": ("Ездра",),
+        "nehemiah": ("Неемія",),
+        "esther": ("Естер",),
+        "job": ("Йова",),
+        "psalms": ("Псалми", "Псалом"),
+        "proverbs": ("Приповісті", "Приповідки"),
+        "ecclesiastes": ("Екклезіяст", "Еклезіаст"),
+        "songofsolomon": ("Пісня над піснями",),
+        "isaiah": ("Ісая", "Ісаї"),
+        "jeremiah": ("Єремія", "Єремії"),
+        "lamentations": ("Плач Єремії",),
+        "ezekiel": ("Єзекіїль", "Єзекіїля"),
+        "daniel": ("Даниїл", "Даниїла"),
+        "hosea": ("Осія", "Осії"),
+        "joel": ("Йоіла", "Йоїл"),
+        "amos": ("Амос", "Амоса"),
+        "obadiah": ("Авдій",),
+        "jonah": ("Йони",),
+        "micah": ("Михей", "Михея"),
+        "habakkuk": ("Авакум",),
+        "zephaniah": ("Софонія",),
+        "haggai": ("Огій",),
+        "zechariah": ("Захарія",),
+        "malachi": ("Малахія",),
+        "matthew": ("Матвія", "Від Матвія"),
+        "mark": ("Марка", "Від Марка"),
+        "luke": ("Луки", "Від Луки"),
+        "john": ("Івана", "Від Івана"),
+        "acts": ("Дії апостолів", "Діяння"),
+        "romans": ("Римлян", "До римлян"),
+        "1corinthians": ("1 Коринтян",),
+        "2corinthians": ("2 Коринтян",),
+        "galatians": ("Галатів",),
+        "ephesians": ("Ефесян",),
+        "philippians": ("Филип'ян",),
+        "colossians": ("Колосян",),
+        "1thessalonians": ("1 Солунян",),
+        "2thessalonians": ("2 Солунян",),
+        "1timothy": ("1 Тимофія",),
+        "2timothy": ("2 Тимофія",),
+        "titus": ("Тита",),
+        "philemon": ("Филимона",),
+        "hebrews": ("Євреїв",),
+        "james": ("Якова",),
+        "1peter": ("1 Петра",),
+        "2peter": ("2 Петра",),
+        "1john": ("1 Івана",),
+        "2john": ("2 Івана",),
+        "3john": ("3 Івана",),
+        "jude": ("Юди",),
+        "revelation": ("Об'явлення", "Одкровення"),
+    },
+}
+
+# Registration order is precedence order, and it is the order the
+# catalogue is written in: Russian and English first (every live course
+# and the bundled Bibles), then the two languages added in 08.2026.
+# Where a later language claims an alias an earlier one already holds,
+# the earlier one keeps the shared index and the later one gets a
+# locale-scoped entry — see ``find_book``.
+_ALIAS_PRECEDENCE: tuple[str, ...] = ("ru", "en", "de", "uk")
+
+# alias → slug, for a caller that does not know what language it is
+# reading. A few hundred entries of pure Python, built at import.
+_ALIAS_INDEX: dict[str, str] = {}
+# locale → alias → slug, and only for the aliases where that locale
+# disagrees with ``_ALIAS_INDEX``. Empty for a language that invented no
+# collision, which is all of them but Ukrainian.
+_LOCALE_OVERRIDES: dict[str, dict[str, str]] = {}
+
+
+def _register(alias: str, slug: str, locale: str | None = None) -> None:
+    key = _normalize(alias)
+    held_by = _ALIAS_INDEX.get(key)
+    if held_by is None:
+        _ALIAS_INDEX[key] = slug
+    elif held_by != slug:
+        if locale is None:
+            # Two entries of the shared RU/EN table fighting over one
+            # key is a typo, not a language difference. Fail at import
+            # rather than resolve it by declaration order.
+            raise ValueError(f"alias {key!r} maps to both {held_by} and {slug}")
+        _LOCALE_OVERRIDES.setdefault(locale, {})[key] = slug
+
+
+for _slug, _aliases in _BOOKS:
+    for _alias in _aliases:
+        _register(_alias, _slug)
+    # The slug itself is always a valid alias.
+    _register(_slug, _slug)
+
+for _locale in _ALIAS_PRECEDENCE:
+    for _slug, _display in _DISPLAY_NAMES.get(_locale, {}).items():
+        _register(_display, _slug, _locale)
+    for _slug, _extra in _LOCALE_ALIASES.get(_locale, {}).items():
+        for _alias in _extra:
+            _register(_alias, _slug, _locale)
+
+
+__all__ = [
+    "all_aliases",
+    "all_canonical_slugs",
+    "display_book_name",
+    "find_book",
+    "written_as_a_book_name",
+]
