@@ -121,6 +121,7 @@ def get_translation_provider() -> TranslationProvider:
                 timeout_seconds=settings.GEMINI_TIMEOUT_SECONDS,
                 max_output_tokens=settings.GEMINI_MAX_OUTPUT_TOKENS,
                 min_interval_seconds=settings.GEMINI_MIN_INTERVAL_SECONDS,
+                review_model=settings.GEMINI_REVIEW_MODEL,
             )
 
         _cached_provider = provider
