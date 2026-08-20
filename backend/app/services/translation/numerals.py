@@ -106,10 +106,23 @@ _LOCALES: Final[frozenset[str]] = frozenset({"ru", "en", "de", "uk"})
 _BARE: Final[re.Pattern[str]] = re.compile(r"[\s.,;:!?«»„“”\"'()\[\]]+")
 
 
+# Ukrainian words carry an apostrophe, and the corpus now carries two of
+# them: the typographic U+2019 that `typography.py` normalises to, and
+# the typewriter U+0027 these tables were written with. Comparing the two
+# spellings as different words made the register stop recognising
+# the Ukrainian word for Pentecost the day typography shipped — a check
+# quietly going blind, which is worse than a check that never existed.
+_APOSTROPHES = str.maketrans({"\u2019": "'", "\u02bc": "'", "\u2018": "'"})
+
+
+def _fold_apostrophes(text: str) -> str:
+    return text.translate(_APOSTROPHES)
+
+
 def _word_pattern(word: str) -> re.Pattern[str]:
     # Strict at the start, forgiving at the end: a suffix is a form of
     # the numeral, a prefix usually makes it a different word.
-    return re.compile(rf"(?<!\w){re.escape(word)}\w{{0,4}}", re.IGNORECASE)
+    return re.compile(rf"(?<!\w){re.escape(_fold_apostrophes(word))}\w{{0,4}}", re.IGNORECASE)
 
 
 _PATTERNS: Final[dict[str, re.Pattern[str]]] = {
@@ -135,16 +148,16 @@ def numbers_lost(
     if source_locale not in _LOCALES or target_locale not in _LOCALES or source_locale == target_locale:
         return []
 
-    bare = _BARE.sub("", source).strip().lower()
+    bare = _fold_apostrophes(_BARE.sub("", source)).strip().lower()
     missing: list[tuple[str, str]] = []
     for row in _NUMERALS:
         source_word: str = getattr(row, source_locale)
         # The numeral has to BE the string, not appear in it. See the
         # module docstring for the measurement behind that.
-        if bare != source_word.lower():
+        if bare != _fold_apostrophes(source_word).lower():
             continue
         target_word: str = getattr(row, target_locale)
-        if _PATTERNS[target_word].search(translation):
+        if _PATTERNS[target_word].search(_fold_apostrophes(translation)):
             continue
         # The digit is an acceptable rendering of the word: "twelve" as
         # "12" says the same thing and reads fine in a short answer.

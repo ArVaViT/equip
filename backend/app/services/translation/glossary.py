@@ -109,13 +109,49 @@ for _row in _TERMS:
 
 _COLUMN: Final[dict[str, int]] = {"ru": 0, "en": 1, "de": 2, "uk": 3}
 
+#: Phrases where a registered word is part of a name and carries none of
+#: its register meaning. Removed before the table is consulted, in every
+#: language, because the pipeline reads in all directions.
+_NOT_A_TERM_HERE: Final[tuple[str, ...]] = (
+    "новый завет",
+    "нового завета",
+    "новом завете",
+    "новым заветом",
+    "ветхий завет",
+    "ветхого завета",
+    "ветхом завете",
+    "ветхим заветом",
+    "new testament",
+    "old testament",
+    "neues testament",
+    "alten testament",
+    "altes testament",
+    "новий завіт",
+    "нового завіту",
+    "старий завіт",
+    "старого завіту",
+)
+
 
 # Matches a term as a whole word, allowing the inflections these
 # languages actually produce: "завета", "заветом", "Gemeinden",
 # "громади". Deliberately loose at the end and strict at the start —
 # a suffix is a form of the word, a prefix usually is not.
+# Ukrainian words carry an apostrophe, and the corpus now carries two of
+# them: the typographic U+2019 that `typography.py` normalises to, and
+# the typewriter U+0027 these tables were written with. Comparing the two
+# spellings as different words made the register stop recognising
+# the Ukrainian word for Pentecost the day typography shipped — a check
+# quietly going blind, which is worse than a check that never existed.
+_APOSTROPHES = str.maketrans({"\u2019": "'", "\u02bc": "'", "\u2018": "'"})
+
+
+def _fold_apostrophes(text: str) -> str:
+    return text.translate(_APOSTROPHES)
+
+
 def _pattern(term: str) -> re.Pattern[str]:
-    return re.compile(rf"(?<!\w){re.escape(term)}\w{{0,4}}", re.IGNORECASE)
+    return re.compile(rf"(?<!\w){re.escape(_fold_apostrophes(term))}\w{{0,4}}", re.IGNORECASE)
 
 
 _PATTERNS: Final[dict[str, re.Pattern[str]]] = {form: _pattern(form) for form in _INDEX}
@@ -136,6 +172,16 @@ def terms_in(text: str, *, source_locale: LocaleCode, target_locale: LocaleCode)
     if src_col is None or tgt_col is None or src_col == tgt_col:
         return []
 
+    folded = _fold_apostrophes(text)
+    # A term inside a fixed name is not that term. «Новый Завет» is the
+    # New Testament, not a covenant, and telling the model to render it
+    # "Bund" would turn a correct translation into a wrong one — the
+    # register was measured doing exactly that on ten of the corpus's
+    # rows before this line existed.
+    lowered = folded.lower()
+    for phrase in _NOT_A_TERM_HERE:
+        lowered = lowered.replace(phrase, " ")
+    folded = lowered
     found: list[tuple[str, str]] = []
     seen: set[str] = set()
     for row in _TERMS:
@@ -143,7 +189,7 @@ def terms_in(text: str, *, source_locale: LocaleCode, target_locale: LocaleCode)
         target_form = row[tgt_col]
         if source_form.lower() in seen:
             continue
-        if _PATTERNS[source_form.lower()].search(text):
+        if _PATTERNS[source_form.lower()].search(folded):
             found.append((source_form, target_form))
             seen.add(source_form.lower())
     return found
@@ -159,6 +205,36 @@ def glossary_block(pairs: list[tuple[str, str]]) -> str:
         "render it exactly this way — the same word every time, across every "
         "lesson:\n" + lines + "\n\n"
     )
+
+
+def _stems(term: str) -> tuple[str, ...]:
+    """Beginnings of ``term`` that any inflection of it must contain.
+
+    A prefix of the dictionary form is nearly always enough — German and
+    Ukrainian decline at the end. Nearly: Ukrainian also drops a vowel in
+    the middle, so «учень» becomes «учня» and «учнів», and a check
+    looking for «учен» declares a perfectly good translation missing. It
+    did, twelve times, on the day this was measured.
+
+    So the second stem is the first with its last vowel removed. Cheap,
+    ugly, and it turns twelve false alarms into none without letting a
+    replaced word through: «п'ятидесятник» still shares no beginning
+    with «скопець».
+
+    A multi-word term is judged by its longest word — the article moves
+    with the case («die Schrift» / «der Schrift») and carries no meaning
+    worth checking.
+    """
+    core = max(_fold_apostrophes(term).lower().split(), key=len, default="")
+    if not core:
+        return ()
+    head = core[: max(4, len(core) - 3)]
+    stems = {head}
+    for index in range(len(head) - 1, 1, -1):
+        if head[index] in "аеёиоуыэюяіїєaeiouäöü":
+            stems.add(head[:index] + head[index + 1 :])
+            break
+    return tuple(stems)
 
 
 def missing_terms(
@@ -186,12 +262,9 @@ def missing_terms(
     if not source or not translation:
         return []
     absent: list[tuple[str, str]] = []
+    folded_translation = _fold_apostrophes(translation).lower()
     for source_form, target_form in terms_in(source, source_locale=source_locale, target_locale=target_locale):
-        # The first few characters carry the stem; the pattern already
-        # allows a suffix. A term whose stem is nowhere in the answer was
-        # not translated, it was replaced.
-        stem = target_form[: max(4, len(target_form) - 3)]
-        if stem.lower() not in translation.lower():
+        if not any(stem in folded_translation for stem in _stems(target_form)):
             absent.append((source_form, target_form))
     return absent
 
