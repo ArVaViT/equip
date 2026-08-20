@@ -14,6 +14,7 @@ not surprised by machine translations when the UI is in another language.
 
 from __future__ import annotations
 
+import re
 import uuid
 from dataclasses import dataclass
 from typing import Literal
@@ -405,6 +406,27 @@ def fetch_overlay_triples_bulk(
     return fetch_cv_text_bulk(db, keys, display_locale)
 
 
+# Ranges rather than literals: a character class spelled out in Cyrillic
+# trips the confusable-character lint on every letter that has a Latin
+# twin, and the point here is precisely to tell those twins apart.
+_CYRILLIC = re.compile("[\u0400-\u04ff]")
+_LATIN = re.compile("[A-Za-z\u00c0-\u024f]")
+
+
+def _mixed_script(text: str) -> bool:
+    """Whether the text is written in both alphabets at once.
+
+    Not a language check — a signal that a language check cannot be
+    trusted. A German lesson quoting a Russian term, or a Russian lesson
+    citing an English book, is neither language cleanly, and the
+    detector answers with whichever script has more characters.
+    """
+    from app.services.language_detection import strip_tags
+
+    bare = strip_tags(text)
+    return bool(_CYRILLIC.search(bare)) and bool(_LATIN.search(bare))
+
+
 def pick_overlay_value(
     overlay: dict[tuple[str, str, str], str],
     entity_type: str,
@@ -428,7 +450,22 @@ def pick_overlay_value(
     # the equality check.
     detected_source = detect_locale(base) if base is not None else None
     effective_source = detected_source or source_locale
-    if base is not None and effective_source == display_locale:
+    # The detector alone is not enough to short-circuit on, and the
+    # reason is measurable: it reads a Russian paragraph carrying a
+    # bibliography — "См. F. F. Bruce, The Book of the Acts (Grand
+    # Rapids: Eerdmans, 1988)" — as English, with the same confidence it
+    # reads an actually-English sentence, because most of the characters
+    # are Latin. An English reader would then be handed the Russian
+    # original while the finished English translation sat unread in the
+    # overlay. Same shape for a Latin hymn quoted in Russian prose, a
+    # Greek word, an English subtitle over a Russian lesson.
+    #
+    # What separates the two cases is not confidence but script: text
+    # that is genuinely English contains no Cyrillic. So a detection is
+    # trusted only when the text is written in one script. Mixed script
+    # means the answer is a guess, and where it is a guess the reader is
+    # better served by the translation that was made for them.
+    if base is not None and effective_source == display_locale and not _mixed_script(base):
         return base
     key = (entity_type, entity_id, field)
     if key in overlay:

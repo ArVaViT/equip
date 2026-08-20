@@ -31,12 +31,20 @@ class TestThePromptSaysItPlainly:
         prompt = build_system_prompt(source_locale="ru", target_locale="de")
         assert "Only an EQV" in prompt
 
-    def test_and_a_quoted_verse_is_sent_to_the_target_bible(self) -> None:
-        # The specific trap: transliterating the source-language idiom
-        # ("Zlatschnoje mesto") instead of using how a German Bible
-        # renders the verse it comes from.
+    def test_an_idiom_is_never_spelled_out_in_the_target_alphabet(self) -> None:
+        # The specific trap: production carried "Zlatschnoje mesto" —
+        # a Russian idiom written in German letters, with an invented
+        # etymology beside it. A reader who does not know Russian learns
+        # nothing from its sounds.
+        #
+        # The rule deliberately stops there and does NOT tell the model
+        # to substitute the wording of a German Bible: an earlier version
+        # did, and it contradicted the rule two lines below, which says
+        # to translate a quoted passage literally rather than recite an
+        # edition from memory. Reciting is what #990 was about.
         prompt = build_system_prompt(source_locale="ru", target_locale="de")
-        assert "not a transliteration of the source" in prompt
+        assert "never spell it out in German letters" in prompt
+        assert "do not recite a German Bible from memory" in prompt
 
 
 class TestAReplyThatRepeatedTheQuestion:
