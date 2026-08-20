@@ -326,17 +326,33 @@ def _option_context(db: Session, option: Any, course: Course | None) -> str | No
     Russian keeps the case in all four options every time, because the
     author wrote them together.
 
-    So the question comes along. The model is told not to translate it —
-    it is there to be agreed with.
+    So the question comes along — and the instruction that goes with it
+    matters more than the question does. Given the question and nothing
+    else, the model helpfully repairs the wrong answers: measured on the
+    corpus, 18 question-and-language pairs came back with a distractor
+    rewritten into a character-identical copy of the correct answer, and
+    about a dozen more had a name swapped for the right one. Those
+    questions cannot be answered by anybody. The Russian source has no
+    duplicate options anywhere in 128 questions; every one of them was
+    introduced in translation.
+
+    So the question is passed for grammar, and the model is told twice
+    that a wrong answer is wrong on purpose.
     """
     question = _question_text_for_option(db, option, entity_type="quiz_question")
     if not question:
         return "Answer option for a Bible-study quiz question."
     return (
-        "This is one answer option to the question below. Do not translate "
-        "the question; make the option read grammatically as a continuation "
-        "of it — the case, preposition and sentence shape the question "
-        f"requires.\nQuestion: {question}"
+        "This is one answer option to the question below. The question is "
+        "here for GRAMMAR ONLY: make the option agree with it — the case, "
+        "preposition and sentence shape it requires.\n"
+        "Most options are wrong answers on purpose. Translate what this "
+        "option says, however wrong it is. Do not correct it, do not make "
+        "it agree with the facts, and never let it drift towards the "
+        "right answer: a quiz whose wrong answers have been fixed cannot "
+        "be answered at all.\n"
+        "Do not translate the question itself.\n"
+        f"Question: {question}"
     )
 
 
@@ -345,9 +361,13 @@ def _daily_challenge_option_context(db: Session, option: Any, _course: Course | 
     if not question:
         return "Answer option for a daily Bible question."
     return (
-        "This is one answer option to the question below. Do not translate "
-        "the question; make the option read grammatically as a continuation "
-        f"of it.\nQuestion: {question}"
+        "This is one answer option to the question below. The question is "
+        "here for GRAMMAR ONLY: make the option agree with it.\n"
+        "Most options are wrong answers on purpose. Translate what this "
+        "option says, however wrong it is — do not correct it and never "
+        "let it drift towards the right answer.\n"
+        "Do not translate the question itself.\n"
+        f"Question: {question}"
     )
 
 
