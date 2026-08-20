@@ -30,6 +30,30 @@ target-locale lookup fails (e.g. an exotic verse missing from the
 bundled file), restore the original blockquote text instead — better
 than leaving a marker visible in the rendered output.
 
+The canonical text arrives **bare**: an edition prints Scripture, not
+somebody's quotation of it, so there are no quotation marks around it.
+The author's marks, meanwhile, were part of the span the marker ate. Put
+back naively, that is a verse presented two ways in one lesson — the
+recognised quotation restored without marks, the unrecognised one a few
+lines down still carrying the author's — which is what a bilingual
+editor found across the whole of generation 8: Russian source 18 of 18
+featured verses quoted, German 5, Ukrainian 5, English 6. So
+``pre_substitute`` also records *whether the author quoted*, and
+``post_substitute`` re-wraps the canonical text in the marks the target
+language sets a quotation in. See ``_swallowed_quotes`` for what counts
+as quoted and why one mark is not enough.
+
+"Bare" needs one qualification, and it is the second half of what the
+editor found. An edition that sets direct speech in quotation marks
+prints a *fragment* of one when the speech runs across a verse boundary:
+the Berean Standard Bible answers a request for Acts 1:8 with
+``But you will receive power … to the ends of the earth.”`` — a closing
+mark whose opening is in verse 7. Of the four editions quoted here, only
+the English one does this (verified against the live API on 2026-08-20),
+which is precisely why the English column was the one with blockquotes
+that open without a mark and close with one. ``_drop_unpaired_edge_mark``
+removes it, and only where "unpaired" is provable rather than guessed.
+
 Why ≥ 0.80: SequenceMatcher tolerates minor punctuation/hyphenation
 differences (em-dash variants, ё vs е, smart quotes, "the" / "ye")
 without false-matching paraphrases. We tested empirically on the Acts
@@ -44,9 +68,10 @@ import re
 import secrets
 from dataclasses import dataclass, replace
 from difflib import SequenceMatcher
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from app.core.sanitize import html_to_plain_text
+from app.schemas.locale import QUOTATION_MARKS
 from app.services.bible.api_source import API_BIBLE_IDS, TRUSTED_BUNDLE_LOCALES, fetch_verse
 from app.services.bible.books import display_book_name
 from app.services.bible.psalm_numbering import remap_psalm
@@ -89,12 +114,27 @@ class Substitution:
     ``ref_tail`` is the parenthesized reference text that lived
     immediately after the verse (e.g. ``(Matt. 28:19).``) and is
     re-localized by ``post_substitute`` so a Russian reader sees
-    ``(Матф. 28:19).`` instead of the source-locale form."""
+    ``(Матф. 28:19).`` instead of the source-locale form.
+
+    ``opening_quote_lost`` / ``closing_quote_lost`` say that the author
+    presented this verse as a quotation and that the mark on that side
+    went into the marker with the verse. They are the two halves of one
+    answer, and they are answered separately because the marks do not
+    always fall on the same side of the span: an author who wrote
+    ``«…до края земли (Деян. 1:8)»`` put the opening mark inside the
+    replaced text and the closing mark after the citation, where it
+    survives the round trip untouched. Restoring both would give that
+    verse two closing marks. Both default to ``False``, so a
+    ``Substitution`` built by hand — or unpickled from a queue written by
+    the previous version — adds nothing, which is exactly the old
+    behaviour."""
 
     marker: str
     ref: BibleRef
     original_inner: str
     ref_tail: str = ""
+    opening_quote_lost: bool = False
+    closing_quote_lost: bool = False
 
 
 def _strip_html(html: str) -> str:
@@ -130,6 +170,236 @@ def _normalize_for_compare(s: str) -> str:
     )
     s = s.translate(table)
     return " ".join(s.split())
+
+
+# ---------------------------------------------------------------------------
+# Did the author quote this?
+# ---------------------------------------------------------------------------
+
+# Marks that can open a quotation, and marks that can close one. ``“``
+# and ``‘`` are in both sets deliberately: English opens with them and
+# German closes with them, and this layer reads text written in four
+# languages by authors who mix the conventions freely.
+_OPENING_MARKS: Final[frozenset[str]] = frozenset("\"'«„“‘‚")
+_CLOSING_MARKS: Final[frozenset[str]] = frozenset("\"'»“”’‘")
+
+# The same, minus the single marks. An apostrophe is a single mark and a
+# genitive both, and no rule that *deletes* a character may be allowed to
+# read ``the disciples'`` as half a quotation.
+_DOUBLE_OPENING: Final[frozenset[str]] = frozenset('"«„“')
+_DOUBLE_CLOSING: Final[frozenset[str]] = frozenset('"»“”')
+_DOUBLE_MARKS: Final[frozenset[str]] = _DOUBLE_OPENING | _DOUBLE_CLOSING
+
+# Punctuation that may stand between a quotation mark and the words it
+# encloses. Russian sets the full stop outside the closing mark
+# (``«…земли».``), English inside it (``"…earth."``), and a citation
+# brings its own comma; stepping over these is what lets one rule read
+# both conventions.
+_EDGE_PUNCTUATION: Final[str] = ".,;:!?…"
+
+# Elements that end a line of reading. A quotation mark on the far side
+# of ``</p>`` belongs to the previous paragraph, not to this verse — and
+# treating it as this verse's mark is how a restored quotation would
+# quietly lose its opening or gain a third. Inline elements (``<em>``,
+# ``<strong>``, ``<a>``) stay transparent: ``«<em>`` still reads as ``«``.
+_BLOCK_ELEMENTS: Final[frozenset[str]] = frozenset(
+    {
+        "address", "article", "aside", "blockquote", "br", "dd", "div", "dl", "dt",
+        "figcaption", "figure", "footer", "h1", "h2", "h3", "h4", "h5", "h6",
+        "header", "hr", "li", "main", "nav", "ol", "p", "pre", "section", "table",
+        "tbody", "td", "tfoot", "th", "thead", "tr", "ul",
+    }
+)  # fmt: skip
+
+_TAG_NAME = re.compile(r"</?([A-Za-z][A-Za-z0-9]*)")
+
+# How far outside the replaced span to look for a mark that survived it.
+# The only thing that legitimately sits between a verse and its closing
+# quote is the citation, and the longest of those is some forty
+# characters; this leaves room for the markup around it and still stops
+# well short of the next sentence.
+_QUOTE_EDGE_WINDOW: Final[int] = 240
+
+
+def _is_block_tag(tag: str) -> bool:
+    name = _TAG_NAME.match(tag)
+    return name is not None and name.group(1).lower() in _BLOCK_ELEMENTS
+
+
+def _visible_before(text: str, *, skip_punctuation: bool) -> str:
+    """The last character of ``text`` a reader actually sees, or ``""``.
+
+    Whitespace and inline markup are transparent — ``«</em> `` ends, to a
+    reader, in ``«``. A block element, an unterminated tag, or running
+    out of text all answer ``""``: we are no longer reading the same line
+    of prose, and "no mark here" is the answer that changes nothing.
+    """
+    index = len(text) - 1
+    while index >= 0:
+        char = text[index]
+        if char.isspace():
+            index -= 1
+        elif char == ">":
+            opened = text.rfind("<", 0, index)
+            if opened == -1 or _is_block_tag(text[opened : index + 1]):
+                return ""
+            index = opened - 1
+        elif skip_punctuation and char in _EDGE_PUNCTUATION:
+            index -= 1
+        else:
+            return char
+    return ""
+
+
+def _visible_after(text: str, *, skip_citation: bool) -> str:
+    """The first character of ``text`` a reader actually sees, or ``""``.
+
+    ``skip_citation`` steps over the reference that follows a verse —
+    sentence punctuation and one parenthesized group — because an
+    author's closing mark falls after ``(Деян. 1:8)`` about as often as
+    before it, and both spellings mean the same thing to a reader.
+    """
+    index = 0
+    parenthesis_skipped = False
+    while index < len(text):
+        char = text[index]
+        if char.isspace():
+            index += 1
+        elif char == "<":
+            closed = text.find(">", index)
+            if closed == -1 or _is_block_tag(text[index : closed + 1]):
+                return ""
+            index = closed + 1
+        elif skip_citation and char in _EDGE_PUNCTUATION:
+            index += 1
+        elif skip_citation and char == "(" and not parenthesis_skipped:
+            closed = text.find(")", index)
+            if closed == -1:
+                return ""
+            index = closed + 1
+            parenthesis_skipped = True
+        else:
+            return char
+    return ""
+
+
+def _swallowed_quotes(replaced: str, before: str, after: str) -> tuple[bool, bool]:
+    """Which of the author's quotation marks the marker is about to eat.
+
+    Returns ``(opening, closing)`` — whether ``post_substitute`` has to
+    set an opening and a closing mark around the canonical text it pastes
+    in. The canonical text itself is always bare, so this is the whole of
+    what decides how a quoted verse reaches the reader.
+
+    The question underneath is "did the author present this as a
+    quotation", and the replaced span alone cannot answer it. Where the
+    marks fall relative to the span depends on where the author put the
+    citation, and the two placements are not the same case:
+
+    * A mark **inside** the span is destroyed with the verse and has to
+      be put back.
+    * A mark **outside** it survives the round trip untouched, and
+      putting it back too is how a verse ends up in doubled marks. This
+      is the ordinary case for an inline quotation, where the marks are
+      deliberately left standing in the prose.
+
+    So the sides are read independently, and the asymmetric layout —
+    ``«…до края земли (Деян. 1:8)»``, opening mark eaten, closing mark
+    surviving after the citation — restores one mark rather than two.
+
+    A quotation needs both ends before anything is restored. A single
+    mark is as likely to be a stray apostrophe, a plural possessive, or
+    half a pair the author never closed, and we cannot tell which. Bare
+    is also the right answer for the common ``<blockquote>`` an author
+    set with no marks at all: it is already a quotation to the eye, and
+    this must not give it any.
+    """
+    opening_inside = _visible_after(replaced, skip_citation=False) in _OPENING_MARKS
+    closing_inside = _visible_before(replaced, skip_punctuation=True) in _CLOSING_MARKS
+    opens = opening_inside or _visible_before(before[-_QUOTE_EDGE_WINDOW:], skip_punctuation=False) in _OPENING_MARKS
+    closes = closing_inside or _visible_after(after[:_QUOTE_EDGE_WINDOW], skip_citation=True) in _CLOSING_MARKS
+    if not (opens and closes):
+        return False, False
+    return opening_inside, closing_inside
+
+
+def _drop_unpaired_edge_mark(canonical: str) -> str:
+    """Canonical text without an edge mark that has nothing to pair with.
+
+    Some editions set direct speech in quotation marks, and speech runs
+    across verse boundaries. Ask the API for Acts 1:8 in English and the
+    Berean Standard Bible answers
+
+        But you will receive power … to the ends of the earth.”
+
+    — a closing mark whose opening lives in verse 7, which nobody
+    reading this lesson can see. Verified against the live API on
+    2026-08-20: of the four editions this platform quotes, only the
+    English one does this, and it is the whole reason the English column
+    of the corpus reads ``…ends of the earth." (Acts 1:8)`` — a verse
+    that opens with nothing and closes with a mark. That is not the
+    author's punctuation surviving; it is the edition's, orphaned by
+    being shown one verse at a time.
+
+    So it goes. Narrowly: only when the text holds **exactly one** double
+    quotation mark and that mark stands at an edge, which is proof it has
+    no partner in the text rather than a guess that it hasn't. A verse
+    that quotes something in full (``“Repent and be baptized…”``) has
+    two, and keeps both. An unpaired mark in the *middle* of a verse
+    (``Jesus answered, “I am the way…``) is left where it is: it is the
+    edition's, it is unbalanced, and there is no safe way to tell from
+    one verse whether removing it or completing it is the smaller lie.
+    """
+    text = canonical.strip()
+    if len([char for char in text if char in _DOUBLE_MARKS]) != 1:
+        return canonical
+    if text[0] in _DOUBLE_OPENING:
+        return text[1:].lstrip()
+    if text[-1] in _DOUBLE_CLOSING:
+        return text[:-1].rstrip()
+    return canonical
+
+
+def _requote(canonical: str, sub: Substitution, html: str, target_locale: LocaleCode) -> str:
+    """``canonical`` presented the way the author presented it: wrapped
+    in quotation marks if they quoted it, bare if they did not, and in
+    the marks ``target_locale`` writes rather than the ones they typed.
+
+    Three things can already have supplied a mark, and each is a reason
+    not to supply a second:
+
+    * The **edition**, which may print the verse as speech. ``“Repent
+      and be baptized…”`` needs no marks around it, it has them.
+    * The **surrounding text**, when the author's mark fell outside the
+      replaced span and survived the round trip untouched.
+    * **This function**, on a previous pass over the same document.
+
+    All three are answered by the same check — look before adding — and
+    it is the third that makes the pass idempotent.
+    """
+    canonical = _drop_unpaired_edge_mark(canonical)
+    marks = QUOTATION_MARKS.get(target_locale)
+    if marks is None or not (sub.opening_quote_lost or sub.closing_quote_lost):
+        return canonical
+    opening, closing = marks
+    index = html.find(sub.marker)
+    if index == -1:
+        return canonical
+    lead = html[max(0, index - _QUOTE_EDGE_WINDOW) : index]
+    trail = html[index + len(sub.marker) : index + len(sub.marker) + _QUOTE_EDGE_WINDOW]
+    if (
+        sub.opening_quote_lost
+        and canonical[:1] not in _OPENING_MARKS
+        and _visible_before(lead, skip_punctuation=False) not in _OPENING_MARKS
+    ):
+        canonical = opening + canonical
+    if (
+        sub.closing_quote_lost
+        and canonical[-1:] not in _CLOSING_MARKS
+        and _visible_after(trail, skip_citation=True) not in _CLOSING_MARKS
+    ):
+        canonical = canonical + closing
+    return canonical
 
 
 def _localize_ref_tail(
@@ -348,12 +618,25 @@ def pre_substitute(
         # exact tail we just emitted; for outside-ref blockquotes it's
         # the ref text we left untouched in the surrounding HTML so
         # post can find and rewrite it (``stored_ref_tail`` set above).
+        #
+        # Whether the author quoted is asked of the *source* HTML, where
+        # their own marks are still standing, and about the exact span
+        # the marker replaces: everything before ``verse_text_inner``,
+        # and everything after it including the citation.
+        inner_start = bm.start("inner")
+        opening_lost, closing_lost = _swallowed_quotes(
+            verse_text_inner,
+            html[:inner_start],
+            html[inner_start + len(verse_text_inner) :],
+        )
         subs.append(
             Substitution(
                 marker=marker,
                 ref=ref,
                 original_inner=verse_text_inner,
                 ref_tail=emitted_tail or stored_ref_tail,
+                opening_quote_lost=opening_lost,
+                closing_quote_lost=closing_lost,
             )
         )
 
@@ -453,6 +736,13 @@ def _substitute_inline_quotes(
                 continue
 
             claimed.add(index)
+            # No ``*_quote_lost`` here, and none is needed:
+            # ``_QUOTED_SPAN`` captures the marks as ``open`` and
+            # ``close`` and replaces only ``inner``, so the author's own
+            # marks are still standing in the prose on either side of the
+            # marker. This path was never the defect — it is the one that
+            # already did the right thing, and the blockquote path has
+            # now been taught to match it.
             replacements.append(
                 (
                     span_start,
@@ -589,7 +879,14 @@ def post_substitute(
     """Replace every marker in ``html`` with the canonical
     ``target_locale`` text for its substitution and rewrite the
     surviving reference tail (``(Matt. 28:19)``) into the same locale's
-    conventional form (``(Матф. 28:19)``). Falls back to the original
+    conventional form (``(Матф. 28:19)``). A verse the author set in
+    quotation marks is re-wrapped in the marks ``target_locale`` uses —
+    ``«»`` for Russian and Ukrainian, ``„“`` for German, straight ``"``
+    for English — because the canonical editions print Scripture bare
+    and the author's own marks went into the marker with the verse. A
+    verse the author did not set in marks gets none.
+
+    Falls back to the original
     (source-locale) inner text when the target lookup misses — better
     than leaking a sentinel marker into the rendered page. Tail-rewrite
     is best-effort: if the LLM mutated the tail in transit, the literal
@@ -612,7 +909,12 @@ def post_substitute(
                 sub.ref_tail or "?",
                 target_locale,
             )
-        replacement = canonical_target if canonical_target is not None else sub.original_inner
+        # Re-wrapping applies only to the canonical text. The fallback
+        # path restores the author's own span, which still carries
+        # whatever marks the author put inside it.
+        replacement = (
+            _requote(canonical_target, sub, html, target_locale) if canonical_target is not None else sub.original_inner
+        )
         html = html.replace(sub.marker, replacement)
         if sub.ref_tail:
             # The numbers follow the text: they move only when the text

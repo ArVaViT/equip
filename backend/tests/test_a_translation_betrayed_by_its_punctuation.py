@@ -428,6 +428,17 @@ class TestEnglishIsMadeStraight:
     def test_a_possessive_at_the_end_of_a_word_is_not_disturbed(self) -> None:
         assert normalize_typography("Jesus' disciples", "en") == "Jesus' disciples"
 
+    def test_the_russian_guillemets_do_not_survive_into_english(self) -> None:
+        # The source is Russian. A quotation the verse-substitution layer
+        # does not recognise travels to the model as ordinary prose and
+        # comes back wearing the author's own marks, so an English lesson
+        # could hold a restored verse in ``"…"`` and the same verse in
+        # ``«…»`` twenty lines further down.
+        assert normalize_typography("He said «yes».", "en") == 'He said "yes".'
+
+    def test_nor_do_the_german_ones(self) -> None:
+        assert normalize_typography("He said „yes“.", "en") == 'He said "yes".'
+
 
 class TestUkrainianHasOneApostrophe:
     def test_a_typewriter_apostrophe_inside_a_word_becomes_typographic(self) -> None:
