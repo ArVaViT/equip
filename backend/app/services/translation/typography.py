@@ -596,27 +596,36 @@ def _title_words(text: str, free: list[bool], start: int, end: int) -> list[tupl
     return words
 
 
-def _raise_initial(out: list[str], index: int) -> None:
-    """Upper-case one character, or decline.
+def _capitalised_inside(text: str, indices: list[int], head: int) -> bool:
+    """Whether the word carries a capital anywhere but the front.
+
+    ``THE``, ``McCoy``, ``iPhone``, ``eBay``. Every one of them was
+    spelled that way on purpose, and every one of them comes out wrong
+    if only the first letter is touched — ``tHE``, ``mcCoy``,
+    ``IPhone``, ``EBay``. So a word shaped like that is not this rule's
+    to change in either direction.
+    """
+    return any(text[index].isupper() for index in indices if index != head)
+
+
+def _raise_initial(text: str, out: list[str], indices: list[int], head: int) -> None:
+    """Upper-case a word's initial, or decline.
 
     ``str.upper`` is not length-preserving for every character in
     Unicode — German ``ß`` becomes ``SS`` — and this layer's whole claim
     is that it is. A character that does not have a one-character upper
     case is left as it stands.
     """
-    upper = out[index].upper()
-    if len(upper) == 1 and upper != out[index]:
-        out[index] = upper
+    if _capitalised_inside(text, indices, head):
+        return
+    upper = out[head].upper()
+    if len(upper) == 1 and upper != out[head]:
+        out[head] = upper
 
 
 def _lower_small_word(text: str, out: list[str], indices: list[int], head: int) -> None:
-    """Lower-case the initial of a function word, unless it is shouting.
-
-    ``THE`` and ``McCoy`` are left alone: lowering only the first letter
-    of either produces ``tHE`` and ``mcCoy``, and a word that carries a
-    capital anywhere but the front was written that way on purpose.
-    """
-    if any(text[index].isupper() for index in indices if index != head):
+    """Lower-case the initial of a function word, unless it is shouting."""
+    if _capitalised_inside(text, indices, head):
         return
     lower = out[head].lower()
     if len(lower) == 1 and lower != out[head]:
@@ -635,7 +644,7 @@ def _title_case_span(text: str, free: list[bool], out: list[str], start: int, en
         word = "".join(text[index] for index in indices).strip("".join(_APOSTROPHE_IN_WORD)).lower()
         is_last = position == len(words) - 1
         if fresh or is_last or word not in _SMALL_WORDS:
-            _raise_initial(out, head)
+            _raise_initial(text, out, indices, head)
         else:
             _lower_small_word(text, out, indices, head)
 

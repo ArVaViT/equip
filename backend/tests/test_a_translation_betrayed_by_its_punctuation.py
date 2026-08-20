@@ -266,6 +266,13 @@ class TestEnglishTitlesAreTitleCase:
         # on purpose.
         assert normalize_typography("THE MAP and THE Territory", "en", "title") == "THE MAP and THE Territory"
 
+    def test_a_word_that_starts_small_on_purpose_is_left_small(self) -> None:
+        # ``iPhone`` and ``eBay`` are the mirror of ``THE``: raising only
+        # the first letter gives ``IPhone`` and ``EBay``. A capital
+        # anywhere but the front takes the word out of this rule's reach
+        # in both directions.
+        assert normalize_typography("iPhone and eBay in the church", "en", "title") == ("iPhone and eBay in the Church")
+
     def test_a_word_with_a_digit_in_it_is_left_alone(self) -> None:
         assert normalize_typography("a study of 1st century faith", "en", "title") == "A Study of 1st Century Faith"
 
