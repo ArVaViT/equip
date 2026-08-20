@@ -18,12 +18,15 @@ accept link still works if shared manually.
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 import httpx
 
 from app.core.config import settings
 from app.core.i18n import t
-from app.schemas.locale import DEFAULT_LOCALE, LocaleCode
+
+if TYPE_CHECKING:
+    from app.schemas.locale import LocaleCode
 
 logger = logging.getLogger(__name__)
 
@@ -78,9 +81,18 @@ def send_invitation_email(
     to_email: str,
     role: str,
     accept_url: str,
-    locale: LocaleCode = DEFAULT_LOCALE,
+    locale: LocaleCode,
 ) -> bool:
     """Send the invite email via Resend. Returns whether it was sent.
+
+    ``locale`` has no default, deliberately. It used to be
+    ``DEFAULT_LOCALE``, which meant a caller who forgot it still sent a
+    perfectly valid-looking email in whatever the platform's last resort
+    happened to be that year — silently, and to a person who has no
+    account and so no preference to correct it with. The one caller
+    (``invitation_service._inviter_locale``) has always passed the
+    inviter's language; requiring the argument means the next caller has
+    to decide too, instead of inheriting an answer.
 
     Never raises -- a delivery failure is logged and swallowed so the
     invite row (and its usable token/link) still exists regardless of

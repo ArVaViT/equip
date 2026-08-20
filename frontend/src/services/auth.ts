@@ -13,7 +13,8 @@ export const authService = {
      * ``handle_new_user`` trigger seeds ``profiles.preferred_locale``
      * to the same language the registration form was rendered in.
      * The DB CHECK whitelists this value; passing anything else
-     * silently falls back to 'ru' at the trigger level.
+     * silently falls back to the column default at the trigger level,
+     * which is 'en' — the answer for a signup that told us nothing.
      */
     preferredLocale: SupportedLocale = DEFAULT_LOCALE,
   ): Promise<void> {

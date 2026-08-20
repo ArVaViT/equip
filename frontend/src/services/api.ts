@@ -1,6 +1,6 @@
 import axios, { isAxiosError } from "axios"
 import type { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from "axios"
-import i18n, { isSupportedLocale } from "@/i18n/config"
+import i18n, { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import { supabase } from "@/lib/supabase"
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
@@ -35,9 +35,13 @@ supabase.auth.onAuthStateChange((_event, session) => {
 })
 
 function currentAcceptLanguage(): string {
-  const raw = (i18n.resolvedLanguage ?? i18n.language ?? "ru").toLowerCase()
-  const head = raw.split("-", 1)[0] ?? "ru"
-  return isSupportedLocale(head) ? head : "ru"
+  // The three rungs all end at DEFAULT_LOCALE rather than a literal: this
+  // header is what the server resolves content in, so a value here that
+  // disagreed with the constant would have the API answering in one
+  // language while the interface around it rendered in another.
+  const raw = (i18n.resolvedLanguage ?? i18n.language ?? DEFAULT_LOCALE).toLowerCase()
+  const head = raw.split("-", 1)[0] ?? DEFAULT_LOCALE
+  return isSupportedLocale(head) ? head : DEFAULT_LOCALE
 }
 
 async function getAccessToken(): Promise<string | null> {

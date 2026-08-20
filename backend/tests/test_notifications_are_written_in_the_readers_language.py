@@ -110,16 +110,19 @@ class TestWhoseLanguageItIs:
         db.commit()
         assert preferred_locale_of(db, user_id) == "uk"
 
-    def test_an_account_with_no_choice_gets_the_default(self, db: Session):
+    def test_an_account_that_never_said_is_written_to_in_english(self, db: Session):
+        # A row with nothing in the column is not evidence that this
+        # person reads Russian. It is evidence that nobody asked.
         user_id = uuid.uuid4()
         db.add(User(id=user_id, email=f"{user_id}@example.com", role="student", preferred_locale=None))
         db.commit()
-        assert preferred_locale_of(db, user_id) == "ru"
+        assert preferred_locale_of(db, user_id) == "en"
 
     def test_nobody_at_all_still_resolves(self, db: Session):
         # System-issued mail and notifications have no author behind
-        # them and still have to go out.
-        assert preferred_locale_of(db, None) == "ru"
+        # them and still have to go out — in English, the language for a
+        # reader we know nothing about.
+        assert preferred_locale_of(db, None) == "en"
 
 
 class TestTheBellFollowsTheReader:

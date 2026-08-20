@@ -103,10 +103,14 @@ class TestARealAcceptLanguageHeader:
 
         assert normalize_locale(header) == expected
 
-    def test_a_list_of_languages_we_do_not_serve_falls_back(self):
+    def test_a_visitor_whose_language_we_do_not_serve_is_answered_in_english(self):
+        # Not "falls back to the default" — the point is *which* default.
+        # A reader asking for French and Spanish has told us nothing about
+        # Russian, and this used to hand them Russian because the constant
+        # was set when the platform had no other language to offer.
         from app.schemas.locale import normalize_locale
 
-        assert normalize_locale("fr-FR,fr;q=0.9,es;q=0.8") == "ru"
+        assert normalize_locale("fr-FR,fr;q=0.9,es;q=0.8") == "en"
 
     def test_but_a_served_language_further_down_the_list_is_still_found(self):
         # q-values are deliberately not parsed: a reader who lists

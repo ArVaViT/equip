@@ -51,7 +51,25 @@ from typing import Final, Literal
 LocaleCode = Literal["ru", "en", "de", "uk"]
 
 LOCALE_CODES: Final[tuple[LocaleCode, ...]] = ("ru", "en", "de", "uk")
-DEFAULT_LOCALE: Final[LocaleCode] = "ru"
+
+#: The last resort: what a request is answered in when nothing in it says
+#: who is asking — no profile, and an ``Accept-Language`` naming only
+#: languages this platform does not serve.
+#:
+#: It was ``"ru"``, set when the platform was Russian-only and "the language
+#: we fall back to" and "the language the content is written in" were the
+#: same fact. They stopped being the same fact the day a second language
+#: shipped, and the constant never moved. A reader whose browser asks for
+#: French is not a Russian speaker — they are somebody we know nothing
+#: about, and the language to answer an unknown reader in is English.
+#:
+#: What this is **not**: it is not ``courses.source_locale`` (courses are
+#: authored in Russian and translated out of it — see
+#: ``models/course.py``), and it is not the content fallback in
+#: ``services/content_versions/read.py`` (an untranslated lesson correctly
+#: falls back to the text it was written in). Both of those are still
+#: Russian and must stay that way.
+DEFAULT_LOCALE: Final[LocaleCode] = "en"
 
 # Human-readable language names used by the translation prompt builder
 # to address the upstream model ("translate from Russian to English").

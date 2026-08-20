@@ -41,7 +41,15 @@ class User(Base):
     # frontend and which translated copy of course content gets served.
     # The CHECK constraint in supabase/migrations/...add_profile_preferred_locale
     # restricts this to ('ru', 'en', 'de', 'uk'); keep the schema Literal in sync.
-    preferred_locale: Mapped[str] = mapped_column(default="ru")
+    #
+    # The default is what an account gets when its signup carried no
+    # language at all (Google OAuth passes none) — a row that means "nobody
+    # said", which is exactly what ``locale_source = 'default'`` below
+    # records. English, matching ``DEFAULT_LOCALE``; it was 'ru' from the
+    # Russian-only days. The DB-side DEFAULT is moved by
+    # supabase/migrations/20260820120000_english_is_the_last_resort.sql —
+    # this ORM default only applies to rows this application inserts.
+    preferred_locale: Mapped[str] = mapped_column(default="en")
     # How ``preferred_locale`` got its value: 'default' (nobody was asked
     # — the column is NOT NULL and had to hold something), 'detected'
     # (the browser's language, good enough to serve), or 'chosen' (a

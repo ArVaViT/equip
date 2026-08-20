@@ -46,14 +46,17 @@ class TestTheLanguageIsChosen:
         admin_id = _make_admin(db, locale)
         assert _inviter_locale(db, admin_id) == locale
 
-    def test_an_unknown_inviter_falls_back(self, db: Session):
+    def test_an_unknown_inviter_writes_in_english(self, db: Session):
         # A system-issued invitation with no author behind it still has to
-        # go out; it goes out in the platform default.
-        assert _inviter_locale(db, None) == "ru"
+        # go out. Nothing in it says who is writing or who is reading, so
+        # it goes out in the language for a reader we know nothing about.
+        assert _inviter_locale(db, None) == "en"
 
-    def test_an_inviter_with_no_preference_falls_back(self, db: Session):
+    def test_an_inviter_who_never_chose_a_language_writes_in_english(self, db: Session):
+        # An admin whose own column says nothing has not told us they
+        # write Russian — the column simply had to hold a value.
         admin_id = _make_admin(db, None)
-        assert _inviter_locale(db, admin_id) == "ru"
+        assert _inviter_locale(db, admin_id) == "en"
 
 
 class TestTheEmailReadsInThatLanguage:

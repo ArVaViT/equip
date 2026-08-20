@@ -21,7 +21,7 @@
     "description": "Equip — системне вивчення Біблії для тих, хто ставиться до Писання серйозно. Курси, поступ, сертифікати. Українська, англійська, німецька, російська."
   }
 };
-  var DEFAULT = "ru";
+  var DEFAULT = "en";
 
   // The current key first, then the pre-rebrand one the bundle migrates
   // away a moment later. Without the second lookup a returning reader got

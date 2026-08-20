@@ -111,22 +111,32 @@ for (const probe of PROBES) {
 test.describe("a visitor whose language the platform does not serve", () => {
   test.use({ locale: "pl-PL" });
 
-  test("gets a language it does serve, not a blank or a key", async ({
-    page,
-  }) => {
+  test("is answered in English, not in Russian", async ({ page }) => {
+    // The owner's decision, checked from outside: a visitor's language
+    // comes from their browser, and when we do not serve it the last
+    // resort is English. This used to accept any of the four served
+    // languages, which passed just as happily on the Russian this
+    // platform actually handed a Polish visitor.
     await page.goto("/", { waitUntil: "domcontentloaded" });
 
-    const lang = await page.locator("html").getAttribute("lang");
     expect(
-      ["ru", "en", "de", "uk"],
-      "fell back to a served language",
-    ).toContain(lang);
+      await page.locator("html").getAttribute("lang"),
+      "a visitor whose language we do not serve is answered in English",
+    ).toBe("en");
+    expect(await page.title()).toMatch(/study the Bible/i);
 
     await page.waitForLoadState("networkidle");
     const body = await page.locator("body").innerText();
     expect(body.trim().length, "the page rendered something").toBeGreaterThan(
       20,
     );
+    expect(body, "and the copy is English too, not just <html lang>").toMatch(
+      /Bible|Sign in|Courses/i,
+    );
+    expect(
+      body,
+      "a visitor we know nothing about was handed Russian",
+    ).not.toMatch(/Библии|Войти|Курсы|Bibelstudium|вивчення Біблії/i);
     // A raw i18next key would look like `header.home`; ordinary copy does not.
     expect(body).not.toMatch(/\b[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*){1,}\b/);
   });

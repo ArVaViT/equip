@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icon.svg" />
     <link rel="canonical" href="https://equipbible.com/" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Equip — системное изучение Библии для тех, кто относится к Писанию серьёзно. Курсы, прогресс, сертификаты. Русский, английский, немецкий, украинский." />
+    <meta name="description" content="Equip is systematic Bible study for people who take Scripture seriously. Courses, progress, certificates. English, Russian, German, Ukrainian." />
     <meta name="theme-color" content="#422277" />
 
     <!-- Alternates for search engines. The app is one URL per page in
@@ -91,14 +91,24 @@
     }
     </script>
 
-    <title>Equip — изучение Библии онлайн</title>
+    <title>Equip — study the Bible online</title>
 
     <!-- Decides the visitor's language before the bundle loads, and sets
          the three things that exist this early: <html lang>, the tab
          title, and the description above. Without it every visitor got
-         the Russian title until React booted and corrected it — which is
+         the static title until React booted and corrected it — which is
          the render-then-translate flicker this product does not accept
-         anywhere else. Generated from the locale catalogs by
+         anywhere else.
+
+         The static values above are English, and deliberately so: they
+         are what a reader gets when this script never runs (JavaScript
+         off, a blocked request), which is the same "we know nothing
+         about you" case DEFAULT_LOCALE answers in src/i18n/config.ts.
+         The og:/twitter: cards and the JSON-LD below are a separate
+         decision and stay in Russian — they address unfurlers and search
+         engines, not a visitor whose browser told us anything.
+
+         Generated from the locale catalogs by
          scripts/build-locale-boot.mjs; a file rather than an inline
          block because the CSP is script-src 'self'. -->
     <script src="/locale-boot.js"></script>

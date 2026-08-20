@@ -96,10 +96,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             role: data.role,
             // Profile rows are CHECK-constrained to the supported locale
             // set, but defend against drift / older rows by validating with
-            // `isSupportedLocale`. Fall back to `DEFAULT_LOCALE` ("ru") since
-            // that's the project's source language and every existing course
-            // is authored in it — this keeps unknown values from silently
-            // pinning users to a locale that isn't actually theirs.
+            // `isSupportedLocale`. Fall back to `DEFAULT_LOCALE` — a value
+            // this platform does not serve tells us nothing about the
+            // reader, and the answer to knowing nothing is English, not a
+            // locale that isn't actually theirs.
             preferred_locale: isSupportedLocale(data.preferred_locale)
               ? data.preferred_locale
               : DEFAULT_LOCALE,
