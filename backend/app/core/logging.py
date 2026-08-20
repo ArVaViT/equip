@@ -3,6 +3,8 @@ import json
 import logging
 import os
 import sys
+import threading
+import time
 import urllib.error
 import urllib.request
 
@@ -20,9 +22,42 @@ class DatadogHTTPHandler(logging.Handler):
     its own HTTPS POST per record. WARNING+ traffic is low enough that
     the small per-error latency is acceptable; INFO logs stay on stdout
     where Vercel's own log viewer captures them.
+
+    "Low enough" held until it did not. On 2026-08-20 the translation
+    provider began refusing every call, and the worker logged one warning
+    per row at roughly a hundred a minute for hours — all of them the
+    same sentence with a different id in it. Log indexing stopped that
+    morning and did not come back: the intake still answers 202, and
+    nothing submitted since is searchable. Production ran blind for
+    eleven hours, and the outage that caused it had to be diagnosed out
+    of the database instead.
+
+    Worse than the silence was what the silence looked like. The
+    error-spike monitor reported *recovered* seven minutes into the
+    outage — not because the errors had stopped but because the logs
+    had. A monitor that goes quiet when its data dies reads exactly like
+    a monitor with nothing to report.
+
+    So repeats are collapsed. Records are grouped by their format string
+    — the template before the arguments are filled in — because that is
+    what makes a burst a burst: one kind of event, a thousand ids. The
+    first of a kind ships at once; the rest are counted, and the count
+    rides on the next one that ships, so nothing is lost, only folded.
     """
 
     _REENTRY_GUARD_ATTR = "_dd_inside_emit"
+
+    #: How long one kind of record holds the floor. A worker tick lasts
+    #: 180 seconds, so a minute is short enough to keep a real, ongoing
+    #: problem visible three times per tick and long enough that a burst
+    #: costs three lines rather than three hundred.
+    REPEAT_WINDOW_SECONDS = 60.0
+
+    #: Distinct templates tracked at once. A bound, not a tuning knob:
+    #: without it a process that logs from a loop with a computed format
+    #: string would grow this dict without limit. Far above the number of
+    #: distinct warnings this codebase can emit.
+    MAX_TRACKED_TEMPLATES = 512
 
     def __init__(
         self,
@@ -40,9 +75,41 @@ class DatadogHTTPHandler(logging.Handler):
         self.version = version
         self.vercel_region = vercel_region
         self.endpoint = f"https://http-intake.logs.{site}/api/v2/logs"
+        # Guarded by ``_repeat_lock``: the translation executor emits from
+        # a thread pool, which is precisely where the burst came from.
+        self._repeat_lock = threading.Lock()
+        self._last_shipped: dict[tuple[str, int, str], float] = {}
+        self._suppressed: dict[tuple[str, int, str], int] = {}
+
+    def _hold_or_ship(self, record: logging.LogRecord) -> int | None:
+        """``None`` to hold this record, otherwise how many were folded.
+
+        Keyed on the *template* (``record.msg``, before ``%`` arguments
+        are applied) rather than the formatted line, because a burst is
+        one sentence with a thousand different ids in it. Keying on the
+        formatted message would make every record unique and collapse
+        nothing.
+        """
+        key = (record.name, record.levelno, str(record.msg)[:200])
+        now = time.monotonic()
+        with self._repeat_lock:
+            last = self._last_shipped.get(key)
+            if last is not None and now - last < self.REPEAT_WINDOW_SECONDS:
+                self._suppressed[key] = self._suppressed.get(key, 0) + 1
+                return None
+            if last is None and len(self._last_shipped) >= self.MAX_TRACKED_TEMPLATES:
+                # Full, and this template is new. Ship it rather than
+                # hold it: dropping an unseen kind of warning to protect
+                # a bookkeeping dict would be the wrong way round.
+                return 0
+            self._last_shipped[key] = now
+            return self._suppressed.pop(key, 0)
 
     def emit(self, record: logging.LogRecord) -> None:
         if getattr(record, self._REENTRY_GUARD_ATTR, False):
+            return
+        folded = self._hold_or_ship(record)
+        if folded is None:
             return
         try:
             tags = [
@@ -51,7 +118,7 @@ class DatadogHTTPHandler(logging.Handler):
                 f"version:{self.version}",
                 f"vercel_region:{self.vercel_region}",
             ]
-            payload = {
+            payload: dict[str, object] = {
                 "ddsource": "python",
                 "ddtags": ",".join(tags),
                 "service": self.service,
@@ -60,6 +127,12 @@ class DatadogHTTPHandler(logging.Handler):
                 "status": record.levelname.lower(),
                 "logger.name": record.name,
             }
+            if folded:
+                # Said out loud in the message as well as in a field: a
+                # reader scanning the log stream must see that this line
+                # stands for many, without having to know the schema.
+                payload["message"] = f"{payload['message']}  [+{folded} more like this in the last minute]"
+                payload["dd.suppressed_repeats"] = folded
             req_id = vercel_request_id.get()
             if req_id:
                 payload["vercel.request_id"] = req_id
