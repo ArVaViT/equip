@@ -238,7 +238,12 @@ class GeminiTranslationProvider:
         # On the document, not on each piece. A quotation opens in one
         # paragraph and closes in another, and a pass that only ever saw
         # one of them would have to guess.
-        pointed = normalize_typography(result.text, request.target_locale)
+        #
+        # ``content_kind`` goes with it because one rule cannot be read
+        # off the text: an English chapter title is title-cased and the
+        # identical words in a paragraph are not, and the only thing
+        # that knows which this is, is the field it came from.
+        pointed = normalize_typography(result.text, request.target_locale, request.content_kind)
         if pointed != result.text:
             result = replace(result, text=pointed)
         return result
