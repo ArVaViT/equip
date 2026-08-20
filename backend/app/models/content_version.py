@@ -101,6 +101,13 @@ class ContentVersionStatus(enum.StrEnum):
 # How many MT attempts we tolerate before promoting to
 # ``failed_permanent``. Centralised here so admin tooling that
 # re-queues a row refers back to the same constant.
+#
+# An "attempt" is the model being shown this text and producing
+# something unusable. A call that never reached the model — a 429, a
+# 5xx, a timeout, an exhausted balance — is not one, and does not
+# increment this counter: see ``record_mt_failure``'s ``transient``.
+# The cap exists to stop asking about a text that defeats translation,
+# and an outage is not a fact about any text.
 CONTENT_VERSION_MAX_ATTEMPTS = 5
 
 
