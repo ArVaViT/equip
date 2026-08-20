@@ -482,7 +482,47 @@ def carries_language(text: str | None) -> bool:
     even when we cannot say which language it is: an unnamed foreign
     language is still foreign.
     """
+    return script_letters(text) >= _PROSE_MIN_LETTERS
+
+
+def script_letters(text: str | None) -> int:
+    """How many letters of a script this detector reads ``text`` holds.
+
+    The size of the evidence the detector had, in the same units the
+    thresholds in this module are written in — markup gone, digits and
+    punctuation ignored, and letters of a script nobody here profiles
+    (Greek, Hebrew) not counted, because they are not evidence either.
+
+    Public because how much a caller should trust ``detect_locale`` is a
+    function of this number, and a caller that measured length its own
+    way would be trusting a different quantity than the one the
+    thresholds were measured against.
+    """
     if not text:
-        return False
+        return 0
     counted = _count_scripts(strip_tags(text))
-    return counted.cyrillic + counted.latin >= _PROSE_MIN_LETTERS
+    return counted.cyrillic + counted.latin
+
+
+def shares_script(one: str | None, other: str | None) -> bool:
+    """Whether two supported locales are written in the same script.
+
+    The detector's two steps are not equally reliable. Script is
+    counted, not inferred: three Cyrillic letters settle it, and no
+    amount of German prose turns Latin into Cyrillic. Which of the two
+    languages *within* a script this is, on the other hand, is decided
+    by weighing evidence that a short string may simply not contain —
+    the ``і/ї/є``-less Ukrainian sentence this module's own comments
+    keep returning to.
+
+    So a caller deciding how much to stake on a mismatch needs to know
+    which of the two steps produced it. An unknown locale answers
+    ``False``: a caller that treats a cross-script mismatch as the
+    serious one should not have that seriousness handed to it by a
+    typo.
+    """
+    first = _PROFILES.get(one or "")
+    second = _PROFILES.get(other or "")
+    if first is None or second is None:
+        return False
+    return first.script == second.script

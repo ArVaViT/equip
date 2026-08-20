@@ -426,3 +426,55 @@ class TestAWordThatMeansSomethingOnBothSides:
             assert english_only not in _LATIN_HOMOGRAPHS, english_only
         for both in ("man", "war", "die", "was", "in"):
             assert both in _LATIN_HOMOGRAPHS, both
+
+
+class TestHowMuchOfTheDetectorACallerMayLeanOn:
+    """The detector's two steps are not equally reliable, and a caller
+    deciding whether to act on a mismatch has to be able to tell which
+    of them produced it. ``translation.validation`` withholds a lesson
+    over a cross-script answer at any length and never over a
+    same-script one on a short string; without these two it would have
+    to reimplement the script table and count letters its own way, and
+    would then be trusting a quantity nobody measured.
+    """
+
+    def test_two_locales_of_one_script_share_it(self):
+        from app.services.language_detection import shares_script
+
+        assert shares_script("ru", "uk")
+        assert shares_script("en", "de")
+        assert shares_script("ru", "ru")
+
+    def test_two_locales_of_different_scripts_do_not(self):
+        from app.services.language_detection import shares_script
+
+        assert not shares_script("ru", "de")
+        assert not shares_script("uk", "en")
+
+    def test_a_locale_with_no_profile_never_shares_a_script(self):
+        # Fails towards "cross-script", which is the answer callers
+        # treat as serious. A typo must not buy an exemption.
+        from app.services.language_detection import shares_script
+
+        assert not shares_script("fr", "en")
+        assert not shares_script(None, "en")
+
+    def test_script_letters_counts_the_evidence_the_detector_had(self):
+        from app.services.language_detection import script_letters
+
+        assert script_letters("У кожному рядку по два образи") == 24
+        assert script_letters("<p>Бог</p>") == 3
+        assert script_letters("2026 — 15%") == 0
+        assert script_letters(None) == 0
+
+    def test_script_letters_does_not_count_a_script_nobody_profiles(self):
+        # Greek in a German sentence is not evidence about German.
+        from app.services.language_detection import script_letters
+
+        assert script_letters("λόγος") == 0
+
+    def test_carries_language_is_the_same_count_with_a_threshold(self):
+        from app.services.language_detection import carries_language, script_letters
+
+        for text in ("Бог", "Апостол Павло написав", "", "2026"):
+            assert carries_language(text) == (script_letters(text) >= 12)

@@ -519,3 +519,377 @@ class TestWhatIsNotProse:
             target_locale="de",
         )
         assert issue is None
+
+
+def blocking(issues: list[ValidationIssue]) -> set[str]:
+    return {issue.code for issue in issues if issue.blocking}
+
+
+class TestACrossReferenceThatIsNotScripture:
+    """``books.py`` declares 521 aliases and guards ten of them behind a
+    capital or a printed dot. The rest are believed on sight, and the
+    books of the Bible are named after ordinary words in every language
+    served — so a course that numbers its exercises, its drawings or
+    its table columns hands ``parse_references`` a Bible verse.
+
+    Every source string below really does parse as scripture today. The
+    translations are what a correct answer looks like when the target
+    language renders the cross-reference its own way, at which point
+    the digit pair is gone and the row was parked at ``needs_review``
+    for losing a verse the lesson never cited.
+    """
+
+    @pytest.mark.parametrize(
+        ("source", "translated"),
+        [
+            ("See Ex. 3:4 for the worked solution.", "Siehe Aufgabe 3 Punkt 4 für die Musterlösung."),
+            ("Drawing Rev. 3:2 supersedes the earlier print.", "Zeichnung, Revision 3 Punkt 2, ersetzt den Druck."),
+            ("Column Col. 3:14 holds the running total.", "Spalte C Punkt 3, Zeile 14, führt die Summe."),
+            ("Judges 4:2 of the appellate circuit dissented.", "Richterin 4, Senat 2, gab ein Sondervotum ab."),
+            ("Job 3:2 was posted on the careers page.", "Die Stelle 3, Ausschreibung 2, steht online."),
+        ],
+    )
+    def test_a_cross_reference_that_reads_as_a_book_never_withholds_the_lesson(self, source: str, translated: str):
+        issues = validate_translation(
+            source=source,
+            translated=translated,
+            source_locale="en",
+            target_locale="de",
+        )
+        assert blocking(issues) == set()
+
+    def test_a_russian_table_caption_never_withholds_the_lesson(self):
+        # «Числа» is the book of Numbers and it is also the word for
+        # numbers, capitalised here only because it opens the sentence.
+        issues = validate_translation(
+            source="Числа 3:14 в таблице округлены до целых.",
+            translated="Die Zahlen in Zeile 3, Spalte 14 sind auf ganze gerundet.",
+            source_locale="ru",
+            target_locale="de",
+        )
+        assert blocking(issues) == set()
+
+    def test_a_reference_that_really_vanished_is_still_named(self):
+        # Losing the veto is not losing the eyes: the code still goes on
+        # the row, still earns a retry, and is still countable.
+        issues = validate_translation(
+            source="Прочитайте Бытие 1:26 и запишите свои наблюдения об образе Божьем.",
+            translated="Read Genesis and write down your observations about the image of God.",
+            source_locale="ru",
+            target_locale="en",
+        )
+        assert "verse_reference_lost" in codes(issues)
+        assert blocking(issues) == set()
+
+    def test_a_dropped_scripture_marker_still_withholds_the_lesson(self):
+        # What a lost pointer is not: lost scripture. A quoted verse
+        # travels as a marker, and that check keeps its veto — which is
+        # the whole reason this one can give hers up.
+        issues = validate_translation(
+            source="Пётр процитировал EQVa3f9c2 перед всем народом.",
+            translated="Peter quoted it before the whole crowd.",
+            source_locale="ru",
+            target_locale="en",
+        )
+        assert "scripture_marker_mismatch" in blocking(issues)
+
+
+class TestEmphasisAddedIsEditingAndEmphasisLostIsNot:
+    """``_check_tags`` compared two sorted lists of tag names and could
+    not tell "the document lost a paragraph" from "the editor italicised
+    a word". Both were blocking. Measured over the live catalogue, the
+    second is real: an English translation put ``<em>`` around the
+    transliterated Russian word *nedelya*, exactly as a copy editor
+    would, and the lesson was withheld for it.
+    """
+
+    def test_an_added_emphasis_tag_is_not_an_issue_at_all(self):
+        issues = validate_translation(
+            source="<p>Слово «неделя» происходит от «не делать», но означает семь дней.</p>",
+            translated="<p>The word <em>nedelya</em> comes from “not doing,” but means seven days.</p>",
+            source_locale="ru",
+            target_locale="en",
+            content_kind="html",
+        )
+        assert issues == []
+
+    def test_a_lost_emphasis_tag_is_named_but_does_not_withhold_the_lesson(self):
+        issues = validate_translation(
+            source="<p>Апостол <strong>Павел</strong> написал это послание церкви в Коринфе.</p>",
+            translated="<p>The apostle Paul wrote this letter to the church in Corinth.</p>",
+            source_locale="ru",
+            target_locale="en",
+            content_kind="html",
+        )
+        assert "emphasis_lost" in codes(issues)
+        assert blocking(issues) == set()
+
+    def test_emphasis_moved_from_one_tag_to_another_does_not_withhold_the_lesson(self):
+        issues = validate_translation(
+            source="<p>Апостол <strong>Павел</strong> написал это послание церкви в Коринфе.</p>",
+            translated="<p>The apostle <em>Paul</em> wrote this letter to the church in Corinth.</p>",
+            source_locale="ru",
+            target_locale="en",
+            content_kind="html",
+        )
+        assert blocking(issues) == set()
+
+    def test_a_lost_paragraph_still_withholds_the_lesson(self):
+        # The live catalogue's true positive: a chapter block that
+        # dropped one whole definition out of a list of eight.
+        issues = validate_translation(
+            source=(
+                "<p><strong>Псалом</strong> — песнь или поэма, которую пели.</p>"
+                "<p><strong>Притча</strong> — короткое изречение мудрости из книги Притчей.</p>"
+            ),
+            translated="<p><strong>Proverb</strong> — a short, punchy line of wisdom from the book of Proverbs.</p>",
+            source_locale="ru",
+            target_locale="en",
+            content_kind="html",
+        )
+        assert "markup_mismatch" in blocking(issues)
+
+    def test_a_paragraph_that_stopped_being_one_still_withholds_the_lesson(self):
+        # The other live true positive: the tags came off entirely and
+        # the block came back as a bare sentence.
+        issues = validate_translation(
+            source="<p>Павел пишет церкви в Коринфе о единстве и о любви.</p>",
+            translated="Paul writes to the church in Corinth about unity and love.",
+            source_locale="ru",
+            target_locale="en",
+            content_kind="html",
+        )
+        assert "markup_mismatch" in blocking(issues)
+
+    def test_an_invented_paragraph_still_withholds_the_lesson(self):
+        issues = validate_translation(
+            source="<p>Павел пишет церкви в Коринфе о единстве и о любви к ближнему.</p>",
+            translated="<p>Paul writes to the church in Corinth</p><p>about unity and love of neighbour.</p>",
+            source_locale="ru",
+            target_locale="en",
+            content_kind="html",
+        )
+        assert "markup_mismatch" in blocking(issues)
+
+    def test_a_lost_link_is_not_treated_as_emphasis(self):
+        # ``<a>`` sits inside a sentence like ``<em>`` does and is not
+        # decoration: losing it loses where it pointed.
+        issues = validate_translation(
+            source='<p>Смотрите <a href="/plan">учебный план</a> курса и расписание занятий.</p>',
+            translated="<p>See the course syllabus and the class schedule.</p>",
+            source_locale="ru",
+            target_locale="en",
+            content_kind="html",
+        )
+        assert "markup_mismatch" in blocking(issues)
+
+
+class TestTheDetectorMayNotVetoWhatItCannotRead:
+    """Measured over all 12,434 active rows that carry prose in a locale
+    with a same-script rival, both sides at once — the correct rows it
+    contradicts, and how much genuine wrong-language content it would
+    catch in the same band:
+
+        band    pair    rows  false pos   FP rate   caught if wrong
+        12-19   ru/uk   1371          1     0.07%       899  65.6%
+        20-29   ru/uk   1516          1     0.07%      1211  79.9%
+        30-44   ru/uk   1344          0     0.00%      1265  94.1%
+        45-59   ru/uk    637          0     0.00%       627  98.4%
+        60-∞    ru/uk   1260          0     0.00%      1260 100.0%
+        12-19   de/en   1105          0     0.00%       801  72.5%
+        20-29   de/en   1400          0     0.00%      1314  93.9%
+        30-44   de/en   1400          0     0.00%      1371  97.9%
+        45-59   de/en    827          0     0.00%       826  99.9%
+        60-∞    de/en   1574          0     0.00%      1574 100.0%
+
+    Both errors are one pair's — Ukrainian read as Russian, at 18 and
+    24 letters. de/en is clean at every band. So the floor is scoped to
+    the pair that earns it rather than applied to every same-script
+    pair, and these tests pin both halves: what a floor must still
+    catch, and what it must stop burying.
+    """
+
+    def test_a_short_ukrainian_answer_read_as_russian_is_still_served(self):
+        # The row parked in production: «кожному» and «рядку» do not
+        # exist in Russian, and 24 letters with no і, ї or є do not
+        # contain enough evidence to say so.
+        issues = validate_translation(
+            source="В каждой строке по два образа",
+            translated="У кожному рядку по два образи",
+            source_locale="ru",
+            target_locale="uk",
+            content_kind="quiz_option",
+        )
+        assert "wrong_language" in codes(issues)
+        assert blocking(issues) == set()
+
+    def test_a_short_ukrainian_sentence_read_as_russian_is_still_served(self):
+        issues = validate_translation(
+            source="God revealed Himself to Abraham.",
+            translated="Бог об'явився Аврааму.",
+            source_locale="en",
+            target_locale="uk",
+            content_kind="quiz_option",
+        )
+        assert blocking(issues) == set()
+
+    @pytest.mark.parametrize(
+        ("translated", "target"),
+        [
+            # The defect that reached production in this project:
+            # German prose sitting in an English row. 53 letters — under
+            # the 60-letter floor this check first shipped with, which
+            # is why that floor was a hole rather than a narrowing.
+            ("Paulus schreibt der Gemeinde in Korinth über Einheit und Liebe.", "en"),
+            # And short, because de/en is measured clean at every band.
+            ("Das Schlagen des Felsens durch Mose", "en"),
+            ("Die Herde des Jitro", "en"),
+            ("The flock of Jethro, his father-in-law", "de"),
+            ("Because Noah had built the ark according to specifications.", "de"),
+        ],
+    )
+    def test_german_and_english_are_told_apart_at_any_length(self, translated: str, target: str):
+        issues = validate_translation(
+            source="Павел пишет церкви в Коринфе о единстве и о любви.",
+            translated=translated,
+            source_locale="ru",
+            target_locale=target,
+        )
+        assert "wrong_language" in blocking(issues)
+
+    @pytest.mark.parametrize(
+        ("translated", "target"),
+        [
+            ("«Всякий, кто родился иудеем, спасётся»", "uk"),
+            ("Какую формулу соборного решения фиксирует послание в Деян. 15:28?", "uk"),
+            ("Він успадкував маєток свого батька.", "ru"),
+            ("Живучи праведним життям і дотримуючись Закону.", "ru"),
+        ],
+    )
+    def test_russian_and_ukrainian_are_told_apart_once_there_are_thirty_letters(self, translated: str, target: str):
+        # Real sentences from the live catalogue, asked about as if they
+        # sat in the other locale's row. From 30 letters the detector
+        # names them, and the veto is worth having.
+        issues = validate_translation(
+            source="A sentence of the source, long enough not to be measured by its ratio.",
+            translated=translated,
+            source_locale="en",
+            target_locale=target,
+        )
+        assert "wrong_language" in blocking(issues)
+
+    def test_the_wrong_script_withholds_the_lesson_however_short_it_is(self):
+        # Script is counted, not weighed. Cyrillic served to a German
+        # reader is not a judgement call at any length.
+        issues = validate_translation(
+            source="Введение в книгу Бытия",
+            translated="Введение в книгу Бытия",
+            source_locale="ru",
+            target_locale="de",
+            content_kind="title",
+        )
+        assert "wrong_language" in blocking(issues)
+
+    def test_a_whole_paragraph_in_the_wrong_language_still_withholds_the_lesson(self):
+        issues = validate_translation(
+            source=(
+                "Der Apostel Paulus schrieb diesen Brief an die Gemeinde in Korinth, "
+                "als sie sich in Gruppen aufspaltete und über die Gaben stritt."
+            ),
+            translated=(
+                "The apostle Paul wrote this letter to the church in Corinth, "
+                "when the community split into groups and argued about the gifts."
+            ),
+            source_locale="de",
+            target_locale="de",
+        )
+        assert "wrong_language" in blocking(issues)
+
+    def test_a_lesson_that_quotes_the_language_it_teaches_is_still_served(self):
+        # A grammar course keeps the English phrase on purpose, and the
+        # detector reads both sides as English because both sides mostly
+        # are. It has misread the source in front of us, so its reading
+        # of the answer is not evidence.
+        issues = validate_translation(
+            source='Правило: "I have been working here since 2019" — Present Perfect Continuous',
+            translated='Regel: "I have been working here since 2019" — Present Perfect Continuous',
+            source_locale="ru",
+            target_locale="de",
+        )
+        assert blocking(issues) == set()
+
+    def test_a_source_the_detector_reads_correctly_is_still_a_witness(self):
+        # The guard above must not become a general amnesty: when the
+        # detector agrees with the source's declared locale it has shown
+        # nothing wrong with itself, and a Russian answer to a German
+        # question still withholds the lesson.
+        issues = validate_translation(
+            source=(
+                "Der Apostel Paulus schrieb diesen Brief an die Gemeinde in Korinth, "
+                "als sie sich in Gruppen aufspaltete und über die Gaben stritt."
+            ),
+            translated=(
+                "Апостол Павел написал это послание церкви в Коринфе, когда община "
+                "разделилась на группы и спорила о духовных дарах."
+            ),
+            source_locale="de",
+            target_locale="en",
+        )
+        assert "wrong_language" in blocking(issues)
+
+
+class TestAStringWithNoWordInIt:
+    """``_carries_prose`` asked whether any token survived the markup
+    and the code spans. A formula and an identifier both survive, and
+    both are the same string in every language — so a correct answer
+    that returned one unchanged came back ``not_translated``, blocking.
+    """
+
+    def test_an_identifier_returned_unchanged_is_not_an_untranslated_string(self):
+        option = "array.prototype.flatMap()"
+        issues = validate_translation(
+            source=option,
+            translated=option,
+            source_locale="ru",
+            target_locale="de",
+            content_kind="quiz_option",
+        )
+        assert issues == []
+
+    def test_a_formula_returned_unchanged_is_not_an_untranslated_string(self):
+        formula = "<p>2 H₂ + O₂ → 2 H₂O + 2 C₆H₁₂O₆ + 6 O₂</p>"
+        issues = validate_translation(
+            source=formula,
+            translated=formula,
+            source_locale="ru",
+            target_locale="de",
+            content_kind="html",
+        )
+        assert issues == []
+
+    def test_a_sentence_returned_unchanged_is_still_an_untranslated_string(self):
+        sentence = "Апостол Павел написал это послание церкви в Коринфе"
+        issues = validate_translation(
+            source=sentence,
+            translated=sentence,
+            source_locale="ru",
+            target_locale="en",
+        )
+        assert "not_translated" in blocking(issues)
+
+    def test_a_short_slavic_title_is_still_prose(self):
+        # Measured: the stricter "most tokens must be words" reading
+        # called 112 live rows prose-free, because one-letter
+        # prepositions are not words and a short Slavic title is half
+        # made of them. This one has to keep being judged.
+        from app.services.translation.validation import _carries_prose
+
+        assert _carries_prose("З жертовника в храмі")
+        assert _carries_prose("Кто-то что-то сказал")
+        assert _carries_prose("«Слово» — это глагол")
+
+    def test_a_bare_number_is_not_prose(self):
+        from app.services.translation.validation import _carries_prose
+
+        assert not _carries_prose("12")
+        assert not _carries_prose("<p>64</p>")
