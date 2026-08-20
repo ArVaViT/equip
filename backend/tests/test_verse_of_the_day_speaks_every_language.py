@@ -29,6 +29,7 @@ import pytest
 
 from app.schemas.locale import LOCALE_CODES
 from app.services import verse_of_the_day as svc
+from app.services.bible.api_source import API_BIBLE_IDS
 
 
 class TestEveryLanguageHasAnEdition:
@@ -37,7 +38,18 @@ class TestEveryLanguageHasAnEdition:
         assert not missing, f"the route would answer 404 for {missing}"
 
     def test_the_editions_are_the_ones_that_were_checked(self):
-        assert svc._BIBLE_ID_BY_LOCALE == {"en": 3034, "ru": 143, "de": 51, "uk": 188}
+        """The numbers still have to be said out loud somewhere, because
+        an edition id is a claim that a person checked the edition
+        against the live API. This is that place."""
+        assert svc._BIBLE_ID_BY_LOCALE == {"en": 3034, "ru": 143, "de": 2351, "uk": 188}
+
+    def test_the_home_page_and_the_lesson_quote_the_same_bible(self):
+        """They used to be two tables, and they drifted: the lessons moved
+        from Luther 1912 to Elberfelder and the verse of the day did not,
+        so a German reader was shown the rejected edition on the home page
+        and the chosen one inside the lesson — two different wordings of
+        the same verse, on the same day, in the same product."""
+        assert svc._BIBLE_ID_BY_LOCALE is API_BIBLE_IDS
 
 
 class TestPsalmNumbering:

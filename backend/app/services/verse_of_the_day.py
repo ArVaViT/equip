@@ -27,29 +27,30 @@ import httpx
 from app.core.config import settings
 from app.core.sanitize import html_to_plain_text
 from app.schemas.locale import LocaleCode  # noqa: TC001 — annotations are evaluated at runtime here
+from app.services.bible.api_source import API_BIBLE_IDS
 from app.services.bible.psalm_numbering import remap_usfm
 
 logger = logging.getLogger(__name__)
 
 YOUVERSION_API_BASE = "https://api.youversion.com/v1"
-# Bible IDs, one per served locale. The route answers 404 for any locale
-# missing from this map, so it has to cover ``LOCALE_CODES`` —
-# ``test_verse_of_the_day_speaks_every_language`` fails if it drifts.
+# Which Bible each language is quoted from. There is exactly one table
+# and it lives in ``bible/api_source.py``; this name is an alias so the
+# reader of this module can still see what it is reading.
 #
-#  * 3034 — Berean Standard Bible (public domain, modern English)
-#  * 143  — Новый Русский Перевод (modern Russian)
-#  * 51   — Luther 1912 (public domain; the same edition the scripture
-#           substitution layer quotes, so a verse reads identically
-#           whether it arrives here or inside a lesson)
-#  * 188  — Куліш & Пулюй 1905, the only complete Ukrainian edition the
-#           API offers. Pre-1928 orthography is a real readability cost,
-#           accepted because the alternative is no Ukrainian Scripture.
-_BIBLE_ID_BY_LOCALE: dict[str, int] = {
-    "en": 3034,
-    "ru": 143,
-    "de": 51,
-    "uk": 188,
-}
+# It used to be a second copy, and the copy drifted. The comment here
+# promised that the verse of the day was "the same edition the scripture
+# substitution layer quotes, so a verse reads identically whether it
+# arrives here or inside a lesson" — and that stopped being true the day
+# the lessons moved from Luther 1912 to Elberfelder, because `daß` and
+# `ward` read to a German as spelling mistakes rather than as biblical
+# register. The lessons moved; this file did not. So for the weeks since,
+# a German reader has been shown the rejected edition on the home page
+# and the chosen one inside the lesson, and the two disagree word for
+# word on the same verse.
+#
+# Two tables of the same fact will always drift eventually. One table
+# cannot.
+_BIBLE_ID_BY_LOCALE = API_BIBLE_IDS
 
 # 250 well-known, evergreen passages covering salvation, hope, comfort,
 # love, faith, wisdom, prayer, and perseverance. Chosen to be ecumenical
