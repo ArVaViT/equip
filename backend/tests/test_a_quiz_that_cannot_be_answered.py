@@ -143,3 +143,56 @@ class TestAnOptionThatBecameItsNeighbour:
         _right, wrong = two_options
         block = replace(_task(wrong), entity_type="chapter_block", field="content")
         assert _collides_with_a_sibling_option(db, block, "Malta") is False
+
+
+class TestARebuildDoesNotFightItself:
+    """Half-new, half-old is the state a rebuild spends its time in.
+
+    Options are replaced one at a time, so for a while a question's set
+    is part new and part last generation — and last generation's half is
+    exactly the broken one this check was written to catch. Comparing
+    against it parks the correct new translation for matching a wrong old
+    one. Thirteen good German options were held back that way during the
+    generation-8 rebuild, which is the check turning on the fix.
+    """
+
+    def test_an_older_sibling_is_not_a_collision(self, db: Session, two_options) -> None:
+        from app.models.content_version import ContentVersion
+        from app.services.translation.version import TRANSLATOR_VERSION
+
+        right, wrong = two_options
+        db.query(ContentVersion).filter(
+            ContentVersion.entity_id == str(right.id),
+            ContentVersion.origin == "mt",
+        ).update({"translator_version": TRANSLATOR_VERSION - 1})
+        db.commit()
+
+        assert _collides_with_a_sibling_option(db, _task(wrong), "Malta") is False
+
+    def test_a_current_sibling_still_is(self, db: Session, two_options) -> None:
+        from app.models.content_version import ContentVersion
+        from app.services.translation.version import TRANSLATOR_VERSION
+
+        right, wrong = two_options
+        db.query(ContentVersion).filter(
+            ContentVersion.entity_id == str(right.id),
+            ContentVersion.origin == "mt",
+        ).update({"translator_version": TRANSLATOR_VERSION})
+        db.commit()
+
+        assert _collides_with_a_sibling_option(db, _task(wrong), "Malta") is True
+
+    def test_a_hand_translation_counts_whatever_its_version(self, db: Session, two_options) -> None:
+        # Nothing rewrites a human row, so its version says nothing about
+        # whether it is current.
+        from app.models.content_version import ContentVersion
+        from app.services.translation.version import TRANSLATOR_VERSION
+
+        right, wrong = two_options
+        db.query(ContentVersion).filter(
+            ContentVersion.entity_id == str(right.id),
+            ContentVersion.origin == "mt",
+        ).update({"origin": "human", "translator_version": TRANSLATOR_VERSION - 3})
+        db.commit()
+
+        assert _collides_with_a_sibling_option(db, _task(wrong), "Malta") is True
