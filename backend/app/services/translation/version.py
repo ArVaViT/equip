@@ -61,12 +61,28 @@ History
     Rows made before this were made by calls that could not have known,
     which is why the whole corpus is due rather than the lessons somebody
     happened to notice.
+10  Three things a reader sees and no check could. A German page now
+    writes a Bible reference the way German writes one — ``Apg. 1,8``,
+    not ``Деян. 1:8`` left in Cyrillic and not ``Apostelgeschichte 1:8``
+    punctuated in Russian; an English title is set in title case; each
+    language gets its own quotation marks, apostrophe and dash. A verse
+    the author had put in quotation marks gets them back: substitution
+    replaced the span the marks stood around, so the quotation came out
+    of the machine bare, and 41 quotations in production read as the
+    author's own words rather than as Scripture. And a string repeated
+    across a course is asked once however different its surroundings,
+    which is what stopped «Проверьте себя» being four German headings.
+
+    Stored rows cannot be corrected in place for any of these: the
+    reference was rewritten by the model, the quotation marks were
+    destroyed before the row was written, and a heading already decided
+    is a heading nothing will ask about again.
 """
 
 from __future__ import annotations
 
 from typing import Final
 
-TRANSLATOR_VERSION: Final[int] = 9
+TRANSLATOR_VERSION: Final[int] = 10
 
 __all__ = ["TRANSLATOR_VERSION"]
