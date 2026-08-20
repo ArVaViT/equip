@@ -123,9 +123,18 @@ test.describe("a visitor whose language the platform does not serve", () => {
       await page.locator("html").getAttribute("lang"),
       "a visitor whose language we do not serve is answered in English",
     ).toBe("en");
-    expect(await page.title()).toMatch(/study the Bible/i);
 
     await page.waitForLoadState("networkidle");
+    // Deliberately not asserting the tab title at the first frame the way
+    // the per-language probes above do: by the time this runs the app has
+    // usually booted and replaced the boot script's title with the current
+    // page's ("Home — Equip"), so the assertion would be a race. The boot
+    // title for an unserved language is covered without a browser, in
+    // `src/i18n/__tests__/localeBoot.test.ts`.
+    expect(
+      await page.title(),
+      "the tab title settled in some other language",
+    ).not.toMatch(/Главная|Головна|Startseite|Библии|Біблії/i);
     const body = await page.locator("body").innerText();
     expect(body.trim().length, "the page rendered something").toBeGreaterThan(
       20,
