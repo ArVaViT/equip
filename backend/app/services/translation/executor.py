@@ -605,12 +605,26 @@ def _collides_with_a_sibling_option(db: Session, task: TranslationTask, text: st
     if not sibling_ids:
         return False
 
+    # Only siblings made by the pipeline now in force.
+    #
+    # A rebuild replaces a question's options one at a time, so for a
+    # while the set is half new and half old — and the old half is
+    # exactly the broken one this check exists to catch. Comparing
+    # against it parks the correct new translation for matching a wrong
+    # old one: measured during the generation-8 rebuild, thirteen
+    # perfectly good German options were held back because a sibling
+    # still carried last generation's duplicate. A human row counts
+    # whatever its version, since nothing rewrites it.
     rows = db.query(ContentVersion.text).filter(
         ContentVersion.entity_type == task.entity_type,
         ContentVersion.entity_id.in_(sibling_ids),
         ContentVersion.field == task.field,
         ContentVersion.locale == task.target_locale,
         ContentVersion.superseded_by.is_(None),
+        or_(
+            ContentVersion.origin == "human",
+            ContentVersion.translator_version >= TRANSLATOR_VERSION,
+        ),
     )
     return any(" ".join((row[0] or "").split()).casefold() == stripped for row in rows)
 
