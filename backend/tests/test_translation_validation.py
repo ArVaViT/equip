@@ -685,13 +685,28 @@ class TestEmphasisAddedIsEditingAndEmphasisLostIsNot:
 
 
 class TestTheDetectorMayNotVetoWhatItCannotRead:
-    """The detector is right to about one error in thirteen thousand
-    lines — see ``api/v1/admin_translations.reset_review_status``. Run
-    over the 7,969 live machine translations that carry prose, it
-    disagrees with the declared locale on two rows, both correct
-    Ukrainian, both under 30 letters, both read as Russian. Neither of
-    those two facts is an accident, and together they say when this
-    check may withhold a lesson.
+    """Measured over all 12,434 active rows that carry prose in a locale
+    with a same-script rival, both sides at once — the correct rows it
+    contradicts, and how much genuine wrong-language content it would
+    catch in the same band:
+
+        band    pair    rows  false pos   FP rate   caught if wrong
+        12-19   ru/uk   1371          1     0.07%       899  65.6%
+        20-29   ru/uk   1516          1     0.07%      1211  79.9%
+        30-44   ru/uk   1344          0     0.00%      1265  94.1%
+        45-59   ru/uk    637          0     0.00%       627  98.4%
+        60-∞    ru/uk   1260          0     0.00%      1260 100.0%
+        12-19   de/en   1105          0     0.00%       801  72.5%
+        20-29   de/en   1400          0     0.00%      1314  93.9%
+        30-44   de/en   1400          0     0.00%      1371  97.9%
+        45-59   de/en    827          0     0.00%       826  99.9%
+        60-∞    de/en   1574          0     0.00%      1574 100.0%
+
+    Both errors are one pair's — Ukrainian read as Russian, at 18 and
+    24 letters. de/en is clean at every band. So the floor is scoped to
+    the pair that earns it rather than applied to every same-script
+    pair, and these tests pin both halves: what a floor must still
+    catch, and what it must stop burying.
     """
 
     def test_a_short_ukrainian_answer_read_as_russian_is_still_served(self):
@@ -717,6 +732,51 @@ class TestTheDetectorMayNotVetoWhatItCannotRead:
             content_kind="quiz_option",
         )
         assert blocking(issues) == set()
+
+    @pytest.mark.parametrize(
+        ("translated", "target"),
+        [
+            # The defect that reached production in this project:
+            # German prose sitting in an English row. 53 letters — under
+            # the 60-letter floor this check first shipped with, which
+            # is why that floor was a hole rather than a narrowing.
+            ("Paulus schreibt der Gemeinde in Korinth über Einheit und Liebe.", "en"),
+            # And short, because de/en is measured clean at every band.
+            ("Das Schlagen des Felsens durch Mose", "en"),
+            ("Die Herde des Jitro", "en"),
+            ("The flock of Jethro, his father-in-law", "de"),
+            ("Because Noah had built the ark according to specifications.", "de"),
+        ],
+    )
+    def test_german_and_english_are_told_apart_at_any_length(self, translated: str, target: str):
+        issues = validate_translation(
+            source="Павел пишет церкви в Коринфе о единстве и о любви.",
+            translated=translated,
+            source_locale="ru",
+            target_locale=target,
+        )
+        assert "wrong_language" in blocking(issues)
+
+    @pytest.mark.parametrize(
+        ("translated", "target"),
+        [
+            ("«Всякий, кто родился иудеем, спасётся»", "uk"),
+            ("Какую формулу соборного решения фиксирует послание в Деян. 15:28?", "uk"),
+            ("Він успадкував маєток свого батька.", "ru"),
+            ("Живучи праведним життям і дотримуючись Закону.", "ru"),
+        ],
+    )
+    def test_russian_and_ukrainian_are_told_apart_once_there_are_thirty_letters(self, translated: str, target: str):
+        # Real sentences from the live catalogue, asked about as if they
+        # sat in the other locale's row. From 30 letters the detector
+        # names them, and the veto is worth having.
+        issues = validate_translation(
+            source="A sentence of the source, long enough not to be measured by its ratio.",
+            translated=translated,
+            source_locale="en",
+            target_locale=target,
+        )
+        assert "wrong_language" in blocking(issues)
 
     def test_the_wrong_script_withholds_the_lesson_however_short_it_is(self):
         # Script is counted, not weighed. Cyrillic served to a German

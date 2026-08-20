@@ -137,11 +137,17 @@ _MAX_LENGTH_RATIO: Final[float] = 2.5
 # the model returned its input.
 _MIN_CHARS_FOR_IDENTITY: Final[int] = 25
 
-# How much text the language detector needs behind it before a
-# same-script disagreement may withhold a lesson. Cross-script needs
-# none — see ``_check_language``, which carries the measurement and the
-# argument for this number.
-_MIN_LETTERS_TO_NAME_A_LANGUAGE: Final[int] = 60
+# Same-script pairs measured apart at every length the catalogue holds:
+# the detector may withhold a lesson over one of these however short the
+# string is. Membership is earned by measurement and nothing else — a
+# pair that has not been measured gets the floor below, because burying
+# correct work is the expensive direction and "we have not looked" is
+# not evidence of safety. ``_check_language`` carries the table.
+_PAIRS_TOLD_APART_AT_ANY_LENGTH: Final[frozenset[frozenset[str]]] = frozenset({frozenset({"de", "en"})})
+
+# ...and how much text every other same-script pair needs behind it
+# first. Cross-script needs none.
+_MIN_LETTERS_FOR_A_CLOSE_PAIR: Final[int] = 30
 
 # Content kinds whose text is a single short answer or heading, where
 # an expansion is itself the failure the prompt warns about.
@@ -731,41 +737,75 @@ def _check_language(
     The detector is good and it is not perfect: measured across
     production it is right to about one error in thirteen thousand
     lines (``api/v1/admin_translations.reset_review_status`` records
-    the figure). Re-run over the 7,969 live machine translations that
-    carry prose on 2026-08-20, it disagrees with the declared locale on
-    two rows, and both are correct Ukrainian:
+    the figure). What matters here is not the rate but where the errors
+    sit, so both sides were measured on 2026-08-20 over all 12,434
+    active rows that carry prose in a locale with a same-script rival.
 
-        "Бог об'явився Аврааму."        18 letters, read as ru
-        "У кожному рядку по два образи" 24 letters, read as ru
+    "False pos" is a correct row the detector contradicts. "Caught if
+    wrong" is the same real sentences asked about as if they had been
+    served to the other locale of their own script — German prose in an
+    English row, in real language, at every length the catalogue
+    actually contains — and it is how much of the defect the veto is
+    worth in that band:
 
-    Where those errors sit is not random, and the shape of them decides
-    what this check may do.
+        band    pair    rows  false pos   FP rate   caught if wrong
+        12-19   ru/uk   1371          1     0.07%       899  65.6%
+        20-29   ru/uk   1516          1     0.07%      1211  79.9%
+        30-44   ru/uk   1344          0     0.00%      1265  94.1%
+        45-59   ru/uk    637          0     0.00%       627  98.4%
+        60-∞    ru/uk   1260          0     0.00%      1260 100.0%
 
-    **They are same-script.** Script is counted, not weighed: three
-    Cyrillic letters rule out German at any length, and no quantity of
-    English turns Latin into Cyrillic. Cyrillic served to a German
-    reader is not a judgement call, so that stays blocking however short
-    the string is. Which of ru and uk, or of en and de, this is — that
-    is decided by weighing function words and letters a short sentence
-    may simply not contain. ``кожному`` and ``рядку`` do not exist in
-    Russian, but they are not in the word list either, and 24 letters
-    without an і, ї or є starve the rest of the evidence.
+        12-19   de/en   1105          0     0.00%       801  72.5%
+        20-29   de/en   1400          0     0.00%      1314  93.9%
+        30-44   de/en   1400          0     0.00%      1371  97.9%
+        45-59   de/en    827          0     0.00%       826  99.9%
+        60-∞    de/en   1574          0     0.00%      1574 100.0%
 
-    **They are short.** Bucketed by length, every disagreement is under
-    30 letters; from 30 letters up, across 4,473 rows, there are none.
-    The floor is set at 60 rather than 30 because 60 is a number this
-    codebase already measured for the same question and against more
-    data: ``language_detection._ABSENCE_MIN_LETTERS`` carries the table
-    showing one Ukrainian string in ten below 40 letters has no
-    hallmark letter at all, 2.5% between 40 and 59, and none from 60.
-    Fitting a threshold to the two rows that happen to be wrong today
-    would be fitting to noise, and the module's own docstring says
-    which way to err: a false positive here is a course that never
-    publishes.
+    Three things fall out of that table, and the first cost a redesign.
 
-    Below the floor and inside one script the issue is still raised —
-    it still earns a retry, and a retry is what usually fixes a genuine
-    one — it just no longer withholds the lesson.
+    **A global floor is a hole, not a narrowing.** This check first went
+    to a 60-letter floor for every same-script pair, borrowing the
+    number from ``language_detection._ABSENCE_MIN_LETTERS``. That
+    number was measured for a different and weaker question — how much
+    text before the *absence* of a hallmark letter means anything —
+    and importing it blindfolded the check across the two bands where
+    it works best. A German sentence in an English row at 53 letters,
+    which is a defect that has reached production in this project,
+    would have been served. The floor has to be justified against the
+    defect it must catch, not only against the false positives it must
+    avoid, and 45-59 catches 98-100% of the defect at a 0% false
+    positive rate.
+
+    **Script is counted, not weighed.** Three Cyrillic letters rule out
+    German at any length, so a cross-script mismatch blocks however
+    short the string is. Everything below is about same-script only.
+
+    **The confusion is one pair's, not the detector's.** All 6,306
+    de/en rows are clean at every band, including 12-19 — English and
+    German share little enough closed class, and what they do share
+    ``_LATIN_HOMOGRAPHS`` already cancels. Both errors are ru/uk,
+    Ukrainian read as Russian, at 18 and 24 letters:
+
+        "Бог об'явився Аврааму."        18 letters
+        "У кожному рядку по два образи" 24 letters
+
+    ``кожному`` and ``рядку`` do not exist in Russian, but they are not
+    in the word list either, and a short Ukrainian string without an
+    і, ї or є starves the rest of the evidence. So the floor is scoped
+    to the pair that earns it: ru/uk needs 30 letters, de/en needs
+    none. A pair nobody has measured gets the floor, because "we have
+    not looked" is not evidence of safety.
+
+    What still gets through, said plainly: a Russian sentence in a
+    Ukrainian row, or the reverse, under 30 letters. In that band the
+    detector declines to name a language on a fifth to a third of real
+    rows anyway, so the veto was never worth its nominal reach there;
+    what it does cost is the ~70-80% it would have caught. That is
+    accepted against burying 2 correct rows in 2,887, and it is bounded
+    by mutual intelligibility — the two closest languages served — and
+    softened by the retry a non-blocking issue still earns. A short
+    German string in an English row, or any Cyrillic in a Latin row,
+    still withholds the page.
 
     **The detector cannot be a witness against a text it already
     misreads.** A course that teaches a language quotes another one on
@@ -830,7 +870,12 @@ def _check_language(
             blocking=False,
         )
 
-    if shares_script(detected, target_locale) and script_letters(translated) < _MIN_LETTERS_TO_NAME_A_LANGUAGE:
+    close_pair = frozenset({detected, target_locale}) not in _PAIRS_TOLD_APART_AT_ANY_LENGTH
+    if (
+        shares_script(detected, target_locale)
+        and close_pair
+        and script_letters(translated) < _MIN_LETTERS_FOR_A_CLOSE_PAIR
+    ):
         return ValidationIssue(
             code="wrong_language",
             detail=(
