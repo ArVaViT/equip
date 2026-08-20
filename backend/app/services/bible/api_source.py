@@ -19,9 +19,17 @@ call, and the translation pipeline calls `lookup` synchronously, once per
 quoted verse.
 
 **Failure is always silent and always safe.** Every path here returns `None`
-on any problem — no key, timeout, 404, malformed body. `post_substitute`
-treats `None` as "no canonical text" and keeps the author's own quotation,
-which is the behaviour that was already correct.
+on any problem — no key, timeout, 404, malformed body, and now a body that
+parses but is not a verse. `post_substitute` treats `None` as "no canonical
+text" and keeps the author's own quotation, which is the behaviour that was
+already correct.
+
+That last case is the one this module used to have no answer for. A 200 with
+a well-formed JSON body was taken as Scripture and pasted into a reader's
+page, and Куліш 1905 answers Psalm 23:1 with `Г осподь пастирь мій` — the
+psalm's opening capital, set apart from the word it belongs to. See
+`well_formed.malformed_fragment` for what is checked and, more to the point,
+for what deliberately is not.
 """
 
 from __future__ import annotations
@@ -35,6 +43,7 @@ import httpx
 
 from app.services.bible.books import _BOOKS
 from app.services.bible.psalm_numbering import remap_psalm
+from app.services.bible.well_formed import malformed_fragment
 
 if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
@@ -233,7 +242,38 @@ def fetch_verse(ref: BibleRef, locale: LocaleCode) -> str | None:
         if response.status_code == 200:
             content = response.json().get("content")
             if isinstance(content, str) and content.strip():
-                text = " ".join(content.split())
+                folded = " ".join(content.split())
+                # The publisher answered, and the answer is not a verse.
+                # Куліш 1905 comes back with the initial capital of a
+                # psalm's first word set apart from the rest of it —
+                # ``Г осподь пастирь мій`` — and that text was pasted
+                # into a Ukrainian reader's page as Scripture, on a row
+                # stored as ``ok``, because nothing looked at it.
+                #
+                # This is checked *here*, where the text enters the
+                # process, rather than at substitution or in validation.
+                # Here it is one fact about one string and every caller
+                # already knows what ``None`` means; at substitution it
+                # would guard one of the three callers and leave the
+                # rest holding the same broken text; in validation it
+                # would arrive as a verdict on the translation, which is
+                # the wrong artifact — the model did nothing wrong — and
+                # would park a whole question a reader could otherwise
+                # answer.
+                #
+                # Not cached as text and not repaired: see
+                # ``well_formed`` for why joining the halves is a
+                # judgement a program cannot make.
+                broken = malformed_fragment(folded, locale)
+                if broken is None:
+                    text = folded
+                else:
+                    logger.warning(
+                        "verse_malformed usfm=%s locale=%s fragment=%r",
+                        usfm,
+                        locale,
+                        broken,
+                    )
         elif response.status_code != 404:
             # Anything that is not 200 or 404 is the service having a
             # moment — rate limiting, a bad gateway, an expired key — and
