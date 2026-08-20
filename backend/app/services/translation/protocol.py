@@ -123,6 +123,36 @@ class TranslationError(RuntimeError):
     """
 
 
+class TranslationPaused(RuntimeError):
+    """Raised when the pass ran out of time part-way through a document.
+
+    Deliberately *not* a ``TranslationError``: nothing is wrong with the
+    text and nothing is wrong with the provider. A long HTML block is
+    translated in several calls (see ``translation/html_split``), and if
+    the clock runs out between them the half we have is not an answer —
+    concatenating translated pieces with untranslated ones would ship a
+    lesson in two languages.
+
+    The caller must record nothing for the row and report the pass
+    incomplete, which sends the job back to ``queued``. The next tick
+    starts the document again with a fresh budget, and everything else
+    the pass finished is already committed. Recording a failure instead
+    would spend a retry on a clock, and ``failed_permanent`` is terminal.
+    """
+
+
+@runtime_checkable
+class CallBudget(Protocol):
+    """The one thing a provider needs to know about the pass's clock.
+
+    Structural, so ``translation.budget.TranslationBudget`` satisfies it
+    without importing anything from here — ``budget`` sits above
+    ``protocol`` in the import order and must stay there.
+    """
+
+    def can_afford_one_call(self) -> bool: ...
+
+
 @runtime_checkable
 class TranslationProvider(Protocol):
     """Minimal surface every concrete provider must implement."""
@@ -131,3 +161,32 @@ class TranslationProvider(Protocol):
 
     def translate(self, request: TranslationRequest) -> TranslationResult:
         """Synchronously translate one request. Must be thread-safe."""
+
+
+@runtime_checkable
+class BudgetedTranslator(Protocol):
+    """A provider that may spend more than one call on a single request.
+
+    Kept as its own capability rather than a keyword on ``translate``
+    for the same reason ``TranslationReviewer`` is: a ``runtime_checkable``
+    Protocol only asks whether the method *name* is there, so widening
+    ``translate`` would make every fake provider in the suite claim a
+    signature it does not have. A distinct name is a claim that can be
+    checked.
+
+    Callers with a clock pass it here; callers without one (a teacher
+    saving a block, a test) keep calling ``translate`` and nothing
+    changes for them.
+    """
+
+    def translate_within(
+        self,
+        request: TranslationRequest,
+        *,
+        budget: CallBudget | None = None,
+    ) -> TranslationResult:
+        """Translate, asking ``budget`` before every call after the first.
+
+        Raises ``TranslationPaused`` when the allowance runs out with the
+        document part-translated.
+        """

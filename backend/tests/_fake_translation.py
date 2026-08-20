@@ -28,10 +28,16 @@ import re
 from typing import Final
 
 # Anything inside one of these must reach the output unchanged: HTML
-# tags, ``VERSE_<hex>`` sentinels, and the placeholder shapes the
-# system prompt promises to preserve.
+# tags, scripture sentinels, and the placeholder shapes the system
+# prompt promises to preserve.
+#
+# Both sentinel spellings, and ``EQV`` first because that is the one
+# production writes. A fake that transliterated ``EQV0c02…`` into
+# Cyrillic would be reproducing the exact defect the prefix was changed
+# to prevent — see ``bible/substitution._marker_token``.
 _PROTECTED: Final[re.Pattern[str]] = re.compile(
     r"(<[^>]*>"
+    r"|EQV[0-9a-f]+"
     r"|VERSE_[0-9a-f]+"
     r"|\{[a-zA-Z_][a-zA-Z0-9_]*\}"
     r"|%\([a-zA-Z_][a-zA-Z0-9_]*\)[sdifr]"

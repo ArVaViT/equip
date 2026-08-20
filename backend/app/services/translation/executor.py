@@ -29,7 +29,11 @@ So the pass runs in three phases:
 
 The phases also make the budget honest: it is checked between batches,
 so a pass that runs out of time stops having started nothing it cannot
-finish, exactly as the serial path did.
+finish, exactly as the serial path did. Since a long HTML block is
+translated in several calls (``translation/html_split``), the check runs
+inside a document too — the batch check authorises the first call, and
+every call the split added asks again. A document that cannot be
+finished is deferred: nothing is written for it, and the pass says so.
 """
 
 from __future__ import annotations
@@ -43,7 +47,13 @@ from sqlalchemy import or_
 
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.services.translation.budget import NoBudget
-from app.services.translation.protocol import TranslationError, TranslationRequest, TranslationResult
+from app.services.translation.protocol import (
+    BudgetedTranslator,
+    TranslationError,
+    TranslationPaused,
+    TranslationRequest,
+    TranslationResult,
+)
 from app.services.translation.reviewer import ReviewVerdict, TranslationReviewer
 from app.services.translation.validation import ValidationIssue, summarise, validate_translation
 from app.services.translation.version import TRANSLATOR_VERSION
@@ -95,6 +105,31 @@ class _Answer:
     text: str | None
     issues_summary: str | None
     failed: bool
+    #: The clock ran out part-way through a document that takes several
+    #: calls. Not a failure of the text and not an answer — nothing is
+    #: written, and the pass reports itself incomplete so the next tick
+    #: starts this document again with a full allowance.
+    deferred: bool = False
+
+
+def _translate(
+    provider: TranslationProvider,
+    request: TranslationRequest,
+    budget: TranslationBudget | None,
+) -> TranslationResult:
+    """Ask the provider, telling it about the clock if it can hear.
+
+    A long HTML block is translated in several calls, and a provider
+    that spends more than one call on a request needs to know when to
+    stop. Providers that do not — every fake in the suite, the noop —
+    are called exactly as before. Same shape as the reviewer capability
+    in ``_review_and_correct``: asked for by a distinct method name, not
+    by a keyword, because a ``runtime_checkable`` Protocol only checks
+    that the name is there.
+    """
+    if isinstance(provider, BudgetedTranslator):
+        return provider.translate_within(request, budget=budget)
+    return provider.translate(request)
 
 
 def _decide(
@@ -188,7 +223,7 @@ def _load_twins(
     return {key: value for key, value in found.items() if key in wanted}
 
 
-def _ask(task: TranslationTask, provider: TranslationProvider) -> _Answer:
+def _ask(task: TranslationTask, provider: TranslationProvider, budget: TranslationBudget | None = None) -> _Answer:
     """Phase two, and the only phase that runs off the main thread.
 
     Touches no database and no shared state: the provider owns an
@@ -197,6 +232,10 @@ def _ask(task: TranslationTask, provider: TranslationProvider) -> _Answer:
     The one retry on a failed structural check lives here because it is
     part of asking, not of recording — see the orchestrator's note on
     why a first bad answer is usually a bad roll rather than a fact.
+
+    ``budget`` is optional because most callers of this function have no
+    clock: the synchronous paths and the tests translate one field with
+    nothing waiting on them. ``None`` means "as many calls as it takes".
     """
     request = TranslationRequest(
         text=task.text,
@@ -206,7 +245,22 @@ def _ask(task: TranslationTask, provider: TranslationProvider) -> _Answer:
         context=task.context,
     )
     try:
-        result = provider.translate(request)
+        result = _translate(provider, request, budget)
+    except TranslationPaused as exc:
+        # The document is long enough to need several calls and the
+        # allowance ran out between them. Nothing is recorded: half a
+        # lesson in the reader's language and half in the author's is
+        # worse than the gap, and the next tick will start it again from
+        # the top for free.
+        logger.info(
+            "translation_deferred entity=%s:%s field=%s locale=%s reason=%s",
+            task.entity_type,
+            task.entity_id,
+            task.field,
+            task.target_locale,
+            exc,
+        )
+        return _Answer(task=task, text=None, issues_summary=None, failed=False, deferred=True)
     except TranslationError as exc:
         logger.warning(
             "Translation failed entity=%s:%s field=%s locale=%s err=%s",
@@ -230,8 +284,10 @@ def _ask(task: TranslationTask, provider: TranslationProvider) -> _Answer:
         # a defect the model actively prefers, the question has to
         # change: show it the words it chose and ask for different ones.
         try:
-            retry = provider.translate(replace(request, rewrite_notes=tuple(issue.detail for issue in issues)))
-        except TranslationError:
+            retry = _translate(
+                provider, replace(request, rewrite_notes=tuple(issue.detail for issue in issues)), budget
+            )
+        except (TranslationError, TranslationPaused):
             retry = None
         if retry is not None:
             retry_issues = _issues_in(task, retry)
@@ -256,7 +312,7 @@ def _ask(task: TranslationTask, provider: TranslationProvider) -> _Answer:
     # markup does not need an opinion on its register, and paying for
     # one would be paying twice for the same rejection.
     if not issues:
-        result, issues = _review_and_correct(task, result, provider, request)
+        result, issues = _review_and_correct(task, result, provider, request, budget)
 
     blocking = [issue for issue in issues if issue.blocking]
     style = [issue for issue in issues if not issue.blocking]
@@ -287,6 +343,7 @@ def _review_and_correct(
     result: TranslationResult,
     provider: TranslationProvider,
     request: TranslationRequest,
+    budget: TranslationBudget | None,
 ) -> tuple[TranslationResult, list[ValidationIssue]]:
     """Have the answer read, and act on what the reader says.
 
@@ -317,8 +374,8 @@ def _review_and_correct(
         return result, []
 
     try:
-        corrected = provider.translate(replace(request, rewrite_notes=verdict.notes))
-    except TranslationError:
+        corrected = _translate(provider, replace(request, rewrite_notes=verdict.notes), budget)
+    except (TranslationError, TranslationPaused):
         corrected = None
 
     if corrected is None:
@@ -412,6 +469,11 @@ def _rank(issues: list[ValidationIssue]) -> tuple[int, int]:
 def _record(db: Session, answer: _Answer, store: VersionStore) -> Outcome:
     """Phase three: back on the caller's session, one write at a time."""
     task = answer.task
+    if answer.deferred:
+        # Nothing to write. The row keeps whatever it had — which for a
+        # first translation is nothing at all, and that is the point: a
+        # partial document must never reach the reader.
+        return "deferred"
     if answer.failed:
         store.record_failure(
             db,
@@ -561,7 +623,7 @@ def execute_plan(
             break
         batch = representatives[start : start + width]
         with ThreadPoolExecutor(max_workers=width) as pool:
-            answers = list(pool.map(lambda task: _ask(task, provider), batch))
+            answers = list(pool.map(lambda task: _ask(task, provider, active_budget), batch))
         for answer in answers:
             siblings = by_text[
                 (
@@ -582,6 +644,7 @@ def execute_plan(
                         text=answer.text,
                         issues_summary=answer.issues_summary,
                         failed=answer.failed,
+                        deferred=answer.deferred,
                     ),
                     store,
                 )
@@ -591,6 +654,12 @@ def execute_plan(
                     needs_review += 1
                 elif outcome == "failed":
                     failed += 1
+                elif outcome == "deferred":
+                    # A document too long to finish in what was left of
+                    # the tick. The pass is not complete, so the job goes
+                    # back to ``queued`` rather than being taken as done
+                    # with a hole in it.
+                    incomplete = True
 
     return PlanResult(
         translated=translated,

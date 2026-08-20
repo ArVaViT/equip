@@ -149,7 +149,16 @@ def _markers(text: str) -> list[str]:
     return sorted(_MARKER_RE.findall(text))
 
 
-def _tag_names(text: str) -> list[str]:
+def tag_names(text: str) -> list[str]:
+    """Every tag name in ``text``, sorted — the document's structure as
+    this module defines it.
+
+    Public because it is no longer only ours. ``translation/html_split``
+    cuts a long block into pieces and has to satisfy itself that the
+    reassembled whole has the structure the source had; if it decided
+    that by its own reckoning of "same tags", a piece could pass there
+    and the document still be parked here. One definition, imported.
+    """
     return sorted(name.lower() for name in _TAG_NAME_RE.findall(text))
 
 
@@ -250,10 +259,10 @@ def _check_markers(source: str, translated: str) -> ValidationIssue | None:
 
 
 def _check_tags(source: str, translated: str) -> ValidationIssue | None:
-    expected = _tag_names(source)
+    expected = tag_names(source)
     if not expected:
         return None
-    got = _tag_names(translated)
+    got = tag_names(translated)
     if expected == got:
         return None
     return ValidationIssue(
@@ -662,4 +671,4 @@ def summarise(issues: list[ValidationIssue]) -> str:
     return " ".join(f"[{issue.code}] {issue.detail}" for issue in issues)
 
 
-__all__ = ["ValidationIssue", "summarise", "validate_translation"]
+__all__ = ["ValidationIssue", "summarise", "tag_names", "validate_translation"]
