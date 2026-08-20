@@ -49,6 +49,6 @@ from __future__ import annotations
 
 from typing import Final
 
-TRANSLATOR_VERSION: Final[int] = 6
+TRANSLATOR_VERSION: Final[int] = 7
 
 __all__ = ["TRANSLATOR_VERSION"]
