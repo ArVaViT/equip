@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict VIvtL9s32hNdPmNht2zLai8vu2PqNRwzAHCDZR34MGeWUllkggnvUhOYgbOBjf2
+\restrict It5N7kHBzuiWhP4CGcADfCBamx7aZ41L734JaVKeWiwUCI4ltY3KxbwlyGyCXBX
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10 (Homebrew)
@@ -104,7 +104,11 @@ BEGIN
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', ''),
     safe_role,
-    CASE WHEN has_locale THEN claimed_locale ELSE 'ru' END,
+    -- The signup said nothing about language, so neither do we: 'en' here
+    -- means "we had to write something down", and the 'default' below is
+    -- what says so out loud. The client replaces both the moment it sees
+    -- the reader's actual browser language.
+    CASE WHEN has_locale THEN claimed_locale ELSE 'en' END,
     CASE WHEN has_locale THEN 'chosen' ELSE 'default' END
   )
   ON CONFLICT (id) DO UPDATE
@@ -399,6 +403,7 @@ CREATE TABLE public.content_versions (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     review_reason text,
+    translator_version smallint DEFAULT 0 NOT NULL,
     CONSTRAINT content_versions_attempts_check CHECK ((attempts >= 0)),
     CONSTRAINT content_versions_origin_check CHECK ((origin = ANY (ARRAY['human'::text, 'mt'::text]))),
     CONSTRAINT content_versions_status_check CHECK ((status = ANY (ARRAY['ok'::text, 'needs_review'::text, 'failed'::text, 'failed_permanent'::text])))
@@ -775,7 +780,7 @@ CREATE TABLE public.profiles (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone,
     avatar_url text,
-    preferred_locale character varying(8) DEFAULT 'ru'::character varying NOT NULL,
+    preferred_locale character varying(8) DEFAULT 'en'::character varying NOT NULL,
     calendar_ical_min_iat bigint,
     deactivated_at timestamp with time zone,
     locale_source text DEFAULT 'default'::text NOT NULL,
@@ -967,6 +972,7 @@ CREATE TABLE public.staged_content_versions (
     attempts integer DEFAULT 0 NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    translator_version smallint DEFAULT 0 NOT NULL,
     CONSTRAINT staged_content_versions_attempts_check CHECK ((attempts >= 0)),
     CONSTRAINT staged_content_versions_origin_check CHECK ((origin = ANY (ARRAY['human'::text, 'mt'::text]))),
     CONSTRAINT staged_content_versions_status_check CHECK ((status = ANY (ARRAY['ok'::text, 'needs_review'::text, 'failed'::text, 'failed_permanent'::text])))
@@ -1735,10 +1741,24 @@ CREATE INDEX ix_content_versions_source_version ON public.content_versions USING
 
 
 --
+-- Name: ix_content_versions_stale_translator; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_content_versions_stale_translator ON public.content_versions USING btree (translator_version) WHERE ((superseded_by IS NULL) AND (origin = 'mt'::text));
+
+
+--
 -- Name: ix_content_versions_superseded_by; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX ix_content_versions_superseded_by ON public.content_versions USING btree (superseded_by) WHERE (superseded_by IS NOT NULL);
+
+
+--
+-- Name: ix_content_versions_twin_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_content_versions_twin_lookup ON public.content_versions USING btree (source_hash, locale) WHERE ((superseded_by IS NULL) AND (status = 'ok'::text) AND (source_hash IS NOT NULL));
 
 
 --
@@ -3517,5 +3537,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict VIvtL9s32hNdPmNht2zLai8vu2PqNRwzAHCDZR34MGeWUllkggnvUhOYgbOBjf2
+\unrestrict It5N7kHBzuiWhP4CGcADfCBamx7aZ41L734JaVKeWiwUCI4ltY3KxbwlyGyCXBX
 
