@@ -293,6 +293,63 @@ _OPENING_CONTEXT: Final[frozenset[str]] = frozenset(
     {"", " ", "\t", "\n", "\r", "\xa0", "(", "[", "{", "—", "–", "-", "/", ":", "«", "„", "“", "‚", "‘", "*", "|", "…"}
 )
 
+# A new block is a new place to start, and the character before it is not
+# evidence about the character after it.
+#
+# The opening test reads what precedes a mark, and markup is transparent
+# to it — which is right inside a paragraph (``<em>"`` opens a quotation)
+# and wrong across one. A verse quoted in its own ``<blockquote>`` is
+# preceded, in prose terms, by the full stop that ended the paragraph
+# above; a full stop closes, so the mark that opened the quotation was
+# written as a closing mark, and the one that closed it was written as a
+# closing mark too.
+#
+# Production, 2026-08-20, a walkthrough written to look at exactly this:
+# German served ``“Doch weil ihr…habt.“`` and Ukrainian ``»А як ви…
+# веселитися»`` — the closing mark at both ends, in both languages, on
+# the one line of a Bible lesson that is Scripture. The same sentence
+# inside a paragraph came back correctly pointed, which is what made it
+# visible: two shapes of the same quotation, one right and one wrong,
+# decided by which side of a ``</p>`` it fell.
+_BLOCK_ELEMENTS: Final[frozenset[str]] = frozenset(
+    {
+        "p",
+        "div",
+        "blockquote",
+        "section",
+        "article",
+        "aside",
+        "figure",
+        "figcaption",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "ul",
+        "ol",
+        "li",
+        "dl",
+        "dt",
+        "dd",
+        "table",
+        "thead",
+        "tbody",
+        "tfoot",
+        "tr",
+        "td",
+        "th",
+        "br",
+        "hr",
+        "pre",
+        "header",
+        "footer",
+        "main",
+        "nav",
+    }
+)
+
 # German sets its secondary quotes ``‚…‘`` — the closing mark of which is
 # U+2018, the very character the genitive-apostrophe rule wants to
 # rewrite. When a string contains ``‚`` we cannot tell a closed inner
@@ -529,7 +586,7 @@ def _apostrophe_for(locale: LocaleCode) -> _Apostrophe | None:
     return _APOSTROPHE_RULES[locale]
 
 
-def _apply_quote_rules(text: str, free: list[bool], out: list[str], locale: LocaleCode) -> None:
+def _apply_quote_rules(text: str, free: list[bool], tags: list[_Tag], out: list[str], locale: LocaleCode) -> None:
     opening_mark, closing_mark = _marks_for(locale)
     apostrophe = _apostrophe_for(locale)
     # A language whose two marks are the same character cannot get one
@@ -540,8 +597,16 @@ def _apply_quote_rules(text: str, free: list[bool], out: list[str], locale: Loca
     # ``_quotes_balance``.
     repoint_quotes = opening_mark == closing_mark or _quotes_balance(text, free)
     apostrophes_allowed = apostrophe is not None and apostrophe.permitted(text, free)
+    # Where a block begins or ends, whatever stood before it stops being
+    # context. Both edges count: ``</p>`` ends the sentence that was
+    # running, ``<blockquote>`` starts a place that had none.
+    boundaries = sorted(end for name, _closing, _start, end in tags if name in _BLOCK_ELEMENTS)
+    next_boundary = 0
     previous = ""
     for index, char in enumerate(text):
+        while next_boundary < len(boundaries) and boundaries[next_boundary] <= index:
+            previous = ""
+            next_boundary += 1
         if not free[index]:
             continue
         before = text[index - 1] if index > 0 and free[index - 1] else ""
@@ -1325,7 +1390,7 @@ def normalize_characters(text: str, locale: LocaleCode, content_kind: ContentKin
     """
     free, tags = _prose_mask(text)
     out = list(text)
-    _apply_quote_rules(text, free, out, locale)
+    _apply_quote_rules(text, free, tags, out, locale)
     if locale == "de":
         _apply_german_dashes(text, free, out)
     elif locale == "en":
