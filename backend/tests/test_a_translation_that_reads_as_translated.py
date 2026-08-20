@@ -1,3 +1,8 @@
+# ruff: noqa: RUF001
+# This file compares Cyrillic words against their Latin-alphabet
+# translations for a living; the confusable-character rule fires on
+# every Ukrainian and Russian string in it and has nothing to say
+# about any of them.
 """The difference between a correct translation and a good one.
 
 `test_validation.py` and its neighbours ask whether meaning survived the
@@ -319,3 +324,69 @@ class TestAWordSwappedForAnotherWord:
         )
         assert [i.code for i in issues] == ["glossary_term_missing"]
         assert issues[0].blocking is False
+
+
+class TestTheRegisterKnowsWhenNotToInsist:
+    """A check that flags correct work is worse than no check.
+
+    Measured against 3,053 rows of the current generation: the register
+    reported 25 terms missing, and every one of them was wrong. Three
+    causes, all fixed here, all of them the same mistake in different
+    clothing — assuming a word means the same thing everywhere it
+    appears.
+    """
+
+    def test_a_typographic_apostrophe_is_the_same_word(self) -> None:
+        # Typography normalises Ukrainian to U+2019; the table was
+        # written with U+0027. On the day typography shipped, the
+        # register stopped recognising its own Ukrainian entries.
+        from app.services.translation.glossary import missing_terms
+
+        assert (
+            missing_terms(
+                "Пятидесятница",
+                "П’ятидесятниця",
+                source_locale="ru",
+                target_locale="uk",
+            )
+            == []
+        )
+
+    def test_a_ukrainian_word_that_drops_a_vowel_is_still_there(self) -> None:
+        # «учень» becomes «учня» and «учнів». Twelve correct rows were
+        # reported as missing the word they contained.
+        from app.services.translation.glossary import missing_terms
+
+        assert missing_terms("ученик Иисуса", "учня Ісуса", source_locale="ru", target_locale="uk") == []
+        assert missing_terms("двенадцать учеников", "дванадцять учнів", source_locale="ru", target_locale="uk") == []
+
+    def test_a_word_inside_a_name_is_not_that_word(self) -> None:
+        # «Новый Завет» is the New Testament, not a covenant. Insisting
+        # on the register here would turn a correct translation into a
+        # wrong one.
+        from app.services.translation.glossary import missing_terms
+
+        assert (
+            missing_terms("автор Нового Завета", "Autor des Neuen Testaments", source_locale="ru", target_locale="de")
+            == []
+        )
+
+    def test_but_a_real_covenant_still_has_to_be_a_covenant(self) -> None:
+        from app.services.translation.glossary import missing_terms
+
+        assert missing_terms(
+            "завет с Авраамом", "das Testament mit Abraham", source_locale="ru", target_locale="de"
+        ) == [("завет", "Bund")]
+
+    def test_the_correction_lets_the_model_disagree(self) -> None:
+        # The note is a question, not an order: the register cannot see
+        # context, and a model told flatly to use a word will use it even
+        # where it is wrong.
+        issues = validate_translation(
+            source="эфиопский евнух в пустыне",
+            translated="ефіопський п’ятидесятник у пустелі",
+            source_locale="ru",
+            target_locale="uk",
+        )
+        assert issues[0].code == "glossary_term_missing"
+        assert "keep what you wrote" in issues[0].detail

@@ -793,9 +793,12 @@ def _check_glossary(source: str, translated: str, source_locale: str, target_loc
     return ValidationIssue(
         code="glossary_term_missing",
         detail=(
-            f"The source uses terms this school renders a fixed way, and the "
-            f"translation does not contain them: {named}. Use the school's "
-            f"wording, in whatever form the sentence needs."
+            f"The source uses terms this school renders a fixed way, and "
+            f"the translation does not contain them: {named}. If the word "
+            f"carries that meaning here, use the school's wording, in "
+            f"whatever form the sentence needs. If it does not — if it is "
+            f"part of a name, or an everyday sense of the same word — keep "
+            f"what you wrote."
         ),
         blocking=False,
     )
