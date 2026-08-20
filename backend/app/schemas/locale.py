@@ -66,6 +66,28 @@ LOCALE_DISPLAY_NAMES: Final[dict[LocaleCode, str]] = {
 }
 
 
+# The pair of marks each language sets a quotation in. Two callers need
+# the same answer and must not disagree: ``translation/typography.py``
+# re-points the marks a translation came back with, and
+# ``bible/substitution.py`` puts back the ones a canonical verse was
+# quoted in before the substitution layer swallowed them. A table they
+# both read is why "the marks the language uses" means one thing.
+#
+# English is *straight*, and that is a decision rather than an oversight
+# — ``typography.py::_english_quote`` records why: straightening is a
+# total mapping that cannot be got backwards, and the corpus is already
+# 662 straight double quotes against 49 curly.
+#
+# ``test_a_quoted_verse_comes_back_quoted`` fails when a locale is added
+# here and forgotten, the same guard the display-name table gets.
+QUOTATION_MARKS: Final[dict[LocaleCode, tuple[str, str]]] = {
+    "ru": ("«", "»"),
+    "uk": ("«", "»"),
+    "de": ("„", "“"),
+    "en": ('"', '"'),
+}
+
+
 def normalize_locale(value: str | None, *, fallback: LocaleCode = DEFAULT_LOCALE) -> LocaleCode:
     """Coerce arbitrary input to a supported locale.
 

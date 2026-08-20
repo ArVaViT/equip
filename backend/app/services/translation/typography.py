@@ -108,6 +108,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Final
 
+from app.schemas.locale import QUOTATION_MARKS
 from app.services.bible.books import display_book_name, find_book, written_as_a_book_name
 
 if TYPE_CHECKING:
@@ -295,14 +296,19 @@ def _german_quote(opening: bool) -> str:
     construction — an opening slot always holds ``„``, a closing slot
     always holds ``“``, and running the pass again finds both already
     there.
+
+    The pair itself comes from ``schemas/locale.py``, which is also
+    where ``bible/substitution.py`` reads it when it puts back the marks
+    a canonical verse was quoted in. Two modules deciding separately what
+    a German quotation mark looks like is one module too many.
     """
-    return "„" if opening else "“"
+    return QUOTATION_MARKS["de"][0 if opening else 1]
 
 
 def _cyrillic_quote(opening: bool) -> str:
     """Russian and Ukrainian both set ``«…»``. Positional for the same
-    reason as ``_german_quote``."""
-    return "«" if opening else "»"
+    reason as ``_german_quote``, and read from the same table."""
+    return QUOTATION_MARKS["ru"][0 if opening else 1]
 
 
 def _english_quote(char: str) -> str:
@@ -322,10 +328,27 @@ def _english_quote(char: str) -> str:
     against 49 curly, 245 straight apostrophes against 29. The 49 and
     the 29 are the anomaly, and this is the cheaper direction to make
     uniform.
+
+    This is the decision ``QUOTATION_MARKS["en"]`` records, so that
+    ``bible/substitution.py``, restoring the marks around a canonical
+    verse, writes the same mark this function would have left standing —
+    and the restored quotation is a fixed point of this pass rather than
+    something it immediately rewrites.
+
+    The guillemets belong in the same mapping, and their absence used to
+    show. The source is Russian and sets ``«…»``; a quotation the
+    substitution layer does not recognise travels to the model as
+    ordinary prose and comes back with the author's marks still on it. So
+    an English lesson could hold a restored verse in ``"…"`` and the same
+    verse quoted again in ``«…»`` a few lines down — the very
+    inconsistency the restoration exists to end. ``„`` is here for the
+    same reason from the German direction. Straightening them is one
+    character for one, like every other rule in this module, and cannot
+    be got backwards.
     """
-    if char in "“”":
+    if char in "“”«»„":
         return '"'
-    if char in "‘’":
+    if char in "‘’‚":
         return "'"
     return char
 
