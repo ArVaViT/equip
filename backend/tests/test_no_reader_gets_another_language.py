@@ -120,3 +120,53 @@ def test_the_guard_can_actually_see_the_shape_it_forbids():
         and not isinstance(node.values[1], ast.Constant)
     ]
     assert found, "the AST guard no longer recognises the pattern it exists to forbid"
+
+
+class TestAMixedScriptSourceIsNotJudgedByItsMajority:
+    """A Russian paragraph full of Latin letters is still Russian.
+
+    `pick_overlay_value` short-circuits to the base text when the
+    detector says the text is already in the reader's language. The
+    detector answers by script, so a Russian paragraph carrying an
+    English bibliography — "См. F. F. Bruce, The Book of the Acts (Grand
+    Rapids: Eerdmans, 1988)" — comes back as English with the same
+    confidence as an actually-English sentence. An English reader was
+    then handed the Russian original while their finished translation
+    sat unread in the overlay.
+
+    Confidence cannot separate those two. Script can: genuinely English
+    text has no Cyrillic in it.
+    """
+
+    def test_a_bibliography_does_not_make_a_russian_paragraph_english(self) -> None:
+        from app.services.translation.resolve_for_display import pick_overlay_value
+
+        base = "См. F. F. Bruce, The Book of the Acts (Grand Rapids: Eerdmans, 1988), 120-134."
+        overlay = {("chapter_block", "b1", "content"): "See F. F. Bruce, The Book of the Acts."}
+        result = pick_overlay_value(
+            base=base,
+            source_locale="ru",
+            display_locale="en",
+            overlay=overlay,
+            entity_type="chapter_block",
+            entity_id="b1",
+            field="content",
+        )
+        assert result == "See F. F. Bruce, The Book of the Acts."
+
+    def test_a_genuinely_english_base_still_short_circuits(self) -> None:
+        # The rule this must not break: when a course declares Russian
+        # but the entity really is English, an English reader gets the
+        # base rather than a stale wrong-direction overlay.
+        from app.services.translation.resolve_for_display import pick_overlay_value
+
+        result = pick_overlay_value(
+            base="Welcome to the chapter on Genesis",
+            source_locale="ru",
+            display_locale="en",
+            overlay={("chapter", "e1", "title"): "Stale wrong-direction row"},
+            entity_type="chapter",
+            entity_id="e1",
+            field="title",
+        )
+        assert result == "Welcome to the chapter on Genesis"
