@@ -123,11 +123,45 @@ class TranslationResult:
 
 
 class TranslationError(RuntimeError):
-    """Raised when a provider call fails permanently.
+    """Raised when the provider answered and the answer is unusable.
 
-    Transient failures (network, 5xx) should be retried inside the provider
-    before bubbling up — by the time this reaches the caller the work
-    belongs in the failed-rows queue.
+    Substantive, in other words: the model was asked about *this text*
+    and what came back cannot be stored — no candidates, a malformed
+    candidate, an empty string, a refusal, a request the API rejected
+    outright. Asking again may help (sampling is not quite
+    deterministic) but there is no reason to think the next answer will
+    differ, so each of these spends one of the row's five attempts and
+    the fifth is terminal.
+
+    Transient failures (network, 5xx) are retried inside the provider
+    first; when those retries are also exhausted the provider raises
+    ``TranslationUnavailable`` below, NOT this.
+    """
+
+
+class TranslationUnavailable(TranslationError):
+    """Raised when the provider could not answer at all.
+
+    A 429, a 503, a read timeout, a connection reset, a prepaid balance
+    that ran out mid-run. None of these is a fact about the text: the
+    same string sent an hour later translates perfectly.
+
+    ``CONTENT_VERSION_MAX_ATTEMPTS`` exists to stop asking about a text
+    that defeats translation, and on 2026-08-20 an eight-minute outage
+    spent all five attempts on 174 rows that had nothing wrong with
+    them, promoting every one to ``failed_permanent`` — terminal, and
+    reachable only through the admin reset surface. The service being
+    down is not the content being bad, and the two must not share a
+    counter.
+
+    A subclass of ``TranslationError`` on purpose. Every existing
+    ``except TranslationError`` in the pipeline still catches an
+    outage — a caller that does not care about the difference keeps
+    behaving exactly as it did — and only the one place that counts
+    attempts has to look closer. Making it a sibling would have meant
+    auditing every handler to add it, and the handler that got missed
+    would let an outage escape as an unhandled exception out of a
+    worker thread.
     """
 
 

@@ -37,6 +37,7 @@ from app.services.translation.protocol import (
     TranslationProvider,
     TranslationRequest,
     TranslationResult,
+    TranslationUnavailable,
 )
 from app.services.translation.reviewer import ReviewVerdict, build_review_prompt, parse_review
 from app.services.translation.term_memory import TermMemory, merge_pairs
@@ -49,6 +50,34 @@ _API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
 # Retry only on transient classes, never on generic 4xx responses.
 _RETRYABLE_STATUSES = frozenset({408, 429, 500, 502, 503, 504})
+
+# Statuses that say something about the service or about our account,
+# and nothing whatsoever about the text we sent.
+#
+# The retryable set above plus the three ways the door can be shut on
+# us: 401 (key rejected), 403 (key disabled, billing off, project
+# suspended) and 404 (the model id no longer exists — a deploy-time
+# mistake, not a sentence the model refuses). A row must not spend a
+# retry on any of them, because none of them will read differently if
+# the text is reworded.
+#
+# What is deliberately NOT here: 400 and 413. Those are the API looking
+# at this particular request and rejecting it — a block past the token
+# ceiling, a payload it cannot parse. That is a property of the text,
+# it will recur on every retry, and the attempt cap is exactly the
+# mechanism meant to stop asking.
+_UNAVAILABLE_STATUSES = _RETRYABLE_STATUSES | frozenset({401, 403, 404})
+
+
+def _is_unavailable(status_code: int) -> bool:
+    """Did the provider fail to answer, rather than answer badly?
+
+    Every 5xx counts, not only the four named above: a gateway we have
+    not seen before is still a gateway, and the fallback for an unknown
+    5xx has to be "the service is down", never "this text cannot be
+    translated".
+    """
+    return status_code in _UNAVAILABLE_STATUSES or 500 <= status_code < 600
 
 
 # Where a Bible quotation can plausibly live. ``plain`` covers the
@@ -498,7 +527,9 @@ class GeminiTranslationProvider:
                         pass
                     return result
                 if response.status_code in _RETRYABLE_STATUSES:
-                    last_error = TranslationError(f"Gemini returned {response.status_code}: {response.text[:200]}")
+                    last_error = TranslationUnavailable(
+                        f"Gemini returned {response.status_code}: {response.text[:200]}"
+                    )
                     logger.warning(
                         "Gemini transient %s attempt=%s body=%s",
                         response.status_code,
@@ -520,6 +551,12 @@ class GeminiTranslationProvider:
                             outcome="fatal",
                             status_code=str(response.status_code),
                         )
+                    # A status we do not retry still has to be sorted into
+                    # "the service said no to us" and "the service said no
+                    # to this text" — see ``_is_unavailable``. Only the
+                    # second may ever count against a row's attempts.
+                    if _is_unavailable(response.status_code):
+                        raise TranslationUnavailable(f"Gemini returned {response.status_code}: {response.text[:200]}")
                     raise TranslationError(f"Gemini returned {response.status_code}: {response.text[:200]}")
 
             if attempt < self._max_retries:
@@ -530,7 +567,12 @@ class GeminiTranslationProvider:
                 # on top of a 30s timeout.
                 time.sleep(min(0.5, 0.1 * (2**attempt)))
 
-        raise TranslationError(f"Gemini call failed after retries: {last_error!r}")
+        # Getting here means every attempt either never reached Gemini or
+        # came back on a retryable status. Both are the service, not the
+        # sentence: the loop only falls out of the bottom on a transport
+        # error or a 429/5xx, and every other outcome returned or raised
+        # above. So this is always ``TranslationUnavailable``.
+        raise TranslationUnavailable(f"Gemini call failed after retries: {last_error!r}")
 
     def review(
         self,

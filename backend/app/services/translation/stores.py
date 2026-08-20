@@ -129,7 +129,16 @@ class VersionStore(Protocol):
         locale: str,
         source_locale: str,
         source_hash: str,
-    ) -> None: ...
+        transient: bool = False,
+    ) -> None:
+        """Record an attempt that produced no text.
+
+        ``transient`` says the provider never answered — a 429, a 5xx, a
+        timeout, a balance that ran out. The row is written either way,
+        because it is what the retry queue reads; what ``transient``
+        withholds is the attempt. See ``record_mt_failure``.
+        """
+        ...
 
 
 def _live_active(
@@ -310,6 +319,7 @@ class LiveStore:
         locale: str,
         source_locale: str,
         source_hash: str,
+        transient: bool = False,
     ) -> None:
         record_mt_failure(
             db,
@@ -319,6 +329,7 @@ class LiveStore:
             locale=locale,
             source_locale=source_locale,
             source_hash=source_hash,
+            transient=transient,
             source_version_id=_find_active_source_version_id(
                 db,
                 entity_type=entity_type,
@@ -516,14 +527,22 @@ class StagedStore:
         locale: str,
         source_locale: str,
         source_hash: str,
+        transient: bool = False,
     ) -> None:
         from app.models.content_version import CONTENT_VERSION_MAX_ATTEMPTS
 
         existing = _staged_row(db, entity_type=entity_type, entity_id=entity_id, field=field, locale=locale)
-        attempts = (existing.attempts if existing is not None else 0) + 1
+        previous = existing.attempts if existing is not None else 0
+        # The staged table counts attempts for the same reason the live
+        # one does, and it must stop counting them for the same reason
+        # too: an edit held for release is not defective because the
+        # translator was unreachable while it waited. A held edit whose
+        # locales all reached ``failed_permanent`` never releases at all,
+        # and nothing outside the admin reset surface moves it.
+        attempts = previous if transient else previous + 1
         status = (
             ContentVersionStatus.FAILED_PERMANENT
-            if attempts >= CONTENT_VERSION_MAX_ATTEMPTS
+            if attempts >= CONTENT_VERSION_MAX_ATTEMPTS and not transient
             else ContentVersionStatus.FAILED
         )
         _upsert_staged(

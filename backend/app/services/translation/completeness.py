@@ -132,6 +132,20 @@ _REASON_BY_STATUS: dict[str, GapReason] = {
 # or ``/retry-reviewed``, ``failed_permanent`` through the admin re-queue
 # that resets ``attempts``. Ordinary ``failed`` is not here: the executor
 # does retry it, and it is how a re-opened row comes back.
+#
+# A provider outage lands in ``failed`` and stays there — it no longer
+# spends attempts, so it can no longer arrive at ``failed_permanent``
+# (see ``record_mt_failure``). That is deliberate, and it is not the
+# eternal-requeue bug this set exists to prevent. The distinction is
+# whether a worker tick could change the row: for ``needs_review`` and
+# ``failed_permanent`` the answer is no *by construction* — the model is
+# at temperature 0 and the executor refuses the row outright — so
+# queueing them buys a plan that translates nothing, forever. An outage
+# is the opposite: the very next tick after the service comes back
+# closes the gap, and until then the executor's outage halt keeps the
+# cost at one batch of calls per tick rather than a whole catalogue.
+# A course does need to keep re-queueing while the provider is down;
+# that is what makes it translate the minute the provider returns.
 UNACTIONABLE_GAP_REASONS: frozenset[GapReason] = frozenset({"needs_review", "failed_permanent"})
 
 

@@ -53,6 +53,7 @@ from app.services.translation.protocol import (
     TranslationPaused,
     TranslationRequest,
     TranslationResult,
+    TranslationUnavailable,
 )
 from app.services.translation.reviewer import ReviewVerdict, TranslationReviewer
 from app.services.translation.term_memory import TermMemory
@@ -92,7 +93,27 @@ DEFAULT_MAX_WORKERS = 8
 # costs coverage of *repetitions*, not of names.
 _SEED_PAIRS_PER_LOCALE = 300
 
-Outcome = Literal["translated", "skipped", "failed", "needs_review", "deferred"]
+# How many calls in a row may come back "the provider could not answer"
+# before the pass stops asking.
+#
+# The worker fires every minute and a full-catalogue plan is thousands
+# of calls. On 2026-08-20 the prepaid balance ran out and the pipeline
+# spent the next several hours sending every one of those calls into a
+# hard 429 — nothing translated, nothing learned, and the retry that
+# would have worked was the one made after somebody topped up.
+#
+# Three consecutive unanswered calls is not a coincidence, and at
+# ``DEFAULT_MAX_WORKERS`` the first batch of a real outage produces
+# eight of them. Stopping there turns a tick from thousands of doomed
+# calls into at most one batch — and the pass reports itself
+# incomplete, so the job goes back to ``queued`` exactly as it does
+# when the clock runs out. The next tick tries again a minute later,
+# which is the right amount of patience for an outage that may end at
+# any moment and the reason this needs no timer, no table and no
+# setting.
+_OUTAGE_STREAK_LIMIT = 3
+
+Outcome = Literal["translated", "skipped", "failed", "needs_review", "deferred", "unavailable"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,6 +145,12 @@ class _Answer:
     #: written, and the pass reports itself incomplete so the next tick
     #: starts this document again with a full allowance.
     deferred: bool = False
+    #: The provider could not answer: a 429, a 5xx, a timeout, a balance
+    #: that ran out. Set alongside ``failed`` — no text came back, and
+    #: for every counter and every reader this is a failed field — but it
+    #: is the reason the failure must not be counted against the row's
+    #: five attempts. See ``TranslationUnavailable``.
+    unavailable: bool = False
 
 
 def _translate(
@@ -371,6 +398,22 @@ def _ask(
             exc,
         )
         return _Answer(task=task, text=None, issues_summary=None, failed=False, deferred=True)
+    except TranslationUnavailable as exc:
+        # Caught before ``TranslationError`` because it is one — the
+        # ordering here is the whole classification. Nothing came back,
+        # so the field failed and is recorded as failed; what is
+        # different is that the row's attempt counter does not move, and
+        # so it can never reach ``failed_permanent`` on the strength of
+        # an outage.
+        logger.warning(
+            "translation_unavailable entity=%s:%s field=%s locale=%s err=%s",
+            task.entity_type,
+            task.entity_id,
+            task.field,
+            task.target_locale,
+            exc,
+        )
+        return _Answer(task=task, text=None, issues_summary=None, failed=True, unavailable=True)
     except TranslationError as exc:
         logger.warning(
             "Translation failed entity=%s:%s field=%s locale=%s err=%s",
@@ -728,6 +771,19 @@ def _record(
         # partial document must never reach the reader.
         return "deferred"
     if answer.failed:
+        # Recorded either way, and that is the point of recording it.
+        #
+        # The tempting alternative — write nothing when the provider is
+        # down, the way a deferred document writes nothing — is how a
+        # course stops being translated without anybody being told. The
+        # row is what the retry queue and the sweep read; a failure that
+        # leaves no trace leaves a first-ever translation with no row at
+        # all, and the only thing that would come back for it is a
+        # coincidence.
+        #
+        # So the row is written exactly as before — ``failed``, findable,
+        # retried by the very next pass — and one thing is withheld: the
+        # attempt. See ``record_mt_failure``'s ``transient``.
         store.record_failure(
             db,
             entity_type=task.entity_type,
@@ -736,8 +792,9 @@ def _record(
             locale=task.target_locale,
             source_locale=task.source_locale,
             source_hash=task.source_hash,
+            transient=answer.unavailable,
         )
-        return "failed"
+        return "unavailable" if answer.unavailable else "failed"
 
     if answer.text is None:
         return "failed"
@@ -842,6 +899,10 @@ def execute_plan(
     active_budget = budget or NoBudget()
     translated = skipped = failed = needs_review = 0
     incomplete = False
+    #: Consecutive asked texts the provider could not answer. Reset by
+    #: any answer at all, including a bad one — a provider that is
+    #: talking is not an outage. See ``_OUTAGE_STREAK_LIMIT``.
+    unanswered_in_a_row = 0
 
     # Phase 1 — everything the database can answer without asking anyone,
     # read in two queries for the entire plan. Per-task reads were what
@@ -985,6 +1046,11 @@ def execute_plan(
                 )
             )
         for answer in answers:
+            # Only the representatives are asked, so only they say
+            # anything about whether the provider is answering. A sibling
+            # inherits the verdict without a call of its own and must not
+            # inflate the streak.
+            unanswered_in_a_row = unanswered_in_a_row + 1 if answer.unavailable else 0
             if answer.text is not None and not answer.failed and not answer.deferred and answer.issues_summary is None:
                 # Learn only from answers nothing objected to. A row
                 # parked for review is a wording waiting for a person,
@@ -1016,6 +1082,7 @@ def execute_plan(
                         issues_summary=answer.issues_summary,
                         failed=answer.failed,
                         deferred=answer.deferred,
+                        unavailable=answer.unavailable,
                     ),
                     store,
                     generation=run_generation,
@@ -1029,14 +1096,36 @@ def execute_plan(
                     translated += 1
                 elif outcome == "needs_review":
                     needs_review += 1
-                elif outcome == "failed":
+                elif outcome in ("failed", "unavailable"):
+                    # Counted together, because for everything that reads
+                    # this number they are the same thing: a field that
+                    # was supposed to get text and did not. The
+                    # difference lives in the row, where the attempt
+                    # counter is, and nowhere else — which is also what
+                    # keeps ``made_progress`` true through an outage, so
+                    # the *job* does not spend its own attempts either.
                     failed += 1
+
                 elif outcome == "deferred":
                     # A document too long to finish in what was left of
                     # the tick. The pass is not complete, so the job goes
                     # back to ``queued`` rather than being taken as done
                     # with a hole in it.
                     incomplete = True
+
+        if unanswered_in_a_row >= _OUTAGE_STREAK_LIMIT:
+            # Nobody is on the other end. Stop asking for the rest of
+            # this tick rather than walking the remaining thousands of
+            # texts into the same wall — and say the pass is incomplete,
+            # which sends the job back to ``queued`` for a fresh try in a
+            # minute. Everything already recorded stands.
+            incomplete = True
+            logger.error(
+                "Translation plan halted: provider unavailable for %d calls in a row, %d distinct texts left",
+                unanswered_in_a_row,
+                max(0, len(representatives) - (start + width)),
+            )
+            break
 
     return PlanResult(
         translated=translated,

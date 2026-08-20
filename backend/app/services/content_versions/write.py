@@ -18,6 +18,9 @@
   new ``status='failed'`` row if there was nothing). Promotes to
   ``failed_permanent`` once ``attempts >= CONTENT_VERSION_MAX_ATTEMPTS``.
   Failures don't create version history — they update in place.
+  Called with ``transient=True`` when the provider never answered,
+  which records the failure without counting it — an outage is not
+  evidence about the text.
 
 All three operate inside the caller's transaction. The chicken-and-egg
 of "point old row at new row before new row exists" works because
@@ -268,6 +271,7 @@ def record_mt_failure(
     source_locale: str,
     source_hash: str,
     source_version_id: uuid.UUID | None = None,
+    transient: bool = False,
 ) -> ContentVersion:
     """Record an MT attempt that failed.
 
@@ -283,6 +287,34 @@ def record_mt_failure(
 
     Refuses to touch a human row — the active human row should not
     have its status flipped because the MT path stumbled.
+
+    ``transient`` — the provider never answered
+    -------------------------------------------
+
+    ``attempts`` answers one question: how many times has the model
+    been shown *this text* and produced something we could not use?
+    Five is where we stop asking, because a text that has defeated the
+    translator five times is not going to be translated by a sixth
+    identical request, and ``failed_permanent`` is how the pipeline
+    stops paying for that.
+
+    A 429, a 503, a read timeout, a prepaid balance that ran out: the
+    model was never shown the text at all. Counting those answers a
+    question nobody asked. On 2026-08-20 an eight-minute outage
+    counted five of them against 174 rows and made every one
+    permanent — content declared untranslatable by an accounting
+    event, recoverable only by an admin resetting each row.
+
+    So ``transient=True`` records the failure and withholds the
+    attempt. Everything else is unchanged and deliberately so: the row
+    still exists, still says ``failed``, still carries the source hash,
+    and is still picked up by the very next pass and by the sweep. The
+    only thing that does not happen is the counting — and therefore
+    ``failed_permanent`` can no longer be reached by an outage, however
+    long it lasts.
+
+    A brand-new row written under ``transient`` starts at ``attempts=0``
+    rather than 1, for the same reason: nothing has been asked yet.
     """
     existing = _get_active(
         db,
@@ -301,7 +333,8 @@ def record_mt_failure(
         )
         return existing
     if existing is not None and existing.origin == "mt":
-        existing.attempts += 1
+        if not transient:
+            existing.attempts += 1
         # A failed attempt is not a reason to take a good translation off
         # the page.
         #
@@ -348,7 +381,11 @@ def record_mt_failure(
         text="",
         origin="mt",
         status=ContentVersionStatus.FAILED,
-        attempts=1,
+        # Nothing was asked when the provider never answered, so nothing
+        # is counted. The row still exists — that is what puts this
+        # (entity, field, locale) in front of the next pass instead of
+        # leaving a first-ever translation with no trace at all.
+        attempts=0 if transient else 1,
         source_locale=source_locale,
         source_hash=source_hash,
         source_version_id=source_version_id,
