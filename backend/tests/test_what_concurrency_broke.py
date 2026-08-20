@@ -44,7 +44,28 @@ class _Counting:
         return TranslationResult(text=f"Translated: {request.text}", model="fake")
 
 
-def _task(entity_id: str, *, text: str, source_hash: str) -> TranslationTask:
+class _Answering(_Counting):
+    """A provider that answers in the target language, so the language
+    check has nothing to object to and every call in ``texts`` is a
+    question actually asked rather than a correction of a bad answer."""
+
+    def __init__(self, answer: str) -> None:
+        super().__init__()
+        self._answer = answer
+
+    def translate(self, request):
+        self.texts.append(request.text)
+        return TranslationResult(text=self._answer, model="fake")
+
+
+def _task(
+    entity_id: str,
+    *,
+    text: str,
+    source_hash: str,
+    context: str | None = None,
+    content_kind: str = "quiz_option",
+) -> TranslationTask:
     return TranslationTask(
         entity_type="quiz_option",
         entity_id=entity_id,
@@ -52,8 +73,9 @@ def _task(entity_id: str, *, text: str, source_hash: str) -> TranslationTask:
         source_locale="ru",
         target_locale="de",
         text=text,
-        content_kind="quiz_option",
+        content_kind=content_kind,  # type: ignore[arg-type]
         source_hash=source_hash,
+        context=context,
     )
 
 
@@ -86,6 +108,59 @@ def test_different_texts_are_still_asked_for_separately(db: Session):
     execute_plan(db, tasks, provider=provider, store=LIVE_STORE)
 
     assert sorted(provider.texts) == ["Верно", "Неверно"]
+
+
+def test_a_repeated_heading_is_one_string_however_different_its_surroundings(db: Session):
+    """The defect this file exists to catch, in the form it actually took.
+
+    «Проверьте себя» closes 23 lessons. It is its own field, so its
+    context is the paragraph above it — and that paragraph is different
+    in every lesson. With the context in the dedupe key, 23 identical
+    strings became 23 groups, went to the provider 23 times, and came
+    back as four different German headings. Nothing downstream objected,
+    because each answer was individually correct.
+
+    The recorded pipeline was never context-sensitive: ``_load_twins``
+    reuses last week's heading by ``(source_hash, target_locale)``
+    whatever stands above it today. One string, one translation — in
+    flight as well as in the table.
+    """
+    # Answering in real German matters here: a fake answer that still
+    # reads as Russian is caught by the language check and sent back for
+    # correction, and the correcting call would be counted as a second
+    # ask when it is nothing of the kind.
+    provider = _Answering("Prüfe dich selbst")
+    tasks = [
+        _task(
+            str(uuid.uuid4()),
+            text="Проверьте себя",
+            source_hash="heading-hash",
+            context=f"Follows: lesson {i} said something entirely its own.",
+        )
+        for i in range(6)
+    ]
+
+    result = execute_plan(db, tasks, provider=provider, store=LIVE_STORE)
+
+    assert provider.texts == ["Проверьте себя"], "asked once, not once per neighbour"
+    assert result.translated == 6, "and all six headings are written"
+
+
+def test_the_same_words_under_two_kinds_are_still_two_questions(db: Session):
+    """Dropping the context from the key must not drop the content kind
+    with it. A sentence sent as ``html`` is told to keep its markup; the
+    same sentence sent as ``quiz_option`` is told not to grow into a
+    paragraph. They are different questions and validation checks the
+    answer under different rules, so they stay separate calls."""
+    provider = _Answering("Richtig")
+    tasks = [
+        _task(str(uuid.uuid4()), text="Верно", source_hash="same-hash", content_kind="quiz_option"),
+        _task(str(uuid.uuid4()), text="Верно", source_hash="same-hash", content_kind="title"),
+    ]
+
+    execute_plan(db, tasks, provider=provider, store=LIVE_STORE)
+
+    assert provider.texts == ["Верно", "Верно"], "one call per kind, not one call in total"
 
 
 def test_one_failing_row_does_not_take_the_plan_down(db: Session):
