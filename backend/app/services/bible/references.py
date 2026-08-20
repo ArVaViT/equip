@@ -1,11 +1,13 @@
-"""Parse Bible verse references from running text (RU + EN forms).
+"""Parse Bible verse references from running text, in all four languages.
 
 Recognizes printed forms like:
 * ``Acts 1:8``, ``Acts 1.8``
 * ``Acts 1:8-10`` (single chapter range)
 * ``Деян. 1:8``, ``Деяния 1:8``, ``Деяния Апостолов 1:8``
 * ``(Деян. 20:28)``, ``(Acts 1:8)`` (parenthesized)
-* ``1 Cor. 13:4-7``, ``1 Кор. 13:4-7``
+* ``1 Cor. 13:4-7``, ``1 Кор. 13:4-7``, ``1-е Коринтян 13:4-7``
+* ``Apg. 1,8``, ``Apostelgeschichte 1,8``, ``1. Mose 1,1``
+* ``Дії 1:8``, ``Матвія 5:9``
 
 Returns ``ParsedReference`` instances each carrying a ``BibleRef`` plus
 the ``(start, end)`` span in the source text — needed for surgical
@@ -26,39 +28,79 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from app.services.bible.books import _BOOKS, find_book
+from app.services.bible.books import all_aliases, find_book, written_as_a_book_name
+
+# Between the number of a numbered book and its name. Four languages
+# print that join four ways — ``1 Samuel``, ``1. Mose``, ``1Кор.``,
+# ``1-е Коринтян`` — and ``books._normalize`` folds all four to
+# ``"1 name"``, so the pattern built from a folded alias has to unfold
+# them again. The two are a pair; the round-trip test walks every alias
+# through both.
+_NUMBER_JOIN = r"\s*[.\-]?\s*(?:ше|ге|тє|е)?\s*"
+# Between the words of a multi-word name (``Song of Solomon``, ``Дії
+# апостолів``). Real whitespace, unlike the number join: the no-space
+# spellings that exist (``songofsolomon``) are declared aliases in their
+# own right.
+_WORD_JOIN = r"\s+"
+# Which apostrophe an author's keyboard produced is not a difference
+# worth failing on — ``Об'явлення`` and ``Об’явлення`` are one word.
+_APOSTROPHE_CLASS = "['’ʼ‘`]"
+_ALIAS_TOKENS = re.compile(r"[\s.\-]+")
+
+
+def _alias_pattern(alias: str) -> str:
+    """One normalized alias as a regex that matches the ways it is
+    actually printed. Tolerant about the punctuation inside a name and
+    strict about its letters."""
+    tokens = [t for t in _ALIAS_TOKENS.split(alias) if t]
+    escaped = [re.escape(t).replace("'", _APOSTROPHE_CLASS) for t in tokens]
+    if len(escaped) > 1 and tokens[0] in ("1", "2", "3", "4", "5"):
+        return escaped[0] + _NUMBER_JOIN + _WORD_JOIN.join(escaped[1:]) + r"\.?"
+    return _WORD_JOIN.join(escaped) + r"\.?"
 
 
 def _build_book_pattern() -> str:
     """Build a non-capturing alternation of every known book alias,
     longest-first so regex matching prefers ``Деяния Апостолов`` over
-    ``Деяния`` when both could match. Each alias is escaped, then
-    optionally followed by a literal ``.`` so ``Acts.`` and ``Acts``
-    both succeed."""
-    seen: set[str] = set()
-    aliases: list[str] = []
-    for _slug, alias_tuple in _BOOKS:
-        for a in alias_tuple:
-            if a not in seen:
-                seen.add(a)
-                aliases.append(a)
-    aliases.sort(key=len, reverse=True)
-    return "(?:" + "|".join(re.escape(a) for a in aliases) + r")\.?"
+    ``Деяния`` when both could match. Each alias is expanded into its
+    printed variants, then optionally followed by a literal ``.`` so
+    ``Acts.`` and ``Acts`` both succeed."""
+    return "(?:" + "|".join(_alias_pattern(a) for a in all_aliases()) + ")"
 
 
 _BOOK_RE = _build_book_pattern()
 
 _REF_PATTERN = re.compile(
     rf"""
+    (?<!\w)
     (?P<book>{_BOOK_RE})
     \s+
     (?P<chapter>\d+)
-    [:.]
+    [:.,]
     (?P<verse_start>\d+)
     (?:\s*[-–—]\s*(?P<verse_end>\d+))?
     """,
     re.VERBOSE | re.UNICODE | re.IGNORECASE,
 )
+
+# Three notes on that pattern, each of them a bug that was there before.
+#
+# ``(?<!\w)``: without it the alternation matches inside a longer word,
+# and "Facts 1:8" parsed as Acts 1:8. Harmless-looking until the alias
+# table grew two-letter German forms, at which point every word ending
+# in "am" became Amos.
+#
+# ``,`` as the chapter/verse separator: German prints ``Joh 3,16``, and
+# so does the Russian typographic convention on occasion. No whitespace
+# is allowed after it, deliberately — "Genesis 1, 8 verses later" is a
+# sentence, not a citation, and the space is the only thing telling the
+# two apart.
+#
+# A verse *list* (``Joh 3,16.18`` — verses 16 and 18, not a range) is
+# read as its first verse and the rest is left standing in the text.
+# We look up one passage, so 16 is the answer; and swallowing ".18" into
+# the span would mean ``_localize_ref_tail`` rewrote the citation
+# without it, quietly dropping a verse the author cited.
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,17 +128,28 @@ class ParsedReference:
     raw_text: str
 
 
-def parse_references(text: str) -> list[ParsedReference]:
+def parse_references(text: str, locale: str | None = None) -> list[ParsedReference]:
     """Find every Bible reference in ``text`` and return them in order
     of first appearance. Skips matches whose book name doesn't resolve
     via ``find_book`` (defence-in-depth — the regex already only allows
-    declared aliases)."""
+    declared aliases).
+
+    ``locale`` is the language ``text`` is written in, where the caller
+    knows it. It settles ``1 Цар.``, which is 1 Samuel to a Russian
+    reader and 1 Kings to a Ukrainian one; everything else reads the
+    same in every language.
+    """
     if not text:
         return []
     out: list[ParsedReference] = []
     for m in _REF_PATTERN.finditer(text):
         book_raw = m.group("book")
-        canonical = find_book(book_raw)
+        # An alias that is also an ordinary word has to be written as a
+        # book name to be read as one — otherwise "The ratio is 1:2" is
+        # Isaiah and "am 10:30 Uhr" is Amos. See ``books.py``.
+        if not written_as_a_book_name(book_raw):
+            continue
+        canonical = find_book(book_raw, locale)
         if canonical is None:
             continue
         chapter = int(m.group("chapter"))

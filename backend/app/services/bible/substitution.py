@@ -42,7 +42,7 @@ from __future__ import annotations
 import logging
 import re
 import secrets
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from difflib import SequenceMatcher
 from typing import TYPE_CHECKING
 
@@ -132,7 +132,13 @@ def _normalize_for_compare(s: str) -> str:
     return " ".join(s.split())
 
 
-def _localize_ref_tail(tail: str, target_locale: LocaleCode, *, renumber: bool = False) -> str:
+def _localize_ref_tail(
+    tail: str,
+    target_locale: LocaleCode,
+    *,
+    book: str | None = None,
+    renumber: bool = False,
+) -> str:
     """Rewrite the book name in a parenthesized reference like
     ``(Matt. 28:19)`` so it reads naturally in ``target_locale``
     (``(Матф. 28:19)``). Uses the locale's conventional short form
@@ -149,15 +155,22 @@ def _localize_ref_tail(tail: str, target_locale: LocaleCode, *, renumber: bool =
     check it to a different psalm. It belongs off on the fallback path,
     where the author's own quotation survived and their own numbers
     still describe it.
+
+    ``book`` is the slug the caller already resolved, in the source
+    language, back when it still knew what that language was. The tail
+    is re-parsed only to find where in the string the reference sits —
+    asking it *which book* again, with no locale, would read a Ukrainian
+    author's ``1 Цар.`` as 1 Samuel and re-label their 1 Kings quotation
+    with the wrong book.
     """
     parsed = parse_references(tail)
     if not parsed:
         return tail
     p = parsed[0]
-    display = display_book_name(p.ref.book, target_locale)
+    display = display_book_name(book or p.ref.book, target_locale)
     if not display:
         return tail
-    ref = p.ref
+    ref = p.ref if book is None else replace(p.ref, book=book)
     if renumber:
         renumbered = remap_psalm(ref, target_locale)
         if renumbered is None:
@@ -244,7 +257,7 @@ def pre_substitute(
         # surrounding HTML — so post can find and localize it without
         # us re-emitting anything here.
         stored_ref_tail: str = ""
-        inner_refs = parse_references(inner)
+        inner_refs = parse_references(inner, source_locale)
         if inner_refs:
             # Take the *last* reference inside (it's almost always the
             # citation appended after the verse, even when the prose
@@ -265,7 +278,7 @@ def pre_substitute(
             ref = last.ref
         else:
             tail = html[bq_end : bq_end + _REFERENCE_LOOKAHEAD]
-            outside_refs = parse_references(tail)
+            outside_refs = parse_references(tail, source_locale)
             if outside_refs:
                 ref = outside_refs[0].ref
                 verse_text_inner = inner
@@ -415,7 +428,7 @@ def _substitute_inline_quotes(
     them has to get both pairings right, and "nearest" is the rule a
     reader applies too.
     """
-    refs = parse_references(text)
+    refs = parse_references(text, source_locale)
     if not refs:
         return text
 
@@ -607,6 +620,7 @@ def post_substitute(
             localized = _localize_ref_tail(
                 sub.ref_tail,
                 target_locale,
+                book=sub.ref.book,
                 renumber=canonical_target is not None and target_locale in API_BIBLE_IDS,
             )
             if localized != sub.ref_tail:
