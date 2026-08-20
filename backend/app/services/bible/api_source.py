@@ -27,9 +27,18 @@ already correct.
 That last case is the one this module used to have no answer for. A 200 with
 a well-formed JSON body was taken as Scripture and pasted into a reader's
 page, and Куліш 1905 answers Psalm 23:1 with `Г осподь пастирь мій` — the
-psalm's opening capital, set apart from the word it belongs to. See
-`well_formed.malformed_fragment` for what is checked and, more to the point,
-for what deliberately is not.
+psalm's opening capital, set apart from the word it belongs to. Where that
+split can be undone without a guess it is undone here, before anything else
+sees the text; where it cannot, the verse is refused and the author's own
+words stand. See `well_formed` for what makes a mend provable and, more to
+the point, for what this deliberately does not attempt.
+
+**One network call per verse, per process, ever.** `_cache` is keyed on
+(locale, USFM) and never invalidated, and the mend happens before the text
+goes into it — so a course quoting the same psalm in a dozen lessons pays
+once, and re-reading a page costs nothing. Nothing here loops or retries;
+the only path that asks twice is a transient failure, which is deliberately
+not cached.
 """
 
 from __future__ import annotations
@@ -43,7 +52,7 @@ import httpx
 
 from app.services.bible.books import _BOOKS
 from app.services.bible.psalm_numbering import remap_psalm
-from app.services.bible.well_formed import malformed_fragment
+from app.services.bible.well_formed import malformed_fragment, mend
 
 if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
@@ -250,30 +259,41 @@ def fetch_verse(ref: BibleRef, locale: LocaleCode) -> str | None:
                 # into a Ukrainian reader's page as Scripture, on a row
                 # stored as ``ok``, because nothing looked at it.
                 #
-                # This is checked *here*, where the text enters the
-                # process, rather than at substitution or in validation.
-                # Here it is one fact about one string and every caller
-                # already knows what ``None`` means; at substitution it
-                # would guard one of the three callers and leave the
-                # rest holding the same broken text; in validation it
-                # would arrive as a verdict on the translation, which is
-                # the wrong artifact — the model did nothing wrong — and
-                # would park a whole question a reader could otherwise
-                # answer.
+                # This happens *here*, where the text enters the process,
+                # rather than at substitution or in validation. Here it
+                # is one fact about one string, every caller already
+                # knows what ``None`` means, and the mended text is
+                # cached once for the process — so the reader's page,
+                # the similarity match that decides whether the author
+                # quoted this verse at all, and the Daily Challenge
+                # generator all get the mended text without any of them
+                # asking. At substitution it would reach one of those
+                # three; in validation it would arrive as a verdict on
+                # the translation, which is the wrong artifact — the
+                # model did nothing wrong — and would park a whole
+                # question a reader could otherwise answer.
                 #
-                # Not cached as text and not repaired: see
-                # ``well_formed`` for why joining the halves is a
-                # judgement a program cannot make.
+                # Mended where the mend is provable, refused where it is
+                # not, and counted either way: one ``verse_malformed``
+                # line per defect, carrying which of the two happened.
+                # See ``well_formed`` for what makes a mend provable.
                 broken = malformed_fragment(folded, locale)
                 if broken is None:
                     text = folded
                 else:
+                    mended = mend(folded, locale)
+                    unmendable = malformed_fragment(mended, locale)
                     logger.warning(
-                        "verse_malformed usfm=%s locale=%s fragment=%r",
+                        "verse_malformed usfm=%s locale=%s outcome=%s fragment=%r",
                         usfm,
                         locale,
+                        "refused" if unmendable else "mended",
                         broken,
                     )
+                    # Half a mend is not Scripture: if anything is still
+                    # stranded the whole verse goes back, rather than a
+                    # verse that reads as sound and is not.
+                    text = None if unmendable else mended
         elif response.status_code != 404:
             # Anything that is not 200 or 404 is the service having a
             # moment — rate limiting, a bad gateway, an expired key — and
