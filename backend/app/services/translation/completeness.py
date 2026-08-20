@@ -51,7 +51,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Final, Literal
 
 from sqlalchemy import tuple_
 
@@ -75,6 +75,11 @@ logger = logging.getLogger(__name__)
 # pipeline we have since improved on. It counts as a gap because that is
 # what makes the sweep pick the course up again — see
 # ``translation/version.py``.
+#: Fields per query. The other bulk readers in this package use the
+#: same number; three bind parameters apiece keeps a chunk far below
+#: any driver limit.
+_KEYS_PER_QUERY: Final[int] = 500
+
 GapReason = Literal["missing", "needs_review", "failed", "failed_permanent", "stale"]
 
 
@@ -195,27 +200,38 @@ def completeness_of(
     if not wanted:
         return TranslationCompleteness(required=0, present=0, gaps=())
 
-    rows = (
-        db.query(
-            ContentVersion.entity_type,
-            ContentVersion.entity_id,
-            ContentVersion.field,
-            ContentVersion.locale,
-            ContentVersion.status,
-            ContentVersion.origin,
-            ContentVersion.translator_version,
-            ContentVersion.source_hash,
-        )
-        .filter(
-            tuple_(
+    # Chunked, like every other bulk read in this package.
+    #
+    # One tuple per field, three bind parameters each: a course of 22,000
+    # fields would hit the protocol's 65,535-parameter ceiling outright,
+    # and the planner gives up long before that. This runs on every sweep
+    # tick, on every course save, and behind the readiness panel — three
+    # places where a course simply stops working rather than slowing
+    # down.
+    keys = list(wanted)
+    rows: list[Any] = []
+    for start in range(0, len(keys), _KEYS_PER_QUERY):
+        rows.extend(
+            db.query(
                 ContentVersion.entity_type,
                 ContentVersion.entity_id,
                 ContentVersion.field,
-            ).in_(list(wanted)),
-            ContentVersion.superseded_by.is_(None),
+                ContentVersion.locale,
+                ContentVersion.status,
+                ContentVersion.origin,
+                ContentVersion.translator_version,
+                ContentVersion.source_hash,
+            )
+            .filter(
+                tuple_(
+                    ContentVersion.entity_type,
+                    ContentVersion.entity_id,
+                    ContentVersion.field,
+                ).in_(keys[start : start + _KEYS_PER_QUERY]),
+                ContentVersion.superseded_by.is_(None),
+            )
+            .all()
         )
-        .all()
-    )
     status_by_key: dict[tuple[str, str, str, str], str] = {}
     stale_keys: set[tuple[str, str, str, str]] = set()
     expected_source_hashes = expected_source_hashes or {}
