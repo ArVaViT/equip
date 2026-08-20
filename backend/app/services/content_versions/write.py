@@ -302,12 +302,33 @@ def record_mt_failure(
         return existing
     if existing is not None and existing.origin == "mt":
         existing.attempts += 1
-        new_status = (
-            ContentVersionStatus.FAILED_PERMANENT
-            if existing.attempts >= CONTENT_VERSION_MAX_ATTEMPTS
-            else ContentVersionStatus.FAILED
-        )
-        existing.status = new_status
+        # A failed attempt is not a reason to take a good translation off
+        # the page.
+        #
+        # This flipped the active row's status in place, and reads serve
+        # only ``status='ok'``. So a row that already held a correct
+        # translation was withheld from readers the moment one retry
+        # failed — and after five, promoted to ``failed_permanent``,
+        # which nothing retries. Production, 2026-08-20: the Gemini
+        # prepayment ran out mid-rebuild, every call started returning
+        # 429, and within eight minutes 98 finished translations
+        # disappeared from the site at a rate of about seventy a minute.
+        # German readers stopped being shown «Etwa vier Jahrhunderte» —
+        # a perfectly good answer option, still sitting in the row that
+        # was now marked failed.
+        #
+        # The bookkeeping is the point of this function and it stays: the
+        # attempt is counted, the source hash is refreshed, the retry
+        # queue still finds the row. What stops is treating "we could not
+        # reach the translator today" as "what we published yesterday is
+        # no longer fit to read". A row holding servable text keeps
+        # serving it until something better replaces it.
+        if existing.status != ContentVersionStatus.OK or not (existing.text or "").strip():
+            existing.status = (
+                ContentVersionStatus.FAILED_PERMANENT
+                if existing.attempts >= CONTENT_VERSION_MAX_ATTEMPTS
+                else ContentVersionStatus.FAILED
+            )
         existing.source_locale = source_locale
         existing.source_hash = source_hash
         if source_version_id is not None:
