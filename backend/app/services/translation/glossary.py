@@ -21,6 +21,17 @@ gathered people is *Gemeinde*; *Kirche* is the institution or the
 building, and using it for a congregation quietly changes what the
 sentence says.
 
+**A sense, not a spelling.** Every word here also means something else
+somewhere else. `grace` is a period a lender allows, `redemption` is
+what a bond is worth at maturity, `minister` is in the cabinet,
+«оценка» is what a surveyor puts on a building, «курс» is an exchange
+rate. The school teaches three biblical courses today and will teach
+other subjects, so the register asks for its rendering *where the word
+carries its meaning* and says so in the prompt — and the check that
+reads the answer back names what it saw without arguing, because it
+cannot tell a dropped term from a declined one and the model already
+had the table in front of it when it chose.
+
 **Only the terms actually present are sent.** Pasting thirty pairs
 into every call would cost tokens on every string and bury the rules
 that matter under a wall of vocabulary. `terms_in` scans the source
@@ -37,6 +48,8 @@ from __future__ import annotations
 
 import re
 from typing import TYPE_CHECKING, Final
+
+from app.services.bible.references import parse_references
 
 if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
@@ -112,6 +125,13 @@ _COLUMN: Final[dict[str, int]] = {"ru": 0, "en": 1, "de": 2, "uk": 3}
 #: Phrases where a registered word is part of a name and carries none of
 #: its register meaning. Removed before the table is consulted, in every
 #: language, because the pipeline reads in all directions.
+#:
+#: Kept to fixed names, and short. It is not the place to record that
+#: `grace` is also a period a lender allows — that list has no end,
+#: because every subject the school has not taught yet would add to it.
+#: The prompt says the conditional thing instead; see ``glossary_block``.
+#: The book names, which are the other half of this job, come from
+#: ``bible.references`` rather than from here.
 _NOT_A_TERM_HERE: Final[tuple[str, ...]] = (
     "новый завет",
     "нового завета",
@@ -133,10 +153,6 @@ _NOT_A_TERM_HERE: Final[tuple[str, ...]] = (
 )
 
 
-# Matches a term as a whole word, allowing the inflections these
-# languages actually produce: "завета", "заветом", "Gemeinden",
-# "громади". Deliberately loose at the end and strict at the start —
-# a suffix is a form of the word, a prefix usually is not.
 # Ukrainian words carry an apostrophe, and the corpus now carries two of
 # them: the typographic U+2019 that `typography.py` normalises to, and
 # the typewriter U+0027 these tables were written with. Comparing the two
@@ -150,11 +166,132 @@ def _fold_apostrophes(text: str) -> str:
     return text.translate(_APOSTROPHES)
 
 
+_VOWELS: Final[str] = "аеёиоуыэюяіїєaeiouäöü"
+
+#: Case and number endings, and nothing else.
+#:
+#: The matcher used to accept any four letters after a term, which was
+#: never a rule about language — it was a guess at how long an ending
+#: is. It cost the school «курсив» and «курсор» read as «курс»,
+#: "example" read as "exam", "Notebook" read as "Note": a word that
+#: merely *starts* like a term is not that term, and the register was
+#: telling the model to render the cursor as a course.
+#:
+#: Endings are a closed class. New subject matter brings new vocabulary;
+#: it does not bring new declensions, which is why this is the one kind
+#: of list that does not have to grow when the school teaches something
+#: other than the Bible.
+#:
+#: Derivations are deliberately absent. «апостольский», "prophetic" and
+#: "pastoral" change the part of speech, and the register has no opinion
+#: about them — "prophetic" is *prophetisch*, not *Prophet*, so firing
+#: the glossary line there was arguing for the wrong word anyway.
+_CYRILLIC_ENDINGS: Final[tuple[str, ...]] = (
+    "а", "е", "ё", "є", "и", "і", "ї", "й", "м", "о", "у", "х", "ы", "ь", "ю", "я",
+    "ам", "ах", "ев", "ей", "ем", "ём", "єм", "им", "их", "ів", "їв", "ми",
+    "ов", "ой", "ом", "ою", "ью", "ья", "ье", "ям", "ях",
+    "ами", "еві", "ові", "ями",
+)  # fmt: skip
+
+_LATIN_ENDINGS: Final[tuple[str, ...]] = ("e", "en", "es", "n", "s", "se", "sen", "ses")
+
+
+def _is_cyrillic(term: str) -> bool:
+    return any("Ѐ" <= char <= "ӿ" for char in term)
+
+
+def _endings(term: str) -> tuple[str, ...]:
+    return _CYRILLIC_ENDINGS if _is_cyrillic(term) else _LATIN_ENDINGS
+
+
+def _bases(term: str) -> tuple[str, ...]:
+    """The dictionary form, and the stem its oblique cases are built on.
+
+    A Slavic noun rarely inflects by *adding* to its dictionary form. It
+    replaces an ending the dictionary form already carries: «служение»
+    becomes «служения», «церковь» becomes «церкви», «община» becomes
+    «общины». A matcher anchored on the whole dictionary form sees none
+    of those, and the old one did not — the register went quiet on a
+    thousand strings that use its own terms.
+
+    So a Cyrillic term also offers its stem: the form with its final
+    vowel removed, after any soft sign. That is the move ``_stems``
+    already makes on the other side of the pipeline — it drops the last
+    vowel of a truncated head so «учень» is still found in «учня» — and
+    it exists for the same reason here.
+
+    A stem is never accepted bare, only with an ending after it.
+    «служени» is not a word and must not stand where the term was
+    expected.
+    """
+    folded = _fold_apostrophes(term)
+    if not _is_cyrillic(folded):
+        return (folded,)
+    bases = [folded]
+    core = folded.rstrip("ьй")  # «служитель» → «служител» → «служителя»
+    if len(core) > 3:
+        if core != folded:
+            bases.append(core)
+        if core[-1].lower() in _VOWELS:
+            bases.append(core[:-1])  # «служение» → «служени», «община» → «общин»
+        elif core != folded and core[-2].lower() in _VOWELS:
+            bases.append(core[:-2] + core[-1])  # «церковь» → «церкв», «учень» → «учн»
+    return tuple(dict.fromkeys(bases))
+
+
 def _pattern(term: str) -> re.Pattern[str]:
-    return re.compile(rf"(?<!\w){re.escape(_fold_apostrophes(term))}\w{{0,4}}", re.IGNORECASE)
+    """Match ``term`` as a whole word, in any form its language declines it into.
+
+    Strict at both ends now. It was always strict at the start — a
+    prefix is not a form of a word — and it is strict at the end too:
+    what follows the term has to be an ending, and the ending has to be
+    where the word stops. «Bundeslade» is no longer «Bund», which costs
+    the check side nothing: ``missing_terms`` looks for the target word
+    *inside* the translation, so a German compound still satisfies the
+    term it is built from.
+    """
+    endings = "|".join(sorted(map(re.escape, _endings(term)), key=len, reverse=True))
+    dictionary_form, *stems = (re.escape(base) for base in _bases(term))
+    alternatives = [rf"{dictionary_form}(?:{endings})?", *(rf"{stem}(?:{endings})" for stem in stems)]
+    return re.compile(rf"(?<!\w)(?:{'|'.join(alternatives)})(?!\w)", re.IGNORECASE)
 
 
 _PATTERNS: Final[dict[str, re.Pattern[str]]] = {form: _pattern(form) for form in _INDEX}
+
+
+def _blank_scripture_references(text: str, locale: str) -> str:
+    """Erase Bible citations, keeping the string the same length.
+
+    A book name is a name, exactly like «Новый Завет» in
+    ``_NOT_A_TERM_HERE`` — and one of them is spelled like a term this
+    table decides. «Притчи 3:1» is the book of Proverbs, *Sprüche*,
+    «Приповісті»; it is not a parable and must not be told to become
+    *Gleichnis*.
+
+    ``bible/references.py`` already knows every book in every language
+    this school serves, so this asks it rather than growing a second
+    list of names that would go stale the first time a book was
+    renamed. Blanked in place, not deleted, because the caller still
+    holds offsets into this string.
+
+    Only citations, and knowingly. A reference needs a chapter and a
+    verse to be recognised, so «Иов, Притчи и Екклесиаст» — a bare list
+    of book names — still reaches the table and still produces a note.
+    That is 21 advisory notes across the 9 463 translated pairs in
+    production, and chasing them means keeping a list of every book
+    name that is also an ordinary word, which is the kind of list this
+    module has just finished getting rid of. The prompt tells the model
+    the word may be part of a name, and the note it produces is
+    advisory; both were built for exactly this residue.
+    """
+    parsed = parse_references(text, locale)
+    if not parsed:
+        return text
+    chars = list(text)
+    for reference in parsed:
+        start, end = reference.span
+        chars[start:end] = " " * (end - start)
+    return "".join(chars)
 
 
 def terms_in(text: str, *, source_locale: LocaleCode, target_locale: LocaleCode) -> list[tuple[str, str]]:
@@ -172,7 +309,7 @@ def terms_in(text: str, *, source_locale: LocaleCode, target_locale: LocaleCode)
     if src_col is None or tgt_col is None or src_col == tgt_col:
         return []
 
-    folded = _fold_apostrophes(text)
+    folded = _blank_scripture_references(_fold_apostrophes(text), source_locale)
     # A term inside a fixed name is not that term. «Новый Завет» is the
     # New Testament, not a covenant, and telling the model to render it
     # "Bund" would turn a correct translation into a wrong one — the
@@ -211,14 +348,36 @@ def known_forms(locale: LocaleCode) -> frozenset[str]:
 
 
 def glossary_block(pairs: list[tuple[str, str]]) -> str:
-    """Render the pairs as prompt lines, or an empty string for none."""
+    """Render the pairs as prompt lines, or an empty string for none.
+
+    The instruction is about a *sense*, not a spelling, and it now says
+    so. It used to read "where the text uses one of these, render it
+    exactly this way", which is true of the three Bible courses and
+    false of the next subject the school teaches: `grace` is a period a
+    lender allows, `redemption` is what a bond is worth at maturity,
+    `minister` is in the cabinet, `оценка` is what a surveyor puts on a
+    building. Told to render those exactly this way, the model does —
+    and the register turns a correct translation into a wrong one.
+
+    The condition costs nothing where the word *is* theological, which
+    is the whole reason this table exists: the pair is still stated, and
+    still stated absolutely. What the sentence gives up is the claim
+    that a word has only one sense, which was never the school's to
+    make. It is also what ``validation._check_glossary`` already says
+    when it reads the answer back — the two halves of the register now
+    tell the model the same thing.
+    """
     if not pairs:
         return ""
     lines = "\n".join(f"  {source} → {target}" for source, target in pairs)
     return (
-        "Terminology used by this school. Where the text uses one of these, "
-        "render it exactly this way — the same word every time, across every "
-        "lesson:\n" + lines + "\n\n"
+        "Terminology used by this school. Where the text uses one of these "
+        "words in the sense the school means, render it exactly this way — "
+        "the same word every time, across every lesson:\n"
+        + lines
+        + "\nWhere the same word carries an everyday sense instead — part of "
+        "a name, or the meaning it has in another subject — translate that "
+        "sense as it needs to be translated.\n\n"
     )
 
 

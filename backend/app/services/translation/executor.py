@@ -383,7 +383,12 @@ def _ask(
         return _Answer(task=task, text=None, issues_summary=None, failed=True)
 
     issues = _issues_in(task, result)
-    if issues:
+    # Advisory issues are named, never argued with. See
+    # ``ValidationIssue.advisory``: a complaint the model has already
+    # heard and considered is not a reason to spend a second call, and
+    # it must not be the reason the editorial reader below is skipped.
+    actionable = [issue for issue in issues if not issue.advisory]
+    if actionable:
         # Two different remedies, and which one applies depends on why
         # the first answer was wrong.
         #
@@ -395,7 +400,7 @@ def _ask(
         # change: show it the words it chose and ask for different ones.
         try:
             retry = _translate(
-                provider, replace(request, rewrite_notes=tuple(issue.detail for issue in issues)), budget
+                provider, replace(request, rewrite_notes=tuple(issue.detail for issue in actionable)), budget
             )
         except (TranslationError, TranslationPaused):
             retry = None
@@ -407,6 +412,7 @@ def _ask(
             # placeholder must not be preferred to the first answer.
             if _rank(retry_issues) < _rank(issues):
                 result, issues = retry, retry_issues
+                actionable = [issue for issue in issues if not issue.advisory]
 
     # Structure is settled; now somebody reads it.
     #
@@ -420,9 +426,19 @@ def _ask(
     #
     # Only when nothing structural is outstanding: a reply that lost its
     # markup does not need an opinion on its register, and paying for
-    # one would be paying twice for the same rejection.
-    if not issues:
-        result, issues = _review_and_correct(task, result, provider, request, budget)
+    # one would be paying twice for the same rejection. Nothing
+    # *structural*: a glossary note is advisory precisely because this
+    # reader is better placed to judge it, so it must not be the thing
+    # that keeps the row away from them.
+    if not actionable:
+        advisory = issues
+        reviewed, issues = _review_and_correct(task, result, provider, request, budget)
+        if reviewed is result:
+            # The reader changed nothing, so what the register noticed
+            # still describes this text. Carried through so the rate
+            # stays countable — a number on a dashboard, not a verdict.
+            issues = [*advisory, *issues]
+        result = reviewed
 
     blocking = [issue for issue in issues if issue.blocking]
     style = [issue for issue in issues if not issue.blocking]
@@ -569,10 +585,17 @@ def _issues_in(task: TranslationTask, result: TranslationResult) -> list[Validat
 
 
 def _rank(issues: list[ValidationIssue]) -> tuple[int, int]:
-    """How bad a set of issues is: blocking defects first, then style."""
+    """How bad a set of issues is: blocking defects first, then style.
+
+    Advisory issues are not counted. They are observations the pipeline
+    has decided not to act on, and a tie-break that counted them would
+    act on them by the back door — it would prefer the answer that used
+    the register's word to the answer that was right to avoid it.
+    """
+    counted = [issue for issue in issues if not issue.advisory]
     return (
-        sum(1 for issue in issues if issue.blocking),
-        sum(1 for issue in issues if not issue.blocking),
+        sum(1 for issue in counted if issue.blocking),
+        sum(1 for issue in counted if not issue.blocking),
     )
 
 
