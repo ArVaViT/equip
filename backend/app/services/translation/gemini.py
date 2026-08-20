@@ -23,20 +23,24 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from app.schemas.locale import LocaleCode
-    from app.services.translation.protocol import ContentKind
+    from app.services.bible.substitution import Substitution
+    from app.services.translation.protocol import CallBudget, ContentKind
 
 from app.core.metrics import emit, increment
 from app.schemas.locale import LOCALE_DISPLAY_NAMES
 from app.services.bible.substitution import post_substitute, pre_substitute
+from app.services.translation.html_split import markup_correction_note, split_html_for_translation
 from app.services.translation.prompt import build_system_prompt, build_user_prompt
 from app.services.translation.protocol import (
     TranslationError,
+    TranslationPaused,
     TranslationProvider,
     TranslationRequest,
     TranslationResult,
 )
 from app.services.translation.reviewer import ReviewVerdict, build_review_prompt, parse_review
 from app.services.translation.typography import normalize_typography
+from app.services.translation.validation import tag_names
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +145,21 @@ class GeminiTranslationProvider:
         self.close()
 
     def translate(self, request: TranslationRequest) -> TranslationResult:
+        """Translate with no deadline — the synchronous callers' door.
+
+        A teacher saving a block, an admin retry, a test: nobody is
+        holding a stopwatch, so a long document may take as many calls
+        as it needs. The worker has a stopwatch and comes in through
+        ``translate_within``.
+        """
+        return self.translate_within(request)
+
+    def translate_within(
+        self,
+        request: TranslationRequest,
+        *,
+        budget: CallBudget | None = None,
+    ) -> TranslationResult:
         if request.source_locale == request.target_locale or not request.text.strip():
             return TranslationResult(text=request.text, model=self._model)
 
@@ -154,27 +173,216 @@ class GeminiTranslationProvider:
         #
         # Prose kinds only. A title or an answer option is too short to
         # carry a quotation, and the marker would be most of the string.
-        bible_subs: list = []
+        #
+        # This happens once, on the whole document, and it has to: a
+        # blockquote and the reference that identifies it are often two
+        # different nodes, and cutting the document first would separate
+        # them and leave the quote unrecognised. Everything below works
+        # on the markered text, and ``post_substitute`` at the end works
+        # on the reassembled whole — so a marker is restored the same way
+        # whether it travelled alone or with five siblings.
+        bible_subs: list[Substitution] = []
         request_text = request.text
         if request.content_kind in _KINDS_THAT_CAN_QUOTE_SCRIPTURE:
             request_text, bible_subs = pre_substitute(request_text, request.source_locale)
             if bible_subs:
-                request = TranslationRequest(
-                    text=request_text,
-                    source_locale=request.source_locale,
-                    target_locale=request.target_locale,
-                    content_kind=request.content_kind,
-                    context=request.context,
-                )
+                # ``replace`` rather than a fresh construction: the old
+                # spelling listed the fields by hand and silently dropped
+                # ``rewrite_notes``, so a correcting pass on any text
+                # containing a quotation was sent as if it were a first
+                # ask — the model was never told what it had got wrong.
+                request = replace(request, text=request_text)
 
+        pieces = self._pieces_for(request, bible_subs)
+        if len(pieces) == 1:
+            result = self._generate(request)
+        else:
+            result = self._translate_in_pieces(request, pieces, budget=budget)
+
+        if bible_subs:
+            # A marker that went out and did not come back
+            # takes the verse with it: production had a
+            # German answer option come back as "Matthäus
+            # 5,9" where the source read "Matthew 5:9
+            # ('Blessed are the peacemakers…')" — reference
+            # kept, Scripture deleted. Only the length check
+            # noticed, and only because the string was short.
+            lost = [sub.marker for sub in bible_subs if sub.marker not in result.text]
+            if lost:
+                logger.warning(
+                    "scripture_marker_dropped locale=%s markers=%d kind=%s",
+                    request.target_locale,
+                    len(lost),
+                    request.content_kind,
+                )
+            # Restore Bible quote markers with the canonical
+            # target-locale text. Falls back to source if the
+            # target-locale lookup misses (see ``post_substitute``).
+            result = TranslationResult(
+                text=post_substitute(result.text, bible_subs, request.target_locale),
+                input_tokens=result.input_tokens,
+                output_tokens=result.output_tokens,
+                thinking_tokens=result.thinking_tokens,
+                model=result.model,
+                lost_scripture=bool(lost),
+            )
+
+        # Last, after the pieces are back together and the canonical
+        # verses are back in place, point the whole string the way the
+        # target language is written: German commas in references, one
+        # apostrophe per language, one shape of quotation mark. The rules
+        # are exact, so they are a function rather than a line in the
+        # prompt — see ``typography.py`` for the production counts that
+        # say how often the prompt alone got it wrong.
+        #
+        # On the document, not on each piece. A quotation opens in one
+        # paragraph and closes in another, and a pass that only ever saw
+        # one of them would have to guess.
+        pointed = normalize_typography(result.text, request.target_locale)
+        if pointed != result.text:
+            result = replace(result, text=pointed)
+        return result
+
+    def _pieces_for(self, request: TranslationRequest, bible_subs: list[Substitution]) -> list[str]:
+        """How this document should be asked for: whole, or in pieces.
+
+        Only ``html`` is ever cut. Every other kind is a heading, an
+        answer option or a paragraph of prose with no block structure to
+        cut along, and none of them is remotely large enough to provoke
+        the failure this exists to fix.
+        """
+        if request.content_kind != "html":
+            return [request.text]
+        pieces = split_html_for_translation(request.text)
+        if len(pieces) == 1:
+            return pieces
+
+        # A marker stands in for a verse, and half a marker restores
+        # nothing. Cuts fall on ``<`` at the top level and a marker is
+        # plain ASCII inside a text node, so one cannot be cut in two —
+        # but this is the invariant the whole substitution layer rests
+        # on, and an invariant nobody checks is a hope. Counted rather
+        # than assumed; if the arithmetic ever disagrees, the document
+        # goes in one call and the verses are safe.
+        for sub in bible_subs:
+            if sum(piece.count(sub.marker) for piece in pieces) != request.text.count(sub.marker):
+                logger.error("html_split_would_cut_a_marker kind=%s pieces=%d", request.content_kind, len(pieces))
+                return [request.text]
+        return pieces
+
+    def _translate_in_pieces(
+        self,
+        request: TranslationRequest,
+        pieces: list[str],
+        *,
+        budget: CallBudget | None,
+    ) -> TranslationResult:
+        """Ask for each piece on its own and put the document back together.
+
+        The pieces are a contiguous partition of the source (see
+        ``html_split``), so the answer is their concatenation in order —
+        nothing is re-wrapped, nothing is re-indented, no separator is
+        introduced.
+
+        One thing is checked on each piece, and one on the whole:
+
+        * A piece whose markup came back wrong earns a correcting pass
+          *for that piece*. This is the entire point of the exercise —
+          the same correction on the full 85-tag block only sometimes
+          works, because the model has to hold every other tag in place
+          while it fixes one. On a paragraph it is an easy ask.
+        * The reassembled document's tags are compared with the source's
+          before returning. Nothing is repaired at that point; it is
+          logged under a stable code, and ``validation`` parks the row
+          exactly as it does today. A document with one mangled
+          paragraph fails as a document — half a lesson in the reader's
+          language and half in someone else's is not a better outcome
+          than the gap.
+
+        The budget is asked before every call *after the first*. The
+        first one is the call the executor already authorised when it
+        checked ``can_afford_one_call()`` for this batch; the extra ones
+        are what splitting introduced, and they have to be paid for out
+        of the same allowance.
+        """
+        translated: list[str] = []
+        input_tokens = output_tokens = thinking_tokens = 0
+        corrected_pieces = 0
+
+        for index, piece in enumerate(pieces):
+            if not piece.strip():
+                translated.append(piece)
+                continue
+            if index and budget is not None and not budget.can_afford_one_call():
+                raise TranslationPaused(
+                    f"Budget spent after {index} of {len(pieces)} pieces; "
+                    "the document is left untranslated rather than half-translated."
+                )
+            part = self._generate(replace(request, text=piece))
+            input_tokens += part.input_tokens or 0
+            output_tokens += part.output_tokens or 0
+            thinking_tokens += part.thinking_tokens or 0
+
+            note = markup_correction_note(piece, part.text)
+            if note is not None and (budget is None or budget.can_afford_one_call()):
+                # Not a retry. Sampling is at temperature 0, so asking
+                # the identical question again gets the identical answer;
+                # what changes here is the question — the model is shown
+                # the tags it dropped or invented and asked again.
+                try:
+                    corrected = self._generate(
+                        replace(request, text=piece, rewrite_notes=(*request.rewrite_notes, note))
+                    )
+                except TranslationError:
+                    corrected = None
+                if corrected is not None:
+                    input_tokens += corrected.input_tokens or 0
+                    output_tokens += corrected.output_tokens or 0
+                    thinking_tokens += corrected.thinking_tokens or 0
+                    if markup_correction_note(piece, corrected.text) is None:
+                        part = corrected
+                        corrected_pieces += 1
+            translated.append(part.text)
+
+        text = "".join(translated)
+        expected, got = tag_names(request.text), tag_names(text)
+        if expected != got:
+            logger.warning(
+                "html_split_structure_lost locale=%s pieces=%d source_tags=%d translated_tags=%d",
+                request.target_locale,
+                len(pieces),
+                len(expected),
+                len(got),
+            )
+        logger.info(
+            "html_split_translated locale=%s pieces=%d corrected=%d tags=%d",
+            request.target_locale,
+            len(pieces),
+            corrected_pieces,
+            len(expected),
+        )
+        return TranslationResult(
+            text=text,
+            input_tokens=input_tokens or None,
+            output_tokens=output_tokens or None,
+            thinking_tokens=thinking_tokens or None,
+            model=self._model,
+        )
+
+    def _generate(self, request: TranslationRequest) -> TranslationResult:
+        """One provider call, with its bounded retries. No substitution,
+        no splitting — those belong to the document, this is the wire."""
         payload = self._build_payload(request)
         url = f"{_API_BASE}/models/{self._model}:generateContent"
         headers = {"Content-Type": "application/json", "X-goog-api-key": self._api_key}
 
-        # Enforce the per-instance minimum interval before the first attempt
-        # of this translate() call. We only gate ``translate()`` entries —
-        # the bounded internal retry loop below should not be throttled too,
-        # since retries already back off on their own.
+        # Enforce the per-instance minimum interval before the first
+        # attempt of this call. The gate is per *call*, not per document:
+        # a document translated in five pieces is five requests against
+        # the free-tier RPM cap, and a backfill script that spaced only
+        # the documents would burst straight through it. The bounded
+        # internal retry loop below is still not throttled — retries
+        # already back off on their own.
         if self._min_interval_seconds > 0:
             elapsed = time.monotonic() - self._last_call_monotonic
             wait = self._min_interval_seconds - elapsed
@@ -255,44 +463,6 @@ class GeminiTranslationProvider:
                         )
                     except Exception:
                         pass
-                    if bible_subs:
-                        # A marker that went out and did not come back
-                        # takes the verse with it: production had a
-                        # German answer option come back as "Matthäus
-                        # 5,9" where the source read "Matthew 5:9
-                        # ('Blessed are the peacemakers…')" — reference
-                        # kept, Scripture deleted. Only the length check
-                        # noticed, and only because the string was short.
-                        lost = [sub.marker for sub in bible_subs if sub.marker not in result.text]
-                        if lost:
-                            logger.warning(
-                                "scripture_marker_dropped locale=%s markers=%d kind=%s",
-                                request.target_locale,
-                                len(lost),
-                                request.content_kind,
-                            )
-                        # Restore Bible quote markers with the canonical
-                        # target-locale text. Falls back to source if the
-                        # target-locale lookup misses (see ``post_substitute``).
-                        result = TranslationResult(
-                            text=post_substitute(result.text, bible_subs, request.target_locale),
-                            input_tokens=result.input_tokens,
-                            output_tokens=result.output_tokens,
-                            thinking_tokens=result.thinking_tokens,
-                            model=result.model,
-                            lost_scripture=bool(lost),
-                        )
-                    # Last, after the canonical verses are back in place,
-                    # point the whole string the way the target language
-                    # is written: German commas in references, one
-                    # apostrophe per language, one shape of quotation
-                    # mark. The rules are exact, so they are a function
-                    # rather than a line in the prompt — see
-                    # ``typography.py`` for the production counts that
-                    # say how often the prompt alone got it wrong.
-                    pointed = normalize_typography(result.text, request.target_locale)
-                    if pointed != result.text:
-                        result = replace(result, text=pointed)
                     return result
                 if response.status_code in _RETRYABLE_STATUSES:
                     last_error = TranslationError(f"Gemini returned {response.status_code}: {response.text[:200]}")
