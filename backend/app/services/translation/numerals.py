@@ -46,43 +46,59 @@ is not a nuance — it is a different answer to the question.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, NamedTuple
 
 if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
+
 
 # Each row is one number in ru, en, de, uk. Where a language inflects the
 # numeral, the base form is listed and the matcher allows a short suffix
 # — "Zwölf"/"zwölfte", "двенадцать"/"двенадцати", "дванадцять"/
 # "дванадцяти" all count as the same number being present.
-_NUMERALS: Final[tuple[tuple[int, str, str, str, str], ...]] = (
-    (2, "два", "two", "zwei", "два"),
-    (3, "три", "three", "drei", "три"),
-    (4, "четыре", "four", "vier", "чотири"),
-    (5, "пять", "five", "fünf", "п'ять"),
-    (6, "шесть", "six", "sechs", "шість"),
-    (7, "семь", "seven", "sieben", "сім"),
-    (8, "восемь", "eight", "acht", "вісім"),
-    (9, "девять", "nine", "neun", "дев'ять"),
-    (10, "десять", "ten", "zehn", "десять"),
-    (11, "одиннадцать", "eleven", "elf", "одинадцять"),
-    (12, "двенадцать", "twelve", "zwölf", "дванадцять"),
-    (13, "тринадцать", "thirteen", "dreizehn", "тринадцять"),
-    (14, "четырнадцать", "fourteen", "vierzehn", "чотирнадцять"),
-    (15, "пятнадцать", "fifteen", "fünfzehn", "п'ятнадцять"),
-    (16, "шестнадцать", "sixteen", "sechzehn", "шістнадцять"),
-    (17, "семнадцать", "seventeen", "siebzehn", "сімнадцять"),
-    (18, "восемнадцать", "eighteen", "achtzehn", "вісімнадцять"),
-    (19, "девятнадцать", "nineteen", "neunzehn", "дев'ятнадцять"),
-    (20, "двадцать", "twenty", "zwanzig", "двадцять"),
-    (30, "тридцать", "thirty", "dreißig", "тридцять"),
-    (40, "сорок", "forty", "vierzig", "сорок"),
-    (50, "пятьдесят", "fifty", "fünfzig", "п'ятдесят"),
-    (60, "шестьдесят", "sixty", "sechzig", "шістдесят"),
-    (70, "семьдесят", "seventy", "siebzig", "сімдесят"),
+class Numeral(NamedTuple):
+    """One number in every language served. Named rather than positional
+    so a reader can see which column is which, and so the type checker
+    can too."""
+
+    value: int
+    ru: str
+    en: str
+    de: str
+    uk: str
+
+
+_NUMERALS: Final[tuple[Numeral, ...]] = tuple(
+    Numeral(*row)
+    for row in (
+        (2, "два", "two", "zwei", "два"),
+        (3, "три", "three", "drei", "три"),
+        (4, "четыре", "four", "vier", "чотири"),
+        (5, "пять", "five", "fünf", "п'ять"),
+        (6, "шесть", "six", "sechs", "шість"),
+        (7, "семь", "seven", "sieben", "сім"),
+        (8, "восемь", "eight", "acht", "вісім"),
+        (9, "девять", "nine", "neun", "дев'ять"),
+        (10, "десять", "ten", "zehn", "десять"),
+        (11, "одиннадцать", "eleven", "elf", "одинадцять"),
+        (12, "двенадцать", "twelve", "zwölf", "дванадцять"),
+        (13, "тринадцать", "thirteen", "dreizehn", "тринадцять"),
+        (14, "четырнадцать", "fourteen", "vierzehn", "чотирнадцять"),
+        (15, "пятнадцать", "fifteen", "fünfzehn", "п'ятнадцять"),
+        (16, "шестнадцать", "sixteen", "sechzehn", "шістнадцять"),
+        (17, "семнадцать", "seventeen", "siebzehn", "сімнадцять"),
+        (18, "восемнадцать", "eighteen", "achtzehn", "вісімнадцять"),
+        (19, "девятнадцать", "nineteen", "neunzehn", "дев'ятнадцять"),
+        (20, "двадцать", "twenty", "zwanzig", "двадцять"),
+        (30, "тридцать", "thirty", "dreißig", "тридцять"),
+        (40, "сорок", "forty", "vierzig", "сорок"),
+        (50, "пятьдесят", "fifty", "fünfzig", "п'ятдесят"),
+        (60, "шестьдесят", "sixty", "sechzig", "шістдесят"),
+        (70, "семьдесят", "seventy", "siebzig", "сімдесят"),
+    )
 )
 
-_COLUMN: Final[dict[str, int]] = {"ru": 1, "en": 2, "de": 3, "uk": 4}
+_LOCALES: Final[frozenset[str]] = frozenset({"ru", "en", "de", "uk"})
 
 #: Punctuation stripped before asking "is this string a number?" — an
 #: answer option often ends in a full stop and is no less a number for
@@ -96,7 +112,9 @@ def _word_pattern(word: str) -> re.Pattern[str]:
     return re.compile(rf"(?<!\w){re.escape(word)}\w{{0,4}}", re.IGNORECASE)
 
 
-_PATTERNS: Final[dict[str, re.Pattern[str]]] = {word: _word_pattern(word) for row in _NUMERALS for word in row[1:]}
+_PATTERNS: Final[dict[str, re.Pattern[str]]] = {
+    word: _word_pattern(word) for row in _NUMERALS for word in (row.ru, row.en, row.de, row.uk)
+}
 
 
 def numbers_lost(
@@ -114,25 +132,23 @@ def numbers_lost(
     """
     if not source or not translation:
         return []
-    src_col = _COLUMN.get(source_locale)
-    tgt_col = _COLUMN.get(target_locale)
-    if src_col is None or tgt_col is None or src_col == tgt_col:
+    if source_locale not in _LOCALES or target_locale not in _LOCALES or source_locale == target_locale:
         return []
 
     bare = _BARE.sub("", source).strip().lower()
     missing: list[tuple[str, str]] = []
     for row in _NUMERALS:
-        source_word = row[src_col]
+        source_word: str = getattr(row, source_locale)
         # The numeral has to BE the string, not appear in it. See the
         # module docstring for the measurement behind that.
         if bare != source_word.lower():
             continue
-        target_word = row[tgt_col]
+        target_word: str = getattr(row, target_locale)
         if _PATTERNS[target_word].search(translation):
             continue
         # The digit is an acceptable rendering of the word: "twelve" as
         # "12" says the same thing and reads fine in a short answer.
-        if re.search(rf"(?<!\d){row[0]}(?!\d)", translation):
+        if re.search(rf"(?<!\d){row.value}(?!\d)", translation):
             continue
         missing.append((source_word, target_word))
     return missing
