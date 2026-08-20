@@ -94,6 +94,34 @@ def _lookup(chapter: int, verse: int) -> tuple[int, int]:
     return _table().get(f"{chapter}.{verse}", (chapter, verse))
 
 
+@lru_cache(maxsize=1)
+def _inverse_table() -> dict[str, tuple[tuple[int, int], ...]]:
+    """The same table read backwards: Septuagint numbers to Hebrew ones.
+
+    Needed because remapping is not only something we do on the way
+    *out*. A lesson written in Russian carries the numbers a Synodal
+    Bible prints — that is what its author was reading — and everything
+    that compares it to a German or English translation has to know
+    which system it started in.
+
+    All but one entry inverts cleanly. Hebrew 13:5 and 13:6 both land on
+    Septuagint 12:6, so that one Septuagint verse answers with two
+    Hebrew ones and callers get a tuple rather than a single pair. A
+    caller that has to pick one is asking a question the editions do not
+    answer.
+    """
+    inverse: dict[str, list[tuple[int, int]]] = {}
+    for hebrew, septuagint in _table().items():
+        chapter, verse = hebrew.split(".")
+        inverse.setdefault(f"{septuagint[0]}.{septuagint[1]}", []).append((int(chapter), int(verse)))
+    return {key: tuple(sorted(value)) for key, value in inverse.items()}
+
+
+def _hebrew_candidates(chapter: int, verse: int) -> tuple[tuple[int, int], ...]:
+    """Where a Septuagint ``chapter:verse`` lands in Hebrew numbering."""
+    return _inverse_table().get(f"{chapter}.{verse}", ((chapter, verse),))
+
+
 def remap_psalm(ref: BibleRef, locale: LocaleCode | str) -> BibleRef | None:
     """Return ``ref`` as ``locale``'s edition numbers it.
 
@@ -119,6 +147,65 @@ def remap_psalm(ref: BibleRef, locale: LocaleCode | str) -> BibleRef | None:
             return None
 
     return BibleRef(book=ref.book, chapter=chapter, verse_start=verse_start, verse_end=verse_end)
+
+
+def renumber_between(
+    ref: BibleRef,
+    *,
+    source_locale: LocaleCode | str,
+    target_locale: LocaleCode | str,
+) -> tuple[BibleRef, ...]:
+    """``ref`` as printed by ``source_locale``, in ``target_locale``'s numbers.
+
+    ``remap_psalm`` answers one direction only — Hebrew numbers into the
+    edition the reader holds — because every caller it was written for
+    starts from the platform's own Hebrew-numbered references. Comparing
+    two *translations* of the same lesson does not: the source there is
+    whatever the author was reading, and a Russian author was reading
+    Synodal.
+
+    Found on 2026-08-19 in ``chapter_block/content`` of entity
+    ``c18954e1-6652-4fa8-8062-538483ce789b``: a Russian source cites
+    Пс. 109:1, the German translation correctly prints Ps. 110,1 as
+    rule 2a of the system prompt asks, and a check comparing bare
+    numbers called the reference lost. The German row sat at
+    ``needs_review`` — and because ``executor`` skips a parked row whose
+    source has not changed, it would have sat there for good — while the
+    English and Ukrainian rows, which kept 109:1 and are therefore
+    pointing at the wrong psalm, were marked ``ok``.
+
+    Returns every number pair the target edition may legitimately print.
+    That is normally one; it is two where the Septuagint verse answers
+    to two Hebrew ones (see ``_inverse_table``), and none where the
+    range straddles a split psalm and no single reference names the span
+    — the same "this edition cannot be asked for this reference" that
+    ``remap_psalm`` signals with ``None``.
+    """
+    if ref.book != "psalms":
+        return (ref,)
+
+    source_is_septuagint = source_locale in SEPTUAGINT_LOCALES
+    target_is_septuagint = target_locale in SEPTUAGINT_LOCALES
+    if source_is_septuagint == target_is_septuagint:
+        # Two editions on the same side of the divide print the same
+        # numbers, whatever else differs between them.
+        return (ref,)
+
+    if target_is_septuagint:
+        mapped = remap_psalm(ref, target_locale)
+        return (mapped,) if mapped is not None else ()
+
+    starts = _hebrew_candidates(ref.chapter, ref.verse_start)
+    if ref.verse_end is None:
+        return tuple(BibleRef(book=ref.book, chapter=chapter, verse_start=verse) for chapter, verse in starts)
+
+    ends = _hebrew_candidates(ref.chapter, ref.verse_end)
+    return tuple(
+        BibleRef(book=ref.book, chapter=start_chapter, verse_start=start_verse, verse_end=end_verse)
+        for start_chapter, start_verse in starts
+        for end_chapter, end_verse in ends
+        if start_chapter == end_chapter and end_verse >= start_verse
+    )
 
 
 def remap_usfm(ref: str, locale: LocaleCode | str) -> str | None:
@@ -148,4 +235,4 @@ def remap_usfm(ref: str, locale: LocaleCode | str) -> str | None:
     return f"PSA.{mapped[0][0]}." + "-".join(str(verse) for _, verse in mapped)
 
 
-__all__ = ["SEPTUAGINT_LOCALES", "remap_psalm", "remap_usfm"]
+__all__ = ["SEPTUAGINT_LOCALES", "remap_psalm", "remap_usfm", "renumber_between"]
