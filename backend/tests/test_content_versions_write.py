@@ -392,6 +392,97 @@ class TestRecordMtFailure:
         assert row.attempts == CONTENT_VERSION_MAX_ATTEMPTS
         assert row.status == "failed_permanent"
 
+    def test_a_failed_attempt_does_not_take_a_good_translation_off_the_page(self, db: Session):
+        """Production, 2026-08-20: the Gemini prepayment ran out in the
+        middle of a rebuild, every call began returning 429, and 98
+        finished translations vanished from the site in eight minutes —
+        about seventy a minute. Nothing was wrong with any of them. The
+        rows still held their text; they had simply been marked failed,
+        and reads serve only ``status='ok'``.
+
+        A translator we cannot reach today says nothing about whether
+        what we published yesterday is fit to read."""
+        good = record_mt_version(
+            db,
+            entity_type="course",
+            entity_id="mf-outage",
+            field="title",
+            locale="de",
+            text="Etwa vier Jahrhunderte",
+            source_locale="ru",
+            source_hash="h1",
+        )
+        db.commit()
+
+        after = record_mt_failure(
+            db,
+            entity_type="course",
+            entity_id="mf-outage",
+            field="title",
+            locale="de",
+            source_locale="ru",
+            source_hash="h1",
+        )
+        db.commit()
+
+        assert after.id == good.id
+        assert after.status == "ok", "the reader keeps the translation that was already fine"
+        assert after.text == "Etwa vier Jahrhunderte"
+        assert after.attempts == 1, "and the attempt is still counted, so the retry queue finds it"
+
+    def test_an_outage_that_lasts_never_makes_a_good_translation_permanent(self, db: Session):
+        """Five failures used to promote a row to ``failed_permanent``,
+        which nothing retries — so an outage long enough to exhaust the
+        retries withheld a correct translation for good. 80 rows reached
+        that state in production before this was noticed."""
+        for _ in range(CONTENT_VERSION_MAX_ATTEMPTS + 2):
+            record_mt_version(
+                db,
+                entity_type="course",
+                entity_id="mf-outage-long",
+                field="title",
+                locale="de",
+                text="Etwa vier Jahrhunderte",
+                source_locale="ru",
+                source_hash="h1",
+            )
+            break
+        db.commit()
+        for _ in range(CONTENT_VERSION_MAX_ATTEMPTS + 2):
+            row = record_mt_failure(
+                db,
+                entity_type="course",
+                entity_id="mf-outage-long",
+                field="title",
+                locale="de",
+                source_locale="ru",
+                source_hash="h1",
+            )
+            db.commit()
+
+        assert row.status == "ok", "however long the outage, the page keeps what it had"
+        assert row.attempts == CONTENT_VERSION_MAX_ATTEMPTS + 2
+
+    def test_a_row_with_nothing_to_serve_still_fails_the_way_it_always_did(self, db: Session):
+        """The change is about protecting servable text, not about going
+        quiet. A row that never had a translation — or holds the empty
+        string a failure inserts — still fails, still counts its
+        attempts, and still turns terminal at the threshold."""
+        for _ in range(CONTENT_VERSION_MAX_ATTEMPTS):
+            row = record_mt_failure(
+                db,
+                entity_type="course",
+                entity_id="mf-empty",
+                field="title",
+                locale="de",
+                source_locale="ru",
+                source_hash="h1",
+            )
+            db.commit()
+
+        assert row.status == "failed_permanent"
+        assert row.attempts == CONTENT_VERSION_MAX_ATTEMPTS
+
     def test_does_not_touch_human_row(self, db: Session):
         human = record_human_version(
             db,
@@ -418,14 +509,16 @@ class TestRecordMtFailure:
         assert returned.attempts == 0
         assert len(_all_for(db, entity_id="mf-4", field="title", locale="ru")) == 1
 
-    def test_failure_after_success_supersedes_via_mt_path_not_failure_path(self, db: Session):
-        # A successful MT row exists. A failure recording here would
-        # update the existing row's attempts, but conceptually the
-        # successful row is the live answer. We document the chosen
-        # behaviour: the failure helper does NOT touch an active ``ok``
-        # MT row — only ``failed`` ones. (A new MT attempt that
-        # genuinely fails should use record_mt_failure on a fresh key,
-        # not collide with an existing ``ok`` row.)
+    def test_a_failure_on_a_good_row_counts_the_attempt_and_keeps_serving(self, db: Session):
+        """This test used to assert the opposite, and its own comment
+        contained the mistake: it said students "fall back to the source
+        until the retry succeeds". They do not. ``read.py`` sets
+        ``fallback="none"`` whenever translation is enabled, so a row
+        withheld for being non-ok leaves the reader with nothing at all.
+
+        The behaviour was documented as chosen, and it was never
+        examined against what a reader sees. Production examined it on
+        2026-08-20."""
         ok = record_mt_version(
             db,
             entity_type="course",
@@ -437,7 +530,6 @@ class TestRecordMtFailure:
             source_hash="h1",
         )
         db.commit()
-        # Falls through to the bumping branch since active is mt.
         returned = record_mt_failure(
             db,
             entity_type="course",
@@ -448,14 +540,9 @@ class TestRecordMtFailure:
             source_hash="h2",
         )
         db.commit()
-        # The chosen semantics: failure on the existing MT row bumps
-        # it to failed (attempts=1). The cached text is preserved on
-        # the row; the resolver filters out non-ok so students fall
-        # back to the source until the retry succeeds.
+
         assert returned.id == ok.id
-        assert returned.status == "failed"
-        assert returned.attempts == 1
-        # Text from the prior successful translation is preserved on
-        # the row (we don't blank it on failure — keeps the row
-        # diagnostic).
+        assert returned.status == "ok", "the good translation stays on the page"
+        assert returned.attempts == 1, "the attempt is counted all the same"
         assert returned.text == "МТ ok"
+        assert returned.source_hash == "h2", "and the row knows which source it is now behind"
