@@ -14,6 +14,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import time
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -35,6 +36,7 @@ from app.services.translation.protocol import (
     TranslationResult,
 )
 from app.services.translation.reviewer import ReviewVerdict, build_review_prompt, parse_review
+from app.services.translation.typography import normalize_typography
 
 logger = logging.getLogger(__name__)
 
@@ -280,6 +282,17 @@ class GeminiTranslationProvider:
                             model=result.model,
                             lost_scripture=bool(lost),
                         )
+                    # Last, after the canonical verses are back in place,
+                    # point the whole string the way the target language
+                    # is written: German commas in references, one
+                    # apostrophe per language, one shape of quotation
+                    # mark. The rules are exact, so they are a function
+                    # rather than a line in the prompt — see
+                    # ``typography.py`` for the production counts that
+                    # say how often the prompt alone got it wrong.
+                    pointed = normalize_typography(result.text, request.target_locale)
+                    if pointed != result.text:
+                        result = replace(result, text=pointed)
                     return result
                 if response.status_code in _RETRYABLE_STATUSES:
                     last_error = TranslationError(f"Gemini returned {response.status_code}: {response.text[:200]}")
