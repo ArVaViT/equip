@@ -37,7 +37,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from app.core.config import MEASURED_GEMINI_MODELS, Settings
+from app.core.config import MEASURED_GEMINI_MODELS, Settings, describe_measured_gemini_models
 
 SECRET_HINTS = ("KEY", "SECRET", "PASSWORD", "TOKEN", "DSN", "DATABASE_URL")
 
@@ -90,13 +90,19 @@ def main() -> int:
                 )
             )
 
-    model = env.get("GEMINI_MODEL")
-    if model and model not in MEASURED_GEMINI_MODELS:
-        findings.append(
-            f"GEMINI_MODEL is {model!r}, which is not in MEASURED_GEMINI_MODELS "
-            f"({', '.join(sorted(MEASURED_GEMINI_MODELS))}). Its cost, speed and "
-            f"translation quality are unverified — measure before trusting it."
-        )
+    # Both model settings, not just the translator. ``GEMINI_REVIEW_MODEL``
+    # is usually absent from the environment entirely — it runs on the
+    # code default — and an absent variable is exactly the one nobody
+    # thinks to check, which is why the reviewer went unguarded while
+    # being the more expensive of the two models per output token.
+    for setting_name in ("GEMINI_MODEL", "GEMINI_REVIEW_MODEL"):
+        model = env.get(setting_name)
+        if model and model not in MEASURED_GEMINI_MODELS:
+            findings.append(
+                f"{setting_name} is {model!r}, which is not in MEASURED_GEMINI_MODELS "
+                f"({describe_measured_gemini_models()}). Its cost, speed and "
+                f"translation quality are unverified — measure before trusting it."
+            )
 
     if differences:
         print("Production differs from the defaults in this repository:\n")

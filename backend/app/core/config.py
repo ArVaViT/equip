@@ -7,11 +7,42 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 logger = logging.getLogger(__name__)
 
 # Models whose cost, speed and translation quality have actually been
-# measured against production strings — see the ``GEMINI_MODEL`` field
-# for the numbers and the date. Anything else boots with a warning:
-# running an unmeasured model is allowed, running one by accident is
-# what happened for 81 days.
-MEASURED_GEMINI_MODELS = frozenset({"gemini-2.5-flash-lite"})
+# measured against production strings — see the ``GEMINI_MODEL`` and
+# ``GEMINI_REVIEW_MODEL`` fields for the numbers and the dates. Anything
+# else boots with a warning: running an unmeasured model is allowed,
+# running one by accident is what happened for 81 days.
+#
+# The value is the published price per million tokens, ``(input,
+# output)``, in US dollars. It is here rather than in a comment because
+# the warning has to be able to say what the deployment is walking away
+# from. Nobody reads "unverified"; everybody reads "$2.50 per million
+# output tokens, 6.25x the translator".
+#
+# Both models are listed in one table on purpose. The guard asks a
+# single question — "has anyone measured what this costs?" — and that
+# question does not change depending on which of the two settings names
+# the model.
+MEASURED_GEMINI_MODELS: dict[str, tuple[float, float]] = {
+    # Translator. $0.10 in / $0.40 out, measured 2026-08-17.
+    "gemini-2.5-flash-lite": (0.10, 0.40),
+    # Reviewer. $0.30 in / $2.50 out, measured 2026-08-19: 3x the
+    # translator on input and 6.25x on output, and roughly half of a
+    # full rebuild's bill despite being the shorter call.
+    "gemini-3.5-flash-lite": (0.30, 2.50),
+}
+
+
+def describe_measured_gemini_models() -> str:
+    """The measured models and what each costs, for a log line.
+
+    Rendered rather than stored so the warning and
+    ``scripts/audit_prod_settings.py`` cannot drift into describing the
+    same table two different ways.
+    """
+    return ", ".join(
+        f"{model} (${prices[0]:.2f}/M in, ${prices[1]:.2f}/M out)"
+        for model, prices in sorted(MEASURED_GEMINI_MODELS.items())
+    )
 
 
 def call_reserve_seconds(gemini_timeout_seconds: float, gemini_max_retries: int = 2) -> float:
@@ -253,8 +284,11 @@ class Settings(BaseSettings):
         # returns 404. Treat blank as "use the default" instead.
         if not self.GEMINI_MODEL or not self.GEMINI_MODEL.strip():
             self.GEMINI_MODEL = Settings.model_fields["GEMINI_MODEL"].default
+        # The same trap on the reviewer, which had no guard of any kind.
+        if not self.GEMINI_REVIEW_MODEL or not self.GEMINI_REVIEW_MODEL.strip():
+            self.GEMINI_REVIEW_MODEL = Settings.model_fields["GEMINI_REVIEW_MODEL"].default
 
-        # Say so when the deployment is not running the model we measured.
+        # Say so when the deployment is not running a model we measured.
         #
         # Not a refusal — an operator swapping models deliberately is a
         # legitimate thing to do, and a deploy that will not boot over a
@@ -264,13 +298,29 @@ class Settings(BaseSettings):
         # roughly 840 wasted "thinking" tokens per string and six times
         # the latency, and nothing anywhere said a word. WARNING ships to
         # Datadog, so the next divergence is one search away.
-        if self.GEMINI_MODEL not in MEASURED_GEMINI_MODELS:
-            logger.warning(
-                "GEMINI_MODEL is %r, which is not one of the measured models (%s). "
-                "Cost, latency and translation quality are unverified for it.",
-                self.GEMINI_MODEL,
-                ", ".join(sorted(MEASURED_GEMINI_MODELS)),
-            )
+        #
+        # Both settings are checked, and the reviewer is the one this was
+        # missing. It is the more expensive model of the two — $2.50 per
+        # million output tokens against the translator's $0.40 — it is
+        # not set in Vercel at all, so it runs on whatever this file
+        # says, and a model with thinking enabled bills those hidden
+        # tokens at that same output rate. An unmeasured translator costs
+        # money; an unmeasured reviewer costs six and a quarter times as
+        # much per token, which is why the warning quotes prices instead
+        # of saying "unverified" and leaving the reader to look them up.
+        for setting_name, model in (
+            ("GEMINI_MODEL", self.GEMINI_MODEL),
+            ("GEMINI_REVIEW_MODEL", self.GEMINI_REVIEW_MODEL),
+        ):
+            if model not in MEASURED_GEMINI_MODELS:
+                logger.warning(
+                    "%s is %r, which is not one of the measured models (%s). "
+                    "Nobody has measured what it costs, how fast it is, or how well it "
+                    "does this job — and thinking tokens, if it has them, bill as output.",
+                    setting_name,
+                    model,
+                    describe_measured_gemini_models(),
+                )
 
         if not self.SUPABASE_SERVICE_ROLE_KEY:
             # Accept the legacy SUPABASE_KEY name from older deployments.

@@ -37,6 +37,57 @@ and stopping *before* it:
 So a course too large for one invocation is no longer a course that
 cannot be translated. It is a course that takes several ticks, at one
 tick a minute.
+
+WHY THERE IS NO MONEY BUDGET HERE
+---------------------------------
+
+This module counts seconds and nothing else, and that was examined on
+2026-08-20 — after the pipeline's cost was measured for the first time
+and half of it turned out to be invisible — with the question "should
+there be a per-tick cap on calls, or a spend counter, or anything at
+all that stops on money rather than on time?"
+
+No. The answer is deliberate, and this is the record of it.
+
+**A tick's call count is already bounded, by this clock.** The batch
+loop in ``executor.py`` asks ``can_afford_one_call()`` before each
+batch of ``DEFAULT_MAX_WORKERS``, so a 180-second tick cannot outrun
+its allowance. A saturated pipeline was measured at about $0.29/hour —
+roughly 1,200 fields — which is under half a cent per tick. Any cap
+honest enough not to stall a large course would have to sit far above
+that, and a cap that never fires is a comment.
+
+**A runaway against a provider that is refusing is already bounded.**
+``_OUTAGE_STREAK_LIMIT`` stops a pass after three consecutive
+unanswered calls. It was added for exactly the event this question
+comes from: the prepaid balance ran out and the pipeline spent hours
+firing every call in a full-catalogue plan into a hard 429.
+
+**The work is self-terminating.** ``source_hash`` short-circuits every
+field already done, so a pass over finished content is free and the
+queue empties once everything reaches the current generation. There is
+no steady state in which this pipeline spends money.
+
+**The prepaid balance is a real bound and ours would not be.** It is
+enforced by Google, it cannot be bypassed by a bug in this file, and at
+$0.29/hour a $50 monthly cap survives about a week of *continuous*
+saturation — which is far more work than the catalogue contains. A
+limit we wrote would be one more thing that can be wrong, and wrong in
+the expensive direction: this pipeline has twice paid for a bound that
+stopped legitimate work — 161 attempts on a course the invocation clock
+kept beating, and 174 healthy rows promoted to ``failed_permanent`` by
+an eight-minute outage. A stall is silent and a bill is not.
+
+**And the counter already exists.** ``sum:equip.gemini.calls_total{*}``
+over any window is cumulative calls; ``equip.gemini.tokens_*_total`` is
+cumulative spend, and as of 2026-08-20 it finally includes the
+reviewer, which was 52% of the bill and had no series at all. The
+``[Equip] Gemini spend jumped`` monitor sits on top of it. A second
+counter here would be a second number to reconcile with that one.
+
+What was actually missing was never the authority to stop. It was
+knowing. That is fixed in ``gemini.py``; revisit this only if a real
+event gets past all four of the bounds above.
 """
 
 from __future__ import annotations
