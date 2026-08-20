@@ -564,6 +564,7 @@ class GeminiTranslationProvider:
             target_language=LOCALE_DISPLAY_NAMES[target_locale],
             content_kind=content_kind,
             context=context,
+            source_locale=source_locale,
         )
         payload: dict[str, Any] = {
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],

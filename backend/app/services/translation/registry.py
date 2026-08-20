@@ -319,7 +319,7 @@ def _option_context(db: Session, option: Any, course: Course | None) -> str | No
     An answer option is a fragment, and a fragment has to agree with the
     sentence that introduces it. Translated alone — which is how it was
     translated, with the context line "Answer option for a Bible-study
-    quiz question" — the model has no way to know whether the stem ends
+    quiz question" — the model had no way to know whether the stem ends
     in a colon and governs a case, so it picks the dictionary form.
     An editor counted the damage across one course: eight German options
     that do not read with their stem, nine English, four Ukrainian.
@@ -341,7 +341,19 @@ def _option_context(db: Session, option: Any, course: Course | None) -> str | No
     """
     question = _question_text_for_option(db, option, entity_type="quiz_question")
     if not question:
-        return "Answer option for a Bible-study quiz question."
+        # The stem could not be fetched, so all that is left is the
+        # course — which is enough to say what the subject is, and is
+        # what every other entity's context line says. It used to read
+        # "Answer option for a Bible-study quiz question", which is a
+        # claim about the subject rather than a report of it: on a
+        # module about church finance it is simply false, and the model
+        # is entitled to believe it.
+        title = getattr(course, "title", None) if course is not None else None
+        return (
+            f"Answer option for a quiz question in the course «{title}»"
+            if title
+            else "Answer option for a quiz question."
+        )
     return (
         "This is one answer option to the question below. The question is "
         "here for GRAMMAR ONLY: make the option agree with it — the case, "
