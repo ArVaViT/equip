@@ -66,6 +66,8 @@ CORPUS_SHAPES: tuple[tuple[LocaleCode, ContentKind, str], ...] = (
     ("de", "html", "<table><tr><td>Ин. 3:16</td><td>1 Кор. 13</td></tr></table>"),
     ("de", "html", "<p>Paulus' Reise — etwa 3000 Menschen — endet in Rom.</p>"),
     ("de", "title", "Lektion 5. Apostelgeschichte 1,8 und der Auftrag"),
+    ("de", "plain", "Markus 5,3 Millionen Euro und die Postleitzahl 46032."),
+    ("en", "title", "Using git rebase -i to clean up `a branch`"),
     ("en", "html", "<p>“Peter’s answer” is not Paul's answer.</p>"),
     ("en", "html", "<p>Read Acts 8:26 before 18:30.</p>"),
     ("en", "html", "<h2>check yourself</h2><p>the map that fits in your head</p>"),
@@ -135,21 +137,26 @@ class TestGermanNamesABookOneWay:
     canonically quoted verse, and what a German Bible prints in its own
     cross-references."""
 
-    def test_the_spelled_out_name_becomes_the_abbreviation(self) -> None:
-        assert normalize_typography("Apostelgeschichte 1,8", "de") == "Apg. 1,8"
-
     def test_the_abbreviation_without_its_period_gets_one(self) -> None:
+        # An abbreviation is not a German word, so restoring its printed
+        # dot cannot rename anybody. This is the one rewrite a bare
+        # Latin-script name still earns.
         assert normalize_typography("Apg 1,8", "de") == "Apg. 1,8"
 
     def test_the_form_that_is_already_right_is_a_fixed_point(self) -> None:
         assert normalize_typography("Apg. 1,8", "de") == "Apg. 1,8"
 
-    def test_all_three_forms_in_one_paragraph_end_up_the_same(self) -> None:
-        # One production block (d26d485d) uses all three.
+    def test_both_abbreviated_forms_in_one_paragraph_end_up_the_same(self) -> None:
+        # One production block (d26d485d) uses three forms. The two
+        # abbreviated ones converge; the spelled-out one keeps the
+        # spelling its author gave it — see
+        # ``TestAGermanWordIsNotABookUntilSomethingSaysSo``.
         text = "Apostelgeschichte 1,8 und Apg. 1,8 und Apg 1,8"
-        assert normalize_typography(text, "de") == "Apg. 1,8 und Apg. 1,8 und Apg. 1,8"
+        assert normalize_typography(text, "de") == "Apostelgeschichte 1,8 und Apg. 1,8 und Apg. 1,8"
 
     def test_a_numbered_book_keeps_its_number(self) -> None:
+        # ``1. Korinther`` carries its own evidence: German does not put
+        # an ordinal in front of a first name and a decimal behind it.
         assert normalize_typography("1. Korinther 13,4", "de") == "1. Kor. 13,4"
 
     def test_a_numbered_book_is_found_behind_other_words(self) -> None:
@@ -157,8 +164,10 @@ class TestGermanNamesABookOneWay:
 
     def test_the_pentateuch_is_numbered_the_way_luther_numbers_it(self) -> None:
         # ``display_book_name`` prints ``1. Mose``, because that is what
-        # the German edition the platform quotes from prints.
-        assert normalize_typography("Genesis 1,1", "de") == "1. Mose 1,1"
+        # the German edition the platform quotes from prints. The
+        # brackets are what say this is a citation: ``Genesis`` is also
+        # an ordinary German noun.
+        assert normalize_typography("(Genesis 1,1)", "de") == "(1. Mose 1,1)"
 
     def test_prose_that_spells_the_book_out_is_not_a_citation(self) -> None:
         # No chapter, no verse, no rewrite. This is the sentence the
@@ -181,8 +190,149 @@ class TestGermanNamesABookOneWay:
         # Declining to rename is not declining to punctuate.
         assert normalize_typography("die Apostelgeschichte 1:8 sagt es", "de") == "die Apostelgeschichte 1,8 sagt es"
 
-    def test_the_evangelists_are_abbreviated_too(self) -> None:
-        assert normalize_typography("Johannes 3,16 und Lukas 2,1", "de") == "Joh. 3,16 und Lk. 2,1"
+    def test_the_evangelists_are_abbreviated_inside_brackets(self) -> None:
+        assert normalize_typography("(Johannes 3,16) und (Lukas 2,1)", "de") == "(Joh. 3,16) und (Lk. 2,1)"
+
+    def test_but_not_in_running_prose_where_they_are_first_names(self) -> None:
+        # Johannes and Lukas are two of the commonest German first
+        # names, and ``3,16`` is how German writes three point one six.
+        text = "Johannes 3,16 und Lukas 2,1"
+        assert normalize_typography(text, "de") == text
+
+
+class TestAGermanWordIsNotABookUntilSomethingSaysSo:
+    """German writes its decimal separator as a comma, and most German
+    book names are also ordinary German nouns or ordinary German first
+    names. ``Wort 5,3`` is therefore the commonest number shape German
+    has, not a chapter and a verse — and reading it as one renamed
+    people in their own language, with every digit left intact so that
+    nothing downstream could see it."""
+
+    def test_a_decimal_after_a_first_name_is_not_a_chapter_and_a_verse(self) -> None:
+        text = "Markus 5,3 Millionen Euro Umsatz im Quartal."
+        assert normalize_typography(text, "de") == text
+
+    def test_a_prophet_who_is_also_a_first_name_keeps_his_name(self) -> None:
+        text = "Daniel 3,4 Prozent der Befragten stimmten zu."
+        assert normalize_typography(text, "de") == text
+
+    def test_a_book_that_is_also_a_first_name_keeps_her_name(self) -> None:
+        text = "Ruth 2,1 Jahre nach dem Umzug begann sie zu studieren."
+        assert normalize_typography(text, "de") == text
+
+    def test_a_clause_of_a_contract_is_not_a_verse(self) -> None:
+        text = "Titus 3,4 des Vertrags regelt die Kündigung."
+        assert normalize_typography(text, "de") == text
+
+    def test_a_common_noun_that_is_also_a_book_keeps_its_spelling(self) -> None:
+        # ``Richter`` is a judge, a surname, and the book of Judges.
+        text = "Richter 4,2 Prozent der Stimmen entfielen auf ihn."
+        assert normalize_typography(text, "de") == text
+
+    def test_an_english_abbreviation_german_does_not_use_is_not_a_book(self) -> None:
+        # German prints ``Offb.``; a German reader meets ``Rev.`` as an
+        # abbreviation for *Revision*. Not even the colon is repointed:
+        # being unsure the word is a book is being unsure the numbers
+        # behind it are a reference.
+        text = "Zeichnung Rev. 3:2 ersetzt den früheren Druck."
+        assert normalize_typography(text, "de") == text
+
+    def test_a_latin_abbreviation_german_does_not_use_is_not_a_book(self) -> None:
+        # German prints ``2. Mose``; ``Ex.`` in German prose is an
+        # *Exemplar* or an *Exempel*.
+        text = "Siehe Ex. 3,4 für die Musterlösung."
+        assert normalize_typography(text, "de") == text
+
+    def test_a_reference_alone_in_brackets_is_evidence_enough(self) -> None:
+        # Brackets holding a name and its numbers and nothing else is a
+        # citation in any language and in any subject.
+        assert normalize_typography("(Apostelgeschichte 1,8)", "de") == "(Apg. 1,8)"
+
+    def test_but_the_same_words_in_a_sentence_are_left_as_written(self) -> None:
+        # The loss this rule chooses, stated as a test: 48 of the 252
+        # German citation forms keep their author's spelling rather than
+        # converging on the abbreviation. Their numbers are still
+        # pointed the German way — only the name is left alone.
+        assert normalize_typography("Apostelgeschichte 1:8 sagt es", "de") == "Apostelgeschichte 1,8 sagt es"
+
+    def test_a_bracket_that_holds_more_than_the_reference_proves_nothing(self) -> None:
+        text = "(Markus 5,3 Millionen Euro)"
+        assert normalize_typography(text, "de") == text
+
+
+class TestAnIdentifierIsNotACount:
+    """A run of four to six digits is also the shape of every ZIP code,
+    extension, error code and serial number anybody writes down, and a
+    postal code with a thousands separator in it is not a typographic
+    preference — it is a wrong number. What separates the two is that a
+    count is followed by what it counts, and German capitalises every
+    noun."""
+
+    def test_a_postal_code_is_not_a_count(self) -> None:
+        text = "Die Postleitzahl 46032 gehört zu Carmel."
+        assert normalize_typography(text, "de") == text
+
+    def test_a_telephone_extension_is_not_a_count(self) -> None:
+        text = "Rufen Sie die Nebenstelle 4021 an."
+        assert normalize_typography(text, "de") == text
+
+    def test_an_error_code_is_not_a_count(self) -> None:
+        text = "Fehlercode 50012 bedeutet Zeitüberschreitung."
+        assert normalize_typography(text, "de") == text
+
+    def test_a_serial_number_is_not_a_count(self) -> None:
+        text = "Die Seriennummer 12345 steht auf der Rückseite."
+        assert normalize_typography(text, "de") == text
+
+    def test_a_crowd_is_grouped_because_it_counts_people(self) -> None:
+        assert normalize_typography("Etwa 3000 Menschen kamen dazu.", "de") == "Etwa 3.000 Menschen kamen dazu."
+
+    def test_a_sum_of_money_is_grouped_by_the_sign_that_follows_it(self) -> None:
+        assert normalize_typography("Er zahlte 12500 € dafür.", "de") == "Er zahlte 12.500 € dafür."
+
+    def test_a_count_at_the_end_of_its_clause_keeps_its_bare_digits(self) -> None:
+        # The cost of the rule, written down. An ungrouped count reads
+        # slightly less German; a grouped postal code is wrong.
+        text = "Am Ende waren es 3000."
+        assert normalize_typography(text, "de") == text
+
+
+class TestATitleThatHoldsCodeLeavesTheCodeAlone:
+    """``-i`` and ``-I`` are different flags. Title Case's safety
+    argument — that the worst it can do is capitalise a common noun —
+    does not survive contact with a command line."""
+
+    def test_a_command_line_flag_keeps_its_case(self) -> None:
+        title = "Using git rebase -i to clean a branch"
+        assert normalize_typography(title, "en", "title") == "Using git rebase -i to Clean a Branch"
+
+    def test_the_command_that_owns_the_flag_keeps_its_case_too(self) -> None:
+        # A command line reads leftwards from its flags to the command
+        # that owns them, and every part of it is lower case.
+        assert normalize_typography("running rm -rf on a volume", "en", "title") == "Running rm -rf on a Volume"
+
+    def test_an_underscored_identifier_is_not_a_word(self) -> None:
+        assert normalize_typography("reading config_files first", "en", "title") == "Reading config_files First"
+
+    def test_a_file_name_keeps_its_extension(self) -> None:
+        assert normalize_typography("editing app.py by hand", "en", "title") == "Editing app.py by Hand"
+
+    def test_a_path_is_not_a_phrase(self) -> None:
+        assert normalize_typography("what lives in /etc/hosts", "en", "title") == "What Lives in /etc/hosts"
+
+    def test_a_backticked_command_is_masked_like_a_code_element(self) -> None:
+        assert normalize_typography("run `git rebase -i` on it", "en", "title") == "Run `git rebase -i` on It"
+
+    def test_a_hyphenated_english_word_is_still_raised_on_both_sides(self) -> None:
+        assert normalize_typography("the well-known road", "en", "title") == "The Well-Known Road"
+
+    def test_a_backtick_typed_as_a_ukrainian_apostrophe_is_still_fixed(self) -> None:
+        # The backtick mask opens a span only where prose does not put
+        # an apostrophe, so the language that types one as a backtick
+        # keeps its rule.
+        assert normalize_typography("Це п`ять причин, і ім`я його відоме.", "uk") == (
+            "Це п’ять причин, і ім’я його відоме."
+        )
 
 
 class TestARussianAbbreviationDoesNotSurviveInGerman:
@@ -632,6 +782,12 @@ class TestTheSecondPassChangesNothing:
             "10:1-23",
             "18:30",
             "3000",
+            "46032",
+            "Markus 5,3",
+            "(Genesis 1,1)",
+            "Rev. 3:2",
+            "-i",
+            "`git rebase -i`",
             "1.000",
             "2026",
             '"',

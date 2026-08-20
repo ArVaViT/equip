@@ -254,6 +254,23 @@ def find_book(name: str, locale: str | None = None) -> str | None:
     return _ALIAS_INDEX.get(key)
 
 
+def find_book_written_in(name: str, locale: str) -> str | None:
+    """The slug ``name`` names — but only when ``locale`` itself prints
+    that spelling.
+
+    The narrow half of ``find_book``. ``find_book("Rev.")`` is Revelation
+    because some language calls it that; ``find_book_written_in("Rev.",
+    "de")`` is ``None`` because German calls it ``Offb.`` and a German
+    reader meets ``Rev.`` as an abbreviation for *Revision*. A caller
+    rewriting text in one language wants this one: a name it cannot
+    match here is a name the language would not have printed, which is
+    the same thing as saying it is probably not a book at all.
+    """
+    if not name:
+        return None
+    return _NATIVE_INDEX.get(locale, {}).get(_normalize(name))
+
+
 def all_canonical_slugs() -> tuple[str, ...]:
     """Test-time helper: every canonical book slug in canon order."""
     return tuple(slug for slug, _ in _BOOKS)
@@ -729,6 +746,18 @@ _ALIAS_INDEX: dict[str, str] = {}
 # disagrees with ``_ALIAS_INDEX``. Empty for a language that invented no
 # collision, which is all of them but Ukrainian.
 _LOCALE_OVERRIDES: dict[str, dict[str, str]] = {}
+# locale → alias → slug, holding only the spellings *that* language
+# actually prints.
+#
+# ``_ALIAS_INDEX`` is promiscuous on purpose: it reads a book name in any
+# of the four languages, which is what lets a Russian ``Ин.`` be
+# recognised inside a German page and translated. But a caller that is
+# *editing* German prose needs the narrower question — is this string a
+# spelling German itself uses? ``Rev.`` and ``Ex.`` are in the shared
+# table and are not German at all; in German prose they read as
+# *Revision* and *Exemplar*, and answering the wide question about them
+# is how ``Zeichnung Rev. 3:2`` came back as ``Zeichnung Offb. 3,2``.
+_NATIVE_INDEX: dict[str, dict[str, str]] = {}
 
 
 def _register(alias: str, slug: str, locale: str | None = None) -> None:
@@ -752,11 +781,14 @@ for _slug, _aliases in _BOOKS:
     _register(_slug, _slug)
 
 for _locale in _ALIAS_PRECEDENCE:
+    _native = _NATIVE_INDEX.setdefault(_locale, {})
     for _slug, _display in _DISPLAY_NAMES.get(_locale, {}).items():
         _register(_display, _slug, _locale)
+        _native[_normalize(_display)] = _slug
     for _slug, _extra in _LOCALE_ALIASES.get(_locale, {}).items():
         for _alias in _extra:
             _register(_alias, _slug, _locale)
+            _native[_normalize(_alias)] = _slug
 
 
 __all__ = [
@@ -764,5 +796,6 @@ __all__ = [
     "all_canonical_slugs",
     "display_book_name",
     "find_book",
+    "find_book_written_in",
     "written_as_a_book_name",
 ]

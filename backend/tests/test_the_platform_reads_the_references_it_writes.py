@@ -47,6 +47,7 @@ from app.services.bible.books import (
     all_canonical_slugs,
     display_book_name,
     find_book,
+    find_book_written_in,
 )
 from app.services.bible.references import parse_references
 from app.services.bible.substitution import post_substitute, pre_substitute
@@ -273,6 +274,39 @@ class TestTheOneAbbreviationTheLanguagesDisagreeAbout:
         # discovered by a reader who followed a citation to the wrong
         # chapter.
         assert _LOCALE_OVERRIDES == {"uk": {"1 цар": "1kings", "2 цар": "2kings"}}
+
+
+class TestOnlyTheSpellingsALanguagePrints:
+    """``find_book`` is promiscuous on purpose — it reads a name in any
+    of the four languages, which is what lets a Russian ``Ин.`` be
+    recognised inside a German page. A caller *editing* German prose
+    needs the narrower question, because the wide answer is what turned
+    ``Zeichnung Rev. 3:2`` into ``Zeichnung Offb. 3,2``."""
+
+    def test_german_reads_the_names_german_prints(self) -> None:
+        assert find_book_written_in("Apg.", "de") == "acts"
+        assert find_book_written_in("Apg", "de") == "acts"
+        assert find_book_written_in("Apostelgeschichte", "de") == "acts"
+        assert find_book_written_in("1. Korinther", "de") == "1corinthians"
+
+    def test_but_not_an_english_abbreviation_that_is_a_german_word(self) -> None:
+        # ``Rev.`` is *Revision* to a German reader and ``Ex.`` is an
+        # *Exemplar*. Both are in the shared table; neither is German.
+        assert find_book("Rev.") == "revelation"
+        assert find_book_written_in("Rev.", "de") is None
+        assert find_book("Ex.") == "exodus"
+        assert find_book_written_in("Ex.", "de") is None
+
+    def test_each_language_keeps_its_own_answer(self) -> None:
+        assert find_book_written_in("Ин.", "ru") == "john"
+        assert find_book_written_in("Ин.", "de") is None
+        assert find_book_written_in("Joh.", "de") == "john"
+        assert find_book_written_in("Joh.", "ru") is None
+
+    def test_an_unknown_name_is_no_book_in_any_language(self) -> None:
+        assert find_book_written_in("", "de") is None
+        assert find_book_written_in("Nebenstelle", "de") is None
+        assert find_book_written_in("Apg.", "xx") is None
 
 
 class TestAGermanQuotationIsRecognised:
