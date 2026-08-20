@@ -28,6 +28,7 @@ from sqlalchemy import event
 
 from app.services.translation.executor import TranslationTask, _load_twins
 from app.services.translation.stores import LIVE_STORE
+from app.services.translation.version import TRANSLATOR_VERSION
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -72,7 +73,7 @@ class TestReadingTheWorldIsBounded:
         assert len(counted) <= 2, f"{len(counted)} statements for 400 keys"
 
     def test_looking_up_twins_does_not_scale_with_the_plan(self, db: Session, counted: list[str]) -> None:
-        _load_twins(db, _tasks(400))
+        _load_twins(db, _tasks(400), generation=TRANSLATOR_VERSION)
         assert len(counted) <= 2, f"{len(counted)} statements for 400 tasks"
 
     def test_ten_times_the_tasks_is_not_ten_times_the_queries(self, db: Session, counted: list[str]) -> None:
@@ -88,5 +89,5 @@ class TestReadingTheWorldIsBounded:
 
     def test_an_empty_plan_asks_nothing(self, db: Session, counted: list[str]) -> None:
         LIVE_STORE.active_rows(db, [])
-        _load_twins(db, [])
+        _load_twins(db, [], generation=TRANSLATOR_VERSION)
         assert counted == []

@@ -154,9 +154,46 @@ class TestARebuildDoesNotFightItself:
     against it parks the correct new translation for matching a wrong old
     one. Thirteen good German options were held back that way during the
     generation-8 rebuild, which is the check turning on the fix.
+
+    That was first expressed as "only siblings made by the pipeline now
+    in force", and it held for about a week — for exactly as long as the
+    corpus was behind the constant. A sibling written by an earlier pass
+    at the *same* generation passes that test, and a pass that is about
+    to rewrite it parks a correct translation against it anyway; nine
+    rows in production are parked that way. So the question is no longer
+    about generations at all. It is "is this sibling settled, or is this
+    same pass about to replace it?", which the pass can answer exactly,
+    out of its own plan.
     """
 
-    def test_an_older_sibling_is_not_a_collision(self, db: Session, two_options) -> None:
+    def test_a_sibling_this_pass_is_about_to_rewrite_is_not_a_collision(self, db: Session, two_options) -> None:
+        right, wrong = two_options
+
+        assert (
+            _collides_with_a_sibling_option(
+                db,
+                _task(wrong),
+                "Malta",
+                unsettled={("quiz_option", str(right.id), "option_text", "en")},
+            )
+            is False
+        )
+
+    def test_a_sibling_the_pass_has_already_rewritten_still_is(self, db: Session, two_options) -> None:
+        # It left the pending set when its row was written, so it is
+        # what a reader sees — and a duplicate of it is unanswerable.
+        _right, wrong = two_options
+
+        assert _collides_with_a_sibling_option(db, _task(wrong), "Malta", unsettled=set()) is True
+
+    def test_a_sibling_no_pass_is_holding_counts_however_old_it_is(self, db: Session, two_options) -> None:
+        """Generation does not decide this any more, and should not.
+
+        An option translated three generations ago that nobody is
+        rebuilding right now is still the text on the page. A new option
+        that comes back word for word identical to it makes the question
+        unanswerable today, whatever pipeline wrote the other one.
+        """
         from app.models.content_version import ContentVersion
         from app.services.translation.version import TRANSLATOR_VERSION
 
@@ -164,27 +201,14 @@ class TestARebuildDoesNotFightItself:
         db.query(ContentVersion).filter(
             ContentVersion.entity_id == str(right.id),
             ContentVersion.origin == "mt",
-        ).update({"translator_version": TRANSLATOR_VERSION - 1})
-        db.commit()
-
-        assert _collides_with_a_sibling_option(db, _task(wrong), "Malta") is False
-
-    def test_a_current_sibling_still_is(self, db: Session, two_options) -> None:
-        from app.models.content_version import ContentVersion
-        from app.services.translation.version import TRANSLATOR_VERSION
-
-        right, wrong = two_options
-        db.query(ContentVersion).filter(
-            ContentVersion.entity_id == str(right.id),
-            ContentVersion.origin == "mt",
-        ).update({"translator_version": TRANSLATOR_VERSION})
+        ).update({"translator_version": TRANSLATOR_VERSION - 3})
         db.commit()
 
         assert _collides_with_a_sibling_option(db, _task(wrong), "Malta") is True
 
     def test_a_hand_translation_counts_whatever_its_version(self, db: Session, two_options) -> None:
-        # Nothing rewrites a human row, so its version says nothing about
-        # whether it is current.
+        # Nothing rewrites a human row, so it is never in a plan and
+        # never pending — it counts without needing a rule of its own.
         from app.models.content_version import ContentVersion
         from app.services.translation.version import TRANSLATOR_VERSION
 

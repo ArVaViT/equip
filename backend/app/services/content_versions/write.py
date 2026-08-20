@@ -159,6 +159,7 @@ def record_mt_version(
     source_version_id: uuid.UUID | None = None,
     status: ContentVersionStatus = ContentVersionStatus.OK,
     review_reason: str | None = None,
+    translator_version: int | None = None,
 ) -> ContentVersion:
     """Insert (or supersede + insert) a machine-translated version.
 
@@ -180,9 +181,20 @@ def record_mt_version(
     keeps its text — whoever reviews it has to see what the model
     actually said — but readers filter on ``ok``, so it is not served.
     ``review_reason`` is that check's account of what is wrong.
+
+    ``translator_version`` is which generation of the pipeline made this
+    text. It is a parameter rather than a read of the constant because
+    the caller that matters — a translation run — decides its generation
+    once, at the start, and stamps every row it writes with that one
+    number. Reading the constant here would make the stamp a property of
+    *when the write happened* rather than of *which pipeline produced
+    the words*, and those two stop agreeing the moment a run outlives a
+    deploy. ``None`` means "whatever is in force right now", which is
+    the right answer for the callers that write one row and return.
     """
     if not text:
         raise ValueError("record_mt_version called with empty text")
+    version = TRANSLATOR_VERSION if translator_version is None else translator_version
     existing = _get_active(
         db,
         entity_type=entity_type,
@@ -218,7 +230,7 @@ def record_mt_version(
         # in place would make the row look unexamined forever — the
         # sweep would pick it up on every cycle and pay for the same
         # answer again.
-        existing.translator_version = TRANSLATOR_VERSION
+        existing.translator_version = version
         return existing
 
     new_id = uuid.uuid4()
@@ -239,7 +251,7 @@ def record_mt_version(
         source_locale=source_locale,
         source_hash=source_hash,
         source_version_id=source_version_id,
-        translator_version=TRANSLATOR_VERSION,
+        translator_version=version,
     )
     db.add(new_row)
     db.flush()

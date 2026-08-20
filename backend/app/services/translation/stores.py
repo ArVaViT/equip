@@ -75,7 +75,15 @@ class ActiveRow:
 
 
 class VersionStore(Protocol):
-    """Read/write surface the orchestrator uses. Two implementations."""
+    """Read/write surface the orchestrator uses. Two implementations.
+
+    ``record_success`` takes the generation of the pipeline that made
+    the text instead of reading the constant at write time. A run
+    decides its generation once and stamps everything it writes with
+    that number, so a run and a deploy that overlap cannot leave half a
+    question's options at one generation and half at another — see
+    ``executor.execute_plan``.
+    """
 
     name: str
 
@@ -108,6 +116,7 @@ class VersionStore(Protocol):
         source_hash: str,
         status: ContentVersionStatus,
         review_reason: str | None,
+        translator_version: int | None = None,
     ) -> None: ...
 
     def record_failure(
@@ -266,6 +275,7 @@ class LiveStore:
         source_hash: str,
         status: ContentVersionStatus = ContentVersionStatus.OK,
         review_reason: str | None = None,
+        translator_version: int | None = None,
     ) -> None:
         if not text:
             return
@@ -287,6 +297,7 @@ class LiveStore:
             ),
             status=status,
             review_reason=review_reason,
+            translator_version=translator_version,
         )
 
     def record_failure(
@@ -474,6 +485,7 @@ class StagedStore:
         source_hash: str,
         status: ContentVersionStatus = ContentVersionStatus.OK,
         review_reason: str | None = None,
+        translator_version: int | None = None,
     ) -> None:
         if not text:
             return
@@ -491,6 +503,7 @@ class StagedStore:
             source_locale=source_locale,
             source_hash=source_hash,
             attempts=0,
+            translator_version=translator_version,
         )
 
     def record_failure(
@@ -569,8 +582,17 @@ def _upsert_staged(
     source_hash: str | None,
     attempts: int,
     authored_by: uuid.UUID | None = None,
+    translator_version: int | None = None,
 ) -> StagedContentVersion:
-    """Insert or overwrite the one row for this key."""
+    """Insert or overwrite the one row for this key.
+
+    ``translator_version`` is the generation of the pipeline that made
+    the text, handed down from the run rather than read here — see
+    ``content_versions/write.record_mt_version``. ``None`` means the
+    generation in force at this instant, which is what a hand-authored
+    staged row wants.
+    """
+    version = TRANSLATOR_VERSION if translator_version is None else translator_version
     row = _staged_row(db, entity_type=entity_type, entity_id=entity_id, field=field, locale=locale)
     if row is None:
         row = StagedContentVersion(
@@ -591,7 +613,7 @@ def _upsert_staged(
             # reason a live one does: an edit sitting in review must not
             # be promoted carrying the quality of an older pipeline.
             # Human rows are stamped too and simply never re-translated.
-            translator_version=TRANSLATOR_VERSION,
+            translator_version=version,
         )
         db.add(row)
     else:
@@ -602,7 +624,7 @@ def _upsert_staged(
         row.source_locale = source_locale
         row.source_hash = source_hash
         row.attempts = attempts
-        row.translator_version = TRANSLATOR_VERSION
+        row.translator_version = version
         if authored_by is not None:
             row.authored_by = authored_by
     db.flush()

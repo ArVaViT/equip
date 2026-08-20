@@ -18,6 +18,15 @@ What must NOT raise it: a refactor, a rename, a bug fix that changes no
 output. Each bump is a full re-translation of everything, and the point
 of the number is that it means something.
 
+Raising it is safe while work is in flight. A translation run reads this
+once, before its first call, and stamps everything it writes with that
+one number — so a pass that was already going when the deploy landed
+finishes as the pipeline it started as, whole. What it wrote after the
+deploy is below the new number, which is exactly the state the sweep
+looks for, so it comes back round and is made again. See
+``translation/executor.execute_plan``: the thing that must never happen
+is half a batch stamped each way, because both halves look finished.
+
 History
 -------
 0   Everything made before this was tracked.

@@ -60,6 +60,8 @@ from app.services.translation.validation import ValidationIssue, summarise, vali
 from app.services.translation.version import TRANSLATOR_VERSION
 
 if TYPE_CHECKING:
+    from collections.abc import Container
+
     from sqlalchemy.orm import Session
 
     from app.models.content_version import ContentVersionField as TranslationField
@@ -148,6 +150,8 @@ def _decide(
     task: TranslationTask,
     existing: ActiveRow | None,
     twins: dict[tuple[str, str], str],
+    *,
+    generation: int,
 ) -> tuple[Outcome, str | None] | None:
     """Is this task already answered? Returns the settled outcome, plus
     the text to record when a twin supplies one — or ``None`` when the
@@ -165,6 +169,11 @@ def _decide(
     parked for review moves only when its source changes, a row that
     exhausted its retries is terminal — and a row made by an older
     pipeline is none of those things, however unchanged its source is.
+
+    ``generation`` is the run's, decided once and passed in, not read
+    from the constant here. Every task in a plan is judged against the
+    same number, so a plan cannot decide that half its rows are current
+    and half are stale — see ``execute_plan``.
     """
     if existing is not None:
         if existing.origin == "human":
@@ -173,7 +182,7 @@ def _decide(
         # whole mechanism by which a prompt improvement reaches the
         # thousands of translations already stored: they stop counting
         # as answers. See ``translation/version.py``.
-        current = existing.translator_version >= TRANSLATOR_VERSION
+        current = existing.translator_version >= generation
         if current and existing.status == "ok" and existing.source_hash == task.source_hash:
             return "skipped", None
         if current and existing.status == "needs_review" and existing.source_hash == task.source_hash:
@@ -196,6 +205,8 @@ def _decide(
 def _load_twins(
     db: Session,
     tasks: list[TranslationTask],
+    *,
+    generation: int,
 ) -> dict[tuple[str, str], str]:
     """One usable translation per (source text, language), for the whole plan.
 
@@ -224,7 +235,7 @@ def _load_twins(
                 ContentVersion.superseded_by.is_(None),
                 or_(
                     ContentVersion.origin == "human",
-                    ContentVersion.translator_version >= TRANSLATOR_VERSION,
+                    ContentVersion.translator_version >= generation,
                 ),
             )
             .order_by(ContentVersion.created_at)
@@ -239,6 +250,8 @@ def _seed_memory(
     memory: TermMemory,
     tasks: list[TranslationTask],
     existing_rows: dict[tuple[str, str, str, str], ActiveRow],
+    *,
+    generation: int,
 ) -> None:
     """Teach the memory what this course has already been translated into.
 
@@ -288,7 +301,7 @@ def _seed_memory(
             continue
         if existing.status != "ok" or existing.source_hash != task.source_hash:
             continue
-        if existing.origin != "human" and existing.translator_version < TRANSLATOR_VERSION:
+        if existing.origin != "human" and existing.translator_version < generation:
             continue
         pair = (task.source_hash, task.target_locale)
         if pair in seen:
@@ -563,7 +576,13 @@ def _rank(issues: list[ValidationIssue]) -> tuple[int, int]:
     )
 
 
-def _collides_with_a_sibling_option(db: Session, task: TranslationTask, text: str) -> bool:
+def _collides_with_a_sibling_option(
+    db: Session,
+    task: TranslationTask,
+    text: str,
+    *,
+    unsettled: Container[tuple[str, str, str, str]] = frozenset(),
+) -> bool:
     """Has this option become a copy of another option of the same question?
 
     The one defect a per-string check cannot see, because nothing is
@@ -580,6 +599,12 @@ def _collides_with_a_sibling_option(db: Session, task: TranslationTask, text: st
     the instruction, because an instruction is a hope and a quiz that
     cannot be answered is worse than a quiz with a clumsy sentence in
     it.
+
+    ``unsettled`` is the part of this run's own plan that has not been
+    written yet, keyed the way ``VersionStore.active_rows`` keys rows.
+    A sibling in that set is not evidence of anything: this same run is
+    about to replace its translation, and what it says in the meantime
+    is last generation's answer — see the note on the query below.
     """
     if task.entity_type not in ("quiz_option", "daily_challenge_option"):
         return False
@@ -605,7 +630,7 @@ def _collides_with_a_sibling_option(db: Session, task: TranslationTask, text: st
     if not sibling_ids:
         return False
 
-    # Only siblings made by the pipeline now in force.
+    # Only siblings this run is not about to rewrite.
     #
     # A rebuild replaces a question's options one at a time, so for a
     # while the set is half new and half old — and the old half is
@@ -613,18 +638,38 @@ def _collides_with_a_sibling_option(db: Session, task: TranslationTask, text: st
     # against it parks the correct new translation for matching a wrong
     # old one: measured during the generation-8 rebuild, thirteen
     # perfectly good German options were held back because a sibling
-    # still carried last generation's duplicate. A human row counts
-    # whatever its version, since nothing rewrites it.
+    # still carried last generation's duplicate.
+    #
+    # That used to be expressed as "only siblings at the generation now
+    # in force", and generation is the wrong question twice over. It is
+    # a global that a deploy moves under a running pass, so the answer
+    # depends on when the row happened to be written rather than on what
+    # it says. And it goes blind as soon as the corpus catches up: once
+    # a generation has been in force for a while, a sibling written by
+    # an earlier pass at the same generation — one this pass is holding
+    # a task for and will replace in a minute — satisfies
+    # ``>= TRANSLATOR_VERSION`` and parks a correct translation anyway.
+    # Nine rows in production are parked that way.
+    #
+    # The run already knows the real answer. A sibling still queued in
+    # this plan is unsettled and says nothing; a sibling this run has
+    # already written, or one no task of this plan covers, is the text a
+    # reader would see and counts. Human rows count for free: nothing
+    # re-translates them, so they are never in the plan.
+    sibling_ids = [
+        sibling_id
+        for sibling_id in sibling_ids
+        if (task.entity_type, sibling_id, task.field, task.target_locale) not in unsettled
+    ]
+    if not sibling_ids:
+        return False
+
     rows = db.query(ContentVersion.text).filter(
         ContentVersion.entity_type == task.entity_type,
         ContentVersion.entity_id.in_(sibling_ids),
         ContentVersion.field == task.field,
         ContentVersion.locale == task.target_locale,
         ContentVersion.superseded_by.is_(None),
-        or_(
-            ContentVersion.origin == "human",
-            ContentVersion.translator_version >= TRANSLATOR_VERSION,
-        ),
     )
     return any(" ".join((row[0] or "").split()).casefold() == stripped for row in rows)
 
@@ -639,8 +684,20 @@ def _as_uuid(value: str) -> Any:
         return value
 
 
-def _record(db: Session, answer: _Answer, store: VersionStore) -> Outcome:
-    """Phase three: back on the caller's session, one write at a time."""
+def _record(
+    db: Session,
+    answer: _Answer,
+    store: VersionStore,
+    *,
+    generation: int,
+    unsettled: Container[tuple[str, str, str, str]] = frozenset(),
+) -> Outcome:
+    """Phase three: back on the caller's session, one write at a time.
+
+    ``generation`` is stamped onto whatever is written. It is the run's
+    number, fixed before the first call went out, so every row of a
+    plan carries the pipeline that actually produced it.
+    """
     task = answer.task
     if answer.deferred:
         # Nothing to write. The row keeps whatever it had — which for a
@@ -662,7 +719,7 @@ def _record(db: Session, answer: _Answer, store: VersionStore) -> Outcome:
     if answer.text is None:
         return "failed"
 
-    twin_of_a_sibling = _collides_with_a_sibling_option(db, task, answer.text)
+    twin_of_a_sibling = _collides_with_a_sibling_option(db, task, answer.text, unsettled=unsettled)
     if twin_of_a_sibling:
         logger.warning(
             "option_collision entity=%s locale=%s text=%r",
@@ -702,6 +759,7 @@ def _record(db: Session, answer: _Answer, store: VersionStore) -> Outcome:
                 else None
             )
         ),
+        translator_version=generation,
     )
     return "needs_review" if parked else "translated"
 
@@ -723,12 +781,41 @@ def execute_plan(
     store: VersionStore,
     budget: TranslationBudget | None = None,
     max_workers: int = DEFAULT_MAX_WORKERS,
+    generation: int | None = None,
 ) -> PlanResult:
     """Decide, ask concurrently, record. Returns the same counters the
-    serial path returned, so callers and tests read unchanged."""
+    serial path returned, so callers and tests read unchanged.
+
+    One generation for the whole run, read once here.
+
+    ``TRANSLATOR_VERSION`` is what makes a stored translation count as
+    an answer, and every phase of a pass consults it: deciding what is
+    already done, deciding which stored wording may be reused, seeding
+    the term memory, and stamping each row that is written. Read at each
+    point of use it is a moving target — a worker tick lasts up to 180
+    seconds and the cron fires every minute, so ticks overlap, and a
+    deploy that lands between two of them has one pass writing a
+    question's options at the old number while another writes its
+    siblings at the new one. Everything downstream that compares two
+    rows by generation is then comparing rows that were never in
+    competition.
+
+    So the number is settled before the first call goes out and carried
+    through the run. A pass that straddles a deploy finishes as the
+    pipeline it started as, whole: the rows it writes after the deploy
+    are below the new constant, which is exactly the state the
+    reconciler sweep exists to find, so they are re-translated on a
+    later tick. Half a batch stamped each way is the one outcome
+    nothing can repair, because both halves look finished.
+
+    ``generation`` is a parameter so a caller running several plans in
+    one tick can hold them to one number; ``None`` means "whatever is in
+    force as this run starts", which is what every caller wants today.
+    """
     if not tasks:
         return PlanResult()
 
+    run_generation = TRANSLATOR_VERSION if generation is None else generation
     active_budget = budget or NoBudget()
     translated = skipped = failed = needs_review = 0
     incomplete = False
@@ -740,7 +827,7 @@ def execute_plan(
         db,
         [(task.entity_type, task.entity_id, task.field, task.target_locale) for task in tasks],
     )
-    twins = _load_twins(db, tasks)
+    twins = _load_twins(db, tasks, generation=run_generation)
 
     # What this course has already decided to call things, built out of
     # the rows phase one just read. Nothing is asked of the database for
@@ -748,7 +835,7 @@ def execute_plan(
     # yet it stays empty, so the pass below is the pass that has always
     # run.
     memory = TermMemory()
-    _seed_memory(memory, tasks, existing_rows)
+    _seed_memory(memory, tasks, existing_rows, generation=run_generation)
 
     pending: list[TranslationTask] = []
     for task in tasks:
@@ -756,6 +843,7 @@ def execute_plan(
             task,
             existing_rows.get((task.entity_type, task.entity_id, task.field, task.target_locale)),
             twins,
+            generation=run_generation,
         )
         if settled is None:
             pending.append(task)
@@ -775,8 +863,27 @@ def execute_plan(
                 source_hash=task.source_hash,
                 status=ContentVersionStatus.OK,
                 review_reason=None,
+                translator_version=run_generation,
             )
             translated += 1
+
+    # What this run is going to write and has not written yet.
+    #
+    # Read by the answer-option collision check, which has to tell a
+    # sibling that says something from a sibling that merely has not
+    # been redone yet. A key leaves the set the moment its row is
+    # written, so a collision made inside this very pass is still
+    # caught — the option written second is checked against the option
+    # written first, which is where the duplicate actually appears.
+    #
+    # The one thing this cannot see is another worker tick rebuilding
+    # the same course at the same time: ticks overlap by design and a
+    # second job for a course may be enqueued while the first is still
+    # processing. That pass's pending set is its own. Narrower than
+    # what it replaces, and the same for every generation.
+    unsettled: set[tuple[str, str, str, str]] = {
+        (task.entity_type, task.entity_id, task.field, task.target_locale) for task in pending
+    }
 
     # Identical text, asked once.
     #
@@ -888,7 +995,13 @@ def execute_plan(
                         deferred=answer.deferred,
                     ),
                     store,
+                    generation=run_generation,
+                    unsettled=unsettled,
                 )
+                if outcome in ("translated", "needs_review"):
+                    # Written, so it is now what a reader sees and the
+                    # next option of this question is judged against it.
+                    unsettled.discard((task.entity_type, task.entity_id, task.field, task.target_locale))
                 if outcome == "translated":
                     translated += 1
                 elif outcome == "needs_review":
