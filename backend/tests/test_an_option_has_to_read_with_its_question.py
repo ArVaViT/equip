@@ -95,7 +95,18 @@ class TestTheQuestionTravelsWithTheOption:
     def test_the_model_is_told_to_agree_not_translate(self, db: Session, an_option: QuizOption) -> None:
         context = REGISTRY["quiz_option"].build_context_with_db(db, an_option, None)
         assert "Do not translate the question" in context
-        assert "continuation" in context
+        assert "GRAMMAR ONLY" in context
+
+    def test_and_told_twice_that_a_wrong_answer_stays_wrong(self, db: Session, an_option: QuizOption) -> None:
+        # Given the question and nothing else, the model repairs the
+        # distractors: 18 question-and-language pairs came back with a
+        # wrong option rewritten into a copy of the right one, which
+        # makes the question unanswerable. The Russian source has no
+        # duplicate options in 128 questions — every one was introduced
+        # in translation.
+        context = REGISTRY["quiz_option"].build_context_with_db(db, an_option, None)
+        assert "wrong answers on purpose" in context
+        assert "never let it drift towards the right answer" in context
 
     def test_an_orphan_option_still_gets_something(self, db: Session) -> None:
         # A question that has lost its text must not take the option's

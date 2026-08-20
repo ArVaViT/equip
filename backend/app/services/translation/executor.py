@@ -41,7 +41,7 @@ from __future__ import annotations
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from sqlalchemy import or_
 
@@ -466,6 +466,68 @@ def _rank(issues: list[ValidationIssue]) -> tuple[int, int]:
     )
 
 
+def _collides_with_a_sibling_option(db: Session, task: TranslationTask, text: str) -> bool:
+    """Has this option become a copy of another option of the same question?
+
+    The one defect a per-string check cannot see, because nothing is
+    wrong with the string. Told what question it answers, the model
+    helpfully repairs the wrong answers: measured across the corpus, 22
+    questions came back with two identical options — four English
+    options all reading "Malta", three all reading "John" — and every
+    one of those questions is unanswerable. The Russian source has no
+    duplicate options anywhere in 128 questions, so every collision was
+    made in translation.
+
+    The prompt now says twice that a wrong answer is wrong on purpose,
+    and that stopped it in every case measured. This is the check behind
+    the instruction, because an instruction is a hope and a quiz that
+    cannot be answered is worse than a quiz with a clumsy sentence in
+    it.
+    """
+    if task.entity_type not in ("quiz_option", "daily_challenge_option"):
+        return False
+    stripped = " ".join(text.split()).casefold()
+    if not stripped:
+        return False
+
+    if task.entity_type == "quiz_option":
+        from app.models.quiz import QuizOption as Option
+    else:
+        from app.models.daily_challenge import DailyChallengeOption as Option  # type: ignore[assignment]
+
+    question_id = db.query(Option.question_id).filter(Option.id == _as_uuid(task.entity_id)).scalar()
+    if question_id is None:
+        return False
+    sibling_ids = [
+        str(row[0])
+        for row in db.query(Option.id).filter(
+            Option.question_id == question_id,
+            Option.id != _as_uuid(task.entity_id),
+        )
+    ]
+    if not sibling_ids:
+        return False
+
+    rows = db.query(ContentVersion.text).filter(
+        ContentVersion.entity_type == task.entity_type,
+        ContentVersion.entity_id.in_(sibling_ids),
+        ContentVersion.field == task.field,
+        ContentVersion.locale == task.target_locale,
+        ContentVersion.superseded_by.is_(None),
+    )
+    return any(" ".join((row[0] or "").split()).casefold() == stripped for row in rows)
+
+
+def _as_uuid(value: str) -> Any:
+    """Option ids are uuids; the task carries them as text."""
+    import uuid as _uuid
+
+    try:
+        return _uuid.UUID(value)
+    except (ValueError, AttributeError):
+        return value
+
+
 def _record(db: Session, answer: _Answer, store: VersionStore) -> Outcome:
     """Phase three: back on the caller's session, one write at a time."""
     task = answer.task
@@ -489,7 +551,16 @@ def _record(db: Session, answer: _Answer, store: VersionStore) -> Outcome:
     if answer.text is None:
         return "failed"
 
-    parked = answer.issues_summary is not None
+    twin_of_a_sibling = _collides_with_a_sibling_option(db, task, answer.text)
+    if twin_of_a_sibling:
+        logger.warning(
+            "option_collision entity=%s locale=%s text=%r",
+            task.entity_id,
+            task.target_locale,
+            answer.text[:60],
+        )
+
+    parked = answer.issues_summary is not None or twin_of_a_sibling
     if parked:
         logger.warning(
             "Translation failed validation entity=%s:%s field=%s locale=%s issues=%s",
@@ -509,7 +580,17 @@ def _record(db: Session, answer: _Answer, store: VersionStore) -> Outcome:
         source_locale=task.source_locale,
         source_hash=task.source_hash,
         status=ContentVersionStatus.NEEDS_REVIEW if parked else ContentVersionStatus.OK,
-        review_reason=answer.issues_summary,
+        review_reason=(
+            answer.issues_summary
+            or (
+                "[option_collision] This answer option is now word for word "
+                "identical to another option of the same question. A quiz "
+                "whose wrong answers have been turned into the right one "
+                "cannot be answered."
+                if twin_of_a_sibling
+                else None
+            )
+        ),
     )
     return "needs_review" if parked else "translated"
 
