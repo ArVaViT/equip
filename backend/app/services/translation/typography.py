@@ -133,9 +133,9 @@ rule.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, NamedTuple
 
-from app.schemas.locale import QUOTATION_MARKS
+from app.schemas.locale import QUOTATION_MARKS, LanguageNotInTable
 from app.services.bible.books import (
     display_book_name,
     find_book,
@@ -144,6 +144,8 @@ from app.services.bible.books import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from app.schemas.locale import LocaleCode
     from app.services.translation.protocol import ContentKind
 
@@ -325,38 +327,49 @@ def _quotes_balance(text: str, free: list[bool]) -> bool:
     return count > 0 and count % 2 == 0
 
 
-def _german_quote(opening: bool) -> str:
-    """German sets ``„…“``. Which mark to write is read off the position,
-    never off the character that is already there.
+def _marks_for(locale: LocaleCode) -> tuple[str, str]:
+    """The pair ``locale`` sets a quotation in — and the only place this
+    pass is allowed to learn it.
 
-    The tempting version maps character to character — ``«`` to ``„``,
-    ``»`` to ``“``, ``”`` to ``“`` — and it is wrong twice over. U+201C
-    *opens* in English and *closes* in German, so a table would turn the
-    already-correct ``„Wort“`` into ``„Wort„`` on the second pass. And
-    the seeded fuzz in the test file found the mirror of it: a ``»`` that
-    happens to stand at the start of a string maps to ``“``, which then
-    reads as an opening mark and maps again. Deciding from position
-    alone makes a correctly-quoted string a fixed point by
-    construction — an opening slot always holds ``„``, a closing slot
-    always holds ``“``, and running the pass again finds both already
-    there.
+    Which mark to write is read off the *position*, never off the
+    character that is already there. The tempting version maps character
+    to character — ``«`` to ``„``, ``»`` to ``“``, ``”`` to ``“`` — and
+    it is wrong twice over. U+201C *opens* in English and *closes* in
+    German, so a table would turn the already-correct ``„Wort“`` into
+    ``„Wort„`` on the second pass. And the seeded fuzz in the test file
+    found the mirror of it: a ``»`` that happens to stand at the start of
+    a string maps to ``“``, which then reads as an opening mark and maps
+    again. Deciding from position alone makes a correctly-quoted string a
+    fixed point by construction — an opening slot always holds the
+    opening mark, a closing slot the closing one, and running the pass
+    again finds both already there.
 
-    The pair itself comes from ``schemas/locale.py``, which is also
-    where ``bible/substitution.py`` reads it when it puts back the marks
-    a canonical verse was quoted in. Two modules deciding separately what
-    a German quotation mark looks like is one module too many.
+    The pair comes from ``schemas/locale.py``, which is also where
+    ``bible/substitution.py`` reads it when it puts back the marks a
+    canonical verse was quoted in. Two modules deciding separately what
+    a German quotation mark looks like is one module too many — and it
+    is why this asks the table by locale instead of branching on the
+    locale by hand. The branch used to end in ``else: set it in «…»``,
+    so a language nobody had written a rule for was quietly pointed like
+    Russian, and every one of the module's own guards was satisfied by
+    that: the string did change, it just changed into the wrong
+    language's punctuation.
     """
-    return QUOTATION_MARKS["de"][0 if opening else 1]
+    marks = QUOTATION_MARKS.get(locale)
+    if marks is None:
+        raise LanguageNotInTable(
+            f"No quotation marks are recorded for {locale!r}, so this pass cannot "
+            "point a translation into it. Add the pair to ``QUOTATION_MARKS`` in "
+            "``app/schemas/locale.py`` — the same table ``bible/substitution.py`` "
+            "reads, so the restored verse and the paraphrase beside it end up in "
+            "the same marks. Naming the language somewhere is not enough: the "
+            "marks are the rule."
+        )
+    return marks
 
 
-def _cyrillic_quote(opening: bool) -> str:
-    """Russian and Ukrainian both set ``«…»``. Positional for the same
-    reason as ``_german_quote``, and read from the same table."""
-    return QUOTATION_MARKS["ru"][0 if opening else 1]
-
-
-def _english_quote(char: str) -> str:
-    """English is normalised to *straight* quotes, and deliberately so.
+def _english_apostrophe(char: str, before: str, after: str) -> str:
+    """English is normalised to *straight* marks, and deliberately so.
 
     Both directions are defensible typography; only one is a safe
     function. Going curly means deciding, for each mark, whether it
@@ -389,9 +402,14 @@ def _english_quote(char: str) -> str:
     same reason from the German direction. Straightening them is one
     character for one, like every other rule in this module, and cannot
     be got backwards.
+
+    Only the *single* marks are decided here now. The double ones are
+    the ordinary quotation path — ``QUOTATION_MARKS["en"]`` is a pair of
+    the same character, and a language whose two marks are identical
+    needs no reasoning about which slot a mark sits in. That equality is
+    what "English is straight" means, said once in the table both this
+    module and ``bible/substitution.py`` read, rather than twice.
     """
-    if char in "“”«»„":
-        return '"'
     if char in "‘’‚":
         return "'"
     return char
@@ -425,7 +443,7 @@ def _german_apostrophe_allowed(text: str, free: list[bool]) -> bool:
     return not opening_run
 
 
-def _german_apostrophe(char: str, before: str) -> str:
+def _german_apostrophe(char: str, before: str, after: str) -> str:
     """``Paulus‘`` and ``Paulus'`` → ``Paulus’``.
 
     The German apostrophe is U+2019 and it is welded to the end of the
@@ -435,6 +453,11 @@ def _german_apostrophe(char: str, before: str) -> str:
     mark", which is the whole test; the caller has already established
     with ``_german_apostrophe_allowed`` that no mark in this string is
     quoting instead.
+
+    ``after`` goes unread — German's rule looks only backwards. The
+    signature is the one every language's rule takes, so that
+    ``_APOSTROPHE_RULES`` can hold them side by side and the caller
+    never has to know which language it is holding.
     """
     if char not in _TYPEWRITER_APOSTROPHES or not before.isalpha():
         return char
@@ -457,9 +480,66 @@ def _ukrainian_apostrophe(char: str, before: str, after: str) -> str:
     return char
 
 
-def _apply_quote_rules(text: str, free: list[bool], out: list[str], locale: str) -> None:
-    pair_quotes = _quotes_balance(text, free)
-    apostrophes_allowed = locale == "de" and _german_apostrophe_allowed(text, free)
+def _anywhere(text: str, free: list[bool]) -> bool:
+    """Most languages' apostrophe rule needs no whole-string permission."""
+    return True
+
+
+class _Apostrophe(NamedTuple):
+    """What one language does with a single mark, and when it may.
+
+    ``write`` decides one character from its neighbours. ``permitted``
+    is asked once per string, for the languages where a single mark can
+    be quoting instead of eliding and the whole string has to be left
+    alone — German, and so far only German.
+    """
+
+    write: Callable[[str, str, str], str]
+    permitted: Callable[[str, list[bool]], bool] = _anywhere
+
+
+#: The single mark, per language. This is the table that used to be a
+#: frozenset of locale codes, and the difference is the point of the
+#: change: a name in a set proved that somebody had thought of the
+#: language, not that anything here knew what to do with it. An entry
+#: costs a function; membership cost a word.
+#:
+#: ``None`` is an entry and not a hole — Russian sets no apostrophe, and
+#: recording that is what tells the next reader it was decided rather
+#: than missed. A language absent altogether is refused by
+#: ``_apostrophe_for``, where it used to fall past the end of an
+#: if/elif chain and be pointed like Russian.
+_APOSTROPHE_RULES: Final[dict[LocaleCode, _Apostrophe | None]] = {
+    "ru": None,
+    "uk": _Apostrophe(_ukrainian_apostrophe),
+    "de": _Apostrophe(_german_apostrophe, _german_apostrophe_allowed),
+    "en": _Apostrophe(_english_apostrophe),
+}
+
+
+def _apostrophe_for(locale: LocaleCode) -> _Apostrophe | None:
+    if locale not in _APOSTROPHE_RULES:
+        raise LanguageNotInTable(
+            f"No apostrophe rule is recorded for {locale!r}. Add it to "
+            "``_APOSTROPHE_RULES`` — and ``None`` is a legitimate answer, for a "
+            "language that writes no apostrophe, as Russian does not. What is not "
+            "legitimate is being absent: this pass would then have to guess, and "
+            "the guess it used to make was Russian's."
+        )
+    return _APOSTROPHE_RULES[locale]
+
+
+def _apply_quote_rules(text: str, free: list[bool], out: list[str], locale: LocaleCode) -> None:
+    opening_mark, closing_mark = _marks_for(locale)
+    apostrophe = _apostrophe_for(locale)
+    # A language whose two marks are the same character cannot get one
+    # of them backwards, so it needs no balance test: English's
+    # straightening is a total mapping and safe on ``5" breit``. Where
+    # the marks differ, the slot decides the character, and a string
+    # whose marks cannot pair keeps every one of them — see
+    # ``_quotes_balance``.
+    repoint_quotes = opening_mark == closing_mark or _quotes_balance(text, free)
+    apostrophes_allowed = apostrophe is not None and apostrophe.permitted(text, free)
     previous = ""
     for index, char in enumerate(text):
         if not free[index]:
@@ -468,16 +548,11 @@ def _apply_quote_rules(text: str, free: list[bool], out: list[str], locale: str)
         after = text[index + 1] if index + 1 < len(text) and free[index + 1] else ""
         opening = previous in _OPENING_CONTEXT
 
-        if locale == "en":
-            out[index] = _english_quote(char)
-        elif char in _QUOTE_CHARS:
-            if pair_quotes:
-                out[index] = _german_quote(opening) if locale == "de" else _cyrillic_quote(opening)
-        elif locale == "de":
-            if apostrophes_allowed:
-                out[index] = _german_apostrophe(char, before)
-        elif locale == "uk":
-            out[index] = _ukrainian_apostrophe(char, before, after)
+        if char in _QUOTE_CHARS:
+            if repoint_quotes:
+                out[index] = opening_mark if opening else closing_mark
+        elif apostrophe is not None and apostrophes_allowed:
+            out[index] = apostrophe.write(char, before, after)
 
         # Context for the *next* mark is what we just wrote, not what we
         # read. A straight ``"`` does not open a quotation and ``„`` does,
@@ -1241,13 +1316,6 @@ def _group_german_thousands(text: str) -> str:
 # Entry point
 # ---------------------------------------------------------------------------
 
-# Every served locale is handled. ``TestEveryLanguageIsPointed`` fails
-# when one is added and forgotten, which is the same guard the book-name
-# table gets in ``test_every_language_names_the_books`` — a locale that
-# falls through here is not a crash, it is a page that quietly keeps the
-# source's punctuation.
-_HANDLED_LOCALES: Final[frozenset[str]] = frozenset({"de", "en", "ru", "uk"})
-
 
 def normalize_characters(text: str, locale: LocaleCode, content_kind: ContentKind | None = None) -> str:
     """The half of the pass that is one character for one.
@@ -1282,8 +1350,14 @@ def normalize_typography(
     to be settled before the numbers, because ``Ин. 3:16`` is a Russian
     abbreviation *and* a Russian colon and fixing only the second leaves
     ``Joh. 3:16`` — half-translated, which reads worse than untouched.
+
+    Raises ``LanguageNotInTable`` for a language this pass has no rules
+    for. It used to return the text untouched, which is the failure it
+    is hard to see: a page that quietly keeps the source's punctuation
+    looks like a page, and the frozenset that was supposed to prevent
+    that could be satisfied by adding a word to it.
     """
-    if not text or locale not in _HANDLED_LOCALES:
+    if not text:
         return text
     result = normalize_characters(text, locale, content_kind)
     if locale == "de":

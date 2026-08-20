@@ -91,6 +91,27 @@ export const LOCALE_NATIVE_LABELS: Record<SupportedLocale, string> = {
 }
 
 /**
+ * Each language named in the language currently on screen.
+ *
+ * The other half of `LOCALE_NATIVE_LABELS`: the switcher offers every
+ * language in its own words, and the profile page tells a person what
+ * theirs is set to, in the words they are reading right now.
+ *
+ * It lived in `ProfilePage.tsx` as a `Record<string, string>` behind a
+ * `?? "language.russian"`, which type-checked forever and labelled a
+ * reader of any language the map had not heard of "Russian" — on the one
+ * line of the page that is about their language. Here it sits beside the
+ * other per-language tables and is typed like them, so the compiler asks
+ * for the fifth language's key.
+ */
+export const LANGUAGE_NAME_KEYS: Record<SupportedLocale, string> = {
+  ru: "language.russian",
+  en: "language.english",
+  de: "language.german",
+  uk: "language.ukrainian",
+}
+
+/**
  * BCP-47 tag per locale, for `Intl` — date and number formatting.
  *
  * `Intl` wants a region to pick a format: bare "de" works, but the tags

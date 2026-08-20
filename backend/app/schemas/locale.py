@@ -1,26 +1,49 @@
 """Locale primitives shared across schemas, services, and the translation
 pipeline.
 
-Adding a new language is a **five-step change** — all in this order:
+Adding a new language is a **six-step change** — all in this order:
 
   1. Append the code to ``LOCALE_CODES`` and the ``LocaleCode`` literal
      below. Add the human-readable name to ``LOCALE_DISPLAY_NAMES``
      (used by the translation prompt builder to address the model in
-     a natural form: "translate from Russian to French").
+     a natural form: "translate from Russian to French"), and the pair
+     of marks the language quotes in to ``QUOTATION_MARKS``.
   2. Add a key block for the new locale to
      ``app/core/i18n.py::_CATALOG`` with translations for every key.
      The ``test_i18n_catalog_covers_every_locale`` test would fail CI
      otherwise — so this step is enforced, not optional.
-  3. Ship a Supabase migration that extends every ``CHECK`` constraint
+  3. Fill in the four per-language tables the translation pipeline
+     checks a finished translation against. None of them can be
+     satisfied by naming the language; each wants the words:
+
+     * ``services/bible/books.py`` — every canonical book named in the
+       new language, or a reference cannot be localized at all.
+     * ``services/translation/glossary.py::_TERMS`` — the school's
+       terminology, one form per row. Skip it and the register is off
+       for that language and says nothing: «завет» comes back *pacto*
+       in one lesson and *testamento* in the next.
+     * ``services/translation/numerals.py::Numeral`` — a field on the
+       row class and the number written out in all 24 rows. Skip it and
+       a translation that loses «двенадцать» passes every check.
+     * ``services/translation/typography.py::_APOSTROPHE_RULES`` — what
+       the language does with a single mark, ``None`` being a decision
+       rather than a default.
+
+     Each of the four now **raises** for a language it does not carry,
+     and ``tests/test_a_fifth_language_is_refused_not_ignored.py``
+     proves it against a locale nobody serves. That is the whole point:
+     these used to return "nothing wrong" for an unknown language, and
+     the reader was the first to find out.
+  4. Ship a Supabase migration that extends every ``CHECK`` constraint
      covering a locale column:
      * ``profiles.preferred_locale``
      * ``courses.source_locale``
      * ``content_versions.locale``  (the post Phase 5c store; the
        legacy ``content_translations`` table was dropped in 5aj)
-  4. Add the frontend bundle ``frontend/src/i18n/locales/<code>.json``
+  5. Add the frontend bundle ``frontend/src/i18n/locales/<code>.json``
      with full key coverage (the ``keyCoverage`` test enforces parity).
      Wire it into ``frontend/src/i18n/config.ts::SUPPORTED_LOCALES``.
-  5. Nothing. Existing content re-translates itself.
+  6. Nothing. Existing content re-translates itself.
 
      This step used to read "trigger ``POST /courses/{id}/translate``
      on every published course, or wait for the next teacher save" —
@@ -37,16 +60,35 @@ Adding a new language is a **five-step change** — all in this order:
      announcement banner through ``sweep_global_announcements`` in
      ``services/translation/reconciler.py``.
 
-     What still needs a person, and why: steps 2 and 4 are the
-     interface catalogs, which are product copy rather than course
-     content — a wrong word in a lesson is a bad translation, a wrong
-     word on a button is a bug. ``scripts/translate_catalog.py``
-     drafts them so the work is reviewing rather than typing.
+     What still needs a person, and why: steps 2, 3 and 5 are the
+     interface catalogs and the quality tables — product copy and
+     editorial judgement rather than course content. A wrong word in a
+     lesson is a bad translation, a wrong word on a button is a bug,
+     and a missing row in a quality table is a check that has stopped
+     checking. ``scripts/translate_catalog.py`` drafts the catalogs so
+     that work is reviewing rather than typing.
 """
 
 from __future__ import annotations
 
 from typing import Final, Literal
+
+
+class LanguageNotInTable(LookupError):
+    """A per-language table was asked about a language it does not carry.
+
+    Raised rather than returning an empty result, and that is the whole
+    of it. Every table that raises this is a *check* — the terminology
+    register, the numerals, the typography pass — and a check that
+    answers "nothing wrong" about a language it has never heard of is
+    worse than no check at all: it is a green tick with nothing behind
+    it, and the reader is the first to find out.
+
+    The message must always say which table and what a person has to
+    put in it. An exception whose only content is a locale code sends
+    whoever added the language reading source.
+    """
+
 
 LocaleCode = Literal["ru", "en", "de", "uk"]
 
