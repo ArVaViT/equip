@@ -65,6 +65,13 @@ class ActiveRow:
     #: Which pipeline generation produced it. A row below the current
     #: version is not an answer, however unchanged its source is.
     translator_version: int = 0
+    #: What it says. No decision in ``_decide`` reads this — it is here
+    #: for ``term_memory``, which learns what this course has already
+    #: called things by lining a translation up against the source that
+    #: produced it. Carried on a query that had to run anyway, which is
+    #: the entire reason the memory costs no statements: see
+    #: ``executor._seed_memory``.
+    text: str | None = None
 
 
 class VersionStore(Protocol):
@@ -186,6 +193,7 @@ class LiveStore:
             status=row.status,
             source_hash=row.source_hash,
             translator_version=row.translator_version,
+            text=row.text,
         )
 
     def active_rows(
@@ -222,6 +230,7 @@ class LiveStore:
                     ContentVersion.status,
                     ContentVersion.source_hash,
                     ContentVersion.translator_version,
+                    ContentVersion.text,
                 )
                 .filter(
                     tuple_(
@@ -234,12 +243,13 @@ class LiveStore:
                 )
                 .all()
             )
-            for entity_type, entity_id, field, locale, origin, status, source_hash, version in rows:
+            for entity_type, entity_id, field, locale, origin, status, source_hash, version, text in rows:
                 found[(entity_type, entity_id, field, locale)] = ActiveRow(
                     origin=origin,
                     status=status,
                     source_hash=source_hash,
                     translator_version=version,
+                    text=text,
                 )
         return found
 
@@ -341,6 +351,7 @@ class StagedStore:
                 status=staged.status,
                 source_hash=staged.source_hash,
                 translator_version=staged.translator_version,
+                text=staged.text,
             )
 
         # Nothing staged for this locale yet. One live row still binds
@@ -358,6 +369,7 @@ class StagedStore:
                 status=live.status,
                 source_hash=live.source_hash,
                 translator_version=TRANSLATOR_VERSION,
+                text=live.text,
             )
         return None
 
@@ -389,6 +401,7 @@ class StagedStore:
                     StagedContentVersion.status,
                     StagedContentVersion.source_hash,
                     StagedContentVersion.translator_version,
+                    StagedContentVersion.text,
                 )
                 .filter(
                     tuple_(
@@ -401,12 +414,13 @@ class StagedStore:
                 )
                 .all()
             )
-            for entity_type, entity_id, field, locale, origin, status, source_hash, version in staged_rows:
+            for entity_type, entity_id, field, locale, origin, status, source_hash, version, text in staged_rows:
                 found[(entity_type, entity_id, field, locale)] = ActiveRow(
                     origin=origin,
                     status=status,
                     source_hash=source_hash,
                     translator_version=version,
+                    text=text,
                 )
 
         # Only for keys nothing was staged against: a live *machine* row
@@ -423,6 +437,7 @@ class StagedStore:
                     ContentVersion.locale,
                     ContentVersion.status,
                     ContentVersion.source_hash,
+                    ContentVersion.text,
                 )
                 .filter(
                     tuple_(
@@ -436,12 +451,13 @@ class StagedStore:
                 )
                 .all()
             )
-            for entity_type, entity_id, field, locale, status, source_hash in live_rows:
+            for entity_type, entity_id, field, locale, status, source_hash, text in live_rows:
                 found[(entity_type, entity_id, field, locale)] = ActiveRow(
                     origin="human",
                     status=status,
                     source_hash=source_hash,
                     translator_version=TRANSLATOR_VERSION,
+                    text=text,
                 )
         return found
 

@@ -55,6 +55,7 @@ from app.services.translation.protocol import (
     TranslationResult,
 )
 from app.services.translation.reviewer import ReviewVerdict, TranslationReviewer
+from app.services.translation.term_memory import TermMemory
 from app.services.translation.validation import ValidationIssue, summarise, validate_translation
 from app.services.translation.version import TRANSLATOR_VERSION
 
@@ -77,6 +78,17 @@ logger = logging.getLogger(__name__)
 # limit is a burst of 429s in production. Room to raise it deliberately,
 # once there is a course big enough for the difference to matter.
 DEFAULT_MAX_WORKERS = 8
+
+# How many already-finished fields per language the term memory is
+# seeded from at the start of a pass. Reading one costs about a
+# millisecond, and a full-catalogue plan holds three thousand — three
+# seconds of the worker's 180 spent before a single call goes out, for a
+# course that stopped introducing new names somewhere in module two.
+#
+# 300 is 0.3 seconds and more fields than any course we have. The sample
+# is spread across the plan rather than taken off the front, so the cap
+# costs coverage of *repetitions*, not of names.
+_SEED_PAIRS_PER_LOCALE = 300
 
 Outcome = Literal["translated", "skipped", "failed", "needs_review", "deferred"]
 
@@ -223,7 +235,85 @@ def _load_twins(
     return {key: value for key, value in found.items() if key in wanted}
 
 
-def _ask(task: TranslationTask, provider: TranslationProvider, budget: TranslationBudget | None = None) -> _Answer:
+def _seed_memory(
+    memory: TermMemory,
+    tasks: list[TranslationTask],
+    existing_rows: dict[tuple[str, str, str, str], ActiveRow],
+) -> None:
+    """Teach the memory what this course has already been translated into.
+
+    Zero queries. Every row it reads was fetched by phase one to answer
+    "is this already done?", and the answer to that question happens to
+    be the corpus this needs: a translation of a text the plan is holding
+    in ``task.text``, which is an aligned pair by construction. That
+    alignment is the whole reason the seed sits here rather than in its
+    own bulk read — a second query would have to reconstruct which source
+    produced which translation, and the executor already knows.
+
+    Three conditions, and each of them is about not learning a lie:
+
+    * ``source_hash`` must match the task. A row whose source has since
+      been rewritten translates a sentence we no longer have, so the
+      pairing would be against the wrong text.
+    * ``status`` must be ``ok``. A row parked for review is a wording a
+      person has not accepted, and this is a mechanism for spreading a
+      wording everywhere.
+    * The row must be human, or made by the pipeline now in force. An
+      older machine wording is exactly what a re-translation exists to
+      replace, and a memory seeded from it would carry the discarded
+      generation into the new one — the same rule ``_load_twins`` keeps,
+      for the same reason.
+
+    Scope follows the plan, which for the worker is one course's tree
+    (``course_pipeline.plan_course_tasks``) and for a teacher saving a
+    block is that entity. Nothing else can get in: the keys come from the
+    plan's own tasks, so another course's choices are not merely
+    outranked, they are never read.
+
+    Reading a pair costs about a millisecond of our own work — a regular
+    expression over both texts and a comparison between the names it
+    finds. That is nothing beside the 420 ms a provider call spends on a
+    socket, and it is not nothing three thousand times over before the
+    first call is made, which is why ``_SEED_PAIRS_PER_LOCALE`` exists.
+    Past that many fields a course is repeating names rather than
+    introducing them, and the sample is taken evenly across the plan
+    instead of from the front, so a name that first appears in the last
+    module is as likely to be seen as one in the first.
+    """
+    usable: dict[str, list[tuple[TranslationTask, str]]] = {}
+    seen: set[tuple[str, str]] = set()
+    for task in tasks:
+        existing = existing_rows.get((task.entity_type, task.entity_id, task.field, task.target_locale))
+        if existing is None or not existing.text:
+            continue
+        if existing.status != "ok" or existing.source_hash != task.source_hash:
+            continue
+        if existing.origin != "human" and existing.translator_version < TRANSLATOR_VERSION:
+            continue
+        pair = (task.source_hash, task.target_locale)
+        if pair in seen:
+            continue
+        seen.add(pair)
+        usable.setdefault(task.target_locale, []).append((task, existing.text))
+
+    for rows in usable.values():
+        step = max(1, -(-len(rows) // _SEED_PAIRS_PER_LOCALE))
+        for task, translation in rows[::step]:
+            memory.learn(
+                task.text,
+                translation,
+                source_locale=task.source_locale,
+                target_locale=task.target_locale,
+            )
+
+
+def _ask(
+    task: TranslationTask,
+    provider: TranslationProvider,
+    budget: TranslationBudget | None = None,
+    *,
+    term_memory: tuple[tuple[str, str], ...] = (),
+) -> _Answer:
     """Phase two, and the only phase that runs off the main thread.
 
     Touches no database and no shared state: the provider owns an
@@ -236,6 +326,12 @@ def _ask(task: TranslationTask, provider: TranslationProvider, budget: Translati
     ``budget`` is optional because most callers of this function have no
     clock: the synchronous paths and the tests translate one field with
     nothing waiting on them. ``None`` means "as many calls as it takes".
+
+    ``term_memory`` is read on the caller's thread and handed in already
+    settled, because the memory object is written between batches and a
+    worker thread must never touch it. Empty means the pass has learned
+    nothing that this text could use, which is exactly what every field
+    of a course nobody has translated yet gets.
     """
     request = TranslationRequest(
         text=task.text,
@@ -243,6 +339,7 @@ def _ask(task: TranslationTask, provider: TranslationProvider, budget: Translati
         target_locale=task.target_locale,
         content_kind=task.content_kind,
         context=task.context,
+        term_memory=term_memory,
     )
     try:
         result = _translate(provider, request, budget)
@@ -631,6 +728,14 @@ def execute_plan(
     )
     twins = _load_twins(db, tasks)
 
+    # What this course has already decided to call things, built out of
+    # the rows phase one just read. Nothing is asked of the database for
+    # it — see ``_seed_memory`` — and on a course nobody has translated
+    # yet it stays empty, so the pass below is the pass that has always
+    # run.
+    memory = TermMemory()
+    _seed_memory(memory, tasks, existing_rows)
+
     pending: list[TranslationTask] = []
     for task in tasks:
         settled = _decide(
@@ -703,9 +808,32 @@ def execute_plan(
             )
             break
         batch = representatives[start : start + width]
+        # Read the memory here, on this thread, and hand each call the
+        # pairs it can use. The batch is the granularity at which the
+        # memory moves: eight calls are in flight together and none of
+        # them can see the others, which is the same trade the executor
+        # already makes everywhere else and for the same reason.
+        prepared = [(task, memory.recall(task.text, target_locale=task.target_locale)) for task in batch]
         with ThreadPoolExecutor(max_workers=width) as pool:
-            answers = list(pool.map(lambda task: _ask(task, provider, active_budget), batch))
+            answers = list(
+                pool.map(
+                    lambda prepared_task: _ask(prepared_task[0], provider, active_budget, term_memory=prepared_task[1]),
+                    prepared,
+                )
+            )
         for answer in answers:
+            if answer.text is not None and not answer.failed and not answer.deferred and answer.issues_summary is None:
+                # Learn only from answers nothing objected to. A row
+                # parked for review is a wording waiting for a person,
+                # and copying it into every later field would be the
+                # pipeline agreeing with itself about something it has
+                # already flagged.
+                memory.learn(
+                    answer.task.text,
+                    answer.text,
+                    source_locale=answer.task.source_locale,
+                    target_locale=answer.task.target_locale,
+                )
             siblings = by_text[
                 (
                     answer.task.source_hash,

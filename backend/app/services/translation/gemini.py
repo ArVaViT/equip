@@ -39,6 +39,7 @@ from app.services.translation.protocol import (
     TranslationResult,
 )
 from app.services.translation.reviewer import ReviewVerdict, build_review_prompt, parse_review
+from app.services.translation.term_memory import TermMemory, merge_pairs
 from app.services.translation.typography import normalize_typography
 from app.services.translation.validation import tag_names
 
@@ -304,10 +305,22 @@ class GeminiTranslationProvider:
         checked ``can_afford_one_call()`` for this batch; the extra ones
         are what splitting introduced, and they have to be paid for out
         of the same allowance.
+
+        The document also remembers itself as it goes. Splitting a lesson
+        into paragraphs is what let a name drift *inside one block* — a
+        heading and the paragraph under it spelled Philippi two different
+        ways because paragraph two was a separate call that had never
+        seen paragraph one (``translation/term_memory.py`` has the
+        production readings). So each piece is offered whatever the
+        pieces before it settled on, on top of whatever the course
+        already knew. The memory is local to this call, which is what
+        makes it safe on a worker thread: one document, one loop, no
+        shared state.
         """
         translated: list[str] = []
         input_tokens = output_tokens = thinking_tokens = 0
         corrected_pieces = 0
+        learned = TermMemory()
 
         for index, piece in enumerate(pieces):
             if not piece.strip():
@@ -318,7 +331,18 @@ class GeminiTranslationProvider:
                     f"Budget spent after {index} of {len(pieces)} pieces; "
                     "the document is left untranslated rather than half-translated."
                 )
-            part = self._generate(replace(request, text=piece))
+            # The course first, this document second: a wording the rest
+            # of the course already uses outranks one this block invented
+            # a paragraph ago.
+            piece_request = replace(
+                request,
+                text=piece,
+                term_memory=merge_pairs(
+                    request.term_memory,
+                    learned.recall(piece, target_locale=request.target_locale),
+                ),
+            )
+            part = self._generate(piece_request)
             input_tokens += part.input_tokens or 0
             output_tokens += part.output_tokens or 0
             thinking_tokens += part.thinking_tokens or 0
@@ -330,9 +354,7 @@ class GeminiTranslationProvider:
                 # what changes here is the question — the model is shown
                 # the tags it dropped or invented and asked again.
                 try:
-                    corrected = self._generate(
-                        replace(request, text=piece, rewrite_notes=(*request.rewrite_notes, note))
-                    )
+                    corrected = self._generate(replace(piece_request, rewrite_notes=(*request.rewrite_notes, note)))
                 except TranslationError:
                     corrected = None
                 if corrected is not None:
@@ -342,6 +364,12 @@ class GeminiTranslationProvider:
                     if markup_correction_note(piece, corrected.text) is None:
                         part = corrected
                         corrected_pieces += 1
+            learned.learn(
+                piece,
+                part.text,
+                source_locale=request.source_locale,
+                target_locale=request.target_locale,
+            )
             translated.append(part.text)
 
         text = "".join(translated)
@@ -574,6 +602,7 @@ class GeminiTranslationProvider:
             source_locale=request.source_locale,
             target_locale=request.target_locale,
             rewrite_notes=request.rewrite_notes,
+            term_memory=request.term_memory,
         )
         return {
             "systemInstruction": {"parts": [{"text": system_prompt}]},

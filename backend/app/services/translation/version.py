@@ -1,3 +1,7 @@
+# ruff: noqa: RUF002
+# Generation 9 is about four spellings of one Cyrillic name, so the entry
+# below quotes them. The ambiguous-character lint has nothing to say
+# about a Cyrillic letter that is meant to be a Cyrillic letter.
 """Which generation of translation rules is currently in force.
 
 Raise this number whenever a change makes new translations better than
@@ -43,12 +47,26 @@ History
     ``EQV``, which is a word in no language we serve. Rows made before
     this are re-fetched because a lost verse cannot be seen by looking
     at them: what is left reads like a finished sentence.
+9   A course remembers what it has already called things. Every call
+    used to be the first call: nothing translating a field had ever seen
+    another field, so one Ukrainian lesson said «у Филиппах» in its
+    objectives, «у Филипах» in the heading, «Филиппійська» in the body
+    and «у Пилипах» in the questions — four spellings of Philippi, one of
+    them the name of a different man. The glossary cannot hold every
+    proper noun in every course and was never meant to; twin reuse only
+    ever sees identical strings. ``translation/term_memory.py`` reads the
+    pairs out of what a course already has and offers them to the next
+    field as a preference.
+
+    Rows made before this were made by calls that could not have known,
+    which is why the whole corpus is due rather than the lessons somebody
+    happened to notice.
 """
 
 from __future__ import annotations
 
 from typing import Final
 
-TRANSLATOR_VERSION: Final[int] = 8
+TRANSLATOR_VERSION: Final[int] = 9
 
 __all__ = ["TRANSLATOR_VERSION"]
