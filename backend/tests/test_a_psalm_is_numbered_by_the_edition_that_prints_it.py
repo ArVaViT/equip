@@ -69,7 +69,7 @@ class TestTheCorrectlyRenumberedReferenceIsNotLost:
             source_locale="en",
             target_locale="de",
         )
-        assert "verse_reference_lost" in blocking(issues)
+        assert "verse_reference_lost" in codes(issues)
 
 
 class TestTheReferenceThatKeptTheWrongNumbers:
@@ -100,15 +100,23 @@ class TestTheReferenceThatKeptTheWrongNumbers:
         assert blocking(issues) == set()
 
 
-class TestARealLossIsStillARealLoss:
-    def test_a_psalm_reference_that_vanished_is_caught(self):
+class TestARealLossIsStillNamedAsOne:
+    """``verse_reference_lost`` stopped blocking on 2026-08-20 — the
+    books of the Bible are named after ordinary words, and a course that
+    numbers its exercises hands the parser a verse it never cited. The
+    renumbering arithmetic these tests are really about is unchanged:
+    what has to keep working is that a reference the target edition does
+    not print is still *reported* as lost, and that the ones the target
+    edition does print are still not."""
+
+    def test_a_psalm_reference_that_vanished_is_named(self):
         issues = validate_translation(
             source="<p>Как сказано в Пс. 109:1, Господь сказал Господу моему: сиди одесную Меня.</p>",
             translated="<p>Wie es an jener Stelle heißt, sprach der HERR zu meinem Herrn: Setze dich zu mir.</p>",
             source_locale="ru",
             target_locale="de",
         )
-        assert "verse_reference_lost" in blocking(issues)
+        assert "verse_reference_lost" in codes(issues)
 
     def test_a_book_that_is_not_the_psalter_is_not_renumbered(self):
         # Only the Psalms are numbered twice. Genesis 1:26 is 1:26 in
@@ -119,7 +127,7 @@ class TestARealLossIsStillARealLoss:
             source_locale="ru",
             target_locale="de",
         )
-        assert "verse_reference_lost" in blocking(issues)
+        assert "verse_reference_lost" in codes(issues)
 
 
 class TestRenumberBetween:

@@ -14,6 +14,14 @@ validation caught it every time — ``markup_mismatch``,
 ``verse_reference_lost`` — so the row was parked and never served,
 which is right.
 
+Two of those three verdicts have since been narrowed (2026-08-20): a
+lost ``<em>`` is now ``emphasis_lost`` and a lost pointer is now
+non-blocking, so neither withholds the lesson on its own. That changes
+nothing about this module. What is compared here is the piece against
+its own source, and the piece that came back wrong is asked again on
+its own merits — the correcting pass below is driven by that
+comparison, not by whether the whole document would have been parked.
+
 But a parked row is a hole. The reader asks for the lesson in their
 language and gets nothing where a block should be. Two blocks sat in
 exactly that state, and they were the last remaining cause of parked

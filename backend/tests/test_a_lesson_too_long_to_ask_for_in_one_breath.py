@@ -213,7 +213,19 @@ class TestAShortBlockIsStillOneCall:
 
 class TestAMangledPieceFailsTheWholeDocument:
     """Half a lesson in the reader's language and half in the author's is
-    not a better outcome than the gap. One bad piece rejects the lot."""
+    not a better outcome than the gap. One bad piece rejects the lot.
+
+    Which mangling counts as one bad piece narrowed on 2026-08-20. A
+    piece that came back without its paragraphs is a piece the reader
+    would see as a wall of text, and it still rejects the document. A
+    piece that came back without the ``<em>`` around a term is a piece
+    the reader can read, and ``validation._check_tags`` no longer
+    withholds the lesson for it — see ``emphasis_lost`` there. What did
+    not change is the mechanism that repairs it: the piece is still
+    compared against its own source, still asked again on its own, and
+    the correcting pass below is still driven by that comparison rather
+    than by the verdict.
+    """
 
     @staticmethod
     def _drop_em_in_one_section(text: str) -> str:
@@ -222,10 +234,17 @@ class TestAMangledPieceFailsTheWholeDocument:
             rendered = rendered.replace("<em>", "").replace("</em>", "")
         return rendered
 
+    @staticmethod
+    def _drop_paragraphs_in_one_section(text: str) -> str:
+        rendered = _translated(text)
+        if "Урок 3" in text:
+            rendered = rendered.replace("<p>", "").replace("</p>", "")
+        return rendered
+
     def test_the_reassembled_document_does_not_pass_validation(self) -> None:
         source = _long_lesson()
         sent: list[str] = []
-        provider = _provider(self._drop_em_in_one_section, sent)
+        provider = _provider(self._drop_paragraphs_in_one_section, sent)
         try:
             result = provider.translate(
                 TranslationRequest(text=source, source_locale="ru", target_locale="en", content_kind="html")
@@ -264,7 +283,7 @@ class TestAMangledPieceFailsTheWholeDocument:
     def test_the_row_is_parked_rather_than_served(self) -> None:
         source = _long_lesson()
         sent: list[str] = []
-        provider = _provider(self._drop_em_in_one_section, sent)
+        provider = _provider(self._drop_paragraphs_in_one_section, sent)
         task = TranslationTask(
             entity_type="chapter_block",
             entity_id="block-1",
@@ -281,6 +300,31 @@ class TestAMangledPieceFailsTheWholeDocument:
             provider.close()
         assert answer.issues_summary is not None
         assert "markup_mismatch" in answer.issues_summary
+
+    def test_a_piece_that_only_lost_its_emphasis_is_served_rather_than_parked(self) -> None:
+        """The other half of the narrowing, pinned: seven ``<em>`` gone
+        is the production defect this file was written about, and it is
+        still asked again — but a lesson whose key terms are no longer
+        italic is a lesson, and the reader gets it."""
+        source = _long_lesson()
+        sent: list[str] = []
+        provider = _provider(self._drop_em_in_one_section, sent)
+        task = TranslationTask(
+            entity_type="chapter_block",
+            entity_id="block-1",
+            field="content",
+            source_locale="ru",
+            target_locale="en",
+            text=source,
+            content_kind="html",
+            source_hash="hash-1",
+        )
+        try:
+            answer = _ask(task, provider)
+        finally:
+            provider.close()
+        assert answer.issues_summary is None
+        assert not answer.failed
 
 
 class TestAVerseInsideOnePieceStillGetsItsCanonicalText:

@@ -22,6 +22,15 @@ for as long as the translation happens to repeat both digits.
 ``bible.references.parse_references`` has always answered this properly
 — it will not call anything a reference unless a declared book name
 stands in front of it — so it is what decides the source side now.
+
+That fixed the clock and left the other half standing, which is why
+``verse_reference_lost`` stopped blocking on 2026-08-20: the books of
+the Bible are named after ordinary words, so "Judges 4:2 of the
+appellate circuit" and "Числа 3:14 в таблице" parse as scripture too,
+and no shape in the running text separates them from the real thing.
+The class below therefore pins the code and not the veto — see
+``validation._check_verse_refs`` for the six measured cases and for why
+a lost pointer is not lost scripture.
 """
 
 from __future__ import annotations
@@ -69,15 +78,19 @@ class TestASectionNumberIsNotAReference:
         assert parse_references("Урок 3.2 и 4.5 расписания") == []
 
 
-class TestAReferenceWithABookInFrontOfItIsStillGuarded:
-    def test_a_reference_that_really_vanished_is_caught(self):
+class TestAReferenceWithABookInFrontOfItIsStillNamed:
+    """Still seen, still logged, still worth a retry — just no longer a
+    reason to withhold the lesson from the reader."""
+
+    def test_a_reference_that_really_vanished_is_named(self):
         issues = validate_translation(
             source="<p>What is promised to anyone who believes, as stated in John 3:14-16?</p>",
             translated="<p>Was wird jedem versprochen, der glaubt, wie die Stelle es beschreibt?</p>",
             source_locale="en",
             target_locale="de",
         )
-        assert "verse_reference_lost" in blocking(issues)
+        assert "verse_reference_lost" in {issue.code for issue in issues}
+        assert blocking(issues) == set()
 
     def test_a_different_verse_is_not_the_same_reference(self):
         issues = validate_translation(
@@ -86,7 +99,8 @@ class TestAReferenceWithABookInFrontOfItIsStillGuarded:
             source_locale="en",
             target_locale="de",
         )
-        assert "verse_reference_lost" in blocking(issues)
+        assert "verse_reference_lost" in {issue.code for issue in issues}
+        assert blocking(issues) == set()
 
     def test_the_target_language_may_print_it_its_own_way(self):
         # The translation side stays a loose scan of the digits on

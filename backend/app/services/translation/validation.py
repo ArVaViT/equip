@@ -45,13 +45,19 @@ today, park the row as ``needs_review`` instead of ``ok``.
 from __future__ import annotations
 
 import re
+from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final
 
 from app.core.sanitize import strip_tags
 from app.services.bible.psalm_numbering import renumber_between
 from app.services.bible.references import parse_references
-from app.services.language_detection import carries_language, detect_locale
+from app.services.language_detection import (
+    carries_language,
+    detect_locale,
+    script_letters,
+    shares_script,
+)
 
 if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
@@ -69,6 +75,16 @@ _MARKER_RE: Final[re.Pattern[str]] = re.compile(r"(?:EQV|VERSE_)[0-9a-f]+")
 # Tag names only — attributes get rewritten by translation (an
 # ``alt=""`` legitimately changes language), the structure must not.
 _TAG_NAME_RE: Final[re.Pattern[str]] = re.compile(r"<\s*/?\s*([a-zA-Z][a-zA-Z0-9]*)")
+
+# Tags that decorate a word rather than hold the document up. The list
+# is closed, short, and named rather than inferred: a tag that is not on
+# it keeps the veto, so a shape nobody thought about fails safe.
+#
+# ``<a>`` and ``<img>`` are deliberately absent even though they sit
+# inside a sentence — a lost link is a lost destination and a lost image
+# is lost content, neither of which is decoration. So are ``<sup>`` and
+# ``<sub>``: in H₂O the tag *is* the meaning. See ``_check_tags``.
+_EMPHASIS_TAGS: Final[frozenset[str]] = frozenset({"b", "em", "i", "span", "strong"})
 
 # The placeholder shapes rule 4 of the system prompt promises to keep.
 _PLACEHOLDER_RE: Final[re.Pattern[str]] = re.compile(
@@ -121,6 +137,12 @@ _MAX_LENGTH_RATIO: Final[float] = 2.5
 # the model returned its input.
 _MIN_CHARS_FOR_IDENTITY: Final[int] = 25
 
+# How much text the language detector needs behind it before a
+# same-script disagreement may withhold a lesson. Cross-script needs
+# none — see ``_check_language``, which carries the measurement and the
+# argument for this number.
+_MIN_LETTERS_TO_NAME_A_LANGUAGE: Final[int] = 60
+
 # Content kinds whose text is a single short answer or heading, where
 # an expansion is itself the failure the prompt warns about.
 _SHORT_KINDS: Final[frozenset[str]] = frozenset({"title", "quiz_option"})
@@ -154,9 +176,17 @@ class ValidationIssue:
     #: correct but reads as translated. The other is a real defect the
     #: check cannot tell apart from correct output: ``untranslated_run``
     #: cannot distinguish a bibliography from an untranslated clause,
-    #: and ``psalm_numbering_not_localised`` rests on inferring an
-    #: edition from a locale. A check that is sometimes wrong may name
-    #: what it saw; it may not withhold the lesson over it.
+    #: ``psalm_numbering_not_localised`` rests on inferring an edition
+    #: from a locale, ``verse_reference_lost`` cannot tell the book of
+    #: Judges from a bench of them, and ``wrong_language`` on a short
+    #: same-script string is the detector guessing. A check that is
+    #: sometimes wrong may name what it saw; it may not withhold the
+    #: lesson over it.
+    #:
+    #: ``emphasis_lost`` is neither: it is right about what it saw and
+    #: still does not block, because a sentence that lost its ``<em>``
+    #: is a sentence, and this module withholds a page only when
+    #: serving it would be worse than serving nothing.
     blocking: bool = True
 
 
@@ -293,8 +323,74 @@ def _carries_prose(text: str) -> bool:
     translation that failed; it is a block with nothing in it to judge,
     and the honest answer is to decline. Everything else about it —
     markers, tags, placeholders, length — is still checked.
+
+    What counts as a word
+    ---------------------
+    "Anything at all is left" was the first bar and it is too low. The
+    exemption above only reaches code somebody *tagged*, and the two
+    shapes that hurt in production carried no tag:
+    ``array.prototype.flatMap()`` as a quiz option, and a chemistry
+    formula in a plain ``<p>``. Both are 25 characters or more, both are
+    the same string in every language, and both came back from
+    ``_check_identity`` as ``not_translated``, blocking, on a correct
+    answer.
+
+    Neither contains a word. ``array.prototype.flatMap()`` is one token
+    with dots and brackets through it; ``2 H₂ + O₂ → 2 H₂O`` is digits,
+    symbols and subscripts. So the bar is a *word* — a whitespace-
+    delimited token that, once the punctuation around it is peeled off,
+    is nothing but two or more letters. Ordinary prose clears it on its
+    first word; a formula, an identifier and a call signature never do.
+
+    The peeling matters: «Слово» is a word wearing quotation marks, and
+    a rule that read the guillemets as part of the token would decline
+    to judge a Russian sentence.
+
+    One word is enough, and the stricter reading was tried and
+    measured. "Most of the letter-bearing tokens must be words" —
+    prose is mostly words, a formula is mostly not — sounds better and
+    is wrong on this catalogue: run over all 14,687 active rows it
+    calls "З жертовника в храмі", "Кто-то что-то сказал" and "У реки"
+    prose-free, because one-letter prepositions are not words and short
+    Slavic titles are half made of them. 112 real rows would have gone
+    unjudged to buy two invented ones. The one-word rule changes 104
+    rows against the bar it replaces, and every one of them is a bare
+    number — "12", "64", "0" — which is exactly the set that should
+    never have been called prose.
+
+    Its limit, stated plainly: ``array.prototype.flatMap()`` clears,
+    and ``array.prototype.flatMap(callbackFn, thisArg)`` does not,
+    because ``thisArg`` on its own is letters and nothing else. A code
+    sample with an argument list wants the ``<code>`` the exemption
+    above is built around. This bar is for the shapes that arrive
+    without one.
     """
-    return bool(_words_for_runs(text))
+    return any(_is_a_word(token) for token in _words_for_runs(text))
+
+
+# Punctuation hanging off the ends of a token: quotation marks, a comma,
+# a full stop, the brackets of a call. Stripped before asking whether
+# what is left is a word.
+_EDGE_PUNCTUATION: Final[re.Pattern[str]] = re.compile(r"^\W+|\W+$", re.UNICODE)
+
+#: Two letters is the shortest thing worth calling a word here — a
+#: one-letter token is a variable, an initial or an article, and none of
+#: them is evidence that a string is prose.
+_SHORTEST_WORD: Final[int] = 2
+
+
+def _is_a_word(token: str) -> bool:
+    """Two or more letters, and nothing that is not a letter.
+
+    ``str.isalpha`` rather than a character class, because the class has
+    to be right about more of Unicode than is comfortable: ``\\d`` is
+    decimal digits only, so the subscript in ``H₂O`` is not one, and a
+    pattern that merely excluded ``\\d`` would call ``H₂`` a word and
+    hand the chemistry formula back to the checks this exists to keep
+    away from it.
+    """
+    stripped = _EDGE_PUNCTUATION.sub("", token)
+    return len(stripped) >= _SHORTEST_WORD and stripped.isalpha()
 
 
 def _check_markers(source: str, translated: str) -> ValidationIssue | None:
@@ -323,19 +419,91 @@ def _check_markers(source: str, translated: str) -> ValidationIssue | None:
 
 
 def _check_tags(source: str, translated: str) -> ValidationIssue | None:
-    expected = tag_names(source)
-    if not expected:
-        return None
-    got = tag_names(translated)
+    """Did the document keep its shape?
+
+    This compared two sorted lists of tag names and reported any
+    difference, which conflates three things that deserve three
+    answers. Measured over the live catalogue on 2026-08-20, three rows
+    fail it:
+
+    * a Russian chapter block that dropped a whole
+      ``<p><strong>Psalm</strong> — …</p>`` definition out of a list of
+      eight (``lost {'p': 2, 'strong': 2}``);
+    * an English chapter block that lost its only ``<p>`` and returned
+      a bare sentence (``lost {'p': 2}``);
+    * an English chapter block that put two words in ``<em>`` the
+      Russian source had left plain (``added {'em': 2}``).
+
+    The first two are the defect this check was built for: a paragraph
+    that vanished, and a paragraph that stopped being one. The third is
+    an editor doing their job. Sorted lists cannot tell them apart, so
+    all three were blocking and the third was a lesson withheld over
+    good writing.
+
+    Three rules, and the direction is half of each:
+
+    **A structural tag, in either direction, blocks.** ``<p>``,
+    ``<li>``, ``<table>``, ``<img>``, ``<a>`` and everything else not
+    named below carry the document rather than decorate it. Losing one
+    merges two paragraphs into a wall or deletes a row from a table;
+    inventing one splits a sentence, or invents a link that goes
+    somewhere. Either way a reader is looking at a different document.
+
+    **Emphasis lost is reported and served.** A ``<strong>`` the author
+    put in and the model dropped is a real loss — the author marked
+    that word for a reason. It is not a corrupted document: the
+    sentence is whole, complete, and readable, and this module's rule
+    is that a check withholds a page only when serving it would be
+    worse than serving nothing. It is not, so the row earns the retry
+    that non-blocking buys and is served if the retry does not fix it.
+
+    **Emphasis added is not an issue at all.** Nothing in the system
+    prompt forbids it, a language that marks emphasis by word order
+    legitimately needs a tag where another did not, and the one live
+    row that does this is better for it. Reporting it non-blocking was
+    the alternative and it is worse than silence: every issue costs a
+    retry, and paying the model to un-improve a correct translation is
+    not a thing this pipeline should spend on.
+    """
+    expected = Counter(tag_names(source))
+    got = Counter(tag_names(translated))
     if expected == got:
         return None
+
+    lost = expected - got
+    added = got - expected
+    structural_lost = {tag: n for tag, n in lost.items() if tag not in _EMPHASIS_TAGS}
+    structural_added = {tag: n for tag, n in added.items() if tag not in _EMPHASIS_TAGS}
+
+    if structural_lost or structural_added:
+        parts = []
+        if structural_lost:
+            parts.append("lost " + ", ".join(f"{n}×<{tag}>" for tag, n in sorted(structural_lost.items())))
+        if structural_added:
+            parts.append("gained " + ", ".join(f"{n}×<{tag}>" for tag, n in sorted(structural_added.items())))
+        return ValidationIssue(
+            code="markup_mismatch",
+            detail=(
+                f"The translation does not have the structure of its source: {'; '.join(parts)}. "
+                "A paragraph, list item or table cell that does not come back leaves the reader "
+                "a different document from the one the author wrote."
+            ),
+        )
+
+    emphasis_lost = {tag: n for tag, n in lost.items() if tag in _EMPHASIS_TAGS}
+    if not emphasis_lost:
+        # Emphasis added and nothing lost. See the docstring: this is
+        # editing, not damage, and it is not worth a retry either.
+        return None
     return ValidationIssue(
-        code="markup_mismatch",
+        code="emphasis_lost",
         detail=(
-            f"Markup changed: source has {len(expected)} tags "
-            f"({', '.join(sorted(set(expected)))}), translation has {len(got)} "
-            f"({', '.join(sorted(set(got))) or 'none'})."
+            "Emphasis the source carried is missing from the translation: "
+            + ", ".join(f"{n}×<{tag}>" for tag, n in sorted(emphasis_lost.items()))
+            + ". The sentence is whole, so it is served — but the author marked those "
+            "words for a reason, and the translation does not."
         ),
+        blocking=False,
     )
 
 
@@ -395,6 +563,49 @@ def _check_verse_refs(
     occurs as a *source*, and it buys the guarantee that nothing here
     calls a timetable a Bible verse.
 
+    Why a lost reference stopped blocking
+    -------------------------------------
+    Requiring a book name fixed the clock and left the larger half of
+    the problem standing: the books of the Bible are named after
+    ordinary words, in every language served. ``books.py`` declares 521
+    aliases and guards ten of them behind a capital or a printed dot.
+    The other 511 are believed on sight, and measured against
+    ``parse_references`` today:
+
+        "See Ex. 3:4 for the worked solution."          -> exodus 3:4
+        "Drawing Rev. 3:2 supersedes the earlier print." -> revelation 3:2
+        "Column Col. 3:14 holds the running total."      -> colossians 3:14
+        "Judges 4:2 of the appellate circuit dissented." -> judges 4:2
+        "Job 3:2 was posted on the careers page."        -> job 3:2
+        "Числа 3:14 в таблице округлены."                 -> numbers 3:14
+
+    A translation that renders any of those the way the target language
+    would — *Aufgabe 3 Punkt 4*, *Zeile 3, Spalte 14* — no longer
+    contains the digit pair, and the row was parked for losing a verse
+    it never had.
+
+    Two narrowings were considered and neither works, because the six
+    split evenly across both. **Require the name to be spelled out**
+    and the three dotted abbreviations go, while Judges, Job and Числа
+    stay — those are full book names. **Require the printed dot of an
+    abbreviation** and it is the other three that stay. Nor does the
+    capital rule that saves ``is`` and ``об`` reach these: "Job" and
+    "Числа" are capitalised because they open a sentence. Extending the
+    guarded list by hand was rejected on the same grounds as the
+    quotation-mark narrowing under ``_check_untranslated_run`` — it
+    would be one hand-written word list per language against an open
+    set of homographs, and it would read as a guarantee it cannot give.
+
+    So this keeps its eyes and loses its veto, exactly as
+    ``untranslated_run`` did. What that costs is small and bounded,
+    because a lost *pointer* is not lost *scripture*: a quoted verse
+    travels as an ``EQV`` marker and ``scripture_marker_mismatch``
+    still blocks, and a verse the provider dropped outright still
+    arrives as ``scripture_dropped``, blocking, from ``executor``. What
+    is at stake here is a citation a reader cannot follow in a lesson
+    they can otherwise read — and the retry that non-blocking still
+    buys is what fixes most of them anyway.
+
     **The Psalms are numbered twice.** The translation side stays a
     loose scan of the digits, because a German Bible prints
     ``Johannes 3,16`` and no alias list here knows the word Johannes.
@@ -446,8 +657,10 @@ def _check_verse_refs(
             detail=(
                 f"Chapter-and-verse references present in the source are missing from the "
                 f"translation: {', '.join(sorted(set(missing))[:5])}. A student cannot look up "
-                "a passage whose reference did not survive."
+                "a passage whose reference did not survive — unless the source never cited "
+                "one, and this is an exercise number or a table cell that shares a book's name."
             ),
+            blocking=False,
         )
     if unlocalised:
         return ValidationIssue(
@@ -504,7 +717,83 @@ def _check_identity(
     )
 
 
-def _check_language(translated: str, *, target_locale: LocaleCode) -> ValidationIssue | None:
+def _check_language(
+    source: str,
+    translated: str,
+    *,
+    source_locale: LocaleCode,
+    target_locale: LocaleCode,
+) -> ValidationIssue | None:
+    """Is the answer in the language the reader asked for?
+
+    When this may withhold the page
+    -------------------------------
+    The detector is good and it is not perfect: measured across
+    production it is right to about one error in thirteen thousand
+    lines (``api/v1/admin_translations.reset_review_status`` records
+    the figure). Re-run over the 7,969 live machine translations that
+    carry prose on 2026-08-20, it disagrees with the declared locale on
+    two rows, and both are correct Ukrainian:
+
+        "Бог об'явився Аврааму."        18 letters, read as ru
+        "У кожному рядку по два образи" 24 letters, read as ru
+
+    Where those errors sit is not random, and the shape of them decides
+    what this check may do.
+
+    **They are same-script.** Script is counted, not weighed: three
+    Cyrillic letters rule out German at any length, and no quantity of
+    English turns Latin into Cyrillic. Cyrillic served to a German
+    reader is not a judgement call, so that stays blocking however short
+    the string is. Which of ru and uk, or of en and de, this is — that
+    is decided by weighing function words and letters a short sentence
+    may simply not contain. ``кожному`` and ``рядку`` do not exist in
+    Russian, but they are not in the word list either, and 24 letters
+    without an і, ї or є starve the rest of the evidence.
+
+    **They are short.** Bucketed by length, every disagreement is under
+    30 letters; from 30 letters up, across 4,473 rows, there are none.
+    The floor is set at 60 rather than 30 because 60 is a number this
+    codebase already measured for the same question and against more
+    data: ``language_detection._ABSENCE_MIN_LETTERS`` carries the table
+    showing one Ukrainian string in ten below 40 letters has no
+    hallmark letter at all, 2.5% between 40 and 59, and none from 60.
+    Fitting a threshold to the two rows that happen to be wrong today
+    would be fitting to noise, and the module's own docstring says
+    which way to err: a false positive here is a course that never
+    publishes.
+
+    Below the floor and inside one script the issue is still raised —
+    it still earns a retry, and a retry is what usually fixes a genuine
+    one — it just no longer withholds the lesson.
+
+    **The detector cannot be a witness against a text it already
+    misreads.** A course that teaches a language quotes another one on
+    purpose: «Правило: "I have been working here since 2019" — Present
+    Perfect Continuous» is a Russian row, and the detector reads it as
+    English, because it mostly is. Translated to German it correctly
+    keeps the English, still reads as English, and was parked as the
+    wrong language — 54 letters, comfortably over any floor.
+
+    The tell is available and free: run the detector on the *source*.
+    When it reads the source as the same language it is now objecting
+    to, and that is not the language the source is declared to be in,
+    it has demonstrated on this very pair that it is answering about
+    the quoted material rather than the prose around it. Its verdict on
+    the answer is then not evidence.
+
+    Note what this does *not* do: exempt ``<em>`` or ``<q>`` the way
+    ``<pre>`` and ``<code>`` are exempted. Rule 2b of the system prompt
+    says in as many words that quotation marks are not a
+    do-not-translate sign, and ``_check_untranslated_run`` rejected the
+    same narrowing for the same reason — an untranslated verse hides in
+    exactly the markup a deliberate citation hides in. The bare quiz
+    option carrying an English phrase has no tag to exempt anyway. This
+    asks about the source instead, which is a fact about the pair
+    rather than a guess about the author's intent. On the live
+    catalogue it fires on nothing: there is no active row whose source
+    the detector misreads.
+    """
     # "Три", "Amen", "1 Kor. 13" — a string with no prose in it is the
     # same string in every language, and asking which language it is in
     # is asking the wrong question. The detector will sometimes answer
@@ -523,13 +812,36 @@ def _check_language(translated: str, *, target_locale: LocaleCode) -> Validation
         # proper nouns, two languages of one script it cannot separate.
         # It refuses to guess, and so do we.
         return None
-    return ValidationIssue(
-        code="wrong_language",
-        detail=(
-            f"The translation reads as {detected}, not {target_locale}. "
-            "A student who chose that language would be served text they did not ask for."
-        ),
+
+    reading = (
+        f"The translation reads as {detected}, not {target_locale}. "
+        "A student who chose that language would be served text they did not ask for."
     )
+
+    if _carries_prose(source) and detected != source_locale and detect_locale(source) == detected:
+        return ValidationIssue(
+            code="wrong_language",
+            detail=(
+                f"{reading} But the detector reads the {source_locale} source as {detected} too, "
+                "so it is answering about material both sides quote on purpose — a phrase in a "
+                "language the lesson is teaching about — rather than about the prose. Served, "
+                "because the reading is not evidence here."
+            ),
+            blocking=False,
+        )
+
+    if shares_script(detected, target_locale) and script_letters(translated) < _MIN_LETTERS_TO_NAME_A_LANGUAGE:
+        return ValidationIssue(
+            code="wrong_language",
+            detail=(
+                f"{reading} On {script_letters(translated)} letters, though, {detected} and "
+                f"{target_locale} share too much of a short phrase to be told apart — the "
+                "detector's errors are all of this shape. Served, and worth a second look."
+            ),
+            blocking=False,
+        )
+
+    return ValidationIssue(code="wrong_language", detail=reading)
 
 
 def _check_length(
@@ -843,7 +1155,12 @@ def validate_translation(
             source_locale=source_locale,
             target_locale=target_locale,
         ),
-        _check_language(translated, target_locale=target_locale),
+        _check_language(
+            source,
+            translated,
+            source_locale=source_locale,
+            target_locale=target_locale,
+        ),
         _check_untranslated_run(
             source,
             translated,
