@@ -198,6 +198,38 @@ def test_bilingual_view_returns_parallel_cells(db: Session, author: User, teache
     assert all(o["texts"]["ru"]["cv_id"] is None for o in body["options"])
 
 
+def test_a_german_row_the_pipeline_wrote_reaches_the_screen(
+    db: Session, author: User, teacher: User, client: TestClient
+):
+    # The view fans out over LOCALE_CODES and its docstring says so. The
+    # query underneath it asked for ``locale IN ('en','ru')``, so a German
+    # row could exist, be active, be OK — and the cell stayed empty and
+    # the queue kept reporting the question as missing German. Nothing
+    # errored; the answer was simply always the same.
+    #
+    # The test that should have caught it asserted ``has_locale["de"] is
+    # False`` and passed, because no fixture had ever written a German
+    # row. So this one writes it.
+    q = _seed_question(db, author_id=author.id)
+    record_human_version(
+        db,
+        entity_type="daily_challenge_question",
+        entity_id=str(q.id),
+        field="question_text",
+        locale="de",
+        text="Was sagt Römer 8?",
+        authored_by=author.id,
+    )
+    db.commit()
+
+    view = client.get(f"/api/v1/admin/daily-challenge/questions/{q.id}/bilingual").json()
+    assert view["question_text"]["de"]["text"] == "Was sagt Römer 8?"
+    assert view["question_text"]["de"]["cv_id"] is not None
+
+    listed = client.get("/api/v1/admin/daily-challenge/questions").json()["items"]
+    assert next(item for item in listed if item["id"] == str(q.id))["has_locale"]["de"] is True
+
+
 def test_bilingual_view_returns_empty_cell_when_locale_missing(
     db: Session, author: User, teacher: User, client: TestClient
 ):

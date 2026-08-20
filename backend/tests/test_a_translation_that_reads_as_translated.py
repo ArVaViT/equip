@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import pytest
 
+from app.schemas.locale import LOCALE_CODES
 from app.services.translation.executor import _rank
 from app.services.translation.glossary import glossary_block, terms_in
 from app.services.translation.prompt import build_system_prompt, build_user_prompt
@@ -127,10 +128,16 @@ class TestCorrectingRatherThanReRolling:
 
 
 class TestPromptRules:
-    @pytest.mark.parametrize("locale", ["en", "de", "uk", "ru"])
+    @pytest.mark.parametrize("locale", list(LOCALE_CODES))
     def test_every_target_language_gets_its_own_notes(self, locale: str) -> None:
         # Generic advice produces generic prose. Each language is told
         # about the calque it actually produced in production.
+        #
+        # Parametrized off the roster, not off a list of four codes
+        # typed out here. It was the list, and a list is not a guard: a
+        # fifth language would have been translated with rule 10 of the
+        # system prompt silently absent and this test would have gone on
+        # passing about the other four.
         prompt = build_system_prompt(source_locale="en", target_locale=locale)
         assert "10." in prompt
 

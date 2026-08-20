@@ -95,12 +95,24 @@ Ukrainian says six o'clock with an ordinal), "Two hundred" → «Двісті»
 (which contains no «два»), «Двадцать одно» → *Einundzwanzig*,
 "Seventy-two" → *Zweiundsiebzig*. Twelve false, zero true. This check
 blocks, so a false hit is a correct page not served; the rule stays.
+
+A language this table cannot read
+---------------------------------
+
+Narrow is not the same as absent, and the difference has to be visible.
+A language whose numbers are not written down here is **refused**, at
+import for the table and at the call for a lookup. It used to be
+ignored: an unlisted locale made ``numbers_lost`` return ``[]`` on
+every string it was ever given, which is the same value it returns when
+a translation is perfect.
 """
 
 from __future__ import annotations
 
 import re
 from typing import TYPE_CHECKING, Final, NamedTuple
+
+from app.schemas.locale import LOCALE_CODES, LanguageNotInTable
 
 if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
@@ -113,7 +125,15 @@ if TYPE_CHECKING:
 class Numeral(NamedTuple):
     """One number in every language served. Named rather than positional
     so a reader can see which column is which, and so the type checker
-    can too."""
+    can too.
+
+    The fields after ``value`` *are* the roster: they are named for the
+    locale codes and checked against ``LOCALE_CODES`` at import. That is
+    deliberate — the module used to carry a separate frozenset of the
+    languages it handled, which is the kind of list that goes stale
+    without a sound. ``numbers_lost`` returned ``[]`` for anything
+    missing from it, which reads exactly like "this translation kept all
+    of its numbers"."""
 
     value: int
     ru: str
@@ -156,7 +176,59 @@ _NUMERALS: Final[tuple[Numeral, ...]] = tuple(
     )
 )
 
-_LOCALES: Final[frozenset[str]] = frozenset({"ru", "en", "de", "uk"})
+
+def _verify_every_number_is_spelled_in_every_language(locales: tuple[str, ...]) -> None:
+    """Refuse to load a table that spells its numbers in fewer languages
+    than the platform serves.
+
+    At **import**, and for the same reason as the register's row check:
+    the rows are positional. ``Numeral`` already refuses a row of the
+    wrong width — ``Numeral(*row)`` raises on the spot — so the only
+    hole left is the class itself falling behind the roster, and that
+    hole used to be papered over by a hand-written ``_LOCALES``
+    frozenset that had to be remembered separately. It never would have
+    been. A locale missing from it made ``numbers_lost`` return ``[]``
+    for every string, forever, and a translation that turns «двенадцать»
+    into *Fünf* passed.
+
+    Names *and* order are checked, because a field is read by name here
+    and written by position in the rows above: fields in a different
+    order from ``LOCALE_CODES`` would put the German word in the
+    Ukrainian column and every check would still pass.
+    """
+    spelled = Numeral._fields[1:]
+    if spelled == locales:
+        return
+    raise LanguageNotInTable(
+        f"``Numeral`` spells its numbers in {spelled} and this platform serves "
+        f"{locales}. Add a field per missing language to ``Numeral``, in the order "
+        f"of ``LOCALE_CODES``, and the word to all {len(_NUMERALS)} rows of "
+        "``_NUMERALS``. A language with no column here is not checked less "
+        "strictly, it is not checked at all: «двенадцать» coming back as *Fünf* "
+        "is what this table was written for."
+    )
+
+
+_verify_every_number_is_spelled_in_every_language(LOCALE_CODES)
+
+#: The languages this table spells its numbers in — the fields of
+#: ``Numeral``, which the line above has just checked against the
+#: roster. Read from the rows rather than listed again: the list that
+#: was here before is the one that went stale in silence.
+_SPELLED_IN: Final[tuple[str, ...]] = Numeral._fields[1:]
+
+
+def _require_a_column_for(locale: str) -> None:
+    """Refuse to answer about a language whose numbers are not written here."""
+    if locale not in _SPELLED_IN:
+        raise LanguageNotInTable(
+            f"The numeral table has no {locale!r} column; it spells its numbers in "
+            f"{', '.join(_SPELLED_IN)}. Add the field to ``Numeral`` and the "
+            "word to every row, or stop asking it about a language nobody serves. "
+            "Answering 'no numbers were lost' about a language this table cannot "
+            "read is the failure it is here to prevent."
+        )
+
 
 #: One word, for the purpose of asking "is this string a number?". An
 #: answer option often ends in a full stop and is no less a number for
@@ -229,7 +301,7 @@ def _longest_first(locale: str) -> re.Pattern[str]:
     return re.compile("|".join(re.escape(word) for word in words), re.IGNORECASE)
 
 
-_LONGEST: Final[dict[str, re.Pattern[str]]] = {locale: _longest_first(locale) for locale in _LOCALES}
+_LONGEST: Final[dict[str, re.Pattern[str]]] = {locale: _longest_first(locale) for locale in _SPELLED_IN}
 
 
 def _digit_pattern(value: int) -> re.Pattern[str]:
@@ -299,7 +371,9 @@ def numbers_lost(
     """
     if not source or not translation:
         return []
-    if source_locale not in _LOCALES or target_locale not in _LOCALES or source_locale == target_locale:
+    _require_a_column_for(source_locale)
+    _require_a_column_for(target_locale)
+    if source_locale == target_locale:
         return []
 
     spelled = _spelled_number(source, source_locale)

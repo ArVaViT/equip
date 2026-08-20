@@ -16,6 +16,7 @@ import { makeProfileSchema } from "@/lib/validations/course"
 import { toProxyImage } from "@/lib/images"
 import { ROLE_I18N_KEY } from "@/lib/roles"
 import { formatDateLong } from "@/i18n/format"
+import { DEFAULT_LOCALE, LANGUAGE_NAME_KEYS } from "@/i18n/config"
 import { toast } from "@/lib/toast"
 import {
   User as UserIcon, Mail, Calendar, Camera, Globe,
@@ -25,16 +26,6 @@ import { useUserTour } from "@/hooks/useUserTour"
 import { profileSteps } from "@/lib/tourSteps"
 import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
 import { initialsOf } from "@/lib/names"
-
-// The line under "Language" names the language the person is set to. It used
-// to be a ternary over two locales; with four it needs a map, and an unknown
-// value falls back rather than mislabelling.
-const LANGUAGE_NAME_KEYS: Record<string, string> = {
-  ru: "language.russian",
-  en: "language.english",
-  de: "language.german",
-  uk: "language.ukrainian",
-}
 
 function useCountUp(target: number, durationMs = 800) {
   const prefersReducedMotion = useReducedMotion()
@@ -367,7 +358,7 @@ export default function ProfilePage() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium">{t("language.label")}</p>
                   <p className="text-xs text-ink-muted">
-                    {t(LANGUAGE_NAME_KEYS[user.preferred_locale] ?? "language.russian")}
+                    {t(LANGUAGE_NAME_KEYS[user.preferred_locale] ?? LANGUAGE_NAME_KEYS[DEFAULT_LOCALE])}
                   </p>
                 </div>
               </div>

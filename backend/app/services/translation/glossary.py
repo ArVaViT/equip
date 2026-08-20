@@ -39,9 +39,17 @@ first, so a two-word answer option carries no glossary at all and a
 lesson on the covenant carries exactly the lines about covenants.
 
 Terms are keyed by their Russian form because that is the language
-most course material is authored in, but each row carries all four, so
-the table works for any direction — a German teacher writing in German
-gets the same Ukrainian rendering a Russian one would.
+most course material is authored in, but each row carries one form per
+language served, so the table works for any direction — a German
+teacher writing in German gets the same Ukrainian rendering a Russian
+one would.
+
+**A language this table does not carry is refused, not ignored.** The
+row width is checked against ``LOCALE_CODES`` at import and a lookup
+for an unknown language raises. Both used to be silent: a fifth locale
+got ``None`` for its column, ``terms_in`` returned ``[]``, and the
+whole register was off for that language with nothing anywhere saying
+so. See ``tests/test_a_fifth_language_is_refused_not_ignored.py``.
 """
 
 from __future__ import annotations
@@ -49,12 +57,18 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Final
 
+from app.schemas.locale import LOCALE_CODES, LanguageNotInTable
 from app.services.bible.references import parse_references
 
 if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
 
-# Each row: the concept in every language we serve. Order is ru, en, de, uk.
+# Each row: the concept in every language we serve, in the order of
+# ``LOCALE_CODES`` — ru, en, de, uk. The order is not decoration: it is
+# what ``_COLUMN`` indexes by, which is why that table is now derived
+# from the roster rather than written out a second time, and why
+# ``_verify_every_term_is_written_in_every_language`` refuses to import
+# a table that is narrower than the roster.
 #
 # Kept to terms where a translator could reasonably choose differently
 # and where the choice matters to a reader: doctrine, the shape of the
@@ -115,12 +129,69 @@ _TERMS: Final[tuple[tuple[str, str, str, str], ...]] = (
     ("родословие", "genealogy", "Geschlechtsregister", "родовід"),
 )
 
+
+def _verify_every_term_is_written_in_every_language(locales: tuple[str, ...]) -> None:
+    """Refuse to load a register that is narrower than the roster.
+
+    This one fails at **import**, which is the loudest of the three
+    places it could fail, and it is the right place for exactly one
+    reason: the rows are positional. A column is not a lookup that can
+    come back empty — it is an index into a tuple, and a table one
+    column short does not translate the fifth language badly, it stops
+    having opinions about it. ``terms_in`` returns ``[]``, the prompt
+    carries no terminology, ``missing_terms`` finds nothing absent
+    because it was never told to look, and every one of those reads as
+    a pass.
+
+    Import time costs nothing here. The check is forty comparisons over
+    a literal in this same file, so it cannot fail unless the commit
+    that broke it also edited this file or ``LOCALE_CODES`` — and CI
+    imports the app before anything is deployed, so the ugly version of
+    an import-time failure (a deploy that dies at boot) is not reachable
+    without a green pipeline that never imported the module.
+    """
+    widths = {len(row) for row in _TERMS}
+    if widths == {len(locales)}:
+        return
+    raise LanguageNotInTable(
+        f"The terminology register has rows {sorted(widths)} forms wide, and this "
+        f"platform serves {len(locales)} languages ({', '.join(locales)}). Every "
+        f"one of the {len(_TERMS)} rows in ``_TERMS`` needs one form per language, "
+        "in the order of ``LOCALE_CODES``, and the ``_TERMS`` annotation needs to "
+        "be that wide too. Leaving a language out does not weaken the register for "
+        "it — it switches the register off for it, silently: «завет» comes back "
+        "one way in one lesson and another way in the next, which is the defect "
+        "this table exists to prevent."
+    )
+
+
+_verify_every_term_is_written_in_every_language(LOCALE_CODES)
+
 _INDEX: Final[dict[str, tuple[str, str, str, str]]] = {}
 for _row in _TERMS:
     for _form in _row:
         _INDEX.setdefault(_form.lower(), _row)
 
-_COLUMN: Final[dict[str, int]] = {"ru": 0, "en": 1, "de": 2, "uk": 3}
+#: Which form of a row belongs to which language. Derived, never
+#: written out: a second copy of the roster is a second thing to forget,
+#: and forgetting this one is silent by construction — a locale absent
+#: from a hand-written map used to return ``None`` and take the whole
+#: register down with it.
+_COLUMN: Final[dict[str, int]] = {code: index for index, code in enumerate(LOCALE_CODES)}
+
+
+def _column_for(locale: str) -> int:
+    column = _COLUMN.get(locale)
+    if column is None:
+        raise LanguageNotInTable(
+            f"The terminology register has no column for {locale!r}. It carries "
+            f"{', '.join(_COLUMN)}. If this platform now serves {locale!r}, add it "
+            "to ``LOCALE_CODES`` and give every row of ``_TERMS`` its form; if it "
+            "does not, the caller is asking about a language nobody translates "
+            "into. Either way the honest answer is not an empty glossary."
+        )
+    return column
+
 
 #: Phrases where a registered word is part of a name and carries none of
 #: its register meaning. Removed before the table is consulted, in every
@@ -304,9 +375,9 @@ def terms_in(text: str, *, source_locale: LocaleCode, target_locale: LocaleCode)
     """
     if not text:
         return []
-    src_col = _COLUMN.get(source_locale)
-    tgt_col = _COLUMN.get(target_locale)
-    if src_col is None or tgt_col is None or src_col == tgt_col:
+    src_col = _column_for(source_locale)
+    tgt_col = _column_for(target_locale)
+    if src_col == tgt_col:
         return []
 
     folded = _blank_scripture_references(_fold_apostrophes(text), source_locale)
@@ -340,11 +411,14 @@ def known_forms(locale: LocaleCode) -> frozenset[str]:
     must not learn any of *these*: the register is authoritative, and two
     answers to the same question in one prompt is how a hint starts
     losing arguments it should win.
+
+    Raises rather than returning an empty set for a language the table
+    does not carry. An empty set here is indistinguishable from "the
+    register decides nothing yet", and ``term_memory`` would take that
+    at face value and start teaching the model its own vocabulary in a
+    language the school has an opinion about.
     """
-    column = _COLUMN.get(locale)
-    if column is None:
-        return frozenset()
-    return frozenset(row[column] for row in _TERMS)
+    return frozenset(row[_column_for(locale)] for row in _TERMS)
 
 
 def glossary_block(pairs: list[tuple[str, str]]) -> str:

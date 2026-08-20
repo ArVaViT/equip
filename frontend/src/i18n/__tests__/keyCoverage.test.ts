@@ -25,6 +25,7 @@ import { describe, expect, it } from "vitest"
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join, resolve, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
+import { SUPPORTED_LOCALES } from "../config"
 import en from "../locales/en.json"
 import ru from "../locales/ru.json"
 import de from "../locales/de.json"
@@ -112,6 +113,16 @@ for (const file of sourceFiles) {
 }
 
 describe("i18n key coverage", () => {
+  it("checks every language the app serves, not a list typed out here", () => {
+    // BUNDLES is hand-written because the plural class is a fact about
+    // the language that cannot be derived — but the *set* of languages
+    // can be, and a bundle missing from this list is not checked at all
+    // while every message above still says "every served language".
+    const checked = new Set(BUNDLES.map((b) => b.locale))
+    const unchecked = SUPPORTED_LOCALES.filter((locale) => !checked.has(locale))
+    expect(unchecked, `add ${unchecked.join(", ")} to BUNDLES with its plural forms`).toEqual([])
+  })
+
   it("scans a reasonable number of source files and finds t() calls", () => {
     // Guard against the test silently passing because the walk found nothing
     // (e.g. due to a bad path or stale fixture).

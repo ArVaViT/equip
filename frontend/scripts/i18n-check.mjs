@@ -22,14 +22,23 @@
 //   node scripts/i18n-check.mjs            # human-readable
 //   node scripts/i18n-check.mjs --json     # machine-readable
 
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, resolve } from "node:path"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 const REFERENCE = "en"
-const TARGETS = ["ru", "de", "uk"]
+// Every other bundle in the directory, rather than a list written out
+// here. A hand-written list is silent in the one direction that matters:
+// a fifth language would ship a bundle nobody ever compared against the
+// reference, and this script would keep reporting that every language is
+// in parity.
+const TARGETS = readdirSync(resolve(__dirname, "../src/i18n/locales"))
+  .filter((name) => name.endsWith(".json"))
+  .map((name) => name.replace(/\.json$/, ""))
+  .filter((locale) => locale !== REFERENCE)
+  .sort()
 
 function load(locale) {
   const path = resolve(__dirname, `../src/i18n/locales/${locale}.json`)

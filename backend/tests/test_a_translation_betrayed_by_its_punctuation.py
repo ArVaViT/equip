@@ -40,7 +40,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 
-from app.schemas.locale import LOCALE_CODES
+from app.schemas.locale import LOCALE_CODES, QUOTATION_MARKS
 from app.services.translation.gemini import GeminiTranslationProvider
 from app.services.translation.protocol import TranslationRequest
 from app.services.translation.typography import (
@@ -838,6 +838,22 @@ class TestEveryLanguageIsPointed:
         marker = 'Er sagte “Wort” und "Wort".'
         for locale in LOCALE_CODES:
             assert normalize_typography(marker, locale) != marker, locale
+
+    def test_each_language_is_pointed_in_its_own_marks(self) -> None:
+        # The test above asks only that *something* changed, and for a
+        # year that was all the guard there was: a frozenset of locale
+        # codes, and an if/elif chain that ended in "otherwise set it in
+        # «…»". A fifth language added to the frozenset and nowhere else
+        # passed — the string did change, into Russian's punctuation.
+        #
+        # So this one names the marks. They come from the same table
+        # ``bible/substitution.py`` reads, which is why there is nothing
+        # here to keep in step by hand: a language with no entry in
+        # ``QUOTATION_MARKS`` is refused by the pass itself, and one with
+        # an entry is pointed in exactly what the entry says.
+        for locale in LOCALE_CODES:
+            opening, closing = QUOTATION_MARKS[locale]
+            assert f"{opening}Wort{closing}" in normalize_typography('Er sagte "Wort".', locale), locale
 
 
 def _gemini_answering(text: str) -> GeminiTranslationProvider:

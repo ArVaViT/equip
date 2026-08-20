@@ -468,7 +468,19 @@ def _active_cv_rows(
                 ContentVersion.entity_type == entity_type,
                 ContentVersion.entity_id.in_(entity_ids),
                 ContentVersion.field.in_(fields),
-                ContentVersion.locale.in_(("en", "ru")),
+                # Every language served, not the two this screen was
+                # written for. The callers below both fan out over
+                # ``LOCALE_CODES`` and both say so in their docstrings —
+                # while this query, one level down, asked for en and ru.
+                # So ``has_locale["de"]`` was False for every question in
+                # the catalogue no matter what the pipeline had written,
+                # and the German cell of the review screen was empty by
+                # construction. A row of the fan-out reading a narrower
+                # list than the fan-out itself is the same defect as a
+                # per-language table with a language missing from it: no
+                # error, no gap in the UI, just an answer that is always
+                # the same.
+                ContentVersion.locale.in_(LOCALE_CODES),
                 ContentVersion.superseded_by.is_(None),
                 ContentVersion.status == ContentVersionStatus.OK,
             )
