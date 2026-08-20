@@ -21,6 +21,44 @@ _SessionLocal: sessionmaker | None = None
 IS_SERVERLESS = env_flag("VERCEL", "AWS_LAMBDA_FUNCTION_NAME")
 
 
+def open_the_transaction_the_way_we_mean_it(conn: Connection) -> None:
+    """State what this transaction needs, every time it opens.
+
+    Transaction-scoped, both of them. ``SET LOCAL`` is the only form that
+    survives Supavisor transaction pooling — a session ``SET`` would leak
+    onto whatever client gets the server connection next, and the
+    ``options`` startup parameter is dropped entirely.
+    """
+    # A 30s bound, because without it a pathological query holds a pooler
+    # slot for the 2min cluster default.
+    conn.exec_driver_sql("SET LOCAL statement_timeout = '30s'")
+    # And writable, explicitly.
+    #
+    # Supavisor hands out server connections from a shared pool,
+    # and some of them arrive carrying
+    # ``default_transaction_read_only = on`` — set at session
+    # scope by some other client and never reset. Measured on
+    # production 2026-08-20: six fresh connections in a row read
+    # ``off``, one taken minutes earlier read ``on`` with
+    # ``source = session`` while ``pg_is_in_recovery()`` was
+    # false. The database is writable; the connection was not.
+    #
+    # What that looks like from outside is a request that fails
+    # for no reason and succeeds on retry. Two admin repairs came
+    # back "Database temporarily unavailable" — the generic 503
+    # every SQLAlchemyError becomes — while the same writes
+    # through a direct connection went through. It also produced
+    # the ``cannot execute SELECT FOR UPDATE in a read-only
+    # transaction`` errors the worker logged during yesterday's
+    # incident, which read as database trouble and were not.
+    #
+    # This is not ours to fix upstream, but it is one round-trip
+    # to be immune to: SET LOCAL scopes it to this transaction,
+    # so nothing leaks back into the pool the way the poison
+    # itself did.
+    conn.exec_driver_sql("SET LOCAL default_transaction_read_only = off")
+
+
 def _get_engine() -> Engine:
     """Lazy initialization of the database engine."""
     global _engine, _SessionLocal
@@ -142,9 +180,7 @@ def _get_engine() -> Engine:
             # One cheap round-trip per transaction restores the designed 30s
             # bound — without it a pathological query holds a pooler slot
             # for the 2min cluster default.
-            @event.listens_for(_engine, "begin")
-            def _set_statement_timeout(conn: Connection) -> None:
-                conn.exec_driver_sql("SET LOCAL statement_timeout = '30s'")
+            event.listen(_engine, "begin", open_the_transaction_the_way_we_mean_it)
 
         logger.info("Database engine created successfully")
 
