@@ -401,7 +401,7 @@ class TestRememberingIsCheap:
         existing = LIVE_STORE.active_rows(db, [(t.entity_type, t.entity_id, t.field, t.target_locale) for t in tasks])
         counted.clear()
 
-        _seed_memory(TermMemory(), tasks, existing)
+        _seed_memory(TermMemory(), tasks, existing, generation=TRANSLATOR_VERSION)
 
         assert counted == []
 
@@ -457,7 +457,7 @@ class TestRememberingIsCheap:
             for t in tasks
         }
 
-        _seed_memory(memory, tasks, existing)
+        _seed_memory(memory, tasks, existing, generation=TRANSLATOR_VERSION)
 
         assert len(learned) <= 300, f"{len(learned)} fields read to seed a 3,000-task plan"
         assert learned[0] != learned[-1], "the sample is spread across the plan, not taken off the front"
