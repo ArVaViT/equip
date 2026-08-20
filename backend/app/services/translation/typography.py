@@ -101,6 +101,33 @@ and the untouched tag stream.
 Where a rule cannot be applied with certainty, the text is left alone.
 A wrong normalisation is worse than none: nobody re-reads a lesson to
 check that its commas survived.
+
+**Every rule argues from evidence, and the shape of the text is not
+evidence on its own.** That is the correction of 2026-08-20, and it came
+from reading what this module does to German that is not about the
+Bible. German writes its decimal separator as a comma and most German
+book names are ordinary German nouns or ordinary German first names, so
+``Markus 5,3 Millionen Euro`` was being republished as ``Mk. 5,3
+Millionen Euro``; four to six digits is the shape of every postal code
+and error code, so ``Postleitzahl 46032`` became ``46.032``; and English
+Title Case was retyping ``git rebase -i`` as ``Git Rebase -I``, which is
+a different command. Every one of those edits ships in the reader's own
+language with its digits intact, so nothing downstream can see it.
+
+Three courses are biblical today and the ones coming are not, so the
+answer is not a list of words to avoid — it is that each rule now names
+what would have to be true before it may act, and refuses when it is not:
+
+* a book is renamed only on Cyrillic script, German's own abbreviation,
+  a leading ordinal, or brackets holding nothing but the reference;
+* a number is grouped only when a capitalised German noun or a unit sign
+  follows it — a count is followed by what it counts, an identifier
+  counts nothing;
+* a title word is raised only when it is not part of a command line, a
+  path, a file name or a backticked span.
+
+Each of those costs something, and the cost is written down beside the
+rule.
 """
 
 from __future__ import annotations
@@ -109,7 +136,12 @@ import re
 from typing import TYPE_CHECKING, Final
 
 from app.schemas.locale import QUOTATION_MARKS
-from app.services.bible.books import display_book_name, find_book, written_as_a_book_name
+from app.services.bible.books import (
+    display_book_name,
+    find_book,
+    find_book_written_in,
+    written_as_a_book_name,
+)
 
 if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
@@ -146,6 +178,18 @@ _URL_RE: Final[re.Pattern[str]] = re.compile(
 # ``&quot;`` and ``&#39;`` are quotes the browser will render and the
 # rules here cannot read. Masked so a rule never lands inside one.
 _ENTITY_RE: Final[re.Pattern[str]] = re.compile(r"&(?:#\d{1,6}|#[xX][0-9a-fA-F]{1,6}|[A-Za-z][A-Za-z0-9]{1,31});")
+
+# A backtick pair is what an author writes when there is no ``<code>``
+# element to hand — in a chapter title, in a quiz option, in a sentence
+# of prose. Inside it is code, and code is where a straight quote, a
+# hyphen and a lower-case initial are all load bearing.
+#
+# The boundary test is what keeps this off the languages that type an
+# apostrophe as a backtick: ``п`ять … ім`я`` has a letter welded to both
+# marks, so neither opens a span, and the Ukrainian rule still gets to
+# fix them. A span opens only where prose does not put an apostrophe —
+# after a space or a bracket — and closes the same way.
+_BACKTICK_SPAN_RE: Final[re.Pattern[str]] = re.compile(r"(?<!\w)`[^`\n]*`(?!\w)")
 
 _TAG_NAME_RE: Final[re.Pattern[str]] = re.compile(r"</?([A-Za-z][A-Za-z0-9]*)")
 
@@ -198,7 +242,7 @@ def _scan_markup(text: str) -> tuple[list[bool], list[_Tag]]:
 def _prose_mask(text: str) -> tuple[list[bool], list[_Tag]]:
     """``free[i]`` is True when index ``i`` is prose a rule may rewrite."""
     free, tags = _scan_markup(text)
-    for pattern in (_URL_RE, _ENTITY_RE):
+    for pattern in (_URL_RE, _ENTITY_RE, _BACKTICK_SPAN_RE):
         for match in pattern.finditer(text):
             _mask_span(free, match.start(), match.end())
     return free, tags
@@ -655,9 +699,86 @@ def _lower_small_word(text: str, out: list[str], indices: list[int], head: int) 
         out[head] = lower
 
 
+# A title may hold a command line, and a command line is not prose.
+# ``Using git rebase -i to Clean Up a Branch`` came back as ``Using Git
+# Rebase -I to Clean up a Branch`` — and ``-i`` and ``-I`` are different
+# flags, so a reader who copies the heading runs a different command.
+# Title Case's safety argument ("the worst it can do is capitalise a
+# common noun") does not survive contact with code.
+#
+# So a run of non-space characters carrying a mark prose does not use is
+# left exactly as its author wrote it: a leading ``-`` or ``/`` (a flag,
+# a path), an underscore, ``=``, ``$``, ``@``, ``|``, ``~``, an inner
+# slash, ``()``, or a dot welded between two characters (``app.py``,
+# ``v1.2``, ``e.g.``).
+_CODE_MARKS: Final[frozenset[str]] = frozenset("_\\=$@|~")
+_WELDED_DOT_RE: Final[re.Pattern[str]] = re.compile(r"\w\.\w")
+
+
+def _looks_like_code(run: str) -> bool:
+    if len(run) > 1 and run[0] in "-/":
+        return True
+    if any(char in _CODE_MARKS for char in run):
+        return True
+    if "/" in run or "()" in run:
+        return True
+    return bool(_WELDED_DOT_RE.search(run))
+
+
+def _space_runs(text: str, free: list[bool], start: int, end: int) -> list[tuple[int, int]]:
+    """The span's runs of visible prose, split on whitespace and markup."""
+    runs: list[tuple[int, int]] = []
+    opened = -1
+    for index in range(start, end):
+        if free[index] and not text[index].isspace():
+            if opened < 0:
+                opened = index
+            continue
+        if opened >= 0:
+            runs.append((opened, index))
+            opened = -1
+    if opened >= 0:
+        runs.append((opened, end))
+    return runs
+
+
+def _code_runs(text: str, runs: list[tuple[int, int]]) -> set[int]:
+    """Which runs the title rule may not touch.
+
+    The code-shaped ones, and then leftwards from every flag: a command
+    line reads from its flags back to the command that owns them, and
+    every part of that command is lower case. ``git`` and ``rebase``
+    belong to ``git rebase -i``; ``Using`` carries a capital already and
+    stops the walk, as does the first word of the title itself.
+    """
+    protected = {index for index, (begin, stop) in enumerate(runs) if _looks_like_code(text[begin:stop])}
+    for index in sorted(protected):
+        begin, _ = runs[index]
+        if text[begin] != "-":
+            # A path is not a command. Only a flag owns the words to its
+            # left, and ``/etc/hosts`` owns nothing.
+            continue
+        neighbour = index - 1
+        # Never as far as the run that opens the title: a title's first
+        # word is a title word whatever follows it, and a walk that ate
+        # it turned ``running rm -rf on a volume`` into a heading with no
+        # capital at all.
+        while neighbour >= 1:
+            run = text[runs[neighbour][0] : runs[neighbour][1]]
+            if not run.isalnum() or not run.islower():
+                break
+            protected.add(neighbour)
+            neighbour -= 1
+    return protected
+
+
 def _title_case_span(text: str, free: list[bool], out: list[str], start: int, end: int) -> None:
+    runs = _space_runs(text, free, start, end)
+    untouchable = [runs[index] for index in _code_runs(text, runs)]
     words = _title_words(text, free, start, end)
     for position, (indices, fresh) in enumerate(words):
+        if any(begin <= indices[0] < stop for begin, stop in untouchable):
+            continue
         if any(text[index].isdigit() for index in indices):
             continue
         letters = [index for index in indices if text[index].isalpha()]
@@ -725,23 +846,64 @@ def _apply_english_titles(
 #    Apostelgeschichte erzählt…" is a sentence about a book, not a
 #    citation, and rewriting it would be a straightforward error.
 #
-# So a name is only ever rewritten when the numbers behind it prove it
-# is a citation, and "prove" is graded by how much evidence the form
-# itself already carries:
+# The first version of this rule argued from the numbers alone: a word,
+# a chapter, a comma and a verse was a citation. That reading is wrong
+# in German, and wrong in the most ordinary way there is. **German
+# writes its decimal separator as a comma**, so ``Wort 5,3`` is not a
+# rare shape a citation happens to share — it is how German writes every
+# number that is not a whole one. And most German book names are also
+# ordinary German first names or ordinary German nouns: Markus, Daniel,
+# Ruth, Titus, Johannes, Richter, Prediger, Genesis. Put the two
+# together and the pass was republishing
 #
-# * A name written in **Cyrillic** — ``Ин. 3:16``, ``1 Кор. 13`` sitting
-#   in a German table — needs only a chapter. There is no reading in
-#   which a Cyrillic word followed by a number is German prose, and a
-#   reference left in the source language is the single most obvious
-#   tell a translated page can carry.
-# * A name written in **German** needs a chapter *and a verse*.
-#   ``Apostelgeschichte 8`` is as likely to be the subject of a sentence
-#   ("Apostelgeschichte 8 erzählt davon") as a citation, and the
-#   counts the editor took are all chapter-and-verse. A chapter on its
-#   own is left as it stands.
-# * A German name directly after an article — ``die
-#   Apostelgeschichte 1,8`` — is left alone as well, because ``die Apg.
-#   1,8`` is not something anybody would write.
+#     Markus 5,3 Millionen Euro Umsatz   →   Mk. 5,3 Millionen Euro
+#     Daniel 3,4 Prozent stimmten zu     →   Dan. 3,4 Prozent
+#     Ruth 2,1 Jahre nach dem Umzug      →   Rut 2,1 Jahre
+#
+# in the reader's own language, with every digit intact — so no
+# validator downstream could see anything wrong. This module runs after
+# the model, on every German string, and it renamed a person.
+#
+# The platform serves three biblical courses today and will serve others
+# that are not, so the fix cannot be a list of German words to avoid.
+# The name is simply never evidence by itself. Something in the span has
+# to prove it is a citation:
+#
+# **To touch the span at all** — even just to repoint its numbers — the
+# name must be one German itself prints (``find_book_written_in``), or
+# Cyrillic. ``Rev.`` and ``Ex.`` are in the shared alias table and are
+# not German; a German reader meets them as *Revision* and *Exemplar*,
+# and ``Zeichnung Rev. 3:2`` is a drawing revision, not Revelation.
+#
+# **To rewrite the name**, one of four things has to be true:
+#
+# * It is written in **Cyrillic** — ``Ин. 3:16``, ``1 Кор. 13`` sitting
+#   in a German table — and then a chapter alone is evidence enough.
+#   There is no reading in which a Cyrillic word followed by a number is
+#   German prose, and a reference left in the source language is the
+#   single most obvious tell a translated page can carry.
+# * It is already German's own **abbreviation**, give or take the
+#   printed dot: ``Apg`` → ``Apg.``, ``Röm`` → ``Röm.``. An abbreviation
+#   is not a German word, and the edit only ever restores a full stop.
+# * It carries a **leading ordinal** — ``1. Korinther 13,4``,
+#   ``2. Samuel 3,4``. German does not put an ordinal in front of a
+#   first name and a decimal behind it.
+# * It **stands alone inside brackets** — ``(Genesis 1,1)`` — with
+#   nothing in the brackets but the name and its numbers. That is a
+#   citation and cannot be read as anything else.
+#
+# Everything else keeps the spelling its author gave it, including every
+# spelled-out German name in running prose. That is a real loss:
+# ``Apostelgeschichte 1,8`` no longer converges on ``Apg. 1,8`` where it
+# stands bare in a sentence, and the editor's count of 2026-08-20 says
+# that is 48 references. It is the loss this rule chooses. An
+# unabbreviated citation is a citation somebody may not love the look
+# of; a renamed person is a factual error published in German.
+#
+# A German name in any of the four cases still needs a chapter *and* a
+# verse, and still may not sit directly behind an article — ``die
+# Apostelgeschichte 1,8`` is a noun phrase, and ``die Apg. 1,8`` is not
+# something anybody would write.
 #
 # Everything is settled by ``bible/books.py``, which reads Russian,
 # English, German and Ukrainian names and writes any of them. Building
@@ -807,6 +969,15 @@ _DE_REFERENCE_RE: Final[re.Pattern[str]] = re.compile(
 )
 
 _NUM_TOKEN_RE: Final[re.Pattern[str]] = re.compile(r"\d+|;[ ]|.", re.DOTALL)
+
+# ``1. Korinther``, ``2. Samuel``, ``3. Johannes``. The ordinal belongs
+# to the book, and German prose has no use for one in front of a first
+# name that is followed by a decimal.
+_DE_LEADING_ORDINAL: Final[re.Pattern[str]] = re.compile(r"^[1-5]\.?[  ]")
+
+# A bracket that holds a reference and nothing else is a citation in any
+# language and in any subject.
+_BRACKET_PAIRS: Final[dict[str, str]] = {"(": ")", "[": "]"}
 
 
 def _repoint_german_numbers(nums: str) -> str | None:
@@ -905,8 +1076,39 @@ def _preceding_word(book: str, offset: int) -> str:
     return head[-1] if head else ""
 
 
-def _may_rename(form: str, repointed: str, book: str, offset: int) -> bool:
-    """Whether the evidence is strong enough to rewrite the book's name."""
+def _reads_as_german(form: str, slug: str) -> bool:
+    """Whether this span may be edited at all.
+
+    The name has to be one German itself prints, or Cyrillic. Everything
+    else — an English or Latin abbreviation that the shared alias table
+    happens to know — is a word this page's reader will read as German,
+    and the numbers behind it are that word's numbers, not a chapter and
+    a verse.
+    """
+    if any(_is_cyrillic(char) for char in form):
+        return True
+    return find_book_written_in(form, "de") == slug
+
+
+def _spelled_the_same(one: str, other: str) -> bool:
+    """Two printed forms differing only by the abbreviation dot or case."""
+    return one.strip().rstrip(".").casefold() == other.strip().rstrip(".").casefold()
+
+
+def _stands_alone_in_brackets(text: str, start: int, end: int) -> bool:
+    """``(Genesis 1,1)`` — a bracket holding the reference and nothing else."""
+    before = text[start - 1] if start > 0 else ""
+    after = text[end] if end < len(text) else ""
+    return before in _BRACKET_PAIRS and _BRACKET_PAIRS[before] == after
+
+
+def _may_rename(text: str, span: tuple[int, int], form: str, slug: str, repointed: str, book: str, offset: int) -> bool:
+    """Whether the evidence is strong enough to rewrite the book's name.
+
+    Four ways in, and the name on its own is not one of them — see the
+    note above. ``Markus``, ``Daniel``, ``Ruth`` and ``Titus`` reach
+    every test here and fail all four, which is the whole point.
+    """
     if any(_is_cyrillic(char) for char in form):
         # A Cyrillic name in German text is wrong whatever follows it;
         # a chapter number is only needed to know it is a citation.
@@ -914,7 +1116,14 @@ def _may_rename(form: str, repointed: str, book: str, offset: int) -> bool:
     if "," not in repointed:
         # No verse. ``Apostelgeschichte 8`` may well be a sentence.
         return False
-    return _preceding_word(book, offset).lower() not in _DE_DETERMINERS
+    if _preceding_word(book, offset).lower() in _DE_DETERMINERS:
+        return False
+    canonical = display_book_name(slug, "de")
+    if canonical is not None and _spelled_the_same(form, canonical):
+        return True
+    if _DE_LEADING_ORDINAL.match(form):
+        return True
+    return _stands_alone_in_brackets(text, *span)
 
 
 def _normalize_german_references(text: str) -> str:
@@ -932,9 +1141,15 @@ def _normalize_german_references(text: str) -> str:
         if resolved is None:
             continue
         offset, form, slug = resolved
+        if not _reads_as_german(form, slug):
+            continue
+        name_start = match.start("book") + offset
         canonical = display_book_name(slug, "de")
-        if canonical is not None and canonical != form and _may_rename(form, repointed, match.group("book"), offset):
-            name_start = match.start("book") + offset
+        if (
+            canonical is not None
+            and canonical != form
+            and _may_rename(text, (name_start, num_end), form, slug, repointed, match.group("book"), offset)
+        ):
             edits.append((name_start, name_start + len(form), canonical))
         if repointed != nums:
             edits.append((num_start, num_end, repointed))
@@ -961,8 +1176,49 @@ def _normalize_german_references(text: str) -> str:
 # Everything adjacent to a digit, a separator, a dash or a slash is out
 # of reach, which is what keeps the rule off verse numbers, decimals,
 # ranges, ratios and ports.
+#
+# None of which was enough, because a run of four to six digits is also
+# the shape of every identifier anybody writes down. The rule was
+# grouping
+#
+#     Die Postleitzahl 46032 gehört zu Carmel.  →  46.032
+#     Rufen Sie die Nebenstelle 4021 an.        →  4.021
+#     Fehlercode 50012 bedeutet Zeitüberschreitung. →  50.012
+#
+# and a ZIP code with a thousands separator in it is not a typographic
+# preference, it is a wrong number.
+#
+# What separates the two is not the digits, it is whether the number
+# counts anything. **A count is followed by what it counts** — 3000
+# *Menschen*, 5000 *Männer*, 144000 *Versiegelte*, 12500 *Euro* — and
+# German capitalises every noun, without exception. An identifier counts
+# nothing, so what follows it is a verb or a preposition, and those are
+# lower case. That is the whole test, and it is worth stating what it
+# deliberately is not: not a list of label words (*Nummer*, *Code*,
+# *PLZ*, *Artikel*, *Nebenstelle*…). Such a list is unbounded —
+# *Fehlercode*, *Bestellnummer*, *Zimmernummer*, *IBAN*, *ISBN*, *DIN* —
+# and every course on a new subject would bring words nobody put in it.
+# German orthography needs no list and does not rot.
+#
+# The cost is a count that stands at the end of its clause ("Es waren
+# 3000.") or in front of an adjective ("5000 hungrige Männer"): those
+# keep their bare digits. An ungrouped count reads slightly less German.
+# A grouped ZIP code is wrong.
 _DE_THOUSANDS_RE: Final[re.Pattern[str]] = re.compile(r"(?<![\d.,:/%–—-])\d{4,6}(?![\d.,:/%–—-])")
 _DE_YEAR_RANGE: Final[range] = range(1000, 2100)
+
+# What may stand in for the capitalised noun: the sign of the thing
+# being counted, written where the noun would be.
+_DE_UNIT_SIGNS: Final[frozenset[str]] = frozenset("€$£₴₽¥%‰")
+
+
+def _counts_something(text: str, end: int) -> bool:
+    """Whether a capitalised German noun — or a unit sign — follows."""
+    rest = text[end:]
+    if rest[:1] in {" ", "\xa0"}:
+        rest = rest[1:]
+    head = rest[:1]
+    return bool(head) and (head.isupper() or head in _DE_UNIT_SIGNS)
 
 
 def _group_german_thousands(text: str) -> str:
@@ -974,6 +1230,8 @@ def _group_german_thousands(text: str) -> str:
             continue
         value = int(match.group())
         if value in _DE_YEAR_RANGE:
+            continue
+        if not _counts_something(text, end):
             continue
         edits.append((start, end, f"{value:,}".replace(",", ".")))
     return _splice(text, edits)
