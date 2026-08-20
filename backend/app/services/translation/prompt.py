@@ -45,6 +45,7 @@ from typing import TYPE_CHECKING
 
 from app.schemas.locale import LOCALE_DISPLAY_NAMES
 from app.services.translation.glossary import glossary_block, terms_in
+from app.services.translation.term_memory import memory_block
 
 if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
@@ -183,6 +184,7 @@ def build_user_prompt(
     source_locale: LocaleCode | None = None,
     target_locale: LocaleCode | None = None,
     rewrite_notes: tuple[str, ...] = (),
+    term_memory: tuple[tuple[str, str], ...] = (),
 ) -> str:
     """Return the user message body.
 
@@ -204,6 +206,18 @@ def build_user_prompt(
     if source_locale and target_locale:
         pairs = terms_in(text, source_locale=source_locale, target_locale=target_locale)
         hint += glossary_block(pairs)
+    if term_memory:
+        # After the glossary, and never instead of it: the register is a
+        # rule and this is a report of what the neighbours did. The two
+        # never collide because ``term_memory`` refuses to learn a word
+        # the register already decides — see ``glossary.known_forms``.
+        #
+        # Scrubbed like every other interpolated string: these words come
+        # out of a previous translation, which is model output, which is
+        # no more trusted than the input.
+        hint += memory_block(
+            tuple((_scrub_fence_lookalikes(source), _scrub_fence_lookalikes(target)) for source, target in term_memory)
+        )
     if context:
         # Strip stray fence-looking sequences in the operator-supplied
         # context too — we never trust strings interpolated into the prompt.

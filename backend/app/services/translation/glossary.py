@@ -195,6 +195,21 @@ def terms_in(text: str, *, source_locale: LocaleCode, target_locale: LocaleCode)
     return found
 
 
+def known_forms(locale: LocaleCode) -> frozenset[str]:
+    """Every word this table already decides, in ``locale``.
+
+    Exposed for ``translation/term_memory.py``, which learns the school's
+    vocabulary from what a course has already been translated into and
+    must not learn any of *these*: the register is authoritative, and two
+    answers to the same question in one prompt is how a hint starts
+    losing arguments it should win.
+    """
+    column = _COLUMN.get(locale)
+    if column is None:
+        return frozenset()
+    return frozenset(row[column] for row in _TERMS)
+
+
 def glossary_block(pairs: list[tuple[str, str]]) -> str:
     """Render the pairs as prompt lines, or an empty string for none."""
     if not pairs:
@@ -269,4 +284,4 @@ def missing_terms(
     return absent
 
 
-__all__ = ["glossary_block", "missing_terms", "terms_in"]
+__all__ = ["glossary_block", "known_forms", "missing_terms", "terms_in"]

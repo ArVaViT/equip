@@ -84,6 +84,14 @@ class TranslationRequest:
     # into "зобов'язуюча", it prefers it, and asking again the same way
     # gets the same answer.
     rewrite_notes: tuple[str, ...] = ()
+    # Names this course has already been given in ``target_locale``, as
+    # ``(the form this text uses, the form the course used)``. A
+    # preference, never an instruction — see
+    # ``translation/term_memory.py`` for why it is worded the way it is
+    # and for how a pair gets here at all. Empty for every caller that
+    # has no course around it, which is every synchronous path and every
+    # test that does not care.
+    term_memory: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
