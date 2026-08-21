@@ -77,6 +77,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
     from app.services.translation.budget import TranslationBudget
+    from app.services.translation.completeness import TranslationGap
     from app.services.translation.protocol import ContentKind, TranslationProvider
 
 logger = logging.getLogger(__name__)
@@ -113,6 +114,12 @@ class SweepReport:
     examined: int = 0
     queued: int = 0
     complete: int = 0
+    #: Courses with a gap that looked actionable and that the pass the
+    #: worker would run does not address — see ``_gaps_the_plan_can_close``.
+    #: Counted because "queued 0, complete 0" is otherwise indistinguishable
+    #: from "queued 0, everything fine", and the difference is a course
+    #: that will never finish.
+    stalled: int = 0
     #: Rows written by the platform-wide announcement pass. Courses are
     #: queued and translated on a later tick; announcements are done in
     #: this one, so they are counted in rows and not in jobs.
@@ -136,6 +143,13 @@ def sweep_courses(
     a complete course costs one walk and one timestamp write, and
     ``enqueue_course_translation`` is idempotent, so a course already in
     the queue is not queued twice.
+
+    Two things stop a course being queued, and they are different. A gap
+    only a person can move (``UNACTIONABLE_GAP_REASONS``) is named: we
+    know what it is and who has to act. A gap the plan produces no task
+    for is unnamed — it means the check and the pass disagree, which is a
+    bug in one of them — so it is refused *and* logged at WARNING, and
+    counted in ``SweepReport.stalled``. See ``_gaps_the_plan_can_close``.
 
     Also runs ``sweep_global_announcements``, because this is the one
     thing the worker calls when the queue is empty and a platform-wide
@@ -169,7 +183,7 @@ def sweep_courses(
     if not courses:
         return SweepReport(announcement_rows=announcement_rows)
 
-    examined = queued = complete = 0
+    examined = queued = complete = stalled = 0
     now = datetime.now(UTC)
     for course in courses:
         examined += 1
@@ -212,6 +226,31 @@ def sweep_courses(
             )
             continue
 
+        # The last question, and the general one: of the gaps that look
+        # like work, is any of them work *this* pipeline would do?
+        #
+        # ``UNACTIONABLE_GAP_REASONS`` above answers that by enumerating
+        # the shapes we already know about, and each of the four
+        # occurrences so far arrived in a shape the previous enumeration
+        # did not cover. So this asks the plan instead of guessing: the
+        # pass the worker is about to run is ``plan_course_tasks``, and a
+        # gap it produces no task for is a gap the job cannot close, for
+        # whatever reason — one nobody has to have thought of first.
+        closable = _gaps_the_plan_can_close(db, course, actionable)
+        if not closable:
+            stalled += 1
+            # WARNING, not INFO: on this deployment INFO from application
+            # loggers does not reach the log drain, and this is the exact
+            # condition that spent a day looking healthy. Every job it
+            # produced finished ``done``.
+            logger.warning(
+                "sweep: course %s has %d gap(s) the pipeline plans no work for %s; not queued",
+                course.id,
+                len(actionable),
+                completeness.by_locale(),
+            )
+            continue
+
         enqueue_course_translation(db, str(course.id))
         queued += 1
         logger.info(
@@ -229,8 +268,52 @@ def sweep_courses(
         examined=examined,
         queued=queued,
         complete=complete,
+        stalled=stalled,
         announcement_rows=announcement_rows,
     )
+
+
+def _gaps_the_plan_can_close(db: Session, course: Course, gaps: list[TranslationGap]) -> list[TranslationGap]:
+    """Which of ``gaps`` the worker's own pass produces a task for.
+
+    The check and the plan are built from the same walk and the same
+    field specs, so in a healthy course this returns everything it was
+    given and costs one tree walk. It exists for the case where they
+    disagree — which has now happened four times, each time in a shape
+    the previous fix did not anticipate:
+
+    * a course fetched two different ways, so the check counted binned
+      chapters the plan skipped (``course_tree``);
+    * a field whose only human row was filed under a locale the reader
+      resolver would not answer at, so the check required nothing
+      (``registry._authored_texts``);
+    * ``failed_permanent`` collapsed into ``failed``, so a terminal row
+      read as retryable (``completeness``);
+    * a hydrated ``course.title == ""`` against an un-hydrated
+      ``AttributeError``, so the check required three languages of a
+      title the plan had dropped (``registry.entity_field_specs``).
+
+    Each was fixed at its own root, and each was invisible until somebody
+    counted jobs. This is the backstop for the fifth: not a diagnosis,
+    just the refusal to queue a job that provably has nothing to do.
+
+    Deliberately a *necessary* condition and not a sufficient one. A task
+    can exist and still be skipped — the executor decides that from rows
+    this function does not read — so a course is queued whenever the plan
+    so much as mentions one of its gaps. Erring that way is the point:
+    queueing a job that turns out to be a no-op costs two seconds, and
+    refusing to queue one that would have worked stops a course being
+    translated at all, silently. A provider outage stays on the queueing
+    side, which is what makes the catalogue resume the minute the
+    provider does — the plan is built from source text and knows nothing
+    about whether the provider is answering.
+    """
+    from app.services.translation.course_pipeline import plan_course_tasks
+
+    planned = {
+        (task.entity_type, task.entity_id, task.field, task.target_locale) for task in plan_course_tasks(db, course)
+    }
+    return [gap for gap in gaps if (gap.entity_type, gap.entity_id, gap.field, gap.locale) in planned]
 
 
 def _global_announcement_sources(db: Session) -> dict[str, list[TranslationFieldSpec]]:
