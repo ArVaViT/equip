@@ -13,9 +13,10 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import re
 import time
 from dataclasses import replace
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 
 import httpx
 
@@ -45,6 +46,19 @@ from app.services.translation.typography import normalize_typography
 from app.services.translation.validation import tag_names
 
 logger = logging.getLogger(__name__)
+
+#: A markdown code fence, opening (with an optional language tag) or
+#: closing. It has to be recognised in two positions, because
+#: production has both: on its own line, and welded to the end of a
+#: tag — the live row reads `</h2>` immediately followed by the
+#: opening fence. Either way the marker must run to the end of its
+#: line, which is what keeps a pair of backticks used inline in prose
+#: out of it: that is punctuation, and this pass has no business
+#: touching it.
+_FENCE_MARKER: Final[re.Pattern[str]] = re.compile(
+    r"(?:(?<=^)|(?<=>))[ \t]*```[a-zA-Z0-9]*[ \t]*(?=\r?\n|\Z)\r?\n?",
+    re.MULTILINE,
+)
 
 _API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
@@ -319,6 +333,20 @@ class GeminiTranslationProvider:
         # off the text: an English chapter title is title-cased and the
         # identical words in a paragraph are not, and the only thing
         # that knows which this is, is the field it came from.
+        # Before pointing it: take out a code fence the model volunteered.
+        # It has to happen here rather than in ``_parse_response`` because
+        # the decision needs the source — a lesson that genuinely teaches
+        # markdown carries the fence in the Russian too, and then it is
+        # content.
+        unfenced = self._drop_markdown_fence(result.text, request.text)
+        if unfenced != result.text:
+            logger.warning(
+                "gemini: removed a markdown fence the source did not have entity_kind=%s locale=%s",
+                request.content_kind,
+                request.target_locale,
+            )
+            result = replace(result, text=unfenced)
+
         pointed = normalize_typography(result.text, request.target_locale, request.content_kind)
         if pointed != result.text:
             result = replace(result, text=pointed)
@@ -779,6 +807,32 @@ class GeminiTranslationProvider:
                 "maxOutputTokens": self._max_output_tokens,
             },
         }
+
+    @staticmethod
+    @staticmethod
+    def _drop_markdown_fence(translated: str, source: str) -> str:
+        """Remove a code fence the model added and the author never wrote.
+
+        Asked for HTML, the model sometimes answers in a markdown code
+        block — ```html, the markup, ```. The scaffolding unwrapper above
+        does not see it, because it looks for the tokens the prompt
+        supplied; this is the model volunteering a different convention.
+
+        Production shipped one: a live Ukrainian lesson body carries an
+        opening fence welded to the end of a heading and a bare closing
+        one at the end of the block — three backticks, twice, on a page
+        students read. It passed every check.
+        The markup either side is intact, so the tag comparison balances;
+        a fence is not a tag.
+
+        Conditioned on the source, not on the shape of the reply. A lesson
+        that genuinely teaches markdown would carry the fence in the
+        Russian too, and then it is content and stays. Only a fence the
+        author did not write is scaffolding.
+        """
+        if "```" not in translated or "```" in source:
+            return translated
+        return _FENCE_MARKER.sub("", translated)
 
     @staticmethod
     def _unwrap_echoed_fence(text: str) -> str:
