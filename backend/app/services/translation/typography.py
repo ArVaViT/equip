@@ -285,13 +285,65 @@ def _splice(text: str, edits: list[tuple[int, int, str]]) -> str:
 # rewritten — to decide whether a string is safe to touch at all.
 _QUOTE_CHARS: Final[frozenset[str]] = frozenset('"«»„“”')
 
+# Whitespace, and the absence of any character at all. Named because
+# two rules below need exactly this set: a quotation mark opens after
+# it, and — see ``_opens_quotation`` — a dash is punctuation rather than
+# part of a word when it stands after it.
+_WHITESPACE_CONTEXT: Final[frozenset[str]] = frozenset({"", " ", "\t", "\n", "\r", "\xa0"})
+
 # A quotation mark opens when what precedes it is nothing, whitespace, an
 # opening bracket, a dash, or a colon. Anything else — a letter, a comma,
 # a full stop — closes. Markup is transparent for this test, so ``<em>"``
 # reads as a quote at the start of a sentence rather than one after ``>``.
-_OPENING_CONTEXT: Final[frozenset[str]] = frozenset(
-    {"", " ", "\t", "\n", "\r", "\xa0", "(", "[", "{", "—", "–", "-", "/", ":", "«", "„", "“", "‚", "‘", "*", "|", "…"}
+_OPENING_CONTEXT: Final[frozenset[str]] = _WHITESPACE_CONTEXT | frozenset(
+    {"(", "[", "{", "—", "–", "-", "/", ":", "«", "„", "“", "‚", "‘", "*", "|", "…"}
 )
+
+# The three dashes are in that set, and they are the one entry in it
+# that does not settle the question on its own.
+#
+# A dash *standing as punctuation* does open a quotation — the dialogue
+# dash German and Ukrainian both set, ``— „Komm her“``, and the
+# parenthetical ``Der Weg – „der schmale“ – endet hier``. A dash *welded
+# to the word in front of it* is not punctuation at all: it is a hyphen,
+# and the word it belongs to has simply been cut short. Production,
+# 2026-08-21, a German lesson on looking a word up by its stem:
+#
+#     nicht nach dem häufigen: „Senf-“, nicht „Korn“.
+#
+# ``„Senf-“`` is a truncated word in quotation marks, which is ordinary
+# German. The mark after the hyphen *closes* it — and the pass, reading
+# the hyphen and nothing else, wrote ``„Senf-„``: an opening mark where
+# a quotation ends, in the reader's own language, on the one line of the
+# lesson that shows what to type into a concordance.
+#
+# One more character of context separates the two, and it is the
+# character before the dash. Punctuation stands apart from the word in
+# front of it; a hyphen is welded to it. So a dash opens a quotation
+# only when whitespace — or the start of the block — precedes the dash
+# itself.
+#
+# The tempting larger answer is to carry a *depth*: a quotation already
+# open must close before another can open, which settles ``„Senf-“``
+# without looking at the hyphen at all. It was measured over the live
+# catalogue on 2026-08-21 and it is wrong, for a reason that has nothing
+# to do with dashes: **depth cannot read a nested quotation**. German
+# and Ukrainian both set an inner quotation in the same characters as
+# the outer one, and the catalogue has them —
+#
+#     „(Dem Vorsänger, nach: „Hirschkuh der Morgenröte“. Ein Psalm…)“
+#     «Чи справді Бог сказав: «Не їжте плодів…»?»
+#
+# — where alternating on a count turns the inner opening mark into a
+# closing one and the inner closing mark into an opening one. The
+# context rule reads both correctly, because ``: `` opens and a letter
+# closes whatever the count says. Replacing it with depth repaired 30
+# rows of one defect and broke 4 nested quotations; used only as a
+# tie-break for dashes it repaired 3 rows and still carried the state.
+# Neither is worth a cascade: a mistake in a positional rule stays in
+# the character it was made on, while a mistake in a counted one
+# inverts every mark after it in the block.
+_DASH_CONTEXT: Final[frozenset[str]] = frozenset({"—", "–", "-"})
 
 # A new block is a new place to start, and the character before it is not
 # evidence about the character after it.
@@ -369,6 +421,21 @@ _CYRILLIC_END: Final[str] = "ӿ"
 
 def _is_cyrillic(char: str) -> bool:
     return _CYRILLIC_START <= char <= _CYRILLIC_END
+
+
+def _opens_quotation(previous: str, before_previous: str) -> bool:
+    """True when a quotation mark in this position is an opening one.
+
+    ``previous`` is the character before the mark and ``before_previous``
+    the one before that — both as *written* by this pass, and both empty
+    at the start of a block. The second character is read for dashes and
+    for nothing else: a dash that stands apart from the word in front of
+    it is punctuation and opens a quotation, a dash welded to that word
+    is a hyphen and does not. See ``_DASH_CONTEXT``.
+    """
+    if previous in _DASH_CONTEXT:
+        return before_previous in _WHITESPACE_CONTEXT
+    return previous in _OPENING_CONTEXT
 
 
 def _quotes_balance(text: str, free: list[bool]) -> bool:
@@ -603,15 +670,21 @@ def _apply_quote_rules(text: str, free: list[bool], tags: list[_Tag], out: list[
     boundaries = sorted(end for name, _closing, _start, end in tags if name in _BLOCK_ELEMENTS)
     next_boundary = 0
     previous = ""
+    # The character before ``previous``. Read only when ``previous`` is
+    # a dash, to tell a hyphen welded to a word from punctuation
+    # standing on its own — it travels with ``previous`` and is reset
+    # wherever ``previous`` is.
+    before_previous = ""
     for index, char in enumerate(text):
         while next_boundary < len(boundaries) and boundaries[next_boundary] <= index:
             previous = ""
+            before_previous = ""
             next_boundary += 1
         if not free[index]:
             continue
         before = text[index - 1] if index > 0 and free[index - 1] else ""
         after = text[index + 1] if index + 1 < len(text) and free[index + 1] else ""
-        opening = previous in _OPENING_CONTEXT
+        opening = _opens_quotation(previous, before_previous)
 
         if char in _QUOTE_CHARS:
             if repoint_quotes:
@@ -625,7 +698,7 @@ def _apply_quote_rules(text: str, free: list[bool], tags: list[_Tag], out: list[
         # differently on a second pass and ``""`` would settle at ``„“``
         # once and ``„„`` the time after. Carrying the output forward
         # makes pass two see exactly what pass one saw.
-        previous = out[index]
+        before_previous, previous = previous, out[index]
 
 
 # ---------------------------------------------------------------------------
