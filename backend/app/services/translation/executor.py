@@ -642,6 +642,83 @@ def _rank(issues: list[ValidationIssue]) -> tuple[int, int]:
     )
 
 
+@dataclass(frozen=True, slots=True)
+class _Collision:
+    """Another option of the same question that already says exactly this.
+
+    ``text`` is that option's translation — the wording the new one has to
+    be told about, because a note that does not say what to differ from
+    cannot be acted on. ``sibling_source`` is what the same option says in
+    the author's language, and it is the evidence that the two were ever
+    meant to be different; ``None`` when the pass cannot see it.
+    """
+
+    sibling_id: str
+    text: str
+    sibling_source: str | None
+
+
+#: What a person is told when a collision survives. Also the ``detail`` of
+#: the issue the ranking below weighs, so the same sentence explains the
+#: parked row and decides the comparison.
+_COLLISION_REVIEW_REASON = (
+    "[option_collision] This answer option is now word for word "
+    "identical to another option of the same question. A quiz "
+    "whose wrong answers have been turned into the right one "
+    "cannot be answered."
+)
+
+#: What the translator is told when a collision is found — the one thing
+#: the pipeline never used to do with this defect.
+#:
+#: It names the constraint and stops. What has to change is a fact about
+#: the pair ("these two are now the same string, and their sources are
+#: not"), not a word: a note that proposed one would be this file
+#: translating into Ukrainian, which it cannot do, and the model would
+#: take the proposal whether or not it was the better rendering. Both
+#: sources are quoted because the distinction to preserve is between
+#: them, and the twin's translation because that is the string to be
+#: unlike. Nothing here suggests a rendering.
+#:
+#: Measured against the live model on 2026-08-21, on the pair that put
+#: the three rows in the review queue — "Understand it" and "Comprehend
+#: it", one daily-challenge question, English source. Asked cold,
+#: Ukrainian came back «Зрозуміти це» for both, which is the production
+#: defect reproduced. Fourteen correcting asks across uk and de: twelve
+#: came back distinct — «Осягніть це», «Усвідомте це», «Begreife es»,
+#: «Erfasse es» — and two came back the identical string again, which is
+#: why the park stays and why there is exactly one ask.
+#:
+#: The sentence about pronouns and endings was added because of what the
+#: other rolls returned: «Зрозуміти його», distinct as a string and not
+#: distinct as an answer. It did not fix that case — a note names a
+#: constraint, it does not enforce one — and the check downstream only
+#: ever promised that two options are not the same string. Naming it
+#: costs nothing and it is what a reader would say.
+_COLLISION_NOTE = (
+    "[option_collision] Your translation of this answer option came back word for word "
+    "identical to the translation already recorded for a different option of the same "
+    "question, which is «{twin}». The two options do not say the same thing in "
+    "{source_locale}: this one says «{source}» and the other says «{sibling_source}». A "
+    "student has to be able to tell them apart, so translate this option again with a "
+    "rendering that is distinguishable from «{twin}» and still says exactly what its own "
+    "source says. A different pronoun, article, case ending or punctuation mark is not a "
+    "distinction a student can act on: the two options have to read as different answers. "
+    "Do not move it towards the meaning of the other option, do not add an explanation, "
+    "and keep it the length of an answer option."
+)
+
+
+def _as_one_option_reads(text: str) -> str:
+    """Two options a student cannot tell apart are the same option.
+
+    Spacing and case are not a distinction on a multiple-choice list, so
+    they are removed before anything is compared — a collision and the
+    sameness of two sources are the same question asked twice.
+    """
+    return " ".join(text.split()).casefold()
+
+
 def _collides_with_a_sibling_option(
     db: Session,
     task: TranslationTask,
@@ -650,6 +727,23 @@ def _collides_with_a_sibling_option(
     unsettled: Container[tuple[str, str, str, str]] = frozenset(),
 ) -> bool:
     """Has this option become a copy of another option of the same question?
+
+    Yes or no, for every caller that only needs to know whether the row
+    can be served. ``_colliding_sibling`` answers the same question and
+    says which option and in what words, which is what a note back to the
+    translator needs.
+    """
+    return _colliding_sibling(db, task, text, unsettled=unsettled) is not None
+
+
+def _colliding_sibling(
+    db: Session,
+    task: TranslationTask,
+    text: str,
+    *,
+    unsettled: Container[tuple[str, str, str, str]] = frozenset(),
+) -> _Collision | None:
+    """Which option of the same question this text has turned into, if any.
 
     The one defect a per-string check cannot see, because nothing is
     wrong with the string. Told what question it answers, the model
@@ -673,10 +767,10 @@ def _collides_with_a_sibling_option(
     is last generation's answer — see the note on the query below.
     """
     if task.entity_type not in ("quiz_option", "daily_challenge_option"):
-        return False
-    stripped = " ".join(text.split()).casefold()
+        return None
+    stripped = _as_one_option_reads(text)
     if not stripped:
-        return False
+        return None
 
     if task.entity_type == "quiz_option":
         from app.models.quiz import QuizOption as Option
@@ -685,7 +779,7 @@ def _collides_with_a_sibling_option(
 
     question_id = db.query(Option.question_id).filter(Option.id == _as_uuid(task.entity_id)).scalar()
     if question_id is None:
-        return False
+        return None
     sibling_ids = [
         str(row[0])
         for row in db.query(Option.id).filter(
@@ -694,7 +788,7 @@ def _collides_with_a_sibling_option(
         )
     ]
     if not sibling_ids:
-        return False
+        return None
 
     # Only siblings this run is not about to rewrite.
     #
@@ -728,16 +822,50 @@ def _collides_with_a_sibling_option(
         if (task.entity_type, sibling_id, task.field, task.target_locale) not in unsettled
     ]
     if not sibling_ids:
-        return False
+        return None
 
-    rows = db.query(ContentVersion.text).filter(
+    rows = db.query(ContentVersion.entity_id, ContentVersion.text).filter(
         ContentVersion.entity_type == task.entity_type,
         ContentVersion.entity_id.in_(sibling_ids),
         ContentVersion.field == task.field,
         ContentVersion.locale == task.target_locale,
         ContentVersion.superseded_by.is_(None),
     )
-    return any(" ".join((row[0] or "").split()).casefold() == stripped for row in rows)
+    for sibling_id, sibling_text in rows:
+        if _as_one_option_reads(sibling_text or "") != stripped:
+            continue
+        return _Collision(
+            sibling_id=str(sibling_id),
+            text=sibling_text or "",
+            sibling_source=_source_text_of(db, task, str(sibling_id)),
+        )
+    return None
+
+
+def _source_text_of(db: Session, task: TranslationTask, sibling_id: str) -> str | None:
+    """What a sibling option says in the author's language.
+
+    Read only when a collision has already been found — three rows in the
+    whole production corpus — so the check keeps the single query it has
+    always cost, and the second one is paid for by the defect.
+
+    ``None`` means the pass cannot see the sibling's source at all, and
+    that is the case where it must not argue: with nothing to compare,
+    "these two options are meant to differ" is an assumption, and a
+    question whose source really does list the same answer twice is
+    broken upstream of anything a translator can fix.
+    """
+    return (
+        db.query(ContentVersion.text)
+        .filter(
+            ContentVersion.entity_type == task.entity_type,
+            ContentVersion.entity_id == sibling_id,
+            ContentVersion.field == task.field,
+            ContentVersion.locale == task.source_locale,
+            ContentVersion.superseded_by.is_(None),
+        )
+        .scalar()
+    )
 
 
 def _as_uuid(value: str) -> Any:
@@ -750,6 +878,140 @@ def _as_uuid(value: str) -> Any:
         return value
 
 
+def _ask_again_for_a_distinct_option(
+    db: Session,
+    task: TranslationTask,
+    text: str,
+    collision: _Collision,
+    provider: TranslationProvider,
+    budget: TranslationBudget | None,
+    *,
+    unsettled: Container[tuple[str, str, str, str]] = frozenset(),
+) -> tuple[str, _Collision | None]:
+    """Tell the translator its two options came out the same, and ask once
+    more. Returns the wording to write and the collision that survives it.
+
+    The pipeline already had the mechanism and never pointed it at this
+    defect: ``_review_and_correct`` sends an objection back as
+    ``rewrite_notes`` and asks again, and a collision is the most
+    actionable objection there is — it is a fact about two strings, not
+    an opinion about one. Ukrainian tells «Understand it» from
+    «Comprehend it» without difficulty; what happened in production is
+    that nobody said there was anything to tell apart.
+
+    **One ask.** The same bound as ``_review_and_correct``, for the same
+    reason: a loop that keeps going until two strings differ can be fed
+    a question whose source really does repeat itself and will spend a
+    budget discovering that. So the note goes out once. What comes back
+    is either better or it is not, and a collision that survives parks
+    exactly as it parked before — going quiet would be worse than
+    parking, because two identical options in a live quiz is the thing
+    this whole check exists to catch.
+
+    **Why a note and not a retry.** Sampling is at temperature 0, so
+    asking the identical question again returns the identical answer
+    (see the note in ``_ask``). The note is the only thing that can
+    change the outcome, which is also why there is no point asking twice.
+
+    **Which of the two rows moves.** The collision is symmetric — two
+    options, one string — but the pass is not. ``unsettled`` means a
+    sibling this run has still to write says nothing, so the option
+    written first is never compared to the one still queued: only the
+    later one is ever asked to change, and the earlier one is already on
+    the page and stays as it is. Two rows cannot chase each other, in
+    this pass or across passes, because the row that moves is always the
+    one still in hand.
+
+    **Not asked at all** in three cases. Two are decided here: the two
+    sources say the same thing, or the sibling's source cannot be read
+    at all — a question that lists one answer twice is broken where no
+    translator can reach, and without the sibling's source that is a
+    guess. The third is decided by the caller: a row already going to a
+    person for a structural defect is parked either way, so the call
+    would buy that person nothing.
+    """
+    if collision.sibling_source is None:
+        return text, collision
+    if _as_one_option_reads(collision.sibling_source) == _as_one_option_reads(task.text):
+        # The two options are the same option in the author's language.
+        # Nothing the model returns can make them differ without saying
+        # something the source does not say, so this goes to a person as
+        # it always did — and the reason it needs one is upstream.
+        logger.warning(
+            "option_collision_in_source entity=%s locale=%s",
+            task.entity_id,
+            task.target_locale,
+        )
+        return text, collision
+
+    note = _COLLISION_NOTE.format(
+        twin=collision.text,
+        source=task.text,
+        sibling_source=collision.sibling_source,
+        source_locale=task.source_locale,
+    )
+    try:
+        corrected = _translate(
+            provider,
+            TranslationRequest(
+                text=task.text,
+                source_locale=task.source_locale,
+                target_locale=task.target_locale,
+                content_kind=task.content_kind,
+                context=task.context,
+                rewrite_notes=(note,),
+                # No term memory. It exists to make a course agree with
+                # itself on what a word is called, and this ask is the
+                # one place where agreeing with the wording already
+                # recorded is the defect.
+            ),
+            budget,
+        )
+    except (TranslationError, TranslationPaused):
+        # A correction that could not be made is not a verdict on the
+        # text. The row parks with what it had, as before.
+        return text, collision
+
+    # Ranked, not accepted. A second answer is a second roll, and one
+    # that stopped colliding by dropping a placeholder or answering in
+    # the wrong language is not a fix — ``_rank`` already knows how to
+    # weigh that, and the collision is handed to it as the blocking
+    # issue it is so that the answer which gave in to its neighbour
+    # cannot win by being tidy. The incumbent's own structural issues
+    # are not in the scale because there are none: a row that had any
+    # was never sent here.
+    #
+    # Two consequences worth naming. A candidate that still collides can
+    # never beat an incumbent that only collides, because both carry the
+    # same blocking issue and ties go to the incumbent. And a candidate
+    # that wins has no blocking issue of its own — nothing else could
+    # get it under ``(1, 0)`` — so the wording written below needs no
+    # summary and no parking, which is why this returns text and
+    # collision and nothing more.
+    still = _colliding_sibling(db, task, corrected.text, unsettled=unsettled)
+    candidate = _issues_in(task, corrected)
+    if still is not None:
+        candidate.append(_collision_issue())
+    if _rank(candidate) >= _rank([_collision_issue()]):
+        return text, collision
+
+    logger.info(
+        "option_collision_corrected entity=%s locale=%s was=%r now=%r",
+        task.entity_id,
+        task.target_locale,
+        text[:60],
+        corrected.text[:60],
+    )
+    return corrected.text, still
+
+
+def _collision_issue() -> ValidationIssue:
+    """A collision as something ``_rank`` can weigh: blocking, because a
+    question a student cannot answer is not served, and not advisory,
+    because the model has not heard this complaint before."""
+    return ValidationIssue(code="option_collision", detail=_COLLISION_REVIEW_REASON, blocking=True)
+
+
 def _record(
     db: Session,
     answer: _Answer,
@@ -757,12 +1019,25 @@ def _record(
     *,
     generation: int,
     unsettled: Container[tuple[str, str, str, str]] = frozenset(),
+    provider: TranslationProvider | None = None,
+    budget: TranslationBudget | None = None,
 ) -> Outcome:
     """Phase three: back on the caller's session, one write at a time.
 
     ``generation`` is stamped onto whatever is written. It is the run's
     number, fixed before the first call went out, so every row of a
     plan carries the pipeline that actually produced it.
+
+    The one provider call this phase can make lives here: an answer
+    option that came back a copy of its neighbour is asked again with a
+    note saying so. It has to be here, because the collision is the one
+    defect that cannot be seen without the database — phase two runs
+    without one, deliberately. It costs the pass its concurrency for the
+    length of one call, on a defect that is three rows in the production
+    corpus, which is cheaper than routing the answer back into a thread
+    pool that has already shut down. ``provider`` is optional so that
+    every caller with nothing to ask — the tests that record a made-up
+    answer — records exactly as it always did.
     """
     task = answer.task
     if answer.deferred:
@@ -799,13 +1074,22 @@ def _record(
     if answer.text is None:
         return "failed"
 
-    twin_of_a_sibling = _collides_with_a_sibling_option(db, task, answer.text, unsettled=unsettled)
-    if twin_of_a_sibling:
+    text = answer.text
+    collision = _colliding_sibling(db, task, text, unsettled=unsettled)
+    if collision is not None and provider is not None and answer.issues_summary is None:
+        text, collision = _ask_again_for_a_distinct_option(
+            db, task, text, collision, provider, budget, unsettled=unsettled
+        )
+    twin_of_a_sibling = collision is not None
+    if collision is not None:
+        # Named, so a person opening the review queue can find the other
+        # half of the pair without going looking for it.
         logger.warning(
-            "option_collision entity=%s locale=%s text=%r",
+            "option_collision entity=%s locale=%s twin=%s text=%r",
             task.entity_id,
             task.target_locale,
-            answer.text[:60],
+            collision.sibling_id,
+            text[:60],
         )
 
     parked = answer.issues_summary is not None or twin_of_a_sibling
@@ -824,21 +1108,11 @@ def _record(
         entity_id=task.entity_id,
         field=task.field,
         locale=task.target_locale,
-        text=answer.text,
+        text=text,
         source_locale=task.source_locale,
         source_hash=task.source_hash,
         status=ContentVersionStatus.NEEDS_REVIEW if parked else ContentVersionStatus.OK,
-        review_reason=(
-            answer.issues_summary
-            or (
-                "[option_collision] This answer option is now word for word "
-                "identical to another option of the same question. A quiz "
-                "whose wrong answers have been turned into the right one "
-                "cannot be answered."
-                if twin_of_a_sibling
-                else None
-            )
-        ),
+        review_reason=(answer.issues_summary or (_COLLISION_REVIEW_REASON if twin_of_a_sibling else None)),
         translator_version=generation,
     )
     return "needs_review" if parked else "translated"
@@ -1087,6 +1361,8 @@ def execute_plan(
                     store,
                     generation=run_generation,
                     unsettled=unsettled,
+                    provider=provider,
+                    budget=active_budget,
                 )
                 if outcome in ("translated", "needs_review"):
                     # Written, so it is now what a reader sees and the
