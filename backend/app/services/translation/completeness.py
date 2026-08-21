@@ -60,7 +60,7 @@ from app.models.course import CourseStatus
 from app.schemas.locale import LOCALE_CODES, LocaleCode, normalize_locale
 from app.services.translation.course_tree import iter_course_entities
 from app.services.translation.hash import compute_source_hash
-from app.services.translation.registry import entity_field_specs
+from app.services.translation.registry import authored_texts_for_entities, entity_field_specs
 from app.services.translation.service import is_translation_enabled
 from app.services.translation.version import TRANSLATOR_VERSION
 
@@ -178,9 +178,21 @@ def course_translation_completeness(db: Session, course: Course) -> TranslationC
     # …and the hash of the text those translations are supposed to be of.
     expected: dict[tuple[str, str, str], str] = {}
 
-    for entity_type, entity in iter_course_entities(db, course):
+    # The walk, twice: once to know who is in it, once to ask about them.
+    # The first pass costs nothing — ``iter_course_entities`` is already
+    # materialised — and it turns one statement per entity into one per
+    # entity type. See ``registry.authored_texts_for_entities`` for the
+    # production measurement that made this necessary.
+    walked = list(iter_course_entities(db, course))
+    authored = authored_texts_for_entities(
+        db,
+        [(entity_type, str(entity.id)) for entity_type, entity in walked],  # type: ignore[attr-defined]
+        preferred_locale=course_source,
+    )
+
+    for entity_type, entity in walked:
         entity_id = str(entity.id)  # type: ignore[attr-defined]
-        for spec in entity_field_specs(db, entity_type, entity, course_source):
+        for spec in entity_field_specs(db, entity_type, entity, course_source, authored):
             targets: set[str] = {code for code in LOCALE_CODES if code != spec.source_locale}
             if not targets:
                 continue
