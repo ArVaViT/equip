@@ -254,10 +254,32 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
     # kept serving its old translation in three languages until somebody
     # noticed. Thirty-eight of them did exactly that after the bilingual
     # English sources were cleaned up on 2026-08-19.
-    current_hash: dict[tuple[str, str], str] = {}
+    # Every hash the author's text could have, not one of them.
+    #
+    # A field may carry more than one human row — the Daily Challenge is
+    # written in English and in Russian, and production has both for the
+    # same question. The translation was made from one of them, and which
+    # one is not recorded anywhere except in the hash it kept.
+    #
+    # This used to keep a single hash per field and let the last row of
+    # an unordered result set win. When that was the row the translation
+    # was NOT made from, the machine rows disagreed with it forever: the
+    # question was reopened on every sweep, translated nothing because
+    # every field was already current, and was reopened again on the next
+    # one. Measured on 2026-08-20: the pool sweep spent every idle tick
+    # on the same five questions — 24 rows each, all four locales, all
+    # `ok`, all at the current generation — while 2,983 rows genuinely
+    # behind were never reached. Five ticks a minute, none of them work.
+    #
+    # A machine row is a translation of something the author wrote if it
+    # matches ANY of the author's rows for that field. Only when it
+    # matches none of them is it a translation of a sentence that has
+    # since been edited — which is the thing this check was added to
+    # catch, and it still catches it.
+    current_hashes: dict[tuple[str, str], set[str]] = {}
     for _entity_type, entity_id, field, locale, status, origin, _hash, _version, text in rows:
         if origin == "human" and status == ContentVersionStatus.OK and text:
-            current_hash[(entity_id, field)] = compute_source_hash(text, locale=locale)
+            current_hashes.setdefault((entity_id, field), set()).add(compute_source_hash(text, locale=locale))
 
     servable: dict[tuple[str, str], set[str]] = {}
     # Locales the sweep cannot move: parked for a person to read, or out
@@ -272,8 +294,8 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
             servable.setdefault((entity_id, field), set()).add(locale)
             if origin == "mt" and source_hash is None:
                 reopened.add(entity_id)
-            expected = current_hash.get((entity_id, field))
-            if origin == "mt" and expected is not None and source_hash != expected:
+            expected = current_hashes.get((entity_id, field))
+            if origin == "mt" and expected and source_hash not in expected:
                 reopened.add(entity_id)
             if origin == "mt" and translator_version < TRANSLATOR_VERSION:
                 # Serving fine, made by rules we have since improved on.
