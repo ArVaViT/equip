@@ -48,7 +48,7 @@ from app.services.translation.orchestrator import (
 from app.services.translation.service import is_translation_enabled
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
     from datetime import datetime
 
     from sqlalchemy.orm import Session
@@ -558,6 +558,7 @@ def entity_field_specs(
     entity_type: EntityType,
     entity: object,
     source_locale: LocaleCode,
+    authored: AuthoredTexts | None = None,
 ) -> list[TranslationFieldSpec]:
     """Return the translatable fields of ``entity`` with their source text
     and the language that text is actually in.
@@ -653,13 +654,42 @@ def entity_field_specs(
     # here: their columns were dropped in Phase 5e/5f (cohort,
     # chapter_block, assignment, course_event, announcement, quiz,
     # quiz_question, quiz_option) and in Phase 5g (course, module).
-    cv_source_texts: dict[str, tuple[str, LocaleCode] | None] = _authored_texts(
-        db,
-        entity_type=entity_type,
-        entity_id=str(entity.id),  # type: ignore[attr-defined]
-        fields=[fs.name for fs in reg.fields],
-        preferred_locale=declared,
-    )
+    # One statement for a walk, one for a single entity.
+    #
+    # Reading the author's rows for every field is what makes this
+    # function's answer a property of the database rather than of who
+    # hydrated the entity — and that is not negotiable, it is what stops
+    # the check and the plan disagreeing. But it is one round trip per
+    # entity, and ``course_translation_completeness`` walks every entity
+    # of a course on every idle worker tick.
+    #
+    # Measured against production, 2026-08-20: three live courses took
+    # 95.6 s to check, against a 180 s tick that reserves 96 s for one
+    # in-flight model call. Nothing was left. The Daily Challenge pool
+    # sweep runs after the course sweep on the same budget, so it could
+    # not afford a single call, and 2,983 of its rows stayed at pipeline
+    # generation 2 while the course tree finished at 10 — a third of the
+    # corpus frozen by a check that had spent the minute it needed.
+    #
+    # (The language detector was the other suspect and was measured out:
+    # 0.05 ms per field, 0.1 s for the whole walk. It is round trips.)
+    #
+    # So a caller that is about to walk many entities reads them all in
+    # one statement and passes the result down. A caller with one entity
+    # passes nothing and gets exactly the query it got before — saving a
+    # single edited block must not read a whole course.
+    cv_source_texts: dict[str, tuple[str, LocaleCode] | None]
+    if authored is not None:
+        prefetched = authored.get((entity_type, str(entity.id)))  # type: ignore[attr-defined]
+        cv_source_texts = dict(prefetched) if prefetched is not None else {}
+    else:
+        cv_source_texts = _authored_texts(
+            db,
+            entity_type=entity_type,
+            entity_id=str(entity.id),  # type: ignore[attr-defined]
+            fields=[fs.name for fs in reg.fields],
+            preferred_locale=declared,
+        )
 
     fields: list[TranslationFieldSpec] = []
     for fs in reg.fields:
@@ -706,6 +736,88 @@ def entity_field_specs(
 #: model is being shown what the lesson is talking about, not asked to
 #: reproduce its markup.
 _PLAIN_TEXT: Final[re.Pattern[str]] = re.compile(r"<[^>]+>")
+
+
+#: How many entity ids go into one ``IN (…)``. A course tree fits in
+#: one; the bound is here so a platform-wide walk cannot build a
+#: statement with ten thousand parameters.
+_AUTHORED_CHUNK: Final[int] = 500
+
+
+#: What a walk hands down: every entity's author rows, read once.
+#: Keyed ``(entity_type, entity_id)``, valued exactly as
+#: ``_authored_texts`` returns.
+AuthoredTexts = dict[tuple[str, str], dict[str, tuple[str, "LocaleCode"] | None]]
+
+
+def authored_texts_for_entities(
+    db: Session,
+    entities: Sequence[tuple[str, str]],
+    *,
+    preferred_locale: LocaleCode,
+) -> AuthoredTexts:
+    """``_authored_texts`` for many entities, in one statement.
+
+    Same answer, same tie-breaks, same shape — the only difference is
+    how many round trips it costs. A walk that used to spend one per
+    entity now spends one per walk; a caller with a single entity has no
+    reason to come here and keeps using ``_authored_texts`` directly.
+
+    Chunked, because ``entity_id IN (…)`` with several thousand
+    parameters is its own kind of slow, and a course tree is comfortably
+    inside one chunk.
+    """
+    from app.models.content_version import ContentVersion, ContentVersionStatus
+
+    result: AuthoredTexts = {}
+    if not entities:
+        return result
+
+    by_type: dict[str, list[str]] = {}
+    for entity_type, entity_id in entities:
+        by_type.setdefault(entity_type, []).append(entity_id)
+
+    for entity_type, ids in by_type.items():
+        if entity_type not in REGISTRY:
+            continue
+        reg = REGISTRY[entity_type]
+        field_names = [fs.name for fs in reg.fields]
+        rows: list[Any] = []
+        for start in range(0, len(ids), _AUTHORED_CHUNK):
+            chunk = ids[start : start + _AUTHORED_CHUNK]
+            rows.extend(
+                db.query(
+                    ContentVersion.entity_id,
+                    ContentVersion.field,
+                    ContentVersion.locale,
+                    ContentVersion.text,
+                    ContentVersion.created_at,
+                )
+                .filter(
+                    ContentVersion.entity_type == entity_type,
+                    ContentVersion.entity_id.in_(chunk),
+                    ContentVersion.field.in_(field_names),
+                    ContentVersion.origin == "human",
+                    ContentVersion.status == ContentVersionStatus.OK,
+                    ContentVersion.superseded_by.is_(None),
+                )
+                .all()
+            )
+
+        best: dict[tuple[str, str], tuple[str, LocaleCode]] = {}
+        ranked: dict[tuple[str, str], tuple[int, datetime]] = {}
+        for entity_id, field, locale, text, created_at in rows:
+            if not text or not str(text).strip():
+                continue
+            key = (entity_id, field)
+            rank = (0 if locale == preferred_locale else 1, created_at)
+            if key not in ranked or rank < ranked[key]:
+                ranked[key] = rank
+                best[key] = (text, normalize_locale(locale))
+
+        for entity_id in ids:
+            result[(entity_type, entity_id)] = {name: best.get((entity_id, name)) for name in field_names}
+    return result
 
 
 def _authored_texts(
