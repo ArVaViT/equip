@@ -146,6 +146,14 @@ _REASON_BY_STATUS: dict[str, GapReason] = {
 # cost at one batch of calls per tick rather than a whole catalogue.
 # A course does need to keep re-queueing while the provider is down;
 # that is what makes it translate the minute the provider returns.
+#
+# This set is an enumeration, and every eternal-requeue so far arrived in
+# a shape it did not enumerate — the fourth was a gap whose reason was an
+# ordinary ``missing`` and which the plan nonetheless produced no task
+# for. Nothing belongs here that a worker tick could close, so the
+# general answer is not a fifth member: it is
+# ``reconciler._gaps_the_plan_can_close``, which stops guessing and asks
+# the plan.
 UNACTIONABLE_GAP_REASONS: frozenset[GapReason] = frozenset({"needs_review", "failed_permanent"})
 
 

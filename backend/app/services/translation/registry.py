@@ -542,6 +542,17 @@ ENTITY_MODEL: dict[EntityType, type] = {
 # ---------------------------------------------------------------------------
 
 
+def _is_blank(value: object) -> bool:
+    """No text here — whether that is ``None``, ``""`` or three spaces.
+
+    One predicate rather than three spellings, because the difference
+    between ``None`` and ``""`` on a translatable field is an artefact of
+    which read path last touched the object, and nothing this module
+    should ever act on. See ``entity_field_specs``.
+    """
+    return value is None or not str(value).strip()
+
+
 def entity_field_specs(
     db: Session,
     entity_type: EntityType,
@@ -558,8 +569,16 @@ def entity_field_specs(
     notion of which fields count and what language each one is in — a
     second implementation would be a second implementation that drifts.
 
-    Empty and whitespace-only fields are dropped: there is nothing to
-    translate and nothing to wait for.
+    A field with no text anywhere — not on the model, not in an active
+    human ``content_versions`` row — is dropped: there is nothing to
+    translate and nothing to wait for. That is what makes "a required
+    (field, locale) pair whose source does not exist" impossible to
+    construct: the requirement and the plan are both built from what this
+    function returns, so a field with no source produces neither.
+
+    The answer must not depend on whether the caller hydrated the entity
+    first. See the note on blankness below — that dependency is exactly
+    how the two callers came to disagree.
     """
     reg = REGISTRY[entity_type]
     # Declared language of whatever owns this entity — the course for
@@ -590,26 +609,72 @@ def entity_field_specs(
     # answering here would make the pipeline translate its own output,
     # and a course would drift a language further from its author with
     # every pass.
-    cv_source_texts: dict[str, tuple[str, LocaleCode] | None] = {}
-    field_names_needing_cv: list[str] = [fs.name for fs in reg.fields if getattr(entity, fs.attr, None) is None]
-    if field_names_needing_cv:
-        cv_source_texts = _authored_texts(
-            db,
-            entity_type=entity_type,
-            entity_id=str(entity.id),  # type: ignore[attr-defined]
-            fields=field_names_needing_cv,
-            preferred_locale=declared,
-        )
+    #
+    # Asked for EVERY field, not only the ones whose model attribute
+    # happens to be ``None`` — and that "happens to be" is the whole
+    # story of 2026-08-20.
+    #
+    # ``populate_spine_texts`` resolves ``course.title`` for display at
+    # ONE locale and writes the answer onto the instance. Whether a walk
+    # sees a column, a display resolution, or nothing at all is therefore
+    # a property of the *caller*, not of the entity: ``plan_course_tasks``
+    # walks a course fetched through ``get_course``, which hydrates;
+    # ``course_translation_completeness`` walks the one the sweep selected
+    # itself, which does not. Two callers, two answers, same field — and a
+    # disagreement between the plan and the check is a gap nothing can
+    # close, because the check demands what the plan never produces.
+    #
+    # It bit twice in the same course, in opposite directions:
+    #
+    # * No row at ``ru`` at all, so the hydration wrote ``""``. The
+    #   un-hydrated check read the author's English row and required
+    #   de/ru/uk; the hydrated plan read ``""`` as "the author wrote
+    #   nothing" and produced no task. Measured: 645 jobs, one every two
+    #   minutes for a day, every one finishing ``done`` with nothing
+    #   written — and since the sweep's queue was never empty, the
+    #   idle-tick Daily Challenge sweep never ran once. 2,988 of its rows
+    #   sat at pipeline generation 2 while the course tree reached 10.
+    # * Then, the moment a Russian translation of that English title
+    #   existed, the hydration resolved ``title`` to the machine's own
+    #   Russian and handed it back as the source. The plan would have
+    #   re-translated the pipeline's output and filed it under a hash the
+    #   check does not expect — the same loop again, one generation
+    #   further from the author every pass.
+    #
+    # So the author's text is read from the author's rows, always, and
+    # the model attribute is the fallback rather than the other way
+    # round. The answer is then a function of the database alone, which
+    # is the only way two callers can be relied on to agree.
+    #
+    # The model attribute still answers for an entity that has a column
+    # and no cv row yet — a just-created row inside the same transaction,
+    # a fixture, a Daily Challenge question. It costs one indexed query
+    # per entity, which is what the majority of entity types already paid
+    # here: their columns were dropped in Phase 5e/5f (cohort,
+    # chapter_block, assignment, course_event, announcement, quiz,
+    # quiz_question, quiz_option) and in Phase 5g (course, module).
+    cv_source_texts: dict[str, tuple[str, LocaleCode] | None] = _authored_texts(
+        db,
+        entity_type=entity_type,
+        entity_id=str(entity.id),  # type: ignore[attr-defined]
+        fields=[fs.name for fs in reg.fields],
+        preferred_locale=declared,
+    )
 
     fields: list[TranslationFieldSpec] = []
     for fs in reg.fields:
-        text = getattr(entity, fs.attr, None)
+        # The author's row first, the model attribute second. Blank on
+        # either side counts as absent: the difference between ``None``,
+        # ``""`` and three spaces is an artefact of which read path last
+        # touched the object, never a statement about the text.
         authored_locale: LocaleCode | None = None
-        if text is None:
-            found = cv_source_texts.get(fs.name)
-            if found is not None:
-                text, authored_locale = found
-        if text is None or not str(text).strip():
+        text: Any | None
+        found = cv_source_texts.get(fs.name)
+        if found is not None:
+            text, authored_locale = found
+        else:
+            text = getattr(entity, fs.attr, None)
+        if _is_blank(text):
             continue
         # Per-field language detection: the entity's actual content
         # may be in a language different from the course's declared
