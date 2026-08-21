@@ -21,8 +21,6 @@ from __future__ import annotations
 
 import re
 
-import pytest
-
 
 class TestEveryTransactionSaysWhatItNeeds:
     def test_a_transaction_asks_for_a_writable_connection(self) -> None:
@@ -38,8 +36,12 @@ class TestEveryTransactionSaysWhatItNeeds:
 
         open_the_transaction_the_way_we_mean_it(_Recording())  # type: ignore[arg-type]
 
-        assert "SET LOCAL default_transaction_read_only = off" in said, (
+        assert "SET TRANSACTION READ WRITE" in said, (
             "a connection that arrives read-only must not decide what this transaction may do"
+        )
+        assert "default_transaction_read_only" not in " ".join(said), (
+            "that GUC is the mode the NEXT transaction starts in; setting it here "
+            "changed nothing and production kept answering 503"
         )
 
     def test_it_still_bounds_how_long_a_statement_may_run(self) -> None:
@@ -60,23 +62,39 @@ class TestEveryTransactionSaysWhatItNeeds:
 
 
 class TestTheStatementIsScopedToOneTransaction:
-    @pytest.mark.parametrize(
-        "statement",
-        ["SET LOCAL statement_timeout = '30s'", "SET LOCAL default_transaction_read_only = off"],
-    )
-    def test_nothing_is_set_at_session_scope(self, statement: str) -> None:
-        """Both statements must be ``SET LOCAL``.
-
-        A bare ``SET`` would leak onto whatever client gets this server
-        connection next — which is exactly how the poison being defended
-        against got into the pool in the first place. Fixing a leak by
-        leaking in the other direction would be worse than the leak.
-        """
+    def test_the_timeout_is_set_local(self) -> None:
+        """A bare ``SET`` would leak onto whatever client gets this
+        server connection next — which is how the poison being defended
+        against got into the pool in the first place."""
         import inspect
 
         from app.core import database
 
         source = inspect.getsource(database)
-        assert statement in source
-        bare = re.findall(r'exec_driver_sql\("SET (?!LOCAL)', source)
+        assert "SET LOCAL statement_timeout = '30s'" in source
+
+    def test_the_write_mode_names_the_current_transaction(self) -> None:
+        """``SET LOCAL default_transaction_read_only = off`` is what this
+        said first, and it does nothing: that GUC is the mode the NEXT
+        transaction begins in, and this one has already begun. The
+        statement ran, production kept answering 503, and the deploy that
+        supposedly carried the fix carried nothing."""
+        import inspect
+
+        from app.core import database
+
+        source = inspect.getsource(database.open_the_transaction_the_way_we_mean_it)
+        assert "SET TRANSACTION READ WRITE" in source
+        assert "default_transaction_read_only = off" not in source
+
+    def test_nothing_is_set_at_session_scope(self) -> None:
+        """Fixing a leak by leaking in the other direction would be worse
+        than the leak. ``SET TRANSACTION`` is transaction-scoped by
+        definition; every other statement here must say ``LOCAL``."""
+        import inspect
+
+        from app.core import database
+
+        source = inspect.getsource(database)
+        bare = re.findall(r'exec_driver_sql\("SET (?!LOCAL|TRANSACTION)', source)
         assert not bare, f"a session-scoped SET would poison the pool for the next client: {bare}"
