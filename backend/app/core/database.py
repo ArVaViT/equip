@@ -24,10 +24,11 @@ IS_SERVERLESS = env_flag("VERCEL", "AWS_LAMBDA_FUNCTION_NAME")
 def open_the_transaction_the_way_we_mean_it(conn: Connection) -> None:
     """State what this transaction needs, every time it opens.
 
-    Transaction-scoped, both of them. ``SET LOCAL`` is the only form that
-    survives Supavisor transaction pooling — a session ``SET`` would leak
-    onto whatever client gets the server connection next, and the
-    ``options`` startup parameter is dropped entirely.
+    Transaction-scoped, both of them, and neither at session scope: a
+    session ``SET`` would leak onto whatever client gets this server
+    connection next — which is how the poison being defended against
+    got into the pool in the first place — and the ``options`` startup
+    parameter is dropped entirely by Supavisor.
     """
     # A 30s bound, because without it a pathological query holds a pooler
     # slot for the 2min cluster default.
@@ -53,10 +54,26 @@ def open_the_transaction_the_way_we_mean_it(conn: Connection) -> None:
     # incident, which read as database trouble and were not.
     #
     # This is not ours to fix upstream, but it is one round-trip
-    # to be immune to: SET LOCAL scopes it to this transaction,
-    # so nothing leaks back into the pool the way the poison
-    # itself did.
-    conn.exec_driver_sql("SET LOCAL default_transaction_read_only = off")
+    # ``SET TRANSACTION``, not ``SET LOCAL
+    # default_transaction_read_only``, which is what this said first and
+    # which does nothing at all here. That GUC is the mode the NEXT
+    # transaction starts in; this one has already begun, and its own
+    # read-only property was fixed at BEGIN from whatever the poisoned
+    # connection carried. The statement ran, changed a setting nobody
+    # would read, and production went on answering 503 — visible in the
+    # logs the morning after, from a deploy that supposedly carried the
+    # fix.
+    #
+    # ``SET TRANSACTION READ WRITE`` names the current transaction and
+    # must be its first statement, which is exactly what a begin hook is.
+    # Scoped to this transaction either way, so nothing leaks back into
+    # the pool the way the poison itself did.
+    #
+    # It raises on a hot standby — "cannot set transaction read-write
+    # mode during recovery" — and that is the right noise: this engine is
+    # the writable one, and a primary silently in read-only is the
+    # failure being fixed.
+    conn.exec_driver_sql("SET TRANSACTION READ WRITE")
 
 
 def _get_engine() -> Engine:
