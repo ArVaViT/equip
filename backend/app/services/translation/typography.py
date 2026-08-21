@@ -337,14 +337,59 @@ _WHITESPACE_CONTEXT: Final[frozenset[str]] = frozenset({"", " ", "\t", "\n", "\r
 # inverts every mark after it in the block.
 _DASH_CONTEXT: Final[frozenset[str]] = frozenset({"—", "–", "-"})
 
-# A quotation mark opens when what precedes it is nothing, whitespace, an
-# opening bracket, a dash, or a colon. Anything else — a letter, a comma,
-# a full stop — closes. Markup is transparent for this test, so ``<em>"``
-# reads as a quote at the start of a sentence rather than one after ``>``.
-# The dashes are named separately above and composed in here so that the
-# set and its one qualification cannot drift apart.
+# A colon and an ellipsis are *not* in the set below, and the reason is
+# worth stating because both look like they belong there.
+#
+# A colon does introduce a quotation — ``Er sagte: „Wort“`` — but every
+# language this module points writes that colon with a **space** after
+# it, and when the space is there the space is what the rule reads. The
+# colon itself is therefore only ever consulted in the one shape where
+# it is welded to the mark, ``sprach:„``, and that shape is not a
+# quotation being introduced. It is a quotation being *closed* around a
+# verse that happens to end in a colon:
+#
+#     2. Mose 20,1 besagt: „Und Gott redete alle diese Worte und sprach:„
+#     Вихід 20:1 свідчить: «І глаголав Господь всї словеса оцї, глаголючи:«
+#
+# The same holds for the ellipsis a truncated verse ends in, ``Wort…„``.
+# Counted over the whole catalogue on 2026-08-21: 34 quotation marks
+# stand welded to a colon or an ellipsis, and by meaning every one of
+# them closes. 28 were written as opening marks, in live German and
+# Ukrainian rows, so the reader met a quotation that never visually
+# ends. The other 6 are Russian, where the source already had the right
+# mark — and the pass would have overwritten it with the wrong one the
+# next time the row was touched, which is what makes this a live bug
+# and not only a repair.
+#
+# So: a quotation mark opens when what precedes it is nothing,
+# whitespace, an opening bracket, or a dash. Anything else — a letter, a
+# comma, a full stop, a colon, an ellipsis — closes. Markup is
+# transparent for this test, so ``<em>"`` reads as a quote at the start
+# of a sentence rather than one after ``>``. The dashes are named
+# separately above and composed in here so that the set and its one
+# qualification cannot drift apart.
 _OPENING_CONTEXT: Final[frozenset[str]] = (
-    _WHITESPACE_CONTEXT | _DASH_CONTEXT | frozenset({"(", "[", "{", "/", ":", "«", "„", "“", "‚", "‘", "*", "|", "…"})
+    _WHITESPACE_CONTEXT | _DASH_CONTEXT | frozenset({"(", "[", "{", "/", "«", "„", "“", "‚", "‘", "*", "|"})
+)
+
+# Characters that cannot *begin* quoted text, and so cannot stand behind
+# an opening mark. Read on one side of one branch — see
+# ``_opens_quotation`` — never as a rule of its own.
+#
+# The tempting version applies this to every mark: an opening mark is
+# welded to the text it introduces, so a mark followed by a space is
+# closing. It was measured and it is wrong, on a live Ukrainian row that
+# is currently *right*:
+#
+#     формулювати принцип « угодно Святому Духу і нам» як модель
+#
+# The stray space after ``«`` is sloppy, not a mis-pointed mark, and a
+# general lookahead would answer it by turning an opening mark into a
+# closing one — trading a cosmetic flaw for a real error. What precedes
+# a mark stays the evidence; what follows is consulted only where the
+# preceding character has already failed to settle the question.
+_CANNOT_BEGIN_QUOTED_TEXT: Final[frozenset[str]] = _WHITESPACE_CONTEXT | frozenset(
+    {",", ".", ";", "!", "?", ")", "]", "}"}
 )
 
 # A new block is a new place to start, and the character before it is not
@@ -425,18 +470,25 @@ def _is_cyrillic(char: str) -> bool:
     return _CYRILLIC_START <= char <= _CYRILLIC_END
 
 
-def _opens_quotation(previous: str, before_previous: str) -> bool:
+def _opens_quotation(previous: str, before_previous: str, after: str) -> bool:
     """True when a quotation mark in this position is an opening one.
 
-    ``previous`` is the character before the mark and ``before_previous``
-    the one before that — both as *written* by this pass, and both empty
-    at the start of a block. The second character is read for dashes and
-    for nothing else: a dash that stands apart from the word in front of
-    it is punctuation and opens a quotation, a dash welded to that word
-    is a hyphen and does not. See ``_DASH_CONTEXT``.
+    ``previous`` is the character before the mark, ``before_previous``
+    the one before that, ``after`` the one behind it — all as *written*
+    by this pass, all empty where prose stops, and the outer two empty
+    at the start of a block.
+
+    ``previous`` decides on its own for every character but a dash. A
+    dash is the one entry in ``_OPENING_CONTEXT`` that is ambiguous, so
+    it is the one branch that reads its neighbours: the dash must stand
+    apart from the word in front of it (or it is a hyphen, and ``„Senf-“``
+    closes), and the mark must be welded to the text it would introduce
+    (or there is no quotation for it to open, and ``auf meine Klage. –„``
+    closes too). Both halves are the same principle — adjacency binds —
+    read on the two sides of the same dash.
     """
     if previous in _DASH_CONTEXT:
-        return before_previous in _WHITESPACE_CONTEXT
+        return before_previous in _WHITESPACE_CONTEXT and after not in _CANNOT_BEGIN_QUOTED_TEXT
     return previous in _OPENING_CONTEXT
 
 
@@ -686,7 +738,7 @@ def _apply_quote_rules(text: str, free: list[bool], tags: list[_Tag], out: list[
             continue
         before = text[index - 1] if index > 0 and free[index - 1] else ""
         after = text[index + 1] if index + 1 < len(text) and free[index + 1] else ""
-        opening = _opens_quotation(previous, before_previous)
+        opening = _opens_quotation(previous, before_previous, after)
 
         if char in _QUOTE_CHARS:
             if repoint_quotes:
