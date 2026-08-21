@@ -291,16 +291,8 @@ _QUOTE_CHARS: Final[frozenset[str]] = frozenset('"«»„“”')
 # part of a word when it stands after it.
 _WHITESPACE_CONTEXT: Final[frozenset[str]] = frozenset({"", " ", "\t", "\n", "\r", "\xa0"})
 
-# A quotation mark opens when what precedes it is nothing, whitespace, an
-# opening bracket, a dash, or a colon. Anything else — a letter, a comma,
-# a full stop — closes. Markup is transparent for this test, so ``<em>"``
-# reads as a quote at the start of a sentence rather than one after ``>``.
-_OPENING_CONTEXT: Final[frozenset[str]] = _WHITESPACE_CONTEXT | frozenset(
-    {"(", "[", "{", "—", "–", "-", "/", ":", "«", "„", "“", "‚", "‘", "*", "|", "…"}
-)
-
-# The three dashes are in that set, and they are the one entry in it
-# that does not settle the question on its own.
+# The three dashes. They belong to the opening set below, and they are
+# the one entry in it that does not settle the question on its own.
 #
 # A dash *standing as punctuation* does open a quotation — the dialogue
 # dash German and Ukrainian both set, ``— „Komm her“``, and the
@@ -344,6 +336,16 @@ _OPENING_CONTEXT: Final[frozenset[str]] = _WHITESPACE_CONTEXT | frozenset(
 # the character it was made on, while a mistake in a counted one
 # inverts every mark after it in the block.
 _DASH_CONTEXT: Final[frozenset[str]] = frozenset({"—", "–", "-"})
+
+# A quotation mark opens when what precedes it is nothing, whitespace, an
+# opening bracket, a dash, or a colon. Anything else — a letter, a comma,
+# a full stop — closes. Markup is transparent for this test, so ``<em>"``
+# reads as a quote at the start of a sentence rather than one after ``>``.
+# The dashes are named separately above and composed in here so that the
+# set and its one qualification cannot drift apart.
+_OPENING_CONTEXT: Final[frozenset[str]] = (
+    _WHITESPACE_CONTEXT | _DASH_CONTEXT | frozenset({"(", "[", "{", "/", ":", "«", "„", "“", "‚", "‘", "*", "|", "…"})
+)
 
 # A new block is a new place to start, and the character before it is not
 # evidence about the character after it.
