@@ -57,6 +57,7 @@ from app.services.translation.protocol import (
 )
 from app.services.translation.reviewer import ReviewVerdict, TranslationReviewer
 from app.services.translation.term_memory import TermMemory
+from app.services.translation.typography import normalize_typography
 from app.services.translation.validation import ValidationIssue, summarise, validate_translation
 from app.services.translation.version import TRANSLATOR_VERSION
 
@@ -225,7 +226,40 @@ def _decide(
     # option and its twin in another quiz as a side effect.
     twin = twins.get((task.source_hash, task.target_locale))
     if twin is not None:
-        return "translated", twin
+        # Pointed here, because a copy is the one answer this pipeline
+        # produces without a provider call — and pointing a translation
+        # is the last thing ``GeminiProvider.translate_within`` does. So
+        # a reused row arrives carrying whatever typography was in force
+        # on the day it was written, and nothing downstream looks at it
+        # again: ``_record`` is not on this path at all, and the row is
+        # stamped with this run's generation, which makes it look freshly
+        # made to everything that reads it afterwards.
+        #
+        # Production, 2026-08-21: three chapter blocks holding the
+        # byte-identical German ``“Doch weil…habt.“`` — the closing mark
+        # at both ends. The first was written 21 minutes before #1123
+        # taught the pass that a ``<blockquote>`` opens a quotation; the
+        # other two were copies of it, written nineteen hours after that
+        # fix was deployed.
+        #
+        # This is a first application and not a second: the text on this
+        # branch has never been through the pass. It cannot undo what the
+        # provider decided either, because the pass is idempotent — a row
+        # written by the pipeline as it stands today is a fixed point and
+        # comes out of here word for word.
+        #
+        # Not fixed by raising ``TRANSLATOR_VERSION``, which is the other
+        # thing that invalidates a stored row: measured over the whole
+        # live corpus, 6 of 6,128 current-generation machine rows are
+        # mis-pointed and all 6 are copies of this one block. A bump
+        # re-translates six thousand rows to correct six, and the next
+        # typography fix would need another one.
+        #
+        # ``content_kind`` is the *task's*, not the row's: the twin table
+        # is keyed by source text and language alone, so the same string
+        # can arrive here as a heading in one place and as prose in
+        # another, and only the field being written knows which.
+        return "translated", normalize_typography(twin, task.target_locale, task.content_kind)
     return None
 
 
