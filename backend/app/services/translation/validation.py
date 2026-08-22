@@ -426,11 +426,38 @@ def _is_a_word(token: str) -> bool:
 
 
 def _check_markers(source: str, translated: str) -> ValidationIssue | None:
+    """The scripture markers that went out are the ones that come back.
+
+    Both directions, and the second one was missing until 2026-08-22.
+    The check used to return on an empty ``expected``: a source with no
+    marker in it had nothing to lose, so there was nothing to compare.
+    That reads a marker as a thing only the *pipeline* can put in a
+    string, and it is not — a model can write one too, and one did.
+
+    A live Russian row read ``«Блажен муж, который не ходит
+    [[EQV0c0214d57ac3a0bb]]»``, where the reader is shown the token
+    instead of the verse. Its English source has no marker and never
+    had one, and the German and Ukrainian translations of the same
+    sentence are clean. What singles Russian out is that the hex is
+    *the same hex* the previous Russian translation of that row carried
+    — so the model did not invent it out of the air, it copied it from
+    the term memory, which is seeded from what this row was translated
+    into last time. A marker leaked into that row once and every
+    retranslation has been repeating it since.
+
+    ``post_substitute`` cannot mend this. It replaces the markers *this
+    run* handed out, and a token quoted back from a run that finished
+    yesterday is not among them.
+
+    So an invented marker is a defect on its own terms, not only beside
+    a lost one. Measured over the whole live catalogue: 14 791 active
+    rows, one carries a marker, and it is this one.
+    """
     expected = _markers(source)
-    if not expected:
-        return None
     got = _markers(translated)
     if expected == got:
+        # Both empty is the ordinary case and lands here, which is why
+        # there is no separate early return for it.
         return None
     missing = sorted(set(expected) - set(got))
     added = sorted(set(got) - set(expected))
@@ -445,7 +472,9 @@ def _check_markers(source: str, translated: str) -> ValidationIssue | None:
         code="scripture_marker_mismatch",
         detail=(
             f"Scripture markers do not match the source: {'; '.join(parts)}. "
-            "A marker that does not come back leaves the raw token where the verse belongs."
+            "A marker that does not come back leaves the raw token where the "
+            "verse belongs, and one that was never sent leaves it where "
+            "nothing belongs at all."
         ),
     )
 
