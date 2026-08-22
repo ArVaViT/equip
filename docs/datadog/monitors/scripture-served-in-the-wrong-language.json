@@ -1,0 +1,26 @@
+{
+  "name": "equip backend: scripture served in the wrong language",
+  "type": "log alert",
+  "query": "logs(\"service:equip-backend env:production verse_fallback_to_source\").index(\"*\").rollup(\"count\").last(\"15m\") >= 3",
+  "message": "The canonical text of a verse could not be had for the target language, so the reader is being served the verse in the language of the source — an English verse inside German prose, and stored as a good translation.\n\nOn 2026-08-22 this ran for forty minutes and reached sixteen live rows before anyone noticed, because the only trace it leaves is this warning and nothing was watching for it. The cause that day was the YouVersion API answering 429: the key is shared between production and anything run by hand, and a burst of manual lookups exhausted the quota for everyone.\n\nFirst thing to check is whether the Bible API is rate-limiting: search `service:equip-backend \"Bible API 429\"`. If it is, stop whatever is calling it by hand and wait for the window; the rows written meanwhile need retranslating, and `retry-after` says how long.\n\nLogs: https://app.us5.datadoghq.com/logs?query=service%3Aequip-backend%20env%3Aproduction%20verse_fallback_to_source\n\nNotify: @arvavitcorp@gmail.com",
+  "tags": [
+    "env:production",
+    "project:equip",
+    "managed_by:claude"
+  ],
+  "priority": 2,
+  "options": {
+    "evaluation_delay": 60,
+    "thresholds": {
+      "warning": 1.0,
+      "critical": 3.0
+    },
+    "notify_no_data": false,
+    "renotify_interval": 0,
+    "notify_audit": false,
+    "new_host_delay": 300,
+    "include_tags": true,
+    "groupby_simple_monitor": false,
+    "silenced": {}
+  }
+}
