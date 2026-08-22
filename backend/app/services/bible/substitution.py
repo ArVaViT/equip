@@ -288,6 +288,60 @@ def _canonical_head(author_text: str, canonical: str) -> int:
     return head
 
 
+#: How much an author has to have written before "these are the opening
+#: words of that verse" is a claim worth acting on.
+#:
+#: The same floor ``_MIN_HEAD_MEASURABLE`` sets and for the same reason:
+#: a handful of words matched against the first handful of a verse is
+#: mostly noise, and acting on it would paste a whole verse in place of
+#: a phrase. Every one of the 28 live quotations this exists for is well
+#: over it — the shortest is 94 characters.
+_MIN_QUOTATION_FOR_PREFIX: Final[int] = 40
+
+
+def _same_words(author_text: str, canonical: str) -> float:
+    """How nearly ``author_text`` is *the words of* ``canonical``.
+
+    The whole verse and the beginning of it, whichever the author was
+    quoting, because measuring only against the whole penalises the
+    author for stopping early — and stopping early is the ordinary way
+    to quote:
+
+        Psalm 1:1 states, "Blessed is the man that walketh not in the
+        counsel of the ungodly..."
+
+    Word for word the opening of the verse, and 0.61 against the whole
+    of it, so the substitution was declined and the model translated
+    Scripture itself. It rendered *in the counsel of the ungodly* into
+    Russian as «во тьме нечестивых» — *in the darkness of the wicked* —
+    which is a different sentence, served to a reader as the Psalm.
+
+    This is the rule ``_MAX_CANONICAL_HEAD`` already states, applied
+    where it was missing. A quotation that stops early is still the
+    beginning of the verse the citation names, so nothing is attributed
+    to Scripture that Scripture does not say; a quotation that *starts*
+    late is a different span and the head gate declines it. The
+    similarity ratio was the one place that still read a truncated
+    quotation as a poor match rather than a partial one.
+
+    Measured over the 1 687 live English sources on 2026-08-22: 81
+    quotations match the whole verse and substitute today; 28 more match
+    its opening exactly — every one of them scores 1.00 as a prefix —
+    and 25 are paraphrases that match neither and stay declined, which
+    is the population this must not touch.
+
+    Below ``_MIN_QUOTATION_FOR_PREFIX`` characters only the whole verse
+    is asked, and a quotation at least as long as the verse has no
+    prefix to be.
+    """
+    author = _normalize_for_compare(author_text)
+    verse = _normalize_for_compare(canonical)
+    whole = SequenceMatcher(None, author, verse).ratio()
+    if len(author) < _MIN_QUOTATION_FOR_PREFIX or len(author) >= len(verse):
+        return whole
+    return max(whole, SequenceMatcher(None, author, verse[: len(author)]).ratio())
+
+
 def _first_verse_these_words_are(
     author_text: str,
     candidates: list[BibleRef],
@@ -315,12 +369,8 @@ def _first_verse_these_words_are(
         # Best of every wording we hold, not the first one that
         # answered: the author quoted *some* edition, and which one is
         # not ours to assume.
-        normalized_author = _normalize_for_compare(author_text)
-        best = max(
-            wordings,
-            key=lambda wording: SequenceMatcher(None, normalized_author, _normalize_for_compare(wording)).ratio(),
-        )
-        ratio = SequenceMatcher(None, normalized_author, _normalize_for_compare(best)).ratio()
+        best = max(wordings, key=lambda wording: _same_words(author_text, wording))
+        ratio = _same_words(author_text, best)
         if ratio < threshold:
             logger.debug("Bible quote similarity %.2f below threshold for %s — leaving as-is", ratio, ref)
             continue
