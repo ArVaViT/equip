@@ -94,8 +94,10 @@ Cost: no database, no model, one pass over the capitalised words.
 
 from __future__ import annotations
 
+from html import unescape
 from typing import TYPE_CHECKING, Final
 
+from app.core.sanitize import strip_tags
 from app.schemas.locale import LOCALE_CODES, LanguageNotInTable
 from app.services.translation.proper_names import (
     capitalised_words,
@@ -151,6 +153,17 @@ def foreign_person_names(
         # pass and not claimed to be one: three of the four served
         # languages have no row, because no editor has read a bad
         # spelling in them.
+        return []
+
+    # Eight substring searches before anything is parsed. Reading the
+    # words means blanking the citations first, and blanking them means
+    # ``parse_references`` over the whole row — real work, paid on every
+    # row of every translation, to find a spelling that is absent from
+    # all but ten rows of the live catalogue. Markup and entities are
+    # undone first, and only those, so this cannot miss anything the
+    # tokeniser would have found.
+    prose = unescape(strip_tags(translated) if "<" in translated else translated).casefold()
+    if not any(form in prose for form in listed):
         return []
 
     found: dict[str, str] = {}
