@@ -30,14 +30,15 @@ model talking to us instead of translating. Every one of them is a
 property of the *pair* (source, translation) that can be decided
 mechanically.
 
-Three checks reach past shape into meaning, and each can only do it
+Four checks reach past shape into meaning, and each can only do it
 where meaning has been written down in a table: ``_check_glossary``
 against the register, ``_check_proper_names`` against the biblical
-persons and places, and ``_check_book_names`` against the printed name
-of each book of the Bible in each served language. None judges wording.
-Each asks a question with one answer — did this term survive, is this
-the same name, would this language have printed this spelling — and
-that is the whole of what "meaning" means here.
+persons and places, ``_check_person_names`` against the form each
+language prints for one of them, and ``_check_book_names`` against the
+printed name of each book of the Bible in each served language. None
+judges wording. Each asks a question with one answer — did this term
+survive, is this the same name, would this language have printed this
+spelling — and that is the whole of what "meaning" means here.
 
 It does not judge whether the translation is *good*. Nothing local can:
 research on this is consistent that quality in the general case is not
@@ -1324,6 +1325,74 @@ def _check_book_names(source: str, translated: str, source_locale: str, target_l
     )
 
 
+def _check_person_names(source: str, translated: str, source_locale: str, target_locale: str) -> ValidationIssue | None:
+    """A person called by a name the target language does not print.
+
+    ``_check_proper_names``'s sibling, and the distinction between them
+    is the whole reason this one exists. That check asks whether the
+    source named one known person and the translation named a
+    *different known* one. «Стефан» → «Степан» is neither half of that:
+    «Степан» is the ordinary Ukrainian given name Stepan, so it is the
+    same man misspelt, and the check built to catch substitutions was
+    silent on all eight rows by construction.
+
+    Blocking, which is where it parts company with
+    ``_check_book_names``, and the argument is worth stating because the
+    two look alike.
+
+    That check is non-blocking on the ground that a misspelled book name
+    is a true statement misspelled: a student who reads ``Діїв. 1:8``
+    finds Acts 1:8, because the numbers are the address and the name is
+    only a label on it. A person's name has no numbers behind it. It is
+    the whole address, and «Степан» is a wrong one — a student who reads
+    «промова Степана в Діян. 7» and opens Acts 7 finds «Стефан», with
+    nothing on the page to tell them the two are the same man.
+
+    What settles it is where the rows sit. All eight are assessment
+    items — three quiz questions, twice over, and a Daily Challenge
+    question with its explanation — while the lessons those questions
+    examine print «Стефан» correctly. So the student is graded on a name
+    the course never taught them, and cannot recover the right one from
+    the wrong one. That is ``proper_name_substituted``'s position, not
+    ``emphasis_lost``'s: serving the page is worse than serving nothing.
+
+    What earns the veto is the measurement, not the seriousness. Run
+    over every live machine translation joined to its Russian source —
+    6 075 reachable rows — it names ten, and every one was read. Eight
+    are «Степана» for the martyr and two are Claudius Lysias called
+    «Лисий» (the adjective *bald*) and «Клавдій Лій» (a name in no
+    language). None is correct prose. It stays silent on all eight rows
+    that print «Стефан», on «Клавдій Лісій», and on the fourteen German
+    rows that write *Stephans Rede* — German prints that name for that
+    man, and claiming otherwise is how a check gets switched off.
+
+    Not advisory. Nothing was in front of the model about which
+    spellings Ukrainian prints for this man, and "you wrote «Степана»
+    where Ukrainian prints «Стефан»" is a fact the second attempt did
+    not have.
+    """
+    from app.services.translation.person_names import foreign_person_names
+
+    foreign = foreign_person_names(
+        source,
+        translated,
+        source_locale=source_locale,
+        target_locale=target_locale,
+    )
+    if not foreign:
+        return None
+    named = ", ".join(f"{printed} → {expected}" for printed, expected in foreign)
+    return ValidationIssue(
+        code="person_name_not_printed_here",
+        detail=(
+            f"The translation names a person with a form this language does "
+            f"not print for them: {named}. These are one person, not two — "
+            f"use the name this language's own Bible carries, in whatever "
+            f"form the sentence needs."
+        ),
+    )
+
+
 def validate_translation(
     *,
     source: str,
@@ -1381,6 +1450,7 @@ def validate_translation(
     issues.append(_check_glossary(source, translated, source_locale, target_locale))
     issues.append(_check_numerals(source, translated, source_locale, target_locale))
     issues.append(_check_proper_names(source, translated, source_locale, target_locale))
+    issues.append(_check_person_names(source, translated, source_locale, target_locale))
     issues.append(_check_book_names(source, translated, source_locale, target_locale))
     return [issue for issue in issues if issue is not None]
 
