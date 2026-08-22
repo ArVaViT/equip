@@ -724,6 +724,7 @@ def _apostrophe_for(locale: LocaleCode) -> _Apostrophe | None:
 #: English source that types it.
 _SINGLE_QUOTATION_MARK: Final[str] = "'"
 
+
 def _single_marks_that_quote(text: str, free: list[bool], locale: LocaleCode) -> list[int]:
     """Positions of the single marks in ``text`` that are quoting.
 
@@ -812,7 +813,9 @@ def _apply_quote_rules(text: str, free: list[bool], tags: list[_Tag], out: list[
     # language quotes in. This is decided for the whole string before
     # anything is written, because it is a fact about the string: see
     # ``_single_marks_that_quote``.
-    quoting_singles = {index: position % 2 == 0 for position, index in enumerate(_single_marks_that_quote(text, free, locale))}
+    quoting_singles = {
+        index: position % 2 == 0 for position, index in enumerate(_single_marks_that_quote(text, free, locale))
+    }
     # And once decided, those positions stop being marks the apostrophe
     # rule may reason about. German's rule asks permission of the whole
     # string and refuses where any single mark is quoting — which is the
