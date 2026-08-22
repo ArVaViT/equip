@@ -20,7 +20,41 @@ So the abbreviations are no longer written twice: every entry of
 "what we print is what we can read" true by construction rather than by
 diligence. ``_LOCALE_ALIASES`` adds only what a display table cannot
 hold — the full names (``Apostelgeschichte``, ``Дії апостолів``) and the
-second spellings a real author uses (``Hoheslied`` / ``Hohelied``).
+second spellings a real author uses (``Rut`` / ``Ruth``).
+
+Three tables, and which question each answers
+---------------------------------------------
+
+``find_book`` is wide and ``find_book_written_in`` is narrow, and the
+difference between them is only as good as the data underneath. It was
+not good enough. ``_LOCALE_ALIASES`` carried German and Ukrainian and
+nothing at all for Russian or English, so the narrow index for those two
+held sixty-six abbreviations and no full names:
+``find_book_written_in("Isaiah", "en")`` was ``None`` — correct English,
+refused — and so was ``find_book_written_in("Esther", "de")``. A check
+built on that would have named correct prose as a defect, which is how a
+check gets switched off.
+
+So all four languages are now written out in full, and a spelling lands
+in one of three places:
+
+``_DISPLAY_NAMES``
+    what the platform *prints* — one form per book per language, the one
+    ``display_book_name`` renders. Auto-registered everywhere.
+
+``_LOCALE_ALIASES``
+    everything else the language legitimately prints. Where two
+    spellings are both real — ``1. Mose`` and ``Genesis``, ``Rut`` and
+    ``Ruth``, ``Псалтирь`` and ``Псалом``, ``Hiob`` and ``Ijob`` — both
+    belong here. The narrow question is "would this language print
+    this?", not "is this our house style?", and answering the second one
+    in its place is the false positive.
+
+``_NOT_PRINTED_HERE``
+    spellings the language does **not** print, listed so the wide lookup
+    can still read them and the narrow one still refuses. ``Hoheslied``
+    moved here from the alias table: German authors write it and German
+    does not have it (the noun is *das Hohelied*).
 """
 
 from __future__ import annotations
@@ -193,6 +227,9 @@ _WORDS_NEEDING_A_CAPITAL = frozenset(
         "job",  # English "job"
         "song",  # English "song"
         "дії",  # Ukrainian "дії" — "actions"
+        "дій",  # Ukrainian "дій" — "of actions", and "act!"
+        "діяння",  # Ukrainian "діяння" — "deeds"
+        "діянь",  # Ukrainian "діянь" — "of deeds"
     }
 )
 _WORDS_NEEDING_THE_PRINTED_DOT = frozenset(
@@ -204,8 +241,20 @@ _WORDS_NEEDING_THE_PRINTED_DOT = frozenset(
         "hab",  # German "hab" — "ich hab"
         "об",  # Ukrainian "об" — "об 11:30"
         "як",  # Ukrainian "як" — "how", "as"
+        "ді",  # not a word, but two letters is too little on its own
     }
 )
+
+
+def normalize_book_name(raw: str) -> str:
+    """``_normalize`` under a name a caller outside this module may use.
+
+    A caller holding a string it wants to compare against a table of
+    book names has to fold it the same way the tables were folded, or
+    ``Діїв.`` and ``ДІЇВ`` are two different spellings and ``3. Царів``
+    and ``3 Царів`` are two different books.
+    """
+    return _normalize(raw)
 
 
 def written_as_a_book_name(raw: str) -> bool:
@@ -269,6 +318,21 @@ def find_book_written_in(name: str, locale: str) -> str | None:
     if not name:
         return None
     return _NATIVE_INDEX.get(locale, {}).get(_normalize(name))
+
+
+def not_printed_in(locale: str) -> tuple[tuple[str, str], ...]:
+    """Every spelling written down as one ``locale`` does not print, with
+    the book each one was reaching for.
+
+    A closed, hand-checked list, and the only place in this module that
+    accuses rather than reads. ``find_book_written_in`` already refuses
+    everything that is not declared native, but refusing is not the same
+    as knowing: it cannot tell ``Діїв.`` — a spelling of Acts Ukrainian
+    does not have — from an ordinary word that happens to sit where a
+    book name would. These are the ones somebody read and ruled on, and
+    a caller may name them without any further evidence.
+    """
+    return tuple((form, slug) for slug, forms in _NOT_PRINTED_HERE.get(locale, {}).items() for form in forms)
 
 
 def all_canonical_slugs() -> tuple[str, ...]:
@@ -601,6 +665,137 @@ def display_book_name(slug: str, locale: str) -> str | None:
 # are merged below, and duplicating a row here would only create a place
 # for the two to drift apart.
 _LOCALE_ALIASES: dict[str, dict[str, tuple[str, ...]]] = {
+    "ru": {
+        # Synodal full names. The display table above carries the
+        # abbreviation the platform prints; an author writes «Бытие 1:1» and
+        # «книга Деяний» at least as often, and a check that reads the
+        # narrow index has to know both.
+        "genesis": ("Бытие",),
+        "exodus": ("Исход",),
+        "leviticus": ("Левит",),
+        "numbers": ("Числа",),
+        "deuteronomy": ("Второзаконие",),
+        "joshua": ("Иисус Навин", "Книга Иисуса Навина"),
+        "judges": ("Судьи", "Книга Судей"),
+        "ruth": ("Руфь",),
+        "1samuel": ("1 Царств",),
+        "2samuel": ("2 Царств",),
+        "1kings": ("3 Царств",),
+        "2kings": ("4 Царств",),
+        "1chronicles": ("1 Паралипоменон",),
+        "2chronicles": ("2 Паралипоменон",),
+        "ezra": ("Ездра", "Ездры"),
+        "nehemiah": ("Неемия", "Неемии"),
+        "esther": ("Есфирь",),
+        "job": ("Иова",),
+        "psalms": ("Псалтирь", "Псалом", "Псалмы", "Псалтырь"),
+        "proverbs": ("Притчи", "Притчи Соломона"),
+        "ecclesiastes": ("Екклесиаст",),
+        "songofsolomon": ("Песнь Песней",),
+        "isaiah": ("Исаия", "Исаии"),
+        "jeremiah": ("Иеремия", "Иеремии"),
+        "lamentations": ("Плач Иеремии",),
+        "ezekiel": ("Иезекииль", "Иезекииля"),
+        "daniel": ("Даниил", "Даниила"),
+        "hosea": ("Осия", "Осии"),
+        "joel": ("Иоиль", "Иоиля"),
+        "amos": ("Амос", "Амоса"),
+        "obadiah": ("Авдий", "Авдия"),
+        "jonah": ("Иона", "Ионы"),
+        "micah": ("Михей", "Михея"),
+        "nahum": ("Наума",),
+        "habakkuk": ("Аввакум", "Аввакума"),
+        "zephaniah": ("Софония", "Софонии"),
+        "haggai": ("Аггей", "Аггея"),
+        "zechariah": ("Захария", "Захарии"),
+        "malachi": ("Малахия", "Малахии"),
+        "matthew": ("Матфея", "От Матфея", "Евангелие от Матфея"),
+        "mark": ("Марка", "От Марка", "Евангелие от Марка"),
+        "luke": ("Луки", "От Луки", "Евангелие от Луки"),
+        "john": ("Иоанна", "От Иоанна", "Евангелие от Иоанна"),
+        "acts": ("Деяния", "Деяний", "Деяниях", "Деяния апостолов", "Деяния святых апостолов"),
+        "romans": ("Римлянам", "К Римлянам"),
+        "1corinthians": ("1 Коринфянам",),
+        "2corinthians": ("2 Коринфянам",),
+        "galatians": ("Галатам",),
+        "ephesians": ("Ефесянам",),
+        "philippians": ("Филиппийцам",),
+        "colossians": ("Колоссянам",),
+        "1thessalonians": ("1 Фессалоникийцам",),
+        "2thessalonians": ("2 Фессалоникийцам",),
+        "1timothy": ("1 Тимофею",),
+        "2timothy": ("2 Тимофею",),
+        "titus": ("Титу",),
+        "philemon": ("Филимону",),
+        "hebrews": ("Евреям",),
+        "james": ("Иакова",),
+        "1peter": ("1 Петра",),
+        "2peter": ("2 Петра",),
+        "1john": ("1 Иоанна",),
+        "2john": ("2 Иоанна",),
+        "3john": ("3 Иоанна",),
+        "jude": ("Иуды",),
+        "revelation": ("Откровение", "Откровении", "Откровение Иоанна", "Апокалипсис"),
+    },
+    "en": {
+        # KJV full names, for the same reason: «Isaiah» is not a second-rate
+        # spelling of «Isa.», it is the name of the book.
+        "genesis": ("Genesis",),
+        "exodus": ("Exodus",),
+        "leviticus": ("Leviticus",),
+        "numbers": ("Numbers",),
+        "deuteronomy": ("Deuteronomy",),
+        "joshua": ("Joshua",),
+        "judges": ("Judges",),
+        "1samuel": ("1 Samuel",),
+        "2samuel": ("2 Samuel",),
+        "1kings": ("1 Kings",),
+        "2kings": ("2 Kings",),
+        "1chronicles": ("1 Chronicles",),
+        "2chronicles": ("2 Chronicles",),
+        "nehemiah": ("Nehemiah",),
+        "esther": ("Esther",),
+        "psalms": ("Psalms", "Psalm"),
+        "proverbs": ("Proverbs",),
+        "ecclesiastes": ("Ecclesiastes",),
+        "songofsolomon": ("Song of Solomon", "Song of Songs"),
+        "isaiah": ("Isaiah",),
+        "jeremiah": ("Jeremiah",),
+        "lamentations": ("Lamentations",),
+        "ezekiel": ("Ezekiel",),
+        "daniel": ("Daniel",),
+        "hosea": ("Hosea",),
+        "obadiah": ("Obadiah",),
+        "micah": ("Micah",),
+        "nahum": ("Nahum",),
+        "habakkuk": ("Habakkuk",),
+        "zephaniah": ("Zephaniah",),
+        "haggai": ("Haggai",),
+        "zechariah": ("Zechariah",),
+        "malachi": ("Malachi",),
+        "matthew": ("Matthew",),
+        "acts": ("Acts of the Apostles",),
+        "romans": ("Romans",),
+        "1corinthians": ("1 Corinthians",),
+        "2corinthians": ("2 Corinthians",),
+        "galatians": ("Galatians",),
+        "ephesians": ("Ephesians",),
+        "philippians": ("Philippians",),
+        "colossians": ("Colossians",),
+        "1thessalonians": ("1 Thessalonians",),
+        "2thessalonians": ("2 Thessalonians",),
+        "1timothy": ("1 Timothy",),
+        "2timothy": ("2 Timothy",),
+        "philemon": ("Philemon",),
+        "hebrews": ("Hebrews",),
+        "james": ("James",),
+        "1peter": ("1 Peter",),
+        "2peter": ("2 Peter",),
+        "1john": ("1 John",),
+        "2john": ("2 John",),
+        "3john": ("3 John",),
+        "revelation": ("Revelation",),
+    },
     "de": {
         "genesis": ("Genesis",),
         "exodus": ("Exodus",),
@@ -618,22 +813,25 @@ _LOCALE_ALIASES: dict[str, dict[str, tuple[str, ...]]] = {
         "2chronicles": ("2. Chronik",),
         "ezra": ("Esr.",),
         "nehemiah": ("Nehemia",),
-        "esther": ("Ester",),
+        "esther": ("Ester", "Esther"),
         "job": ("Ijob",),
         "psalms": ("Psalm", "Psalmen"),
         "proverbs": ("Sprüche", "Sprichwörter"),
         "ecclesiastes": ("Prediger", "Kohelet"),
-        "songofsolomon": ("Hoheslied", "Hohelied", "Hohes Lied"),
+        "songofsolomon": ("Hohelied", "Hohes Lied"),
         "isaiah": ("Jesaja",),
         "jeremiah": ("Jeremia",),
         "lamentations": ("Klagelieder",),
         "ezekiel": ("Hesekiel", "Ezechiel"),
-        "hosea": ("Hos.",),
+        "daniel": ("Daniel",),
+        "hosea": ("Hos.", "Hosea"),
         "amos": ("Am.",),
         "obadiah": ("Obadja",),
         "micah": ("Micha",),
+        "nahum": ("Nahum",),
         "habakkuk": ("Habakuk",),
         "zephaniah": ("Zefanja", "Zephanja"),
+        "haggai": ("Haggai",),
         "zechariah": ("Sacharja",),
         "malachi": ("Maleachi",),
         "matthew": ("Matthäus",),
@@ -652,7 +850,8 @@ _LOCALE_ALIASES: dict[str, dict[str, tuple[str, ...]]] = {
         "2thessalonians": ("2. Thessalonicher",),
         "1timothy": ("1. Timotheus",),
         "2timothy": ("2. Timotheus",),
-        "philemon": ("Phlm.",),
+        "titus": ("Titus",),
+        "philemon": ("Phlm.", "Philemon"),
         "hebrews": ("Hebräer",),
         "james": ("Jakobus",),
         "1peter": ("1. Petrus",),
@@ -668,7 +867,7 @@ _LOCALE_ALIASES: dict[str, dict[str, tuple[str, ...]]] = {
         "exodus": ("Вихід",),
         "leviticus": ("Левит",),
         "numbers": ("Числа",),
-        "deuteronomy": ("Повторення Закону",),
+        "deuteronomy": ("Повторення Закону", "Второзаконня"),
         "joshua": ("Ісус Навин", "Навин"),
         "judges": ("Судді",),
         "1samuel": ("1 Самуїлова", "1 Самуїла"),
@@ -678,20 +877,20 @@ _LOCALE_ALIASES: dict[str, dict[str, tuple[str, ...]]] = {
         "1chronicles": ("1 Хроніки", "1 Хронік"),
         "2chronicles": ("2 Хроніки", "2 Хронік"),
         "ezra": ("Ездра",),
-        "nehemiah": ("Неемія",),
+        "nehemiah": ("Неемія", "Неємія"),
         "esther": ("Естер",),
         "job": ("Йова",),
         "psalms": ("Псалми", "Псалом"),
         "proverbs": ("Приповісті", "Приповідки"),
-        "ecclesiastes": ("Екклезіяст", "Еклезіаст"),
+        "ecclesiastes": ("Екклезіяст", "Еклезіаст", "Екклезіаст"),
         "songofsolomon": ("Пісня над піснями",),
         "isaiah": ("Ісая", "Ісаї"),
         "jeremiah": ("Єремія", "Єремії"),
         "lamentations": ("Плач Єремії",),
-        "ezekiel": ("Єзекіїль", "Єзекіїля"),
+        "ezekiel": ("Єзекіїль", "Єзекіїля", "Єзек."),
         "daniel": ("Даниїл", "Даниїла"),
         "hosea": ("Осія", "Осії"),
-        "joel": ("Йоіла", "Йоїл"),
+        "joel": ("Йоіла", "Йоїл", "Йоїль"),
         "amos": ("Амос", "Амоса"),
         "obadiah": ("Авдій",),
         "jonah": ("Йони",),
@@ -705,7 +904,7 @@ _LOCALE_ALIASES: dict[str, dict[str, tuple[str, ...]]] = {
         "mark": ("Марка", "Від Марка"),
         "luke": ("Луки", "Від Луки"),
         "john": ("Івана", "Від Івана"),
-        "acts": ("Дії апостолів", "Діяння"),
+        "acts": ("Дії апостолів", "Дій", "Діяння", "Діянь", "Діях", "Діяннях", "Діяннями", "Діян."),
         "romans": ("Римлян", "До римлян"),
         "1corinthians": ("1 Коринтян",),
         "2corinthians": ("2 Коринтян",),
@@ -730,6 +929,46 @@ _LOCALE_ALIASES: dict[str, dict[str, tuple[str, ...]]] = {
         "revelation": ("Об'явлення", "Одкровення"),
     },
 }
+
+# Spellings a language does **not** print, kept so the wide lookup can
+# still read them.
+#
+# ``find_book`` is promiscuous on purpose — a page carrying ``Діїв. 1:8``
+# still has a verse in it, and ``references.py`` builds its regex from
+# these keys, so listing the bad spelling is what lets the substitution
+# layer protect that verse instead of handing it to the model as prose.
+# What must not happen is for ``find_book_written_in`` to answer for
+# them, because that is the question "would this language have printed
+# this?" and for every row below the answer is no.
+#
+# Each of these was read off the live catalogue before it was written
+# down. ``Hoheslied`` is the one exception: it is a spelling German
+# authors reach for and German does not have (the noun is *das
+# Hohelied*, declined *des Hohenliedes*), and it sat in the printed
+# table until this table existed to hold it.
+_NOT_PRINTED_HERE: dict[str, dict[str, tuple[str, ...]]] = {
+    "de": {
+        # Luther numbers Kings 1-2, having numbered Samuel 1-2. The
+        # Slavonic ``3-4 Царств`` counts Samuel in, and a translator
+        # carrying the Russian digit across invents a book: there is no
+        # third book of Kings in a German Bible.
+        "1kings": ("3. Könige",),
+        "2kings": ("4. Könige",),
+        "songofsolomon": ("Hoheslied",),
+    },
+    "uk": {
+        # Ukrainian numbers Kings the way English does, for the same
+        # reason German does; ``3 Царів`` is the Slavonic count in
+        # Ukrainian words and names a book that is not there.
+        "1kings": ("3 Царів",),
+        "2kings": ("4 Царів",),
+        # Ukrainian prints ``Дії`` and declines ``Діяння``. These are
+        # neither: ``Діїв.`` and ``Ді.`` are inventions, and ``Деянь``
+        # is the Russian stem wearing a Ukrainian ending.
+        "acts": ("Діїв.", "Ді.", "Деянь", "Деяній"),
+    },
+}
+
 
 # Registration order is precedence order, and it is the order the
 # catalogue is written in: Russian and English first (every live course
@@ -789,6 +1028,10 @@ for _locale in _ALIAS_PRECEDENCE:
         for _alias in _extra:
             _register(_alias, _slug, _locale)
             _native[_normalize(_alias)] = _slug
+    for _slug, _wrong in _NOT_PRINTED_HERE.get(_locale, {}).items():
+        for _alias in _wrong:
+            # Readable, deliberately not native: no entry in ``_native``.
+            _register(_alias, _slug, _locale)
 
 
 __all__ = [
@@ -797,5 +1040,7 @@ __all__ = [
     "display_book_name",
     "find_book",
     "find_book_written_in",
+    "normalize_book_name",
+    "not_printed_in",
     "written_as_a_book_name",
 ]
