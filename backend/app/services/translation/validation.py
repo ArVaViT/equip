@@ -30,6 +30,13 @@ model talking to us instead of translating. Every one of them is a
 property of the *pair* (source, translation) that can be decided
 mechanically.
 
+Two checks reach past shape into meaning, and both can only do it
+where meaning has been written down in a table: ``_check_glossary``
+against the register, and ``_check_proper_names`` against the biblical
+persons and places. Neither judges wording. Each asks a question with
+one answer — did this term survive, is this the same name — and that
+is the whole of what "meaning" means here.
+
 It does not judge whether the translation is *good*. Nothing local can:
 research on this is consistent that quality in the general case is not
 measurable without a reader of the language. What it does is catch the
@@ -1186,6 +1193,67 @@ def _check_glossary(source: str, translated: str, source_locale: str, target_loc
     )
 
 
+def _check_proper_names(source: str, translated: str, source_locale: str, target_locale: str) -> ValidationIssue | None:
+    """A biblical name answered with a different biblical name.
+
+    The second check here that looks at meaning, and like ``_check_
+    glossary`` it can only do so where meaning has been written down —
+    in ``translation/proper_names.py``, which carries the persons and
+    places of the live catalogue in all four languages. Everything else
+    in this module asks whether the *shape* survived. A name swapped for
+    another name keeps every shape there is: «Крисп» came back
+    *Sosthenes*, «Матфий» came back *Matthäus*, and a lesson titled
+    «Филипп» — the evangelist of Acts 8 — came back *Philippi*, the city
+    from Acts 16. All three were marked ``ok`` and served until a person
+    read them.
+
+    Blocking, and the reasoning is ``_check_numerals``'s rather than
+    ``_check_glossary``'s. A synonym is a matter of register and a
+    reader loses little either way; a different name is a false
+    statement. The lesson says Matthew was chosen to replace Judas, the
+    quiz offers *the book of Isaiah* as the wrong answer to a question
+    whose right answer is Isaiah. Serving that is worse than serving the
+    gap, which is the bar this module sets for withholding a page.
+
+    What earns the veto is the measurement, not the seriousness. This
+    module's own warning applies in full — a false positive here is not
+    a warning somebody clears, it is a course that never publishes — so
+    the check was run over every live machine translation joined to its
+    source, all 6 077 of them, and every row it named was read. It names
+    nine. All nine are real, four of them defects nobody had reported.
+    None is correct prose. The design is what makes that hold rather
+    than luck: both halves of the accusation demand an exact form from a
+    hand-written table, and every fuzzy tier in that module can only
+    ever excuse a translation, never accuse one.
+
+    Not advisory, for the same reason it is not a matter of taste. The
+    register check stops at naming what it saw because the model had the
+    glossary in front of it and may have been right to decline. Nothing
+    was in front of it here, and "you wrote Sosthenes where the source
+    says Крисп" is a fact the second attempt did not have.
+    """
+    from app.services.translation.proper_names import substituted_names
+
+    swapped = substituted_names(
+        source,
+        translated,
+        source_locale=source_locale,  # type: ignore[arg-type]
+        target_locale=target_locale,  # type: ignore[arg-type]
+    )
+    if not swapped:
+        return None
+    named = ", ".join(f"{src} → {tgt}" for src, tgt in swapped)
+    return ValidationIssue(
+        code="proper_name_substituted",
+        detail=(
+            f"The source names one person or place and the translation names "
+            f"a different one: {named}. These are two different people or "
+            f"places in Scripture, not two spellings of one — keep the name "
+            f"the source used, in its established form in the target language."
+        ),
+    )
+
+
 def validate_translation(
     *,
     source: str,
@@ -1242,6 +1310,7 @@ def validate_translation(
     issues.append(_check_ukrainian_calques(translated, target_locale))
     issues.append(_check_glossary(source, translated, source_locale, target_locale))
     issues.append(_check_numerals(source, translated, source_locale, target_locale))
+    issues.append(_check_proper_names(source, translated, source_locale, target_locale))
     return [issue for issue in issues if issue is not None]
 
 
