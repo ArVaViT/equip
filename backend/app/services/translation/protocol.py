@@ -117,6 +117,23 @@ class TranslationResult:
     # substitution with the text *after* restoration, and neither of
     # those contains a marker — so the provider has to say so itself.
     lost_scripture: bool = False
+    # A quoted verse whose canonical text could not be had for the target
+    # language *this time*, so the reader was given the author's own
+    # quotation — in the author's language. An English verse inside
+    # German prose, stored as a good translation.
+    #
+    # Only the transient kind is reported. A verse this edition will
+    # never carry is the case the fallback was written for and is left
+    # alone; ``bible.api_source.absence_is_remembered`` draws the line,
+    # off the cache, without asking a service that is already refusing.
+    #
+    # Like ``lost_scripture``, invisible to structural validation: the
+    # text we sent and the text we got back both look complete, and the
+    # only difference is which language two sentences of it are in. On
+    # 2026-08-22 sixteen live rows carried this and eleven others were
+    # caught only because their English run happened to be long enough
+    # for ``untranslated_run``. The provider knows; this is how it says so.
+    scripture_in_source_language: bool = False
     # Provider-specific model id actually used (so logs can pin a row to a
     # version of the upstream service).
     model: str | None = None

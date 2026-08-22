@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from app.schemas.locale import LocaleCode
+    from app.services.bible.references import BibleRef
     from app.services.bible.substitution import Substitution
     from app.services.translation.protocol import CallBudget, ContentKind
 
@@ -308,14 +309,23 @@ class GeminiTranslationProvider:
             # Restore Bible quote markers with the canonical
             # target-locale text. Falls back to source if the
             # target-locale lookup misses (see ``post_substitute``).
+            withheld: list[BibleRef] = []
             result = TranslationResult(
-                text=post_substitute(result.text, bible_subs, request.target_locale),
+                text=post_substitute(result.text, bible_subs, request.target_locale, withheld=withheld),
                 input_tokens=result.input_tokens,
                 output_tokens=result.output_tokens,
                 thinking_tokens=result.thinking_tokens,
                 model=result.model,
                 lost_scripture=bool(lost),
+                scripture_in_source_language=bool(withheld),
             )
+            if withheld:
+                logger.warning(
+                    "scripture_withheld locale=%s verses=%d kind=%s",
+                    request.target_locale,
+                    len(withheld),
+                    request.content_kind,
+                )
 
         # Last, after the pieces are back together and the canonical
         # verses are back in place, point the whole string the way the
