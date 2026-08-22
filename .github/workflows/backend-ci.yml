@@ -112,11 +112,16 @@ jobs:
       - name: Audit runtime dependencies with pip-audit
         run: pip-audit --requirement requirements.txt --strict
 
+      # scripts/ is in scope deliberately. Everything in there talks to
+      # the production database — it repairs live rows, audits the live
+      # catalogue, applies monitors — and it was the one directory no
+      # check ever read. It had been sitting unformatted for as long as
+      # nobody looked.
       - name: Lint with Ruff
-        run: ruff check app/ tests/
+        run: ruff check app/ tests/ scripts/
 
       - name: Check formatting with Ruff
-        run: ruff format app/ tests/ --check
+        run: ruff format app/ tests/ scripts/ --check
 
       # Static type check — covers the entire app/ directory (mypy.ini).
       - name: Type-check with mypy

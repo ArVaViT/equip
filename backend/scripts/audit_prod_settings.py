@@ -78,9 +78,7 @@ def main() -> int:
         default = field.default
         if default is None or repr(default) == "PydanticUndefined":
             continue
-        same = str(default) == actual or (
-            isinstance(default, bool) and actual.lower() == str(default).lower()
-        )
+        same = str(default) == actual or (isinstance(default, bool) and actual.lower() == str(default).lower())
         if not same:
             differences.append(
                 (
