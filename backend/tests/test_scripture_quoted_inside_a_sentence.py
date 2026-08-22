@@ -1,4 +1,4 @@
-# ruff: noqa: RUF001
+# ruff: noqa: RUF001, RUF002
 # Russian prose fixtures; single Cyrillic letters are words here.
 """A verse quoted mid-sentence is still a verse.
 
@@ -122,6 +122,53 @@ class TestTheQuoteIsFound:
 
         assert subs == []
         assert markered == text
+
+
+class TestAnApostropheIsNotAClosingMark:
+    """A double mark is closed by a double mark and a single mark by a
+    single one. One pattern holding all of them in both classes reads
+    ``…a centurion of Augustus' band."`` as a quotation that ends at the
+    apostrophe, replaces the part in front of it with the whole verse,
+    and leaves the two words behind the apostrophe to be translated on
+    their own. Production, 2026-08-22, the Ukrainian explanation of
+    Acts 27:1::
+
+        «Як же присуджено, щоб плисти нам в Італию, то передано Павла і
+        деяких инших вязників сотникові, на ймя Юлию, Августової роти.'
+        загін»
+
+    ``загін`` is "band". The German row of the same question ends
+    ``…von der Schar des Augustus. Trupp.“``.
+    """
+
+    def test_a_possessive_does_not_close_a_quotation_a_double_mark_opened(self):
+        verse = _verse("acts", 27, 1, "en")
+        text = f'Acts 27:1 states, "{verse}" This identifies Julius.'
+
+        markered, subs = pre_substitute(text, "en")
+
+        assert len(subs) == 1
+        assert subs[0].original_inner == verse
+        assert "band" not in markered.replace(verse, "")
+
+    def test_a_possessive_does_not_open_one_either(self):
+        # ``Israel's oppression`` used to open a span that ran to the
+        # next apostrophe in the paragraph.
+        text = "Judges 6:1 explains Israel's oppression, and the reader's attention is drawn to it."
+
+        markered, subs = pre_substitute(text, "en")
+
+        assert subs == []
+        assert markered == text
+
+    def test_a_possessive_inside_a_single_quoted_verse_stays_inside_it(self):
+        verse = _verse("genesis", 12, 1, "en")
+        assert "father's" in verse
+        text = f"Genesis 12:1 states, '{verse}' This verse outlines the command."
+
+        _markered, subs = pre_substitute(text, "en")
+
+        assert [sub.original_inner for sub in subs] == [verse]
 
 
 class TestTheReaderGetsTheirOwnEdition:

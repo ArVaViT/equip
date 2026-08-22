@@ -599,10 +599,18 @@ class TestUkrainianHasOneApostrophe:
 
     def test_a_mark_that_is_not_inside_a_word_is_not_an_apostrophe(self) -> None:
         # Ukrainian never puts an apostrophe at the edge of a word, so
-        # anything not flanked by two Cyrillic letters is something else
-        # — a quotation mark, a foreign name, a stray character — and is
-        # left for a human.
-        assert normalize_typography("'цитата' та d'Artagnan", "uk") == "'цитата' та d'Artagnan"
+        # anything not flanked by two Cyrillic letters is something else.
+        # A pair of them around a phrase is a quotation and is pointed
+        # like one; a mark inside a foreign name is left where it is.
+        # This used to leave both alone "for a human", and the human
+        # never came: 20 Ukrainian and 27 German live rows quote
+        # Scripture in straight ASCII marks to this day.
+        assert normalize_typography("'цитата' та d'Artagnan", "uk") == "«цитата» та d'Artagnan"
+
+    def test_a_lone_mark_at_the_edge_of_a_word_is_still_left_alone(self) -> None:
+        # One mark cannot be a pair, and what it is instead is not
+        # knowable from here.
+        assert normalize_typography("Це слово Богдан' написав", "uk") == "Це слово Богдан' написав"
 
     def test_ukrainian_quotes_are_guillemets(self) -> None:
         assert normalize_typography('Він сказав "мир".', "uk") == "Він сказав «мир»."
@@ -614,6 +622,58 @@ class TestRussianKeepsItsGuillemets:
 
     def test_a_correct_russian_string_is_a_fixed_point(self) -> None:
         assert normalize_typography("«Уже правильно»", "ru") == "«Уже правильно»"
+
+
+class TestASingleMarkThatIsQuotingIsPointedLikeAQuotation:
+    """The Daily Challenge sources are written in English and quote
+    Scripture in straight ASCII single marks. Those marks were never in
+    ``_QUOTE_CHARS``, and none of the three languages that set a
+    distinct pair has an apostrophe rule that would reach them, so they
+    travelled into the translation untouched: 27 German and 20
+    Ukrainian live rows on 2026-08-22 carry Scripture like this, in the
+    one part of the page that is supposed to be authoritative.
+    """
+
+    def test_a_german_verse_quoted_in_ascii_marks_gets_the_german_pair(self) -> None:
+        assert (
+            normalize_typography(
+                "Johannes 1,1 besagt: 'Im Anfang war das Wort, und das Wort war bei Gott.'",
+                "de",
+            )
+            == "Johannes 1,1 besagt: „Im Anfang war das Wort, und das Wort war bei Gott.“"
+        )
+
+    def test_a_ukrainian_verse_quoted_in_ascii_marks_gets_the_guillemets(self) -> None:
+        assert (
+            normalize_typography(
+                "Псалом 121:1 говорить: 'Посходня пісня. О чі мої підношу на гори.'",
+                "uk",
+            )
+            == "Псалом 121:1 говорить: «Посходня пісня. О чі мої підношу на гори.»"
+        )
+
+    def test_a_german_genitive_is_still_a_genitive_and_not_half_a_quotation(self) -> None:
+        # One mark cannot alternate opener, closer — the first one here
+        # stands behind a word, so the string is abandoned and the
+        # apostrophe rule keeps it.
+        assert normalize_typography("Paulus' Brief an die Gemeinde", "de") == "Paulus’ Brief an die Gemeinde"
+
+    def test_a_ukrainian_word_keeps_its_apostrophe(self) -> None:
+        assert normalize_typography("Його ім'я було Никодим", "uk") == "Його ім’я було Никодим"
+
+    def test_english_keeps_its_single_marks(self) -> None:
+        # English's two quotation marks are one character and its inner
+        # quotation is the single mark, so rewriting ``'…'`` to ``"…"``
+        # there would flatten a nesting the language actually uses.
+        text = "Psalm 119:9 states, 'How can a young man keep his way pure?'"
+        assert normalize_typography(text, "en") == text
+
+    def test_a_mark_the_pass_wrote_itself_is_not_read_back_as_a_quotation(self) -> None:
+        # ``’`` is what the German apostrophe rule writes. Reading it
+        # back would make the pass answer one way on a string and
+        # another way on its own output.
+        once = normalize_typography("Paulus' Brief und Lukas' Bericht", "de")
+        assert normalize_typography(once, "de") == once
 
 
 class TestMarkupIsNotProse:

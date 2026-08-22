@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import threading
 from typing import TYPE_CHECKING
 
@@ -196,6 +197,47 @@ _cache: dict[tuple[str, str], str | None] = {}
 _lock = threading.Lock()
 
 
+#: A psalm's heading as Elberfelder prints it: a parenthesised group at
+#: the very start of the verse.
+_PARENTHESISED_HEADING = re.compile(r"^\(\s*[^()]{2,120}\)\s*")
+
+
+def _without_edition_heading(text: str, ref: BibleRef) -> str:
+    """``text`` without the psalm heading the edition printed in front
+    of it.
+
+    A psalm may carry a heading, and it is not a verse of the psalm — it
+    is a note to the choirmaster. English editions leave it unnumbered,
+    so a reference to Psalm 23:1 means "The LORD is my shepherd" to
+    everyone who wrote one here. Elberfelder numbers the heading where
+    it is long enough to be its own verse (that is
+    ``psalm_numbering.SUPERSCRIPTION_NUMBERING_LOCALES``) and *prints it
+    inside verse 1* where it is not:
+
+        (Ein Psalm von David.) Der HERR ist mein Hirte, mir wird nichts
+        mangeln.
+
+    Five live rows carry that parenthesis into a Daily Challenge
+    explanation, verified against the API on 2026-08-22 — Psalms 23:1,
+    103:1, 110:1, 121:1 and 139:1. The parentheses are the edition's own
+    marking of what is heading and what is psalm, which is what makes
+    this a reading rather than a guess, and it is the only place they
+    appear at the head of a verse.
+
+    Narrow on purpose: psalms only, verse 1 only, the group has to open
+    the string, and something has to be left after it. Куліш prints the
+    same heading with no marking at all — «Псальма Давидова. Господь
+    пастирь мій» — and nine Ukrainian rows carry it for want of any
+    signal a rule could read. That is left alone rather than cut at a
+    guessed sentence boundary; the psalm is still there behind the
+    rubric, which is more than the German reader had.
+    """
+    if ref.book != "psalms" or ref.verse_start != 1:
+        return text
+    without = _PARENTHESISED_HEADING.sub("", text, count=1)
+    return without if without.strip() else text
+
+
 def _usfm_ref(ref: BibleRef) -> str | None:
     book = SLUG_TO_USFM.get(ref.book)
     if book is None:
@@ -251,7 +293,7 @@ def fetch_verse(ref: BibleRef, locale: LocaleCode) -> str | None:
         if response.status_code == 200:
             content = response.json().get("content")
             if isinstance(content, str) and content.strip():
-                folded = " ".join(content.split())
+                folded = _without_edition_heading(" ".join(content.split()), localized)
                 # The publisher answered, and the answer is not a verse.
                 # Куліш 1905 comes back with the initial capital of a
                 # psalm's first word set apart from the rest of it —

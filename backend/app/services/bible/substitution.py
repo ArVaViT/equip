@@ -75,7 +75,13 @@ from app.schemas.locale import QUOTATION_MARKS
 from app.services.bible.api_source import API_BIBLE_IDS, TRUSTED_BUNDLE_LOCALES, fetch_verse
 from app.services.bible.books import display_book_name
 from app.services.bible.psalm_numbering import remap_psalm
-from app.services.bible.references import BibleRef, ParsedReference, parse_references
+from app.services.bible.references import (
+    BareReference,
+    BibleRef,
+    ParsedReference,
+    parse_bare_references,
+    parse_references,
+)
 from app.services.bible.store import lookup
 
 if TYPE_CHECKING:
@@ -101,6 +107,83 @@ _REFERENCE_LOOKAHEAD = 120
 # canonical source-locale verse. Below this we assume the author
 # paraphrased and leave the quote alone.
 _SIMILARITY_THRESHOLD = 0.80
+
+# How much of the canonical verse may stand *in front of* the author's
+# quotation before the two stop being the same span.
+#
+# A verse is one span of words and a quotation of it is another, and
+# similarity alone cannot tell "the same words" from "those words and a
+# clause before them". Both score high; only one of them is safe to
+# paste back. An author who quotes ``Glaube an den Herrn Jesus…`` from
+# Acts 16:31 has deliberately left the narrator behind, and putting the
+# whole verse in their marks gives a German reader
+# ``„Sie aber sprachen: Glaube an den Herrn Jesus…“`` — the sentence
+# that introduces the verse, presented as the verse. Measured over the
+# live catalogue on 2026-08-22: of 163 quotations the Daily Challenge
+# sources hand this module, ten begin partway into their verse and
+# every one of them reaches the reader with the head of the verse
+# inside the quotation marks. ``John 14:6`` opens with ``Jesus saith
+# unto him,``; ``Exodus 32:1`` with a hundred and forty-five characters
+# of narrative before ``make us gods``.
+#
+# So a head is measured, and a substantial one declines the
+# substitution. The author's own words then stand and the model
+# translates them — a rendering that is not the edition's, in the span
+# the author chose, which is the trade this layer already makes
+# everywhere the canonical text cannot be had (see
+# ``canonical_for_display``). The alternative is cutting the target
+# edition at the place we cut the source one, and where that place is in
+# a language nobody here is reading is a guess.
+#
+# The *tail* is not measured and deliberately. A quotation that stops
+# early is still the beginning of the verse the citation names, and a
+# reader shown the rest of it has been shown the cited verse — nothing
+# is attributed to Scripture that Scripture does not say. Editors
+# reported both as one complaint; they are not one, and only the head
+# can change what the verse means.
+#
+# Twelve characters, because that is where the two populations part.
+# Measured over every quotation in the live sources: 163 of 232 have no
+# head at all, and of the rest the ones under twelve are a conjunction
+# the author dropped — ``И``, ``Итак``, ``And``, ``Now``, ``Между тем``
+# — while from twelve up they are almost uniformly somebody speaking:
+# ``Павел сказал:``, ``Они же сказали:``, ``Петр же сказал им:``,
+# ``Но Петр сказал ему:``, ``Jesus saith unto him,``. Fifty
+# substitutions decline at this bar and 182 stand.
+#
+# Two of the fifty are not heads at all but the same verse worded by a
+# different edition — the KJV's ``Wherewithal shall a young man cleanse
+# his way?`` against an author quoting ``How can a young man keep his
+# way pure?`` — and both disappear when the measurement is made with a
+# key in the environment, because ``canonical_candidates_for_source``
+# then offers the edition the author was actually reading and the head
+# against *that* is nought. The number above is the offline one, which
+# is the pessimistic one.
+_MAX_CANONICAL_HEAD = 12
+
+# Below this many characters, "the author quoted part of the verse" is
+# not a claim the arithmetic can support: a short quotation matched at
+# all is mostly noise, and the head measurement is noise with it.
+_MIN_HEAD_MEASURABLE = 40
+
+# When the words apparently skipped are the author's own opening said
+# differently, there is no head and nothing was skipped.
+#
+# The measurement finds where the author's words first line up with the
+# canonical ones, and a *rewording* moves that line-up as surely as a
+# skipped clause does: an author quoting "For God did not send his Son"
+# against a bundled KJV reading "For God sent not his Son" anchors
+# sixteen characters in, exactly like an author who began after "Они же
+# сказали:". The two are told apart by asking whether the skipped text
+# is present in the author's opening at all — 0.60 for the John 3:17
+# rewording against 0.15 for the Acts 16:31 frame, 0.27 for
+# ``Jesus saith unto him,`` and 0.26 for ``Петр же сказал им:``.
+#
+# This matters most where it is least visible: with a key in the
+# environment the author's own edition is usually among the candidates
+# and the question never arises, and CI has no key. A bar that only
+# holds when the network answers is not a bar.
+_HEAD_IS_A_REWORDING = 0.5
 
 
 @dataclass(frozen=True, slots=True)
@@ -170,6 +253,117 @@ def _normalize_for_compare(s: str) -> str:
     )
     s = s.translate(table)
     return " ".join(s.split())
+
+
+def _canonical_head(author_text: str, canonical: str) -> int:
+    """How much of ``canonical`` stands in front of the words the author
+    quoted, in characters.
+
+    Zero when the author began where the verse begins, which is the
+    ordinary case and the only one that can be pasted back whole. See
+    ``_MAX_CANONICAL_HEAD`` for what a large answer means and why it
+    declines rather than trims.
+
+    A short quotation gets zero unconditionally: three words matched
+    somewhere in the middle of a verse says nothing about where the
+    author started, and measuring it would decline substitutions that
+    are perfectly sound.
+    """
+    normalized_author = _normalize_for_compare(author_text)
+    if len(normalized_author) < _MIN_HEAD_MEASURABLE:
+        return 0
+    normalized_canonical = _normalize_for_compare(canonical)
+    matcher = SequenceMatcher(None, normalized_author, normalized_canonical)
+    anchors = [block for block in matcher.get_matching_blocks() if block.size >= 12]
+    if not anchors:
+        return 0
+    head = anchors[0].b
+    if head <= _MAX_CANONICAL_HEAD:
+        return head
+    skipped = normalized_canonical[:head]
+    opening = normalized_author[: head + 8]
+    if SequenceMatcher(None, skipped, opening).ratio() >= _HEAD_IS_A_REWORDING:
+        # Not skipped at all — see ``_HEAD_IS_A_REWORDING``.
+        return 0
+    return head
+
+
+def _first_verse_these_words_are(
+    author_text: str,
+    candidates: list[BibleRef],
+    source_locale: LocaleCode,
+    threshold: float,
+) -> BibleRef | None:
+    """The first of ``candidates`` whose canonical text is the same span
+    of words as ``author_text``, or ``None``.
+
+    Two questions, and both have to answer yes. *Are these the words of
+    this verse* is the similarity ratio the module has always asked.
+    *Is this the same span* is ``_canonical_head``, and it is the one
+    that stops a quotation being replaced by itself plus the clause in
+    front of it.
+
+    Candidates are walked in the order the caller offers them and the
+    first that passes wins. Where they came from a book-less citation
+    that order is proximity, and the words are what actually decide —
+    the same division of labour ``_candidate_references`` draws.
+    """
+    for ref in candidates:
+        wordings = canonical_candidates_for_source(ref, source_locale)
+        if not wordings:
+            continue
+        # Best of every wording we hold, not the first one that
+        # answered: the author quoted *some* edition, and which one is
+        # not ours to assume.
+        normalized_author = _normalize_for_compare(author_text)
+        best = max(
+            wordings,
+            key=lambda wording: SequenceMatcher(None, normalized_author, _normalize_for_compare(wording)).ratio(),
+        )
+        ratio = SequenceMatcher(None, normalized_author, _normalize_for_compare(best)).ratio()
+        if ratio < threshold:
+            logger.debug("Bible quote similarity %.2f below threshold for %s — leaving as-is", ratio, ref)
+            continue
+        head = _canonical_head(author_text, best)
+        if head > _MAX_CANONICAL_HEAD:
+            logger.info(
+                "scripture_quotation_starts_inside_verse ref=%s locale=%s head=%d",
+                ref,
+                source_locale,
+                head,
+            )
+            continue
+        return ref
+    return None
+
+
+def _bare_reference_candidates(
+    bare: BareReference,
+    document_refs: list[ParsedReference],
+    position: int,
+) -> list[BibleRef]:
+    """``bare`` as a reference into each book the document names, nearest
+    citation first. ``position`` is where the citation sits in the whole
+    document, since ``bare.span`` is relative to the fragment it was
+    found in.
+
+    The book is never invented. It has to be one this document already
+    wrote out in full somewhere — a lesson that says "Деяния 1:1–26" at
+    the top and "(1:8)" four paragraphs down has named its book, and a
+    document that never names one gets no candidates and no
+    substitution. Ordering by proximity is a convenience; the caller
+    checks the words against every candidate in turn, so a wrong book
+    answers with a verse that does not resemble the quotation and is
+    dropped rather than pasted.
+    """
+    seen: list[str] = []
+    for parsed in sorted(document_refs, key=lambda parsed: abs(parsed.span[0] - position)):
+        if parsed.ref.book not in seen:
+            seen.append(parsed.ref.book)
+    return [
+        BibleRef(book=book, chapter=bare.chapter, verse_start=bare.verse_start, verse_end=bare.verse_end)
+        for book in seen
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -382,6 +576,16 @@ def _requote(canonical: str, sub: Substitution, html: str, target_locale: Locale
     if marks is None or not (sub.opening_quote_lost or sub.closing_quote_lost):
         return canonical
     opening, closing = marks
+    if opening == closing and opening in canonical:
+        # English opens and closes with the same character, so a verse
+        # that already sets speech in quotation marks cannot be wrapped
+        # in another pair — there is nothing in the result to say which
+        # mark answers which. Production reads
+        # ``"They replied, "Believe in the Lord Jesus…""`` where the
+        # Berean text of Acts 16:31 already carried its own pair. The
+        # blockquote is a quotation to the eye without any of this, so
+        # the marks that are there stay and no more are added.
+        return canonical
     index = html.find(sub.marker)
     if index == -1:
         return canonical
@@ -501,6 +705,9 @@ def pre_substitute(
     subs: list[Substitution] = []
     out_parts: list[str] = []
     cursor = 0
+    # Every book this document names, wherever it names it. A book-less
+    # citation is resolved against these and nothing else.
+    document_refs = parse_references(html, source_locale)
 
     for bm in _BLOCKQUOTE_PATTERN.finditer(html):
         bq_start, bq_end = bm.span()
@@ -516,7 +723,8 @@ def pre_substitute(
         # Try inside first — that's where Synodal-style citations sit in
         # most academic prose. Fall back to the lookahead window after
         # the closing tag so older content keeps working.
-        ref = None
+        candidate_refs: list[BibleRef] = []
+        book_named = True
         verse_text_inner: str = inner
         ref_tail_inner: str = ""
         # ``stored_ref_tail`` is the text we hand to ``post_substitute``
@@ -545,12 +753,12 @@ def pre_substitute(
                 tail_start = inner.rfind("(", 0, tail_start)
             verse_text_inner = inner[:tail_start]
             ref_tail_inner = inner[tail_start:]
-            ref = last.ref
+            candidate_refs = [last.ref]
         else:
             tail = html[bq_end : bq_end + _REFERENCE_LOOKAHEAD]
             outside_refs = parse_references(tail, source_locale)
             if outside_refs:
-                ref = outside_refs[0].ref
+                candidate_refs = [outside_refs[0].ref]
                 verse_text_inner = inner
                 ref_tail_inner = ""
                 # The outside ref lives in the original HTML after the
@@ -562,34 +770,32 @@ def pre_substitute(
                 # transit, the literal replace becomes a no-op and the
                 # source-locale ref survives — never breaks rendering.
                 stored_ref_tail = outside_refs[0].raw_text
-
-        if ref is None:
-            continue
-
-        candidates = canonical_candidates_for_source(ref, source_locale)
-        if not candidates:
-            continue
+            else:
+                # No book named anywhere near it. A lesson inside one
+                # book of the Bible cites ``(1:8)`` and means the book
+                # it is about — see ``parse_bare_references`` for how
+                # often, and ``_bare_reference_candidates`` for how the
+                # book is recovered without being guessed at.
+                book_named = False
+                bare_inside = parse_bare_references(inner)
+                if bare_inside:
+                    bare = bare_inside[-1]
+                    verse_text_inner = inner[: bare.span[0]]
+                    ref_tail_inner = inner[bare.span[0] :]
+                    candidate_refs = _bare_reference_candidates(bare, document_refs, bm.start("inner") + bare.span[0])
+                else:
+                    bare_after = parse_bare_references(tail)
+                    if bare_after:
+                        candidate_refs = _bare_reference_candidates(
+                            bare_after[0], document_refs, bq_end + bare_after[0].span[0]
+                        )
 
         author_text = _strip_html(verse_text_inner)
         if not author_text:
             continue
-        # Best of every wording we hold, not the first one that answered:
-        # the author quoted *some* edition, and which one is not ours to
-        # assume.
-        ratio = max(
-            SequenceMatcher(
-                None,
-                _normalize_for_compare(author_text),
-                _normalize_for_compare(candidate),
-            ).ratio()
-            for candidate in candidates
-        )
-        if ratio < _SIMILARITY_THRESHOLD:
-            logger.debug(
-                "Bible quote similarity %.2f below threshold for %s — leaving as-is",
-                ratio,
-                ref,
-            )
+
+        ref = _first_verse_these_words_are(author_text, candidate_refs, source_locale, _SIMILARITY_THRESHOLD)
+        if ref is None:
             continue
 
         marker = _marker_token()
@@ -634,7 +840,11 @@ def pre_substitute(
                 marker=marker,
                 ref=ref,
                 original_inner=verse_text_inner,
-                ref_tail=emitted_tail or stored_ref_tail,
+                # A citation the author wrote without a book name is
+                # left exactly as they wrote it. There is no book name
+                # in it to localize, and putting one in would print a
+                # word the author chose not to.
+                ref_tail=(emitted_tail or stored_ref_tail) if book_named else "",
                 opening_quote_lost=opening_lost,
                 closing_quote_lost=closing_lost,
             )
@@ -669,9 +879,60 @@ def pre_substitute(
 # tells the model to leave quoted Scripture untouched. Rightly: the
 # alternative is a model reciting Scripture from memory, and that was
 # tried and abandoned.
-_QUOTED_SPAN = re.compile(
-    r"(?P<open>[\"«“‘'])(?P<inner>[^\"«»“”]{16,900}?)(?P<close>[\"»”’'])",
+# A double mark is closed by a double mark and a single mark by a single
+# one. One pattern holding all of them in both classes reads
+# ``…a centurion of Augustus' band."`` as a quotation ending at the
+# apostrophe, and production carries the result: the German row of Acts
+# 27:1 says ``…von der Schar des Augustus. Trupp.“`` and the Ukrainian
+# one ``…Августової роти.' загін`` — the verse pasted in, and the two
+# words the apostrophe cut off it translated separately and left
+# standing behind the closing mark. Three quotations in the live
+# catalogue are cut this way and two more are invented out of a
+# possessive.
+_DOUBLE_QUOTED_SPAN = re.compile(
+    r"(?P<open>[\"«„“])(?P<inner>[^\"«»„“”]{16,900}?)(?P<close>[\"»“”])",
 )
+
+# The single mark is an apostrophe as often as it is a quotation mark,
+# and the difference is entirely in what stands next to it: a quotation
+# opens where a word does not end and closes where one does not begin.
+# ``Augustus' band`` fails the first test, ``Israel's covenant`` fails
+# it too, and ``'How can a young man keep his way pure?'`` — which is
+# how the Daily Challenge sources quote, 47 rows of them — passes both.
+#
+# A mark welded between two letters stays inside the quotation: it is a
+# possessive, and ``…from thy father's house, unto a land that I will
+# show thee.'`` has to reach the closing mark with the whole verse
+# behind it.
+_SINGLE_QUOTED_SPAN = re.compile(
+    r"(?<!\w)(?P<open>['‘‚])(?P<inner>(?:[^'‘’‚]|(?<=\w)['’](?=\w)){16,900}?)(?P<close>['’])(?!\w)",
+)
+
+
+def _quoted_spans(text: str) -> list[tuple[int, int, str]]:
+    """``(start, end, inner)`` for every quotation in ``text``, in order,
+    with the marks excluded and no two spans overlapping.
+
+    Where a double-marked and a single-marked reading of the same
+    stretch of text both offer themselves, the one that starts earlier
+    wins and the other is dropped rather than nested — a quotation
+    inside a quotation is a thing this module has no use for, and
+    substituting into both would replace the same words twice.
+    """
+    found = [
+        (match.start(), rank, *match.span("inner"), match.group("inner"))
+        for pattern, rank in ((_DOUBLE_QUOTED_SPAN, 0), (_SINGLE_QUOTED_SPAN, 1))
+        for match in pattern.finditer(text)
+    ]
+    accepted: list[tuple[int, int, str]] = []
+    taken_to = -1
+    for _mark, _rank, start, end, inner in sorted(found):
+        if start < taken_to:
+            continue
+        accepted.append((start, end, inner))
+        taken_to = end
+    return accepted
+
 
 # How far a quotation may sit from its reference and still be read as
 # that reference's text. Real prose puts a clause between them —
@@ -711,38 +972,33 @@ def _substitute_inline_quotes(
     them has to get both pairings right, and "nearest" is the rule a
     reader applies too.
     """
-    refs = parse_references(text, source_locale)
-    if not refs:
+    named = parse_references(text, source_locale)
+    if not named:
         return text
+    refs = _with_bare_references(text, named)
 
     replacements: list[tuple[int, int, Substitution]] = []
     claimed: set[int] = set()
 
-    for match in _QUOTED_SPAN.finditer(text):
-        span_start, span_end = match.span("inner")
+    for span_start, span_end, inner in _quoted_spans(text):
         for index, parsed in _candidate_references(refs, span_start, span_end, claimed):
-            candidates = canonical_candidates_for_source(parsed.ref, source_locale)
-            if not candidates:
-                continue
-            ratio = max(
-                SequenceMatcher(
-                    None,
-                    _normalize_for_compare(match.group("inner")),
-                    _normalize_for_compare(candidate),
-                ).ratio()
-                for candidate in candidates
+            matched = _first_verse_these_words_are(
+                inner,
+                [parsed.ref],
+                source_locale,
+                _INLINE_SIMILARITY_THRESHOLD,
             )
-            if ratio < _INLINE_SIMILARITY_THRESHOLD:
+            if matched is None:
                 continue
 
             claimed.add(index)
             # No ``*_quote_lost`` here, and none is needed:
-            # ``_QUOTED_SPAN`` captures the marks as ``open`` and
-            # ``close`` and replaces only ``inner``, so the author's own
-            # marks are still standing in the prose on either side of the
-            # marker. This path was never the defect — it is the one that
-            # already did the right thing, and the blockquote path has
-            # now been taught to match it.
+            # ``_quoted_spans`` reports the text *between* the marks and
+            # only that is replaced, so the author's own marks are still
+            # standing in the prose on either side of the marker. This
+            # path was never the defect — it is the one that already did
+            # the right thing, and the blockquote path has now been
+            # taught to match it.
             replacements.append(
                 (
                     span_start,
@@ -750,8 +1006,8 @@ def _substitute_inline_quotes(
                     Substitution(
                         marker=_marker_token(),
                         ref=parsed.ref,
-                        original_inner=match.group("inner"),
-                        ref_tail=parsed.raw_text,
+                        original_inner=inner,
+                        ref_tail=parsed.raw_text if parsed.book_named else "",
                     ),
                 )
             )
@@ -765,6 +1021,30 @@ def _substitute_inline_quotes(
         text = text[:span_start] + sub.marker + text[span_end:]
     subs.extend(sub for _, _, sub in replacements)
     return text
+
+
+def _with_bare_references(text: str, named: list[ParsedReference]) -> list[ParsedReference]:
+    """``named`` plus every book-less citation, offered once per book the
+    document names, in document order.
+
+    One citation becomes several entries, which is the point: they are
+    candidates and not answers. ``_candidate_references`` orders them by
+    distance like any other reference and the caller takes the first
+    whose words match, so a paragraph that names three books offers
+    ``(1:8)`` as all three and pastes at most one of them.
+
+    A document that names no book at all never gets here — the caller
+    has already returned.
+    """
+    extra: list[ParsedReference] = []
+    for bare in parse_bare_references(text):
+        extra.extend(
+            ParsedReference(ref=ref, span=bare.span, raw_text=bare.raw_text, book_named=False)
+            for ref in _bare_reference_candidates(bare, named, bare.span[0])
+        )
+    if not extra:
+        return named
+    return sorted([*named, *extra], key=lambda parsed: parsed.span[0])
 
 
 def _candidate_references(

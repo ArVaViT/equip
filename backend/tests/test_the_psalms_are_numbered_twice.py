@@ -103,7 +103,12 @@ class TestTheRussianEditionCountsDifferently:
 
 class TestEveryoneElseIsLeftAlone:
     @pytest.mark.parametrize("locale", ["en", "de", "uk"])
-    def test_hebrew_numbered_editions_pass_through(self, locale: str):
+    def test_a_psalm_whose_heading_shares_verse_one_passes_through(self, locale: str):
+        # Psalm 23's heading is not a verse of its own in any edition
+        # served here, so its verse 1 is its verse 1 everywhere. This
+        # used to be asserted of every psalm and every non-Russian
+        # locale, which is the shape the superscription defect hid in —
+        # see ``TestTheHeadingIsAVerseInSomeEditions``.
         ref = BibleRef("psalms", 23, 1)
         assert remap_psalm(ref, locale) == ref
 
