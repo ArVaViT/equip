@@ -629,6 +629,21 @@ def _issues_in(task: TranslationTask, result: TranslationResult) -> list[Validat
     """Everything wrong with this answer — structural, stylistic, and one
     thing only the provider can see.
 
+    Two of them only the provider can see, and for the same reason.
+    ``scripture_in_source_language`` is the verse arriving in the wrong
+    language — the canonical text could not be had this time, so the
+    author's own quotation stands, and a reader of German is shown two
+    sentences of English inside a German paragraph. Structural validation
+    reads the row as complete, because it is: the words are all there,
+    just not all in one language. Blocking, and the argument is the
+    fallback's own. Serving the author's language is the right answer
+    when it is the only answer — a verse this edition does not carry —
+    and the wrong one when the service was merely busy, because then the
+    right answer exists and arrives on the next pass. The provider
+    already tells the two apart; this only has to act on it. Holding the
+    row back costs nothing a reader can see: the translation that was
+    there stays there until a better one comes.
+
     ``lost_scripture`` cannot be found by comparing source to
     translation: the provider swaps a quoted verse for a placeholder and
     restores the canonical text afterwards, so neither the text we sent
@@ -646,6 +661,20 @@ def _issues_in(task: TranslationTask, result: TranslationResult) -> list[Validat
         target_locale=task.target_locale,
         content_kind=task.content_kind,
     )
+    if result.scripture_in_source_language:
+        issues.insert(
+            0,
+            ValidationIssue(
+                code="scripture_in_source_language",
+                detail=(
+                    "The canonical text of a quoted verse could not be had "
+                    "for this language, so the verse standing in the "
+                    "translation is the one the author wrote, in the "
+                    "author's language. Nothing you can do about it — the "
+                    "row is held back and asked again."
+                ),
+            ),
+        )
     if result.lost_scripture:
         issues.insert(
             0,

@@ -252,6 +252,52 @@ def _usfm_ref(ref: BibleRef) -> str | None:
     return f"{book}.{ref.chapter}.{ref.verse_start}-{ref.verse_end}"
 
 
+def absence_is_remembered(ref: BibleRef, locale: LocaleCode) -> bool:
+    """True when this verse is missing from this edition and we know it.
+
+    The distinction the cache already draws, made available to a caller
+    who needs it. ``fetch_verse`` remembers a 404 — the publisher looked
+    and this edition does not carry that verse, a versification
+    difference, which is data — and deliberately does *not* remember a
+    429 or an outage, because a service having a moment says nothing
+    about whether a verse exists.
+
+    So an empty answer means two different things, and the caller that
+    has to decide what to serve needs to know which. A verse this
+    edition will never carry is the case the fallback in
+    ``substitution.post_substitute`` was written for: the reader is
+    given the author's own quotation, in the author's language, and
+    that is the best there is. A verse the publisher merely would not
+    hand over this minute is not that case at all, and serving the
+    author's language there is a defect that lasts as long as nobody
+    retranslates the row — on 2026-08-22 it lasted forty minutes and
+    reached sixteen rows.
+
+    Reads the cache and nothing else. No network call, which is the
+    whole point: this is asked exactly when the service is refusing to
+    answer, and asking it again would be asking the thing that is
+    already failing.
+    """
+    bible_id = API_BIBLE_IDS.get(locale)
+    if bible_id is None:
+        # No edition configured for this language at all. Permanent, and
+        # nothing to retry.
+        return True
+    localized = remap_psalm(ref, locale)
+    if localized is None:
+        # The two numbering systems split this psalm and no honest
+        # mapping exists. Also permanent — see ``psalm_numbering``.
+        return True
+    usfm = _usfm_ref(localized)
+    if usfm is None:
+        return True
+    if not os.getenv("YOUVERSION_API_KEY"):
+        # CI, preview and local development have no key. Nothing is
+        # coming, and a row must not be held back over it.
+        return True
+    return _cache.get((locale, usfm), "") is None
+
+
 def fetch_verse(ref: BibleRef, locale: LocaleCode) -> str | None:
     """Canonical text for `ref` in `locale`, or `None` for any reason at all.
 
@@ -358,4 +404,4 @@ def fetch_verse(ref: BibleRef, locale: LocaleCode) -> str | None:
     return text
 
 
-__all__ = ["API_BIBLE_IDS", "SLUG_TO_USFM", "fetch_verse"]
+__all__ = ["API_BIBLE_IDS", "SLUG_TO_USFM", "absence_is_remembered", "fetch_verse"]

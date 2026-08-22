@@ -72,7 +72,12 @@ from typing import TYPE_CHECKING, Final
 
 from app.core.sanitize import html_to_plain_text
 from app.schemas.locale import QUOTATION_MARKS
-from app.services.bible.api_source import API_BIBLE_IDS, TRUSTED_BUNDLE_LOCALES, fetch_verse
+from app.services.bible.api_source import (
+    API_BIBLE_IDS,
+    TRUSTED_BUNDLE_LOCALES,
+    absence_is_remembered,
+    fetch_verse,
+)
 from app.services.bible.books import display_book_name
 from app.services.bible.psalm_numbering import remap_psalm
 from app.services.bible.references import (
@@ -1205,6 +1210,8 @@ def post_substitute(
     html: str,
     subs: list[Substitution],
     target_locale: LocaleCode,
+    *,
+    withheld: list[BibleRef] | None = None,
 ) -> str:
     """Replace every marker in ``html`` with the canonical
     ``target_locale`` text for its substitution and rewrite the
@@ -1239,6 +1246,14 @@ def post_substitute(
                 sub.ref_tail or "?",
                 target_locale,
             )
+            # A verse the publisher merely would not hand over this
+            # minute, told apart from one this edition will never carry.
+            # The first is worth holding the row back for and the second
+            # is not, and ``absence_is_remembered`` draws the line off
+            # the cache without asking the service again — which matters,
+            # because this is asked exactly when the service is refusing.
+            if withheld is not None and not absence_is_remembered(sub.ref, target_locale):
+                withheld.append(sub.ref)
         # Re-wrapping applies only to the canonical text. The fallback
         # path restores the author's own span, which still carries
         # whatever marks the author put inside it.
