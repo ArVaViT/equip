@@ -707,6 +707,98 @@ def _apostrophe_for(locale: LocaleCode) -> _Apostrophe | None:
     return _APOSTROPHE_RULES[locale]
 
 
+#: The single mark that can be read as a quotation mark here, and the
+#: only one.
+#:
+#: The typewriter apostrophe, and not the curly forms, because the curly
+#: forms are what the *apostrophe* rules in this module write. ``Paulus’``
+#: is this pass's own output; reading it back as half a quotation would
+#: make the pass answer one way on a string and another way on its own
+#: result, which the seeded fuzz demonstrates in four characters. ``‚``
+#: and ``‘`` are the German inner-quotation pair and are already a
+#: standing reason for this module to keep its hands off a string
+#: entirely — see ``_german_apostrophe_allowed``.
+#:
+#: Nothing is lost by the narrowness: all 47 live rows this exists for
+#: carry the straight character, because they were translated from an
+#: English source that types it.
+_SINGLE_QUOTATION_MARK: Final[str] = "'"
+
+
+def _single_marks_that_quote(text: str, free: list[bool], locale: LocaleCode) -> list[int]:
+    """Positions of the single marks in ``text`` that are quoting.
+
+    Empty unless *every* single mark in the string pairs cleanly, which
+    is the same all-or-nothing that ``_quotes_balance`` applies to the
+    double ones and for the same reason: one mark that will not pair is
+    proof the reading is wrong, and there is no telling which one it is.
+
+    A mark welded between two letters is not considered at all. That is
+    an apostrophe in every language that writes one — ``ім’я``,
+    ``п'ять``, ``don't`` — and it is the shape ``_ukrainian_apostrophe``
+    already rules on.
+
+    The rest have to alternate: opener, closer, opener, closer. An
+    opener stands where a quotation opens and is welded to the text it
+    introduces; a closer stands behind a word and is not welded to the
+    next one. ``Paulus’ Brief`` offers a mark that reads as a closer and
+    has no opener in front of it, so the string is abandoned and its
+    genitive is left for ``_german_apostrophe``.
+
+    English is not asked. Its two quotation marks are the same straight
+    character and its inner quotation is the single mark, so a rule that
+    turned ``'…'`` into ``"…"`` there would flatten a nesting the
+    language actually uses. The three languages that set a distinct pair
+    have no such use for it: measured over the live catalogue on
+    2026-08-22, 27 German and 20 Ukrainian rows carry Scripture quoted
+    in straight ASCII single marks — every one of them arrived from an
+    English source that quotes that way, and not one is an inner
+    quotation.
+    """
+    if locale == "en":
+        return []
+    # The prose, with the markup taken out. Neighbours are read off this
+    # and not off ``text`` so that a mark sitting against a tag is read
+    # against the word on the other side of it, which is what a reader
+    # sees.
+    prose = [index for index, ok in enumerate(free) if ok]
+    at = {index: position for position, index in enumerate(prose)}
+
+    def neighbour(position: int) -> str:
+        return text[prose[position]] if 0 <= position < len(prose) else ""
+
+    candidates: list[int] = []
+    for index in prose:
+        if text[index] != _SINGLE_QUOTATION_MARK:
+            continue
+        before, after = neighbour(at[index] - 1), neighbour(at[index] + 1)
+        if before.isalpha() and after.isalpha():
+            continue
+        candidates.append(index)
+    if not candidates or len(candidates) % 2:
+        return []
+    for position, index in enumerate(candidates):
+        before = neighbour(at[index] - 1)
+        before_before = neighbour(at[index] - 2)
+        after = neighbour(at[index] + 1)
+        # The same reading the double marks get, and deliberately the
+        # same function. A single mark that is quoting is a quotation
+        # mark; asking a second question about it is how the two answers
+        # come apart, and they did: a mark behind a hyphen — ``Senf-'Wort'``
+        # — satisfied a looser test here and then failed
+        # ``_opens_quotation`` at the writing, so the string came out
+        # ``Senf-“Wort“``, opened twice and never closed. That is the
+        # defect ``scripts/repoint_unclosed_quotations.py`` exists to
+        # mend, manufactured fresh.
+        opening_here = _opens_quotation(before, before_before, after)
+        closing_here = before not in _WHITESPACE_CONTEXT and not after.isalnum()
+        if position % 2 == 0 and not opening_here:
+            return []
+        if position % 2 and not closing_here:
+            return []
+    return candidates
+
+
 def _apply_quote_rules(text: str, free: list[bool], tags: list[_Tag], out: list[str], locale: LocaleCode) -> None:
     opening_mark, closing_mark = _marks_for(locale)
     apostrophe = _apostrophe_for(locale)
@@ -717,7 +809,24 @@ def _apply_quote_rules(text: str, free: list[bool], tags: list[_Tag], out: list[
     # whose marks cannot pair keeps every one of them — see
     # ``_quotes_balance``.
     repoint_quotes = opening_mark == closing_mark or _quotes_balance(text, free)
-    apostrophes_allowed = apostrophe is not None and apostrophe.permitted(text, free)
+    # A pair of single marks doing a quotation's work gets the marks the
+    # language quotes in. This is decided for the whole string before
+    # anything is written, because it is a fact about the string: see
+    # ``_single_marks_that_quote``.
+    quoting_singles = {
+        index: position % 2 == 0 for position, index in enumerate(_single_marks_that_quote(text, free, locale))
+    }
+    # And once decided, those positions stop being marks the apostrophe
+    # rule may reason about. German's rule asks permission of the whole
+    # string and refuses where any single mark is quoting — which is the
+    # right answer for the marks left over, and would be the wrong one
+    # for the pass as a whole, since the marks it is refusing on account
+    # of are the ones about to become ``„…“``. Reading the string on the
+    # second pass, where they already have, would then answer
+    # differently: the seeded fuzz found a backtick inside a code span
+    # that settled one way and then the other.
+    prose = free if not quoting_singles else [ok and index not in quoting_singles for index, ok in enumerate(free)]
+    apostrophes_allowed = apostrophe is not None and apostrophe.permitted(text, prose)
     # Where a block begins or ends, whatever stood before it stops being
     # context. Both edges count: ``</p>`` ends the sentence that was
     # running, ``<blockquote>`` starts a place that had none.
@@ -739,8 +848,37 @@ def _apply_quote_rules(text: str, free: list[bool], tags: list[_Tag], out: list[
         before = text[index - 1] if index > 0 and free[index - 1] else ""
         after = text[index + 1] if index + 1 < len(text) and free[index + 1] else ""
         opening = _opens_quotation(previous, before_previous, after)
+        # A mark standing directly against one this pass has just
+        # written is not opening a quotation. Nothing separates them, so
+        # either nothing would be quoted or the quotation in front has
+        # only just ended.
+        #
+        # ``_opens_quotation`` cannot see this. It reads
+        # ``_OPENING_CONTEXT``, and that set contains both of German's
+        # marks — ``„`` because it opens, and ``“`` because it opens in
+        # English. So a mark behind either of them looked like an
+        # invitation to open another one, and the results were not even
+        # stable: ``«<img src="a.png">»`` came back as
+        # ``«<img src="a.png">«`` — the image is the whole quotation, so
+        # no prose character stands between the marks — ``«»`` came back
+        # as ``««``, and a German row ending ``map““`` settled at
+        # ``map““`` on one pass and ``map“„`` on the next.
+        #
+        # A quotation opened twice and never closed is the defect
+        # ``scripts/repoint_unclosed_quotations.py`` exists to mend, and
+        # a pass that reads its own output differently from its input is
+        # the one ``_marks_for`` refuses at length. This is both.
+        if opening and previous in (opening_mark, closing_mark) and opening_mark != closing_mark:
+            opening = False
 
-        if char in _QUOTE_CHARS:
+        if index in quoting_singles:
+            # What the pass already proved, not what this position looks
+            # like now. ``_single_marks_that_quote`` read the whole
+            # string and would have abandoned it unless the marks
+            # alternate; writing anything but that alternation would
+            # discard the proof and can only disagree with it.
+            out[index] = opening_mark if quoting_singles[index] else closing_mark
+        elif char in _QUOTE_CHARS:
             if repoint_quotes:
                 out[index] = opening_mark if opening else closing_mark
         elif apostrophe is not None and apostrophes_allowed:

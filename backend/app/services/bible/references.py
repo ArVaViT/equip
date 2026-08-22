@@ -121,11 +121,94 @@ class BibleRef:
 @dataclass(frozen=True, slots=True)
 class ParsedReference:
     """One reference detected in a string. ``span`` is the ``(start, end)``
-    indices into the original string, useful for surgical replacement."""
+    indices into the original string, useful for surgical replacement.
+
+    ``book_named`` is ``False`` when the author wrote only the numbers
+    and the book came from somewhere else — see ``parse_bare_references``.
+    It exists so nothing re-prints a citation with a book name the author
+    deliberately left out: a lesson inside the book of Acts writes
+    ``(1:8)`` and rewriting that to ``(Apg. 1,8)`` would be an edit, not
+    a localization.
+    """
 
     ref: BibleRef
     span: tuple[int, int]
     raw_text: str
+    book_named: bool = True
+
+
+# A citation with no book in front of it: ``(1:8)``, ``(28:30–31)``,
+# ``(2,42)``. Parenthesised, and only parenthesised — that is the whole
+# guard. Bare digits with a colon between them are a time of day, a
+# score, a ratio and a chapter of Acts, and nothing in the string tells
+# the four apart; inside parentheses, standing on their own, in prose
+# that cites Scripture, they are a citation.
+_BARE_REF_PATTERN = re.compile(
+    r"""
+    \(\s*
+    (?P<chapter>\d{1,3})
+    [:,]
+    (?P<verse_start>\d{1,3})
+    (?:\s*[-–—]\s*(?P<verse_end>\d{1,3}))?
+    \s*\)
+    """,
+    re.VERBOSE,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class BareReference:
+    """A citation that names chapter and verse and no book.
+
+    Measured over the live catalogue on 2026-08-22: 196 of them in the
+    Russian sources of the three published courses, against 13
+    blockquotes whose citation names its book. A course *about* the book
+    of Acts stops writing "Acts" after the first page, exactly as its
+    reader stops reading it — and every one of those 196 was invisible to
+    a parser that requires a book name, so the verse beside it was never
+    recognised as a quotation and went to the model to be re-worded.
+
+    Which book it means is not decided here. ``chapter`` and
+    ``verse_start`` are facts about the string; the book is a guess, and
+    the caller resolves it against the books the surrounding document
+    names and then checks the words. See
+    ``substitution._bare_reference_candidates``.
+    """
+
+    chapter: int
+    verse_start: int
+    verse_end: int | None
+    span: tuple[int, int]
+    raw_text: str
+
+
+def parse_bare_references(text: str) -> list[BareReference]:
+    """Every parenthesised book-less citation in ``text``, in order.
+
+    A reference that *does* name its book is not returned twice: the
+    parenthesis around ``(Деян. 1:8)`` holds a book name, so the pattern
+    here — which allows nothing between the opening paren and the first
+    digit — does not match it.
+    """
+    if not text:
+        return []
+    out: list[BareReference] = []
+    for m in _BARE_REF_PATTERN.finditer(text):
+        verse_end_raw = m.group("verse_end")
+        verse_end = int(verse_end_raw) if verse_end_raw else None
+        verse_start = int(m.group("verse_start"))
+        if verse_end is not None and verse_end < verse_start:
+            continue
+        out.append(
+            BareReference(
+                chapter=int(m.group("chapter")),
+                verse_start=verse_start,
+                verse_end=verse_end,
+                span=m.span(),
+                raw_text=m.group(0),
+            )
+        )
+    return out
 
 
 def parse_references(text: str, locale: str | None = None) -> list[ParsedReference]:
@@ -169,4 +252,10 @@ def parse_references(text: str, locale: str | None = None) -> list[ParsedReferen
     return out
 
 
-__all__ = ["BibleRef", "ParsedReference", "parse_references"]
+__all__ = [
+    "BareReference",
+    "BibleRef",
+    "ParsedReference",
+    "parse_bare_references",
+    "parse_references",
+]
