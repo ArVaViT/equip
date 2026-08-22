@@ -30,12 +30,14 @@ model talking to us instead of translating. Every one of them is a
 property of the *pair* (source, translation) that can be decided
 mechanically.
 
-Two checks reach past shape into meaning, and both can only do it
+Three checks reach past shape into meaning, and each can only do it
 where meaning has been written down in a table: ``_check_glossary``
-against the register, and ``_check_proper_names`` against the biblical
-persons and places. Neither judges wording. Each asks a question with
-one answer — did this term survive, is this the same name — and that
-is the whole of what "meaning" means here.
+against the register, ``_check_proper_names`` against the biblical
+persons and places, and ``_check_book_names`` against the printed name
+of each book of the Bible in each served language. None judges wording.
+Each asks a question with one answer — did this term survive, is this
+the same name, would this language have printed this spelling — and
+that is the whole of what "meaning" means here.
 
 It does not judge whether the translation is *good*. Nothing local can:
 research on this is consistent that quality in the general case is not
@@ -1254,6 +1256,74 @@ def _check_proper_names(source: str, translated: str, source_locale: str, target
     )
 
 
+def _check_book_names(source: str, translated: str, source_locale: str, target_locale: str) -> ValidationIssue | None:
+    """A book of the Bible called by a name the target language does not print.
+
+    The third check here that reaches past shape into meaning, and the
+    only one of the three where the machine may rule outright.
+    ``_check_glossary`` cannot say whether «Завіт» or «Заповіт» is the
+    covenant, and ``_check_proper_names`` needs a hand-written table of
+    people because a name is not derivable from anything. A book name is
+    different in kind: a language has spellings it prints and spellings
+    it does not, ``bible/books.py`` writes down which is which for all
+    four served languages, and there is nothing left for judgement to
+    do. ``Дії`` is Ukrainian for Acts; ``Діїв.`` is not a word.
+
+    Non-blocking, and that is the one interesting decision in it.
+
+    The seriousness is real — the live catalogue printed ``3. Könige``
+    and ``4. Könige`` in German, sending a reader to a book that is not
+    in their Bible, and a Ukrainian quiz asked about ``Галатам 2:1``
+    while its own answer cited ``Галатів 2:1``. But this module's bar
+    for withholding a page is not seriousness, it is whether serving the
+    page would be worse than serving nothing, and it would not be: a
+    student who reads ``Діїв. 1:8`` finds Acts 1:8, and a student who
+    reads a blank finds nothing. That is ``emphasis_lost``'s reasoning,
+    not ``proper_name_substituted``'s. A name swapped for another name
+    is a false statement about who did what; a book name misspelled is a
+    true statement misspelled.
+
+    Not advisory either, and here it parts company with
+    ``_check_glossary``. The register was in the model's first prompt
+    and it may have been right to decline; nothing was in front of it
+    about which spellings German prints, and "you wrote ``Mark 5,1``
+    where German prints ``Mk.``" is a fact the second attempt did not
+    have. So it earns its retry and is then served.
+
+    Measured before it was wired in, over every live machine translation
+    joined to its Russian source — 6 075 rows. It names twelve of them,
+    thirteen spellings, and every one was read: all thirteen are real,
+    none is correct prose. It stays silent on ``Genesis`` and ``1. Mose``
+    in German (both real German), on ``Isaiah`` and ``Philippians`` in
+    English, on ``Дії`` and ``Рут`` in Ukrainian, and on the forty-odd
+    ordinary Ukrainian declensions — «Згідно з Ісаєю 7:1», «У Бутті
+    1:1» — that an earlier scan of the same corpus offered up as
+    invented book names. See ``translation/book_names.py`` for why not
+    being recognised is never, on its own, an accusation.
+    """
+    from app.services.translation.book_names import foreign_book_names
+
+    foreign = foreign_book_names(
+        source,
+        translated,
+        source_locale=source_locale,
+        target_locale=target_locale,
+    )
+    if not foreign:
+        return None
+    named = ", ".join(f"{printed} → {expected}" for printed, expected in foreign)
+    return ValidationIssue(
+        code="book_name_not_printed_here",
+        detail=(
+            f"The translation names a book of the Bible with a spelling this "
+            f"language does not print: {named}. Use the name the target "
+            f"language's own Bible carries, in whatever form the sentence "
+            f"needs."
+        ),
+        blocking=False,
+    )
+
+
 def validate_translation(
     *,
     source: str,
@@ -1311,6 +1381,7 @@ def validate_translation(
     issues.append(_check_glossary(source, translated, source_locale, target_locale))
     issues.append(_check_numerals(source, translated, source_locale, target_locale))
     issues.append(_check_proper_names(source, translated, source_locale, target_locale))
+    issues.append(_check_book_names(source, translated, source_locale, target_locale))
     return [issue for issue in issues if issue is not None]
 
 
