@@ -87,7 +87,14 @@ What this cannot see, stated plainly
 * **«Клавдий Лисий» → «Лій», «Лісій», «Лисий».** The name was mangled,
   not replaced. None of those is another person; they are three
   spellings, one of which happens to read as the adjective *bald*. This
-  check is about substitution and is silent here by construction.
+  check is about substitution and is silent here by construction — and
+  since 08.2026 it does not have to be the last word: two of those
+  three are spellings Ukrainian does not print, which is
+  ``person_names.foreign_person_names``'s question and not this one's.
+  The same is true of «Стефан» → «Степан», the defect that made that
+  sibling necessary: «Степан» is not a different person, it is this one
+  misspelt as the ordinary Ukrainian given name, so everything below
+  goes on reading it as Stephen and staying quiet.
 * **«Красные ворота» → «Червоні ворота».** Ὡραία rendered as the
   colour. The wrong half is an adjective, and no different name
   appeared.
@@ -197,7 +204,12 @@ _NAMES: Final[tuple[tuple[str, str, str, str, str], ...]] = (
     # are "Saul" in English, so the English cell is shared and the two
     # rows go ambiguous there — which is the safe direction.
     ("king_saul", "Саул/Саула/Саулу", "Saul", "Saul", "Саул/Саула"),
-    ("stephen", "Стефан/Стефана/Стефану/Стефаном", "Stephen", "Stephanus", "Стефан/Стефана/Степан"),
+    # The Ukrainian cell holds what Ukrainian prints. «Степан» used to
+    # stand here as a third accepted form and does not: it is the
+    # ordinary Ukrainian given name Stepan, and no Ukrainian Bible calls
+    # the first martyr by it. It now lives in ``_NOT_PRINTED_HERE``,
+    # which still resolves it to this row — see the note there.
+    ("stephen", "Стефан/Стефана/Стефану/Стефаном", "Stephen", "Stephanus", "Стефан/Стефана/Стефану/Стефаном"),
     ("barnabas", "Варнава/Варнавы/Варнаве/Варнаву/Варнавой", "Barnabas", "Barnabas", "Варнава/Варнави/Варнаву"),
     ("silas", "Сила/Силы/Силе/Силу/Силой", "Silas", "Silas", "Сила/Сили/Силу"),
     ("timothy", "Тимофей/Тимофея/Тимофею", "Timothy", "Timotheus", "Тимофій/Тимофія"),
@@ -344,6 +356,57 @@ _NAMES: Final[tuple[tuple[str, str, str, str, str], ...]] = (
     ("pilate", "Пилат/Пилата/Пилату", "Pilate", "Pilatus", "Пилат/Пилата"),
 )
 
+# Spellings a language does **not** print for a person, kept so that
+# everything above still recognises them *as* that person.
+#
+# The same shape, and the same reason, as ``bible.books.
+# _NOT_PRINTED_HERE``. A language has spellings it prints and spellings
+# it does not: Ukrainian prints «Стефан» — Куліш 1905, the edition this
+# platform serves, has «Стефана» at Acts 6:5, 7:59, 8:2, 11:19 and
+# 22:20 — and «Степан» is the ordinary Ukrainian given name Stepan,
+# which is a different name and not another spelling of this one.
+#
+# Registered into ``_EXACT`` and ``_STEMS`` exactly like the printed
+# forms, and deliberately absent from ``_PRINTED``. That split is what
+# makes the two checks say different things about the same word:
+# ``substituted_names`` reads «Степана» as *Stephen, spelt oddly* and
+# stays silent, which is the right answer to "did the translation put a
+# different person here"; ``person_names.foreign_person_names`` reads
+# the literal spelling and says Ukrainian does not print it. Take these
+# out of the index instead of moving them here and «Стефан» → «Степан»
+# reads as a name arriving out of nowhere — the wrong diagnosis, and an
+# accusation of substituting somebody who was never named.
+#
+# Literal, not phonetic, because spelling is the whole subject. The
+# skeletons these rows are indexed under cannot tell «Лисий» from
+# «Лісій» — ``и`` and ``і`` are one letter to ``_skeleton``, by design,
+# so that «Галилея» can meet «Галілея» — and one of those two is what
+# Ukrainian prints.
+#
+# Every form below was read off the live catalogue by a native editor
+# before it was written down, and each row is a claim that costs
+# something: a language that does print a form and is listed here flags
+# correct prose in every row that uses it. German ``Stephan`` was
+# measured (14 rows) and is *not* here — German really does print it,
+# which is why the feast is der Stephanstag and the cathedral is der
+# Stephansdom.
+_NOT_PRINTED_HERE: Final[dict[str, dict[str, str]]] = {
+    "uk": {
+        # Read on production in eight rows, every one an assessment
+        # item: «промова Степана в Діян. 7», «при смерті Степана»,
+        # «хто схвалив страту Степана?». The lessons those questions
+        # examine print «Стефан».
+        "stephen": "Степан/Степана/Степану/Степанові/Степаном/Степане",
+        # «Лисий» is the Russian spelling standing in Ukrainian prose,
+        # where it is read as the adjective *bald*; «Лій» is not a name
+        # in any language and is the Ukrainian noun for tallow. Куліш
+        # prints «Лизия» (Acts 23:26, 24:7, 24:22) and the modern
+        # editions print «Лісій», which is what the same course prints
+        # two paragraphs earlier and in the quiz option.
+        "lysias": "Лисий/Лій",
+    },
+}
+
 
 def _verify_every_name_is_written_in_every_language(locales: tuple[str, ...]) -> None:
     """Refuse to load a table that is narrower than the roster.
@@ -386,22 +449,31 @@ def _index() -> tuple[_Table, _Table]:
     threads, and a dictionary filled from several threads at once is a
     race nobody would ever see fail — the same call ``term_memory``
     makes about ``_GLOSSARY_KEYS``.
+
+    The not-printed forms go in beside the printed ones. They are
+    spellings of the person they are filed under — a bad one — and
+    every question these two tables answer is "who is this word about",
+    which has the same answer either way.
     """
     exact: dict[str, dict[str, set[str]]] = {locale: {} for locale in LOCALE_CODES}
     stems: dict[str, dict[str, set[str]]] = {locale: {} for locale in LOCALE_CODES}
-    for row in _NAMES:
-        key, cells = row[0], row[1:]
-        for locale, cell in zip(LOCALE_CODES, cells, strict=True):
-            for form in _forms(cell):
-                skeleton = _skeleton(form)
-                if len(skeleton) < _MIN_SKELETON:
-                    # Too little to identify anything — ``iov`` would
-                    # match half the Old Testament. ``term_memory``
-                    # measured this floor; a shorter name is simply not
-                    # checkable and saying so is better than guessing.
-                    continue
-                exact[locale].setdefault(skeleton, set()).add(key)
-                stems[locale].setdefault(_stem(skeleton), set()).add(key)
+    rows: list[tuple[str, str, str]] = [
+        (row[0], locale, cell) for row in _NAMES for locale, cell in zip(LOCALE_CODES, row[1:], strict=True)
+    ]
+    rows += [(key, locale, cell) for locale, table in _NOT_PRINTED_HERE.items() for key, cell in table.items()]
+    for key, locale, cell in rows:
+        for form in _forms(cell):
+            skeleton = _skeleton(form)
+            if len(skeleton) < _MIN_SKELETON:
+                # Too little to identify anything — ``iov`` would
+                # match half the Old Testament. ``term_memory``
+                # measured this floor; a shorter name is simply not
+                # checkable and saying so is better than guessing.
+                # «Лій» falls here, which is why the check that reads
+                # spelling reads it literally and not through this.
+                continue
+            exact[locale].setdefault(skeleton, set()).add(key)
+            stems[locale].setdefault(_stem(skeleton), set()).add(key)
     frozen = tuple(
         {locale: {k: frozenset(v) for k, v in table.items()} for locale, table in built.items()}
         for built in (exact, stems)
@@ -410,6 +482,24 @@ def _index() -> tuple[_Table, _Table]:
 
 
 _EXACT, _STEMS = _index()
+
+
+def _printed() -> dict[str, dict[str, str]]:
+    """locale → the form that language prints, per name.
+
+    The first entry of the cell, which is the dictionary form
+    everywhere in the table — what a reviewer should have seen.
+    """
+    printed: dict[str, dict[str, str]] = {locale: {} for locale in LOCALE_CODES}
+    for row in _NAMES:
+        for locale, cell in zip(LOCALE_CODES, row[1:], strict=True):
+            forms = _forms(cell)
+            if forms:
+                printed[locale][row[0]] = forms[0]
+    return printed
+
+
+_PRINTED: Final[dict[str, dict[str, str]]] = _printed()
 
 #: Every form of every name, filed by the consonant it starts with. Not
 #: an optimisation detail: ``term_memory._similarity`` returns zero
@@ -483,7 +573,7 @@ def _blank_citations(text: str, locale: str) -> str:
     return blanked
 
 
-def _tokens(text: str, locale: str) -> list[tuple[str, str, int]]:
+def capitalised_words(text: str, locale: str) -> list[tuple[str, int]]:
     """Capitalised words of ``text``, with where each one sits.
 
     Capitalisation, and not ``term_memory.name_candidates``: that helper
@@ -495,6 +585,9 @@ def _tokens(text: str, locale: str) -> list[tuple[str, str, int]]:
 
     An all-caps word is a heading or an acronym and says nothing about
     its own shape, which is the one exclusion worth keeping.
+
+    Public because ``person_names`` reads the same words with the same
+    citations blanked, and asks a different question about them.
     """
     # Entities decoded before anything reads a word. The catalogue
     # writes a reference as ``1&nbsp;Тимофею 1:3``, and ``strip_tags``
@@ -502,14 +595,27 @@ def _tokens(text: str, locale: str) -> list[tuple[str, str, int]]:
     # followed by an ampersand, declined to call it a book, and this
     # module read the name of a letter as the naming of a man.
     prose = _blank_citations(unescape(strip_tags(text) if "<" in text else text), locale)
-    found: list[tuple[str, str, int]] = []
+    found: list[tuple[str, int]] = []
     for match in _WORD_RE.finditer(prose):
         word = match.group(0)
-        if not word[0].isupper() or word.isupper():
-            continue
+        if word[0].isupper() and not word.isupper():
+            found.append((word, match.start()))
+    return found
+
+
+def _tokens(text: str, locale: str) -> list[tuple[str, str, int]]:
+    """The same words, reduced to skeletons, minus the ones too short to
+    identify anybody.
+
+    The floor belongs here rather than in ``capitalised_words``: it is a
+    fact about ``term_memory``'s comparison, not about the text, and the
+    check that reads a spelling literally is not subject to it.
+    """
+    found: list[tuple[str, str, int]] = []
+    for word, offset in capitalised_words(text, locale):
         skeleton = _skeleton(word)
         if len(skeleton) >= _MIN_SKELETON:
-            found.append((word, skeleton, match.start()))
+            found.append((word, skeleton, offset))
     return found
 
 
@@ -567,6 +673,40 @@ def _sounds_like(skeleton: str, locale: str) -> frozenset[str]:
         if _similarity(skeleton, form_skeleton) >= _MIN_SIMILARITY
         for key in keys
     )
+
+
+def not_printed_in(locale: str) -> tuple[tuple[str, str], ...]:
+    """Every spelling written down as one ``locale`` does not print, with
+    the person each one was reaching for.
+
+    A closed, hand-checked list, and the only thing in this module that
+    accuses on the strength of a spelling alone. The parallel with
+    ``bible.books.not_printed_in`` is exact, including why it has to be
+    written by hand: nothing here can tell a spelling a language lacks
+    from a spelling nobody happened to write down.
+    """
+    return tuple((form, key) for key, cell in _NOT_PRINTED_HERE.get(locale, {}).items() for form in _forms(cell))
+
+
+def printed_in(key: str, locale: str) -> str | None:
+    """What ``locale`` does print for this person, or ``None`` if this
+    table has no column for the two of them."""
+    return _PRINTED.get(locale, {}).get(key)
+
+
+def named_in(text: str, locale: str) -> frozenset[str]:
+    """Every person or place ``text`` names, on exact evidence.
+
+    The strict reading, and only the strict one: this is the half of an
+    accusation that says the source really did name somebody, and read
+    loosely the source side invents names out of ordinary words — it
+    read «Деяния» as Derbe and «Правила» as Job. A caller wanting the
+    generous reading wants ``substituted_names``, which asks both.
+    """
+    keys: set[str] = set()
+    for _word, _offset, found in _named(_tokens(text, locale), locale, strict=True):
+        keys |= found
+    return frozenset(keys)
 
 
 def substituted_names(
@@ -673,4 +813,4 @@ def _pair_up(
     return pairs
 
 
-__all__ = ["substituted_names"]
+__all__ = ["capitalised_words", "named_in", "not_printed_in", "printed_in", "substituted_names"]
