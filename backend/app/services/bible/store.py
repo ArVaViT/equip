@@ -56,6 +56,49 @@ def _load_locale(locale: LocaleCode) -> dict[str, str]:
         return _cache[locale]
 
 
+#: Book slug → how many chapters it has. Derived, not written down: a
+#: second table of 66 numbers is a second table to get wrong, and this
+#: one already has to be right — the English bundle is the reference
+#: system, complete and verified at 31 102 verses across 66 books.
+_chapter_counts: dict[str, int] = {}
+#: Whether ``_chapter_counts`` has been built. A separate flag and not
+#: ``if not _chapter_counts``, because an empty bundle is a perfectly
+#: possible answer — a test that points the data directory somewhere
+#: else gets one — and emptiness read as "not built yet" means the file
+#: is parsed again on every call. Measured: it took the suite from 52
+#: seconds to not finishing.
+_chapter_counts_built = False
+
+
+def chapters_in(book: str) -> int | None:
+    """How many chapters ``book`` has, or ``None`` if it is not a book.
+
+    Read off the English bundle the first time it is asked and kept.
+    English because it is the one edition here that is complete and
+    verified end to end; the others are the API's, and asking a network
+    service how long a book is to check a citation would be absurd.
+
+    Chapter counts do not differ between the editions this platform
+    serves — the versification differences it has to care about are in
+    *verse* numbering, which is what ``psalm_numbering`` exists for.
+    """
+    global _chapter_counts_built
+    if not _chapter_counts_built:
+        # Read the bundle *before* taking the lock. ``_load_locale``
+        # takes the same lock, and ``threading.Lock`` is not reentrant —
+        # doing it the obvious way deadlocks on the first call, which is
+        # what it did: the suite stopped dead on the first test that
+        # validated a reference.
+        bundle = _load_locale("en")
+        with _lock:
+            if not _chapter_counts_built:
+                for key in bundle:
+                    slug, chapter, _verse = key.rsplit(".", 2)
+                    _chapter_counts[slug] = max(_chapter_counts.get(slug, 0), int(chapter))
+                _chapter_counts_built = True
+    return _chapter_counts.get(book)
+
+
 def lookup(ref: BibleRef, locale: LocaleCode) -> str | None:
     """Return the canonical verse text for ``ref`` in ``locale``,
     or ``None`` when the verse (or any part of a range) is missing."""
@@ -112,4 +155,4 @@ def reset_cache() -> None:
         _cache.clear()
 
 
-__all__ = ["is_locale_bundled", "lookup", "reset_cache"]
+__all__ = ["chapters_in", "is_locale_bundled", "lookup", "reset_cache"]
