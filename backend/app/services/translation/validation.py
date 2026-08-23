@@ -1422,6 +1422,75 @@ def _check_person_names(source: str, translated: str, source_locale: str, target
     )
 
 
+def _check_impossible_reference(
+    source: str, translated: str, source_locale: str, target_locale: str
+) -> ValidationIssue | None:
+    """A citation pointing at a chapter the book does not have.
+
+    Leviticus ends at chapter 27, so ``3. Mose 34,1`` is not a
+    misspelling and not a matter of taste — it is an address that does
+    not exist. A German reader following it finds nothing, and the
+    verse standing beside it in the lesson is Deuteronomy 34:1, which
+    is what the source cited.
+
+    That is how the live row got there: the model translated the book
+    name *Deuteronomy* as *3. Mose*, and every check that could have
+    seen it looked elsewhere. ``book_name_not_printed_here`` asks
+    whether the language prints this spelling, and German prints
+    ``3. Mose`` — for Leviticus. Nothing asked whether the numbers
+    behind the name were possible.
+
+    Blocking, and this one needs no argument about severity: a
+    reference is an address, and an address to a chapter that was never
+    written cannot be followed by anybody. It is also the rare check
+    with no judgement in it at all — the chapter counts are arithmetic,
+    the same in every edition this platform serves, and read off the
+    English bundle rather than written down a second time.
+
+    Only the translation is examined, and only for references the source
+    did not already carry. A source with an impossible citation is the
+    author's to fix, and reporting it here would park a translation for
+    faithfully carrying across what it was given.
+
+    Measured over every reader-reachable row on 2026-08-22: one hit, and
+    it is the row above.
+    """
+    from app.services.bible.store import chapters_in
+
+    # One regex before anything is parsed, and then the source is not
+    # read at all unless the translation has already failed. Reading
+    # references means walking every book name in the language over the
+    # whole string, and this runs on every row of every translation to
+    # find a defect that appears once in a catalogue of ten thousand.
+    prose = strip_tags(translated)
+    if not _VERSE_REF_RE.search(prose):
+        return None
+
+    def impossible(text: str, locale: str) -> set[tuple[str, int]]:
+        found: set[tuple[str, int]] = set()
+        for parsed in parse_references(text, locale):
+            limit = chapters_in(parsed.ref.book)
+            if limit is not None and parsed.ref.chapter > limit:
+                found.add((parsed.ref.book, parsed.ref.chapter))
+        return found
+
+    written = impossible(prose, target_locale)
+    if not written:
+        return None
+    named = written - impossible(strip_tags(source), source_locale)
+    if not named:
+        return None
+    listed = ", ".join(f"{book} {chapter} (the book has {chapters_in(book)})" for book, chapter in sorted(named))
+    return ValidationIssue(
+        code="reference_to_a_chapter_that_does_not_exist",
+        detail=(
+            f"A citation points at a chapter the book does not have: {listed}. "
+            f"Check the book name — a reference whose numbers belong to one "
+            f"book and whose name belongs to another leads the reader nowhere."
+        ),
+    )
+
+
 def validate_translation(
     *,
     source: str,
@@ -1481,6 +1550,7 @@ def validate_translation(
     issues.append(_check_proper_names(source, translated, source_locale, target_locale))
     issues.append(_check_person_names(source, translated, source_locale, target_locale))
     issues.append(_check_book_names(source, translated, source_locale, target_locale))
+    issues.append(_check_impossible_reference(source, translated, source_locale, target_locale))
     return [issue for issue in issues if issue is not None]
 
 
