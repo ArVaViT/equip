@@ -1,0 +1,25 @@
+{
+  "name": "equip backend: a translation is parked and nobody was told",
+  "type": "log alert",
+  "query": "logs(\"service:equip-backend env:production \\\"Translation failed validation\\\"\").index(\"*\").rollup(\"count\").last(\"30m\") >= 1",
+  "message": "A translation came back, failed a blocking check, and was parked at `needs_review`. The reader keeps whatever translation was already there — nothing breaks — but nothing will replace it either, because the executor does not retry a parked row whose source has not changed. It sits until a person looks.\n\nUntil now nobody was told. The warning-spike monitor needs ten warnings in fifteen minutes, and a parked row is one line. On 2026-08-22 two rows parked in one afternoon and both were found by hand, by chance.\n\nThe log line names the entity, the locale and the issue codes, which is usually the whole diagnosis. Three that mean different things:\n\n- `proper_name_substituted` / `person_name_not_printed_here` / `reference_to_a_chapter_that_does_not_exist` — the translation is wrong and the row deserves another attempt. Set `translator_version` one below the current generation and the pipeline picks it up.\n- `scripture_in_source_language` — the canonical verse could not be had for that language. Check whether the Bible API is rate-limiting (`service:equip-backend \"Bible API 429\"`) before retrying; the retry will fail the same way until it clears.\n- Anything about language or an untranslated run — read the row. The model may have answered in the wrong language entirely.\n\nLogs: https://app.us5.datadoghq.com/logs?query=service%3Aequip-backend%20env%3Aproduction%20%22Translation%20failed%20validation%22\n\nNotify: @arvavitcorp@gmail.com",
+  "tags": [
+    "env:production",
+    "project:equip",
+    "managed_by:claude"
+  ],
+  "priority": 3,
+  "options": {
+    "evaluation_delay": 60,
+    "thresholds": {
+      "critical": 1.0
+    },
+    "notify_no_data": false,
+    "renotify_interval": 0,
+    "notify_audit": false,
+    "new_host_delay": 300,
+    "include_tags": true,
+    "groupby_simple_monitor": false,
+    "silenced": {}
+  }
+}
