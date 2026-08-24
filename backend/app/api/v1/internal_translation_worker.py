@@ -256,11 +256,12 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
     course = get_course(db, course_id)
     if course is None:
         # Course deleted between enqueue and claim — terminate the job
-        # with a permanent failure so the queue doesn't spin on it
-        # forever. The cascade FK already nulled the row in some
-        # deployments; defensive handling here means the worker
-        # never crashes on a missing parent.
-        mark_job_failed(db, job, error=f"course {course_id!r} not found at claim time")
+        # now, not after the attempt budget runs out. A retry asks "was
+        # this a bad moment?", and a course that no longer exists will
+        # not exist four minutes from now either. The cascade FK already
+        # nulled the row in some deployments; defensive handling here
+        # means the worker never crashes on a missing parent.
+        mark_job_failed(db, job, error=f"course {course_id!r} not found at claim time", permanent=True)
         return WorkerTickResponse(
             status="failed",
             job_id=job_id,

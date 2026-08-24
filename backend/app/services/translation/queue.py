@@ -247,17 +247,34 @@ def get_queue_status(db: Session) -> dict[str, int]:
     return counts
 
 
-def mark_job_failed(db: Session, job: TranslationJob, *, error: str) -> TranslationJob:
+def mark_job_failed(
+    db: Session,
+    job: TranslationJob,
+    *,
+    error: str,
+    permanent: bool = False,
+) -> TranslationJob:
     """Record a worker failure. Promotes to ``failed_permanent`` when
     the attempt budget is exhausted, otherwise re-queues as
     ``failed``.
+
+    ``permanent`` ends the job now, whatever the count says. Retrying
+    answers one question — "was this a bad moment?" — and there are
+    failures that question does not apply to. A job whose course no
+    longer exists is the plain case: the caller has already looked, the
+    course is gone, and asking four more times over four more minutes
+    cannot bring it back. Before this existed the worker's own comment
+    claimed it terminated such a job "so the queue doesn't spin on it
+    forever", and the queue then spun on it five times, which is how a
+    walkthrough that bins its test course at the end leaves five
+    failures behind it.
 
     Commits the transaction so the row lock from ``claim_next_job``
     is released regardless of whether the job survives or terminates.
     """
     job.last_error = error[:2000] if error else None
     job.finished_at = datetime.now(UTC)
-    if job.attempts >= TRANSLATION_JOB_MAX_ATTEMPTS:
+    if permanent or job.attempts >= TRANSLATION_JOB_MAX_ATTEMPTS:
         job.status = TranslationJobStatus.FAILED_PERMANENT
     else:
         # Soft failure — re-queueable by the next worker pass via the

@@ -186,8 +186,15 @@ def test_marks_failed_when_course_was_soft_deleted_between_enqueue_and_claim(
 ):
     """The publish path enqueued the job for a course that has since
     been soft-deleted. ``get_course`` filters ``deleted_at`` and
-    returns ``None``; the worker must not crash — it bumps the
-    attempts counter and reports the failure cleanly.
+    returns ``None``; the worker must not crash — it ends the job
+    then and there.
+
+    Permanently, on the first look. A retry asks "was this a bad
+    moment?", and a course that is gone will still be gone four
+    minutes from now. Until 2026-08-24 this took the ordinary path
+    and burned all five attempts on a course nobody could translate;
+    production carried one such job for every walkthrough that binned
+    its test course when it finished.
 
     A hard-delete is a different shape: the FK ``ON DELETE CASCADE``
     on ``translation_jobs.course_id`` takes the queue row out with
@@ -210,7 +217,8 @@ def test_marks_failed_when_course_was_soft_deleted_between_enqueue_and_claim(
     assert body["course_id"] == course_id
 
     db.refresh(job)
-    assert job.status == TranslationJobStatus.FAILED
+    assert job.status == TranslationJobStatus.FAILED_PERMANENT
+    assert job.attempts == 1
     assert "not found" in (job.last_error or "")
 
 
