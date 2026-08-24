@@ -102,6 +102,61 @@ _BLOCKQUOTE_PATTERN = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 
+#: A blockquote whose whole content is one block element, and the three
+#: pieces of it: the opening tag, what it holds, the closing tag.
+#:
+#: This exists because the marker replaces the blockquote's *inner*, and
+#: an inner that is ``<p>verse</p>`` takes the paragraph with it. The
+#: canonical text is then pasted back bare, the translation has one
+#: fewer paragraph than the source, and ``validation._check_tags``
+#: parks the row — in every target language, on every retry, because
+#: the translation is correct and the shape is not.
+#:
+#: Measured against production on 2026-08-24: two blocks quoting the
+#: same verse, one written ``<blockquote><p>…</p></blockquote>`` and one
+#: ``<blockquote>…</blockquote>``. The first parked in all three
+#: languages; the second came back translated with the reference
+#: renumbered. Nothing else differed.
+#:
+#: It is the editor's own shape. TipTap declares blockquote as
+#: ``content: "block+"`` (``@tiptap/extension-blockquote``), so every
+#: quotation a teacher inserts with the toolbar button is wrapped in a
+#: paragraph. The eighteen blockquotes in the live courses have no
+#: wrapper only because those courses were seeded by script.
+#:
+#: Deliberately narrow: one element, filling the whole inner, with no
+#: second one of the same name nested inside it. Anything else is left
+#: exactly as it was — a blockquote holding two paragraphs is a shape
+#: this has no opinion about, and guessing at it would be worse than
+#: the defect.
+_LONE_BLOCK_WRAPPER = re.compile(
+    r"^\s*(?P<open><(?P<tag>p|div)\b[^>]*>)(?P<body>.*)(?P<close></(?P=tag)\s*>)\s*$",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+#: Block-level markup that must not be swallowed by a marker.
+_BLOCK_INSIDE = re.compile(r"<(?:p|div|h[1-6]|ul|ol|li|blockquote|pre|table|details)\b", re.IGNORECASE)
+
+
+def _peel_wrapper(inner: str) -> tuple[str, str, str]:
+    """``inner`` split into (opening tag, content, closing tag).
+
+    Empty strings for the tags when there is nothing to peel, so the
+    caller can always concatenate the three parts back and get what it
+    started with.
+    """
+    match = _LONE_BLOCK_WRAPPER.match(inner)
+    if match is None:
+        return "", inner, ""
+    body = match.group("body")
+    if re.search(rf"<{match.group('tag')}\b", body, re.IGNORECASE):
+        # Two of them nested, or two side by side sharing one closing
+        # tag by the greedy match. Not one wrapper, so not ours.
+        return "", inner, ""
+    return match.group("open"), body, match.group("close")
+
+
 # How far past the closing </blockquote> to look for "(Acts 1:8)".
 # Most academic prose puts the reference immediately after; 120 chars
 # leaves room for a small leading phrase like " — see also " before
@@ -767,6 +822,21 @@ def pre_substitute(
     for bm in _BLOCKQUOTE_PATTERN.finditer(html):
         bq_start, bq_end = bm.span()
         inner = bm.group("inner")
+        # A lone paragraph wrapping the whole quotation is the editor's
+        # doing, not the author's. Set it aside before anything measures
+        # or replaces the text, and put it back around the marker below;
+        # otherwise it goes into the marker with the verse and never
+        # comes out. See ``_LONE_BLOCK_WRAPPER``.
+        wrapper_open, inner, wrapper_close = _peel_wrapper(inner)
+        if _BLOCK_INSIDE.search(inner):
+            # More structure than one wrapper: a quotation of two verses
+            # typed as two paragraphs, a list, a nested quote. The marker
+            # replaces the inner as one span, so substituting here would
+            # flatten all of it and the row would park on markup for
+            # good. Declining costs the edition's wording and keeps the
+            # lesson — the same trade this layer makes everywhere the
+            # canonical text cannot be had.
+            continue
 
         # Two real-world layouts for the reference:
         #
@@ -860,6 +930,7 @@ def pre_substitute(
         closing_tag = "</blockquote>"
         out_parts.append(html[cursor:bq_start])
         out_parts.append(opening_tag)
+        out_parts.append(wrapper_open)
         out_parts.append(marker)
         # The marker swallowed the verse text including any trailing
         # whitespace/quote chars; re-introduce a single space before
@@ -872,6 +943,7 @@ def pre_substitute(
         if emitted_tail.startswith("(") and not emitted_tail.startswith(" ("):
             emitted_tail = " " + emitted_tail
         out_parts.append(emitted_tail)
+        out_parts.append(wrapper_close)
         out_parts.append(closing_tag)
         cursor = bq_end
         # ``ref_tail`` on Substitution is what post_substitute scans for
@@ -884,7 +956,7 @@ def pre_substitute(
         # their own marks are still standing, and about the exact span
         # the marker replaces: everything before ``verse_text_inner``,
         # and everything after it including the citation.
-        inner_start = bm.start("inner")
+        inner_start = bm.start("inner") + len(wrapper_open)
         opening_lost, closing_lost = _swallowed_quotes(
             verse_text_inner,
             html[:inner_start],
