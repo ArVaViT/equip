@@ -269,6 +269,32 @@ class TestIframeAllowlist:
         cleaned = sanitize_string("<iframe></iframe>")
         assert "<iframe" not in cleaned
 
+    def test_a_stripped_iframe_leaves_no_closing_tag_behind(self):
+        # The old post-filter removed the opening tag and left ``</iframe>``
+        # standing. Nothing renders, so nobody saw it — but the translation
+        # validator compares a translation's tag list against its source,
+        # the model drops the orphan, and a good translation is parked as
+        # ``markup_mismatch``. Assert on the closing tag specifically:
+        # ``"<iframe" not in cleaned`` passes with the orphan still there.
+        cleaned = sanitize_string('<p>before</p><iframe src="https://evil.example.com/x">fallback</iframe><p>after</p>')
+        assert "iframe" not in cleaned
+        assert "fallback" not in cleaned
+        assert cleaned == "<p>before</p><p>after</p>"
+
+    def test_an_orphan_closing_tag_from_older_content_is_swept(self):
+        # Content sanitised by the previous version carries the orphan in
+        # the database. Re-saving it should clean it up, not preserve it.
+        assert sanitize_string("<p>text</p></iframe>") == "<p>text</p>"
+
+    def test_a_kept_embed_keeps_both_of_its_tags(self):
+        # The orphan sweep must not reach inside an embed we are keeping.
+        cleaned = sanitize_string(
+            '<iframe src="https://www.youtube.com/embed/keep"></iframe><iframe src="https://vimeo.com/drop"></iframe>'
+        )
+        assert cleaned.count("<iframe") == 1
+        assert cleaned.count("</iframe>") == 1
+        assert "vimeo" not in cleaned
+
     def test_iframe_with_single_quoted_src_handled(self):
         # Bleach normalises attribute quoting, but a teacher pasting raw
         # HTML can produce single-quoted attrs. The regex used by the
@@ -277,6 +303,22 @@ class TestIframeAllowlist:
         # After bleach + post-filter the iframe should survive in some
         # canonical form (quotes may be normalised).
         assert "youtube.com/embed/abc123" in cleaned
+
+
+class TestFigure:
+    """A caption is part of the picture, not a sentence under it."""
+
+    def test_figure_and_caption_survive(self):
+        html = '<figure><img src="https://cdn.example.com/a.png" alt="Map"><figcaption>Paul\'s first journey</figcaption></figure>'
+        cleaned = sanitize_string(html)
+        assert "<figure>" in cleaned
+        assert "<figcaption>" in cleaned
+        assert "Paul's first journey" in cleaned
+
+    def test_figure_cannot_smuggle_script(self):
+        cleaned = sanitize_string('<figure onclick="steal()"><figcaption>x</figcaption></figure>')
+        assert "onclick" not in cleaned
+        assert "<figcaption>" in cleaned
 
 
 class TestEarlyReturns:
