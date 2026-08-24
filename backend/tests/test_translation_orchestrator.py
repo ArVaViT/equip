@@ -539,6 +539,10 @@ def _patch_provider(monkeypatch, provider: _RecordingProvider) -> None:
 
 
 def test_publishing_a_course_triggers_translation(monkeypatch, client: TestClient):
+    # Counts provider calls made inside the request, so it needs the
+    # synchronous publish path. Production enqueues instead; the queue
+    # path is covered in test_translation_pipeline_hooks.py.
+    monkeypatch.setattr("app.core.config.settings.TRANSLATION_QUEUE_ENABLED", False)
     provider = _RecordingProvider()
     _patch_provider(monkeypatch, provider)
 
@@ -555,6 +559,10 @@ def test_publishing_a_course_triggers_translation(monkeypatch, client: TestClien
 
 
 def test_publishing_does_not_translate_again_on_idempotent_update(monkeypatch, client: TestClient):
+    # Counts provider calls made inside the request, so it needs the
+    # synchronous publish path. Production enqueues instead; the queue
+    # path is covered in test_translation_pipeline_hooks.py.
+    monkeypatch.setattr("app.core.config.settings.TRANSLATION_QUEUE_ENABLED", False)
     provider = _RecordingProvider()
     _patch_provider(monkeypatch, provider)
 
@@ -599,6 +607,10 @@ def test_publish_hook_swallows_translation_failures(monkeypatch, client: TestCli
 
 
 def test_manual_translate_endpoint_backfills_existing_courses(monkeypatch, client: TestClient):
+    # Counts provider calls made inside the request, so it needs the
+    # synchronous publish path. Production enqueues instead; the queue
+    # path is covered in test_translation_pipeline_hooks.py.
+    monkeypatch.setattr("app.core.config.settings.TRANSLATION_QUEUE_ENABLED", False)
     provider = _RecordingProvider()
     _patch_provider(monkeypatch, provider)
 

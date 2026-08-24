@@ -91,9 +91,7 @@ class Settings(BaseSettings):
     # Pydantic ``ValidationError`` traceback land on every favicon scrape.
     SUPABASE_URL: str | None = Field(default=None, description="Supabase project URL")
     # Server-side Supabase key (admin queries only — e.g. reading auth.users
-    # to sync ``profiles`` rows). Also read from the legacy SUPABASE_KEY env
-    # var for backwards compatibility with early deployments — see
-    # load_alternative_env_vars() below.
+    # to sync ``profiles`` rows).
     SUPABASE_SERVICE_ROLE_KEY: str | None = Field(default=None, description="Supabase service-role key (server-only)")
 
     DATABASE_URL: str | None = Field(default=None, description="Database connection URL")
@@ -241,16 +239,30 @@ class Settings(BaseSettings):
         default=None,
         description="Shared secret the cron driver presents to drain the translation queue",
     )
-    # Feature flag that swaps the publish path from sync orchestrator
-    # calls (one Gemini call per cv field, up to 100+ for a chapter-
-    # heavy course, all inside the teacher's request) to a queue
-    # enqueue (one DB insert). The cron driver from Phase 5aw drains
-    # the queue out-of-band. Off by default so a deploy without the
-    # cron configured stays on the legacy sync path; flip ON after
-    # confirming the worker is running.
+    # Which publish path a course save takes.
+    #
+    # ON (the default, and what production runs): saving enqueues one
+    # row in ``translation_jobs`` and returns. The cron-driven worker
+    # drains it out-of-band under a time budget.
+    #
+    # OFF: the save translates the whole course tree inside the request
+    # — one provider call per field, over a hundred for a chapter-heavy
+    # course. On 2026-08-08 that path returned
+    # ``504 FUNCTION_INVOCATION_TIMEOUT`` at exactly 300 s on a five-
+    # module course, having written part of the translation, so the
+    # teacher had to save again to finish what the first save started.
+    #
+    # The default was OFF until 2026-08-24 — the flag was introduced
+    # cautiously while the worker was unproven, and production was
+    # switched ON on 2026-08-17 once it was. Leaving the default behind
+    # meant every environment that did not set the variable explicitly
+    # (a preview deploy, a restored stack, a new machine) silently ran
+    # the path that times out. The cautious default had become the
+    # dangerous one. Turn it OFF only where no worker cron exists and a
+    # slow, partial publish beats none at all.
     TRANSLATION_QUEUE_ENABLED: bool = Field(
-        default=False,
-        description="Use the queue-based publish path instead of sync orchestrator calls",
+        default=True,
+        description="Enqueue translation on save; turn off only where no worker cron runs",
     )
     # How long one worker tick may spend translating before it hands the
     # job back unfinished. Must leave room, inside the function's
@@ -322,13 +334,12 @@ class Settings(BaseSettings):
                     describe_measured_gemini_models(),
                 )
 
-        if not self.SUPABASE_SERVICE_ROLE_KEY:
-            # Accept the legacy SUPABASE_KEY name from older deployments.
-            # Anon keys are NEVER accepted as a server-side secret.
-            legacy = os.getenv("SUPABASE_KEY")
-            if legacy:
-                logger.warning("SUPABASE_KEY is deprecated; set SUPABASE_SERVICE_ROLE_KEY explicitly")
-                self.SUPABASE_SERVICE_ROLE_KEY = legacy
+        # ``SUPABASE_KEY`` used to be accepted here as an older name for the
+        # service-role key. Supabase disabled the legacy anon/service_role
+        # key format on 2026-06-08, so any value still carried under that
+        # name is dead: adopting it made the settings object look configured
+        # while every call it authorised came back 401. Set
+        # SUPABASE_SERVICE_ROLE_KEY, or be honestly unconfigured.
 
         if not self.DATABASE_URL:
             self.DATABASE_URL = (
