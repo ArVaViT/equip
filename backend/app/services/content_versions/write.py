@@ -236,6 +236,69 @@ def record_mt_version(
         existing.translator_version = version
         return existing
 
+    # A rejected answer must not take a good translation off the page.
+    #
+    # ``record_mt_failure`` learned this on 2026-08-20, when a provider
+    # outage withheld 98 finished translations. This is the same harm
+    # through the other door: the model *did* answer, the answer failed
+    # the structural check, and superseding put a row nobody may read in
+    # place of one readers were already being served.
+    #
+    # Production, 2026-08-19: one chapter block of «Glossary in Your
+    # Pocket». The English translation from two days earlier was correct
+    # and serving. The retry came back with two ``<em>`` the source did
+    # not have, was parked as ``markup_mismatch`` — and the good text
+    # went with it. English readers of that lesson got nothing at all,
+    # and the row that could have replaced it sat one line below in the
+    # same table.
+    #
+    # Only for a re-ask of the *same* source. When the source has moved
+    # on, the stored translation is of text the author no longer wrote,
+    # and showing it would be answering a new question with an old
+    # answer — there the rejected row does take over, and the reader
+    # correctly gets nothing until a good translation lands. A cleared
+    # ``source_hash`` counts as the same source: clearing it is how a
+    # settled row asks to be redone *while it keeps serving*.
+    holds_servable_text = (
+        existing is not None
+        and existing.origin == "mt"
+        and existing.status == ContentVersionStatus.OK
+        and bool((existing.text or "").strip())
+    )
+    same_source = existing is not None and existing.source_hash in (source_hash, None)
+    if status != ContentVersionStatus.OK and holds_servable_text and same_source:
+        assert existing is not None  # narrowed by holds_servable_text
+        new_id = uuid.uuid4()
+        _defer_fk_if_sqlite(db)
+        # The rejected text is kept, superseded on arrival, so what the
+        # model said and why it was refused stay readable — but it is
+        # never the active row, and never reaches a reader.
+        db.add(
+            ContentVersion(
+                id=new_id,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                field=field,
+                locale=locale,
+                text=text,
+                origin="mt",
+                status=status,
+                review_reason=review_reason,
+                source_locale=source_locale,
+                source_hash=source_hash,
+                source_version_id=source_version_id,
+                translator_version=version,
+                superseded_by=existing.id,
+            )
+        )
+        existing.attempts += 1
+        # The stamp moves because this generation *has* examined the row.
+        # Leaving the old number would send the sweep back to buy the
+        # same refusal again on every cycle, at temperature 0, forever.
+        existing.translator_version = version
+        db.flush()
+        return existing
+
     new_id = uuid.uuid4()
     if existing is not None:
         _defer_fk_if_sqlite(db)

@@ -85,6 +85,17 @@ class ResetResponse(BaseModel):
     reset: int
 
 
+class RestoreLastGoodRequest(BaseModel):
+    """Put a previously servable translation back in front of readers.
+
+    By id, like accepting: the ids come from the queue or from a report,
+    and the operator is saying "this row is not fit to serve and the one
+    it replaced was".
+    """
+
+    ids: list[UUID] = Field(..., min_length=1, max_length=200)
+
+
 class AcceptReviewedRequest(BaseModel):
     """Accept specific ``needs_review`` rows as servable, by primary key.
 
@@ -333,6 +344,97 @@ def retry_reviewed(
         request=request,
     )
     return ResetResponse(reset=affected)
+
+
+@router.post(
+    "/restore-last-good",
+    response_model=ResetResponse,
+    summary="Put the last servable translation back in front of readers",
+    responses={
+        200: {"description": "Rows restored; ``reset`` counts those actually swapped."},
+        404: {"description": "No listed row was both unservable and standing on a good one."},
+    },
+)
+def restore_last_good(
+    payload: RestoreLastGoodRequest,
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> ResetResponse:
+    """Make the newest superseded ``ok`` row active again, behind an
+    unservable one that replaced it.
+
+    Until 2026-08-24 a rejected retry superseded the row it failed to
+    improve on, and readers lost a translation they already had. The
+    write path no longer does that — but the rows it already did it to
+    are still in production, and the only way to correct one was an
+    UPDATE typed against the live database, which is exactly the thing
+    this project does not do.
+
+    So: for each listed row that is active and not ``ok``, find the
+    newest row it superseded that is ``ok`` and has text, and swap them.
+    The unservable row is kept, now pointing at the row it used to
+    replace, so nothing is deleted and the audit trail still shows what
+    the model said.
+
+    Rows that are already servable, that never superseded anything, or
+    whose predecessor is human-authored are left alone — a human row is
+    not the pipeline's to reinstate, and it would not have been
+    superseded by a machine one in the first place.
+    """
+    restored = 0
+    try:
+        for row in (
+            db.query(ContentVersion)
+            .filter(
+                ContentVersion.id.in_(payload.ids),
+                ContentVersion.superseded_by.is_(None),
+                ContentVersion.status != "ok",
+            )
+            .all()
+        ):
+            predecessor = (
+                db.query(ContentVersion)
+                .filter(
+                    ContentVersion.superseded_by == row.id,
+                    ContentVersion.status == "ok",
+                    ContentVersion.origin == "mt",
+                    ContentVersion.text != "",
+                )
+                .order_by(ContentVersion.updated_at.desc())
+                .first()
+            )
+            if predecessor is None:
+                continue
+            # Occupy the key before freeing it: one active row per
+            # (entity, field, locale) is a unique index, not a
+            # convention, and doing this the other way round trips it.
+            row.superseded_by = predecessor.id
+            db.flush()
+            predecessor.superseded_by = None
+            db.flush()
+            restored += 1
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise
+    if restored == 0:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="No listed row was both unservable and standing on a translation that could be restored.",
+            context={"resource_type": "content_version"},
+        )
+    log_action(
+        db,
+        admin.id,
+        "restore_last_good_translation",
+        "content_version",
+        ",".join(str(i) for i in payload.ids[:10]),
+        details={"count": restored, "total_requested": len(payload.ids)},
+        request=request,
+    )
+    return ResetResponse(reset=restored)
 
 
 @router.post(

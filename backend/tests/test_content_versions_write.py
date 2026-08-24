@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session
 from app.models.content_version import (
     CONTENT_VERSION_MAX_ATTEMPTS,
     ContentVersion,
+    ContentVersionStatus,
 )
 from app.services.content_versions import (
     record_human_version,
@@ -280,6 +281,135 @@ class TestRecordMtVersion:
         assert first.superseded_by == second.id
         active = _active_for(db, entity_id="mv-3", field="title", locale="ru")
         assert active is second
+
+    def test_a_rejected_retry_does_not_take_a_good_translation_off_the_page(self, db: Session):
+        """Production, 2026-08-19: one chapter block of «Glossary in Your
+        Pocket». A correct English translation had been serving for two
+        days. The retry came back with two ``<em>`` the source did not
+        have, was parked as ``markup_mismatch`` — and superseding put
+        that unreadable row in front of readers. English readers of the
+        lesson got nothing, with the good text one row below in the same
+        table. ``record_mt_failure`` had already learned this lesson for
+        provider outages; this is the same harm through the other door."""
+        good = record_mt_version(
+            db,
+            entity_type="course",
+            entity_id="mv-park-1",
+            field="content",
+            locale="en",
+            text="<p>Grace is unearned favour.</p>",
+            source_locale="ru",
+            source_hash="same",
+        )
+        db.commit()
+
+        rejected = record_mt_version(
+            db,
+            entity_type="course",
+            entity_id="mv-park-1",
+            field="content",
+            locale="en",
+            text="<p>Grace is <em>unearned</em> favour.</p>",
+            source_locale="ru",
+            source_hash="same",
+            status=ContentVersionStatus.NEEDS_REVIEW,
+            review_reason="[markup_mismatch] source has 1 tag, translation has 2",
+        )
+        db.commit()
+        db.refresh(good)
+
+        # The reader still gets the good translation.
+        assert rejected is good
+        active = _active_for(db, entity_id="mv-park-1", field="content", locale="en")
+        assert active is good
+        assert active.status == ContentVersionStatus.OK
+        assert "<em>" not in (active.text or "")
+        # The attempt is counted, so a row that keeps failing is visible.
+        assert good.attempts == 1
+        # And what the model actually said is kept, superseded on arrival.
+        parked = (
+            db.query(ContentVersion)
+            .filter(
+                ContentVersion.entity_id == "mv-park-1",
+                ContentVersion.status == ContentVersionStatus.NEEDS_REVIEW,
+            )
+            .one()
+        )
+        assert parked.superseded_by == good.id
+        assert "<em>" in parked.text
+
+    def test_a_rejected_translation_of_new_source_does_take_over(self, db: Session):
+        """The other half, and it must stay this way. When the author has
+        rewritten the text, the stored translation is of something they no
+        longer wrote. Serving it would answer a new question with an old
+        answer, so here the rejected row wins and the reader correctly
+        gets nothing until a good translation lands."""
+        good = record_mt_version(
+            db,
+            entity_type="course",
+            entity_id="mv-park-2",
+            field="content",
+            locale="en",
+            text="<p>Grace is unearned favour.</p>",
+            source_locale="ru",
+            source_hash="old-source",
+        )
+        db.commit()
+
+        rejected = record_mt_version(
+            db,
+            entity_type="course",
+            entity_id="mv-park-2",
+            field="content",
+            locale="en",
+            text="<p>Mercy is <em>withheld</em> judgement.</p>",
+            source_locale="ru",
+            source_hash="new-source",
+            status=ContentVersionStatus.NEEDS_REVIEW,
+            review_reason="[markup_mismatch] source has 1 tag, translation has 2",
+        )
+        db.commit()
+        db.refresh(good)
+
+        assert rejected is not good
+        assert good.superseded_by == rejected.id
+        active = _active_for(db, entity_id="mv-park-2", field="content", locale="en")
+        assert active is rejected
+
+    def test_a_cleared_hash_counts_as_the_same_source(self, db: Session):
+        """Clearing ``source_hash`` is how a settled row asks to be redone
+        while it keeps serving. A rejected answer to that request must not
+        cost the row the text it was still serving."""
+        good = record_mt_version(
+            db,
+            entity_type="course",
+            entity_id="mv-park-3",
+            field="content",
+            locale="en",
+            text="<p>Grace is unearned favour.</p>",
+            source_locale="ru",
+            source_hash="h",
+        )
+        good.source_hash = None
+        db.commit()
+
+        record_mt_version(
+            db,
+            entity_type="course",
+            entity_id="mv-park-3",
+            field="content",
+            locale="en",
+            text="<p>Grace is <em>unearned</em> favour.</p>",
+            source_locale="ru",
+            source_hash="h",
+            status=ContentVersionStatus.NEEDS_REVIEW,
+            review_reason="[markup_mismatch]",
+        )
+        db.commit()
+
+        active = _active_for(db, entity_id="mv-park-3", field="content", locale="en")
+        assert active is good
+        assert active.status == ContentVersionStatus.OK
 
     def test_refuses_to_supersede_human_row(self, db: Session):
         human = record_human_version(
