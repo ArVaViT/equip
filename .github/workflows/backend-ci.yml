@@ -86,7 +86,7 @@ jobs:
         working-directory: backend
     env:
       SUPABASE_URL: ${{ vars.CI_SUPABASE_URL || 'https://example.supabase.co' }}
-      SUPABASE_KEY: ${{ secrets.CI_SUPABASE_ANON_KEY || 'ci-placeholder-not-real' }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.CI_SUPABASE_SERVICE_ROLE_KEY || 'ci-placeholder-not-real' }}
       DATABASE_URL: ${{ secrets.CI_DATABASE_URL || 'postgresql://ci:ci@localhost:5432/ci' }}
       JWT_SECRET_KEY: ${{ secrets.CI_JWT_SECRET_KEY || 'ci-only-jwt-secret-not-for-production-use-min-32' }}
 
@@ -206,7 +206,7 @@ jobs:
 
     env:
       SUPABASE_URL: https://example.supabase.co
-      SUPABASE_KEY: ci-placeholder-not-real
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-not-real
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?sslmode=disable
       JWT_SECRET_KEY: ci-only-jwt-secret-not-for-production-use-min-32
 

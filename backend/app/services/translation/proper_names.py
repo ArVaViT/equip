@@ -83,7 +83,10 @@ What this cannot see, stated plainly
   way, so the source word names both rows at once and the translation
   names one of them — nothing new appeared. Telling Genesis 11 from
   Revelation 17 needs the surrounding chapter, which is not something a
-  name table holds.
+  name table holds. German is the same case: it has both words, but
+  «Babel» is the ordinary German name for the tower whose city an
+  English translator calls Babylon, so both German forms sit on both
+  rows and the check is quiet in that direction too.
 * **«Клавдий Лисий» → «Лій», «Лісій», «Лисий».** The name was mangled,
   not replaced. None of those is another person; they are three
   spellings, one of which happens to read as the adjective *bald*. This
@@ -301,12 +304,21 @@ _NAMES: Final[tuple[tuple[str, str, str, str, str], ...]] = (
     ("jericho", "Иерихон/Иерихона/Иерихоне", "Jericho", "Jericho", "Єрихон/Єрихона"),
     ("bethlehem", "Вифлеем/Вифлеема/Вифлееме", "Bethlehem", "Bethlehem", "Вифлеєм/Вифлеєма"),
     ("nazareth", "Назарет/Назарета/Назарете", "Nazareth", "Nazareth", "Назарет/Назарета"),
-    ("babylon", "Вавилон/Вавилона/Вавилоне", "Babylon", "Babylon", "Вавилон/Вавилона"),
+    ("babylon", "Вавилон/Вавилона/Вавилоне", "Babylon", "Babylon/Babel", "Вавилон/Вавилона"),
     # Genesis 11. Russian spells it exactly as Babylon, so this row and
     # the one above are one word in Russian and the check goes quiet —
-    # see the module docstring. It is here so the *other* directions
-    # (English or German source) still have a name to compare.
-    ("babel", "Вавилон/Вавилона/Вавилоне", "Babel", "Babel", "Вавилон/Вавилона"),
+    # see the module docstring. It is here so an English source still
+    # has a name to compare.
+    #
+    # German is the same case as Russian, one step further in. It has
+    # both words, but the tower is «der Turm zu Babel» while the city of
+    # Revelation is «Babylon», and a German author writing about Genesis
+    # 11 uses «Babel» for a passage an English translator will correctly
+    # render «Babylon». Listing both German forms on the city row makes
+    # the German word name both rows at once, exactly as the Russian one
+    # does, and the check falls silent in that direction rather than
+    # parking a correct translation.
+    ("babel", "Вавилон/Вавилона/Вавилоне", "Babel", "Babel/Babylon", "Вавилон/Вавилона"),
     ("midian", "Мадиам/Мадиама", "Midian", "Midian", "Мадіам/Мадіама"),
     ("moab", "Моав/Моава", "Moab", "Moab", "Моав/Моава"),
     (

@@ -279,7 +279,7 @@ def _enrich_pending_certs(
     query. Empty input short-circuits so the common no-pending case
     stays free.
 
-    ``display_locale`` (Phase 5ak): the viewer's preferred locale. A
+    ``display_locale``: the viewer's preferred locale. A
     Russian-speaking teacher / admin opening the pending-cert dashboard
     sees course titles in Russian; an English-speaking one sees
     English. Defaults to ``"en"`` for the rare caller that doesn't
@@ -338,7 +338,7 @@ def list_pending_certificates(
     Returns enriched rows (student name + email, course title) so the
     teacher dashboard's pending-certs panel can render context without
     a per-row follow-up call. Course titles localize to the teacher's
-    Accept-Language (Phase 5ak — was hardcoded EN before).
+    Accept-Language (it was hardcoded EN before).
     """
     certs = (
         db.query(Certificate)
@@ -375,7 +375,7 @@ def list_admin_pending_certificates(
     Returns enriched rows (student name + email, course title, name of
     the teacher who signed off) so the admin overview panel can render
     a real \"who / what / when\" context without per-row follow-up calls.
-    Course titles localize to the admin's Accept-Language (Phase 5ak —
+    Course titles localize to the admin's Accept-Language (
     was hardcoded EN before).
     """
     certs = (
@@ -518,7 +518,7 @@ def verify_certificate(
 
     cert, user, course = row
     # Fall back to ``archived_course_title`` (snapshotted in
-    # ``permanently_delete_course`` per Phase 5g, was a Postgres trigger
+    # ``permanently_delete_course``; it was a Postgres trigger
     # before) when the source course has been deleted — the credential
     # still has to verify even after the underlying course is gone.
     # The document carries its own title now: English, captured at

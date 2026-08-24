@@ -673,7 +673,7 @@ class TestCertificateSurvivesCourseDeletion:
         _seed_enrolled_course(db, progress=100)
         cert = _seed_certificate(db, "course-1", cert_status="approved")
         cert.certificate_number = "CERT-SURVIVES01"
-        # Phase 5g: ``courses.title`` lives in cv. Simulate the Python
+        # ``courses.title`` lives in cv. Simulate the Python
         # snapshot logic in ``permanently_delete_course`` here so the
         # archive column survives the cascade below.
         from app.services.translation.resolve_for_display import fetch_course_titles_by_id

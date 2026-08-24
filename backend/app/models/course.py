@@ -137,10 +137,10 @@ class Course(Base):
     # only schools issuing hour-bearing documents fill it in.
     academic_hours: Mapped[int | None] = mapped_column()
 
-    # Authoring language for this course's content. Phase 5e-g moved
-    # every translatable string into ``content_versions`` keyed by
-    # ``(entity_type, entity_id, field, locale)``; the legacy
-    # ``content_translations`` overlay table was dropped in 5aj. The
+    # Authoring language for this course's content. Every translatable
+    # string lives in ``content_versions`` keyed by
+    # ``(entity_type, entity_id, field, locale)``; the older
+    # ``content_translations`` overlay table no longer exists. The
     # ``source_locale`` here is what the read resolver uses as the
     # display→source→any-locale fallback target so a student in EN
     # never sees a blank screen when only the RU row exists yet.
@@ -170,7 +170,7 @@ class Course(Base):
     )
     enrollments: Mapped[list["Enrollment"]] = relationship(back_populates="course", cascade="all, delete-orphan")
 
-    # ``title`` and ``description`` live in ``content_versions`` (Phase 5g).
+    # ``title`` and ``description`` live in ``content_versions``.
     # Read paths attach the resolved text as runtime attributes via
     # ``populate_spine_texts``; the ``__init__`` overload accepts the same
     # kwargs so existing test fixtures and write paths keep their shape.
@@ -240,9 +240,9 @@ class Module(Base):
 class Chapter(Base):
     """Chapter belonging to a module.
 
-    Bilingual storage (Phase 5e/5g divergence): unlike ``courses.title`` and
-    ``modules.title`` — both dropped in Phase 5g and replaced with runtime
-    attributes hydrated from ``content_versions`` — ``chapters.title``
+    Multilingual storage, and the one exception to it: unlike
+    ``courses.title`` and ``modules.title`` — both dropped and replaced
+    with runtime attributes hydrated from ``content_versions`` — ``chapters.title``
     intentionally keeps its column. Every write path
     (``create_chapter`` / ``update_chapter`` / ``_clone_cv_rows``) writes
     the source-locale text to BOTH the column AND a ``content_versions``

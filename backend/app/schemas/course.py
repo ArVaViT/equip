@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.schemas._media_url import validate_safe_media_url
+from app.schemas._request import RequestModel
 
 # Mirrors the ``chapters_chapter_type_check`` CHECK in Postgres. ``video`` /
 # ``audio`` / ``mixed`` / ``content`` were collapsed into block-based
@@ -12,7 +13,7 @@ from app.schemas._media_url import validate_safe_media_url
 CHAPTER_TYPES = Literal["reading", "quiz", "exam", "assignment"]
 
 
-class ChapterBase(BaseModel):
+class ChapterBase(RequestModel):
     title: str = Field(..., min_length=1, max_length=300)
     order_index: int = 0
     chapter_type: CHAPTER_TYPES = "reading"
@@ -24,7 +25,7 @@ class ChapterCreate(ChapterBase):
     pass
 
 
-class ChapterUpdate(BaseModel):
+class ChapterUpdate(RequestModel):
     title: str | None = Field(None, min_length=1, max_length=300)
     order_index: int | None = None
     chapter_type: CHAPTER_TYPES | None = None
@@ -33,7 +34,9 @@ class ChapterUpdate(BaseModel):
 
 
 class ChapterResponse(ChapterBase):
-    model_config = ConfigDict(from_attributes=True)
+    # ``extra`` back to the permissive default: the request base forbids
+    # unknown keys, and this model is built from an ORM row, not a body.
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
 
     # A lesson the reader's language does not have yet resolves to "".
     # The constraint on ``ChapterBase.title`` belongs to what a teacher
@@ -59,7 +62,7 @@ class ChapterSummary(BaseModel):
     is_locked: bool = False
 
 
-class ModuleBase(BaseModel):
+class ModuleBase(RequestModel):
     title: str = Field(..., min_length=1, max_length=300)
     description: str | None = Field(None, max_length=5000)
     order_index: int = 0
@@ -70,7 +73,7 @@ class ModuleCreate(ModuleBase):
     pass
 
 
-class ModuleUpdate(BaseModel):
+class ModuleUpdate(RequestModel):
     title: str | None = Field(None, min_length=1, max_length=300)
     description: str | None = Field(None, max_length=5000)
     order_index: int | None = None
@@ -78,12 +81,14 @@ class ModuleUpdate(BaseModel):
 
 
 class ModuleResponse(ModuleBase):
-    model_config = ConfigDict(from_attributes=True)
+    # ``extra`` back to the permissive default: the request base forbids
+    # unknown keys, and this model is built from an ORM row, not a body.
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
 
     title: str = ""
     id: str
     course_id: str
-    chapters: list[ChapterResponse] = []
+    chapters: list[ChapterResponse] = Field(default_factory=list)
 
 
 class ModuleSummary(BaseModel):
@@ -98,7 +103,7 @@ class ModuleSummary(BaseModel):
     chapters: list[ChapterSummary] = []
 
 
-class CourseBase(BaseModel):
+class CourseBase(RequestModel):
     title: str = Field(..., min_length=1, max_length=300)
     description: str | None = Field(None, max_length=10_000)
     image_url: str | None = Field(None, max_length=2048)
@@ -133,7 +138,7 @@ class CourseCreate(CourseBase):
         return validate_safe_media_url(value)
 
 
-class CourseUpdate(BaseModel):
+class CourseUpdate(RequestModel):
     title: str | None = Field(None, min_length=1, max_length=300)
     description: str | None = Field(None, max_length=10_000)
     image_url: str | None = Field(None, max_length=2048)

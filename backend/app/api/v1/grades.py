@@ -814,7 +814,7 @@ def export_grades_csv(
         )
 
     buf.seek(0)
-    # Phase 5g: course.title lives in cv now — fetch the source title for
+    # course.title lives in cv now — fetch the source title for
     # the filename. Empty string is fine; the ascii fallback covers it.
     populate_spine_texts(db, [course])
     course_title = course.title or ""
@@ -1052,8 +1052,8 @@ def get_grade_history(
     A hand-set grade is the one number on the page nobody can reconstruct from
     the work. Six months later, when a director signs a ведомость, "why is this
     a B when the system computed 64" needs an answer that is not somebody's
-    memory. The rows have been written since Phase 1; nothing has ever read
-    them back.
+    memory. The rows have been written since the grading rebuild began;
+    nothing had ever read them back until this endpoint.
 
     Teacher-facing only: it carries the note written *about* the student for
     the institution, which never appears on a student-facing schema (D7).

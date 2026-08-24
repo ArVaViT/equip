@@ -21,6 +21,8 @@ from uuid import UUID  # noqa: TC003 — Pydantic runtime resolution
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas._request import RequestModel
+
 # Runtime import, not a typing-only one: Pydantic resolves these
 # annotations at class-construction time to build the validators.
 from app.schemas.locale import LocaleCode  # noqa: TC001
@@ -81,7 +83,7 @@ class DailyChallengeTodayResponse(BaseModel):
     user_attempt: DailyChallengeAttemptSummary | None = None
 
 
-class DailyChallengeAttemptCreate(BaseModel):
+class DailyChallengeAttemptCreate(RequestModel):
     """``POST /daily-challenge/today/attempt`` body."""
 
     selected_option_id: UUID
@@ -205,14 +207,14 @@ DailyChallengeStatus = Literal[
 ]
 
 
-class DailyChallengeOptionDraft(BaseModel):
+class DailyChallengeOptionDraft(RequestModel):
     """Author-supplied option for ``POST /admin/daily-challenge/questions``."""
 
     text: str = Field(..., min_length=1, max_length=500)
     is_correct: bool = False
 
 
-class DailyChallengeQuestionCreate(BaseModel):
+class DailyChallengeQuestionCreate(RequestModel):
     """``POST /admin/daily-challenge/questions`` body."""
 
     question_type: DailyChallengeQuestionType = "multiple_choice"
@@ -261,11 +263,11 @@ class DailyChallengeQuestionEditorial(BaseModel):
     updated_at: datetime
 
 
-class DailyChallengeRejectRequest(BaseModel):
+class DailyChallengeRejectRequest(RequestModel):
     reason: str = Field(..., min_length=1, max_length=500)
 
 
-class DailyChallengeScheduleCreate(BaseModel):
+class DailyChallengeScheduleCreate(RequestModel):
     challenge_date: date
     question_id: UUID
 
@@ -283,7 +285,7 @@ class DailyChallengeScheduleResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class DailyChallengeGenerateRequest(BaseModel):
+class DailyChallengeGenerateRequest(RequestModel):
     """``POST /admin/daily-challenge/generate`` body."""
 
     bible_book: str = Field(..., min_length=1, max_length=64)
@@ -384,7 +386,7 @@ class DailyChallengeBilingualView(BaseModel):
     options: list[DailyChallengeBilingualOption]
 
 
-class DailyChallengeCvUpsertRequest(BaseModel):
+class DailyChallengeCvUpsertRequest(RequestModel):
     """POST /admin/daily-challenge/questions/{id}/cv body."""
 
     field: Literal["question_text", "explanation", "option_text"]

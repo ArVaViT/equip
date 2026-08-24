@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from app.schemas._request import RequestModel
+
 # Mirrors the Postgres CHECK constraints on invitations.role / .status
 # (see supabase/migrations/20260707120000_add_invitations_table.sql) and
 # the SQLAlchemy model's CheckConstraints. Deliberately excludes "admin" --
@@ -12,7 +14,7 @@ InvitationRoleLiteral = Literal["teacher", "student"]
 InvitationStatusLiteral = Literal["pending", "accepted", "revoked"]
 
 
-class InvitationCreate(BaseModel):
+class InvitationCreate(RequestModel):
     email: EmailStr
     role: InvitationRoleLiteral
 
@@ -47,7 +49,7 @@ class InvitationPreview(BaseModel):
     is_expired: bool
 
 
-class InvitationAcceptRequest(BaseModel):
+class InvitationAcceptRequest(RequestModel):
     token: str = Field(min_length=1, max_length=128)
 
 

@@ -90,9 +90,9 @@ def run_course_translation_pipeline_if_published(db: Session, course_id: str) ->
 
     Two delivery modes, selected by ``settings.TRANSLATION_QUEUE_ENABLED``:
 
-    * **Queue mode** (Phase 5ax+, the production path going forward):
+    * **Queue mode** (the default, and what production runs):
       enqueue ONE row in ``translation_jobs`` and return. The cron-
-      driven worker from Phase 5aw drains the queue out-of-band, so a
+      driven worker drains the queue out-of-band, so a
       100-block course publish takes one INSERT instead of 100
       synchronous Gemini round-trips.
     * **Sync mode** (legacy): call ``translate_course_content``

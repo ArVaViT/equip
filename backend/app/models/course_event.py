@@ -18,7 +18,7 @@ class CourseEvent(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     course_id: Mapped[str] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
-    # Phase 5e4: title + description columns dropped — cv is the only
+    # Title + description columns dropped — cv is the only
     # store. Reads go through fetch_cv_entity_texts_with_fallback;
     # writes through dual_write_entity_content(texts={...}).
     event_type: Mapped[str] = mapped_column(String(30), default="other")

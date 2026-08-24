@@ -16,7 +16,7 @@ Three operations the publish path + worker need:
 * ``mark_job_done`` / ``mark_job_failed`` — worker reports the
   outcome. Failure bumps ``attempts``; once the count reaches
   ``TRANSLATION_JOB_MAX_ATTEMPTS`` the job promotes to
-  ``failed_permanent`` and the admin reset surface from Phase 5au is
+  ``failed_permanent`` and the admin reset surface is
   the only way back to ``failed``.
 
 The session lifecycle is deliberately strict: helpers commit at the

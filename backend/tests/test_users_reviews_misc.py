@@ -936,7 +936,6 @@ class TestCreateChapter:
             "/api/v1/courses/course-1/modules/mod-1/chapters",
             json={
                 "title": "Reading Chapter",
-                "content": "Lorem ipsum",
                 "order_index": 1,
                 "chapter_type": "reading",
                 "requires_completion": True,

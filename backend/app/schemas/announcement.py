@@ -3,14 +3,16 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas._request import RequestModel
 
-class AnnouncementCreate(BaseModel):
+
+class AnnouncementCreate(RequestModel):
     title: str = Field(..., min_length=1, max_length=200)
     content: str = Field(..., min_length=1, max_length=5000)
     course_id: str | None = Field(None, max_length=36)
 
 
-class AnnouncementUpdate(BaseModel):
+class AnnouncementUpdate(RequestModel):
     title: str | None = Field(None, min_length=1, max_length=200)
     content: str | None = Field(None, min_length=1, max_length=5000)
 

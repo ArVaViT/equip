@@ -166,6 +166,23 @@ def test_one_russian_word_for_two_cities_cannot_say_which_one_was_meant() -> Non
     )
 
 
+def test_the_german_name_for_the_tower_is_not_a_substitution_for_the_city() -> None:
+    """German writes «der Turm zu Babel» where English writes the tower of
+    Babylon. Both German forms sit on both rows for the same reason the
+    single Russian word does: the source names both, so the translation
+    naming one introduces nothing. Before this, a German author writing
+    about Genesis 11 had every correct English translation parked."""
+    assert (
+        substituted_names(
+            "Der Turm zu Babel.",
+            "The tower of Babylon.",
+            source_locale="de",
+            target_locale="en",
+        )
+        == []
+    )
+
+
 def test_a_divine_title_answered_with_a_common_noun_is_not_a_substitution() -> None:
     """«Господь» → *the Gospel* is wrong and this check will not say so.
     Neither word is the name of a person or a place, and the table that

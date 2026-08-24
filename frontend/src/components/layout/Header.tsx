@@ -22,7 +22,7 @@ import { HeaderUserMenu } from "./header/HeaderUserMenu"
  * brand link is inline because it's two lines and has no internal
  * state worth extracting.
  *
- * Splitting this file (Phase 5bb) replaced the previous 322-line
+ * Splitting this file replaced the previous 322-line
  * monolith. Each part now has a single visual responsibility and a
  * small prop surface; tests and storybook-style isolation become
  * feasible without touching the composer.

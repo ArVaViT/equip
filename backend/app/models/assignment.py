@@ -17,7 +17,7 @@ class Assignment(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     chapter_id: Mapped[str] = mapped_column(ForeignKey("chapters.id", ondelete="CASCADE"))
-    # Phase 5e3: title + description columns dropped — cv is the only
+    # Title + description columns dropped — cv is the only
     # store. Reads go through fetch_cv_entity_texts_with_fallback;
     # writes through dual_write_entity_content(texts={...}).
     max_score: Mapped[int] = mapped_column(default=100)

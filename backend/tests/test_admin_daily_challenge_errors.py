@@ -222,8 +222,8 @@ class TestGenerateRoute:
                 "bible_book": "Romans",
                 "bible_chapter": 8,
                 "bible_verse_from": 28,
-                "rounds": 1,
-                "candidates_per_round": 1,
+                "n_candidates_per_agent": 1,
+                "max_survivors": 1,
             },
         )
         assert r.status_code == 503

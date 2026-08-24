@@ -1,6 +1,6 @@
 /**
  * Pin the contract between `getErrorCode` / `getErrorContext` and the
- * backend's typed error envelope (Phase 5ay). These tests are the
+ * backend's typed error envelope. These tests are the
  * canonical examples of how a route handler should react to a typed
  * code; the existing string-detail fallback path is also pinned so
  * routes that haven't migrated yet keep working.

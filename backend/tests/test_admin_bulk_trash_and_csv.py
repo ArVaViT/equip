@@ -427,7 +427,7 @@ class TestTrashAndRestore:
         assert db.query(Course).filter(Course.id == "gone-forever").first() is None
 
     def test_permanent_delete_snapshots_certificate_title(self, client: TestClient, db: Session):
-        """Phase 5g: the Postgres trigger that stamped courses.title onto
+        """The Postgres trigger that stamped courses.title onto
         ``certificates.archived_course_title`` before SET NULL was dropped
         along with the title column. Verify the Python replacement in
         ``permanently_delete_course`` writes the snapshot so a verify URL

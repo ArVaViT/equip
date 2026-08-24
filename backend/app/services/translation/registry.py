@@ -482,7 +482,7 @@ REGISTRY: dict[EntityType, EntityRegistration] = {
         resolve_course=_resolve_course_via_criterion,
         build_context=lambda _lv, c: f"One rung of a marking rubric criterion, in course «{c.title}»",
     ),
-    # Phase 5c — Daily Challenge platform surface. Questions are
+    # Daily Challenge platform surface. Questions are
     # course-less by design (they're a platform-wide rotation, not
     # course content). ``reconcile_entity`` skips orphans, so the
     # standard "edit-triggers-translate" hook does NOT apply here —
@@ -587,7 +587,7 @@ def entity_field_specs(
     # Challenge row. Per-field detection below can still override it.
     declared: LocaleCode = normalize_locale(source_locale)
 
-    # Phase 5e/5f: source text columns are dropped on several entities
+    # Source text columns are dropped on several entities
     # (cohort, chapter_block, assignment, course_event, announcement,
     # quiz, quiz_question, quiz_option). ``getattr`` returns None for
     # those fields, so the author's text has to come from cv.
@@ -651,9 +651,9 @@ def entity_field_specs(
     # and no cv row yet — a just-created row inside the same transaction,
     # a fixture, a Daily Challenge question. It costs one indexed query
     # per entity, which is what the majority of entity types already paid
-    # here: their columns were dropped in Phase 5e/5f (cohort,
-    # chapter_block, assignment, course_event, announcement, quiz,
-    # quiz_question, quiz_option) and in Phase 5g (course, module).
+    # here — the source column is gone on cohort, chapter_block,
+    # assignment, course_event, announcement, quiz, quiz_question,
+    # quiz_option, course and module alike.
     # One statement for a walk, one for a single entity.
     #
     # Reading the author's rows for every field is what makes this
@@ -907,7 +907,7 @@ def reconcile_entity(
     if not fields:
         return OrchestratorReport()
 
-    # Phase 5g: courses.title lives in cv. The fresh Course returned by
+    # courses.title lives in cv. The fresh Course returned by
     # ``resolve_course`` is not guaranteed to have its runtime title
     # attribute attached — and every entity's ``build_context`` lambda
     # below reads ``c.title``. Without the hydration here, the lambda

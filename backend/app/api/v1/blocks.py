@@ -29,7 +29,7 @@ _TRANSLATABLE_BLOCK_FIELDS = ("content",)
 
 
 def _block_to_response(db: Session, block: ChapterBlock) -> BlockResponse:
-    """Phase 5e2: chapter_blocks.content column dropped — build the
+    """chapter_blocks.content column dropped — build the
     response with content pulled from cv (source-locale row preferred).
     Used by the single-block routes (create / update) which return one
     block; the list/get routes use ``localize_chapter_block_rows``
@@ -123,7 +123,7 @@ def list_blocks(
                 message="Only the course owner or an admin can request source-language content",
                 context={"resource_type": "chapter_block"},
             )
-        # Phase 5e2: chapter_blocks.content column dropped — build
+        # chapter_blocks.content column dropped — build
         # source-locale responses by re-using the resolve layer that
         # already does the cv lookups (source==display when no
         # localisation requested). ``prefer_human=True`` ensures the
@@ -172,7 +172,7 @@ def create_block(
     # direct API caller can bypass that. We re-sanitize here so stored block
     # HTML is safe to render for every downstream consumer (admin preview,
     # exports, emailed digests) — not only the main React app.
-    # Phase 5e2: ``content`` column dropped. Sanitization runs before
+    # ``content`` column dropped. Sanitization runs before
     # the cv write so the stored text is clean.
     content = sanitize_string(data.content) if data.content else data.content
     block = ChapterBlock(
@@ -246,7 +246,7 @@ def update_block(
         )
     verify_chapter_owner(db, block.chapter_id, teacher)
     patch = data.model_dump(exclude_unset=True)
-    # Phase 5e2: content column gone — route the (sanitised) content
+    # Content column gone — route the (sanitised) content
     # straight to cv; all other fields setattr as before.
     content_patch = patch.pop("content", None) if "content" in patch else None
     if content_patch is not None:
@@ -293,7 +293,7 @@ def delete_block(
             context={"resource_type": "chapter_block"},
         )
     verify_chapter_owner(db, block.chapter_id, teacher)
-    # Phase 5ad: content_versions has no FK back to chapter_blocks
+    # content_versions has no FK back to chapter_blocks
     # (polymorphic entity_id), so the in-comment claim that "rows
     # cascade out via FK" is wrong post-Phase-5e2. Drop the cv rows
     # explicitly to keep prod orphan-free.
@@ -339,7 +339,7 @@ def reorder_blocks(
     for item in items:
         blocks_by_id[item.id].order_index = item.order_index
     db.commit()
-    # Phase 5e2: content column dropped — must resolve via cv. Use the
+    # Content column dropped — must resolve via cv. Use the
     # chapter's parent course source_locale; display=source is fine for
     # this teacher-only endpoint (the editor reorders source blocks).
     ctx = resolve_chapter_locale_context(db, chapter_id=chapter_id, current_user=teacher)

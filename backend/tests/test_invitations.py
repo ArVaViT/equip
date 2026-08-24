@@ -266,15 +266,17 @@ def test_accept_invitation_rejects_email_mismatch(invitee_client: TestClient, db
 
 
 def test_accept_invitation_cannot_be_used_to_tamper_role_via_body(invitee_client: TestClient):
-    # The accept schema only accepts a token -- there is no ``role`` field
-    # a tampered request could set; a stray one is silently ignored.
+    # The accept schema takes a token and nothing else. A request that
+    # smuggles ``role`` alongside it is refused outright rather than
+    # quietly stripped: the caller is told which field was rejected, and
+    # the attempt is visible in the log as a 422 instead of passing for
+    # an ordinary accept.
     resp = invitee_client.post(
         f"{INVITATIONS_PREFIX}/accept",
         json={"token": "whatever", "role": "admin"},
     )
-    # Fails on the (nonexistent) token, not a role validation error --
-    # proves the extra field had no effect on request handling.
-    assert resp.status_code == 404, resp.text
+    assert resp.status_code == 422, resp.text
+    assert resp.json()["detail"][0]["loc"] == ["body", "role"]
 
 
 def test_accept_invitation_requires_auth(anon_client: TestClient):

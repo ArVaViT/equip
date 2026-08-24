@@ -1,7 +1,7 @@
 /**
  * Typed error-code envelope on top of `getErrorDetail`.
  *
- * The backend started emitting structured errors in Phase 5ay:
+ * The backend emits structured errors:
  *
  *   { detail: { code: "course.not_published", message: "...", context: {...} } }
  *

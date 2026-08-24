@@ -4,17 +4,19 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas._request import RequestModel
+
 EventType = Literal["deadline", "live_session", "exam", "other"]
 
 
-class CourseEventCreate(BaseModel):
+class CourseEventCreate(RequestModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: str | None = Field(None, max_length=5000)
     event_type: EventType = "other"
     event_date: datetime
 
 
-class CourseEventUpdate(BaseModel):
+class CourseEventUpdate(RequestModel):
     title: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = Field(None, max_length=5000)
     event_type: EventType | None = None

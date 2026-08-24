@@ -4,10 +4,11 @@ The hooks have one job: never propagate an error to the caller and
 never leave the SQLAlchemy session in a broken state, no matter what
 the orchestrator or provider does.
 
-Phase 5ax adds a second delivery mode behind
-``settings.TRANSLATION_QUEUE_ENABLED``: instead of calling
-``translate_course_content`` synchronously, the publish hook
-enqueues a job for the cron-driven worker. Both modes are tested.
+There are two delivery modes behind ``settings.TRANSLATION_QUEUE_ENABLED``.
+In queue mode — the default, and what production runs — the publish hook
+enqueues a job for the cron-driven worker instead of calling
+``translate_course_content`` inside the request. Both modes are tested,
+and the tests that mean the synchronous one say so.
 """
 
 from __future__ import annotations
@@ -41,7 +42,10 @@ def _seed_published_course(db: Session, teacher_id, *, status: str = "published"
     return course
 
 
-def test_course_pipeline_swallows_translation_error_at_info(db: Session, teacher, caplog):
+def test_course_pipeline_swallows_translation_error_at_info(db: Session, teacher, caplog, monkeypatch):
+    # This test exercises the synchronous path, which is no longer the
+    # default. Pin the flag rather than relying on the setting.
+    monkeypatch.setattr("app.core.config.settings.TRANSLATION_QUEUE_ENABLED", False)
     course = _seed_published_course(db, teacher.id)
     with (
         patch(
@@ -63,7 +67,10 @@ def test_course_pipeline_swallows_translation_error_at_info(db: Session, teacher
     assert rec.entity_id == course.id
 
 
-def test_course_pipeline_swallows_unexpected_error_at_error(db: Session, teacher, caplog):
+def test_course_pipeline_swallows_unexpected_error_at_error(db: Session, teacher, caplog, monkeypatch):
+    # This test exercises the synchronous path, which is no longer the
+    # default. Pin the flag rather than relying on the setting.
+    monkeypatch.setattr("app.core.config.settings.TRANSLATION_QUEUE_ENABLED", False)
     course = _seed_published_course(db, teacher.id)
     with (
         patch(
@@ -82,10 +89,13 @@ def test_course_pipeline_swallows_unexpected_error_at_error(db: Session, teacher
     assert rec.exc_info is not None
 
 
-def test_course_pipeline_rolls_back_on_sqlalchemy_error(db: Session, teacher, caplog):
+def test_course_pipeline_rolls_back_on_sqlalchemy_error(db: Session, teacher, caplog, monkeypatch):
     """A SQLAlchemyError leaves the session in a broken state until
     rollback. The hook MUST roll back so the request's next query does
     not inherit a poisoned transaction."""
+    # This test exercises the synchronous path, which is no longer the
+    # default. Pin the flag rather than relying on the setting.
+    monkeypatch.setattr("app.core.config.settings.TRANSLATION_QUEUE_ENABLED", False)
     course = _seed_published_course(db, teacher.id)
     with (
         patch(
@@ -238,7 +248,7 @@ def test_course_pipeline_skips_draft(db: Session, teacher):
 
 
 # ---------------------------------------------------------------------------
-# Phase 5ax: queue-mode publish path
+# queue-mode publish path
 # ---------------------------------------------------------------------------
 
 

@@ -46,7 +46,7 @@ def _attach_localized_blocks(db: Session, course: Course, *, display_locale: Loc
     relationship, so the renderer's ``getattr(chapter, "blocks", None)
     or []`` was always empty — the export had never contained a line of
     lesson text, in any language. And ``chapter_blocks.content`` was
-    dropped in Phase 5e2, so even with the rows in hand the content has
+    dropped, so even with the rows in hand the content has
     to come from ``content_versions``.
 
     One query for the blocks, one bulk resolve for their text, at the

@@ -75,6 +75,14 @@ _ALLOWED_TAGS = frozenset(
         # intact instead of stripping it down to raw text.
         "details",
         "summary",
+        # A picture with a caption is one thing. Without these two the
+        # sanitiser unwraps the pair and the caption survives as a bare
+        # sentence under the image, reading as body text — and the
+        # translation validator, which compares the tag list of a
+        # translation against its source, sees the structure change and
+        # parks the row. Neither tag can carry script.
+        "figure",
+        "figcaption",
     }
 )
 
@@ -148,21 +156,45 @@ def _strip_dangerous_iframes(html: str) -> str:
 
     ``bleach`` treats iframes as a regular allowed tag; it doesn't know which
     ``src`` values are safe. We do that post-filter here.
+
+    The whole element goes, opening tag through closing tag. Dropping the
+    opening tag alone — which is what this did until 2026-08-24, the line
+    after the substitution being a replacement of ``</iframe>`` by itself
+    — leaves an orphan ``</iframe>`` in the document. It renders as
+    nothing, so it survived review, but the translation validator
+    compares the tag list of a translation against its source: the model
+    tidies the stray closing tag away, the lists differ, and a correct
+    translation is parked as ``markup_mismatch``.
     """
-    pattern = re.compile(r"<iframe\b[^>]*>", re.IGNORECASE)
+    # NUL cannot appear in a Postgres ``text`` column and has no meaning in
+    # HTML, so dropping it costs nothing — and it keeps a caller from
+    # writing the placeholder shape below into their own content.
+    html = html.replace("\x00", "")
+    element = re.compile(r"<iframe\b[^>]*>(?:.*?</iframe\s*>)?", re.IGNORECASE | re.DOTALL)
+    kept: list[str] = []
 
     def _check(match: re.Match[str]) -> str:
-        tag = match.group(0)
-        src_match = re.search(r'\bsrc\s*=\s*"([^"]*)"', tag, re.IGNORECASE) or re.search(
-            r"\bsrc\s*=\s*'([^']*)'", tag, re.IGNORECASE
+        element_html = match.group(0)
+        opening = re.match(r"<iframe\b[^>]*>", element_html, re.IGNORECASE)
+        open_tag = opening.group(0) if opening else element_html
+        src_match = re.search(r'\bsrc\s*=\s*"([^"]*)"', open_tag, re.IGNORECASE) or re.search(
+            r"\bsrc\s*=\s*'([^']*)'", open_tag, re.IGNORECASE
         )
         src = (src_match.group(1) if src_match else "").strip().lower()
         if src.startswith(("https://www.youtube.com/embed/", "https://www.youtube-nocookie.com/embed/")):
-            return tag
+            kept.append(element_html)
+            # Parked behind a placeholder so the orphan sweep below cannot
+            # see — and delete — the closing tag of an embed we are keeping.
+            return f"\x00iframe{len(kept) - 1}\x00"
         return ""
 
-    html = pattern.sub(_check, html)
-    html = re.sub(r"</iframe>", "</iframe>", html, flags=re.IGNORECASE)
+    html = element.sub(_check, html)
+    # Whatever ``</iframe>`` is left belongs to no opening tag: either the
+    # author pasted it, or an earlier version of this function stripped the
+    # opening half and left this behind.
+    html = re.sub(r"</iframe\s*>", "", html, flags=re.IGNORECASE)
+    for index, original in enumerate(kept):
+        html = html.replace(f"\x00iframe{index}\x00", original)
     return html
 
 

@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.schemas._request import RequestModel
+
 # ``video`` / ``audio`` block types were collapsed into ``text`` by migration
 # 025 — the rich text editor embeds them via its toolbar so the separate block
 # kinds were pure duplication.
@@ -47,7 +49,7 @@ def _validate_file_path(value: str | None) -> str | None:
     return value
 
 
-class BlockCreate(BaseModel):
+class BlockCreate(RequestModel):
     block_type: BLOCK_TYPES
     order_index: int = Field(0, ge=0)
     content: str | None = Field(None, max_length=500_000)
@@ -68,7 +70,7 @@ class BlockCreate(BaseModel):
         return _validate_file_path(v)
 
 
-class BlockUpdate(BaseModel):
+class BlockUpdate(RequestModel):
     block_type: BLOCK_TYPES | None = None
     order_index: int | None = Field(None, ge=0)
     content: str | None = Field(None, max_length=500_000)

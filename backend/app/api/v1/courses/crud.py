@@ -192,7 +192,7 @@ def remove_course(
             context={"resource_type": "course", "resource_id": course_id},
         )
     assert_course_owner(course, teacher)
-    # Phase 5bi: ``course.title`` is a runtime attribute hydrated by
+    # ``course.title`` is a runtime attribute hydrated by
     # ``populate_spine_texts``. ``get_course`` does NOT hydrate, so the
     # log_action below would stamp ``None`` into the audit row without
     # this call. The cost is one indexed cv lookup per delete.
@@ -291,7 +291,7 @@ def permanently_remove_course(
             message="Course must be soft-deleted before permanent deletion",
             context={"resource_type": "course", "course_id": course_id},
         )
-    # Phase 5bi: hydrate before logging, same reason as ``remove_course``.
+    # Hydrate before logging, same reason as ``remove_course``.
     populate_spine_texts(db, [course])
     log_action(
         db,

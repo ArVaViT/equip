@@ -38,8 +38,8 @@ Adding a new language is a **six-step change** — all in this order:
      covering a locale column:
      * ``profiles.preferred_locale``
      * ``courses.source_locale``
-     * ``content_versions.locale``  (the post Phase 5c store; the
-       legacy ``content_translations`` table was dropped in 5aj)
+     * ``content_versions.locale``  (the only text store; the older
+       ``content_translations`` table no longer exists)
   5. Add the frontend bundle ``frontend/src/i18n/locales/<code>.json``
      with full key coverage (the ``keyCoverage`` test enforces parity).
      Wire it into ``frontend/src/i18n/config.ts::SUPPORTED_LOCALES``.

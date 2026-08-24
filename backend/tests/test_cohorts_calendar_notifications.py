@@ -1719,7 +1719,7 @@ class TestCreateAnnouncement:
         assert recipients == {STUDENT_ID}
 
     def test_notification_text_respects_recipient_preferred_locale(self, client: TestClient, db: Session, student):
-        """Phase 5v: notification fan-out groups recipients by
+        """Notification fan-out groups recipients by
         preferred_locale and produces RU/EN message variants. A RU
         student enrolled in an EN-default course gets Russian title
         and message; an EN student gets English. The announcement

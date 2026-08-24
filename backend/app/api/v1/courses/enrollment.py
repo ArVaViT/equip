@@ -207,7 +207,7 @@ def enroll_course(
         details={"course_id": course_id},
         request=request,
     )
-    # Phase 5g: hydrate the lazy-loaded course relationship so the
+    # Hydrate the lazy-loaded course relationship so the
     # response serializer sees title/description (no longer columns).
     #
     # At the student's language, not the course's. This response carries

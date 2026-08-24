@@ -75,7 +75,7 @@ def create_course(
         description=data.description,
         fallback=source_locale,
     )
-    # Phase 5g: title + description columns dropped. Structural row only;
+    # Title + description columns dropped. Structural row only;
     # texts go through dual_write via the explicit ``texts={...}`` dict.
     course = Course(
         id=str(uuid.uuid4()),
@@ -197,14 +197,14 @@ def restore_course(db: Session, course: Course) -> Course:
 
 
 def permanently_delete_course(db: Session, course: Course) -> None:
-    # Phase 5g dropped the ``snapshot_certificate_course_title`` Postgres
+    # Dropping the title column removed the ``snapshot_certificate_course_title`` Postgres
     # trigger along with ``courses.title``. Stamp the title onto every
     # certificate that still points at this course before the FK
     # ``ON DELETE SET NULL`` nulls ``course_id`` and the title becomes
     # unrecoverable. Mirrors the trigger's `WHERE archived_course_title
     # IS NULL` clause so re-deletes don't overwrite an earlier snapshot.
     #
-    # Phase 5bi: read the title from content_versions instead of the
+    # Read the title from content_versions instead of the
     # ``course.title`` runtime attribute. Callers that didn't go through
     # ``populate_spine_texts`` (admin permanent-delete from a list view)
     # otherwise stamp ``None`` and the certificate loses its title for
@@ -226,7 +226,7 @@ def permanently_delete_course(db: Session, course: Course) -> None:
         {Certificate.archived_course_title: archived_title},
         synchronize_session=False,
     )
-    # Phase 5ad: content_versions has no FK back to entity tables
+    # content_versions has no FK back to entity tables
     # (polymorphic entity_id), so the entity-table CASCADE that takes
     # out modules / chapters / blocks / quizzes / assignments /
     # announcements / events when the course row goes will NOT touch

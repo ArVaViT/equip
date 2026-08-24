@@ -70,7 +70,7 @@ def _get_assignment_or_404(db: Session, assignment_id: UUID) -> Assignment:
 
 
 def _assignment_to_response(db: Session, assignment: Assignment, *, source_locale: str = "en") -> AssignmentResponse:
-    """Phase 5e3: title + description columns dropped — pull both from
+    """Title + description columns dropped — pull both from
     cv (preferring source_locale, falling back to any active locale).
     Used by the single-entity routes (create / update); list / source
     routes use ``localize_assignment_rows`` which is locale-aware.
@@ -136,7 +136,7 @@ def list_chapter_assignments(
                 message="Only the course owner or an admin can request source-language content",
                 context={"resource_type": "assignment", "chapter_id": chapter_id},
             )
-        # Phase 5e3: title + description columns dropped — re-use the
+        # Title + description columns dropped — re-use the
         # localize path with display==source so the cv lookup populates
         # the source-locale text. ``prefer_human=True`` makes the
         # any-locale fallback skip MT rows so the editor never sees
@@ -177,7 +177,7 @@ def create_assignment(
     db: Session = Depends(get_db),
 ):
     verify_chapter_owner(db, data.chapter_id, teacher)
-    # Phase 5e3: title + description go to cv; only structural fields
+    # Title + description go to cv; only structural fields
     # land on the Assignment row.
     payload = data.model_dump()
     title = payload.pop("title")
@@ -211,7 +211,7 @@ def update_assignment(
     verify_chapter_owner(db, assignment.chapter_id, teacher)
 
     patch = data.model_dump(exclude_unset=True)
-    # Phase 5e3: title + description live in cv. Pop them off the patch
+    # Title + description live in cv. Pop them off the patch
     # so they don't try to setattr on the (now-text-less) ORM row.
     text_patch: dict[str, str | None] = {}
     if "title" in patch:
@@ -247,7 +247,7 @@ def delete_assignment(
 ):
     assignment = _get_assignment_or_404(db, assignment_id)
     verify_chapter_owner(db, assignment.chapter_id, teacher)
-    # Phase 5ad: cv has no FK back; drop its rows explicitly.
+    # cv has no FK back; drop its rows explicitly.
     delete_entity_cv_rows(db, entity_type="assignment", entity_id=assignment.id)
     db.delete(assignment)
     db.commit()

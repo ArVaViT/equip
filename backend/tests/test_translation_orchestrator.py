@@ -175,7 +175,7 @@ def test_translate_course_metadata_skips_unchanged_source(db: Session):
 
 
 def test_translate_entity_fields_reuses_existing_translation_for_identical_source(db: Session):
-    """Phase 5s: identical source text (same source_hash + target locale)
+    """Identical source text (same source_hash + target locale)
     should reuse the first translation instead of calling the provider
     again. Catches the Gemini-temperature-0 inconsistency where 5 quiz
     options with the same RU source rendered 4 times to "Do not move"
@@ -295,7 +295,7 @@ def test_translate_course_metadata_retranslates_when_source_changes(db: Session)
 
     translate_course_metadata(db, course, provider=provider)
 
-    # Phase 5g: ``courses.title`` column is gone. The orchestrator reads
+    # ``courses.title`` column is gone. The orchestrator reads
     # the source text from ``course.title`` (a runtime attribute) but
     # the source-of-truth for "did the human edit?" lives in cv. Record
     # a new human version FIRST so the change persists, then sync the
@@ -331,7 +331,7 @@ def test_translate_course_metadata_preserves_human_translations(db: Session):
     course = _make_course(db)
     provider = _RecordingProvider()
 
-    # Phase 5c: the orchestrator's "skip if human" check reads cv, not
+    # The orchestrator's "skip if human" check reads cv, not
     # content_translations. Seed via record_human_version.
     record_human_version(
         db,
@@ -469,7 +469,7 @@ def test_translate_entity_fields_resets_attempts_on_success(db: Session):
         provider=happy_provider,
     )
 
-    # Phase 5c: record_mt_version supersedes the failed row instead of
+    # record_mt_version supersedes the failed row instead of
     # updating in place (CT did update-in-place; cv preserves history).
     # Re-query the now-active row.
     active = (
@@ -539,6 +539,10 @@ def _patch_provider(monkeypatch, provider: _RecordingProvider) -> None:
 
 
 def test_publishing_a_course_triggers_translation(monkeypatch, client: TestClient):
+    # Counts provider calls made inside the request, so it needs the
+    # synchronous publish path. Production enqueues instead; the queue
+    # path is covered in test_translation_pipeline_hooks.py.
+    monkeypatch.setattr("app.core.config.settings.TRANSLATION_QUEUE_ENABLED", False)
     provider = _RecordingProvider()
     _patch_provider(monkeypatch, provider)
 
@@ -555,6 +559,10 @@ def test_publishing_a_course_triggers_translation(monkeypatch, client: TestClien
 
 
 def test_publishing_does_not_translate_again_on_idempotent_update(monkeypatch, client: TestClient):
+    # Counts provider calls made inside the request, so it needs the
+    # synchronous publish path. Production enqueues instead; the queue
+    # path is covered in test_translation_pipeline_hooks.py.
+    monkeypatch.setattr("app.core.config.settings.TRANSLATION_QUEUE_ENABLED", False)
     provider = _RecordingProvider()
     _patch_provider(monkeypatch, provider)
 
@@ -599,6 +607,10 @@ def test_publish_hook_swallows_translation_failures(monkeypatch, client: TestCli
 
 
 def test_manual_translate_endpoint_backfills_existing_courses(monkeypatch, client: TestClient):
+    # Counts provider calls made inside the request, so it needs the
+    # synchronous publish path. Production enqueues instead; the queue
+    # path is covered in test_translation_pipeline_hooks.py.
+    monkeypatch.setattr("app.core.config.settings.TRANSLATION_QUEUE_ENABLED", False)
     provider = _RecordingProvider()
     _patch_provider(monkeypatch, provider)
 

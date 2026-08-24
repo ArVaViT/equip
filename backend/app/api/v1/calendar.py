@@ -34,7 +34,7 @@ _TRANSLATABLE_COURSE_EVENT_FIELDS = ("title", "description")
 
 
 def _course_event_to_response(db: Session, event: CourseEvent, *, source_locale: str = "en") -> CourseEventResponse:
-    """Phase 5e4: title + description columns dropped — pull both from
+    """Title + description columns dropped — pull both from
     cv. Used by the single-entity create / update routes; the list /
     calendar routes use ``localize_course_event_rows`` which is
     locale-aware.
@@ -73,7 +73,7 @@ def get_calendar_events(
     response: Response,
     # 36 = UUID length; matches the bound on every Create schema id.
     course_id: str | None = Query(None, max_length=36),
-    # Phase 5bn: defensive cap. A student enrolled in 10+ courses with
+    # Defensive cap. A student enrolled in 10+ courses with
     # years of module deadlines + assignment deadlines + course events
     # could otherwise fan out into the thousands; on Vercel serverless
     # the 10s function budget is the floor. 1000 covers any realistic
@@ -110,7 +110,7 @@ def create_course_event(
     db: Session = Depends(get_db),
 ) -> CourseEventResponse:
     verify_course_owner(db, course_id, teacher)
-    # Phase 5e4: title + description live in cv. Sanitisation runs
+    # Title + description live in cv. Sanitisation runs
     # before the cv write so stored text is safe to render.
     title = sanitize_string(data.title)
     description = sanitize_string(data.description) if data.description else data.description
@@ -246,7 +246,7 @@ def update_course_event(
             message="Event not found",
             context={"resource_type": "course_event", "resource_id": str(event_id), "course_id": course_id},
         )
-    # Phase 5e4: title + description live in cv. Pop them off the patch
+    # Title + description live in cv. Pop them off the patch
     # before the setattr loop and route through dual_write.
     updates = data.model_dump(exclude_unset=True)
     text_patch: dict[str, str | None] = {}
@@ -302,7 +302,7 @@ def delete_course_event(
             message="Event not found",
             context={"resource_type": "course_event", "resource_id": str(event_id), "course_id": course_id},
         )
-    # Phase 5ad: cv polymorphic — drop rows explicitly.
+    # cv polymorphic — drop rows explicitly.
     delete_entity_cv_rows(db, entity_type="course_event", entity_id=event.id)
     db.delete(event)
     db.commit()

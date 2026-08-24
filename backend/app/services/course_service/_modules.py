@@ -48,7 +48,7 @@ def create_module(db: Session, course_id: str, data: ModuleCreate) -> Module:
     # Clients that need a specific slot (e.g. drag-and-drop reorder) still
     # pass their explicit index and control the full layout themselves.
     order_index = data.order_index if data.order_index else _next_module_order(db, course_id)
-    # Phase 5g: title + description columns dropped. Structural row only;
+    # Title + description columns dropped. Structural row only;
     # texts routed via the ``texts={...}`` dict variant of dual_write.
     module = Module(
         id=str(uuid.uuid4()),
@@ -75,7 +75,7 @@ def create_module(db: Session, course_id: str, data: ModuleCreate) -> Module:
 
 def update_module(db: Session, module: Module, data: ModuleUpdate) -> Module:
     patch = data.model_dump(exclude_unset=True)
-    # Phase 5g: text fields live in cv. Pop them off the patch before
+    # Text fields live in cv. Pop them off the patch before
     # setattr-loop on the (now-text-less) ORM row.
     text_patch: dict[str, str | None] = {}
     if "title" in patch:

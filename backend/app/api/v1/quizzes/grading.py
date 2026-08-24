@@ -82,7 +82,7 @@ def list_pending_answers(
         query = query.filter(QuizAnswer.graded_at.is_(None))
 
     pending_rows = query.offset(skip).limit(limit).all()
-    # Phase 5f: ``quiz_questions.question_text`` column dropped — bulk-fetch
+    # ``quiz_questions.question_text`` column dropped — bulk-fetch
     # from cv for the rendering pass (any-locale fallback covers source-only
     # rows from a non-default course locale).
     question_ids = list({str(q.id) for _, q, _, _ in pending_rows})

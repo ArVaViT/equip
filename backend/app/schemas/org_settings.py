@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas._request import RequestModel
+
 
 class OrgSettingsResponse(BaseModel):
     """What the school has decided about itself.
@@ -26,7 +28,7 @@ class OrgSettingsResponse(BaseModel):
     updated_by: UUID | None = None
 
 
-class OrgSettingsUpdate(BaseModel):
+class OrgSettingsUpdate(RequestModel):
     """A partial edit: whatever is sent is written, the rest is left alone.
 
     Partial on purpose. A director fixing a typo in the city should not have to

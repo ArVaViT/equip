@@ -58,7 +58,7 @@ class Cohort(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    # Phase 5e1: the ``name`` column was dropped. Cohort names live
+    # The ``name`` column was dropped. Cohort names live
     # exclusively in ``content_versions`` (entity_type='cohort',
     # field='title'). Read via ``api/v1/cohorts.py::_fetch_cohort_names``,
     # write via ``_write_cohort_name``.

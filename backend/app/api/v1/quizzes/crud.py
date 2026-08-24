@@ -88,7 +88,7 @@ def get_chapter_quiz(
                 message="Only the course owner or an admin can request source-language content",
                 context={"resource_type": "quiz", "chapter_id": chapter_id},
             )
-        # Phase 5f: title / question_text / option_text columns dropped.
+        # Title / question_text / option_text columns dropped.
         # The student response is the same shape source==display surfaces,
         # so re-use the localize path with display=source. ``prefer_human``
         # makes the any-locale fallback prefer human rows so the editor
@@ -262,7 +262,7 @@ def update_quiz(
     verify_quiz_owner(db, quiz, teacher.id)
 
     patch = data.model_dump(exclude_unset=True)
-    # Phase 5f: title + description live in cv. Pop them off the patch
+    # Title + description live in cv. Pop them off the patch
     # so they don't try to setattr on the (now-text-less) ORM row.
     text_patch: dict[str, str | None] = {}
     if "title" in patch:
@@ -301,7 +301,7 @@ def delete_quiz(
 ):
     quiz = get_quiz_or_404(db, quiz_id, load_questions=True)
     verify_quiz_owner(db, quiz, teacher.id)
-    # Phase 5ad: cv has no FK back; the quiz tree (quiz → questions →
+    # cv has no FK back; the quiz tree (quiz → questions →
     # options) is hard-deleted via cascade on the entity tables but
     # nothing cascades on cv. Drop the cv rows for every level
     # before db.delete(quiz) so the cascade leaves zero orphans.
