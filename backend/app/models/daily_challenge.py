@@ -339,7 +339,7 @@ class DailyChallengeQuestionEvent(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    # Phase 5cg: nullable so the orchestrator can log Round 1-3 events
+    # Nullable so the orchestrator can log Round 1-3 events
     # (independent gen, cross-critique, synthesis) BEFORE any question
     # row exists. Earlier events stay anchored by ``generation_run_id``;
     # Round 6 events get the persisted ``question_id`` once the

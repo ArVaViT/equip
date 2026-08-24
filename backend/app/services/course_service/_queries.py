@@ -4,7 +4,7 @@ Every query uses the shared ``_COURSE_TREE`` loader to avoid the
 cartesian row explosion a chained ``joinedload`` would produce on
 large courses.
 
-Phase 5g: every getter that returns courses (or modules) hydrates their
+Every getter that returns courses (or modules) hydrates their
 ``.title`` / ``.description`` runtime attributes from
 ``content_versions`` before returning, so downstream code that reads
 ``course.title`` etc. keeps working unchanged after the column drop.
@@ -73,7 +73,7 @@ def get_courses(
     if search:
         # Catalog search runs ILIKE against ``content_versions`` text rows
         # for course title + description (any locale matches → the course
-        # surfaces). The Phase 5g column drop removed the Postgres tsvector
+        # surfaces). Dropping the title column removed the Postgres tsvector
         # + GIN index that previously backed an FTS query here.
         # TODO(@scale >= ~2000 courses): re-introduce FTS by materialising
         # a tsvector column on ``content_versions``. ILIKE is fine while

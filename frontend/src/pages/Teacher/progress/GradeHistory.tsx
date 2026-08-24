@@ -22,7 +22,7 @@ const NAMED_ACTIONS = new Set([
  * A hand-set grade is the one number on this page nobody can reconstruct from
  * the work. Six months later, when a director signs a ведомость, "why is this
  * a B when the system computed 64" needs an answer that is not somebody's
- * memory. The rows have been written since Phase 1; nothing has ever read them.
+ * memory. The rows were written long before anything read them back.
  *
  * Loaded on demand rather than with the row: most students never have a
  * history, and paying for the query on every expansion to show "nothing

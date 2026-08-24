@@ -56,7 +56,7 @@ export function getErrorDetail(err: unknown, fallback = ""): string {
   if (isAxiosError(err)) {
     const detail: unknown = err.response?.data?.detail
     if (typeof detail === "string") return detail
-    // Phase 5ay: structured envelope ``{code, message, context}``.
+    // Structured envelope ``{code, message, context}``.
     // Render ``message`` for the toast; ``getErrorCode`` extracts
     // the typed code for switch logic separately.
     if (

@@ -547,7 +547,7 @@ def _courses_for_rows(db: Session, rows: list[ContentVersion]) -> dict[tuple[str
             if course is not None:
                 resolved[(entity_type, entity_id)] = course
 
-    # Titles live in content_versions since Phase 5g — reading
+    # Titles live in content_versions — reading
     # ``course.title`` off an un-hydrated instance raises. Hydrate the
     # distinct courses once, at their own source locale (this is an
     # operator screen; the author's wording is the useful label), and

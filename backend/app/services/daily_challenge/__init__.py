@@ -1,6 +1,6 @@
 """Daily Challenge service surface.
 
-Sprint 2 — service layer on top of the foundation schema (Phase 5c).
+Sprint 2 — service layer on top of the foundation schema.
 Public entry points are re-exported here so route handlers import a
 single namespace.
 

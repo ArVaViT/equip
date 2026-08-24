@@ -2,9 +2,10 @@
 
 Every ``(entity, field, locale)`` is a first-class row with its own
 provenance, status, and version chain. Replaces the original
-dual-table model (entity text columns = source + the now-dropped
-``content_translations`` overlay) since Phase 5e-g. The legacy table
-itself was dropped in Phase 5aj.
+dual-table model: entity text columns held the source and a
+``content_translations`` overlay held the rest. Both are gone — the
+source columns were dropped entity by entity, the overlay table with
+them.
 
 Design rules pinned by the schema
 ---------------------------------

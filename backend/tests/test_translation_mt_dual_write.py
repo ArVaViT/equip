@@ -159,7 +159,7 @@ class TestSuccessDualWrite:
     def test_mt_records_without_source_version_when_absent(self, db: Session):
         # No pre-existing human source row in content_versions yet —
         # mid-rollout / un-backfilled state. MT row still recorded;
-        # source_version_id stays NULL until backfill (Phase 3) lands.
+        # source_version_id stays NULL until backfill lands.
         course = _make_course(db)
         provider = _RecordingProvider()
         translate_entity_fields(

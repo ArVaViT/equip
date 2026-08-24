@@ -22,7 +22,7 @@ interface Props {
  *
  * NotificationBell is rendered with ``triggerVariant="navRow"`` +
  * ``panelVariant="sheet"`` so the panel opens inline (no floating
- * overlay above the next nav row) — see Phase 5ah.
+ * overlay above the next nav row).
  */
 export function HeaderMobileSheet({ open, onOpenChange, user, isTeacher }: Props) {
   const { t } = useTranslation()

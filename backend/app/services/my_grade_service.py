@@ -5,9 +5,9 @@ excused list — and all of it was behind ``require_teacher``. A student could
 see a progress bar, individual quiz scores, and, if a teacher had hand-set one,
 a bare letter on their dashboard. They could not see their course grade.
 
-That is the wrong way round for the thing this phase is building toward: the
-certificate pass-gate goes live at the end of Phase 2, and the design's first
-rule is that enforcement never ships before the visibility that explains it. A
+That is the wrong way round for what this is building toward: the certificate
+pass-gate, whose first design rule is that enforcement never ships before the
+visibility that explains it. A
 student refused a certificate must already know why, and have known for weeks.
 
 The list is built from the course's **items**, not its chapters. The first

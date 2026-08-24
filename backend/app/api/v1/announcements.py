@@ -51,7 +51,7 @@ def _dual_write_announcement(
 ) -> None:
     """Dual-write an announcement's title + content to content_versions.
 
-    Phase 5e5: title + content columns dropped — both texts live in cv
+    Title + content columns dropped — both texts live in cv
     and arrive via the explicit ``texts`` dict.
 
     Course-scoped announcements use the course's source_locale as the
@@ -75,7 +75,7 @@ def _dual_write_announcement(
 def _announcement_to_response(
     db: Session, announcement: Announcement, *, source_locale: str = "en"
 ) -> AnnouncementResponse:
-    """Phase 5e5: title + content columns dropped — pull both from cv.
+    """Title + content columns dropped — pull both from cv.
     Used by the single-entity routes (create / update); the list route
     uses ``localize_announcement_rows`` which is locale-aware.
     """
@@ -353,7 +353,7 @@ def create_announcement(
     )
     db.commit()
     db.refresh(announcement)
-    # Phase 5x: reconcile (MT translate into every non-source locale)
+    # Reconcile (MT translate into every non-source locale)
     # runs BEFORE the notification fan-out so per-recipient locale
     # resolution can pick up the freshly-translated title instead of
     # always seeing the source-locale text.
@@ -361,7 +361,7 @@ def create_announcement(
         reconcile_entity_if_course_published(db, "announcement", announcement)
 
     if data.course_id:
-        # Phase 5v + 5x: notification text now respects each recipient's
+        # Notification text respects each recipient's
         # preferred_locale AND surfaces the locale-localized announcement
         # title (not just the source-locale text). For each (user_id,
         # preferred_locale) row in enrollments, resolve the announcement
@@ -512,11 +512,11 @@ def delete_announcement(
             context={"resource_type": "announcement", "resource_id": str(announcement_id)},
         )
 
-    # Phase 5ad: cv has no FK to announcements (polymorphic entity_id);
+    # cv has no FK to announcements (polymorphic entity_id);
     # nothing for Postgres to cascade. Drop the rows explicitly so a
     # hard-delete doesn't leave orphan cv text behind.
     delete_entity_cv_rows(db, entity_type="announcement", entity_id=announcement.id)
-    # Phase 5ae: every enrolled student got a ``new_announcement``
+    # Every enrolled student got a ``new_announcement``
     # notification via ``create_notifications_bulk`` (see
     # ``create_announcement``) — those rows reference this announcement
     # only through ``meta->>'announcement_id'``, which Postgres has no

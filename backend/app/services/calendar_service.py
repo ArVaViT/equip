@@ -127,7 +127,7 @@ def build_calendar_events(
             )
             .all()
         )
-        # Phase 5e3: assignments.title + description columns dropped —
+        # assignments.title + description columns dropped —
         # one cv read covers every assignment, with the picker applying
         # the per-assignment course-declared source_locale fallback.
         asg_rows_by_pair_locale: dict[tuple[str, str, str], str] = {}
@@ -182,7 +182,7 @@ def build_calendar_events(
 
     course_events = db.query(CourseEvent).filter(CourseEvent.course_id.in_(enrolled_course_ids)).all()
 
-    # Phase 5e4: course_events.title + description columns dropped — one
+    # course_events.title + description columns dropped — one
     # cv read covers every event, with the picker applying the
     # per-event course-declared source_locale fallback in Python.
     # Mirrors the assignment-deadline pattern above.
@@ -235,7 +235,7 @@ def build_calendar_events(
         )
 
     events.sort(key=lambda e: e.event_date)
-    # Phase 5bn: apply defensive cap AFTER sorting so the oldest events
+    # Apply defensive cap AFTER sorting so the oldest events
     # fall off the end first. Keeping the soonest ``limit`` events is the
     # right shape for a calendar UI (upcoming deadlines matter more than
     # ancient ones).

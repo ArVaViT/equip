@@ -252,7 +252,7 @@ def populate_spine_texts(
     display_locale: LocaleCode | None = None,
     hydrate_modules: bool = True,
 ) -> None:
-    """Phase 5g: ``courses.title|description`` and ``modules.title|description``
+    """``courses.title|description`` and ``modules.title|description``
     columns dropped. Hydrate each course (and every loaded module/chapter
     title via the module list) with runtime attributes pulled from cv,
     so downstream serialization that reads ``course.title`` / ``module.title``
@@ -400,8 +400,8 @@ def fetch_overlay_triples_bulk(
 ) -> dict[tuple[str, str, str], str]:
     """Bulk-fetch overlay rows keyed by ``(entity_type, entity_id, field)``.
 
-    Sourced exclusively from ``content_versions`` (Phase 4 made cv the
-    primary read store; Phase 5a removed the legacy fallback branch).
+    Sourced exclusively from ``content_versions``; the legacy fallback
+    branch that read entity columns is gone.
     """
     return fetch_cv_text_bulk(db, keys, display_locale)
 
@@ -750,7 +750,7 @@ def _fetch_quiz_tree_texts(
     (entity_id, field) → text dicts so callers can build whichever
     response shape they need.
 
-    Phase 5f: ``quizzes.title``, ``quizzes.description``,
+    ``quizzes.title``, ``quizzes.description``,
     ``quiz_questions.question_text`` and ``quiz_options.option_text``
     were dropped, so cv is the only store. Three calls (one per
     entity_type) keeps the SQL tuple-IN clauses simple and lets each
@@ -809,7 +809,7 @@ def build_localized_quiz_student_response(
     source_locale: LocaleCode,
     prefer_human: bool = False,
 ) -> QuizStudentResponse:
-    """Phase 5f: quiz tree text columns dropped — fetch every title /
+    """Quiz tree text columns dropped — fetch every title /
     description / question_text / option_text from cv with three-tier
     fallback, then assemble the student-facing response.
     """
@@ -919,7 +919,7 @@ def localize_assignment_rows(
     prefer_human: bool = False,
     include_author_edits: bool | None = None,
 ) -> list[AssignmentResponse]:
-    """Phase 5e3: ``assignments.title`` + ``description`` columns dropped.
+    """``assignments.title`` + ``description`` columns dropped.
     Both texts live in ``content_versions`` now.
 
     Resolution is whatever ``fetch_cv_entity_texts_with_fallback``
@@ -973,7 +973,7 @@ def localize_chapter_block_rows(
 ) -> list[BlockResponse]:
     """Apply stored translations to TipTap HTML stored on chapter blocks.
 
-    Phase 5e2: the legacy ``content`` column was dropped. Both the
+    The legacy ``content`` column was dropped. Both the
     source text and the localised overlay live in ``content_versions``
     now. Build the response manually because ``model_validate(block)``
     would try to read ``block.content`` (no longer an attribute).
@@ -1097,7 +1097,7 @@ def localize_announcement_rows(
     source_locale: LocaleCode,
     prefer_human: bool = False,
 ) -> list[AnnouncementResponse]:
-    """Phase 5e5: ``announcements.title`` + ``content`` columns dropped.
+    """``announcements.title`` + ``content`` columns dropped.
     Both texts live in cv now. Resolve each via the three-tier fallback
     (display → source → any-locale).
     """
@@ -1140,7 +1140,7 @@ def localize_course_event_rows(
     source_locale: LocaleCode,
     prefer_human: bool = False,
 ) -> list[CourseEventResponse]:
-    """Phase 5e4: ``course_events.title`` + ``description`` columns dropped.
+    """``course_events.title`` + ``description`` columns dropped.
     Both texts live in cv now. Resolve each via the three-tier
     fallback (display → source → any-locale).
     """

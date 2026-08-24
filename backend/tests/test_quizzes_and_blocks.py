@@ -27,7 +27,7 @@ def _make_block_with_content(
     content: str | None = None,
     block_id: uuid.UUID | None = None,
 ) -> ChapterBlock:
-    """Phase 5e2: chapter_blocks.content column is gone. This helper
+    """chapter_blocks.content column is gone. This helper
     creates the block row + records the content in content_versions
     (en locale by default for test determinism)."""
     from app.services.content_versions.write import record_human_version
@@ -97,7 +97,7 @@ def _seed_course_with_enrollment(db: Session):
 
 
 def _seed_quiz_with_questions(db: Session, chapter_id: str = "ch-1"):
-    """Phase 5f: quiz tree text columns dropped — use the cv helpers."""
+    """Quiz tree text columns dropped — use the cv helpers."""
     from ._cv_helpers import make_quiz_option_with_text, make_quiz_question_with_text, make_quiz_with_text
 
     quiz = make_quiz_with_text(
@@ -506,7 +506,7 @@ def test_reorder_blocks_unknown_id_returns_400(client: TestClient, db: Session):
     )
     assert resp.status_code == 400
     detail = resp.json()["detail"]
-    # Phase 5bc: typed error envelope. The bogus id surfaces in both
+    # Typed error envelope. The bogus id surfaces in both
     # the human ``message`` and the machine-readable ``context.missing_ids``.
     assert detail["code"] == "validation.failed"
     assert bogus in detail["message"]
@@ -865,7 +865,7 @@ def test_update_quiz_not_found(client: TestClient, db: Session):
 
 def test_update_quiz_description_only(client: TestClient, db: Session):
     """``description`` is popped off the patch and dual-written the same
-    way ``title`` is (Phase 5f) — exercise it independently of title so a
+    way ``title`` is — exercise it independently of title so a
     description-only PATCH from the editor doesn't silently no-op."""
     _seed_course(db)
     quiz, _, _ = _seed_quiz_with_questions(db)

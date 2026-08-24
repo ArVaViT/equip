@@ -1,7 +1,7 @@
-"""Cv-primary read helpers — Phase 4 is now the only path.
+"""Cv-primary read helpers — the only read path there is.
 
-The Phase 4 feature flag (``CONTENT_VERSIONS_READ_PRIMARY``) was
-deleted in Phase 5a. Every overlay fetch comes from
+The flag that used to select between cv and the entity columns
+(``CONTENT_VERSIONS_READ_PRIMARY``) is gone. Every overlay fetch comes from
 ``content_versions``; the legacy ``content_translations`` branch in
 ``resolve_for_display.py`` is gone.
 
@@ -19,8 +19,8 @@ Uses ``uniq_content_versions_active`` directly (partial unique on
 fetcher — zero N+1 risk.
 
 We do NOT re-detect per-field language on the read path: cv already
-has the detected locale recorded at write time (Phase 1 dual-write +
-Phase 3 backfill). The read trusts what's there.
+has the detected locale recorded at write time, on every row, including
+the ones backfilled from the entity columns. The read trusts what's there.
 """
 
 from __future__ import annotations
@@ -113,7 +113,7 @@ def fetch_cv_entity_texts_with_fallback(
     typed text in its source language even if an MT row at that
     locale was created earlier.
 
-    Phase 5e-series: entities whose source columns are dropped need
+    Entities whose source columns are dropped need
     one indexed lookup per request to materialise responses; this is
     that lookup.
     """

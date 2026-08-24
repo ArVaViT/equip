@@ -64,8 +64,8 @@ def get_course_analytics(
     the API.
     """
     course = verify_course_owner(db, course_id, teacher)
-    # Phase 5g: courses.title moved to cv — hydrate before serialising.
-    # Phase 5bi: respect Accept-Language so a Russian teacher viewing an
+    # courses.title moved to cv — hydrate before serialising.
+    # Respect Accept-Language so a Russian teacher viewing an
     # EN-source course sees the localized title (matching the editor
     # overlay) instead of always the source. Tier order:
     # display_locale → source_locale → any-locale.

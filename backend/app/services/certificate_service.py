@@ -234,7 +234,7 @@ def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> 
 
     # Soft-deleted course is OK here — we still notify the student and issue
     # the cert since the course was live when approval started.
-    # Phase 5v: course title is resolved at the RECIPIENT's locale and the
+    # Course title is resolved at the RECIPIENT's locale and the
     # title/message strings come from the locale branch so a Russian
     # student doesn't get English notification text.
     course = db.query(Course).filter(Course.id == cert.course_id, Course.deleted_at.is_(None)).first()
@@ -316,7 +316,7 @@ def reject(db: Session, cert_id: UUID, user: User, request: Request) -> Certific
 
     cert.status = CertificateStatus.REJECTED
 
-    # Phase 5v: same locale-aware fan-out as the approval path.
+    # Same locale-aware fan-out as the approval path.
     recipient_locale = normalize_locale(_recipient_locale(db, cert.user_id))
     course_title = fetch_course_titles_by_id(db, [course.id], display_locale=recipient_locale).get(course.id) or t(
         recipient_locale, "fallback.your_course"

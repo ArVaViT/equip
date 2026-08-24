@@ -248,7 +248,7 @@ def test_course_pipeline_skips_draft(db: Session, teacher):
 
 
 # ---------------------------------------------------------------------------
-# Phase 5ax: queue-mode publish path
+# queue-mode publish path
 # ---------------------------------------------------------------------------
 
 

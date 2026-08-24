@@ -118,7 +118,7 @@ def _has_meaningful_content(block: ChapterBlock, blocks_with_cv_content: set[str
     by their own checks (``quiz has questions``, etc.) so a chapter
     consisting only of a quiz block still passes the content rule.
 
-    Phase 5e2: the ``content`` column was dropped. The caller pre-fetches
+    The ``content`` column was dropped. The caller pre-fetches
     a set of block ids that have an active cv content row at any locale
     (``_fetch_blocks_with_cv_content``); we just consult the set here.
     """
@@ -284,7 +284,7 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
         for block in db.query(ChapterBlock).filter(ChapterBlock.chapter_id.in_(all_chapter_ids)).all():
             blocks_by_chapter.setdefault(block.chapter_id, []).append(block)
 
-    # Phase 5e2: ``chapter_blocks.content`` column dropped. Pre-fetch the
+    # ``chapter_blocks.content`` column dropped. Pre-fetch the
     # set of block ids that have at least one active+ok cv content row
     # at any locale so the readiness check can answer "block has content?"
     # in O(1) per block via ``_has_meaningful_content``.
@@ -328,7 +328,7 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
         for loaded_assignment in db.query(Assignment).filter(Assignment.chapter_id.in_(all_chapter_ids)).all():
             assignments_by_chapter[loaded_assignment.chapter_id] = loaded_assignment
 
-    # Phase 5e3: ``assignments.description`` column dropped. Bulk-fetch
+    # ``assignments.description`` column dropped. Bulk-fetch
     # the set of assignment ids with a non-blank cv description row at
     # any locale (same pattern as ``blocks_with_cv_content`` above) so
     # the per-chapter check can answer "has brief?" in O(1).

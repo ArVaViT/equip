@@ -283,7 +283,7 @@ def _load_completed_progress(
 
 
 def _load_assignment_titles(db: Session, course: Course, assignment_by_id_str: dict[str, Assignment]) -> dict[str, str]:
-    """Phase 5e3: ``assignments.title`` column dropped — bulk-fetch the
+    """``assignments.title`` column dropped — bulk-fetch the
     source-language title from cv. Any-locale fallback keeps the lookup
     defensive against missing rows (prefer showing *something* over crashing).
     """

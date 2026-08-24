@@ -59,7 +59,7 @@ router = APIRouter(prefix="/cohorts", tags=["cohorts"])
 def _write_cohort_name(db: Session, cohort_id: UUID, name: str, *, admin: User) -> None:
     """Write the cohort name to content_versions.field='title'.
 
-    Phase 5e1: ``cohorts.name`` column is gone. The cohort's display
+    ``cohorts.name`` column is gone. The cohort's display
     name lives only in ``content_versions``. Cohorts have no parent
     course (M2M), so the detector fallback is admin's preferred_locale.
     """
@@ -197,7 +197,7 @@ def list_cohorts(
     # legal cohort statuses before the query runs. Matches the constraint
     # already on ``CohortUpdate.status`` and the DB ``CHECK``.
     status_filter: Literal["upcoming", "active", "completed"] | None = Query(None, alias="status"),
-    # Phase 5bn: defensive pagination. An admin panel scrolling cohort
+    # Defensive pagination. An admin panel scrolling cohort
     # history shouldn't pull the full table on every keystroke; cap and
     # paginate. Defaults match the other admin list endpoints
     # (audit, users, queue-status).
@@ -288,7 +288,7 @@ def update_cohort(
     # same values) doesn't generate a noisy audit entry, and a status
     # flip like ``upcoming -> active`` is fully traceable: the row holds
     # both ends of the transition.
-    # Phase 5e1: name lives in cv; other fields stay on the entity.
+    # Name lives in cv; other fields stay on the entity.
     changes: dict[str, dict[str, object]] = {}
     new_name: str | None = None
     for field, value in patch.items():
@@ -335,7 +335,7 @@ def delete_cohort(
     ``cohort_id`` set to NULL (``ON DELETE SET NULL`` on the FK) — that
     way historical grade data is preserved as orphaned solo enrollments."""
     cohort = _get_or_404(db, cohort_id)
-    # Phase 5e1: name lives in cv. Snapshot it for the audit row before
+    # Name lives in cv. Snapshot it for the audit row before
     # the cv rows themselves go away (no cascade — they orphan harmlessly).
     cohort_name = _fetch_cohort_names(db, [cohort_id]).get(str(cohort_id), "")
     db.delete(cohort)
@@ -828,7 +828,7 @@ def list_cohorts_for_course(
     # Locale wins. Every reader — students, owners, admins — gets the locale
     # overlay when one exists. The admin cohort CRUD surface (``/cohorts`` and
     # ``/cohorts/{id}``) still returns source for moderation and editing.
-    # Phase 5e1: _serialize_many already pulls names from cv (locale-agnostic).
+    # _serialize_many already pulls names from cv (locale-agnostic).
     # Apply the locale-specific overlay on top so accept-language picks the
     # right localization when one exists.
     loc = Localizer.build(

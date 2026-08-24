@@ -144,7 +144,7 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
     for b in all_blocks:
         blocks_by_chapter[b.chapter_id].append(b)
 
-    # Phase 5z: track every (old_id -> new_id) so the cv-row copy at
+    # Track every (old_id -> new_id) so the cv-row copy at
     # the end of this function can fan a single bulk SELECT + bulk
     # INSERT per entity_type across the whole clone, rather than
     # touching cv inline at each model instantiation.
@@ -296,7 +296,7 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
                     )
                 )
 
-    # Phase 5z: fan a single bulk SELECT + INSERT per entity_type across
+    # Fan a single bulk SELECT + INSERT per entity_type across
     # the whole clone tree so the new course inherits its bilingual
     # text from the original instead of landing as an empty draft.
     db.flush()
@@ -346,7 +346,7 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
 
     cloned = db.query(Course).options(*_COURSE_TREE).filter(Course.id == new_course_id).first()
     if cloned is not None:
-        # Phase 5g/5z: ``courses.title|description`` and
+        # ``courses.title|description`` and
         # ``modules.title|description`` live in cv. Hydrate runtime
         # attrs so the response serializer sees a real title instead
         # of failing the Pydantic ``title`` field check.
