@@ -215,8 +215,8 @@ doesn't look right in one theme, fix the token — don't branch on `.dark`.
   `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`.
 - Text contrast ≥ 4.5:1 for body, ≥ 3:1 for large. **Verified end-to-end** —
   including translucent overlays — by `frontend/scripts/contrast-audit.mjs`.
-  See `docs/contrast-audit.md` for the full table (re-generate after touching
-  `index.css` with `node scripts/contrast-audit.mjs --markdown > ../docs/contrast-audit.md`).
+  Run `node scripts/contrast-audit.mjs` from `frontend/` for the full table;
+  it reads `index.css` directly, so the output is never stale.
 - Keyboard reachable: every action must be reachable without a pointer.
 - Run axe-core locally before a release.
 

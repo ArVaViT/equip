@@ -19,9 +19,6 @@
   <a href="https://github.com/ArVaViT/equip/actions/workflows/frontend-ci.yml">
     <img src="https://img.shields.io/github/actions/workflow/status/ArVaViT/equip/frontend-ci.yml?label=frontend&style=flat-square" alt="Frontend CI" />
   </a>
-  <a href="https://github.com/ArVaViT/equip/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22">
-    <img src="https://img.shields.io/github/issues/ArVaViT/equip/good%20first%20issue?style=flat-square&color=7057ff&label=good%20first%20issues" alt="Good first issues" />
-  </a>
   <a href="https://app.codecov.io/gh/ArVaViT/equip">
     <img src="https://img.shields.io/codecov/c/github/ArVaViT/equip?style=flat-square&label=coverage" alt="Code coverage" />
   </a>
@@ -31,11 +28,9 @@
 </p>
 
 <p align="center">
-  <a href="https://equipbible.com">Live demo</a> &middot;
-  <a href="ROADMAP.md">Roadmap</a> &middot;
-  <a href="CONTRIBUTING.md">Contributing</a> &middot;
-  <a href="SUPPORT.md">Support</a> &middot;
-  <a href="CHANGELOG.md">Changelog</a>
+  <a href="https://equipbible.com">Live site</a> &middot;
+  <a href="#documentation">Documentation</a> &middot;
+  <a href="SECURITY.md">Security</a>
 </p>
 
 ---
@@ -83,8 +78,8 @@ technical expertise that volunteer-run organizations simply don't have.
   database. No Docker, no servers to manage.
 - **Built for small scale** — optimized for 20-100 students, not enterprise
   pricing models.
-- **Contributor-friendly** — clear docs, conventional commits, issue
-  templates, and a welcoming community.
+- **Multilingual out of the box** — a teacher writes in one language and
+  students read in theirs; Russian, English, German, and Ukrainian.
 
 ---
 
@@ -100,7 +95,7 @@ technical expertise that volunteer-run organizations simply don't have.
 | **Teacher tools** | Gradebook, analytics dashboard, cohort management, calendar, announcements |
 | **Admin tools** | User management, bulk operations, CSV export, course cloning, soft delete |
 | **Design** | Editorial aesthetic, dark/light theme, responsive (360px+), HSL semantic tokens |
-| **Bilingual content (RU↔EN)** | Auto-translation of all teacher-authored text via Gemini, stored per (entity, field, locale) in the `content_versions` table; canonical KJV / Synodal substitution for Bible quotes; symmetric — author writes in their language, students read in theirs; off-the-request-path via a cron-driven worker queue so publishing stays instant even on 100-block courses |
+| **Multilingual content (RU / EN / DE / UK)** | Auto-translation of all teacher-authored text via Gemini, stored per (entity, field, locale) in the `content_versions` table; canonical Scripture substituted from the published edition of each language rather than paraphrased by the model; symmetric — an author writes in their language, students read in theirs; every translation is checked against its source before a reader sees it, and a course enters the catalogue only when all four languages are in place; off-the-request-path via a cron-driven worker queue so publishing stays instant even on 100-block courses |
 | **Security** | RLS on every table, server-side HTML sanitization, CORS lockdown, audit pipeline, typed error envelope (`{code, message, context}`) for structured client + Sentry handling |
 
 ---
@@ -194,25 +189,17 @@ supabase/
 
 .github/
   workflows/        CI pipelines
-  ISSUE_TEMPLATE/   Bug report and feature request forms
 ```
 
 ---
 
 ## Contributing
 
-We welcome contributions of all sizes — from typo fixes to new features.
-
-1. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup and workflow details.
-2. Check [open issues](https://github.com/ArVaViT/equip/issues)
-   — look for the `good first issue` label if you're new.
-3. See the [ROADMAP](ROADMAP.md) for bigger-picture direction.
-
-**We especially welcome:**
-- Nonprofit Bible schools sharing their real-world needs
-- Designers improving the student/teacher experience
-- Translators reviewing and refining the AI-translated content (the platform is already RU↔EN bilingual; human review of the canonical Bible-school terminology is what would push quality from "good" to "great")
-- QA testers finding and reporting bugs
+The source is open under the MIT license and the issue tracker is open, but
+this is a single-maintainer project with no contribution process to speak
+of: no review rotation, no triage promises, no roadmap to sign up against.
+Fork it freely. If you run a Bible school and something here is close to
+what you need, an issue describing the gap is more useful than a patch.
 
 ---
 
@@ -225,11 +212,9 @@ this platform:
   zero cost.
 - **No vendor lock-in.** Host it yourself or use the free tiers of Vercel +
   Supabase.
-- **You don't need a developer on staff.** Follow the quick start above, or
-  open a [discussion](https://github.com/ArVaViT/equip/discussions)
-  and the community will help.
-- **Your feedback shapes the product.** Open a feature request — the roadmap
-  is driven by real ministry needs.
+- **You don't need a developer on staff.** Follow the quick start above.
+- **Your feedback shapes the product.** Open an issue describing what your
+  school actually needs — that is what the work gets pointed at.
 
 ---
 
@@ -243,8 +228,8 @@ There are great LMS options out there. Equip exists in a specific gap they don't
 | Self-hosted | One-click Vercel + Supabase free tier | LAMP server you maintain | SaaS only | SaaS only |
 | Setup effort | Minutes | Hours to days | None | None |
 | UI | Modern, theme-aware (light + dark) | Functional, dated | Modern | Modern |
-| Scripture handling | KJV / Synodal substitution, paraphrase guard | None | None | None |
-| Bilingual content | Auto RU&harr;EN via Gemini, cached | Manual i18n | None | Manual i18n |
+| Scripture handling | The published edition of each language, paraphrase guard | None | None | None |
+| Multilingual content | Four languages, machine-translated and validated | Manual i18n | None | Manual i18n |
 | Code customization | TypeScript + Python | PHP plugins | Closed source | Closed source |
 | Best fit | Small ministries, 20&ndash;100 students | Universities, 1000+ students | K&ndash;12 in Google Workspace | Enterprise with budget |
 
@@ -256,25 +241,14 @@ There are great LMS options out there. Equip exists in a specific gap they don't
 
 | Audience | Document |
 |----------|----------|
-| Contributors | [CONTRIBUTING.md](CONTRIBUTING.md) — setup, workflow, conventions |
 | Designers / UI work | [docs/DESIGN.md](docs/DESIGN.md) — aesthetic, tokens, motion, banned patterns |
 | Component reuse | [docs/COMPONENTS.md](docs/COMPONENTS.md) — the patterns library (`<Badge>`, `<StatCard>`, `<EmptyState>`, …) |
-| Translators / i18n work | [docs/I18N.md](docs/I18N.md) — bilingual workflow, locale files, key parity |
+| Translators / i18n work | [docs/I18N.md](docs/I18N.md) — locale files, key parity, plural categories |
 | Architecture | [docs/adr/](docs/adr/) — Architecture Decision Records |
 | Cross-cutting UI calls | [docs/UI-DECISIONS.md](docs/UI-DECISIONS.md) — frozen UI decisions log |
 | Running in production | [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) — monitoring, log forwarding, incident debugging |
 | Dashboards / metrics | [docs/datadog/](docs/datadog/) — Datadog dashboard + monitor JSON specs |
 | Security disclosure | [SECURITY.md](SECURITY.md) |
-
-## Community
-
-- [GitHub Discussions](https://github.com/ArVaViT/equip/discussions) — questions, ideas, show & tell
-- [Issue tracker](https://github.com/ArVaViT/equip/issues) — bug reports and feature requests
-- [Support](SUPPORT.md) — how to get help, response times, the right channel for each kind of question
-- [Changelog](CHANGELOG.md) — what's new in each release
-- [Security policy](SECURITY.md) — how to report vulnerabilities
-
----
 
 ## License
 
