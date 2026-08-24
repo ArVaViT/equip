@@ -257,6 +257,17 @@
   },
   {
     "method": "POST",
+    "path": "/api/v1/admin/translations/restore-last-good",
+    "params": [],
+    "responses": [
+      "200",
+      "404",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "POST",
     "path": "/api/v1/admin/translations/retry-reviewed",
     "params": [],
     "responses": [

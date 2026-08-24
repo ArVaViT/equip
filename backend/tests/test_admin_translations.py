@@ -14,6 +14,7 @@ from app.models.content_version import (
     CONTENT_VERSION_MAX_ATTEMPTS,
     ContentVersion,
 )
+from app.services.content_versions import record_mt_version
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -309,6 +310,102 @@ def test_accept_reviewed_ignores_rows_that_were_never_parked(admin_client: TestC
 def test_accept_reviewed_is_admin_only(student_client: TestClient):
     resp = student_client.post(
         "/api/v1/admin/translations/accept-reviewed",
+        json={"ids": [str(uuid.uuid4())]},
+    )
+    assert resp.status_code in (401, 403)
+
+
+# ---------------------------------------------------------------------------
+# restore-last-good — undo a supersede that cost readers a translation
+# ---------------------------------------------------------------------------
+
+
+def _seed_superseded_good(db: Session, *, locale: str = "en") -> tuple[ContentVersion, ContentVersion]:
+    """A servable row that a rejected retry pushed out of the way.
+
+    Built through the write path rather than by hand, so the chain is
+    the one production actually produced: a good translation, then a
+    rejected answer to a *changed* source, which still supersedes.
+    """
+    entity_id = str(uuid.uuid4())
+    good = record_mt_version(
+        db,
+        entity_type="chapter_block",
+        entity_id=entity_id,
+        field="content",
+        locale=locale,
+        text="<p>Grace is unearned favour.</p>",
+        source_locale="ru",
+        source_hash="a" * 64,
+    )
+    db.commit()
+    rejected = record_mt_version(
+        db,
+        entity_type="chapter_block",
+        entity_id=entity_id,
+        field="content",
+        locale=locale,
+        text="<p>Grace is <em>unearned</em> favour.</p>",
+        source_locale="ru",
+        source_hash="b" * 64,
+        status="failed",
+        review_reason="[markup_mismatch] source has 1 tag, translation has 2",
+    )
+    db.commit()
+    db.refresh(good)
+    db.refresh(rejected)
+    return good, rejected
+
+
+def test_restore_last_good_puts_the_translation_back(admin_client: TestClient, db: Session):
+    """One chapter block of «Glossary in Your Pocket» sat like this from
+    2026-08-19: correct English translation, superseded by a retry that
+    added two ``<em>`` and was parked. Readers got nothing while the good
+    text sat one row below in the same table."""
+    good, rejected = _seed_superseded_good(db)
+
+    resp = admin_client.post(
+        "/api/v1/admin/translations/restore-last-good",
+        json={"ids": [str(rejected.id)]},
+    )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["reset"] == 1
+    db.refresh(good)
+    db.refresh(rejected)
+    assert good.superseded_by is None
+    assert good.status == "ok"
+    # Nothing is deleted: what the model said is still readable, now
+    # standing behind the row it briefly replaced.
+    assert rejected.superseded_by == good.id
+    assert "<em>" in rejected.text
+
+
+def test_restore_last_good_leaves_a_servable_row_alone(admin_client: TestClient, db: Session):
+    """A row that is already ``ok`` is not something to restore from."""
+    good, _rejected = _seed_superseded_good(db)
+    resp = admin_client.post(
+        "/api/v1/admin/translations/restore-last-good",
+        json={"ids": [str(good.id)]},
+    )
+    assert resp.status_code == 404
+
+
+def test_restore_last_good_refuses_when_there_is_nothing_behind(admin_client: TestClient, db: Session):
+    """A first-ever attempt that failed superseded nothing. There is no
+    earlier translation to put back, and saying so is better than
+    inventing one."""
+    row = _seed_needs_review(db)
+    resp = admin_client.post(
+        "/api/v1/admin/translations/restore-last-good",
+        json={"ids": [str(row.id)]},
+    )
+    assert resp.status_code == 404
+
+
+def test_restore_last_good_is_admin_only(student_client: TestClient):
+    resp = student_client.post(
+        "/api/v1/admin/translations/restore-last-good",
         json={"ids": [str(uuid.uuid4())]},
     )
     assert resp.status_code in (401, 403)
