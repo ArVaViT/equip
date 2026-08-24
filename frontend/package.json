@@ -79,7 +79,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.12.1",
+    "@axe-core/playwright": "^4.13.0",
     "@datadog/datadog-ci": "^5.23.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.62.1",
