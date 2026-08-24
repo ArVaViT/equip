@@ -5,8 +5,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.schemas._request import RequestModel
 
-class GradeUpsert(BaseModel):
+
+class GradeUpsert(RequestModel):
     """A hand-set grade (D7).
 
     Exactly one of ``override_code`` / ``override_score`` — a symbol from the
@@ -78,7 +80,7 @@ class GradingConfigResponse(BaseModel):
     participation_weight: int
 
 
-class GradingConfigUpdate(BaseModel):
+class GradingConfigUpdate(RequestModel):
     """Course weights on the write path — two categories, never three.
 
     "Participation" was retired as a weighted category (D5). The field is still
@@ -125,7 +127,7 @@ class GradingConfigUpdate(BaseModel):
         return self
 
 
-class GradingSchemeUpdate(BaseModel):
+class GradingSchemeUpdate(RequestModel):
     """Scheme and pass line, written together or not at all (D8.1).
 
     They are a pair: a five-point course whose pass line sits above 75 has an
@@ -153,7 +155,7 @@ class GradingSchemeResponse(BaseModel):
     bands: list[tuple[Decimal, str]] = []
 
 
-class ExemptionCreate(BaseModel):
+class ExemptionCreate(RequestModel):
     """Excuse a student from one piece of work (D6)."""
 
     item_type: Literal["quiz", "assignment"]
@@ -496,7 +498,7 @@ class GradeSheetResponse(BaseModel):
     rows: list[SheetRowResponse] = []
 
 
-class SheetReopenRequest(BaseModel):
+class SheetReopenRequest(RequestModel):
     """Reopening is deliberate and on the record, so the reason is required."""
 
     reason: str = Field(..., min_length=1, max_length=2000)

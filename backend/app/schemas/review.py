@@ -3,8 +3,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas._request import RequestModel
 
-class ReviewCreate(BaseModel):
+
+class ReviewCreate(RequestModel):
     rating: int = Field(..., ge=1, le=5)
     comment: str | None = Field(None, max_length=5000)
 

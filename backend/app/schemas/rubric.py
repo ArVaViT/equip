@@ -2,8 +2,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.schemas._request import RequestModel
 
-class RubricLevelIn(BaseModel):
+
+class RubricLevelIn(RequestModel):
     label: str = Field(..., min_length=1, max_length=120)
     #: Bounded for the same reason the CHECK constraint is: one criterion worth
     #: 5000 silently swamps every other one, and the mark still looks arithmetically
@@ -12,7 +14,7 @@ class RubricLevelIn(BaseModel):
     description: str | None = Field(None, max_length=2000)
 
 
-class RubricCriterionIn(BaseModel):
+class RubricCriterionIn(RequestModel):
     title: str = Field(..., min_length=1, max_length=300)
     description: str | None = Field(None, max_length=2000)
     #: At least two: a criterion with one level is not a judgement, it is a
@@ -21,7 +23,7 @@ class RubricCriterionIn(BaseModel):
     levels: list[RubricLevelIn] = Field(..., min_length=2, max_length=10)
 
 
-class RubricCreate(BaseModel):
+class RubricCreate(RequestModel):
     """A rubric arrives whole.
 
     Criteria and levels in one call rather than three endpoints and a
@@ -63,7 +65,7 @@ class RubricResponse(BaseModel):
     criteria: list[RubricCriterionOut] = []
 
 
-class RubricMarkIn(BaseModel):
+class RubricMarkIn(RequestModel):
     criterion_id: UUID
     #: The decision. Points are read from the level, never sent by the client —
     #: a mark that carries its own number is a number the server has to trust.
@@ -71,7 +73,7 @@ class RubricMarkIn(BaseModel):
     comment: str | None = Field(None, max_length=2000)
 
 
-class RubricMarksRequest(BaseModel):
+class RubricMarksRequest(RequestModel):
     marks: list[RubricMarkIn] = Field(..., min_length=1, max_length=20)
     #: Feedback on the whole piece of work. Omitted leaves whatever is there —
     #: an autosave of one criterion must not wipe what the teacher already wrote.

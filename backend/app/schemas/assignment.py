@@ -5,8 +5,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.schemas._request import RequestModel
 
-class AssignmentCreate(BaseModel):
+
+class AssignmentCreate(RequestModel):
     chapter_id: str = Field(..., max_length=36)
     title: str = Field(..., min_length=1, max_length=300)
     description: str | None = Field(None, max_length=50_000)
@@ -14,7 +16,7 @@ class AssignmentCreate(BaseModel):
     due_date: datetime | None = None
 
 
-class AssignmentUpdate(BaseModel):
+class AssignmentUpdate(RequestModel):
     title: str | None = Field(None, min_length=1, max_length=300)
     description: str | None = Field(None, max_length=50_000)
     max_score: int | None = Field(None, ge=1, le=10000)
@@ -34,7 +36,7 @@ class AssignmentResponse(BaseModel):
     updated_at: datetime | None = None
 
 
-class SubmissionDeclarationIn(BaseModel):
+class SubmissionDeclarationIn(RequestModel):
     """What the student says about this piece of work (§4.2).
 
     ``statement`` is the text they were actually shown, sent back so what is
@@ -48,7 +50,7 @@ class SubmissionDeclarationIn(BaseModel):
     note: str | None = Field(None, max_length=2000)
 
 
-class SubmissionCreate(BaseModel):
+class SubmissionCreate(RequestModel):
     content: str | None = Field(None, max_length=50_000)
     file_url: str | None = Field(None, max_length=2048)
     #: Required when the course has a policy to declare against. Absent on an
@@ -94,7 +96,7 @@ class SubmissionResponse(BaseModel):
     graded_at: datetime | None = None
 
 
-class GradeSubmissionRequest(BaseModel):
+class GradeSubmissionRequest(RequestModel):
     # ``le`` mirrors ``max_score`` (≤10000) as a schema-level sanity ceiling.
     # The route still rejects ``grade > the assignment's own max_score``; this
     # just stops an absurd value being accepted by the schema alone.

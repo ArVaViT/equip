@@ -4,6 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from app.schemas._request import RequestModel
 from app.schemas.locale import LocaleCode
 
 
@@ -24,7 +25,7 @@ class LegalDocumentSummary(BaseModel):
     version: str
 
 
-class LegalAcceptanceIn(BaseModel):
+class LegalAcceptanceIn(RequestModel):
     """What the client claims to have shown, checked against what we serve.
 
     The body is deliberately absent. A client that supplies the text it says it

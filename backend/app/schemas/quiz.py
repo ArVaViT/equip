@@ -4,8 +4,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas._request import RequestModel
 
-class QuizOptionCreate(BaseModel):
+
+class QuizOptionCreate(RequestModel):
     option_text: str = Field(..., max_length=500)
     is_correct: bool = False
     order_index: int = 0
@@ -31,7 +33,7 @@ class QuizOptionStudentResponse(BaseModel):
 QuestionType = Literal["multiple_choice", "true_false", "short_answer", "essay"]
 
 
-class QuizQuestionCreate(BaseModel):
+class QuizQuestionCreate(RequestModel):
     # 4000 chars keeps room for full essay prompts (rubrics, reading refs,
     # formatting requirements). The historical 1000-char cap blocked
     # long-form essay exam questions.
@@ -70,7 +72,7 @@ class QuizQuestionStudentResponse(BaseModel):
     options: list[QuizOptionStudentResponse] = []
 
 
-class QuizCreate(BaseModel):
+class QuizCreate(RequestModel):
     # Chapter ids are UUIDs (36 chars). Cap at the schema layer so a crafted
     # 1 MB string is rejected by Pydantic before the route runs ``verify_chapter_owner``
     # against it. Matches the bounds already on ``AssignmentCreate.chapter_id``
@@ -88,7 +90,7 @@ class QuizCreate(BaseModel):
     questions: list[QuizQuestionCreate] = Field(default_factory=list, max_length=100)
 
 
-class QuizUpdate(BaseModel):
+class QuizUpdate(RequestModel):
     title: str | None = Field(None, min_length=1, max_length=300)
     description: str | None = Field(None, max_length=5000)
     quiz_type: Literal["quiz", "exam"] | None = None
@@ -124,13 +126,13 @@ class QuizStudentResponse(BaseModel):
     questions: list[QuizQuestionStudentResponse] = []
 
 
-class QuizSubmitAnswer(BaseModel):
+class QuizSubmitAnswer(RequestModel):
     question_id: UUID
     selected_option_id: UUID | None = None
     text_answer: str | None = Field(None, max_length=10_000)
 
 
-class QuizSubmitRequest(BaseModel):
+class QuizSubmitRequest(RequestModel):
     answers: list[QuizSubmitAnswer] = Field(..., min_length=1, max_length=200)
 
 
@@ -147,7 +149,7 @@ class QuizAnswerResult(BaseModel):
     correct_option_id: UUID | None = None
 
 
-class QuizAnswerGradeRequest(BaseModel):
+class QuizAnswerGradeRequest(RequestModel):
     """Teacher-facing payload for grading a single open-ended answer."""
 
     points_earned: int = Field(..., ge=0, le=100)
@@ -189,7 +191,7 @@ class QuizAttemptResponse(BaseModel):
     answers: list[QuizAnswerResult] = []
 
 
-class GrantExtraAttemptsRequest(BaseModel):
+class GrantExtraAttemptsRequest(RequestModel):
     user_id: UUID
     extra_attempts: int = Field(..., ge=1, le=10)
 

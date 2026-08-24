@@ -1466,6 +1466,29 @@ def test_submit_with_essay_does_not_auto_pass(student_client: TestClient, db: Se
     assert body["passed"] is False
 
 
+def test_an_essay_under_the_wrong_key_is_refused_not_swallowed(student_client: TestClient, db: Session):
+    """A misspelled field name must not cost a student their work.
+
+    ``answer_text`` for ``text_answer`` used to be accepted: the body
+    validated, the essay was dropped on the floor, the question scored
+    zero, and nothing entered the grading queue. Student, teacher and
+    log all saw an ordinary successful submission. The 422 below is the
+    whole fix — it names the field the caller got wrong.
+    """
+    _seed_course_with_enrollment(db)
+    quiz, _mcq, essay, _o_right = _seed_essay_quiz(db)
+
+    resp = student_client.post(
+        f"/api/v1/quizzes/{quiz.id}/submit",
+        json={"answers": [{"question_id": str(essay.id), "answer_text": "Hours of work."}]},
+    )
+
+    assert resp.status_code == 422, resp.text
+    assert resp.json()["detail"][0]["loc"][-1] == "answer_text"
+    # And nothing was recorded: no attempt, no answer, no silent zero.
+    assert db.query(QuizAttempt).filter(QuizAttempt.quiz_id == quiz.id).count() == 0
+
+
 def _seed_submitted_essay_attempt(db: Session, *, essay_text: str = "A thoughtful essay."):
     """Insert a student attempt + answers for the seeded essay quiz directly.
 

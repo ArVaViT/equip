@@ -12,6 +12,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
+from app.schemas._request import RequestModel
+
 # Mirrors the Postgres ``cohorts_status_check`` CHECK constraint and the
 # SQLAlchemy ``CohortStatus`` enum + ``CheckConstraint`` in
 # ``app/models/cohort.py``. Single literal here keeps both write and read
@@ -43,7 +45,7 @@ def _validate_cohort_dates(
         raise ValueError("enrollment_end must be on or before start_date")
 
 
-class CohortCreate(BaseModel):
+class CohortCreate(RequestModel):
     """Inputs for creating an empty cohort. Courses and students are
     attached via the junction endpoints; this body is just the metadata."""
 
@@ -65,7 +67,7 @@ class CohortCreate(BaseModel):
         return self
 
 
-class CohortUpdate(BaseModel):
+class CohortUpdate(RequestModel):
     name: str | None = Field(None, min_length=1, max_length=200)
     start_date: datetime | None = None
     end_date: datetime | None = None
@@ -115,7 +117,7 @@ class CohortResponse(BaseModel):
     student_count: int = 0
 
 
-class CohortCourseAttach(BaseModel):
+class CohortCourseAttach(RequestModel):
     """POST /cohorts/{id}/courses — attach a course to a cohort."""
 
     # Course ids are UUIDs (36 chars). The bound prevents a crafted
@@ -124,7 +126,7 @@ class CohortCourseAttach(BaseModel):
     course_id: str = Field(..., min_length=1, max_length=36)
 
 
-class CohortStudentAdd(BaseModel):
+class CohortStudentAdd(RequestModel):
     """POST /cohorts/{id}/students — add a student to a cohort.
 
     Either ``user_id`` (existing platform user) or ``email`` (invite-by-
