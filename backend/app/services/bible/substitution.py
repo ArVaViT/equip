@@ -1272,12 +1272,6 @@ def canonical_candidates_for_source(ref: BibleRef, locale: str) -> list[str]:
     return candidates
 
 
-def canonical_for_source(ref: BibleRef, locale: str) -> str | None:
-    """First candidate, kept for callers that want a single text."""
-    candidates = canonical_candidates_for_source(ref, locale)
-    return candidates[0] if candidates else None
-
-
 def post_substitute(
     html: str,
     subs: list[Substitution],
