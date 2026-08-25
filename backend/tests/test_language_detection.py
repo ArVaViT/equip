@@ -321,6 +321,66 @@ class TestAWordTwoLanguagesShare:
         assert detect_locale("1:1") is None
 
 
+class TestEvidenceBelongsToOneLanguageOnly:
+    """A feature that both languages use is not evidence; counting it is
+    the two languages agreeing, scored as though they had disagreed.
+
+    Every word and sequence in the profiles was measured against the
+    rival language's own production text on 2026-08-25. What that found,
+    and what these tests hold:
+
+    * "th" appeared in 7.1% of German rows (nicht, Wahrheit, Gott) while
+      counting for English. It carried a whole defect on its own: the
+      German title «Sprach-Walkthrough (Test)» scored 2:0 for English
+      out of one loanword.
+    * "ого" was in 17.8% of Ukrainian rows, "ий" in 14.0%, "ому" in
+      8.3%, all counting for Russian.
+    * "по", "я", "того" and "об" are ordinary Ukrainian words that only
+      the Russian list named, so they scored for Russian against
+      Ukrainian prose.
+
+    The fix is not a rule per row. It is that a feature has to be absent
+    from the rival before it may vote, and where an ending is shared
+    inside a word but not at its end, the boundary is part of the
+    feature: bare "ую" is Ukrainian дякую, "ую " is Russian первую.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _all_four(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(lang_mod, "LOCALE_CODES", ("ru", "en", "de", "uk"))
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "Sprach-Walkthrough 2026-08-24 1943 (Test)",
+            "Sprach-Walkthrough (Test)",
+        ],
+    )
+    def test_a_loanword_does_not_decide_the_language_of_a_title(self, text: str):
+        # German writes "Walkthrough" too. One borrowed word is not a
+        # statement about the language of the text around it.
+        assert lang_mod.detect_locale(text) != "en"
+
+    def test_the_ukrainian_apostrophe_is_evidence(self):
+        # Ukrainian orthography writes an apostrophe inside a word —
+        # об'явив, м'ясо, п'ять. Russian has no such mark at all: 255
+        # live Ukrainian rows match the pattern, 0 Russian ones. It is
+        # what reaches the short strings where і, ї and є never appear.
+        assert lang_mod.detect_locale("Бог об’явив Себе Аврааму.") == "uk"
+        assert lang_mod.detect_locale("П’ять хлібів і дві рибини") == "uk"
+
+    def test_a_shared_word_does_not_vote(self):
+        # "по" and the "-ому" ending belong to both languages. Six
+        # Ukrainian words used to be read as Russian on their strength.
+        assert lang_mod.detect_locale("У кожному рядку по два образи") != "ru"
+
+    def test_an_ending_keeps_its_boundary(self):
+        # "ую " ends a Russian word; bare "ую" sits inside Ukrainian
+        # дякую. Dropping the boundary would take this sentence with it.
+        assert lang_mod.detect_locale("Изучаем первую книгу Библии вместе") == "ru"
+        assert lang_mod.detect_locale("Я дякую Богові за все, що маю") != "ru"
+
+
 class TestTheEvidenceWasMeasuredNotImagined:
     """Every rule here was checked against every string in production.
 

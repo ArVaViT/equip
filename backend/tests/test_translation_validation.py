@@ -685,34 +685,43 @@ class TestEmphasisAddedIsEditingAndEmphasisLostIsNot:
 
 
 class TestTheDetectorMayNotVetoWhatItCannotRead:
-    """Measured over all 12,434 active rows that carry prose in a locale
-    with a same-script rival, both sides at once — the correct rows it
-    contradicts, and how much genuine wrong-language content it would
-    catch in the same band:
+    """Measured over every active row that carries prose in a locale with
+    a same-script rival, both sides at once — the correct rows the
+    detector contradicts, and how much genuine wrong-language content it
+    catches in the same band. Re-measured 2026-08-25 over 12,945 rows
+    after the evidence itself was audited against the rival language:
 
         band    pair    rows  false pos   FP rate   caught if wrong
-        12-19   ru/uk   1371          1     0.07%       899  65.6%
-        20-29   ru/uk   1516          1     0.07%      1211  79.9%
-        30-44   ru/uk   1344          0     0.00%      1265  94.1%
-        45-59   ru/uk    637          0     0.00%       627  98.4%
-        60-∞    ru/uk   1260          0     0.00%      1260 100.0%
-        12-19   de/en   1105          0     0.00%       801  72.5%
-        20-29   de/en   1400          0     0.00%      1314  93.9%
-        30-44   de/en   1400          0     0.00%      1371  97.9%
-        45-59   de/en    827          0     0.00%       826  99.9%
-        60-∞    de/en   1574          0     0.00%      1574 100.0%
+        12-19   uk/ru   1453          0     0.00%       962  66.2%
+        20-29   uk/ru   1573          0     0.00%      1255  79.8%
+        30-44   uk/ru   1372          0     0.00%      1298  94.6%
+        45-59   uk/ru    653          0     0.00%       639  97.9%
+        60-∞    uk/ru   1330          0     0.00%      1330 100.0%
+        12-19   en/de   1168          0     0.00%       859  73.5%
+        20-29   en/de   1468          0     0.00%      1339  91.2%
+        30-44   en/de   1436          0     0.00%      1399  97.4%
+        45-59   en/de    853          0     0.00%       852  99.9%
+        60-∞    en/de   1639          0     0.00%      1638  99.9%
 
-    Both errors are one pair's — Ukrainian read as Russian, at 18 and
-    24 letters. de/en is clean at every band. So the floor is scoped to
-    the pair that earns it rather than applied to every same-script
-    pair, and these tests pin both halves: what a floor must still
-    catch, and what it must stop burying.
+    Zero false positives across the corpus, at the same reach as before
+    (89.4% against 89.5%). The four errors that stood here — three
+    Ukrainian rows read as Russian and one German title read as English
+    — are gone, and none of them was fixed by a rule about *this* row:
+    each came from evidence both languages share being counted as though
+    only one did. The floor for the ru/uk pair stays; it is what holds
+    the short band at zero.
     """
 
-    def test_a_short_ukrainian_answer_read_as_russian_is_still_served(self):
-        # The row parked in production: «кожному» and «рядку» do not
-        # exist in Russian, and 24 letters with no і, ї or є do not
-        # contain enough evidence to say so.
+    def test_a_short_ukrainian_answer_is_no_longer_contradicted_at_all(self):
+        # The row that used to be reported here: «кожному» and «рядку»
+        # do not exist in Russian, and 24 letters with no і, ї or є did
+        # not contain enough evidence to say so.
+        #
+        # The detector no longer answers at all on this one, which is the
+        # better outcome — it used to answer "Russian" because "по" was
+        # listed as Russian evidence and "ому" as a Russian ending, and
+        # Ukrainian says both. Those are gone. The row is served either
+        # way; what changed is that nothing is written about it.
         issues = validate_translation(
             source="В каждой строке по два образа",
             translated="У кожному рядку по два образи",
@@ -720,7 +729,7 @@ class TestTheDetectorMayNotVetoWhatItCannotRead:
             target_locale="uk",
             content_kind="quiz_option",
         )
-        assert "wrong_language" in codes(issues)
+        assert "wrong_language" not in codes(issues)
         assert blocking(issues) == set()
 
     def test_a_short_ukrainian_sentence_read_as_russian_is_still_served(self):
