@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 
@@ -240,27 +240,42 @@ def permanently_delete_course(db: Session, course: Course) -> None:
     from app.models.course_event import CourseEvent
     from app.models.quiz import Quiz, QuizOption, QuizQuestion
 
-    chapter_ids = [str(ch.id) for m in course.modules for ch in m.chapters]
+    # Ids are carried in their own type and only turned into text at the
+    # ``content_versions`` boundary, where ``entity_id`` is a text column.
+    # Stringifying earlier and then querying a uuid column with the
+    # result is what this walk used to do, and SQLAlchemy answers that
+    # with ``'str' object has no attribute 'hex'`` — a 503 on the
+    # delete, and, where a driver was more forgiving, a lookup that
+    # quietly matched nothing and left the translations behind.
+    chapters = [ch for m in course.modules for ch in m.chapters]
+    chapter_keys = [ch.id for ch in chapters]
+
+    blocks: list[Any] = []
+    quizzes: list[Any] = []
+    questions: list[Any] = []
+    options: list[Any] = []
+    assignments: list[Any] = []
+    if chapter_keys:
+        blocks = [bid for (bid,) in db.query(ChapterBlock.id).filter(ChapterBlock.chapter_id.in_(chapter_keys))]
+        quizzes = [qid for (qid,) in db.query(Quiz.id).filter(Quiz.chapter_id.in_(chapter_keys))]
+        assignments = [aid for (aid,) in db.query(Assignment.id).filter(Assignment.chapter_id.in_(chapter_keys))]
+        if quizzes:
+            questions = [qid for (qid,) in db.query(QuizQuestion.id).filter(QuizQuestion.quiz_id.in_(quizzes))]
+            if questions:
+                options = [oid for (oid,) in db.query(QuizOption.id).filter(QuizOption.question_id.in_(questions))]
+
+    announcements = [aid for (aid,) in db.query(Announcement.id).filter(Announcement.course_id == course.id)]
+    events = [eid for (eid,) in db.query(CourseEvent.id).filter(CourseEvent.course_id == course.id)]
+
+    chapter_ids = [str(cid) for cid in chapter_keys]
     module_ids = [str(m.id) for m in course.modules]
-
-    block_ids: list[str] = []
-    quiz_ids: list[str] = []
-    question_ids: list[str] = []
-    option_ids: list[str] = []
-    assignment_ids: list[str] = []
-    if chapter_ids:
-        block_ids = [str(bid) for (bid,) in db.query(ChapterBlock.id).filter(ChapterBlock.chapter_id.in_(chapter_ids))]
-        quiz_ids = [str(qid) for (qid,) in db.query(Quiz.id).filter(Quiz.chapter_id.in_(chapter_ids))]
-        assignment_ids = [str(aid) for (aid,) in db.query(Assignment.id).filter(Assignment.chapter_id.in_(chapter_ids))]
-        if quiz_ids:
-            question_ids = [str(qid) for (qid,) in db.query(QuizQuestion.id).filter(QuizQuestion.quiz_id.in_(quiz_ids))]
-            if question_ids:
-                option_ids = [
-                    str(oid) for (oid,) in db.query(QuizOption.id).filter(QuizOption.question_id.in_(question_ids))
-                ]
-
-    announcement_ids = [str(aid) for (aid,) in db.query(Announcement.id).filter(Announcement.course_id == course.id)]
-    event_ids = [str(eid) for (eid,) in db.query(CourseEvent.id).filter(CourseEvent.course_id == course.id)]
+    block_ids = [str(bid) for bid in blocks]
+    quiz_ids = [str(qid) for qid in quizzes]
+    question_ids = [str(qid) for qid in questions]
+    option_ids = [str(oid) for oid in options]
+    assignment_ids = [str(aid) for aid in assignments]
+    announcement_ids = [str(aid) for aid in announcements]
+    event_ids = [str(eid) for eid in events]
 
     def _sweep(entity_type: str, ids: list[str]) -> None:
         if not ids:

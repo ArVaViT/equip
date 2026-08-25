@@ -426,6 +426,121 @@ class TestTrashAndRestore:
         db.expire_all()
         assert db.query(Course).filter(Course.id == "gone-forever").first() is None
 
+    def test_permanent_delete_leaves_no_translation_rows_behind(self, client: TestClient, db: Session):
+        """Deleting a course must take its translations with it.
+
+        ``content_versions`` is keyed on a polymorphic ``entity_id`` and
+        has no foreign key back to the entity tables, so nothing in the
+        database cascades: the sweep in ``permanently_delete_course`` is
+        the only thing that removes them. If it misses a branch, the rows
+        stay forever, pointing at ids that no longer resolve — invisible
+        to every screen and counted by every query that measures the
+        translation store.
+
+        Production on 2026-08-25 held 387 such rows.
+        """
+        from app.models.content_version import ContentVersion
+        from app.services.content_versions import record_human_version
+
+        from ._cv_helpers import (
+            make_chapter_block_with_content,
+            make_module_with_text,
+            make_quiz_option_with_text,
+            make_quiz_question_with_text,
+            make_quiz_with_text,
+        )
+
+        course = _seed_course_direct(db, course_id="full-tree", deleted=False)
+        module = make_module_with_text(db, course_id=course.id, module_id="mod-tree", title="Module")
+        chapter = Chapter(id=str(uuid.uuid4()), module_id=module.id, title="Chapter", order_index=0)
+        db.add(chapter)
+        db.commit()
+        # A chapter title is a real column that is dual-written to cv, so
+        # the row is written here rather than by the helper.
+        record_human_version(
+            db,
+            entity_type="chapter",
+            entity_id=str(chapter.id),
+            field="title",
+            locale="ru",
+            text="Chapter",
+        )
+        db.commit()
+        block = make_chapter_block_with_content(db, chapter_id=chapter.id, content="<p>Body</p>")
+        quiz = make_quiz_with_text(db, chapter_id=chapter.id, title="Quiz")
+        question = make_quiz_question_with_text(db, quiz_id=quiz.id, question_text="Q?")
+        option = make_quiz_option_with_text(db, question_id=question.id, option_text="A")
+        db.commit()
+
+        ids = {
+            "course": [course.id],
+            "module": [str(module.id)],
+            "chapter": [str(chapter.id)],
+            "chapter_block": [str(block.id)],
+            "quiz": [str(quiz.id)],
+            "quiz_question": [str(question.id)],
+            "quiz_option": [str(option.id)],
+        }
+        before = {
+            kind: db.query(ContentVersion)
+            .filter(ContentVersion.entity_type == kind, ContentVersion.entity_id.in_(values))
+            .count()
+            for kind, values in ids.items()
+        }
+        assert all(before.values()), f"seed did not write translations for every level: {before}"
+
+        course.deleted_at = datetime.now(UTC)
+        db.commit()
+        resp = client.delete(f"{COURSES_PREFIX}/{course.id}/permanent")
+        assert resp.status_code == 204
+        db.expire_all()
+
+        left = {
+            kind: db.query(ContentVersion)
+            .filter(ContentVersion.entity_type == kind, ContentVersion.entity_id.in_(values))
+            .count()
+            for kind, values in ids.items()
+        }
+        assert left == dict.fromkeys(ids, 0), f"translation rows survived the course: {left}"
+
+    def test_permanent_delete_sweeps_a_binned_chapter_too(self, client: TestClient, db: Session):
+        """A chapter in the bin is still part of the course.
+
+        Chapters are soft-deleted, so a course can carry one that no
+        screen shows. Its blocks and their translations are still real
+        rows, and the sweep has to reach them — otherwise binning a
+        chapter before deleting the course is enough to leave orphans.
+        """
+        from app.models.content_version import ContentVersion
+
+        from ._cv_helpers import make_chapter_block_with_content, make_module_with_text
+
+        course = _seed_course_direct(db, course_id="binned-branch", deleted=False)
+        module = make_module_with_text(db, course_id=course.id, module_id="mod-binned", title="Module")
+        chapter = Chapter(id=str(uuid.uuid4()), module_id=module.id, title="Chapter", order_index=0)
+        db.add(chapter)
+        db.commit()
+        block = make_chapter_block_with_content(db, chapter_id=chapter.id, content="<p>Body</p>")
+        db.commit()
+        block_id = str(block.id)
+        chapter.deleted_at = datetime.now(UTC)
+        course.deleted_at = datetime.now(UTC)
+        db.commit()
+
+        resp = client.delete(f"{COURSES_PREFIX}/{course.id}/permanent")
+        assert resp.status_code == 204
+        db.expire_all()
+
+        assert (
+            db.query(ContentVersion)
+            .filter(
+                ContentVersion.entity_type == "chapter_block",
+                ContentVersion.entity_id == block_id,
+            )
+            .count()
+            == 0
+        )
+
     def test_permanent_delete_snapshots_certificate_title(self, client: TestClient, db: Session):
         """The Postgres trigger that stamped courses.title onto
         ``certificates.archived_course_title`` before SET NULL was dropped
