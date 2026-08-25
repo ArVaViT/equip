@@ -166,6 +166,10 @@ class _Profile(NamedTuple):
     function_words: frozenset[str]
     sequences: tuple[str, ...]
     hallmark_letters: frozenset[str] = frozenset()
+    #: Whether the word-internal apostrophe counts for this language.
+    #: Ukrainian is the only one served that writes it; see
+    #: ``_UK_APOSTROPHE``.
+    apostrophe_evidence: bool = False
 
 
 # Function-word lists, written as prose and split at import. Same data
@@ -193,7 +197,20 @@ _UK_WORDS = """
 а за нас вас ним нею них той ті ці тут там тоді потім знову завжди ніколи
 можна буде будуть мають серед крім проти разом майже теж лише навколо довкола
 замість щодо попри задля поруч один два три
+всю же него об по раз сам то того я
 """
+# The last line is not Ukrainian vocabulary — it is the words a
+# Ukrainian text in production actually contains while the Russian list
+# claims them as evidence. Measured 2026-08-25: "по" appears in 2.1% of
+# live Ukrainian rows, "я" in 2.1%, "того" in 1.8%, "об" in 1.7%. Each
+# was scoring for Russian against Ukrainian prose, which is how "У
+# кожному рядку по два образи" — six Ukrainian words — was read as
+# Russian on the strength of "по".
+#
+# They are listed here rather than deleted from the Russian list for the
+# same reason "was" is handled by the overlap rule: a word both
+# languages use is not evidence for either, and the rule that computes
+# that is the one that keeps holding when a fifth language arrives.
 # Why the second block exists: the first list was written as "the words
 # a course title uses", and it left out the ordinary connective tissue —
 # "а", "за", "той", "все". Those are in the Russian list, so a Ukrainian
@@ -238,24 +255,76 @@ _PROFILES: Final[dict[str, _Profile]] = {
         # Ukrainian has none of these; they are the cleanest ru/uk split.
         exclusive_letters=frozenset("ыэъё"),
         function_words=frozenset(_RU_WORDS.split()),
-        # The last five are the vowel pairs Russian writes where
-        # Ukrainian writes an "і" form: Библии / Біблії, послание /
-        # послання, первую / першу. They carry a Russian sentence that
+        # Orthography is what argues for Russian in a sentence that
         # happens to contain none of "ы э ъ ё" — "Изучаем первую книгу
-        # Библии вместе" is exactly that, and with the absence rule now
-        # requiring real length, orthography is what is left to argue
-        # from.
-        sequences=("ого", "ому", "ться", "ешь", "ает", "ение", "ый", "ий", "ах", "ями", "ии", "ие", "ию", "ую", "ые"),
+        # Библии вместе" is exactly that.
+        #
+        # Measured against the live corpus on 2026-08-25 (see the note
+        # above ``_PROFILES``): every sequence here appears in under
+        # 0.5% of the Ukrainian rows in production. The ones that did
+        # not are gone — "ого" was in 17.8% of Ukrainian rows, "ий" in
+        # 14.0%, "ому" in 8.3%, and "ах", "ться", "ую", "ями" between
+        # 2% and 6%. They were not evidence about the language; they
+        # were the two languages agreeing, counted as though they had
+        # disagreed.
+        # "ения", "ание" and "вает" are Russian where Ukrainian writes
+        # "ення", "ання", "ває" — a difference of morphology rather than
+        # of subject matter, which is what makes them safe to add. None
+        # occurs in a single live Ukrainian row.
+        sequences=(
+            "ешь",
+            "ает",
+            "ение",
+            "ии",
+            "ие",
+            "ию",
+            "ые",
+            "ения",
+            "ание",
+            "вает",
+            # Endings bounded by a space. The boundary is what makes them
+            # safe: bare "ую" sits inside Ukrainian дякую and існую (3.9%
+            # of Ukrainian rows), while "ую " as a whole ending is Russian
+            # первую, свою — one Ukrainian row in 3,777. Same for "ый ",
+            # "ое ", "ых ", each measured at zero.
+            "ый ",
+            "ую ",
+            "ое ",
+            "ых ",
+        ),
     ),
     "uk": _Profile(
         script=_CYRILLIC,
         # Russian has none of these. "ґ" is rare but decisive.
         exclusive_letters=frozenset("іїєґ"),
         function_words=frozenset(_UK_WORDS.split()),
-        sequences=("ння", "ський", "ої", "ими", "ють", "ати", "ність", "ів", "ах"),
+        # "ах" (5.6% of Russian rows), "ати" (2.5%) and "ими" (2.2%)
+        # were dropped for the reason above: shared endings are not
+        # evidence. "іст" and "ання" replace them — both are under
+        # 0.03% of Russian rows and each covers around a tenth of the
+        # Ukrainian ones.
+        sequences=(
+            "ння",
+            "ський",
+            "ої",
+            "ють",
+            "ність",
+            "ів",
+            "іст",
+            "ання",
+            "ість",
+            # Bounded endings, for the same reason as the Russian ones:
+            # "ати " is the Ukrainian infinitive (0.9% of Russian rows,
+            # where it is a fragment of "печати", "взяти" does not occur),
+            # "ій " and "ою " are case endings Russian writes otherwise.
+            "ій ",
+            "ою ",
+            "ати ",
+        ),
         # "і" is the second most frequent letter in Ukrainian. A
         # Ukrainian paragraph without one does not realistically occur.
         hallmark_letters=frozenset("іїє"),
+        apostrophe_evidence=True,
     ),
     "en": _Profile(
         script=_LATIN,
@@ -267,13 +336,48 @@ _PROFILES: Final[dict[str, _Profile]] = {
         # not evidence, it is noise that cancels a real signal —
         # "Lektion 3. Das Gebet" scored 2:1 for German and fell below
         # the margin because of "tion" alone.
-        sequences=("ough", "igh", "th", "wh", "ness", "ould", "ay"),
+        # "th" is gone, and it was the costly one: it appears in 7.1%
+        # of the German rows in production — Wahrheit, nicht, Gott —
+        # so it voted English on German prose. It also carried the
+        # 2026-08-24 defect on its own: "Sprach-Walkthrough (Test)" is
+        # German, and "th" plus "ough" out of the single loanword
+        # "Walkthrough" outvoted German 2:0. "ay" went with it at 0.5%.
+        # "'s " is the English possessive; German writes the genitive
+        # without a mark, so the apostrophe-s is as clean a signal here
+        # as the word-internal apostrophe is for Ukrainian. "ction",
+        # "ible" and "ously" are English morphology with no German
+        # cognate spelling — note that bare "tion" stays out, because
+        # German has Lektion and Information.
+        sequences=("ough", "igh", "wh", "ness", "ould", "ly ", "ction", "'s ", "ible", "ously"),
     ),
     "de": _Profile(
         script=_LATIN,
         exclusive_letters=frozenset("äöüß"),
         function_words=frozenset(_DE_WORDS.split()),
-        sequences=("sch", "ung", "keit", "heit", "cht", "eit", "lich", "chen", "ei", "eu"),
+        # "ei" appeared in 5.9% of English rows (their, receive, being)
+        # and "eu" in 1.4%; both are dropped. "icht" and "gen " are
+        # measured at zero English rows and cover 13% and 12% of German
+        # ones.
+        sequences=(
+            "sch",
+            "ung",
+            "keit",
+            "heit",
+            "cht",
+            "eit",
+            "lich",
+            "chen",
+            "icht",
+            "gen ",
+            # German morphology measured at zero (or one) English rows:
+            # -isch, -ung → -erung, Lektion/Aktion but never *action,
+            # zurück/Stück, können/dienen.
+            "isch",
+            "ktion",
+            "ück",
+            "erung",
+            "nnen",
+        ),
     ),
 }
 
@@ -396,8 +500,20 @@ def _absence_bonus(code: str, candidates: list[str], letters: str, letter_count:
     return bonus
 
 
+#: Ukrainian writes an apostrophe between a labial or a hushing
+#: consonant and a iotated vowel — м'ясо, п'ять, об'явив. Russian
+#: orthography has no such mark inside a word at all; it uses ъ. So the
+#: pattern is a fact about the language rather than a frequency, and it
+#: reaches the short Ukrainian strings where і, ї and є never appear and
+#: the word lists run out. Measured over production on 2026-08-25: 255
+#: Ukrainian rows match, 0 Russian ones.
+_UK_APOSTROPHE: Final[re.Pattern[str]] = re.compile(r"[бпвмфгкхжчшр][’'ʼ`][яюєї]")
+
+
 def _score(profile: _Profile, letters: str, words: set[str], haystack: str) -> int:
     exclusive = sum(1 for ch in letters if ch in profile.exclusive_letters)
+    if profile.apostrophe_evidence and _UK_APOSTROPHE.search(haystack):
+        exclusive += 1
     function_words = len(words & profile.function_words - _AMBIGUOUS_WORDS)
     sequences = sum(1 for seq in profile.sequences if seq in haystack)
 
