@@ -247,8 +247,21 @@ def permanently_delete_course(db: Session, course: Course) -> None:
     # with ``'str' object has no attribute 'hex'`` — a 503 on the
     # delete, and, where a driver was more forgiving, a lookup that
     # quietly matched nothing and left the translations behind.
-    chapters = [ch for m in course.modules for ch in m.chapters]
-    chapter_keys = [ch.id for ch in chapters]
+    # Read the tree from the database rather than from ``course.modules``.
+    #
+    # Loading a course eager-loads its tree through ``_COURSE_TREE``,
+    # which filters out soft-deleted modules and chapters — right for
+    # every screen, and exactly wrong here. A course reaches this
+    # function *through the bin*, and ``delete_course`` tombstones every
+    # module and chapter on the way in. So the collection this walk used
+    # to read was empty for every course that got here the ordinary way,
+    # and everything hanging off a chapter — its blocks, quizzes,
+    # assignments and their translations — was skipped. One deleted
+    # course left three orphaned rows behind; production had 787.
+    module_keys = [mid for (mid,) in db.query(Module.id).filter(Module.course_id == course.id)]
+    chapter_keys = (
+        [cid for (cid,) in db.query(Chapter.id).filter(Chapter.module_id.in_(module_keys))] if module_keys else []
+    )
 
     blocks: list[Any] = []
     quizzes: list[Any] = []
@@ -268,7 +281,7 @@ def permanently_delete_course(db: Session, course: Course) -> None:
     events = [eid for (eid,) in db.query(CourseEvent.id).filter(CourseEvent.course_id == course.id)]
 
     chapter_ids = [str(cid) for cid in chapter_keys]
-    module_ids = [str(m.id) for m in course.modules]
+    module_ids = [str(mid) for mid in module_keys]
     block_ids = [str(bid) for bid in blocks]
     quiz_ids = [str(qid) for qid in quizzes]
     question_ids = [str(qid) for qid in questions]

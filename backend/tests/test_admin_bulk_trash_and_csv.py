@@ -12,11 +12,13 @@ coverage before; they are now locked in with happy-path + negative tests.
 from __future__ import annotations
 
 import uuid
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 
 from app.api.dependencies import (
     get_current_user,
@@ -100,6 +102,42 @@ def _create_course(client: TestClient, title: str = "Course") -> dict:
     resp = client.post(COURSES_PREFIX, json={"title": title})
     assert resp.status_code == 201, resp.text
     return resp.json()
+
+
+def _forget_course_tree(db: Session) -> None:
+    """Detach courses, modules and chapters from the test session.
+
+    So the next load goes to the database and applies the eager-loader's
+    filters, the way a fresh request does. Without this the identity map
+    hands back the tree that was loaded before the course was binned,
+    and a sweep that only reads the loaded tree looks correct.
+
+    The FK pragma goes off with it. Postgres declares ``ON DELETE
+    CASCADE`` from modules down and clears the tree itself; SQLite has
+    the same constraints but the ORM-side cascade cannot fire for a
+    collection the loader filtered away, so the delete would fail on a
+    foreign key rather than on the thing under test.
+    """
+    for obj in list(db.identity_map.values()):
+        if isinstance(obj, (Course, Module, Chapter)):
+            db.expunge(obj)
+
+
+@contextmanager
+def _without_sqlite_fk_cascade(db: Session):
+    """Let the sweep be what fails, not the foreign key.
+
+    Postgres declares ``ON DELETE CASCADE`` from modules down and clears
+    the tree itself. SQLite has the same constraints, but with the tree
+    detached the ORM-side cascade cannot fire for a collection the
+    loader filtered away, and the delete would fail on the constraint
+    before reaching the thing under test.
+    """
+    db.execute(text("PRAGMA foreign_keys = OFF"))
+    try:
+        yield
+    finally:
+        db.execute(text("PRAGMA foreign_keys = ON"))
 
 
 def _seed_course_direct(
@@ -435,12 +473,17 @@ class TestTrashAndRestore:
         the only thing that removes them. If it misses a branch, the rows
         stay forever, pointing at ids that no longer resolve — invisible
         to every screen and counted by every query that measures the
-        translation store.
+        translation store. Production held 787 such rows on 2026-08-25.
 
-        Production on 2026-08-25 held 387 such rows.
+        Driven through the service rather than the route, and through the
+        bin on the way: a course arrives here tombstoned, and
+        ``delete_course`` tombstones its modules and chapters too. The
+        loader that the delete then uses hides tombstoned rows, so a
+        sweep reading the loaded tree sees nothing to sweep.
         """
         from app.models.content_version import ContentVersion
         from app.services.content_versions import record_human_version
+        from app.services.course_service import delete_course, get_course, permanently_delete_course
 
         from ._cv_helpers import (
             make_chapter_block_with_content,
@@ -455,8 +498,8 @@ class TestTrashAndRestore:
         chapter = Chapter(id=str(uuid.uuid4()), module_id=module.id, title="Chapter", order_index=0)
         db.add(chapter)
         db.commit()
-        # A chapter title is a real column that is dual-written to cv, so
-        # the row is written here rather than by the helper.
+        # A chapter title is a real column dual-written to cv, so the row
+        # is written here rather than by a helper.
         record_human_version(
             db,
             entity_type="chapter",
@@ -481,37 +524,35 @@ class TestTrashAndRestore:
             "quiz_question": [str(question.id)],
             "quiz_option": [str(option.id)],
         }
-        before = {
-            kind: db.query(ContentVersion)
-            .filter(ContentVersion.entity_type == kind, ContentVersion.entity_id.in_(values))
-            .count()
-            for kind, values in ids.items()
-        }
-        assert all(before.values()), f"seed did not write translations for every level: {before}"
 
-        course.deleted_at = datetime.now(UTC)
-        db.commit()
-        resp = client.delete(f"{COURSES_PREFIX}/{course.id}/permanent")
-        assert resp.status_code == 204
-        db.expire_all()
+        def _counts() -> dict[str, int]:
+            return {
+                kind: db.query(ContentVersion)
+                .filter(ContentVersion.entity_type == kind, ContentVersion.entity_id.in_(values))
+                .count()
+                for kind, values in ids.items()
+            }
 
-        left = {
-            kind: db.query(ContentVersion)
-            .filter(ContentVersion.entity_type == kind, ContentVersion.entity_id.in_(values))
-            .count()
-            for kind, values in ids.items()
-        }
-        assert left == dict.fromkeys(ids, 0), f"translation rows survived the course: {left}"
+        assert all(_counts().values()), f"seed did not write translations for every level: {_counts()}"
+
+        delete_course(db, course)
+        _forget_course_tree(db)
+        reloaded = get_course(db, "full-tree", include_deleted=True)
+        assert reloaded is not None
+        with _without_sqlite_fk_cascade(db):
+            permanently_delete_course(db, reloaded)
+
+        assert _counts() == dict.fromkeys(ids, 0), f"translation rows survived the course: {_counts()}"
 
     def test_permanent_delete_sweeps_a_binned_chapter_too(self, client: TestClient, db: Session):
         """A chapter in the bin is still part of the course.
 
-        Chapters are soft-deleted, so a course can carry one that no
-        screen shows. Its blocks and their translations are still real
-        rows, and the sweep has to reach them — otherwise binning a
-        chapter before deleting the course is enough to leave orphans.
+        Chapters are soft-deleted, so a course can carry one no screen
+        shows. Its blocks and their translations are still real rows, and
+        the sweep has to reach them.
         """
         from app.models.content_version import ContentVersion
+        from app.services.course_service import delete_course, get_course, permanently_delete_course
 
         from ._cv_helpers import make_chapter_block_with_content, make_module_with_text
 
@@ -524,12 +565,14 @@ class TestTrashAndRestore:
         db.commit()
         block_id = str(block.id)
         chapter.deleted_at = datetime.now(UTC)
-        course.deleted_at = datetime.now(UTC)
         db.commit()
 
-        resp = client.delete(f"{COURSES_PREFIX}/{course.id}/permanent")
-        assert resp.status_code == 204
-        db.expire_all()
+        delete_course(db, course)
+        _forget_course_tree(db)
+        reloaded = get_course(db, "binned-branch", include_deleted=True)
+        assert reloaded is not None
+        with _without_sqlite_fk_cascade(db):
+            permanently_delete_course(db, reloaded)
 
         assert (
             db.query(ContentVersion)
