@@ -85,6 +85,16 @@ class ResetResponse(BaseModel):
     reset: int
 
 
+class PurgeOrphansRequest(BaseModel):
+    """Remove translation rows whose entity no longer exists.
+
+    Counting is free and always safe, so it is the default: without
+    ``confirm`` this reports what it would remove and changes nothing.
+    """
+
+    confirm: bool = False
+
+
 class RestoreLastGoodRequest(BaseModel):
     """Put a previously servable translation back in front of readers.
 
@@ -344,6 +354,95 @@ def retry_reviewed(
         request=request,
     )
     return ResetResponse(reset=affected)
+
+
+class OrphanReport(BaseModel):
+    removed: int
+    by_entity_type: dict[str, int]
+    dry_run: bool
+
+
+@router.post(
+    "/purge-orphans",
+    response_model=OrphanReport,
+    summary="Remove translation rows whose entity no longer exists",
+    responses={200: {"description": "Counts per entity type; ``removed`` is 0 unless ``confirm`` was set."}},
+)
+def purge_orphans(
+    payload: PurgeOrphansRequest,
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> OrphanReport:
+    """Find and, on ``confirm``, delete rows pointing at ids that are gone.
+
+    ``content_versions.entity_id`` is polymorphic text with no foreign
+    key behind it, so no database constraint can notice when the row it
+    names is deleted. Every delete path sweeps its own translations, and
+    when one of them has a bug the rows it should have taken simply stay
+    — on no screen, in every count, forever.
+
+    That happened: until 2026-08-25 the course sweep queried uuid columns
+    with stringified ids, and production accumulated 731 rows across six
+    entity types between May and August. Nothing was wrong with the data
+    in them; there was simply nothing left to attach them to.
+
+    Counting is the default. A dry run answers the same shape with
+    ``removed: 0``, which makes "how much is there" a question anyone can
+    ask without deciding anything.
+    """
+    from app.services.translation.registry import ENTITY_MODEL
+
+    by_type: dict[str, int] = {}
+    removed = 0
+    try:
+        for entity_type, model in ENTITY_MODEL.items():
+            # Compared in Python, not in SQL. ``entity_id`` is text and a
+            # model's key is usually uuid: Postgres refuses that
+            # comparison outright, and casting to text papers over a
+            # difference in how each database spells a uuid — SQLite
+            # stores 32 hex characters where Postgres writes the hyphens.
+            # A cast-based query looked right and deleted rows whose
+            # entity was sitting right there.
+            #
+            # ``ENTITY_MODEL`` is typed as ``type``; every value in it is
+            # a mapped class with an ``id``, which the type does not say.
+            live = {str(pk) for (pk,) in db.query(model.id)}  # type: ignore[attr-defined]
+            referenced = {
+                eid
+                for (eid,) in db.query(ContentVersion.entity_id)
+                .filter(ContentVersion.entity_type == entity_type)
+                .distinct()
+            }
+            gone = sorted(referenced - live)
+            if not gone:
+                continue
+            orphaned = db.query(ContentVersion).filter(
+                ContentVersion.entity_type == entity_type,
+                ContentVersion.entity_id.in_(gone),
+            )
+            count = orphaned.count()
+            by_type[entity_type] = count
+            if payload.confirm:
+                orphaned.delete(synchronize_session=False)
+                removed += count
+        if payload.confirm:
+            db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise
+
+    if payload.confirm and removed:
+        log_action(
+            db,
+            admin.id,
+            "purge_orphan_translations",
+            "content_version",
+            "orphans",
+            details={"removed": removed, "by_entity_type": by_type},
+            request=request,
+        )
+    return OrphanReport(removed=removed, by_entity_type=by_type, dry_run=not payload.confirm)
 
 
 @router.post(

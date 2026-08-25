@@ -219,6 +219,16 @@
     "body": false
   },
   {
+    "method": "POST",
+    "path": "/api/v1/admin/translations/purge-orphans",
+    "params": [],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
     "method": "GET",
     "path": "/api/v1/admin/translations/queue-status",
     "params": [

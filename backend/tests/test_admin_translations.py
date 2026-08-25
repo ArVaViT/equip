@@ -316,6 +316,92 @@ def test_accept_reviewed_is_admin_only(student_client: TestClient):
 
 
 # ---------------------------------------------------------------------------
+# purge-orphans — rows whose entity is gone
+# ---------------------------------------------------------------------------
+
+
+def test_purge_orphans_counts_without_deleting_by_default(admin_client: TestClient, db: Session):
+    """Counting is free and decides nothing, so it is what happens when
+    nobody asked for a deletion."""
+    orphan = ContentVersion(
+        id=uuid.uuid4(),
+        entity_type="chapter_block",
+        entity_id=str(uuid.uuid4()),
+        field="content",
+        locale="en",
+        text="<p>Orphaned by a course that is gone.</p>",
+        origin="mt",
+        status="ok",
+        source_locale="ru",
+        source_hash="c" * 64,
+    )
+    db.add(orphan)
+    db.commit()
+
+    resp = admin_client.post("/api/v1/admin/translations/purge-orphans", json={})
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["dry_run"] is True
+    assert body["removed"] == 0
+    assert body["by_entity_type"]["chapter_block"] >= 1
+    assert db.query(ContentVersion).filter(ContentVersion.id == orphan.id).count() == 1
+
+
+def test_purge_orphans_removes_them_on_confirm(admin_client: TestClient, db: Session):
+    orphan = ContentVersion(
+        id=uuid.uuid4(),
+        entity_type="quiz_option",
+        entity_id=str(uuid.uuid4()),
+        field="option_text",
+        locale="de",
+        text="Vier Jahrhunderte",
+        origin="mt",
+        status="ok",
+        source_locale="ru",
+        source_hash="d" * 64,
+    )
+    db.add(orphan)
+    db.commit()
+    orphan_id = orphan.id
+
+    resp = admin_client.post("/api/v1/admin/translations/purge-orphans", json={"confirm": True})
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["removed"] >= 1
+    assert db.query(ContentVersion).filter(ContentVersion.id == orphan_id).count() == 0
+
+
+def test_purge_orphans_leaves_a_row_whose_entity_exists(admin_client: TestClient, db: Session):
+    """The point of the endpoint is what it does NOT touch."""
+    kept = _seed_needs_review(db)
+    kept_id, kept_entity_id = kept.id, kept.entity_id
+    # Give it a real entity to belong to.
+    from app.models.daily_challenge import DailyChallengeQuestion
+
+    db.add(
+        DailyChallengeQuestion(
+            id=uuid.UUID(kept_entity_id),
+            question_type="multiple_choice",
+            bible_book="Romans",
+            bible_chapter=1,
+            status="draft",
+        )
+    )
+    db.commit()
+
+    resp = admin_client.post("/api/v1/admin/translations/purge-orphans", json={"confirm": True})
+
+    assert resp.status_code == 200, resp.text
+    assert db.query(ContentVersion).filter(ContentVersion.id == kept_id).count() == 1
+
+
+def test_purge_orphans_is_admin_only(student_client: TestClient):
+    resp = student_client.post("/api/v1/admin/translations/purge-orphans", json={})
+    assert resp.status_code in (401, 403)
+
+
+# ---------------------------------------------------------------------------
 # restore-last-good — undo a supersede that cost readers a translation
 # ---------------------------------------------------------------------------
 
