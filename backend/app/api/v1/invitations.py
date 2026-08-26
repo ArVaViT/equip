@@ -3,7 +3,7 @@ from typing import cast
 from fastapi import APIRouter, Depends, Path, Query, Request
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, require_admin
+from app.api.dependencies import get_current_user, require_director
 from app.core.database import get_db
 from app.models.invitation import Invitation
 from app.models.user import User
@@ -46,7 +46,7 @@ def _to_response(invitation: Invitation) -> InvitationResponse:
 def create_invitation(
     body: InvitationCreate,
     request: Request,
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> InvitationResponse:
     """Admin-only: invite an email to join as teacher or student.
@@ -56,7 +56,7 @@ def create_invitation(
     ``create_or_resend_invitation`` for the dedupe/resend contract.
     """
     invitation, _is_new = create_or_resend_invitation(
-        db, email=body.email, role=body.role, invited_by=admin.id, request=request
+        db, email=body.email, role=body.role, invited_by=director.id, request=request
     )
     return _to_response(invitation)
 
@@ -67,7 +67,7 @@ def list_invitations_route(
     limit: int = Query(50, ge=1, le=200),
     role: str | None = Query(None),
     invite_status: str | None = Query(None, alias="status"),
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> list[InvitationResponse]:
     rows = list_invitations(db, skip=skip, limit=limit, role=role, status_filter=invite_status)

@@ -29,7 +29,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_live_course_or_404, get_optional_user, is_owner_or_admin, require_admin
+from app.api.dependencies import get_live_course_or_404, get_optional_user, is_owner_or_admin, require_director
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.cohort import Cohort, CohortCourse, CohortStatus
@@ -56,17 +56,18 @@ from app.services.translation.resolve_for_display import Localizer
 router = APIRouter(prefix="/cohorts", tags=["cohorts"])
 
 
-def _write_cohort_name(db: Session, cohort_id: UUID, name: str, *, admin: User) -> None:
+def _write_cohort_name(db: Session, cohort_id: UUID, name: str, *, author: User) -> None:
     """Write the cohort name to content_versions.field='title'.
 
     ``cohorts.name`` column is gone. The cohort's display
     name lives only in ``content_versions``. Cohorts have no parent
-    course (M2M), so the detector fallback is admin's preferred_locale.
+    course (M2M), so the detector fallback is the author's
+    preferred_locale.
     """
     if not name or not name.strip():
         return
     detected = detect_locale(name)
-    locale = detected or admin.preferred_locale
+    locale = detected or author.preferred_locale
     if locale is None:
         return
     record_human_version(
@@ -76,7 +77,7 @@ def _write_cohort_name(db: Session, cohort_id: UUID, name: str, *, admin: User) 
         field="title",
         locale=locale,
         text=name,
-        authored_by=admin.id,
+        authored_by=author.id,
     )
 
 
@@ -197,13 +198,13 @@ def list_cohorts(
     # legal cohort statuses before the query runs. Matches the constraint
     # already on ``CohortUpdate.status`` and the DB ``CHECK``.
     status_filter: Literal["upcoming", "active", "completed"] | None = Query(None, alias="status"),
-    # Defensive pagination. An admin panel scrolling cohort
+    # Defensive pagination. An director panel scrolling cohort
     # history shouldn't pull the full table on every keystroke; cap and
-    # paginate. Defaults match the other admin list endpoints
+    # paginate. Defaults match the other director list endpoints
     # (audit, users, queue-status).
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> list[CohortResponse]:
     """Admin-wide cohort list. Optional ``status`` filter
@@ -219,7 +220,7 @@ def list_cohorts(
 def create_cohort(
     data: CohortCreate,
     request: Request,
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
     """Create an empty cohort. Courses and students attach via the
@@ -231,16 +232,16 @@ def create_cohort(
         enrollment_start=data.enrollment_start,
         enrollment_end=data.enrollment_end,
         max_students=data.max_students,
-        created_by=admin.id,
+        created_by=director.id,
     )
     db.add(cohort)
     db.flush()
-    _write_cohort_name(db, cohort.id, data.name, admin=admin)
+    _write_cohort_name(db, cohort.id, data.name, author=director)
     db.commit()
     db.refresh(cohort)
     log_action(
         db,
-        admin.id,
+        director.id,
         "create",
         "cohort",
         str(cohort.id),
@@ -253,7 +254,7 @@ def create_cohort(
 @router.get("/{cohort_id}", response_model=CohortResponse)
 def get_cohort(
     cohort_id: UUID,
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
     cohort = _get_or_404(db, cohort_id)
@@ -265,7 +266,7 @@ def update_cohort(
     cohort_id: UUID,
     data: CohortUpdate,
     request: Request,
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
     cohort = _get_or_404(db, cohort_id)
@@ -283,7 +284,7 @@ def update_cohort(
             message="Cannot reopen a completed cohort",
             context={"resource_type": "cohort", "resource_id": str(cohort_id), "current_status": cohort.status},
         )
-    # Snapshot the fields the admin is actually changing for the audit
+    # Snapshot the fields the director is actually changing for the audit
     # row. Comparing pre/post values means a no-op PATCH (same fields,
     # same values) doesn't generate a noisy audit entry, and a status
     # flip like ``upcoming -> active`` is fully traceable: the row holds
@@ -303,7 +304,7 @@ def update_cohort(
         before = _fetch_cohort_names(db, [cohort.id]).get(str(cohort.id), "")
         if before != new_name:
             changes["name"] = {"from": before, "to": new_name}
-        _write_cohort_name(db, cohort.id, new_name, admin=admin)
+        _write_cohort_name(db, cohort.id, new_name, author=director)
     db.flush()
     db.commit()
     db.refresh(cohort)
@@ -313,7 +314,7 @@ def update_cohort(
     if changes:
         log_action(
             db,
-            admin.id,
+            director.id,
             "update",
             "cohort",
             str(cohort.id),
@@ -327,7 +328,7 @@ def update_cohort(
 def delete_cohort(
     cohort_id: UUID,
     request: Request,
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> None:
     """Delete the cohort. ``ON DELETE CASCADE`` on the junction removes
@@ -342,7 +343,7 @@ def delete_cohort(
     db.commit()
     log_action(
         db,
-        admin.id,
+        director.id,
         "delete",
         "cohort",
         str(cohort_id),
@@ -355,7 +356,7 @@ def delete_cohort(
 def complete_cohort(
     cohort_id: UUID,
     request: Request,
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
     cohort = _get_or_404(db, cohort_id)
@@ -371,7 +372,7 @@ def complete_cohort(
     db.refresh(cohort)
     log_action(
         db,
-        admin.id,
+        director.id,
         "complete",
         "cohort",
         str(cohort.id),
@@ -387,7 +388,7 @@ def complete_cohort(
 @router.get("/{cohort_id}/courses", response_model=list[str])
 def list_cohort_courses(
     cohort_id: UUID,
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> list[str]:
     _get_or_404(db, cohort_id)
@@ -403,7 +404,7 @@ def attach_course(
     cohort_id: UUID,
     body: CohortCourseAttach,
     request: Request,
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
     """Attach a course to the cohort. Any students already in the cohort
@@ -491,7 +492,7 @@ def attach_course(
     db.refresh(cohort)
     log_action(
         db,
-        admin.id,
+        director.id,
         "attach_course",
         "cohort",
         str(cohort.id),
@@ -510,7 +511,7 @@ def detach_course(
     cohort_id: UUID,
     course_id: str,
     request: Request,
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> None:
     """Detach a course from the cohort. Enrollment rows for cohort
@@ -530,7 +531,7 @@ def detach_course(
     db.commit()
     log_action(
         db,
-        admin.id,
+        director.id,
         "detach_course",
         "cohort",
         str(cohort.id),
@@ -552,14 +553,14 @@ def list_cohort_students(
         le=500,
         description="Max students per page (default 100, max 500).",
     ),
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> list[dict]:
     """One row per student in the cohort. Per-course progress is the
     union of their enrollment rows in this cohort, summarized by
     course_id so the cohort overview can show a matrix.
 
-    Includes ``full_name`` + ``email`` from ``profiles`` so the admin
+    Includes ``full_name`` + ``email`` from ``profiles`` so the director
     table renders identity without an N+1 follow-up fetch per row.
 
     Paginates at the **student** level (not the row level) so each page
@@ -625,7 +626,7 @@ def add_student(
     cohort_id: UUID,
     body: CohortStudentAdd,
     request: Request,
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> dict:
     """Add a student to the cohort. Resolves ``user_id`` (preferred) or
@@ -641,7 +642,7 @@ def add_student(
         )
 
     # FOR UPDATE on the Cohort row so the capacity check below and the
-    # enrollment writes that follow are atomic against concurrent admin
+    # enrollment writes that follow are atomic against concurrent director
     # add_student calls — without this, two admins seeing
     # ``current_count == max_students - 1`` can both succeed and overshoot.
     # SQLite (test path) treats ``with_for_update`` as a no-op.
@@ -658,7 +659,7 @@ def add_student(
         user = db.query(User).filter(User.id == body.user_id).first()
     else:
         # Email lookup must be case-insensitive. ``profiles.email`` is a plain
-        # ``text`` column with no normalization, so an admin who types
+        # ``text`` column with no normalization, so an director who types
         # ``Alice@Example.com`` when the stored row is ``alice@example.com``
         # otherwise gets a 404. Lower-case both sides for the comparison.
         email_lower = (body.email or "").lower()
@@ -745,7 +746,7 @@ def add_student(
             ) from None
     log_action(
         db,
-        admin.id,
+        director.id,
         "add_student",
         "cohort",
         str(cohort.id),
@@ -763,7 +764,7 @@ def remove_student(
     cohort_id: UUID,
     user_id: UUID,
     request: Request,
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> None:
     """Remove a student from the cohort. Enrollment rows survive with
@@ -775,7 +776,7 @@ def remove_student(
     db.commit()
     log_action(
         db,
-        admin.id,
+        director.id,
         "remove_student",
         "cohort",
         str(cohort.id),

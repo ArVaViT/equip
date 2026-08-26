@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, require_admin
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.course import CourseDashboardSummary, EnrollmentSummaryResponse
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.schemas.user import PreferredLocaleUpdate, UserResponse
@@ -22,7 +22,10 @@ from app.services.translation.resolve_for_display import (
 
 logger = logging.getLogger(__name__)
 
-VALID_ROLES = ("admin", "teacher", "student")
+# Derived from the enum rather than repeated: a fifth role added to
+# ``UserRole`` and forgotten here would be refused by an allow-list
+# nobody remembered was a second copy.
+VALID_ROLES = tuple(role.value for role in UserRole)
 
 router = APIRouter(prefix="/users", tags=["users"])
 

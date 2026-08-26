@@ -44,6 +44,7 @@ describe("ROLE_I18N_KEY", () => {
     expect(ROLE_I18N_KEY).toEqual({
       student: "roles.student",
       teacher: "roles.teacher",
+      director: "roles.director",
       admin: "roles.admin",
     })
   })
@@ -59,6 +60,10 @@ describe("ROLE_BADGE_VARIANT", () => {
   it("matches the design contract for tone-by-authority", () => {
     // Admin should read as "most authority / destructive-tone weight"
     expect(ROLE_BADGE_VARIANT.admin).toBe("destructiveSubtle")
+    // A director's reach is the admin's shape one level in — inside one
+    // organization rather than across the platform — so it reads in the
+    // same tone rather than inventing a fourth colour.
+    expect(ROLE_BADGE_VARIANT.director).toBe("destructiveSubtle")
     // Teacher is the platform's primary brand role
     expect(ROLE_BADGE_VARIANT.teacher).toBe("primarySubtle")
     // Student is the default state → info tone

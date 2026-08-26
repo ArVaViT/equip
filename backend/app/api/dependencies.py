@@ -89,11 +89,47 @@ def require_teacher(
 def require_admin(
     current_user: User = Depends(get_current_user),
 ) -> User:
+    """Platform staff only.
+
+    This is Equip's own administration — the translation queue, user
+    accounts, health, the audit log — and it is deliberately *not* what
+    an organization's own administrator holds. For that, see
+    ``require_director``.
+    """
     if current_user.role != UserRole.ADMIN.value:
         raise equip_error(
             ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
             message="Admin access required",
+        )
+    return current_user
+
+
+def require_director(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """An organization's own administrator — or platform staff.
+
+    Cohorts, ведомости, invitations, certificate approval, the
+    organization's settings. Until now all of these were gated by
+    ``require_admin``, which is the same role that opens the translation
+    queue and the audit log of the entire platform. With one
+    organization that was harmless; with two it is a leak, and it is
+    much harder to unpick once directors exist and hold the wrong key.
+
+    Platform staff pass because they administer every organization by
+    definition — not because the two roles are the same thing.
+
+    What this does NOT yet check is that the object belongs to the
+    caller's organization: there are no organizations to belong to. That
+    check arrives with the ``organization_id`` columns, and this is the
+    function it will arrive in.
+    """
+    if current_user.role not in (UserRole.DIRECTOR.value, UserRole.ADMIN.value):
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="Only a director of this organization can perform this action",
         )
     return current_user
 

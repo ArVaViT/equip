@@ -28,7 +28,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import require_admin
+from app.api.dependencies import require_director
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.user import User
@@ -49,7 +49,7 @@ AUDIT_ACTION = "org_settings_updated"
 
 @router.get("", response_model=OrgSettingsResponse)
 def read_org_settings(
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ):
     """Everything the school has decided, as one row."""
@@ -60,7 +60,7 @@ def read_org_settings(
 def update_org_settings(
     data: OrgSettingsUpdate,
     request: Request,
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ):
     """Change it, with the previous values kept.
@@ -131,7 +131,7 @@ def update_org_settings(
 
     for key, value in payload.items():
         setattr(settings, key, value)
-    settings.updated_by = admin.id
+    settings.updated_by = director.id
     db.commit()
     db.refresh(settings)
 
@@ -140,7 +140,7 @@ def update_org_settings(
     # row, and a diff that says «grade_bands: changed» does not answer it.
     log_action(
         db,
-        user_id=admin.id,
+        user_id=director.id,
         action=AUDIT_ACTION,
         resource_type=AUDIT_RESOURCE,
         resource_id="org",

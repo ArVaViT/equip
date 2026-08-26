@@ -59,18 +59,18 @@ class TestWriteCohortName:
             crashing_session,
             cohort_id=uuid.uuid4(),
             name="",
-            admin=admin,
+            author=admin,
         )
         # And whitespace-only.
         mod._write_cohort_name(
             crashing_session,
             cohort_id=uuid.uuid4(),
             name="   ",
-            admin=admin,
+            author=admin,
         )
         crashing_session.add.assert_not_called()
 
-    def test_locale_falls_back_to_admin_preferred(
+    def test_locale_falls_back_to_the_authors_preferred(
         self,
         db: Session,
         teacher: User,
@@ -87,7 +87,7 @@ class TestWriteCohortName:
             db,
             cohort_id=cohort_id,
             name="Cohort 2026",
-            admin=admin,
+            author=admin,
         )
         db.commit()
         rows = db.query(ContentVersion).filter(ContentVersion.entity_type == "cohort").all()
@@ -118,7 +118,7 @@ class TestWriteCohortName:
                 db,
                 cohort_id=uuid.uuid4(),
                 name="cohort",
-                admin=admin,
+                author=admin,
             )
         db.commit()
         # No cohort cv rows were created.

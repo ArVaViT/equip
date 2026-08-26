@@ -216,7 +216,7 @@ def test_a_deleted_course_leaves_the_snapshot_blank_rather_than_guessed(db: Sess
 
 
 def test_issuing_a_certificate_writes_the_snapshot(client, db: Session, teacher, student) -> None:
-    from app.api.dependencies import require_admin
+    from app.api.dependencies import require_director
     from app.main import app
 
     course = _graded_course(db, teacher, "c-snap-route", score=95)
@@ -227,11 +227,11 @@ def test_issuing_a_certificate_writes_the_snapshot(client, db: Session, teacher,
     cert.teacher_approved_at = datetime.now(UTC)
     db.commit()
 
-    app.dependency_overrides[require_admin] = lambda: admin
+    app.dependency_overrides[require_director] = lambda: admin
     try:
         resp = client.put(f"/api/v1/certificates/{cert.id}/admin-approve")
     finally:
-        app.dependency_overrides.pop(require_admin, None)
+        app.dependency_overrides.pop(require_director, None)
 
     assert resp.status_code == 200, resp.text
     db.refresh(cert)
