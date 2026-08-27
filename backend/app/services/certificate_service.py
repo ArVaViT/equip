@@ -359,9 +359,16 @@ def _snapshot_letterhead(db: Session, cert: Certificate, course: Course | None) 
     from app.models.user import User as _User
     from app.services.grading_scheme import get_org_settings
 
-    settings = get_org_settings(db)
-    cert.school_name = settings.school_name_en or settings.school_name_ru
-    cert.school_city = settings.city
+    # The course can be gone by the time this runs — that is why every
+    # other line below guards it. The organization on the certificate is
+    # the one it was issued under, and it is read from the certificate
+    # rather than from the course for the same reason the name is: this
+    # function exists to freeze what was true at issuance.
+    organization_id = cert.organization_id or (course.organization_id if course is not None else None)
+    if organization_id is not None:
+        settings = get_org_settings(db, organization_id)
+        cert.school_name = settings.school_name_en or settings.school_name_ru
+        cert.school_city = settings.city
 
     student = db.query(_User).filter(_User.id == cert.user_id).first()
     # The legal name once memberships carry one; the profile name until then.

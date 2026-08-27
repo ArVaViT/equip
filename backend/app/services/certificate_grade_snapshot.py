@@ -48,7 +48,7 @@ def snapshot_certificate_grade(db: Session, cert: Certificate, course: Course | 
     if course is None:
         return
 
-    settings = get_org_settings(db)
+    settings = get_org_settings(db, course.organization_id)
     cert.grading_scheme = course.grading_scheme or settings.default_grading_scheme
     cert.pass_threshold = course.pass_threshold
 

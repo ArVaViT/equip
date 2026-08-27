@@ -62,6 +62,11 @@ class Certificate(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    #: A certificate outlives the organization that issued it. It
+    #: records that a student did the work while that organization
+    #: was in good standing, and deleting it would punish the
+    #: student for someone else's conduct.
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("organizations.id", ondelete="SET NULL"))
     user_id: Mapped[uuid.UUID] = mapped_column()
     # ``course_id`` is nullable so that deleting a course doesn't hard-delete
     # the certificate row — the FK fires ``ON DELETE SET NULL`` and a Postgres

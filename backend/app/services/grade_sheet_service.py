@@ -183,7 +183,7 @@ def _letterhead(db: Session, course: Course, cohort_id: UUID | None) -> dict[str
     shifts by a week. Any of those read at print time rewrites the heading of
     every document already in the cabinet.
     """
-    settings = get_org_settings(db)
+    settings = get_org_settings(db, course.organization_id)
     teacher = db.query(User).filter(User.id == course.created_by).first() if course.created_by else None
     cohort = db.query(Cohort).filter(Cohort.id == cohort_id).first() if cohort_id else None
     return {
@@ -243,7 +243,7 @@ def finalize_sheet(db: Session, course: Course, cohort_id: UUID | None, closed_b
         previous.superseded_at = datetime.now(UTC)
         db.flush()
 
-    settings = get_org_settings(db)
+    settings = get_org_settings(db, course.organization_id)
     scheme = course.grading_scheme or settings.default_grading_scheme
     bands = effective_bands(settings, scheme)
 

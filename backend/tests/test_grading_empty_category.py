@@ -29,6 +29,7 @@ import pytest
 from app.models.course import Course
 from app.models.org_settings import DEFAULT_GRADE_BANDS, OrgSettings
 from app.services.grade_calculator import _build_breakdown, effective_weights
+from tests.conftest import TEST_ORGANIZATION_ID
 
 if TYPE_CHECKING:
     from app.schemas.grade import GradeBreakdown
@@ -41,7 +42,7 @@ def _course(quiz: int = 40, assignment: int = 60) -> Course:
 def _settings() -> OrgSettings:
     """Shipped defaults, without a session — these tests exercise arithmetic."""
     return OrgSettings(
-        id=True,
+        organization_id=TEST_ORGANIZATION_ID,
         default_grading_scheme="letter",
         default_pass_threshold=Decimal("70"),
         grade_bands=dict(DEFAULT_GRADE_BANDS),
@@ -293,7 +294,7 @@ def test_school_bands_decide_the_symbol_not_hardcoded_letters(db) -> None:
     from app.services.grade_calculator import resolve_symbol
     from app.services.grading_scheme import get_org_settings
 
-    settings = get_org_settings(db)
+    settings = get_org_settings(db, TEST_ORGANIZATION_ID)
     course = _course()
 
     assert resolve_symbol(85.0, course, settings) == "B"
@@ -314,7 +315,7 @@ def test_five_point_course_shows_five_point_symbols(db) -> None:
     from app.services.grade_calculator import resolve_symbol
     from app.services.grading_scheme import get_org_settings
 
-    settings = get_org_settings(db)
+    settings = get_org_settings(db, TEST_ORGANIZATION_ID)
     course = _course()
     course.grading_scheme = "five_point"
 
@@ -332,7 +333,7 @@ def test_percent_course_has_no_symbol(db) -> None:
     course = _course()
     course.grading_scheme = "percent"
 
-    assert resolve_symbol(82.0, course, get_org_settings(db)) == ""
+    assert resolve_symbol(82.0, course, get_org_settings(db, TEST_ORGANIZATION_ID)) == ""
 
 
 def test_pass_fail_does_not_derive_a_pass_from_a_percentage(db) -> None:
@@ -347,7 +348,7 @@ def test_pass_fail_does_not_derive_a_pass_from_a_percentage(db) -> None:
     course = _course()
     course.grading_scheme = "pass_fail"
 
-    assert resolve_symbol(99.0, course, get_org_settings(db)) == ""
+    assert resolve_symbol(99.0, course, get_org_settings(db, TEST_ORGANIZATION_ID)) == ""
 
 
 # --------------------------------------------------------------------------

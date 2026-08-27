@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, func
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -44,6 +44,12 @@ class User(Base):
     # just duplicate writes. Same logic applies to every other unique column.
     email: Mapped[str] = mapped_column(unique=True)
     full_name: Mapped[str | None] = mapped_column()
+    #: The organization this person belongs to, in whatever role they
+    #: hold there. Nullable because platform staff belong to none — and
+    #: that null must never satisfy an organization check by accident,
+    #: which is why every comparison is written ``IS NOT NULL AND =``
+    #: rather than ``=`` alone.
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("organizations.id", ondelete="SET NULL"))
     role: Mapped[str] = mapped_column(default=UserRole.STUDENT.value)
     # Per-user UI/content language. Drives both the i18n bundle on the
     # frontend and which translated copy of course content gets served.

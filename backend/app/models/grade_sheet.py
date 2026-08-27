@@ -49,6 +49,7 @@ class GradeSheet(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"))
     course_id: Mapped[str] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
     #: NULL is «без потока» — a bucket for solo students, not a missing value,
     #: which is why this is RESTRICT. Nulling it on a signed sheet does not

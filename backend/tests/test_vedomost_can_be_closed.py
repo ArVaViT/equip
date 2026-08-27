@@ -24,6 +24,7 @@ from app.models.org_settings import OrgSettings
 from app.models.quiz import Quiz, QuizAttempt
 from app.models.student_grade import StudentGrade
 from app.models.user import User
+from tests.conftest import TEST_ORGANIZATION_ID
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -701,7 +702,7 @@ def test_the_letterhead_is_frozen_with_the_rest(admin_client, db: Session, teach
     # is the only thing that touches it, so seed it here.
     from app.services.grading_scheme import get_org_settings
 
-    settings = get_org_settings(db)
+    settings = get_org_settings(db, TEST_ORGANIZATION_ID)
     settings.school_name_en = "Grace Bible School"
     settings.city = "Kyiv"
     _enrol(db, course.id, STUDENT_ID)

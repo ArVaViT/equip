@@ -512,7 +512,7 @@ def get_grading_scheme(
 ):
     """The course's scheme, pass line, and the bands they are read against."""
     course = verify_course_owner(db, course_id, teacher)
-    settings = get_org_settings(db)
+    settings = get_org_settings(db, course.organization_id)
     scheme = course.grading_scheme or settings.default_grading_scheme
     return GradingSchemeResponse(
         grading_scheme=scheme,
@@ -622,7 +622,7 @@ def update_grading_scheme(
         request=request,
     )
 
-    settings = get_org_settings(db)
+    settings = get_org_settings(db, course.organization_id)
     return GradingSchemeResponse(
         grading_scheme=course.grading_scheme,
         pass_threshold=course.pass_threshold,
@@ -706,7 +706,7 @@ def get_grade_summary(
 
         # The school's scale travels with the grades, so the client never has
         # to know what A or «4» mean.
-        org_settings = get_org_settings(db)
+        org_settings = get_org_settings(db, course.organization_id)
         scheme = course.grading_scheme or org_settings.default_grading_scheme
 
         return GradeSummaryResponse(

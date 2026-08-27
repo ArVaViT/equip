@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Numeric, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Numeric, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import JSON
@@ -34,16 +34,15 @@ class OrgSettings(Base):
     between schools («5 от 85» is as common in UA practice as «5 от 90»).
     Hardcoding bands would make onboarding every new school a code change.
 
-    Why one row: Equip is single-school today. ``id`` is a boolean primary key
-    constrained to ``True``, the standard idiom that makes a second row
-    impossible at schema level. The shape survives a future multi-school
-    model — the boolean becomes an org id and every other column travels
-    unchanged.
+    One row per organization. It used to be one row for the platform: a
+    boolean primary key constrained to ``True``, the idiom that makes a
+    second row impossible. That comment predicted its own replacement —
+    "the boolean becomes an org id and every other column travels
+    unchanged" — and on 2026-08-27 it did exactly that.
     """
 
     __tablename__ = "org_settings"
     __table_args__ = (
-        CheckConstraint("id", name="org_settings_id_check"),
         CheckConstraint(
             "default_grading_scheme IN ('pass_fail', 'percent', 'five_point', 'letter')",
             name="org_settings_default_grading_scheme_check",
@@ -54,7 +53,9 @@ class OrgSettings(Base):
         ),
     )
 
-    id: Mapped[bool] = mapped_column(Boolean, primary_key=True, default=True, server_default="true")
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), primary_key=True
+    )
 
     school_name_ru: Mapped[str | None] = mapped_column()
     school_name_en: Mapped[str | None] = mapped_column()
