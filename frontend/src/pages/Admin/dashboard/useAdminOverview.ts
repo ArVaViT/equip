@@ -145,6 +145,7 @@ export function useAdminOverview({ currentUserId, enabled = true }: UseAdminOver
   const roleCounts = useMemo(() => {
     const counts: Record<UserRole, number> = {
       admin: 0,
+      director: 0,
       teacher: 0,
       student: 0,
     }

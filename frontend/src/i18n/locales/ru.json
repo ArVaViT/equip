@@ -1917,6 +1917,7 @@
   "roles": {
     "student": "Студент",
     "teacher": "Преподаватель",
+    "director": "Директор",
     "admin": "Администратор"
   },
   "authRegister": {

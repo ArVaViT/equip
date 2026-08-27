@@ -11,6 +11,7 @@ import type { UserRole } from "@/types"
 export const ROLE_I18N_KEY: Record<UserRole, string> = {
   student: "roles.student",
   teacher: "roles.teacher",
+  director: "roles.director",
   admin: "roles.admin",
 }
 
@@ -23,7 +24,11 @@ export const ROLE_BADGE_VARIANT: Record<
   UserRole,
   "destructiveSubtle" | "primarySubtle" | "infoSubtle"
 > = {
+  // Platform staff read as the strongest colour because their reach is
+  // the widest; a director's is the same shape one level in, so it
+  // borrows the same variant rather than inventing a fourth.
   admin: "destructiveSubtle",
+  director: "destructiveSubtle",
   teacher: "primarySubtle",
   student: "infoSubtle",
 }

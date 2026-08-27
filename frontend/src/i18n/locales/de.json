@@ -2294,6 +2294,7 @@
   "roles": {
     "student": "Studierende Person",
     "teacher": "Dozent",
+    "director": "Leitung",
     "admin": "Administration"
   },
   "authRegister": {

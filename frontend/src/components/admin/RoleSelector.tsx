@@ -20,6 +20,16 @@ interface Props {
   ariaLabel?: string
 }
 
+// Deliberately not every role: this is the list an admin may *assign*
+// from this control, ordered by reach. `director` is missing on purpose
+// until organizations exist — a director of nothing is a role with no
+// meaning, and offering it would let someone set a state the product
+// cannot yet explain. It joins this list in the step that adds
+// `organization_id` (see the organizations plan, step 4).
+//
+// TypeScript cannot catch a role missing from an array the way it
+// catches one missing from a Record, so the omission is written down
+// rather than left to be discovered as a bug.
 const ROLE_ORDER: UserRole[] = ["student", "teacher", "admin"]
 
 /**

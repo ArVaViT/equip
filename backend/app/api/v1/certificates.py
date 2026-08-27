@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import (
     get_current_user,
     get_live_course_or_404,
-    require_admin,
+    require_director,
     require_teacher,
 )
 from app.core.database import get_db
@@ -367,15 +367,15 @@ def list_admin_pending_certificates(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> list[CertificateResponse]:
-    """Admin: teacher-approved certificates awaiting admin approval.
+    """Admin: teacher-approved certificates awaiting director approval.
 
     Returns enriched rows (student name + email, course title, name of
-    the teacher who signed off) so the admin overview panel can render
+    the teacher who signed off) so the director overview panel can render
     a real \"who / what / when\" context without per-row follow-up calls.
-    Course titles localize to the admin's Accept-Language (
+    Course titles localize to the director's Accept-Language (
     was hardcoded EN before).
     """
     certs = (
@@ -437,20 +437,20 @@ def teacher_approve_certificate(
 def admin_approve_certificate(
     cert_id: UUID,
     request: Request,
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> Certificate:
     """Second step. Generates the public ``certificate_number`` and
     fires a ``certificate_approved`` notification to the student. The
-    ``FOR UPDATE`` lock prevents double-issuance from concurrent admin
+    ``FOR UPDATE`` lock prevents double-issuance from concurrent director
     clicks."""
-    return certificate_service.admin_approve(db, cert_id, admin, request)
+    return certificate_service.admin_approve(db, cert_id, director, request)
 
 
 @router.put(
     "/{cert_id}/reject",
     response_model=CertificateResponse,
-    summary="Reject a certificate request (teacher or admin)",
+    summary="Reject a certificate request (teacher or director)",
     responses={
         200: {"description": "Certificate moved to ``rejected`` state"},
         400: {"description": "Certificate is already in a terminal state"},

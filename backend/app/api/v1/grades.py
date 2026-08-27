@@ -18,7 +18,7 @@ from app.api.dependencies import (
     get_current_user,
     get_live_course_or_404,
     lookup_enrollment,
-    require_admin,
+    require_director,
     require_teacher,
     verify_chapter_owner,
     verify_course_owner,
@@ -430,7 +430,7 @@ def close_grade_sheet(
     course_id: str,
     request: Request,
     cohort_id: UUID | None = None,
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ):
     """«Закрыть ведомость» — freeze every student's official result (D11).
@@ -441,13 +441,13 @@ def close_grade_sheet(
     Re-closing supersedes the previous sheet rather than overwriting it, so the
     history of what was signed survives a correction.
     """
-    course = verify_course_owner(db, course_id, admin)
-    sheet = finalize_sheet(db, course, cohort_id, admin.id)
+    course = verify_course_owner(db, course_id, director)
+    sheet = finalize_sheet(db, course, cohort_id, director.id)
     db.commit()
 
     log_action(
         db,
-        user_id=admin.id,
+        user_id=director.id,
         action="grade_sheet_finalized",
         resource_type="grade_sheet",
         resource_id=str(sheet.id),
@@ -462,7 +462,7 @@ def reopen_grade_sheet(
     sheet_id: UUID,
     data: SheetReopenRequest,
     request: Request,
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ):
     """Reopen a closed sheet, on the record.
@@ -478,10 +478,10 @@ def reopen_grade_sheet(
             message="No such open ведомость",
             context={"resource_type": "grade_sheet", "resource_id": str(sheet_id)},
         )
-    verify_course_owner(db, sheet.course_id, admin)
+    verify_course_owner(db, sheet.course_id, director)
 
     try:
-        reopen_sheet(db, sheet, admin.id, data.reason)
+        reopen_sheet(db, sheet, director.id, data.reason)
     except ValueError:
         # Overwriting the first reason would erase the part worth keeping.
         raise equip_error(
@@ -494,7 +494,7 @@ def reopen_grade_sheet(
 
     log_action(
         db,
-        user_id=admin.id,
+        user_id=director.id,
         action="grade_sheet_reopened",
         resource_type="grade_sheet",
         resource_id=str(sheet.id),
@@ -526,7 +526,7 @@ def update_grading_scheme(
     course_id: str,
     data: GradingSchemeUpdate,
     request: Request,
-    admin: User = Depends(require_admin),
+    director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ):
     """Change how a course is graded — both values at once, and audited (D8).
@@ -552,7 +552,7 @@ def update_grading_scheme(
        decision someone should be able to point at later.
     4. **Quizzes that drift off the new pass line are recorded** — see below.
     """
-    course = verify_course_owner(db, course_id, admin)
+    course = verify_course_owner(db, course_id, director)
 
     invalid = validate_scheme_threshold(data.grading_scheme, data.pass_threshold)
     if invalid:
@@ -603,7 +603,7 @@ def update_grading_scheme(
 
     log_action(
         db,
-        user_id=admin.id,
+        user_id=director.id,
         action="grading_scheme_changed",
         resource_type="course",
         resource_id=course_id,

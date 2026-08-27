@@ -1,7 +1,7 @@
 import type { ChapterType } from '@/lib/chapterTypes'
 import type { SupportedLocale } from '@/i18n/config'
 
-export type UserRole = 'admin' | 'teacher' | 'student'
+export type UserRole = 'admin' | 'director' | 'teacher' | 'student'
 /**
  * The language on a profile.
  *
@@ -26,7 +26,10 @@ type PreferredLocale = SupportedLocale
  * ``profiles.role``). All four representations stay in lockstep.
  */
 export const ROLES = {
+  /** Platform staff: the translation queue, users, health, the audit log. */
   ADMIN: 'admin',
+  /** An organization's own administrator: its cohorts, ведомости, invitations, certificates, settings. */
+  DIRECTOR: 'director',
   TEACHER: 'teacher',
   STUDENT: 'student',
 } as const satisfies Record<string, UserRole>

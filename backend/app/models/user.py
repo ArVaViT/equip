@@ -13,7 +13,15 @@ if TYPE_CHECKING:
 
 
 class UserRole(enum.StrEnum):
+    #: Platform staff. The translation queue, user administration, health,
+    #: the audit log — everything that belongs to Equip rather than to any
+    #: one organization.
     ADMIN = "admin"
+    #: An organization's own administrator: its cohorts, its ведомости, its
+    #: invitations, its certificates, its settings. Deliberately not the
+    #: same role as ADMIN — see the note on ``chk_profiles_role`` in
+    #: ``20260826120000_a_director_is_not_a_platform_admin.sql``.
+    DIRECTOR = "director"
     TEACHER = "teacher"
     STUDENT = "student"
 
@@ -23,7 +31,7 @@ class User(Base):
     __table_args__ = (
         # Mirror the prod CHECK constraints so the SQLite test path and the
         # Postgres schema-smoke job enforce the same value domains.
-        CheckConstraint("role IN ('admin', 'teacher', 'student')", name="chk_profiles_role"),
+        CheckConstraint("role IN ('admin', 'director', 'teacher', 'student')", name="chk_profiles_role"),
         CheckConstraint("preferred_locale IN ('ru', 'en', 'de', 'uk')", name="profiles_preferred_locale_check"),
         CheckConstraint(
             "locale_source IN ('default', 'detected', 'chosen')",
