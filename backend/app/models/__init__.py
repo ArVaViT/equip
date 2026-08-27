@@ -15,6 +15,7 @@ from app.models.invitation import Invitation, InvitationRole, InvitationStatus
 from app.models.legal_acceptance import LegalAcceptance
 from app.models.notification import Notification
 from app.models.org_settings import DEFAULT_GRADE_BANDS, OrgSettings
+from app.models.organization import Organization
 from app.models.prerequisite import CoursePrerequisite
 from app.models.quiz import (
     Quiz,
@@ -65,6 +66,7 @@ __all__ = [
     "Module",
     "Notification",
     "OrgSettings",
+    "Organization",
     "Quiz",
     "QuizAnswer",
     "QuizAttempt",

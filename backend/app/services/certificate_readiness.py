@@ -137,7 +137,7 @@ def certificate_blockers(
         official_row.override_score if official_row is not None else None,
         scheme=scheme,
         pass_threshold=threshold,
-        bands=effective_bands(get_org_settings(db), scheme),
+        bands=effective_bands(get_org_settings(db, course.organization_id), scheme),
         zachet=zachet,
     )
 

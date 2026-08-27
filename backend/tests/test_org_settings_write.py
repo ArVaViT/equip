@@ -24,6 +24,7 @@ from app.models.course import Course
 from app.models.grade_sheet import GradeSheet, GradeSheetRow
 from app.models.org_settings import DEFAULT_GRADE_BANDS
 from app.services.grading_scheme import get_org_settings
+from tests.conftest import TEST_ORGANIZATION_ID
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -45,7 +46,7 @@ def test_an_admin_can_put_the_school_on_its_own_documents(admin_client, db: Sess
 
     assert response.status_code == 200, response.text
     assert response.json()["school_name_en"] == "Word Bible School"
-    assert get_org_settings(db).city == "Kyiv"
+    assert get_org_settings(db, TEST_ORGANIZATION_ID).city == "Kyiv"
 
 
 def test_a_school_can_set_its_own_scale(admin_client, db: Session) -> None:
@@ -64,7 +65,7 @@ def test_leaving_a_field_out_leaves_it_alone(admin_client, db: Session) -> None:
 
     admin_client.put(URL, json={"city": "Lviv"})
 
-    settings = get_org_settings(db)
+    settings = get_org_settings(db, TEST_ORGANIZATION_ID)
     assert settings.city == "Lviv"
     assert settings.grade_bands["letter"] == UA_LETTERS
 

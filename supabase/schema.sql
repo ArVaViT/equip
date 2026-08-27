@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict vXauCkCUoOUYFTwDdGJ1wdG19S7MF8Jvf8SMrr08zVHRCoOEDaRYfuPWVt1OFHe
+\restrict tz2Cn38pMS98tngBbUQJMrGJBGuILXmB0lePDZBtfRfeNJ1FOJevIxaYGsteAjT
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10 (Homebrew)
@@ -282,6 +282,7 @@ CREATE TABLE public.certificates (
     student_name text,
     teacher_name text,
     course_title text,
+    organization_id uuid,
     CONSTRAINT certificates_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('teacher_approved'::character varying)::text, ('approved'::character varying)::text, ('rejected'::character varying)::text]))),
     CONSTRAINT ck_certificates_graded_via CHECK (((graded_via IS NULL) OR (graded_via = ANY (ARRAY['computed'::text, 'override'::text, 'completion'::text])))),
     CONSTRAINT ck_certificates_one_official_grade CHECK (((
@@ -377,6 +378,7 @@ CREATE TABLE public.cohorts (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by uuid,
+    organization_id uuid NOT NULL,
     CONSTRAINT cohorts_status_check CHECK (((status)::text = ANY (ARRAY[('upcoming'::character varying)::text, ('active'::character varying)::text, ('completed'::character varying)::text, ('archived'::character varying)::text])))
 );
 
@@ -475,6 +477,7 @@ CREATE TABLE public.courses (
     academic_hours integer,
     ai_policy text DEFAULT 'ai_with_disclosure'::text NOT NULL,
     translations_checked_at timestamp with time zone,
+    organization_id uuid NOT NULL,
     CONSTRAINT chk_courses_status CHECK ((status = ANY (ARRAY['draft'::text, 'publishing'::text, 'published'::text]))),
     CONSTRAINT ck_courses_participation_retired CHECK ((participation_weight = 0)),
     CONSTRAINT ck_courses_scheme_threshold CHECK (((grading_scheme <> 'five_point'::text) OR (pass_threshold <= (75)::numeric))),
@@ -679,6 +682,7 @@ CREATE TABLE public.grade_sheets (
     academic_hours integer,
     cohort_start timestamp with time zone,
     cohort_end timestamp with time zone,
+    organization_id uuid NOT NULL,
     CONSTRAINT ck_grade_sheets_reopen_is_deliberate CHECK (((reopened_at IS NULL) OR ((reopened_at >= finalized_at) AND (reopen_reason IS NOT NULL))))
 );
 
@@ -697,6 +701,7 @@ CREATE TABLE public.invitations (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     accepted_at timestamp with time zone,
     expires_at timestamp with time zone DEFAULT (now() + '7 days'::interval) NOT NULL,
+    organization_id uuid NOT NULL,
     CONSTRAINT invitations_role_check CHECK ((role = ANY (ARRAY['teacher'::text, 'student'::text]))),
     CONSTRAINT invitations_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'revoked'::text])))
 );
@@ -753,7 +758,6 @@ CREATE TABLE public.notifications (
 --
 
 CREATE TABLE public.org_settings (
-    id boolean DEFAULT true NOT NULL,
     school_name_ru text,
     school_name_en text,
     city text,
@@ -762,9 +766,31 @@ CREATE TABLE public.org_settings (
     grade_bands jsonb DEFAULT '{}'::jsonb NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_by uuid,
+    organization_id uuid NOT NULL,
     CONSTRAINT org_settings_default_grading_scheme_check CHECK ((default_grading_scheme = ANY (ARRAY['pass_fail'::text, 'percent'::text, 'five_point'::text, 'letter'::text]))),
-    CONSTRAINT org_settings_default_pass_threshold_check CHECK (((default_pass_threshold >= (0)::numeric) AND (default_pass_threshold <= (100)::numeric))),
-    CONSTRAINT org_settings_id_check CHECK (id)
+    CONSTRAINT org_settings_default_pass_threshold_check CHECK (((default_pass_threshold >= (0)::numeric) AND (default_pass_threshold <= (100)::numeric)))
+);
+
+
+--
+-- Name: organizations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.organizations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    slug text NOT NULL,
+    public_name text NOT NULL,
+    legal_name text,
+    country text,
+    status text DEFAULT 'approved'::text NOT NULL,
+    created_by uuid,
+    verified_at timestamp with time zone,
+    verified_by uuid,
+    verification_basis text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT organizations_slug_shape_check CHECK ((slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text)),
+    CONSTRAINT organizations_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'verified'::text, 'suspended'::text])))
 );
 
 
@@ -784,6 +810,7 @@ CREATE TABLE public.profiles (
     calendar_ical_min_iat bigint,
     deactivated_at timestamp with time zone,
     locale_source text DEFAULT 'default'::text NOT NULL,
+    organization_id uuid,
     CONSTRAINT chk_profiles_role CHECK ((role = ANY (ARRAY['admin'::text, 'director'::text, 'teacher'::text, 'student'::text]))),
     CONSTRAINT profiles_locale_source_check CHECK ((locale_source = ANY (ARRAY['default'::text, 'detected'::text, 'chosen'::text]))),
     CONSTRAINT profiles_preferred_locale_check CHECK (((preferred_locale)::text = ANY (ARRAY['ru'::text, 'en'::text, 'de'::text, 'uk'::text])))
@@ -1347,7 +1374,31 @@ ALTER TABLE ONLY public.notifications
 --
 
 ALTER TABLE ONLY public.org_settings
-    ADD CONSTRAINT org_settings_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT org_settings_pkey PRIMARY KEY (organization_id);
+
+
+--
+-- Name: organizations organizations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organizations
+    ADD CONSTRAINT organizations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: organizations organizations_public_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organizations
+    ADD CONSTRAINT organizations_public_name_key UNIQUE (public_name);
+
+
+--
+-- Name: organizations organizations_slug_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organizations
+    ADD CONSTRAINT organizations_slug_key UNIQUE (slug);
 
 
 --
@@ -1629,6 +1680,13 @@ CREATE INDEX ix_certificates_course_id ON public.certificates USING btree (cours
 
 
 --
+-- Name: ix_certificates_organization_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_certificates_organization_id ON public.certificates USING btree (organization_id);
+
+
+--
 -- Name: ix_certificates_status; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1703,6 +1761,13 @@ CREATE INDEX ix_cohort_courses_course_id ON public.cohort_courses USING btree (c
 --
 
 CREATE INDEX ix_cohorts_created_by ON public.cohorts USING btree (created_by);
+
+
+--
+-- Name: ix_cohorts_organization_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_cohorts_organization_id ON public.cohorts USING btree (organization_id);
 
 
 --
@@ -1794,6 +1859,13 @@ CREATE INDEX ix_courses_created_by ON public.courses USING btree (created_by);
 --
 
 CREATE INDEX ix_courses_deleted_at ON public.courses USING btree (deleted_at) WHERE (deleted_at IS NOT NULL);
+
+
+--
+-- Name: ix_courses_organization_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_courses_organization_id ON public.courses USING btree (organization_id);
 
 
 --
@@ -1958,6 +2030,13 @@ CREATE INDEX ix_grade_sheets_course ON public.grade_sheets USING btree (course_i
 
 
 --
+-- Name: ix_grade_sheets_organization_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_grade_sheets_organization_id ON public.grade_sheets USING btree (organization_id);
+
+
+--
 -- Name: ix_invitations_email_role; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1969,6 +2048,13 @@ CREATE INDEX ix_invitations_email_role ON public.invitations USING btree (email,
 --
 
 CREATE UNIQUE INDEX ix_invitations_one_pending_per_email_role ON public.invitations USING btree (email, role) WHERE (status = 'pending'::text);
+
+
+--
+-- Name: ix_invitations_organization_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_invitations_organization_id ON public.invitations USING btree (organization_id);
 
 
 --
@@ -1990,6 +2076,13 @@ CREATE INDEX ix_modules_course_id ON public.modules USING btree (course_id);
 --
 
 CREATE INDEX ix_notifications_user_id_is_read ON public.notifications USING btree (user_id, is_read);
+
+
+--
+-- Name: ix_profiles_organization_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_profiles_organization_id ON public.profiles USING btree (organization_id);
 
 
 --
@@ -2383,6 +2476,14 @@ ALTER TABLE ONLY public.certificates
 
 
 --
+-- Name: certificates certificates_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.certificates
+    ADD CONSTRAINT certificates_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE SET NULL;
+
+
+--
 -- Name: certificates certificates_teacher_approved_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2479,6 +2580,14 @@ ALTER TABLE ONLY public.cohorts
 
 
 --
+-- Name: cohorts cohorts_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cohorts
+    ADD CONSTRAINT cohorts_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
 -- Name: content_versions content_versions_authored_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2548,6 +2657,14 @@ ALTER TABLE ONLY public.course_reviews
 
 ALTER TABLE ONLY public.courses
     ADD CONSTRAINT courses_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: courses courses_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.courses
+    ADD CONSTRAINT courses_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
 
 
 --
@@ -2735,6 +2852,14 @@ ALTER TABLE ONLY public.grade_sheets
 
 
 --
+-- Name: grade_sheets grade_sheets_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.grade_sheets
+    ADD CONSTRAINT grade_sheets_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
 -- Name: grade_sheets grade_sheets_reopened_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2748,6 +2873,14 @@ ALTER TABLE ONLY public.grade_sheets
 
 ALTER TABLE ONLY public.invitations
     ADD CONSTRAINT invitations_invited_by_fkey FOREIGN KEY (invited_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: invitations invitations_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.invitations
+    ADD CONSTRAINT invitations_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
 
 
 --
@@ -2775,6 +2908,14 @@ ALTER TABLE ONLY public.notifications
 
 
 --
+-- Name: org_settings org_settings_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.org_settings
+    ADD CONSTRAINT org_settings_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
 -- Name: org_settings org_settings_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2783,11 +2924,35 @@ ALTER TABLE ONLY public.org_settings
 
 
 --
+-- Name: organizations organizations_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organizations
+    ADD CONSTRAINT organizations_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: organizations organizations_verified_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organizations
+    ADD CONSTRAINT organizations_verified_by_fkey FOREIGN KEY (verified_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
 -- Name: profiles profiles_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.profiles
     ADD CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: profiles profiles_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.profiles
+    ADD CONSTRAINT profiles_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE SET NULL;
 
 
 --
@@ -3537,5 +3702,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict vXauCkCUoOUYFTwDdGJ1wdG19S7MF8Jvf8SMrr08zVHRCoOEDaRYfuPWVt1OFHe
+\unrestrict tz2Cn38pMS98tngBbUQJMrGJBGuILXmB0lePDZBtfRfeNJ1FOJevIxaYGsteAjT
 

@@ -22,6 +22,7 @@ audited with the whole previous table kept. Documents do not move: a closed
 that say so in as many words.
 """
 
+import uuid
 from decimal import Decimal
 from typing import Any
 
@@ -47,13 +48,31 @@ AUDIT_RESOURCE = "org_settings"
 AUDIT_ACTION = "org_settings_updated"
 
 
+def _organization_of(user: User) -> uuid.UUID:
+    """The caller's organization, or a 403 saying they have none.
+
+    Platform staff have no organization of their own, and settings are an
+    organization's. Reading somebody's settings by being staff is a
+    different endpoint from reading your own, and conflating them is how
+    a null becomes "whichever row came back first".
+    """
+    if user.organization_id is None:
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="These settings belong to an organization, and this account is not in one",
+            context={"resource_type": AUDIT_RESOURCE},
+        )
+    return user.organization_id
+
+
 @router.get("", response_model=OrgSettingsResponse)
 def read_org_settings(
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ):
-    """Everything the school has decided, as one row."""
-    return get_org_settings(db)
+    """Everything this organization has decided, as one row."""
+    return get_org_settings(db, _organization_of(director))
 
 
 @router.put("", response_model=OrgSettingsResponse)
@@ -74,7 +93,7 @@ def update_org_settings(
     that can only be seen by looking at both. Bands are validated against the
     scheme they belong to, which is where the «3»-versus-threshold check lives.
     """
-    settings = get_org_settings(db)
+    settings = get_org_settings(db, _organization_of(director))
     payload = data.model_dump(exclude_unset=True)
     if not payload:
         raise equip_error(

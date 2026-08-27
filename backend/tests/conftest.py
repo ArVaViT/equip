@@ -23,6 +23,7 @@ from sqlalchemy.pool import StaticPool
 from app.api.dependencies import get_current_user, get_optional_user
 from app.core.database import Base, get_db
 from app.main import app
+from app.models.organization import Organization
 from app.models.user import User, UserRole
 
 # ---------------------------------------------------------------------------
@@ -55,11 +56,46 @@ ADMIN_ID = uuid.UUID("cccccccc-cccc-cccc-cccc-cccccccccccc")
 # ---------------------------------------------------------------------------
 
 
+#: The organization every test row belongs to unless it says otherwise.
+#: Production has UCOAT; the tests have this, seeded per test alongside
+#: the tables.
+TEST_ORGANIZATION_ID = uuid.UUID("dddddddd-dddd-dddd-dddd-dddddddddddd")
+
+
 @pytest.fixture(autouse=True)
 def _reset_tables():
     Base.metadata.create_all(bind=test_engine)
+    with test_engine.begin() as conn:
+        conn.execute(
+            Organization.__table__.insert().values(
+                id=TEST_ORGANIZATION_ID,
+                slug="test-org",
+                public_name="Test Organization",
+                status="verified",
+            )
+        )
     yield
     Base.metadata.drop_all(bind=test_engine)
+
+
+@event.listens_for(Session, "before_flush")
+def _belong_to_the_test_organization(session, _flush_context, _instances):
+    """Give every new row the test organization, unless it has one.
+
+    Courses, cohorts, invitations and grade sheets carry a NOT NULL
+    ``organization_id`` from 2026-08-27. Several hundred tests create
+    them directly and none of them are about organizations; making each
+    one name a column it does not care about would bury what those tests
+    actually say.
+
+    This is test infrastructure and deliberately not a model default: in
+    production the column has no default, so a code path that forgets it
+    fails loudly instead of quietly filing a course under whichever
+    organization happened to be first.
+    """
+    for obj in session.new:
+        if hasattr(obj, "organization_id") and getattr(obj, "organization_id", None) is None:
+            obj.organization_id = TEST_ORGANIZATION_ID
 
 
 @pytest.fixture(autouse=True)

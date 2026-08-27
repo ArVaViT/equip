@@ -504,7 +504,7 @@ def calculate_student_grade(
         has_assignment_items=course_has_assignments,
         has_quizzes=live_quizzes,
         has_assignments=live_assignments,
-        settings=get_org_settings(db),
+        settings=get_org_settings(db, course.organization_id),
         has_gradable_chapters=bool(chapter_ids),
         all_items_excused=all_items_excused,
         student_has_quiz_marks=student_has_quiz_marks,
@@ -661,7 +661,7 @@ def calculate_all_student_grades(db: Session, course: Course):
     # Resolved once for the whole course: every student in a class must be
     # graded on the same weights.
     live_quizzes, live_assignments = category_is_live(db, quiz_ids=quiz_ids, assignment_ids=assignment_ids)
-    settings = get_org_settings(db)
+    settings = get_org_settings(db, course.organization_id)
     results = []
     for user_id, full_name, email, _cohort_id, _enrolled_at in enrollments:
         sid = str(user_id)

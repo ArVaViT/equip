@@ -22,6 +22,7 @@ What is worth pinning here, and why:
 
 from __future__ import annotations
 
+import uuid
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -38,6 +39,7 @@ from app.services.grading_scheme import (
     validate_bands,
     validate_scheme_threshold,
 )
+from tests.conftest import TEST_ORGANIZATION_ID
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -48,22 +50,49 @@ if TYPE_CHECKING:
 # --------------------------------------------------------------------------
 
 
-def test_get_org_settings_creates_the_single_row_with_shipped_defaults(db: Session) -> None:
-    settings = get_org_settings(db)
+def test_get_org_settings_creates_the_row_with_shipped_defaults(db: Session) -> None:
+    settings = get_org_settings(db, TEST_ORGANIZATION_ID)
 
-    assert settings.id is True
+    # Keyed by the organization since 2026-08-27. It used to be a boolean
+    # primary key pinned to True — the idiom for "there can only be one" —
+    # and that is exactly what stopped being true.
+    assert settings.organization_id == TEST_ORGANIZATION_ID
     assert settings.default_grading_scheme == "letter"
     assert Decimal(str(settings.default_pass_threshold)) == Decimal("70")
     assert settings.grade_bands == DEFAULT_GRADE_BANDS
 
 
+def test_two_organizations_do_not_share_a_grading_scale(db: Session) -> None:
+    """The reason ``get_org_settings`` takes an organization at all.
+
+    Until 2026-08-27 it read ``db.query(OrgSettings).first()`` — correct
+    while one row existed by construction, and a silent wrong answer the
+    moment a second organization has settings of its own. Not an error
+    either: a plausible transcript, with somebody else's scale on it.
+    """
+    from app.models.organization import Organization
+
+    other_id = uuid.UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
+    db.add(Organization(id=other_id, slug="other-org", public_name="Other Organization"))
+    db.flush()
+
+    ours = get_org_settings(db, TEST_ORGANIZATION_ID)
+    ours.default_grading_scheme = "five_point"
+    theirs = get_org_settings(db, other_id)
+    db.flush()
+
+    assert theirs.organization_id == other_id
+    assert theirs.default_grading_scheme == "letter", "one organization's scale reached another"
+    assert get_org_settings(db, TEST_ORGANIZATION_ID).default_grading_scheme == "five_point"
+
+
 def test_get_org_settings_is_idempotent(db: Session) -> None:
-    """Second call must reuse the row, not create a rival one."""
-    first = get_org_settings(db)
+    """Second call must reuse this organization's row, not create a rival."""
+    first = get_org_settings(db, TEST_ORGANIZATION_ID)
     first.city = "Indianapolis"
     db.flush()
 
-    second = get_org_settings(db)
+    second = get_org_settings(db, TEST_ORGANIZATION_ID)
 
     assert second.city == "Indianapolis"
     assert db.query(OrgSettings).count() == 1
@@ -90,7 +119,7 @@ def test_letter_bands_match_what_the_calculator_already_applied(db: Session) -> 
     If these drift, the Q1 promise that existing courses keep grading exactly
     as before is broken.
     """
-    bands = effective_bands(get_org_settings(db), "letter")
+    bands = effective_bands(get_org_settings(db, TEST_ORGANIZATION_ID), "letter")
 
     assert [(str(f), s) for f, s in bands] == [
         ("90", "A"),
@@ -111,7 +140,7 @@ def test_letter_bands_match_what_the_calculator_already_applied(db: Session) -> 
     [(100, "A"), (90, "A"), (89.99, "B"), (80, "B"), (70, "C"), (60, "D"), (59.5, "F"), (0, "F")],
 )
 def test_score_to_symbol_letter_boundaries(db: Session, score: float, expected: str) -> None:
-    bands = effective_bands(get_org_settings(db), "letter")
+    bands = effective_bands(get_org_settings(db, TEST_ORGANIZATION_ID), "letter")
     assert score_to_symbol(score, "letter", bands) == expected
 
 
@@ -120,7 +149,7 @@ def test_score_to_symbol_letter_boundaries(db: Session, score: float, expected: 
     [(95, "5"), (90, "5"), (89, "4"), (75, "4"), (74, "3"), (70, "3"), (69, "2"), (0, "2")],
 )
 def test_score_to_symbol_five_point_boundaries(db: Session, score: float, expected: str) -> None:
-    bands = effective_bands(get_org_settings(db), "five_point")
+    bands = effective_bands(get_org_settings(db, TEST_ORGANIZATION_ID), "five_point")
     assert score_to_symbol(score, "five_point", bands) == expected
 
 
@@ -130,7 +159,7 @@ def test_schemes_without_bands_resolve_empty(db: Session) -> None:
     ``pass_fail`` is completion-native (D2): giving it bands would reintroduce
     the hidden average the design removed.
     """
-    settings = get_org_settings(db)
+    settings = get_org_settings(db, TEST_ORGANIZATION_ID)
 
     assert effective_bands(settings, "pass_fail") == []
     assert effective_bands(settings, "percent") == []
@@ -138,7 +167,7 @@ def test_schemes_without_bands_resolve_empty(db: Session) -> None:
 
 
 def test_malformed_admin_bands_fall_back_instead_of_raising(db: Session) -> None:
-    settings = get_org_settings(db)
+    settings = get_org_settings(db, TEST_ORGANIZATION_ID)
     settings.grade_bands = {"letter": [["not-a-number", "A"], [0, "F"]]}
     db.flush()
 
@@ -148,7 +177,7 @@ def test_malformed_admin_bands_fall_back_instead_of_raising(db: Session) -> None
 
 
 def test_empty_band_list_falls_back(db: Session) -> None:
-    settings = get_org_settings(db)
+    settings = get_org_settings(db, TEST_ORGANIZATION_ID)
     settings.grade_bands = {"five_point": []}
     db.flush()
 
@@ -158,7 +187,7 @@ def test_empty_band_list_falls_back(db: Session) -> None:
 def test_admin_edited_bands_are_honoured(db: Session) -> None:
     """«5 от 85» — as common in UA practice as «5 от 90». The whole reason
     bands are data and not constants."""
-    settings = get_org_settings(db)
+    settings = get_org_settings(db, TEST_ORGANIZATION_ID)
     settings.grade_bands = {"five_point": [[85, "5"], [70, "4"], [60, "3"], [0, "2"]]}
     db.flush()
 
@@ -170,7 +199,7 @@ def test_admin_edited_bands_are_honoured(db: Session) -> None:
 
 def test_symbol_floor_backs_override_pass_determination(db: Session) -> None:
     """An override stores «B», not a number — pass is decided by the band floor (D7)."""
-    bands = effective_bands(get_org_settings(db), "letter")
+    bands = effective_bands(get_org_settings(db, TEST_ORGANIZATION_ID), "letter")
 
     assert symbol_floor("B", bands) == Decimal("80")
     assert symbol_floor("F", bands) == Decimal("0")

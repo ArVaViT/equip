@@ -26,6 +26,7 @@ Teachers still get presets only — the anti-Moodle thesis holds at teacher
 level. It is the *institution* that configures.
 """
 
+import uuid
 from decimal import Decimal
 from typing import Literal
 
@@ -51,18 +52,25 @@ FIVE_POINT_FAIL_CODE = "2"
 FIVE_POINT_MAX_THRESHOLD = Decimal("75")
 
 
-def get_org_settings(db: Session) -> OrgSettings:
-    """Return the single settings row, creating it with shipped defaults.
+def get_org_settings(db: Session, organization_id: uuid.UUID) -> OrgSettings:
+    """Return an organization's settings row, creating it with shipped defaults.
 
-    The row is seeded by migration ``20260806140314``. The create-on-miss path
-    covers a fresh test database (conftest builds from models, not migrations)
-    and any environment that predates the seed, so callers never have to cope
-    with ``None``.
+    The organization is a required argument, and that is the whole point
+    of this signature. Until 2026-08-27 this read ``db.query(OrgSettings)
+    .first()`` — correct while one row existed by construction, and a
+    silent wrong answer the moment a second organization has settings of
+    its own. A grading scale belonging to whichever row the planner
+    happened to return first is the kind of defect that produces a
+    plausible transcript rather than an error.
+
+    The create-on-miss path covers a fresh test database (conftest builds
+    from models, not migrations) and any organization created before it
+    had settings, so callers never have to cope with ``None``.
     """
-    settings = db.query(OrgSettings).first()
+    settings = db.query(OrgSettings).filter(OrgSettings.organization_id == organization_id).first()
     if settings is None:
         settings = OrgSettings(
-            id=True,
+            organization_id=organization_id,
             default_grading_scheme="letter",
             default_pass_threshold=Decimal("70"),
             grade_bands=dict(DEFAULT_GRADE_BANDS),

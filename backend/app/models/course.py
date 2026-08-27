@@ -144,6 +144,7 @@ class Course(Base):
     # ``source_locale`` here is what the read resolver uses as the
     # display→source→any-locale fallback target so a student in EN
     # never sees a blank screen when only the RU row exists yet.
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"))
     source_locale: Mapped[str] = mapped_column(default="ru", server_default="ru")
 
     # When the translation sweep last verified this course has every

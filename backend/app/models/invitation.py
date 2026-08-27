@@ -39,6 +39,7 @@ class Invitation(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"))
     email: Mapped[str] = mapped_column()
     role: Mapped[str] = mapped_column()
     # ``unique=True`` already creates a B-tree index for token lookups.
