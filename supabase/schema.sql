@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict It5N7kHBzuiWhP4CGcADfCBamx7aZ41L734JaVKeWiwUCI4ltY3KxbwlyGyCXBX
+\restrict vXauCkCUoOUYFTwDdGJ1wdG19S7MF8Jvf8SMrr08zVHRCoOEDaRYfuPWVt1OFHe
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10 (Homebrew)
@@ -784,7 +784,7 @@ CREATE TABLE public.profiles (
     calendar_ical_min_iat bigint,
     deactivated_at timestamp with time zone,
     locale_source text DEFAULT 'default'::text NOT NULL,
-    CONSTRAINT chk_profiles_role CHECK ((role = ANY (ARRAY['admin'::text, 'teacher'::text, 'student'::text]))),
+    CONSTRAINT chk_profiles_role CHECK ((role = ANY (ARRAY['admin'::text, 'director'::text, 'teacher'::text, 'student'::text]))),
     CONSTRAINT profiles_locale_source_check CHECK ((locale_source = ANY (ARRAY['default'::text, 'detected'::text, 'chosen'::text]))),
     CONSTRAINT profiles_preferred_locale_check CHECK (((preferred_locale)::text = ANY (ARRAY['ru'::text, 'en'::text, 'de'::text, 'uk'::text])))
 )
@@ -3537,5 +3537,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict It5N7kHBzuiWhP4CGcADfCBamx7aZ41L734JaVKeWiwUCI4ltY3KxbwlyGyCXBX
+\unrestrict vXauCkCUoOUYFTwDdGJ1wdG19S7MF8Jvf8SMrr08zVHRCoOEDaRYfuPWVt1OFHe
 
