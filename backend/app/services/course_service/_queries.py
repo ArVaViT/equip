@@ -64,12 +64,30 @@ def get_courses(
     skip: int = 0,
     limit: int = 100,
     search: str | None = None,
+    organization_id: UUID | None = None,
 ) -> list[Course]:
+    """The public catalogue, or one organization's own list.
+
+    Without ``organization_id`` this is the catalogue a stranger sees:
+    every published course marked ``public``, whichever organization made
+    it. That is the decided shape — a public course is public, and the
+    catalogue naming the organization behind it is what makes the name
+    worth having.
+
+    ``institute`` courses are an organization's own and were in this list
+    until 2026-08-27, visible to anyone who opened the home page. Passing
+    an organization returns that organization's published courses
+    instead, both kinds, for the people who belong to it.
+    """
     query = (
         db.query(Course)
         .options(*_COURSE_LIST_TREE)
         .filter(Course.status == CourseStatus.PUBLISHED, Course.deleted_at.is_(None))
     )
+    if organization_id is None:
+        query = query.filter(Course.access_mode == "public")
+    else:
+        query = query.filter(Course.organization_id == organization_id)
     if search:
         # Catalog search runs ILIKE against ``content_versions`` text rows
         # for course title + description (any locale matches → the course

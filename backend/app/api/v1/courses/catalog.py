@@ -3,7 +3,7 @@
 from fastapi import Depends, Header, Query, Response
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_optional_user, is_owner_or_admin, require_teacher
+from app.api.dependencies import get_current_user, get_optional_user, is_owner_or_admin, require_teacher
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.course import Course, CourseStatus
@@ -46,6 +46,43 @@ def list_courses(
     response.headers["Vary"] = "Accept-Language"
     display_locale: LocaleCode = normalize_locale(accept_language)
     courses = get_courses(db, skip=skip, limit=limit, search=search)
+    if not courses:
+        return []
+    return build_localized_course_summaries(db, courses, display_locale)
+
+
+@router.get("/my-organization", response_model=list[CourseSummary])
+def list_my_organization_courses(
+    response: Response,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=200),
+    search: str | None = Query(None, min_length=1, max_length=200),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[CourseSummary]:
+    """Everything published inside the caller's own organization.
+
+    A separate route rather than widening ``GET /courses``. That one is
+    public and cached at the edge; making its answer depend on whether a
+    token was sent would make the cache a liability — one reader's
+    organization served to the next.
+
+    Platform staff belong to no organization and get an empty list here,
+    not an error: there is nothing wrong with the request, there is
+    simply no "my organization" for them.
+    """
+    response.headers["Vary"] = "Accept-Language"
+    if current_user.organization_id is None:
+        return []
+    display_locale: LocaleCode = normalize_locale(accept_language)
+    courses = get_courses(
+        db,
+        skip=skip,
+        limit=limit,
+        search=search,
+        organization_id=current_user.organization_id,
+    )
     if not courses:
         return []
     return build_localized_course_summaries(db, courses, display_locale)
@@ -98,6 +135,30 @@ def get_course_detail(
             context={"resource_type": "course", "resource_id": course_id},
         )
     if course.status != CourseStatus.PUBLISHED and not is_owner_or_admin(course, current_user):
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=404,
+            message=f"Course '{course_id}' not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
+    # An ``institute`` course belongs to its organization and to nobody
+    # else. Until 2026-08-27 anyone with the id could read the whole tree
+    # of one, because there were no organizations to belong to.
+    #
+    # 404 rather than 403, deliberately. A 403 answers the question the
+    # request was really asking — does this course exist — and a course id
+    # is guessable enough to be worth not confirming. The owner and
+    # platform staff still see it, and they are the only two who should
+    # be able to tell the difference between "not yours" and "not there".
+    if (
+        course.access_mode == "institute"
+        and not is_owner_or_admin(course, current_user)
+        and not (
+            current_user is not None
+            and current_user.organization_id is not None
+            and current_user.organization_id == course.organization_id
+        )
+    ):
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
             status_code=404,
