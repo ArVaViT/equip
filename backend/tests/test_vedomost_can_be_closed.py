@@ -689,6 +689,29 @@ def test_the_document_records_the_language_it_was_closed_in(admin_client, db: Se
     assert sheet["course_title"] is not None, "the title is frozen too — courses get retitled"
 
 
+def test_an_organization_heads_its_own_document_without_being_configured(client, db, teacher) -> None:
+    """A ведомость carries the organization's name because it has one.
+
+    Until 2026-08-27 the heading came only from ``org_settings``, which
+    nothing filled in — so every ведомость printed unheaded until
+    somebody ran an UPDATE against production. An organization always
+    has a ``public_name``: it is NOT NULL, unique, and the thing a
+    certificate prints. The settings columns remain as an override for
+    an organization whose legal heading differs from the name it is
+    known by.
+    """
+    from app.models.organization import Organization
+    from app.services.grade_sheet_service import _letterhead
+
+    course, _quiz = _course(db, teacher, "c-sheet-unconfigured")
+    organization = db.query(Organization).filter(Organization.id == TEST_ORGANIZATION_ID).one()
+    db.commit()
+
+    letterhead = _letterhead(db, course, None)
+
+    assert letterhead["school_name"] == organization.public_name
+
+
 def test_the_letterhead_is_frozen_with_the_rest(admin_client, db: Session, teacher, student) -> None:
     """A school renames itself; a filed document does not.
 

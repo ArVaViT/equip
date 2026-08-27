@@ -367,7 +367,12 @@ def _snapshot_letterhead(db: Session, cert: Certificate, course: Course | None) 
     organization_id = cert.organization_id or (course.organization_id if course is not None else None)
     if organization_id is not None:
         settings = get_org_settings(db, organization_id)
-        cert.school_name = settings.school_name_en or settings.school_name_ru
+        from app.models.organization import Organization as _Organization
+
+        organization = db.query(_Organization).filter(_Organization.id == organization_id).first()
+        cert.school_name = (
+            settings.school_name_en or settings.school_name_ru or (organization.public_name if organization else None)
+        )
         cert.school_city = settings.city
 
     student = db.query(_User).filter(_User.id == cert.user_id).first()
