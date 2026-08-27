@@ -1189,6 +1189,33 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/courses/my-organization",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "search",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/courses/my/trash",
     "params": [
       [
