@@ -29,7 +29,13 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_live_course_or_404, get_optional_user, is_owner_or_admin, require_director
+from app.api.dependencies import (
+    get_live_course_or_404,
+    get_optional_user,
+    is_owner_or_admin,
+    organization_of,
+    require_director,
+)
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.cohort import Cohort, CohortCourse, CohortStatus
@@ -227,6 +233,7 @@ def create_cohort(
     separate junction endpoints — keeps each step independently
     auditable."""
     cohort = Cohort(
+        organization_id=organization_of(director),
         start_date=data.start_date,
         end_date=data.end_date,
         enrollment_start=data.enrollment_start,

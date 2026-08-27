@@ -43,6 +43,7 @@ from app.schemas.course import (
 from app.services.course_service._chapters import create_chapter, update_chapter
 from app.services.course_service._courses import create_course
 from app.services.course_service._modules import create_module
+from tests.conftest import TEST_ORGANIZATION_ID
 
 
 @pytest.fixture
@@ -93,6 +94,7 @@ def _make_ru_course(db: Session, teacher: User):
         CourseCreate(title="Учебник", description="Курс."),
         user_id=teacher.id,
         source_locale="ru",
+        organization_id=TEST_ORGANIZATION_ID,
     )
 
 

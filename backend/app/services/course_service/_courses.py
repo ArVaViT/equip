@@ -61,9 +61,15 @@ def create_course(
     data: CourseCreate,
     user_id: str | UUID,
     *,
+    organization_id: UUID,
     source_locale: str | None = None,
 ) -> Course:
-    """Create a new course owned by ``user_id``.
+    """Create a new course owned by ``user_id``, inside ``organization_id``.
+
+    The organization is a required keyword argument rather than something
+    read from the author here: a course belongs to an organization, the
+    route knows which one the caller is in, and a function that guesses
+    would be the only place in the tree entitled to be wrong about it.
 
     ``source_locale`` is the caller-supplied UI-locale fallback (the
     route layer passes ``teacher.preferred_locale``); this function
@@ -81,6 +87,7 @@ def create_course(
         id=str(uuid.uuid4()),
         image_url=data.image_url,
         created_by=user_id,
+        organization_id=organization_id,
     )
     if resolved_locale is not None:
         course.source_locale = resolved_locale

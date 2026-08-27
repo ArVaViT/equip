@@ -248,6 +248,7 @@ def finalize_sheet(db: Session, course: Course, cohort_id: UUID | None, closed_b
     bands = effective_bands(settings, scheme)
 
     sheet = GradeSheet(
+        organization_id=course.organization_id,
         course_id=course.id,
         cohort_id=cohort_id,
         grading_scheme=scheme,

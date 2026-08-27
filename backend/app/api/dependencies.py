@@ -105,6 +105,25 @@ def require_admin(
     return current_user
 
 
+def organization_of(user: User) -> UUID:
+    """The organization this person acts inside, or a 403.
+
+    Platform staff have no organization of their own, and most of what
+    this platform does happens inside one: a course, a cohort, an
+    invitation all belong somewhere. Staff who need to act on a specific
+    organization say which one; there is no "the" organization to fall
+    back on, and inventing one is how a row ends up filed under whichever
+    organization came back first.
+    """
+    if user.organization_id is None:
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="This action happens inside an organization, and this account is not in one",
+        )
+    return user.organization_id
+
+
 def require_director(
     current_user: User = Depends(get_current_user),
 ) -> User:

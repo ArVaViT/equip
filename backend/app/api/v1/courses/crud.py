@@ -5,7 +5,7 @@ import logging
 from fastapi import Depends, Request, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import assert_course_owner, require_teacher
+from app.api.dependencies import assert_course_owner, organization_of, require_teacher
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
@@ -72,7 +72,13 @@ def create_new_course(
     # works in EN gets RU translations for their RU students; vice versa
     # for an RU-authoring teacher). ``preferred_locale`` is itself
     # CHECK-constrained to the supported locale set.
-    course = create_course(db, data, teacher.id, source_locale=teacher.preferred_locale)
+    course = create_course(
+        db,
+        data,
+        teacher.id,
+        organization_id=organization_of(teacher),
+        source_locale=teacher.preferred_locale,
+    )
     log_action(db, teacher.id, "create", "course", course.id, request=request)
     return course
 

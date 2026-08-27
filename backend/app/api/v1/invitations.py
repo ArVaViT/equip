@@ -3,7 +3,7 @@ from typing import cast
 from fastapi import APIRouter, Depends, Path, Query, Request
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, require_director
+from app.api.dependencies import get_current_user, organization_of, require_director
 from app.core.database import get_db
 from app.models.invitation import Invitation
 from app.models.user import User
@@ -56,7 +56,12 @@ def create_invitation(
     ``create_or_resend_invitation`` for the dedupe/resend contract.
     """
     invitation, _is_new = create_or_resend_invitation(
-        db, email=body.email, role=body.role, invited_by=director.id, request=request
+        db,
+        email=body.email,
+        role=body.role,
+        invited_by=director.id,
+        organization_id=organization_of(director),
+        request=request,
     )
     return _to_response(invitation)
 

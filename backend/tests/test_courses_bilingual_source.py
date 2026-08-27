@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session
 from app.models.user import User, UserRole
 from app.schemas.course import CourseCreate, CourseUpdate
 from app.services.course_service._courses import create_course, update_course
-from tests.conftest import test_engine  # type: ignore[attr-defined]
+from tests.conftest import TEST_ORGANIZATION_ID, test_engine  # type: ignore[attr-defined]
 
 
 @pytest.fixture
@@ -66,6 +66,7 @@ def _create(
         CourseCreate(title=title, description=description),
         user_id=teacher.id,
         source_locale=teacher.preferred_locale,
+        organization_id=TEST_ORGANIZATION_ID,
     )
 
 
