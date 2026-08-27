@@ -12,7 +12,6 @@ Every getter that returns courses (or modules) hydrates their
 
 from __future__ import annotations
 
-import uuid
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
@@ -65,7 +64,7 @@ def get_courses(
     skip: int = 0,
     limit: int = 100,
     search: str | None = None,
-    organization_id: uuid.UUID | None = None,
+    organization_id: UUID | None = None,
 ) -> list[Course]:
     """The public catalogue, or one organization's own list.
 
