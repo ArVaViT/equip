@@ -22,6 +22,7 @@ from app.models.content_version import ContentVersion
 from app.models.user import User, UserRole
 from app.schemas.course import CourseCreate, CourseUpdate
 from app.services.course_service._courses import create_course, update_course
+from tests.conftest import TEST_ORGANIZATION_ID
 
 # These tests count rows and provider calls, so the size of the
 # supported set is one of their inputs. They describe the "ru" + "en"
@@ -73,6 +74,7 @@ class TestCreateCourseDualWrite:
             CourseCreate(title="Bible Study 101", description="Intro to scripture."),
             user_id=teacher.id,
             source_locale="en",
+            organization_id=TEST_ORGANIZATION_ID,
         )
         rows = _active_rows(db, course.id)
         by_field = {r.field: r for r in rows}
@@ -91,6 +93,7 @@ class TestCreateCourseDualWrite:
             CourseCreate(title="Bible Study 101", description="Введение в Писание."),
             user_id=teacher.id,
             source_locale="en",
+            organization_id=TEST_ORGANIZATION_ID,
         )
         rows = {r.field: r for r in _active_rows(db, course.id)}
         assert rows["title"].locale == "en"
@@ -102,6 +105,7 @@ class TestCreateCourseDualWrite:
             CourseCreate(title="Bible Study 101", description=None),
             user_id=teacher.id,
             source_locale="en",
+            organization_id=TEST_ORGANIZATION_ID,
         )
         rows = _active_rows(db, course.id)
         assert [r.field for r in rows] == ["title"]
@@ -114,6 +118,7 @@ class TestCreateCourseDualWrite:
             CourseCreate(title="123", description=None),
             user_id=teacher.id,
             source_locale="ru",
+            organization_id=TEST_ORGANIZATION_ID,
         )
         rows = _active_rows(db, course.id)
         assert len(rows) == 1
@@ -127,6 +132,7 @@ class TestUpdateCourseDualWrite:
             CourseCreate(title="Старый заголовок", description="Описание."),
             user_id=teacher.id,
             source_locale="ru",
+            organization_id=TEST_ORGANIZATION_ID,
         )
         original_title_row = next(r for r in _active_rows(db, course.id) if r.field == "title")
         update_course(db, course, CourseUpdate(title="Новый заголовок"))
@@ -155,6 +161,7 @@ class TestUpdateCourseDualWrite:
             CourseCreate(title="Стабильный", description="Текст."),
             user_id=teacher.id,
             source_locale="ru",
+            organization_id=TEST_ORGANIZATION_ID,
         )
         original_title_id = next(r.id for r in _active_rows(db, course.id) if r.field == "title")
         # PATCH with identical title text → no supersession.
@@ -168,6 +175,7 @@ class TestUpdateCourseDualWrite:
             CourseCreate(title="Курс", description="Описание."),
             user_id=teacher.id,
             source_locale="ru",
+            organization_id=TEST_ORGANIZATION_ID,
         )
         ids_before = {r.id for r in _active_rows(db, course.id)}
         # PATCH that touches only image_url — content_versions stays untouched.

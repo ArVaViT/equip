@@ -65,6 +65,7 @@ def create_or_resend_invitation(
     email: str,
     role: str,
     invited_by: UUID,
+    organization_id: UUID,
     request: Request | None = None,
 ) -> tuple[Invitation, bool]:
     """Create a new invitation, or resend the existing pending one.
@@ -103,6 +104,7 @@ def create_or_resend_invitation(
         existing.status = InvitationStatus.REVOKED.value
 
     invitation = Invitation(
+        organization_id=organization_id,
         email=normalized_email,
         role=role,
         token=_generate_token(),
