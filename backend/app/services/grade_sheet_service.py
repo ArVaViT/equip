@@ -26,6 +26,7 @@ from app.models.cohort import Cohort
 from app.models.content_version import ContentVersion
 from app.models.enrollment import Enrollment
 from app.models.grade_sheet import GradeSheet, GradeSheetRow
+from app.models.organization import Organization
 from app.models.user import User
 from app.services.grade_calculator import calculate_all_student_grades
 from app.services.grade_override import override_for_cohort
@@ -184,14 +185,23 @@ def _letterhead(db: Session, course: Course, cohort_id: UUID | None) -> dict[str
     every document already in the cabinet.
     """
     settings = get_org_settings(db, course.organization_id)
+    organization = db.query(Organization).filter(Organization.id == course.organization_id).first()
     teacher = db.query(User).filter(User.id == course.created_by).first() if course.created_by else None
     cohort = db.query(Cohort).filter(Cohort.id == cohort_id).first() if cohort_id else None
     return {
-        # The school's name in the document's own language, falling back to the
-        # other rather than leaving a signed page unheaded.
+        # The organization's own name, which it always has — `public_name`
+        # is NOT NULL and unique, and it is what a certificate prints.
+        #
+        # The two ``school_name_*`` columns stay as an override, for the
+        # organization whose legal heading differs from the name it is
+        # known by. They used to be the only source, which is why the
+        # walkthrough reported an unheaded ведомость for three days: an
+        # organization had no way to be called anything until somebody
+        # ran an UPDATE against production.
         "school_name": (settings.school_name_en if SHEET_LOCALE == "en" else settings.school_name_ru)
         or settings.school_name_ru
-        or settings.school_name_en,
+        or settings.school_name_en
+        or (organization.public_name if organization else None),
         "school_city": settings.city,
         "teacher_name": (teacher.full_name or teacher.email) if teacher else None,
         "academic_hours": course.academic_hours,
