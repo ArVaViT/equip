@@ -2707,6 +2707,36 @@
     "body": false
   },
   {
+    "method": "PATCH",
+    "path": "/api/v1/quizzes/options/{option_id}",
+    "params": [
+      [
+        "option_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/quizzes/questions/{question_id}",
+    "params": [
+      [
+        "question_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
     "method": "DELETE",
     "path": "/api/v1/quizzes/{quiz_id}",
     "params": [

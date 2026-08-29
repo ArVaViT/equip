@@ -113,6 +113,14 @@ class ErrorCode(enum.StrEnum):
     QUIZ_ATTEMPTS_EXHAUSTED = "quiz.attempts_exhausted"
     """Student has hit the per-quiz attempt cap."""
 
+    QUIZ_QUESTION_ALREADY_ANSWERED = "quiz.question_already_answered"
+    """The edit would change what an already-graded answer means. Wording,
+    points and ordering can always be corrected; changing a question's
+    *type* cannot, once somebody has answered it — an essay already
+    written does not become a multiple choice, and the stored answer
+    would sit under a question it no longer fits. Create a new question
+    instead."""
+
     # ── Daily Challenge ─────────────────────────────────────────────────
     DAILY_CHALLENGE_NOT_SCHEDULED = "daily_challenge.not_scheduled"
     """No question is scheduled for the requested UTC date — usually
