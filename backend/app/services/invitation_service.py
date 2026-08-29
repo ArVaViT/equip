@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import secrets
+import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -136,12 +137,23 @@ def create_or_resend_invitation(
 def list_invitations(
     db: Session,
     *,
+    organization_id: uuid.UUID | None = None,
     skip: int = 0,
     limit: int = 50,
     role: str | None = None,
     status_filter: str | None = None,
 ) -> list[Invitation]:
+    """Pending and spent invitations, newest first.
+
+    ``organization_id`` scopes the list to one organization and is what
+    a director gets: an invitation carries the email address of a person
+    who has not joined yet, and that is the neighbouring organization's
+    recruiting, not theirs. ``None`` means platform staff, who
+    administer every organization by definition.
+    """
     query = db.query(Invitation)
+    if organization_id is not None:
+        query = query.filter(Invitation.organization_id == organization_id)
     if role is not None:
         query = query.filter(Invitation.role == role)
     if status_filter is not None:

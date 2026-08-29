@@ -42,7 +42,7 @@ from app.models.cohort import Cohort, CohortCourse, CohortStatus
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.course import Course, CourseStatus
 from app.models.enrollment import Enrollment
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.cohort import (
     CohortCourseAttach,
     CohortCreate,
@@ -179,8 +179,32 @@ def _serialize(db: Session, cohort: Cohort) -> CohortResponse:
     return _serialize_many(db, [cohort])[0]
 
 
-def _get_or_404(db: Session, cohort_id: UUID) -> Cohort:
-    cohort = db.query(Cohort).filter(Cohort.id == cohort_id).first()
+def _visible_to(q, viewer: User):
+    """Narrow a cohort query to what this caller may see.
+
+    A director sees their own organization and nothing else. Platform
+    staff see every organization — that is what the role is for, and it
+    is checked by role rather than by ``organization_id`` because an
+    admin may also *belong* somewhere: the role says what you may do,
+    the column says where you sit.
+
+    ``require_director`` said this check "arrives with the
+    ``organization_id`` columns". The columns arrived; this is where the
+    check landed, because the dependency never sees the object.
+    """
+    if viewer.role == UserRole.ADMIN.value:
+        return q
+    return q.filter(Cohort.organization_id == organization_of(viewer))
+
+
+def _get_or_404(db: Session, cohort_id: UUID, viewer: User) -> Cohort:
+    """The cohort, or 404 — including when it belongs to somebody else.
+
+    404 and not 403: 403 answers the question the request was asking,
+    which is whether this cohort exists. A director probing ids should
+    learn nothing about the organization next door.
+    """
+    cohort = _visible_to(db.query(Cohort), viewer).filter(Cohort.id == cohort_id).first()
     if not cohort:
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
@@ -215,7 +239,7 @@ def list_cohorts(
 ) -> list[CohortResponse]:
     """Admin-wide cohort list. Optional ``status`` filter
     (``upcoming|active|completed``)."""
-    q = db.query(Cohort)
+    q = _visible_to(db.query(Cohort), director)
     if status_filter:
         q = q.filter(Cohort.status == status_filter)
     cohorts = q.order_by(Cohort.start_date.desc()).offset(skip).limit(limit).all()
@@ -264,7 +288,7 @@ def get_cohort(
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
-    cohort = _get_or_404(db, cohort_id)
+    cohort = _get_or_404(db, cohort_id, director)
     return _serialize(db, cohort)
 
 
@@ -276,7 +300,7 @@ def update_cohort(
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
-    cohort = _get_or_404(db, cohort_id)
+    cohort = _get_or_404(db, cohort_id, director)
     # Cohort lifecycle is forward-only: ``upcoming → active → completed``.
     # A completed cohort represents historical state — its grades and
     # certificates are frozen — so reverting status would silently make
@@ -342,7 +366,7 @@ def delete_cohort(
     course attachments; the enrollment rows survive with their
     ``cohort_id`` set to NULL (``ON DELETE SET NULL`` on the FK) — that
     way historical grade data is preserved as orphaned solo enrollments."""
-    cohort = _get_or_404(db, cohort_id)
+    cohort = _get_or_404(db, cohort_id, director)
     # Name lives in cv. Snapshot it for the audit row before
     # the cv rows themselves go away (no cascade — they orphan harmlessly).
     cohort_name = _fetch_cohort_names(db, [cohort_id]).get(str(cohort_id), "")
@@ -366,7 +390,7 @@ def complete_cohort(
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
-    cohort = _get_or_404(db, cohort_id)
+    cohort = _get_or_404(db, cohort_id, director)
     if cohort.status == CohortStatus.COMPLETED:
         raise equip_error(
             ErrorCode.VALIDATION_FAILED,
@@ -398,7 +422,7 @@ def list_cohort_courses(
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> list[str]:
-    _get_or_404(db, cohort_id)
+    _get_or_404(db, cohort_id, director)
     return _course_ids_for_cohort(db, cohort_id)
 
 
@@ -417,7 +441,7 @@ def attach_course(
     """Attach a course to the cohort. Any students already in the cohort
     are auto-enrolled in this course (one enrollment row per student,
     all sharing the same ``cohort_id``)."""
-    cohort = _get_or_404(db, cohort_id)
+    cohort = _get_or_404(db, cohort_id, director)
     course = _course_or_404(db, body.course_id)
 
     # Already attached? Idempotent.
@@ -524,7 +548,7 @@ def detach_course(
     """Detach a course from the cohort. Enrollment rows for cohort
     students in this course are NOT deleted — their ``cohort_id`` is
     set to NULL so grades survive as orphaned solo enrollments."""
-    cohort = _get_or_404(db, cohort_id)
+    cohort = _get_or_404(db, cohort_id, director)
     link = (
         db.query(CohortCourse).filter(CohortCourse.cohort_id == cohort.id, CohortCourse.course_id == course_id).first()
     )
@@ -576,7 +600,7 @@ def list_cohort_students(
     response. The default page returns 100 students; clients that need
     more can request via ``?limit=500``.
     """
-    cohort = _get_or_404(db, cohort_id)
+    cohort = _get_or_404(db, cohort_id, director)
     # Paginate user_ids first so the row-fetch never crosses page
     # boundaries (a single student's enrollments stay together).
     # Deactivated (soft-deleted) students keep their enrollment rows but
@@ -776,7 +800,7 @@ def remove_student(
 ) -> None:
     """Remove a student from the cohort. Enrollment rows survive with
     ``cohort_id`` nulled so grades stay accessible."""
-    cohort = _get_or_404(db, cohort_id)
+    cohort = _get_or_404(db, cohort_id, director)
     db.query(Enrollment).filter(Enrollment.cohort_id == cohort.id, Enrollment.user_id == user_id).update(
         {Enrollment.cohort_id: None}, synchronize_session=False
     )
