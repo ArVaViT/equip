@@ -182,6 +182,17 @@ class CourseSummary(_ReadTitle):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    #: Who is teaching this. The plain answer to the question a reader
+    #: asks before enrolling, and the thing that makes ``public_name``
+    #: worth defending — a name nobody sees is not a name anyone can
+    #: misuse or protect.
+    #:
+    #: Optional in the shape though ``courses.organization_id`` is NOT
+    #: NULL: the resolver leaves it unset rather than inventing a name
+    #: if the organization row is somehow not there, and a card with a
+    #: missing school is better than a card with a borrowed one.
+    organization_name: str | None = None
+    organization_slug: str | None = None
     status: str = "draft"
     access_mode: Literal["public", "institute"] = "public"
     created_by: UUID | None = None
