@@ -27,6 +27,7 @@ from app.models.chapter_block import ChapterBlock  # noqa: TC001
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.course import Chapter, Course, Module
 from app.models.course_event import CourseEvent  # noqa: TC001
+from app.models.organization import Organization
 from app.models.quiz import Quiz  # noqa: TC001
 from app.models.user import User, UserRole
 from app.schemas.announcement import AnnouncementResponse
@@ -130,6 +131,34 @@ def fetch_course_titles_by_id(
     return out
 
 
+def _organizations_of(db: Session, courses: list[Course]) -> dict[str, tuple[str, str]]:
+    """``{course_id: (public_name, slug)}`` for every course that has an
+    organization.
+
+    One query for the page. The catalogue names the organization behind
+    every public course — next to the title, before enrolling — because
+    "who is teaching me" is the first thing a reader asks and because a
+    name nobody sees is not a name anyone can misuse or protect.
+
+    Not localized, and deliberately: an organization's public name is
+    what its certificates print, and printing one thing on a document
+    while showing another in the catalogue is how a name stops meaning
+    anything.
+    """
+    org_ids = {c.organization_id for c in courses if c.organization_id is not None}
+    if not org_ids:
+        return {}
+    names = {
+        org_id: (public_name, slug)
+        for org_id, public_name, slug in db.query(Organization.id, Organization.public_name, Organization.slug).filter(
+            Organization.id.in_(org_ids)
+        )
+    }
+    return {
+        c.id: names[c.organization_id] for c in courses if c.organization_id is not None and c.organization_id in names
+    }
+
+
 def build_localized_course_summaries(
     db: Session,
     courses: list[Course],
@@ -178,6 +207,8 @@ def build_localized_course_summaries(
             tree_specs.extend(("chapter", str(chapter.id), "title") for chapter in module.chapters)
     tree_texts = fetch_overlay_triples_bulk(db, tree_specs, display_locale) if tree_specs else {}
 
+    organizations = _organizations_of(db, courses)
+
     out: list[CourseSummary] = []
     for c in courses:
         # Set runtime attrs so ``model_validate(course, from_attributes=True)``
@@ -185,6 +216,11 @@ def build_localized_course_summaries(
         c.title = texts.get((c.id, "title")) or ""
         c.description = texts.get((c.id, "description"))
         summary = CourseSummary.model_validate(c, from_attributes=True)
+        organization = organizations.get(c.id)
+        if organization is not None:
+            summary = summary.model_copy(
+                update={"organization_name": organization[0], "organization_slug": organization[1]}
+            )
         summary = summary.model_copy(
             update={
                 "modules": [

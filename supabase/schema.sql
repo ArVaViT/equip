@@ -45,6 +45,25 @@ $$;
 -- Name: custom_access_token_hook(jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
+CREATE FUNCTION public.current_organization_id() RETURNS uuid
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+    SELECT organization_id FROM public.profiles WHERE id = (SELECT auth.uid());
+$$;
+
+
+CREATE FUNCTION public.is_platform_staff() RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE id = (SELECT auth.uid()) AND role = 'admin'
+    );
+$$;
+
+
 CREATE FUNCTION public.custom_access_token_hook(event jsonb) RETURNS jsonb
     LANGUAGE plpgsql STABLE
     SET search_path TO 'pg_catalog', 'public'
@@ -3243,9 +3262,9 @@ ALTER TABLE public.certificates ENABLE ROW LEVEL SECURITY;
 -- Name: certificates certificates_select_own_or_teacher; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY certificates_select_own_or_teacher ON public.certificates FOR SELECT TO authenticated USING (((user_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1
+CREATE POLICY certificates_select_own_or_reviewer ON public.certificates FOR SELECT TO authenticated USING (((user_id = ( SELECT auth.uid() AS uid)) OR public.is_platform_staff() OR ((public.current_organization_id() IS NOT NULL) AND (organization_id = public.current_organization_id()) AND (EXISTS ( SELECT 1
    FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text])))))));
+  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'director'::text, 'admin'::text]))))))));
 
 
 --
@@ -3305,7 +3324,7 @@ ALTER TABLE public.cohorts ENABLE ROW LEVEL SECURITY;
 -- Name: cohorts cohorts_select_all; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY cohorts_select_all ON public.cohorts FOR SELECT TO authenticated USING (true);
+CREATE POLICY cohorts_select_own_organization ON public.cohorts FOR SELECT TO authenticated USING ((public.is_platform_staff() OR ((public.current_organization_id() IS NOT NULL) AND (organization_id = public.current_organization_id()))));
 
 
 --
@@ -3360,9 +3379,7 @@ ALTER TABLE public.courses ENABLE ROW LEVEL SECURITY;
 -- Name: courses courses_select_published; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY courses_select_published ON public.courses FOR SELECT TO authenticated USING (((status = 'published'::text) OR (created_by = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = 'admin'::text))))));
+CREATE POLICY courses_select_published ON public.courses FOR SELECT TO authenticated USING (((created_by = ( SELECT auth.uid() AS uid)) OR public.is_platform_staff() OR ((status = 'published'::text) AND ((access_mode = 'public'::text) OR ((public.current_organization_id() IS NOT NULL) AND (organization_id = public.current_organization_id()))))));
 
 
 --
