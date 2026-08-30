@@ -180,6 +180,80 @@
     "body": true
   },
   {
+    "method": "GET",
+    "path": "/api/v1/admin/organizations",
+    "params": [
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/organizations",
+    "params": [],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/organizations/{organization_id}",
+    "params": [
+      [
+        "organization_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/admin/organizations/{organization_id}",
+    "params": [
+      [
+        "organization_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/organizations/{organization_id}/director",
+    "params": [
+      [
+        "organization_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
     "method": "POST",
     "path": "/api/v1/admin/translations/accept-reviewed",
     "params": [],
@@ -2494,6 +2568,29 @@
     "params": [
       [
         "notification_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/organizations/{slug}",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "slug",
         "path"
       ]
     ],
