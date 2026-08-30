@@ -57,12 +57,17 @@ def _serialize_many(db: Session, organizations: list[Organization]) -> list[Orga
         return []
     ids = [o.id for o in organizations]
 
-    counts: dict[uuid.UUID, int] = dict(
-        db.query(User.organization_id, func.count(User.id))
+    # ``organization_id`` is nullable on ``profiles`` — platform staff
+    # belong nowhere — so the rows come back as ``UUID | None`` and the
+    # None bucket is dropped rather than counted under some organization.
+    counts: dict[uuid.UUID, int] = {
+        org_id: count
+        for org_id, count in db.query(User.organization_id, func.count(User.id))
         .filter(User.organization_id.in_(ids), User.deactivated_at.is_(None))
         .group_by(User.organization_id)
         .all()
-    )
+        if org_id is not None
+    }
     directors: dict[uuid.UUID, list[str]] = {}
     for org_id, email in (
         db.query(User.organization_id, User.email)
