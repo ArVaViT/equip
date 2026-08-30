@@ -17,9 +17,13 @@ export default function Register() {
     success,
     loading,
     googleLoading,
+    showPassword,
+    passwordGenerated,
     handleChange,
     handleSubmit,
     handleGoogleSignUp,
+    toggleShowPassword,
+    handleGeneratePassword,
   } = useRegister()
 
   if (duplicateEmail) {
@@ -37,9 +41,13 @@ export default function Register() {
       serverError={serverError}
       loading={loading}
       googleLoading={googleLoading}
+      showPassword={showPassword}
+      passwordGenerated={passwordGenerated}
       onChange={handleChange}
       onSubmit={handleSubmit}
       onGoogleSignUp={handleGoogleSignUp}
+      onToggleShowPassword={toggleShowPassword}
+      onGeneratePassword={handleGeneratePassword}
     />
   )
 }

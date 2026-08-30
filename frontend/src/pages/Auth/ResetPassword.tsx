@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { authService } from "@/services/auth"
 import AuthLayout from "@/components/layout/AuthLayout"
 import { z } from "zod"
+import { PASSWORD_MIN_LENGTH } from "@/lib/passwordPolicy"
 import { Loader2, CheckCircle2 } from "lucide-react"
 import i18n from "@/i18n/config"
 import { authErrorMessage } from "@/lib/authError"
@@ -21,7 +22,10 @@ function makeResetSchema() {
     .object({
       password: z
         .string()
-        .min(6, i18n.t("auth.resetPassword.errors.passwordTooShort")),
+        .min(
+          PASSWORD_MIN_LENGTH,
+          i18n.t("auth.resetPassword.errors.passwordTooShort", { count: PASSWORD_MIN_LENGTH }),
+        ),
       confirmPassword: z.string(),
     })
     .refine((data) => data.password === data.confirmPassword, {

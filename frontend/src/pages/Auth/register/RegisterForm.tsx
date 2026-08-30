@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import { Loader2 } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import AuthLayout from "@/components/layout/AuthLayout"
+import { PasswordRequirements } from "@/components/auth/PasswordRequirements"
 import { GoogleIcon } from "./GoogleIcon"
 import type { FormState } from "./useRegister"
 
@@ -14,9 +15,13 @@ interface Props {
   serverError: string
   loading: boolean
   googleLoading: boolean
+  showPassword: boolean
+  passwordGenerated: boolean
   onChange: (field: keyof FormState, value: string) => void
   onSubmit: () => void
   onGoogleSignUp: () => void
+  onToggleShowPassword: () => void
+  onGeneratePassword: () => void
 }
 
 /**
@@ -32,9 +37,13 @@ export function RegisterForm({
   serverError,
   loading,
   googleLoading,
+  showPassword,
+  passwordGenerated,
   onChange,
   onSubmit,
   onGoogleSignUp,
+  onToggleShowPassword,
+  onGeneratePassword,
 }: Props) {
   const { t } = useTranslation()
   return (
@@ -139,53 +148,103 @@ export function RegisterForm({
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="password">{t("auth.password")}</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="new-password"
-                fieldSize="lg"
-                value={form.password}
-                onChange={(e) => onChange("password", e.target.value)}
-                aria-invalid={!!errors.password}
-                aria-describedby={errors.password ? "reg-password-error" : undefined}
-              />
-              {errors.password && (
-                <p
-                  id="reg-password-error"
-                  role="alert"
-                  className="text-xs text-destructive mt-1"
-                >
-                  {errors.password}
-                </p>
-              )}
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="password">{t("auth.password")}</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    fieldSize="lg"
+                    className="pr-10"
+                    value={form.password}
+                    onChange={(e) => onChange("password", e.target.value)}
+                    aria-invalid={!!errors.password}
+                    aria-describedby={
+                      errors.password
+                        ? "reg-password-error password-requirements"
+                        : "password-requirements"
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={onToggleShowPassword}
+                    aria-label={
+                      showPassword
+                        ? t("auth.passwordPolicy.hide")
+                        : t("auth.passwordPolicy.show")
+                    }
+                    aria-pressed={showPassword}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-sm text-ink-muted transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" strokeWidth={1.75} />
+                    ) : (
+                      <Eye className="h-4 w-4" strokeWidth={1.75} />
+                    )}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p
+                    id="reg-password-error"
+                    role="alert"
+                    className="text-xs text-destructive mt-1"
+                  >
+                    {errors.password}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">{t("authRegister.confirmPasswordShort")}</Label>
+                <Input
+                  id="confirmPassword"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  fieldSize="lg"
+                  value={form.confirmPassword}
+                  onChange={(e) => onChange("confirmPassword", e.target.value)}
+                  aria-invalid={!!errors.confirmPassword}
+                  aria-describedby={
+                    errors.confirmPassword ? "confirmPassword-error" : undefined
+                  }
+                />
+                {errors.confirmPassword && (
+                  <p
+                    id="confirmPassword-error"
+                    role="alert"
+                    className="text-xs text-destructive mt-1"
+                  >
+                    {errors.confirmPassword}
+                  </p>
+                )}
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">{t("authRegister.confirmPasswordShort")}</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                fieldSize="lg"
-                value={form.confirmPassword}
-                onChange={(e) => onChange("confirmPassword", e.target.value)}
-                aria-invalid={!!errors.confirmPassword}
-                aria-describedby={
-                  errors.confirmPassword ? "confirmPassword-error" : undefined
-                }
+
+            <div className="flex items-start justify-between gap-3">
+              <PasswordRequirements
+                id="password-requirements"
+                password={form.password}
+                confirmPassword={form.confirmPassword}
+                className="flex-1"
               />
-              {errors.confirmPassword && (
-                <p
-                  id="confirmPassword-error"
-                  role="alert"
-                  className="text-xs text-destructive mt-1"
-                >
-                  {errors.confirmPassword}
-                </p>
-              )}
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="h-auto shrink-0 p-0 text-xs"
+                onClick={onGeneratePassword}
+              >
+                {t("auth.passwordPolicy.generate")}
+              </Button>
             </div>
+
+            {passwordGenerated && (
+              <p role="status" className="text-xs text-success-ink">
+                {t("auth.passwordPolicy.generated")}
+              </p>
+            )}
           </div>
 
           <Button

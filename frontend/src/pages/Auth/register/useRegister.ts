@@ -3,6 +3,7 @@ import { useAuth } from "@/context/useAuth"
 import { makeRegisterSchema } from "@/lib/validations/auth"
 import i18n, { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import { authErrorMessage, isDuplicateEmail } from "@/lib/authError"
+import { generatePassword } from "@/lib/passwordPolicy"
 
 export type FormState = {
   full_name: string
@@ -35,14 +36,38 @@ export function useRegister() {
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [passwordGenerated, setPasswordGenerated] = useState(false)
 
   const handleChange = useCallback(
     (field: keyof FormState, value: string) => {
       setForm((prev) => ({ ...prev, [field]: value }))
       setErrors((prev) => ({ ...prev, [field]: undefined }))
+      // Typing over a generated password makes the "save it" note stale.
+      if (field === "password" || field === "confirmPassword") setPasswordGenerated(false)
     },
     [],
   )
+
+  const toggleShowPassword = useCallback(() => {
+    setShowPassword((prev) => !prev)
+  }, [])
+
+  /**
+   * Fill both password fields with something that satisfies the rules.
+   *
+   * Reveals the password as a deliberate part of the action: a value nobody
+   * chose and nobody can see is a value nobody can write down, and the next
+   * screen after this one asks for it again. `passwordGenerated` drives the
+   * "save this in your password manager" line.
+   */
+  const handleGeneratePassword = useCallback(() => {
+    const generated = generatePassword()
+    setForm((prev) => ({ ...prev, password: generated, confirmPassword: generated }))
+    setErrors((prev) => ({ ...prev, password: undefined, confirmPassword: undefined }))
+    setShowPassword(true)
+    setPasswordGenerated(true)
+  }, [])
 
   const handleSubmit = useCallback(async () => {
     setServerError("")
@@ -112,6 +137,10 @@ export function useRegister() {
     success,
     loading,
     googleLoading,
+    showPassword,
+    passwordGenerated,
+    toggleShowPassword,
+    handleGeneratePassword,
     handleChange,
     handleSubmit,
     handleGoogleSignUp,

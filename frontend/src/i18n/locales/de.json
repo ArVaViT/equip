@@ -607,10 +607,11 @@
       "invalidCredentials": "E-Mail-Adresse oder Passwort ist falsch.",
       "emailNotConfirmed": "Bestätigen Sie zuerst Ihre E-Mail-Adresse — der Link liegt in Ihrem Posteingang.",
       "rateLimited": "Zu viele Versuche. Warten Sie eine Minute und versuchen Sie es erneut.",
-      "weakPassword": "Dieses Passwort ist zu schwach. Verwenden Sie mindestens 6 Zeichen.",
+      "weakPassword": "Dieses Passwort kommt in bekannten Datenlecks vor. Wählen Sie ein anderes oder nutzen Sie „Sicheres erzeugen“.",
       "samePassword": "Das ist Ihr aktuelles Passwort. Wählen Sie ein anderes.",
       "linkExpired": "Dieser Link ist abgelaufen. Fordern Sie einen neuen an.",
-      "serverError": "Bei uns ist etwas schiefgelaufen. Versuchen Sie es gleich noch einmal."
+      "serverError": "Bei uns ist etwas schiefgelaufen. Versuchen Sie es gleich noch einmal.",
+      "passwordRequired": "Bitte Passwort eingeben"
     },
     "callback": {
       "completing": "Anmeldung wird abgeschlossen …",
@@ -645,10 +646,23 @@
       "successBody": "Ihr Passwort wurde erfolgreich geändert.",
       "redirecting": "Weiterleitung zur Startseite …",
       "errors": {
-        "passwordTooShort": "Das Passwort muss mindestens 6 Zeichen haben",
         "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein",
-        "resetFailed": "Das Passwort konnte nicht zurückgesetzt werden."
+        "resetFailed": "Das Passwort konnte nicht zurückgesetzt werden.",
+        "passwordTooShort_one": "Das Passwort muss mindestens {{count}} Zeichen haben",
+        "passwordTooShort_other": "Das Passwort muss mindestens {{count}} Zeichen haben"
       }
+    },
+    "passwordPolicy": {
+      "ruleLength_one": "Mindestens {{count}} Zeichen",
+      "ruleLength_other": "Mindestens {{count}} Zeichen",
+      "ruleMatch": "Beide Passwörter stimmen überein",
+      "ruleMet": "erfüllt",
+      "ruleNotMet": "noch nicht erfüllt",
+      "leakedNote": "Das Passwort darf in keinem bekannten Datenleck vorkommen — wir prüfen das beim Absenden.",
+      "generate": "Sicheres erzeugen",
+      "generated": "Passwort erzeugt und angezeigt. Speichern Sie es in Ihrem Passwortmanager, bevor Sie fortfahren.",
+      "show": "Passwort anzeigen",
+      "hide": "Passwort verbergen"
     }
   },
   "profile": {
@@ -2310,8 +2324,9 @@
     "errors": {
       "fullNameTooShort": "Der Name muss mindestens 2 Zeichen haben",
       "emailInvalid": "Ungültige E-Mail-Adresse",
-      "passwordTooShort": "Das Passwort muss mindestens 6 Zeichen haben",
-      "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein"
+      "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein",
+      "passwordTooShort_one": "Das Passwort muss mindestens {{count}} Zeichen haben",
+      "passwordTooShort_other": "Das Passwort muss mindestens {{count}} Zeichen haben"
     },
     "duplicate": {
       "heading": "Konto besteht möglicherweise",
