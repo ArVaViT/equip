@@ -331,5 +331,103 @@ EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: grade_sheets INSERT denied (privilege)';
 END $$;
 
+
+-- ---------------------------------------------------------------------
+-- 14) Organizations: the backstop layer.
+--
+-- Steps 3 and 3b closed this in the API. These assertions prove the
+-- policies hold it too, for anything that reaches Postgres as
+-- `authenticated` without going through a route — which is the only
+-- reason the layer exists, since the backend's service-role key bypasses
+-- RLS entirely.
+--
+-- Seeded as the owner (RLS does not apply to the table owner), then read
+-- back as a director of school A.
+-- ---------------------------------------------------------------------
+
 RESET ROLE;
+
+\set school_a 'aaaa1111-0000-0000-0000-000000000001'
+\set school_b 'bbbb2222-0000-0000-0000-000000000002'
+\set director_a '33333333-3333-3333-3333-333333333333'
+
+INSERT INTO public.organizations (id, slug, public_name)
+VALUES (:'school_a', 'school-a', 'School A'), (:'school_b', 'school-b', 'School B');
+
+INSERT INTO auth.users (id, email) VALUES (:'director_a', 'director-a@test.local');
+INSERT INTO public.profiles (id, email, role, organization_id)
+VALUES (:'director_a', 'director-a@test.local', 'director', :'school_a');
+
+INSERT INTO public.cohorts (id, organization_id, start_date, end_date)
+VALUES
+  ('cccc0001-0000-0000-0000-000000000001', :'school_a', '2026-01-01', '2026-06-01'),
+  ('cccc0002-0000-0000-0000-000000000002', :'school_b', '2026-01-01', '2026-06-01');
+
+-- No title column: course text lives in content_versions.
+INSERT INTO public.courses (id, status, access_mode, organization_id)
+VALUES
+  ('course-a-institute', 'published', 'institute', :'school_a'),
+  ('course-b-institute', 'published', 'institute', :'school_b'),
+  ('course-b-public',    'published', 'public',    :'school_b');
+
+INSERT INTO public.certificates (id, organization_id, user_id, course_id, status)
+VALUES
+  ('dddd0001-0000-0000-0000-000000000001', :'school_a', :'director_a', 'course-a-institute', 'approved'),
+  ('dddd0002-0000-0000-0000-000000000002', :'school_b', '22222222-2222-2222-2222-222222222222', 'course-b-institute', 'approved');
+
+SET request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM public.cohorts;
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a director sees % cohorts, expected only their own organization''s 1', n;
+  END IF;
+  RAISE NOTICE 'OK: cohorts scoped to the reader''s organization';
+END $$;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM public.courses WHERE id = 'course-b-institute';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: another organization''s institute course is readable';
+  END IF;
+  RAISE NOTICE 'OK: a foreign institute course is invisible';
+END $$;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM public.courses WHERE id = 'course-a-institute';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: a director cannot read their own organization''s institute course';
+  END IF;
+  SELECT count(*) INTO n FROM public.courses WHERE id = 'course-b-public';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: a published public course left the catalogue';
+  END IF;
+  RAISE NOTICE 'OK: own institute course and the public catalogue still read';
+END $$;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM public.certificates
+   WHERE id = 'dddd0002-0000-0000-0000-000000000002';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: another organization''s certificate is readable';
+  END IF;
+  SELECT count(*) INTO n FROM public.certificates
+   WHERE id = 'dddd0001-0000-0000-0000-000000000001';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: a director cannot read their own organization''s certificate';
+  END IF;
+  RAISE NOTICE 'OK: certificates scoped to the reader''s organization';
+END $$;
+
+RESET ROLE;
+
 SELECT 'RLS policy assertions passed' AS result;
