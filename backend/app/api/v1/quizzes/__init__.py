@@ -13,6 +13,7 @@ from . import attempts as _attempts  # noqa: F401
 from . import crud as _crud  # noqa: F401
 from . import extra as _extra  # noqa: F401
 from . import grading as _grading  # noqa: F401
+from . import questions as _questions  # noqa: F401
 from ._router import router
 
 __all__ = ["router"]

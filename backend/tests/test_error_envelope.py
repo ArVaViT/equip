@@ -61,6 +61,7 @@ def test_enum_values_are_stable_strings():
         "quiz.not_open",
         "quiz.attempts_exhausted",
         "quiz.not_translated",
+        "quiz.question_already_answered",
         "daily_challenge.not_scheduled",
         "daily_challenge.not_translated",
         "daily_challenge.already_attempted",

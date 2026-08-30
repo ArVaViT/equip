@@ -48,6 +48,37 @@ class QuizQuestionCreate(RequestModel):
     options: list[QuizOptionCreate] = Field(default_factory=list, max_length=20)
 
 
+class QuizQuestionUpdate(RequestModel):
+    """A correction to a question a class has already seen.
+
+    Every field is optional and only what is sent is applied: a teacher
+    fixing a typo sends ``question_text`` alone and nothing else moves.
+    The limits mirror ``QuizQuestionCreate`` so a question cannot be
+    edited into a shape it could not have been created in.
+
+    ``options`` is deliberately absent. Editing the answer list through
+    this schema would mean deleting rows, and a deleted option takes
+    every ``quiz_answers.selected_option_id`` pointing at it with it —
+    the student's answer becomes NULL and their graded attempt stops
+    saying what they chose. Options are edited one at a time through
+    ``QuizOptionUpdate``.
+    """
+
+    question_text: str | None = Field(None, min_length=1, max_length=4000)
+    question_type: QuestionType | None = None
+    order_index: int | None = Field(None, ge=0)
+    points: int | None = Field(None, ge=1, le=100)
+    min_words: int | None = Field(None, ge=1, le=10_000)
+
+
+class QuizOptionUpdate(RequestModel):
+    """A correction to one answer option."""
+
+    option_text: str | None = Field(None, min_length=1, max_length=500)
+    is_correct: bool | None = None
+    order_index: int | None = Field(None, ge=0)
+
+
 class QuizQuestionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
