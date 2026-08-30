@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
     admin_daily_challenge,
     admin_org_settings,
+    admin_organizations,
     admin_translations,
     analytics,
     announcements,
@@ -23,6 +24,7 @@ from app.api.v1 import (
     invitations,
     legal,
     notifications,
+    organizations,
     prerequisites,
     progress,
     quizzes,
@@ -51,6 +53,7 @@ api_router.include_router(progress.router)
 api_router.include_router(blocks.router)
 api_router.include_router(cohorts.router)
 api_router.include_router(notifications.router)
+api_router.include_router(organizations.router)
 api_router.include_router(audit.router)
 api_router.include_router(legal.router)
 api_router.include_router(calendar_mod.router)
@@ -58,6 +61,7 @@ api_router.include_router(calendar_mod.event_router)
 api_router.include_router(calendar_ical.router)
 api_router.include_router(verse_of_the_day.router)
 api_router.include_router(admin_org_settings.router)
+api_router.include_router(admin_organizations.router)
 api_router.include_router(admin_translations.router)
 api_router.include_router(internal_translation_worker.router)
 api_router.include_router(internal_daily_challenge_worker.router)
