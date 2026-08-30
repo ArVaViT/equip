@@ -136,6 +136,32 @@ def _load_active_course_or_403(
     return course
 
 
+def _assert_same_organization(cert: Certificate, reviewer: User) -> None:
+    """A director issues their own organization's certificates only.
+
+    Issuance is the one certificate action that cannot be undone — it
+    mints a public ``certificate_number`` and the row becomes verifiable
+    forever. A director reaching a neighbouring organization's queue
+    could sign a diploma for a student they have never taught, under a
+    school name that is not theirs.
+
+    Platform staff pass: they administer every organization, and a
+    certificate with no organization at all (issued before the column
+    existed) is nobody's to gate.
+    """
+    if reviewer.role == UserRole.ADMIN.value:
+        return
+    if cert.organization_id is None:
+        return
+    if reviewer.organization_id is None or cert.organization_id != reviewer.organization_id:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Certificate not found",
+            context={"resource_type": "certificate", "resource_id": str(cert.id)},
+        )
+
+
 def _assert_status(cert: Certificate, expected: str | tuple[str, ...]) -> None:
     allowed = (expected,) if isinstance(expected, str) else expected
     if cert.status not in allowed:
@@ -205,6 +231,7 @@ def teacher_approve(db: Session, cert_id: UUID, teacher: User, request: Request)
 
 def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> Certificate:
     cert = _load_cert_or_404(db, cert_id, for_update=True)
+    _assert_same_organization(cert, admin)
     _assert_status(cert, CertificateStatus.TEACHER_APPROVED)
     _assert_not_self_approval(cert, admin)
     _assert_student_active(db, cert)

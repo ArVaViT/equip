@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import (
     get_current_user,
     get_live_course_or_404,
+    organization_of,
     require_director,
     require_teacher,
 )
@@ -15,7 +16,7 @@ from app.core.errors import ErrorCode, equip_error
 from app.models.certificate import Certificate, CertificateStatus
 from app.models.course import Course
 from app.models.enrollment import Enrollment
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.certificate import CertificateResponse, CertificateVerifyResponse
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services import certificate_service
@@ -378,7 +379,7 @@ def list_admin_pending_certificates(
     Course titles localize to the director's Accept-Language (
     was hardcoded EN before).
     """
-    certs = (
+    q = (
         db.query(Certificate)
         # Same deactivated-student exclusion as the teacher pending list.
         .join(User, User.id == Certificate.user_id)
@@ -386,11 +387,14 @@ def list_admin_pending_certificates(
             Certificate.status == CertificateStatus.TEACHER_APPROVED,
             User.deactivated_at.is_(None),
         )
-        .order_by(Certificate.teacher_approved_at.asc())
-        .offset(skip)
-        .limit(limit)
-        .all()
     )
+    # A director signs their own organization's diplomas. Platform staff
+    # see every queue — the same split the cohort and invitation lists
+    # use. The rows carry a student's name, email and course, so this is
+    # a privacy boundary before it is a permission one.
+    if director.role != UserRole.ADMIN.value:
+        q = q.filter(Certificate.organization_id == organization_of(director))
+    certs = q.order_by(Certificate.teacher_approved_at.asc()).offset(skip).limit(limit).all()
     response.headers["Vary"] = "Accept-Language"
     return _enrich_pending_certs(db, certs, display_locale=normalize_locale(accept_language))
 

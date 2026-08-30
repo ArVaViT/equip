@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, organization_of, require_director
 from app.core.database import get_db
 from app.models.invitation import Invitation
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.invitation import (
     InvitationAcceptRequest,
     InvitationAcceptResponse,
@@ -75,7 +75,17 @@ def list_invitations_route(
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> list[InvitationResponse]:
-    rows = list_invitations(db, skip=skip, limit=limit, role=role, status_filter=invite_status)
+    # A director sees their own organization's invitations; platform
+    # staff see all of them, the same split the cohort list uses.
+    scope = None if director.role == UserRole.ADMIN.value else organization_of(director)
+    rows = list_invitations(
+        db,
+        organization_id=scope,
+        skip=skip,
+        limit=limit,
+        role=role,
+        status_filter=invite_status,
+    )
     return [_to_response(r) for r in rows]
 
 
