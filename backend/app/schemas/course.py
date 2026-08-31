@@ -241,7 +241,15 @@ class CourseDashboardSummary(_ReadTitle):
 
 
 class EnrollmentSummaryResponse(BaseModel):
-    """Enrollment for the dashboard list — embeds the slim CourseDashboardSummary."""
+    """Enrollment for the dashboard list — embeds the slim CourseDashboardSummary.
+
+    ``progress`` is assessment-only by design (see
+    ``course_service.sync_enrollment_progress``). ``chapters_read`` /
+    ``chapters_to_read`` carry the other half of the story, because the
+    dashboard used to show the percentage alone: a student who had read
+    every lesson of a 16-chapter course and not yet sat a quiz was told 0%,
+    which is true about assessment and false about the student.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -251,6 +259,8 @@ class EnrollmentSummaryResponse(BaseModel):
     cohort_id: UUID | None = None
     enrolled_at: datetime
     progress: int
+    chapters_read: int = 0
+    chapters_to_read: int = 0
     course: CourseDashboardSummary | None = None
 
 

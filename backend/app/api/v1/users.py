@@ -9,12 +9,13 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, require_admin
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
+from app.models.enrollment import Enrollment
 from app.models.user import User, UserRole
 from app.schemas.course import CourseDashboardSummary, EnrollmentSummaryResponse
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.schemas.user import PreferredLocaleUpdate, UserResponse
 from app.services.audit_service import log_action
-from app.services.course_service import get_user_courses
+from app.services.course_service import get_user_courses, reading_progress_by_course
 from app.services.translation.resolve_for_display import (
     build_localized_course_dashboard_summaries,
     should_apply_course_translation_overlay,
@@ -84,9 +85,19 @@ def get_my_courses(
     rows = get_user_courses(db, current_user.id, skip=skip, limit=limit)
     if not rows:
         return []
+    # Reading counts for every course on the page in one grouped query. The
+    # percentage beside them is assessment-only, so without this the
+    # dashboard reports 0% to somebody who has read the whole course.
+    reading = reading_progress_by_course(db, current_user.id, [e.course_id for e in rows])
+
+    def with_reading(enrollment: Enrollment) -> EnrollmentSummaryResponse:
+        read, to_read = reading.get(str(enrollment.course_id), (0, 0))
+        base = EnrollmentSummaryResponse.model_validate(enrollment, from_attributes=True)
+        return base.model_copy(update={"chapters_read": read, "chapters_to_read": to_read})
+
     courses = [e.course for e in rows if e.course is not None]
     if not courses:
-        return [EnrollmentSummaryResponse.model_validate(e, from_attributes=True) for e in rows]
+        return [with_reading(e) for e in rows]
     # One bulk content_versions read resolves every course's title/description
     # at the display locale AND hydrates ``course.title`` on the ORM objects, so
     # the owner / admin non-overlay path below (which serialises the course
@@ -104,7 +115,7 @@ def get_my_courses(
     out: list[EnrollmentSummaryResponse] = []
     for e in rows:
         if e.course is None:
-            out.append(EnrollmentSummaryResponse.model_validate(e, from_attributes=True))
+            out.append(with_reading(e))
             continue
         c = e.course
         summary = (
@@ -112,8 +123,7 @@ def get_my_courses(
             if should_apply_course_translation_overlay(course=c, current_user=current_user)
             else CourseDashboardSummary.model_validate(c, from_attributes=True)
         )
-        base = EnrollmentSummaryResponse.model_validate(e, from_attributes=True)
-        out.append(base.model_copy(update={"course": summary}))
+        out.append(with_reading(e).model_copy(update={"course": summary}))
     return out
 
 

@@ -235,6 +235,20 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
                       </span>
                     ) : null}
                   </div>
+                  {enrollment.chapters_to_read > 0 && (
+                    // The percentage beside this counts assessments only, so
+                    // on a course of sixteen lessons and five quizzes it says
+                    // 0% to somebody who has read all sixteen. This line is
+                    // the reading, stated separately rather than folded in:
+                    // a lesson read is not a quiz passed, and one number for
+                    // both would say neither thing honestly.
+                    <p className="mt-1 text-xs text-ink-muted">
+                      {t("dashboard.readingProgress", {
+                        read: enrollment.chapters_read,
+                        count: enrollment.chapters_to_read,
+                      })}
+                    </p>
+                  )}
                 </div>
                 <ArrowRight
                   className="h-4 w-4 shrink-0 text-brand transition-transform duration-200 group-hover:translate-x-1"

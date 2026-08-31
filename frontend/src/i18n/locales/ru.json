@@ -2087,7 +2087,11 @@
       "openFull": "Календарь",
       "empty": "На сегодня нет событий.",
       "emptyDescription": "Откройте полный календарь, чтобы увидеть, что предстоит на этой неделе."
-    }
+    },
+    "readingProgress_one": "Прочитано {{read}} из {{count}} главы",
+    "readingProgress_few": "Прочитано {{read}} из {{count}} глав",
+    "readingProgress_many": "Прочитано {{read}} из {{count}} глав",
+    "readingProgress_other": "Прочитано {{read}} из {{count}} глав"
   },
   "onboarding": {
     "student": {

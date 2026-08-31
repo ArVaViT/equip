@@ -137,7 +137,9 @@
       "openFull": "Full calendar",
       "empty": "No events scheduled for today.",
       "emptyDescription": "Open the full calendar to see what's coming up this week."
-    }
+    },
+    "readingProgress_one": "{{read}} of {{count}} chapter read",
+    "readingProgress_other": "{{read}} of {{count}} chapters read"
   },
   "onboarding": {
     "student": {

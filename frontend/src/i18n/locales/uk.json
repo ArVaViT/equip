@@ -137,7 +137,11 @@
       "openFull": "Увесь календар",
       "empty": "На сьогодні нічого не заплановано.",
       "emptyDescription": "Відкрийте календар, щоб побачити, що буде цього тижня."
-    }
+    },
+    "readingProgress_one": "Прочитано {{read}} із {{count}} глави",
+    "readingProgress_few": "Прочитано {{read}} із {{count}} глав",
+    "readingProgress_many": "Прочитано {{read}} із {{count}} глав",
+    "readingProgress_other": "Прочитано {{read}} із {{count}} глав"
   },
   "onboarding": {
     "student": {

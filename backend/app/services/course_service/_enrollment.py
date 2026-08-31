@@ -109,6 +109,60 @@ def get_user_courses(
     return query.all()
 
 
+def reading_progress_by_course(
+    db: Session,
+    user_id: str | UUID,
+    course_ids: list[str],
+) -> dict[str, tuple[int, int]]:
+    """``{course_id: (chapters_read, chapters_to_read)}`` for one student.
+
+    Reading is counted separately from `enrollment.progress` on purpose.
+    That percentage is deliberately assessment-only — see the note in
+    ``frontend/src/pages/Course/moduleProgress.ts``: a lesson you have read
+    is not an assessment you have passed, and one number for both would
+    blur the distinction the percentage rests on.
+
+    But the dashboard showed *only* that percentage, and the live courses
+    are 11-16 reading chapters against 4-6 gradable ones. So somebody could
+    read every lesson in a course and be told 0%. Two people did exactly
+    that in August 2026 — one on the 24th, one on the 30th — and both rows
+    still read `progress = 0`. This is the second number, so the dashboard
+    can say what actually happened without lying about assessment.
+
+    One grouped query for the whole dashboard: the callers hand in every
+    course on the page at once, so this cannot become an N+1.
+    """
+    if not course_ids:
+        return {}
+
+    rows = (
+        db.query(
+            Module.course_id.label("course_id"),
+            func.count(Chapter.id).label("to_read"),
+            func.count(ChapterProgress.id).filter(ChapterProgress.completed.is_(True)).label("read"),
+        )
+        .select_from(Chapter)
+        .join(Module, Chapter.module_id == Module.id)
+        .outerjoin(
+            ChapterProgress,
+            (ChapterProgress.chapter_id == Chapter.id) & (ChapterProgress.user_id == user_id),
+        )
+        .filter(
+            Module.course_id.in_(course_ids),
+            # Everything that is not assessed. Written as the complement of
+            # GRADABLE_CHAPTER_TYPES rather than `== "reading"` so a chapter
+            # type added later (a video lesson, say) counts as something to
+            # work through instead of silently vanishing from both numbers.
+            Chapter.chapter_type.notin_(GRADABLE_CHAPTER_TYPES),
+            Module.deleted_at.is_(None),
+            Chapter.deleted_at.is_(None),
+        )
+        .group_by(Module.course_id)
+        .all()
+    )
+    return {str(row.course_id): (int(row.read or 0), int(row.to_read or 0)) for row in rows}
+
+
 def sync_enrollment_progress(db: Session, user_id: str | UUID, course_id: str | UUID) -> Enrollment | None:
     """Recompute ``enrollment.progress`` from completed gradable chapters.
 

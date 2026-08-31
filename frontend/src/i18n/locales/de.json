@@ -137,7 +137,9 @@
       "openFull": "Ganzer Kalender",
       "empty": "Für heute ist nichts geplant.",
       "emptyDescription": "Öffnen Sie den Kalender, um zu sehen, was diese Woche ansteht."
-    }
+    },
+    "readingProgress_one": "{{read}} von {{count}} Kapitel gelesen",
+    "readingProgress_other": "{{read}} von {{count}} Kapiteln gelesen"
   },
   "onboarding": {
     "student": {
