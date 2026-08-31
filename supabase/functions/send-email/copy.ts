@@ -181,7 +181,7 @@ export const COPY: Record<string, Record<Locale, Copy>> = {
       footer: "Посилання діє добу. Якщо ви цього не запитували, просто не відповідайте на цей лист.",
     },
   },
-  magic_link: {
+  magiclink: {
     en: {
       subject: `${BRAND} — your login link`,
       heading: "Your login link",
@@ -265,10 +265,46 @@ export function renderEmail(copy: Copy, name: string, url: string): string {
     `;
 }
 
-/** Falls back to signup for an action type we have no copy for. */
+/**
+ * Every `email_action_type` GoTrue can send this hook, verbatim from the
+ * Send Email Hook schema. Kept here so a test can hold the keys of `COPY`
+ * against it: the table was written with `magic_link`, GoTrue sends
+ * `magiclink`, and the two never met. The mismatch was silent — the key
+ * missed, the fallback below took over, and anyone asking for a sign-in
+ * link was emailed "Thanks for registering. Confirm your address."
+ */
+export const GOTRUE_EMAIL_ACTION_TYPES = [
+  "signup",
+  "invite",
+  "magiclink",
+  "recovery",
+  "email_change",
+  "email",
+  "reauthentication",
+  "password_changed_notification",
+  "email_changed_notification",
+  "phone_changed_notification",
+  "identity_linked_notification",
+  "identity_unlinked_notification",
+  "mfa_factor_enrolled_notification",
+  "mfa_factor_unenrolled_notification",
+] as const;
+
+/**
+ * Falls back to signup for an action type we have no copy for.
+ *
+ * The fallback is deliberate — a new action type should still send *an*
+ * email rather than none — but it is no longer silent: a type we do not
+ * recognise at all is a bug in this table, and the caller logs it.
+ */
 export function copyFor(emailType: string, locale: Locale): Copy {
   const byLocale = COPY[emailType] ?? COPY.signup;
   return byLocale[locale] ?? byLocale[DEFAULT_LOCALE];
+}
+
+/** True when `COPY` has wording written specifically for this action type. */
+export function hasCopyFor(emailType: string): boolean {
+  return Object.hasOwn(COPY, emailType);
 }
 
 

@@ -83,6 +83,32 @@ export const authService = {
     if (error) throw error
   },
 
+  /**
+   * Email a one-time link that signs the reader in — no password at all.
+   *
+   * The whole chain for this already existed and nothing could reach it: the
+   * send-email hook has had `magic_link` copy in four languages since it was
+   * written, and `/auth/confirm` takes any session GoTrue puts in the
+   * fragment, whatever the link's type. The only missing piece was a way to
+   * ask for the email.
+   *
+   * `shouldCreateUser: false` on purpose. Left at its default, a typo in the
+   * address silently creates a second, empty account, and signing in becomes
+   * a way to register without meaning to. The caller must not report the
+   * resulting "user not found" either — that would turn this form into a way
+   * to test which addresses have accounts here.
+   */
+  async sendSignInLink(email: string): Promise<void> {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: false,
+        emailRedirectTo: `${window.location.origin}/auth/confirm`,
+      },
+    })
+    if (error) throw error
+  },
+
   async updatePassword(password: string): Promise<void> {
     const { error } = await supabase.auth.updateUser({ password })
     if (error) throw error

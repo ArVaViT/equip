@@ -231,6 +231,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await authService.signInWithGoogle()
   }, [])
 
+  const sendSignInLink = useCallback(async (email: string) => {
+    await authService.sendSignInLink(email)
+  }, [])
+
   const resetPassword = useCallback(async (email: string) => {
     await authService.resetPassword(email)
   }, [])
@@ -260,8 +264,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, loading, login, register, signInWithGoogle, resetPassword, logout, refreshUser, applyUser }),
-    [user, loading, login, register, signInWithGoogle, resetPassword, logout, refreshUser, applyUser],
+    () => ({ user, loading, login, register, signInWithGoogle, sendSignInLink, resetPassword, logout, refreshUser, applyUser }),
+    [user, loading, login, register, signInWithGoogle, sendSignInLink, resetPassword, logout, refreshUser, applyUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

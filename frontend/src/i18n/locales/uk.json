@@ -676,7 +676,13 @@
       "show": "Показати пароль",
       "hide": "Сховати пароль",
       "ruleLength_other": "Не менше {{count}} символів"
-    }
+    },
+    "signInLink": "Надіслати посилання на пошту",
+    "signInLinkSending": "Надсилаємо…",
+    "signInLinkSent": "Якщо така адреса в нас є, лист уже в дорозі. Відкрийте пошту й натисніть кнопку в листі.",
+    "signInLinkAgain": "Надіслати ще раз",
+    "signInLinkAgainIn": "Надіслати ще раз через {{seconds}} с",
+    "signInLinkBackToPassword": "Увійти паролем"
   },
   "profile": {
     "fullName": "Повне ім’я",

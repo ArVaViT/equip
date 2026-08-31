@@ -13,6 +13,7 @@ export interface AuthContextValue {
     preferredLocale: SupportedLocale,
   ) => Promise<void>
   signInWithGoogle: () => Promise<void>
+  sendSignInLink: (email: string) => Promise<void>
   resetPassword: (email: string) => Promise<void>
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
