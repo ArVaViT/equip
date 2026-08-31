@@ -22,7 +22,12 @@ from ._courses import (
     restore_course,
     update_course,
 )
-from ._enrollment import enroll_user_in_course, get_user_courses, sync_enrollment_progress
+from ._enrollment import (
+    enroll_user_in_course,
+    get_user_courses,
+    reading_progress_by_course,
+    sync_enrollment_progress,
+)
 from ._modules import create_module, delete_module, update_module
 from ._queries import get_chapter, get_course, get_courses, get_module, get_teacher_courses
 
@@ -42,6 +47,7 @@ __all__ = [
     "get_teacher_courses",
     "get_user_courses",
     "permanently_delete_course",
+    "reading_progress_by_course",
     "restore_course",
     "sync_enrollment_progress",
     "update_chapter",

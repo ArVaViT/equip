@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import AuthLayout from "@/components/layout/AuthLayout"
+import { PasswordFields } from "@/components/auth/PasswordFields"
 import { GoogleIcon } from "@/pages/Auth/register/GoogleIcon"
 import { ROLE_I18N_KEY } from "@/lib/roles"
 import { useAcceptInvite } from "./useAcceptInvite"
@@ -27,6 +28,7 @@ export default function AcceptInvite() {
     googleLoading,
     acceptedRole,
     currentUserEmail,
+    passwordAffordances,
     handleChange,
     handleSubmit,
     handleGoogleSignUp,
@@ -241,44 +243,18 @@ export default function AcceptInvite() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="password">{t("auth.password")}</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="new-password"
-                fieldSize="lg"
-                value={form.password}
-                onChange={(e) => handleChange("password", e.target.value)}
-                aria-invalid={!!errors.password}
-                aria-describedby={errors.password ? "invite-password-error" : undefined}
-              />
-              {errors.password && (
-                <p id="invite-password-error" role="alert" className="text-xs text-destructive mt-1">
-                  {errors.password}
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">{t("authRegister.confirmPasswordShort")}</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                fieldSize="lg"
-                value={form.confirmPassword}
-                onChange={(e) => handleChange("confirmPassword", e.target.value)}
-                aria-invalid={!!errors.confirmPassword}
-                aria-describedby={errors.confirmPassword ? "invite-confirmPassword-error" : undefined}
-              />
-              {errors.confirmPassword && (
-                <p id="invite-confirmPassword-error" role="alert" className="text-xs text-destructive mt-1">
-                  {errors.confirmPassword}
-                </p>
-              )}
-            </div>
-          </div>
+          <PasswordFields
+            idPrefix="invite"
+            password={form.password}
+            confirmPassword={form.confirmPassword}
+            passwordError={errors.password}
+            confirmError={errors.confirmPassword}
+            showPassword={passwordAffordances.showPassword}
+            passwordGenerated={passwordAffordances.passwordGenerated}
+            onChange={handleChange}
+            onToggleShowPassword={passwordAffordances.toggleShowPassword}
+            onGeneratePassword={passwordAffordances.generate}
+          />
 
           <Button type="submit" size="lg" className="w-full" disabled={submitting}>
             {submitting ? (

@@ -137,7 +137,9 @@
       "openFull": "Full calendar",
       "empty": "No events scheduled for today.",
       "emptyDescription": "Open the full calendar to see what's coming up this week."
-    }
+    },
+    "readingProgress_one": "{{read}} of {{count}} chapter read",
+    "readingProgress_other": "{{read}} of {{count}} chapters read"
   },
   "onboarding": {
     "student": {
@@ -607,10 +609,11 @@
       "invalidCredentials": "Incorrect email or password.",
       "emailNotConfirmed": "Confirm your email address first — the link is in your inbox.",
       "rateLimited": "Too many attempts. Wait a minute and try again.",
-      "weakPassword": "That password is too weak. Use at least 6 characters.",
+      "weakPassword": "This password appears in known breaches. Choose another one, or use “Generate a strong one”.",
       "samePassword": "That is your current password. Choose a different one.",
       "linkExpired": "This link has expired. Request a new one.",
-      "serverError": "Something went wrong on our side. Try again in a moment."
+      "serverError": "Something went wrong on our side. Try again in a moment.",
+      "passwordRequired": "Enter your password"
     },
     "callback": {
       "completing": "Completing sign in...",
@@ -645,10 +648,23 @@
       "successBody": "Your password has been updated successfully.",
       "redirecting": "Redirecting to dashboard...",
       "errors": {
-        "passwordTooShort": "Password must be at least 6 characters",
         "passwordsDoNotMatch": "Passwords do not match",
-        "resetFailed": "Failed to reset password."
+        "resetFailed": "Failed to reset password.",
+        "passwordTooShort_one": "Password must be at least {{count}} character",
+        "passwordTooShort_other": "Password must be at least {{count}} characters"
       }
+    },
+    "passwordPolicy": {
+      "ruleLength_one": "At least {{count}} character",
+      "ruleLength_other": "At least {{count}} characters",
+      "ruleMatch": "Both passwords match",
+      "ruleMet": "done",
+      "ruleNotMet": "not yet",
+      "leakedNote": "The password must not appear in a known breach — we check that when you submit.",
+      "generate": "Generate a strong one",
+      "generated": "Password generated and shown. Save it in your password manager before continuing.",
+      "show": "Show password",
+      "hide": "Hide password"
     }
   },
   "profile": {
@@ -2310,8 +2326,9 @@
     "errors": {
       "fullNameTooShort": "Name must be at least 2 characters",
       "emailInvalid": "Invalid email address",
-      "passwordTooShort": "Password must be at least 6 characters",
-      "passwordsDoNotMatch": "Passwords do not match"
+      "passwordsDoNotMatch": "Passwords do not match",
+      "passwordTooShort_one": "Password must be at least {{count}} character",
+      "passwordTooShort_other": "Password must be at least {{count}} characters"
     },
     "duplicate": {
       "heading": "Account may exist",

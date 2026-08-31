@@ -3,6 +3,7 @@ import { useAuth } from "@/context/useAuth"
 import { makeRegisterSchema } from "@/lib/validations/auth"
 import i18n, { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import { authErrorMessage, isDuplicateEmail } from "@/lib/authError"
+import { usePasswordAffordances } from "@/components/auth/usePasswordAffordances"
 
 export type FormState = {
   full_name: string
@@ -35,13 +36,21 @@ export function useRegister() {
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const setBothPasswords = useCallback((value: string) => {
+    setForm((prev) => ({ ...prev, password: value, confirmPassword: value }))
+    setErrors((prev) => ({ ...prev, password: undefined, confirmPassword: undefined }))
+  }, [])
+  const { showPassword, passwordGenerated, toggleShowPassword, generate, noteEdited } =
+    usePasswordAffordances(setBothPasswords)
 
   const handleChange = useCallback(
     (field: keyof FormState, value: string) => {
       setForm((prev) => ({ ...prev, [field]: value }))
       setErrors((prev) => ({ ...prev, [field]: undefined }))
+      // Typing over a generated password makes the "save it" note stale.
+      if (field === "password" || field === "confirmPassword") noteEdited()
     },
-    [],
+    [noteEdited],
   )
 
   const handleSubmit = useCallback(async () => {
@@ -112,6 +121,10 @@ export function useRegister() {
     success,
     loading,
     googleLoading,
+    showPassword,
+    passwordGenerated,
+    toggleShowPassword,
+    handleGeneratePassword: generate,
     handleChange,
     handleSubmit,
     handleGoogleSignUp,

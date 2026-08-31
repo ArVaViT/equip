@@ -1,0 +1,109 @@
+name: Edge Functions CI
+
+# The Supabase edge functions had no CI at all. `supabase/functions/send-email`
+# is the only path a signup confirmation, a password reset or a magic link
+# can take — there is no SMTP fallback configured — and nothing checked that
+# it even type-checked before it was deployed by hand.
+#
+# Same shape as the other workflows here: no top-level `paths:` filter, a
+# detect-changes job, and one aggregator with a stable check name.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: edge-functions-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      functions: ${{ steps.filter.outputs.functions }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Detect edge-function changes
+        id: filter
+        run: |
+          set -e
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+            if [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+              BASE_SHA="$(git rev-parse "$HEAD_SHA^")"
+            fi
+          fi
+          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
+          echo "Changed files:"
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -qE '^supabase/functions/|^\.github/workflows/edge-functions-ci\.yml$'; then
+            echo "functions=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "functions=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  check:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.functions == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@e95548e56dfa95d4e1a28d6f422fafe75c4c26fb # v2.0.3
+        with:
+          deno-version: v2.x
+
+      - name: Type-check every function
+        run: |
+          set -e
+          for entry in supabase/functions/*/index.ts; do
+            echo "== $entry"
+            deno check "$entry"
+          done
+
+      # `deno lint` and `deno fmt` are deliberately not run here. Both flag
+      # pre-existing style in code this workflow did not write — the
+      # Supabase-generated `jsr:@supabase/functions-js/edge-runtime.d.ts`
+      # import has no version, and `deno fmt` would reformat every function
+      # in one go. Adding CI should not mean rewriting the thing it checks.
+      - name: Test
+        # The lookup tests inject their own fetch; the allow-net entry is for
+        # the URL they build, not for a request that actually leaves.
+        run: deno test --allow-net=project.supabase.co supabase/functions/
+
+  edge-functions-pass:
+    # Always runs, so the branch ruleset has one stable check name to require
+    # whether or not the functions were touched.
+    needs: [detect-changes, check]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Verify edge-functions CI outcome
+        run: |
+          if [ "${{ needs.detect-changes.outputs.functions }}" != "true" ]; then
+            echo "No edge-function changes — nothing to check."
+            exit 0
+          fi
+          if [ "${{ needs.check.result }}" != "success" ]; then
+            echo "Edge function checks failed."
+            exit 1
+          fi
+          echo "Edge function checks passed."

@@ -111,7 +111,14 @@ export interface Enrollment {
   course_id: string
   cohort_id: string | null
   enrolled_at: string
+  /** Assessment only — quizzes, exams and assignments. Reading does not
+   *  move it, by design; see ``pages/Course/moduleProgress.ts``. */
   progress: number
+  /** The other half of the story, so a dashboard showing only the
+   *  percentage cannot report 0% to somebody who has read the whole
+   *  course. Both default to 0 for a course with nothing to read. */
+  chapters_read: number
+  chapters_to_read: number
   course?: Course
 }
 

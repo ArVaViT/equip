@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import AuthLayout from "@/components/layout/AuthLayout"
+import { PasswordFields } from "@/components/auth/PasswordFields"
 import { GoogleIcon } from "./GoogleIcon"
 import type { FormState } from "./useRegister"
 
@@ -14,9 +15,13 @@ interface Props {
   serverError: string
   loading: boolean
   googleLoading: boolean
+  showPassword: boolean
+  passwordGenerated: boolean
   onChange: (field: keyof FormState, value: string) => void
   onSubmit: () => void
   onGoogleSignUp: () => void
+  onToggleShowPassword: () => void
+  onGeneratePassword: () => void
 }
 
 /**
@@ -32,9 +37,13 @@ export function RegisterForm({
   serverError,
   loading,
   googleLoading,
+  showPassword,
+  passwordGenerated,
   onChange,
   onSubmit,
   onGoogleSignUp,
+  onToggleShowPassword,
+  onGeneratePassword,
 }: Props) {
   const { t } = useTranslation()
   return (
@@ -139,54 +148,18 @@ export function RegisterForm({
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="password">{t("auth.password")}</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="new-password"
-                fieldSize="lg"
-                value={form.password}
-                onChange={(e) => onChange("password", e.target.value)}
-                aria-invalid={!!errors.password}
-                aria-describedby={errors.password ? "reg-password-error" : undefined}
-              />
-              {errors.password && (
-                <p
-                  id="reg-password-error"
-                  role="alert"
-                  className="text-xs text-destructive mt-1"
-                >
-                  {errors.password}
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">{t("authRegister.confirmPasswordShort")}</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                fieldSize="lg"
-                value={form.confirmPassword}
-                onChange={(e) => onChange("confirmPassword", e.target.value)}
-                aria-invalid={!!errors.confirmPassword}
-                aria-describedby={
-                  errors.confirmPassword ? "confirmPassword-error" : undefined
-                }
-              />
-              {errors.confirmPassword && (
-                <p
-                  id="confirmPassword-error"
-                  role="alert"
-                  className="text-xs text-destructive mt-1"
-                >
-                  {errors.confirmPassword}
-                </p>
-              )}
-            </div>
-          </div>
+          <PasswordFields
+            idPrefix="reg"
+            password={form.password}
+            confirmPassword={form.confirmPassword}
+            passwordError={errors.password}
+            confirmError={errors.confirmPassword}
+            showPassword={showPassword}
+            passwordGenerated={passwordGenerated}
+            onChange={onChange}
+            onToggleShowPassword={onToggleShowPassword}
+            onGeneratePassword={onGeneratePassword}
+          />
 
           <Button
             type="submit"

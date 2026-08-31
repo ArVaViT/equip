@@ -1,5 +1,6 @@
 import { z } from "zod"
 import i18n from "@/i18n/config"
+import { PASSWORD_MIN_LENGTH } from "@/lib/passwordPolicy"
 
 /**
  * Auth validation schemas.
@@ -10,12 +11,19 @@ import i18n from "@/i18n/config"
  * Caching would snapshot the bootstrap-locale strings and leave error
  * messages stuck in the wrong language after a locale switch.
  */
-const t = (key: string) => i18n.t(key)
+const t = (key: string, options?: Record<string, unknown>) => i18n.t(key, options)
+
+/** The length message carries the number, so the reader is told the actual rule. */
+const tooShort = () => t("authRegister.errors.passwordTooShort", { count: PASSWORD_MIN_LENGTH })
 
 export function makeLoginSchema() {
   return z.object({
     email: z.string().email(t("authRegister.errors.emailInvalid")),
-    password: z.string().min(6, t("authRegister.errors.passwordTooShort")),
+    // Deliberately only "not empty". Signing in does not create a password,
+    // and holding an existing one to today's minimum would lock out every
+    // account made before `password_min_length` was raised to 12 — a rule
+    // about new passwords, enforced against people who already have one.
+    password: z.string().min(1, t("auth.errors.passwordRequired")),
   })
 }
 
@@ -26,7 +34,7 @@ export function makeRegisterSchema() {
     .object({
       full_name: z.string().min(2, t("authRegister.errors.fullNameTooShort")),
       email: z.string().email(t("authRegister.errors.emailInvalid")),
-      password: z.string().min(6, t("authRegister.errors.passwordTooShort")),
+      password: z.string().min(PASSWORD_MIN_LENGTH, tooShort()),
       confirmPassword: z.string(),
     })
     .refine((data) => data.password === data.confirmPassword, {
@@ -42,7 +50,7 @@ export function makeAcceptInviteSchema() {
   return z
     .object({
       full_name: z.string().min(2, t("authRegister.errors.fullNameTooShort")),
-      password: z.string().min(6, t("authRegister.errors.passwordTooShort")),
+      password: z.string().min(PASSWORD_MIN_LENGTH, tooShort()),
       confirmPassword: z.string(),
     })
     .refine((data) => data.password === data.confirmPassword, {

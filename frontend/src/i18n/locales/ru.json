@@ -180,10 +180,11 @@
       "invalidCredentials": "Неверная почта или пароль.",
       "emailNotConfirmed": "Сначала подтвердите адрес почты — ссылка у вас во входящих.",
       "rateLimited": "Слишком много попыток. Подождите минуту и попробуйте снова.",
-      "weakPassword": "Такой пароль слишком простой. Нужно хотя бы 6 символов.",
+      "weakPassword": "Этот пароль встречается в известных утечках. Выберите другой или нажмите «Придумать надёжный».",
       "samePassword": "Это ваш нынешний пароль. Выберите другой.",
       "linkExpired": "Ссылка больше не действует. Запросите новую.",
-      "serverError": "Что-то пошло не так на нашей стороне. Попробуйте через минуту."
+      "serverError": "Что-то пошло не так на нашей стороне. Попробуйте через минуту.",
+      "passwordRequired": "Введите пароль"
     },
     "callback": {
       "completing": "Завершаем вход...",
@@ -218,10 +219,27 @@
       "successBody": "Пароль успешно обновлён.",
       "redirecting": "Переходим в личный кабинет...",
       "errors": {
-        "passwordTooShort": "Пароль должен быть не менее 6 символов",
         "passwordsDoNotMatch": "Пароли не совпадают",
-        "resetFailed": "Не удалось обновить пароль."
+        "resetFailed": "Не удалось обновить пароль.",
+        "passwordTooShort_one": "Пароль — не менее {{count}} символа",
+        "passwordTooShort_few": "Пароль — не менее {{count}} символов",
+        "passwordTooShort_many": "Пароль — не менее {{count}} символов",
+        "passwordTooShort_other": "Пароль — не менее {{count}} символов"
       }
+    },
+    "passwordPolicy": {
+      "ruleLength_one": "Не менее {{count}} символа",
+      "ruleLength_few": "Не менее {{count}} символов",
+      "ruleLength_many": "Не менее {{count}} символов",
+      "ruleMatch": "Пароли совпадают",
+      "ruleMet": "выполнено",
+      "ruleNotMet": "ещё не выполнено",
+      "leakedNote": "Пароль не должен встречаться в известных утечках — проверим при отправке.",
+      "generate": "Придумать надёжный",
+      "generated": "Пароль создан и показан. Сохраните его в менеджере паролей, прежде чем продолжить.",
+      "show": "Показать пароль",
+      "hide": "Скрыть пароль",
+      "ruleLength_other": "Не менее {{count}} символов"
     }
   },
   "profile": {
@@ -1933,8 +1951,11 @@
     "errors": {
       "fullNameTooShort": "Имя должно содержать минимум 2 символа",
       "emailInvalid": "Некорректный email",
-      "passwordTooShort": "Пароль должен быть не менее 6 символов",
-      "passwordsDoNotMatch": "Пароли не совпадают"
+      "passwordsDoNotMatch": "Пароли не совпадают",
+      "passwordTooShort_one": "Пароль — не менее {{count}} символа",
+      "passwordTooShort_few": "Пароль — не менее {{count}} символов",
+      "passwordTooShort_many": "Пароль — не менее {{count}} символов",
+      "passwordTooShort_other": "Пароль — не менее {{count}} символов"
     },
     "duplicate": {
       "heading": "Аккаунт уже может существовать",
@@ -2066,7 +2087,11 @@
       "openFull": "Календарь",
       "empty": "На сегодня нет событий.",
       "emptyDescription": "Откройте полный календарь, чтобы увидеть, что предстоит на этой неделе."
-    }
+    },
+    "readingProgress_one": "Прочитано {{read}} из {{count}} главы",
+    "readingProgress_few": "Прочитано {{read}} из {{count}} глав",
+    "readingProgress_many": "Прочитано {{read}} из {{count}} глав",
+    "readingProgress_other": "Прочитано {{read}} из {{count}} глав"
   },
   "onboarding": {
     "student": {
