@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func
+from sqlalchemy import case, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 
@@ -107,6 +107,79 @@ def get_user_courses(
     if limit is not None:
         query = query.limit(limit)
     return query.all()
+
+
+def resync_course_progress(db: Session, course_id: str | UUID) -> int:
+    """Recompute ``enrollment.progress`` for everybody on this course.
+
+    ``sync_enrollment_progress`` runs when one student's pass-state flips.
+    Nothing ran when the *course* changed shape — and the percentage is a
+    fraction of the course's gradable chapters, so deleting a quiz, adding
+    one, or changing a chapter's type moves the denominator for every
+    student at once.
+
+    The visible consequence, on production 2026-08-31: four enrolments
+    stored 100% while the same screen counted "0/5 chapters" beside them.
+    Those students had passed a quiz that was later deleted; the stored
+    percentage was never touched again, so the teacher's board showed two
+    numbers that contradicted each other and no way to tell which was true.
+
+    One UPDATE for the whole course rather than a loop: this runs inside
+    chapter and module deletes, where a course with hundreds of enrolments
+    would otherwise mean hundreds of round trips.
+
+    Returns the number of rows updated, for the caller's audit line.
+    """
+    gradable = (
+        select(Chapter.id)
+        .join(Module, Chapter.module_id == Module.id)
+        .where(
+            Module.course_id == course_id,
+            Chapter.chapter_type.in_(GRADABLE_CHAPTER_TYPES),
+            Module.deleted_at.is_(None),
+            Chapter.deleted_at.is_(None),
+        )
+        .scalar_subquery()
+    )
+    total = (
+        select(func.count())
+        .select_from(Chapter)
+        .join(Module, Chapter.module_id == Module.id)
+        .where(
+            Module.course_id == course_id,
+            Chapter.chapter_type.in_(GRADABLE_CHAPTER_TYPES),
+            Module.deleted_at.is_(None),
+            Chapter.deleted_at.is_(None),
+        )
+        .scalar_subquery()
+    )
+    completed = (
+        select(func.count())
+        .select_from(ChapterProgress)
+        .where(
+            ChapterProgress.user_id == Enrollment.user_id,
+            ChapterProgress.chapter_id.in_(gradable),
+            ChapterProgress.completed.is_(True),
+        )
+        .scalar_subquery()
+    )
+    # A course with nothing gradable is 0%, not a division by zero — the same
+    # answer ``sync_enrollment_progress`` gives.
+    updated = (
+        db.query(Enrollment)
+        .filter(Enrollment.course_id == course_id)
+        .update(
+            {
+                Enrollment.progress: case(
+                    (total == 0, 0),
+                    else_=func.round(completed * 100.0 / func.nullif(total, 0)),
+                )
+            },
+            synchronize_session=False,
+        )
+    )
+    db.commit()
+    return int(updated or 0)
 
 
 def reading_progress_by_course(

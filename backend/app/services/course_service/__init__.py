@@ -26,6 +26,7 @@ from ._enrollment import (
     enroll_user_in_course,
     get_user_courses,
     reading_progress_by_course,
+    resync_course_progress,
     sync_enrollment_progress,
 )
 from ._modules import create_module, delete_module, update_module
@@ -49,6 +50,7 @@ __all__ = [
     "permanently_delete_course",
     "reading_progress_by_course",
     "restore_course",
+    "resync_course_progress",
     "sync_enrollment_progress",
     "update_chapter",
     "update_course",
