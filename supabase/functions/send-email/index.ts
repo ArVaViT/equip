@@ -7,7 +7,10 @@ const SEND_EMAIL_HOOK_SECRET = Deno.env.get("SEND_EMAIL_HOOK_SECRET");
 const DD_API_KEY = Deno.env.get("DD_API_KEY");
 const DD_SITE = Deno.env.get("DD_SITE") ?? "us5.datadoghq.com";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-const SUPABASE_SECRET_KEY = Deno.env.get("SUPABASE_SECRET_KEY");
+// Not `SUPABASE_SECRET_KEY`: the platform reserves the `SUPABASE_` prefix
+// for its own variables and refuses to store a custom one under it
+// ("Env name cannot start with SUPABASE_, skipping"). Hence a project name.
+const PROFILE_READ_KEY = Deno.env.get("EQUIP_PROFILE_READ_KEY");
 
 interface EmailHookPayload {
   user: {
@@ -83,7 +86,7 @@ Deno.serve(async (req: Request) => {
     const { locale, source: localeSource } = await localeFor(
       user.email,
       user.user_metadata?.preferred_locale,
-      { supabaseUrl: SUPABASE_URL, secretKey: SUPABASE_SECRET_KEY },
+      { supabaseUrl: SUPABASE_URL, secretKey: PROFILE_READ_KEY },
     );
     const copy = copyFor(emailType, locale);
     const name = user.user_metadata?.full_name || "";
