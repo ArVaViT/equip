@@ -12,6 +12,7 @@ import { useTheme } from "@/context/useTheme"
 import { usersService } from "@/services/users"
 import { storageService } from "@/services/storage"
 import { coursesService } from "@/services/courses"
+import { countAwarded } from "@/lib/certificates"
 import { makeProfileSchema } from "@/lib/validations/course"
 import { toProxyImage } from "@/lib/images"
 import { ROLE_I18N_KEY } from "@/lib/roles"
@@ -77,6 +78,10 @@ export default function ProfilePage() {
   //: `null` until known, and again if the request fails. A statistic nobody
   //: could read is not zero.
   const [certificateCount, setCertificateCount] = useState<number | null>(null)
+  // Kept apart from the count above so the link to the full list still shows
+  // for somebody whose requests were all refused — those rows are theirs to
+  // see, and the page should not pretend they do not exist.
+  const [certificateRequestCount, setCertificateRequestCount] = useState<number | null>(null)
   const [completedCount, setCompletedCount] = useState<number | null>(null)
   const animatedCompleted = useCountUp(completedCount ?? 0)
   const animatedCertificates = useCountUp(certificateCount ?? 0)
@@ -101,7 +106,11 @@ export default function ProfilePage() {
           coursesService.getMyCourses().catch(() => null),
         ])
         if (cancelled) return
-        setCertificateCount(certs === null ? null : certs.length)
+        // Requests, not awards: `certs` includes pending and rejected rows.
+        // Counting them as earned is what told this student they had
+        // fourteen certificates when every one had been rejected.
+        setCertificateCount(certs === null ? null : countAwarded(certs))
+        setCertificateRequestCount(certs === null ? null : certs.length)
         setCompletedCount(
           enrollments === null ? null : enrollments.filter((e) => e.progress >= 100).length,
         )
@@ -265,7 +274,7 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
-            {certificateCount !== null && certificateCount > 0 && (
+            {certificateRequestCount !== null && certificateRequestCount > 0 && (
               <Link
                 to="/certificates"
                 className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-brand underline-offset-4 hover:underline"
