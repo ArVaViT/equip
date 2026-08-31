@@ -2349,7 +2349,12 @@
       "subheadingDefault": "Fast geschafft — nur noch ein Schritt",
       "body": "Wir haben einen Bestätigungslink an <strong>{{email}}</strong> geschickt.",
       "clickLinkToActivate": "Klicken Sie den Link in der E-Mail, um Ihr Konto zu aktivieren.",
-      "backToSignIn": "Zurück zur Anmeldung"
+      "backToSignIn": "Zurück zur Anmeldung",
+      "checkSpam": "Kommt innerhalb einer Minute nichts an, schauen Sie im Spam-Ordner nach. Der Link gilt 24 Stunden.",
+      "resend": "E-Mail erneut senden",
+      "resendIn": "Erneut senden in {{seconds}} s",
+      "resent": "E-Mail erneut gesendet.",
+      "resendFailed": "E-Mail konnte nicht gesendet werden. Bitte in einer Minute erneut versuchen."
     }
   },
   "validation": {

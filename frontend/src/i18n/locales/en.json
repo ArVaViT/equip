@@ -2349,7 +2349,12 @@
       "subheadingDefault": "Almost there — just one more step",
       "body": "We sent a confirmation link to <strong>{{email}}</strong>.",
       "clickLinkToActivate": "Click the link in the email to activate your account.",
-      "backToSignIn": "Back to Sign In"
+      "backToSignIn": "Back to Sign In",
+      "checkSpam": "If nothing arrives within a minute, check your Spam folder. The link works for 24 hours.",
+      "resend": "Send the email again",
+      "resendIn": "Send again in {{seconds}}s",
+      "resent": "Email sent again.",
+      "resendFailed": "Could not send the email. Please try again in a minute."
     }
   },
   "validation": {
