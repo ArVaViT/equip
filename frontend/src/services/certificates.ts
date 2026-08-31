@@ -2,7 +2,28 @@ import api from "./api"
 import { isAxiosError } from "axios"
 import type { Certificate } from "@/types"
 
+/** What the public verification endpoint answers. No PII when invalid. */
+export interface CertificateVerification {
+  valid: boolean
+  certificate_number: string
+  user_name: string | null
+  course_title: string | null
+  issued_at: string | null
+}
+
 export const certificatesService = {
+  /**
+   * Look a certificate up by the number printed on it. No authentication:
+   * the whole point is that somebody who was handed the certificate — an
+   * employer, a pastor, another school — can check it without an account.
+   */
+  async verifyCertificate(certificateNumber: string): Promise<CertificateVerification> {
+    const response = await api.get<CertificateVerification>(
+      `/certificates/verify/${encodeURIComponent(certificateNumber)}`,
+    )
+    return response.data
+  },
+
   async getCourseCertificate(courseId: string): Promise<Certificate | null> {
     try {
       const response = await api.get<Certificate>(`/certificates/course/${courseId}`)
