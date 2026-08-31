@@ -67,20 +67,17 @@
   },
   "landing": {
     "hero": {
-      "registerCta": "Create account"
-    },
-    "trust": {
-      "openSource": "Free & open-source",
-      "bilingual": "Four languages: RU · EN · DE · UK",
-      "certificates": "Certificates you can verify"
+      "registerCta": "Create account",
+      "manifesto": "Study Scripture in order, not in fragments",
+      "subline": "Courses with real assessment and a certificate anyone can check — for people who take Scripture seriously.",
+      "facts": "Free · Open source · RU EN DE UK · Verifiable certificate"
     },
     "value": {
       "heading": "What's in Equip",
-      "subheading": "Tools for serious Scripture study — no distractions, no lost progress.",
       "structure": {
         "eyebrow": "Course structure",
         "title": "A course, not a pile of videos",
-        "body": "Every course is modules and chapters in a fixed order. You always see what's done, what's left, and what comes next.",
+        "body": "Modules and chapters in a fixed order: you always see what is done and what comes next.",
         "module": "Module 1 · Genesis 1–11",
         "chapter1": "Chapter 1 — Creation",
         "chapter2": "Chapter 2 — The Fall",
@@ -89,21 +86,21 @@
       "assessment": {
         "eyebrow": "Assessment",
         "title": "Not just multiple choice",
-        "body": "Four question types, including essay and short answer — graded by a real teacher, not only auto-scored.",
+        "body": "Four question types, essays among them — read by a teacher, not only by a machine.",
         "sampleQuestion": "Summarize the main idea of this chapter in your own words.",
         "gradedBadge": "Teacher graded"
       },
       "certificates": {
         "eyebrow": "Certification",
         "title": "A certificate you can verify",
-        "body": "Complete a course and get a certificate with a unique number. Anyone can check it's real by that number.",
+        "body": "Every certificate carries its own number, and anyone can check it.",
         "certTitle": "Certificate of Completion",
         "verifyLabel": "Verify by number"
       },
       "bilingual": {
         "eyebrow": "Language",
         "title": "Multilingual from day one",
-        "body": "A teacher's Russian-language course becomes available in English, German, and Ukrainian automatically — no manual translation, no delay.",
+        "body": "A course written in Russian is available in English, German and Ukrainian straight away.",
         "caption": "Course materials translated automatically"
       }
     },
@@ -115,7 +112,7 @@
     },
     "finalCta": {
       "heading": "Ready to start?",
-      "body": "Sign up in a minute — courses are free, progress saves automatically.",
+      "body": "The courses are free, and progress saves itself.",
       "primary": "Create account"
     }
   },

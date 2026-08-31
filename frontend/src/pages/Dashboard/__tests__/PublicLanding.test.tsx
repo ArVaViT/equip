@@ -39,9 +39,25 @@ function renderLanding() {
 }
 
 describe("PublicLanding (unauth marketing page)", () => {
-  it("renders the brand name as the page h1", () => {
+  it("spends the h1 on the claim, not on the brand name", () => {
+    // The name is already in the header, the <title> and the footer.
+    // Repeating it in the largest type on the page tells a visitor deciding
+    // whether this is for them precisely nothing.
     renderLanding()
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/equip/i)
+    const h1 = screen.getByRole("heading", { level: 1 })
+    expect(h1).toHaveTextContent(i18n.t("landing.hero.manifesto"))
+  })
+
+  it("still names the product somewhere on the page", () => {
+    // Dropping it from the h1 must not drop it from the page: the footer
+    // carries it, and a visitor has to be able to learn what this is called.
+    const { container } = renderLanding()
+    expect(container.textContent).toMatch(/equip/i)
+  })
+
+  it("states the facts once, quietly, instead of in three badges", () => {
+    renderLanding()
+    expect(screen.getByText(i18n.t("landing.hero.facts"))).toBeInTheDocument()
   })
 
   it("exposes the key internal destinations as real <a href>", () => {

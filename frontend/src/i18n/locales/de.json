@@ -67,20 +67,17 @@
   },
   "landing": {
     "hero": {
-      "registerCta": "Konto erstellen"
-    },
-    "trust": {
-      "openSource": "Kostenlos und quelloffen",
-      "bilingual": "Vier Sprachen: RU · EN · DE · UK",
-      "certificates": "Überprüfbare Zertifikate"
+      "registerCta": "Konto erstellen",
+      "manifesto": "Die Schrift der Reihe nach studieren, nicht in Bruchstücken",
+      "subline": "Kurse mit echter Prüfung und einem Zertifikat, das jeder nachprüfen kann — für alle, die die Schrift ernst nehmen.",
+      "facts": "Kostenlos · Open Source · RU EN DE UK · Überprüfbares Zertifikat"
     },
     "value": {
       "heading": "Was Equip bietet",
-      "subheading": "Werkzeuge für ernsthaftes Schriftstudium — ohne Ablenkung, ohne verlorenen Fortschritt.",
       "structure": {
         "eyebrow": "Kursaufbau",
         "title": "Ein Kurs, kein Haufen Videos",
-        "body": "Jeder Kurs besteht aus Modulen und Kapiteln in fester Reihenfolge. Sie sehen jederzeit, was erledigt ist, was noch aussteht und was als Nächstes kommt.",
+        "body": "Module und Kapitel in fester Reihenfolge: Sie sehen immer, was erledigt ist und was als Nächstes kommt.",
         "module": "Modul 1 · 1. Mose 1–11",
         "chapter1": "Kapitel 1 — Die Schöpfung",
         "chapter2": "Kapitel 2 — Der Sündenfall",
@@ -89,21 +86,21 @@
       "assessment": {
         "eyebrow": "Prüfung",
         "title": "Mehr als Multiple Choice",
-        "body": "Vier Aufgabentypen, darunter Aufsatz und Kurzantwort — bewertet von einem echten Dozenten, nicht nur automatisch.",
+        "body": "Vier Fragetypen, darunter Aufsätze — gelesen von einer Lehrkraft, nicht nur von der Maschine.",
         "sampleQuestion": "Fassen Sie den Hauptgedanken dieses Kapitels in eigenen Worten zusammen.",
         "gradedBadge": "Vom Dozenten bewertet"
       },
       "certificates": {
         "eyebrow": "Zertifizierung",
         "title": "Ein Zertifikat, das sich prüfen lässt",
-        "body": "Schließen Sie einen Kurs ab und erhalten Sie ein Zertifikat mit einer eindeutigen Nummer. Jeder kann anhand dieser Nummer seine Echtheit prüfen.",
+        "body": "Jedes Zertifikat trägt seine eigene Nummer, und jeder kann sie prüfen.",
         "certTitle": "Abschlusszertifikat",
         "verifyLabel": "Nach Nummer prüfen"
       },
       "bilingual": {
         "eyebrow": "Sprache",
         "title": "Mehrsprachig vom ersten Tag an",
-        "body": "Der russischsprachige Kurs einer Dozentin steht automatisch auf Englisch, Deutsch und Ukrainisch bereit — ohne manuelle Übersetzung, ohne Wartezeit.",
+        "body": "Ein auf Russisch geschriebener Kurs steht sofort auf Englisch, Deutsch und Ukrainisch bereit.",
         "caption": "Kursmaterialien werden automatisch übersetzt"
       }
     },
@@ -115,7 +112,7 @@
     },
     "finalCta": {
       "heading": "Bereit anzufangen?",
-      "body": "In einer Minute registriert — die Kurse sind kostenlos, der Fortschritt wird automatisch gespeichert.",
+      "body": "Die Kurse sind kostenlos, der Fortschritt speichert sich von selbst.",
       "primary": "Konto erstellen"
     }
   },

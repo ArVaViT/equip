@@ -88,14 +88,18 @@ Motion is part of the design language, not absent from it. Rules:
   "Adding a library" below.
 - **Primitives live in `frontend/src/components/motion/`:**
   - `<StaggerChildren>` — orchestrated entrance for list/grid items
+  - `<Reveal>` — one block arriving as the reader reaches it (scroll)
   - `<PressFeedback>` — button-style press scale (0.97 default)
   - Reach for these before hand-rolling `motion.div` in a feature file.
 - **Easing:** `cubic-bezier(0.22, 1, 0.36, 1)` ("editorial ease") everywhere —
   smooth, no bounce, no overshoot. Spring physics are banned outside drag
   previews and toast slide-ins; both require sign-off.
-- **Duration scale:** 120ms (press feedback), 280ms (hover, page transitions),
-  480ms (mount fade-in), 550ms (scroll reveal). Nothing slower than 600ms,
-  nothing faster than 100ms.
+- **Duration scale:** three values, and only three — 120ms (press feedback),
+  200ms (interaction: menus, popovers, state changes), 400ms (panels, route
+  movement, scroll reveal). They live in `lib/motion.ts` and mirror the CSS
+  tokens exactly; `motion.test.ts` fails if the two drift. This list used to
+  name five durations including a 550ms "scroll reveal" that existed in no
+  code — a fourth opinion nobody could honour.
 - **Reduced motion:** every primitive falls back to instant render under
   `prefers-reduced-motion: reduce`. Hand-rolled motion must do the same — use
   the `useReducedMotion` hook from `motion/react` as the single source of truth.
