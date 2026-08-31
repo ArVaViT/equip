@@ -63,3 +63,67 @@ describe("the course name on a certificate", () => {
     await waitFor(() => expect(screen.getByText("The Acts of the Apostles")).toBeInTheDocument())
   })
 })
+
+describe("a certificate whose course has since been deleted", () => {
+  /**
+   * The certificate keeps `archived_course_title` for exactly this case —
+   * written when the request was made, so the name survives the course.
+   * The list ignored it and printed "Course —", while
+   * `CertificateDocument` printed the real name on the certificate itself.
+   * Fourteen rows in production on 2026-08-31 read that way.
+   */
+  it("uses the archived title instead of a dash", async () => {
+    vi.spyOn(coursesService, "getMyCertificates").mockResolvedValue([
+      {
+        id: "cert-archived",
+        course_id: null,
+        archived_course_title: "Проверка оценок (тест)",
+        user_id: "u-1",
+        status: "rejected",
+        requested_at: "2026-08-27T17:31:04Z",
+      },
+    ] as never)
+    vi.spyOn(coursesService, "getMyCourses").mockResolvedValue([] as never)
+
+    renderPage()
+
+    await waitFor(() =>
+      expect(screen.getByText("Проверка оценок (тест)")).toBeInTheDocument(),
+    )
+  })
+})
+
+describe("how many certificates the page says were earned", () => {
+  /**
+   * It counted every row, so a reader whose requests had all been rejected
+   * was told "14 certificates earned" above fourteen cards each marked
+   * "Rejected". Exactly what production showed today.
+   */
+  function seedStatuses(statuses: string[]) {
+    vi.spyOn(coursesService, "getMyCertificates").mockResolvedValue(
+      statuses.map((status, i) => ({
+        id: `cert-${i}`,
+        course_id: null,
+        archived_course_title: `Course ${i}`,
+        user_id: "u-1",
+        status,
+        issued_at: status === "approved" ? "2026-05-01T00:00:00Z" : null,
+      })) as never,
+    )
+    vi.spyOn(coursesService, "getMyCourses").mockResolvedValue([] as never)
+  }
+
+  it("does not count a rejected request as earned", async () => {
+    seedStatuses(["rejected", "rejected", "rejected"])
+    renderPage()
+    await waitFor(() => expect(screen.getAllByText(/Course 0/).length).toBeGreaterThan(0))
+    expect(screen.getByText(i18n.t("certificates.subtitle", { count: 0 }))).toBeInTheDocument()
+  })
+
+  it("counts only the ones actually awarded", async () => {
+    seedStatuses(["approved", "rejected", "pending", "approved"])
+    renderPage()
+    await waitFor(() => expect(screen.getAllByText(/Course 0/).length).toBeGreaterThan(0))
+    expect(screen.getByText(i18n.t("certificates.subtitle", { count: 2 }))).toBeInTheDocument()
+  })
+})

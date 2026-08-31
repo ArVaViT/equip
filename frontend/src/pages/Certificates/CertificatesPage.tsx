@@ -44,15 +44,33 @@ export default function CertificatesPage() {
     ready: !loading,
   })
 
-  const courseTitle = (courseId: string | null) => {
-    if (!courseId) return t("certificates.courseFallback", { id: "—" })
-    const enrollment = enrollments.find((e) => e.course_id === courseId)
-    // ``??`` only catches null. A course with no title in this reader's
-    // language now comes back as an empty string, which slipped straight
-    // through and printed a certificate row with no course on it.
+  /**
+   * What course this certificate is for.
+   *
+   * Three sources, in order of how much they know:
+   *
+   * 1. The live course, if the reader is still enrolled in it.
+   * 2. ``archived_course_title`` — written onto the certificate when it was
+   *    requested, precisely so the name survives the course being deleted.
+   *    The page ignored it, so every certificate for a removed course read
+   *    "Course —" in the list while ``CertificateDocument`` printed the real
+   *    name on the certificate itself. Fourteen rows in production today.
+   * 3. The id, as a last resort.
+   *
+   * ``||`` rather than ``??`` throughout: a course with no title in this
+   * reader's language comes back as an empty string, not null, and an empty
+   * string went straight onto the row.
+   */
+  const courseTitle = (cert: Certificate) => {
+    const enrollment = cert.course_id
+      ? enrollments.find((e) => e.course_id === cert.course_id)
+      : undefined
     return (
       enrollment?.course?.title?.trim() ||
-      t("certificates.courseFallback", { id: `${courseId.slice(0, 8)}…` })
+      cert.archived_course_title?.trim() ||
+      t("certificates.courseFallback", {
+        id: cert.course_id ? `${cert.course_id.slice(0, 8)}…` : "—",
+      })
     )
   }
 
@@ -75,7 +93,13 @@ export default function CertificatesPage() {
         title={t("certificates.title")}
         description={
           certificates.length > 0
-            ? t("certificates.subtitle", { count: certificates.length })
+            ? // Only the ones actually awarded. The page used to count every
+              // row, so a reader whose fourteen requests had all been
+              // rejected was told "14 certificates earned" above fourteen
+              // cards each saying "Rejected".
+              t("certificates.subtitle", {
+                count: certificates.filter((c) => c.status === "approved").length,
+              })
             : undefined
         }
       />
@@ -141,7 +165,7 @@ export default function CertificatesPage() {
                   </div>
 
                   <h3 className="mb-4 line-clamp-2 font-serif text-lg font-semibold leading-snug tracking-tight transition-colors group-hover:text-brand">
-                    {courseTitle(cert.course_id)}
+                    {courseTitle(cert)}
                   </h3>
 
                   <div className="mt-auto space-y-3 border-t border-edge pt-3 text-xs">
