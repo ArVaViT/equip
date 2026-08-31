@@ -116,7 +116,10 @@ export function CalendarPopover({
           >
             <ChevronLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
           </Button>
-          <p className="text-sm font-medium capitalize text-ink">{monthLabel}</p>
+          {/* `capitalize` here read "Август 2026 Г." — CSS capitalizes every word,
+              and Russian writes months and the "г." abbreviation in lower case.
+              Only the first letter of the label is ours to raise. */}
+          <p className="text-sm font-medium text-ink first-letter:uppercase">{monthLabel}</p>
           <Button
             type="button"
             variant="ghost"
