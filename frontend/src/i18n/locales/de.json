@@ -2258,7 +2258,15 @@
         "created": "Einladung gesendet",
         "createFailed": "Einladung konnte nicht gesendet werden",
         "resent": "Einladung erneut gesendet",
-        "resendFailed": "Einladung konnte nicht erneut gesendet werden"
+        "resendFailed": "Einladung konnte nicht erneut gesendet werden",
+        "revoked": "Einladung zurückgezogen",
+        "revokeFailed": "Einladung konnte nicht zurückgezogen werden"
+      },
+      "revoke": "Zurückziehen",
+      "confirmRevoke": {
+        "title": "Einladung zurückziehen?",
+        "description": "Der an {{email}} gesendete Link funktioniert dann nicht mehr. Sie können später erneut einladen.",
+        "confirm": "Zurückziehen"
       }
     },
     "tabSchool": "Schule",

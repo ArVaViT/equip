@@ -22,6 +22,7 @@ from app.services.invitation_service import (
     get_invitation_by_token,
     is_invitation_expired,
     list_invitations,
+    revoke_invitation,
 )
 
 router = APIRouter(prefix="/invitations", tags=["invitations"])
@@ -87,6 +88,32 @@ def list_invitations_route(
         status_filter=invite_status,
     )
     return [_to_response(r) for r in rows]
+
+
+@router.delete("/{invitation_id}", response_model=InvitationResponse)
+def revoke_invitation_route(
+    request: Request,
+    invitation_id: str = Path(...),
+    director: User = Depends(require_director),
+    db: Session = Depends(get_db),
+) -> InvitationResponse:
+    """Withdraw a pending invitation, so its link stops working.
+
+    There was no way to do this. `revoked` has been a legal status since
+    the table was created and `accept_invitation` already refuses anything
+    that is not `pending`, but nothing could set it — so an invitation sent
+    to the wrong address stayed live for seven days, carrying a teacher
+    role with it.
+    """
+    scope = None if director.role == UserRole.ADMIN.value else organization_of(director)
+    invitation = revoke_invitation(
+        db,
+        invitation_id=invitation_id,
+        actor=director,
+        organization_id=scope,
+        request=request,
+    )
+    return _to_response(invitation)
 
 
 @router.get("/token/{token}", response_model=InvitationPreview)

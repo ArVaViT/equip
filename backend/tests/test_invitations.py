@@ -282,3 +282,103 @@ def test_accept_invitation_cannot_be_used_to_tamper_role_via_body(invitee_client
 def test_accept_invitation_requires_auth(anon_client: TestClient):
     resp = anon_client.post(f"{INVITATIONS_PREFIX}/accept", json={"token": "whatever"})
     assert resp.status_code == 401, resp.text
+
+
+# ---------------------------------------------------------------------------
+# Revoking — an invitation sent to the wrong address used to stay live for its
+# full seven days, carrying a teacher role, with nothing able to take it back.
+# `revoked` was a legal status from the first migration and `accept` already
+# refused anything that was not `pending`; only the route was missing.
+# ---------------------------------------------------------------------------
+
+
+def test_revoking_stops_the_link_from_working(admin_client: TestClient, db: Session):
+    created = admin_client.post(
+        INVITATIONS_PREFIX, json={"email": "wrong.address@example.com", "role": "teacher"}
+    ).json()
+
+    resp = admin_client.delete(f"{INVITATIONS_PREFIX}/{created['id']}")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "revoked"
+
+    row = db.query(Invitation).filter(Invitation.id == uuid.UUID(created["id"])).first()
+    assert row is not None
+    # The token itself still exists; what changed is that it is no longer
+    # redeemable, which is what `accept_invitation` checks first.
+    preview = admin_client.get(f"{INVITATIONS_PREFIX}/token/{row.token}")
+    assert preview.status_code in (200, 404, 410)
+    if preview.status_code == 200:
+        assert preview.json()["status"] == "revoked"
+
+
+def test_revoking_twice_is_not_an_error(admin_client: TestClient):
+    created = admin_client.post(INVITATIONS_PREFIX, json={"email": "twice@example.com", "role": "student"}).json()
+    assert admin_client.delete(f"{INVITATIONS_PREFIX}/{created['id']}").status_code == 200
+    second = admin_client.delete(f"{INVITATIONS_PREFIX}/{created['id']}")
+    assert second.status_code == 200
+    assert second.json()["status"] == "revoked"
+
+
+def test_an_accepted_invitation_cannot_be_revoked(admin_client: TestClient, db: Session):
+    # Revoking here would read as "that access is gone", and it is not: the
+    # person has an account. Removing the role is the other operation.
+    created = admin_client.post(INVITATIONS_PREFIX, json={"email": "already.in@example.com", "role": "teacher"}).json()
+    row = db.query(Invitation).filter(Invitation.id == uuid.UUID(created["id"])).first()
+    assert row is not None
+    row.status = "accepted"
+    db.commit()
+
+    resp = admin_client.delete(f"{INVITATIONS_PREFIX}/{created['id']}")
+    assert resp.status_code == 409, resp.text
+
+
+def test_revoking_something_that_does_not_exist_is_404(admin_client: TestClient):
+    resp = admin_client.delete(f"{INVITATIONS_PREFIX}/{uuid.uuid4()}")
+    assert resp.status_code == 404
+
+
+def test_a_student_cannot_revoke(student_client: TestClient, db: Session, admin: User):
+    invitation = _seed_invitation(db, email="someone@example.com", role="teacher")
+    resp = student_client.delete(f"{INVITATIONS_PREFIX}/{invitation.id}")
+    assert resp.status_code == 403
+
+
+def test_a_teacher_cannot_revoke(client: TestClient, db: Session, admin: User):
+    invitation = _seed_invitation(db, email="another@example.com", role="teacher")
+    resp = client.delete(f"{INVITATIONS_PREFIX}/{invitation.id}")
+    assert resp.status_code == 403
+
+
+def test_a_director_cannot_revoke_another_organizations_invitation(db: Session, admin: User):
+    """Scope, not just role.
+
+    A director is trusted inside their own organization. Without the
+    organization check they could withdraw an invitation belonging to a
+    different one — and be told it worked.
+    """
+    import uuid as _uuid
+
+    from fastapi import HTTPException
+
+    from app.services.invitation_service import revoke_invitation
+
+    invitation = _seed_invitation(db, email="theirs@example.com", role="teacher")
+
+    director = User(
+        id=_uuid.uuid4(),
+        email="director@elsewhere.example.com",
+        full_name="Director Elsewhere",
+        role=UserRole.DIRECTOR.value,
+    )
+
+    with pytest.raises(HTTPException) as caught:
+        revoke_invitation(
+            db,
+            invitation_id=invitation.id,
+            actor=director,
+            organization_id=_uuid.uuid4(),
+        )
+    assert caught.value.status_code == 404
+
+    db.refresh(invitation)
+    assert invitation.status == "pending"

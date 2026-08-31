@@ -2258,7 +2258,15 @@
         "created": "Invitation sent",
         "createFailed": "Failed to send invitation",
         "resent": "Invitation resent",
-        "resendFailed": "Failed to resend invitation"
+        "resendFailed": "Failed to resend invitation",
+        "revoked": "Invitation revoked",
+        "revokeFailed": "Could not revoke the invitation"
+      },
+      "revoke": "Revoke",
+      "confirmRevoke": {
+        "title": "Revoke this invitation?",
+        "description": "The link sent to {{email}} will stop working. You can invite them again later.",
+        "confirm": "Revoke"
       }
     },
     "tabSchool": "School",
