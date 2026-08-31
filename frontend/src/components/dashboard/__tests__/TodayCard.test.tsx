@@ -99,6 +99,24 @@ describe("TodayCard", () => {
     expect(items).toHaveLength(3)
   })
 
+  it("raises the first letter of the date, not every word", async () => {
+    // The date read "Понедельник, 31 Августа" in production: the heading
+    // carried CSS `capitalize`, which raises every word, and Russian writes
+    // month names in lower case. Ukrainian had it too ("31 Серпня"), and the
+    // month picker went further — "август 2026 г." became "Август 2026 Г.".
+    //
+    // jsdom applies no stylesheet, so `text-transform` cannot be observed
+    // here; the class list is what decides it, and that is what is asserted.
+    useAuthMock.mockReturnValue({ user: { id: "u-1" } })
+    getCalendarEventsMock.mockResolvedValueOnce([])
+
+    render(<TodayCard />, { wrapper: Wrapper })
+
+    const heading = await screen.findByRole("heading", { level: 2 })
+    expect(heading.className).not.toContain("capitalize")
+    expect(heading.className).toContain("first-letter:uppercase")
+  })
+
   it("does NOT fetch events for unauthenticated visitors", () => {
     useAuthMock.mockReturnValue({ user: null })
     render(<TodayCard />, { wrapper: Wrapper })

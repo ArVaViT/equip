@@ -71,6 +71,8 @@ export function TodayCard() {
     [events, todayKey],
   )
 
+  // Rendered with `first-letter:uppercase`, never CSS `capitalize`: the
+  // latter raises every word, and Russian read "Понедельник, 31 Августа".
   const dateLabel = today.toLocaleDateString(i18n.language, {
     weekday: "long",
     day: "numeric",
@@ -89,7 +91,7 @@ export function TodayCard() {
             <Eyebrow>{t("dashboard.today.eyebrow")}</Eyebrow>
             <h2
               id="today-card-heading"
-              className="truncate font-serif text-sm font-semibold capitalize tracking-tight text-ink"
+              className="truncate font-serif text-sm font-semibold tracking-tight text-ink first-letter:uppercase"
             >
               {dateLabel}
             </h2>
