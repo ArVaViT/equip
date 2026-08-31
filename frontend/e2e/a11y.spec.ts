@@ -81,6 +81,49 @@ test.describe("page-level a11y (public)", () => {
     ).toEqual([]);
   });
 
+  test("register page has no WCAG 2.1 AA violations", async ({ page }) => {
+    // The busiest form the product has for somebody who is not yet a user,
+    // and the one that carries the password rules, the reveal toggle and the
+    // generator. jsdom + axe covers the component; this covers the page as a
+    // browser actually paints it.
+    await page.goto("/register", { waitUntil: "domcontentloaded" });
+    await settleAnimations(page);
+
+    const accessibilityScanResults = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .disableRules(["landmark-one-main", "region"])
+      .analyze();
+
+    expect(
+      accessibilityScanResults.violations,
+      JSON.stringify(accessibilityScanResults.violations, null, 2),
+    ).toEqual([]);
+  });
+
+  test("the password rules are on the register page, not only in the error", async ({ page }) => {
+    // Six of the seven password accounts ever created here never confirmed,
+    // and the last of them was refused three times for a weak password with
+    // nothing on screen saying what the rules were.
+    await page.goto("/register", { waitUntil: "domcontentloaded" });
+    await settleAnimations(page);
+
+    await expect(page.getByText(/12/).first()).toBeVisible();
+
+    const generate = page.getByRole("button", {
+      name: /generate a strong one|придумать надёжный|sicheres erzeugen|створити надійний/i,
+    });
+    await expect(generate).toBeVisible();
+    await generate.click();
+
+    // Both fields filled, and revealed so the value can be saved.
+    const password = page.locator("#reg-password");
+    const confirm = page.locator("#reg-confirmPassword");
+    await expect(password).toHaveAttribute("type", "text");
+    const value = await password.inputValue();
+    expect(value.length).toBeGreaterThanOrEqual(12);
+    await expect(confirm).toHaveValue(value);
+  });
+
   test("login page has no WCAG 2.1 AA violations", async ({ page }) => {
     await page.goto("/login", { waitUntil: "domcontentloaded" });
     await settleAnimations(page);
