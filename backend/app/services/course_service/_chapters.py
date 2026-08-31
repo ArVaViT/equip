@@ -40,6 +40,23 @@ def _course_source_locale_for_module(db: Session, module_id: str) -> str | None:
     )
 
 
+def _resync_progress_for_chapter(db: Session, chapter: Chapter) -> None:
+    """Recompute everybody's percentage on the course this chapter belongs to.
+
+    Imported here rather than at module scope: ``_enrollment`` imports from
+    this package too, and the pair would deadlock at import time.
+    """
+    from app.constants import GRADABLE_CHAPTER_TYPES
+    from app.services.course_service._enrollment import resync_course_progress
+
+    if chapter.chapter_type not in GRADABLE_CHAPTER_TYPES:
+        # Reading chapters are not in the fraction, so nothing moved.
+        return
+    course_id = db.query(Module.course_id).filter(Module.id == chapter.module_id).scalar()
+    if course_id:
+        resync_course_progress(db, course_id)
+
+
 def create_chapter(db: Session, module_id: str, data: ChapterCreate) -> Chapter:
     # Mirrors ``create_module``: default order_index (0) appends at the tail
     # when the module already has chapters.
@@ -64,6 +81,8 @@ def create_chapter(db: Session, module_id: str, data: ChapterCreate) -> Chapter:
     )
     db.commit()
     db.refresh(chapter)
+    # Adding a quiz enlarges the denominator for everybody already enrolled.
+    _resync_progress_for_chapter(db, chapter)
     return chapter
 
 
@@ -82,9 +101,18 @@ def update_chapter(db: Session, chapter: Chapter, data: ChapterUpdate) -> Chapte
         )
     db.commit()
     db.refresh(chapter)
+    if "chapter_type" in patch:
+        # A lesson turned into a quiz (or back) changes what counts.
+        _resync_progress_for_chapter(db, chapter)
     return chapter
 
 
 def delete_chapter(db: Session, chapter: Chapter) -> None:
     chapter.deleted_at = datetime.now(UTC)
     db.commit()
+    # The percentage is a fraction of the course's gradable chapters, so
+    # removing one moves the denominator for every student at once. Without
+    # this, a student who had passed the deleted quiz keeps the percentage
+    # it earned them for ever — four enrolments on production were stored at
+    # 100% while the teacher's board counted 0/5 beside them.
+    _resync_progress_for_chapter(db, chapter)

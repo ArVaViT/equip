@@ -114,3 +114,9 @@ def delete_module(db: Session, module: Module) -> None:
         Chapter.deleted_at.is_(None),
     ).update({Chapter.deleted_at: now}, synchronize_session=False)
     db.commit()
+    # Deleting a module takes its quizzes with it, so the denominator moves
+    # for every student on the course. Imported here to avoid a circular
+    # import at module scope.
+    from app.services.course_service._enrollment import resync_course_progress
+
+    resync_course_progress(db, module.course_id)
