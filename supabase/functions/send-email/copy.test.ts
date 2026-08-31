@@ -12,16 +12,18 @@
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import {
   COPY,
+  GOTRUE_EMAIL_ACTION_TYPES,
   LOCALES,
   confirmationUrl,
   landingPathFor,
   copyFor,
+  hasCopyFor,
   knownLocale,
   localeFor,
   renderEmail,
 } from "./copy.ts";
 
-const TYPES = ["signup", "recovery", "magic_link", "email_change"] as const;
+const TYPES = ["signup", "recovery", "magiclink", "email_change"] as const;
 const LINK = "https://equipbible.com/auth/confirm?token_hash=abc&type=signup";
 
 Deno.test("every email exists in every language", () => {
@@ -65,7 +67,7 @@ Deno.test("the link lifetime in the copy matches mailer_otp_exp", () => {
     uk: "добу",
   };
   for (const locale of LOCALES) {
-    for (const type of ["signup", "recovery", "magic_link"] as const) {
+    for (const type of ["signup", "recovery", "magiclink"] as const) {
       assertStringIncludes(COPY[type][locale].footer, promises[locale]);
     }
   }
@@ -242,4 +244,40 @@ Deno.test("every other link still lands on the confirm page", () => {
   for (const type of ["signup", "magiclink", "email_change", "reauthentication"]) {
     assertEquals(landingPathFor(type), "/auth/confirm", type);
   }
+});
+
+Deno.test("every key in COPY is an action type GoTrue actually sends", () => {
+  // The defect this catches shipped and stayed: the table said `magic_link`,
+  // GoTrue sends `magiclink`, so the lookup missed on every single sign-in
+  // link and the fallback mailed people "Thanks for registering. Confirm
+  // your address." Nothing failed — the wrong email sent successfully.
+  //
+  // A key that is not one of GoTrue's types can only be a typo: no email
+  // will ever arrive under that name.
+  for (const key of Object.keys(COPY)) {
+    assert(
+      (GOTRUE_EMAIL_ACTION_TYPES as readonly string[]).includes(key),
+      `COPY has "${key}", which GoTrue never sends. Check the spelling against ` +
+        `the Send Email Hook schema: ${GOTRUE_EMAIL_ACTION_TYPES.join(", ")}`,
+    );
+  }
+});
+
+Deno.test("a sign-in link is not worded as a registration", () => {
+  // The two are one letter apart in the key and worlds apart to the reader:
+  // one says "press the button to sign in", the other "thanks for
+  // registering, confirm your address" — to somebody who registered months
+  // ago and only wanted in.
+  const link = copyFor("magiclink", "ru");
+  const signup = copyFor("signup", "ru");
+  assert(link.subject !== signup.subject);
+  assertStringIncludes(link.subject.toLowerCase(), "вход");
+  assert(hasCopyFor("magiclink"));
+});
+
+Deno.test("an unknown action type still sends, and says so", () => {
+  // The fallback is on purpose — a new GoTrue action type should not mean
+  // silence — but the caller logs it, so it cannot pass for working.
+  assertEquals(copyFor("reauthentication", "en").subject, copyFor("signup", "en").subject);
+  assert(!hasCopyFor("reauthentication"));
 });

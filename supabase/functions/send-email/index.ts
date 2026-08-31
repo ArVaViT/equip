@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { Webhook } from "https://esm.sh/standardwebhooks@1.0.0";
-import { FROM, confirmationUrl, copyFor, localeFor, renderEmail } from "./copy.ts";
+import { FROM, confirmationUrl, copyFor, localeFor, renderEmail, hasCopyFor } from "./copy.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SEND_EMAIL_HOOK_SECRET = Deno.env.get("SEND_EMAIL_HOOK_SECRET");
@@ -92,6 +92,17 @@ Deno.serve(async (req: Request) => {
       user.user_metadata?.preferred_locale,
       { supabaseUrl: SUPABASE_URL, secretKey: PROFILE_READ_KEY },
     );
+    if (!hasCopyFor(emailType)) {
+      // Loud, because the fallback is indistinguishable from working: an
+      // unrecognised type still sends an email, just the wrong one. This is
+      // how "magic_link" vs "magiclink" survived — every sign-in link was
+      // emailed as a registration confirmation and nothing said so.
+      console.error(JSON.stringify({
+        level: "error",
+        msg: "no copy for email_action_type — sending the signup wording instead",
+        email_type: emailType,
+      }));
+    }
     const copy = copyFor(emailType, locale);
     const name = user.user_metadata?.full_name || "";
     const confirmUrl = confirmationUrl({

@@ -237,7 +237,13 @@
       "show": "Показать пароль",
       "hide": "Скрыть пароль",
       "ruleLength_other": "Не менее {{count}} символов"
-    }
+    },
+    "signInLink": "Войти по ссылке из письма",
+    "signInLinkSending": "Отправляем…",
+    "signInLinkSent": "Если такой адрес у нас есть, письмо уже в пути. Откройте почту и нажмите кнопку в письме.",
+    "signInLinkAgain": "Отправить ещё раз",
+    "signInLinkAgainIn": "Отправить ещё раз через {{seconds}} с",
+    "signInLinkBackToPassword": "Войти паролем"
   },
   "profile": {
     "fullName": "Полное имя",

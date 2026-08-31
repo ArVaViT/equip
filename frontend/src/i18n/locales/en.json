@@ -662,7 +662,13 @@
       "generated": "Password generated and shown. Save it in your password manager before continuing.",
       "show": "Show password",
       "hide": "Hide password"
-    }
+    },
+    "signInLink": "Sign in with a link instead",
+    "signInLinkSending": "Sending…",
+    "signInLinkSent": "If we have that address, the email is on its way. Open it and press the button.",
+    "signInLinkAgain": "Send it again",
+    "signInLinkAgainIn": "Send it again in {{seconds}}s",
+    "signInLinkBackToPassword": "Use a password"
   },
   "profile": {
     "fullName": "Full Name",

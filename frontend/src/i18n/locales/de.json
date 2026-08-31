@@ -662,7 +662,13 @@
       "generated": "Passwort erzeugt und angezeigt. Speichern Sie es in Ihrem Passwortmanager, bevor Sie fortfahren.",
       "show": "Passwort anzeigen",
       "hide": "Passwort verbergen"
-    }
+    },
+    "signInLink": "Stattdessen per Link anmelden",
+    "signInLinkSending": "Wird gesendet …",
+    "signInLinkSent": "Falls wir diese Adresse haben, ist die E-Mail unterwegs. Öffnen Sie sie und klicken Sie auf die Schaltfläche.",
+    "signInLinkAgain": "Erneut senden",
+    "signInLinkAgainIn": "Erneut senden in {{seconds}} s",
+    "signInLinkBackToPassword": "Mit Passwort anmelden"
   },
   "profile": {
     "fullName": "Vollständiger Name",

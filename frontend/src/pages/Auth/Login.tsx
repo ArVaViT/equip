@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,7 @@ import AuthLayout from "@/components/layout/AuthLayout"
 import { Loader2 } from "lucide-react"
 import { authErrorMessage } from "@/lib/authError"
 import { GoogleIcon } from "./register/GoogleIcon"
+import { SignInLinkSent } from "./SignInLinkSent"
 
 export default function Login() {
   const [form, setForm] = useState<LoginFormData>({ email: "", password: "" })
@@ -17,7 +18,9 @@ export default function Login() {
   const [serverError, setServerError] = useState("")
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
-  const { login, signInWithGoogle } = useAuth()
+  const [linkSending, setLinkSending] = useState(false)
+  const [linkSent, setLinkSent] = useState(false)
+  const { login, signInWithGoogle, sendSignInLink } = useAuth()
   const { t } = useTranslation()
 
   const handleChange = (field: keyof LoginFormData, value: string) => {
@@ -56,6 +59,40 @@ export default function Login() {
     }
   }
 
+  /**
+   * Ask for a one-time sign-in link.
+   *
+   * The confirmation is deliberately the same whether or not the address has
+   * an account here: anything else turns this form into a way to find out
+   * who is registered. A 429 is the one thing worth saying out loud — it is
+   * the only outcome the reader can act on, by waiting.
+   */
+  const handleSignInLink = useCallback(async () => {
+    setServerError("")
+    const parsed = makeLoginSchema().pick({ email: true }).safeParse({ email: form.email })
+    if (!parsed.success) {
+      setErrors({ email: parsed.error.issues[0]?.message })
+      return
+    }
+
+    setLinkSending(true)
+    try {
+      await sendSignInLink(parsed.data.email)
+    } catch (err) {
+      if (import.meta.env.DEV) console.error("sendSignInLink failed", err)
+      const message = authErrorMessage(err, "auth.errors.serverError")
+      if (message === t("auth.errors.rateLimited")) {
+        setServerError(message)
+        setLinkSending(false)
+        return
+      }
+      // Everything else — including "no such user", which is exactly what we
+      // must not disclose — reads as the neutral confirmation below.
+    }
+    setLinkSending(false)
+    setLinkSent(true)
+  }, [form.email, sendSignInLink, t])
+
   const handleGoogleLogin = async () => {
     setGoogleLoading(true)
     try {
@@ -65,6 +102,14 @@ export default function Login() {
     } finally {
       setGoogleLoading(false)
     }
+  }
+
+  if (linkSent) {
+    return (
+      <AuthLayout heading={t("auth.welcomeBack")} subheading={t("auth.signInSubheading")}>
+        <SignInLinkSent email={form.email} onUsePassword={() => setLinkSent(false)} />
+      </AuthLayout>
+    )
   }
 
   return (
@@ -151,6 +196,24 @@ export default function Login() {
               t("auth.signIn")
             )}
           </Button>
+
+          {/* Quiet, and below the password: for most people the password is
+              still the fastest way in, and this is the way out of "I do not
+              remember it" that does not involve choosing a new one. */}
+          <p className="text-center">
+            <button
+              type="button"
+              onClick={handleSignInLink}
+              disabled={linkSending || loading || googleLoading}
+              className="inline-flex min-h-[44px] items-center px-1 text-sm text-ink-muted transition-colors hover:text-ink disabled:opacity-60 sm:min-h-0"
+            >
+              {linkSending ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" strokeWidth={1.75} />{t("auth.signInLinkSending")}</>
+              ) : (
+                t("auth.signInLink")
+              )}
+            </button>
+          </p>
         </form>
 
         <p className="text-sm text-center text-ink-muted">
