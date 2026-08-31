@@ -2646,5 +2646,22 @@
     "blockedEdits": "{{count}} Änderungen hängen fest. Eine Übersetzung hat die Prüfung nicht bestanden und braucht einen Menschen.",
     "needsReview": "{{count}} Übersetzungen brauchen eine Durchsicht. Von allein lösen sie sich nicht.",
     "openReviewQueue": "Prüfliste öffnen"
+  },
+  "verify": {
+    "eyebrow": "ECHTHEIT",
+    "title": "Zertifikat prüfen",
+    "subtitle": "Geben Sie die auf dem Zertifikat gedruckte Nummer ein. Ein Konto ist nicht nötig.",
+    "numberLabel": "Zertifikatsnummer",
+    "placeholder": "CERT-XXXXXXXXXXXX",
+    "submit": "Prüfen",
+    "checking": "Wird geprüft…",
+    "validHeading": "Dieses Zertifikat ist echt",
+    "issuedTo": "Ausgestellt für",
+    "courseLabel": "Kurs",
+    "issuedAt": "Ausgestellt am",
+    "invalidHeading": "Kein solches Zertifikat",
+    "invalidDescription": "Die Nummer {{number}} gehört zu keinem ausgestellten Zertifikat. Bitte prüfen Sie, ob sie korrekt übertragen wurde.",
+    "errorTitle": "Prüfung gerade nicht möglich",
+    "errorDescription": "Das ist ein Verbindungsproblem und kein Urteil über das Zertifikat. Bitte erneut versuchen."
   }
 }

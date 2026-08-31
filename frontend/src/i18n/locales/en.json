@@ -2646,5 +2646,22 @@
     "blockedEdits": "{{count}} edits are stuck. A translation failed its check and needs a person.",
     "needsReview": "{{count}} translations need review. They will not resolve on their own.",
     "openReviewQueue": "Open the review queue"
+  },
+  "verify": {
+    "eyebrow": "AUTHENTICITY",
+    "title": "Verify a certificate",
+    "subtitle": "Enter the number printed on the certificate. No account needed.",
+    "numberLabel": "Certificate number",
+    "placeholder": "CERT-XXXXXXXXXXXX",
+    "submit": "Verify",
+    "checking": "Checking…",
+    "validHeading": "This certificate is genuine",
+    "issuedTo": "Issued to",
+    "courseLabel": "Course",
+    "issuedAt": "Issued",
+    "invalidHeading": "No such certificate",
+    "invalidDescription": "The number {{number}} does not match any issued certificate. Check that it was copied correctly.",
+    "errorTitle": "Could not check right now",
+    "errorDescription": "That is a connection problem, not a verdict on the certificate. Please try again."
   }
 }

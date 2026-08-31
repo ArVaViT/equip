@@ -41,6 +41,7 @@ const AuthCallback = lazyRoute(() => import("./pages/Auth/AuthCallback"))
 const AcceptInvite = lazyRoute(() => import("./pages/Invite/AcceptInvite"))
 const DashboardPage = lazyRoute(() => import("./pages/Dashboard/DashboardPage"))
 const CoursesPage = lazyRoute(() => import("./pages/Courses/CoursesPage"))
+const VerifyCertificatePage = lazyRoute(() => import("./pages/Verify/VerifyCertificatePage"))
 const LegalDocumentPage = lazyRoute(() => import("./pages/Legal/LegalDocumentPage"))
 const ProfilePage = lazyRoute(() => import("./pages/Profile/ProfilePage"))
 const CourseDetail = lazyRoute(() => import("./pages/Course/CourseDetail"))
@@ -217,6 +218,11 @@ function AppRoutes() {
               {/* Public. A policy you can only read after accepting it is not
                   a policy, and the consent checkbox has been naming these two
                   documents since long before they existed. */}
+              {/* Public, and deliberately so: the reader is whoever was
+                  handed the certificate. The number printed on every
+                  certificate points here. */}
+              <Route path="/verify" element={<VerifyCertificatePage />} />
+              <Route path="/verify/:certificateNumber" element={<VerifyCertificatePage />} />
               <Route path="/privacy" element={<LegalDocumentPage slug="privacy" />} />
               <Route path="/terms" element={<LegalDocumentPage slug="terms" />} />
               <Route path="/profile" element={<Gate mode="private"><ProfilePage /></Gate>} />
