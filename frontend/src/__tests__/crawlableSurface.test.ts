@@ -29,9 +29,10 @@ const ROBOTS = readFileSync(join(ROOT, "public", "robots.txt"), "utf8")
 /** Static routes no auth gate stands in front of. */
 function publicStaticRoutes(): string[] {
   return [...APP.matchAll(/<Route\s+path="([^"]+)"\s+element=\{([^\n]*)/g)]
-    .filter(([, path]) => !path.includes(":") && path !== "*")
-    .filter(([, , element]) => !/mode="(private|teacher|admin)"/.test(element))
-    .map(([, path]) => path)
+    .map((match) => ({ path: match[1]!, element: match[2]! }))
+    .filter(({ path }) => !path.includes(":") && path !== "*")
+    .filter(({ element }) => !/mode="(private|teacher|admin)"/.test(element))
+    .map(({ path }) => path)
 }
 
 const disallowed = ROBOTS.split("\n")
