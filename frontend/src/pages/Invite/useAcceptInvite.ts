@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { usePasswordAffordances } from "@/components/auth/usePasswordAffordances"
 import { useSearchParams } from "react-router-dom"
 import { useAuth } from "@/context/useAuth"
 import { invitationsService, type InvitationPreview } from "@/services/invitations"
@@ -109,10 +110,17 @@ export function useAcceptInvite() {
     }
   }, [token, refreshUser])
 
+  const setBothPasswords = useCallback((value: string) => {
+    setForm((prev) => ({ ...prev, password: value, confirmPassword: value }))
+    setErrors((prev) => ({ ...prev, password: undefined, confirmPassword: undefined }))
+  }, [])
+  const passwordAffordances = usePasswordAffordances(setBothPasswords)
+
   const handleChange = useCallback((field: keyof FormState, value: string) => {
+    if (field === "password" || field === "confirmPassword") passwordAffordances.noteEdited()
     setForm((prev) => ({ ...prev, [field]: value }))
     setErrors((prev) => ({ ...prev, [field]: undefined }))
-  }, [])
+  }, [passwordAffordances])
 
   const handleSubmit = useCallback(async () => {
     if (!preview) return
@@ -178,6 +186,7 @@ export function useAcceptInvite() {
     googleLoading,
     acceptedRole,
     currentUserEmail: user?.email ?? null,
+    passwordAffordances,
     handleChange,
     handleSubmit,
     handleGoogleSignUp,

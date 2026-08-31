@@ -1,13 +1,13 @@
-import { useState, useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { authService } from "@/services/auth"
 import AuthLayout from "@/components/layout/AuthLayout"
 import { z } from "zod"
 import { PASSWORD_MIN_LENGTH } from "@/lib/passwordPolicy"
+import { PasswordFields } from "@/components/auth/PasswordFields"
+import { usePasswordAffordances } from "@/components/auth/usePasswordAffordances"
 import { Loader2, CheckCircle2 } from "lucide-react"
 import i18n from "@/i18n/config"
 import { authErrorMessage } from "@/lib/authError"
@@ -41,6 +41,19 @@ export default function ResetPassword() {
   const [serverError, setServerError] = useState("")
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const setBothPasswords = useCallback((value: string) => {
+    setForm({ password: value, confirmPassword: value })
+    setErrors({})
+  }, [])
+  const passwordAffordances = usePasswordAffordances(setBothPasswords)
+  const handlePasswordChange = useCallback(
+    (field: "password" | "confirmPassword", value: string) => {
+      passwordAffordances.noteEdited()
+      setForm((prev) => ({ ...prev, [field]: value }))
+      setErrors((prev) => ({ ...prev, [field]: undefined }))
+    },
+    [passwordAffordances],
+  )
   const navigate = useNavigate()
   const redirectTimer = useRef<ReturnType<typeof setTimeout>>()
 
@@ -118,50 +131,20 @@ export default function ResetPassword() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="password">{t("auth.resetPassword.newPassword")}</Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              fieldSize="lg"
-              value={form.password}
-              onChange={(e) => {
-                setForm((prev) => ({ ...prev, password: e.target.value }))
-                setErrors((prev) => ({ ...prev, password: undefined }))
-              }}
-              aria-invalid={!!errors.password}
-              aria-describedby={errors.password ? "reset-password-error" : undefined}
-              autoFocus
-            />
-            {errors.password && (
-              <p id="reset-password-error" role="alert" className="text-xs text-destructive mt-1">
-                {errors.password}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">{t("auth.resetPassword.confirmNewPassword")}</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              fieldSize="lg"
-              value={form.confirmPassword}
-              onChange={(e) => {
-                setForm((prev) => ({ ...prev, confirmPassword: e.target.value }))
-                setErrors((prev) => ({ ...prev, confirmPassword: undefined }))
-              }}
-              aria-invalid={!!errors.confirmPassword}
-              aria-describedby={errors.confirmPassword ? "reset-confirm-error" : undefined}
-            />
-            {errors.confirmPassword && (
-              <p id="reset-confirm-error" role="alert" className="text-xs text-destructive mt-1">
-                {errors.confirmPassword}
-              </p>
-            )}
-          </div>
+          <PasswordFields
+            idPrefix="reset"
+            passwordLabel={t("auth.resetPassword.newPassword")}
+            confirmLabel={t("auth.resetPassword.confirmNewPassword")}
+            password={form.password}
+            confirmPassword={form.confirmPassword}
+            passwordError={errors.password}
+            confirmError={errors.confirmPassword}
+            showPassword={passwordAffordances.showPassword}
+            passwordGenerated={passwordAffordances.passwordGenerated}
+            onChange={handlePasswordChange}
+            onToggleShowPassword={passwordAffordances.toggleShowPassword}
+            onGeneratePassword={passwordAffordances.generate}
+          />
 
           <Button type="submit" size="lg" className="w-full font-medium" disabled={loading}>
             {loading ? (
