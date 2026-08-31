@@ -295,7 +295,22 @@ export function copyFor(emailType: string, locale: Locale): Copy {
  *
  * `siteUrl` comes from configuration rather than from the hook payload,
  * because the payload's own idea of the site is what caused this.
+ *
+ * The landing page depends on the type, and that matters. A recovery link
+ * used to land on `/auth/confirm` like everything else, which signs the
+ * person in and sends them to the dashboard — so somebody who had forgotten
+ * their password ended up inside their account with no way to set a new one,
+ * and the same locked door waiting next time. Verified in production on
+ * 2026-08-31 with a real recovery link and no prior session.
+ *
+ * Routing on the type here rather than sniffing it on the client: the type
+ * is known for certain at this point, and the client's own signal for it
+ * (a `PASSWORD_RECOVERY` event) does not arrive on this path.
  */
+export function landingPathFor(emailType: string): string {
+  return emailType === "recovery" ? "/auth/reset-password" : "/auth/confirm";
+}
+
 export function confirmationUrl(opts: {
   supabaseUrl: string;
   siteUrl: string;
@@ -303,7 +318,7 @@ export function confirmationUrl(opts: {
   emailType: string;
 }): string {
   const base = opts.supabaseUrl.replace(/\/+$/, "");
-  const redirectTo = `${opts.siteUrl.replace(/\/+$/, "")}/auth/confirm`;
+  const redirectTo = `${opts.siteUrl.replace(/\/+$/, "")}${landingPathFor(opts.emailType)}`;
   const params = new URLSearchParams({
     token: opts.tokenHash,
     type: opts.emailType,
