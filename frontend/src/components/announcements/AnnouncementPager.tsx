@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 import { ChevronDown, ChevronUp, Megaphone, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { formatDateTime } from "@/i18n/format"
+import { formatDateLong, formatDateTime } from "@/i18n/format"
 import type { Announcement } from "@/types"
 
 interface AnnouncementPagerProps {
@@ -101,8 +101,18 @@ export function AnnouncementPager({ announcements, onDelete }: AnnouncementPager
               {current.content}
             </p>
           )}
-          <time className="mt-1 block text-xs text-ink-muted">
-            {formatDateTime(current.created_at)}
+          {/* `formatDateTime` is the canonical machine format —
+              ``2026-04-23 00:29:06`` — meant for audit rows and latency
+              dashboards. An announcement is a teacher speaking to a class;
+              nobody in that conversation needs the seconds. The exact
+              moment stays one hover away, which is what the format module
+              itself recommends. */}
+          <time
+            className="mt-1 block text-xs text-ink-muted"
+            dateTime={current.created_at}
+            title={formatDateTime(current.created_at)}
+          >
+            {formatDateLong(current.created_at)}
           </time>
         </div>
         {onDelete && (

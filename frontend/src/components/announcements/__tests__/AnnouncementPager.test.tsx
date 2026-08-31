@@ -5,6 +5,7 @@ import { I18nextProvider } from "react-i18next"
 import { describe, expect, it, vi } from "vitest"
 
 import i18n from "@/i18n/config"
+import { formatDateLong } from "@/i18n/format"
 import type { Announcement } from "@/types"
 import { AnnouncementPager } from "@/components/announcements/AnnouncementPager"
 
@@ -174,5 +175,34 @@ describe("AnnouncementPager", () => {
     // Now on "Second" — clicking delete must report 'b', not 'a' or 'c'.
     await user.click(screen.getByRole("button", { name: /delete announcement second/i }))
     expect(onDelete).toHaveBeenCalledWith("b")
+  })
+})
+
+describe("the date on an announcement", () => {
+  /**
+   * It used to print `formatDateTime` — the canonical machine format,
+   * `2026-05-18 12:00:00`, written for audit rows and latency dashboards.
+   * An announcement is a teacher speaking to a class. Seen in production on
+   * a real course: "2026-04-23 00:29:06" under a two-word post.
+   */
+  it("reads as a date a person would say out loud", () => {
+    render(<AnnouncementPager announcements={[make("a1", "Ура", "Курс начался")]} onDelete={vi.fn()} />, {
+      wrapper: Wrapper,
+    })
+    const time = screen.getByText(formatDateLong("2026-05-18T12:00:00Z"))
+    expect(time).toBeInTheDocument()
+    expect(time.textContent).not.toMatch(/\d{2}:\d{2}:\d{2}/)
+  })
+
+  it("keeps the exact moment one hover away", () => {
+    const { container } = render(
+      <AnnouncementPager announcements={[make("a1", "Ура")]} onDelete={vi.fn()} />,
+      { wrapper: Wrapper },
+    )
+    const time = container.querySelector("time")
+    // Precision is not lost, only moved out of the reader's way — and the
+    // machine-readable attribute is what a screen reader and a crawler use.
+    expect(time?.getAttribute("title")).toMatch(/\d{2}:\d{2}:\d{2}/)
+    expect(time?.getAttribute("dateTime")).toBe("2026-05-18T12:00:00Z")
   })
 })
