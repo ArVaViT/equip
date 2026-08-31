@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useRef } from "react"
+import { Suspense, useEffect, useRef } from "react"
+import { lazyRoute } from "@/lib/lazyRoute"
 import { BrowserRouter, Route, Navigate, useLocation, useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Routes } from "@datadog/browser-rum-react/react-router-v6"
@@ -26,42 +27,42 @@ import { takePendingInviteToken } from "@/lib/pendingInvite"
 // several lazy routes share it; see PressFeedback/CourseCard/DashboardPage.)
 // Suspense fallback is null because "not loaded yet" is visually identical to
 // its own inactive state.
-const FirstRunFlow = lazy(() =>
+const FirstRunFlow = lazyRoute(() =>
   import("@/components/firstRun").then((m) => ({ default: m.FirstRunFlow })),
 )
 
-const NotFound = lazy(() => import("./pages/NotFound"))
+const NotFound = lazyRoute(() => import("./pages/NotFound"))
 
-const Login = lazy(() => import("./pages/Auth/Login"))
-const Register = lazy(() => import("./pages/Auth/Register"))
-const ForgotPassword = lazy(() => import("./pages/Auth/ForgotPassword"))
-const ResetPassword = lazy(() => import("./pages/Auth/ResetPassword"))
-const AuthCallback = lazy(() => import("./pages/Auth/AuthCallback"))
-const AcceptInvite = lazy(() => import("./pages/Invite/AcceptInvite"))
-const DashboardPage = lazy(() => import("./pages/Dashboard/DashboardPage"))
-const CoursesPage = lazy(() => import("./pages/Courses/CoursesPage"))
-const LegalDocumentPage = lazy(() => import("./pages/Legal/LegalDocumentPage"))
-const ProfilePage = lazy(() => import("./pages/Profile/ProfilePage"))
-const CourseDetail = lazy(() => import("./pages/Course/CourseDetail"))
-const ModuleView = lazy(() => import("./pages/Course/ModuleView"))
-const TeacherDashboard = lazy(() => import("./pages/Teacher/TeacherDashboard"))
-const CertificatesPage = lazy(() => import("./pages/Certificates/CertificatesPage"))
-const CourseEditor = lazy(() => import("./pages/Teacher/CourseEditor"))
-const ModuleEditor = lazy(() => import("./pages/Teacher/ModuleEditor"))
-const VedomostPage = lazy(() => import("./pages/Teacher/vedomost/VedomostPage"))
-const TeacherGradebook = lazy(() => import("./pages/Teacher/TeacherGradebook"))
-const GradingQueue = lazy(() => import("./pages/Teacher/GradingQueue"))
-const CertificateDocument = lazy(() => import("./pages/Certificates/CertificateDocument"))
-const TeacherAnalytics = lazy(() => import("./pages/Teacher/TeacherAnalytics"))
-const StudentProgress = lazy(() => import("./pages/Teacher/StudentProgress"))
-const ChapterView = lazy(() => import("./pages/Course/ChapterView"))
-const ChapterEditor = lazy(() => import("./pages/Teacher/ChapterEditor"))
-const AdminDashboard = lazy(() => import("./pages/Admin/AdminDashboard"))
-const CohortDetailPage = lazy(() => import("./pages/Admin/cohorts/CohortDetailPage"))
-const CalendarPage = lazy(() => import("./pages/Calendar/CalendarPage"))
-const DailyChallengeArchivePage = lazy(() => import("./pages/DailyChallengeArchive/DailyChallengeArchivePage"))
-const DailyChallengeReviewPage = lazy(() => import("./pages/Admin/dailyChallenge/DailyChallengeReviewPage"))
-const DailyChallengeReviewDetailPage = lazy(() => import("./pages/Admin/dailyChallenge/DailyChallengeReviewDetailPage"))
+const Login = lazyRoute(() => import("./pages/Auth/Login"))
+const Register = lazyRoute(() => import("./pages/Auth/Register"))
+const ForgotPassword = lazyRoute(() => import("./pages/Auth/ForgotPassword"))
+const ResetPassword = lazyRoute(() => import("./pages/Auth/ResetPassword"))
+const AuthCallback = lazyRoute(() => import("./pages/Auth/AuthCallback"))
+const AcceptInvite = lazyRoute(() => import("./pages/Invite/AcceptInvite"))
+const DashboardPage = lazyRoute(() => import("./pages/Dashboard/DashboardPage"))
+const CoursesPage = lazyRoute(() => import("./pages/Courses/CoursesPage"))
+const LegalDocumentPage = lazyRoute(() => import("./pages/Legal/LegalDocumentPage"))
+const ProfilePage = lazyRoute(() => import("./pages/Profile/ProfilePage"))
+const CourseDetail = lazyRoute(() => import("./pages/Course/CourseDetail"))
+const ModuleView = lazyRoute(() => import("./pages/Course/ModuleView"))
+const TeacherDashboard = lazyRoute(() => import("./pages/Teacher/TeacherDashboard"))
+const CertificatesPage = lazyRoute(() => import("./pages/Certificates/CertificatesPage"))
+const CourseEditor = lazyRoute(() => import("./pages/Teacher/CourseEditor"))
+const ModuleEditor = lazyRoute(() => import("./pages/Teacher/ModuleEditor"))
+const VedomostPage = lazyRoute(() => import("./pages/Teacher/vedomost/VedomostPage"))
+const TeacherGradebook = lazyRoute(() => import("./pages/Teacher/TeacherGradebook"))
+const GradingQueue = lazyRoute(() => import("./pages/Teacher/GradingQueue"))
+const CertificateDocument = lazyRoute(() => import("./pages/Certificates/CertificateDocument"))
+const TeacherAnalytics = lazyRoute(() => import("./pages/Teacher/TeacherAnalytics"))
+const StudentProgress = lazyRoute(() => import("./pages/Teacher/StudentProgress"))
+const ChapterView = lazyRoute(() => import("./pages/Course/ChapterView"))
+const ChapterEditor = lazyRoute(() => import("./pages/Teacher/ChapterEditor"))
+const AdminDashboard = lazyRoute(() => import("./pages/Admin/AdminDashboard"))
+const CohortDetailPage = lazyRoute(() => import("./pages/Admin/cohorts/CohortDetailPage"))
+const CalendarPage = lazyRoute(() => import("./pages/Calendar/CalendarPage"))
+const DailyChallengeArchivePage = lazyRoute(() => import("./pages/DailyChallengeArchive/DailyChallengeArchivePage"))
+const DailyChallengeReviewPage = lazyRoute(() => import("./pages/Admin/dailyChallenge/DailyChallengeReviewPage"))
+const DailyChallengeReviewDetailPage = lazyRoute(() => import("./pages/Admin/dailyChallenge/DailyChallengeReviewDetailPage"))
 
 /**
  * a11y: after a client-side route change, move keyboard / screen-reader
