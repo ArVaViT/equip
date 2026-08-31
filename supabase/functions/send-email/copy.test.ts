@@ -14,6 +14,7 @@ import {
   COPY,
   LOCALES,
   confirmationUrl,
+  landingPathFor,
   copyFor,
   knownLocale,
   localeFor,
@@ -202,7 +203,8 @@ Deno.test("the link survives trailing slashes in configuration", () => {
   assert(!url.includes("//auth/v1"), `двойной слэш в пути: ${url}`);
   assertEquals(
     new URL(url).searchParams.get("redirect_to"),
-    "https://equipbible.com/auth/confirm",
+    // recovery, so the reset page — and no doubled slash from the config.
+    "https://equipbible.com/auth/reset-password",
   );
 });
 
@@ -214,4 +216,30 @@ Deno.test("a token with URL-special characters is escaped", () => {
     emailType: "magiclink",
   });
   assertEquals(new URL(url).searchParams.get("token"), "a+b/c=d&e");
+});
+
+
+Deno.test("a recovery link lands on the page that changes the password", () => {
+  // It used to land on /auth/confirm like everything else, which signs the
+  // person in and drops them on the dashboard. Somebody who had forgotten
+  // their password got into their account and found no way to set a new one
+  // — with the same locked door waiting next time. Seen in production.
+  assertEquals(landingPathFor("recovery"), "/auth/reset-password");
+  assertEquals(
+    new URL(
+      confirmationUrl({
+        supabaseUrl: "https://project.supabase.co",
+        siteUrl: "https://equipbible.com",
+        tokenHash: "abc",
+        emailType: "recovery",
+      }),
+    ).searchParams.get("redirect_to"),
+    "https://equipbible.com/auth/reset-password",
+  );
+});
+
+Deno.test("every other link still lands on the confirm page", () => {
+  for (const type of ["signup", "magiclink", "email_change", "reauthentication"]) {
+    assertEquals(landingPathFor(type), "/auth/confirm", type);
+  }
 });
