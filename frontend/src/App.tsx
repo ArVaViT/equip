@@ -84,7 +84,14 @@ function useRouteFocus() {
       return
     }
     const main = document.getElementById("main-content")
-    main?.focus({ preventScroll: true })
+    if (!main) return
+    // Yield to a page that already placed focus inside itself. The register
+    // form autofocuses its first field; before this check the landmark took
+    // that focus back, and arriving at /register from /login left the cursor
+    // out of the form a reader was about to type into.
+    const active = document.activeElement
+    if (active && active !== document.body && main.contains(active)) return
+    main.focus({ preventScroll: true })
   }, [pathname])
 }
 
