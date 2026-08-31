@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Mail, Plus, RefreshCw } from "lucide-react"
+import { Ban, Mail, Plus, RefreshCw } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -14,6 +14,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState, ErrorState } from "@/components/patterns"
 import { invitationsService } from "@/services/invitations"
+import { useConfirm } from "@/components/ui/alert-dialog"
 import { toast } from "@/lib/toast"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { formatDate } from "@/i18n/format"
@@ -58,6 +59,8 @@ export function InvitationsTab() {
   const [roleFilter, setRoleFilter] = useState<RoleFilterValue>("")
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("")
   const [resendingId, setResendingId] = useState<string | null>(null)
+  const [revokingId, setRevokingId] = useState<string | null>(null)
+  const confirm = useConfirm()
   const [reloadKey, setReloadKey] = useState(0)
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), [])
@@ -104,6 +107,34 @@ export function InvitationsTab() {
       })
     } finally {
       setResendingId(null)
+    }
+  }
+
+  /**
+   * Withdraw an invitation. Confirmed first, because the link in somebody's
+   * inbox stops working the moment this succeeds — and because the row it
+   * acts on is one line among many that look alike.
+   */
+  const handleRevoke = async (inv: Invitation) => {
+    const ok = await confirm({
+      title: t("admin.invitations.confirmRevoke.title"),
+      description: t("admin.invitations.confirmRevoke.description", { email: inv.email }),
+      confirmLabel: t("admin.invitations.confirmRevoke.confirm"),
+      tone: "destructive",
+    })
+    if (!ok) return
+    setRevokingId(inv.id)
+    try {
+      await invitationsService.revokeInvitation(inv.id)
+      toast({ title: t("admin.invitations.toast.revoked"), variant: "success" })
+      reload()
+    } catch (err) {
+      toast({
+        title: getErrorDetail(err, t("admin.invitations.toast.revokeFailed")),
+        variant: "destructive",
+      })
+    } finally {
+      setRevokingId(null)
     }
   }
 
@@ -177,7 +208,9 @@ export function InvitationsTab() {
           <InvitationsTable
             items={invitations}
             resendingId={resendingId}
+            revokingId={revokingId}
             onResend={handleResend}
+            onRevoke={handleRevoke}
           />
         )}
       </CardContent>
@@ -197,11 +230,15 @@ export function InvitationsTab() {
 function InvitationsTable({
   items,
   resendingId,
+  revokingId,
   onResend,
+  onRevoke,
 }: {
   items: Invitation[]
   resendingId: string | null
+  revokingId: string | null
   onResend: (inv: Invitation) => void
+  onRevoke: (inv: Invitation) => void
 }) {
   const { t } = useTranslation()
   return (
@@ -225,7 +262,16 @@ function InvitationsTable({
                 </div>
               </div>
               {(status === "pending" || status === "expired") && (
-                <div className="mt-3 flex justify-end">
+                <div className="mt-3 flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={revokingId === inv.id}
+                    onClick={() => onRevoke(inv)}
+                  >
+                    <Ban className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                    {t("admin.invitations.revoke")}
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -279,15 +325,26 @@ function InvitationsTable({
                   </td>
                   <td className="px-5 py-3 text-right">
                     {(status === "pending" || status === "expired") && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={resendingId === inv.id}
-                        onClick={() => onResend(inv)}
-                      >
-                        <RefreshCw className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-                        {t("admin.invitations.resend")}
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={revokingId === inv.id}
+                          onClick={() => onRevoke(inv)}
+                        >
+                          <Ban className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                          {t("admin.invitations.revoke")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={resendingId === inv.id}
+                          onClick={() => onResend(inv)}
+                        >
+                          <RefreshCw className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                          {t("admin.invitations.resend")}
+                        </Button>
+                      </div>
                     )}
                   </td>
                 </tr>

@@ -17,7 +17,6 @@ from app.services.email_service import send_invitation_email
 from app.services.user_locale import preferred_locale_of
 
 if TYPE_CHECKING:
-    import uuid
     from uuid import UUID
 
     from fastapi import Request
@@ -169,6 +168,69 @@ def get_invitation_by_token(db: Session, token: str) -> Invitation:
             status_code=status.HTTP_404_NOT_FOUND,
             message="Invitation not found",
             context={"resource_type": "invitation"},
+        )
+    return invitation
+
+
+def revoke_invitation(
+    db: Session,
+    *,
+    invitation_id: UUID | str,
+    actor: User,
+    organization_id: UUID | str | None,
+    request: Request | None = None,
+) -> Invitation:
+    """Withdraw a pending invitation so its link stops working.
+
+    The status existed from the start — `chk_invitations_status` has
+    allowed `revoked` since the table was created, and `accept_invitation`
+    already refuses anything that is not `pending` — but nothing could set
+    it. An admin who invited the wrong address, or invited somebody who
+    should no longer be joining, had no way to take it back: the link stayed
+    live for its full seven days, and it grants a teacher role.
+
+    Only a pending invitation can be withdrawn. An accepted one is a person
+    with an account (remove the role instead), and an already-revoked one is
+    not an error worth raising twice — but it is not a silent success
+    either, because "revoke" on a row somebody already redeemed would read
+    as though the access were gone.
+    """
+    try:
+        # A malformed id is "no such invitation", not a 500 from the driver.
+        ident = uuid.UUID(str(invitation_id))
+    except ValueError:
+        ident = None
+    invitation = db.query(Invitation).filter(Invitation.id == ident).first() if ident is not None else None
+    if invitation is None or (organization_id is not None and str(invitation.organization_id) != str(organization_id)):
+        # A director asking about another organization's invitation is told
+        # the same thing as somebody asking about one that does not exist.
+        raise equip_error(
+            ErrorCode.INVITATION_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Invitation not found",
+            context={"resource_type": "invitation", "resource_id": str(invitation_id)},
+        )
+
+    if invitation.status == InvitationStatus.ACCEPTED.value:
+        raise equip_error(
+            ErrorCode.INVITATION_ALREADY_USED,
+            status_code=status.HTTP_409_CONFLICT,
+            message="This invitation has already been accepted",
+            context={"resource_type": "invitation", "resource_id": str(invitation.id)},
+        )
+
+    if invitation.status != InvitationStatus.REVOKED.value:
+        invitation.status = InvitationStatus.REVOKED.value
+        db.commit()
+        db.refresh(invitation)
+        log_action(
+            db,
+            actor.id,
+            "revoke",
+            "invitation",
+            str(invitation.id),
+            details={"email": invitation.email, "role": invitation.role},
+            request=request,
         )
     return invitation
 

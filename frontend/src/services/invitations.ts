@@ -29,6 +29,19 @@ export const invitationsService = {
     return response.data
   },
 
+  /**
+   * Withdraw a pending invitation so its link stops working.
+   *
+   * `revoked` was a legal status from the first migration and the accept
+   * path already refused anything that was not `pending`, but there was no
+   * route to set it — so an invitation sent to the wrong address stayed
+   * live for seven days, carrying a teacher role with it.
+   */
+  async revokeInvitation(id: string): Promise<Invitation> {
+    const response = await api.delete<Invitation>(`/invitations/${encodeURIComponent(id)}`)
+    return response.data
+  },
+
   async previewInvitation(token: string): Promise<InvitationPreview> {
     const response = await api.get<InvitationPreview>(`/invitations/token/${encodeURIComponent(token)}`)
     return response.data
