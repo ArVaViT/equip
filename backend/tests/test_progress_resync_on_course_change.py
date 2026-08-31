@@ -150,5 +150,58 @@ def test_deleting_the_module_takes_its_quizzes_out_of_the_fraction(db: Session, 
 
 def test_a_course_with_nothing_gradable_is_zero_not_a_crash(db: Session, teacher: User, student: User):
     _seed(db, quizzes=0, readings=2)
+    row = db.query(Enrollment).filter(Enrollment.id == "enr-resync").first()
+    assert row is not None
+    row.progress = 50  # left over from when this course still had quizzes
+    db.commit()
+
+    # Counts what it corrected, not what it looked at.
     assert resync_course_progress(db, COURSE_ID) == 1
     assert _progress(db) == 0
+    # And nothing is left to correct on a second pass.
+    assert resync_course_progress(db, COURSE_ID) == 0
+
+
+# ---------------------------------------------------------------------------
+# The button. New events correct themselves, but history needs somebody to
+# say so — four production enrolments stood at 100% beside "0/5 chapters".
+# ---------------------------------------------------------------------------
+
+
+def _stale(db: Session) -> None:
+    """A course whose stored percentage no longer matches anything."""
+    _seed(db, quizzes=2)
+    row = db.query(Enrollment).filter(Enrollment.id == "enr-resync").first()
+    assert row is not None
+    row.progress = 100
+    db.commit()
+
+
+def test_the_route_fixes_a_stale_percentage(client, db: Session, teacher: User, student: User):
+    _stale(db)
+
+    resp = client.post(f"/api/v1/courses/{COURSE_ID}/resync-progress")
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json() == {"course_id": COURSE_ID, "enrollments_updated": 1}
+    assert _progress(db) == 0
+
+
+def test_pressing_it_twice_reports_nothing_left_to_fix(client, db: Session, teacher: User, student: User):
+    _stale(db)
+    client.post(f"/api/v1/courses/{COURSE_ID}/resync-progress")
+
+    second = client.post(f"/api/v1/courses/{COURSE_ID}/resync-progress")
+
+    # 0 is the confirmation that nothing is left, not a sign it did nothing.
+    assert second.json()["enrollments_updated"] == 0
+
+
+def test_a_student_cannot_press_it(student_client, db: Session, teacher: User, student: User):
+    _stale(db)
+    assert student_client.post(f"/api/v1/courses/{COURSE_ID}/resync-progress").status_code == 403
+    assert _progress(db) == 100
+
+
+def test_an_unknown_course_is_404(client, teacher: User):
+    assert client.post("/api/v1/courses/no-such-course/resync-progress").status_code == 404

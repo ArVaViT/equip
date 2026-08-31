@@ -321,3 +321,15 @@ class CourseTranslationProgress(BaseModel):
     #: False when no provider is configured (local dev, a deploy without
     #: a key). Nothing will translate, and the gate does not block.
     enabled: bool = True
+
+
+class ResyncProgressResponse(BaseModel):
+    """What a progress resync did.
+
+    ``enrollments_updated`` counts rows whose stored percentage actually
+    changed, so a second press answering 0 is the confirmation that nothing
+    is left to fix rather than a sign the button did nothing.
+    """
+
+    course_id: str
+    enrollments_updated: int
