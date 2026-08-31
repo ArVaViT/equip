@@ -7,7 +7,11 @@
     <link rel="canonical" href="https://equipbible.com/" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Equip is systematic Bible study for people who take Scripture seriously. Courses, progress, certificates. English, Russian, German, Ukrainian." />
-    <meta name="theme-color" content="#422277" />
+    <!-- The browser chrome around the page. It was a deep violet from a
+         palette the product has left; the interface is paper and ink now, so
+         the bar matches the background it sits above, per theme. -->
+    <meta name="theme-color" content="#F8F8F6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#131211" media="(prefers-color-scheme: dark)" />
 
     <!-- Alternates for search engines. The app is one URL per page in
          every language (the locale lives in the profile, not the path),
@@ -22,8 +26,13 @@
     <!-- Open Graph + Twitter share-preview cards. Static defaults are
          intentional: the SPA renders client-side, so anything dynamic
          set by React would be invisible to the unfurlers (FB, LinkedIn,
-         Slack, Telegram, X) which only fetch the raw HTML. og:image
-         is a 29 KB JPEG (1200x630) compressed from the dev.to cover. -->
+         Slack, Telegram, X) which only fetch the raw HTML.
+
+         og:image was the dev.to article cover — a blue book glyph on a blue
+         gradient, no words, from two palettes ago. Every link shared into a
+         church chat showed a card belonging to a different product. It is now
+         the landing page's own manifesto set in Literata on paper, built by
+         scripts/build-og-image.mjs so it can be regenerated. -->
     <meta property="og:title" content="Equip — изучение Библии" />
     <meta property="og:description" content="Системное изучение Библии: курсы, главы, тесты, сертификаты. Бесплатно." />
     <meta property="og:type" content="website" />
@@ -31,7 +40,7 @@
     <meta property="og:image" content="https://equipbible.com/og-image.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Equip — современная платформа для изучения Библии" />
+    <meta property="og:image:alt" content="Equip — «Изучать Писание системно, а не отрывками»" />
     <meta property="og:site_name" content="Equip" />
     <meta property="og:locale" content="ru_RU" />
     <meta property="og:locale:alternate" content="en_US" />

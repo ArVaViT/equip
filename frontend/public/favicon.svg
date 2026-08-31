@@ -1,8 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <!-- Equip favicon — deep violet field with inverse E mark.
-       Canonical source: equipbible-docs/design/assets/favicon.svg. -->
-  <rect width="32" height="32" rx="7" fill="#422277"/>
-  <g fill="#FAF7F1">
+  <!-- Equip favicon — ink field with inverse E mark.
+       The deep violet this used to be belongs to a palette the product has
+       left: the accent is no hue at all now, and the darkest thing on the
+       page is the primary. Geometry unchanged. -->
+  <rect width="32" height="32" rx="7" fill="#1E1C1A"/>
+  <g fill="#F8F8F6">
     <rect x="9" y="8" width="3" height="16"/>
     <rect x="9" y="8" width="14" height="3"/>
     <rect x="9" y="15" width="11" height="3"/>
