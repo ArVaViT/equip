@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { Webhook } from "https://esm.sh/standardwebhooks@1.0.0";
-import { FROM, copyFor, localeFor, renderEmail } from "./copy.ts";
+import { FROM, confirmationUrl, copyFor, localeFor, renderEmail } from "./copy.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SEND_EMAIL_HOOK_SECRET = Deno.env.get("SEND_EMAIL_HOOK_SECRET");
@@ -11,6 +11,10 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 // for its own variables and refuses to store a custom one under it
 // ("Env name cannot start with SUPABASE_, skipping"). Hence a project name.
 const PROFILE_READ_KEY = Deno.env.get("EQUIP_PROFILE_READ_KEY");
+// Where the person should land after GoTrue verifies the token. NOT
+// `email_data.site_url` — see `confirmationUrl` for what that turned out to
+// be, and what it cost.
+const SITE_URL = Deno.env.get("EQUIP_SITE_URL") ?? "https://equipbible.com";
 
 interface EmailHookPayload {
   user: {
@@ -90,7 +94,12 @@ Deno.serve(async (req: Request) => {
     );
     const copy = copyFor(emailType, locale);
     const name = user.user_metadata?.full_name || "";
-    const confirmUrl = `${email_data.site_url}/auth/confirm?token_hash=${email_data.token_hash}&type=${emailType}`;
+    const confirmUrl = confirmationUrl({
+      supabaseUrl: SUPABASE_URL ?? "",
+      siteUrl: SITE_URL,
+      tokenHash: email_data.token_hash,
+      emailType,
+    });
 
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",

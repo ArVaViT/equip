@@ -10,7 +10,15 @@
  * Run: deno test supabase/functions/send-email/copy.test.ts
  */
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
-import { COPY, LOCALES, copyFor, knownLocale, localeFor, renderEmail } from "./copy.ts";
+import {
+  COPY,
+  LOCALES,
+  confirmationUrl,
+  copyFor,
+  knownLocale,
+  localeFor,
+  renderEmail,
+} from "./copy.ts";
 
 const TYPES = ["signup", "recovery", "magic_link", "email_change"] as const;
 const LINK = "https://equipbible.com/auth/confirm?token_hash=abc&type=signup";
@@ -161,4 +169,49 @@ Deno.test("an email address with a plus sign is escaped into the query", async (
   await localeFor("vadym+equip@example.com", undefined, capture);
   // An unescaped '+' reads as a space to PostgREST and matches nobody.
   assertStringIncludes(requested, "vadym%2Bequip%40example.com");
+});
+
+
+Deno.test("the confirmation link points at GoTrue's verify endpoint", () => {
+  // The old link was `${email_data.site_url}/auth/confirm?token_hash=…`, and
+  // `site_url` is the auth API base, not the site — so every email ever sent
+  // carried https://<ref>.supabase.co/auth/v1/auth/confirm, a path that does
+  // not exist. Clicking it answered "No API key found in request".
+  const url = confirmationUrl({
+    supabaseUrl: "https://project.supabase.co",
+    siteUrl: "https://equipbible.com",
+    tokenHash: "abc123",
+    emailType: "signup",
+  });
+  const parsed = new URL(url);
+  assertEquals(parsed.origin, "https://project.supabase.co");
+  assertEquals(parsed.pathname, "/auth/v1/verify");
+  assertEquals(parsed.searchParams.get("token"), "abc123");
+  assertEquals(parsed.searchParams.get("type"), "signup");
+  assertEquals(parsed.searchParams.get("redirect_to"), "https://equipbible.com/auth/confirm");
+  assert(!url.includes("/auth/v1/auth/"), "старый несуществующий путь вернулся");
+});
+
+Deno.test("the link survives trailing slashes in configuration", () => {
+  const url = confirmationUrl({
+    supabaseUrl: "https://project.supabase.co/",
+    siteUrl: "https://equipbible.com/",
+    tokenHash: "abc123",
+    emailType: "recovery",
+  });
+  assert(!url.includes("//auth/v1"), `двойной слэш в пути: ${url}`);
+  assertEquals(
+    new URL(url).searchParams.get("redirect_to"),
+    "https://equipbible.com/auth/confirm",
+  );
+});
+
+Deno.test("a token with URL-special characters is escaped", () => {
+  const url = confirmationUrl({
+    supabaseUrl: "https://project.supabase.co",
+    siteUrl: "https://equipbible.com",
+    tokenHash: "a+b/c=d&e",
+    emailType: "magiclink",
+  });
+  assertEquals(new URL(url).searchParams.get("token"), "a+b/c=d&e");
 });

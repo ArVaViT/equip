@@ -271,3 +271,43 @@ export function copyFor(emailType: string, locale: Locale): Copy {
   return byLocale[locale] ?? byLocale[DEFAULT_LOCALE];
 }
 
+
+
+/**
+ * The link a person actually clicks — and the defect this file exists to end.
+ *
+ * It used to be built as `${email_data.site_url}/auth/confirm?token_hash=…`,
+ * on the assumption that `site_url` is the site. It is not: GoTrue sends the
+ * project's auth API base, so every confirmation email ever sent by this
+ * platform carried
+ *
+ *   https://<ref>.supabase.co/auth/v1/auth/confirm?token_hash=…
+ *
+ * — a path that does not exist. Clicking it returned
+ * `{"message":"No API key found in request"}`. Verified by hand on
+ * 2026-08-31 against a real email: six of the seven accounts ever created
+ * with a password never confirmed, and this is why. Not spam filtering, not
+ * the one-hour expiry: the button did not work.
+ *
+ * The correct link is GoTrue's own `verify` endpoint, which needs no API key
+ * and 303s to `redirect_to` with the session in the fragment — which is
+ * exactly what `/auth/confirm` on the frontend is already waiting for.
+ *
+ * `siteUrl` comes from configuration rather than from the hook payload,
+ * because the payload's own idea of the site is what caused this.
+ */
+export function confirmationUrl(opts: {
+  supabaseUrl: string;
+  siteUrl: string;
+  tokenHash: string;
+  emailType: string;
+}): string {
+  const base = opts.supabaseUrl.replace(/\/+$/, "");
+  const redirectTo = `${opts.siteUrl.replace(/\/+$/, "")}/auth/confirm`;
+  const params = new URLSearchParams({
+    token: opts.tokenHash,
+    type: opts.emailType,
+    redirect_to: redirectTo,
+  });
+  return `${base}/auth/v1/verify?${params.toString()}`;
+}
