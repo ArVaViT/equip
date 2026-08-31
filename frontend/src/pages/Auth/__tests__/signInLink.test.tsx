@@ -47,7 +47,7 @@ async function askForALink(email = "reader@example.com") {
   const user = userEvent.setup()
   render(<Login />, { wrapper: Wrapper })
   await user.type(screen.getByLabelText(/email/i), email)
-  await user.click(screen.getByRole("button", { name: /link|ссылк|Link|посилан/i }))
+  await user.click(screen.getByRole("button", { name: /email me a link/i }))
   return user
 }
 
@@ -94,9 +94,17 @@ describe("signing in with a link", () => {
     const user = userEvent.setup()
     render(<Login />, { wrapper: Wrapper })
     await user.type(screen.getByLabelText(/email/i), "not-an-address")
-    await user.click(screen.getByRole("button", { name: /link|ссылк/i }))
+    await user.click(screen.getByRole("button", { name: /email me a link/i }))
 
     expect(sendSignInLink).not.toHaveBeenCalled()
+  })
+
+  it("does not put a second «sign in» on the page", async () => {
+    // Two buttons whose names both start with "sign in" broke the e2e suite
+    // and would read the same way to a screen reader. This one says what it
+    // does — an email arrives — rather than repeating the submit button.
+    render(<Login />, { wrapper: Wrapper })
+    expect(screen.getAllByRole("button", { name: /^sign in$/i })).toHaveLength(1)
   })
 
   it("offers the way back to the password", async () => {

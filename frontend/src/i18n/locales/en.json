@@ -663,7 +663,7 @@
       "show": "Show password",
       "hide": "Hide password"
     },
-    "signInLink": "Sign in with a link instead",
+    "signInLink": "Email me a link instead",
     "signInLinkSending": "Sending…",
     "signInLinkSent": "If we have that address, the email is on its way. Open it and press the button.",
     "signInLinkAgain": "Send it again",

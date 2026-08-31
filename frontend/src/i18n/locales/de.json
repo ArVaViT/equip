@@ -663,7 +663,7 @@
       "show": "Passwort anzeigen",
       "hide": "Passwort verbergen"
     },
-    "signInLink": "Stattdessen per Link anmelden",
+    "signInLink": "Link per E-Mail senden",
     "signInLinkSending": "Wird gesendet …",
     "signInLinkSent": "Falls wir diese Adresse haben, ist die E-Mail unterwegs. Öffnen Sie sie und klicken Sie auf die Schaltfläche.",
     "signInLinkAgain": "Erneut senden",
