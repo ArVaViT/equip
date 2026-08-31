@@ -65,6 +65,24 @@ export const authService = {
     if (error) throw error
   },
 
+  /**
+   * Send the confirmation email again.
+   *
+   * The post-register screen used to be a dead end: it said "check your
+   * email" and offered nothing if the email never arrived. Six of the seven
+   * accounts ever created with a password on this platform never confirmed,
+   * so this is the busiest failure the product has — and the person was left
+   * with no button at all.
+   *
+   * Supabase enforces `smtp_max_frequency` (60s at the time of writing);
+   * asking again sooner answers 429, which the caller surfaces as "wait a
+   * moment" rather than as a failure.
+   */
+  async resendConfirmation(email: string): Promise<void> {
+    const { error } = await supabase.auth.resend({ type: "signup", email })
+    if (error) throw error
+  },
+
   async updatePassword(password: string): Promise<void> {
     const { error } = await supabase.auth.updateUser({ password })
     if (error) throw error
