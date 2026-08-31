@@ -281,3 +281,15 @@ Deno.test("an unknown action type still sends, and says so", () => {
   assertEquals(copyFor("reauthentication", "en").subject, copyFor("signup", "en").subject);
   assert(!hasCopyFor("reauthentication"));
 });
+
+Deno.test("the emails are dressed in the product's colours", () => {
+  // They shipped in a palette the interface had left: a #2563eb button and
+  // blue-violet greys, arriving before anybody had seen the site — the same
+  // way the share card was still a blue book glyph. An email is not a place
+  // to discover that two products exist.
+  const html = renderEmail(copyFor("signup", "ru"), "Вадим", "https://equipbible.com/x");
+  const retired = html.match(/#(2563eb|1a1a2e|4a4a6a|8888a8|422277|67A982)/gi) ?? [];
+  assertEquals(retired, [], `retired palette in the email HTML: ${retired.join(", ")}`);
+  assertStringIncludes(html, "#1E1C1A");
+  assertStringIncludes(html, "serif");
+});
