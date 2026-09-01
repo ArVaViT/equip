@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/context/useAuth"
 import AuthLayout from "@/components/layout/AuthLayout"
+import { authErrorMessage } from "@/lib/authError"
 import { ArrowLeft, Loader2, MailCheck } from "lucide-react"
 
 export default function ForgotPassword() {
@@ -35,8 +36,13 @@ export default function ForgotPassword() {
       await resetPassword(trimmed)
       setSent(true)
     } catch (err: unknown) {
-      if (import.meta.env.DEV) console.error("resetPassword failed", err)
-      setError(t("auth.forgotPassword.errors.sendFailed"))
+      // Every other auth screen routes through `authErrorMessage`; this one
+      // said "could not send, try in a minute" for everything. The common
+      // case here is a 429 — the project's hourly email allowance, which is
+      // small enough to hit — and "too many attempts, wait a minute" tells
+      // the reader the one thing they can act on. A generic failure reads as
+      // "the product is broken" and sends them to support instead.
+      setError(authErrorMessage(err, "auth.forgotPassword.errors.sendFailed"))
     } finally {
       setLoading(false)
     }
