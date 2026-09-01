@@ -100,6 +100,9 @@ interface CreateTourOpts {
     /** Format string with literal ``{{current}}`` and ``{{total}}``
      *  placeholders that driver.js interpolates at render time. */
     progress: string
+    /** Accessible name for driver.js's × button, which it hard-codes to
+     *  "Close" in English on an otherwise translated page. */
+    close: string
   }
   /** Fires when the user finishes the last step's "Done" click — the
    *  natural success signal for "they've actually seen the tour". */
@@ -169,6 +172,13 @@ export async function createEditorialTour({
     nextBtnText: labels.next,
     prevBtnText: labels.previous,
     doneBtnText: labels.done,
+    // driver.js renders its close button with aria-label="Close" and offers
+    // no option for it, so a Russian reader's screen reader announced an
+    // English word. The rest of the popover is translated; this was the one
+    // control that was not.
+    onPopoverRender: (popover) => {
+      popover.closeButton?.setAttribute("aria-label", labels.close)
+    },
     popoverClass: "editorial-tour-popover",
     onNextClick: (_el, _step, { state, driver: d }) => {
       // Last step's Next button doubles as Done — driver.js relabels
