@@ -146,6 +146,42 @@ same PR** (see [`supabase/ci/README.md`](../supabase/ci/README.md) for the exact
 `pg_dump` command). The diff is the audit trail; the replay job is the gate. This
 is what would have caught the `cohorts.name` drift before it broke prod.
 
+## Edge functions -- the other manual step
+
+`supabase/functions/send-email` is **not deployed by any workflow**. No
+CI job touches it, `git push` does nothing to it, and a green pipeline
+on a PR that changes it means only that its tests passed. The version
+answering Supabase Auth right now is whatever was last pushed by hand.
+
+This is worth stating plainly because the failure is silent in the
+worst direction: the code in `main` and the code sending your users'
+email can differ for weeks, and every check you have will be green
+while they do. On 2026-09-01 three merged fixes to the email copy sat
+undeployed for exactly this reason.
+
+```bash
+cd ~/Projects/equip
+op run -- supabase functions deploy send-email
+```
+
+`op run` because the CLI wants `SUPABASE_ACCESS_TOKEN`, which lives in
+1Password and must not be pasted into a shell. If the CLI is not
+signed in it says so; `supabase login` opens a browser.
+
+**Verify with a real email, not with the CLI's output.** A deploy that
+returns success can still ship broken copy — the wording is not type
+checked against anything a person will read:
+
+```bash
+curl -s -X POST "$SUPABASE_URL/auth/v1/recover" \
+  -H "apikey: $PUBLISHABLE_KEY" -H "Content-Type: application/json" \
+  -d '{"email":"you+check@gmail.com"}'
+```
+
+Then open the inbox. Mind `smtp_max_frequency` (60s between emails to
+one address) and the hourly project allowance -- both answer 429, and
+`/recover` may answer 200 while sending nothing.
+
 ## Environment variables
 
 Vercel project env vars are the source of truth for production
@@ -307,3 +343,8 @@ to keep in source.
 - **No deploy notification.** Vercel can ping a Slack channel on
   production deploy success/failure. Equip has no shared Slack today,
   so this is deferred until the team grows past one developer.
+- **Edge functions deploy by hand and nothing notices the drift.** The
+  gap is not the manual step -- migrations are manual too, on purpose --
+  it is that nothing anywhere compares the deployed function against
+  `main`. A check that fetched the running function and diffed it, or
+  simply a CI job that deploys it on merge, would close it.
