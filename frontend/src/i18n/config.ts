@@ -137,14 +137,37 @@ export function isSupportedLocale(value: unknown): value is SupportedLocale {
   return typeof value === "string" && (SUPPORTED_LOCALES as readonly string[]).includes(value)
 }
 
-// Per-locale dynamic imports — each catalog becomes its own lazy chunk so
-// the eager i18n chunk carries only the i18next runtime, not both JSONs.
-const LOCALE_LOADERS: Record<SupportedLocale, () => Promise<{ default: object }>> = {
-  ru: () => import("./locales/ru.json"),
-  en: () => import("./locales/en.json"),
-  de: () => import("./locales/de.json"),
-  uk: () => import("./locales/uk.json"),
+// Per-locale catalogs, addressed by URL rather than by `import()`.
+//
+// They used to be dynamic imports, and the retry below could not do its job:
+// a module whose fetch fails is remembered as failed by the browser, and every
+// later `import()` of the same specifier re-rejects from cache without
+// touching the network. Three attempts were three reads of one cached
+// failure. `fetch` has no such memory.
+//
+// `?url` keeps each catalog a separate file — the eager chunk still carries
+// only the i18next runtime, which was the point of the dynamic imports.
+const CATALOG_URLS = import.meta.glob("./locales/*.json", {
+  query: "?url",
+  import: "default",
+  eager: true,
+}) as Record<string, string>
+
+function catalogUrl(locale: SupportedLocale): string {
+  const url = CATALOG_URLS[`./locales/${locale}.json`]
+  if (!url) throw new Error(`no catalog bundled for "${locale}"`)
+  return url
 }
+
+// Vitest has no server handing these files out, so there is nothing for
+// `fetch` to reach; the same glob as a module import is how the suites have
+// always loaded them. `MODE` is a compile-time constant, so this branch and
+// the import behind it are dropped from the production bundle rather than
+// shipping every catalog twice.
+const CATALOG_MODULES = import.meta.glob("./locales/*.json") as Record<
+  string,
+  () => Promise<{ default: object }>
+>
 
 /**
  * How many times to ask for a catalog before giving up on it.
@@ -161,10 +184,17 @@ const CATALOG_ATTEMPTS = 3
 const CATALOG_RETRY_MS = 400
 
 async function loadCatalog(locale: SupportedLocale): Promise<object> {
+  if (import.meta.env.MODE === "test") {
+    return (await CATALOG_MODULES[`./locales/${locale}.json`]!()).default
+  }
+
+  const url = catalogUrl(locale)
   let lastError: unknown
   for (let attempt = 0; attempt < CATALOG_ATTEMPTS; attempt += 1) {
     try {
-      return (await LOCALE_LOADERS[locale]()).default
+      const res = await fetch(url, { cache: attempt === 0 ? "default" : "reload" })
+      if (!res.ok) throw new Error(`catalog ${locale}: HTTP ${res.status}`)
+      return (await res.json()) as object
     } catch (err) {
       lastError = err
       if (attempt < CATALOG_ATTEMPTS - 1) {
