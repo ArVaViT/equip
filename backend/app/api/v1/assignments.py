@@ -20,7 +20,7 @@ from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Course, Module
 from app.models.submission_declaration import SubmissionDeclaration
-from app.models.user import User, UserRole
+from app.models.user import User, can_teach
 from app.schemas.assignment import (
     AssignmentCreate,
     AssignmentResponse,
@@ -472,7 +472,7 @@ def list_my_submissions(
 
     course_id = resolve_chapter_course_id(db, assignment.chapter_id)
     enrolled = lookup_enrollment(db, current_user.id, course_id)
-    if not enrolled and current_user.role not in (UserRole.TEACHER.value, UserRole.ADMIN.value):
+    if not enrolled and not can_teach(current_user.role):
         raise equip_error(
             ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,

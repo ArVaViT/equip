@@ -26,6 +26,25 @@ class UserRole(enum.StrEnum):
     STUDENT = "student"
 
 
+#: The roles that author and run courses. A director is an organization's
+#: administrator *and* very often the one teaching in it — a school small
+#: enough to have one director rarely has a separate faculty — so the
+#: teaching surface is open to both. This tuple is the single definition:
+#: ``require_teacher`` and the frontend's ``canTeach`` mirror it, and a
+#: route must never spell the pair out again by hand. Platform staff pass
+#: because they administer every organization's courses by definition.
+#:
+#: What this does NOT grant: ownership. Whether a director may edit *this*
+#: course is still ``created_by`` (see ``assert_course_owner``), exactly
+#: as it is for a teacher.
+TEACHING_ROLES: frozenset[str] = frozenset({UserRole.ADMIN.value, UserRole.DIRECTOR.value, UserRole.TEACHER.value})
+
+
+def can_teach(role: str) -> bool:
+    """Is this role allowed onto the course-authoring surface?"""
+    return role in TEACHING_ROLES
+
+
 class User(Base):
     __tablename__ = "profiles"
     __table_args__ = (

@@ -126,4 +126,15 @@ describe("TeacherCoursesCard", () => {
     render(<TeacherCoursesCard />, { wrapper: Wrapper })
     expect(await screen.findByTestId("teacher-courses-card")).toBeInTheDocument()
   })
+
+  it("is shown to a director, who teaches in the school they run", async () => {
+    auth.user = { id: "d-1", role: "director", full_name: "Дмитрий" }
+    teacherCourses.impl = async () => [makeCourse({ id: "c-9", title: "Деяния апостолов" })]
+    render(<TeacherCoursesCard />, { wrapper: Wrapper })
+    expect(await screen.findByTestId("teacher-courses-card")).toBeInTheDocument()
+    expect(await screen.findByRole("link", { name: /Деяния апостолов/ })).toHaveAttribute(
+      "href",
+      "/teacher/courses/c-9",
+    )
+  })
 })

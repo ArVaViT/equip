@@ -64,6 +64,17 @@ CREATE FUNCTION public.is_platform_staff() RETURNS boolean
 $$;
 
 
+CREATE FUNCTION public.can_teach() RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE id = (SELECT auth.uid()) AND role IN ('teacher', 'director', 'admin')
+    );
+$$;
+
+
 CREATE FUNCTION public.custom_access_token_hook(event jsonb) RETURNS jsonb
     LANGUAGE plpgsql STABLE
     SET search_path TO 'pg_catalog', 'public'

@@ -18,6 +18,7 @@ import ScrollToTop from "./components/layout/ScrollToTop";
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useGrandTour } from "@/hooks/useGrandTour"
 import { takePendingInviteToken } from "@/lib/pendingInvite"
+import { canTeach } from "@/lib/roles"
 
 // Lazy: FirstRunFlow renders null until a brand-new user's privacy/setup gate
 // activates, so it never needs to be on the critical path — its component code
@@ -104,7 +105,7 @@ function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }
     return user ? <Navigate to="/" replace /> : <>{children}</>
   }
   if (!user) return <Navigate to="/login" replace />
-  if (mode === "teacher" && user.role !== "teacher" && user.role !== "admin") {
+  if (mode === "teacher" && !canTeach(user.role)) {
     return <Navigate to="/" replace />
   }
   if (mode === "admin" && user.role !== "admin") {

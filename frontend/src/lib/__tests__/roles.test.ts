@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { ROLE_BADGE_VARIANT, ROLE_I18N_KEY } from "@/lib/roles"
+import { ROLE_BADGE_VARIANT, ROLE_I18N_KEY, TEACHING_ROLES, canTeach } from "@/lib/roles"
 
 /**
  * ``lib/roles.ts`` is the single source of truth that maps a
@@ -25,7 +25,7 @@ import { ROLE_BADGE_VARIANT, ROLE_I18N_KEY } from "@/lib/roles"
  * complementary case where the *value* is wrong.
  */
 
-const ALL_ROLES = ["student", "teacher", "admin"] as const
+const ALL_ROLES = ["student", "teacher", "director", "admin"] as const
 
 describe("ROLE_I18N_KEY", () => {
   it("covers every UserRole", () => {
@@ -74,5 +74,31 @@ describe("ROLE_BADGE_VARIANT", () => {
     for (const r of ALL_ROLES) {
       expect(ROLE_BADGE_VARIANT[r]).toMatch(/Subtle$/)
     }
+  })
+})
+
+describe("canTeach", () => {
+  /**
+   * The one predicate behind the teacher route gate, the "Преподавание"
+   * header item and the dashboard's "my courses" card. On 6 September
+   * 2026 the first real teacher — a school director — was bounced off
+   * every one of them because each compared the role to "teacher" by
+   * hand. A director runs the school and teaches in it; the surface is
+   * theirs. Ownership of a given course is decided elsewhere.
+   */
+  it("admits a teacher, a director and platform staff", () => {
+    expect(canTeach("teacher")).toBe(true)
+    expect(canTeach("director")).toBe(true)
+    expect(canTeach("admin")).toBe(true)
+  })
+
+  it("refuses a student and an absent role", () => {
+    expect(canTeach("student")).toBe(false)
+    expect(canTeach(null)).toBe(false)
+    expect(canTeach(undefined)).toBe(false)
+  })
+
+  it("is defined once, and matches the backend's TEACHING_ROLES", () => {
+    expect([...TEACHING_ROLES].sort()).toEqual(["admin", "director", "teacher"])
   })
 })
