@@ -761,6 +761,7 @@
       "refresh": "Refresh Page"
     },
     "generic": "Something went wrong.",
+    "network": "No connection. Check your internet and try again.",
     "byCode": {
       "auth_required": "Please sign in again.",
       "auth_forbidden": "You don't have permission for this.",
@@ -775,6 +776,9 @@
       "quiz_not_open": "This quiz isn't open.",
       "quiz_attempts_exhausted": "You've used all your attempts.",
       "quiz_not_translated": "This quiz isn't in your language yet.",
+      "quiz_question_already_answered": "Students have already answered this question, so its type can't change. You can still correct the wording, points and the right answer; for a different kind of question, add a new one.",
+      "quiz_has_attempts_one": "This quiz already has {{count}} attempt. Deleting it would delete that attempt and its grade.",
+      "quiz_has_attempts_other": "This quiz already has {{count}} attempts. Deleting it would delete every attempt and grade.",
       "daily_challenge_not_scheduled": "There's no question for today.",
       "daily_challenge_not_translated": "Today's question isn't in your language yet.",
       "daily_challenge_already_attempted": "You've already answered today.",
@@ -788,12 +792,60 @@
       "legal_document_changed": "This document has changed. Please reload and read it again."
     },
     "byStatus": {
+      "400": "The request couldn't be processed. Check what you entered.",
       "401": "Please sign in again.",
       "403": "You don't have permission for this.",
       "404": "We couldn't find that.",
       "409": "This conflicts with newer data. Reload and try again.",
+      "413": "This block is too large to save. Split it into several.",
+      "422": "Something you entered isn't right.",
       "429": "Too many requests. Please slow down.",
       "500": "Server error. Please try again later."
+    },
+    "where": {
+      "questions": "Question {{n}}",
+      "options": "option {{n}}"
+    },
+    "fields": {
+      "title": "title",
+      "description": "description",
+      "passing_score": "passing score",
+      "max_attempts": "maximum attempts",
+      "quiz_type": "quiz type",
+      "questions": "questions",
+      "question_text": "question text",
+      "question_type": "question type",
+      "points": "points",
+      "min_words": "minimum words",
+      "options": "options",
+      "option_text": "option text",
+      "is_correct": "correct answer",
+      "order_index": "order"
+    },
+    "validation": {
+      "less_than_equal": "must be no more than {{le}}",
+      "less_than": "must be less than {{lt}}",
+      "greater_than_equal": "must be at least {{ge}}",
+      "greater_than": "must be more than {{gt}}",
+      "string_too_short": "must be at least {{min_length}} characters",
+      "string_too_long": "must be no longer than {{max_length}} characters",
+      "too_short": "needs at least {{min_length}}",
+      "too_long": "no more than {{max_length}} allowed",
+      "missing": "is required",
+      "extra_forbidden": "isn't a field we know",
+      "int_parsing": "must be a whole number",
+      "int_type": "must be a whole number",
+      "int_from_float": "must be a whole number",
+      "string_type": "must be text",
+      "bool_type": "must be yes or no",
+      "literal_error": "isn't one of the allowed values",
+      "invalid": "isn't right",
+      "quiz_question_blank": "enter the question text",
+      "quiz_option_blank": "enter the option text",
+      "quiz_too_few_options": "needs at least two options",
+      "quiz_no_correct_option": "mark one option as correct",
+      "quiz_many_correct_options": "only one option can be correct",
+      "quiz_options_not_allowed": "a written-answer question has no options"
     },
     "storage": {
       "tooLarge": "This file is {{sizeMb}} MB; the limit is {{maxMb}} MB.",
@@ -936,11 +988,17 @@
       "titleRequired": "Quiz title is required",
       "addAtLeastOneQuestion": "Add at least one question",
       "validScoreRequired": "Enter a valid score (0 or higher)",
-      "scoreCantExceed": "Score can't exceed {{max}} for this question"
+      "scoreCantExceed": "Score can't exceed {{max}} for this question",
+      "questionTextRequired": "Question {{n}}: enter the question text",
+      "optionTextRequired": "Question {{n}}, option {{m}}: enter the option text",
+      "tooFewOptions": "Question {{n}}: add at least two options",
+      "correctAnswerRequired": "Question {{n}}: mark the correct answer",
+      "pointsRange": "Question {{n}}: points must be a whole number from 1 to 100"
     },
     "toast": {
       "quizSaved": "Quiz saved",
       "quizSaveFailed": "Failed to save quiz",
+      "oldQuizNotDeleted": "The new quiz is saved, but the old one couldn't be deleted",
       "quizDeleted": "Quiz deleted",
       "quizDeleteFailed": "Failed to delete quiz",
       "gradeSaved": "Grade saved",
@@ -949,7 +1007,15 @@
     "confirmDelete": {
       "title": "Delete this quiz?",
       "description": "Students will lose access to the quiz and its attempts.",
+      "withAttempts_one": "This quiz already has {{count}} attempt. It will be deleted along with its grade, for good.",
+      "withAttempts_other": "This quiz already has {{count}} attempts. They will all be deleted along with their grades, for good.",
       "confirm": "Delete quiz"
+    },
+    "confirmRebuild": {
+      "title": "Rebuild this quiz?",
+      "description_one": "You added or removed questions or options. That change means rebuilding the quiz, and it already has {{count}} attempt — the attempt and its grade will be deleted for good. To keep it, cancel and limit the edit to wording, points and correct answers.",
+      "description_other": "You added or removed questions or options. That change means rebuilding the quiz, and it already has {{count}} attempts — every attempt and grade will be deleted for good. To keep them, cancel and limit the edit to wording, points and correct answers.",
+      "confirm": "Rebuild and delete attempts"
     },
     "heading": {
       "editQuiz": "Edit Quiz",
@@ -988,6 +1054,7 @@
       "removeQuestionAria": "Remove question {{n}}",
       "removeOptionAria": "Remove option {{n}}",
       "questionTypeAria": "Question type",
+      "typeLocked": "Students have already answered this question, so its type can't change. Correct the wording, points or the right answer instead; for a different kind of question, add a new one.",
       "trueFalseOption": {
         "True": "True",
         "False": "False"

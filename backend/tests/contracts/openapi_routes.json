@@ -2868,6 +2868,10 @@
     "path": "/api/v1/quizzes/{quiz_id}",
     "params": [
       [
+        "force",
+        "query"
+      ],
+      [
         "quiz_id",
         "path"
       ]

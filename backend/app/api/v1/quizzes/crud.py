@@ -7,6 +7,7 @@ import uuid
 from uuid import UUID
 
 from fastapi import Depends, Header, Query, Response, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.dependencies import (
@@ -18,7 +19,7 @@ from app.api.dependencies import (
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.course import Course
-from app.models.quiz import Quiz, QuizExtraAttempt, QuizOption, QuizQuestion
+from app.models.quiz import Quiz, QuizAttempt, QuizExtraAttempt, QuizOption, QuizQuestion
 from app.models.user import User
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.schemas.quiz import (
@@ -296,11 +297,35 @@ def update_quiz(
 @router.delete("/{quiz_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_quiz(
     quiz_id: UUID,
+    force: bool = Query(
+        False,
+        description=(
+            "Delete even though students have attempted this quiz. Every attempt "
+            "and grade on it goes with it; without this flag the request is "
+            "refused with 409 and the number of attempts."
+        ),
+    ),
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
     quiz = get_quiz_or_404(db, quiz_id, load_questions=True)
     verify_quiz_owner(db, quiz, teacher.id)
+    # ``quiz_attempts.quiz_id`` is ``ON DELETE CASCADE``: deleting the quiz
+    # deletes the class's graded work with it, and the editor used to do
+    # exactly that on every save — create the corrected quiz, delete the old
+    # one — so fixing a typo cost every attempt. Refuse unless the caller has
+    # seen the number and said so explicitly.
+    attempt_count = db.query(func.count(QuizAttempt.id)).filter(QuizAttempt.quiz_id == quiz.id).scalar() or 0
+    if attempt_count and not force:
+        raise equip_error(
+            ErrorCode.QUIZ_HAS_ATTEMPTS,
+            status_code=status.HTTP_409_CONFLICT,
+            message=(
+                f"This quiz has {attempt_count} attempt(s); deleting it would delete them all. "
+                "Repeat with ?force=true to delete the quiz together with every attempt."
+            ),
+            context={"resource_type": "quiz", "resource_id": str(quiz.id), "attempt_count": attempt_count},
+        )
     # cv has no FK back; the quiz tree (quiz → questions →
     # options) is hard-deleted via cascade on the entity tables but
     # nothing cascades on cv. Drop the cv rows for every level

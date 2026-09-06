@@ -761,6 +761,7 @@
       "refresh": "Seite neu laden"
     },
     "generic": "Etwas ist schiefgelaufen.",
+    "network": "Keine Verbindung. Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.",
     "byCode": {
       "auth_required": "Bitte melden Sie sich erneut an.",
       "auth_forbidden": "Sie haben dafür keine Berechtigung.",
@@ -775,6 +776,9 @@
       "quiz_not_open": "Dieses Quiz ist nicht geöffnet.",
       "quiz_attempts_exhausted": "Sie haben alle Versuche aufgebraucht.",
       "quiz_not_translated": "Dieses Quiz gibt es noch nicht in Ihrer Sprache.",
+      "quiz_question_already_answered": "Diese Frage wurde bereits beantwortet, daher lässt sich ihr Typ nicht mehr ändern. Wortlaut, Punkte und richtige Antwort können Sie weiterhin korrigieren; für einen anderen Fragetyp fügen Sie eine neue Frage hinzu.",
+      "quiz_has_attempts_one": "Dieser Test hat bereits {{count}} Versuch. Ihn zu löschen würde auch diesen Versuch und die Note löschen.",
+      "quiz_has_attempts_other": "Dieser Test hat bereits {{count}} Versuche. Ihn zu löschen würde alle Versuche und Noten löschen.",
       "daily_challenge_not_scheduled": "Für heute gibt es keine Frage.",
       "daily_challenge_not_translated": "Die heutige Frage gibt es noch nicht in Ihrer Sprache.",
       "daily_challenge_already_attempted": "Sie haben heute bereits geantwortet.",
@@ -788,12 +792,60 @@
       "legal_document_changed": "Dieses Dokument hat sich geändert. Bitte laden Sie die Seite neu und lesen Sie es erneut."
     },
     "byStatus": {
+      "400": "Die Anfrage konnte nicht verarbeitet werden. Prüfen Sie Ihre Eingaben.",
       "401": "Bitte melden Sie sich erneut an.",
       "403": "Sie haben dafür keine Berechtigung.",
       "404": "Das konnten wir nicht finden.",
       "409": "Das steht im Widerspruch zu neueren Daten. Bitte neu laden und erneut versuchen.",
+      "413": "Dieser Block ist zu groß zum Speichern. Teilen Sie ihn in mehrere auf.",
+      "422": "Etwas an Ihrer Eingabe stimmt nicht.",
       "429": "Zu viele Anfragen. Bitte langsamer.",
       "500": "Serverfehler. Bitte später erneut versuchen."
+    },
+    "where": {
+      "questions": "Frage {{n}}",
+      "options": "Option {{n}}"
+    },
+    "fields": {
+      "title": "Titel",
+      "description": "Beschreibung",
+      "passing_score": "Bestehensgrenze",
+      "max_attempts": "maximale Versuche",
+      "quiz_type": "Testtyp",
+      "questions": "Fragen",
+      "question_text": "Fragetext",
+      "question_type": "Fragetyp",
+      "points": "Punkte",
+      "min_words": "Mindestwortzahl",
+      "options": "Optionen",
+      "option_text": "Optionstext",
+      "is_correct": "richtige Antwort",
+      "order_index": "Reihenfolge"
+    },
+    "validation": {
+      "less_than_equal": "höchstens {{le}}",
+      "less_than": "weniger als {{lt}}",
+      "greater_than_equal": "mindestens {{ge}}",
+      "greater_than": "mehr als {{gt}}",
+      "string_too_short": "mindestens {{min_length}} Zeichen",
+      "string_too_long": "höchstens {{max_length}} Zeichen",
+      "too_short": "mindestens {{min_length}} erforderlich",
+      "too_long": "höchstens {{max_length}} erlaubt",
+      "missing": "ist erforderlich",
+      "extra_forbidden": "unbekanntes Feld",
+      "int_parsing": "muss eine ganze Zahl sein",
+      "int_type": "muss eine ganze Zahl sein",
+      "int_from_float": "muss eine ganze Zahl sein",
+      "string_type": "muss Text sein",
+      "bool_type": "muss ja oder nein sein",
+      "literal_error": "kein zulässiger Wert",
+      "invalid": "ungültiger Wert",
+      "quiz_question_blank": "geben Sie den Fragetext ein",
+      "quiz_option_blank": "geben Sie den Optionstext ein",
+      "quiz_too_few_options": "braucht mindestens zwei Optionen",
+      "quiz_no_correct_option": "markieren Sie eine Option als richtig",
+      "quiz_many_correct_options": "nur eine Option kann richtig sein",
+      "quiz_options_not_allowed": "eine Frage mit schriftlicher Antwort hat keine Optionen"
     },
     "storage": {
       "tooLarge": "Die Datei ist {{sizeMb}} MB groß, erlaubt sind {{maxMb}} MB.",
@@ -936,11 +988,17 @@
       "titleRequired": "Der Titel des Tests ist erforderlich",
       "addAtLeastOneQuestion": "Fügen Sie mindestens eine Frage hinzu",
       "validScoreRequired": "Geben Sie eine gültige Punktzahl ein (0 oder mehr)",
-      "scoreCantExceed": "Die Punktzahl darf für diese Frage {{max}} nicht überschreiten"
+      "scoreCantExceed": "Die Punktzahl darf für diese Frage {{max}} nicht überschreiten",
+      "questionTextRequired": "Frage {{n}}: Geben Sie den Fragetext ein",
+      "optionTextRequired": "Frage {{n}}, Option {{m}}: Geben Sie den Optionstext ein",
+      "tooFewOptions": "Frage {{n}}: Fügen Sie mindestens zwei Optionen hinzu",
+      "correctAnswerRequired": "Frage {{n}}: Markieren Sie die richtige Antwort",
+      "pointsRange": "Frage {{n}}: Punkte müssen eine ganze Zahl von 1 bis 100 sein"
     },
     "toast": {
       "quizSaved": "Test gespeichert",
       "quizSaveFailed": "Test konnte nicht gespeichert werden",
+      "oldQuizNotDeleted": "Der neue Test ist gespeichert, der alte konnte aber nicht gelöscht werden",
       "quizDeleted": "Test gelöscht",
       "quizDeleteFailed": "Test konnte nicht gelöscht werden",
       "gradeSaved": "Note gespeichert",
@@ -949,7 +1007,15 @@
     "confirmDelete": {
       "title": "Diesen Test löschen?",
       "description": "Studierende verlieren den Zugang zum Test und zu ihren Versuchen.",
+      "withAttempts_one": "Dieser Test hat bereits {{count}} Versuch. Er wird zusammen mit seiner Note endgültig gelöscht.",
+      "withAttempts_other": "Dieser Test hat bereits {{count}} Versuche. Sie werden alle zusammen mit ihren Noten endgültig gelöscht.",
       "confirm": "Test löschen"
+    },
+    "confirmRebuild": {
+      "title": "Test neu erstellen?",
+      "description_one": "Sie haben Fragen oder Optionen hinzugefügt oder entfernt. Diese Änderung erfordert eine Neuerstellung des Tests, und er hat bereits {{count}} Versuch — der Versuch und seine Note werden endgültig gelöscht. Um ihn zu behalten, brechen Sie ab und beschränken Sie die Änderung auf Wortlaut, Punkte und richtige Antworten.",
+      "description_other": "Sie haben Fragen oder Optionen hinzugefügt oder entfernt. Diese Änderung erfordert eine Neuerstellung des Tests, und er hat bereits {{count}} Versuche — alle Versuche und Noten werden endgültig gelöscht. Um sie zu behalten, brechen Sie ab und beschränken Sie die Änderung auf Wortlaut, Punkte und richtige Antworten.",
+      "confirm": "Neu erstellen und Versuche löschen"
     },
     "heading": {
       "editQuiz": "Test bearbeiten",
@@ -988,6 +1054,7 @@
       "removeQuestionAria": "Frage {{n}} entfernen",
       "removeOptionAria": "Antwort {{n}} entfernen",
       "questionTypeAria": "Fragetyp",
+      "typeLocked": "Diese Frage wurde bereits beantwortet, daher lässt sich der Typ nicht ändern. Korrigieren Sie stattdessen Wortlaut, Punkte oder richtige Antwort; für einen anderen Fragetyp fügen Sie eine neue Frage hinzu.",
       "trueFalseOption": {
         "True": "Richtig",
         "False": "Falsch"

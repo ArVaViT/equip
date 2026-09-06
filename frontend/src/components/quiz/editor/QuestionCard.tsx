@@ -13,11 +13,15 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { getTrueFalseLabel, type DraftOption, type DraftQuestion } from "./types"
+import { MAX_POINTS, MIN_POINTS } from "./validateDraft"
 
 interface Props {
   question: DraftQuestion
   index: number
   total: number
+  /** A student has answered this question: its type cannot change any
+   *  more (the server answers 409), so the selector is disabled and says why. */
+  typeLocked?: boolean
   onRemove: () => void
   onMove: (direction: "up" | "down") => void
   onUpdate: (patch: Partial<DraftQuestion>) => void
@@ -36,6 +40,7 @@ export function QuestionCard({
   onAddOption,
   onRemoveOption,
   onUpdateOption,
+  typeLocked = false,
 }: Props) {
   const { t } = useTranslation()
   return (
@@ -85,6 +90,7 @@ export function QuestionCard({
             <div className="flex items-center gap-3">
               <Select
                 value={q.question_type}
+                disabled={typeLocked}
                 onValueChange={(v) =>
                   onUpdate({ question_type: v as DraftQuestion["question_type"] })
                 }
@@ -92,6 +98,7 @@ export function QuestionCard({
                 <SelectTrigger
                   size="xs"
                   aria-label={t("quizEditor.questions.questionTypeAria")}
+                  title={typeLocked ? t("quizEditor.questions.typeLocked") : undefined}
                   className="w-auto"
                 >
                   <SelectValue />
@@ -112,6 +119,7 @@ export function QuestionCard({
                     type="number"
                     min={1}
                     placeholder="—"
+                    aria-label={t("quizEditor.questions.minWords")}
                     value={q.min_words ?? ""}
                     onChange={(e) =>
                       onUpdate({
@@ -131,13 +139,26 @@ export function QuestionCard({
                 </Label>
                 <Input
                   type="number"
-                  min={1}
+                  min={MIN_POINTS}
+                  max={MAX_POINTS}
+                  aria-label={t("quizEditor.questions.points")}
                   value={q.points}
-                  onChange={(e) => onUpdate({ points: Number(e.target.value) || 1 })}
+                  // Kept as typed, out-of-range included: ``|| 1`` used to
+                  // turn 0 into 1 without a word, and 150 went to the server
+                  // to come back as an English 422. The save button names
+                  // the question and the range instead.
+                  onChange={(e) => {
+                    const n = Number(e.target.value)
+                    onUpdate({ points: Number.isFinite(n) ? n : 0 })
+                  }}
                   className="h-7 text-xs w-16"
                 />
               </div>
             </div>
+
+            {typeLocked && (
+              <p className="text-xs text-ink-muted italic">{t("quizEditor.questions.typeLocked")}</p>
+            )}
 
             {q.question_type === "multiple_choice" && (
               <RadioGroup
