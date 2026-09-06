@@ -206,7 +206,7 @@ def main() -> int:
             ("my grades", "/api/v1/grades/my"),
             ("calendar", "/api/v1/calendar/events"),
             ("notifications", "/api/v1/notifications"),
-            ("my courses", "/api/v1/users/me/enrollments"),
+            ("my courses", "/api/v1/users/me/courses"),
             ("certificates", "/api/v1/certificates/my"),
         ]
         surfaces += [(f"course {cid[:8]}", f"/api/v1/courses/{cid}") for cid in course_ids]

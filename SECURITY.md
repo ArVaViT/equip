@@ -59,6 +59,7 @@ The following are **out of scope**:
 - HTML content is sanitized server-side on create/update.
 - CORS is locked to known origins.
 - Production API docs (`/docs`, `/redoc`) are disabled.
-- `pip-audit` and `npm audit` run in CI on every push and PR.
+- `pip-audit --strict` (backend) and `audit-ci --high` (frontend) run in CI
+  on every push and PR.
 
 Thank you for helping keep Equip and its users safe.

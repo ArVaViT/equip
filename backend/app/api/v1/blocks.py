@@ -25,9 +25,6 @@ from app.services.translation.resolve_for_display import (
 router = APIRouter(prefix="/blocks", tags=["blocks"])
 
 
-_TRANSLATABLE_BLOCK_FIELDS = ("content",)
-
-
 def _block_to_response(db: Session, block: ChapterBlock) -> BlockResponse:
     """chapter_blocks.content column dropped — build the
     response with content pulled from cv (source-locale row preferred).

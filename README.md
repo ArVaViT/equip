@@ -50,8 +50,8 @@
   </tr>
   <tr>
     <td width="50%" align="center">
-      <img src=".github/assets/screenshots/register-desktop.png" alt="Equip account creation with a Student or Teacher role chooser" />
-      <br /><sub>Account creation — student / teacher role picker</sub>
+      <img src=".github/assets/screenshots/register-desktop.png" alt="Equip account creation form" />
+      <br /><sub>Account creation — self-signup is student-only; teachers and directors join by invitation</sub>
     </td>
     <td width="50%" align="center">
       <img src=".github/assets/screenshots/login-mobile.png" alt="Equip sign-in on a 390px mobile viewport" width="240" />
@@ -96,7 +96,7 @@ technical expertise that volunteer-run organizations simply don't have.
 | **Admin tools** | User management, bulk operations, CSV export, course cloning, soft delete |
 | **Design** | Editorial aesthetic, dark/light theme, responsive (360px+), HSL semantic tokens |
 | **Multilingual content (RU / EN / DE / UK)** | Auto-translation of all teacher-authored text via Gemini, stored per (entity, field, locale) in the `content_versions` table; canonical Scripture substituted from the published edition of each language rather than paraphrased by the model; symmetric — an author writes in their language, students read in theirs; every translation is checked against its source before a reader sees it, and a course enters the catalogue only when all four languages are in place; off-the-request-path via a cron-driven worker queue so publishing stays instant even on 100-block courses |
-| **Security** | RLS on every table, server-side HTML sanitization, CORS lockdown, audit pipeline, typed error envelope (`{code, message, context}`) for structured client + Sentry handling |
+| **Security** | RLS on every table, server-side HTML sanitization, CORS lockdown, audit pipeline, typed error envelope (`{code, message, context}`) for structured client handling and Datadog error tracking |
 
 ---
 
@@ -107,7 +107,7 @@ technical expertise that volunteer-run organizations simply don't have.
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, TipTap, Radix |
 | Backend | Python 3.12, FastAPI, SQLAlchemy 2, Pydantic 2 |
 | Database | PostgreSQL (Supabase) with Row Level Security |
-| Auth | Supabase Auth (Google OAuth + email/password) |
+| Auth | Supabase Auth (Google OAuth, email/password, sign-in link) |
 | Storage | Supabase Storage (avatars, course assets, materials) |
 | Deploy | Vercel (static frontend + Python serverless backend) |
 | CI/CD | GitHub Actions (lint, typecheck, test, audit) + Dependabot |
@@ -158,9 +158,9 @@ cd frontend && npm run dev                      # http://localhost:5173
 ### 4. Run tests
 
 ```bash
-cd backend  && python -m pytest tests/    # 1400+ tests (SQLite in-memory)
+cd backend  && python -m pytest tests/    # 3200+ tests (SQLite in-memory)
 cd frontend && npm run test:run           # Vitest + jsdom
-cd frontend && npm run i18n:check         # bilingual locale parity (en.json ↔ ru.json)
+cd frontend && npm run i18n:check         # locale parity across ru / en / de / uk
 ```
 
 ---
@@ -246,7 +246,11 @@ There are great LMS options out there. Equip exists in a specific gap they don't
 | Translators / i18n work | [docs/I18N.md](docs/I18N.md) — locale files, key parity, plural categories |
 | Architecture | [docs/adr/](docs/adr/) — Architecture Decision Records |
 | Cross-cutting UI calls | [docs/UI-DECISIONS.md](docs/UI-DECISIONS.md) — frozen UI decisions log |
+| Shipping a change | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — what deploys when, the two manual steps (migrations, edge function), env vars, rollback |
+| Staging | [docs/STAGING.md](docs/STAGING.md) — the ephemeral staging tier and the `STAGING_ACTIVE` switch |
 | Running in production | [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) — monitoring, log forwarding, incident debugging |
+| Backup and restore | [docs/runbooks/backup-restore.md](docs/runbooks/backup-restore.md) |
+| Security model | [docs/SECURITY.md](docs/SECURITY.md) — RLS, audit log, secrets, what is backend-gated |
 | Dashboards / metrics | [docs/datadog/](docs/datadog/) — Datadog dashboard + monitor JSON specs |
 | Security disclosure | [SECURITY.md](SECURITY.md) |
 

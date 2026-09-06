@@ -29,7 +29,7 @@ function formatDate(iso: string | null): string {
  * server-side renderer — one less thing to keep running, and one less place
  * for a document to be generated differently than it was displayed.
  */
-export function VedomostPage() {
+function VedomostPage() {
   const { t } = useTranslation()
   const { courseId } = useParams<{ courseId: string }>()
   const [params] = useSearchParams()

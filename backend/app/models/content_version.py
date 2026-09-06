@@ -74,8 +74,6 @@ ContentVersionField = Literal[
     "explanation",
 ]
 
-ContentVersionOrigin = Literal["human", "mt"]
-
 
 class ContentVersionStatus(enum.StrEnum):
     """Lifecycle of a single ``content_versions`` row.

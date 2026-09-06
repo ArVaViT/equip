@@ -165,11 +165,13 @@ not affect the metrics.
 
 ### "Resend didn't send my email"
 
-1. Check monitor `19761387` ("send-email: delivery / function errors").
+1. Check monitor `20393855` (`send-email-failures.json` -- errors from
+   `service:send-email`).
 2. Datadog Logs: `service:send-email status:error` -- the Edge Function
    logs the Resend error body when a send fails.
-3. Manual check from PowerShell (see [resend-equip.md](../README.md)
-   recipe section) -- list the last 20 sends and look at `last_event`.
+3. Manual check against the Resend API (`GET https://api.resend.com/emails`
+   with the key from 1Password via `op run`) -- list the last 20 sends and
+   look at `last_event`.
 
 ## What's NOT wired up (known gaps)
 
@@ -232,14 +234,17 @@ Still useful to add manually when Vadym has time:
 3. **Synthetic latency drift** — on top of the existing pass/fail synthetic monitors, warn if the median response time on `/health` exceeds 2 s for 30 min. Cold-start latency creep is the first visible sign of Vercel runtime regression.
 4. **Resend bounce rate** — requires Resend webhooks (see gap above). Alert at ≥ 5 % bounces over a 6 h rolling window.
 
-To enable any of these, see the `Memory/datadog-equip.md` "Check
-Datadog" PowerShell recipe and adapt the monitor JSON; do not let the
-agent create them without explicit approval.
+To enable any of these, adapt one of the monitor JSONs under
+`docs/datadog/monitors/` and apply it with the script above; do not let
+the agent create them without explicit approval.
 
 ## "Check Datadog" -- one-shot status snapshot
 
-When you want a quick "is everything fine?" answer, run the recipe
-from `Memory/datadog-equip.md` (PowerShell). It prints:
+When you want a quick "is everything fine?" answer, run the maintainer's
+"Check Datadog" recipe (kept in private notes, not in this repository;
+it is a handful of `GET /api/v1/synthetics/tests` and
+`GET /api/v1/monitor` calls with the read-only application key). It
+prints:
 
 - Status of all 3 synthetics (`live` vs failing).
 - Any firing monitors.

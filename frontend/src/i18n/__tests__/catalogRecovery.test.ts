@@ -9,7 +9,7 @@
  * reload they had no reason to think of.
  */
 
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 
 import i18n, { DEFAULT_LOCALE } from "../config"
 
@@ -68,28 +68,5 @@ describe("the catalog is there, and stays there", () => {
     delete connector!.state![`${active}|translation`]
     await i18n.reloadResources([active], ["translation"])
     expect(i18n.hasResourceBundle(active, "translation")).toBe(true)
-  })
-
-  it("a loader that fails once is retried rather than remembered", async () => {
-    // The loader's own retry, observed through the number of attempts.
-    let attempts = 0
-    const flaky = vi.fn(async () => {
-      attempts += 1
-      if (attempts < 2) throw new Error("network")
-      return { default: { probe: "value" } }
-    })
-    await expect(
-      (async () => {
-        for (let i = 0; i < 3; i += 1) {
-          try {
-            return await flaky()
-          } catch {
-            continue
-          }
-        }
-        throw new Error("gave up")
-      })(),
-    ).resolves.toEqual({ default: { probe: "value" } })
-    expect(attempts).toBe(2)
   })
 })

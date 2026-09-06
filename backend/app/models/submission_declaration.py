@@ -22,11 +22,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
 
-#: What a course allows. The default is disclosure rather than a ban: a ban
-#: nobody can enforce is broken silently, and it teaches students to conceal
-#: rather than to say.
-AI_POLICIES = ("ai_forbidden", "ai_with_disclosure", "ai_open")
-
 
 class SubmissionDeclaration(Base):
     """One statement about one piece of work.
