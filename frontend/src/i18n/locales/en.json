@@ -1544,6 +1544,11 @@
       "reject": "Reject",
       "notEarnedYet_one": "Not earned yet: {{count}} thing outstanding",
       "notEarnedYet_other": "Not earned yet: {{count}} things outstanding"
+    },
+    "publishConfirm": {
+      "title": "Publish this course?",
+      "description": "The course appears in the catalog once every language has it. Until then students cannot see it — that is expected.",
+      "confirm": "Publish"
     }
   },
   "teacherEditor": {
@@ -1642,7 +1647,8 @@
       "eventDeleteFailed": "Failed to delete event",
       "materialUploadFailed": "Upload failed",
       "materialDownloadFailed": "Download failed",
-      "materialDeleteFailed": "Failed to delete material"
+      "materialDeleteFailed": "Failed to delete material",
+      "publishing": "Published. It goes into the catalog once every language has it"
     },
     "confirm": {
       "deleteModuleTitle": "Delete this module?",
@@ -1756,7 +1762,8 @@
       "instituteDescription": "Students cannot self-enroll. Add them via a cohort in the admin panel.",
       "save": "Save",
       "saving": "Saving…"
-    }
+    },
+    "publishing": "Publishing"
   },
   "chapterEditor": {
     "notFound": {
@@ -1790,7 +1797,12 @@
     "save": "Save Chapter",
     "saving": "Saving...",
     "saveHint": "Ctrl+S to save",
-    "unsavedChanges": "You have unsaved changes"
+    "unsavedChanges": "You have unsaved changes",
+    "typeChangeConfirm": {
+      "title": "Change the chapter type?",
+      "description": "Nothing you wrote is deleted. The \"{{from}}\" editor is hidden while the chapter is a \"{{to}}\", and comes back with everything in it the moment you switch the type back.",
+      "confirm": "Change type"
+    }
   },
   "courseDetail": {
     "allCourses": "All Courses",
@@ -2485,6 +2497,24 @@
       "quizWeightNonzero": "Quizzes count toward the final grade.",
       "assignmentWeightNonzero": "Assignments count toward the final grade.",
       "quizThresholdBelowCourse": "Some quizzes pass at a lower score than the course does. A student can clear every quiz and still finish below the course's pass line."
+    },
+    "missing": {
+      "hasDescription": "The course has no description for the catalog yet.",
+      "hasCoverImage": "The course has no cover image yet.",
+      "translationsComplete": "Not every language has this course yet. It goes into the catalog once they all do.",
+      "hasEnrollmentWindow": "Enrollment open / close dates are not set.",
+      "hasAtLeastOneModule": "The course has no modules yet.",
+      "hasMultipleModules": "The course has only one module.",
+      "moduleHasChapters": "\"{{title}}\" has no chapters yet.",
+      "readingHasContent": "\"{{title}}\" has no reading content yet.",
+      "quizHasQuestion": "Quiz in \"{{title}}\" has no questions yet.",
+      "examHasQuestion": "Exam in \"{{title}}\" has no questions yet.",
+      "quizQuestionsComplete": "Some questions in \"{{title}}\" are unfinished (missing options or a correct marker).",
+      "assignmentHasBrief": "Assignment in \"{{title}}\" has no brief / description yet.",
+      "quizThresholdAboveCourse": "A quiz demands a higher score than the course does. Students can pass the course on paper and still never complete the chapter, so the certificate stays out of reach.",
+      "quizWeightNonzero": "Quizzes do not count toward the final grade.",
+      "assignmentWeightNonzero": "Assignments do not count toward the final grade.",
+      "quizThresholdBelowCourse": "Some quizzes pass at a lower score than the course does. A student can clear every quiz and still finish below the course's pass line."
     }
   },
   "dateRangePicker": {
@@ -2686,7 +2716,9 @@
     "heldEdits": "{{count}} edits waiting on translation. Students see them once every language is ready.",
     "blockedEdits": "{{count}} edits are stuck. A translation failed its check and needs a person.",
     "needsReview": "{{count}} translations need review. They will not resolve on their own.",
-    "openReviewQueue": "Open the review queue"
+    "openReviewQueue": "Open the review queue",
+    "waitingNote": "Students cannot see the course until every language has it. That is expected — it appears in the catalog on its own once the translations are ready.",
+    "beforePublishNote": "Once you publish, the course appears in the catalog when every language has it. Until then students cannot see it — that is expected."
   },
   "verify": {
     "eyebrow": "AUTHENTICITY",

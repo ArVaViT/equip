@@ -18,6 +18,12 @@ interface CourseData {
   sortedModules: NonNullable<Course["modules"]>
   /** True when the course status is "published". */
   published: boolean
+  /**
+   * True when the teacher has published the course but the server is
+   * still holding it back from the catalog — some language does not
+   * have it yet. Neither a draft nor live; its own word on screen.
+   */
+  publishing: boolean
   enrollStart: string
   setEnrollStart: (v: string) => void
   enrollEnd: string
@@ -146,15 +152,27 @@ export function useCourseData(
 
   const togglePublish = useCallback(async () => {
     if (!courseId || !course) return
-    const next = course.status === "published" ? ("draft" as const) : ("published" as const)
+    // Anything that is not a draft is on its way out, so the toggle
+    // takes it back to draft. A course sitting in ``publishing`` has
+    // been published by its teacher; asking again would change nothing.
+    const requested = course.status === "draft" ? ("published" as const) : ("draft" as const)
     try {
-      await coursesService.updateCourse(courseId, { status: next })
+      const updated = await coursesService.updateCourse(courseId, { status: requested })
+      // The server decides the resulting state: asking to publish a
+      // course whose languages are not all ready lands it in
+      // ``publishing``, not ``published``. Take its word, not ours.
+      // Writing ``published`` here from what we *asked for* is exactly
+      // how the editor came to say "Published" until the next reload,
+      // which then said "Draft" — the teacher read that as lost work.
+      const next = updated?.status ?? requested
       setCourse((p) => (p ? { ...p, status: next } : p))
       toast({
         title:
           next === "published"
             ? t("teacherEditor.toast.published")
-            : t("teacherEditor.toast.unpublished"),
+            : next === "publishing"
+              ? t("teacherEditor.toast.publishing")
+              : t("teacherEditor.toast.unpublished"),
         variant: "success",
       })
     } catch {
@@ -263,6 +281,7 @@ export function useCourseData(
     loading,
     sortedModules,
     published: course?.status === "published",
+    publishing: course?.status === "publishing",
     enrollStart,
     setEnrollStart,
     enrollEnd,

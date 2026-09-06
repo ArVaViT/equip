@@ -1544,6 +1544,11 @@
       "reject": "Ablehnen",
       "notEarnedYet_one": "Noch nicht erreicht: {{count}} Punkt offen",
       "notEarnedYet_other": "Noch nicht erreicht: {{count}} Punkte offen"
+    },
+    "publishConfirm": {
+      "title": "Diesen Kurs veröffentlichen?",
+      "description": "Der Kurs erscheint im Katalog, sobald jede Sprache ihn hat. Bis dahin sehen Studierende ihn nicht — das ist so vorgesehen.",
+      "confirm": "Veröffentlichen"
     }
   },
   "teacherEditor": {
@@ -1642,7 +1647,8 @@
       "eventDeleteFailed": "Termin konnte nicht gelöscht werden",
       "materialUploadFailed": "Hochladen fehlgeschlagen",
       "materialDownloadFailed": "Herunterladen fehlgeschlagen",
-      "materialDeleteFailed": "Material konnte nicht gelöscht werden"
+      "materialDeleteFailed": "Material konnte nicht gelöscht werden",
+      "publishing": "Veröffentlicht. In den Katalog kommt der Kurs, sobald jede Sprache ihn hat"
     },
     "confirm": {
       "deleteModuleTitle": "Dieses Modul löschen?",
@@ -1756,7 +1762,8 @@
       "instituteDescription": "Studierende können sich nicht selbst einschreiben. Fügen Sie sie über eine Gruppe in der Administration hinzu.",
       "save": "Speichern",
       "saving": "Wird gespeichert …"
-    }
+    },
+    "publishing": "Wird veröffentlicht"
   },
   "chapterEditor": {
     "notFound": {
@@ -1790,7 +1797,12 @@
     "save": "Kapitel speichern",
     "saving": "Wird gespeichert …",
     "saveHint": "Strg+S zum Speichern",
-    "unsavedChanges": "Sie haben ungespeicherte Änderungen"
+    "unsavedChanges": "Sie haben ungespeicherte Änderungen",
+    "typeChangeConfirm": {
+      "title": "Kapiteltyp ändern?",
+      "description": "Nichts von dem, was Sie geschrieben haben, wird gelöscht. Der Editor „{{from}}“ wird ausgeblendet, solange das Kapitel ein „{{to}}“ ist, und kommt mit allem Inhalt zurück, sobald Sie den Typ zurückstellen.",
+      "confirm": "Typ ändern"
+    }
   },
   "courseDetail": {
     "allCourses": "Alle Kurse",
@@ -2485,6 +2497,24 @@
       "quizWeightNonzero": "Tests zählen für die Endnote.",
       "assignmentWeightNonzero": "Aufgaben zählen für die Endnote.",
       "quizThresholdBelowCourse": "Manche Tests bestehen bei einer niedrigeren Punktzahl als der Kurs. Man kann jeden Test schaffen und trotzdem unter der Bestehensgrenze des Kurses landen."
+    },
+    "missing": {
+      "hasDescription": "Der Kurs hat noch keine Beschreibung für den Katalog.",
+      "hasCoverImage": "Der Kurs hat kein Titelbild.",
+      "translationsComplete": "Noch nicht jede Sprache hat diesen Kurs. In den Katalog kommt er, sobald das für alle gilt.",
+      "hasEnrollmentWindow": "Beginn und Ende der Einschreibung sind nicht gesetzt.",
+      "hasAtLeastOneModule": "Der Kurs hat noch kein Modul.",
+      "hasMultipleModules": "Der Kurs hat nur ein Modul.",
+      "moduleHasChapters": "„{{title}}“ hat noch kein Kapitel.",
+      "readingHasContent": "„{{title}}“ hat noch keinen Inhalt zum Lesen.",
+      "quizHasQuestion": "Der Test in „{{title}}“ hat noch keine Frage.",
+      "examHasQuestion": "Die Prüfung in „{{title}}“ hat noch keine Frage.",
+      "quizQuestionsComplete": "Einige Fragen in „{{title}}“ sind unvollständig (Antworten oder Markierung der richtigen fehlen).",
+      "assignmentHasBrief": "Die Aufgabe in „{{title}}“ hat noch keine Beschreibung.",
+      "quizThresholdAboveCourse": "Ein Test verlangt eine höhere Punktzahl als der Kurs. Studierende können den Kurs auf dem Papier bestehen und das Kapitel doch nie abschließen — das Zertifikat bleibt außer Reichweite.",
+      "quizWeightNonzero": "Tests zählen nicht für die Endnote.",
+      "assignmentWeightNonzero": "Aufgaben zählen nicht für die Endnote.",
+      "quizThresholdBelowCourse": "Manche Tests bestehen bei einer niedrigeren Punktzahl als der Kurs. Man kann jeden Test schaffen und trotzdem unter der Bestehensgrenze des Kurses landen."
     }
   },
   "dateRangePicker": {
@@ -2686,7 +2716,9 @@
     "heldEdits": "{{count}} Änderungen warten auf die Übersetzung. Studierende sehen sie, sobald alle Sprachen bereit sind.",
     "blockedEdits": "{{count}} Änderungen hängen fest. Eine Übersetzung hat die Prüfung nicht bestanden und braucht einen Menschen.",
     "needsReview": "{{count}} Übersetzungen brauchen eine Durchsicht. Von allein lösen sie sich nicht.",
-    "openReviewQueue": "Prüfliste öffnen"
+    "openReviewQueue": "Prüfliste öffnen",
+    "waitingNote": "Solange nicht jede Sprache den Kurs hat, sehen Studierende ihn nicht. Das ist so vorgesehen: Sobald die Übersetzungen fertig sind, erscheint er von selbst im Katalog.",
+    "beforePublishNote": "Nach der Veröffentlichung erscheint der Kurs im Katalog, sobald jede Sprache ihn hat. Bis dahin sehen Studierende ihn nicht — das ist so vorgesehen."
   },
   "verify": {
     "eyebrow": "ECHTHEIT",

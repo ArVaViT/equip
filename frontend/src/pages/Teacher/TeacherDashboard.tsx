@@ -135,6 +135,19 @@ export default function TeacherDashboard() {
     // takes it back to draft. A course sitting in ``publishing`` has
     // been published by its teacher; asking again would change nothing.
     const requested = course.status === "draft" ? "published" : "draft"
+    // Publishing from the dashboard used to be one click on an eye
+    // icon: no question, no checklist, and no word about what happens
+    // next. The editor asks; the card asks the same way, and says the
+    // one thing a teacher needs to hear before the catalog stays empty
+    // for a while — that this is expected.
+    if (requested === "published") {
+      const ok = await confirm({
+        title: t("teacherDashboard.publishConfirm.title"),
+        description: t("teacherDashboard.publishConfirm.description"),
+        confirmLabel: t("teacherDashboard.publishConfirm.confirm"),
+      })
+      if (!ok) return
+    }
     setTogglingId(course.id)
     try {
       const updated = await coursesService.updateCourse(course.id, { status: requested })

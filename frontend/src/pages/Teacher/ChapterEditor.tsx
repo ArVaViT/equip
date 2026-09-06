@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { getErrorDetail } from "@/lib/errorDetail"
@@ -36,6 +36,41 @@ const EDITOR_OPTIONS = CHAPTER_TYPES.map((value) => ({
 }))
 
 type ChapterUpdatePayload = Parameters<typeof coursesService.updateChapter>[3]
+
+/**
+ * Which editor a chapter type opens. Quiz and exam share one, so moving
+ * between them keeps the questions on screen; every other move swaps the
+ * editor out and hides what was written in the previous one.
+ */
+type EditorFamily = "reading" | "quiz" | "assignment"
+const EDITOR_FAMILY: Record<ChapterType, EditorFamily> = {
+  reading: "reading",
+  quiz: "quiz",
+  exam: "quiz",
+  assignment: "assignment",
+}
+
+/**
+ * Does the editor for ``type`` have anything in it for this chapter?
+ * Asked only at the moment of switching, so the page does not pay three
+ * extra requests on every open. A probe that fails answers "yes": asking
+ * one unnecessary question is cheaper than letting a lesson vanish
+ * without a word.
+ */
+async function editorHasContent(type: ChapterType, chapterId: string): Promise<boolean> {
+  try {
+    switch (EDITOR_FAMILY[type]) {
+      case "reading":
+        return (await coursesService.getChapterBlocksForEdit(chapterId)).length > 0
+      case "quiz":
+        return (await coursesService.getChapterQuizForEdit(chapterId)) !== null
+      case "assignment":
+        return (await coursesService.getChapterAssignmentsForEdit(chapterId)).length > 0
+    }
+  } catch {
+    return true
+  }
+}
 
 export default function ChapterEditor() {
   const { courseId, moduleId, chapterId } = useParams<{
@@ -176,6 +211,41 @@ export default function ChapterEditor() {
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [save])
+
+  // Switching the tile from "Reading" to "Quiz" used to swap the editor
+  // instantly. Nothing is deleted — the blocks stay in their table and
+  // come back the moment the tile is switched back — but the teacher
+  // watching a written lesson disappear has no way of knowing that.
+  // So when the current editor holds anything, ask first, and say in
+  // plain words that the work is kept.
+  const switchingTypeRef = useRef(false)
+  const changeChapterType = useCallback(
+    async (next: ChapterType) => {
+      if (!chapter || next === chapterType || switchingTypeRef.current) return
+      if (EDITOR_FAMILY[next] === EDITOR_FAMILY[chapterType]) {
+        setChapterType(next)
+        return
+      }
+      switchingTypeRef.current = true
+      try {
+        if (await editorHasContent(chapterType, chapter.id)) {
+          const ok = await confirm({
+            title: t("chapterEditor.typeChangeConfirm.title"),
+            description: t("chapterEditor.typeChangeConfirm.description", {
+              from: t(CHAPTER_TYPE_LABEL_KEYS[chapterType]),
+              to: t(CHAPTER_TYPE_LABEL_KEYS[next]),
+            }),
+            confirmLabel: t("chapterEditor.typeChangeConfirm.confirm"),
+          })
+          if (!ok) return
+        }
+        setChapterType(next)
+      } finally {
+        switchingTypeRef.current = false
+      }
+    },
+    [chapter, chapterType, confirm, t],
+  )
 
   // Shared dirty-check used by the Back button and every breadcrumb
   // link. Pre-fix, only the Back button asked before discarding work;
@@ -329,7 +399,7 @@ export default function ChapterEditor() {
               <button
                 key={ct.value}
                 type="button"
-                onClick={() => setChapterType(ct.value)}
+                onClick={() => void changeChapterType(ct.value)}
                 aria-pressed={selected}
                 className={`flex items-start gap-3 rounded-md border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
                   selected

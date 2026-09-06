@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { LOCALE_NATIVE_LABELS, isSupportedLocale } from "@/i18n/config"
 import { cn } from "@/lib/utils"
 import type { CourseTranslationProgress } from "@/services/courseTranslation"
+import type { Course } from "@/types"
 
 interface Props {
   progress: CourseTranslationProgress | null
@@ -21,6 +22,15 @@ interface Props {
    * presentational component.
    */
   reviewHref?: string | null
+  /**
+   * Publish state of the course, so the card can say what the wait means
+   * for students. ``publishing`` is a course the teacher has sent out
+   * that the server holds back until every language has it — the card is
+   * where they come to find out why nobody can see it yet, so it says so
+   * in plain words. A draft gets the same sentence in the future tense; a
+   * course already in the catalog needs neither.
+   */
+  status?: Course["status"]
 }
 
 /**
@@ -55,6 +65,7 @@ export function CourseTranslationCard({
   preparing,
   onPrepare,
   reviewHref = null,
+  status,
 }: Props) {
   const { t } = useTranslation()
 
@@ -128,6 +139,18 @@ export function CourseTranslationCard({
           </Button>
         )}
       </div>
+
+      {/* Where the wait is explained. A published course that is not in
+          the catalog looks, to its author, like a publish that did not
+          take. One calm sentence: students cannot see it yet, and that is
+          how it is meant to work. */}
+      {!done && (status === "publishing" || status === "draft") && (
+        <p className="border-t border-edge px-5 py-3 text-sm text-ink-muted dark:border-white/5">
+          {status === "publishing"
+            ? t("courseTranslation.waitingNote")
+            : t("courseTranslation.beforePublishNote")}
+        </p>
+      )}
 
       {behind.length > 0 && (
         <ul className="flex flex-wrap gap-x-4 gap-y-1 border-t border-edge px-5 py-3 text-sm dark:border-white/5">
