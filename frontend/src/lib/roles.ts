@@ -1,4 +1,28 @@
-import type { UserRole } from "@/types"
+import { ROLES, type UserRole } from "@/types"
+
+/**
+ * The roles that author and run courses: a teacher, a director, platform
+ * staff. A director is an organization's administrator *and* very often
+ * the one teaching in it — a school small enough to have one director
+ * rarely has a separate faculty — so the teaching surface is open to both.
+ *
+ * This is the single definition. The route gate, the header, the
+ * dashboard card and every "am I a teacher?" branch call ``canTeach``
+ * rather than comparing ``role`` to ``"teacher"`` by hand; the backend's
+ * ``TEACHING_ROLES`` in ``app/models/user.py`` mirrors it exactly.
+ *
+ * What this does NOT grant: ownership. Whether a director may edit *this*
+ * course is still ``created_by``, exactly as it is for a teacher.
+ */
+export const TEACHING_ROLES: ReadonlySet<UserRole> = new Set<UserRole>([
+  ROLES.ADMIN,
+  ROLES.DIRECTOR,
+  ROLES.TEACHER,
+])
+
+export function canTeach(role: UserRole | null | undefined): boolean {
+  return role != null && TEACHING_ROLES.has(role)
+}
 
 /**
  * Single source of truth for mapping a ``UserRole`` enum value (which

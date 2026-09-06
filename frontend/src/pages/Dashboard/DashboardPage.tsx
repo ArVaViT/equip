@@ -4,7 +4,8 @@ import { Link } from "react-router-dom"
 import { motion, useReducedMotion } from "motion/react"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
-import { ROLES, type Enrollment, type StudentGrade } from "@/types"
+import type { Enrollment, StudentGrade } from "@/types"
+import { canTeach } from "@/lib/roles"
 import { useAuth } from "@/context/useAuth"
 import { ArrowRight, BookOpen, CheckCircle } from "lucide-react"
 import { ErrorState } from "@/components/patterns"
@@ -152,7 +153,7 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
     // A teacher with no enrollments is not a newcomer looking for a topic
     // that speaks to them — they are looking for the course they wrote.
     // That lives in the card above this one; say so instead.
-    const teaches = user?.role === ROLES.TEACHER || user?.role === ROLES.ADMIN
+    const teaches = canTeach(user?.role)
     return shell(
       <WelcomeCard
         eyebrow={t("onboarding.student.eyebrow")}

@@ -19,6 +19,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { useGrandTour } from "@/hooks/useGrandTour"
 import { takePendingInviteToken } from "@/lib/pendingInvite"
 import { returnPathFrom } from "@/lib/authRedirect"
+import { canTeach } from "@/lib/roles"
 import { DeniedRedirect } from "@/components/auth/DeniedRedirect"
 
 // Lazy: FirstRunFlow renders null until a brand-new user's privacy/setup gate
@@ -111,7 +112,7 @@ function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }
   if (!user) {
     return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />
   }
-  if (mode === "teacher" && user.role !== "teacher" && user.role !== "admin") {
+  if (mode === "teacher" && !canTeach(user.role)) {
     return <DeniedRedirect />
   }
   if (mode === "admin" && user.role !== "admin") {

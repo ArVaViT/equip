@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { useAuth } from "@/context/useAuth"
-import { ROLES } from "@/types"
+import { canTeach } from "@/lib/roles"
 import { HeaderDesktopNav } from "./header/HeaderDesktopNav"
 import { HeaderMobileMenuTrigger } from "./header/HeaderMobileMenuTrigger"
 import { HeaderMobileSheet } from "./header/HeaderMobileSheet"
@@ -33,7 +33,7 @@ export default function Header() {
   const { t } = useTranslation()
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  const isTeacher = user?.role === ROLES.TEACHER || user?.role === ROLES.ADMIN
+  const isTeacher = canTeach(user?.role)
 
   // Close the sheet on every route transition. Doing it here (not in
   // HeaderMobileSheet itself) keeps the sheet stateless w/r/t

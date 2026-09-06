@@ -26,7 +26,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from app.api import dependencies as deps
 from app.models.course import Chapter, Course, CourseStatus, Module
 from app.models.enrollment import Enrollment
-from app.models.user import User, UserRole
+from app.models.user import TEACHING_ROLES, User, UserRole, can_teach
 
 from ._cv_helpers import make_course_with_text, make_module_with_text
 from .conftest import ADMIN_ID, STUDENT_ID, TEACHER_ID
@@ -259,6 +259,21 @@ class TestRequireTeacher:
     def test_admin_passes(self) -> None:
         admin = User(id=ADMIN_ID, email="a", full_name="a", role=UserRole.ADMIN.value)
         assert deps.require_teacher(current_user=admin) is admin
+
+    def test_director_passes(self) -> None:
+        # A director runs the school and, in a school this size, teaches
+        # in it. The teaching surface is theirs too; whose course they
+        # may touch is still decided by ownership downstream.
+        director = User(id=uuid.uuid4(), email="d", full_name="d", role=UserRole.DIRECTOR.value)
+        assert deps.require_teacher(current_user=director) is director
+
+    def test_the_teaching_roles_are_defined_once(self) -> None:
+        # ``require_teacher`` must read the shared set, not spell the roles
+        # out itself — otherwise the next role lands in one place and not
+        # the other, which is exactly how the director was locked out.
+        assert frozenset({"admin", "director", "teacher"}) == TEACHING_ROLES
+        assert can_teach("director") and can_teach("teacher") and can_teach("admin")
+        assert not can_teach("student")
 
     def test_student_is_403(self) -> None:
         student = User(id=STUDENT_ID, email="s", full_name="s", role=UserRole.STUDENT.value)
