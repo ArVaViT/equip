@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
+import { describeUploadError, preflightUpload } from "@/lib/uploadError"
+import { COURSE_MATERIALS } from "@/lib/uploadLimits"
 import type { useConfirm } from "@/components/ui/alert-dialog"
 import type { MaterialFile } from "./types"
 
@@ -54,12 +56,31 @@ export function useMaterialsSection(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
       if (!file || !courseId) return
+      // What the bucket would refuse, said here first and in the
+      // teacher's language; a 60 MB recording should not upload for a
+      // minute to be turned away.
+      const issue = preflightUpload(file, COURSE_MATERIALS)
+      if (issue) {
+        toast({
+          title: t("teacherEditor.toast.materialUploadFailed"),
+          description: issue.message,
+          variant: "destructive",
+        })
+        if (inputRef.current) inputRef.current.value = ""
+        return
+      }
       setUploading(true)
       try {
         await storageService.uploadCourseMaterial(courseId, file)
         setMaterials(await storageService.listCourseMaterials(courseId))
-      } catch {
-        toast({ title: t("teacherEditor.toast.materialUploadFailed"), variant: "destructive" })
+      } catch (error: unknown) {
+        // This used to be a bare `catch {}` — Storage's reason was thrown
+        // away and every failure read "Загрузка не удалась".
+        toast({
+          title: t("teacherEditor.toast.materialUploadFailed"),
+          description: describeUploadError(error, COURSE_MATERIALS),
+          variant: "destructive",
+        })
       } finally {
         setUploading(false)
         if (inputRef.current) inputRef.current.value = ""

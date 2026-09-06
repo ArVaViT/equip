@@ -4,6 +4,7 @@ import type { Editor } from "@tiptap/react";
 
 import { usePrompt } from "@/components/ui/alert-dialog";
 import { toast } from "@/lib/toast";
+import { acceptAttribute, COURSE_ASSETS } from "@/lib/uploadLimits";
 import type { useImageUpload } from "./useImageUpload";
 
 /**
@@ -85,7 +86,7 @@ export function useMediaPrompts(
     if (!editor) return;
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = "image/*";
+    input.accept = acceptAttribute(COURSE_ASSETS);
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;

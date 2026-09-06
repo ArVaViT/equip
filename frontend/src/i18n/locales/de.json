@@ -32,9 +32,7 @@
       "empty": "Bild anklicken oder hierher ziehen",
       "disabled": "Kein Titelbild",
       "unsupportedTitle": "Dateiformat nicht unterstützt",
-      "unsupportedDescription": "Wählen Sie eine Bilddatei.",
       "tooLargeTitle": "Bild zu groß",
-      "tooLargeDescription": "Höchstens {{max}} MB.",
       "uploadFailedTitle": "Hochladen fehlgeschlagen",
       "removeConfirmTitle": "Titelbild entfernen?",
       "removeConfirmDescription": "Damit wird das Titelbild des Kurses gelöscht.",
@@ -783,6 +781,17 @@
       "409": "Das steht im Widerspruch zu neueren Daten. Bitte neu laden und erneut versuchen.",
       "429": "Zu viele Anfragen. Bitte langsamer.",
       "500": "Serverfehler. Bitte später erneut versuchen."
+    },
+    "storage": {
+      "tooLarge": "Die Datei ist {{sizeMb}} MB groß, erlaubt sind {{maxMb}} MB.",
+      "tooLargeServer": "Der Speicher hat die Datei abgelehnt: Sie ist größer als {{maxMb}} MB.",
+      "unsupportedType": "Dieses Dateiformat wird nicht unterstützt. Erlaubt sind: {{formats}}.",
+      "heic": "HEIC-Fotos vom iPhone werden nicht unterstützt. Speichern Sie das Foto zuerst als JPEG – auf dem iPhone: Einstellungen → Kamera → Formate → Maximale Kompatibilität.",
+      "invalidName": "Der Speicher hat den Dateinamen nicht akzeptiert. Benennen Sie die Datei mit lateinischen Buchstaben um und versuchen Sie es erneut.",
+      "forbidden": "Sie dürfen in diesen Kurs nichts hochladen. Melden Sie sich erneut an und versuchen Sie es noch einmal.",
+      "network": "Der Speicher ist nicht erreichbar. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+      "generic": "Hochladen fehlgeschlagen. Bitte erneut versuchen.",
+      "genericWithCode": "Hochladen fehlgeschlagen ({{code}}). Bitte erneut versuchen."
     }
   },
   "toast": {
@@ -2398,9 +2407,6 @@
   "editor": {
     "toast": {
       "imageUploadFailed": "Bild konnte nicht hochgeladen werden",
-      "imageUploadFailedDetail": "Bild konnte nicht hochgeladen werden: {{detail}}",
-      "imageWrongType": "Diese Datei ist kein Bild ({{type}}). Wählen Sie JPG, PNG, WebP oder GIF.",
-      "imageTooLarge": "Das Bild ist zu groß. Höchstens {{maxMb}} MB.",
       "audioUrlInvalid": "Die Audio-Adresse muss mit http(s) beginnen",
       "invalidUrl": "Das sieht nicht nach einer gültigen Adresse aus. Nutzen Sie eine vollständige wie https://example.com/seite."
     },
