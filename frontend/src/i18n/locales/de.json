@@ -44,8 +44,8 @@
     "courses": "Kurse",
     "calendar": "Kalender",
     "certificates": "Zertifikate",
-    "manage": "Verwalten",
-    "manageCourses": "Kurse verwalten",
+    "manage": "Lehre",
+    "manageCourses": "Kurse, die ich unterrichte",
     "admin": "Admin",
     "adminPanel": "Administration",
     "profile": "Profil",
@@ -134,7 +134,17 @@
       "emptyDescription": "Öffnen Sie den Kalender, um zu sehen, was diese Woche ansteht."
     },
     "readingProgress_one": "{{read}} von {{count}} Kapitel gelesen",
-    "readingProgress_other": "{{read}} von {{count}} Kapiteln gelesen"
+    "readingProgress_other": "{{read}} von {{count}} Kapiteln gelesen",
+    "teaching": {
+      "title": "Kurse, die Sie unterrichten",
+      "description": "Bearbeiten, Bewerten und Veröffentlichen — alles unter „Lehre“.",
+      "openAll": "Alle meine Kurse",
+      "empty": "Sie haben noch keine Kurse. Der erste ist in einer Minute angelegt — Titel und Beschreibung, der Rest später.",
+      "createFirst": "Ersten Kurs erstellen",
+      "edit": "Im Editor öffnen",
+      "more_one": "und {{count}} weiterer Kurs",
+      "more_other": "und {{count}} weitere Kurse"
+    }
   },
   "onboarding": {
     "student": {
@@ -149,6 +159,9 @@
       "title": "Ihr erster Kurs beginnt hier",
       "body": "Equip ist Ihr Unterrichtsraum. Gliedern Sie einen Kurs in Kapitel, schreiben Sie eigene Tests, unterschreiben Sie Zertifikate, wenn Studierende fertig sind — und behalten Sie dabei jedes Wort in Ihrer Hand.",
       "primaryCta": "Ersten Kurs erstellen"
+    },
+    "teacherAsStudent": {
+      "body": "Hier erscheinen Kurse, in die Sie als Studierende eingeschrieben sind. Die Kurse, die Sie unterrichten, finden Sie in der Karte „Kurse, die Sie unterrichten“ und unter „Lehre“."
     }
   },
   "completion": {
@@ -1770,7 +1783,8 @@
       "save": "Speichern",
       "saving": "Wird gespeichert …"
     },
-    "publishing": "Wird veröffentlicht"
+    "publishing": "Wird veröffentlicht",
+    "viewAsStudent": "Als Studierende ansehen"
   },
   "chapterEditor": {
     "notFound": {
@@ -1854,6 +1868,14 @@
     },
     "upcoming": {
       "heading": "Anstehende Fristen und Termine"
+    },
+    "preview": {
+      "eyebrow": "Vorschau",
+      "backToEditor": "Zurück zum Kurseditor",
+      "note": "So sehen Studierende den Kurs nach der Veröffentlichung. Bis dahin kann sich niemand einschreiben — Sie können aber jedes Kapitel öffnen und es wie Studierende durchgehen.",
+      "heading": "Inhalt",
+      "emptyModule": "Dieses Modul hat noch keine Kapitel.",
+      "noModules": "Noch keine Module — fügen Sie sie im Editor hinzu."
     }
   },
   "gradebook": {
@@ -2722,10 +2744,16 @@
     "behindBy": "— {{count}} fehlen",
     "heldEdits": "{{count}} Änderungen warten auf die Übersetzung. Studierende sehen sie, sobald alle Sprachen bereit sind.",
     "blockedEdits": "{{count}} Änderungen hängen fest. Eine Übersetzung hat die Prüfung nicht bestanden und braucht einen Menschen.",
-    "needsReview": "{{count}} Übersetzungen brauchen eine Durchsicht. Von allein lösen sie sich nicht.",
     "openReviewQueue": "Prüfliste öffnen",
     "waitingNote": "Solange nicht jede Sprache den Kurs hat, sehen Studierende ihn nicht. Das ist so vorgesehen: Sobald die Übersetzungen fertig sind, erscheint er von selbst im Katalog.",
-    "beforePublishNote": "Nach der Veröffentlichung erscheint der Kurs im Katalog, sobald jede Sprache ihn hat. Bis dahin sehen Studierende ihn nicht — das ist so vorgesehen."
+    "beforePublishNote": "Nach der Veröffentlichung erscheint der Kurs im Katalog, sobald jede Sprache ihn hat. Bis dahin sehen Studierende ihn nicht — das ist so vorgesehen.",
+    "working": "Wird übersetzt — noch {{count}}. Das dauert in der Regel einige Minuten.",
+    "waitingForReview_one": "{{count}} Abschnitt wartet darauf, dass ihn jemand prüft. Wir wissen bereits davon — Sie müssen nichts tun.",
+    "waitingForReview_other": "{{count}} Abschnitte warten darauf, dass sie jemand prüft. Wir wissen bereits davon — Sie müssen nichts tun.",
+    "couldNotTranslate_one": "{{count}} Abschnitt konnte nicht automatisch übersetzt werden. Wir wissen bereits davon und übersetzen ihn von Hand — Sie müssen nichts tun.",
+    "couldNotTranslate_other": "{{count}} Abschnitte konnten nicht automatisch übersetzt werden. Wir wissen bereits davon und übersetzen sie von Hand — Sie müssen nichts tun.",
+    "notStartedYet": "Die Übersetzung hat noch nicht begonnen. Klicken Sie auf „Für die Veröffentlichung vorbereiten“ — oder sie beginnt von selbst, wenn Sie den Kurs veröffentlichen.",
+    "continuesOnItsOwn": "Die Übersetzung läuft von selbst weiter — Sie müssen nichts tun."
   },
   "verify": {
     "eyebrow": "ECHTHEIT",

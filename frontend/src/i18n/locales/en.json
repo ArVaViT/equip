@@ -44,8 +44,8 @@
     "courses": "Courses",
     "calendar": "Calendar",
     "certificates": "Certificates",
-    "manage": "Manage",
-    "manageCourses": "Manage Courses",
+    "manage": "Teaching",
+    "manageCourses": "Courses I teach",
     "admin": "Admin",
     "adminPanel": "Admin Panel",
     "profile": "Profile",
@@ -134,7 +134,17 @@
       "emptyDescription": "Open the full calendar to see what's coming up this week."
     },
     "readingProgress_one": "{{read}} of {{count}} chapter read",
-    "readingProgress_other": "{{read}} of {{count}} chapters read"
+    "readingProgress_other": "{{read}} of {{count}} chapters read",
+    "teaching": {
+      "title": "Courses you teach",
+      "description": "Editing, grading and publishing all live under “Teaching”.",
+      "openAll": "All my courses",
+      "empty": "You have no courses yet. The first one takes a minute — a title and a description, the rest later.",
+      "createFirst": "Create your first course",
+      "edit": "Open in the editor",
+      "more_one": "and {{count}} more course",
+      "more_other": "and {{count}} more courses"
+    }
   },
   "onboarding": {
     "student": {
@@ -149,6 +159,9 @@
       "title": "Your first course starts here",
       "body": "Equip is your classroom. Lay out a course in chapters, write your own quizzes, sign certificates when students finish — and keep ownership of every word the whole way.",
       "primaryCta": "Create your first course"
+    },
+    "teacherAsStudent": {
+      "body": "Courses you are enrolled in as a student will appear here. The ones you teach are in the “Courses you teach” card and under “Teaching”."
     }
   },
   "completion": {
@@ -1770,7 +1783,8 @@
       "save": "Save",
       "saving": "Saving…"
     },
-    "publishing": "Publishing"
+    "publishing": "Publishing",
+    "viewAsStudent": "View as a student"
   },
   "chapterEditor": {
     "notFound": {
@@ -1854,6 +1868,14 @@
     },
     "upcoming": {
       "heading": "Upcoming Deadlines & Events"
+    },
+    "preview": {
+      "eyebrow": "Preview",
+      "backToEditor": "Back to the course editor",
+      "note": "This is how students will see the course once it is published. Until then nobody can enroll — but you can open any chapter and go through it as a student would.",
+      "heading": "Contents",
+      "emptyModule": "This module has no chapters yet.",
+      "noModules": "No modules yet — add them in the editor."
     }
   },
   "gradebook": {
@@ -2722,10 +2744,16 @@
     "behindBy": "— {{count}} missing",
     "heldEdits": "{{count}} edits waiting on translation. Students see them once every language is ready.",
     "blockedEdits": "{{count}} edits are stuck. A translation failed its check and needs a person.",
-    "needsReview": "{{count}} translations need review. They will not resolve on their own.",
     "openReviewQueue": "Open the review queue",
     "waitingNote": "Students cannot see the course until every language has it. That is expected — it appears in the catalog on its own once the translations are ready.",
-    "beforePublishNote": "Once you publish, the course appears in the catalog when every language has it. Until then students cannot see it — that is expected."
+    "beforePublishNote": "Once you publish, the course appears in the catalog when every language has it. Until then students cannot see it — that is expected.",
+    "working": "Translating — {{count}} left. This usually takes a few minutes.",
+    "waitingForReview_one": "{{count}} passage is waiting for a person to check it. We already know — nothing is needed from you.",
+    "waitingForReview_other": "{{count}} passages are waiting for a person to check them. We already know — nothing is needed from you.",
+    "couldNotTranslate_one": "{{count}} passage could not be translated automatically. We already know and will translate it by hand — nothing is needed from you.",
+    "couldNotTranslate_other": "{{count}} passages could not be translated automatically. We already know and will translate them by hand — nothing is needed from you.",
+    "notStartedYet": "Translation has not started yet. Press “Prepare for publication” — or it starts on its own when you publish the course.",
+    "continuesOnItsOwn": "Translation continues on its own — nothing is needed from you."
   },
   "verify": {
     "eyebrow": "AUTHENTICITY",

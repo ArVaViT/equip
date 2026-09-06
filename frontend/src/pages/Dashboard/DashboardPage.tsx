@@ -4,7 +4,7 @@ import { Link } from "react-router-dom"
 import { motion, useReducedMotion } from "motion/react"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
-import type { Enrollment, StudentGrade } from "@/types"
+import { ROLES, type Enrollment, type StudentGrade } from "@/types"
 import { useAuth } from "@/context/useAuth"
 import { ArrowRight, BookOpen, CheckCircle } from "lucide-react"
 import { ErrorState } from "@/components/patterns"
@@ -14,6 +14,7 @@ import { DailyChallengeCard } from "@/components/dashboard/DailyChallengeCard"
 import { TodayCard } from "@/components/dashboard/TodayCard"
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard"
 import { RecentlyViewedRow } from "@/components/dashboard/RecentlyViewedRow"
+import { TeacherCoursesCard } from "@/components/dashboard/TeacherCoursesCard"
 import { useUserTour } from "@/hooks/useUserTour"
 import { studentDashboardSteps } from "@/lib/tourSteps"
 import { firstNameOf } from "@/lib/names"
@@ -148,6 +149,10 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
 
   if (filtered.length === 0) {
     const firstName = firstNameOf(user?.full_name)
+    // A teacher with no enrollments is not a newcomer looking for a topic
+    // that speaks to them — they are looking for the course they wrote.
+    // That lives in the card above this one; say so instead.
+    const teaches = user?.role === ROLES.TEACHER || user?.role === ROLES.ADMIN
     return shell(
       <WelcomeCard
         eyebrow={t("onboarding.student.eyebrow")}
@@ -156,7 +161,9 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
             ? t("onboarding.student.title", { name: firstName })
             : t("onboarding.student.titleNoName")
         }
-        description={t("onboarding.student.body")}
+        description={
+          teaches ? t("onboarding.teacherAsStudent.body") : t("onboarding.student.body")
+        }
         action={
           <div className="flex flex-col items-center gap-2 sm:flex-row">
             <Link to="/courses">
@@ -305,6 +312,9 @@ export default function DashboardPage() {
             lets My Courses keep its own internal scroll within the
             single-viewport grid. */}
         <div className="flex min-h-0 flex-col gap-4 lg:gap-5">
+          {/* Teachers first see the courses they teach — the reason most
+              of them signed in. Renders nothing for students. */}
+          <TeacherCoursesCard />
           <RecentlyViewedRow />
           <div className="min-h-0 flex-1">
             <MyCoursesSection onTourStart={startTour} />

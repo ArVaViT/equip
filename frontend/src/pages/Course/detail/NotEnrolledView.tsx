@@ -9,6 +9,7 @@ import { toProxyImage } from "@/lib/images"
 import type { Course, Cohort } from "@/types"
 import { formatDate, isEnrollableCohort } from "./types"
 import { CohortSelectModal } from "./CohortSelectModal"
+import { DraftOutline } from "./DraftOutline"
 import { orNotTranslated } from "@/lib/untranslated"
 
 interface Props {
@@ -49,6 +50,13 @@ export function NotEnrolledView({
   const { t } = useTranslation()
   const [cohortSelectModal, setCohortSelectModal] = useState(false)
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null)
+
+  // The author on a course nobody else can see yet. Enrolling is refused
+  // by the server for anything but ``published``, so the button here was a
+  // dead end that ended in a toast; what the author actually wants is to
+  // read the course the way a student will, and the server already lets
+  // them — see ``DraftOutline``.
+  const isOwnerPreview = isOwner && course.status !== "published"
 
   const activeCohort = cohorts.find((c) => c.status === "active")
   const enrollableCohorts = cohorts.filter(isEnrollableCohort)
@@ -93,10 +101,10 @@ export function NotEnrolledView({
 
   return (
     <div className="animate-fade-in container mx-auto px-4 py-6 max-w-3xl">
-      <Link to="/">
+      <Link to={isOwnerPreview ? `/teacher/courses/${course.id}` : "/"}>
         <Button variant="ghost" size="sm" className="mb-4 h-8 text-xs">
           <ArrowLeft className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-          {t("courseDetail.allCourses")}
+          {isOwnerPreview ? t("courseDetail.preview.backToEditor") : t("courseDetail.allCourses")}
         </Button>
       </Link>
 
@@ -195,7 +203,24 @@ export function NotEnrolledView({
         )}
 
       <div>
-        {isOwner ? (
+        {isOwnerPreview ? (
+          <div className="space-y-6" data-testid="owner-preview">
+            <div className="rounded-md border border-edge bg-card px-4 py-3 dark:border-transparent">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent">
+                {t("courseDetail.preview.eyebrow")}
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-ink-muted">
+                {t("courseDetail.preview.note")}
+              </p>
+              <Link to={`/teacher/courses/${course.id}`} className="mt-3 inline-block">
+                <Button size="sm" variant="outline">
+                  {t("courseDetail.manageCourse")}
+                </Button>
+              </Link>
+            </div>
+            <DraftOutline courseId={course.id} modules={course.modules ?? []} />
+          </div>
+        ) : isOwner ? (
           // Owner / admin: show BOTH "Manage Course" (primary, what they
           // usually want) AND "Enroll in Course" so they can preview the
           // course as a student or take their own quizzes. Issue #88
