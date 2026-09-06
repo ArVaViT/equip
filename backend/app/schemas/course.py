@@ -321,6 +321,24 @@ class CourseTranslationProgress(BaseModel):
     #: False when no provider is configured (local dev, a deploy without
     #: a key). Nothing will translate, and the gate does not block.
     enabled: bool = True
+    #: Why the course is not whole yet, as one word the card can put
+    #: into a sentence. ``needs_review`` — translations came back and a
+    #: person has to read them before they are served; nothing the
+    #: teacher does moves them. ``failed_permanent`` — the pipeline gave
+    #: up on them after five attempts and an admin has to re-queue them.
+    #: ``translating`` — the pipeline has simply not got there yet.
+    #: ``None`` when the course is whole. One reason, chosen in that
+    #: order, because that is the order of what the teacher needs to
+    #: know: a person's gap outranks a machine's.
+    stuck_reason: Literal["needs_review", "failed_permanent", "translating"] | None = None
+    #: How many (field, locale) pairs ``stuck_reason`` covers — the N in
+    #: "N fragments are waiting for review".
+    stuck_count: int = 0
+    #: A translation job for this course is queued or running right now.
+    #: ``False`` beside a non-empty ``stuck_reason`` is the state that
+    #: used to be indistinguishable from "working on it": nothing will
+    #: change until somebody acts.
+    job_pending: bool = False
 
 
 class ResyncProgressResponse(BaseModel):

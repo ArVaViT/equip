@@ -147,6 +147,17 @@ _MAX_LENGTH_RATIO: Final[float] = 2.5
 # the model returned its input.
 _MIN_CHARS_FOR_IDENTITY: Final[int] = 25
 
+# Which alphabet each supported language is written in, for the one
+# question a title's identity check still has to answer: is this
+# unchanged title in the *author's* alphabet for a reader whose language
+# uses a different one? A locale missing here reads as unknown, and an
+# unknown keeps the veto — burying a correct title is the expensive
+# direction, but so is a Russian title on a German catalogue card, and
+# "we have not looked" is not evidence either way.
+_SCRIPT_BY_LOCALE: Final[dict[str, str]] = {"ru": "cyrillic", "uk": "cyrillic", "en": "latin", "de": "latin"}
+_CYRILLIC_LETTER_RE: Final[re.Pattern[str]] = re.compile(r"[\u0400-\u04ff]")
+_LATIN_LETTER_RE: Final[re.Pattern[str]] = re.compile(r"[A-Za-z\u00c0-\u024f]")
+
 # Same-script pairs measured apart at every length the catalogue holds:
 # the detector may withhold a lesson over one of these however short the
 # string is. Membership is earned by measurement and nothing else — a
@@ -751,13 +762,66 @@ def _check_fence(translated: str) -> ValidationIssue | None:
     )
 
 
+def _script_of(text: str) -> str | None:
+    """Which alphabet most of ``text``'s letters are in; ``None`` when it
+    has no letters of either, or as many of one as the other."""
+    plain = strip_tags(text)
+    cyrillic = len(_CYRILLIC_LETTER_RE.findall(plain))
+    latin = len(_LATIN_LETTER_RE.findall(plain))
+    if cyrillic > latin:
+        return "cyrillic"
+    if latin > cyrillic:
+        return "latin"
+    return None
+
+
+def _an_unchanged_title_is_untranslated(text: str, *, source_locale: str, target_locale: str) -> bool:
+    """Whether a title that came back identical is *certainly* not a
+    translation — as opposed to a name that has none.
+
+    A title is where "identical" is most often right: a school's name,
+    a book's Latin title, a Greek word a course is about. ``Alpha &
+    Omega Bible School`` authored in a Russian course is the same six
+    words in English, and production parked it four times over as
+    ``not_translated``. The one shape that is untranslated beyond
+    doubt is the author's own alphabet in front of a reader whose
+    language uses another: a Cyrillic title on a German card is not a
+    name, whatever it says. Same alphabet on both sides (ru→uk, en→de)
+    or a title in neither party's alphabet (a Latin name in a
+    Ukrainian row) may be a name, and a name is not a defect.
+
+    Strict when a locale's alphabet is not on record: see
+    ``_SCRIPT_BY_LOCALE``.
+    """
+    source_script = _SCRIPT_BY_LOCALE.get(source_locale)
+    target_script = _SCRIPT_BY_LOCALE.get(target_locale)
+    if source_script is None or target_script is None:
+        return True
+    if source_script == target_script:
+        return False
+    return _script_of(text) in (source_script, None)
+
+
 def _check_identity(
     source: str,
     translated: str,
     *,
     source_locale: LocaleCode,
     target_locale: LocaleCode,
+    content_kind: ContentKind = "plain",
 ) -> ValidationIssue | None:
+    """Did the model return its input?
+
+    Blocking, except for a title in the shapes
+    ``_an_unchanged_title_is_untranslated`` lets through. There the
+    check keeps its eyes and loses its veto, the way
+    ``_check_untranslated_run`` did: the code is still logged and still
+    counted, the row is still shown the complaint and asked again, and
+    what it no longer does is hold a course out of the catalogue over a
+    title that was a name. Production, 30 days to 2026-09-05: four
+    ``course:title`` rows parked ru→en on exactly this, each one a
+    course nobody could see.
+    """
     if source_locale == target_locale:
         return None
     if not _carries_prose(source):
@@ -769,13 +833,23 @@ def _check_identity(
         return None
     if normalised != _normalised_for_identity(translated):
         return None
-    return ValidationIssue(
-        code="not_translated",
-        detail=(
-            f"The {target_locale} text is identical to the {source_locale} source. "
-            "Either the model returned its input, or the source was not in the language we think it is."
-        ),
+    reading = (
+        f"The {target_locale} text is identical to the {source_locale} source. "
+        "Either the model returned its input, or the source was not in the language we think it is."
     )
+    if content_kind == "title" and not _an_unchanged_title_is_untranslated(
+        normalised, source_locale=source_locale, target_locale=target_locale
+    ):
+        return ValidationIssue(
+            code="not_translated",
+            detail=(
+                f"{reading} A title, though, is often a name — a school, a book, a word the course "
+                "is about — and a name has no translation. Served, and worth a second look; translate "
+                "it if it is a sentence rather than a name."
+            ),
+            blocking=False,
+        )
+    return ValidationIssue(code="not_translated", detail=reading)
 
 
 def _check_language(
@@ -784,6 +858,7 @@ def _check_language(
     *,
     source_locale: LocaleCode,
     target_locale: LocaleCode,
+    content_kind: ContentKind = "plain",
 ) -> ValidationIssue | None:
     """Is the answer in the language the reader asked for?
 
@@ -937,6 +1012,28 @@ def _check_language(
                 f"{reading} On {script_letters(translated)} letters, though, {detected} and "
                 f"{target_locale} share too much of a short phrase to be told apart — the "
                 "detector's errors are all of this shape. Served, and worth a second look."
+            ),
+            blocking=False,
+        )
+
+    if content_kind == "title" and shares_script(detected, target_locale):
+        # A title is a handful of words, and a handful of words is where
+        # the detector is weakest — its own docstring above puts the
+        # error rate at 12–29 letters, which is the length of a title.
+        # It is also where a title is most often *meant* to read as
+        # another language: a school named in English on a German card,
+        # a Latin motto, a Greek word. Within one alphabet, then, the
+        # verdict on a title is a note for a person and not a veto.
+        # Across alphabets it stays one: Cyrillic on a German card is
+        # not a name the detector misread. Production, 30 days to
+        # 2026-09-05: two ``course:title`` rows parked ru→de on this,
+        # both courses invisible until noticed by hand.
+        return ValidationIssue(
+            code="wrong_language",
+            detail=(
+                f"{reading} A title, though, is short enough that {detected} and {target_locale} are "
+                "hard to tell apart, and is often a name or a phrase kept as its author wrote it. "
+                "Served, and worth a second look."
             ),
             blocking=False,
         )
@@ -1529,12 +1626,14 @@ def validate_translation(
             translated,
             source_locale=source_locale,
             target_locale=target_locale,
+            content_kind=content_kind,
         ),
         _check_language(
             source,
             translated,
             source_locale=source_locale,
             target_locale=target_locale,
+            content_kind=content_kind,
         ),
         _check_untranslated_run(
             source,

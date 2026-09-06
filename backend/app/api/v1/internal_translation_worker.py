@@ -40,7 +40,7 @@ from app.services.daily_challenge.translate import SweepReport as PoolSweepRepor
 from app.services.daily_challenge.translate import translate_pending_questions
 from app.services.staged_edits import promote_ready_fields
 from app.services.translation.budget import worker_budget
-from app.services.translation.completeness import promote_if_complete
+from app.services.translation.completeness import courses_stuck_in_publishing, promote_if_complete
 from app.services.translation.course_pipeline import (
     merge_orchestrator_reports,
     translate_course_content,
@@ -128,6 +128,23 @@ def _emit_queue_gauges(db: Session) -> None:
             # realistic case — one or two permanently wedged jobs —
             # below the floor, where it was invisible.
             logger.warning("translation worker: %s jobs stuck in processing", processing)
+
+        # The queue gauges above describe work in flight. A course held
+        # in ``publishing`` by one parked row is the opposite — no job,
+        # no plan, nothing in flight — and was therefore invisible to
+        # every one of them. Production carried thirteen such parkings
+        # in thirty days, each announced once by a validation warning
+        # that scrolled past, each holding a course out of the catalogue
+        # until somebody noticed on their own. The gauge plots the
+        # count; the WARNING names the courses and reaches the drain.
+        stuck = courses_stuck_in_publishing(db)
+        gauge("equip.translation.publishing_stuck", float(len(stuck)))
+        if stuck:
+            logger.warning(
+                "translation worker: %d course(s) held in publishing for over an hour: %s",
+                len(stuck),
+                ", ".join(stuck[:10]),
+            )
     except Exception:
         return
 
