@@ -30,6 +30,33 @@ export default function ChapterBlockEditor({ courseId, chapterId }: Props) {
   const [adding, setAdding] = useState(false)
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
+  // Blocks whose text has not reached the server: typed and still debounced,
+  // collapsed with a save in flight, or failed and living only in this
+  // browser's draft. Any of them is a reason not to let the page go quietly.
+  const [unsavedIds, setUnsavedIds] = useState<ReadonlySet<string>>(() => new Set())
+
+  const markUnsaved = useCallback((blockId: string, unsaved: boolean) => {
+    setUnsavedIds((prev) => {
+      if (prev.has(blockId) === unsaved) return prev
+      const next = new Set(prev)
+      if (unsaved) next.add(blockId)
+      else next.delete(blockId)
+      return next
+    })
+  }, [])
+
+  // ChapterEditor has its own handler for the chapter's title and type; the
+  // two coexist — the browser shows one prompt if either asks for it. This
+  // one is about the blocks, which the page-level one knows nothing about.
+  const hasUnsaved = unsavedIds.size > 0
+  useEffect(() => {
+    if (!hasUnsaved) return
+    const warnBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+    }
+    window.addEventListener("beforeunload", warnBeforeUnload)
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload)
+  }, [hasUnsaved])
 
   const load = useCallback(
     async (signal?: { cancelled: boolean }) => {
@@ -110,6 +137,7 @@ export default function ChapterBlockEditor({ courseId, chapterId }: Props) {
       await coursesService.deleteBlock(id)
       setBlocks((prev) => prev.filter((b) => b.id !== id))
       if (expandedId === id) setExpandedId(null)
+      markUnsaved(id, false)
       toast({ title: t("blockEditor.deleted"), variant: "success" })
     } catch {
       toast({ title: t("blockEditor.deleteFailed"), variant: "destructive" })
@@ -191,6 +219,7 @@ export default function ChapterBlockEditor({ courseId, chapterId }: Props) {
             }
             onDelete={() => deleteBlock(block.id)}
             onBlockUpdated={replaceBlock}
+            onUnsavedChange={(unsaved) => markUnsaved(block.id, unsaved)}
             onDragStart={() => setDragIdx(idx)}
             onDragOver={(e) => {
               e.preventDefault()

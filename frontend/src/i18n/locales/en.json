@@ -1038,7 +1038,14 @@
       "saveButton": "Save Text",
       "statusUnsaved": "Unsaved changes...",
       "statusAutoSaving": "Auto-saving...",
-      "statusSaved": "Saved"
+      "statusSaved": "Saved",
+      "autoSaveFailedHint": "The text stays in this browser; we will try again in a few seconds.",
+      "statusFailed": "Not saved on the server yet — retrying…",
+      "saveAfterCloseFailed": "The block you closed could not be saved",
+      "saveAfterCloseFailedHint": "Its text is kept in this browser. Open the block again to get it back.",
+      "draftFound": "This browser holds unsaved text for this block, and it differs from the version on the server. Bring it back, or keep what the server has?",
+      "draftRestore": "Bring back the unsaved text",
+      "draftDiscard": "Keep the server version"
     },
     "file": {
       "uploaded": "File uploaded",

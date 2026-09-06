@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { render, screen, waitFor } from "@testing-library/react"
+import { act, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { useLocalDraft } from "../useLocalDraft"
@@ -125,5 +125,100 @@ describe("useLocalDraft", () => {
 
     expect(screen.getByLabelText("essay")).toHaveValue("всё равно пишу")
     await waitFor(() => expect(screen.getByTestId("saved")).toHaveTextContent("no"))
+  })
+})
+
+describe("useLocalDraft — the last half-second and existing content", () => {
+  const real = window.localStorage
+
+  beforeEach(() => {
+    Object.defineProperty(window, "localStorage", { configurable: true, value: real })
+    window.localStorage.clear()
+  })
+  afterEach(() => {
+    Object.defineProperty(window, "localStorage", { configurable: true, value: real })
+    window.localStorage.clear()
+    vi.useRealTimers()
+  })
+
+  function Controlled({ value, restoreInto }: { value: string; restoreInto?: "empty" | "any" }) {
+    const { restored } = useLocalDraft(KEY, value, { delay: 500, restoreInto })
+    return <span data-testid="restored">{restored ?? "none"}</span>
+  }
+
+  it("writes the value on unmount even inside the debounce window", () => {
+    vi.useFakeTimers()
+    const { rerender, unmount } = render(<Controlled value="" />)
+    rerender(<Controlled value="набрано и сразу закрыто" />)
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
+    expect(window.localStorage.getItem(KEY)).toBeNull()
+
+    unmount()
+
+    expect(window.localStorage.getItem(KEY)).toBe("набрано и сразу закрыто")
+  })
+
+  it("writes the value when the page is hidden, before any timer gets a chance", () => {
+    vi.useFakeTimers()
+    const { rerender } = render(<Controlled value="" />)
+    rerender(<Controlled value="вкладку закрывают" />)
+
+    act(() => {
+      window.dispatchEvent(new Event("pagehide"))
+    })
+
+    expect(window.localStorage.getItem(KEY)).toBe("вкладку закрывают")
+  })
+
+  it("does not write the mount value at all — that would overwrite a waiting draft", () => {
+    vi.useFakeTimers()
+    window.localStorage.setItem(KEY, "черновик из упавшей вкладки")
+    const { unmount } = render(<Controlled value="то, что на сервере" restoreInto="any" />)
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    expect(window.localStorage.getItem(KEY)).toBe("черновик из упавшей вкладки")
+
+    unmount()
+    expect(window.localStorage.getItem(KEY)).toBe("черновик из упавшей вкладки")
+  })
+
+  it("with restoreInto: any, offers a draft that differs from the text already on screen", async () => {
+    window.localStorage.setItem(KEY, "уже с новым абзацем")
+    render(<Controlled value="старый текст" restoreInto="any" />)
+
+    await waitFor(() => expect(screen.getByTestId("restored")).toHaveTextContent("уже с новым абзацем"))
+  })
+
+  it("with restoreInto: any, stays silent when the draft is exactly what is on screen", async () => {
+    window.localStorage.setItem(KEY, "одно и то же")
+    render(<Controlled value="одно и то же" restoreInto="any" />)
+    await act(async () => {})
+
+    expect(screen.getByTestId("restored")).toHaveTextContent("none")
+  })
+
+  it("does not put a cleared value back into storage on unmount", async () => {
+    function ClearOnClick() {
+      const [value, setValue] = useState("")
+      const { clear } = useLocalDraft(KEY, value, { delay: 0 })
+      return (
+        <div>
+          <textarea aria-label="essay" value={value} onChange={(e) => setValue(e.target.value)} />
+          <button onClick={clear}>clear</button>
+        </div>
+      )
+    }
+    const { unmount } = render(<ClearOnClick />)
+    await userEvent.type(screen.getByLabelText("essay"), "отправлено")
+    await waitFor(() => expect(window.localStorage.getItem(KEY)).toBe("отправлено"))
+    await userEvent.click(screen.getByRole("button", { name: "clear" }))
+    expect(window.localStorage.getItem(KEY)).toBeNull()
+
+    unmount()
+
+    expect(window.localStorage.getItem(KEY)).toBeNull()
   })
 })
