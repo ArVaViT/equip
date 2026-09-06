@@ -49,6 +49,8 @@ export type ErrorCode =
   | "quiz.not_open"
   | "quiz.attempts_exhausted"
   | "quiz.not_translated"
+  | "quiz.question_already_answered"
+  | "quiz.has_attempts"
   // daily challenge
   | "daily_challenge.not_scheduled"
   | "daily_challenge.not_translated"
@@ -91,4 +93,17 @@ export function getErrorCode(err: unknown): ErrorCode | null {
   if (!isAxiosError(err)) return null
   const detail: unknown = err.response?.data?.detail
   return isStructuredErrorDetail(detail) ? detail.code : null
+}
+
+/**
+ * The machine-readable half of a structured error: ``context`` as the
+ * backend sent it (``attempt_count``, ``resource_id``, …), or ``null``
+ * when there is no envelope. Never throws.
+ */
+export function getErrorContext(err: unknown): Record<string, unknown> | null {
+  if (!isAxiosError(err)) return null
+  const detail: unknown = err.response?.data?.detail
+  if (!isStructuredErrorDetail(detail)) return null
+  const context = detail.context
+  return context && typeof context === "object" ? context : null
 }

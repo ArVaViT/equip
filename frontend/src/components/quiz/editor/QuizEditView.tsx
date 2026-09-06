@@ -28,9 +28,13 @@ interface Props {
   saving: boolean
   onSave: () => void
   existingQuiz: Quiz | null
+  /** Questions students have already answered — their type is fixed. */
+  answeredQuestionIds?: ReadonlySet<string>
   deleting: boolean
   onDelete: () => void
 }
+
+const NONE: ReadonlySet<string> = new Set()
 
 export function QuizEditView({
   title,
@@ -53,6 +57,7 @@ export function QuizEditView({
   saving,
   onSave,
   existingQuiz,
+  answeredQuestionIds = NONE,
   deleting,
   onDelete,
 }: Props) {
@@ -88,6 +93,7 @@ export function QuizEditView({
             question={q}
             index={qIdx}
             total={questions.length}
+            typeLocked={answeredQuestionIds.has(q.id)}
             onRemove={() => onRemoveQuestion(qIdx)}
             onMove={(dir) => onMoveQuestion(qIdx, dir)}
             onUpdate={(patch) => onUpdateQuestion(qIdx, patch)}
