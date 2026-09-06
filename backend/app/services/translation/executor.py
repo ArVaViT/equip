@@ -152,6 +152,16 @@ class _Answer:
     #: is the reason the failure must not be counted against the row's
     #: five attempts. See ``TranslationUnavailable``.
     unavailable: bool = False
+    #: The provider answered and the answer cannot be used *today*: the
+    #: canonical text of a quoted verse could not be had for the target
+    #: language, so the verse came back in the author's language. Not
+    #: the provider's fault and not the text's — the Scripture service
+    #: was busy — so, like ``unavailable``, it must not cost the row an
+    #: attempt; unlike ``unavailable``, it says nothing about whether
+    #: the translator is answering, and must not count towards the
+    #: outage streak that halts a pass. Recorded as a plain ``failed``
+    #: that the next tick asks again.
+    transient: bool = False
 
 
 def _translate(
@@ -459,6 +469,29 @@ def _ask(
         )
         return _Answer(task=task, text=None, issues_summary=None, failed=True)
 
+    if result.scripture_in_source_language:
+        # The translation is fine and the verse inside it is in the
+        # wrong language, because the Scripture service did not answer
+        # for this passage just now. Until 2026-09-05 this went through
+        # the structural check as a blocking issue and the row was
+        # parked at ``needs_review`` — where the executor skips it for
+        # as long as the source is unchanged, and the sweep refuses to
+        # queue it. An eight-second timeout at YouVersion held a course
+        # out of the catalogue permanently. Nothing a person could do
+        # about the row was wrong either; the right answer simply
+        # arrives on the next pass. So: a failure, transient, no
+        # attempt spent — and no second call to the translator with
+        # notes, because the translator is not the one that was busy.
+        logger.warning(
+            "scripture_unavailable entity=%s:%s field=%s locale=%s — verse text not available for the "
+            "target language this pass; row left failed for the next tick, no attempt spent",
+            task.entity_type,
+            task.entity_id,
+            task.field,
+            task.target_locale,
+        )
+        return _Answer(task=task, text=None, issues_summary=None, failed=True, transient=True)
+
     issues = _issues_in(task, result)
     # Advisory issues are named, never argued with. See
     # ``ValidationIssue.advisory``: a complaint the model has already
@@ -662,6 +695,12 @@ def _issues_in(task: TranslationTask, result: TranslationResult) -> list[Validat
         content_kind=task.content_kind,
     )
     if result.scripture_in_source_language:
+        # ``_ask`` intercepts this before any answer reaches here and
+        # records a transient failure instead, so on the main path this
+        # branch is never taken. It stays for the paths that judge a
+        # *second* answer — the collision re-ask, the reviewer's
+        # correction — where a candidate carrying an author's-language
+        # verse must rank below what it is competing with, and lose.
         issues.insert(
             0,
             ValidationIssue(
@@ -1130,7 +1169,7 @@ def _record(
             locale=task.target_locale,
             source_locale=task.source_locale,
             source_hash=task.source_hash,
-            transient=answer.unavailable,
+            transient=answer.unavailable or answer.transient,
         )
         return "unavailable" if answer.unavailable else "failed"
 
@@ -1420,6 +1459,7 @@ def execute_plan(
                         failed=answer.failed,
                         deferred=answer.deferred,
                         unavailable=answer.unavailable,
+                        transient=answer.transient,
                     ),
                     store,
                     generation=run_generation,

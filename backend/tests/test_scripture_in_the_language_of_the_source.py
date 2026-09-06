@@ -30,13 +30,21 @@ without asking a service that is already refusing to answer.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
+from app.models.content_version import ContentVersion
 from app.services.bible import api_source
 from app.services.bible.api_source import absence_is_remembered
 from app.services.bible.references import BibleRef
-from app.services.translation.executor import TranslationTask, _issues_in
-from app.services.translation.protocol import TranslationResult
+from app.services.translation.executor import TranslationTask, _Answer, _ask, _issues_in, _record
+from app.services.translation.protocol import TranslationRequest, TranslationResult
+from app.services.translation.stores import LiveStore
+from app.services.translation.version import TRANSLATOR_VERSION
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 _JOB = BibleRef(book="job", chapter=1, verse_start=1, verse_end=1)
 
@@ -133,3 +141,90 @@ class TestTheRowIsHeldBack:
             output_tokens=1,
         )
         assert [i for i in _issues_in(self._task(), result) if i.code == "scripture_in_source_language"] == []
+
+
+_TASK = TranslationTask(
+    entity_type="daily_challenge_question",
+    entity_id="1",
+    field="explanation",
+    source_locale="en",
+    target_locale="de",
+    text='In Job 1:1, it states, "There was a man in the land of Uz, whose name was Job."',
+    content_kind="plain",
+    source_hash="hash",
+)
+
+
+class _ScriptureServiceWasBusy:
+    """A translator that answered — and whose answer carries the verse
+    in the author's language because the Scripture service did not."""
+
+    def __init__(self) -> None:
+        self.requests: list[TranslationRequest] = []
+
+    def translate(self, request: TranslationRequest) -> TranslationResult:
+        self.requests.append(request)
+        return TranslationResult(
+            text="In Hiob 1,1 heißt es: „There was a man in the land of Uz, whose name was Job.“",
+            input_tokens=1,
+            output_tokens=1,
+            scripture_in_source_language=True,
+        )
+
+
+class TestTheRowIsAskedAgainRatherThanParked:
+    """Why ``needs_review`` was the wrong place for this row.
+
+    A parked row is skipped by the executor for as long as its source is
+    unchanged and refused by the sweep, so "held back and asked again"
+    was never true of it: it was held back, full stop. An eight-second
+    timeout at YouVersion held a course out of the catalogue permanently,
+    and the only remedy was an admin pressing Retry on a row that was
+    never wrong. The provider says the answer cannot be used *today*;
+    the honest record of that is a failure that costs no attempt, which
+    is the record the retry queue reads and the sweep queues.
+    """
+
+    def test_the_answer_is_a_transient_failure(self) -> None:
+        provider = _ScriptureServiceWasBusy()
+
+        answer = _ask(_TASK, provider)
+
+        assert answer.failed is True
+        assert answer.transient is True
+        assert answer.text is None, "nothing is written — an English verse in German prose is not served"
+        assert answer.unavailable is False, "the translator answered; this must not count towards its outage streak"
+
+    def test_the_translator_is_not_asked_a_second_time(self) -> None:
+        """The structural retry shows the model its mistake and asks
+        again. The model made no mistake here — the Scripture service
+        was busy — and a second call would cost quota to hear the same
+        verse come back the same way."""
+        provider = _ScriptureServiceWasBusy()
+
+        _ask(_TASK, provider)
+
+        assert len(provider.requests) == 1
+
+    def test_recorded_as_failed_with_no_attempt_spent(self, db: Session) -> None:
+        answer = _Answer(task=_TASK, text=None, issues_summary=None, failed=True, transient=True)
+
+        outcome = _record(db, answer, LiveStore(), generation=TRANSLATOR_VERSION)
+
+        assert outcome == "failed"
+        row = db.query(ContentVersion).filter(ContentVersion.entity_id == "1", ContentVersion.locale == "de").one()
+        assert row.status == "failed"
+        assert row.attempts == 0
+
+    def test_an_hour_of_outage_cannot_reach_failed_permanent(self, db: Session) -> None:
+        """Five ticks, five transient failures, and the row is exactly
+        where it started: retryable. The next pass after the service
+        returns closes the gap."""
+        answer = _Answer(task=_TASK, text=None, issues_summary=None, failed=True, transient=True)
+        for _ in range(6):
+            _record(db, answer, LiveStore(), generation=TRANSLATOR_VERSION)
+        db.commit()
+
+        row = db.query(ContentVersion).filter(ContentVersion.entity_id == "1", ContentVersion.locale == "de").one()
+        assert row.status == "failed"
+        assert row.attempts == 0
