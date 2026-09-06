@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
-import { AlertTriangle, CheckCircle2, Globe, Loader2 } from "lucide-react"
+import { CheckCircle2, Globe, Hourglass, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -58,6 +58,15 @@ interface Props {
  * translations needed review and offered nowhere to review them, because
  * there was nowhere. Now the count is a link into the queue, filtered to
  * this course.
+ *
+ * 4. **Whether anything is going to happen by itself.** "12 remaining"
+ *    meant one thing while a job was on its way and another when nothing
+ *    was — and the two looked identical for as long as it took somebody
+ *    to notice. The server now says which (``stuck_reason`` and
+ *    ``job_pending``), and the card turns that into one plain sentence:
+ *    the work is running and takes minutes, or it is waiting on a person
+ *    who already knows. Neither is a fault in the teacher's course, so
+ *    neither is painted red.
  */
 export function CourseTranslationCard({
   progress,
@@ -95,8 +104,20 @@ export function CourseTranslationCard({
   const behind = Object.entries(progress.by_locale)
     .filter(([, count]) => count > 0)
     .sort((a, b) => b[1] - a[1])
-  const stuck = progress.blocked_edits > 0 || progress.gaps.needs_review > 0
   const done = progress.is_complete && progress.held_edits === 0
+  const reason = done ? null : progress.stuck_reason
+  // Something is waiting on a person: parked translations, ones the
+  // pipeline gave up on, or an edit whose translation failed its check.
+  // None of it moves by itself, and none of it is the teacher's doing.
+  const waitingOnPerson =
+    !done &&
+    (reason === "needs_review" || reason === "failed_permanent" || progress.blocked_edits > 0)
+  // A job is queued or running right now — the wait is the ordinary kind.
+  const working = !done && progress.job_pending
+  // Nothing scheduled and nothing parked: on a draft that is the normal
+  // state (drafts are not translated until asked); on a course already
+  // sent out the reconciler picks it up on its own.
+  const idle = !done && !working && reason === "translating"
 
   return (
     <section className="mb-6 overflow-hidden rounded-md border border-edge bg-card dark:border-transparent">
@@ -106,16 +127,18 @@ export function CourseTranslationCard({
             "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
             done
               ? "bg-success/10 text-success-ink"
-              : stuck
-                ? "bg-destructive/10 text-destructive-ink"
+              : waitingOnPerson
+                ? "bg-warning/10 text-warning-ink"
                 : "bg-muted text-ink-muted",
           )}
           aria-hidden
         >
           {done ? (
             <CheckCircle2 className="h-5 w-5" strokeWidth={1.75} />
-          ) : stuck ? (
-            <AlertTriangle className="h-5 w-5" strokeWidth={1.75} />
+          ) : waitingOnPerson ? (
+            <Hourglass className="h-5 w-5" strokeWidth={1.75} />
+          ) : working ? (
+            <Loader2 className="h-5 w-5 animate-spin" strokeWidth={1.75} />
           ) : (
             <Globe className="h-5 w-5" strokeWidth={1.75} />
           )}
@@ -128,7 +151,9 @@ export function CourseTranslationCard({
           <p className="mt-0.5 text-sm text-ink-muted">
             {done
               ? t("courseTranslation.complete")
-              : t("courseTranslation.remaining", { count: remaining })}
+              : working
+                ? t("courseTranslation.working", { count: remaining })
+                : t("courseTranslation.remaining", { count: remaining })}
           </p>
         </div>
 
@@ -171,16 +196,41 @@ export function CourseTranslationCard({
         </p>
       )}
 
-      {stuck && (
-        <p className="border-t border-edge px-5 py-3 text-sm text-destructive dark:border-white/5">
-          {progress.blocked_edits > 0
-            ? t("courseTranslation.blockedEdits", { count: progress.blocked_edits })
-            : t("courseTranslation.needsReview", { count: progress.gaps.needs_review })}{" "}
-          {reviewHref && progress.gaps.needs_review > 0 && (
+      {/* The answer to "is anything going to happen?". One sentence per
+          state, in the teacher's words: work is waiting on a person who
+          already knows about it, or nothing has been asked for yet. The
+          review-queue link is admin-only — a teacher cannot act on a
+          parked row, so the sentence tells them so instead. */}
+      {(reason === "needs_review" || reason === "failed_permanent") && (
+        <p
+          data-testid="translation-reason"
+          className="border-t border-edge px-5 py-3 text-sm text-warning-ink dark:border-white/5"
+        >
+          {reason === "needs_review"
+            ? t("courseTranslation.waitingForReview", { count: progress.stuck_count })
+            : t("courseTranslation.couldNotTranslate", { count: progress.stuck_count })}{" "}
+          {reviewHref && reason === "needs_review" && (
             <Link to={reviewHref} className="font-medium underline underline-offset-2">
               {t("courseTranslation.openReviewQueue")}
             </Link>
           )}
+        </p>
+      )}
+
+      {idle && (
+        <p
+          data-testid="translation-reason"
+          className="border-t border-edge px-5 py-3 text-sm text-ink-muted dark:border-white/5"
+        >
+          {status === "draft"
+            ? t("courseTranslation.notStartedYet")
+            : t("courseTranslation.continuesOnItsOwn")}
+        </p>
+      )}
+
+      {progress.blocked_edits > 0 && (
+        <p className="border-t border-edge px-5 py-3 text-sm text-warning-ink dark:border-white/5">
+          {t("courseTranslation.blockedEdits", { count: progress.blocked_edits })}
         </p>
       )}
     </section>

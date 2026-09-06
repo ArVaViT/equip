@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { Link, useNavigate, useParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -16,6 +16,7 @@ import {
   CalendarDays,
   Eye,
   EyeOff,
+  GraduationCap,
   Lock,
   Megaphone,
   MoreHorizontal,
@@ -239,6 +240,15 @@ export default function CourseEditor() {
         }
         actions={
           <>
+            {/* The course as a student will see it. Before publication the
+                student page shows the author every module and chapter of
+                the draft; the only other route there was typing the URL. */}
+            <Link to={`/courses/${courseId}`}>
+              <Button variant="outline" size="sm">
+                <GraduationCap className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
+                {t("courseEditor.viewAsStudent")}
+              </Button>
+            </Link>
             {/* A course in ``publishing`` is already on its way out;
                 offering "Publish" again would change nothing on the
                 server and tell the teacher their click did not count. */}
