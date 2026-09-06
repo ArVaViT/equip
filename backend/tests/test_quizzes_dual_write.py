@@ -21,6 +21,21 @@ if TYPE_CHECKING:
     from fastapi.testclient import TestClient
     from sqlalchemy.orm import Session
 
+#: The smallest quiz the API accepts: one answerable question. A quiz with no
+#: questions cannot be taken and is refused at the door (422).
+_ONE_QUESTION = [
+    {
+        "question_text": "Is this a question?",
+        "question_type": "true_false",
+        "order_index": 0,
+        "points": 1,
+        "options": [
+            {"option_text": "True", "is_correct": True, "order_index": 0},
+            {"option_text": "False", "is_correct": False, "order_index": 1},
+        ],
+    }
+]
+
 
 def _seed_chapter(db: Session) -> str:
     course = Course(
@@ -110,7 +125,7 @@ class TestCreateQuizDualWrite:
                 "description": None,
                 "quiz_type": "quiz",
                 "passing_score": 70,
-                "questions": [],
+                "questions": _ONE_QUESTION,
             },
         )
         assert resp.status_code == 201, resp.text
@@ -130,7 +145,7 @@ class TestUpdateQuizDualWrite:
                 "description": "Описание.",
                 "quiz_type": "quiz",
                 "passing_score": 70,
-                "questions": [],
+                "questions": _ONE_QUESTION,
             },
         )
         quiz_id = resp.json()["id"]
@@ -152,7 +167,7 @@ class TestUpdateQuizDualWrite:
                 "description": "Описание.",
                 "quiz_type": "quiz",
                 "passing_score": 70,
-                "questions": [],
+                "questions": _ONE_QUESTION,
             },
         )
         quiz_id = resp.json()["id"]

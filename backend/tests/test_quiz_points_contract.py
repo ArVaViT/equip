@@ -16,7 +16,9 @@ from app.schemas.quiz import QuizQuestionCreate
 
 
 def _make(points: int) -> QuizQuestionCreate:
-    return QuizQuestionCreate(question_text="Q", points=points)
+    # ``short_answer``: the range under test is ``points``; a choice question
+    # would also need an answerable option list, which is a different contract.
+    return QuizQuestionCreate(question_text="Q", question_type="short_answer", points=points)
 
 
 def test_points_accepts_inclusive_bounds() -> None:

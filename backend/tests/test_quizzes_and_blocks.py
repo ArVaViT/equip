@@ -17,6 +17,21 @@ from tests.conftest import STUDENT_ID, TEACHER_ID
 # Seed helpers
 # ---------------------------------------------------------------------------
 
+#: The smallest quiz the API accepts: one answerable question. A quiz with no
+#: questions cannot be taken and is refused at the door (422).
+_ONE_QUESTION = [
+    {
+        "question_text": "Is this a question?",
+        "question_type": "true_false",
+        "order_index": 0,
+        "points": 1,
+        "options": [
+            {"option_text": "True", "is_correct": True, "order_index": 0},
+            {"option_text": "False", "is_correct": False, "order_index": 1},
+        ],
+    }
+]
+
 
 def _make_block_with_content(
     db: Session,
@@ -766,23 +781,130 @@ def test_create_quiz_exam_auto_max_attempts(client: TestClient, db: Session):
             "chapter_id": "ch-1",
             "title": "Final Exam",
             "quiz_type": "exam",
+            "questions": _ONE_QUESTION,
         },
     )
     assert resp.status_code == 201
     assert resp.json()["max_attempts"] == 1
 
 
-def test_create_quiz_no_questions(client: TestClient, db: Session):
+def _validation_types(resp) -> list[tuple[list, str]]:
+    """``(loc, type)`` for every entry of a 422 body — the client translates
+    the ``type`` and points at the ``loc``; the English ``msg`` is for logs."""
+    return [(e["loc"], e["type"]) for e in resp.json()["detail"]]
+
+
+def test_create_quiz_no_questions_is_refused(client: TestClient, db: Session):
+    """A quiz with no questions cannot be taken; it used to save with a 201."""
     _seed_course(db)
     resp = client.post(
         "/api/v1/quizzes",
         json={
             "chapter_id": "ch-1",
             "title": "Empty Quiz",
+            "questions": [],
         },
     )
-    assert resp.status_code == 201
-    assert resp.json()["questions"] == []
+    assert resp.status_code == 422, resp.text
+    assert (["body", "questions"], "too_short") in _validation_types(resp)
+    assert db.query(Quiz).count() == 0
+
+
+def _quiz_with(question: dict) -> dict:
+    return {"chapter_id": "ch-1", "title": "Quiz", "questions": [question]}
+
+
+def _choice(options: list[dict], question_type: str = "multiple_choice", text: str = "Pick one") -> dict:
+    return {"question_text": text, "question_type": question_type, "order_index": 0, "points": 1, "options": options}
+
+
+def test_create_quiz_without_a_correct_option_is_refused(client: TestClient, db: Session):
+    """Nobody can pass a question with no right answer. The teacher used to
+    learn that from the students."""
+    _seed_course(db)
+    question = _choice(
+        [
+            {"option_text": "Blue", "is_correct": False, "order_index": 0},
+            {"option_text": "Red", "is_correct": False, "order_index": 1},
+        ]
+    )
+    resp = client.post("/api/v1/quizzes", json=_quiz_with(question))
+    assert resp.status_code == 422, resp.text
+    assert (["body", "questions", 0], "quiz_no_correct_option") in _validation_types(resp)
+
+
+def test_create_quiz_with_two_correct_options_is_refused(client: TestClient, db: Session):
+    _seed_course(db)
+    question = _choice(
+        [
+            {"option_text": "Blue", "is_correct": True, "order_index": 0},
+            {"option_text": "Red", "is_correct": True, "order_index": 1},
+        ]
+    )
+    resp = client.post("/api/v1/quizzes", json=_quiz_with(question))
+    assert resp.status_code == 422, resp.text
+    assert (["body", "questions", 0], "quiz_many_correct_options") in _validation_types(resp)
+
+
+def test_create_quiz_with_one_option_is_refused(client: TestClient, db: Session):
+    _seed_course(db)
+    question = _choice([{"option_text": "Blue", "is_correct": True, "order_index": 0}])
+    resp = client.post("/api/v1/quizzes", json=_quiz_with(question))
+    assert resp.status_code == 422, resp.text
+    assert (["body", "questions", 0], "quiz_too_few_options") in _validation_types(resp)
+
+
+def test_create_quiz_with_a_blank_option_is_refused(client: TestClient, db: Session):
+    """A blank option counts as untranslated and the whole quiz answers 409 to
+    every student. Caught here instead, naming the option."""
+    _seed_course(db)
+    question = _choice(
+        [
+            {"option_text": "Blue", "is_correct": True, "order_index": 0},
+            {"option_text": "   ", "is_correct": False, "order_index": 1},
+        ]
+    )
+    resp = client.post("/api/v1/quizzes", json=_quiz_with(question))
+    assert resp.status_code == 422, resp.text
+    assert (["body", "questions", 0, "options", 1, "option_text"], "quiz_option_blank") in _validation_types(resp)
+
+
+def test_create_quiz_with_a_blank_question_is_refused(client: TestClient, db: Session):
+    _seed_course(db)
+    question = _choice(
+        [
+            {"option_text": "Blue", "is_correct": True, "order_index": 0},
+            {"option_text": "Red", "is_correct": False, "order_index": 1},
+        ],
+        text="  \t ",
+    )
+    resp = client.post("/api/v1/quizzes", json=_quiz_with(question))
+    assert resp.status_code == 422, resp.text
+    assert (["body", "questions", 0, "question_text"], "quiz_question_blank") in _validation_types(resp)
+
+
+def test_create_quiz_essay_with_options_is_refused(client: TestClient, db: Session):
+    """An essay is answered in writing; options on it would be stored and
+    never shown, and a later type change would inherit them."""
+    _seed_course(db)
+    question = _choice(
+        [
+            {"option_text": "Blue", "is_correct": True, "order_index": 0},
+            {"option_text": "Red", "is_correct": False, "order_index": 1},
+        ],
+        question_type="essay",
+    )
+    resp = client.post("/api/v1/quizzes", json=_quiz_with(question))
+    assert resp.status_code == 422, resp.text
+    assert (["body", "questions", 0], "quiz_options_not_allowed") in _validation_types(resp)
+
+
+def test_patch_option_to_blank_text_is_refused(client: TestClient, db: Session):
+    _seed_course(db)
+    _, _, opts = _seed_quiz_with_questions(db)
+    resp = client.patch(f"/api/v1/quizzes/options/{opts['q1_correct']}", json={"option_text": "  "})
+    assert resp.status_code == 422, resp.text
+    assert (["body", "option_text"], "quiz_option_blank") in _validation_types(resp)
 
 
 def test_create_quiz_student_forbidden(student_client: TestClient, db: Session):
@@ -803,6 +925,7 @@ def test_create_quiz_chapter_not_found(client: TestClient, db: Session):
         json={
             "chapter_id": "nonexistent",
             "title": "Orphan Quiz",
+            "questions": _ONE_QUESTION,
         },
     )
     assert resp.status_code == 404
@@ -893,6 +1016,40 @@ def test_delete_quiz_success(client: TestClient, db: Session):
     resp = client.delete(f"/api/v1/quizzes/{quiz.id}")
     assert resp.status_code == 204
     assert db.query(Quiz).filter(Quiz.id == quiz.id).first() is None
+
+
+def test_delete_quiz_with_attempts_is_refused_with_the_count(client: TestClient, db: Session):
+    """``quiz_attempts.quiz_id`` cascades: deleting the quiz deletes the
+    class's graded work. The editor used to do it on every save (create the
+    corrected quiz, delete the old one), so a typo fix cost every attempt.
+    Now the delete is refused and says how many attempts stand behind it."""
+    _seed_course_with_enrollment(db)
+    quiz, _, _ = _seed_quiz_with_questions(db)
+    for _ in range(3):
+        db.add(QuizAttempt(quiz_id=quiz.id, user_id=STUDENT_ID, score=1, max_score=2, passed=False))
+    db.commit()
+
+    resp = client.delete(f"/api/v1/quizzes/{quiz.id}")
+    assert resp.status_code == 409, resp.text
+    detail = resp.json()["detail"]
+    assert detail["code"] == "quiz.has_attempts"
+    assert detail["context"]["attempt_count"] == 3
+    assert db.query(Quiz).filter(Quiz.id == quiz.id).first() is not None
+    assert db.query(QuizAttempt).filter(QuizAttempt.quiz_id == quiz.id).count() == 3
+
+
+def test_delete_quiz_with_attempts_needs_force(client: TestClient, db: Session):
+    """The teacher who has read the number and still wants the quiz gone says
+    so explicitly; only then do the attempts go with it."""
+    _seed_course_with_enrollment(db)
+    quiz, _, _ = _seed_quiz_with_questions(db)
+    db.add(QuizAttempt(quiz_id=quiz.id, user_id=STUDENT_ID, score=1, max_score=2, passed=False))
+    db.commit()
+
+    resp = client.delete(f"/api/v1/quizzes/{quiz.id}", params={"force": "true"})
+    assert resp.status_code == 204, resp.text
+    assert db.query(Quiz).filter(Quiz.id == quiz.id).first() is None
+    assert db.query(QuizAttempt).filter(QuizAttempt.quiz_id == quiz.id).count() == 0
 
 
 def test_delete_quiz_student_forbidden(student_client: TestClient, db: Session):

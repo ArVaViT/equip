@@ -121,6 +121,13 @@ class ErrorCode(enum.StrEnum):
     would sit under a question it no longer fits. Create a new question
     instead."""
 
+    QUIZ_HAS_ATTEMPTS = "quiz.has_attempts"
+    """Deleting the quiz would take every attempt on it along — the cascade
+    on ``quiz_attempts.quiz_id`` is the whole class's graded work. Refused
+    unless the caller says ``force`` after being told how many attempts
+    there are; ``context.attempt_count`` carries the number so the client
+    can put it in the sentence it shows."""
+
     # ── Daily Challenge ─────────────────────────────────────────────────
     DAILY_CHALLENGE_NOT_SCHEDULED = "daily_challenge.not_scheduled"
     """No question is scheduled for the requested UTC date — usually

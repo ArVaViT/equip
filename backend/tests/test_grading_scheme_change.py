@@ -32,6 +32,22 @@ from app.models.student_grade import StudentGrade
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
+#: The smallest quiz the API accepts: one answerable question. A quiz with no
+#: questions cannot be taken and is refused at the door (422).
+_ONE_QUESTION = [
+    {
+        "question_text": "Is this a question?",
+        "question_type": "true_false",
+        "order_index": 0,
+        "points": 1,
+        "options": [
+            {"option_text": "True", "is_correct": True, "order_index": 0},
+            {"option_text": "False", "is_correct": False, "order_index": 1},
+        ],
+    }
+]
+
+
 SCHEME_URL = "/api/v1/grades/course/{course_id}/scheme"
 
 
@@ -240,7 +256,7 @@ class TestQuizThresholdAlignment:
 
         resp = client.post(
             "/api/v1/quizzes",
-            json={"chapter_id": chapter.id, "title": "Quiz 1", "questions": []},
+            json={"chapter_id": chapter.id, "title": "Quiz 1", "questions": _ONE_QUESTION},
         )
 
         assert resp.status_code in (200, 201), resp.text
@@ -264,7 +280,7 @@ class TestQuizThresholdAlignment:
 
         client.post(
             "/api/v1/quizzes",
-            json={"chapter_id": chapter.id, "title": "Quiz 1", "passing_score": 60, "questions": []},
+            json={"chapter_id": chapter.id, "title": "Quiz 1", "passing_score": 60, "questions": _ONE_QUESTION},
         )
 
         quiz = db.query(Quiz).filter(Quiz.chapter_id == chapter.id).first()
