@@ -34,10 +34,10 @@ function Wrapper({ children }: { children: ReactNode }) {
   )
 }
 
-function renderCard(pendingGrading?: number) {
+function renderCard(pendingGrading?: number, course: Course = makeCourse()) {
   return render(
     <CourseCard
-      course={makeCourse()}
+      course={course}
       pendingGrading={pendingGrading}
       togglingId={null}
       cloningId={null}
@@ -76,5 +76,24 @@ describe("CourseCard — work waiting on the teacher", () => {
     // The rollup request is allowed to fail without taking the dashboard with
     // it — in that case the card must not claim zero work is waiting.
     expect(screen.queryByText(/на проверку/i)).not.toBeInTheDocument()
+  })
+})
+
+describe("CourseCard — a course that is out but not in the catalog yet", () => {
+  // The server answers the first publish of an untranslated course with
+  // ``publishing``: the teacher did publish it, but nobody can see it
+  // until every language has it. "Draft" would be a lie, "Published" a
+  // worse one — and offering "Publish" again would tell the teacher
+  // their click did not count.
+  it("wears its own badge and offers to take the course back, not to publish it again", async () => {
+    await i18n.changeLanguage("ru")
+    renderCard(0, makeCourse({ status: "publishing" }))
+
+    expect(screen.getByText("Публикуется")).toBeInTheDocument()
+    expect(screen.queryByText("Черновик")).not.toBeInTheDocument()
+    expect(screen.queryByText("Опубликован")).not.toBeInTheDocument()
+
+    expect(screen.getAllByTitle("Снять с публикации").length).toBeGreaterThan(0)
+    expect(screen.queryByTitle("Опубликовать")).not.toBeInTheDocument()
   })
 })
