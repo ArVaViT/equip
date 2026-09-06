@@ -1047,7 +1047,14 @@
       "saveButton": "Text speichern",
       "statusUnsaved": "Nicht gespeicherte Änderungen …",
       "statusAutoSaving": "Wird automatisch gespeichert …",
-      "statusSaved": "Gespeichert"
+      "statusSaved": "Gespeichert",
+      "autoSaveFailedHint": "Der Text bleibt in diesem Browser; in ein paar Sekunden versuchen wir es erneut.",
+      "statusFailed": "Auf dem Server noch nicht gespeichert – neuer Versuch …",
+      "saveAfterCloseFailed": "Der geschlossene Block konnte nicht gespeichert werden",
+      "saveAfterCloseFailedHint": "Sein Text ist in diesem Browser erhalten. Öffnen Sie den Block erneut, um ihn zurückzuholen.",
+      "draftFound": "In diesem Browser liegt ungespeicherter Text für diesen Block, und er unterscheidet sich von der Version auf dem Server. Zurückholen oder die Serverversion behalten?",
+      "draftRestore": "Ungespeicherten Text zurückholen",
+      "draftDiscard": "Serverversion behalten"
     },
     "file": {
       "uploaded": "Datei hochgeladen",
