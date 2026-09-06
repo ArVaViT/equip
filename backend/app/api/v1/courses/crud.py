@@ -9,7 +9,7 @@ from app.api.dependencies import assert_course_owner, organization_of, require_t
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
-from app.core.sanitize import sanitize_string
+from app.core.sanitize import sanitize_plain_text
 from app.models.course import Course, CourseStatus
 from app.models.user import User, UserRole
 from app.schemas.course import CourseCreate, CourseResponse, CourseUpdate, ResyncProgressResponse
@@ -66,7 +66,7 @@ def create_new_course(
             )
 
     if data.title:
-        data.title = sanitize_string(data.title)
+        data.title = sanitize_plain_text(data.title)
     # The teacher writes in their UI language by definition — derive the
     # course's source_locale from their profile so they never have to pick
     # it manually, and so RU↔EN translation is symmetric (a teacher who
@@ -113,7 +113,7 @@ def update_existing_course(
             context={"resource_type": "course", "course_id": course_id, "field": "access_mode"},
         )
     if data.title:
-        data.title = sanitize_string(data.title)
+        data.title = sanitize_plain_text(data.title)
     old_status = course.status
     result = update_course(db, course, data)
     details: dict[str, object] = {}

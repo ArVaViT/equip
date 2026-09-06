@@ -57,6 +57,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 from dataclasses import dataclass
+from html import unescape
 from typing import TYPE_CHECKING, Final
 
 from app.core.sanitize import strip_tags
@@ -307,7 +308,17 @@ def _canonical_ref_form(ref: str) -> str:
 
 
 def _normalised_for_identity(text: str) -> str:
-    return " ".join(strip_tags(text).lower().split())
+    """The prose of ``text``: tags out, entities decoded, whitespace folded.
+
+    Decoded, because the length check divides by this. A title pasted
+    from Word arrives as ``Урок&nbsp;1&nbsp;&nbsp;&nbsp;…Введение`` — the
+    alignment spaces Word turns into non-breaking ones — and counted raw,
+    six characters an entity, a fifteen-letter title measured as sixty:
+    long enough to leave the short-kind allowance, and short enough in
+    translation to be flagged as truncated. The letters are the same
+    either way; only the spelling of the spaces differed.
+    """
+    return " ".join(unescape(strip_tags(text)).lower().split())
 
 
 #: Code is not prose and is not translated. A ``<pre>`` block that comes
