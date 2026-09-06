@@ -68,6 +68,7 @@ import re
 import secrets
 from dataclasses import dataclass, replace
 from difflib import SequenceMatcher
+from html import unescape
 from typing import TYPE_CHECKING, Final
 
 from app.core.sanitize import html_to_plain_text
@@ -284,9 +285,56 @@ def _strip_html(html: str) -> str:
     """Crude HTML → plain text. Sufficient for similarity comparison.
 
     The tag pass lives in ``core.sanitize`` now — one implementation
-    for the three places that read prose out of markup.
+    for the three places that read prose out of markup. Entities are
+    decoded afterwards: a verse pasted from Word carries ``&nbsp;`` where
+    the canonical text has a space, and the similarity ratio should be
+    measured on the words, not on how the spaces between them were
+    spelled.
     """
-    return html_to_plain_text(html)
+    return unescape(html_to_plain_text(html))
+
+
+# An inline tag that opens just before a citation and closes just after
+# it: ``<strong>(Ин. 3:16)</strong>``. Nothing block-level — a citation
+# never sits alone in its own paragraph inside the blockquote.
+_OPENING_INLINE_TAG_AT_END = re.compile(
+    r"<(?:strong|b|em|i|u|s|span|mark|sup|sub|small)\b[^>]*>\s*$",
+    re.IGNORECASE,
+)
+# The tags a citation tail may start with, before its first visible
+# character — the same ones ``_citation_start`` walked back over.
+_LEADING_INLINE_TAGS = re.compile(r"^(?:\s*<[^>]+>)*")
+
+
+def _citation_start(inner: str, ref_start: int) -> int:
+    """Where the citation begins in ``inner``, given where its book name
+    does.
+
+    The reference regex starts at ``Acts`` / ``Деян.``; the citation the
+    author wrote starts earlier — at the ``(`` in front of it, and at any
+    inline tag wrapping the pair. Both are walked back over, in whichever
+    order they come: ``<strong>(Ин. 3:16)</strong>`` and
+    ``(<strong>Ин. 3:16</strong>)`` are both one citation.
+
+    Until 2026-09-05 only the ``(`` was, and a citation set in bold —
+    what Word produces when the author bolded it — lost its opening tag
+    to the marker: ``<strong>`` went into the verse text the marker
+    replaced and ``</strong>`` stayed in the tail. The source had two
+    ``strong`` tags and the translation one; the validator parked the
+    row as ``markup_mismatch`` and the course sat in ``publishing``.
+    """
+    start = ref_start
+    while True:
+        left = inner[:start]
+        stripped = left.rstrip()
+        if stripped.endswith("("):
+            start = len(stripped) - 1
+            continue
+        opening = _OPENING_INLINE_TAG_AT_END.search(left)
+        if opening is not None:
+            start = opening.start()
+            continue
+        return start
 
 
 def _normalize_for_compare(s: str) -> str:
@@ -867,15 +915,11 @@ def pre_substitute(
             # happens to mention an earlier verse number conversationally).
             last = inner_refs[-1]
             # Extend the citation tail leftwards to include a leading
-            # ``(`` if present, plus a closing ``"`` / ``»`` / ``)`` /
-            # punctuation that closes the verse quote. The regex starts
-            # at "Acts" / "Деян." so we'd otherwise leave a stray ``(``
-            # inside the marker-replaced verse text.
-            tail_start = last.span[0]
-            stripped_left = inner[:tail_start].rstrip()
-            if stripped_left.endswith(("(", " (")):
-                # Walk back over the trailing whitespace + ``(``.
-                tail_start = inner.rfind("(", 0, tail_start)
+            # ``(`` if present and any inline tag wrapping the citation.
+            # The regex starts at "Acts" / "Деян." so we'd otherwise
+            # leave a stray ``(`` — or an unclosed ``<strong>`` — inside
+            # the marker-replaced verse text.
+            tail_start = _citation_start(inner, last.span[0])
             verse_text_inner = inner[:tail_start]
             ref_tail_inner = inner[tail_start:]
             candidate_refs = [last.ref]
@@ -936,11 +980,15 @@ def pre_substitute(
         # whitespace/quote chars; re-introduce a single space before
         # ``(Acts 1:8)`` so the post-substituted output reads
         # ``…canonical text. (Acts 1:8).`` and not
-        # ``…canonical text.(Acts 1:8).``. Only when the tail starts
-        # with ``(`` (the parenthesized-reference form we walked back
-        # to include); the no-paren form is rare and uses ref_tail="".
+        # ``…canonical text.(Acts 1:8).``. Only when the tail's first
+        # visible character is ``(`` (the parenthesized-reference form
+        # we walked back to include) — looking past any inline tag that
+        # opens the tail, so ``<strong>(Acts 1:8)</strong>`` gets its
+        # space too; the no-paren form is rare and uses ref_tail="".
         emitted_tail = ref_tail_inner
-        if emitted_tail.startswith("(") and not emitted_tail.startswith(" ("):
+        leading_tags = _LEADING_INLINE_TAGS.match(emitted_tail)
+        visible_from = leading_tags.end() if leading_tags is not None else 0
+        if emitted_tail[visible_from:].startswith("(") and not emitted_tail[:1].isspace():
             emitted_tail = " " + emitted_tail
         out_parts.append(emitted_tail)
         out_parts.append(wrapper_close)

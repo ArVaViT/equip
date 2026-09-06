@@ -13,7 +13,7 @@ from app.api.dependencies import (
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.i18n import t
-from app.core.sanitize import sanitize_string
+from app.core.sanitize import sanitize_plain_text, sanitize_string
 from app.models.announcement import Announcement
 from app.models.course import Course
 from app.models.enrollment import Enrollment
@@ -332,7 +332,9 @@ def create_announcement(
     # fan out to every enrolled student via create_notifications_bulk
     # below — an unsanitized payload would persist stored XSS into the
     # notification feed and the announcement banner.
-    safe_title = sanitize_string(data.title)
+    # The title is one line of text and is rendered as text: tags off,
+    # nothing escaped. The body is rich content and keeps its markup.
+    safe_title = sanitize_plain_text(data.title)
     safe_content = sanitize_string(data.content)
     announcement = Announcement(
         id=uuid.uuid4(),
@@ -466,7 +468,7 @@ def update_announcement(
 
     text_patch: dict[str, str | None] = {}
     if data.title is not None:
-        text_patch["title"] = sanitize_string(data.title)
+        text_patch["title"] = sanitize_plain_text(data.title)
     if data.content is not None:
         text_patch["content"] = sanitize_string(data.content)
 

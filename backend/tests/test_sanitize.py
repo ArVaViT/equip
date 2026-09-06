@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from app.core import sanitize as sanitize_mod
-from app.core.sanitize import html_to_plain_text, sanitize_string, strip_tags
+from app.core.sanitize import html_to_plain_text, sanitize_plain_text, sanitize_string, strip_tags
 
 if TYPE_CHECKING:
     import pytest
@@ -303,6 +303,125 @@ class TestIframeAllowlist:
         # After bleach + post-filter the iframe should survive in some
         # canonical form (quotes may be normalised).
         assert "youtube.com/embed/abc123" in cleaned
+
+
+class TestAudioAllowlist:
+    """The editor's "Insert audio" button stores a sermon recording as
+    the markup ``AudioExtension.renderHTML`` emits. Until 2026-09-05
+    neither ``audio`` nor ``source`` was allowlisted and bleach removed
+    the element whole — the player showed in the editor, autosave went
+    green, and the recording was gone on reload. Same policy as iframes:
+    the tag is allowed, and a post-filter decides which sources are.
+    """
+
+    # Verbatim from ``frontend/src/components/editor/AudioExtension.ts``:
+    # ``controls: ""``, ``preload: "metadata"``, ``class: "w-full my-4"``
+    # merged over the node's ``src``.
+    EDITOR_MARKUP = (
+        '<audio controls="" preload="metadata" class="w-full my-4" src="https://cdn.equip.test/sermon.mp3"></audio>'
+    )
+
+    def test_the_editors_own_markup_round_trips(self):
+        cleaned = sanitize_string(self.EDITOR_MARKUP)
+        assert cleaned.startswith("<audio ")
+        assert cleaned.endswith("</audio>")
+        assert 'src="https://cdn.equip.test/sermon.mp3"' in cleaned
+        # Bleach writes the boolean attribute bare (``controls``), which
+        # ``getAttribute`` on the way back in reads the same.
+        assert " controls" in cleaned
+        assert 'preload="metadata"' in cleaned
+        assert 'class="w-full my-4"' in cleaned
+
+    def test_a_player_inside_a_lesson_keeps_its_neighbours(self):
+        html = f"<p>Listen first:</p>{self.EDITOR_MARKUP}<p>Then read.</p>"
+        cleaned = sanitize_string(html)
+        assert cleaned.count("<audio") == 1
+        assert cleaned.count("</audio>") == 1
+        assert "<p>Listen first:</p>" in cleaned
+        assert "<p>Then read.</p>" in cleaned
+
+    def test_a_nested_source_survives(self):
+        # The other shape ``parseHTML`` reads: ``src`` on a child.
+        html = '<audio controls><source src="https://cdn.equip.test/a.mp3" type="audio/mpeg"></audio>'
+        cleaned = sanitize_string(html)
+        assert "<audio" in cleaned
+        assert '<source src="https://cdn.equip.test/a.mp3" type="audio/mpeg">' in cleaned
+
+    def test_a_non_http_source_drops_the_whole_player(self):
+        # Bleach's protocol allowlist lets ``mailto:`` and relative paths
+        # through; the editor accepts neither, and neither is a recording.
+        for src in ("mailto:pastor@equip.test", "/uploads/a.mp3", "tel:+1"):
+            cleaned = sanitize_string(f'<p>a</p><audio controls src="{src}"></audio><p>b</p>')
+            assert cleaned == "<p>a</p><p>b</p>", src
+
+    def test_one_bad_nested_source_drops_the_whole_player(self):
+        html = '<audio controls><source src="https://cdn.equip.test/a.mp3"><source src="/local.ogg"></audio>'
+        assert sanitize_string(html) == ""
+
+    def test_a_player_with_no_source_is_dropped(self):
+        assert sanitize_string("<audio controls></audio>") == ""
+
+    def test_an_orphan_closing_tag_is_swept(self):
+        assert sanitize_string("<p>text</p></audio>") == "<p>text</p>"
+
+    def test_event_handlers_and_autoplay_are_stripped(self):
+        cleaned = sanitize_string(
+            '<audio controls autoplay onplay="alert(1)" src="https://cdn.equip.test/a.mp3"></audio>'
+        )
+        assert "<audio" in cleaned
+        assert "onplay" not in cleaned
+        assert "autoplay" not in cleaned
+
+    def test_a_javascript_source_is_dropped(self):
+        assert sanitize_string('<audio src="javascript:alert(1)"></audio>') == ""
+
+
+class TestSanitizePlainText:
+    """One-line fields — course, module, chapter, event and announcement
+    titles — are rendered as text, never as HTML. ``sanitize_string``
+    escaped them on the way in: ``Faith & Works`` came back as
+    ``Faith &amp; Works``, the teacher saw the entity in the title box,
+    and every save escaped it once more. Tags come off; nothing is
+    escaped; whitespace folds.
+    """
+
+    def test_an_ampersand_is_a_character(self):
+        assert sanitize_plain_text("Faith & Works") == "Faith & Works"
+
+    def test_saving_twice_changes_nothing(self):
+        once = sanitize_plain_text("Вопросы & ответы")
+        assert once == "Вопросы & ответы"
+        assert sanitize_plain_text(once) == once
+
+    def test_a_title_the_old_code_escaped_heals_on_its_next_save(self):
+        assert sanitize_plain_text("Faith &amp; Works") == "Faith & Works"
+
+    def test_tags_are_removed_not_escaped(self):
+        assert sanitize_plain_text("Вопросы & ответы <лекция 1>") == "Вопросы & ответы"
+        assert sanitize_plain_text("<b>Bold</b> title") == "Bold title"
+
+    def test_a_script_neither_runs_nor_is_stored_as_markup(self):
+        cleaned = sanitize_plain_text('<script>alert(1)</script>Hi<img src=x onerror="alert(1)">')
+        assert "<" not in cleaned
+        assert "onerror" not in cleaned
+        assert "Hi" in cleaned
+
+    def test_an_entity_encoded_tag_cannot_re_form(self):
+        # Decoded first, then stripped — the other order would store a
+        # literal ``<img …>`` that a later ``innerHTML`` would run.
+        cleaned = sanitize_plain_text("Title &lt;img src=x onerror=alert(1)&gt;")
+        assert cleaned == "Title"
+
+    def test_a_bare_less_than_in_prose_survives(self):
+        assert sanitize_plain_text("Lesson 5 < 10") == "Lesson 5 < 10"
+
+    def test_whitespace_folds_to_single_spaces(self):
+        assert sanitize_plain_text("  Two\n\nlines\t here  ") == "Two lines here"
+        # Word's non-breaking spaces included.
+        assert sanitize_plain_text("Урок&nbsp;1&nbsp;&nbsp;&nbsp;Введение") == "Урок 1 Введение"
+
+    def test_empty_passes_through(self):
+        assert sanitize_plain_text("") == ""
 
 
 class TestFigure:

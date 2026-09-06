@@ -16,6 +16,11 @@ Preference order:
 from __future__ import annotations
 
 import re
+from html import unescape
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 try:
     import bleach
@@ -83,6 +88,17 @@ _ALLOWED_TAGS = frozenset(
         # parks the row. Neither tag can carry script.
         "figure",
         "figcaption",
+        # The editor's "Insert audio" button (``AudioExtension``) stores a
+        # sermon recording as ``<audio controls preload="metadata"
+        # class="w-full my-4" src="https://…">``. Until 2026-09-05 neither
+        # tag was here and bleach dropped the element whole: the player
+        # showed in the editor, autosave went green, and the recording
+        # was gone on reload — silently, because nothing else on the
+        # page changed. ``source`` is the child form the same extension
+        # reads (``<audio><source src=…></audio>``). Which schemes a
+        # ``src`` may carry is decided below, in ``_strip_dangerous_audio``.
+        "audio",
+        "source",
     }
 )
 
@@ -135,6 +151,11 @@ _ALLOWED_ATTRIBUTES: dict[str, list[str]] = {
     # are repeated.
     "div": ["class", "id", "data-callout"],
     "details": ["class", "id", "data-callout", "open"],
+    # Exactly what ``AudioExtension.renderHTML`` emits, plus the wildcard
+    # pair (per-tag overrides wildcard). No ``autoplay``: a lesson must
+    # not start talking when it opens.
+    "audio": ["src", "controls", "preload", "class", "id"],
+    "source": ["src", "type"],
     "*": ["class", "id"],
 }
 
@@ -151,59 +172,102 @@ _EVENT_ATTR_RE = re.compile(r"\bon\w+\s*=", re.IGNORECASE)
 _JS_PROTO_RE = re.compile(r"javascript\s*:", re.IGNORECASE)
 
 
-def _strip_dangerous_iframes(html: str) -> str:
-    """Only allow YouTube embeds through iframes — everything else is stripped.
+# Every ``src="…"`` / ``src='…'`` in a piece of markup. Used on the
+# post-bleach output, where attribute values are always quoted.
+_SRC_ATTR_RE = re.compile(r"""\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)')""", re.IGNORECASE)
 
-    ``bleach`` treats iframes as a regular allowed tag; it doesn't know which
-    ``src`` values are safe. We do that post-filter here.
+
+def _src_values(markup: str) -> list[str]:
+    """The ``src`` values in ``markup``, trimmed and lower-cased, in order."""
+    return [(double or single).strip().lower() for double, single in _SRC_ATTR_RE.findall(markup)]
+
+
+def _keep_only_trusted_elements(html: str, tag: str, trusted: Callable[[str], bool]) -> str:
+    """Drop every ``<tag>`` element that ``trusted`` does not vouch for.
+
+    ``bleach`` treats an allowed tag as an allowed tag; it doesn't know
+    which ``src`` values are safe to embed. That decision is made here,
+    after bleach, by ``trusted`` — handed the element's whole markup,
+    opening tag through closing tag.
 
     The whole element goes, opening tag through closing tag. Dropping the
-    opening tag alone — which is what this did until 2026-08-24, the line
-    after the substitution being a replacement of ``</iframe>`` by itself
-    — leaves an orphan ``</iframe>`` in the document. It renders as
-    nothing, so it survived review, but the translation validator
-    compares the tag list of a translation against its source: the model
-    tidies the stray closing tag away, the lists differ, and a correct
-    translation is parked as ``markup_mismatch``.
+    opening tag alone — which is what the iframe filter did until
+    2026-08-24, the line after the substitution being a replacement of
+    ``</iframe>`` by itself — leaves an orphan closing tag in the
+    document. It renders as nothing, so it survived review, but the
+    translation validator compares the tag list of a translation against
+    its source: the model tidies the stray closing tag away, the lists
+    differ, and a correct translation is parked as ``markup_mismatch``.
     """
     # NUL cannot appear in a Postgres ``text`` column and has no meaning in
     # HTML, so dropping it costs nothing — and it keeps a caller from
     # writing the placeholder shape below into their own content.
     html = html.replace("\x00", "")
-    element = re.compile(r"<iframe\b[^>]*>(?:.*?</iframe\s*>)?", re.IGNORECASE | re.DOTALL)
+    element = re.compile(rf"<{tag}\b[^>]*>(?:.*?</{tag}\s*>)?", re.IGNORECASE | re.DOTALL)
     kept: list[str] = []
 
     def _check(match: re.Match[str]) -> str:
         element_html = match.group(0)
-        opening = re.match(r"<iframe\b[^>]*>", element_html, re.IGNORECASE)
-        open_tag = opening.group(0) if opening else element_html
-        src_match = re.search(r'\bsrc\s*=\s*"([^"]*)"', open_tag, re.IGNORECASE) or re.search(
-            r"\bsrc\s*=\s*'([^']*)'", open_tag, re.IGNORECASE
-        )
-        src = (src_match.group(1) if src_match else "").strip().lower()
-        if src.startswith(("https://www.youtube.com/embed/", "https://www.youtube-nocookie.com/embed/")):
+        if trusted(element_html):
             kept.append(element_html)
             # Parked behind a placeholder so the orphan sweep below cannot
-            # see — and delete — the closing tag of an embed we are keeping.
-            return f"\x00iframe{len(kept) - 1}\x00"
+            # see — and delete — the closing tag of an element we are keeping.
+            return f"\x00{tag}{len(kept) - 1}\x00"
         return ""
 
     html = element.sub(_check, html)
-    # Whatever ``</iframe>`` is left belongs to no opening tag: either the
-    # author pasted it, or an earlier version of this function stripped the
+    # Whatever closing tag is left belongs to no opening tag: either the
+    # author pasted it, or an earlier version of this filter stripped the
     # opening half and left this behind.
-    html = re.sub(r"</iframe\s*>", "", html, flags=re.IGNORECASE)
+    html = re.sub(rf"</{tag}\s*>", "", html, flags=re.IGNORECASE)
     for index, original in enumerate(kept):
-        html = html.replace(f"\x00iframe{index}\x00", original)
+        html = html.replace(f"\x00{tag}{index}\x00", original)
     return html
+
+
+def _is_youtube_embed(element_html: str) -> bool:
+    opening = re.match(r"<iframe\b[^>]*>", element_html, re.IGNORECASE)
+    open_tag = opening.group(0) if opening else element_html
+    srcs = _src_values(open_tag)
+    src = srcs[0] if srcs else ""
+    return src.startswith(("https://www.youtube.com/embed/", "https://www.youtube-nocookie.com/embed/"))
+
+
+def _strip_dangerous_iframes(html: str) -> str:
+    """Only allow YouTube embeds through iframes — everything else is stripped."""
+    return _keep_only_trusted_elements(html, "iframe", _is_youtube_embed)
+
+
+def _is_http_audio(element_html: str) -> bool:
+    """An ``<audio>`` whose every source — its own ``src`` and each nested
+    ``<source src>`` — is fetched over ``http(s)``.
+
+    The same rule ``AudioExtension`` applies on paste, kept in step on
+    the server so what the editor accepts is what the store keeps.
+    Bleach's protocol allowlist is wider than that (``mailto:``,
+    ``tel:``, and every relative path pass it), and a player pointed at
+    nothing is worse than no player: it renders as a broken control the
+    teacher cannot explain.
+    """
+    srcs = _src_values(element_html)
+    return bool(srcs) and all(src.startswith(("http://", "https://")) for src in srcs)
+
+
+def _strip_dangerous_audio(html: str) -> str:
+    """Only keep ``<audio>`` players with ``http(s)`` sources — the rest go whole."""
+    return _keep_only_trusted_elements(html, "audio", _is_http_audio)
 
 
 def sanitize_string(value: str) -> str:
     """Sanitize user-supplied HTML/text for safe server-side storage.
 
-    Short strings (titles, names, etc.) still go through this. Because they
-    shouldn't contain HTML at all, any residue the sanitizer leaves is
-    already safe for rendering.
+    For rich content only — a lesson block, an announcement body, an
+    event description. Bleach escapes the text between the tags on its
+    way through, so a one-line field that carries no markup must go
+    through ``sanitize_plain_text`` instead: run through this, a course
+    called ``Faith & Works`` is stored as ``Faith &amp; Works``, the
+    teacher sees the entity in the title box, and every save escapes it
+    once more.
     """
     if not value:
         return value
@@ -218,6 +282,7 @@ def sanitize_string(value: str) -> str:
             strip_comments=True,
         )
         cleaned = _strip_dangerous_iframes(cleaned)
+        cleaned = _strip_dangerous_audio(cleaned)
         return cleaned.strip()
 
     # Regex fallback — matches the previous minimal behaviour.
@@ -225,6 +290,31 @@ def sanitize_string(value: str) -> str:
     cleaned = _EVENT_ATTR_RE.sub("", cleaned)
     cleaned = _JS_PROTO_RE.sub("", cleaned)
     return cleaned.strip()
+
+
+def sanitize_plain_text(value: str) -> str:
+    """One line of text with no markup in it — a course, module, chapter,
+    event or announcement title.
+
+    Tags are removed, not escaped, and entities are not escaped either:
+    the field is rendered as text by React (and by nothing else as
+    HTML), so ``&`` and ``<`` are just characters in a name. Whitespace
+    folds to single spaces — a title has no line breaks.
+
+    Entities are decoded *before* the tag pass, and nothing re-encodes
+    them after it, so a ``&lt;script&gt;`` cannot re-form a tag and a
+    title saved as ``Faith &amp; Works`` by the old code heals to
+    ``Faith & Works`` the next time the teacher saves it. Plain text
+    comes back unchanged however many times it passes through — the
+    property the escaping path lacked.
+
+    Not a sanitizer for anything that will be rendered as HTML: what
+    comes out may still hold a bare ``<`` (``5 < 10``), and that is
+    fine for a text node and wrong for ``innerHTML``.
+    """
+    if not value:
+        return value
+    return " ".join(strip_tags(unescape(value)).split())
 
 
 def strip_tags(html: str) -> str:

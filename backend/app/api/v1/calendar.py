@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, require_teacher, verify_course_owner
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
-from app.core.sanitize import sanitize_string
+from app.core.sanitize import sanitize_plain_text, sanitize_string
 from app.models.course import Course, CourseStatus
 from app.models.course_event import CourseEvent
 from app.models.enrollment import Enrollment
@@ -112,7 +112,7 @@ def create_course_event(
     verify_course_owner(db, course_id, teacher)
     # Title + description live in cv. Sanitisation runs
     # before the cv write so stored text is safe to render.
-    title = sanitize_string(data.title)
+    title = sanitize_plain_text(data.title)
     description = sanitize_string(data.description) if data.description else data.description
     event = CourseEvent(
         course_id=course_id,
@@ -252,7 +252,7 @@ def update_course_event(
     text_patch: dict[str, str | None] = {}
     if "title" in updates:
         v = updates.pop("title")
-        text_patch["title"] = sanitize_string(v) if v is not None else None
+        text_patch["title"] = sanitize_plain_text(v) if v is not None else None
     if "description" in updates:
         v = updates.pop("description")
         text_patch["description"] = sanitize_string(v) if v is not None else None

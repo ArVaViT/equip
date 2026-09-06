@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import require_teacher, verify_course_owner
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
-from app.core.sanitize import sanitize_string
+from app.core.sanitize import sanitize_plain_text
 from app.models.course import Chapter
 from app.models.user import User
 from app.schemas.course import ChapterCreate, ChapterResponse, ChapterUpdate
@@ -44,7 +44,7 @@ def create_new_chapter(
             context={"resource_type": "module", "module_id": module_id, "course_id": course_id},
         )
     if data.title:
-        data.title = sanitize_string(data.title)
+        data.title = sanitize_plain_text(data.title)
     created = create_chapter(db, module_id, data)
     reconcile_entity_if_course_published(db, "chapter", created)
     return created
@@ -77,7 +77,7 @@ def update_existing_chapter(
             },
         )
     if data.title:
-        data.title = sanitize_string(data.title)
+        data.title = sanitize_plain_text(data.title)
     updated = update_chapter(db, chapter, data)
     reconcile_entity_if_course_published(db, "chapter", updated)
     return updated
