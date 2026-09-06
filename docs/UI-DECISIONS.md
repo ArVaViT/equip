@@ -6,6 +6,16 @@ the running record of "we tried it, here's what stuck, leave it alone."
 
 ## Frozen UI decisions (do not re-litigate without owner sign-off)
 
+> **Historical record (May 2026).** The pixel values below describe the
+> build they froze, and the August 2026 rebuild replaced most of them:
+> the header is `h-14 md:h-16` with a serif wordmark (`Header.tsx`), the
+> footer is a plain `border-t border-edge` (`Footer.tsx`), and the
+> landing page is the manifesto in `pages/Dashboard/PublicLanding.tsx`
+> with no search field. What still holds: the icon-size tiers and the
+> `header.manage` / `header.manageCourses` key split. The section is kept
+> as the record of *why* those decisions were frozen; `docs/DESIGN.md` is
+> the current spec.
+
 These decisions oscillated multiple times in the 2026-04-27 → 2026-05-06
 window — 18 `feat(ui)` commits in 8 days flipped them, sometimes the
 same day. PR-D froze the current state. Hands off until **2026-05-20**
@@ -23,7 +33,8 @@ revisit.
   `header.adminPanel`**: same destination, two keys on purpose — compact
   label for the desktop bar, verbose label for the mobile sheet. Don't
   unify them. (Code comments at the call-sites in
-  `frontend/src/components/layout/Header.tsx` say the same.)
+  `frontend/src/components/layout/header/HeaderDesktopNav.tsx` and
+  `HeaderMobileSheet.tsx` say the same.)
 
 If a redesign of any of these is needed, open an issue with screenshots
 and rationale — don't ship a same-day "polish" commit. The change must

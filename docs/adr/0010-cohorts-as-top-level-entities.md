@@ -51,7 +51,12 @@ Cohorts become **top-level admin entities**.
   `cohort_id`.
 - All cohort write surfaces (`POST /cohorts`, `PATCH /cohorts/{id}`,
   `POST /cohorts/{id}/courses`, `POST /cohorts/{id}/students`, etc.)
-  require `require_admin`. Teachers get a **read-only** filter (e.g.
+  require `require_director` -- an organization's director, or a
+  platform admin (`backend/app/api/dependencies.py`). *Amended
+  2026-08-27:* when this ADR was written the dependency was
+  `require_admin`; the `director` role split off from `admin` in
+  migration `20260826120000_a_director_is_not_a_platform_admin.sql`
+  and rosters moved with it. Teachers get a **read-only** filter (e.g.
   gradebook "show cohort X") and the public catalog gets a
   read-only "enroll into cohort Y" dropdown.
 - Courses gain an `access_mode` column with values `public` and
@@ -69,7 +74,7 @@ Cohorts become **top-level admin entities**.
 
 - One cohort across multiple courses: the registrar creates a cohort
   once and attaches as many courses as the semester needs.
-- Clear authorship line: admin owns rosters, teacher owns content.
+- Clear authorship line: the director owns rosters, teacher owns content.
 - The public catalog enroll dialog gets a clean dropdown of "join
   this course as part of cohort X" with no special-casing for
   teacher-scoped cohorts.

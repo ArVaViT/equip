@@ -21,8 +21,10 @@ views). Expressive surfaces have their own rules in "Motion" below.
 
 All colours live in `frontend/src/index.css` as CSS variables in **HSL**
 (`--background: 38 32% 97%`, consumed as `hsl(var(--token))`). An OKLCH layer
-is staged in `frontend/src/styles/tokens-v2.css` but not yet wired — the live
-palette is HSL until the ADR-0011 Wave 9 cutover. No
+sits in `frontend/src/styles/tokens-v2.css` but is **dormant**: ADR-0011
+declined the OKLCH migration (superseded 2026-08-24), `index.css` does not
+import the file, and `styles/__tests__/tokens-v2.test.ts` asserts that it
+doesn't. The live palette is HSL. No
 component ever uses a raw Tailwind palette class (`bg-blue-500`, `text-rose-600`).
 If you need a colour, use a semantic token or add one.
 
@@ -46,8 +48,11 @@ with a `-foreground`.
 
 One scale, one serif, one sans.
 
-- **Serif (`Fraunces`):** page titles (H1, H2), chapter reader body.
-- **Sans (`Inter`):** everything else.
+- **Serif (`Literata`):** page titles (H1, H2), chapter reader body.
+  Georgia leads the fallback stack because its x-height is closest.
+- **Sans (`Golos Text`):** everything else. It replaced Inter for its
+  Cyrillic (see the comment in `frontend/tailwind.config.js`); Golos has
+  no italic and no Greek, both stay in Literata.
 - **Scale:** `32 / 24 / 18 / 16 / 14 / 13` px. No `text-[Npx]` arbitrary
   values — the single documented exception is the 11px eyebrow below.
 - **Weights:** 400 body, 500 UI, 600 emphasis, 700 display. No 800/900.

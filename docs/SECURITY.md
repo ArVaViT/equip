@@ -78,8 +78,9 @@ and ~$10/mo Upstash minimum.
 ## Audit logging
 
 `audit_logs` is admin-read-only by RLS
-(`audit_logs_select_admin` policy, see
-`supabase/migrations/20260421015755_rls_perf_cleanup_016_policies.sql`)
+(`audit_logs_select_admin` policy; introduced in
+`supabase/migrations/20260421015755_rls_perf_cleanup_016_policies.sql`,
+current text in `supabase/schema.sql`)
 with no INSERT / UPDATE / DELETE policy for client roles -- the
 FastAPI backend is the sole writer via `app/services/audit_service.py`.
 
@@ -88,11 +89,20 @@ Privileged actions that write to `audit_logs` today:
 - Role change (`PUT /users/admin/users/{id}/role`) -- in
   `app/api/v1/users.py::update_user_role`.
 - Bulk role change (`PUT /users/admin/users/bulk-role`).
-- Admin user deletion (`DELETE /users/admin/users/{id}`).
-- Certificate teacher / admin approval + rejection.
+- Admin user deletion and restore (`DELETE /users/admin/users/{id}`, `POST /users/admin/users/{id}/restore`).
+- Certificate approval + rejection -- the teacher step and the
+  director step (`require_director`: an organization's director, or a
+  platform admin).
+- Invitations (create, revoke, accept) -- `app/services/invitation_service.py`.
+- Organizations and organization settings (`admin_organizations.py`,
+  `admin_org_settings.py`).
+- Cohort and course writes, rubric changes, admin translation actions.
 - User locale change (audit-logged because role-elevated users
   flipping languages affects editor visibility).
-- Assignment grade changes and enrollment / unenrollment.
+- Assignment grade changes, progress edits, enrollment / unenrollment.
+
+The authoritative list is `grep -rn "log_action(" backend/app` -- this
+prose has fallen behind it once already.
 
 If a new privileged action is added (e.g. promote a user to admin via
 some new flow), it MUST call `audit_service.log_action` in the same
@@ -145,7 +155,8 @@ probes in `supabase/ci/rls_assertions.sql` (certificate forgery, attempt
 
 **What is intentionally backend-gated, not RLS-gated:** reading the
 *teaching text* of a non-public course. The API filters by publish state
-and enrollment (`require_enrollment` / `verify_course_owner` deps); a
+and enrollment (`lookup_enrollment` / `verify_chapter_access` /
+`verify_course_owner` deps in `app/api/dependencies.py`); a
 caller who bypasses the API and reads the rows directly sees lesson prose
 and quiz *prompts* (never the answer key, never another user's data).
 
@@ -177,10 +188,12 @@ reads 0 content rows.
   CI on every push (`.github/workflows/backend-ci.yml`). It audits the
   pinned runtime deps only -- not dev deps, not the host Python env.
   Latest run: clean.
-- Frontend: `npm audit --omit=dev --audit-level=high` runs in CI after
-  `npm ci` (`.github/workflows/frontend-ci.yml`) — a HIGH/CRITICAL advisory
-  on production deps is a hard gate that fails the build. Moderate/low
-  advisories are triaged via Dependabot rather than blocking.
+- Frontend: `audit-ci --high --skip-dev` runs in CI after `npm ci`
+  (`.github/workflows/frontend-ci.yml`) — a HIGH/CRITICAL advisory on
+  production deps is a hard gate that fails the build. The workflow
+  carries an explicit `--allowlist` for advisories that were reviewed and
+  accepted (one today); every entry there is a decision, not a silence.
+  Moderate/low advisories are triaged via Dependabot rather than blocking.
 - Major-version bumps must be deliberate. Don't blindly run `npm
   outdated --json | jq | xargs npm install` -- breakages from major
   bumps (Vite, React, Pydantic) are common and lose CI signal.

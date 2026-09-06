@@ -12,7 +12,7 @@ simpler shape was rejected.
 
 | # | Title | Status |
 |---|-------|--------|
-| [010](0010-cohorts-as-top-level-entities.md) | Cohorts as top-level admin entities | Accepted (2026-05-13) |
+| [010](0010-cohorts-as-top-level-entities.md) | Cohorts as top-level admin entities | Accepted (2026-05-13), amended 2026-08-27: rosters belong to the `director` role |
 | [011](0011-tailwind-v4-oklch-migration.md) | Tailwind v4 + OKLCH migration — not doing it | Superseded (2026-08-24) |
 
 ## Format
