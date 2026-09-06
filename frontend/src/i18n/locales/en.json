@@ -32,9 +32,7 @@
       "empty": "Click or drop image",
       "disabled": "No cover",
       "unsupportedTitle": "Unsupported file",
-      "unsupportedDescription": "Pick an image file.",
       "tooLargeTitle": "Image too large",
-      "tooLargeDescription": "Max {{max}} MB.",
       "uploadFailedTitle": "Upload failed",
       "removeConfirmTitle": "Remove cover?",
       "removeConfirmDescription": "This will clear the course cover image.",
@@ -783,6 +781,17 @@
       "409": "This conflicts with newer data. Reload and try again.",
       "429": "Too many requests. Please slow down.",
       "500": "Server error. Please try again later."
+    },
+    "storage": {
+      "tooLarge": "This file is {{sizeMb}} MB; the limit is {{maxMb}} MB.",
+      "tooLargeServer": "Storage refused the file: it is over {{maxMb}} MB.",
+      "unsupportedType": "This file format isn't supported. Allowed: {{formats}}.",
+      "heic": "HEIC photos from an iPhone aren't supported. Save it as a JPEG first — on the iPhone: Settings → Camera → Formats → Most Compatible.",
+      "invalidName": "Storage didn't accept the file name. Rename the file using Latin letters and try again.",
+      "forbidden": "You don't have permission to upload to this course. Sign in again and retry.",
+      "network": "Couldn't reach storage. Check your connection and try again.",
+      "generic": "The upload failed. Please try again.",
+      "genericWithCode": "The upload failed ({{code}}). Please try again."
     }
   },
   "toast": {
@@ -2398,9 +2407,6 @@
   "editor": {
     "toast": {
       "imageUploadFailed": "Image upload failed",
-      "imageUploadFailedDetail": "Image upload failed: {{detail}}",
-      "imageWrongType": "That file isn't an image ({{type}}). Pick a JPG, PNG, WebP, or GIF.",
-      "imageTooLarge": "Image is too large. Maximum size is {{maxMb}} MB.",
       "audioUrlInvalid": "Audio URL must start with http(s)",
       "invalidUrl": "That doesn't look like a valid URL. Use a full address like https://example.com/page."
     },

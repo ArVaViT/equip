@@ -5,8 +5,9 @@ import { Label } from "@/components/ui/label"
 import { FileText, Loader2, Paperclip, Upload, X } from "lucide-react"
 import { coursesService } from "@/services/courses"
 import { storageService } from "@/services/storage"
-import { getErrorDetail } from "@/lib/errorDetail"
 import { toast } from "@/lib/toast"
+import { describeUploadError, preflightUpload } from "@/lib/uploadError"
+import { acceptAttribute, COURSE_MATERIALS } from "@/lib/uploadLimits"
 import type { ChapterBlock } from "@/types"
 
 interface Props {
@@ -28,6 +29,13 @@ export function FileBlockEditor({ block, courseId, chapterId, onUpdated }: Props
   const hasFile = Boolean(block.file_bucket && block.file_path)
 
   const upload = async (file: File) => {
+    // Refuse what the bucket would refuse, in the teacher's language and
+    // before the bytes leave the browser.
+    const issue = preflightUpload(file, COURSE_MATERIALS)
+    if (issue) {
+      toast({ title: t("blockEditor.file.uploadFailedDefault"), description: issue.message, variant: "destructive" })
+      return
+    }
     setUploading(true)
     try {
       const { bucket, path, name } = await storageService.uploadBlockFile(courseId, chapterId, file)
@@ -39,8 +47,11 @@ export function FileBlockEditor({ block, courseId, chapterId, onUpdated }: Props
       onUpdated(updated)
       toast({ title: t("blockEditor.file.uploaded"), variant: "success" })
     } catch (error: unknown) {
-      const detail = getErrorDetail(error) || t("blockEditor.file.uploadFailedDefault")
-      toast({ title: detail, variant: "destructive" })
+      toast({
+        title: t("blockEditor.file.uploadFailedDefault"),
+        description: describeUploadError(error, COURSE_MATERIALS),
+        variant: "destructive",
+      })
     } finally {
       setUploading(false)
     }
@@ -110,6 +121,7 @@ export function FileBlockEditor({ block, courseId, chapterId, onUpdated }: Props
       <input
         ref={inputRef}
         type="file"
+        accept={acceptAttribute(COURSE_MATERIALS)}
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0]

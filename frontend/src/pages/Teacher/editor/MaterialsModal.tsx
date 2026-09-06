@@ -6,6 +6,7 @@ import { Download, Loader2, Paperclip, X } from "lucide-react"
 import { EmptyState, Modal } from "@/components/patterns"
 import type { MaterialFile } from "./types"
 import { formatNumber } from "@/i18n/number"
+import { acceptAttribute, COURSE_MATERIALS } from "@/lib/uploadLimits"
 
 interface Props {
   open: boolean
@@ -19,7 +20,12 @@ interface Props {
   fileInputRef: Ref<HTMLInputElement>
 }
 
-const ACCEPTED_TYPES = ".pdf,.doc,.docx,.ppt,.pptx,.txt,.mp3,.wav,.ogg,.mp4"
+// Exactly what the `course-materials` bucket accepts. The list this
+// replaced offered ``.mp4`` — the bucket knows ``audio/mp4``, not video,
+// so the picker promised something the server always refused (video in
+// the product is a YouTube link) — and did not offer ``.m4a``, which is
+// what an iPhone voice memo is.
+const ACCEPTED_TYPES = acceptAttribute(COURSE_MATERIALS)
 
 const KB = 1024
 const MB = KB * 1024
