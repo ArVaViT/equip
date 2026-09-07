@@ -311,7 +311,16 @@ class Chapter(Base):
     )
 
     id: Mapped[str] = mapped_column(primary_key=True)
-    module_id: Mapped[str] = mapped_column(ForeignKey("modules.id"))
+    # ``nullable=True`` on the model, ``NOT NULL`` still in production: the
+    # one place the model is deliberately a step ahead of the database.
+    # Step 2 of the chapter→course move made the translation contour
+    # reach a chapter by its ``course_id`` alone, and the tests that prove
+    # it walk a chapter with no module — which the test schema, built from
+    # this model, has to allow. The Python type stays ``str`` because that
+    # is what production guarantees today; it widens to ``str | None`` in
+    # the step that drops the constraint and lets a teacher create such a
+    # chapter. Until then every write path still sets both parents.
+    module_id: Mapped[str] = mapped_column(ForeignKey("modules.id"), nullable=True)
     # The course this chapter belongs to. Always equal to
     # ``module.course_id`` while every chapter still has a module; written
     # by every create path (``create_chapter``, ``clone_course``, the fat

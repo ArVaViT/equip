@@ -1,16 +1,22 @@
 """The shape of a course's translatable tree, walked once.
 
-``course_pipeline`` knew how to walk modules → chapters → blocks →
-quizzes/assignments → side entities in order to *translate* each node.
-Publication now needs the same walk in order to *check* each node —
-whether every locale already has an accepted translation — and a second
-copy of the walk would be a copy that drifts. So the walk lives here,
-yields ``(entity_type, entity)`` pairs, and both callers consume it.
+``course_pipeline`` knew how to walk course → modules, course → chapters
+→ blocks → quizzes/assignments → side entities in order to *translate*
+each node. Publication now needs the same walk in order to *check* each
+node — whether every locale already has an accepted translation — and a
+second copy of the walk would be a copy that drifts. So the walk lives
+here, yields ``(entity_type, entity)`` pairs, and both callers consume it.
 
 Order is preserved from the original pipeline: course metadata, then
 modules, then chapters, then blocks (following block→quiz and
 block→assignment links), then any quiz or assignment attached straight
 to a chapter, then the side entities bound by ``course_id``.
+
+Chapters are reached from the course (``Course.chapters``, by the
+chapter's own ``course_id``), not through the modules. A module is a
+grouping a chapter may have; it is not the way to the chapter. While
+every chapter still has a module the two walks name the same chapters
+— pinned by ``tests/test_a_chapter_without_a_module_is_still_walked.py``.
 
 That last group is not decorative. Production attaches quizzes and
 assignments via the ``chapter_id`` FK; the block-mediated links are an
@@ -79,12 +85,27 @@ def iter_course_entities(db: Session, course: Course) -> Iterator[tuple[EntityTy
     for module in modules:
         yield "module", module
 
-    for module in modules:
-        for chapter in module.chapters:
-            if chapter.deleted_at is None:
-                yield "chapter", chapter
+    # Chapters come from the course, not from its modules. A chapter
+    # belongs to the course by its own ``course_id``; a module is a
+    # grouping it may or may not have. Walked through the modules, a
+    # chapter with no module would not be an error — it would be
+    # absent, and everything under it with it: no tasks planned, no gap
+    # counted, and a course published as complete in every language
+    # with one lesson still in the author's. Walked from the course, it
+    # is simply a chapter.
+    #
+    # A binned module still hides its chapters, as it always has: a
+    # module in the bin has no readers, and neither does what it groups.
+    live_module_ids = {module.id for module in modules}
+    chapters = [
+        chapter
+        for chapter in course.chapters
+        if chapter.deleted_at is None and (chapter.module_id is None or chapter.module_id in live_module_ids)
+    ]
+    for chapter in chapters:
+        yield "chapter", chapter
 
-    chapter_ids = [ch.id for mod in modules for ch in mod.chapters if ch.deleted_at is None]
+    chapter_ids = [chapter.id for chapter in chapters]
     if chapter_ids:
         blocks = (
             db.query(ChapterBlock)

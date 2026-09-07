@@ -43,7 +43,12 @@ class ChapterResponse(ChapterBase):
     # submits, not to what a reader receives. See ``_ReadTitle``.
     title: str = ""
     id: str
-    module_id: str
+    # Optional on the wire from 2026-09-07: a chapter belongs to its
+    # course, and a module is a grouping it may not have. Every chapter
+    # production serves today still names one; the type is widened ahead
+    # of the column so the first chapter without a module serialises
+    # instead of failing (or, worse, arriving as the string "None").
+    module_id: str | None
     course_id: str
 
 

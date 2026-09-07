@@ -19,6 +19,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Literal
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session  # noqa: TC002
 
 from app.models.announcement import Announcement  # noqa: TC001
@@ -623,15 +624,24 @@ def resolve_chapter_locale_context(
     chapter_id: str,
     current_user: User | None,
 ) -> ChapterLocaleContext:
-    """Run the chapter→course join once and derive every locale/access fact."""
+    """Run the chapter→course join once and derive every locale/access fact.
+
+    The course is the chapter's own (``Chapter.course_id``); the module
+    is joined only to keep honouring the bin — a chapter grouped under a
+    binned module is not found, as before. A chapter with no module is
+    found by its course like any other; through an inner join on the
+    module it would not have been, and ``found=False`` here is not an
+    error but a default (``ru``, overlay on) that quietly misdescribes
+    the chapter's language to every reader.
+    """
     course = (
         db.query(Course)
-        .join(Module, Module.course_id == Course.id)
-        .join(Chapter, Chapter.module_id == Module.id)
+        .join(Chapter, Chapter.course_id == Course.id)
+        .outerjoin(Module, Module.id == Chapter.module_id)
         .filter(
             Chapter.id == chapter_id,
             Chapter.deleted_at.is_(None),
-            Module.deleted_at.is_(None),
+            or_(Chapter.module_id.is_(None), Module.deleted_at.is_(None)),
             Course.deleted_at.is_(None),
         )
         .first()
@@ -727,7 +737,13 @@ def build_localized_course_response_with_tree(
             ChapterResponse.model_validate(
                 {
                     "id": str(ch.id),
-                    "module_id": str(ch.module_id),
+                    # ``None`` stays ``None``: a chapter may have no
+                    # module, and ``str(None)`` is the string "None" — a
+                    # link to a module that does not exist, sent to the UI
+                    # without a word. This loop still walks the modules,
+                    # so no such chapter reaches it yet; when the
+                    # serialisation moves to ``course.chapters`` it will.
+                    "module_id": ch.module_id,
                     "course_id": str(ch.course_id),
                     "title": loc.pick("chapter", str(ch.id), "title", ch.title) or "",
                     "order_index": ch.order_index,

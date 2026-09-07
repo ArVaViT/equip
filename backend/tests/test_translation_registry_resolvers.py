@@ -50,7 +50,6 @@ from app.services.translation.registry import (
     _resolve_course_self,
     _resolve_course_via_attr,
     _resolve_course_via_chapter,
-    _resolve_course_via_module,
     _resolve_course_via_option,
     _resolve_course_via_question,
     _resolve_course_via_quiz_chapter,
@@ -214,31 +213,41 @@ class TestResolveCourseViaAttr:
 
 
 # ---------------------------------------------------------------------------
-# _resolve_course_via_module — used by ``chapter``
+# ``chapter`` resolves by its own ``course_id`` (2026-09-07)
 # ---------------------------------------------------------------------------
 
 
-class TestResolveCourseViaModule:
-    def test_resolves_chapter_to_course_via_relationship(self, db: Session, course: Course, chapter: Chapter):
-        # The relationship is lazy-loaded; trigger it once before the
-        # resolver runs to mirror the orchestrator's usage path.
-        _ = chapter.module
-        assert _resolve_course_via_module(db, chapter) is course
+class TestChapterResolvesByItsOwnCourse:
+    """A chapter belongs to its course directly. Until 2026-09-07 the
+    resolver walked ``chapter.module.course`` and answered ``None`` for
+    a chapter without a module — not an error, an orphan, which every
+    caller took as "nothing to translate". The chapter's own
+    ``course_id`` is the answer now; the module is not consulted."""
 
-    def test_returns_none_when_module_missing(self, db: Session):
+    def test_resolves_chapter_to_its_course(self, db: Session, course: Course, chapter: Chapter):
+        from app.services.translation.registry import REGISTRY
+
+        assert REGISTRY["chapter"].resolve_course(db, chapter) is course
+
+    def test_the_module_is_not_consulted(self, db: Session, course: Course):
+        from app.services.translation.registry import REGISTRY
+
         class FakeChapter:
+            course_id = course.id
             module = None
+            module_id = None
 
-        assert _resolve_course_via_module(db, FakeChapter()) is None
+        resolved = REGISTRY["chapter"].resolve_course(db, FakeChapter())
+        assert resolved is not None
+        assert resolved.id == course.id
 
-    def test_returns_none_when_module_has_no_course(self, db: Session):
+    def test_returns_none_when_the_chapter_names_no_course(self, db: Session):
+        from app.services.translation.registry import REGISTRY
+
         class FakeChapter:
-            class _M:
-                course = None
+            course_id = None
 
-            module = _M()
-
-        assert _resolve_course_via_module(db, FakeChapter()) is None
+        assert REGISTRY["chapter"].resolve_course(db, FakeChapter()) is None
 
 
 # ---------------------------------------------------------------------------
