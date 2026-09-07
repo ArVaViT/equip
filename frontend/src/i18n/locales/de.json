@@ -75,17 +75,17 @@
       "structure": {
         "eyebrow": "Kursaufbau",
         "title": "Ein Kurs, kein Haufen Videos",
-        "body": "Module und Kapitel in fester Reihenfolge: Sie sehen immer, was erledigt ist und was als Nächstes kommt.",
+        "body": "Lektionen in fester Reihenfolge — in Module gruppiert, wenn ein Kurs groß genug dafür wird. Sie sehen immer, was erledigt ist und was als Nächstes kommt.",
         "module": "Modul 1 · 1. Mose 1–11",
-        "chapter1": "Kapitel 1 — Die Schöpfung",
-        "chapter2": "Kapitel 2 — Der Sündenfall",
-        "chapter3": "Kapitel 3 — Kain und Abel"
+        "chapter1": "Lektion 1 — Die Schöpfung",
+        "chapter2": "Lektion 2 — Der Sündenfall",
+        "chapter3": "Lektion 3 — Kain und Abel"
       },
       "assessment": {
         "eyebrow": "Prüfung",
         "title": "Mehr als Multiple Choice",
         "body": "Vier Fragetypen, darunter Aufsätze — gelesen von einer Lehrkraft, nicht nur von der Maschine.",
-        "sampleQuestion": "Fassen Sie den Hauptgedanken dieses Kapitels in eigenen Worten zusammen.",
+        "sampleQuestion": "Fassen Sie den Hauptgedanken dieses Abschnitts in eigenen Worten zusammen.",
         "gradedBadge": "Vom Dozenten bewertet"
       },
       "certificates": {
@@ -106,7 +106,7 @@
       "heading": "So funktioniert es",
       "step1": "Registrieren — dauert eine Minute, E-Mail oder Google genügt.",
       "step2": "Katalog öffnen und sich für den gewünschten Kurs einschreiben.",
-      "step3": "Kapitel durcharbeiten, Tests schreiben, am Ende das Zertifikat anfordern."
+      "step3": "Lektionen durcharbeiten, Tests schreiben, am Ende das Zertifikat anfordern."
     },
     "finalCta": {
       "heading": "Bereit anzufangen?",
@@ -133,8 +133,8 @@
       "empty": "Für heute ist nichts geplant.",
       "emptyDescription": "Öffnen Sie den Kalender, um zu sehen, was diese Woche ansteht."
     },
-    "readingProgress_one": "{{read}} von {{count}} Kapitel gelesen",
-    "readingProgress_other": "{{read}} von {{count}} Kapiteln gelesen",
+    "readingProgress_one": "{{read}} von {{count}} Lektion gelesen",
+    "readingProgress_other": "{{read}} von {{count}} Lektionen gelesen",
     "teaching": {
       "title": "Kurse, die Sie unterrichten",
       "description": "Bearbeiten, Bewerten und Veröffentlichen — alles unter „Lehre“.",
@@ -157,7 +157,7 @@
     "teacher": {
       "eyebrow": "Willkommen",
       "title": "Ihr erster Kurs beginnt hier",
-      "body": "Equip ist Ihr Unterrichtsraum. Gliedern Sie einen Kurs in Kapitel, schreiben Sie eigene Tests, unterschreiben Sie Zertifikate, wenn Studierende fertig sind — und behalten Sie dabei jedes Wort in Ihrer Hand.",
+      "body": "Equip ist Ihr Unterrichtsraum. Gliedern Sie einen Kurs in Lektionen, schreiben Sie eigene Tests, unterschreiben Sie Zertifikate, wenn Studierende fertig sind — und behalten Sie dabei jedes Wort in Ihrer Hand.",
       "primaryCta": "Ersten Kurs erstellen"
     },
     "teacherAsStudent": {
@@ -218,7 +218,7 @@
     "splash": {
       "eyebrow": "Ihr Regal steht bereit",
       "eyebrowNamed": "Ihr Regal steht bereit, {{name}}",
-      "body": "Atmen Sie durch. Wir öffnen das erste Kapitel."
+      "body": "Atmen Sie durch. Wir öffnen die erste Lektion."
     }
   },
   "grandTour": {
@@ -291,30 +291,30 @@
         "body": "Titel, Beschreibung und eine Einschreibe-Schaltfläche, solange Sie nicht dabei sind — danach Ihr Fortschrittsbalken. Alles, was Sie zum Start brauchen."
       },
       "modules": {
-        "title": "Module und Kapitel",
-        "body": "Der Kurs ist in Module gegliedert; jedes Modul hat Kapitel. Klicken Sie ein Kapitel an, um es zu öffnen. Gesperrte öffnen sich mit Ihrem Fortschritt."
+        "title": "Lektionen und Module",
+        "body": "Der Kurs ist eine Reihe von Lektionen in fester Reihenfolge. Hat die Lehrkraft einige davon gruppiert, erscheinen sie hier als Module. Klicken Sie eine Lektion an, um sie zu öffnen. Gesperrte öffnen sich mit Ihrem Fortschritt."
       },
       "finale": {
         "title": "Bereit, wenn Sie es sind",
-        "body": "Beginnen Sie mit dem ersten Kapitel. Wir merken uns Ihren Fortschritt und zeigen den nächsten Schritt von selbst."
+        "body": "Beginnen Sie mit der ersten Lektion. Wir merken uns Ihren Fortschritt und zeigen den nächsten Schritt von selbst."
       }
     },
     "chapter": {
       "header": {
         "title": "Wo Sie gerade sind",
-        "body": "Die Zeile darüber sagt Ihnen, in welchem Kapitel Sie sind (etwa „Kapitel 2 von 7“) und welcher Art es ist — Lektion, Test, Prüfung oder Aufgabe."
+        "body": "Die Zeile darüber sagt Ihnen, in welcher Lektion Sie sind (etwa „Lektion 2 von 7“) und welcher Art sie ist — Lesetext, Test, Prüfung oder Aufgabe."
       },
       "body": {
-        "title": "Der Kapitelinhalt",
-        "body": "Je nach Kapiteltyp lesen Sie, schreiben einen Test oder reichen eine Aufgabe ein. Ihr Fortschritt wird unterwegs automatisch gespeichert."
+        "title": "Der Lektionsinhalt",
+        "body": "Je nach Lektionsart lesen Sie, schreiben einen Test oder reichen eine Aufgabe ein. Ihr Fortschritt wird unterwegs automatisch gespeichert."
       },
       "nav": {
-        "title": "Zwischen Kapiteln wechseln",
-        "body": "Mit diesen Schaltflächen springen Sie zum vorigen oder nächsten Kapitel, ohne zur Modulliste zurückzugehen."
+        "title": "Zwischen Lektionen wechseln",
+        "body": "Mit diesen Schaltflächen springen Sie zur vorigen oder nächsten Lektion, ohne zur Kursseite zurückzugehen."
       },
       "finale": {
         "title": "Lassen Sie sich Zeit",
-        "body": "Es läuft keine Uhr. Arbeiten Sie das Kapitel in Ihrem Tempo durch und klicken Sie auf „Weiter“, wenn Sie so weit sind."
+        "body": "Es läuft keine Uhr. Arbeiten Sie die Lektion in Ihrem Tempo durch und klicken Sie auf „Weiter“, wenn Sie so weit sind."
       }
     },
     "certs": {
@@ -354,7 +354,7 @@
     "teacher": {
       "newCourse": {
         "title": "Einen Kurs erstellen",
-        "body": "Hier öffnen Sie den Editor. Sie gliedern Module, schreiben Kapitel und Tests und veröffentlichen, wenn alles bereit ist."
+        "body": "Hier öffnen Sie den Editor. Sie schreiben Lektionen und Tests, gruppieren sie bei Bedarf in Module und veröffentlichen, wenn alles bereit ist."
       },
       "pendingCerts": {
         "title": "Offene Zertifikate",
@@ -403,12 +403,12 @@
     },
     "chapterEditor": {
       "header": {
-        "title": "Kapiteleinstellungen",
-        "body": "Titel, Art (Lektion / Test / Prüfung / Aufgabe), Sperrstatus. Davon hängt ab, was Studierende beim Öffnen sehen."
+        "title": "Lektionseinstellungen",
+        "body": "Titel, Art (Lesetext / Test / Prüfung / Aufgabe), Sperrstatus. Davon hängt ab, was Studierende beim Öffnen sehen."
       },
       "blocks": {
         "title": "Inhaltsblöcke",
-        "body": "Bauen Sie das Kapitel aus Blöcken: Text, Dateien, ein Test oder eine Aufgabe. Zum Umsortieren ziehen. Jeder Block speichert für sich."
+        "body": "Bauen Sie die Lektion aus Blöcken: Text, Dateien, ein Test oder eine Aufgabe. Zum Umsortieren ziehen. Jeder Block speichert für sich."
       },
       "finale": {
         "title": "Schreiben Sie in Ihrem Tempo",
@@ -418,7 +418,7 @@
     "gradebook": {
       "table": {
         "title": "Ihr Notenbuch",
-        "body": "Jede eingeschriebene Person bekommt eine Zeile, jedes bewertbare Kapitel eine Spalte. Klicken Sie in eine Zelle, um eine Note einzutragen oder zu ändern."
+        "body": "Jede eingeschriebene Person bekommt eine Zeile, jede bewertbare Lektion eine Spalte. Klicken Sie in eine Zelle, um eine Note einzutragen oder zu ändern."
       },
       "finale": {
         "title": "Noten kommen an",
@@ -432,7 +432,7 @@
       },
       "finale": {
         "title": "Sehen Sie, wie es ankommt",
-        "body": "Die Zahlen aktualisieren sich laufend, während Studierende sich einschreiben, Kapitel abschließen und Arbeiten einreichen. Kein Neuladen nötig."
+        "body": "Die Zahlen aktualisieren sich laufend, während Studierende sich einschreiben, Lektionen abschließen und Arbeiten einreichen. Kein Neuladen nötig."
       }
     },
     "studentProgress": {
@@ -442,7 +442,7 @@
       },
       "finale": {
         "title": "Blick zum Begleiten",
-        "body": "Erkennen Sie, wer sich länger nicht angemeldet hat oder an einem Kapitel hängt. Ein Anstoß von Ihnen macht oft den Unterschied."
+        "body": "Erkennen Sie, wer sich länger nicht angemeldet hat oder an einer Lektion hängt. Ein Anstoß von Ihnen macht oft den Unterschied."
       }
     }
   },
@@ -718,13 +718,13 @@
     "teacher": "Dozentenbereich",
     "admin": "Administration",
     "home": "Start",
-    "editChapter": "Kapitel bearbeiten",
+    "editChapter": "Lektion bearbeiten",
     "editModule": "Modul bearbeiten",
     "gradebook": "Notenbuch",
     "studentProgress": "Fortschritt der Studierenden",
     "courseAnalytics": "Kursauswertung",
     "courseEditor": "Kurseditor",
-    "chapter": "Kapitel",
+    "chapter": "Lektion",
     "module": "Modul",
     "course": "Kurs",
     "courses": "Kurse",
@@ -738,7 +738,7 @@
   },
   "errors": {
     "invalidCourseLink": "Ungültiger Link zu Kurs oder Modul.",
-    "loadChapterFailed": "Kapitel konnte nicht geladen werden. Bitte erneut versuchen.",
+    "loadChapterFailed": "Lektion konnte nicht geladen werden. Bitte erneut versuchen.",
     "loadModuleFailed": "Modul konnte nicht geladen werden. Bitte erneut versuchen.",
     "loadCourseFailed": "Kurs konnte nicht geladen werden. Bitte erneut versuchen.",
     "loadTeacherCoursesFailed": "Ihre Kurse konnten nicht geladen werden. Bitte erneut versuchen.",
@@ -851,7 +851,7 @@
     "enrolledSuccess": "Einschreibung erfolgreich",
     "enrolledFailed": "Einschreibung fehlgeschlagen. Bitte erneut versuchen.",
     "courseNotFound": "Kurs nicht gefunden",
-    "chapterNotFound": "Kapitel nicht gefunden",
+    "chapterNotFound": "Lektion nicht gefunden",
     "moduleNotFound": "Modul nicht gefunden",
     "certificateApproved": "Zertifikat bestätigt",
     "certificateApproveFailed": "Zertifikat konnte nicht bestätigt werden",
@@ -885,9 +885,9 @@
     "due": "Fällig",
     "moduleComplete": "Modul abgeschlossen — gut gemacht!",
     "completedProgress": "{{done}} von {{total}} Leistungen erbracht",
-    "chaptersHeading": "Kapitel",
-    "noChaptersYet": "Noch keine Kapitel angelegt",
-    "progressUnknown": "Ihr Fortschritt konnte nicht geladen werden. Die Häkchen an abgeschlossenen Kapiteln fehlen gerade — laden Sie die Seite neu.",
+    "chaptersHeading": "Lektionen",
+    "noChaptersYet": "Noch keine Lektionen angelegt",
+    "progressUnknown": "Ihr Fortschritt konnte nicht geladen werden. Die Häkchen an abgeschlossenen Lektionen fehlen gerade — laden Sie die Seite neu.",
     "chapterRead": "Gelesen"
   },
   "course": {
@@ -898,33 +898,33 @@
   },
   "chapter": {
     "attachmentEyebrow": "Anhang",
-    "blocksLoadFailed": "Dieses Kapitel konnte nicht geladen werden",
+    "blocksLoadFailed": "Diese Lektion konnte nicht geladen werden",
     "blocksLoadFailedDescription": "Der Lektionsinhalt ließ sich nicht laden. Meist ist das ein vorübergehendes Netzproblem — versuchen Sie es erneut.",
-    "chapterOf": "Kapitel {{current}} von {{total}}",
+    "chapterOf": "Lektion {{current}} von {{total}}",
     "completed": "Abgeschlossen",
     "downloadFile": "Datei herunterladen",
     "downloadFileAria": "Anhang herunterladen: {{name}}",
-    "emptyContent": "Zu diesem Kapitel wurde noch kein Inhalt hinzugefügt.",
+    "emptyContent": "Zu dieser Lektion wurde noch kein Inhalt hinzugefügt.",
     "finishCourseLabel": "Kursübersicht und Zertifikat",
     "finishEyebrow": "Kurs abschließen",
-    "goToPreviousChapter": "Zum vorigen Kapitel",
+    "goToPreviousChapter": "Zur vorigen Lektion",
     "imageLightbox": {
       "dialogAria": "Bildvorschau",
       "closeAria": "Bildvorschau schließen"
     },
-    "lockedHint": "Schließen Sie das vorige Kapitel ab, um dieses zu öffnen.",
-    "lockedTitle": "Kapitel gesperrt",
+    "lockedHint": "Schließen Sie die vorige Lektion ab, um diese zu öffnen.",
+    "lockedTitle": "Lektion gesperrt",
     "markRead": "Als gelesen markieren",
     "markReadFailed": "Konnte nicht markiert werden",
-    "markedRead": "Kapitel gelesen",
-    "navAriaLabel": "Kapitelnavigation",
-    "nextChapter": "Nächstes Kapitel",
+    "markedRead": "Lektion gelesen",
+    "navAriaLabel": "Lektionsnavigation",
+    "nextChapter": "Nächste Lektion",
     "nextEyebrow": "Weiter",
     "notTranslated": "Diese Lektion ist noch nicht in Ihrer Sprache verfügbar. Sie erscheint hier, sobald sie fertig ist.",
-    "positionEyebrow": "Kapitel {{current}} von {{total}}",
-    "prevChapter": "Voriges Kapitel",
+    "positionEyebrow": "Lektion {{current}} von {{total}}",
+    "prevChapter": "Vorige Lektion",
     "prevEyebrow": "Zurück",
-    "submitAssignmentToComplete": "Reichen Sie die Aufgabe ein, um dieses Kapitel abzuschließen"
+    "submitAssignmentToComplete": "Reichen Sie die Aufgabe ein, um diese Lektion abzuschließen"
   },
   "quiz": {
     "answerAll": "Beantworten Sie alle Fragen, um abzugeben",
@@ -1012,7 +1012,7 @@
     },
     "fields": {
       "quizTitle": "Titel des Tests",
-      "titlePlaceholder": "z. B. Wiederholung zum Kapitel",
+      "titlePlaceholder": "z. B. Wiederholung zur Lektion",
       "description": "Beschreibung (optional)",
       "descriptionPlaceholder": "Kurze Beschreibung des Tests …",
       "passingScore": "Bestehensgrenze (%)",
@@ -1205,10 +1205,10 @@
     "loadFailed": "Aufgaben konnten nicht geladen werden. Bitte neu laden.",
     "heading": "Aufgaben ({{count}})",
     "newAssignment": "Neue Aufgabe",
-    "empty": "Keine Aufgaben in diesem Kapitel.",
+    "empty": "Keine Aufgaben in dieser Lektion.",
     "form": {
       "title": "Titel",
-      "titlePlaceholder": "z. B. Aufsatz zum Kapitel",
+      "titlePlaceholder": "z. B. Aufsatz zur Lektion",
       "description": "Beschreibung (optional)",
       "descriptionPlaceholder": "Anweisungen zur Aufgabe …",
       "maxScore": "Höchstpunktzahl",
@@ -1361,7 +1361,7 @@
       "name": "Name",
       "email": "E-Mail",
       "progress": "Fortschritt",
-      "chapters": "Kapitel",
+      "chapters": "Lektionen",
       "quizAvg": "Ø Test",
       "assignAvg": "Ø Aufgaben",
       "lastActive": "Zuletzt aktiv",
@@ -1377,10 +1377,10 @@
       "overallGrade": "Gesamtnote",
       "overallGradeNa": "–",
       "enrolled": "Eingeschrieben",
-      "chaptersCompleted": "Abgeschlossene Kapitel",
+      "chaptersCompleted": "Abgeschlossene Lektionen",
       "chaptersCompletedValue": "{{done}} von {{total}}",
       "progress": "Fortschritt",
-      "chapterBreakdown": "Aufschlüsselung nach Kapiteln",
+      "chapterBreakdown": "Aufschlüsselung nach Lektionen",
       "loadingDetail": "Aufschlüsselung wird geladen …",
       "detailFailed": "Die Aufschlüsselung konnte nicht geladen werden.",
       "retry": "Erneut versuchen",
@@ -1421,7 +1421,7 @@
     },
     "excuse": {
       "title": "Befreiung von „{{chapter}}“",
-      "explainer": "Die Arbeit zählt nicht mehr für die Note, und das Kapitel gilt als erledigt — der Fortschritt kann also 100 % erreichen und das Zertifikat bleibt erreichbar. Sie können die Arbeit jederzeit zurückgeben.",
+      "explainer": "Die Arbeit zählt nicht mehr für die Note, und die Lektion gilt als erledigt — der Fortschritt kann also 100 % erreichen und das Zertifikat bleibt erreichbar. Sie können die Arbeit jederzeit zurückgeben.",
       "reasonLabel": "Grund (optional, für die Leitung sichtbar)",
       "reasonPlaceholder": "Krankheit, Trauerfall, später eingestiegen …",
       "confirm": "Befreien"
@@ -1602,7 +1602,7 @@
       "restoreFailed": "Kurs konnte nicht wiederhergestellt werden",
       "confirmDelete": {
         "title": "Diesen Kurs endgültig löschen?",
-        "description": "Der Kurs und alle seine Daten (Module, Kapitel, Einschreibungen, Noten) werden endgültig gelöscht. Das lässt sich nicht rückgängig machen.",
+        "description": "Der Kurs und alle seine Daten (Lektionen, Module, Einschreibungen, Noten) werden endgültig gelöscht. Das lässt sich nicht rückgängig machen.",
         "confirm": "Endgültig löschen"
       },
       "deleted": "Kurs endgültig gelöscht",
@@ -1905,7 +1905,7 @@
     "unsavedChanges": "Sie haben ungespeicherte Änderungen",
     "typeChangeConfirm": {
       "title": "Art der Lektion ändern?",
-      "description": "Nichts von dem, was Sie geschrieben haben, wird gelöscht. Der Editor „{{from}}“ wird ausgeblendet, solange das Kapitel ein „{{to}}“ ist, und kommt mit allem Inhalt zurück, sobald Sie den Typ zurückstellen.",
+      "description": "Nichts von dem, was Sie geschrieben haben, wird gelöscht. Der Editor „{{from}}“ wird ausgeblendet, solange die Lektion eine „{{to}}“ ist, und kommt mit allem Inhalt zurück, sobald Sie den Typ zurückstellen.",
       "confirm": "Typ ändern"
     }
   },
@@ -1924,8 +1924,8 @@
     "studentsEnrolledOfMax": "{{enrolled}}/{{max}} Studierende eingeschrieben",
     "moduleCount_one": "{{count}} Modul",
     "moduleCount_other": "{{count}} Module",
-    "chapterCount_one": "{{count}} Kapitel",
-    "chapterCount_other": "{{count}} Kapitel",
+    "chapterCount_one": "{{count}} Lektion",
+    "chapterCount_other": "{{count}} Lektionen",
     "percentComplete": "{{percent}} % abgeschlossen",
     "modulesHeading": "Module",
     "openModule": "Öffnen",
@@ -1962,9 +1962,9 @@
     "preview": {
       "eyebrow": "Vorschau",
       "backToEditor": "Zurück zum Kurseditor",
-      "note": "So sehen Studierende den Kurs nach der Veröffentlichung. Bis dahin kann sich niemand einschreiben — Sie können aber jedes Kapitel öffnen und es wie Studierende durchgehen.",
+      "note": "So sehen Studierende den Kurs nach der Veröffentlichung. Bis dahin kann sich niemand einschreiben — Sie können aber jede Lektion öffnen und sie wie Studierende durchgehen.",
       "heading": "Inhalt",
-      "emptyModule": "Dieses Modul hat noch keine Kapitel.",
+      "emptyModule": "Dieses Modul hat noch keine Lektionen.",
       "empty": "Noch keine Lektionen — fügen Sie sie im Editor hinzu."
     }
   },
@@ -1995,7 +1995,7 @@
     },
     "summary": {
       "title": "Noten der Studierenden",
-      "description": "Automatisch berechnet aus Testergebnissen, Aufgabennoten und abgeschlossenen Kapiteln. Klicken Sie eine Person an, um die Note von Hand zu setzen.",
+      "description": "Automatisch berechnet aus Testergebnissen, Aufgabennoten und abgeschlossenen Lektionen. Klicken Sie eine Person an, um die Note von Hand zu setzen.",
       "empty": "Noch niemand eingeschrieben.",
       "thStudent": "Studierende Person",
       "thQuiz": "Test",
@@ -2014,8 +2014,8 @@
       "assignmentsNotCounted": "Aufgaben stehen in diesem Kurs auf 0 %, ihre Noten werden also angezeigt, wirken sich aber nicht auf das Gesamtergebnis aus — die Note kommt allein aus den Tests. Ändern Sie die Gewichtung in den Bewertungseinstellungen, wenn Aufgaben zählen sollen.",
       "quizzesNotCounted": "Tests stehen in diesem Kurs auf 0 %, ihre Ergebnisse werden also angezeigt, wirken sich aber nicht auf das Gesamtergebnis aus — die Note kommt allein aus den Aufgaben. Ändern Sie die Gewichtung in den Bewertungseinstellungen, wenn Tests zählen sollen.",
       "notGradedYetCourse": "In diesem Kurs wurde noch nichts bewertet, es gibt also keine Prozentwerte. Sie erscheinen, sobald der erste Test geschrieben oder die erste Aufgabe bewertet ist.",
-      "chaptersNotFilledIn": "Dieser Kurs hat Kapitel, die bewertet werden sollen, aber weder Test noch Aufgabe sind bisher ausgefüllt — ein Test wird erst gespeichert, wenn er Fragen hat. Prozentwerte erscheinen, sobald der Inhalt da ist. Bis dahin werden Studierende an nichts gemessen.",
-      "completionPassCourse": "Dieser Kurs hat weder Tests noch Aufgaben, es lässt sich also kein Prozentwert berechnen. Er wird durch Abschluss bestanden: wer jedes Kapitel erledigt, besteht. Das ist so gewollt, kein Fehler.",
+      "chaptersNotFilledIn": "Dieser Kurs hat Lektionen, die bewertet werden sollen, aber weder Test noch Aufgabe sind bisher ausgefüllt — ein Test wird erst gespeichert, wenn er Fragen hat. Prozentwerte erscheinen, sobald der Inhalt da ist. Bis dahin werden Studierende an nichts gemessen.",
+      "completionPassCourse": "Dieser Kurs hat weder Tests noch Aufgaben, es lässt sich also kein Prozentwert berechnen. Er wird durch Abschluss bestanden: wer jede Lektion erledigt, besteht. Das ist so gewollt, kein Fehler.",
       "quizzesWeighZero": "Sie haben Tests in diesem Kurs auf 0 % gesetzt, sie ergeben also keinen Prozentwert — ihre Ergebnisse sehen Sie im Reiter „Notentabelle“. Ein Prozentwert erscheint, sobald Sie die erste Aufgabe bewerten: hier tragen die Aufgaben die ganze Note. Damit Tests zählen, ändern Sie die Gewichtung in den Bewertungseinstellungen.",
       "quizzesWeighZeroNoAssignments": "Sie haben Tests auf 0 % gesetzt, und dieser Kurs hat keine Aufgaben — es gibt also nichts, woraus sich ein Prozentwert berechnen ließe. Die Testergebnisse sehen Sie im Reiter „Notentabelle“. Für eine Note fügen Sie eine Aufgabe hinzu oder geben Sie den Tests Gewicht.",
       "assignmentsWeighZeroNoQuizzes": "Sie haben Aufgaben auf 0 % gesetzt, und dieser Kurs hat keine Tests — es gibt also nichts, woraus sich ein Prozentwert berechnen ließe. Die Aufgabennoten sehen Sie im Reiter „Notentabelle“. Für einen Prozentwert fügen Sie einen Test hinzu oder geben Sie den Aufgaben Gewicht.",
@@ -2041,7 +2041,7 @@
     },
     "table": {
       "title": "Notentabelle",
-      "description": "Lese-/Videokapitel = 1 Punkt für den Abschluss · Test/Prüfung = Punktzahl · Aufgabe = vom Dozenten vergebene Punkte",
+      "description": "Lese-/Videolektionen = 1 Punkt für den Abschluss · Test/Prüfung = Punktzahl · Aufgabe = vom Dozenten vergebene Punkte",
       "thStudent": "Studierende Person",
       "thTotal": "Gesamt",
       "overrideGrade": "Note von Hand setzen",
@@ -2354,8 +2354,8 @@
         "approve": "Bestätigt",
         "attach_course": "Kurs zugeordnet",
         "bulk_role_update": "Rollen im Stapel geändert",
-        "chapter_completed_by_teacher": "Kapitel von Lehrkraft abgehakt",
-        "chapter_completion_removed_by_teacher": "Kapitelmarkierung entfernt",
+        "chapter_completed_by_teacher": "Lektion von Lehrkraft abgehakt",
+        "chapter_completion_removed_by_teacher": "Lektionsmarkierung entfernt",
         "complete": "Abschluss",
         "create": "Erstellt",
         "delete": "Gelöscht",
@@ -2386,7 +2386,7 @@
       "resourceValue": {
         "course": "Kurs",
         "module": "Modul",
-        "chapter": "Kapitel",
+        "chapter": "Lektion",
         "enrollment": "Einschreibung",
         "certificate": "Zertifikat",
         "assignment_submission": "Aufgabenabgabe",
@@ -2565,7 +2565,7 @@
   },
   "chapterTypes": {
     "reading": {
-      "label": "Lektion",
+      "label": "Lesetext",
       "description": "Text, Video, Audio, Dateien und mehr in einer Lektion verbinden"
     },
     "quiz": {
@@ -2604,15 +2604,15 @@
       "hasCoverImage": "Der Kurs hat ein Titelbild.",
       "translationsComplete": "Jede Sprache hat diesen Kurs. In den Katalog kommt er, sobald das für alle gilt.",
       "hasEnrollmentWindow": "Beginn und Ende der Einschreibung sind gesetzt.",
-      "hasAtLeastOneChapter": "Der Kurs hat mindestens ein Kapitel.",
+      "hasAtLeastOneChapter": "Der Kurs hat mindestens eine Lektion.",
       "hasMultipleModules": "Der Kurs hat zwei oder mehr Module.",
-      "moduleHasChapters": "„{{title}}“ hat mindestens ein Kapitel.",
+      "moduleHasChapters": "„{{title}}“ hat mindestens eine Lektion.",
       "readingHasContent": "„{{title}}“ hat Inhalt zum Lesen.",
       "quizHasQuestion": "Der Test in „{{title}}“ hat mindestens eine Frage.",
       "examHasQuestion": "Die Prüfung in „{{title}}“ hat mindestens eine Frage.",
       "quizQuestionsComplete": "Jede Frage in „{{title}}“ hat, was sie braucht (Antworten, Markierung der richtigen).",
       "assignmentHasBrief": "Die Aufgabe in „{{title}}“ hat eine Beschreibung.",
-      "quizThresholdAboveCourse": "Ein Test verlangt eine höhere Punktzahl als der Kurs. Studierende können den Kurs auf dem Papier bestehen und das Kapitel doch nie abschließen — das Zertifikat bleibt außer Reichweite.",
+      "quizThresholdAboveCourse": "Ein Test verlangt eine höhere Punktzahl als der Kurs. Studierende können den Kurs auf dem Papier bestehen und die Lektion doch nie abschließen — das Zertifikat bleibt außer Reichweite.",
       "quizWeightNonzero": "Tests zählen für die Endnote.",
       "assignmentWeightNonzero": "Aufgaben zählen für die Endnote.",
       "quizThresholdBelowCourse": "Manche Tests bestehen bei einer niedrigeren Punktzahl als der Kurs. Man kann jeden Test schaffen und trotzdem unter der Bestehensgrenze des Kurses landen."
@@ -2622,15 +2622,15 @@
       "hasCoverImage": "Der Kurs hat kein Titelbild.",
       "translationsComplete": "Noch nicht jede Sprache hat diesen Kurs. In den Katalog kommt er, sobald das für alle gilt.",
       "hasEnrollmentWindow": "Beginn und Ende der Einschreibung sind nicht gesetzt.",
-      "hasAtLeastOneChapter": "Der Kurs hat noch kein Kapitel.",
+      "hasAtLeastOneChapter": "Der Kurs hat noch keine Lektion.",
       "hasMultipleModules": "Der Kurs hat nur ein Modul.",
-      "moduleHasChapters": "„{{title}}“ hat noch kein Kapitel.",
+      "moduleHasChapters": "„{{title}}“ hat noch keine Lektion.",
       "readingHasContent": "„{{title}}“ hat noch keinen Inhalt zum Lesen.",
       "quizHasQuestion": "Der Test in „{{title}}“ hat noch keine Frage.",
       "examHasQuestion": "Die Prüfung in „{{title}}“ hat noch keine Frage.",
       "quizQuestionsComplete": "Einige Fragen in „{{title}}“ sind unvollständig (Antworten oder Markierung der richtigen fehlen).",
       "assignmentHasBrief": "Die Aufgabe in „{{title}}“ hat noch keine Beschreibung.",
-      "quizThresholdAboveCourse": "Ein Test verlangt eine höhere Punktzahl als der Kurs. Studierende können den Kurs auf dem Papier bestehen und das Kapitel doch nie abschließen — das Zertifikat bleibt außer Reichweite.",
+      "quizThresholdAboveCourse": "Ein Test verlangt eine höhere Punktzahl als der Kurs. Studierende können den Kurs auf dem Papier bestehen und die Lektion doch nie abschließen — das Zertifikat bleibt außer Reichweite.",
       "quizWeightNonzero": "Tests zählen nicht für die Endnote.",
       "assignmentWeightNonzero": "Aufgaben zählen nicht für die Endnote.",
       "quizThresholdBelowCourse": "Manche Tests bestehen bei einer niedrigeren Punktzahl als der Kurs. Man kann jeden Test schaffen und trotzdem unter der Bestehensgrenze des Kurses landen."

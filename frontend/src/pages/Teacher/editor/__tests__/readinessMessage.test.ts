@@ -51,7 +51,7 @@ describe("readinessMessage", () => {
         subject: { type: "module", id: "m-1", title: "Бытие" },
       }),
     )
-    expect(text).toBe("В «Бытие» нет ни одной главы.")
+    expect(text).toBe("В «Бытие» нет ни одного урока.")
   })
 
   it("does not say the course is on every language when it is not", () => {

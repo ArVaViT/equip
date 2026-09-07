@@ -155,7 +155,7 @@ describe("a lesson that no module groups", () => {
 
   it("counts the lesson against the course", async () => {
     await open("/courses/c1/chapters/l3", "Antioch")
-    expect(screen.getAllByText("Chapter 3 of 4").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Lesson 3 of 4").length).toBeGreaterThan(0)
   })
 
   it("leads back to the course, because there is no module to lead back to", async () => {
@@ -214,10 +214,10 @@ describe("a lesson inside a module", () => {
   })
 
   it("counts the lesson against the course, not against its module", async () => {
-    // «Chapter 1 of 1» on the last module told a student they were at the
+    // «Lesson 1 of 1» on the last module told a student they were at the
     // start of something they were three lessons into.
     await open("/courses/c1/modules/m2/chapters/b1", "Antioch")
-    expect(screen.getAllByText("Chapter 3 of 3").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Lesson 3 of 3").length).toBeGreaterThan(0)
   })
 
   it("offers the course after the last lesson of the last module", async () => {
