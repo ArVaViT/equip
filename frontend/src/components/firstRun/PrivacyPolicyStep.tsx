@@ -10,6 +10,12 @@ import { toast } from "@/lib/toast"
 
 interface Props {
   onAccept: () => void
+  /**
+   * This person has accepted an earlier version and the documents changed
+   * since. Same gate, same checkbox, different words: they are told what
+   * happened instead of being welcomed as if they had just signed up.
+   */
+  renewal?: boolean
 }
 
 /**
@@ -31,8 +37,14 @@ interface Props {
  * footer, and the acceptance goes to the server with the version and a hash
  * of the text — because proving that a person agreed, and to what, is the
  * entire job of a consent record.
+ *
+ * The server compares acceptances by (document, version). Bumping a version
+ * in ``backend/app/legal/registry.py`` is what brings everybody back to this
+ * screen — deliberately, a new text needs a new agreement — and ``renewal``
+ * is how the screen knows to explain that rather than start from "Before we
+ * begin".
  */
-export function PrivacyPolicyStep({ onAccept }: Props) {
+export function PrivacyPolicyStep({ onAccept, renewal = false }: Props) {
   const { i18n, t } = useTranslation()
   // The language the reader is actually in. It used to collapse to "ru" for
   // everyone but English readers, so a German student's consent record said
@@ -84,13 +96,13 @@ export function PrivacyPolicyStep({ onAccept }: Props) {
     <div className="flex w-full max-w-xl flex-col items-center gap-5 text-center">
       <span className="block h-px w-12 bg-accent/60" aria-hidden />
       <p className="text-xs font-medium uppercase tracking-[0.22em] text-accent">
-        {t("firstRun.privacy.eyebrow")}
+        {t(renewal ? "firstRun.privacy.renewal.eyebrow" : "firstRun.privacy.eyebrow")}
       </p>
       <h1 className="font-serif text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-3xl">
-        {t("firstRun.privacy.title")}
+        {t(renewal ? "firstRun.privacy.renewal.title" : "firstRun.privacy.title")}
       </h1>
       <p className="max-w-md text-sm leading-relaxed text-ink-muted sm:text-base">
-        {t("firstRun.privacy.intro")}
+        {t(renewal ? "firstRun.privacy.renewal.intro" : "firstRun.privacy.intro")}
       </p>
 
       <ul className="mt-2 w-full space-y-3 text-left text-sm leading-relaxed text-ink-muted">

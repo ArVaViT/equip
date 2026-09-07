@@ -14,9 +14,10 @@ import { cacheClear } from "@/lib/cache"
 // is ru AND browser locale differs") tripped indistinguishably for
 // email signups whose user genuinely registered in ru while their
 // browser was set to en. Result: silent override of the user's
-// explicit registration choice. The FirstRunFlow's SetupStep is now
-// the canonical first-run locale UX for ALL signup paths (OAuth and
-// email alike), so the heuristic is gone.
+// explicit registration choice. The heuristic is gone: ``useLocaleSync``
+// reports the browser's language for a profile whose locale nobody chose,
+// and the language switcher records real choices. The first-run flow no
+// longer asks about language at all.
 
 /**
  * Synchronous "is anyone plausibly signed in?" probe used to seed the initial
@@ -112,6 +113,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             locale_source: data.locale_source ?? "chosen",
             created_at: data.created_at,
             updated_at: data.updated_at,
+            // Null until the first-run flow has been finished once, on any
+            // device. ``FirstRunFlow`` reads this, not its own storage flag.
+            onboarding_completed_at: data.onboarding_completed_at ?? null,
           }
           setUser(nextUser)
           // Attach the authenticated user to the current RUM session so

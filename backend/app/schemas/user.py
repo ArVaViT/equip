@@ -27,6 +27,10 @@ class UserResponse(UserBase):
     created_at: datetime | None = None
     updated_at: datetime | None = None
     avatar_url: str | None = None
+    # ``None`` until the first-run flow has been finished once, on any
+    # device. The client shows the flow while this is null and nothing else
+    # — its own ``localStorage`` flag is a cache of this value, not a record.
+    onboarding_completed_at: datetime | None = None
 
 
 class PreferredLocaleUpdate(RequestModel):

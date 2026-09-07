@@ -3,15 +3,18 @@ import { useTranslation } from "react-i18next"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { legalService } from "@/services/legal"
+import { onboardingService } from "@/services/onboarding"
 import { useAuth } from "@/context/useAuth"
 import { setFirstRunActive } from "@/lib/tourState"
 import type { Course } from "@/types"
 import { PrivacyPolicyStep } from "./PrivacyPolicyStep"
-import { SetupStep } from "./SetupStep"
+import { NameStep } from "./NameStep"
 import { CoursePickerStep } from "./CoursePickerStep"
 import { EnrollSplash } from "./EnrollSplash"
 import { firstNameOf } from "@/lib/names"
 import { EDITORIAL_EASE } from "@/lib/motion"
+import { firstRunCompletedKey, privacyAcceptedKey, grandTourSeenKey } from "@/lib/storageKeys"
+import { clearFlag, decideInitialStep, readFlag, writeFlag, type Step } from "./firstRunStep"
 
 /** CSS selector for elements eligible for the focus trap. Mirrors
  *  the WAI-ARIA "tabbable elements" definition without depending on
@@ -19,99 +22,40 @@ import { EDITORIAL_EASE } from "@/lib/motion"
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
-import {
-  firstRunPickerKey,
-  firstRunSetupKey,
-  privacyAcceptedKey,
-  grandTourSeenKey,
-} from "@/lib/storageKeys"
-
-function readFlag(key: string): boolean {
-  if (typeof window === "undefined") return false
-  try {
-    return window.localStorage.getItem(key) === "1"
-  } catch {
-    return false
-  }
-}
-
-function writeFlag(key: string): void {
-  if (typeof window === "undefined") return
-  try {
-    window.localStorage.setItem(key, "1")
-  } catch {
-    /* private browsing — the gate will fire again next visit */
-  }
-}
-
-function clearFlag(key: string): void {
-  if (typeof window === "undefined") return
-  try {
-    window.localStorage.removeItem(key)
-  } catch {
-    /* private browsing — nothing was cached to begin with */
-  }
-}
-
-type Step = "privacy" | "setup" | "picker" | "splash" | "done"
-
 /**
- * Which step to show.
+ * Full-screen first-run orchestrator: consent → (name) → course picker →
+ * done. Which step applies is decided in ``firstRunStep.ts``, from the
+ * server's answers: `legalService.status()` for consent and
+ * `profiles.onboarding_completed_at` for the rest. The two `localStorage`
+ * flags are caches of those answers, so nothing flashes before they arrive.
  *
- * The legal gate is decided by the server now — `legalService.status()` says
- * what is still outstanding. The `localStorage` flag survives, demoted: it is
- * a **cache**, not evidence. Without it the gate could only appear after a
- * round-trip, which means the dashboard flashes at somebody who has not
- * agreed to anything; and its absence is the safe direction to be wrong in,
- * because being asked twice costs a click while being asked never is the bug
- * this whole change exists to fix.
+ * Rendered above everything else (z-index above the grand tour overlay's
+ * 1000000000) so it blocks all interaction until the person is through, or
+ * closes the browser.
  *
- * So: trust the cache until the server answers, then believe the server and
- * rewrite the cache. What the cache can no longer do is *prove* anything —
- * clearing a browser erased it, a second device never had it, and that was
- * the entire problem.
+ * Signals to the ``tourState`` module while it's mounted so the grand tour
+ * and every per-page tour bail their own auto-starts. They resume the
+ * moment this component unmounts.
  *
- * The flags for setup and the picker stay purely local. They are preferences
- * about whether to show a wizard again, not commitments, and nothing outside
- * this component ever has to prove they happened.
- */
-function decideInitialStep(userId: string | undefined, legalOutstanding: boolean | null): Step {
-  if (!userId) return "done"
-  const stillOwed = legalOutstanding ?? !readFlag(privacyAcceptedKey(userId))
-  if (stillOwed) return "privacy"
-  if (!readFlag(firstRunSetupKey(userId))) return "setup"
-  if (!readFlag(firstRunPickerKey(userId))) return "picker"
-  return "done"
-}
-
-/**
- * Full-screen first-run orchestrator: Privacy Policy → Quick Setup
- * → done.
- *
- * Rendered above everything else (z-index above the grand tour
- * overlay's 1000000000) so it blocks all interaction until the user
- * either accepts privacy + completes/skips setup, or closes the
- * browser. Persistence is per-user-id ``localStorage``, scoped so a
- * shared device's second account still gets its own first run.
- *
- * Signals to the ``tourState`` module while it's mounted so the grand
- * tour and every per-page tour bail their own auto-starts. They
- * resume the moment this component unmounts.
- *
- * Mount once inside ``AppRoutes`` (after AuthProvider) — see
- * ``App.tsx``. Mounting in multiple places will race the modal stack.
+ * Mount once inside ``AppRoutes`` (after AuthProvider) — see ``App.tsx``.
+ * Mounting in multiple places will race the modal stack.
  */
 export function FirstRunFlow() {
-  const { user } = useAuth()
+  const { user, applyUser } = useAuth()
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const prefersReducedMotion = useReducedMotion()
+  // Primitives rather than the ``user`` object: a Supabase TOKEN_REFRESHED
+  // rewrites the object without changing any of these, and the effects
+  // below must not re-derive the step over nothing.
   const userId = user?.id
+  const role = user?.role
+  const fullName = user?.full_name ?? null
+  const completedAt = user?.onboarding_completed_at ?? null
   const firstName = firstNameOf(user?.full_name)
   const dialogRef = useRef<HTMLDivElement>(null)
-  // ``useState`` initialiser runs once per mount; ``userId`` change
-  // (sign-in, account switch) re-derives via the effect below.
+
   /**
    * The two routes the gate itself points at.
    *
@@ -125,11 +69,20 @@ export function FirstRunFlow() {
    */
   const exempt = pathname === "/privacy" || pathname === "/terms"
 
-  //: null until the server has answered. See `decideInitialStep`.
+  // null until the server has answered. See `decideInitialStep`.
   const [legalOutstanding, setLegalOutstanding] = useState<boolean | null>(null)
-  const [step, setStep] = useState<Step>(() =>
-    pathname === "/privacy" || pathname === "/terms" ? "done" : decideInitialStep(userId, null),
-  )
+  // Whether this person has accepted *some* version before. When they have
+  // and something is outstanding anyway, the documents changed under them —
+  // and the screen must say so rather than greet them as a newcomer.
+  const [acceptedBefore, setAcceptedBefore] = useState(false)
+  // Skipped the name step this session. Without this, the legal answer
+  // landing a moment after the skip would re-derive the step and send the
+  // person back to the question they had just declined.
+  const nameDeclined = useRef(false)
+  // The completion report already sent (or in flight) for this user, so the
+  // picker closing and the cache-heal effect below cannot both post it.
+  const reportedFor = useRef<string | null>(null)
+  const [step, setStep] = useState<Step>(() => (exempt ? "done" : decideInitialStep(user, null)))
   // The course the user enrolled in via the picker. Drives the
   // EnrollSplash celebration and the post-splash navigation. We
   // keep it as state (not a ref) so the splash re-renders on
@@ -139,6 +92,7 @@ export function FirstRunFlow() {
   useEffect(() => {
     if (!userId) {
       setLegalOutstanding(null)
+      setAcceptedBefore(false)
       return
     }
     let cancelled = false
@@ -148,6 +102,7 @@ export function FirstRunFlow() {
         if (cancelled) return
         const owed = status.outstanding.length > 0
         setLegalOutstanding(owed)
+        setAcceptedBefore(status.accepted.length > 0)
         // Keep the cache honest in both directions, including the case that
         // matters: somebody who accepted on their phone should not meet the
         // gate again on the laptop just because this browser never saw it.
@@ -166,9 +121,44 @@ export function FirstRunFlow() {
     }
   }, [userId])
 
+  // Re-derive the step whenever a fact it depends on changes. The splash is
+  // the one step that must survive this: the completion report lands while
+  // it plays, and "done" here would cut it short and lose the navigation
+  // into the course.
   useEffect(() => {
-    setStep(exempt ? "done" : decideInitialStep(userId, legalOutstanding))
-  }, [userId, legalOutstanding, exempt])
+    const next = exempt
+      ? "done"
+      : decideInitialStep(
+          userId && role
+            ? { id: userId, role, full_name: fullName, onboarding_completed_at: completedAt }
+            : null,
+          legalOutstanding,
+          nameDeclined.current,
+        )
+    setStep((prev) => (prev === "splash" ? prev : next))
+  }, [userId, role, fullName, completedAt, legalOutstanding, exempt])
+
+  const reportCompletion = useCallback(() => {
+    if (!userId || reportedFor.current === userId) return
+    reportedFor.current = userId
+    onboardingService.complete().then(applyUser, () => {
+      // The cache still closes the gate in this browser; the next visit
+      // reports again. Nothing to tell the person.
+      reportedFor.current = null
+    })
+  }, [userId, applyUser])
+
+  // The server has no record that this person finished the flow, but the
+  // flow is not going to show them anything: either this browser holds the
+  // old flag (they finished before the server kept a record), or they are
+  // not a student and never had a picker to finish. Tell the server, so the
+  // next device does not depend on this one. Waits for consent to settle —
+  // the mark means "through the flow", and consent is the flow's first step.
+  useEffect(() => {
+    if (!userId || !role || completedAt || legalOutstanding !== false) return
+    const finished = readFlag(firstRunCompletedKey(userId)) || role !== "student"
+    if (finished) reportCompletion()
+  }, [userId, role, completedAt, legalOutstanding, reportCompletion])
 
   // Autofocus the first focusable element on each step transition so
   // keyboard users land inside the dialog. Otherwise focus stays on
@@ -179,11 +169,8 @@ export function FirstRunFlow() {
     if (!root) return
     // ``requestAnimationFrame`` instead of immediate query so React's
     // commit has settled and the focusable elements actually exist.
-    // We yield to a step-specific autofocus (e.g. ``SetupStep``
-    // focuses its name input) by skipping if focus is already
-    // inside the dialog — otherwise the parent's "first focusable"
-    // (the Avatar button) would steal focus from the child's
-    // intentional choice.
+    // We yield to a step-specific autofocus (``NameStep`` focuses its
+    // input) by skipping if focus is already inside the dialog.
     const id = window.requestAnimationFrame(() => {
       if (root.contains(document.activeElement)) return
       const focusable = root.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)
@@ -242,31 +229,26 @@ export function FirstRunFlow() {
 
   const handlePrivacyAccept = useCallback(() => {
     if (userId) writeFlag(privacyAcceptedKey(userId))
+    // The step effect takes it from here: name, picker, or — for somebody
+    // re-accepting changed documents — straight back into the product.
     setLegalOutstanding(false)
-    setStep("setup")
   }, [userId])
 
-  const handleSetupComplete = useCallback(() => {
-    if (userId) writeFlag(firstRunSetupKey(userId))
+  const handleNameDone = useCallback(() => {
+    nameDeclined.current = true
     setStep("picker")
-  }, [userId])
-
-  const handleSetupSkip = useCallback(() => {
-    // Skip writes the flag too — the user has made the choice to
-    // bypass setup; pestering them again next visit is wrong.
-    if (userId) writeFlag(firstRunSetupKey(userId))
-    setStep("picker")
-  }, [userId])
+  }, [])
 
   const closePickerFlow = useCallback(() => {
     if (!userId) return
-    writeFlag(firstRunPickerKey(userId))
+    writeFlag(firstRunCompletedKey(userId))
     // Also tick the grand-tour-seen flag so the cross-page
     // popover tour doesn't auto-fire on top of the user's brand-
     // new enrollment / dashboard. Manual replay via the
     // WelcomeCard "Take a tour" link still works.
     writeFlag(grandTourSeenKey(userId))
-  }, [userId])
+    reportCompletion()
+  }, [userId, reportCompletion])
 
   const handlePickerEnrolled = useCallback(
     (course: Course) => {
@@ -287,11 +269,6 @@ export function FirstRunFlow() {
       navigate(`/courses/${enrolledCourse.id}`)
     }
   }, [navigate, enrolledCourse])
-
-  const handlePickerBrowse = useCallback(() => {
-    closePickerFlow()
-    setStep("done")
-  }, [closePickerFlow])
 
   const handlePickerSkip = useCallback(() => {
     closePickerFlow()
@@ -315,7 +292,7 @@ export function FirstRunFlow() {
     )
   }
 
-  // Editorial slide+fade between the three pre-splash steps so the
+  // Editorial slide+fade between the pre-splash steps so the
   // transitions feel like scenes in a play rather than abrupt UI
   // swaps. Cuts to instant for reduced-motion users.
   const motionInitial = prefersReducedMotion
@@ -325,6 +302,13 @@ export function FirstRunFlow() {
   const motionExit = prefersReducedMotion
     ? { opacity: 0 }
     : { opacity: 0, y: -8, scale: 0.99 }
+
+  const heading =
+    step === "privacy"
+      ? t(acceptedBefore ? "firstRun.privacy.renewal.eyebrow" : "firstRun.privacy.eyebrow")
+      : step === "name"
+        ? t("firstRun.name.eyebrow")
+        : t("firstRun.picker.eyebrow")
 
   return (
     <div
@@ -339,11 +323,7 @@ export function FirstRunFlow() {
           English had the one part of the first-run flow they cannot see
           announced in a language they did not choose. */}
       <h1 id="first-run-heading" className="sr-only">
-        {step === "privacy"
-          ? t("firstRun.privacy.eyebrow")
-          : step === "setup"
-            ? t("firstRun.setup.eyebrow")
-            : t("firstRun.picker.eyebrow")}
+        {heading}
       </h1>
       <AnimatePresence mode="wait" initial={false}>
         {step === "privacy" && (
@@ -355,23 +335,19 @@ export function FirstRunFlow() {
             transition={{ duration: 0.4, ease: EDITORIAL_EASE }}
             className="flex w-full justify-center"
           >
-            <PrivacyPolicyStep onAccept={handlePrivacyAccept} />
+            <PrivacyPolicyStep onAccept={handlePrivacyAccept} renewal={acceptedBefore} />
           </motion.div>
         )}
-        {step === "setup" && (
+        {step === "name" && (
           <motion.div
-            key="setup"
+            key="name"
             initial={motionInitial}
             animate={motionAnimate}
             exit={motionExit}
             transition={{ duration: 0.4, ease: EDITORIAL_EASE }}
             className="flex w-full justify-center"
           >
-            <SetupStep
-              firstName={firstName}
-              onComplete={handleSetupComplete}
-              onSkip={handleSetupSkip}
-            />
+            <NameStep onDone={handleNameDone} />
           </motion.div>
         )}
         {step === "picker" && (
@@ -386,7 +362,6 @@ export function FirstRunFlow() {
             <CoursePickerStep
               firstName={firstName}
               onEnrolled={handlePickerEnrolled}
-              onBrowse={handlePickerBrowse}
               onSkip={handlePickerSkip}
             />
           </motion.div>

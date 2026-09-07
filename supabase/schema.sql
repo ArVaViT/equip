@@ -830,6 +830,7 @@ CREATE TABLE public.profiles (
     deactivated_at timestamp with time zone,
     locale_source text DEFAULT 'default'::text NOT NULL,
     organization_id uuid,
+    onboarding_completed_at timestamp with time zone,
     CONSTRAINT chk_profiles_role CHECK ((role = ANY (ARRAY['admin'::text, 'director'::text, 'teacher'::text, 'student'::text]))),
     CONSTRAINT profiles_locale_source_check CHECK ((locale_source = ANY (ARRAY['default'::text, 'detected'::text, 'chosen'::text]))),
     CONSTRAINT profiles_preferred_locale_check CHECK (((preferred_locale)::text = ANY (ARRAY['ru'::text, 'en'::text, 'de'::text, 'uk'::text])))

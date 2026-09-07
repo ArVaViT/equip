@@ -184,50 +184,32 @@
       },
       "checkbox": "Ich habe die Datenschutzerklärung und die Nutzungsbedingungen gelesen und akzeptiere sie",
       "next": "Weiter",
-      "saveFailed": "Ihre Zustimmung konnte nicht gespeichert werden. Prüfen Sie die Verbindung und versuchen Sie es erneut."
+      "saveFailed": "Ihre Zustimmung konnte nicht gespeichert werden. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+      "renewal": {
+        "eyebrow": "Aktualisierte Dokumente",
+        "title": "Unsere Bedingungen haben sich geändert",
+        "intro": "Wir haben die Datenschutzerklärung und die Nutzungsbedingungen aktualisiert, seit Sie sie zuletzt akzeptiert haben. Bitte lesen Sie die neue Fassung und akzeptieren Sie sie, um fortzufahren — alles andere an Ihrem Konto bleibt, wie es war."
+      }
     },
-    "setup": {
-      "eyebrow": "Kurze Einrichtung",
-      "title": "Richten Sie Equip für sich ein",
-      "titleNamed": "Richten Sie Equip für sich ein, {{name}}",
-      "intro": "Ein paar Einstellungen zum Start. Jede davon können Sie später im Profil ändern.",
-      "avatar": {
-        "label": "Profilbild",
-        "change": "Bild wählen",
-        "tooBig": "Das Bild darf höchstens 2 MB groß sein."
-      },
-      "name": {
-        "label": "Anzeigename",
-        "placeholder": "Zum Ändern tippen",
-        "hint": "Aus Ihrer Registrierung übernommen — ändern Sie ihn, wenn Sie anders heißen möchten."
-      },
-      "email": {
-        "label": "E-Mail",
-        "hint": "Ihre E-Mail-Adresse ändern Sie nach der Einrichtung im Profil."
-      },
-      "theme": {
-        "label": "Darstellung",
-        "light": "Hell",
-        "dark": "Dunkel"
-      },
-      "language": {
-        "label": "Sprache"
-      },
-      "submit": "Loslegen",
-      "skip": "Später",
-      "saveFailed": "Ihre Änderungen konnten nicht gespeichert werden — es bleibt bei den bisherigen Werten. Sie können sie im Profil anpassen.",
-      "saveSuccess": "Ihre Einrichtung ist gespeichert."
+    "name": {
+      "eyebrow": "Noch eine Sache",
+      "title": "Wie sollen wir Sie nennen?",
+      "label": "Ihr Name",
+      "placeholder": "Vor- und Nachname",
+      "hint": "Ihre Lehrenden sehen ihn, und er steht auf Ihren Zertifikaten. Sie können ihn im Profil ändern.",
+      "submit": "Weiter",
+      "skip": "Vorerst überspringen",
+      "saveFailed": "Der Name konnte nicht gespeichert werden — Sie können ihn später im Profil ergänzen."
     },
     "picker": {
       "eyebrow": "Ihr erster Kurs",
       "title": "Wählen Sie einen Kurs zum Anfangen",
       "titleNamed": "{{name}}, wählen Sie einen Kurs zum Anfangen",
-      "intro": "Tippen Sie auf eine Karte, um den Kurs in Ihr Regal zu legen. Sie dürfen mehrere wählen. Den ersten öffnen wir gleich für Sie.",
+      "intro": "Tippen Sie auf eine Karte, um den Kurs in Ihr Regal zu legen — einen oder mehrere. Den ersten öffnen wir sofort.",
       "modulesCount_one": "{{count}} Modul",
       "modulesCount_other": "{{count}} Module",
       "enrollOne": "Einschreiben und Kurs öffnen",
       "enrollMany": "In {{count}} einschreiben und den ersten öffnen",
-      "browseAll": "Ganzen Katalog ansehen",
       "skip": "Vielleicht später",
       "loadFailed": "Der Katalog konnte nicht geladen werden — prüfen Sie die Verbindung und versuchen Sie es erneut.",
       "enrollAllFailed": "Einschreiben nicht möglich — bitte erneut versuchen oder den Katalog von Hand durchsehen.",

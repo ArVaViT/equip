@@ -82,11 +82,16 @@ export async function signInViaForm(
 
 /**
  * Pre-set the onboarding/tour localStorage flags for a user so the
- * first-run flow (Privacy → Quick Setup → picker) and the auto-firing
+ * first-run flow (Privacy → name → picker) and the auto-firing
  * driver.js tours don't cover the surface under test. Keys mirror
  * ``src/lib/storageKeys.ts`` — kept in sync by hand because the e2e
  * suite can't import app internals. Call after sign-in and before
  * ``storageState()`` so the flags persist into the saved session.
+ *
+ * The two first-run flags are caches of server state (``legal_acceptances``
+ * and ``profiles.onboarding_completed_at``): the flow trusts them until the
+ * server answers, and a browser holding the completed flag reports it to the
+ * server, so the test account ends up marked finished on the first run.
  */
 export async function suppressOnboarding(
   page: Page,
@@ -115,7 +120,6 @@ export async function suppressOnboarding(
     ({ id, tourIds }) => {
       const flags = [
         `equip.privacy.accepted.${id}`,
-        `equip.first-run.setup.${id}`,
         `equip.first-run.completed.${id}`,
         `equip.grand-tour.seen.${id}`,
         ...tourIds.map((t) => `equip.tour.seen.${id}.${t}`),

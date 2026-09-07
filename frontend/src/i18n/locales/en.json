@@ -184,50 +184,32 @@
       },
       "checkbox": "I have read and accept the Privacy Policy and the Terms of Use",
       "next": "Continue",
-      "saveFailed": "Couldn't record your acceptance. Check your connection and try again."
+      "saveFailed": "Couldn't record your acceptance. Check your connection and try again.",
+      "renewal": {
+        "eyebrow": "Updated documents",
+        "title": "Our terms have changed",
+        "intro": "We've updated the Privacy Policy and the Terms of Use since you last accepted them. Please read the new version and accept it to continue — everything else about your account stays as it was."
+      }
     },
-    "setup": {
-      "eyebrow": "Quick setup",
-      "title": "Make Equip yours",
-      "titleNamed": "Make Equip yours, {{name}}",
-      "intro": "A few choices to set things up. You can change every one of these later from your profile.",
-      "avatar": {
-        "label": "Profile photo",
-        "change": "Choose photo",
-        "tooBig": "Image must be 2 MB or less."
-      },
-      "name": {
-        "label": "Display name",
-        "placeholder": "Type to change",
-        "hint": "Pre-filled from your sign-up — edit it if you want a different display name."
-      },
-      "email": {
-        "label": "Email",
-        "hint": "To change your email, head to Profile after setup."
-      },
-      "theme": {
-        "label": "Theme",
-        "light": "Light",
-        "dark": "Dark"
-      },
-      "language": {
-        "label": "Language"
-      },
-      "submit": "Get started",
+    "name": {
+      "eyebrow": "One more thing",
+      "title": "What should we call you?",
+      "label": "Your name",
+      "placeholder": "First and last name",
+      "hint": "Your teachers see it, and it goes on your certificates. You can change it in your profile.",
+      "submit": "Continue",
       "skip": "Skip for now",
-      "saveFailed": "Couldn't save your changes — they'll stay as the previous values. You can update from your profile.",
-      "saveSuccess": "Your setup is saved."
+      "saveFailed": "Couldn't save your name — you can add it later in your profile."
     },
     "picker": {
       "eyebrow": "Your first course",
       "title": "Pick a course to begin with",
       "titleNamed": "{{name}}, pick a course to begin with",
-      "intro": "Tap any card to add it to your shelf. You can pick more than one. We'll open the first one for you so you can start right away.",
+      "intro": "Tap a card to add it to your shelf — one or several. We'll open the first one right away.",
       "modulesCount_one": "{{count}} module",
       "modulesCount_other": "{{count}} modules",
       "enrollOne": "Enroll and open the course",
       "enrollMany": "Enroll in {{count}} and open the first",
-      "browseAll": "Browse the full catalog",
       "skip": "Maybe later",
       "loadFailed": "Couldn't load the catalog — check your connection and try again.",
       "enrollAllFailed": "Couldn't enroll — please try again, or browse the catalog manually.",

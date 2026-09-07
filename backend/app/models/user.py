@@ -92,6 +92,15 @@ class User(Base):
     # this back to NULL). Avoids the old half-state where data was hard-deleted
     # but the auth identity lingered and resurrected an empty profile.
     deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # When this person finished the first-run flow — picked a course, opened
+    # the catalogue instead, or said "maybe later". NULL means they have not,
+    # and the flow shows again. Until 2026-09 this lived only in the
+    # browser's ``localStorage``, so a second device, a private window or
+    # cleared site data asked a returning student to set up their account
+    # and choose a course all over again. Consent is NOT recorded here — it
+    # has its own table (``legal_acceptances``) because it is evidence, and
+    # this is a preference.
+    onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     enrollments: Mapped[list["Enrollment"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 

@@ -22,34 +22,36 @@
  */
 
 const PREFIX_PRIVACY = "equip.privacy.accepted"
-const PREFIX_FIRST_RUN_SETUP = "equip.first-run.setup"
-// Picker completion (== "first-run flow closed"). Reuses the legacy
-// "equip.first-run.completed" name so users who cleared the
-// pre-picker flow on prod don't see the picker pop up on next visit.
-const PREFIX_FIRST_RUN_PICKER = "equip.first-run.completed"
+// First-run flow finished. The name is the one the flow has used since the
+// picker shipped, so a browser that finished the old flow still passes the
+// gate — and, from 2026-09, reports that fact to the server.
+const PREFIX_FIRST_RUN_COMPLETED = "equip.first-run.completed"
 const PREFIX_GRAND_TOUR_SEEN = "equip.grand-tour.seen"
 const PREFIX_PER_PAGE_TOUR_SEEN = "equip.tour.seen"
 const PREFIX_COMPLETION_CELEBRATED = "equip.celebrated"
 const PREFIX_ASSIGNMENT_DRAFT = "equip.draft.assignment"
 const PREFIX_BLOCK_DRAFT = "equip.draft.block"
 
-/** Privacy Policy acceptance flag — gates step 1 of the first-run flow. */
+/**
+ * Privacy Policy acceptance — a **cache** of what the server holds in
+ * ``legal_acceptances``. Trusted only until ``legalService.status()``
+ * answers; it stops the gate flashing at somebody who has already agreed,
+ * and proves nothing on its own.
+ */
 export function privacyAcceptedKey(userId: string): string {
   return `${PREFIX_PRIVACY}.${userId}`
 }
 
-/** Quick-Setup completion flag — gates step 2 (avatar / name / theme / locale). */
-export function firstRunSetupKey(userId: string): string {
-  return `${PREFIX_FIRST_RUN_SETUP}.${userId}`
-}
-
 /**
- * Picker / first-run-overall completion flag — gates step 3 AND
- * closes the gate. Once this is set, the modal stays closed
- * regardless of the other two flags' state.
+ * First-run flow finished — a **cache** of ``profiles.onboarding_completed_at``,
+ * with the same standing as the privacy flag above. Written when the picker
+ * closes; read so the flow does not flash before the profile has loaded; and
+ * reported to the server by a browser that holds it while the profile does
+ * not, which is how accounts that finished the flow before the server kept a
+ * record are healed without anybody being asked again.
  */
-export function firstRunPickerKey(userId: string): string {
-  return `${PREFIX_FIRST_RUN_PICKER}.${userId}`
+export function firstRunCompletedKey(userId: string): string {
+  return `${PREFIX_FIRST_RUN_COMPLETED}.${userId}`
 }
 
 /**

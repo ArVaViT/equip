@@ -190,6 +190,28 @@ def update_my_preferences(
     return current_user
 
 
+@router.post("/me/onboarding/complete", response_model=UserResponse)
+def complete_my_onboarding(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    """Record that this person has been through the first-run flow.
+
+    Idempotent: the timestamp is written once and never moved, so a second
+    browser reporting the same thing later does not make the record say the
+    flow was finished more recently than it was. No body — there is nothing
+    to say beyond "done", and the server's clock is the one that counts.
+
+    Not audited. The audit log is for changes somebody may later need to
+    explain; "closed the welcome wizard" is not one of them.
+    """
+    if current_user.onboarding_completed_at is None:
+        current_user.onboarding_completed_at = datetime.now(UTC)
+        db.commit()
+        db.refresh(current_user)
+    return current_user
+
+
 class AdminUserRow(BaseModel):
     id: str
     email: str
