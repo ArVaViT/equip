@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import func as sqlfunc
 
 from app.models.assignment import Assignment, AssignmentSubmission
-from app.models.course import Chapter, Course, Module
+from app.models.course import Chapter, Course
 from app.models.quiz import Quiz, QuizAnswer, QuizAttempt, QuizQuestion
 from app.models.user import User
 from app.services import quiz_service
@@ -79,26 +79,24 @@ def pending_by_course(db: Session, teacher_id: UUID) -> dict[str, int]:
     # ``test_every_question_type_is_either_auto_marked_or_hand_marked`` is what
     # actually fires on that day.
     quiz_rows = (
-        db.query(Module.course_id, sqlfunc.count(QuizAnswer.id))
+        db.query(Chapter.course_id, sqlfunc.count(QuizAnswer.id))
         .select_from(QuizAnswer)
         .join(QuizQuestion, QuizQuestion.id == QuizAnswer.question_id)
         .join(QuizAttempt, QuizAttempt.id == QuizAnswer.attempt_id)
         .join(User, User.id == QuizAttempt.user_id)
         .join(Quiz, Quiz.id == QuizAttempt.quiz_id)
         .join(Chapter, Chapter.id == Quiz.chapter_id)
-        .join(Module, Module.id == Chapter.module_id)
-        .join(Course, Course.id == Module.course_id)
+        .join(Course, Course.id == Chapter.course_id)
         .filter(
             Course.created_by == teacher_id,
             Course.deleted_at.is_(None),
-            Module.deleted_at.is_(None),
             Chapter.deleted_at.is_(None),
             *unread_answer_filters(),
             # Deactivated students drop out of the grading queue (#786), so
             # they must drop out of the count of it too.
             User.deactivated_at.is_(None),
         )
-        .group_by(Module.course_id)
+        .group_by(Chapter.course_id)
         .all()
     )
     for course_id, count in quiz_rows:
@@ -107,23 +105,21 @@ def pending_by_course(db: Session, teacher_id: UUID) -> dict[str, int]:
     # Submitted assignments with no mark. `returned` is excluded: it has been
     # read, and the ball is with the student.
     assignment_rows = (
-        db.query(Module.course_id, sqlfunc.count(AssignmentSubmission.id))
+        db.query(Chapter.course_id, sqlfunc.count(AssignmentSubmission.id))
         .select_from(AssignmentSubmission)
         .join(Assignment, Assignment.id == AssignmentSubmission.assignment_id)
         .join(User, User.id == AssignmentSubmission.student_id)
         .join(Chapter, Chapter.id == Assignment.chapter_id)
-        .join(Module, Module.id == Chapter.module_id)
-        .join(Course, Course.id == Module.course_id)
+        .join(Course, Course.id == Chapter.course_id)
         .filter(
             Course.created_by == teacher_id,
             Course.deleted_at.is_(None),
-            Module.deleted_at.is_(None),
             Chapter.deleted_at.is_(None),
             AssignmentSubmission.status == "submitted",
             AssignmentSubmission.grade.is_(None),
             User.deactivated_at.is_(None),
         )
-        .group_by(Module.course_id)
+        .group_by(Chapter.course_id)
         .all()
     )
     for course_id, count in assignment_rows:
@@ -162,7 +158,7 @@ def waiting_groups(db: Session, teacher_id: UUID) -> list[dict[str, Any]]:
 
     quiz_rows = (
         db.query(
-            Module.course_id,
+            Chapter.course_id,
             QuizQuestion.id.label("item_id"),
             Chapter.id.label("chapter_id"),
             Chapter.title.label("chapter_title"),
@@ -175,17 +171,15 @@ def waiting_groups(db: Session, teacher_id: UUID) -> list[dict[str, Any]]:
         .join(User, User.id == QuizAttempt.user_id)
         .join(Quiz, Quiz.id == QuizAttempt.quiz_id)
         .join(Chapter, Chapter.id == Quiz.chapter_id)
-        .join(Module, Module.id == Chapter.module_id)
-        .join(Course, Course.id == Module.course_id)
+        .join(Course, Course.id == Chapter.course_id)
         .filter(
             Course.created_by == teacher_id,
             Course.deleted_at.is_(None),
-            Module.deleted_at.is_(None),
             Chapter.deleted_at.is_(None),
             *unread_answer_filters(),
             User.deactivated_at.is_(None),
         )
-        .group_by(Module.course_id, QuizQuestion.id, Chapter.id, Chapter.title)
+        .group_by(Chapter.course_id, QuizQuestion.id, Chapter.id, Chapter.title)
         .all()
     )
     for row in quiz_rows:
@@ -203,7 +197,7 @@ def waiting_groups(db: Session, teacher_id: UUID) -> list[dict[str, Any]]:
 
     assignment_rows = (
         db.query(
-            Module.course_id,
+            Chapter.course_id,
             Assignment.id.label("item_id"),
             Chapter.id.label("chapter_id"),
             Chapter.title.label("chapter_title"),
@@ -214,18 +208,16 @@ def waiting_groups(db: Session, teacher_id: UUID) -> list[dict[str, Any]]:
         .join(Assignment, Assignment.id == AssignmentSubmission.assignment_id)
         .join(User, User.id == AssignmentSubmission.student_id)
         .join(Chapter, Chapter.id == Assignment.chapter_id)
-        .join(Module, Module.id == Chapter.module_id)
-        .join(Course, Course.id == Module.course_id)
+        .join(Course, Course.id == Chapter.course_id)
         .filter(
             Course.created_by == teacher_id,
             Course.deleted_at.is_(None),
-            Module.deleted_at.is_(None),
             Chapter.deleted_at.is_(None),
             AssignmentSubmission.status == "submitted",
             AssignmentSubmission.grade.is_(None),
             User.deactivated_at.is_(None),
         )
-        .group_by(Module.course_id, Assignment.id, Chapter.id, Chapter.title)
+        .group_by(Chapter.course_id, Assignment.id, Chapter.id, Chapter.title)
         .all()
     )
     for row in assignment_rows:
@@ -259,8 +251,7 @@ def assignment_work(db: Session, teacher_id: UUID, assignment_id: UUID) -> list[
         .join(Assignment, Assignment.id == AssignmentSubmission.assignment_id)
         .join(User, User.id == AssignmentSubmission.student_id)
         .join(Chapter, Chapter.id == Assignment.chapter_id)
-        .join(Module, Module.id == Chapter.module_id)
-        .join(Course, Course.id == Module.course_id)
+        .join(Course, Course.id == Chapter.course_id)
         .filter(
             Assignment.id == assignment_id,
             Course.created_by == teacher_id,

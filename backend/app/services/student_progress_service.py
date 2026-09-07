@@ -53,17 +53,14 @@ def _load_course_structure(
         populate_module_texts(db, modules, source_locale=normalize_locale(src))
     module_map = {m.id: {"id": m.id, "title": m.title, "order_index": m.order_index} for m in modules}
 
-    chapters = (
-        db.query(Chapter)
-        .join(Module, Chapter.module_id == Module.id)
-        .filter(
-            Module.course_id == course_id,
-            Module.deleted_at.is_(None),
-            Chapter.deleted_at.is_(None),
-        )
-        .order_by(Module.order_index, Chapter.order_index)
-        .all()
-    )
+    chapters = db.query(Chapter).filter(Chapter.course_id == course_id, Chapter.deleted_at.is_(None)).all()
+    # The board walks the course in the order the tree shows it: by module,
+    # then by chapter. Sorted here from the modules already in hand rather
+    # than by joining the module table, so a chapter without a module is in
+    # the list at all. Where such a chapter sits is step 3's decision; for
+    # now it goes ahead of every module.
+    module_order = {m.id: m.order_index for m in modules}
+    chapters.sort(key=lambda c: (module_order.get(c.module_id, -1), c.order_index))
     chapter_title_map = {c.id: c.title for c in chapters}
     return chapters, module_map, chapter_title_map
 
@@ -513,10 +510,8 @@ def _latest_activity_by_user(db: Session, course_id: str) -> tuple[dict[str, dat
         db.query(QuizAttempt.user_id, func.max(QuizAttempt.completed_at))
         .join(Quiz, Quiz.id == QuizAttempt.quiz_id)
         .join(Chapter, Chapter.id == Quiz.chapter_id)
-        .join(Module, Module.id == Chapter.module_id)
         .filter(
-            Module.course_id == course_id,
-            Module.deleted_at.is_(None),
+            Chapter.course_id == course_id,
             Chapter.deleted_at.is_(None),
             QuizAttempt.completed_at.isnot(None),
         )
@@ -527,10 +522,8 @@ def _latest_activity_by_user(db: Session, course_id: str) -> tuple[dict[str, dat
         db.query(AssignmentSubmission.student_id, func.max(AssignmentSubmission.submitted_at))
         .join(Assignment, Assignment.id == AssignmentSubmission.assignment_id)
         .join(Chapter, Chapter.id == Assignment.chapter_id)
-        .join(Module, Module.id == Chapter.module_id)
         .filter(
-            Module.course_id == course_id,
-            Module.deleted_at.is_(None),
+            Chapter.course_id == course_id,
             Chapter.deleted_at.is_(None),
         )
         .group_by(AssignmentSubmission.student_id)

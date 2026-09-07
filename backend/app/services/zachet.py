@@ -38,7 +38,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from app.models.assignment import Assignment, AssignmentSubmission
-from app.models.course import Chapter, Module
+from app.models.course import Chapter
 from app.models.grade_exemption import GradeExemption
 from app.models.quiz import Quiz, QuizAttempt
 
@@ -58,10 +58,8 @@ def assignments_in_course(db: Session, course_id: str) -> list:
     return (
         db.query(Assignment.id)
         .join(Chapter, Chapter.id == Assignment.chapter_id)
-        .join(Module, Module.id == Chapter.module_id)
         .filter(
-            Module.course_id == course_id,
-            Module.deleted_at.is_(None),
+            Chapter.course_id == course_id,
             Chapter.deleted_at.is_(None),
         )
         .all()
@@ -149,10 +147,8 @@ def course_quiz_rows(db: Session, course_id: str) -> list:
     return (
         db.query(Quiz.id, Quiz.passing_score)
         .join(Chapter, Chapter.id == Quiz.chapter_id)
-        .join(Module, Module.id == Chapter.module_id)
         .filter(
-            Module.course_id == course_id,
-            Module.deleted_at.is_(None),
+            Chapter.course_id == course_id,
             Chapter.deleted_at.is_(None),
         )
         .all()

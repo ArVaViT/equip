@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.constants import GRADABLE_CHAPTER_TYPES
 from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
-from app.models.course import Chapter, Course, Module
+from app.models.course import Chapter, Course
 from app.models.enrollment import Enrollment
 from app.models.grade_exemption import GradeExemption
 from app.models.org_settings import OrgSettings
@@ -74,11 +74,9 @@ def _get_course_chapter_ids(db: Session, course_id: str) -> list[str]:
     """Get chapter IDs for gradable chapters (quiz/exam/assignment) in a course, excluding soft-deleted."""
     rows = (
         db.query(Chapter.id)
-        .join(Module, Module.id == Chapter.module_id)
         .filter(
-            Module.course_id == course_id,
+            Chapter.course_id == course_id,
             Chapter.chapter_type.in_(GRADABLE_CHAPTER_TYPES),
-            Module.deleted_at.is_(None),
             Chapter.deleted_at.is_(None),
         )
         .all()

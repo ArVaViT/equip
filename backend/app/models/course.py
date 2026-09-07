@@ -327,6 +327,11 @@ class Chapter(Base):
     # seed) alongside ``module_id``. Production has no default on purpose:
     # a path that forgets it fails loudly instead of filing a chapter under
     # no course.
+    #
+    # Course-level reads (denominators, the grading queue, the board, the
+    # calendar, the cascades) go through this column; the module is joined
+    # only where ``chapter_module_is_live_or_absent`` keeps a binned module
+    # hiding its chapters — the one rule, in one place.
     course_id: Mapped[str] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
     title: Mapped[str] = mapped_column()
     order_index: Mapped[int] = mapped_column(default=0)

@@ -29,7 +29,7 @@ from app.core.i18n import t
 from app.core.ids import as_uuid
 from app.models.assignment import Assignment
 from app.models.audit_log import AuditLog
-from app.models.course import Chapter, CourseStatus, Module
+from app.models.course import Chapter, CourseStatus
 from app.models.enrollment import Enrollment
 from app.models.grade_exemption import GradeExemption
 from app.models.grade_sheet import GradeSheet, GradeSheetRow
@@ -331,10 +331,8 @@ def _quizzes_off_the_course_line(db: Session, course_id: str, threshold: Decimal
     rows = (
         db.query(Quiz.id, Quiz.chapter_id, Quiz.passing_score)
         .join(Chapter, Chapter.id == Quiz.chapter_id)
-        .join(Module, Module.id == Chapter.module_id)
         .filter(
-            Module.course_id == course_id,
-            Module.deleted_at.is_(None),
+            Chapter.course_id == course_id,
             Chapter.deleted_at.is_(None),
             Quiz.passing_score != int(threshold),
         )
