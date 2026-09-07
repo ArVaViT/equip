@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { toProxyImage } from "@/lib/images"
+import { countChapters, countModules, readCourseStructure } from "@/lib/courseStructure"
 import type { Course, Cohort } from "@/types"
 import { formatDate, isEnrollableCohort } from "./types"
 import { CohortSelectModal } from "./CohortSelectModal"
@@ -67,16 +68,19 @@ export function NotEnrolledView({
   const canEnroll =
     !isInstituteGate && (enrollableCohorts.length > 0 || cohorts.length === 0)
 
-  // Course-at-a-glance counts. Memoised because `course.modules` is a
-  // fresh array each render and we'd otherwise reduce twice (once for
-  // module count, once for chapter total) on every keystroke / state.
-  const { moduleCount, chapterCount } = useMemo(() => {
-    const mods = course.modules ?? []
-    return {
-      moduleCount: mods.length,
-      chapterCount: mods.reduce((sum, m) => sum + (m.chapters?.length ?? 0), 0),
-    }
-  }, [course.modules])
+  // Course-at-a-glance counts, and the outline the owner previews.
+  //
+  // Both used to be summed over `modules[].chapters`, which counted a lesson
+  // written straight into the course as no lesson at all: a course of four
+  // lessons said nothing, and its author's preview was empty.
+  const { structure, moduleCount, chapterCount } = useMemo(
+    () => ({
+      structure: readCourseStructure(course),
+      moduleCount: countModules(course),
+      chapterCount: countChapters(course),
+    }),
+    [course],
+  )
 
   const handleEnrollClick = () => {
     if (enrollableCohorts.length === 0) {
@@ -127,22 +131,24 @@ export function NotEnrolledView({
         {orNotTranslated(t, course.title)}
       </h1>
 
-      {/* Course-at-a-glance: editorial eyebrow with module/chapter counts.
-          Renders only when the API returned modules (course.modules is the
-          eager-loaded list from /courses/:id). Keeps the surface honest
-          when a course is still a stub — no fake "0 modules" line. */}
-      {moduleCount > 0 && (
+      {/* Course-at-a-glance: an editorial eyebrow with what the course holds.
+          Keyed on the lesson count, not the module count — a course of four
+          lessons and no modules had nothing to show here and showed nothing,
+          which is the emptiest a real course can look. Modules are named only
+          when the course has them: «0 модулей» is a count of something that
+          was never meant to be there. Still silent on a stub with neither. */}
+      {chapterCount > 0 && (
         <p className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
-          <span className="inline-flex items-center gap-1.5">
-            <Layers className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
-            {t("courseDetail.moduleCount", { count: moduleCount })}
-          </span>
-          {chapterCount > 0 && (
+          {moduleCount > 0 && (
             <>
+              <span className="inline-flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
+                {t("courseDetail.moduleCount", { count: moduleCount })}
+              </span>
               <span aria-hidden className="text-ink-muted">·</span>
-              <span>{t("courseDetail.chapterCount", { count: chapterCount })}</span>
             </>
           )}
+          <span>{t("courseDetail.chapterCount", { count: chapterCount })}</span>
         </p>
       )}
 
@@ -218,7 +224,7 @@ export function NotEnrolledView({
                 </Button>
               </Link>
             </div>
-            <DraftOutline courseId={course.id} modules={course.modules ?? []} />
+            <DraftOutline courseId={course.id} structure={structure} />
           </div>
         ) : isOwner ? (
           // Owner / admin: show BOTH "Manage Course" (primary, what they

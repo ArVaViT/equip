@@ -14,7 +14,13 @@ import { progressService } from "@/services/progress"
 import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
 import { useAuth } from "@/context/useAuth"
-import type { Course, Module, Chapter, ChapterBlock } from "@/types"
+import {
+  chapterHref,
+  findChapter,
+  readCourseStructure,
+} from "@/lib/courseStructure"
+import { isChapterLocked } from "./moduleProgress"
+import type { Course, Chapter, ChapterBlock } from "@/types"
 import {
   ArrowLeft,
   ArrowRight,
@@ -300,13 +306,11 @@ function ChapterNavLink({
   side,
   chapter,
   courseId,
-  moduleId,
   locked,
 }: {
   side: "prev" | "next"
   chapter: Chapter | null
-  courseId?: string
-  moduleId?: string
+  courseId: string
   locked?: boolean
 }) {
   const { t } = useTranslation()
@@ -354,9 +358,7 @@ function ChapterNavLink({
     <PressFeedback className="flex min-w-0 flex-1">
       <button
         type="button"
-        onClick={() =>
-          navigate(`/courses/${courseId}/modules/${moduleId}/chapters/${chapter.id}`)
-        }
+        onClick={() => navigate(chapterHref(courseId, chapter.id))}
         className={`${enabledClass} ${alignment}`}
         aria-label={`${eyebrow}: ${orNotTranslated(t, chapter.title)}`}
       >
@@ -373,44 +375,34 @@ function ChapterNavLink({
   )
 }
 
-type EndOfModuleNav =
-  | { kind: "nextModule"; moduleId: string; chapterId: string; title: string }
-  | { kind: "finishCourse" }
-
-/** "Next" tile for the last chapter of a module: next module's first
- *  chapter, or — after the last module — the course page (where the
- *  completion dialog / certificate request lives). */
-function EndOfModuleNavLink({
-  nav,
-  courseId,
-}: {
-  nav: EndOfModuleNav
-  courseId?: string
-}) {
+/**
+ * The "next" tile for the last lesson of the course: the course page, where
+ * the completion dialog and the certificate request live.
+ *
+ * There used to be a second kind of tile here — "next module" — because
+ * "next" walked the module and then had to be told, separately, how to leave
+ * it. The flat reading order crosses that boundary on its own: the last lesson
+ * of a module leads into the first of the next one like any other step, and
+ * only the last lesson of the *course* has nowhere further to go. One dead end
+ * remained, and it is the one that should be there.
+ */
+function FinishCourseNavLink({ courseId }: { courseId: string }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const isFinish = nav.kind === "finishCourse"
-  const eyebrow = isFinish ? t("chapter.finishEyebrow") : t("chapter.nextModuleEyebrow")
-  const label = isFinish ? t("chapter.finishCourseLabel") : nav.title
-  const target = isFinish
-    ? `/courses/${courseId}`
-    : `/courses/${courseId}/modules/${nav.moduleId}/chapters/${nav.chapterId}`
+  const eyebrow = t("chapter.finishEyebrow")
+  const label = t("chapter.finishCourseLabel")
 
   return (
     <PressFeedback className="flex min-w-0 flex-1">
       <button
         type="button"
-        onClick={() => navigate(target)}
+        onClick={() => navigate(`/courses/${courseId}`)}
         className="group flex min-w-0 flex-1 flex-col rounded-md bg-card px-3 py-2 text-right transition-colors hover:border-brand/40 hover:bg-muted/40"
         aria-label={`${eyebrow}: ${label}`}
       >
         <span className="flex items-center justify-end gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted transition-colors group-hover:text-brand">
           {eyebrow}
-          {isFinish ? (
-            <CheckCircle className="h-3.5 w-3.5" strokeWidth={1.75} />
-          ) : (
-            <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
-          )}
+          <CheckCircle className="h-3.5 w-3.5" strokeWidth={1.75} />
         </span>
         <span className="mt-0.5 truncate text-sm font-medium text-ink">{label}</span>
       </button>
@@ -421,20 +413,16 @@ function EndOfModuleNavLink({
 function ChapterNav({
   prevChapter,
   nextChapter,
-  endOfModuleNav,
   currentIdx,
   total,
   courseId,
-  moduleId,
   isNextLocked,
 }: {
   prevChapter: Chapter | null
   nextChapter: Chapter | null
-  endOfModuleNav: EndOfModuleNav | null
   currentIdx: number
   total: number
-  courseId?: string
-  moduleId?: string
+  courseId: string
   isNextLocked: boolean
 }) {
   const { t } = useTranslation()
@@ -448,38 +436,51 @@ function ChapterNav({
         {t("chapter.positionEyebrow", { current: currentIdx + 1, total })}
       </p>
       <div className="flex items-stretch gap-2 sm:gap-3">
-        <ChapterNavLink
-          side="prev"
-          chapter={prevChapter}
-          courseId={courseId}
-          moduleId={moduleId}
-        />
-        {!nextChapter && endOfModuleNav ? (
-          <EndOfModuleNavLink nav={endOfModuleNav} courseId={courseId} />
-        ) : (
+        <ChapterNavLink side="prev" chapter={prevChapter} courseId={courseId} />
+        {nextChapter ? (
           <ChapterNavLink
             side="next"
             chapter={nextChapter}
             courseId={courseId}
-            moduleId={moduleId}
             locked={isNextLocked}
           />
+        ) : (
+          <FinishCourseNavLink courseId={courseId} />
         )}
       </div>
     </nav>
   )
 }
 
+/**
+ * A lesson, and the course around it.
+ *
+ * The screen used to be built out of the *module*: it fetched
+ * `getModule(courseId, moduleId)`, sorted that module's chapters, and walked
+ * them for "previous" and "next". Three things followed from that, and all
+ * three were wrong:
+ *
+ * - the walk stopped at the module's edge, so the last lesson of a module
+ *   needed a second, separate rule to find the next module;
+ * - a lesson in no module had no walk at all — no module to sort, no
+ *   neighbours, no "next" under any rule;
+ * - and `moduleId` was required before anything loaded, so the course-shaped
+ *   address the router already accepts died on a guard with «invalid link».
+ *
+ * It is built out of the course now: one payload, read by `readCourseStructure`
+ * into the reading order, and `findChapter` says where this lesson sits in it.
+ * `moduleId` is not read at all — the module-shaped address still resolves,
+ * and resolves to the same page, because the lesson's place was never a fact
+ * about the URL.
+ */
 export default function ChapterView() {
   const { t, i18n } = useTranslation()
-  const { courseId, moduleId, chapterId } = useParams<{
+  const { courseId, chapterId } = useParams<{
     courseId: string
-    moduleId: string
     chapterId: string
   }>()
   const { user } = useAuth()
 
-  const [mod, setMod] = useState<Module | null>(null)
   const [course, setCourse] = useState<Course | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -504,13 +505,16 @@ export default function ChapterView() {
   useUserTour({
     tourId: "chapter-view-v1",
     steps: chapterViewSteps(t),
-    ready: !loading && !error && mod !== null,
+    ready: !loading && !error && course !== null,
   })
 
   useEffect(() => {
     let cancelled = false
     const load = async () => {
-      if (!courseId || !moduleId) {
+      // `moduleId` used to be required here, which made the course-shaped
+      // address — the one every lesson has — fail before a single request
+      // went out. What the page needs is a course and a lesson.
+      if (!courseId || !chapterId) {
         setLoading(false)
         setError(t("errors.invalidCourseLink"))
         return
@@ -518,20 +522,19 @@ export default function ChapterView() {
       setLoading(true)
       setError(null)
       try {
-        const [m, completedChapterIds, fullCourse] = await Promise.all([
-          coursesService.getModule(courseId, moduleId),
+        // The course, not the module. It is the whole structure: the reading
+        // order, the group this lesson belongs to (if any), and the lesson
+        // itself. Cached 3min and usually warm — the student came here from
+        // the course page. It is no longer optional, because losing it is
+        // losing the lesson, not just the tile at the bottom.
+        const [fullCourse, completedChapterIds] = await Promise.all([
+          coursesService.getCourse(courseId),
           // See `moduleProgress.ts` — `[]` and "unknown" must not be the
           // same value. Here it only drives the read tick, which now simply
           // does not draw rather than drawing a false "not read".
           coursesService.getMyChapterProgress(courseId).catch(() => null),
-          // Only needed to answer "is there a NEXT module after this one?"
-          // for the end-of-module nav tile. Cached 3min and usually warm
-          // (the student navigated here from the course page). On failure
-          // the tile degrades to the old disabled placeholder.
-          coursesService.getCourse(courseId).catch(() => null),
         ])
         if (cancelled) return
-        setMod(m)
         setCourse(fullCourse)
         setCompletedIds(completedChapterIds === null ? null : new Set(completedChapterIds))
       } catch (err) {
@@ -548,10 +551,13 @@ export default function ChapterView() {
     }
     load()
     return () => { cancelled = true }
-    // ``i18n.language`` so locale flip refreshes the localised module
-    // title + chapter list. ``t`` is intentionally not a dep.
+    // ``i18n.language`` so locale flip refreshes the localised course
+    // structure. ``t`` is intentionally not a dep, and neither is
+    // ``chapterId``: the course is the same course when the reader steps to
+    // the next lesson, and re-running this would spend a progress request on
+    // every step through it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, moduleId, user?.id, i18n.language])
+  }, [courseId, user?.id, i18n.language])
 
   // Studying a chapter counts as opening the course for the dashboard's
   // "recently viewed" row. Signed-in only; filtered against real
@@ -562,39 +568,24 @@ export default function ChapterView() {
     }
   }, [user, courseId])
 
-  const sortedChapters = useMemo(
-    () => [...(mod?.chapters ?? [])].sort((a, b) => a.order_index - b.order_index),
-    [mod],
-  )
+  // One reading of the course, and one answer to "where am I in it". The
+  // walk this replaces was two levels deep and could only ever answer within
+  // a module; `placement.prev` / `placement.next` step through the course.
+  const structure = useMemo(() => readCourseStructure(course), [course])
+  const placement = findChapter(structure, chapterId)
 
-  const currentIdx = sortedChapters.findIndex((c) => c.id === chapterId)
-  const chapter = currentIdx >= 0 ? sortedChapters[currentIdx] : null
-  const prevChapter = currentIdx > 0 ? sortedChapters[currentIdx - 1] ?? null : null
-  const nextChapter = currentIdx < sortedChapters.length - 1 ? sortedChapters[currentIdx + 1] ?? null : null
-
-  // End-of-module navigation: when this is the last chapter of the module,
-  // the "next" tile used to be a disabled placeholder — a literal dead end
-  // at the most motivated moment of the course. Resolve where to go next:
-  // the first chapter of the next module, or (after the last module) the
-  // course page, where the completion dialog / certificate request lives.
-  const endOfModuleNav = useMemo((): EndOfModuleNav | null => {
-    if (nextChapter || !course?.modules?.length || !moduleId) return null
-    const sortedModules = [...course.modules].sort((a, b) => a.order_index - b.order_index)
-    const idx = sortedModules.findIndex((m) => m.id === moduleId)
-    if (idx === -1) return null
-    const nextWithChapters = sortedModules
-      .slice(idx + 1)
-      .find((m) => (m.chapters?.length ?? 0) > 0)
-    if (nextWithChapters) {
-      const first = [...(nextWithChapters.chapters ?? [])].sort(
-        (a, b) => a.order_index - b.order_index,
-      )[0]
-      if (first) {
-        return { kind: "nextModule", moduleId: nextWithChapters.id, chapterId: first.id, title: nextWithChapters.title }
-      }
-    }
-    return { kind: "finishCourse" }
-  }, [nextChapter, course, moduleId])
+  const chapter = placement?.chapter ?? null
+  const currentIdx = placement?.index ?? -1
+  const prevChapter = placement?.prev ?? null
+  const nextChapter = placement?.next ?? null
+  // The module this lesson is grouped under, if anything is. `null` is an
+  // ordinary answer now, not a broken payload — so nothing that depends on it
+  // may be on the path a lesson without one has to walk.
+  const parentModule = placement?.group.module ?? null
+  const backHref = parentModule
+    ? `/courses/${courseId}/modules/${parentModule.id}`
+    : `/courses/${courseId}`
+  const backLabel = parentModule ? t("course.backToModule") : t("course.backToCourse")
 
   /**
    * The chapter's own text, fetched from the URL rather than from the course.
@@ -660,18 +651,29 @@ export default function ChapterView() {
     // lands and can discard blocks for a non-reading chapter.
   }, [chapterId, chapter, i18n.language, blocksReloadKey])
 
-  const isChapterLocked = useCallback(
-    (ch: Chapter, idx: number) => {
-      if (!ch.is_locked) return false
-      if (idx === 0) return false
-      const prev = sortedChapters[idx - 1]
-      if (!prev || !isGradableChapterType(prev.chapter_type)) return false
-      // Fails open on unknown — the server is the real gate, and denying
-      // somebody their own progress is the worse way to be wrong.
-      if (completedIds === null) return false
-      return !completedIds.has(prev.id)
+  /**
+   * Is this lesson walled off until the one before it is done?
+   *
+   * "The one before it" is the course's order now, not the module's. It was a
+   * private copy of `moduleProgress.isChapterLocked` that walked the module's
+   * chapters — so the first lesson of every module was unlocked by accident of
+   * being at index 0, and a lesson in no module was never gated at all. The
+   * shared helper is the same rule the outline and the module page apply, and
+   * it fails open on unknown progress for the reason written there.
+   */
+  const isLockedAt = useCallback(
+    (idx: number) => {
+      const ch = structure.chapters[idx]
+      if (!ch) return false
+      const prev = structure.chapters[idx - 1] ?? null
+      return isChapterLocked(
+        completedIds,
+        ch,
+        prev,
+        prev ? isGradableChapterType(prev.chapter_type) : false,
+      )
     },
-    [sortedChapters, completedIds],
+    [structure, completedIds],
   )
 
   const [markingRead, setMarkingRead] = useState(false)
@@ -694,16 +696,20 @@ export default function ChapterView() {
     return <PageSpinner />
   }
 
-  if (error || !mod || !chapter) {
+  if (error || !courseId || !chapter) {
     return (
       <div className="container mx-auto px-4">
         <ErrorState
           icon={<Book strokeWidth={1.75} />}
           title={error ?? t("toast.chapterNotFound")}
           action={
-            courseId && moduleId ? (
-              <Link to={`/courses/${courseId}/modules/${moduleId}`}>
-                <Button variant="outline" size="sm">{t("course.backToModule")}</Button>
+            // Back to the course, not to a module. A lesson that could not be
+            // found may have been in no module, and a lesson that was deleted
+            // takes the answer to "which module" with it — the course is the
+            // one place that is certainly still there.
+            courseId ? (
+              <Link to={`/courses/${courseId}`}>
+                <Button variant="outline" size="sm">{t("course.backToCourse")}</Button>
               </Link>
             ) : (
               <Link to="/">
@@ -716,16 +722,16 @@ export default function ChapterView() {
     )
   }
 
-  const locked = isChapterLocked(chapter, currentIdx)
+  const locked = isLockedAt(currentIdx)
   const isCompleted = completedIds !== null && completedIds.has(chapter.id)
 
   if (locked) {
     return (
       <div className="container mx-auto px-4 py-6 max-w-3xl">
-        <Link to={`/courses/${courseId}/modules/${moduleId}`} className="-mx-2 mb-4 inline-flex">
+        <Link to={backHref} className="-mx-2 mb-4 inline-flex">
           <Button variant="ghost" size="sm" className="h-11 text-xs sm:h-8">
             <ArrowLeft className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-            {t("course.backToModule")}
+            {backLabel}
           </Button>
         </Link>
 
@@ -734,7 +740,7 @@ export default function ChapterView() {
           <h2 className="font-serif text-xl font-semibold mb-2">{t("chapter.lockedTitle")}</h2>
           <p className="text-ink-muted">{t("chapter.lockedHint")}</p>
           {prevChapter && (
-            <Link to={`/courses/${courseId}/modules/${moduleId}/chapters/${prevChapter.id}`}>
+            <Link to={chapterHref(courseId, prevChapter.id)}>
               <Button className="mt-4">{t("chapter.goToPreviousChapter")}</Button>
             </Link>
           )}
@@ -749,10 +755,13 @@ export default function ChapterView() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-3xl">
-      <Link to={`/courses/${courseId}/modules/${moduleId}`} className="-mx-2 mb-6 inline-flex">
+      {/* Back to whatever holds this lesson: its module when one groups it,
+          the course when nothing does. «К модулю» over a lesson that is in no
+          module was a door with nothing behind it. */}
+      <Link to={backHref} className="-mx-2 mb-6 inline-flex">
         <Button variant="ghost" size="sm" className="h-11 text-xs sm:h-8">
           <ArrowLeft className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-          {t("course.backToModule")}
+          {backLabel}
         </Button>
       </Link>
 
@@ -764,13 +773,16 @@ export default function ChapterView() {
           </span>
           <span aria-hidden className="text-ink-muted">·</span>
           <span className="tabular-nums">
-            {t("chapter.positionEyebrow", { current: currentIdx + 1, total: sortedChapters.length })}
+            {/* The lesson's place in the course, not in its module. «Глава 1
+                из 3» on the first lesson of the second module told a student
+                they were at the start of something they were halfway through. */}
+            {t("chapter.positionEyebrow", { current: currentIdx + 1, total: structure.chapters.length })}
           </span>
-          {mod.title && (
+          {parentModule?.title && (
             <>
               <span aria-hidden className="text-ink-muted">·</span>
               <span className="normal-case tracking-normal text-ink-muted text-wrap-safe">
-                {mod.title}
+                {parentModule.title}
               </span>
             </>
           )}
@@ -862,12 +874,10 @@ export default function ChapterView() {
         <ChapterNav
           prevChapter={prevChapter}
           nextChapter={nextChapter}
-          endOfModuleNav={endOfModuleNav}
           currentIdx={currentIdx}
-          total={sortedChapters.length}
+          total={structure.chapters.length}
           courseId={courseId}
-          moduleId={moduleId}
-          isNextLocked={nextChapter ? isChapterLocked(nextChapter, currentIdx + 1) : false}
+          isNextLocked={isLockedAt(currentIdx + 1)}
         />
       </div>
     </div>

@@ -52,7 +52,7 @@ function Wrapper({ children }: { children: ReactNode }) {
 
 async function show(items: MyGradeItem[]) {
   vi.spyOn(gradesService, "getMyCourseGrade").mockResolvedValue(grade(items))
-  render(<MyGradeCard courseId="c1" modules={[]} />, { wrapper: Wrapper })
+  render(<MyGradeCard courseId="c1" structure={{ groups: [], chapters: [] }} />, { wrapper: Wrapper })
   return screen.findByText("Эссе о благодати")
 }
 

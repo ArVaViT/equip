@@ -24,6 +24,7 @@ import ChapterTypeBadge from "@/components/course/ChapterTypeBadge"
 import { EmptyState, ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
 import { isChapterComplete, isChapterLocked, isChapterRead } from "./moduleProgress"
+import { chapterHref } from "@/lib/courseStructure"
 import { orNotTranslated } from "@/lib/untranslated"
 
 // Module ID + course ID come from the route, locale from i18n; bundle the
@@ -275,7 +276,11 @@ export default function ModuleView() {
               return (
                 <Link
                   key={chapter.id}
-                  to={`/courses/${courseId}/modules/${moduleId}/chapters/${chapter.id}`}
+                  // The lesson's own address: a course and a chapter. The
+                  // module-shaped one still resolves, but it is a fact about
+                  // how the reader arrived, not about where the lesson lives —
+                  // and it stops being true the moment a teacher regroups.
+                  to={chapterHref(module.course_id, chapter.id)}
                   className="block"
                 >
                   <Card

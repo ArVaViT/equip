@@ -8,6 +8,7 @@ import { ErrorState } from "@/components/patterns"
 import { coursesService } from "@/services/courses"
 import { storageService } from "@/services/storage"
 import { recordCourseView } from "@/lib/recentlyViewed"
+import { readCourseStructure } from "@/lib/courseStructure"
 import { useAuth } from "@/context/useAuth"
 import { toast } from "@/lib/toast"
 import { ROLES } from "@/types"
@@ -36,9 +37,9 @@ export default function CourseDetail() {
    * `null` when the progress request failed. Not an empty set.
    *
    * This is the third place the same fallback lived, and the worst of the
-   * three: `ModuleList` locks an entire **module** when the previous one is
-   * unfinished, so a failed request walled a student out of everything after
-   * the module they had actually completed. See `moduleProgress.ts`.
+   * three: `CourseOutline` locks a whole module behind the previous one, so a
+   * failed request walled a student out of everything after the module they
+   * had actually completed. See `moduleProgress.ts`.
    */
   const [completedChapterIds, setCompletedChapterIds] = useState<Set<string> | null>(null)
   const [materials, setMaterials] = useState<CourseMaterial[]>([])
@@ -173,25 +174,28 @@ export default function CourseDetail() {
     }
   }
 
-  // Derived module ordering + chapter count, memoised on ``course`` so
-  // EnrolledView receives stable array/scalar identities across renders
-  // that don't change the course payload (e.g. a certificate update).
-  // Hooks must run before the early returns below — they no-op to safe
-  // defaults while ``course`` is still null during load.
-  const sortedModules = useMemo(
-    () =>
-      [...(course?.modules ?? [])].sort((a, b) => {
-        const da = a.due_date ? new Date(a.due_date).getTime() : Infinity
-        const db = b.due_date ? new Date(b.due_date).getTime() : Infinity
-        if (da !== db) return da - db
-        return a.order_index - b.order_index
-      }),
-    [course],
-  )
-  const totalChapters = useMemo(
-    () => sortedModules.reduce((sum, m) => sum + (m.chapters?.length ?? 0), 0),
-    [sortedModules],
-  )
+  /**
+   * The course read once: the outline to draw, and the flat reading order
+   * everything downstream navigates by.
+   *
+   * It replaces a pair of derivations that could only see modules — a module
+   * sort and a chapter total summed over `modules[].chapters`. A lesson in no
+   * module was in neither, so the course page counted it out of existence and
+   * the outline never drew it.
+   *
+   * The module sort it replaces ordered by `due_date` first and `order_index`
+   * second, which is a second opinion about the order of a course: the server,
+   * the teacher's report, the PDF export and the gradebook all read
+   * `order_index`. Two orders is how «the next lesson» and «the lesson after
+   * this row» stopped agreeing. There is one order now, and it is the
+   * teacher's. A module's deadline still shows on its row.
+   *
+   * Memoised on ``course`` so `EnrolledView` gets a stable identity across
+   * renders that don't change the payload (a certificate update, say). Hooks
+   * must run before the early returns below — this no-ops to an empty
+   * structure while ``course`` is still null during load.
+   */
+  const structure = useMemo(() => readCourseStructure(course), [course])
 
   if (loading) {
     return <CourseDetailSkeleton />
@@ -235,8 +239,7 @@ export default function CourseDetail() {
       course={course}
       enrollment={enrollment}
       cohorts={cohorts}
-      sortedModules={sortedModules}
-      totalChapters={totalChapters}
+      structure={structure}
       completedChapterIds={completedChapterIds}
       materials={materials}
       calendarEvents={calendarEvents}
