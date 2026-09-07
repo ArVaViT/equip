@@ -22,6 +22,7 @@ import { EmptyState, ErrorState, PageHeader } from "@/components/patterns"
 import { cohortsService, type CohortStudent } from "@/services/cohorts"
 import { coursesService } from "@/services/courses"
 import { toast } from "@/lib/toast"
+import { getErrorDetail } from "@/lib/errorDetail"
 import { formatDate, isoToLocalInput, localInputToIso } from "@/i18n/format"
 import type { Cohort, Course } from "@/types"
 import { AttachCourseDialog } from "./AttachCourseDialog"
@@ -41,6 +42,7 @@ export default function CohortDetailPage() {
   const [students, setStudents] = useState<CohortStudent[]>([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [attachOpen, setAttachOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   // Track which specific field is in-flight so saving "name" doesn't
@@ -59,6 +61,7 @@ export default function CohortDetailPage() {
   const load = useCallback(async () => {
     if (!cohortId || !isAdmin) return
     setLoading(true)
+    setLoadError(null)
     try {
       const [c, s] = await Promise.all([
         cohortsService.getCohort(cohortId),
@@ -98,8 +101,11 @@ export default function CohortDetailPage() {
       }
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number } })?.response?.status
+      // A 404 is the one failure that means «this cohort is gone». Everything
+      // else used to fall into the same «may have been deleted» screen once
+      // the toast faded; now it stays on screen with the reason and a retry.
       if (status === 404) setNotFound(true)
-      else toast({ title: t("admin.cohorts.toast.loadFailed"), variant: "destructive" })
+      else setLoadError(getErrorDetail(e, t("admin.cohorts.toast.loadFailed")))
     } finally {
       setLoading(false)
     }
@@ -214,6 +220,27 @@ export default function CohortDetailPage() {
 
   if (user?.role !== "admin") return <Navigate to="/" replace />
   if (loading) return <PageSpinner />
+  if (loadError && !cohort) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <ErrorState
+          description={loadError}
+          action={
+            <Button size="sm" variant="outline" onClick={() => void load()}>
+              {t("common.tryAgain")}
+            </Button>
+          }
+          secondaryAction={
+            <Link to="/admin?tab=cohorts">
+              <Button size="sm" variant="ghost">
+                {t("admin.cohorts.backToList")}
+              </Button>
+            </Link>
+          }
+        />
+      </div>
+    )
+  }
   if (notFound || !cohort) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-6xl">

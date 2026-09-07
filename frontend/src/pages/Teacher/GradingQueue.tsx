@@ -4,10 +4,9 @@ import { Link, useSearchParams } from "react-router-dom"
 import { ArrowLeft, ClipboardCheck, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { EmptyState } from "@/components/patterns"
+import { EmptyState, ErrorState } from "@/components/patterns"
 import { gradesService } from "@/services/grades"
 import { getErrorDetail } from "@/lib/errorDetail"
-import { toast } from "@/lib/toast"
 import { relativeTime } from "@/pages/Teacher/progress/helpers"
 import type { WaitingGroup } from "@/types"
 import { MarkOneByOne } from "./grading/MarkOneByOne"
@@ -34,14 +33,18 @@ export default function GradingQueue() {
   const openItem = params.get("assignment")
   const [groups, setGroups] = useState<WaitingGroup[] | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       setGroups(await gradesService.getQueue())
     } catch (err) {
-      toast({ title: getErrorDetail(err, t("grading.loadFailed")), variant: "destructive" })
-      setGroups([])
+      // A toast fades; «Всё проверено» would have stayed. The failure has to
+      // be the thing that stays, with the way to try again next to it.
+      setGroups(null)
+      setLoadError(getErrorDetail(err, t("grading.loadFailed")))
     } finally {
       setLoading(false)
     }
@@ -88,6 +91,15 @@ export default function GradingQueue() {
           <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
           {t("common.loading")}
         </div>
+      ) : loadError ? (
+        <ErrorState
+          description={loadError}
+          action={
+            <Button size="sm" variant="outline" onClick={() => void load()}>
+              {t("common.tryAgain")}
+            </Button>
+          }
+        />
       ) : groups && groups.length === 0 ? (
         // An empty queue is worth saying out loud. A teacher who cleared it
         // should be told so, not shown a blank page that reads as a failure.

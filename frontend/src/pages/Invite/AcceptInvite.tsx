@@ -34,6 +34,8 @@ export default function AcceptInvite() {
     handleGoogleSignUp,
     acceptNow,
     logout,
+    previewError,
+    retryPreview,
   } = useAcceptInvite()
 
   if (phase === "loading") {
@@ -41,6 +43,24 @@ export default function AcceptInvite() {
       <AuthLayout heading={t("invite.heading")}>
         <div className="flex justify-center py-10">
           <Loader2 className="h-6 w-6 animate-spin text-ink-muted" aria-hidden />
+        </div>
+      </AuthLayout>
+    )
+  }
+
+  if (phase === "unavailable") {
+    return (
+      <AuthLayout heading={t("invite.heading")}>
+        <div className="flex flex-col items-center gap-4 py-4 text-center animate-fade-in">
+          <div className="flex h-16 w-16 items-center justify-center rounded-md bg-warning/10">
+            <XCircle className="h-8 w-8 text-warning-ink" strokeWidth={1.75} aria-hidden />
+          </div>
+          <p role="alert" className="text-sm text-ink-muted leading-relaxed">
+            {previewError}
+          </p>
+          <Button size="lg" className="w-full" onClick={retryPreview}>
+            {t("common.tryAgain")}
+          </Button>
         </div>
       </AuthLayout>
     )

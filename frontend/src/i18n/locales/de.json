@@ -628,6 +628,12 @@
       "timedOut": "Die Anmeldung wurde nicht abgeschlossen. Bitte erneut versuchen.",
       "redirecting": "Weiterleitung zur Anmeldung …"
     },
+    "notice": {
+      "sessionExpired": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an, um fortzufahren.",
+      "accountDeactivated": "Dieses Konto wurde deaktiviert. Falls das ein Irrtum ist, wenden Sie sich an Ihre Administration.",
+      "signInToContinue": "Melden Sie sich an, um diese Seite zu öffnen.",
+      "sectionUnavailable": "Dieser Bereich steht Ihnen nicht zur Verfügung."
+    },
     "forgotPassword": {
       "heading": "Passwort zurücksetzen",
       "subheading": "Geben Sie Ihre E-Mail-Adresse ein, wir senden Ihnen einen Link",
@@ -1343,6 +1349,7 @@
       "print": "Drucken",
       "back": "Zurück zu den Zertifikaten",
       "notIssued": "Dieses Zertifikat wurde noch nicht ausgestellt",
+      "loadFailed": "Das Zertifikat konnte nicht geladen werden.",
       "schoolUnnamed": "Kein Schulname hinterlegt",
       "open": "Zertifikat öffnen",
       "certificateOfCompletion": "Certificate of Completion",
@@ -1682,6 +1689,7 @@
         "title": "Kursmaterialien",
         "upload": "Datei hochladen",
         "empty": "Noch keine Materialien hochgeladen.",
+        "loadFailed": "Die Materialliste konnte nicht geladen werden.",
         "sizeBytes": "{{b}} B",
         "sizeKb": "{{kb}} KB",
         "sizeMb": "{{mb}} MB",
@@ -1760,6 +1768,7 @@
     },
     "toast": {
       "moduleNotFound": "Modul nicht gefunden",
+      "loadFailed": "Das Modul konnte nicht geladen werden.",
       "failedSaveModule": "Modul konnte nicht gespeichert werden",
       "failedSaveDueDate": "Fälligkeitsdatum konnte nicht gespeichert werden",
       "chapterAdded": "Kapitel hinzugefügt",
@@ -2640,6 +2649,7 @@
     "logOutAndSwitch": "Abmelden und Konto wechseln",
     "errors": {
       "notFound": "Dieser Einladungslink ist ungültig. Prüfen Sie den Link oder bitten Sie die einladende Person, ihn erneut zu senden.",
+      "loadFailed": "Die Einladung konnte nicht geprüft werden. Prüfen Sie die Verbindung und versuchen Sie es erneut – der Link bleibt gültig.",
       "unusable": "Diese Einladung wurde bereits genutzt, zurückgezogen oder ist abgelaufen. Bitten Sie um eine neue.",
       "emailMismatch": "Diese Einladung ging an eine andere E-Mail-Adresse.",
       "emailMismatchDetail": "Diese Einladung ging an <strong>{{invited}}</strong>, angemeldet sind Sie aber als <strong>{{current}}</strong>.",
@@ -2695,9 +2705,11 @@
   "vedomost": {
     "title": "Notenliste",
     "loading": "Die Notenliste wird geladen …",
+    "loadFailed": "Die Notenliste konnte nicht geladen werden.",
     "notClosedTitle": "Diese Notenliste ist nicht abgeschlossen",
     "notClosedBody": "Mit dem Abschließen wird das Ergebnis jeder Person so festgehalten, wie es heute steht. Der Ausdruck liest aus dieser Momentaufnahme, spätere Neubewertungen ändern also kein bereits unterschriebenes Dokument.",
     "close": "Notenliste abschließen",
+    "closeFailed": "Die Notenliste konnte nicht abgeschlossen werden.",
     "print": "Drucken",
     "closedOn": "Abgeschlossen {{date}}",
     "wasReopened": "Diese Liste ersetzt eine wieder geöffnete. Grund: {{reason}}",
@@ -2732,6 +2744,7 @@
     "totalSoFar": "Bisher",
     "incompleteHint": "Solange nicht jedes Kriterium eine Stufe hat, ist die Arbeit nicht bewertet und die studierende Person sieht nichts.",
     "loadFailed": "Das Bewertungsraster konnte nicht geladen werden",
+    "loadFailedBody": "Ohne sie wird nicht bewertet – eine bloße Zahl würde von den Kriterien abweichen.",
     "saveFailed": "Die Bewertung konnte nicht gespeichert werden",
     "title": "Bewertungsraster",
     "yourGrid": "So wurde Ihre Arbeit bewertet"

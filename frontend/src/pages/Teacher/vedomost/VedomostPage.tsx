@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react"
-import { useParams, useSearchParams } from "react-router-dom"
+import { Link, useParams, useSearchParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
-import { EmptyState } from "@/components/patterns"
+import { EmptyState, ErrorState } from "@/components/patterns"
 import { FileText, Loader2, Printer } from "lucide-react"
 import { gradesService } from "@/services/grades"
+import { getErrorDetail } from "@/lib/errorDetail"
+import { toast } from "@/lib/toast"
 import type { GradeSheet } from "@/types"
 import { printedResult } from "./resultLabel"
 import { formatPercent } from "@/i18n/number"
@@ -38,16 +40,24 @@ export function VedomostPage() {
   const [sheet, setSheet] = useState<GradeSheet | null>(null)
   const [loading, setLoading] = useState(true)
   const [closing, setClosing] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const load = useCallback(() => {
     if (!courseId) return
     setLoading(true)
+    setLoadError(null)
     gradesService
       .getGradeSheet(courseId, cohortId)
       .then(setSheet)
-      .catch(() => setSheet(null))
+      .catch((err: unknown) => {
+        // `null` is what an open sheet answers by design, and that screen
+        // offers the «close» button — an irreversible snapshot. A refused or
+        // failed request must not be dressed as that invitation.
+        setSheet(null)
+        setLoadError(getErrorDetail(err, t("vedomost.loadFailed")))
+      })
       .finally(() => setLoading(false))
-  }, [courseId, cohortId])
+  }, [courseId, cohortId, t])
 
   useEffect(load, [load])
 
@@ -56,6 +66,8 @@ export function VedomostPage() {
     setClosing(true)
     try {
       setSheet(await gradesService.closeGradeSheet(courseId, cohortId))
+    } catch (err) {
+      toast({ title: getErrorDetail(err, t("vedomost.closeFailed")), variant: "destructive" })
     } finally {
       setClosing(false)
     }
@@ -66,6 +78,28 @@ export function VedomostPage() {
       <div className="container mx-auto flex items-center gap-2 px-4 py-10 text-sm text-ink-muted">
         <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
         {t("vedomost.loading")}
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="container mx-auto max-w-2xl px-4 py-10">
+        <ErrorState
+          description={loadError}
+          action={
+            <Button size="sm" variant="outline" onClick={load}>
+              {t("common.tryAgain")}
+            </Button>
+          }
+          secondaryAction={
+            <Link to={`/teacher/courses/${courseId}/gradebook`}>
+              <Button size="sm" variant="ghost">
+                {t("common.back")}
+              </Button>
+            </Link>
+          }
+        />
       </div>
     )
   }

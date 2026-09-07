@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ErrorState } from "@/components/patterns"
 import { adminService } from "@/services/admin"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { toast } from "@/lib/toast"
@@ -29,9 +30,12 @@ export function SchoolSettingsTab() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ school_name_ru: "", school_name_en: "", city: "" })
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadAttempt, setLoadAttempt] = useState(0)
 
   useEffect(() => {
     let cancelled = false
+    setLoadError(null)
     adminService
       .getOrgSettings()
       .then((s) => {
@@ -44,7 +48,10 @@ export function SchoolSettingsTab() {
         })
       })
       .catch((err) => {
-        if (!cancelled) toast({ title: getErrorDetail(err, t("admin.school.loadFailed")), variant: "destructive" })
+        // Not a toast over an empty form: the empty form could be saved, and
+        // saving it writes `null` over the school's name — the one printed on
+        // every ведомость. Nothing to edit until the real values are here.
+        if (!cancelled) setLoadError(getErrorDetail(err, t("admin.school.loadFailed")))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -52,7 +59,7 @@ export function SchoolSettingsTab() {
     return () => {
       cancelled = true
     }
-  }, [t])
+  }, [t, loadAttempt])
 
   const save = async () => {
     setSaving(true)
@@ -70,6 +77,24 @@ export function SchoolSettingsTab() {
     } finally {
       setSaving(false)
     }
+  }
+
+  if (loadError) {
+    return (
+      <Card>
+        <CardContent>
+          <ErrorState
+            className="py-8"
+            description={loadError}
+            action={
+              <Button size="sm" variant="outline" onClick={() => setLoadAttempt((n) => n + 1)}>
+                {t("common.tryAgain")}
+              </Button>
+            }
+          />
+        </CardContent>
+      </Card>
+    )
   }
 
   if (loading) {
