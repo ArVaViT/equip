@@ -920,7 +920,6 @@
     "navAriaLabel": "Chapter navigation",
     "nextChapter": "Next Chapter",
     "nextEyebrow": "Next",
-    "nextModuleEyebrow": "Next module",
     "notTranslated": "This lesson is not available in your language yet. It will appear here as soon as it is ready.",
     "positionEyebrow": "Chapter {{current}} of {{total}}",
     "prevChapter": "Previous Chapter",
@@ -1913,11 +1912,17 @@
     "chapterCount_other": "{{count}} chapters",
     "percentComplete": "{{percent}}% complete",
     "modulesHeading": "Modules",
-    "noModulesAddedYet": "No modules added yet",
-    "noModulesAddedYetDescription": "The teacher hasn't published any modules for this course. Check back soon — they'll appear here as they're added.",
     "openModule": "Open",
     "moduleLocked": "Locked",
     "moduleLockHint": "Complete all assessments in the previous module to unlock.",
+    "lessonsHeading": "Lessons",
+    "contentsHeading": "Contents",
+    "lessonCountShort_one": "{{count}} lesson",
+    "lessonCountShort_other": "{{count}} lessons",
+    "noLessonsYet": "No lessons yet",
+    "noLessonsYetDescription": "The teacher hasn't published any lessons for this course. Check back soon — they'll appear here as they're added.",
+    "lessonLocked": "Locked",
+    "lessonLockHint": "Finish the previous lesson to unlock this one.",
     "due": "Due",
     "overdue": "Overdue",
     "downloadFailed": "Failed to download file",
@@ -1944,7 +1949,7 @@
       "note": "This is how students will see the course once it is published. Until then nobody can enroll — but you can open any chapter and go through it as a student would.",
       "heading": "Contents",
       "emptyModule": "This module has no chapters yet.",
-      "noModules": "No modules yet — add them in the editor."
+      "empty": "No lessons yet — add them in the editor."
     }
   },
   "gradebook": {

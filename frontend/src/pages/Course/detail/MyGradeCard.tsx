@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCircle2, Circle, Clock, HeartHandshake, Loader2, Undo2 } from "lucide-react"
 import { gradesService } from "@/services/grades"
-import type { Module, MyCourseGrade, MyGradeItem } from "@/types"
+import type { CourseStructure } from "@/lib/courseStructure"
+import type { MyCourseGrade, MyGradeItem } from "@/types"
 import { CertificateBlockers } from "./CertificateBlockers"
 import { myGradeDisplay, outstandingItems } from "./myGrade"
 import { orNotTranslated } from "@/lib/untranslated"
@@ -36,11 +37,12 @@ const TONE_BY_STATUS: Record<MyGradeItem["status"], string> = {
  */
 export function MyGradeCard({
   courseId,
-  modules,
+  structure,
   onBlockersChange,
 }: {
   courseId: string
-  modules: Module[]
+  /** The course's lessons, so a blocker can be named and linked to. */
+  structure: CourseStructure
   /** Reported upward so the certificate card below can stop offering a button
    *  whose only outcome is an error. Lifted rather than fetched twice: the two
    *  cards must agree, and two fetches is how they stop agreeing. */
@@ -136,7 +138,7 @@ export function MyGradeCard({
             which item it is, then meets the button. */}
         <CertificateBlockers
           blockers={grade.certificate_blockers}
-          modules={modules}
+          structure={structure}
           courseId={courseId}
         />
 

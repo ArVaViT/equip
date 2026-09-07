@@ -504,7 +504,6 @@
     "navAriaLabel": "Навигация по главам",
     "nextChapter": "Следующая глава",
     "nextEyebrow": "Далее",
-    "nextModuleEyebrow": "Следующий модуль",
     "notTranslated": "Этот урок пока недоступен на вашем языке. Он появится здесь, как только будет готов.",
     "positionEyebrow": "Глава {{current}} из {{total}}",
     "prevChapter": "Предыдущая глава",
@@ -1543,11 +1542,19 @@
     "chapterCount_other": "{{count}} глав",
     "percentComplete": "{{percent}}% завершено",
     "modulesHeading": "Модули",
-    "noModulesAddedYet": "Модули ещё не добавлены",
-    "noModulesAddedYetDescription": "Преподаватель пока не опубликовал ни одного модуля. Загляните позже — они появятся здесь.",
     "openModule": "Открыть",
     "moduleLocked": "Заблокировано",
     "moduleLockHint": "Завершите все задания предыдущего модуля, чтобы разблокировать.",
+    "lessonsHeading": "Уроки",
+    "contentsHeading": "Содержание",
+    "lessonCountShort_one": "{{count}} урок",
+    "lessonCountShort_few": "{{count}} урока",
+    "lessonCountShort_many": "{{count}} уроков",
+    "lessonCountShort_other": "{{count}} урока",
+    "noLessonsYet": "Уроков пока нет",
+    "noLessonsYetDescription": "Преподаватель пока не опубликовал ни одного урока. Загляните позже — они появятся здесь.",
+    "lessonLocked": "Заблокировано",
+    "lessonLockHint": "Завершите предыдущий урок, чтобы открыть этот.",
     "due": "Сдать до",
     "overdue": "Просрочено",
     "downloadFailed": "Не удалось скачать файл",
@@ -1574,7 +1581,7 @@
       "note": "Так курс увидят студенты после публикации. Пока он не опубликован, записаться на него нельзя — но вы можете открыть любую главу и пройти её как студент.",
       "heading": "Содержание",
       "emptyModule": "В этом модуле пока нет глав.",
-      "noModules": "Модулей пока нет — добавьте их в редакторе."
+      "empty": "Уроков пока нет — добавьте их в редакторе."
     }
   },
   "gradebook": {

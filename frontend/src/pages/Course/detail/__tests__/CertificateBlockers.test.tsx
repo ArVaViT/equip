@@ -7,27 +7,39 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import i18n from "@/i18n/config"
 import { gradesService } from "@/services/grades"
 import { CertificateBlockers } from "../CertificateBlockers"
-import type { CertificateBlocker, Module } from "@/types"
+import { readCourseStructure } from "@/lib/courseStructure"
+import type { CertificateBlocker, Chapter, Course } from "@/types"
 
-const MODULES: Module[] = [
-  {
-    id: "m1",
+const chapter = (over: Partial<Chapter>): Chapter =>
+  ({
     course_id: "c1",
-    title: "Модуль 1",
-    description: null,
+    module_id: null,
     order_index: 0,
-    due_date: null,
-    chapters: [
-      {
-        id: "ch1",
-        module_id: "m1",
-        title: "Эссе о благодати",
-        order_index: 0,
-        chapter_type: "assignment",
-      } as Module["chapters"] extends (infer C)[] | undefined ? C : never,
-    ],
-  },
-]
+    chapter_type: "assignment",
+    ...over,
+  }) as Chapter
+
+/** A course whose work sits in a module, and a course whose work does not. */
+const GROUPED = readCourseStructure({
+  id: "c1",
+  modules: [
+    {
+      id: "m1",
+      course_id: "c1",
+      title: "Модуль 1",
+      description: null,
+      order_index: 0,
+      due_date: null,
+      chapters: [chapter({ id: "ch1", module_id: "m1", title: "Эссе о благодати" })],
+    },
+  ],
+} as unknown as Course)
+
+const LOOSE = readCourseStructure({
+  id: "c1",
+  modules: [],
+  chapters: [chapter({ id: "ch1", title: "Эссе о благодати" })],
+} as unknown as Course)
 
 function Wrapper({ children }: { children: ReactNode }) {
   return (
@@ -37,8 +49,8 @@ function Wrapper({ children }: { children: ReactNode }) {
   )
 }
 
-function show(blockers: CertificateBlocker[]) {
-  return render(<CertificateBlockers blockers={blockers} modules={MODULES} courseId="c1" />, {
+function show(blockers: CertificateBlocker[], structure = GROUPED) {
+  return render(<CertificateBlockers blockers={blockers} structure={structure} courseId="c1" />, {
     wrapper: Wrapper,
   })
 }
@@ -62,7 +74,21 @@ describe("CertificateBlockers", () => {
     // student count rows to work out which one it means.
     expect(screen.getByRole("link", { name: "Эссе о благодати" })).toHaveAttribute(
       "href",
-      "/courses/c1/modules/m1/chapters/ch1",
+      "/courses/c1/chapters/ch1",
+    )
+  })
+
+  it("names work that is in no module — it used to vanish from the list", () => {
+    // The lookup walked `modules[].chapters`, so an assignment written
+    // straight into the course was in no lookup: the sentence still said a
+    // piece of work was unread, and the link naming *which* piece silently
+    // dropped out. On a course of four lessons and no modules that meant
+    // every link disappeared from the only card that explains the refusal.
+    show([{ code: "work_not_graded", params: { count: 1 }, chapter_ids: ["ch1"] }], LOOSE)
+
+    expect(screen.getByRole("link", { name: "Эссе о благодати" })).toHaveAttribute(
+      "href",
+      "/courses/c1/chapters/ch1",
     )
   })
 

@@ -5,7 +5,8 @@ import { AlertCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { gradesService } from "@/services/grades"
 import { toast } from "@/lib/toast"
-import type { CertificateBlocker, Module } from "@/types"
+import { chapterHref, type CourseStructure } from "@/lib/courseStructure"
+import type { CertificateBlocker } from "@/types"
 
 /**
  * Why the certificate is not available yet — in specifics, with links.
@@ -46,11 +47,16 @@ const KNOWN_CODES = new Set([
 
 export function CertificateBlockers({
   blockers,
-  modules,
+  structure,
   courseId,
 }: {
   blockers: CertificateBlocker[]
-  modules: Module[]
+  /** The course's lessons, flat. Walking `modules[].chapters` instead — which
+   *  is what this did — dropped every lesson in no module without a sound:
+   *  the sentence stayed, the link to the work it names vanished, and the one
+   *  card that exists to say *why* there is no certificate stopped naming
+   *  half of the reason. */
+  structure: CourseStructure
   courseId: string
 }) {
   const { t } = useTranslation()
@@ -78,13 +84,12 @@ export function CertificateBlockers({
     }
   }
 
-  // Chapter → its module, so a link can be built. The API deliberately answers
-  // "which chapter", not "which URL": routes are the frontend's business.
-  const chapterLookup = new Map<string, { moduleId: string; title: string }>()
-  for (const module of modules) {
-    for (const chapter of module.chapters ?? []) {
-      chapterLookup.set(chapter.id, { moduleId: module.id, title: chapter.title })
-    }
+  // Chapter id → its title, so the link can carry the name of the work. The
+  // API deliberately answers "which chapter", not "which URL": routes are the
+  // frontend's business, and a lesson's address is its course's.
+  const chapterLookup = new Map<string, string>()
+  for (const chapter of structure.chapters) {
+    chapterLookup.set(chapter.id, chapter.title)
   }
 
   return (
@@ -121,9 +126,9 @@ export function CertificateBlockers({
                       {index > 0 && ", "}
                       <Link
                         className="underline underline-offset-2 hover:text-ink"
-                        to={`/courses/${courseId}/modules/${chapterLookup.get(chapterId)!.moduleId}/chapters/${chapterId}`}
+                        to={chapterHref(courseId, chapterId)}
                       >
-                        {chapterLookup.get(chapterId)!.title}
+                        {chapterLookup.get(chapterId)!}
                       </Link>
                     </span>
                   ))}

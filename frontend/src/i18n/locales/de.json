@@ -920,7 +920,6 @@
     "navAriaLabel": "Kapitelnavigation",
     "nextChapter": "Nächstes Kapitel",
     "nextEyebrow": "Weiter",
-    "nextModuleEyebrow": "Nächstes Modul",
     "notTranslated": "Diese Lektion ist noch nicht in Ihrer Sprache verfügbar. Sie erscheint hier, sobald sie fertig ist.",
     "positionEyebrow": "Kapitel {{current}} von {{total}}",
     "prevChapter": "Voriges Kapitel",
@@ -1913,11 +1912,17 @@
     "chapterCount_other": "{{count}} Kapitel",
     "percentComplete": "{{percent}} % abgeschlossen",
     "modulesHeading": "Module",
-    "noModulesAddedYet": "Noch keine Module angelegt",
-    "noModulesAddedYetDescription": "Der Dozent hat für diesen Kurs noch keine Module veröffentlicht. Schauen Sie bald wieder vorbei — sie erscheinen hier, sobald sie hinzugefügt werden.",
     "openModule": "Öffnen",
     "moduleLocked": "Gesperrt",
     "moduleLockHint": "Schließen Sie alle Leistungen des vorigen Moduls ab, um es zu öffnen.",
+    "lessonsHeading": "Lektionen",
+    "contentsHeading": "Inhalt",
+    "lessonCountShort_one": "{{count}} Lektion",
+    "lessonCountShort_other": "{{count}} Lektionen",
+    "noLessonsYet": "Noch keine Lektionen",
+    "noLessonsYetDescription": "Die Lehrkraft hat für diesen Kurs noch keine Lektionen veröffentlicht. Schauen Sie bald wieder vorbei — sie erscheinen hier, sobald sie hinzugefügt werden.",
+    "lessonLocked": "Gesperrt",
+    "lessonLockHint": "Schließen Sie die vorherige Lektion ab, um diese freizuschalten.",
     "due": "Fällig",
     "overdue": "Überfällig",
     "downloadFailed": "Datei konnte nicht heruntergeladen werden",
@@ -1944,7 +1949,7 @@
       "note": "So sehen Studierende den Kurs nach der Veröffentlichung. Bis dahin kann sich niemand einschreiben — Sie können aber jedes Kapitel öffnen und es wie Studierende durchgehen.",
       "heading": "Inhalt",
       "emptyModule": "Dieses Modul hat noch keine Kapitel.",
-      "noModules": "Noch keine Module — fügen Sie sie im Editor hinzu."
+      "empty": "Noch keine Lektionen — fügen Sie sie im Editor hinzu."
     }
   },
   "gradebook": {

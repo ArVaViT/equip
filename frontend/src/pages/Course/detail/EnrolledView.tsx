@@ -12,18 +12,18 @@ import { courseDetailSteps } from "@/lib/tourSteps"
 import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
 import { completionCelebratedKey } from "@/lib/storageKeys"
+import { countChapters, countModules, type CourseStructure } from "@/lib/courseStructure"
 import type {
   CalendarEvent,
   Certificate,
   Cohort,
   Course,
   Enrollment,
-  Module,
 } from "@/types"
 import type { CourseMaterial } from "./types"
 import { EnrolledHeader } from "./EnrolledHeader"
 import { MaterialsModal } from "./MaterialsModal"
-import { ModuleList } from "./ModuleList"
+import { CourseOutline } from "./CourseOutline"
 import { MyGradeCard } from "./MyGradeCard"
 import { UpcomingEvents } from "./UpcomingEvents"
 
@@ -31,8 +31,8 @@ interface Props {
   course: Course
   enrollment: Enrollment
   cohorts: Cohort[]
-  sortedModules: Module[]
-  totalChapters: number
+  /** The course read once — the outline to draw and the reading order. */
+  structure: CourseStructure
   /** `null` when the progress request failed. See `moduleProgress.ts`. */
   completedChapterIds: Set<string> | null
   materials: CourseMaterial[]
@@ -45,8 +45,7 @@ export function EnrolledView({
   course,
   enrollment,
   cohorts,
-  sortedModules,
-  totalChapters,
+  structure,
   completedChapterIds,
   materials,
   calendarEvents,
@@ -117,8 +116,8 @@ export function EnrolledView({
           course={course}
           enrollment={enrollment}
           enrolledCohort={enrolledCohort}
-          moduleCount={sortedModules.length}
-          chapterCount={totalChapters}
+          moduleCount={countModules(course)}
+          chapterCount={countChapters(course)}
         />
       </div>
 
@@ -127,9 +126,9 @@ export function EnrolledView({
       <UpcomingEvents events={calendarEvents} />
 
       <div data-tour="module-list">
-        <ModuleList
+        <CourseOutline
           courseId={course.id}
-          modules={sortedModules}
+          structure={structure}
           completedChapterIds={completedChapterIds}
         />
       </div>
@@ -140,7 +139,7 @@ export function EnrolledView({
       <div className="mt-6">
         <MyGradeCard
           courseId={course.id}
-          modules={sortedModules}
+          structure={structure}
           onBlockersChange={setBlockerCount}
         />
       </div>

@@ -111,11 +111,11 @@ describe("NotEnrolledView — the author on an unpublished course", () => {
     // The link's name carries the chapter type after the title ("Pentecost Reading").
     expect(screen.getByRole("link", { name: /^Pentecost/ })).toHaveAttribute(
       "href",
-      "/courses/c-1/modules/m-1/chapters/ch-1",
+      "/courses/c-1/chapters/ch-1",
     )
     expect(screen.getByRole("link", { name: /Quiz on Pentecost/ })).toHaveAttribute(
       "href",
-      "/courses/c-1/modules/m-1/chapters/ch-2",
+      "/courses/c-1/chapters/ch-2",
     )
     expect(screen.getByRole("link", { name: "First module" })).toHaveAttribute(
       "href",
@@ -131,6 +131,80 @@ describe("NotEnrolledView — the author on an unpublished course", () => {
     const text = outline.textContent ?? ""
     expect(text.indexOf("First module")).toBeLessThan(text.indexOf("Second module"))
     expect(text.indexOf("Pentecost")).toBeLessThan(text.indexOf("Quiz on Pentecost"))
+  })
+
+  it("previews a course of lessons that are in no module", () => {
+    // The preview walked `modules[].chapters`. A teacher who wrote four
+    // lessons straight into the course — the case that started all of this —
+    // opened their own preview and found «Модулей пока нет»: the one screen
+    // whose job is «show me what I made» showing them nothing they made.
+    renderView(
+      makeCourse({
+        status: "draft",
+        modules: [],
+        chapters: [
+          {
+            id: "ch-b",
+            course_id: "c-1",
+            module_id: null,
+            title: "Second lesson",
+            order_index: 1,
+            chapter_type: "reading",
+            requires_completion: false,
+            is_locked: false,
+          },
+          {
+            id: "ch-a",
+            course_id: "c-1",
+            module_id: null,
+            title: "First lesson",
+            order_index: 0,
+            chapter_type: "reading",
+            requires_completion: false,
+            is_locked: false,
+          },
+        ],
+      }),
+      true,
+    )
+
+    const outline = screen.getByTestId("draft-outline")
+    expect(screen.getByRole("link", { name: /^First lesson/ })).toHaveAttribute(
+      "href",
+      "/courses/c-1/chapters/ch-a",
+    )
+    const text = outline.textContent ?? ""
+    expect(text.indexOf("First lesson")).toBeLessThan(text.indexOf("Second lesson"))
+    // And the word the course does not use does not appear on the page.
+    expect(text).not.toMatch(/module/i)
+  })
+
+  it("counts lessons a module does not hold in the at-a-glance line", () => {
+    renderView(
+      makeCourse({
+        status: "published",
+        modules: [],
+        chapters: [
+          {
+            id: "ch-a",
+            course_id: "c-1",
+            module_id: null,
+            title: "First lesson",
+            order_index: 0,
+            chapter_type: "reading",
+            requires_completion: false,
+            is_locked: false,
+          },
+        ],
+      }),
+      false,
+    )
+
+    // The line was keyed on the module count, so a course of lessons said
+    // nothing at all about itself. It says what it has, and does not offer a
+    // module count it hasn't got.
+    expect(screen.getByText(/1 chapter/)).toBeInTheDocument()
+    expect(screen.queryByText(/module/i)).not.toBeInTheDocument()
   })
 
   it("explains that nobody can enroll yet and leads back to the editor", () => {

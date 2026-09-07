@@ -940,7 +940,6 @@
     "navAriaLabel": "Навігація розділами",
     "nextChapter": "Наступний розділ",
     "nextEyebrow": "Далі",
-    "nextModuleEyebrow": "Наступний модуль",
     "notTranslated": "Цей урок поки недоступний вашою мовою. Він з'явиться тут, щойно буде готовий.",
     "positionEyebrow": "Розділ {{current}} з {{total}}",
     "prevChapter": "Попередній розділ",
@@ -1979,11 +1978,19 @@
     "chapterCount_other": "{{count}} розділу",
     "percentComplete": "{{percent}}% завершено",
     "modulesHeading": "Модулі",
-    "noModulesAddedYet": "Модулів ще не додано",
-    "noModulesAddedYetDescription": "Викладач ще не опублікував жодного модуля цього курсу. Зазирніть згодом — вони з’являться тут, щойно будуть додані.",
     "openModule": "Відкрити",
     "moduleLocked": "Закрито",
     "moduleLockHint": "Завершіть усі роботи попереднього модуля, щоб відкрити цей.",
+    "lessonsHeading": "Уроки",
+    "contentsHeading": "Зміст",
+    "lessonCountShort_one": "{{count}} урок",
+    "lessonCountShort_few": "{{count}} уроки",
+    "lessonCountShort_many": "{{count}} уроків",
+    "lessonCountShort_other": "{{count}} уроку",
+    "noLessonsYet": "Уроків поки немає",
+    "noLessonsYetDescription": "Викладач ще не опублікував жодного уроку. Зазирніть пізніше — вони з'являться тут.",
+    "lessonLocked": "Заблоковано",
+    "lessonLockHint": "Завершіть попередній урок, щоб відкрити цей.",
     "due": "Термін",
     "overdue": "Прострочено",
     "downloadFailed": "Не вдалося завантажити файл",
@@ -2010,7 +2017,7 @@
       "note": "Так курс побачать студенти після публікації. Поки він не опублікований, записатися на нього не можна — але ви можете відкрити будь-який розділ і пройти його як студент.",
       "heading": "Зміст",
       "emptyModule": "У цьому модулі поки немає розділів.",
-      "noModules": "Модулів поки немає — додайте їх у редакторі."
+      "empty": "Уроків поки немає — додайте їх у редакторі."
     }
   },
   "gradebook": {

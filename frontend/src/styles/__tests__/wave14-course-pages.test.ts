@@ -33,7 +33,7 @@ const FILES = [
   resolve(SRC, "pages/Course/ModuleView.tsx"),
   resolve(SRC, "pages/Course/detail/CohortSelectModal.tsx"),
   resolve(SRC, "pages/Course/detail/EnrolledHeader.tsx"),
-  resolve(SRC, "pages/Course/detail/ModuleList.tsx"),
+  resolve(SRC, "pages/Course/detail/CourseOutline.tsx"),
   resolve(SRC, "pages/Course/detail/NotEnrolledView.tsx"),
   resolve(SRC, "pages/Course/detail/UpcomingEvents.tsx"),
   resolve(SRC, "pages/Courses/CoursesPage.tsx"),

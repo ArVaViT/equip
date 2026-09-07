@@ -62,10 +62,15 @@ export function EnrolledHeader({
                 {enrolledCohort.name}
               </span>
             )}
-            <span className="flex items-center gap-1">
-              <Layers className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-              {t("courseDetail.moduleCount", { count: moduleCount })}
-            </span>
+            {/* Only when the course actually groups its lessons. A course of
+                four lessons has no modules, and «0 модулей» next to «4 главы»
+                is a count of something that was never meant to be there. */}
+            {moduleCount > 0 && (
+              <span className="flex items-center gap-1">
+                <Layers className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+                {t("courseDetail.moduleCount", { count: moduleCount })}
+              </span>
+            )}
             <span className="flex items-center gap-1">
               <BookOpen className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
               {t("courseDetail.chapterCount", { count: chapterCount })}
