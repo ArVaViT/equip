@@ -44,6 +44,7 @@ class ChapterResponse(ChapterBase):
     title: str = ""
     id: str
     module_id: str
+    course_id: str
 
 
 class ChapterSummary(BaseModel):
@@ -55,6 +56,7 @@ class ChapterSummary(BaseModel):
 
     id: str
     module_id: str
+    course_id: str
     title: str = ""
     order_index: int = 0
     chapter_type: CHAPTER_TYPES = "reading"

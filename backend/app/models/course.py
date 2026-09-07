@@ -169,6 +169,16 @@ class Course(Base):
         cascade="all, delete-orphan",
         order_by="Module.order_index",
     )
+    # Every chapter of the course, straight from the course — whichever
+    # module groups it. Today this is exactly the union of
+    # ``module.chapters`` over ``modules`` (pinned by
+    # ``tests/test_a_chapter_belongs_to_its_course.py``); it exists so a
+    # chapter can stop needing a module, which is where the model is going.
+    chapters: Mapped[list["Chapter"]] = relationship(
+        back_populates="course",
+        cascade="all, delete-orphan",
+        order_by="Chapter.order_index",
+    )
     enrollments: Mapped[list["Enrollment"]] = relationship(back_populates="course", cascade="all, delete-orphan")
 
     # ``title`` and ``description`` live in ``content_versions``.
@@ -239,7 +249,14 @@ class Module(Base):
 
 
 class Chapter(Base):
-    """Chapter belonging to a module.
+    """Chapter of a course, grouped under a module.
+
+    Two parents, one course. ``course_id`` names the course directly;
+    ``module_id`` names the module, and the module's course is the same
+    course — every write path sets both, and the pair never disagree.
+    The module is still required here; making it optional is the next
+    step of the chapter→course move, once every reader can reach a
+    chapter without one.
 
     Multilingual storage, and the one exception to it: unlike
     ``courses.title`` and ``modules.title`` — both dropped and replaced
@@ -269,10 +286,20 @@ class Chapter(Base):
 
     __tablename__ = "chapters"
     __table_args__ = (
-        Index("ix_chapters_module_id_order", "module_id", "order_index"),
+        # Mirror prod. The single-column ``ix_chapters_module_id`` is what
+        # production has carried since the table was made; the two
+        # ``(module_id, order_index)`` composites this model declared until
+        # 2026-09-07 never existed there. A module holds a handful of
+        # chapters and the sort was always in memory, so nothing was lost —
+        # but the model is a mirror of the database, not a wish list, and
+        # the module walk is not the read the next steps invest in.
+        Index("ix_chapters_module_id", "module_id"),
+        # The chapters of one course in order, live rows only — the read
+        # every course-level path takes once a chapter no longer needs a
+        # module. Created by migration 20260907173527.
         Index(
-            "ix_chapters_module_id_order_active",
-            "module_id",
+            "ix_chapters_course_id_order_active",
+            "course_id",
             "order_index",
             postgresql_where=text("deleted_at IS NULL"),
         ),
@@ -284,9 +311,14 @@ class Chapter(Base):
     )
 
     id: Mapped[str] = mapped_column(primary_key=True)
-    # Covered by the composite ``ix_chapters_module_id_order`` — same reason
-    # as ``Module.course_id``.
     module_id: Mapped[str] = mapped_column(ForeignKey("modules.id"))
+    # The course this chapter belongs to. Always equal to
+    # ``module.course_id`` while every chapter still has a module; written
+    # by every create path (``create_chapter``, ``clone_course``, the fat
+    # seed) alongside ``module_id``. Production has no default on purpose:
+    # a path that forgets it fails loudly instead of filing a chapter under
+    # no course.
+    course_id: Mapped[str] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
     title: Mapped[str] = mapped_column()
     order_index: Mapped[int] = mapped_column(default=0)
     chapter_type: Mapped[str] = mapped_column(default="reading", server_default="reading")
@@ -295,6 +327,9 @@ class Chapter(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     module: Mapped["Module"] = relationship(back_populates="chapters")
+    course: Mapped["Course"] = relationship(back_populates="chapters")
 
     def __repr__(self) -> str:
-        return f"<Chapter id={self.id!r} title={self.title!r} module_id={self.module_id!r}>"
+        return (
+            f"<Chapter id={self.id!r} title={self.title!r} module_id={self.module_id!r} course_id={self.course_id!r}>"
+        )

@@ -191,6 +191,7 @@ def _ensure_chapter(
         chapter = Chapter(
             id=chapter_id,
             module_id=module.id,
+            course_id=module.course_id,
             title=f"Chapter {index + 1}",
             order_index=index,
             chapter_type=chapter_type,
