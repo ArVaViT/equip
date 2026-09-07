@@ -18,6 +18,7 @@ from ._cv_helpers import (
     make_course_with_text,
     make_module_with_text,
 )
+from ._pdf_text import pdf_lines
 from .conftest import STUDENT_ID, TEACHER_ID
 
 if TYPE_CHECKING:
@@ -63,6 +64,7 @@ class TestRenderCoursePdf:
         course.title = "Test"
         course.description = "<p>A description</p>"
         course.modules = []
+        course.chapters = []
         out = render_course_pdf(course)
         # PDF files start with the magic ``%PDF-`` sequence — without
         # that, browsers won't render the download inline and the
@@ -81,6 +83,7 @@ class TestRenderCoursePdf:
         course.title = None
         course.description = None
         course.modules = []
+        course.chapters = []
         out = render_course_pdf(course)
         assert out[:5] == b"%PDF-"
 
@@ -94,10 +97,13 @@ class TestRenderCoursePdf:
         block.order_index = 0
 
         chapter = MagicMock()
+        chapter.id = "ch-1"
         chapter.title = "Ch"
+        chapter.module_id = "mod-1"
         chapter.blocks = [block]
 
         module = MagicMock()
+        module.id = "mod-1"
         module.title = "Mod"
         module.description = None
         module.chapters = [chapter]
@@ -106,9 +112,17 @@ class TestRenderCoursePdf:
         course.title = "X"
         course.description = None
         course.modules = [module]
+        # The renderer walks the course's chapters; a chapter reachable
+        # only through its module is exactly the row that used to go
+        # missing, so the fixture has to hand over both.
+        course.chapters = [chapter]
 
         out = render_course_pdf(course)
         assert out[:5] == b"%PDF-"
+        # The tags are gone and the words survived.
+        lines = pdf_lines(out)
+        assert "Visible text" in lines
+        assert not any("<strong>" in line for line in lines)
 
 
 class TestExportRouteVisibility:

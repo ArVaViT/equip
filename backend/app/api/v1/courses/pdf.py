@@ -52,8 +52,15 @@ def _attach_localized_blocks(db: Session, course: Course, *, display_locale: Loc
     One query for the blocks, one bulk resolve for their text, at the
     reader's language. A block with nothing in this language gets ``""``
     and the renderer prints nothing for it.
+
+    The chapters come from ``course.chapters`` — the course's own lessons
+    — and not from the module walk this used to do. A lesson that no
+    module groups is still a lesson of the course, and the walk skipped
+    it: no title hydrated, no blocks attached, and nothing in the export.
+    ``get_course`` loads the relationship already filtered to live rows,
+    so a binned lesson stays out.
     """
-    chapters = [chapter for module in course.modules for chapter in module.chapters]
+    chapters = list(course.chapters or [])
     if not chapters:
         return
 
