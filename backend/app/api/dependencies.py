@@ -11,7 +11,7 @@ from app.core.errors import ErrorCode, equip_error
 from app.core.security import decode_access_token
 from app.models.course import Chapter, Course, CourseStatus, Module
 from app.models.enrollment import Enrollment
-from app.models.user import User, UserRole
+from app.models.user import User, UserRole, can_teach
 
 security = HTTPBearer()
 optional_security = HTTPBearer(auto_error=False)
@@ -77,7 +77,15 @@ def get_optional_user(
 def require_teacher(
     current_user: User = Depends(get_current_user),
 ) -> User:
-    if current_user.role not in (UserRole.TEACHER.value, UserRole.ADMIN.value):
+    """Anyone who authors courses: a teacher, a director, platform staff.
+
+    The set lives in ``app.models.user.TEACHING_ROLES`` and nowhere else.
+    This gate answers only "may this role be on the teaching surface at
+    all"; whose course they may touch is ``assert_course_owner`` /
+    ``is_owner_or_admin``, and a director is bound by those exactly as a
+    teacher is.
+    """
+    if not can_teach(current_user.role):
         raise equip_error(
             ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,

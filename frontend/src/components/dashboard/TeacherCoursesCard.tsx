@@ -8,7 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useAsyncData } from "@/hooks/useAsyncData"
 import { useAuth } from "@/context/useAuth"
 import { coursesService } from "@/services/courses"
-import { ROLES, type Course } from "@/types"
+import type { Course } from "@/types"
+import { canTeach } from "@/lib/roles"
 
 /** How many courses the card names before it says "and N more". */
 const SHOWN = 3
@@ -48,7 +49,7 @@ const STATUS_VARIANT: Record<Course["status"], "success" | "warningSubtle" | "wa
 export function TeacherCoursesCard() {
   const { t, i18n } = useTranslation()
   const { user } = useAuth()
-  const teaches = user?.role === ROLES.TEACHER || user?.role === ROLES.ADMIN
+  const teaches = canTeach(user?.role)
   const { data: courses, loading } = useAsyncData<Course[] | null>(
     async () => (teaches ? coursesService.getTeacherCourses().catch(() => null) : []),
     [user?.id, teaches, i18n.language],
