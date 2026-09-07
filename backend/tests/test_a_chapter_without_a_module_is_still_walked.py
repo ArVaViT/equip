@@ -386,17 +386,21 @@ class TestTheResolversReachIt:
         assert context.found
         assert context.source_locale == "ru"
 
-    def test_the_reader_s_locale_context_still_honours_the_bin(
+    def test_the_reader_s_locale_context_honours_the_chapter_s_own_bin_only(
         self, db: Session, course_where_every_chapter_has_a_module: Course
     ) -> None:
-        # Preserved from the inner join: a chapter grouped under a binned
-        # module is not found, and neither is a binned chapter.
+        # The bin that counts is the chapter's own. A binned module used
+        # to hide its chapters here too; now that the module is optional
+        # it is a heading, and a missing heading does not make the lesson
+        # unreadable — the reader would otherwise get ``found=False``,
+        # which is not an error but a silent default (``ru``, overlay on)
+        # that misdescribes the chapter's language to everyone.
         by_title = {
             chapter.title: chapter
             for chapter in db.query(Chapter).filter_by(course_id=course_where_every_chapter_has_a_module.id)
         }
         assert resolve_chapter_locale_context(db, chapter_id=by_title["Урок 1"].id, current_user=None).found
-        assert not resolve_chapter_locale_context(
+        assert resolve_chapter_locale_context(
             db, chapter_id=by_title["Урок модуля в корзине"].id, current_user=None
         ).found
         assert not resolve_chapter_locale_context(db, chapter_id=by_title["Урок в корзине"].id, current_user=None).found

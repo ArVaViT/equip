@@ -99,14 +99,25 @@ class TestGetChapter:
         _chapter(db, "gc-6-ch", course_id=course.id, module_id=None)
         assert get_chapter(db, "gc-6", "gc-6-ch", module_id=module.id) is None
 
-    def test_soft_deleted_module_hides_chapter(self, db: Session) -> None:
-        """Kept from the inner-join days: a binned module takes its
-        chapters with it, whether or not the caller names the module."""
+    def test_a_binned_module_no_longer_hides_its_chapter(self, db: Session) -> None:
+        """Reversed with the module made optional.
+
+        A binned module used to take its chapters out of every lookup.
+        It no longer does: the chapter belongs to the course, and a
+        heading nobody can see is not a reason to hide a lesson. The
+        route that bins the module detaches the chapters first
+        (``delete_module``), so this row shape only arises from data
+        older than that change — and the right answer for it is the same
+        one: find the chapter at its course.
+        """
         module_id, chapter_id = _seed_with_module(db, "gc-7")
         db.query(Module).filter(Module.id == module_id).update({"deleted_at": datetime.now(UTC)})
         db.commit()
-        assert get_chapter(db, "gc-7", chapter_id, module_id=module_id) is None
-        assert get_chapter(db, "gc-7", chapter_id) is None
+        found = get_chapter(db, "gc-7", chapter_id)
+        assert found is not None and found.id == chapter_id
+        # The module in the path still narrows the lookup, binned or not.
+        under_module = get_chapter(db, "gc-7", chapter_id, module_id=module_id)
+        assert under_module is not None and under_module.id == chapter_id
 
     def test_soft_deleted_chapter_is_hidden(self, db: Session) -> None:
         module_id, chapter_id = _seed_with_module(db, "gc-8")

@@ -533,17 +533,20 @@ class TestVerifyChapterAccess:
         assert deps.verify_chapter_access(db, chapter_id, teacher).id == chapter_id
         assert deps.verify_chapter_access(db, chapter_id, student).id == chapter_id
 
-    def test_soft_deleted_module_hides_chapter(self, db: Session) -> None:
-        """Kept on purpose: a module that is binned takes its chapters with
-        it, even though the chapter reaches its course without the module
-        now. Changing that is a decision for the step that makes the
-        module optional in the database, not a side effect of this one."""
+    def test_a_binned_module_no_longer_hides_its_chapter(self, db: Session) -> None:
+        """The decision the previous step deferred, taken: it does not.
+
+        A binned module used to 404 every chapter under it. Now that the
+        module is optional the chapter belongs to the course and the
+        module is a heading; deleting the heading leaves the lesson
+        readable. ``delete_module`` detaches live chapters before it bins
+        itself, so the gate only meets this shape on data older than the
+        change — and answers it the same way.
+        """
         teacher = _seed_teacher(db)
         _course_id, module_id, chapter_id = _seed_published_course_with_chapter(db, course_id="vca-7", owner=TEACHER_ID)
         _soft_delete_module(db, module_id)
-        with pytest.raises(HTTPException) as exc:
-            deps.verify_chapter_access(db, chapter_id, teacher)
-        assert exc.value.status_code == status.HTTP_404_NOT_FOUND
+        assert deps.verify_chapter_access(db, chapter_id, teacher).id == chapter_id
 
 
 # ---------------------------------------------------------------------------
@@ -591,13 +594,15 @@ class TestVerifyChapterOwner:
             deps.verify_chapter_owner(db, chapter_id, teacher)
         assert exc.value.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_soft_deleted_module_hides_chapter(self, db: Session) -> None:
+    def test_a_binned_module_no_longer_hides_its_chapter(self, db: Session) -> None:
+        """Same reversal as on the access gate: the teacher can still edit
+        a lesson whose module went to the bin."""
         teacher = _seed_teacher(db)
-        _course_id, module_id, chapter_id = _seed_published_course_with_chapter(db, course_id="vch-5", owner=TEACHER_ID)
+        course_id, module_id, chapter_id = _seed_published_course_with_chapter(db, course_id="vch-5", owner=TEACHER_ID)
         _soft_delete_module(db, module_id)
-        with pytest.raises(HTTPException) as exc:
-            deps.verify_chapter_owner(db, chapter_id, teacher)
-        assert exc.value.status_code == status.HTTP_404_NOT_FOUND
+        chapter, returned_course_id = deps.verify_chapter_owner(db, chapter_id, teacher)
+        assert chapter.id == chapter_id
+        assert returned_course_id == course_id
 
     def test_chapter_without_module_returns_its_course_id(self, db: Session) -> None:
         teacher = _seed_teacher(db)
@@ -639,13 +644,13 @@ class TestResolveChapterCourseId:
         course_id, chapter_id = _seed_published_course_with_moduleless_chapter(db, course_id="rcc-2", owner=TEACHER_ID)
         assert deps.resolve_chapter_course_id(db, chapter_id) == course_id
 
-    def test_soft_deleted_module_hides_chapter(self, db: Session) -> None:
+    def test_a_binned_module_no_longer_hides_its_chapter(self, db: Session) -> None:
+        """The lookup answers from ``chapters.course_id``; the module is
+        not consulted, binned or otherwise."""
         _seed_teacher(db)
-        _course_id, module_id, chapter_id = _seed_published_course_with_chapter(db, course_id="rcc-3", owner=TEACHER_ID)
+        course_id, module_id, chapter_id = _seed_published_course_with_chapter(db, course_id="rcc-3", owner=TEACHER_ID)
         _soft_delete_module(db, module_id)
-        with pytest.raises(HTTPException) as exc:
-            deps.resolve_chapter_course_id(db, chapter_id)
-        assert exc.value.status_code == status.HTTP_404_NOT_FOUND
+        assert deps.resolve_chapter_course_id(db, chapter_id) == course_id
 
     def test_soft_deleted_course_hides_chapter(self, db: Session) -> None:
         _seed_teacher(db)

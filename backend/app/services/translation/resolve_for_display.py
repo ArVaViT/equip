@@ -47,7 +47,6 @@ from app.services.content_versions import (
     fetch_cv_entity_texts_with_fallback,
     fetch_cv_text_bulk,
 )
-from app.services.domain_access import chapter_module_is_live_or_absent
 from app.services.language_detection import carries_language, detect_locale
 from app.services.translation.service import is_translation_enabled
 
@@ -627,21 +626,18 @@ def resolve_chapter_locale_context(
     """Run the chapter→course join once and derive every locale/access fact.
 
     The course is the chapter's own (``Chapter.course_id``); the module
-    is joined only to keep honouring the bin — a chapter grouped under a
-    binned module is not found, as before. A chapter with no module is
-    found by its course like any other; through an inner join on the
-    module it would not have been, and ``found=False`` here is not an
-    error but a default (``ru``, overlay on) that quietly misdescribes
-    the chapter's language to every reader.
+    is not consulted at all. A chapter with no module is found by its
+    course like any other; through an inner join on the module it would
+    not have been, and ``found=False`` here is not an error but a
+    default (``ru``, overlay on) that quietly misdescribes the chapter's
+    language to every reader.
     """
     course = (
         db.query(Course)
         .join(Chapter, Chapter.course_id == Course.id)
-        .outerjoin(Module, Module.id == Chapter.module_id)
         .filter(
             Chapter.id == chapter_id,
             Chapter.deleted_at.is_(None),
-            chapter_module_is_live_or_absent(),
             Course.deleted_at.is_(None),
         )
         .first()

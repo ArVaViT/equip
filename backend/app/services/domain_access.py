@@ -18,6 +18,13 @@ the existing route code keeps working without churn; the canonical
 import path is ``app.services.domain_access``. The chapter lookups
 read ``chapters.course_id`` directly: a chapter belongs to its course,
 and the module is an optional grouping it may or may not name.
+
+This module used to also hold ``chapter_module_is_live_or_absent()``,
+the rule that a binned module keeps hiding its chapters. It is gone:
+``delete_module`` now detaches live chapters instead of binning them,
+so a live chapter can no longer name a binned module, and the answer
+for one that somehow did would be to show it at its course anyway —
+the grouping is the disposable part. See the PR for step 3.
 """
 
 from __future__ import annotations
@@ -25,36 +32,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fastapi import status
-from sqlalchemy import or_
 
 from app.core.errors import ErrorCode, equip_error
-from app.models.course import Chapter, Course, Module
+from app.models.course import Chapter, Course
 from app.models.user import User, UserRole
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
-    from sqlalchemy.sql import ColumnElement
-
-
-def chapter_module_is_live_or_absent() -> ColumnElement[bool]:
-    """The module's say over its chapters' visibility, kept explicit.
-
-    While every chapter reached its course through ``INNER JOIN modules
-    ... WHERE modules.deleted_at IS NULL``, soft-deleting a module hid
-    all of its chapters on every chapter-scoped route (blocks, quizzes,
-    assignments, progress). The chapter now joins its course directly
-    and the module is an ``OUTER JOIN`` — which would have silently
-    dropped that rule along with the inner join. This predicate carries
-    it on purpose: a chapter that names a module is visible only while
-    that module is live; a chapter that names none has no module to be
-    hidden by.
-
-    Use after ``.outerjoin(Module, Chapter.module_id == Module.id)``.
-    Whether a deleted module should keep hiding its chapters once the
-    module is optional is a product decision for the step that makes it
-    optional, not a side effect of this one.
-    """
-    return or_(Chapter.module_id.is_(None), Module.deleted_at.is_(None))
 
 
 def assert_course_owner(
@@ -93,17 +77,15 @@ def resolve_chapter_course_id(db: Session, chapter_id: str) -> str:
     N+1 across the request.
 
     The answer is ``chapters.course_id`` itself; the course is joined
-    only to hide chapters of soft-deleted courses, the module only for
-    ``chapter_module_is_live_or_absent``.
+    only to hide chapters of soft-deleted courses. The module is not
+    joined at all — it has no say over whether its chapters are visible.
     """
     row = (
         db.query(Chapter.course_id)
         .join(Course, Chapter.course_id == Course.id)
-        .outerjoin(Module, Chapter.module_id == Module.id)
         .filter(
             Chapter.id == chapter_id,
             Chapter.deleted_at.is_(None),
-            chapter_module_is_live_or_absent(),
             Course.deleted_at.is_(None),
         )
         .first()

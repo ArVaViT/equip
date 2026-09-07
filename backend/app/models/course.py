@@ -311,27 +311,24 @@ class Chapter(Base):
     )
 
     id: Mapped[str] = mapped_column(primary_key=True)
-    # Optional on the model, ``NOT NULL`` still in production: the one
-    # place the model is deliberately a step ahead of the database. Step 2
-    # of the chapter→course move made both the translation contour and
-    # the access gate (``_resolve_chapter``, ``resolve_chapter_course_id``,
-    # ``get_chapter``) reach a chapter by its ``course_id`` alone, and the
-    # tests that prove it use a chapter with no module — which the test
-    # schema, built from this model, has to allow. Every write path still
-    # sets both parents; the column follows in the step that drops the
-    # constraint and lets a teacher create such a chapter.
-    module_id: Mapped[str | None] = mapped_column(ForeignKey("modules.id"))
-    # The course this chapter belongs to. Always equal to
-    # ``module.course_id`` while every chapter still has a module; written
-    # by every create path (``create_chapter``, ``clone_course``, the fat
-    # seed) alongside ``module_id``. Production has no default on purpose:
-    # a path that forgets it fails loudly instead of filing a chapter under
-    # no course.
+    # Optional, in the model and now in the database too. A module is a
+    # heading a longer course may want and a short one does not; the
+    # chapter belongs to its course either way. ``ON DELETE SET NULL``
+    # rather than CASCADE: when the grouping goes, the lessons stay and
+    # surface at the course. ``delete_module`` says the same thing for
+    # the soft-delete path, by detaching live chapters instead of binning
+    # them.
+    module_id: Mapped[str | None] = mapped_column(ForeignKey("modules.id", ondelete="SET NULL"))
+    # The course this chapter belongs to, and the only parent that is
+    # required. Written by every create path (``create_chapter``,
+    # ``clone_course``, the fat seed). Production has no default on
+    # purpose: a path that forgets it fails loudly instead of filing a
+    # chapter under no course.
     #
-    # Course-level reads (denominators, the grading queue, the board, the
-    # calendar, the cascades) go through this column; the module is joined
-    # only where ``chapter_module_is_live_or_absent`` keeps a binned module
-    # hiding its chapters — the one rule, in one place.
+    # Every read of a chapter goes through this column — denominators,
+    # the grading queue, the board, the calendar, the access gate, the
+    # cascades. The module is joined only where a caller wants the
+    # grouping itself; it never decides whether a chapter is visible.
     course_id: Mapped[str] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"))
     title: Mapped[str] = mapped_column()
     order_index: Mapped[int] = mapped_column(default=0)

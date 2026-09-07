@@ -371,7 +371,7 @@ CREATE TABLE public.chapter_progress (
 
 CREATE TABLE public.chapters (
     id character varying NOT NULL,
-    module_id character varying NOT NULL,
+    module_id character varying,
     title character varying NOT NULL,
     order_index integer DEFAULT 0 NOT NULL,
     chapter_type character varying(20) DEFAULT 'reading'::character varying NOT NULL,
@@ -2599,7 +2599,7 @@ ALTER TABLE ONLY public.chapters
 --
 
 ALTER TABLE ONLY public.chapters
-    ADD CONSTRAINT chapters_module_id_fkey FOREIGN KEY (module_id) REFERENCES public.modules(id) ON DELETE CASCADE;
+    ADD CONSTRAINT chapters_module_id_fkey FOREIGN KEY (module_id) REFERENCES public.modules(id) ON DELETE SET NULL;
 
 
 --

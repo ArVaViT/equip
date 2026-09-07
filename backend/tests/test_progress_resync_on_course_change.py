@@ -135,7 +135,20 @@ def test_turning_a_lesson_into_a_quiz_moves_the_denominator(db: Session, teacher
     assert _progress(db) == 50
 
 
-def test_deleting_the_module_takes_its_quizzes_out_of_the_fraction(db: Session, teacher: User, student: User):
+def test_deleting_the_module_leaves_the_fraction_alone(db: Session, teacher: User, student: User):
+    """Deleting a module deletes a heading, so no denominator moves.
+
+    This test asserted the opposite until the module became optional:
+    binning a module binned its chapters, so both quizzes left the
+    fraction and the student dropped from 50% to 0%. That was the
+    cascade this whole change exists to remove — the first teacher on
+    the platform lost lessons to it while reshaping a course.
+
+    Now the chapters detach and stay on the course, still live, still
+    gradable. The student passed one of two quizzes before and passes
+    one of two after: 50%, unchanged. The only thing that disappeared is
+    the grouping.
+    """
     _seed(db, quizzes=2)
     _pass(db, f"{COURSE_ID}-quiz-0")
     resync_course_progress(db, COURSE_ID)
@@ -145,7 +158,19 @@ def test_deleting_the_module_takes_its_quizzes_out_of_the_fraction(db: Session, 
     assert module is not None
     delete_module(db, module)
 
-    assert _progress(db) == 0
+    assert _progress(db) == 50
+    # And the quizzes are still there to be counted — ungrouped, not gone.
+    live_quizzes = (
+        db.query(Chapter)
+        .filter(
+            Chapter.course_id == COURSE_ID,
+            Chapter.chapter_type == "quiz",
+            Chapter.deleted_at.is_(None),
+        )
+        .all()
+    )
+    assert len(live_quizzes) == 2
+    assert all(chapter.module_id is None for chapter in live_quizzes)
 
 
 def test_a_course_with_nothing_gradable_is_zero_not_a_crash(db: Session, teacher: User, student: User):
