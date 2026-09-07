@@ -28,6 +28,8 @@ NOTIFICATION_TYPES: frozenset[str] = frozenset(
         "certificate_rejected",
         "assignment_graded",
         "new_announcement",
+        "new_event",
+        "event_rescheduled",
         "retake_requested",
     }
 )

@@ -16,7 +16,11 @@ import { EmptyState, Modal } from "@/components/patterns"
 import { EventTypeBadge } from "./badges"
 import type { EventFormState } from "./types"
 import type { CourseEvent } from "@/types"
-import { formatDateTime } from "@/i18n/format"
+import { formatDateLong, formatDateTime } from "@/i18n/format"
+
+/** Mirrors ``CourseEventCreate`` on the server (``max_length``). */
+const TITLE_MAX = 255
+const DESCRIPTION_MAX = 5000
 
 interface Props {
   open: boolean
@@ -64,12 +68,14 @@ export function EventsModal({
           </p>
           <Input
             value={form.title}
+            maxLength={TITLE_MAX}
             onChange={(e) => patch({ title: e.target.value })}
             placeholder={t("teacherEditor.modals.events.titlePlaceholder")}
           />
           <Textarea
             fieldSize="sm"
             value={form.description}
+            maxLength={DESCRIPTION_MAX}
             onChange={(e) => patch({ description: e.target.value })}
             placeholder={t("teacherEditor.modals.events.descriptionPlaceholder")}
           />
@@ -116,6 +122,7 @@ export function EventsModal({
               </Button>
             )}
           </div>
+          <p className="text-xs text-ink-muted">{t("teacherEditor.modals.events.notifyHint")}</p>
         </div>
 
         {events.length === 0 ? (
@@ -153,9 +160,17 @@ function EventRow({
           <p className="text-sm font-medium truncate">{event.title}</p>
           <EventTypeBadge type={event.event_type} />
         </div>
-        <p className="text-xs text-ink-muted">
-          {formatDateTime(event.event_date)}
-        </p>
+        {/* «1 октября 2026 г., 18:00» rather than the audit-log
+            ``2026-10-01 18:00:00`` — a teacher reading their own
+            schedule does not need the seconds; the exact stamp is one
+            hover away. */}
+        <time
+          className="block text-xs text-ink-muted tabular-nums"
+          dateTime={event.event_date}
+          title={formatDateTime(event.event_date)}
+        >
+          {formatDateLong(event.event_date, { hour: "2-digit", minute: "2-digit" })}
+        </time>
         {event.description && (
           <p className="text-xs text-ink-muted mt-0.5 line-clamp-1">
             {event.description}

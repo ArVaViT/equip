@@ -51,7 +51,10 @@ export function MonthGrid({
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted tabular-nums">
               {year}
             </p>
-            <CardTitle>
+            {/* ``Intl`` gives «сентябрь» in lower case, and a heading
+                wants «Сентябрь». `first-letter:uppercase`, never
+                `capitalize` — see datesAreNotCssCapitalized. */}
+            <CardTitle className="first-letter:uppercase">
               {getMonthName(month, locale)}
             </CardTitle>
           </div>

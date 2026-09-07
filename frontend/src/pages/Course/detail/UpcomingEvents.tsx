@@ -1,7 +1,7 @@
 import { AlertTriangle, CalendarDays } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import type { CalendarEvent } from "@/types"
-import { formatDateLong } from "@/i18n/format"
+import { formatDateLong, formatDateTime } from "@/i18n/format"
 
 interface Props {
   events: CalendarEvent[]
@@ -59,9 +59,23 @@ export function UpcomingEvents({ events }: Props) {
               <span className={`flex-1 truncate ${overdue ? "text-destructive" : ""}`}>
                 {evt.title}
               </span>
-              <span className="text-xs text-ink-muted whitespace-nowrap">
-                {formatDateLong(evtDate, { year: undefined, month: "short", day: "numeric" })}
-              </span>
+              {/* Date AND time, in the reader's zone. This row used to say
+                  «23 апр.» and nothing more — a live session at 19:00 and a
+                  deadline at midnight looked the same, and a student in
+                  another time zone had no way to tell which evening. */}
+              <time
+                dateTime={evt.event_date}
+                title={formatDateTime(evt.event_date)}
+                className="text-xs text-ink-muted whitespace-nowrap tabular-nums"
+              >
+                {formatDateLong(evtDate, {
+                  year: undefined,
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </time>
             </div>
           )
         })}

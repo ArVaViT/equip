@@ -36,9 +36,15 @@ def build_calendar_events(
     (soonest events kept).
     """
     enrolled_q = db.query(Enrollment.course_id).filter(Enrollment.user_id == user.id)
+    # The courses this person teaches count too. A teacher is not
+    # enrolled in their own course, so the events they had just put on
+    # it were on every student's calendar and missing from their own —
+    # the one calendar that has to show them.
+    owned_q = db.query(Course.id).filter(Course.created_by == user.id, Course.deleted_at.is_(None))
     if course_id:
         enrolled_q = enrolled_q.filter(Enrollment.course_id == course_id)
-    enrolled_course_ids = [row[0] for row in enrolled_q.all()]
+        owned_q = owned_q.filter(Course.id == course_id)
+    enrolled_course_ids = list(dict.fromkeys([row[0] for row in enrolled_q.all()] + [row[0] for row in owned_q.all()]))
 
     if not enrolled_course_ids:
         return []

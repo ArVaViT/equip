@@ -1284,7 +1284,14 @@
         "carouselRole": "карусель",
         "prevAria": "Предыдущее объявление",
         "nextAria": "Следующее объявление",
-        "position": "{{current}} / {{total}}"
+        "position": "{{current}} / {{total}}",
+        "newAnnouncement": "Новое объявление",
+        "editAnnouncement": "Редактировать объявление",
+        "save": "Сохранить",
+        "saving": "Сохранение…",
+        "cancel": "Отмена",
+        "editAria": "Редактировать объявление «{{title}}»",
+        "notifyHint": "Студенты курса получат уведомление о публикации."
       },
       "materials": {
         "title": "Материалы курса",
@@ -1316,7 +1323,8 @@
           "other": "Другое"
         },
         "editAria": "Редактировать событие «{{title}}»",
-        "deleteAria": "Удалить событие «{{title}}»"
+        "deleteAria": "Удалить событие «{{title}}»",
+        "notifyHint": "Студенты курса получат уведомление о новом событии и о переносе даты."
       }
     },
     "toast": {
@@ -1343,7 +1351,10 @@
       "materialUploadFailed": "Загрузка не удалась",
       "materialDownloadFailed": "Скачивание не удалось",
       "materialDeleteFailed": "Не удалось удалить материал",
-      "publishing": "Опубликовано. Курс выйдет в каталог, когда будет готов на всех языках"
+      "publishing": "Опубликовано. Курс выйдет в каталог, когда будет готов на всех языках",
+      "announcementPosted": "Объявление опубликовано — студенты получат уведомление",
+      "announcementUpdated": "Объявление обновлено",
+      "announcementUpdateFailed": "Не удалось сохранить объявление"
     },
     "confirm": {
       "deleteModuleTitle": "Удалить этот модуль?",
