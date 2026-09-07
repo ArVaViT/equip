@@ -1200,7 +1200,11 @@
       "pendingGrading_one": "{{count}} работа на проверку",
       "pendingGrading_few": "{{count}} работы на проверку",
       "pendingGrading_many": "{{count}} работ на проверку",
-      "pendingGrading_other": "{{count}} работы на проверку"
+      "pendingGrading_other": "{{count}} работы на проверку",
+      "lessons_one": "{{count}} урок",
+      "lessons_few": "{{count}} урока",
+      "lessons_many": "{{count}} уроков",
+      "lessons_other": "{{count}} урока"
     },
     "createForm": {
       "title": "Создать новый курс",
@@ -1261,14 +1265,7 @@
     "defaults": {
       "moduleTitle": "Модуль {{n}}"
     },
-    "modulesHeading": "Модули",
-    "addModule": "Добавить модуль",
-    "noModulesYet": "Пока нет модулей",
-    "noModulesYetDescription": "Добавьте первый модуль, чтобы начать создание курса.",
-    "chapterCount_one": "{{count}} глава",
-    "chapterCount_few": "{{count}} главы",
-    "chapterCount_many": "{{count}} глав",
-    "chapterCount_other": "{{count}} глав",
+    "addModule": "Сгруппировать уроки в модуль",
     "dragModuleAria": "Переместить модуль «{{title}}»",
     "deleteModuleAria": "Удалить модуль «{{title}}»",
     "modals": {
@@ -1366,7 +1363,7 @@
     },
     "confirm": {
       "deleteModuleTitle": "Удалить этот модуль?",
-      "deleteModuleDescription": "Все главы внутри модуля также будут удалены.",
+      "deleteModuleDescription": "Уроки останутся в курсе. Исчезнет только группировка.",
       "deleteModuleAction": "Удалить",
       "deleteAnnouncementTitle": "Удалить это объявление?",
       "deleteAnnouncementAction": "Удалить",
@@ -1375,57 +1372,26 @@
       "deleteMaterialTitle": "Удалить материал?",
       "deleteMaterialDescription": "«{{name}}» будет удалён безвозвратно.",
       "deleteMaterialAction": "Удалить"
+    },
+    "lessonCount_one": "{{count}} урок",
+    "lessonCount_few": "{{count}} урока",
+    "lessonCount_many": "{{count}} уроков",
+    "lessonCount_other": "{{count}} урока",
+    "contentHeading": "Содержание курса",
+    "outlineMenuAria": "Действия со структурой курса",
+    "empty": {
+      "title": "В курсе пока нет уроков",
+      "description": "Добавьте первый урок — больше курсу ничего не нужно. Выберите, каким он будет."
     }
   },
-  "moduleEditor": {
+  "lessons": {
     "defaults": {
-      "chapterTitle": "Глава {{n}}",
+      "chapterTitle": "Урок {{n}}",
       "readingTitle": "Урок {{n}}",
       "quizTitle": "Тест {{n}}",
       "examTitle": "Экзамен {{n}}",
       "assignmentTitle": "Задание {{n}}"
     },
-    "toast": {
-      "moduleNotFound": "Модуль не найден",
-      "loadFailed": "Не удалось загрузить модуль.",
-      "failedSaveModule": "Не удалось сохранить модуль",
-      "failedSaveDueDate": "Не удалось сохранить срок сдачи",
-      "chapterAdded": "Глава добавлена",
-      "failedAddChapter": "Не удалось добавить главу",
-      "failedRenameChapter": "Не удалось переименовать главу",
-      "chapterDeleted": "Глава удалена",
-      "failedDeleteChapter": "Не удалось удалить главу",
-      "chapterLocked": "Глава заблокирована",
-      "chapterUnlocked": "Глава разблокирована",
-      "failedToggleLock": "Не удалось переключить блокировку: {{detail}}",
-      "failedReorderChapters": "Не удалось сохранить порядок глав"
-    },
-    "invalidField": "Некорректное поле {{field}}",
-    "invalidChapterTitle": "Некорректное название главы",
-    "unknownError": "Неизвестная ошибка",
-    "confirmDelete": {
-      "title": "Удалить главу?",
-      "description": "Глава и её содержимое будут удалены.",
-      "confirm": "Удалить"
-    },
-    "notFound": {
-      "title": "Модуль не найден",
-      "description": "Модуль мог быть удалён, или у вас нет доступа.",
-      "backToCourse": "К курсу"
-    },
-    "backToCourse": "К курсу",
-    "untitledModule": "Без названия",
-    "addDescription": "Добавьте описание модуля",
-    "editTitle": "Изменить название модуля",
-    "editDescription": "Изменить описание модуля",
-    "dueDate": "Срок сдачи",
-    "clear": "Очистить",
-    "noChapters": {
-      "title": "Пока нет глав",
-      "description": "Выберите тип главы ниже, чтобы начать наполнять модуль. Учебная глава вмещает текст и материалы; тесты, экзамены и задания по-разному проверяют понимание.",
-      "action": "Добавить главу"
-    },
-    "addChapter": "Добавить главу",
     "addBar": {
       "reading": {
         "description": "Текст, картинки, видео, выноски, код, формулы."
@@ -1440,11 +1406,64 @@
         "description": "Студент сдаёт работу; вы проверяете вручную."
       }
     },
-    "lockChapterTooltip": "Заблокировать главу",
-    "unlockChapterTooltip": "Разблокировать главу",
-    "editChapterAria": "Редактировать главу {{title}}",
-    "deleteChapterAria": "Удалить главу {{title}}",
-    "dragChapterAria": "Переместить главу «{{title}}»"
+    "dragAria": "Изменить порядок урока «{{title}}»",
+    "editAria": "Редактировать урок «{{title}}»",
+    "deleteAria": "Удалить урок «{{title}}»",
+    "lockTooltip": "Заблокировать урок",
+    "unlockTooltip": "Разблокировать урок",
+    "invalidTitle": "Некорректное название урока",
+    "unknownError": "Неизвестная ошибка",
+    "move": {
+      "tooltip": "Переместить урок",
+      "aria": "Переместить урок «{{title}}»",
+      "toCourse": "Вынуть из модуля",
+      "intoModule": "Перенести в «{{title}}»",
+      "untitledModule": "Модуль без названия"
+    },
+    "confirmDelete": {
+      "title": "Удалить урок?",
+      "description": "Урок и всё, что в нём написано, будет удалено.",
+      "confirm": "Удалить"
+    },
+    "toast": {
+      "added": "Урок добавлен",
+      "addFailed": "Не удалось добавить урок",
+      "renameFailed": "Не удалось переименовать урок",
+      "deleted": "Урок удалён",
+      "deleteFailed": "Не удалось удалить урок",
+      "locked": "Урок заблокирован",
+      "unlocked": "Урок разблокирован",
+      "lockFailed": "Не удалось переключить блокировку: {{detail}}",
+      "reorderFailed": "Не удалось сохранить порядок уроков",
+      "movedToCourse": "Урок вынут из модуля — он остался в курсе",
+      "movedToModule": "Урок перенесён в «{{title}}»",
+      "moveFailed": "Не удалось перенести урок"
+    }
+  },
+  "moduleEditor": {
+    "toast": {
+      "moduleNotFound": "Модуль не найден",
+      "loadFailed": "Не удалось загрузить модуль.",
+      "failedSaveModule": "Не удалось сохранить модуль",
+      "failedSaveDueDate": "Не удалось сохранить срок сдачи"
+    },
+    "invalidField": "Некорректное поле {{field}}",
+    "notFound": {
+      "title": "Модуль не найден",
+      "description": "Модуль мог быть удалён, или у вас нет доступа.",
+      "backToCourse": "К курсу"
+    },
+    "backToCourse": "К курсу",
+    "untitledModule": "Без названия",
+    "addDescription": "Добавьте описание модуля",
+    "editTitle": "Изменить название модуля",
+    "editDescription": "Изменить описание модуля",
+    "dueDate": "Срок сдачи",
+    "clear": "Очистить",
+    "noChapters": {
+      "title": "В этом модуле пока нет уроков",
+      "description": "Выберите тип урока ниже. Учебный урок вмещает текст и материалы; тесты, экзамены и задания по-разному проверяют понимание."
+    }
   },
   "courseEditor": {
     "notFound": {
@@ -1483,21 +1502,20 @@
   },
   "chapterEditor": {
     "notFound": {
-      "title": "Глава не найдена",
-      "description": "Глава могла быть удалена, или у вас нет доступа.",
-      "backToModule": "К модулю"
+      "title": "Урок не найден",
+      "description": "Урок мог быть удалён, или у вас нет доступа.",
+      "backToCourse": "К курсу"
     },
     "moduleFallback": "Модуль",
-    "chapterFallback": "Глава",
+    "chapterFallback": "Урок",
     "breadcrumb": {
       "myCourses": "Мои курсы",
       "course": "Курс"
     },
     "toast": {
-      "chapterNotFound": "Глава не найдена",
-      "loadFailed": "Не удалось загрузить главу",
-      "invalidData": "Некорректные данные главы",
-      "saved": "Глава сохранена",
+      "loadFailed": "Не удалось загрузить урок",
+      "invalidData": "Некорректные данные урока",
+      "saved": "Урок сохранён",
       "saveFailed": "Не удалось сохранить: {{detail}}"
     },
     "unknownError": "Неизвестная ошибка",
@@ -1507,15 +1525,15 @@
       "confirm": "Выйти"
     },
     "back": "Назад",
-    "titlePlaceholder": "Название главы",
-    "editTitleAria": "Изменить название главы",
-    "chapterType": "Тип главы",
-    "save": "Сохранить главу",
+    "titlePlaceholder": "Название урока",
+    "editTitleAria": "Изменить название урока",
+    "chapterType": "Тип урока",
+    "save": "Сохранить урок",
     "saving": "Сохранение...",
     "saveHint": "Ctrl+S для сохранения",
     "unsavedChanges": "Есть несохранённые изменения",
     "typeChangeConfirm": {
-      "title": "Сменить тип главы?",
+      "title": "Изменить тип урока?",
       "description": "Написанное не удалится. Редактор «{{from}}» скроется, пока глава — «{{to}}», и вернётся со всем содержимым, как только вы переключите тип обратно.",
       "confirm": "Сменить тип"
     }
@@ -2527,13 +2545,13 @@
         "title": "Доп. инструменты курса",
         "body": "Объявления, материалы, события календаря, наборы студентов — все второстепенные инструменты редактирования находятся за этим меню."
       },
-      "modules": {
-        "title": "Модули и главы",
-        "body": "Добавьте модуль, потом главы внутри него. Перетаскивайте для сортировки. Нажатие на главу открывает её редактор."
-      },
       "finale": {
         "title": "Стройте в своём темпе",
         "body": "Сохраняйте черновик пораньше, публикуйте когда готовы. Студенты черновики не видят; вы сами в любой момент можете предпросмотреть."
+      },
+      "content": {
+        "title": "Содержание курса",
+        "body": "Добавляйте уроки прямо в курс — чтение, тест, экзамен или задание. Перетаскивайте, чтобы менять порядок; нажмите на урок, чтобы его написать. Если курс вырастет в части, соберите уроки в модуль через меню ⋯."
       }
     },
     "moduleEditor": {
@@ -2542,8 +2560,8 @@
         "body": "Редактируйте название модуля, описание и дедлайн прямо здесь. Изменения сохраняются, когда вы нажмёте вне поля."
       },
       "chapters": {
-        "title": "Главы в этом модуле",
-        "body": "Добавляйте главы (чтение, тест, экзамен или задание), перетаскивайте для сортировки, нажимайте, чтобы отредактировать. Блокируйте главы, которые должны открываться по порядку."
+        "title": "Уроки в этом модуле",
+        "body": "Добавляйте уроки, перетаскивайте для порядка, нажимайте, чтобы отредактировать. Блокируйте те, что должны открываться по очереди. Урок можно и вынуть из модуля — он останется в курсе."
       },
       "finale": {
         "title": "Модуль в работе",

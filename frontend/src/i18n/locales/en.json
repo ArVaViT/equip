@@ -378,13 +378,13 @@
         "title": "More course tools",
         "body": "Announcements, materials, calendar events, cohort enrollment — all the secondary editing tools live behind this menu."
       },
-      "modules": {
-        "title": "Modules and chapters",
-        "body": "Add a module, then add chapters inside it. Drag to reorder. Click a chapter to open its editor."
-      },
       "finale": {
         "title": "Build at your pace",
         "body": "Save draft early, publish when ready. Students can't see drafts; you can preview them any time."
+      },
+      "content": {
+        "title": "Course content",
+        "body": "Add lessons straight to the course — reading, quiz, exam or assignment. Drag to reorder, click one to write it. If the course grows into parts, group lessons into a module from the ⋯ menu."
       }
     },
     "moduleEditor": {
@@ -393,8 +393,8 @@
         "body": "Edit the module's title, description, and due date inline. Changes save when you click outside the field."
       },
       "chapters": {
-        "title": "Chapters in this module",
-        "body": "Add chapters (reading, quiz, exam, or assignment), drag to reorder, click to edit. Lock chapters that should unlock in order."
+        "title": "Lessons in this module",
+        "body": "Add lessons here, drag to reorder, click to edit. Lock the ones that should unlock in order. A lesson can also be taken out of the module — it stays in the course."
       },
       "finale": {
         "title": "Module on track",
@@ -1578,7 +1578,9 @@
       "actionDelete": "Delete",
       "actionMore": "More actions",
       "pendingGrading_one": "{{count}} to grade",
-      "pendingGrading_other": "{{count}} to grade"
+      "pendingGrading_other": "{{count}} to grade",
+      "lessons_one": "{{count}} lesson",
+      "lessons_other": "{{count}} lessons"
     },
     "createForm": {
       "title": "Create New Course",
@@ -1637,12 +1639,7 @@
     "defaults": {
       "moduleTitle": "Module {{n}}"
     },
-    "modulesHeading": "Modules",
-    "addModule": "Add module",
-    "noModulesYet": "No modules yet",
-    "noModulesYetDescription": "Add your first module to start building the course.",
-    "chapterCount_one": "{{count}} chapter",
-    "chapterCount_other": "{{count}} chapters",
+    "addModule": "Group lessons into a module",
     "dragModuleAria": "Reorder module {{title}}",
     "deleteModuleAria": "Delete module {{title}}",
     "modals": {
@@ -1740,7 +1737,7 @@
     },
     "confirm": {
       "deleteModuleTitle": "Delete this module?",
-      "deleteModuleDescription": "All chapters inside the module will also be removed.",
+      "deleteModuleDescription": "The lessons in it stay in the course. Only the grouping goes.",
       "deleteModuleAction": "Delete",
       "deleteAnnouncementTitle": "Delete this announcement?",
       "deleteAnnouncementAction": "Delete",
@@ -1749,57 +1746,24 @@
       "deleteMaterialTitle": "Delete material?",
       "deleteMaterialDescription": "\"{{name}}\" will be permanently removed.",
       "deleteMaterialAction": "Delete"
+    },
+    "lessonCount_one": "{{count}} lesson",
+    "lessonCount_other": "{{count}} lessons",
+    "contentHeading": "Course content",
+    "outlineMenuAria": "Course structure options",
+    "empty": {
+      "title": "This course has no lessons yet",
+      "description": "Add the first lesson — that is all a course needs. Pick what it should be."
     }
   },
-  "moduleEditor": {
+  "lessons": {
     "defaults": {
-      "chapterTitle": "Chapter {{n}}",
+      "chapterTitle": "Lesson {{n}}",
       "readingTitle": "Lesson {{n}}",
       "quizTitle": "Quiz {{n}}",
       "examTitle": "Exam {{n}}",
       "assignmentTitle": "Assignment {{n}}"
     },
-    "toast": {
-      "moduleNotFound": "Module not found",
-      "loadFailed": "Could not load the module.",
-      "failedSaveModule": "Failed to save module",
-      "failedSaveDueDate": "Failed to save due date",
-      "chapterAdded": "Chapter added",
-      "failedAddChapter": "Failed to add chapter",
-      "failedRenameChapter": "Failed to rename chapter",
-      "chapterDeleted": "Chapter deleted",
-      "failedDeleteChapter": "Failed to delete chapter",
-      "chapterLocked": "Chapter locked",
-      "chapterUnlocked": "Chapter unlocked",
-      "failedToggleLock": "Failed to toggle lock: {{detail}}",
-      "failedReorderChapters": "Failed to save chapter order"
-    },
-    "invalidField": "Invalid {{field}}",
-    "invalidChapterTitle": "Invalid chapter title",
-    "unknownError": "Unknown error",
-    "confirmDelete": {
-      "title": "Delete this chapter?",
-      "description": "The chapter and its content will be removed.",
-      "confirm": "Delete"
-    },
-    "notFound": {
-      "title": "Module not found",
-      "description": "The module may have been deleted or you may not have access.",
-      "backToCourse": "Back to course"
-    },
-    "backToCourse": "Back to course",
-    "untitledModule": "Untitled module",
-    "addDescription": "Add a module description",
-    "editTitle": "Edit module title",
-    "editDescription": "Edit module description",
-    "dueDate": "Due date",
-    "clear": "Clear",
-    "noChapters": {
-      "title": "No chapters yet",
-      "description": "Pick a chapter type below to start building this module. Reading lessons hold your written and visual content; quizzes, exams, and assignments each measure understanding differently.",
-      "action": "Add chapter"
-    },
-    "addChapter": "Add chapter",
     "addBar": {
       "reading": {
         "description": "Text, images, video, callouts, code, formulas."
@@ -1814,11 +1778,64 @@
         "description": "Student submits work; you grade it manually."
       }
     },
-    "lockChapterTooltip": "Lock chapter",
-    "unlockChapterTooltip": "Unlock chapter",
-    "editChapterAria": "Edit chapter {{title}}",
-    "deleteChapterAria": "Delete chapter {{title}}",
-    "dragChapterAria": "Reorder chapter {{title}}"
+    "dragAria": "Reorder lesson {{title}}",
+    "editAria": "Edit lesson {{title}}",
+    "deleteAria": "Delete lesson {{title}}",
+    "lockTooltip": "Lock lesson",
+    "unlockTooltip": "Unlock lesson",
+    "invalidTitle": "Invalid lesson title",
+    "unknownError": "Unknown error",
+    "move": {
+      "tooltip": "Move this lesson",
+      "aria": "Move lesson {{title}}",
+      "toCourse": "Take out of the module",
+      "intoModule": "Move into “{{title}}”",
+      "untitledModule": "Untitled module"
+    },
+    "confirmDelete": {
+      "title": "Delete this lesson?",
+      "description": "The lesson and everything written in it will be removed.",
+      "confirm": "Delete"
+    },
+    "toast": {
+      "added": "Lesson added",
+      "addFailed": "Failed to add the lesson",
+      "renameFailed": "Failed to rename the lesson",
+      "deleted": "Lesson deleted",
+      "deleteFailed": "Failed to delete the lesson",
+      "locked": "Lesson locked",
+      "unlocked": "Lesson unlocked",
+      "lockFailed": "Failed to toggle lock: {{detail}}",
+      "reorderFailed": "Failed to save lesson order",
+      "movedToCourse": "Lesson taken out of the module — it stays in the course",
+      "movedToModule": "Lesson moved into “{{title}}”",
+      "moveFailed": "Failed to move the lesson"
+    }
+  },
+  "moduleEditor": {
+    "toast": {
+      "moduleNotFound": "Module not found",
+      "loadFailed": "Could not load the module.",
+      "failedSaveModule": "Failed to save module",
+      "failedSaveDueDate": "Failed to save due date"
+    },
+    "invalidField": "Invalid {{field}}",
+    "notFound": {
+      "title": "Module not found",
+      "description": "The module may have been deleted or you may not have access.",
+      "backToCourse": "Back to course"
+    },
+    "backToCourse": "Back to course",
+    "untitledModule": "Untitled module",
+    "addDescription": "Add a module description",
+    "editTitle": "Edit module title",
+    "editDescription": "Edit module description",
+    "dueDate": "Due date",
+    "clear": "Clear",
+    "noChapters": {
+      "title": "No lessons in this module yet",
+      "description": "Pick a lesson type below. Reading lessons hold your written and visual content; quizzes, exams, and assignments each measure understanding differently."
+    }
   },
   "courseEditor": {
     "notFound": {
@@ -1857,21 +1874,20 @@
   },
   "chapterEditor": {
     "notFound": {
-      "title": "Chapter not found",
-      "description": "The chapter may have been deleted or you may not have access.",
-      "backToModule": "Back to module"
+      "title": "Lesson not found",
+      "description": "The lesson may have been deleted or you may not have access.",
+      "backToCourse": "Back to course"
     },
     "moduleFallback": "Module",
-    "chapterFallback": "Chapter",
+    "chapterFallback": "Lesson",
     "breadcrumb": {
       "myCourses": "My Courses",
       "course": "Course"
     },
     "toast": {
-      "chapterNotFound": "Chapter not found",
-      "loadFailed": "Failed to load chapter",
-      "invalidData": "Invalid chapter data",
-      "saved": "Chapter saved",
+      "loadFailed": "Failed to load the lesson",
+      "invalidData": "Invalid lesson data",
+      "saved": "Lesson saved",
       "saveFailed": "Failed to save: {{detail}}"
     },
     "unknownError": "Unknown error",
@@ -1881,15 +1897,15 @@
       "confirm": "Leave"
     },
     "back": "Back",
-    "titlePlaceholder": "Chapter title",
-    "editTitleAria": "Edit chapter title",
-    "chapterType": "Chapter Type",
-    "save": "Save Chapter",
+    "titlePlaceholder": "Lesson title",
+    "editTitleAria": "Edit lesson title",
+    "chapterType": "Lesson type",
+    "save": "Save lesson",
     "saving": "Saving...",
     "saveHint": "Ctrl+S to save",
     "unsavedChanges": "You have unsaved changes",
     "typeChangeConfirm": {
-      "title": "Change the chapter type?",
+      "title": "Change the lesson type?",
       "description": "Nothing you wrote is deleted. The \"{{from}}\" editor is hidden while the chapter is a \"{{to}}\", and comes back with everything in it the moment you switch the type back.",
       "confirm": "Change type"
     }

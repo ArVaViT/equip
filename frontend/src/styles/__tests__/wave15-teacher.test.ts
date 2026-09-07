@@ -49,16 +49,16 @@ const FILES = [
   "pages/Teacher/editor/CourseReadinessCard.tsx",
   "pages/Teacher/editor/EventsModal.tsx",
   "pages/Teacher/editor/MaterialsModal.tsx",
-  "pages/Teacher/editor/ModulesList.tsx",
+  "pages/Teacher/editor/CourseOutline.tsx",
   // Gradebook
   "pages/Teacher/gradebook/GradebookTabs.tsx",
   "pages/Teacher/gradebook/GradeTableTab.tsx",
   "pages/Teacher/gradebook/GradingConfigCard.tsx",
   "pages/Teacher/gradebook/helpers.tsx",
   "pages/Teacher/gradebook/SummaryTab.tsx",
-  // Module editor sub
-  "pages/Teacher/moduleEditor/AddChapterBar.tsx",
-  "pages/Teacher/moduleEditor/ChapterRow.tsx",
+  // Lesson rows, shared by the course editor and the module editor
+  "pages/Teacher/chapters/AddChapterBar.tsx",
+  "pages/Teacher/chapters/ChapterRow.tsx",
   // Student progress sub
   "pages/Teacher/progress/ChapterBreakdownRow.tsx",
   "pages/Teacher/progress/ProgressBar.tsx",

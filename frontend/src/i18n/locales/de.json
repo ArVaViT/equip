@@ -378,13 +378,13 @@
         "title": "Weitere Kurswerkzeuge",
         "body": "Ankündigungen, Materialien, Termine, Gruppeneinschreibung — alle weiteren Werkzeuge liegen hinter diesem Menü."
       },
-      "modules": {
-        "title": "Module und Kapitel",
-        "body": "Fügen Sie ein Modul hinzu und darin Kapitel. Zum Umsortieren ziehen. Ein Klick auf ein Kapitel öffnet dessen Editor."
-      },
       "finale": {
         "title": "Bauen Sie in Ihrem Tempo",
         "body": "Früh als Entwurf speichern, veröffentlichen, wenn es so weit ist. Studierende sehen keine Entwürfe; Sie können sie jederzeit ansehen."
+      },
+      "content": {
+        "title": "Kursinhalt",
+        "body": "Fügen Sie Lektionen direkt in den Kurs ein — Lektion, Test, Prüfung oder Aufgabe. Zum Umsortieren ziehen, zum Schreiben anklicken. Wächst der Kurs in Teile, gruppieren Sie Lektionen über das ⋯-Menü in einem Modul."
       }
     },
     "moduleEditor": {
@@ -393,8 +393,8 @@
         "body": "Titel, Beschreibung und Fälligkeitsdatum des Moduls direkt bearbeiten. Änderungen werden gespeichert, sobald Sie neben das Feld klicken."
       },
       "chapters": {
-        "title": "Kapitel in diesem Modul",
-        "body": "Kapitel hinzufügen (Lektion, Test, Prüfung oder Aufgabe), zum Umsortieren ziehen, zum Bearbeiten anklicken. Sperren Sie Kapitel, die der Reihe nach freigegeben werden sollen."
+        "title": "Lektionen in diesem Modul",
+        "body": "Lektionen hinzufügen, zum Umsortieren ziehen, zum Bearbeiten anklicken. Sperren Sie die, die der Reihe nach freigegeben werden sollen. Eine Lektion lässt sich auch aus dem Modul nehmen — sie bleibt im Kurs."
       },
       "finale": {
         "title": "Modul auf Kurs",
@@ -1578,7 +1578,9 @@
       "actionDelete": "Löschen",
       "actionMore": "Weitere Aktionen",
       "pendingGrading_one": "{{count}} zu bewerten",
-      "pendingGrading_other": "{{count}} zu bewerten"
+      "pendingGrading_other": "{{count}} zu bewerten",
+      "lessons_one": "{{count}} Lektion",
+      "lessons_other": "{{count}} Lektionen"
     },
     "createForm": {
       "title": "Neuen Kurs erstellen",
@@ -1637,12 +1639,7 @@
     "defaults": {
       "moduleTitle": "Modul {{n}}"
     },
-    "modulesHeading": "Module",
-    "addModule": "Modul hinzufügen",
-    "noModulesYet": "Noch keine Module",
-    "noModulesYetDescription": "Fügen Sie Ihr erstes Modul hinzu, um den Kurs aufzubauen.",
-    "chapterCount_one": "{{count}} Kapitel",
-    "chapterCount_other": "{{count}} Kapitel",
+    "addModule": "Lektionen in einem Modul gruppieren",
     "dragModuleAria": "Modul {{title}} umsortieren",
     "deleteModuleAria": "Modul {{title}} löschen",
     "modals": {
@@ -1740,7 +1737,7 @@
     },
     "confirm": {
       "deleteModuleTitle": "Dieses Modul löschen?",
-      "deleteModuleDescription": "Alle Kapitel im Modul werden ebenfalls entfernt.",
+      "deleteModuleDescription": "Die Lektionen darin bleiben im Kurs. Nur die Gruppierung verschwindet.",
       "deleteModuleAction": "Löschen",
       "deleteAnnouncementTitle": "Diese Ankündigung löschen?",
       "deleteAnnouncementAction": "Löschen",
@@ -1749,57 +1746,24 @@
       "deleteMaterialTitle": "Material löschen?",
       "deleteMaterialDescription": "„{{name}}“ wird endgültig entfernt.",
       "deleteMaterialAction": "Löschen"
+    },
+    "lessonCount_one": "{{count}} Lektion",
+    "lessonCount_other": "{{count}} Lektionen",
+    "contentHeading": "Kursinhalt",
+    "outlineMenuAria": "Optionen zur Kursstruktur",
+    "empty": {
+      "title": "Dieser Kurs hat noch keine Lektionen",
+      "description": "Fügen Sie die erste Lektion hinzu — mehr braucht ein Kurs nicht. Wählen Sie, was sie sein soll."
     }
   },
-  "moduleEditor": {
+  "lessons": {
     "defaults": {
-      "chapterTitle": "Kapitel {{n}}",
+      "chapterTitle": "Lektion {{n}}",
       "readingTitle": "Lektion {{n}}",
       "quizTitle": "Test {{n}}",
       "examTitle": "Prüfung {{n}}",
       "assignmentTitle": "Aufgabe {{n}}"
     },
-    "toast": {
-      "moduleNotFound": "Modul nicht gefunden",
-      "loadFailed": "Das Modul konnte nicht geladen werden.",
-      "failedSaveModule": "Modul konnte nicht gespeichert werden",
-      "failedSaveDueDate": "Fälligkeitsdatum konnte nicht gespeichert werden",
-      "chapterAdded": "Kapitel hinzugefügt",
-      "failedAddChapter": "Kapitel konnte nicht hinzugefügt werden",
-      "failedRenameChapter": "Kapitel konnte nicht umbenannt werden",
-      "chapterDeleted": "Kapitel gelöscht",
-      "failedDeleteChapter": "Kapitel konnte nicht gelöscht werden",
-      "chapterLocked": "Kapitel gesperrt",
-      "chapterUnlocked": "Kapitel entsperrt",
-      "failedToggleLock": "Sperre konnte nicht umgeschaltet werden: {{detail}}",
-      "failedReorderChapters": "Reihenfolge der Kapitel konnte nicht gespeichert werden"
-    },
-    "invalidField": "Ungültig: {{field}}",
-    "invalidChapterTitle": "Ungültiger Kapiteltitel",
-    "unknownError": "Unbekannter Fehler",
-    "confirmDelete": {
-      "title": "Dieses Kapitel löschen?",
-      "description": "Das Kapitel und sein Inhalt werden entfernt.",
-      "confirm": "Löschen"
-    },
-    "notFound": {
-      "title": "Modul nicht gefunden",
-      "description": "Das Modul wurde möglicherweise gelöscht, oder Sie haben keinen Zugriff.",
-      "backToCourse": "Zurück zum Kurs"
-    },
-    "backToCourse": "Zurück zum Kurs",
-    "untitledModule": "Modul ohne Titel",
-    "addDescription": "Beschreibung des Moduls hinzufügen",
-    "editTitle": "Modultitel bearbeiten",
-    "editDescription": "Modulbeschreibung bearbeiten",
-    "dueDate": "Fällig am",
-    "clear": "Leeren",
-    "noChapters": {
-      "title": "Noch keine Kapitel",
-      "description": "Wählen Sie unten eine Kapitelart, um dieses Modul aufzubauen. Lektionen tragen Ihren geschriebenen und visuellen Inhalt; Tests, Prüfungen und Aufgaben messen das Verständnis jeweils anders.",
-      "action": "Kapitel hinzufügen"
-    },
-    "addChapter": "Kapitel hinzufügen",
     "addBar": {
       "reading": {
         "description": "Text, Bilder, Video, Hinweise, Code, Formeln."
@@ -1814,11 +1778,64 @@
         "description": "Studierende reichen Arbeit ein; Sie bewerten sie von Hand."
       }
     },
-    "lockChapterTooltip": "Kapitel sperren",
-    "unlockChapterTooltip": "Kapitel entsperren",
-    "editChapterAria": "Kapitel {{title}} bearbeiten",
-    "deleteChapterAria": "Kapitel {{title}} löschen",
-    "dragChapterAria": "Kapitel {{title}} umsortieren"
+    "dragAria": "Lektion {{title}} umsortieren",
+    "editAria": "Lektion {{title}} bearbeiten",
+    "deleteAria": "Lektion {{title}} löschen",
+    "lockTooltip": "Lektion sperren",
+    "unlockTooltip": "Lektion entsperren",
+    "invalidTitle": "Ungültiger Lektionstitel",
+    "unknownError": "Unbekannter Fehler",
+    "move": {
+      "tooltip": "Diese Lektion verschieben",
+      "aria": "Lektion {{title}} verschieben",
+      "toCourse": "Aus dem Modul nehmen",
+      "intoModule": "Nach „{{title}}“ verschieben",
+      "untitledModule": "Modul ohne Titel"
+    },
+    "confirmDelete": {
+      "title": "Diese Lektion löschen?",
+      "description": "Die Lektion und alles, was darin steht, wird entfernt.",
+      "confirm": "Löschen"
+    },
+    "toast": {
+      "added": "Lektion hinzugefügt",
+      "addFailed": "Lektion konnte nicht hinzugefügt werden",
+      "renameFailed": "Lektion konnte nicht umbenannt werden",
+      "deleted": "Lektion gelöscht",
+      "deleteFailed": "Lektion konnte nicht gelöscht werden",
+      "locked": "Lektion gesperrt",
+      "unlocked": "Lektion entsperrt",
+      "lockFailed": "Sperre konnte nicht umgeschaltet werden: {{detail}}",
+      "reorderFailed": "Reihenfolge der Lektionen konnte nicht gespeichert werden",
+      "movedToCourse": "Lektion aus dem Modul genommen — sie bleibt im Kurs",
+      "movedToModule": "Lektion nach „{{title}}“ verschoben",
+      "moveFailed": "Lektion konnte nicht verschoben werden"
+    }
+  },
+  "moduleEditor": {
+    "toast": {
+      "moduleNotFound": "Modul nicht gefunden",
+      "loadFailed": "Das Modul konnte nicht geladen werden.",
+      "failedSaveModule": "Modul konnte nicht gespeichert werden",
+      "failedSaveDueDate": "Fälligkeitsdatum konnte nicht gespeichert werden"
+    },
+    "invalidField": "Ungültig: {{field}}",
+    "notFound": {
+      "title": "Modul nicht gefunden",
+      "description": "Das Modul wurde möglicherweise gelöscht, oder Sie haben keinen Zugriff.",
+      "backToCourse": "Zurück zum Kurs"
+    },
+    "backToCourse": "Zurück zum Kurs",
+    "untitledModule": "Modul ohne Titel",
+    "addDescription": "Beschreibung des Moduls hinzufügen",
+    "editTitle": "Modultitel bearbeiten",
+    "editDescription": "Modulbeschreibung bearbeiten",
+    "dueDate": "Fällig am",
+    "clear": "Leeren",
+    "noChapters": {
+      "title": "Noch keine Lektionen in diesem Modul",
+      "description": "Wählen Sie unten eine Lektionsart. Lektionen tragen Ihren geschriebenen und visuellen Inhalt; Tests, Prüfungen und Aufgaben messen das Verständnis jeweils anders."
+    }
   },
   "courseEditor": {
     "notFound": {
@@ -1857,21 +1874,20 @@
   },
   "chapterEditor": {
     "notFound": {
-      "title": "Kapitel nicht gefunden",
-      "description": "Das Kapitel wurde möglicherweise gelöscht, oder Sie haben keinen Zugriff.",
-      "backToModule": "Zurück zum Modul"
+      "title": "Lektion nicht gefunden",
+      "description": "Die Lektion wurde vielleicht gelöscht, oder Sie haben keinen Zugriff.",
+      "backToCourse": "Zurück zum Kurs"
     },
     "moduleFallback": "Modul",
-    "chapterFallback": "Kapitel",
+    "chapterFallback": "Lektion",
     "breadcrumb": {
       "myCourses": "Meine Kurse",
       "course": "Kurs"
     },
     "toast": {
-      "chapterNotFound": "Kapitel nicht gefunden",
-      "loadFailed": "Kapitel konnte nicht geladen werden",
-      "invalidData": "Ungültige Kapiteldaten",
-      "saved": "Kapitel gespeichert",
+      "loadFailed": "Lektion konnte nicht geladen werden",
+      "invalidData": "Ungültige Lektionsdaten",
+      "saved": "Lektion gespeichert",
       "saveFailed": "Speichern fehlgeschlagen: {{detail}}"
     },
     "unknownError": "Unbekannter Fehler",
@@ -1881,15 +1897,15 @@
       "confirm": "Verlassen"
     },
     "back": "Zurück",
-    "titlePlaceholder": "Kapiteltitel",
-    "editTitleAria": "Kapiteltitel bearbeiten",
-    "chapterType": "Kapitelart",
-    "save": "Kapitel speichern",
+    "titlePlaceholder": "Titel der Lektion",
+    "editTitleAria": "Titel der Lektion bearbeiten",
+    "chapterType": "Art der Lektion",
+    "save": "Lektion speichern",
     "saving": "Wird gespeichert …",
     "saveHint": "Strg+S zum Speichern",
     "unsavedChanges": "Sie haben ungespeicherte Änderungen",
     "typeChangeConfirm": {
-      "title": "Kapiteltyp ändern?",
+      "title": "Art der Lektion ändern?",
       "description": "Nichts von dem, was Sie geschrieben haben, wird gelöscht. Der Editor „{{from}}“ wird ausgeblendet, solange das Kapitel ein „{{to}}“ ist, und kommt mit allem Inhalt zurück, sobald Sie den Typ zurückstellen.",
       "confirm": "Typ ändern"
     }

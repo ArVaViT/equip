@@ -9,6 +9,7 @@ import { getErrorDetail } from "@/lib/errorDetail";
 import { toast } from "@/lib/toast";
 import { isoToLocalInput, localInputToIso } from "@/i18n/format";
 import { makeChapterSchema, makeModuleSchema } from "@/lib/validations/course";
+import { chapterEditHref } from "@/lib/courseStructure";
 import type { Chapter, Module } from "@/types";
 import type { useConfirm } from "@/components/ui/alert-dialog";
 import type { ChapterType } from "@/lib/chapterTypes";
@@ -135,8 +136,8 @@ export function useModuleEditor(
     // key is missing (defensive for future chapter types).
     const sameTypeCount =
       (mod.chapters ?? []).filter((c) => c.chapter_type === chapterType).length;
-    const typeSpecificKey = `moduleEditor.defaults.${chapterType}Title`;
-    const fallbackKey = "moduleEditor.defaults.chapterTitle";
+    const typeSpecificKey = `lessons.defaults.${chapterType}Title`;
+    const fallbackKey = "lessons.defaults.chapterTitle";
     const typeSpecific = t(typeSpecificKey, { n: sameTypeCount + 1 });
     const seededTitle =
       typeSpecific === typeSpecificKey
@@ -154,12 +155,12 @@ export function useModuleEditor(
       setMod((prev) =>
         prev ? { ...prev, chapters: [...(prev.chapters ?? []), ch] } : prev,
       );
-      toast({ title: t("moduleEditor.toast.chapterAdded"), variant: "success" });
-      navigate(
-        `/teacher/courses/${courseId}/modules/${moduleId}/chapters/${ch.id}/edit`,
-      );
+      toast({ title: t("lessons.toast.added"), variant: "success" });
+      // Course-shaped, like every other link to a lesson now: it is the one
+      // address that survives the lesson being moved out of this module.
+      navigate(chapterEditHref(courseId, ch.id));
     } catch {
-      toast({ title: t("moduleEditor.toast.failedAddChapter"), variant: "destructive" });
+      toast({ title: t("lessons.toast.addFailed"), variant: "destructive" });
     } finally {
       addingChapterRef.current = false;
     }
@@ -185,7 +186,7 @@ export function useModuleEditor(
     if (!check.success) {
       toast({
         title:
-          check.error.issues[0]?.message ?? t("moduleEditor.invalidChapterTitle"),
+          check.error.issues[0]?.message ?? t("lessons.invalidTitle"),
         variant: "destructive",
       });
       return;
@@ -193,13 +194,13 @@ export function useModuleEditor(
     const previousTitle = ch.title;
     updateChapterLocal(ch.id, { title: trimmed });
     try {
-      await coursesService.updateChapter(courseId, moduleId, ch.id, {
+      await coursesService.updateCourseChapter(courseId, ch.id, {
         title: trimmed,
       });
     } catch {
       updateChapterLocal(ch.id, { title: previousTitle });
       toast({
-        title: t("moduleEditor.toast.failedRenameChapter"),
+        title: t("lessons.toast.renameFailed"),
         variant: "destructive",
       });
     }
@@ -208,23 +209,23 @@ export function useModuleEditor(
   const deleteChapter = async (chId: string) => {
     if (!courseId || !moduleId) return;
     const ok = await confirm({
-      title: t("moduleEditor.confirmDelete.title"),
-      description: t("moduleEditor.confirmDelete.description"),
-      confirmLabel: t("moduleEditor.confirmDelete.confirm"),
+      title: t("lessons.confirmDelete.title"),
+      description: t("lessons.confirmDelete.description"),
+      confirmLabel: t("lessons.confirmDelete.confirm"),
       tone: "destructive",
     });
     if (!ok) return;
     try {
-      await coursesService.deleteChapter(courseId, moduleId, chId);
+      await coursesService.deleteCourseChapter(courseId, chId);
       setMod((prev) =>
         prev
           ? { ...prev, chapters: prev.chapters?.filter((c) => c.id !== chId) }
           : prev,
       );
-      toast({ title: t("moduleEditor.toast.chapterDeleted"), variant: "success" });
+      toast({ title: t("lessons.toast.deleted"), variant: "success" });
     } catch {
       toast({
-        title: t("moduleEditor.toast.failedDeleteChapter"),
+        title: t("lessons.toast.deleteFailed"),
         variant: "destructive",
       });
     }
@@ -235,22 +236,44 @@ export function useModuleEditor(
     const newLocked = !ch.is_locked;
     updateChapterLocal(ch.id, { is_locked: newLocked });
     try {
-      await coursesService.updateChapter(courseId, moduleId, ch.id, {
+      await coursesService.updateCourseChapter(courseId, ch.id, {
         is_locked: newLocked,
       });
       toast({
         title: newLocked
-          ? t("moduleEditor.toast.chapterLocked")
-          : t("moduleEditor.toast.chapterUnlocked"),
+          ? t("lessons.toast.locked")
+          : t("lessons.toast.unlocked"),
         variant: "success",
       });
     } catch (error: unknown) {
       updateChapterLocal(ch.id, { is_locked: ch.is_locked });
-      const detail = getErrorDetail(error) || t("moduleEditor.unknownError");
+      const detail = getErrorDetail(error) || t("lessons.unknownError");
       toast({
-        title: t("moduleEditor.toast.failedToggleLock", { detail }),
+        title: t("lessons.toast.lockFailed", { detail }),
         variant: "destructive",
       });
+    }
+  };
+
+  /**
+   * Lift a lesson out of this module. It stays in the course — the module
+   * was only grouping it — so this is a re-filing, not a deletion, and the
+   * lesson keeps its content, its type and its id.
+   *
+   * The other direction (filing a loose lesson under a module) lives in the
+   * course editor, which is the screen that knows the whole list of modules
+   * to choose from. Between them the lesson can go either way.
+   */
+  const ungroupChapter = async (ch: Chapter) => {
+    if (!courseId) return;
+    try {
+      await coursesService.updateCourseChapter(courseId, ch.id, { module_id: null });
+      setMod((prev) =>
+        prev ? { ...prev, chapters: prev.chapters?.filter((c) => c.id !== ch.id) } : prev,
+      );
+      toast({ title: t("lessons.toast.movedToCourse"), variant: "success" });
+    } catch {
+      toast({ title: t("lessons.toast.moveFailed"), variant: "destructive" });
     }
   };
 
@@ -283,7 +306,7 @@ export function useModuleEditor(
           reordered
             .map((c, i) =>
               c.order_index !== i
-                ? coursesService.updateChapter(courseId, moduleId, c.id, {
+                ? coursesService.updateCourseChapter(courseId, c.id, {
                     order_index: i,
                   })
                 : null,
@@ -292,7 +315,7 @@ export function useModuleEditor(
         );
       } catch {
         toast({
-          title: t("moduleEditor.toast.failedReorderChapters"),
+          title: t("lessons.toast.reorderFailed"),
           variant: "destructive",
         });
         load();
@@ -315,6 +338,7 @@ export function useModuleEditor(
     renameChapter,
     deleteChapter,
     toggleLock,
+    ungroupChapter,
     updateChapterLocal,
     handleChapterDragEnd,
   };

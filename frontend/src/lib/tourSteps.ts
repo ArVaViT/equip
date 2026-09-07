@@ -296,10 +296,10 @@ export function courseEditorSteps(t: TFunction): TourStep[] {
       },
     },
     {
-      element: '[data-tour="course-editor-modules"]',
+      element: '[data-tour="course-editor-content"]',
       popover: {
-        title: t("tour.courseEditor.modules.title"),
-        description: t("tour.courseEditor.modules.body"),
+        title: t("tour.courseEditor.content.title"),
+        description: t("tour.courseEditor.content.body"),
         side: "top",
         align: "center",
       },

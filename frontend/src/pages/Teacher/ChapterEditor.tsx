@@ -35,7 +35,7 @@ const EDITOR_OPTIONS = CHAPTER_TYPES.map((value) => ({
   icon: CHAPTER_TYPE_META[value].icon,
 }))
 
-type ChapterUpdatePayload = Parameters<typeof coursesService.updateChapter>[3]
+type ChapterUpdatePayload = Parameters<typeof coursesService.updateCourseChapter>[2]
 
 /**
  * Which editor a chapter type opens. Quiz and exam share one, so moving
@@ -73,9 +73,12 @@ async function editorHasContent(type: ChapterType, chapterId: string): Promise<b
 }
 
 export default function ChapterEditor() {
-  const { courseId, moduleId, chapterId } = useParams<{
+  // The older address also carries a ``moduleId``; this page no longer
+  // reads it. The lesson's own ``module_id`` is the authority either way,
+  // so a link written before the lesson was moved still lands on the
+  // lesson and still shows where it actually sits now.
+  const { courseId, chapterId } = useParams<{
     courseId: string
-    moduleId: string
     chapterId: string
   }>()
   const navigate = useNavigate()
@@ -88,7 +91,10 @@ export default function ChapterEditor() {
 
   const [title, setTitle] = useState("")
   const [chapterType, setChapterType] = useState<ChapterType>("reading")
-  const [moduleName, setModuleName] = useState(() => t("chapterEditor.moduleFallback"))
+  /** The module around this lesson, when there is one. ``null`` is not a
+   *  stand-in for "not loaded" — it is the answer for a lesson that is in
+   *  no module, and the breadcrumb renders one crumb fewer. */
+  const [group, setGroup] = useState<{ id: string; title: string } | null>(null)
   const [isDirty, setIsDirty] = useState(false)
 
   useUserTour({
@@ -98,22 +104,17 @@ export default function ChapterEditor() {
   })
 
   const load = useCallback(async (signal?: { cancelled: boolean }) => {
-    if (!courseId || !moduleId || !chapterId) return
+    if (!courseId || !chapterId) return
     setLoading(true)
     try {
-      // Editor-only fetch so the breadcrumb's ``moduleName`` + the chapter
-      // title render in the source language regardless of the viewer's UI
-      // locale. Keeps the editor unambiguous: what you see is what you'd
-      // PATCH back.
-      const mod = await coursesService.getModuleForEdit(courseId, moduleId)
+      // The lesson by its own id. This used to fetch the module around it
+      // and pick the lesson out of that list, which asks for a module the
+      // lesson need not have and had no answer at all for one written
+      // straight into the course. Editor-only, so the title renders in the
+      // source language whatever the viewer's UI locale: what you see is
+      // what you would PATCH back.
+      const ch = await coursesService.getChapterForEdit(courseId, chapterId)
       if (signal?.cancelled) return
-      setModuleName(mod.title)
-      const ch = mod.chapters?.find((c) => c.id === chapterId)
-      if (!ch) {
-        toast({ title: t("chapterEditor.toast.chapterNotFound"), variant: "destructive" })
-        navigate(`/teacher/courses/${courseId}/modules/${moduleId}/edit`)
-        return
-      }
       setChapter(ch)
       setTitle(ch.title)
       const resolvedType = normalizeChapterType(ch.chapter_type)
@@ -123,14 +124,31 @@ export default function ChapterEditor() {
         chapterType: resolvedType,
       }))
       setIsDirty(false)
+      if (!ch.module_id) {
+        setGroup(null)
+        return
+      }
+      // A second round-trip, and only for a grouped lesson: the breadcrumb
+      // wants the module's name and the lesson row carries only its id.
+      try {
+        const mod = await coursesService.getModuleForEdit(courseId, ch.module_id)
+        if (signal?.cancelled) return
+        setGroup({ id: mod.id, title: mod.title })
+      } catch {
+        // One breadcrumb crumb is not worth failing the page over — keep
+        // the link, lose only the name.
+        if (!signal?.cancelled) {
+          setGroup({ id: ch.module_id, title: t("chapterEditor.moduleFallback") })
+        }
+      }
     } catch {
       if (signal?.cancelled) return
       toast({ title: t("chapterEditor.toast.loadFailed"), variant: "destructive" })
-      navigate(`/teacher/courses/${courseId}/modules/${moduleId}/edit`)
+      navigate(`/teacher/courses/${courseId}`)
     } finally {
       if (!signal?.cancelled) setLoading(false)
     }
-  }, [courseId, moduleId, chapterId, navigate, t])
+  }, [courseId, chapterId, navigate, t])
 
   useEffect(() => {
     const signal = { cancelled: false }
@@ -160,7 +178,7 @@ export default function ChapterEditor() {
   }, [isDirty])
 
   const save = useCallback(async () => {
-    if (!courseId || !moduleId || !chapterId || !title.trim()) return
+    if (!courseId || !chapterId || !title.trim()) return
     // Only title + chapter_type live on the chapter row now. Reading content
     // is owned by chapter_blocks (edited inline inside ChapterBlockEditor,
     // which auto-saves). Quiz/exam/assignment editors write their own rows.
@@ -185,7 +203,10 @@ export default function ChapterEditor() {
         chapter_type: chapterType,
       }
 
-      await coursesService.updateChapter(courseId, moduleId, chapterId, payload)
+      // No ``module_id`` key in the payload, which the route reads as
+      // "leave the grouping alone". An explicit ``null`` here would lift
+      // every saved lesson out of its module.
+      await coursesService.updateCourseChapter(courseId, chapterId, payload)
       const snapshot = JSON.stringify({ title: title.trim(), chapterType })
       setInitialSnapshot(snapshot)
       setIsDirty(false)
@@ -199,7 +220,7 @@ export default function ChapterEditor() {
     } finally {
       setSaving(false)
     }
-  }, [courseId, moduleId, chapterId, title, chapterType, t])
+  }, [courseId, chapterId, title, chapterType, t])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -282,7 +303,15 @@ export default function ChapterEditor() {
 
   // Route always supplies these, but useParams types them optional. Narrow
   // once here so children (e.g. ChapterBlockEditor) get a concrete courseId.
-  if (!courseId || !moduleId || !chapterId) return null
+  if (!courseId || !chapterId) return null
+
+  // Up one level: the module when the lesson is in one, the course when it
+  // is not. Both the Back button and the "not found" escape hatch use it,
+  // so a lesson written straight into the course leads back to the course
+  // rather than to a module that was never there.
+  const upHref = group
+    ? `/teacher/courses/${courseId}/modules/${group.id}/edit`
+    : `/teacher/courses/${courseId}`
 
   if (loading) {
     return (
@@ -308,9 +337,9 @@ export default function ChapterEditor() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate(`/teacher/courses/${courseId}/modules/${moduleId}/edit`)}
+            onClick={() => navigate(`/teacher/courses/${courseId}`)}
           >
-            {t("chapterEditor.notFound.backToModule")}
+            {t("chapterEditor.notFound.backToCourse")}
           </Button>
         }
       />
@@ -340,16 +369,22 @@ export default function ChapterEditor() {
         >
           {t("chapterEditor.breadcrumb.course")}
         </Link>
-        <ChevronRight className="hidden h-3.5 w-3.5 sm:inline-block" strokeWidth={1.75} />
-        <Link
-          to={`/teacher/courses/${courseId}/modules/${moduleId}/edit`}
-          onClick={(e) =>
-            handleNavClick(e, `/teacher/courses/${courseId}/modules/${moduleId}/edit`)
-          }
-          className="min-w-0 truncate transition-colors hover:text-ink"
-        >
-          {moduleName}
-        </Link>
+        {/* The module crumb only when there is a module. A lesson that
+            sits straight in the course reads
+            «My Courses › Course › Lesson», with nothing invented to fill
+            the gap. */}
+        {group && (
+          <>
+            <ChevronRight className="hidden h-3.5 w-3.5 sm:inline-block" strokeWidth={1.75} />
+            <Link
+              to={upHref}
+              onClick={(e) => handleNavClick(e, upHref)}
+              className="min-w-0 truncate transition-colors hover:text-ink"
+            >
+              {group.title}
+            </Link>
+          </>
+        )}
         <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
         <span className="min-w-0 truncate font-medium text-ink sm:max-w-[200px]">
           {title || t("chapterEditor.chapterFallback")}
@@ -362,11 +397,7 @@ export default function ChapterEditor() {
           variant="ghost"
           size="sm"
           className="shrink-0"
-          onClick={() =>
-            void guardedNavigate(
-              `/teacher/courses/${courseId}/modules/${moduleId}/edit`,
-            )
-          }
+          onClick={() => void guardedNavigate(upHref)}
         >
           <ArrowLeft className="h-4 w-4 mr-1" strokeWidth={1.75} />
           {t("chapterEditor.back")}
