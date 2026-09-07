@@ -3277,6 +3277,15 @@
     "body": false
   },
   {
+    "method": "POST",
+    "path": "/api/v1/users/me/onboarding/complete",
+    "params": [],
+    "responses": [
+      "200"
+    ],
+    "body": false
+  },
+  {
     "method": "PATCH",
     "path": "/api/v1/users/me/preferences",
     "params": [],

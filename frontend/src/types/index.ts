@@ -58,6 +58,13 @@ export interface User {
   // soft-deleted (deactivated). Optional because the current-user profile
   // shape doesn't always carry it.
   deactivated_at?: string | null
+  /**
+   * When the first-run flow was finished, on any device. `null` means it has
+   * not been and the flow shows; the browser's own flag is a cache of this.
+   * Optional because an older cached profile shape may not carry it — absent
+   * reads as `null`.
+   */
+  onboarding_completed_at?: string | null
 }
 
 export interface Course {
@@ -496,6 +503,7 @@ export interface Profile {
   preferred_locale: PreferredLocale
   created_at: string
   updated_at: string | null
+  onboarding_completed_at?: string | null
 }
 
 type CalendarEventType = 'deadline' | 'live_session' | 'exam' | 'other'

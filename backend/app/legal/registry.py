@@ -57,6 +57,28 @@ LEGAL_DOCUMENTS: dict[str, str] = {
     "terms": "1.0",
 }
 
+#: (slug, version, locale) -> sha256 of the file as served.
+#:
+#: Production holds two different ``content_sha256`` values for each document
+#: at version 1.0: the texts were edited after people had accepted them, and
+#: the version above was not moved. The acceptance rows are still true — each
+#: names the hash of the text it was given — but the version alone no longer
+#: says which text that was, which is the one question a consent record is
+#: kept to answer.
+#:
+#: This table makes that edit impossible to make quietly. The test in
+#: ``tests/test_a_changed_text_is_a_new_version.py`` hashes every document and
+#: compares it with the entry here; a changed file fails CI until the author
+#: either reverts the text or bumps the version in ``LEGAL_DOCUMENTS`` and adds
+#: the new version's fingerprints below. Old versions stay listed — they are
+#: the record of what the rows in ``legal_acceptances`` refer to.
+LEGAL_DOCUMENT_FINGERPRINTS: dict[tuple[str, str, str], str] = {
+    ("privacy", "1.0", "en"): "32b29998946040ebf9651eba8df40f1fd141f5c5d3dbbd68ed897fb893265c57",
+    ("privacy", "1.0", "ru"): "bcd8dd40c868c5881d46d891dc4520a2268579470ebdf7c992cf9c46f927de1a",
+    ("terms", "1.0", "en"): "a4edd70619d288b248d9385e024b78b0e00813471e7dee424e9ed8a5e2e11654",
+    ("terms", "1.0", "ru"): "c7f4997fd3c81eb9a4872628993a31d35828db50fa00e9e204f936e7b8b045ac",
+}
+
 
 #: Every file that may ever be read here, keyed by what may ask for it.
 _DOCUMENT_PATHS: dict[tuple[str, str], Path] = {

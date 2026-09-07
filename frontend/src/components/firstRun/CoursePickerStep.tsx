@@ -25,14 +25,11 @@ interface Props {
    *  (not just the id) so the splash has the title and cover
    *  without an extra fetch. */
   onEnrolled: (course: Course) => void
-  /** Fires when the user explicitly chooses to browse instead — the
-   *  orchestrator closes the flow and the user lands on the catalog
-   *  with no enrollments. */
-  onBrowse: () => void
   /** Fires when the user dismisses the picker without enrolling
    *  ("Maybe later") OR when the catalog is empty so there's nothing
-   *  to pick. Same end state as ``onBrowse`` minus the catalog
-   *  navigation. */
+   *  to pick. The dashboard they land on links to the catalogue, so a
+   *  separate "browse instead" exit was a second button for the same
+   *  place and is gone. */
   onSkip: () => void
 }
 
@@ -53,7 +50,7 @@ interface Props {
  * surfaces (course detail / chapter view) so the contextual
  * orientation arrives at the moment it matters.
  */
-export function CoursePickerStep({ firstName, onEnrolled, onBrowse, onSkip }: Props) {
+export function CoursePickerStep({ firstName, onEnrolled, onSkip }: Props) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const [courses, setCourses] = useState<Course[]>([])
@@ -148,11 +145,6 @@ export function CoursePickerStep({ firstName, onEnrolled, onBrowse, onSkip }: Pr
     // one that drives the EnrollSplash transition AND eventually
     // calls ``navigate``, so the picker bows out here.
     onEnrolled(firstCourse)
-  }
-
-  const handleBrowse = () => {
-    onBrowse()
-    navigate("/courses")
   }
 
   return (
@@ -268,28 +260,16 @@ export function CoursePickerStep({ firstName, onEnrolled, onBrowse, onSkip }: Pr
               ? t("firstRun.picker.enrollOne")
               : t("firstRun.picker.enrollMany", { count: selectedIds.size })}
           </Button>
-          <div className="flex flex-col items-center gap-1 sm:flex-row sm:gap-3">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleBrowse}
-              disabled={enrolling}
-              className="text-ink-muted hover:text-ink"
-            >
-              {t("firstRun.picker.browseAll")}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onSkip}
-              disabled={enrolling}
-              className="text-ink-muted hover:text-ink"
-            >
-              {t("firstRun.picker.skip")}
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onSkip}
+            disabled={enrolling}
+            className="text-ink-muted hover:text-ink"
+          >
+            {t("firstRun.picker.skip")}
+          </Button>
         </div>
       )}
     </div>

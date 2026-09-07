@@ -35,7 +35,7 @@ const FILES = [
   resolve(SRC, "components/firstRun/EnrollSplash.tsx"),
   resolve(SRC, "components/firstRun/FirstRunFlow.tsx"),
   resolve(SRC, "components/firstRun/PrivacyPolicyStep.tsx"),
-  resolve(SRC, "components/firstRun/SetupStep.tsx"),
+  resolve(SRC, "components/firstRun/NameStep.tsx"),
 ];
 
 const V1_LOCKED_OUT = [
