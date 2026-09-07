@@ -821,23 +821,6 @@ def _as_one_option_reads(text: str) -> str:
     return " ".join(text.split()).casefold()
 
 
-def _collides_with_a_sibling_option(
-    db: Session,
-    task: TranslationTask,
-    text: str,
-    *,
-    unsettled: Container[tuple[str, str, str, str]] = frozenset(),
-) -> bool:
-    """Has this option become a copy of another option of the same question?
-
-    Yes or no, for every caller that only needs to know whether the row
-    can be served. ``_colliding_sibling`` answers the same question and
-    says which option and in what words, which is what a note back to the
-    translator needs.
-    """
-    return _colliding_sibling(db, task, text, unsettled=unsettled) is not None
-
-
 def _colliding_sibling(
     db: Session,
     task: TranslationTask,

@@ -46,10 +46,6 @@ from app.services.translation.resolve_for_display import (
 from ._deps import course_source_locale_for_chapter, get_quiz_or_404, verify_quiz_owner
 from ._router import router
 
-_TRANSLATABLE_QUIZ_FIELDS = ("title", "description")
-_TRANSLATABLE_QUESTION_FIELDS = ("question_text",)
-_TRANSLATABLE_OPTION_FIELDS = ("option_text",)
-
 
 @router.get("/chapter/{chapter_id}", response_model=QuizStudentResponse | None)
 def get_chapter_quiz(

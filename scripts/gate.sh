@@ -46,8 +46,8 @@ if [[ "$SCOPE" == "all" || "$SCOPE" == "backend" ]]; then
   # same as a failure there.
   # Run from inside backend/ so ruff.toml, mypy.ini and pytest.ini are found
   # exactly the way CI finds them.
-  run "ruff check"        env -C backend .venv/bin/python -m ruff check app/ tests/
-  run "ruff format"       env -C backend .venv/bin/python -m ruff format app/ tests/ --check
+  run "ruff check"        env -C backend .venv/bin/python -m ruff check app/ tests/ scripts/
+  run "ruff format"       env -C backend .venv/bin/python -m ruff format app/ tests/ scripts/ --check
   run "mypy"              env -C backend .venv/bin/python -m mypy --config-file mypy.ini
   run "pytest"            env -C backend .venv/bin/python -m pytest -q
 fi

@@ -25,23 +25,32 @@ the Vercel project pages -- not in this repo.
 
 `.github/workflows/backend-ci.yml`:
 
-- `ruff check .` (zero warnings)
-- `ruff format --check .`
-- `python -m py_compile` (smoke import of every module)
+- `ruff check app/ tests/ scripts/` (zero warnings)
+- `ruff format app/ tests/ scripts/ --check`
+- `python -m py_compile app/main.py` + `python -m compileall app/`
+  (every module byte-compiles) and a smoke import of `app.main:app`
 - `mypy --config-file mypy.ini`
-- `pytest tests/` against in-memory SQLite (~1400 tests)
-- `pip-audit` (allow-list-of-known-issues only)
-- A second job `schema-smoke-postgres` materializes the SQLAlchemy
-  models against a real Postgres service container -- catches
-  SQLite-only behaviour before it lands on the linked Supabase project.
+- `pytest tests/` against in-memory SQLite (3,200+ test functions)
+- `pip-audit --requirement requirements.txt --strict` -- no ignores
+  today; `--ignore-vuln` would be added in the workflow if one were ever
+  needed
+- Postgres jobs: `schema-smoke-postgres` materializes the SQLAlchemy
+  models against a real Postgres service container (catches
+  SQLite-only behaviour before it lands on the linked Supabase project),
+  `schema-replay-postgres` replays `supabase/schema.sql` from zero, and
+  `rls-policy-postgres` runs the denial probes in
+  `supabase/ci/rls_assertions.sql` against the replayed schema.
 
 `.github/workflows/frontend-ci.yml`:
 
-- `npm ci` then `npm audit --omit=dev`
+- `npm ci` then `audit-ci --high --skip-dev` with an explicit allowlist
+  (one advisory today; the list lives in the workflow, not in
+  `package.json`)
 - `eslint --max-warnings 0`
+- `npm run i18n:check` (locale parity across ru / en / de / uk)
 - `tsc --noEmit` (strict)
-- `vite build`
-- `vitest run` (jsdom)
+- `npm run build` (locale boot script, `vite build`, bundle-size budget)
+- `vitest run --coverage` (jsdom), coverage uploaded to Codecov
 
 CI is configured with `concurrency: cancel-in-progress` so re-pushes
 to a PR don't pile up runs.
@@ -148,9 +157,10 @@ is what would have caught the `cohorts.name` drift before it broke prod.
 
 ## Edge functions -- the other manual step
 
-`supabase/functions/send-email` is **not deployed by any workflow**. No
-CI job touches it, `git push` does nothing to it, and a green pipeline
-on a PR that changes it means only that its tests passed. The version
+`supabase/functions/send-email` is **not deployed by any workflow**.
+`edge-functions-ci.yml` only runs its Deno tests; `git push` does nothing
+to it, and a green pipeline on a PR that changes it means only that its
+tests passed. The version
 answering Supabase Auth right now is whatever was last pushed by hand.
 
 This is worth stating plainly because the failure is silent in the
@@ -167,6 +177,22 @@ op run -- supabase functions deploy send-email
 `op run` because the CLI wants `SUPABASE_ACCESS_TOKEN`, which lives in
 1Password and must not be pasted into a shell. If the CLI is not
 signed in it says so; `supabase login` opens a browser.
+
+The function reads its configuration from Supabase secrets (`supabase
+secrets set NAME=value`), not from Vercel. A fresh project needs all of
+these before the first auth email goes out:
+
+| Secret | Role | Missing → |
+|---|---|---|
+| `SEND_EMAIL_HOOK_SECRET` | Verifies the Auth hook signature (standardwebhooks) | every auth email fails closed with `401` |
+| `RESEND_API_KEY` | Sends through Resend | Resend rejects the call; logged as `Resend delivery failed (non-blocking)`, the auth action itself still succeeds |
+| `SUPABASE_URL` + `EQUIP_PROFILE_READ_KEY` | Reads the recipient's profile to pick the email language | falls back to `preferred_locale` from the sign-up metadata, then to the default locale |
+| `EQUIP_SITE_URL` | Where the verified link lands (default `https://equipbible.com`) | default is used |
+| `DD_API_KEY` (+ `DD_SITE`, default `us5.datadoghq.com`) | Ships the function's logs to Datadog | logs stay in Supabase only; the `send-email-failures` monitor is blind |
+
+`EQUIP_PROFILE_READ_KEY` carries a project prefix on purpose: the
+platform reserves `SUPABASE_*` names and refuses to store custom ones
+under that prefix.
 
 **Verify with a real email, not with the CLI's output.** A deploy that
 returns success can still ship broken copy — the wording is not type
@@ -189,11 +215,14 @@ secrets. Local `.env` files are gitignored and never committed.
 
 ### Backend (`equip-backend`)
 
-Required at boot (`Settings.load_alternative_env_vars` raises on absence):
+Required for the API to serve (collected by
+`Settings.runtime_ready_errors()`; boot itself does not fail -- see below):
 
 - `SUPABASE_URL` -- project URL
-- `SUPABASE_SERVICE_ROLE_KEY` (or legacy `SUPABASE_KEY`) -- server-side
-  admin client
+- `SUPABASE_SERVICE_ROLE_KEY` -- server-side admin client. The old
+  `SUPABASE_KEY` name is **no longer read**: Supabase disabled the legacy
+  key format on 2026-06-08, so a value under that name only made the
+  settings look configured while every call came back `401`.
 - `DATABASE_URL` (or `POSTGRES_URL` / `POSTGRES_PRISMA_URL`) -- pooled
   Postgres connection
 - `JWT_SECRET_KEY` (or `SUPABASE_JWT_SECRET`) -- Supabase JWT verification
@@ -211,6 +240,18 @@ Optional but production-set:
 - `TRANSLATION_QUEUE_ENABLED=true` -- routes publish-time translation through
   the async queue (drained by the cron) instead of running inline.
 - `CRON_SECRET` -- **must equal `TRANSLATION_WORKER_SECRET`** (see below).
+- `RESEND_API_KEY` -- lets the backend send invitation emails
+  (`app/services/email_service.py`). Missing → the invitation row is
+  still created and a WARNING is logged; the director has to share the
+  accept link by hand. Auth emails do not use this key -- they go through
+  the `send-email` edge function, which has its own copy.
+- `FRONTEND_URL` -- base for links inside backend-sent emails (the
+  `/invite/accept` link). Defaults to `https://equipbible.com`; a preview
+  or staging backend should point it at itself.
+- `GEMINI_REVIEW_MODEL`, `GEMINI_TIMEOUT_SECONDS`, `GEMINI_MAX_OUTPUT_TOKENS`,
+  `GEMINI_MIN_INTERVAL_SECONDS`, `TRANSLATION_WORKER_BUDGET_SECONDS`,
+  `MAX_COURSES_PER_TEACHER` -- tuning knobs with measured defaults in
+  `backend/app/core/config.py`; production runs the defaults.
 
 Missing required vars do **not** crash boot. `settings.runtime_ready_errors()`
 collects them and logs a single `"booting in degraded mode; missing env
@@ -221,7 +262,18 @@ from the old crash-on-import behavior so a misconfigured preview can't turn
 every favicon scrape into a 500 stack trace. CI exercises the configured
 path via the `lint-and-test` job's env defaults.
 
-#### Translation worker cron
+#### Cron workers
+
+`backend/vercel.json` declares two crons. Both present the same bearer
+(`Authorization: Bearer ${CRON_SECRET}`) and both are validated the way
+described below for the translation worker:
+
+| Path | Schedule | Purpose |
+|---|---|---|
+| `GET /api/v1/internal/translation-worker` | `*/1 * * * *` (every minute) | drains the translation queue |
+| `GET /api/v1/internal/daily-challenge-worker` | `0 9 * * *` (09:00 UTC daily) | publishes the day's Daily Challenge and tops up the schedule |
+
+##### Translation worker
 
 `backend/vercel.json` schedules `GET /api/v1/internal/translation-worker`
 every minute (`*/1 * * * *`). Vercel signs each cron request with
@@ -259,7 +311,7 @@ Build-time only on Vercel (not in the bundle):
 |---|---|---|
 | Framework preset | Vite | Other (custom `vercel.json`) |
 | Node version | 22.x | n/a (Python 3.12) |
-| Max function duration | n/a (static) | 60 s (`functions` block in `vercel.json`) |
+| Max function duration | n/a (static) | 300 s (`functions` block in `vercel.json`) |
 | Function memory | n/a | default (1024 MB) |
 | Region | All edge / IAD1 | IAD1 (default Python serverless) |
 | Custom domains | `equipbible.com` (`www` 308-redirects to apex) | `api.equipbible.com` |
@@ -270,8 +322,10 @@ Build-time only on Vercel (not in the bundle):
 the FastAPI entrypoint lives at `api/index.py` (re-exporting
 `app.main:app`), a catch-all rewrite sends every path to it (the
 function still receives the original request path), and `maxDuration`
-is set to 60 s so the cron workers (Gemini generation, translation
-batches) have headroom over the platform default.
+is set to 300 s so the cron workers (Gemini generation, translation
+batches -- one translation tick is budgeted at
+`TRANSLATION_WORKER_BUDGET_SECONDS`, 180 s by default) have headroom over
+the platform default.
 
 `frontend/vercel.json` adds SPA fallback rewrites, the
 Supabase-storage image rewrite (`/img/<bucket>/<path>`), and the strict
@@ -304,7 +358,7 @@ them.
 | Limit | Value | Where we sit |
 |---|---|---|
 | Function bundle size | 50 MB unzipped (backend `vercel.json` cap) | ~12-15 MB |
-| Function max duration | 60 s (Pro) | ≤ 30 s on Gemini translation, ≤ 1 s on normal requests |
+| Function max duration | 300 s configured (`vercel.json`; the Pro cap is higher) | ≤ 180 s on a translation worker tick, ≤ 1 s on normal requests |
 | Function memory | 3008 MB (Pro) | default 1024 MB |
 | Edge requests / month | 1 M (Pro) | ~hundreds |
 | Build execution / month | 6 000 min (Pro) | < 100 min |
@@ -312,30 +366,33 @@ them.
 
 The only constraint we've actually had to plan around is the bundle
 size cap: psycopg2 + bleach + SQLAlchemy push the wheel toward 15 MB,
-so we keep `requirements.txt` lean (10 entries) and resist adding new
+so we keep `requirements.txt` lean (11 entries) and resist adding new
 deps casually.
 
 ## CI / deploy environment variables to know about
 
 Set in GitHub Actions repo secrets / vars (read by `backend-ci.yml`):
 
-- `CI_SUPABASE_URL`, `CI_SUPABASE_ANON_KEY` -- placeholder by default
+- `CI_SUPABASE_URL` (repo variable), `CI_SUPABASE_SERVICE_ROLE_KEY`
+  (secret) -- placeholder by default
 - `CI_DATABASE_URL` -- placeholder by default
 - `CI_JWT_SECRET_KEY` -- placeholder by default (`ci-only-...`)
 
-These are only used by the lint-and-test job to satisfy
-`Settings.load_alternative_env_vars`. Tests then bootstrap their own
+These are only used by the lint-and-test job so `Settings` reports a
+configured runtime. Tests then bootstrap their own
 SQLite in-memory DB via `conftest.py`. The placeholder values are safe
 to keep in source.
 
 ## Known gaps / follow-ups
 
-- **No staging environment.** Vercel deploy previews substitute for one
-  -- every PR gets a `<branch>-equip-frontend-vadyms-projects-dfb6f76f.vercel.app`
-  URL that hits the same backend. For DB-affecting changes, this means
-  preview backends share the production DB. If we ever need a true
-  staging tier, the cleanest path is a separate Supabase project +
-  separate Vercel project bound to a `staging` branch.
+- **Staging is ephemeral and off by default.** [`STAGING.md`](STAGING.md)
+  describes the Supabase branch + `staging` Vercel projects that are
+  brought up for a release and torn down after; the repo variable
+  `STAGING_ACTIVE` says whether it is up. While it is down, Vercel deploy
+  previews substitute for it -- every PR gets a
+  `<branch>-equip-frontend-vadyms-projects-dfb6f76f.vercel.app` URL that
+  hits the **production** backend and database, so a DB-affecting change
+  is not exercised anywhere safe until staging is up.
 - **No automatic migration apply.** Documented above. Worth revisiting
   once we enable point-in-time recovery (the project is on Pro; PITR is
   the paid add-on, currently OFF) -- the auto-apply story is much less

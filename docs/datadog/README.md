@@ -198,7 +198,7 @@ Consequences for queries:
 |---|---|---|---|
 | `equip.activity.requests_total` | `locale`, `course_id`, `status_code` | — | request-logging middleware, `app/main.py` |
 | `equip.activity.duration_ms` | `locale`, `course_id` | yes | request-logging middleware, `app/main.py` |
-| `equip.errors.unhandled_total` | `method`, `path_prefix`, `exception_type` | — | global exception handler, `app/main.py`; drives the P1 `backend-unhandled-exception-rate` monitor; `exception_type` is the class name, never the message (PII) |
+| `equip.errors.unhandled_total` | `method`, `path_prefix`, `exception_type` | — | global exception handler, `app/main.py`; `exception_type` is the class name, never the message (PII). (The `backend-unhandled-exception-rate` monitor it once drove was retired in #777.) |
 | `equip.engagement.chapter_completed_total` | `course_id`, `completion_type` | — | all three completion paths (teacher-mark / quiz-pass / assignment-submit), idempotent on re-completion |
 | `equip.reviews.rating_latest` | `course_id` | — | `app/api/v1/reviews.py`, gauge per (user, course) on create/update; dashboard takes `avg` |
 | `equip.daily_challenge.attempt_total` | `is_correct` | — | `app/api/v1/daily_challenge.py::submit_attempt`, fires per NEW attempt only |
@@ -207,7 +207,7 @@ Consequences for queries:
 | `equip.youversion.api_calls_total` | `bible_id`, `outcome` | — | `app/services/verse_of_the_day.py::_fetch_passage`; `outcome=not_in_bible` is the version-difference walk-forward case, not a failure |
 | `equip.enrollments.created_total` | `course_id`, `cohort_id` | — | `app/services/course_service/_enrollment.py::enroll_user_in_course`, once per NEW row |
 | `equip.completion.course_avg_pct` | `course_id` | — | `..._enrollment.py::sync_enrollment_progress`, gauge on every progress recompute |
-| `equip.translation.queue_depth` / `equip.translation.queue_processing` / `equip.translation.queue_failed_permanent` | (none) | — | `app/api/v1/internal_translation_worker.py::_emit_queue_gauges` on every cron tick; drives the `translation-queue-backlog` monitor |
+| `equip.translation.queue_depth` / `equip.translation.queue_processing` / `equip.translation.queue_failed_permanent` | (none) | — | `app/api/v1/internal_translation_worker.py::_emit_queue_gauges` on every cron tick; watched by `translation-backlog-not-draining.json` (the older `translation-queue-backlog` monitor was retired in #777) |
 | `equip.translation.publishing_stuck` | (none) | — | `..._emit_queue_gauges`, same tick. Courses that have sat in `publishing` for over an hour — held out of the catalogue, usually by one row parked at `needs_review`. The queue gauges cannot see this case: no job is queued for such a course and the sweep declines to queue one, so it looked like a healthy idle system. Thirteen such parkings in the 30 days to 2026-09-05, each found by hand. The same tick logs a WARNING naming the courses (`held in publishing for over an hour`), which is the line that reaches the drain |
 | `equip.translation.duration_ms` | `outcome` (`done`/`failed`/`paused`) | yes | `..._emit_translation_duration` times each `translate_course_content` run. `paused` is the *normal* outcome for a course larger than one invocation's budget — it was missing from this table and from the dashboard, which therefore could not see the pipeline's most common tick |
 | `equip.translation.fields_total` | `outcome` (`translated`/`skipped`/`failed`/`needs_review`) | yes | `..._emit_field_outcomes` after every tick. The only metric that says whether the pipeline *did* anything: every other translation metric describes the queue, so a worker that walked a thousand fields and wrote none of them was indistinguishable from a worker with nothing to do. Production span that way for an hour on 2026-08-19 |
@@ -331,5 +331,5 @@ every metric a dashboard queries must be emitted or documented here.
 
 - `docs/OBSERVABILITY.md` — Datadog setup, log forwarder config,
   monitor inventory.
-- `Memory/datadog-equip.md` — current monitor IDs (in the private
+- The maintainer's private notes — current monitor IDs (not in this
   ops repo).

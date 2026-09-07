@@ -19,9 +19,6 @@ if TYPE_CHECKING:
     from app.schemas.course import ModuleCreate, ModuleUpdate
 
 
-_TRANSLATABLE_MODULE_FIELDS = ("title", "description")
-
-
 def _next_module_order(db: Session, course_id: str) -> int:
     """Return the tail ``order_index`` for a new module on this course."""
     current_max = (
