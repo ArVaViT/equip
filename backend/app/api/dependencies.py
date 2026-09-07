@@ -303,18 +303,22 @@ def verify_course_owner(
     )
 
 
-def _resolve_chapter(db: Session, chapter_id: str) -> tuple[Chapter, Module, Course]:
+def _resolve_chapter(db: Session, chapter_id: str) -> tuple[Chapter, Module | None, Course]:
     # Hide soft-deleted chapters/modules/courses across every chapter-scoped
     # route (blocks, quizzes, assignments, progress). Before this filter,
     # content deleted via the teacher UI was still reachable via chapter_id.
+    #
+    # The course comes from ``chapters.course_id``; the module is optional
+    # and joined only so a deleted one keeps hiding its chapters
+    # (``chapter_module_is_live_or_absent``).
     row = (
         db.query(Chapter, Module, Course)
-        .join(Module, Chapter.module_id == Module.id)
-        .join(Course, Module.course_id == Course.id)
+        .join(Course, Chapter.course_id == Course.id)
+        .outerjoin(Module, Chapter.module_id == Module.id)
         .filter(
             Chapter.id == chapter_id,
             Chapter.deleted_at.is_(None),
-            Module.deleted_at.is_(None),
+            chapter_module_is_live_or_absent(),
             Course.deleted_at.is_(None),
         )
         .first()
@@ -356,7 +360,7 @@ def verify_chapter_access(db: Session, chapter_id: str, user: User) -> Chapter:
 
 
 def verify_chapter_owner(db: Session, chapter_id: str, teacher: User | str) -> tuple[Chapter, str]:
-    """Resolve chapter -> module -> course and verify ownership.
+    """Resolve chapter -> course and verify ownership.
 
     Returns ``(chapter, course_id)`` so callers can skip redundant lookups.
     """
@@ -376,4 +380,7 @@ def verify_chapter_owner(db: Session, chapter_id: str, teacher: User | str) -> t
 # Moved to ``app.services.domain_access`` for the same reason as
 # ``assert_course_owner`` above. The re-export keeps existing call sites
 # in this module working without churn.
-from app.services.domain_access import resolve_chapter_course_id  # noqa: E402, F401  (re-export)
+from app.services.domain_access import (  # noqa: E402
+    chapter_module_is_live_or_absent,
+    resolve_chapter_course_id,  # noqa: F401  (re-export)
+)

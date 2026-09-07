@@ -90,6 +90,39 @@ def _seed_published_course_with_chapter(db: Session, *, course_id: str, owner: u
     return course.id, module.id, chapter.id
 
 
+def _seed_published_course_with_moduleless_chapter(db: Session, *, course_id: str, owner: uuid.UUID) -> tuple[str, str]:
+    """A chapter that belongs to its course and to no module.
+
+    The database column is still ``NOT NULL`` in production; the model is
+    ahead of it so the readers can be proven against this shape first.
+    """
+    course = make_course_with_text(
+        db,
+        course_id=course_id,
+        title="C",
+        status=CourseStatus.PUBLISHED,
+        created_by=owner,
+    )
+    chapter = Chapter(
+        id=f"{course_id}-ch",
+        module_id=None,
+        course_id=course.id,
+        title="Ch",
+        order_index=0,
+        chapter_type="reading",
+    )
+    db.add(chapter)
+    db.commit()
+    return course.id, chapter.id
+
+
+def _soft_delete_module(db: Session, module_id: str) -> None:
+    from datetime import UTC, datetime
+
+    db.query(Module).filter(Module.id == module_id).update({"deleted_at": datetime.now(UTC)})
+    db.commit()
+
+
 # ---------------------------------------------------------------------------
 # get_current_user — the load-bearing 401 gate
 # ---------------------------------------------------------------------------
@@ -489,6 +522,29 @@ class TestVerifyChapterAccess:
             deps.verify_chapter_access(db, "nope", teacher)
         assert exc.value.status_code == status.HTTP_404_NOT_FOUND
 
+    def test_chapter_without_module_is_reached_through_its_course(self, db: Session) -> None:
+        """The gate reads ``chapters.course_id``; a chapter that names no
+        module must resolve, for the owner and for an enrolled student."""
+        teacher = _seed_teacher(db)
+        student = _seed_student(db)
+        course_id, chapter_id = _seed_published_course_with_moduleless_chapter(db, course_id="vca-6", owner=TEACHER_ID)
+        db.add(Enrollment(id=f"enr-{course_id}", user_id=student.id, course_id=course_id, progress=0))
+        db.commit()
+        assert deps.verify_chapter_access(db, chapter_id, teacher).id == chapter_id
+        assert deps.verify_chapter_access(db, chapter_id, student).id == chapter_id
+
+    def test_soft_deleted_module_hides_chapter(self, db: Session) -> None:
+        """Kept on purpose: a module that is binned takes its chapters with
+        it, even though the chapter reaches its course without the module
+        now. Changing that is a decision for the step that makes the
+        module optional in the database, not a side effect of this one."""
+        teacher = _seed_teacher(db)
+        _course_id, module_id, chapter_id = _seed_published_course_with_chapter(db, course_id="vca-7", owner=TEACHER_ID)
+        _soft_delete_module(db, module_id)
+        with pytest.raises(HTTPException) as exc:
+            deps.verify_chapter_access(db, chapter_id, teacher)
+        assert exc.value.status_code == status.HTTP_404_NOT_FOUND
+
 
 # ---------------------------------------------------------------------------
 # verify_chapter_owner — the teacher-edit gate at chapter granularity
@@ -538,12 +594,84 @@ class TestVerifyChapterOwner:
     def test_soft_deleted_module_hides_chapter(self, db: Session) -> None:
         teacher = _seed_teacher(db)
         _course_id, module_id, chapter_id = _seed_published_course_with_chapter(db, course_id="vch-5", owner=TEACHER_ID)
-        from datetime import UTC, datetime
-
-        db.query(Module).filter(Module.id == module_id).update({"deleted_at": datetime.now(UTC)})
-        db.commit()
+        _soft_delete_module(db, module_id)
         with pytest.raises(HTTPException) as exc:
             deps.verify_chapter_owner(db, chapter_id, teacher)
+        assert exc.value.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_chapter_without_module_returns_its_course_id(self, db: Session) -> None:
+        teacher = _seed_teacher(db)
+        course_id, chapter_id = _seed_published_course_with_moduleless_chapter(db, course_id="vch-6", owner=TEACHER_ID)
+        chapter, returned_course_id = deps.verify_chapter_owner(db, chapter_id, teacher)
+        assert chapter.id == chapter_id
+        assert returned_course_id == course_id
+
+
+# ---------------------------------------------------------------------------
+# _resolve_chapter / resolve_chapter_course_id — the lookup under both gates
+# ---------------------------------------------------------------------------
+
+
+class TestResolveChapter:
+    def test_returns_the_module_when_the_chapter_has_one(self, db: Session) -> None:
+        _seed_teacher(db)
+        course_id, module_id, chapter_id = _seed_published_course_with_chapter(db, course_id="rc-1", owner=TEACHER_ID)
+        chapter, module, course = deps._resolve_chapter(db, chapter_id)
+        assert (chapter.id, course.id) == (chapter_id, course_id)
+        assert module is not None and module.id == module_id
+
+    def test_returns_none_for_the_module_when_the_chapter_has_none(self, db: Session) -> None:
+        _seed_teacher(db)
+        course_id, chapter_id = _seed_published_course_with_moduleless_chapter(db, course_id="rc-2", owner=TEACHER_ID)
+        chapter, module, course = deps._resolve_chapter(db, chapter_id)
+        assert (chapter.id, course.id) == (chapter_id, course_id)
+        assert module is None
+
+
+class TestResolveChapterCourseId:
+    def test_answers_from_the_chapter_itself(self, db: Session) -> None:
+        _seed_teacher(db)
+        course_id, _, chapter_id = _seed_published_course_with_chapter(db, course_id="rcc-1", owner=TEACHER_ID)
+        assert deps.resolve_chapter_course_id(db, chapter_id) == course_id
+
+    def test_chapter_without_module_answers_its_course(self, db: Session) -> None:
+        _seed_teacher(db)
+        course_id, chapter_id = _seed_published_course_with_moduleless_chapter(db, course_id="rcc-2", owner=TEACHER_ID)
+        assert deps.resolve_chapter_course_id(db, chapter_id) == course_id
+
+    def test_soft_deleted_module_hides_chapter(self, db: Session) -> None:
+        _seed_teacher(db)
+        _course_id, module_id, chapter_id = _seed_published_course_with_chapter(db, course_id="rcc-3", owner=TEACHER_ID)
+        _soft_delete_module(db, module_id)
+        with pytest.raises(HTTPException) as exc:
+            deps.resolve_chapter_course_id(db, chapter_id)
+        assert exc.value.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_soft_deleted_course_hides_chapter(self, db: Session) -> None:
+        _seed_teacher(db)
+        course_id, _, chapter_id = _seed_published_course_with_chapter(db, course_id="rcc-4", owner=TEACHER_ID)
+        from datetime import UTC, datetime
+
+        db.query(Course).filter(Course.id == course_id).update({"deleted_at": datetime.now(UTC)})
+        db.commit()
+        with pytest.raises(HTTPException) as exc:
+            deps.resolve_chapter_course_id(db, chapter_id)
+        assert exc.value.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_soft_deleted_chapter_is_404(self, db: Session) -> None:
+        _seed_teacher(db)
+        _, _, chapter_id = _seed_published_course_with_chapter(db, course_id="rcc-5", owner=TEACHER_ID)
+        from datetime import UTC, datetime
+
+        db.query(Chapter).filter(Chapter.id == chapter_id).update({"deleted_at": datetime.now(UTC)})
+        db.commit()
+        with pytest.raises(HTTPException) as exc:
+            deps.resolve_chapter_course_id(db, chapter_id)
+        assert exc.value.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_unknown_chapter_is_404(self, db: Session) -> None:
+        with pytest.raises(HTTPException) as exc:
+            deps.resolve_chapter_course_id(db, "nope")
         assert exc.value.status_code == status.HTTP_404_NOT_FOUND
 
 

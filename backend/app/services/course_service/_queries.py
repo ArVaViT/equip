@@ -19,6 +19,7 @@ from sqlalchemy.orm import joinedload, selectinload
 
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.course import Chapter, Course, CourseStatus, Module
+from app.services.domain_access import chapter_module_is_live_or_absent
 from app.services.translation.resolve_for_display import populate_module_texts, populate_spine_texts
 
 if TYPE_CHECKING:
@@ -173,16 +174,25 @@ def get_module(db: Session, course_id: str, module_id: str) -> Module | None:
     return module
 
 
-def get_chapter(db: Session, course_id: str, module_id: str, chapter_id: str) -> Chapter | None:
-    return (
+def get_chapter(db: Session, course_id: str, chapter_id: str, *, module_id: str | None = None) -> Chapter | None:
+    """A live chapter of ``course_id``, or ``None``.
+
+    ``module_id`` narrows the lookup to one module — the module-scoped
+    routes pass the one from their path so a chapter cannot be edited
+    under another module's URL. Without it the chapter is found by its
+    course alone. Either way a chapter whose module is soft-deleted stays
+    hidden (``chapter_module_is_live_or_absent``).
+    """
+    query = (
         db.query(Chapter)
-        .join(Module, Chapter.module_id == Module.id)
+        .outerjoin(Module, Chapter.module_id == Module.id)
         .filter(
             Chapter.id == chapter_id,
-            Chapter.module_id == module_id,
-            Module.course_id == course_id,
+            Chapter.course_id == course_id,
             Chapter.deleted_at.is_(None),
-            Module.deleted_at.is_(None),
+            chapter_module_is_live_or_absent(),
         )
-        .first()
     )
+    if module_id is not None:
+        query = query.filter(Chapter.module_id == module_id)
+    return query.first()

@@ -10,6 +10,7 @@ from sqlalchemy import func
 
 from app.models.course import Chapter, Course, Module
 from app.services.content_versions import dual_write_entity_content
+from app.services.domain_access import course_source_locale_for_chapter
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -108,7 +109,7 @@ def update_chapter(db: Session, chapter: Chapter, data: ChapterUpdate) -> Chapte
             entity_type="chapter",
             entity_id=str(chapter.id),
             texts={"title": patch["title"]},
-            fallback_locale=_course_source_locale_for_module(db, chapter.module_id),
+            fallback_locale=course_source_locale_for_chapter(db, chapter.id),
         )
     db.commit()
     db.refresh(chapter)
