@@ -62,23 +62,31 @@ def _load_course_structure(
         populate_module_texts(db, modules, source_locale=normalize_locale(src))
 
     all_chapters = db.query(Chapter).filter(Chapter.course_id == course_id, Chapter.deleted_at.is_(None)).all()
-    # Course-global order with each group's chapters consecutive — the one
-    # rule, shared with the readiness checklist, in ``course_structure``.
+    # The one rule, shared with the readiness checklist and the PDF
+    # export, in ``course_structure``.
     spine = build_spine(modules, all_chapters)
     chapters = list(spine.chapters)
 
+    # ``order_index`` here is the group's place in the spine, not the
+    # module's own number. The client sorts the group list by it, and a
+    # module's own number cannot say where a stretch of loose lessons
+    # falls between two modules — both neighbours have already taken
+    # their integer. For a course that groups every lesson the two are
+    # the same sequence, so nothing an existing course shows moves.
     module_map: dict[str, dict[str, Any]] = {
-        m.id: {"id": m.id, "title": m.title, "order_index": m.order_index, "is_ungrouped": False} for m in modules
+        m.id: {
+            "id": m.id,
+            "title": m.title,
+            "order_index": spine.rank_of(m.id),
+            "is_ungrouped": False,
+        }
+        for m in modules
     }
     if spine.has_ungrouped:
-        # Sorting by ``order_index`` is how the gradebook already orders
-        # these, so the loose group is numbered past the last module and
-        # lands where the spine puts it — at the end — with no change to
-        # any module's own number.
         module_map[UNGROUPED_GROUP_ID] = {
             "id": UNGROUPED_GROUP_ID,
             "title": "",
-            "order_index": max((m.order_index for m in modules), default=-1) + 1,
+            "order_index": spine.rank_of(UNGROUPED_GROUP_ID),
             "is_ungrouped": True,
         }
 

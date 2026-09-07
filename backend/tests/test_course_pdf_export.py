@@ -100,12 +100,17 @@ class TestRenderCoursePdf:
         chapter.id = "ch-1"
         chapter.title = "Ch"
         chapter.module_id = "mod-1"
+        # Real numbers, not mocks: the reading order is computed from
+        # these two, so a fixture that leaves them auto-mocked is not
+        # standing in for a row the renderer could ever be handed.
+        chapter.order_index = 0
         chapter.blocks = [block]
 
         module = MagicMock()
         module.id = "mod-1"
         module.title = "Mod"
         module.description = None
+        module.order_index = 0
         module.chapters = [chapter]
 
         course = MagicMock()

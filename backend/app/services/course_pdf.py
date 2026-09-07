@@ -5,12 +5,11 @@ clean, printable course handout — useful for archival, offline
 reading, and as a marketing artefact (a school can hand the PDF to a
 pastor as a sample of what the platform produces).
 
-The document follows the course's own chapter order. A chapter
-belongs to its course; a module is an optional grouping, so the walk
-is over ``course.chapters`` (course-global ``order_index``) and the
-module is consulted only for the heading it contributes. A course
-with no modules at all prints as a flat list of lessons, with no
-group headings anywhere — not with empty ones.
+The document follows the course's own reading order, and does not
+decide it: ``course_structure.build_spine`` does, for this and for
+every other surface that walks a course. A course with no modules at
+all prints as a flat list of lessons, with no group headings
+anywhere — not with empty ones.
 
 Scope of this first iteration:
 
@@ -37,6 +36,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from app.core.sanitize import html_to_plain_text
+from app.services.course_structure import build_spine
 
 if TYPE_CHECKING:
     from reportlab.lib.styles import ParagraphStyle
@@ -68,69 +68,25 @@ class CourseSection:
     chapters: list[Chapter] = field(default_factory=list)
 
 
-def _group_of(chapter: Chapter, live_modules: dict[str, Module]) -> str | None:
-    """The id of the module that groups this chapter, or ``None``.
-
-    ``None`` covers both a chapter that never had a module and one whose
-    module is not in the course's live list. The second case is the one
-    worth naming: ``delete_module`` detaches live chapters as it bins the
-    module, but a row that predates that rule can still point at a binned
-    module. The lesson is live either way, so it prints — ungrouped,
-    rather than under a heading the course no longer has.
-    """
-    module_id = getattr(chapter, "module_id", None)
-    if module_id is None:
-        return None
-    key = str(module_id)
-    return key if key in live_modules else None
-
-
 def build_course_outline(course: Course) -> list[CourseSection]:
     """Split the course's chapters into the runs the document prints.
 
-    The walk is over ``course.chapters`` — every lesson of the course, in
-    the course-global ``order_index`` the write path maintains — and not
-    over ``course.modules``, which is what used to drop a module-less
-    lesson from the export entirely: no error, no empty page, just a
-    course missing a piece that only its author would miss.
-
-    A module keeps its lessons together and takes the position of its
-    first one, so a course whose modules already run consecutively (every
-    course built through the editor) prints exactly as it did before. An
-    ungrouped lesson sits where its own ``order_index`` puts it, which is
-    the same rule the rest of the course order obeys — the module is a
-    label on a run of lessons, not a tier above them.
+    The order is not this module's to decide: it comes from
+    :func:`~app.services.course_structure.build_spine`, the one function
+    the readiness checklist and the teacher's board read too. The export
+    used to walk ``course.modules``, which dropped a module-less lesson
+    from the document entirely — no error, no empty page, just a course
+    missing a piece only its author would miss — and then walked
+    ``course.chapters`` flat, which printed the headings of every live
+    course in an order nobody had authored, because lesson numbers ran
+    per module and every module started at zero.
 
     A module with no live chapters yields no section at all, so it cannot
-    leave an empty rubric behind.
+    leave an empty rubric behind; the spine still carries it, for the
+    surfaces that show a teacher the heading they made.
     """
-    live_modules = {str(module.id): module for module in (course.modules or [])}
-    chapters = list(course.chapters or [])
-
-    by_group: dict[str, list[Chapter]] = {}
-    for chapter in chapters:
-        group = _group_of(chapter, live_modules)
-        if group is not None:
-            by_group.setdefault(group, []).append(chapter)
-
-    sections: list[CourseSection] = []
-    emitted: set[str] = set()
-    for chapter in chapters:
-        group = _group_of(chapter, live_modules)
-        if group is None:
-            # Consecutive ungrouped lessons share one section: they carry
-            # no heading, so splitting them would only scatter a flat
-            # course over one page per lesson.
-            if sections and sections[-1].module is None:
-                sections[-1].chapters.append(chapter)
-            else:
-                sections.append(CourseSection(module=None, chapters=[chapter]))
-            continue
-        if group in emitted:
-            continue
-        emitted.add(group)
-        sections.append(CourseSection(module=live_modules[group], chapters=by_group[group]))
-    return sections
+    spine = build_spine(list(course.modules or []), list(course.chapters or []))
+    return [CourseSection(module=run.module, chapters=list(run.chapters)) for run in spine.runs if run.chapters]
 
 
 def _build_styles() -> dict[str, ParagraphStyle]:
