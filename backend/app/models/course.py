@@ -311,16 +311,16 @@ class Chapter(Base):
     )
 
     id: Mapped[str] = mapped_column(primary_key=True)
-    # ``nullable=True`` on the model, ``NOT NULL`` still in production: the
-    # one place the model is deliberately a step ahead of the database.
-    # Step 2 of the chapter→course move made the translation contour
-    # reach a chapter by its ``course_id`` alone, and the tests that prove
-    # it walk a chapter with no module — which the test schema, built from
-    # this model, has to allow. The Python type stays ``str`` because that
-    # is what production guarantees today; it widens to ``str | None`` in
-    # the step that drops the constraint and lets a teacher create such a
-    # chapter. Until then every write path still sets both parents.
-    module_id: Mapped[str] = mapped_column(ForeignKey("modules.id"), nullable=True)
+    # Optional on the model, ``NOT NULL`` still in production: the one
+    # place the model is deliberately a step ahead of the database. Step 2
+    # of the chapter→course move made both the translation contour and
+    # the access gate (``_resolve_chapter``, ``resolve_chapter_course_id``,
+    # ``get_chapter``) reach a chapter by its ``course_id`` alone, and the
+    # tests that prove it use a chapter with no module — which the test
+    # schema, built from this model, has to allow. Every write path still
+    # sets both parents; the column follows in the step that drops the
+    # constraint and lets a teacher create such a chapter.
+    module_id: Mapped[str | None] = mapped_column(ForeignKey("modules.id"))
     # The course this chapter belongs to. Always equal to
     # ``module.course_id`` while every chapter still has a module; written
     # by every create path (``create_chapter``, ``clone_course``, the fat
@@ -335,7 +335,7 @@ class Chapter(Base):
     is_locked: Mapped[bool] = mapped_column(default=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    module: Mapped["Module"] = relationship(back_populates="chapters")
+    module: Mapped["Module | None"] = relationship(back_populates="chapters")
     course: Mapped["Course"] = relationship(back_populates="chapters")
 
     def __repr__(self) -> str:

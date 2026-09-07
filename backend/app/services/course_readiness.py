@@ -151,25 +151,27 @@ def _make_chapter_subject(chapter: Chapter) -> ReadinessSubject:
     return ReadinessSubject(type="chapter", id=chapter.id, title=chapter.title or "")
 
 
+def _chapter_link_params(chapter: Chapter) -> dict[str, str]:
+    """``{module_id, chapter_id}`` for the deep link — ``module_id`` only
+    while the chapter has one. Every chapter does today; the key is
+    conditional so the model's optional ``module_id`` has one honest
+    reading here instead of an empty string."""
+    params = {"chapter_id": chapter.id}
+    if chapter.module_id is not None:
+        params["module_id"] = chapter.module_id
+    return params
+
+
 def _open_chapter_action(chapter: Chapter) -> ReadinessAction:
-    return ReadinessAction(
-        type="open_chapter",
-        params={"module_id": chapter.module_id, "chapter_id": chapter.id},
-    )
+    return ReadinessAction(type="open_chapter", params=_chapter_link_params(chapter))
 
 
 def _open_quiz_action(chapter: Chapter) -> ReadinessAction:
-    return ReadinessAction(
-        type="open_quiz",
-        params={"module_id": chapter.module_id, "chapter_id": chapter.id},
-    )
+    return ReadinessAction(type="open_quiz", params=_chapter_link_params(chapter))
 
 
 def _open_assignment_action(chapter: Chapter) -> ReadinessAction:
-    return ReadinessAction(
-        type="open_assignment",
-        params={"module_id": chapter.module_id, "chapter_id": chapter.id},
-    )
+    return ReadinessAction(type="open_assignment", params=_chapter_link_params(chapter))
 
 
 # ─── Main entry point ───────────────────────────────────────────────────

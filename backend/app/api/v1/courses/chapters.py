@@ -63,7 +63,7 @@ def update_existing_chapter(
     db: Session = Depends(get_db),
 ) -> Chapter:
     verify_course_owner(db, course_id, teacher.id)
-    chapter = get_chapter(db, course_id, module_id, chapter_id)
+    chapter = get_chapter(db, course_id, chapter_id, module_id=module_id)
     if not chapter:
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
@@ -95,7 +95,7 @@ def remove_chapter(
     db: Session = Depends(get_db),
 ) -> None:
     verify_course_owner(db, course_id, teacher.id)
-    chapter = get_chapter(db, course_id, module_id, chapter_id)
+    chapter = get_chapter(db, course_id, chapter_id, module_id=module_id)
     if not chapter:
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,

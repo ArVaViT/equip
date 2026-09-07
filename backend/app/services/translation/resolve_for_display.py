@@ -19,7 +19,6 @@ import uuid
 from dataclasses import dataclass
 from typing import Literal
 
-from sqlalchemy import or_
 from sqlalchemy.orm import Session  # noqa: TC002
 
 from app.models.announcement import Announcement  # noqa: TC001
@@ -48,6 +47,7 @@ from app.services.content_versions import (
     fetch_cv_entity_texts_with_fallback,
     fetch_cv_text_bulk,
 )
+from app.services.domain_access import chapter_module_is_live_or_absent
 from app.services.language_detection import carries_language, detect_locale
 from app.services.translation.service import is_translation_enabled
 
@@ -641,7 +641,7 @@ def resolve_chapter_locale_context(
         .filter(
             Chapter.id == chapter_id,
             Chapter.deleted_at.is_(None),
-            or_(Chapter.module_id.is_(None), Module.deleted_at.is_(None)),
+            chapter_module_is_live_or_absent(),
             Course.deleted_at.is_(None),
         )
         .first()

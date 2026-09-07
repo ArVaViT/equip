@@ -18,7 +18,7 @@ from app.core.errors import ErrorCode, equip_error
 from app.core.metrics import increment
 from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
-from app.models.course import Chapter, Course, Module
+from app.models.course import Course
 from app.models.submission_declaration import SubmissionDeclaration
 from app.models.user import User, can_teach
 from app.schemas.assignment import (
@@ -36,6 +36,7 @@ from app.services.content_versions import (
     fetch_cv_entity_texts_with_fallback,
 )
 from app.services.course_service import sync_enrollment_progress
+from app.services.domain_access import course_source_locale_for_chapter as _course_source_locale_for_chapter
 from app.services.submission_grading import apply_grade
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import (
@@ -156,17 +157,6 @@ def list_chapter_assignments(
         # teacher who cannot see the assignment they just wrote will
         # write it again.
         include_author_edits=ctx.is_owner_or_admin,
-    )
-
-
-def _course_source_locale_for_chapter(db: Session, chapter_id: str) -> str | None:
-    """Walk Assignment -> Chapter -> Module -> Course."""
-    return (
-        db.query(Course.source_locale)
-        .join(Module, Module.course_id == Course.id)
-        .join(Chapter, Chapter.module_id == Module.id)
-        .filter(Chapter.id == chapter_id)
-        .scalar()
     )
 
 

@@ -10,11 +10,11 @@ from app.core.errors import ErrorCode, equip_error
 from app.core.sanitize import sanitize_string
 from app.models.chapter_block import ChapterBlock
 from app.models.content_version import ContentVersion, ContentVersionStatus
-from app.models.course import Chapter, Course, Module
 from app.models.user import User
 from app.schemas.chapter_block import BlockCreate, BlockReorderItem, BlockResponse, BlockUpdate
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.content_versions import delete_entity_cv_rows, dual_write_entity_content
+from app.services.domain_access import course_source_locale_for_chapter as _course_source_locale_for_chapter
 from app.services.staged_edits import author_text
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import (
@@ -70,21 +70,6 @@ def _block_to_response(db: Session, block: ChapterBlock) -> BlockResponse:
             "created_at": block.created_at,
             "updated_at": block.updated_at,
         }
-    )
-
-
-def _course_source_locale_for_chapter(db: Session, chapter_id: str) -> str | None:
-    """Walk ``ChapterBlock -> Chapter -> Module -> Course`` to find the
-    parent course's source locale for use as the dual-write fallback
-    when block ``content`` is too short or non-letter for the
-    detector to classify on its own.
-    """
-    return (
-        db.query(Course.source_locale)
-        .join(Module, Module.course_id == Course.id)
-        .join(Chapter, Chapter.module_id == Module.id)
-        .filter(Chapter.id == chapter_id)
-        .scalar()
     )
 
 
