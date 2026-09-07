@@ -16,13 +16,20 @@ service ever caring about locale.
 Severities:
 
 * ``critical``    — failing means the published course would actually
-                    break for students (empty modules, quiz with no
-                    questions, etc.). Triggers a confirm dialog on
-                    publish; never hard-blocks.
+                    break for students (no lessons at all, a blank
+                    reading, a quiz with no questions). Triggers a
+                    confirm dialog on publish; never hard-blocks.
 * ``recommended`` — failing means a noticeably incomplete catalog
                     listing (no description, no cover image).
-* ``polish``      — small quality signals (≥ 2 modules, full grading
-                    weights). Always informational.
+* ``polish``      — small quality signals (an empty module, ≥ 2 modules,
+                    full grading weights). Always informational.
+
+What is *structurally* required is a chapter, not a module. A course
+is a set of lessons; a module is an optional heading over some of them.
+An empty heading is untidy — ``polish`` — and it stopped being a reason
+a course cannot go out on 2026-09-07, after the first teacher to use
+this checklist invented modules his four-lesson course did not need and
+then could not publish behind the empty ones he was left with.
 """
 
 from __future__ import annotations
@@ -44,6 +51,7 @@ from app.models.chapter_block import ChapterBlock
 # in annotations.
 from app.models.course import Chapter, Course  # noqa: TC001
 from app.models.quiz import Quiz, QuizOption, QuizQuestion
+from app.services.course_structure import build_spine
 from app.services.translation.completeness import course_translation_completeness
 from app.services.translation.resolve_for_display import populate_spine_texts
 
@@ -181,8 +189,9 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
     """Run every readiness check against ``course`` and return a report.
 
     The caller is responsible for permission gating; this function does
-    no auth. It also assumes the caller eagerly loaded the modules
-    (otherwise we'd run a fresh query for them here).
+    no auth. It also assumes the caller eagerly loaded the course's
+    modules *and* its chapters (``_COURSE_TREE`` does both) — otherwise
+    we'd run a fresh query for them here.
 
     Hydrates ``course.title`` / ``course.description`` and each loaded
     ``module.title`` from ``content_versions`` before running checks so
@@ -240,37 +249,56 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
             )
         )
 
-    # ── Modules (critical) ───────────────────────────────────────────
+    # ── Structure (critical) ─────────────────────────────────────────
+    # What a course must have to be worth opening is a lesson, not a
+    # heading. Read the chapters off the course itself: a chapter belongs
+    # to its course, and the module — when there is one — only groups it.
     active_modules = [m for m in course.modules if m.deleted_at is None]
+    # Through the shared spine so the checklist lists lessons in the order
+    # the course reads them, headings included, instead of interleaving
+    # modules by an ``order_index`` that still counts per module.
+    active_chapters = list(build_spine(active_modules, [c for c in course.chapters if c.deleted_at is None]).chapters)
+
+    # No deep-link action on purpose. "Add a module" is the wrong offer
+    # now — it is what pushed the first teacher into inventing modules
+    # for a four-lesson course — and there is no "add chapter" action for
+    # the editor to answer yet. Step 5 gives this check its button.
     checks.append(
         ReadinessCheck(
-            id="has_at_least_one_module",
+            id="has_at_least_one_chapter",
             severity="critical",
-            passed=bool(active_modules),
-            message_key="courseReadiness.checks.hasAtLeastOneModule",
-            action=ReadinessAction(type="add_module", params={}),
+            passed=bool(active_chapters),
+            message_key="courseReadiness.checks.hasAtLeastOneChapter",
         )
     )
 
-    # Polish: encourage at least two modules — a one-module course can
-    # be valid (e.g. a single seminar) but is uncommon.
-    checks.append(
-        ReadinessCheck(
-            id="has_multiple_modules",
-            severity="polish",
-            passed=len(active_modules) >= 2,
-            message_key="courseReadiness.checks.hasMultipleModules",
+    # Polish, and only for a course that groups its lessons at all. In a
+    # course with no modules "the course has only one module" is not a
+    # remark anybody can act on — it is a nudge back towards the very
+    # structure this model stopped requiring.
+    if active_modules:
+        checks.append(
+            ReadinessCheck(
+                id="has_multiple_modules",
+                severity="polish",
+                passed=len(active_modules) >= 2,
+                message_key="courseReadiness.checks.hasMultipleModules",
+            )
         )
-    )
 
-    # ── Per-module: chapters exist (critical) ────────────────────────
+    # ── Per-module: chapters exist (polish) ──────────────────────────
+    # An empty module is untidy, not broken: its course still opens and
+    # every lesson in it still reads. This was ``critical`` until the
+    # model moved, and it is the exact rule that left a live teacher's
+    # four-lesson course unpublishable behind a heading he only made
+    # because the old checklist demanded one.
     for module in active_modules:
-        active_chapters = [c for c in module.chapters if c.deleted_at is None]
+        module_chapters = [c for c in module.chapters if c.deleted_at is None]
         checks.append(
             ReadinessCheck(
                 id=f"module_has_chapters:{module.id}",
-                severity="critical",
-                passed=bool(active_chapters),
+                severity="polish",
+                passed=bool(module_chapters),
                 message_key="courseReadiness.checks.moduleHasChapters",
                 subject=ReadinessSubject(type="module", id=module.id, title=module.title or ""),
                 action=ReadinessAction(type="open_module", params={"module_id": module.id}),
@@ -280,7 +308,12 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
     # ── Per-chapter content checks ───────────────────────────────────
     # Load blocks + quizzes + assignments in one round-trip so a course
     # with 50 chapters doesn't issue 50 separate fetches.
-    all_chapter_ids = [c.id for m in active_modules for c in m.chapters if c.deleted_at is None]
+    #
+    # Walked from the course, not from the modules: a chapter outside
+    # every module used to be invisible here, so a course whose only
+    # reading chapter is empty sailed through the publish gate with a
+    # clean checklist and shipped a blank page to students.
+    all_chapter_ids = [c.id for c in active_chapters]
     blocks_by_chapter: dict[str, list[ChapterBlock]] = {cid: [] for cid in all_chapter_ids}
     if all_chapter_ids:
         for block in db.query(ChapterBlock).filter(ChapterBlock.chapter_id.in_(all_chapter_ids)).all():
@@ -356,68 +389,69 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
     has_any_quiz_chapter = False
     has_any_assignment_chapter = False
 
-    for module in active_modules:
-        for chapter in (c for c in module.chapters if c.deleted_at is None):
-            ctype = chapter.chapter_type or "reading"
+    # Same list the structural check counted — every live chapter of the
+    # course, grouped or not, each one exactly once.
+    for chapter in active_chapters:
+        ctype = chapter.chapter_type or "reading"
 
-            if ctype == "reading":
-                blocks = blocks_by_chapter.get(chapter.id, [])
-                checks.append(
-                    ReadinessCheck(
-                        id=f"reading_has_content:{chapter.id}",
-                        severity="critical",
-                        passed=any(_has_meaningful_content(b, blocks_with_cv_content) for b in blocks),
-                        message_key="courseReadiness.checks.readingHasContent",
-                        subject=_make_chapter_subject(chapter),
-                        action=_open_chapter_action(chapter),
-                    )
+        if ctype == "reading":
+            blocks = blocks_by_chapter.get(chapter.id, [])
+            checks.append(
+                ReadinessCheck(
+                    id=f"reading_has_content:{chapter.id}",
+                    severity="critical",
+                    passed=any(_has_meaningful_content(b, blocks_with_cv_content) for b in blocks),
+                    message_key="courseReadiness.checks.readingHasContent",
+                    subject=_make_chapter_subject(chapter),
+                    action=_open_chapter_action(chapter),
                 )
+            )
 
-            elif ctype in {"quiz", "exam"}:
-                has_any_quiz_chapter = True
-                quiz = quizzes_by_chapter.get(chapter.id)
-                has_question = quiz is not None and any(quiz.questions)
+        elif ctype in {"quiz", "exam"}:
+            has_any_quiz_chapter = True
+            quiz = quizzes_by_chapter.get(chapter.id)
+            has_question = quiz is not None and any(quiz.questions)
+            checks.append(
+                ReadinessCheck(
+                    id=f"quiz_has_question:{chapter.id}",
+                    severity="critical",
+                    passed=has_question,
+                    message_key=(
+                        "courseReadiness.checks.examHasQuestion"
+                        if ctype == "exam"
+                        else "courseReadiness.checks.quizHasQuestion"
+                    ),
+                    subject=_make_chapter_subject(chapter),
+                    action=_open_quiz_action(chapter),
+                )
+            )
+            if quiz is not None:
+                bad_questions = [q for q in quiz.questions if not _question_is_complete(q, list(q.options))]
                 checks.append(
                     ReadinessCheck(
-                        id=f"quiz_has_question:{chapter.id}",
+                        id=f"quiz_questions_complete:{chapter.id}",
                         severity="critical",
-                        passed=has_question,
-                        message_key=(
-                            "courseReadiness.checks.examHasQuestion"
-                            if ctype == "exam"
-                            else "courseReadiness.checks.quizHasQuestion"
-                        ),
+                        passed=not bad_questions,
+                        message_key="courseReadiness.checks.quizQuestionsComplete",
                         subject=_make_chapter_subject(chapter),
                         action=_open_quiz_action(chapter),
                     )
                 )
-                if quiz is not None:
-                    bad_questions = [q for q in quiz.questions if not _question_is_complete(q, list(q.options))]
-                    checks.append(
-                        ReadinessCheck(
-                            id=f"quiz_questions_complete:{chapter.id}",
-                            severity="critical",
-                            passed=not bad_questions,
-                            message_key="courseReadiness.checks.quizQuestionsComplete",
-                            subject=_make_chapter_subject(chapter),
-                            action=_open_quiz_action(chapter),
-                        )
-                    )
 
-            elif ctype == "assignment":
-                has_any_assignment_chapter = True
-                assignment = assignments_by_chapter.get(chapter.id)
-                has_brief = assignment is not None and str(assignment.id) in assignments_with_cv_brief
-                checks.append(
-                    ReadinessCheck(
-                        id=f"assignment_has_brief:{chapter.id}",
-                        severity="critical",
-                        passed=has_brief,
-                        message_key="courseReadiness.checks.assignmentHasBrief",
-                        subject=_make_chapter_subject(chapter),
-                        action=_open_assignment_action(chapter),
-                    )
+        elif ctype == "assignment":
+            has_any_assignment_chapter = True
+            assignment = assignments_by_chapter.get(chapter.id)
+            has_brief = assignment is not None and str(assignment.id) in assignments_with_cv_brief
+            checks.append(
+                ReadinessCheck(
+                    id=f"assignment_has_brief:{chapter.id}",
+                    severity="critical",
+                    passed=has_brief,
+                    message_key="courseReadiness.checks.assignmentHasBrief",
+                    subject=_make_chapter_subject(chapter),
+                    action=_open_assignment_action(chapter),
                 )
+            )
 
     # ── Grading weights (polish) ────────────────────────────────────
     # Since D5 there are two categories, not three: participation is pinned to

@@ -181,6 +181,17 @@ class Course(Base):
     )
     enrollments: Mapped[list["Enrollment"]] = relationship(back_populates="course", cascade="all, delete-orphan")
 
+    if TYPE_CHECKING:
+        # Not columns and not relationships — runtime attributes set by
+        # ``course_service.attach_counts`` so a list response can carry
+        # "how many lessons" without loading a single chapter row. Declared
+        # here (and only for the type checker, so SQLAlchemy never sees
+        # them as mapped) because a card that has to count ``modules`` to
+        # say what a course contains gets the wrong answer for a course
+        # that has lessons and no modules.
+        chapter_count: int | None
+        module_count: int | None
+
     # ``title`` and ``description`` live in ``content_versions``.
     # Read paths attach the resolved text as runtime attributes via
     # ``populate_spine_texts``; the ``__init__`` overload accepts the same
