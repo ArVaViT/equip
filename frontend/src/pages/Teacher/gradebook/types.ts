@@ -4,6 +4,8 @@
  * to the fields the UI actually consumes.
  */
 
+import type { CourseGroupInfo } from "@/types"
+
 export const SORT_FIELDS = [
   "name",
   "quiz",
@@ -20,6 +22,10 @@ export type ActiveTab = (typeof TABS)[number]
 export interface ChapterInfo {
   id: string
   title: string
+  /** The heading this lesson sits under — a module id, or
+   *  `UNGROUPED_GROUP_ID` for a lesson the course groups under nothing.
+   *  Never null: the report substitutes the sentinel, so a board can group
+   *  by this value alone. */
   module_id: string
   chapter_type: string
   completed: boolean
@@ -49,11 +55,14 @@ export interface StudentProgressData {
   chapters: ChapterInfo[]
 }
 
-export interface ModuleInfo {
-  id: string
-  title: string
-  order_index: number
-}
+/**
+ * A heading on the gradebook. Was a module and only a module; now it is
+ * whatever the report groups by, which includes the stand-in group for the
+ * lessons in no module — `is_ungrouped` is how a screen tells them apart,
+ * and the stand-in's `title` is empty because the wording is the screen's to
+ * choose. The name stays `ModuleInfo` while its readers migrate.
+ */
+export type ModuleInfo = CourseGroupInfo
 
 export interface ProgressResponse {
   course_id: string

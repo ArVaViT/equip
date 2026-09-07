@@ -90,6 +90,22 @@ export interface Course {
   enrollment_start: string | null
   enrollment_end: string | null
   modules?: Module[]
+  /**
+   * The course's lessons that are in **no** module — never the grouped ones,
+   * which live under `modules[].chapters`. The server enforces the split, so
+   * the two lists are a partition: joining them yields every live lesson
+   * exactly once. Read both through `readCourseStructure` rather than by
+   * hand; the catalog list endpoints omit this field entirely.
+   */
+  chapters?: Chapter[]
+  /**
+   * Lessons and modules in the course, counted by the server rather than
+   * measured off the lists above — which is why they are right on a catalog
+   * card, where no lesson row was ever fetched. Absent (or null) means this
+   * endpoint did not count; that is not zero, and must not be shown as zero.
+   */
+  chapter_count?: number | null
+  module_count?: number | null
 }
 
 export interface Module {
@@ -100,16 +116,30 @@ export interface Module {
   order_index: number
   due_date: string | null
   chapters?: Chapter[]
+  /** Soft-delete stamp. The API filters deleted modules out before they get
+   *  here; declared so that the one reader of course shape can refuse a row
+   *  that still carries it. */
+  deleted_at?: string | null
 }
 
 export interface Chapter {
   id: string
-  module_id: string
+  /** The course the lesson belongs to. Always set: a lesson is a lesson of a
+   *  course, whether or not a module happens to group it. */
+  course_id: string
+  /**
+   * The module grouping this lesson, or `null` when nothing groups it — the
+   * ordinary shape for a short course, and what a lesson falls back to when
+   * the module around it is deleted.
+   */
+  module_id: string | null
   title: string
   order_index: number
   chapter_type: ChapterType
   requires_completion: boolean
   is_locked: boolean
+  /** Soft-delete stamp; see `Module.deleted_at`. */
+  deleted_at?: string | null
 }
 
 export interface Enrollment {
@@ -520,9 +550,32 @@ export interface CalendarEvent {
   source: CalendarEventSource
 }
 
+/**
+ * One heading on a teacher's board — the report's own grouping, which is not
+ * quite the course's: a module, or the stand-in group holding the lessons
+ * that are in no module.
+ *
+ * The stand-in has `id === UNGROUPED_GROUP_ID` (see `lib/courseStructure`),
+ * an empty `title` — the screen supplies the wording — and an `order_index`
+ * past the last real module, so it sorts to the tail. It appears only when
+ * the course actually has a loose lesson.
+ */
+export interface CourseGroupInfo {
+  id: string
+  title: string
+  order_index: number
+  is_ungrouped: boolean
+}
+
 export interface StudentChapterInfo {
   id: string
   title: string
+  /**
+   * Which heading on the board holds this lesson. Never null here, unlike
+   * `Chapter.module_id`: the report substitutes `UNGROUPED_GROUP_ID` for a
+   * lesson in no module, so every value is a key in the response's `modules`
+   * and a board can group by it without a special case.
+   */
   module_id: string
   chapter_type: ChapterType
   requires_completion: boolean
@@ -643,7 +696,7 @@ export interface CourseGradebookMatrix {
   course_title: string
   total_chapters: number
   total_students: number
-  modules: { id: string; title: string; order_index: number }[]
+  modules: CourseGroupInfo[]
   students: StudentGradebookEntry[]
 }
 
@@ -652,7 +705,7 @@ export interface StudentProgressResponse {
   course_title: string
   total_chapters: number
   total_students: number
-  modules: { id: string; title: string; order_index: number }[]
+  modules: CourseGroupInfo[]
   students: StudentProgressEntry[]
 }
 

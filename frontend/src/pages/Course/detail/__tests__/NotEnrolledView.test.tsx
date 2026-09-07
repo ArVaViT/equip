@@ -61,6 +61,7 @@ function makeCourse(over: Partial<Course> = {}): Course {
         chapters: [
           {
             id: "ch-2",
+            course_id: "c-1",
             module_id: "m-1",
             title: "Quiz on Pentecost",
             order_index: 1,
@@ -70,6 +71,7 @@ function makeCourse(over: Partial<Course> = {}): Course {
           },
           {
             id: "ch-1",
+            course_id: "c-1",
             module_id: "m-1",
             title: "Pentecost",
             order_index: 0,

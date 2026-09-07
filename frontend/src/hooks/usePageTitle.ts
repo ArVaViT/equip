@@ -36,7 +36,12 @@ export function matchTitleKey(pathname: string): string | null {
   }
   if (exact[pathname]) return exact[pathname]
 
-  if (/^\/teacher\/courses\/[^/]+\/modules\/[^/]+\/chapters\/[^/]+\/edit$/.test(pathname)) {
+  // A lesson is reachable both by its course alone and through the module
+  // that groups it; both addresses name the same screen, so both name the
+  // same tab. Written as one rule with the module segment optional rather
+  // than as two, so a third caller cannot be added to one and missed on the
+  // other.
+  if (/^\/teacher\/courses\/[^/]+(?:\/modules\/[^/]+)?\/chapters\/[^/]+\/edit$/.test(pathname)) {
     return "pageTitle.editChapter"
   }
   if (/^\/teacher\/courses\/[^/]+\/modules\/[^/]+\/edit$/.test(pathname)) {
@@ -49,7 +54,7 @@ export function matchTitleKey(pathname: string): string | null {
   if (/^\/teacher\/courses\/[^/]+\/progress$/.test(pathname)) return "pageTitle.studentProgress"
   if (/^\/teacher\/courses\/[^/]+\/analytics$/.test(pathname)) return "pageTitle.courseAnalytics"
   if (pathname.startsWith("/teacher/courses/")) return "pageTitle.courseEditor"
-  if (/^\/courses\/[^/]+\/modules\/[^/]+\/chapters\/[^/]+$/.test(pathname)) return "pageTitle.chapter"
+  if (/^\/courses\/[^/]+(?:\/modules\/[^/]+)?\/chapters\/[^/]+$/.test(pathname)) return "pageTitle.chapter"
   if (/^\/courses\/[^/]+\/modules\//.test(pathname)) return "pageTitle.module"
   if (pathname.startsWith("/courses/")) return "pageTitle.course"
   if (pathname.startsWith("/admin")) return "pageTitle.admin"
