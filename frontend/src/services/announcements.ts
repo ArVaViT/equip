@@ -58,6 +58,21 @@ export const announcementsService = {
     return response.data
   },
 
+  /**
+   * The backend has had ``PUT /announcements/{id}`` all along; nothing
+   * in the app called it, so a typo in a post could only be fixed by
+   * deleting the post — and with it the notification every student had
+   * already received. An edit keeps both.
+   */
+  async updateAnnouncement(
+    id: string,
+    data: { title?: string; content?: string },
+  ): Promise<Announcement> {
+    const response = await api.put<Announcement>(`/announcements/${id}`, data)
+    cacheInvalidatePrefix(`announcements:`)
+    return response.data
+  },
+
   async deleteAnnouncement(id: string): Promise<void> {
     await api.delete(`/announcements/${id}`)
     cacheInvalidatePrefix(`announcements:`)

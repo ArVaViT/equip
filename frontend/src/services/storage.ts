@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase"
+import { type BucketSpec, COURSE_ASSETS, COURSE_MATERIALS, resolveContentType } from "@/lib/uploadLimits"
 
 const AVATARS_BUCKET = "avatars"
 const COURSE_ASSETS_BUCKET = "course-assets"
@@ -14,18 +15,69 @@ const SIGNED_URL_TTL_SECONDS = 60 * 60
 const MAX_SAFE_NAME_LEN = 100
 
 /**
- * Strip path-illegal characters and collapse whitespace, then cap the
- * result without losing the file extension. The previous version sliced
- * to 100 chars *after* the special-char replacement, which silently
- * dropped the trailing ``.pdf`` / ``.png`` on any name longer than 100
- * chars and produced extensionless object keys (broken MIME sniffing /
- * download UX). Truncate the stem, then re-append the extension.
+ * Cyrillic → Latin, one letter at a time.
  *
- * Exported only so the unit test can exercise the boundary case
- * directly — runtime callers should use the upload functions below.
+ * Supabase Storage accepts only ``[A-Za-z0-9_/!.*'() &$=@;:+,?-]`` in an
+ * object key; a file called ``Проповедь_12_сентября.pdf`` was a 400
+ * ``InvalidKey`` for every teacher who names files in their own language,
+ * which is every teacher this product has. Replacing the letters with
+ * ``_`` would have made the key legal and the list of materials useless —
+ * that list shows the key, and every file would have read ``_______.pdf``.
+ *
+ * Not any one standard (they disagree on щ, ё and ъ). The aim is a name
+ * the teacher recognises as their file, not a reversible encoding.
+ * Ukrainian letters Russian lacks are included: it is the other language
+ * the product ships in.
+ */
+const CYRILLIC_TO_LATIN: Readonly<Record<string, string>> = {
+  "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "yo", "ж": "zh",
+  "з": "z", "и": "i", "й": "y", "к": "k", "л": "l", "м": "m", "н": "n", "о": "o",
+  "п": "p", "р": "r", "с": "s", "т": "t", "у": "u", "ф": "f", "х": "kh", "ц": "ts",
+  "ч": "ch", "ш": "sh", "щ": "shch", "ъ": "", "ы": "y", "ь": "", "э": "e", "ю": "yu",
+  "я": "ya",
+  // Ukrainian
+  "ґ": "g", "є": "ye", "і": "i", "ї": "yi",
+}
+
+function transliterate(name: string): string {
+  let out = ""
+  for (const ch of name) {
+    const lower = ch.toLowerCase()
+    const latin = CYRILLIC_TO_LATIN[lower]
+    if (latin === undefined) {
+      out += ch
+    } else if (ch === lower) {
+      out += latin
+    } else {
+      out += latin.charAt(0).toUpperCase() + latin.slice(1)
+    }
+  }
+  return out
+}
+
+/**
+ * Turn a file name into a safe object-key segment: transliterate
+ * Cyrillic, replace everything else outside ``[A-Za-z0-9._()-]`` with
+ * ``_`` (path separators, quotes, whitespace, emoji, any other script),
+ * collapse runs of ``_``, then cap the length without losing the
+ * extension.
+ *
+ * The allowed set is narrower than what Storage tolerates on purpose:
+ * ``&``, ``+``, ``;`` and ``=`` are legal in a key and a nuisance in a
+ * signed URL, and nobody misses them in ``Q_A.pdf``.
+ *
+ * The length cap truncates the stem and re-appends the extension. The
+ * version before it sliced to 100 chars *after* the replacement, which
+ * silently dropped the trailing ``.pdf`` / ``.png`` on any long name and
+ * produced extensionless keys (broken MIME sniffing / download UX).
+ *
+ * Exported only so the unit test can exercise the cases directly —
+ * runtime callers should use the upload functions below.
  */
 export function sanitizeFileName(name: string): string {
-  const cleaned = name.replace(/[/\\:*?"<>|]/g, "_").replace(/\s+/g, "_")
+  const cleaned = transliterate(name)
+    .replace(/[^A-Za-z0-9._()-]/gu, "_")
+    .replace(/_+/g, "_")
   if (cleaned.length <= MAX_SAFE_NAME_LEN) return cleaned
 
   const dotIdx = cleaned.lastIndexOf(".")
@@ -40,6 +92,26 @@ export function sanitizeFileName(name: string): string {
     return cleaned.slice(0, MAX_SAFE_NAME_LEN)
   }
   return cleaned.slice(0, MAX_SAFE_NAME_LEN - ext.length) + ext
+}
+
+/**
+ * The file with the MIME type the bucket will accept for it.
+ *
+ * storage-js sends a `File` as a multipart part and takes the part's
+ * Content-Type from the File itself — the `contentType` upload option is
+ * ignored for Blob bodies — so an iPhone voice memo Chrome calls
+ * ``audio/x-m4a`` reached the bucket under that name and was a 415,
+ * although the bucket accepts the same bytes as ``audio/mp4``. A `File`
+ * built from another `File` shares the bytes; nothing is copied.
+ *
+ * A type the bucket cannot accept is left alone: the server's refusal is
+ * the honest answer there, and `preflightUpload` already said so before
+ * the request when it could.
+ */
+function withBucketContentType(file: File, spec: BucketSpec): File {
+  const type = resolveContentType(file, spec)
+  if (type === null || type === file.type) return file
+  return new File([file], file.name, { type, lastModified: file.lastModified })
 }
 
 function fileExtension(name: string, fallback: string = "jpg"): string {
@@ -106,7 +178,7 @@ export const storageService = {
 
   async uploadCourseImage(courseId: string, file: File): Promise<string> {
     const path = `${courseId}/cover.${fileExtension(file.name)}`
-    return uploadToPublicBucket(COURSE_ASSETS_BUCKET, path, file)
+    return uploadToPublicBucket(COURSE_ASSETS_BUCKET, path, withBucketContentType(file, COURSE_ASSETS))
   },
 
   /**
@@ -123,7 +195,7 @@ export const storageService = {
 
     const { error } = await supabase.storage
       .from(COURSE_MATERIALS_BUCKET)
-      .upload(path, file)
+      .upload(path, withBucketContentType(file, COURSE_MATERIALS))
 
     if (error) throw error
   },
@@ -134,12 +206,19 @@ export const storageService = {
       .list(courseId, { sortBy: { column: "created_at", order: "desc" } })
 
     if (error) throw error
-    return (data ?? []).map((f) => ({
-      name: f.name,
-      path: `${courseId}/${f.name}`,
-      size: f.metadata?.size as number | undefined,
-      created: f.created_at,
-    }))
+    // `list` returns the folder's children, and a chapter that has a file
+    // block is a sub-folder here (`{courseId}/{chapterId}/…`). Storage
+    // marks folders with `id: null`; without this filter the teacher and
+    // every student saw a "material" named after a chapter's UUID that
+    // could not be downloaded.
+    return (data ?? [])
+      .filter((f) => f.id !== null)
+      .map((f) => ({
+        name: f.name,
+        path: `${courseId}/${f.name}`,
+        size: f.metadata?.size as number | undefined,
+        created: f.created_at,
+      }))
   },
 
   async getSignedMaterialUrl(path: string): Promise<string> {
@@ -173,7 +252,7 @@ export const storageService = {
 
     const { error } = await supabase.storage
       .from(COURSE_MATERIALS_BUCKET)
-      .upload(path, file)
+      .upload(path, withBucketContentType(file, COURSE_MATERIALS))
 
     if (error) throw error
 
@@ -199,7 +278,9 @@ export const storageService = {
 
     // Content images use upsert: false so the random suffix prevents
     // overwriting an existing path; `uploadToPublicBucket` would upsert.
-    const { error } = await supabase.storage.from(COURSE_ASSETS_BUCKET).upload(path, file)
+    const { error } = await supabase.storage
+      .from(COURSE_ASSETS_BUCKET)
+      .upload(path, withBucketContentType(file, COURSE_ASSETS))
     if (error) throw error
     return getPublicUrl(COURSE_ASSETS_BUCKET, path)
   },

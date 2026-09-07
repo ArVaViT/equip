@@ -18,6 +18,8 @@ import ScrollToTop from "./components/layout/ScrollToTop";
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useGrandTour } from "@/hooks/useGrandTour"
 import { takePendingInviteToken } from "@/lib/pendingInvite"
+import { returnPathFrom } from "@/lib/authRedirect"
+import { DeniedRedirect } from "@/components/auth/DeniedRedirect"
 
 // Lazy: FirstRunFlow renders null until a brand-new user's privacy/setup gate
 // activates, so it never needs to be on the critical path — its component code
@@ -84,7 +86,14 @@ function useRouteFocus() {
       return
     }
     const main = document.getElementById("main-content")
-    main?.focus({ preventScroll: true })
+    if (!main) return
+    // Yield to a page that already placed focus inside itself. The register
+    // form autofocuses its first field; before this check the landmark took
+    // that focus back, and arriving at /register from /login left the cursor
+    // out of the form a reader was about to type into.
+    const active = document.activeElement
+    if (active && active !== document.body && main.contains(active)) return
+    main.focus({ preventScroll: true })
   }, [pathname])
 }
 
@@ -92,16 +101,21 @@ type RouteMode = "private" | "public" | "teacher" | "admin"
 
 function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }) {
   const { user, loading } = useAuth()
+  const location = useLocation()
   if (loading) return <PageSpinner />
   if (mode === "public") {
-    return user ? <Navigate to="/" replace /> : <>{children}</>
+    // Back to the page a private gate refused, once there is someone to
+    // let in; the dashboard otherwise. See `lib/authRedirect.ts`.
+    return user ? <Navigate to={returnPathFrom(location.state) ?? "/"} replace /> : <>{children}</>
   }
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />
+  }
   if (mode === "teacher" && user.role !== "teacher" && user.role !== "admin") {
-    return <Navigate to="/" replace />
+    return <DeniedRedirect />
   }
   if (mode === "admin" && user.role !== "admin") {
-    return <Navigate to="/" replace />
+    return <DeniedRedirect />
   }
   return <>{children}</>
 }

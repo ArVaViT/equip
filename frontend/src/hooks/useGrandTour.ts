@@ -120,6 +120,7 @@ export function useGrandTour(): void {
         next: t("tour.next"),
         previous: t("tour.previous"),
         done: t("tour.done"),
+        close: t("common.close"),
         progress: t("tour.progress", { current: "{{current}}", total: "{{total}}" }),
       },
       navigate,

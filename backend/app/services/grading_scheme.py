@@ -43,10 +43,6 @@ SCHEMES: tuple[GradingScheme, ...] = ("pass_fail", "percent", "five_point", "let
 #: with no hidden average behind it.
 BAND_SCHEMES: tuple[GradingScheme, ...] = ("five_point", "letter")
 
-#: The five-point fail band reads «2 (неудовлетворительно)», never «незачёт» —
-#: that word belongs to the зачёт system alone (minor #6 in the review).
-FIVE_POINT_FAIL_CODE = "2"
-
 #: Upper bound for a five-point pass line. Above 75 the «3» band would be
 #: unreachable; mirrored as a CHECK on both ``courses`` and this module.
 FIVE_POINT_MAX_THRESHOLD = Decimal("75")

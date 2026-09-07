@@ -1,6 +1,8 @@
 import {
   Award,
   Bell,
+  CalendarClock,
+  CalendarPlus,
   ClipboardCheck,
   Megaphone,
   RotateCcw,
@@ -22,6 +24,8 @@ export const NOTIFICATION_ICONS: Record<NotificationType, typeof Bell> = {
   certificate_rejected: XCircle,
   assignment_graded: ClipboardCheck,
   new_announcement: Megaphone,
+  new_event: CalendarPlus,
+  event_rescheduled: CalendarClock,
   retake_requested: RotateCcw,
 }
 
@@ -30,6 +34,8 @@ export const NOTIFICATION_COLORS: Record<NotificationType, string> = {
   certificate_rejected: "text-destructive",
   assignment_graded: "text-info",
   new_announcement: "text-warning",
+  new_event: "text-info",
+  event_rescheduled: "text-warning",
   retake_requested: "text-warning",
 }
 

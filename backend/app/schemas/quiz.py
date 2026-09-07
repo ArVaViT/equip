@@ -2,15 +2,41 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic_core import PydanticCustomError
 
 from app.schemas._request import RequestModel
 
+# A quiz nobody can pass used to save without a word of complaint: a
+# multiple-choice question with no option marked correct is graded wrong
+# whatever the student picks, and an option whose text is only spaces is
+# counted as untranslated and makes the whole quiz refuse to open (409).
+# The teacher found out from the students. The checks below make such a
+# quiz a 422 at the door.
+#
+# The custom ``type`` on each error is deliberate: the client translates
+# the *type* (``quiz_no_correct_option`` → «отметьте правильный ответ»)
+# rather than showing the English ``msg`` written here for a log.
+
+#: Question types whose answer is one option picked from a list.
+CHOICE_TYPES: frozenset[str] = frozenset({"multiple_choice", "true_false"})
+
+
+def _blank(text: str | None) -> bool:
+    return text is None or not text.strip()
+
 
 class QuizOptionCreate(RequestModel):
-    option_text: str = Field(..., max_length=500)
+    option_text: str = Field(..., min_length=1, max_length=500)
     is_correct: bool = False
     order_index: int = 0
+
+    @field_validator("option_text")
+    @classmethod
+    def _option_text_not_blank(cls, value: str) -> str:
+        if _blank(value):
+            raise PydanticCustomError("quiz_option_blank", "Option text must not be blank")
+        return value
 
 
 class QuizOptionResponse(BaseModel):
@@ -47,6 +73,39 @@ class QuizQuestionCreate(RequestModel):
     min_words: int | None = Field(None, ge=1, le=10_000)
     options: list[QuizOptionCreate] = Field(default_factory=list, max_length=20)
 
+    @field_validator("question_text")
+    @classmethod
+    def _question_text_not_blank(cls, value: str) -> str:
+        if _blank(value):
+            raise PydanticCustomError("quiz_question_blank", "Question text must not be blank")
+        return value
+
+    @model_validator(mode="after")
+    def _answerable(self) -> "QuizQuestionCreate":
+        if self.question_type in CHOICE_TYPES:
+            if len(self.options) < 2:
+                raise PydanticCustomError(
+                    "quiz_too_few_options",
+                    "A {question_type} question needs at least two options",
+                    {"question_type": self.question_type},
+                )
+            correct = sum(1 for option in self.options if option.is_correct)
+            if correct == 0:
+                raise PydanticCustomError("quiz_no_correct_option", "Exactly one option must be marked correct")
+            if correct > 1:
+                raise PydanticCustomError(
+                    "quiz_many_correct_options",
+                    "Only one option may be marked correct, {correct} are",
+                    {"correct": correct},
+                )
+        elif self.options:
+            raise PydanticCustomError(
+                "quiz_options_not_allowed",
+                "A {question_type} question is answered in writing and has no options",
+                {"question_type": self.question_type},
+            )
+        return self
+
 
 class QuizQuestionUpdate(RequestModel):
     """A correction to a question a class has already seen.
@@ -70,6 +129,13 @@ class QuizQuestionUpdate(RequestModel):
     points: int | None = Field(None, ge=1, le=100)
     min_words: int | None = Field(None, ge=1, le=10_000)
 
+    @field_validator("question_text")
+    @classmethod
+    def _question_text_not_blank(cls, value: str | None) -> str | None:
+        if value is not None and _blank(value):
+            raise PydanticCustomError("quiz_question_blank", "Question text must not be blank")
+        return value
+
 
 class QuizOptionUpdate(RequestModel):
     """A correction to one answer option."""
@@ -77,6 +143,13 @@ class QuizOptionUpdate(RequestModel):
     option_text: str | None = Field(None, min_length=1, max_length=500)
     is_correct: bool | None = None
     order_index: int | None = Field(None, ge=0)
+
+    @field_validator("option_text")
+    @classmethod
+    def _option_text_not_blank(cls, value: str | None) -> str | None:
+        if value is not None and _blank(value):
+            raise PydanticCustomError("quiz_option_blank", "Option text must not be blank")
+        return value
 
 
 class QuizQuestionResponse(BaseModel):
@@ -118,7 +191,9 @@ class QuizCreate(RequestModel):
     #: the final result line — and a hardcoded 70 here silently disagreed with
     #: a course graded at 80.
     passing_score: int | None = Field(None, ge=0, le=100)
-    questions: list[QuizQuestionCreate] = Field(default_factory=list, max_length=100)
+    #: At least one: a quiz with no questions cannot be taken (``submit``
+    #: needs an answer) and used to save with a 201 all the same.
+    questions: list[QuizQuestionCreate] = Field(..., min_length=1, max_length=100)
 
 
 class QuizUpdate(RequestModel):

@@ -26,9 +26,6 @@ if TYPE_CHECKING:
     from app.schemas.course import CourseCreate, CourseUpdate
 
 
-_TRANSLATABLE_COURSE_FIELDS = ("title", "description")
-
-
 def _resolve_source_locale(
     *,
     title: str | None,

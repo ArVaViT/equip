@@ -165,21 +165,34 @@ def resync_course_progress(db: Session, course_id: str | UUID) -> int:
     )
     # A course with nothing gradable is 0%, not a division by zero — the same
     # answer ``sync_enrollment_progress`` gives.
-    updated = (
-        db.query(Enrollment)
-        .filter(Enrollment.course_id == course_id)
-        .update(
-            {
-                Enrollment.progress: case(
-                    (total == 0, 0),
-                    else_=func.round(completed * 100.0 / func.nullif(total, 0)),
-                )
-            },
-            synchronize_session=False,
-        )
+    fresh = case(
+        (total == 0, 0),
+        else_=func.round(completed * 100.0 / func.nullif(total, 0)),
     )
+
+    # Counted first, then written. Doing both in one statement means relying
+    # on the UPDATE's row count, which is "rows I looked at" — every enrolment
+    # on the course — and that reads as "rows that were wrong" to whoever
+    # pressed the button. Two statements, one honest number.
+    # The stale rows are selected, not counted in SQL. Wrapping the predicate
+    # in ``count()`` — directly or through a subquery — drops the correlation
+    # to ``Enrollment`` that ``completed`` depends on, and the answer comes
+    # back 0: the resync then reports "nothing to fix" on a course that is
+    # entirely wrong. A course's enrolment list is small enough to hold.
+    stale_ids = [
+        row[0]
+        for row in db.query(Enrollment.id).filter(
+            Enrollment.course_id == course_id,
+            Enrollment.progress.is_distinct_from(fresh),
+        )
+    ]
+    changed = len(stale_ids)
+    if stale_ids:
+        db.query(Enrollment).filter(Enrollment.id.in_(stale_ids)).update(
+            {Enrollment.progress: fresh}, synchronize_session=False
+        )
     db.commit()
-    return int(updated or 0)
+    return int(changed)
 
 
 def reading_progress_by_course(

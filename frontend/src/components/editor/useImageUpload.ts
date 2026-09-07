@@ -4,15 +4,9 @@ import type { Editor } from "@tiptap/react";
 import type { EditorView } from "@tiptap/pm/view";
 
 import { storageService } from "@/services/storage";
-import { getErrorDetail } from "@/lib/errorDetail";
 import { toast } from "@/lib/toast";
-
-/** Largest image we accept on the upload path. The bucket itself
- *  enforces a higher cap server-side; this client check fails fast so
- *  teachers don't burn a network round-trip on an obviously-too-big
- *  file. 10 MB covers high-quality screenshots, screen-printed
- *  diagrams, and photos straight off a phone. */
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+import { describeUploadError, preflightUpload } from "@/lib/uploadError";
+import { COURSE_ASSETS } from "@/lib/uploadLimits";
 
 /**
  * Image upload state + handlers shared between the RichTextEditor's
@@ -34,22 +28,15 @@ export function useImageUpload() {
 
   const upload = useCallback(
     async (file: File): Promise<string | null> => {
-      // Upfront client-side checks so a 50 MB photo gets a clear
-      // toast immediately instead of after a 30-second network
-      // round trip. Both errors are recorded so the URL-fallback
-      // prompt can repeat them.
-      if (!file.type.startsWith("image/")) {
-        const message = t("editor.toast.imageWrongType", { type: file.type || "?" });
-        setLastError(message);
-        toast({ title: message, variant: "destructive" });
-        return null;
-      }
-      if (file.size > MAX_IMAGE_BYTES) {
-        const message = t("editor.toast.imageTooLarge", {
-          maxMb: Math.round(MAX_IMAGE_BYTES / 1024 / 1024),
-        });
-        setLastError(message);
-        toast({ title: message, variant: "destructive" });
+      // The same checks the bucket will make — size cap, accepted
+      // formats, HEIC — run here first so a 6 MB phone photo gets a
+      // sentence in the teacher's language at once instead of an
+      // English 413 after the upload. The reason is recorded so the
+      // URL-fallback prompt can repeat it.
+      const issue = preflightUpload(file, COURSE_ASSETS);
+      if (issue) {
+        setLastError(issue.message);
+        toast({ title: t("editor.toast.imageUploadFailed"), description: issue.message, variant: "destructive" });
         return null;
       }
       setUploading(true);
@@ -58,12 +45,9 @@ export function useImageUpload() {
         const url = await storageService.uploadContentImage(file);
         return url;
       } catch (error: unknown) {
-        const detail = getErrorDetail(error);
-        const message = detail
-          ? t("editor.toast.imageUploadFailedDetail", { detail })
-          : t("editor.toast.imageUploadFailed");
+        const message = describeUploadError(error, COURSE_ASSETS);
         setLastError(message);
-        toast({ title: message, variant: "destructive" });
+        toast({ title: t("editor.toast.imageUploadFailed"), description: message, variant: "destructive" });
         return null;
       } finally {
         setUploading(false);

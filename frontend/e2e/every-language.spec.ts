@@ -48,10 +48,26 @@ test.describe("every language renders", () => {
   test("a failed catalog fetch does not leave the page in key mode", async ({ page }) => {
     // Fail the first catalog request, let the rest through: the loader
     // retries, and the reader never sees an identifier.
-    let failures = 0;
-    await page.route(/locales|i18n|\.json/, (route) => {
-      if (failures === 0) {
-        failures += 1;
+    //
+    // The pattern has to name the catalog precisely, and this is the second
+    // attempt at it. The first was `/locales|i18n|\.json/`, which in a
+    // production build matched no catalog at all — the bundle emits them as
+    // `assets/ru-<hash>.js`, one per language — and instead aborted a chunk
+    // called `i18next-<hash>.js`, the library. The case passed for months
+    // while testing something other than what it says. It only came apart
+    // when an unrelated import changed the chunk graph and that library
+    // chunk stopped existing under that name.
+    //
+    // Two shapes, because this suite runs against both a dev server and a
+    // built preview:
+    //   dev   /src/i18n/locales/ru.json
+    //   build /assets/ru-EjTN45ib.json
+    const CATALOG = /\/locales\/(ru|en|de|uk)\.json|\/assets\/(ru|en|de|uk)-[\w-]+\.json/;
+
+    let aborted: string | null = null;
+    await page.route(CATALOG, (route) => {
+      if (aborted === null) {
+        aborted = route.request().url();
         return route.abort("failed");
       }
       return route.continue();
@@ -63,7 +79,8 @@ test.describe("every language renders", () => {
     // A test that aborted nothing proves nothing: without this the
     // whole case passes on a page that never had a catalog request to
     // fail in the first place.
-    expect(failures, "no catalog request was intercepted").toBe(1);
+    expect(aborted, "no catalog request was intercepted").not.toBeNull();
+    expect(aborted!, "aborted something that is not a catalog").toMatch(CATALOG);
     expect(await page.title()).not.toMatch(LOOKS_LIKE_A_KEY);
   });
 });

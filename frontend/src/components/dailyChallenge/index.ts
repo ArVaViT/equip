@@ -1,2 +1,2 @@
-export { OptionButton, type OptionRevealView } from "./OptionButton"
+export { OptionButton } from "./OptionButton"
 export { RevealPanel } from "./RevealPanel"

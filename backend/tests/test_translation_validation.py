@@ -282,6 +282,21 @@ class TestModelMisbehaviour:
         )
         assert issues == []
 
+    def test_words_alignment_spaces_are_not_prose(self):
+        # Pasted from Word: the author lined "Введение" up with spaces
+        # and Word made them non-breaking, which the editor stores as
+        # ``&nbsp;`` — six characters each. Counted raw, a fifteen-letter
+        # title is sixty characters long, leaves the short-kind
+        # allowance, and its honest translation is flagged as truncated.
+        issues = validate_translation(
+            source="Урок&nbsp;1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Введение",
+            translated="Lesson 1 Introduction",
+            source_locale="ru",
+            target_locale="en",
+            content_kind="title",
+        )
+        assert "length_suspicious" not in codes(issues)
+
     def test_expanded_quiz_option_is_caught(self):
         issues = validate_translation(
             source="Павел",

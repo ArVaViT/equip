@@ -209,7 +209,7 @@ export function CourseCard({
                 disabled={togglingId === course.id}
                 className="sm:hidden"
               >
-                {isPublished ? (
+                {isOut ? (
                   <EyeOff className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                 ) : (
                   <Eye className="h-4 w-4" strokeWidth={1.75} aria-hidden />

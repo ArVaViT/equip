@@ -36,6 +36,32 @@ type QuizSubmissionAnswer = {
   text_answer?: string
 }
 
+/** ``PUT /quizzes/{id}`` — the fields above the question list. */
+export type QuizUpdateData = {
+  title?: string
+  description?: string | null
+  quiz_type?: "quiz" | "exam"
+  max_attempts?: number | null
+  passing_score?: number
+}
+
+/** ``PATCH /quizzes/questions/{id}`` — one question, in place. Options
+ *  are deliberately not here: they are corrected one at a time. */
+export type QuizQuestionPatch = {
+  question_text?: string
+  question_type?: QuizQuestionType
+  order_index?: number
+  points?: number
+  min_words?: number | null
+}
+
+/** ``PATCH /quizzes/options/{id}`` — one answer option, in place. */
+export type QuizOptionPatch = {
+  option_text?: string
+  is_correct?: boolean
+  order_index?: number
+}
+
 export const quizzesService = {
   async getChapterQuiz(chapterId: string): Promise<Quiz | null> {
     // Caches both real quizzes AND 404-as-null so chapters without a quiz
@@ -84,13 +110,47 @@ export const quizzesService = {
     return response.data
   },
 
-  async deleteQuiz(quizId: string, chapterId?: string): Promise<void> {
-    await api.delete(`/quizzes/${quizId}`)
+  /**
+   * Delete a quiz. Refused with 409 ``quiz.has_attempts`` once students
+   * have attempted it — every attempt and grade goes with the quiz — unless
+   * ``force`` is passed, which a caller does only after showing the teacher
+   * the number and hearing yes.
+   */
+  async deleteQuiz(quizId: string, chapterId?: string, opts: { force?: boolean } = {}): Promise<void> {
+    await api.delete(`/quizzes/${quizId}`, opts.force ? { params: { force: true } } : undefined)
     if (chapterId) {
       cacheInvalidate(`quiz:chapter:${chapterId}`)
     } else {
       cacheInvalidatePrefix("quiz:chapter:")
     }
+  },
+
+  /**
+   * The in-place routes: a correction to a quiz a class has already taken
+   * keeps every attempt on it. Each returns the whole quiz, re-read.
+   */
+  async updateQuiz(quizId: string, data: QuizUpdateData, chapterId: string): Promise<Quiz> {
+    const response = await api.put<Quiz>(`/quizzes/${quizId}`, data)
+    cacheInvalidate(`quiz:chapter:${chapterId}`)
+    return response.data
+  },
+
+  async updateQuizQuestion(questionId: string, patch: QuizQuestionPatch, chapterId: string): Promise<Quiz> {
+    const response = await api.patch<Quiz>(`/quizzes/questions/${questionId}`, patch)
+    cacheInvalidate(`quiz:chapter:${chapterId}`)
+    return response.data
+  },
+
+  async updateQuizOption(optionId: string, patch: QuizOptionPatch, chapterId: string): Promise<Quiz> {
+    const response = await api.patch<Quiz>(`/quizzes/options/${optionId}`, patch)
+    cacheInvalidate(`quiz:chapter:${chapterId}`)
+    return response.data
+  },
+
+  /** Every attempt on a quiz — the teacher's view. Up to the API's cap. */
+  async getQuizAttempts(quizId: string): Promise<QuizAttempt[]> {
+    const response = await api.get<QuizAttempt[]>(`/quizzes/${quizId}/attempts`, { params: { limit: 500 } })
+    return response.data
   },
 
   async submitQuiz(quizId: string, answers: QuizSubmissionAnswer[]): Promise<QuizAttempt> {

@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { EmptyState, ErrorState, Eyebrow, PageHeader } from "@/components/patterns"
 import { coursesService } from "@/services/courses"
+import { countAwarded } from "@/lib/certificates"
 import type { Certificate, Enrollment } from "@/types"
 import { Award, ArrowLeft, RefreshCw, ScrollText } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -98,7 +99,7 @@ export default function CertificatesPage() {
               // rejected was told "14 certificates earned" above fourteen
               // cards each saying "Rejected".
               t("certificates.subtitle", {
-                count: certificates.filter((c) => c.status === "approved").length,
+                count: countAwarded(certificates),
               })
             : undefined
         }

@@ -18,6 +18,7 @@ import type {
   ReadinessReport,
   ReadinessSeverity,
 } from "@/services/courseReadiness"
+import { readinessMessage } from "./readinessMessage"
 
 interface Props {
   report: ReadinessReport | null
@@ -261,13 +262,10 @@ function CheckRow({
   onFix?: (action: ReadinessAction, check: ReadinessCheck) => void
 }) {
   const { t } = useTranslation()
-  // Render message with subject title interpolated. The backend's i18n
-  // keys all accept ``{{title}}`` so per-chapter / per-module checks can
-  // include the entity name natively.
-  const message = t(check.message_key, {
-    defaultValue: check.message_key,
-    title: check.subject?.title,
-  })
+  // Subject title interpolated (every key accepts ``{{title}}``), and
+  // phrased for the check's state: a failing row says what is missing,
+  // a passed row keeps the affirmative sentence it gets crossed out with.
+  const message = readinessMessage(t, check)
   return (
     <li className="flex items-start gap-3 text-sm">
       {check.passed ? (

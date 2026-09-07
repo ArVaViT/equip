@@ -182,26 +182,29 @@ def request_certificate(
     return cert
 
 
-@router.get("/course/{course_id}", response_model=CertificateResponse)
+@router.get("/course/{course_id}", response_model=CertificateResponse | None)
 def get_course_certificate(
     response: Response,
     course_id: str,
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> CertificateResponse:
-    """Get the current user's certificate for a specific course."""
+) -> CertificateResponse | None:
+    """The current user's certificate for a course, or ``null`` when there is none.
+
+    Not having a certificate is the ordinary state of every student who has
+    not finished the course yet, and the course page asks this on every
+    visit. It used to be a 404: the single most frequent warning line in the
+    production logs was a student opening a course they were still studying.
+    A 4xx here buried the real warnings and made every 4xx-counting alarm
+    lie. The absence is a value, so it is answered as one.
+    """
     response.headers["Vary"] = "Accept-Language"
     cert = (
         db.query(Certificate).filter(Certificate.user_id == current_user.id, Certificate.course_id == course_id).first()
     )
     if not cert:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="No certificate found",
-            context={"resource_type": "certificate", "course_id": course_id},
-        )
+        return None
     display_locale: LocaleCode = normalize_locale(accept_language)
     return _localize_cert_responses(db, [cert], display_locale=display_locale)[0]
 

@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { Link, useNavigate, useParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -16,6 +16,7 @@ import {
   CalendarDays,
   Eye,
   EyeOff,
+  GraduationCap,
   Lock,
   Megaphone,
   MoreHorizontal,
@@ -49,6 +50,7 @@ import {
   useMaterialsSection,
 } from "./editor"
 import type { CourseEditorModal } from "./editor/types"
+import { readinessMessage } from "./editor/readinessMessage"
 import type { ReadinessAction } from "@/services/courseReadiness"
 
 /**
@@ -72,7 +74,7 @@ export default function CourseEditor() {
   const closeModal = useCallback(() => setModal(null), [])
   const goBack = useCallback(() => navigate("/teacher"), [navigate])
 
-  const data = useCourseData(courseId, confirm, goBack)
+  const data = useCourseData(courseId, confirm)
   const announcements = useAnnouncementsSection(courseId, confirm)
   const materials = useMaterialsSection(courseId, confirm)
   // Cohort management lives in the admin UI per ADR-010 — teachers
@@ -89,22 +91,23 @@ export default function CourseEditor() {
     ready: !data.loading && data.course !== null,
   })
 
-  const pub = data.course?.status === "published"
+  // Three states, not two. ``publishing`` is a course the teacher has
+  // published that the server is still holding back from the catalog
+  // until every language has it. Reading it as "not published" put a
+  // DRAFT badge on a course the teacher had just seen "Published".
+  const pub = data.published
+  const publishing = data.publishing
+  const isOut = pub || publishing
 
   // ── Publish-flow with critical-readiness confirm ────────────────
   // When the teacher tries to publish a course that has critical
   // readiness failures, we warn instead of blocking. They can still
   // proceed (no hard gate) but they have to make a deliberate choice.
   const handleTogglePublish = useCallback(async () => {
-    if (!pub && readiness.report && readiness.report.critical_failing > 0) {
+    if (!isOut && readiness.report && readiness.report.critical_failing > 0) {
       const failing = readiness.report.checks
         .filter((c) => c.severity === "critical" && !c.passed)
-        .map((c) =>
-          t(c.message_key, {
-            defaultValue: c.message_key,
-            title: c.subject?.title,
-          }),
-        )
+        .map((c) => readinessMessage(t, c))
       const ok = await confirm({
         title: t("courseReadiness.publishConfirm.title"),
         description: t("courseReadiness.publishConfirm.description", {
@@ -121,7 +124,7 @@ export default function CourseEditor() {
     }
     await data.togglePublish()
     void readiness.refresh()
-  }, [confirm, data, pub, readiness, t])
+  }, [confirm, data, isOut, readiness, t])
 
   // ── Deep-link fix actions ───────────────────────────────────────
   const handleFix = useCallback(
@@ -171,7 +174,7 @@ export default function CourseEditor() {
       <div className="container mx-auto px-4">
         <ErrorState
           title={t("courseEditor.notFound.title")}
-          description={t("courseEditor.notFound.description")}
+          description={data.loadError ?? t("courseEditor.notFound.description")}
           action={
             <Button variant="outline" size="sm" onClick={goBack}>
               {t("courseEditor.notFound.backToCourses")}
@@ -224,19 +227,38 @@ export default function CourseEditor() {
           </div>
         }
         meta={
-          <Badge variant={pub ? "success" : "warning"} className="uppercase tracking-wide">
-            {pub ? t("courseEditor.published") : t("courseEditor.draft")}
+          <Badge
+            variant={pub ? "success" : publishing ? "warningSubtle" : "warning"}
+            className="uppercase tracking-wide"
+          >
+            {pub
+              ? t("courseEditor.published")
+              : publishing
+                ? t("courseEditor.publishing")
+                : t("courseEditor.draft")}
           </Badge>
         }
         actions={
           <>
+            {/* The course as a student will see it. Before publication the
+                student page shows the author every module and chapter of
+                the draft; the only other route there was typing the URL. */}
+            <Link to={`/courses/${courseId}`}>
+              <Button variant="outline" size="sm">
+                <GraduationCap className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
+                {t("courseEditor.viewAsStudent")}
+              </Button>
+            </Link>
+            {/* A course in ``publishing`` is already on its way out;
+                offering "Publish" again would change nothing on the
+                server and tell the teacher their click did not count. */}
             <Button variant="outline" size="sm" onClick={handleTogglePublish}>
-              {pub ? (
+              {isOut ? (
                 <EyeOff className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
               ) : (
                 <Eye className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
               )}
-              {pub ? t("courseEditor.unpublish") : t("courseEditor.publish")}
+              {isOut ? t("courseEditor.unpublish") : t("courseEditor.publish")}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -292,6 +314,7 @@ export default function CourseEditor() {
         progress={translation.progress}
         loading={translation.loading}
         preparing={translation.preparing}
+        status={course.status}
         onPrepare={() => void translation.prepare()}
         reviewHref={isAdmin && courseId ? `/admin?tab=translations&course=${courseId}` : null}
       />
@@ -336,8 +359,11 @@ export default function CourseEditor() {
         content={announcements.content}
         onTitleChange={announcements.setTitle}
         onContentChange={announcements.setContent}
+        editingId={announcements.editingId}
         posting={announcements.posting}
         onPost={announcements.post}
+        onEdit={announcements.startEdit}
+        onCancelEdit={announcements.resetForm}
         onDelete={announcements.remove}
       />
 

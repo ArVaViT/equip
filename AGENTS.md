@@ -45,7 +45,7 @@ These are load-bearing for the project.
 - **All user-facing strings go through `t(...)`.** Locale bundles live in `frontend/src/i18n/locales/{ru,en,de,uk}.json` and must stay in parity. CI fails on drift.
 - **Conventional Commits.** `feat(quiz): ...`, `fix(auth): ...`, `chore(ci): ...`. Branch name mirrors the commit prefix (`feat/quiz-extra-attempts`, `fix/audit-invalid-uuid`).
 - **Migrations are append-only.** Never edit an `.sql` file under `supabase/migrations/` that has already been applied. Create a new timestamped file (`YYYYMMDDHHMMSS_<slug>.sql`) instead.
-- **The four-way enum mirror.** A new persisted enum value must be added in **four** places that stay in lockstep: Postgres `CHECK` constraint, Pydantic `Literal[...]`, TypeScript union type, and the TypeScript `const` accessor (e.g. `ROLES`). See `frontend/src/types/index.ts` for the pattern.
+- **The four-way enum mirror.** A new persisted enum value must be added in **four** places that stay in lockstep: Postgres `CHECK` constraint, the Python side (a Pydantic `Literal[...]`, or the `StrEnum` in `backend/app/models/` -- roles use `UserRole`), TypeScript union type, and the TypeScript `const` accessor (e.g. `ROLES`). See `frontend/src/types/index.ts` for the pattern.
 - **No Docker.** The project deliberately avoids container workflows today. Do not suggest one.
 - **Branch and commit names mirror each other**, and both use the Conventional Commits prefix: `feat/quiz-extra-attempts` carries `feat(quiz): …`. Work never lands directly on `main`.
 
@@ -67,7 +67,7 @@ npm run lint        # eslint --max-warnings 0
 npx tsc --noEmit    # strict
 npm run i18n:check  # locale parity
 npm run test:run    # vitest
-npm run build       # tsc && vite build
+npm run build       # locale boot script, tsc, vite build, bundle-size budget, sourcemaps
 ```
 
 ## Commit conventions — including AI co-authorship

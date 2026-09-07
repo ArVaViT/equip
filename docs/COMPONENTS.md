@@ -184,9 +184,9 @@ is the spec; `<InlineEdit>` is the implementation.
 
 ### Sizes
 
-- `h1` — page titles (Fraunces serif, large, semibold).
-- `h2` — section titles (Fraunces serif, medium, semibold).
-- `body` — descriptions, names, anything in body copy (Inter sans).
+- `h1` — page titles (Literata serif, large, semibold).
+- `h2` — section titles (Literata serif, medium, semibold).
+- `body` — descriptions, names, anything in body copy (Golos Text sans).
 
 ### Example
 
@@ -245,7 +245,7 @@ import { Badge } from "@/components/ui/badge"
 <PageHeader
   backTo="/courses"
   backLabel={t("common.backToCourses")}
-  title={
+  titleSlot={
     <InlineEdit
       value={course.title}
       size="h1"
@@ -275,9 +275,12 @@ import { Badge } from "@/components/ui/badge"
 />
 ```
 
-Title and description are `ReactNode`, not `string`, on purpose — most
-pages pass `<InlineEdit>` straight in. The header itself doesn't know
-whether it's wrapping editable or read-only content.
+`title` is a **string** and the component sets its type: one size for a
+page heading, one icon size, one gap. A page whose heading is a control
+rather than a label — the inline-editable course or module name — passes
+`titleSlot` (a `ReactNode`) instead; the two are mutually exclusive.
+`description` stays a `ReactNode`, so `<InlineEdit multiline>` goes
+straight in.
 
 ### Don't
 
@@ -293,7 +296,8 @@ whether it's wrapping editable or read-only content.
 [`patterns/Modal.tsx`](../frontend/src/components/patterns/Modal.tsx)
 
 Thin wrapper over the shadcn `<Dialog>` with the project defaults baked
-in: serif title, `max-w-lg`, `max-h-[85vh]`, scrollable body, the
+in: serif title, a bottom sheet on mobile and a centered `sm:max-w-lg`
+card from `sm` up (`sm:max-h-[85vh]`, scrollable body), the
 "closes on backdrop click and escape" behaviour wired up. Use it for any
 modal that isn't a confirmation dialog.
 

@@ -21,8 +21,10 @@ views). Expressive surfaces have their own rules in "Motion" below.
 
 All colours live in `frontend/src/index.css` as CSS variables in **HSL**
 (`--background: 38 32% 97%`, consumed as `hsl(var(--token))`). An OKLCH layer
-is staged in `frontend/src/styles/tokens-v2.css` but not yet wired — the live
-palette is HSL until the ADR-0011 Wave 9 cutover. No
+sits in `frontend/src/styles/tokens-v2.css` but is **dormant**: ADR-0011
+declined the OKLCH migration (superseded 2026-08-24), `index.css` does not
+import the file, and `styles/__tests__/tokens-v2.test.ts` asserts that it
+doesn't. The live palette is HSL. No
 component ever uses a raw Tailwind palette class (`bg-blue-500`, `text-rose-600`).
 If you need a colour, use a semantic token or add one.
 
@@ -46,8 +48,11 @@ with a `-foreground`.
 
 One scale, one serif, one sans.
 
-- **Serif (`Fraunces`):** page titles (H1, H2), chapter reader body.
-- **Sans (`Inter`):** everything else.
+- **Serif (`Literata`):** page titles (H1, H2), chapter reader body.
+  Georgia leads the fallback stack because its x-height is closest.
+- **Sans (`Golos Text`):** everything else. It replaced Inter for its
+  Cyrillic (see the comment in `frontend/tailwind.config.js`); Golos has
+  no italic and no Greek, both stay in Literata.
 - **Scale:** `32 / 24 / 18 / 16 / 14 / 13` px. No `text-[Npx]` arbitrary
   values — the single documented exception is the 11px eyebrow below.
 - **Weights:** 400 body, 500 UI, 600 emphasis, 700 display. No 800/900.
@@ -88,14 +93,18 @@ Motion is part of the design language, not absent from it. Rules:
   "Adding a library" below.
 - **Primitives live in `frontend/src/components/motion/`:**
   - `<StaggerChildren>` — orchestrated entrance for list/grid items
+  - `<Reveal>` — one block arriving as the reader reaches it (scroll)
   - `<PressFeedback>` — button-style press scale (0.97 default)
   - Reach for these before hand-rolling `motion.div` in a feature file.
 - **Easing:** `cubic-bezier(0.22, 1, 0.36, 1)` ("editorial ease") everywhere —
   smooth, no bounce, no overshoot. Spring physics are banned outside drag
   previews and toast slide-ins; both require sign-off.
-- **Duration scale:** 120ms (press feedback), 280ms (hover, page transitions),
-  480ms (mount fade-in), 550ms (scroll reveal). Nothing slower than 600ms,
-  nothing faster than 100ms.
+- **Duration scale:** three values, and only three — 120ms (press feedback),
+  200ms (interaction: menus, popovers, state changes), 400ms (panels, route
+  movement, scroll reveal). They live in `lib/motion.ts` and mirror the CSS
+  tokens exactly; `motion.test.ts` fails if the two drift. This list used to
+  name five durations including a 550ms "scroll reveal" that existed in no
+  code — a fourth opinion nobody could honour.
 - **Reduced motion:** every primitive falls back to instant render under
   `prefers-reduced-motion: reduce`. Hand-rolled motion must do the same — use
   the `useReducedMotion` hook from `motion/react` as the single source of truth.

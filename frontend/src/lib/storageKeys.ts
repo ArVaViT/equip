@@ -31,6 +31,7 @@ const PREFIX_GRAND_TOUR_SEEN = "equip.grand-tour.seen"
 const PREFIX_PER_PAGE_TOUR_SEEN = "equip.tour.seen"
 const PREFIX_COMPLETION_CELEBRATED = "equip.celebrated"
 const PREFIX_ASSIGNMENT_DRAFT = "equip.draft.assignment"
+const PREFIX_BLOCK_DRAFT = "equip.draft.block"
 
 /** Privacy Policy acceptance flag — gates step 1 of the first-run flow. */
 export function privacyAcceptedKey(userId: string): string {
@@ -91,4 +92,16 @@ export function completionCelebratedKey(userId: string, courseId: string): strin
  */
 export function assignmentDraftKey(userId: string, assignmentId: string): string {
   return `${PREFIX_ASSIGNMENT_DRAFT}.${userId}.${assignmentId}`
+}
+
+/**
+ * A teacher's text block as last typed in this browser — per
+ * ``(userId, blockId)``.
+ *
+ * Written while the block is being edited and removed once the server has
+ * the same text. What remains in storage after a crash, an expired session
+ * or a closed tab is therefore exactly the text the server never received.
+ */
+export function blockDraftKey(userId: string, blockId: string): string {
+  return `${PREFIX_BLOCK_DRAFT}.${userId}.${blockId}`
 }

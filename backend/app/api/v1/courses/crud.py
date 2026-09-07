@@ -9,10 +9,10 @@ from app.api.dependencies import assert_course_owner, organization_of, require_t
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
-from app.core.sanitize import sanitize_string
+from app.core.sanitize import sanitize_plain_text
 from app.models.course import Course, CourseStatus
 from app.models.user import User, UserRole
-from app.schemas.course import CourseCreate, CourseResponse, CourseUpdate
+from app.schemas.course import CourseCreate, CourseResponse, CourseUpdate, ResyncProgressResponse
 from app.services.audit_service import log_action
 from app.services.course_service import (
     clone_course,
@@ -21,6 +21,7 @@ from app.services.course_service import (
     get_course,
     permanently_delete_course,
     restore_course,
+    resync_course_progress,
     update_course,
 )
 from app.services.staged_edits import promote_staged_entity_unconditionally
@@ -65,7 +66,7 @@ def create_new_course(
             )
 
     if data.title:
-        data.title = sanitize_string(data.title)
+        data.title = sanitize_plain_text(data.title)
     # The teacher writes in their UI language by definition — derive the
     # course's source_locale from their profile so they never have to pick
     # it manually, and so RU↔EN translation is symmetric (a teacher who
@@ -112,7 +113,7 @@ def update_existing_course(
             context={"resource_type": "course", "course_id": course_id, "field": "access_mode"},
         )
     if data.title:
-        data.title = sanitize_string(data.title)
+        data.title = sanitize_plain_text(data.title)
     old_status = course.status
     result = update_course(db, course, data)
     details: dict[str, object] = {}
@@ -272,6 +273,47 @@ def restore_deleted_course(
     result = restore_course(db, course)
     log_action(db, teacher.id, "restore", "course", course_id, request=request)
     return result
+
+
+@router.post("/{course_id}/resync-progress", response_model=ResyncProgressResponse)
+def resync_course_progress_route(
+    course_id: str,
+    request: Request,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+) -> ResyncProgressResponse:
+    """Recompute every enrolled student's percentage for this course.
+
+    The percentage is kept as a stored value on the enrolment and updated by
+    the events that can change it. That is right, and it is also why a course
+    whose shape changed *before* those events existed can be left holding a
+    number nobody will ever revisit — four enrolments on production stood at
+    100% beside a count of "0/5 chapters".
+
+    New events now correct themselves (see ``resync_course_progress``), but
+    history needs somebody to say so. This is that button: idempotent,
+    audited, and safe to press whenever a percentage looks wrong.
+    """
+    course = get_course(db, course_id)
+    if not course:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Course not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
+    assert_course_owner(course, teacher)
+    updated = resync_course_progress(db, course_id)
+    log_action(
+        db,
+        teacher.id,
+        "resync_progress",
+        "course",
+        course_id,
+        details={"enrollments": updated},
+        request=request,
+    )
+    return ResyncProgressResponse(course_id=course_id, enrollments_updated=updated)
 
 
 @router.delete("/{course_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)

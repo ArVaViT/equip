@@ -51,12 +51,14 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Final, Literal
 
-from sqlalchemy import tuple_
+from sqlalchemy import func, select, tuple_
 
+from app.models.audit_log import AuditLog
 from app.models.content_version import ContentVersion, ContentVersionStatus
-from app.models.course import CourseStatus
+from app.models.course import Course, CourseStatus
 from app.schemas.locale import LOCALE_CODES, LocaleCode, normalize_locale
 from app.services.translation.course_tree import iter_course_entities
 from app.services.translation.hash import compute_source_hash
@@ -66,8 +68,6 @@ from app.services.translation.version import TRANSLATOR_VERSION
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
-
-    from app.models.course import Course
 
 logger = logging.getLogger(__name__)
 
@@ -306,11 +306,36 @@ def completeness_of(
     return TranslationCompleteness(required=required, present=present, gaps=tuple(gaps))
 
 
-def promote_if_complete(db: Session, course: Course) -> bool:
+def promote_if_complete(
+    db: Session,
+    course: Course,
+    *,
+    completeness: TranslationCompleteness | None = None,
+) -> bool:
     """Move a ``publishing`` course to ``published`` once it is whole.
 
-    Called by the worker after a translation pass. Returns True when the
-    course was promoted.
+    Returns True when the course was promoted.
+
+    Who calls it, and why it is more than one caller
+    ------------------------------------------------
+    Until 2026-09-05 the worker was the only caller, after its own
+    translation pass — and the worker is not the only thing that closes
+    a gap. An admin accepting the last parked row through
+    ``/admin/translations/accept-reviewed`` made the course whole and
+    nothing then looked at it: the executor skips a ``needs_review``
+    row whose source is unchanged, the sweep queues no job for a course
+    with no actionable gap, and so no pass ever ran to notice. The
+    course sat in ``publishing``, invisible, complete, indefinitely —
+    and the teacher's card, seeing ``is_complete``, hid the one button
+    that would have kicked it. Now the admin surface calls this after
+    it acts, and the sweep calls it for every whole ``publishing``
+    course it examines, so the course leaves ``publishing`` whoever
+    closed the last gap.
+
+    ``completeness`` lets a caller that has just computed the answer
+    hand it over rather than walk the course tree a second time. The
+    sweep computes it for every course it examines; recomputing here
+    would double the cost of the one thing that runs every minute.
 
     Only ever moves in one direction. A course that is already
     ``published`` and has since been edited is left alone: read the rule
@@ -321,7 +346,8 @@ def promote_if_complete(db: Session, course: Course) -> bool:
     """
     if course.status != CourseStatus.PUBLISHING:
         return False
-    completeness = course_translation_completeness(db, course)
+    if completeness is None:
+        completeness = course_translation_completeness(db, course)
     if not completeness.is_complete:
         logger.info(
             "course %s stays in publishing: %d of %d translations ready, gaps by locale %s",
@@ -342,11 +368,71 @@ def promote_if_complete(db: Session, course: Course) -> bool:
     return True
 
 
+#: How long a course may sit in ``publishing`` before that is a problem
+#: rather than a pipeline still working. A course of any size is
+#: translated in a few ticks; an hour later, what is holding it is a
+#: row a person has to look at, and nobody has been told.
+PUBLISHING_STUCK_AFTER: Final[timedelta] = timedelta(hours=1)
+
+
+def courses_stuck_in_publishing(
+    db: Session,
+    *,
+    older_than: timedelta = PUBLISHING_STUCK_AFTER,
+    now: datetime | None = None,
+) -> list[str]:
+    """Ids of ``publishing`` courses that have been there longer than
+    ``older_than``.
+
+    The number behind ``equip.translation.publishing_stuck``. Every
+    metric the pipeline had described the queue, and a course held in
+    ``publishing`` by one parked row is exactly the case the queue
+    cannot see: no job is queued for it, the sweep declines to queue
+    one, and the only trace was a ``Translation failed validation``
+    warning that scrolled past days earlier.
+
+    When a course entered ``publishing`` is read off the audit log —
+    the ``publish`` action ``PUT /courses/{id}`` records whether the
+    course went straight out or was held — rather than off a column,
+    because ``courses.updated_at`` is bumped by the sweep's own
+    timestamp every cycle and would say every course was touched a
+    minute ago. A course with no such entry (moved by some other path)
+    falls back to ``updated_at``, then ``created_at``; a course with no
+    date at all is not counted, because "unknown" is not "over an hour".
+    """
+    now = now or datetime.now(UTC)
+    last_publish = (
+        select(AuditLog.resource_id, func.max(AuditLog.created_at).label("at"))
+        .where(AuditLog.action == "publish", AuditLog.resource_type == "course")
+        .group_by(AuditLog.resource_id)
+        .subquery()
+    )
+    rows = db.execute(
+        select(Course.id, last_publish.c.at, Course.updated_at, Course.created_at)
+        .outerjoin(last_publish, last_publish.c.resource_id == Course.id)
+        .where(Course.deleted_at.is_(None), Course.status == CourseStatus.PUBLISHING)
+    ).all()
+
+    stuck: list[str] = []
+    for course_id, published_at, updated_at, created_at in rows:
+        since = published_at or updated_at or created_at
+        if since is None:
+            continue
+        if since.tzinfo is None:
+            # SQLite hands back naive datetimes; Postgres does not.
+            since = since.replace(tzinfo=UTC)
+        if now - since >= older_than:
+            stuck.append(str(course_id))
+    return stuck
+
+
 __all__ = [
+    "PUBLISHING_STUCK_AFTER",
     "UNACTIONABLE_GAP_REASONS",
     "TranslationCompleteness",
     "TranslationGap",
     "completeness_of",
     "course_translation_completeness",
+    "courses_stuck_in_publishing",
     "promote_if_complete",
 ]

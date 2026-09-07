@@ -1,11 +1,13 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams, useSearchParams, Link } from "react-router-dom"
+import { isAxiosError } from "axios"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
 import type { GradingConfig, GradeSummaryResponse, StudentGrade } from "@/types"
 import { toast } from "@/lib/toast"
+import { getErrorDetail } from "@/lib/errorDetail"
 import { ArrowLeft, Award, ChevronRight, Download, FileText } from "lucide-react"
 import { ErrorState } from "@/components/patterns"
 import {
@@ -123,7 +125,15 @@ export default function TeacherGradebook() {
           coursesService.getCourse(courseId),
           coursesService.getCourseGrades(courseId).catch(() => []),
           coursesService.getGradeSummary(courseId).catch(() => null),
-          coursesService.getGradebookMatrix(courseId).catch(() => null),
+          coursesService.getGradebookMatrix(courseId).catch((err: unknown) => {
+            // `getCourse` succeeds for any course the viewer may read, so a
+            // teacher opening a colleague's course id got the real title over
+            // «No students enrolled yet». The matrix is the one call that
+            // checks ownership: its refusal is the page's answer.
+            const status = isAxiosError(err) ? err.response?.status : undefined
+            if (status === 403 || status === 404) throw err
+            return null
+          }),
         ])
         if (cancelled) return
         setCourseTitle(course.title)
@@ -148,8 +158,8 @@ export default function TeacherGradebook() {
         if (progress) {
           setProgressData(progress as ProgressResponse)
         }
-      } catch {
-        if (!cancelled) setError(t("gradebook.failedLoad"))
+      } catch (err) {
+        if (!cancelled) setError(getErrorDetail(err, t("gradebook.failedLoad")))
       } finally {
         if (!cancelled) setLoading(false)
       }

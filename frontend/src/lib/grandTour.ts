@@ -23,6 +23,9 @@ interface CreateGrandTourOpts {
     previous: string
     done: string
     progress: string
+    /** Accessible name for driver.js's × button, which it hard-codes to
+     *  "Close" in English on an otherwise translated page. */
+    close: string
   }
   /** Navigate fn from React Router — passed in so the orchestrator
    *  doesn't have to import router internals or be mounted inside a
@@ -199,6 +202,13 @@ export async function createGrandTour({
     nextBtnText: labels.next,
     prevBtnText: labels.previous,
     doneBtnText: labels.done,
+    // driver.js renders its close button with aria-label="Close" and offers
+    // no option for it, so a Russian reader's screen reader announced an
+    // English word. The rest of the popover is translated; this was the one
+    // control that was not.
+    onPopoverRender: (popover) => {
+      popover.closeButton?.setAttribute("aria-label", labels.close)
+    },
     popoverClass: "editorial-tour-popover",
     onNextClick: (_el, _step, { state, driver: d }) => {
       const currentIdx = state.activeIndex ?? 0

@@ -53,6 +53,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.announcement import Announcement
 from app.models.content_version import ContentVersion, ContentVersionStatus
@@ -63,6 +64,7 @@ from app.services.translation.completeness import (
     UNACTIONABLE_GAP_REASONS,
     completeness_of,
     course_translation_completeness,
+    promote_if_complete,
 )
 from app.services.translation.orchestrator import (
     OrchestratorReport,
@@ -195,6 +197,19 @@ def sweep_courses(
         course.translations_checked_at = now
         if completeness.is_complete:
             complete += 1
+            # Whole, and possibly still not out. The worker promotes a
+            # course after its own pass, and its own pass is not the only
+            # way the last gap closes: an admin accepting the last parked
+            # row makes the course whole with no pass to follow, and until
+            # 2026-09-05 nothing then looked at it. The sweep is the one
+            # thing that examines every live course on a fixed cycle, so
+            # it is where "complete and still in publishing" cannot hide.
+            if course.status == CourseStatus.PUBLISHING:
+                try:
+                    promote_if_complete(db, course, completeness=completeness)
+                except SQLAlchemyError:
+                    db.rollback()
+                    logger.exception("sweep: could not promote whole course %s out of publishing", course.id)
             continue
 
         # A row parked for review, or one that spent its five attempts,

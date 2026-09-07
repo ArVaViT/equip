@@ -160,6 +160,7 @@ export function useUserTour({
         next: t("tour.next"),
         previous: t("tour.previous"),
         done: t("tour.done"),
+        close: t("common.close"),
         progress: t("tour.progress", {
           // Pass literal placeholders back through i18next so driver.js
           // can do its own substitution at render time.

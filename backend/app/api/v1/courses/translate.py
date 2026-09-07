@@ -11,7 +11,7 @@ Safe to call repeatedly: unchanged sources short-circuit via ``source_hash``
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from fastapi import Depends, status
 
@@ -28,7 +28,7 @@ from app.services.course_service import get_course
 from app.services.staged_edits import staged_status_for_course
 from app.services.translation.completeness import course_translation_completeness
 from app.services.translation.course_pipeline import translate_course_content
-from app.services.translation.queue import enqueue_course_translation
+from app.services.translation.queue import enqueue_course_translation, has_pending_job
 from app.services.translation.service import is_translation_enabled
 
 from ._router import router
@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
     from app.models.user import User
+    from app.services.translation.completeness import TranslationCompleteness
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +145,7 @@ def read_translation_progress(
 
     completeness = course_translation_completeness(db, course)
     held = staged_status_for_course(db, course)
+    stuck_reason, stuck_count = _why_not_whole(completeness)
 
     return CourseTranslationProgress(
         course_id=str(course.id),
@@ -165,4 +167,33 @@ def read_translation_progress(
         held_edits=len(held),
         blocked_edits=sum(1 for item in held if item.state == "blocked"),
         enabled=is_translation_enabled(),
+        stuck_reason=stuck_reason,
+        stuck_count=stuck_count,
+        job_pending=has_pending_job(db, str(course.id)),
     )
+
+
+def _why_not_whole(
+    completeness: TranslationCompleteness,
+) -> tuple[Literal["needs_review", "failed_permanent", "translating"] | None, int]:
+    """One reason and a count, for the sentence on the teacher's card.
+
+    The counts by reason were already in the response; what was not was
+    an answer to the teacher's actual question, which is "is anything
+    going to happen, and if not, who has to act?". A course held in
+    ``publishing`` by one parked row looked, on the card, exactly like
+    a course the pipeline was still working on — "1 remaining" — for as
+    long as it took somebody to notice. A row waiting on a person
+    outranks a row the pipeline gave up on, which outranks work still
+    in flight, because that is the order in which the teacher can do
+    nothing about it.
+    """
+    if completeness.is_complete:
+        return None, 0
+    parked = len(completeness.by_reason("needs_review"))
+    if parked:
+        return "needs_review", parked
+    given_up = len(completeness.by_reason("failed_permanent"))
+    if given_up:
+        return "failed_permanent", given_up
+    return "translating", len(completeness.gaps)

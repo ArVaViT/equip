@@ -1,12 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <!-- Equip icon — deep violet E on warm paper, sage foundation line.
-       Canonical source: equipbible-docs/design/assets/icon.svg. -->
-  <rect width="64" height="64" rx="12" fill="#FAF7F1"/>
-  <g fill="#422277">
+  <!-- Equip icon — ink E on warm paper, sage foundation line.
+       Colours are the live tokens: paper hsl(40 12% 97%), ink hsl(30 8% 11%),
+       accent hsl(133 17% 37%). Geometry unchanged. -->
+  <rect width="64" height="64" rx="12" fill="#F8F8F6"/>
+  <g fill="#1E1C1A">
     <rect x="17" y="15" width="6" height="32"/>
     <rect x="17" y="15" width="30" height="6"/>
     <rect x="17" y="29" width="22" height="6"/>
     <rect x="17" y="41" width="30" height="6"/>
   </g>
-  <rect x="14" y="53" width="36" height="2" fill="#67A982"/>
+  <rect x="14" y="53" width="36" height="2" fill="#4E6E55"/>
 </svg>

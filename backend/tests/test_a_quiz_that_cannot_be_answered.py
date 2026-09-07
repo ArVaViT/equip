@@ -30,7 +30,7 @@ from app.models.course import Chapter, Course, CourseStatus, Module
 from app.models.quiz import Quiz, QuizOption, QuizQuestion
 from app.models.user import User
 from app.services.content_versions import record_human_version, record_mt_version
-from app.services.translation.executor import TranslationTask, _collides_with_a_sibling_option
+from app.services.translation.executor import TranslationTask, _colliding_sibling
 from app.services.translation.hash import compute_source_hash
 
 if TYPE_CHECKING:
@@ -109,16 +109,16 @@ def _task(option: QuizOption) -> TranslationTask:
 class TestAnOptionThatBecameItsNeighbour:
     def test_a_collision_is_caught(self, db: Session, two_options) -> None:
         _right, wrong = two_options
-        assert _collides_with_a_sibling_option(db, _task(wrong), "Malta") is True
+        assert _colliding_sibling(db, _task(wrong), "Malta") is not None
 
     def test_case_and_spacing_do_not_hide_it(self, db: Session, two_options) -> None:
         # "malta" and "Malta " are the same answer to a student.
         _right, wrong = two_options
-        assert _collides_with_a_sibling_option(db, _task(wrong), "  malta ") is True
+        assert _colliding_sibling(db, _task(wrong), "  malta ") is not None
 
     def test_a_genuinely_different_option_passes(self, db: Session, two_options) -> None:
         _right, wrong = two_options
-        assert _collides_with_a_sibling_option(db, _task(wrong), "Crete") is False
+        assert _colliding_sibling(db, _task(wrong), "Crete") is None
 
     def test_another_language_is_not_a_collision(self, db: Session, two_options) -> None:
         # The German set is judged against German, not against English.
@@ -129,11 +129,11 @@ class TestAnOptionThatBecameItsNeighbour:
         )
         from dataclasses import replace
 
-        assert _collides_with_a_sibling_option(db, replace(_task(wrong), target_locale="de"), "Malta") is False
+        assert _colliding_sibling(db, replace(_task(wrong), target_locale="de"), "Malta") is None
 
     def test_a_lone_option_has_nothing_to_collide_with(self, db: Session) -> None:
         orphan = QuizOption(id=uuid.uuid4(), question_id=uuid.uuid4(), order_index=0, is_correct=True)
-        assert _collides_with_a_sibling_option(db, _task(orphan), "Malta") is False
+        assert _colliding_sibling(db, _task(orphan), "Malta") is None
 
     def test_nothing_but_options_is_checked(self, db: Session, two_options) -> None:
         # A lesson block repeating a sentence from another block is
@@ -142,7 +142,7 @@ class TestAnOptionThatBecameItsNeighbour:
 
         _right, wrong = two_options
         block = replace(_task(wrong), entity_type="chapter_block", field="content")
-        assert _collides_with_a_sibling_option(db, block, "Malta") is False
+        assert _colliding_sibling(db, block, "Malta") is None
 
 
 class TestARebuildDoesNotFightItself:
@@ -170,13 +170,13 @@ class TestARebuildDoesNotFightItself:
         right, wrong = two_options
 
         assert (
-            _collides_with_a_sibling_option(
+            _colliding_sibling(
                 db,
                 _task(wrong),
                 "Malta",
                 unsettled={("quiz_option", str(right.id), "option_text", "en")},
             )
-            is False
+            is None
         )
 
     def test_a_sibling_the_pass_has_already_rewritten_still_is(self, db: Session, two_options) -> None:
@@ -184,7 +184,7 @@ class TestARebuildDoesNotFightItself:
         # what a reader sees — and a duplicate of it is unanswerable.
         _right, wrong = two_options
 
-        assert _collides_with_a_sibling_option(db, _task(wrong), "Malta", unsettled=set()) is True
+        assert _colliding_sibling(db, _task(wrong), "Malta", unsettled=set()) is not None
 
     def test_a_sibling_no_pass_is_holding_counts_however_old_it_is(self, db: Session, two_options) -> None:
         """Generation does not decide this any more, and should not.
@@ -204,7 +204,7 @@ class TestARebuildDoesNotFightItself:
         ).update({"translator_version": TRANSLATOR_VERSION - 3})
         db.commit()
 
-        assert _collides_with_a_sibling_option(db, _task(wrong), "Malta") is True
+        assert _colliding_sibling(db, _task(wrong), "Malta") is not None
 
     def test_a_hand_translation_counts_whatever_its_version(self, db: Session, two_options) -> None:
         # Nothing rewrites a human row, so it is never in a plan and
@@ -219,4 +219,4 @@ class TestARebuildDoesNotFightItself:
         ).update({"origin": "human", "translator_version": TRANSLATOR_VERSION - 3})
         db.commit()
 
-        assert _collides_with_a_sibling_option(db, _task(wrong), "Malta") is True
+        assert _colliding_sibling(db, _task(wrong), "Malta") is not None

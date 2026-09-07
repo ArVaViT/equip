@@ -32,9 +32,7 @@
       "empty": "Bild anklicken oder hierher ziehen",
       "disabled": "Kein Titelbild",
       "unsupportedTitle": "Dateiformat nicht unterstützt",
-      "unsupportedDescription": "Wählen Sie eine Bilddatei.",
       "tooLargeTitle": "Bild zu groß",
-      "tooLargeDescription": "Höchstens {{max}} MB.",
       "uploadFailedTitle": "Hochladen fehlgeschlagen",
       "removeConfirmTitle": "Titelbild entfernen?",
       "removeConfirmDescription": "Damit wird das Titelbild des Kurses gelöscht.",
@@ -46,8 +44,8 @@
     "courses": "Kurse",
     "calendar": "Kalender",
     "certificates": "Zertifikate",
-    "manage": "Verwalten",
-    "manageCourses": "Kurse verwalten",
+    "manage": "Lehre",
+    "manageCourses": "Kurse, die ich unterrichte",
     "admin": "Admin",
     "adminPanel": "Administration",
     "profile": "Profil",
@@ -67,20 +65,17 @@
   },
   "landing": {
     "hero": {
-      "registerCta": "Konto erstellen"
-    },
-    "trust": {
-      "openSource": "Kostenlos und quelloffen",
-      "bilingual": "Vier Sprachen: RU · EN · DE · UK",
-      "certificates": "Überprüfbare Zertifikate"
+      "registerCta": "Konto erstellen",
+      "manifesto": "Die Schrift der Reihe nach studieren, nicht in Bruchstücken",
+      "subline": "Kurse mit echter Prüfung und einem Zertifikat, das jeder nachprüfen kann — für alle, die die Schrift ernst nehmen.",
+      "facts": "Kostenlos · Open Source · RU EN DE UK · Überprüfbares Zertifikat"
     },
     "value": {
       "heading": "Was Equip bietet",
-      "subheading": "Werkzeuge für ernsthaftes Schriftstudium — ohne Ablenkung, ohne verlorenen Fortschritt.",
       "structure": {
         "eyebrow": "Kursaufbau",
         "title": "Ein Kurs, kein Haufen Videos",
-        "body": "Jeder Kurs besteht aus Modulen und Kapiteln in fester Reihenfolge. Sie sehen jederzeit, was erledigt ist, was noch aussteht und was als Nächstes kommt.",
+        "body": "Module und Kapitel in fester Reihenfolge: Sie sehen immer, was erledigt ist und was als Nächstes kommt.",
         "module": "Modul 1 · 1. Mose 1–11",
         "chapter1": "Kapitel 1 — Die Schöpfung",
         "chapter2": "Kapitel 2 — Der Sündenfall",
@@ -89,21 +84,21 @@
       "assessment": {
         "eyebrow": "Prüfung",
         "title": "Mehr als Multiple Choice",
-        "body": "Vier Aufgabentypen, darunter Aufsatz und Kurzantwort — bewertet von einem echten Dozenten, nicht nur automatisch.",
+        "body": "Vier Fragetypen, darunter Aufsätze — gelesen von einer Lehrkraft, nicht nur von der Maschine.",
         "sampleQuestion": "Fassen Sie den Hauptgedanken dieses Kapitels in eigenen Worten zusammen.",
         "gradedBadge": "Vom Dozenten bewertet"
       },
       "certificates": {
         "eyebrow": "Zertifizierung",
         "title": "Ein Zertifikat, das sich prüfen lässt",
-        "body": "Schließen Sie einen Kurs ab und erhalten Sie ein Zertifikat mit einer eindeutigen Nummer. Jeder kann anhand dieser Nummer seine Echtheit prüfen.",
+        "body": "Jedes Zertifikat trägt seine eigene Nummer, und jeder kann sie prüfen.",
         "certTitle": "Abschlusszertifikat",
         "verifyLabel": "Nach Nummer prüfen"
       },
       "bilingual": {
         "eyebrow": "Sprache",
         "title": "Mehrsprachig vom ersten Tag an",
-        "body": "Der russischsprachige Kurs einer Dozentin steht automatisch auf Englisch, Deutsch und Ukrainisch bereit — ohne manuelle Übersetzung, ohne Wartezeit.",
+        "body": "Ein auf Russisch geschriebener Kurs steht sofort auf Englisch, Deutsch und Ukrainisch bereit.",
         "caption": "Kursmaterialien werden automatisch übersetzt"
       }
     },
@@ -115,7 +110,7 @@
     },
     "finalCta": {
       "heading": "Bereit anzufangen?",
-      "body": "In einer Minute registriert — die Kurse sind kostenlos, der Fortschritt wird automatisch gespeichert.",
+      "body": "Die Kurse sind kostenlos, der Fortschritt speichert sich von selbst.",
       "primary": "Konto erstellen"
     }
   },
@@ -139,7 +134,17 @@
       "emptyDescription": "Öffnen Sie den Kalender, um zu sehen, was diese Woche ansteht."
     },
     "readingProgress_one": "{{read}} von {{count}} Kapitel gelesen",
-    "readingProgress_other": "{{read}} von {{count}} Kapiteln gelesen"
+    "readingProgress_other": "{{read}} von {{count}} Kapiteln gelesen",
+    "teaching": {
+      "title": "Kurse, die Sie unterrichten",
+      "description": "Bearbeiten, Bewerten und Veröffentlichen — alles unter „Lehre“.",
+      "openAll": "Alle meine Kurse",
+      "empty": "Sie haben noch keine Kurse. Der erste ist in einer Minute angelegt — Titel und Beschreibung, der Rest später.",
+      "createFirst": "Ersten Kurs erstellen",
+      "edit": "Im Editor öffnen",
+      "more_one": "und {{count}} weiterer Kurs",
+      "more_other": "und {{count}} weitere Kurse"
+    }
   },
   "onboarding": {
     "student": {
@@ -154,6 +159,9 @@
       "title": "Ihr erster Kurs beginnt hier",
       "body": "Equip ist Ihr Unterrichtsraum. Gliedern Sie einen Kurs in Kapitel, schreiben Sie eigene Tests, unterschreiben Sie Zertifikate, wenn Studierende fertig sind — und behalten Sie dabei jedes Wort in Ihrer Hand.",
       "primaryCta": "Ersten Kurs erstellen"
+    },
+    "teacherAsStudent": {
+      "body": "Hier erscheinen Kurse, in die Sie als Studierende eingeschrieben sind. Die Kurse, die Sie unterrichten, finden Sie in der Karte „Kurse, die Sie unterrichten“ und unter „Lehre“."
     }
   },
   "completion": {
@@ -620,6 +628,12 @@
       "timedOut": "Die Anmeldung wurde nicht abgeschlossen. Bitte erneut versuchen.",
       "redirecting": "Weiterleitung zur Anmeldung …"
     },
+    "notice": {
+      "sessionExpired": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an, um fortzufahren.",
+      "accountDeactivated": "Dieses Konto wurde deaktiviert. Falls das ein Irrtum ist, wenden Sie sich an Ihre Administration.",
+      "signInToContinue": "Melden Sie sich an, um diese Seite zu öffnen.",
+      "sectionUnavailable": "Dieser Bereich steht Ihnen nicht zur Verfügung."
+    },
     "forgotPassword": {
       "heading": "Passwort zurücksetzen",
       "subheading": "Geben Sie Ihre E-Mail-Adresse ein, wir senden Ihnen einen Link",
@@ -665,7 +679,13 @@
       "generated": "Passwort erzeugt und angezeigt. Speichern Sie es in Ihrem Passwortmanager, bevor Sie fortfahren.",
       "show": "Passwort anzeigen",
       "hide": "Passwort verbergen"
-    }
+    },
+    "signInLink": "Link per E-Mail senden",
+    "signInLinkSending": "Wird gesendet …",
+    "signInLinkSent": "Falls wir diese Adresse haben, ist die E-Mail unterwegs. Öffnen Sie sie und klicken Sie auf die Schaltfläche.",
+    "signInLinkAgain": "Erneut senden",
+    "signInLinkAgainIn": "Erneut senden in {{seconds}} s",
+    "signInLinkBackToPassword": "Mit Passwort anmelden"
   },
   "profile": {
     "fullName": "Vollständiger Name",
@@ -747,6 +767,7 @@
       "refresh": "Seite neu laden"
     },
     "generic": "Etwas ist schiefgelaufen.",
+    "network": "Keine Verbindung. Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.",
     "byCode": {
       "auth_required": "Bitte melden Sie sich erneut an.",
       "auth_forbidden": "Sie haben dafür keine Berechtigung.",
@@ -761,6 +782,9 @@
       "quiz_not_open": "Dieses Quiz ist nicht geöffnet.",
       "quiz_attempts_exhausted": "Sie haben alle Versuche aufgebraucht.",
       "quiz_not_translated": "Dieses Quiz gibt es noch nicht in Ihrer Sprache.",
+      "quiz_question_already_answered": "Diese Frage wurde bereits beantwortet, daher lässt sich ihr Typ nicht mehr ändern. Wortlaut, Punkte und richtige Antwort können Sie weiterhin korrigieren; für einen anderen Fragetyp fügen Sie eine neue Frage hinzu.",
+      "quiz_has_attempts_one": "Dieser Test hat bereits {{count}} Versuch. Ihn zu löschen würde auch diesen Versuch und die Note löschen.",
+      "quiz_has_attempts_other": "Dieser Test hat bereits {{count}} Versuche. Ihn zu löschen würde alle Versuche und Noten löschen.",
       "daily_challenge_not_scheduled": "Für heute gibt es keine Frage.",
       "daily_challenge_not_translated": "Die heutige Frage gibt es noch nicht in Ihrer Sprache.",
       "daily_challenge_already_attempted": "Sie haben heute bereits geantwortet.",
@@ -774,12 +798,71 @@
       "legal_document_changed": "Dieses Dokument hat sich geändert. Bitte laden Sie die Seite neu und lesen Sie es erneut."
     },
     "byStatus": {
+      "400": "Die Anfrage konnte nicht verarbeitet werden. Prüfen Sie Ihre Eingaben.",
       "401": "Bitte melden Sie sich erneut an.",
       "403": "Sie haben dafür keine Berechtigung.",
       "404": "Das konnten wir nicht finden.",
       "409": "Das steht im Widerspruch zu neueren Daten. Bitte neu laden und erneut versuchen.",
+      "413": "Dieser Block ist zu groß zum Speichern. Teilen Sie ihn in mehrere auf.",
+      "422": "Etwas an Ihrer Eingabe stimmt nicht.",
       "429": "Zu viele Anfragen. Bitte langsamer.",
       "500": "Serverfehler. Bitte später erneut versuchen."
+    },
+    "where": {
+      "questions": "Frage {{n}}",
+      "options": "Option {{n}}"
+    },
+    "fields": {
+      "title": "Titel",
+      "description": "Beschreibung",
+      "passing_score": "Bestehensgrenze",
+      "max_attempts": "maximale Versuche",
+      "quiz_type": "Testtyp",
+      "questions": "Fragen",
+      "question_text": "Fragetext",
+      "question_type": "Fragetyp",
+      "points": "Punkte",
+      "min_words": "Mindestwortzahl",
+      "options": "Optionen",
+      "option_text": "Optionstext",
+      "is_correct": "richtige Antwort",
+      "order_index": "Reihenfolge"
+    },
+    "validation": {
+      "less_than_equal": "höchstens {{le}}",
+      "less_than": "weniger als {{lt}}",
+      "greater_than_equal": "mindestens {{ge}}",
+      "greater_than": "mehr als {{gt}}",
+      "string_too_short": "mindestens {{min_length}} Zeichen",
+      "string_too_long": "höchstens {{max_length}} Zeichen",
+      "too_short": "mindestens {{min_length}} erforderlich",
+      "too_long": "höchstens {{max_length}} erlaubt",
+      "missing": "ist erforderlich",
+      "extra_forbidden": "unbekanntes Feld",
+      "int_parsing": "muss eine ganze Zahl sein",
+      "int_type": "muss eine ganze Zahl sein",
+      "int_from_float": "muss eine ganze Zahl sein",
+      "string_type": "muss Text sein",
+      "bool_type": "muss ja oder nein sein",
+      "literal_error": "kein zulässiger Wert",
+      "invalid": "ungültiger Wert",
+      "quiz_question_blank": "geben Sie den Fragetext ein",
+      "quiz_option_blank": "geben Sie den Optionstext ein",
+      "quiz_too_few_options": "braucht mindestens zwei Optionen",
+      "quiz_no_correct_option": "markieren Sie eine Option als richtig",
+      "quiz_many_correct_options": "nur eine Option kann richtig sein",
+      "quiz_options_not_allowed": "eine Frage mit schriftlicher Antwort hat keine Optionen"
+    },
+    "storage": {
+      "tooLarge": "Die Datei ist {{sizeMb}} MB groß, erlaubt sind {{maxMb}} MB.",
+      "tooLargeServer": "Der Speicher hat die Datei abgelehnt: Sie ist größer als {{maxMb}} MB.",
+      "unsupportedType": "Dieses Dateiformat wird nicht unterstützt. Erlaubt sind: {{formats}}.",
+      "heic": "HEIC-Fotos vom iPhone werden nicht unterstützt. Speichern Sie das Foto zuerst als JPEG – auf dem iPhone: Einstellungen → Kamera → Formate → Maximale Kompatibilität.",
+      "invalidName": "Der Speicher hat den Dateinamen nicht akzeptiert. Benennen Sie die Datei mit lateinischen Buchstaben um und versuchen Sie es erneut.",
+      "forbidden": "Sie dürfen in diesen Kurs nichts hochladen. Melden Sie sich erneut an und versuchen Sie es noch einmal.",
+      "network": "Der Speicher ist nicht erreichbar. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+      "generic": "Hochladen fehlgeschlagen. Bitte erneut versuchen.",
+      "genericWithCode": "Hochladen fehlgeschlagen ({{code}}). Bitte erneut versuchen."
     }
   },
   "toast": {
@@ -911,11 +994,17 @@
       "titleRequired": "Der Titel des Tests ist erforderlich",
       "addAtLeastOneQuestion": "Fügen Sie mindestens eine Frage hinzu",
       "validScoreRequired": "Geben Sie eine gültige Punktzahl ein (0 oder mehr)",
-      "scoreCantExceed": "Die Punktzahl darf für diese Frage {{max}} nicht überschreiten"
+      "scoreCantExceed": "Die Punktzahl darf für diese Frage {{max}} nicht überschreiten",
+      "questionTextRequired": "Frage {{n}}: Geben Sie den Fragetext ein",
+      "optionTextRequired": "Frage {{n}}, Option {{m}}: Geben Sie den Optionstext ein",
+      "tooFewOptions": "Frage {{n}}: Fügen Sie mindestens zwei Optionen hinzu",
+      "correctAnswerRequired": "Frage {{n}}: Markieren Sie die richtige Antwort",
+      "pointsRange": "Frage {{n}}: Punkte müssen eine ganze Zahl von 1 bis 100 sein"
     },
     "toast": {
       "quizSaved": "Test gespeichert",
       "quizSaveFailed": "Test konnte nicht gespeichert werden",
+      "oldQuizNotDeleted": "Der neue Test ist gespeichert, der alte konnte aber nicht gelöscht werden",
       "quizDeleted": "Test gelöscht",
       "quizDeleteFailed": "Test konnte nicht gelöscht werden",
       "gradeSaved": "Note gespeichert",
@@ -924,7 +1013,15 @@
     "confirmDelete": {
       "title": "Diesen Test löschen?",
       "description": "Studierende verlieren den Zugang zum Test und zu ihren Versuchen.",
+      "withAttempts_one": "Dieser Test hat bereits {{count}} Versuch. Er wird zusammen mit seiner Note endgültig gelöscht.",
+      "withAttempts_other": "Dieser Test hat bereits {{count}} Versuche. Sie werden alle zusammen mit ihren Noten endgültig gelöscht.",
       "confirm": "Test löschen"
+    },
+    "confirmRebuild": {
+      "title": "Test neu erstellen?",
+      "description_one": "Sie haben Fragen oder Optionen hinzugefügt oder entfernt. Diese Änderung erfordert eine Neuerstellung des Tests, und er hat bereits {{count}} Versuch — der Versuch und seine Note werden endgültig gelöscht. Um ihn zu behalten, brechen Sie ab und beschränken Sie die Änderung auf Wortlaut, Punkte und richtige Antworten.",
+      "description_other": "Sie haben Fragen oder Optionen hinzugefügt oder entfernt. Diese Änderung erfordert eine Neuerstellung des Tests, und er hat bereits {{count}} Versuche — alle Versuche und Noten werden endgültig gelöscht. Um sie zu behalten, brechen Sie ab und beschränken Sie die Änderung auf Wortlaut, Punkte und richtige Antworten.",
+      "confirm": "Neu erstellen und Versuche löschen"
     },
     "heading": {
       "editQuiz": "Test bearbeiten",
@@ -963,6 +1060,7 @@
       "removeQuestionAria": "Frage {{n}} entfernen",
       "removeOptionAria": "Antwort {{n}} entfernen",
       "questionTypeAria": "Fragetyp",
+      "typeLocked": "Diese Frage wurde bereits beantwortet, daher lässt sich der Typ nicht ändern. Korrigieren Sie stattdessen Wortlaut, Punkte oder richtige Antwort; für einen anderen Fragetyp fügen Sie eine neue Frage hinzu.",
       "trueFalseOption": {
         "True": "Richtig",
         "False": "Falsch"
@@ -1035,7 +1133,14 @@
       "saveButton": "Text speichern",
       "statusUnsaved": "Nicht gespeicherte Änderungen …",
       "statusAutoSaving": "Wird automatisch gespeichert …",
-      "statusSaved": "Gespeichert"
+      "statusSaved": "Gespeichert",
+      "autoSaveFailedHint": "Der Text bleibt in diesem Browser; in ein paar Sekunden versuchen wir es erneut.",
+      "statusFailed": "Auf dem Server noch nicht gespeichert – neuer Versuch …",
+      "saveAfterCloseFailed": "Der geschlossene Block konnte nicht gespeichert werden",
+      "saveAfterCloseFailedHint": "Sein Text ist in diesem Browser erhalten. Öffnen Sie den Block erneut, um ihn zurückzuholen.",
+      "draftFound": "In diesem Browser liegt ungespeicherter Text für diesen Block, und er unterscheidet sich von der Version auf dem Server. Zurückholen oder die Serverversion behalten?",
+      "draftRestore": "Ungespeicherten Text zurückholen",
+      "draftDiscard": "Serverversion behalten"
     },
     "file": {
       "uploaded": "Datei hochgeladen",
@@ -1244,6 +1349,7 @@
       "print": "Drucken",
       "back": "Zurück zu den Zertifikaten",
       "notIssued": "Dieses Zertifikat wurde noch nicht ausgestellt",
+      "loadFailed": "Das Zertifikat konnte nicht geladen werden.",
       "schoolUnnamed": "Kein Schulname hinterlegt",
       "open": "Zertifikat öffnen",
       "certificateOfCompletion": "Certificate of Completion",
@@ -1532,6 +1638,11 @@
       "reject": "Ablehnen",
       "notEarnedYet_one": "Noch nicht erreicht: {{count}} Punkt offen",
       "notEarnedYet_other": "Noch nicht erreicht: {{count}} Punkte offen"
+    },
+    "publishConfirm": {
+      "title": "Diesen Kurs veröffentlichen?",
+      "description": "Der Kurs erscheint im Katalog, sobald jede Sprache ihn hat. Bis dahin sehen Studierende ihn nicht — das ist so vorgesehen.",
+      "confirm": "Veröffentlichen"
     }
   },
   "teacherEditor": {
@@ -1572,12 +1683,20 @@
         "carouselRole": "Karussell",
         "prevAria": "Vorige Ankündigung",
         "nextAria": "Nächste Ankündigung",
-        "position": "{{current}} / {{total}}"
+        "position": "{{current}} / {{total}}",
+        "newAnnouncement": "Neue Ankündigung",
+        "editAnnouncement": "Ankündigung bearbeiten",
+        "save": "Speichern",
+        "saving": "Wird gespeichert …",
+        "cancel": "Abbrechen",
+        "editAria": "Ankündigung {{title}} bearbeiten",
+        "notifyHint": "Eingeschriebene Studierende werden über die Veröffentlichung benachrichtigt."
       },
       "materials": {
         "title": "Kursmaterialien",
         "upload": "Datei hochladen",
         "empty": "Noch keine Materialien hochgeladen.",
+        "loadFailed": "Die Materialliste konnte nicht geladen werden.",
         "sizeBytes": "{{b}} B",
         "sizeKb": "{{kb}} KB",
         "sizeMb": "{{mb}} MB",
@@ -1604,7 +1723,8 @@
           "other": "Sonstiges"
         },
         "editAria": "Termin {{title}} bearbeiten",
-        "deleteAria": "Termin {{title}} löschen"
+        "deleteAria": "Termin {{title}} löschen",
+        "notifyHint": "Eingeschriebene Studierende werden über einen neuen Termin und über eine Verschiebung benachrichtigt."
       }
     },
     "toast": {
@@ -1630,7 +1750,11 @@
       "eventDeleteFailed": "Termin konnte nicht gelöscht werden",
       "materialUploadFailed": "Hochladen fehlgeschlagen",
       "materialDownloadFailed": "Herunterladen fehlgeschlagen",
-      "materialDeleteFailed": "Material konnte nicht gelöscht werden"
+      "materialDeleteFailed": "Material konnte nicht gelöscht werden",
+      "publishing": "Veröffentlicht. In den Katalog kommt der Kurs, sobald jede Sprache ihn hat",
+      "announcementPosted": "Ankündigung veröffentlicht – die Studierenden werden benachrichtigt",
+      "announcementUpdated": "Ankündigung aktualisiert",
+      "announcementUpdateFailed": "Ankündigung konnte nicht gespeichert werden"
     },
     "confirm": {
       "deleteModuleTitle": "Dieses Modul löschen?",
@@ -1655,6 +1779,7 @@
     },
     "toast": {
       "moduleNotFound": "Modul nicht gefunden",
+      "loadFailed": "Das Modul konnte nicht geladen werden.",
       "failedSaveModule": "Modul konnte nicht gespeichert werden",
       "failedSaveDueDate": "Fälligkeitsdatum konnte nicht gespeichert werden",
       "chapterAdded": "Kapitel hinzugefügt",
@@ -1744,7 +1869,9 @@
       "instituteDescription": "Studierende können sich nicht selbst einschreiben. Fügen Sie sie über eine Gruppe in der Administration hinzu.",
       "save": "Speichern",
       "saving": "Wird gespeichert …"
-    }
+    },
+    "publishing": "Wird veröffentlicht",
+    "viewAsStudent": "Als Studierende ansehen"
   },
   "chapterEditor": {
     "notFound": {
@@ -1778,7 +1905,12 @@
     "save": "Kapitel speichern",
     "saving": "Wird gespeichert …",
     "saveHint": "Strg+S zum Speichern",
-    "unsavedChanges": "Sie haben ungespeicherte Änderungen"
+    "unsavedChanges": "Sie haben ungespeicherte Änderungen",
+    "typeChangeConfirm": {
+      "title": "Kapiteltyp ändern?",
+      "description": "Nichts von dem, was Sie geschrieben haben, wird gelöscht. Der Editor „{{from}}“ wird ausgeblendet, solange das Kapitel ein „{{to}}“ ist, und kommt mit allem Inhalt zurück, sobald Sie den Typ zurückstellen.",
+      "confirm": "Typ ändern"
+    }
   },
   "courseDetail": {
     "allCourses": "Alle Kurse",
@@ -1823,6 +1955,14 @@
     },
     "upcoming": {
       "heading": "Anstehende Fristen und Termine"
+    },
+    "preview": {
+      "eyebrow": "Vorschau",
+      "backToEditor": "Zurück zum Kurseditor",
+      "note": "So sehen Studierende den Kurs nach der Veröffentlichung. Bis dahin kann sich niemand einschreiben — Sie können aber jedes Kapitel öffnen und es wie Studierende durchgehen.",
+      "heading": "Inhalt",
+      "emptyModule": "Dieses Modul hat noch keine Kapitel.",
+      "noModules": "Noch keine Module — fügen Sie sie im Editor hinzu."
     }
   },
   "gradebook": {
@@ -2204,14 +2344,41 @@
       "errorPrefix": "Fehler im Prüfprotokoll",
       "errorTableMissing": "Die Tabelle audit_logs existiert möglicherweise noch nicht. Spielen Sie die neueste Migration ein.",
       "actionValue": {
-        "create": "Erstellt",
-        "update": "Geändert",
-        "delete": "Gelöscht",
-        "publish": "Veröffentlicht",
-        "enroll": "Eingeschrieben",
+        "accept": "Einladung angenommen",
+        "accept_needs_review": "Übersetzung angenommen",
+        "add_student": "Studierende:r hinzugefügt",
+        "appoint_director": "Leitung ernannt",
         "approve": "Bestätigt",
+        "attach_course": "Kurs zugeordnet",
+        "bulk_role_update": "Rollen im Stapel geändert",
+        "chapter_completed_by_teacher": "Kapitel von Lehrkraft abgehakt",
+        "chapter_completion_removed_by_teacher": "Kapitelmarkierung entfernt",
+        "complete": "Abschluss",
+        "create": "Erstellt",
+        "delete": "Gelöscht",
+        "detach_course": "Kurs entfernt",
+        "enroll": "Eingeschrieben",
+        "grade": "Bewertet",
+        "grade_exemption_created": "Arbeit erlassen",
+        "grade_exemption_removed": "Erlass aufgehoben",
+        "grade_sheet_finalized": "Notenliste geschlossen",
+        "grade_sheet_reopened": "Notenliste wieder geöffnet",
+        "grading_scheme_changed": "Notenschema geändert",
+        "permanent_delete": "Endgültig gelöscht",
+        "publish": "Veröffentlicht",
+        "purge_orphan_translations": "Verwaiste Übersetzungen entfernt",
         "reject": "Abgelehnt",
-        "grade": "Bewertet"
+        "remove_student": "Studierende:r entfernt",
+        "reset_failed_permanent": "Fehlgeschlagene Übersetzungen zurückgesetzt",
+        "restore": "Wiederherstellung",
+        "restore_last_good_translation": "Frühere Übersetzung wiederhergestellt",
+        "resync_progress": "Fortschritt neu berechnet",
+        "retake_request": "Wiederholung angefragt",
+        "retry_needs_review": "Übersetzung erneut eingereiht",
+        "revoke": "Widerruf",
+        "rubric_attached": "Rubrik zugeordnet",
+        "rubric_created": "Rubrik erstellt",
+        "update": "Geändert"
       },
       "resourceValue": {
         "course": "Kurs",
@@ -2352,7 +2519,12 @@
       "subheadingDefault": "Fast geschafft — nur noch ein Schritt",
       "body": "Wir haben einen Bestätigungslink an <strong>{{email}}</strong> geschickt.",
       "clickLinkToActivate": "Klicken Sie den Link in der E-Mail, um Ihr Konto zu aktivieren.",
-      "backToSignIn": "Zurück zur Anmeldung"
+      "backToSignIn": "Zurück zur Anmeldung",
+      "checkSpam": "Kommt innerhalb einer Minute nichts an, schauen Sie im Spam-Ordner nach. Der Link gilt 24 Stunden.",
+      "resend": "E-Mail erneut senden",
+      "resendIn": "Erneut senden in {{seconds}} s",
+      "resent": "E-Mail erneut gesendet.",
+      "resendFailed": "E-Mail konnte nicht gesendet werden. Bitte in einer Minute erneut versuchen."
     }
   },
   "validation": {
@@ -2363,9 +2535,6 @@
   "editor": {
     "toast": {
       "imageUploadFailed": "Bild konnte nicht hochgeladen werden",
-      "imageUploadFailedDetail": "Bild konnte nicht hochgeladen werden: {{detail}}",
-      "imageWrongType": "Diese Datei ist kein Bild ({{type}}). Wählen Sie JPG, PNG, WebP oder GIF.",
-      "imageTooLarge": "Das Bild ist zu groß. Höchstens {{maxMb}} MB.",
       "audioUrlInvalid": "Die Audio-Adresse muss mit http(s) beginnen",
       "invalidUrl": "Das sieht nicht nach einer gültigen Adresse aus. Nutzen Sie eine vollständige wie https://example.com/seite."
     },
@@ -2444,6 +2613,24 @@
       "quizWeightNonzero": "Tests zählen für die Endnote.",
       "assignmentWeightNonzero": "Aufgaben zählen für die Endnote.",
       "quizThresholdBelowCourse": "Manche Tests bestehen bei einer niedrigeren Punktzahl als der Kurs. Man kann jeden Test schaffen und trotzdem unter der Bestehensgrenze des Kurses landen."
+    },
+    "missing": {
+      "hasDescription": "Der Kurs hat noch keine Beschreibung für den Katalog.",
+      "hasCoverImage": "Der Kurs hat kein Titelbild.",
+      "translationsComplete": "Noch nicht jede Sprache hat diesen Kurs. In den Katalog kommt er, sobald das für alle gilt.",
+      "hasEnrollmentWindow": "Beginn und Ende der Einschreibung sind nicht gesetzt.",
+      "hasAtLeastOneModule": "Der Kurs hat noch kein Modul.",
+      "hasMultipleModules": "Der Kurs hat nur ein Modul.",
+      "moduleHasChapters": "„{{title}}“ hat noch kein Kapitel.",
+      "readingHasContent": "„{{title}}“ hat noch keinen Inhalt zum Lesen.",
+      "quizHasQuestion": "Der Test in „{{title}}“ hat noch keine Frage.",
+      "examHasQuestion": "Die Prüfung in „{{title}}“ hat noch keine Frage.",
+      "quizQuestionsComplete": "Einige Fragen in „{{title}}“ sind unvollständig (Antworten oder Markierung der richtigen fehlen).",
+      "assignmentHasBrief": "Die Aufgabe in „{{title}}“ hat noch keine Beschreibung.",
+      "quizThresholdAboveCourse": "Ein Test verlangt eine höhere Punktzahl als der Kurs. Studierende können den Kurs auf dem Papier bestehen und das Kapitel doch nie abschließen — das Zertifikat bleibt außer Reichweite.",
+      "quizWeightNonzero": "Tests zählen nicht für die Endnote.",
+      "assignmentWeightNonzero": "Aufgaben zählen nicht für die Endnote.",
+      "quizThresholdBelowCourse": "Manche Tests bestehen bei einer niedrigeren Punktzahl als der Kurs. Man kann jeden Test schaffen und trotzdem unter der Bestehensgrenze des Kurses landen."
     }
   },
   "dateRangePicker": {
@@ -2473,6 +2660,7 @@
     "logOutAndSwitch": "Abmelden und Konto wechseln",
     "errors": {
       "notFound": "Dieser Einladungslink ist ungültig. Prüfen Sie den Link oder bitten Sie die einladende Person, ihn erneut zu senden.",
+      "loadFailed": "Die Einladung konnte nicht geprüft werden. Prüfen Sie die Verbindung und versuchen Sie es erneut – der Link bleibt gültig.",
       "unusable": "Diese Einladung wurde bereits genutzt, zurückgezogen oder ist abgelaufen. Bitten Sie um eine neue.",
       "emailMismatch": "Diese Einladung ging an eine andere E-Mail-Adresse.",
       "emailMismatchDetail": "Diese Einladung ging an <strong>{{invited}}</strong>, angemeldet sind Sie aber als <strong>{{current}}</strong>.",
@@ -2528,9 +2716,11 @@
   "vedomost": {
     "title": "Notenliste",
     "loading": "Die Notenliste wird geladen …",
+    "loadFailed": "Die Notenliste konnte nicht geladen werden.",
     "notClosedTitle": "Diese Notenliste ist nicht abgeschlossen",
     "notClosedBody": "Mit dem Abschließen wird das Ergebnis jeder Person so festgehalten, wie es heute steht. Der Ausdruck liest aus dieser Momentaufnahme, spätere Neubewertungen ändern also kein bereits unterschriebenes Dokument.",
     "close": "Notenliste abschließen",
+    "closeFailed": "Die Notenliste konnte nicht abgeschlossen werden.",
     "print": "Drucken",
     "closedOn": "Abgeschlossen {{date}}",
     "wasReopened": "Diese Liste ersetzt eine wieder geöffnete. Grund: {{reason}}",
@@ -2565,6 +2755,7 @@
     "totalSoFar": "Bisher",
     "incompleteHint": "Solange nicht jedes Kriterium eine Stufe hat, ist die Arbeit nicht bewertet und die studierende Person sieht nichts.",
     "loadFailed": "Das Bewertungsraster konnte nicht geladen werden",
+    "loadFailedBody": "Ohne sie wird nicht bewertet – eine bloße Zahl würde von den Kriterien abweichen.",
     "saveFailed": "Die Bewertung konnte nicht gespeichert werden",
     "title": "Bewertungsraster",
     "yourGrid": "So wurde Ihre Arbeit bewertet"
@@ -2644,8 +2835,16 @@
     "behindBy": "— {{count}} fehlen",
     "heldEdits": "{{count}} Änderungen warten auf die Übersetzung. Studierende sehen sie, sobald alle Sprachen bereit sind.",
     "blockedEdits": "{{count}} Änderungen hängen fest. Eine Übersetzung hat die Prüfung nicht bestanden und braucht einen Menschen.",
-    "needsReview": "{{count}} Übersetzungen brauchen eine Durchsicht. Von allein lösen sie sich nicht.",
-    "openReviewQueue": "Prüfliste öffnen"
+    "openReviewQueue": "Prüfliste öffnen",
+    "waitingNote": "Solange nicht jede Sprache den Kurs hat, sehen Studierende ihn nicht. Das ist so vorgesehen: Sobald die Übersetzungen fertig sind, erscheint er von selbst im Katalog.",
+    "beforePublishNote": "Nach der Veröffentlichung erscheint der Kurs im Katalog, sobald jede Sprache ihn hat. Bis dahin sehen Studierende ihn nicht — das ist so vorgesehen.",
+    "working": "Wird übersetzt — noch {{count}}. Das dauert in der Regel einige Minuten.",
+    "waitingForReview_one": "{{count}} Abschnitt wartet darauf, dass ihn jemand prüft. Wir wissen bereits davon — Sie müssen nichts tun.",
+    "waitingForReview_other": "{{count}} Abschnitte warten darauf, dass sie jemand prüft. Wir wissen bereits davon — Sie müssen nichts tun.",
+    "couldNotTranslate_one": "{{count}} Abschnitt konnte nicht automatisch übersetzt werden. Wir wissen bereits davon und übersetzen ihn von Hand — Sie müssen nichts tun.",
+    "couldNotTranslate_other": "{{count}} Abschnitte konnten nicht automatisch übersetzt werden. Wir wissen bereits davon und übersetzen sie von Hand — Sie müssen nichts tun.",
+    "notStartedYet": "Die Übersetzung hat noch nicht begonnen. Klicken Sie auf „Für die Veröffentlichung vorbereiten“ — oder sie beginnt von selbst, wenn Sie den Kurs veröffentlichen.",
+    "continuesOnItsOwn": "Die Übersetzung läuft von selbst weiter — Sie müssen nichts tun."
   },
   "verify": {
     "eyebrow": "ECHTHEIT",

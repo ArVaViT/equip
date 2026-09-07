@@ -13,11 +13,10 @@ from app.api.dependencies import (
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.i18n import t
-from app.core.sanitize import sanitize_string
+from app.core.sanitize import sanitize_multiline_text, sanitize_plain_text
 from app.models.announcement import Announcement
 from app.models.course import Course
 from app.models.enrollment import Enrollment
-from app.models.notification import Notification
 from app.models.user import User, UserRole
 from app.schemas.announcement import (
     AnnouncementCreate,
@@ -29,6 +28,12 @@ from app.services.content_versions import (
     delete_entity_cv_rows,
     dual_write_entity_content,
     fetch_cv_entity_texts_with_fallback,
+)
+from app.services.course_notifications import (
+    course_title_for_locale,
+    delete_notifications_about,
+    enrolled_recipients_by_locale,
+    entity_title_for_locale,
 )
 from app.services.notification_service import create_notifications_bulk, notification_text
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
@@ -78,6 +83,13 @@ def _announcement_to_response(
     """Title + content columns dropped — pull both from cv.
     Used by the single-entity routes (create / update); the list route
     uses ``localize_announcement_rows`` which is locale-aware.
+
+    ``include_author_edits`` because this answers the teacher about the
+    text they just saved. On a published course that text is held in
+    the staging table until every language has it (see
+    ``services/staged_edits``) — without this flag the response came
+    back with an empty title and body, the editor showed a blank card,
+    and the teacher's first thought was that the post had been lost.
     """
     texts = fetch_cv_entity_texts_with_fallback(
         db,
@@ -86,6 +98,7 @@ def _announcement_to_response(
         fields=list(_TRANSLATABLE_ANNOUNCEMENT_FIELDS),
         display_locale=source_locale,
         source_locale=source_locale,
+        include_author_edits=True,
     )
     return AnnouncementResponse.model_validate(
         {
@@ -332,8 +345,10 @@ def create_announcement(
     # fan out to every enrolled student via create_notifications_bulk
     # below — an unsanitized payload would persist stored XSS into the
     # notification feed and the announcement banner.
-    safe_title = sanitize_string(data.title)
-    safe_content = sanitize_string(data.content)
+    # Both are typed into plain inputs and rendered as text: tags off,
+    # nothing escaped. The body keeps its line breaks, that is all.
+    safe_title = sanitize_plain_text(data.title)
+    safe_content = sanitize_multiline_text(data.content)
     announcement = Announcement(
         id=uuid.uuid4(),
         course_id=data.course_id,
@@ -360,55 +375,25 @@ def create_announcement(
     if data.course_id:
         reconcile_entity_if_course_published(db, "announcement", announcement)
 
-    if data.course_id:
-        # Notification text respects each recipient's
-        # preferred_locale AND surfaces the locale-localized announcement
-        # title (not just the source-locale text). For each (user_id,
-        # preferred_locale) row in enrollments, resolve the announcement
-        # title at the recipient's locale via the cv read resolver, then
-        # produce a per-locale (title, message) pair before fan-out.
-        from app.services.content_versions import fetch_cv_entity_texts_with_fallback
-        from app.services.translation.resolve_for_display import fetch_course_titles_by_id
-
-        enrolled_users = (
-            db.query(Enrollment.user_id, User.preferred_locale)
-            .join(User, User.id == Enrollment.user_id)
-            .filter(
-                Enrollment.course_id == data.course_id,
-                # Deactivated accounts keep their enrollment rows but must
-                # not receive notification fan-out (#786 rule).
-                User.deactivated_at.is_(None),
-            )
-            .all()
-        )
-        recipients_by_locale: dict[str, list[uuid.UUID | str]] = {}
-        for uid, raw_locale in enrolled_users:
-            if str(uid) == str(teacher.id):
-                continue
-            loc = normalize_locale(raw_locale)
-            recipients_by_locale.setdefault(loc, []).append(uid)
-        ann_source_locale = course.source_locale if course is not None else (teacher.preferred_locale or "en")
+    if data.course_id and course is not None:
+        # Each recipient is written to in the language they read in,
+        # with the announcement's title in that language when it has
+        # one. ``entity_title_for_locale`` says what happens when it
+        # does not — in short: a same-language reader gets the author's
+        # text, anyone else gets «an announcement» rather than a
+        # language they did not choose.
+        recipients_by_locale = enrolled_recipients_by_locale(db, course_id=course.id, exclude_user_id=teacher.id)
+        ann_source_locale = normalize_locale(course.source_locale)
         for locale, recipients in recipients_by_locale.items():
-            normalized: LocaleCode = normalize_locale(locale)
-            title_for_locale = (
-                fetch_course_titles_by_id(db, [course.id], display_locale=normalized).get(course.id) if course else None
-            ) or t(locale, "fallback.course")
-            # Resolve the announcement title at THIS recipient's locale.
-            # Reconcile ran above, so an MT row is usually there — but
-            # when it is not (an unpublished course, a provider failure,
-            # a language added after the announcement) the answer is not
-            # the author's title. A notification's text is frozen into
-            # the recipient's bell, so a Russian title sent to a German
-            # reader stays there for good; ``fallback.announcement``
-            # says what happened instead.
-            ann_title_for_locale = fetch_cv_entity_texts_with_fallback(
+            title_for_locale = course_title_for_locale(db, course, locale)
+            ann_title_for_locale = entity_title_for_locale(
                 db,
                 entity_type="announcement",
-                entity_ids=[str(announcement.id)],
-                fields=["title"],
-                display_locale=normalized,
-                source_locale=normalize_locale(ann_source_locale),
-            ).get((str(announcement.id), "title")) or t(locale, "fallback.announcement")
+                entity_id=announcement.id,
+                locale=locale,
+                source_locale=ann_source_locale,
+                fallback_key="fallback.announcement",
+            )
             notif_title = t(locale, "notif.new_announcement.title")
             notif_message = t(
                 locale,
@@ -466,9 +451,9 @@ def update_announcement(
 
     text_patch: dict[str, str | None] = {}
     if data.title is not None:
-        text_patch["title"] = sanitize_string(data.title)
+        text_patch["title"] = sanitize_plain_text(data.title)
     if data.content is not None:
-        text_patch["content"] = sanitize_string(data.content)
+        text_patch["content"] = sanitize_multiline_text(data.content)
 
     course = db.query(Course).filter(Course.id == announcement.course_id).first() if announcement.course_id else None
     db.flush()
@@ -516,26 +501,16 @@ def delete_announcement(
     # nothing for Postgres to cascade. Drop the rows explicitly so a
     # hard-delete doesn't leave orphan cv text behind.
     delete_entity_cv_rows(db, entity_type="announcement", entity_id=announcement.id)
-    # Every enrolled student got a ``new_announcement``
-    # notification via ``create_notifications_bulk`` (see
-    # ``create_announcement``) — those rows reference this announcement
-    # only through ``meta->>'announcement_id'``, which Postgres has no
-    # way to follow on its own. Without this sweep the notification
-    # card stays in every recipient's panel showing stale text long
-    # after the announcement is gone. ``Notification.link`` was set to
-    # ``/courses/{course_id}`` in the fan-out, so we narrow the candidate
-    # set by type + link in SQL and then Python-filter on the
-    # ``meta`` dict — sidesteps the dialect-specific ``->>`` /
-    # ``json_extract`` split while keeping the candidate count bounded
-    # by the enrollment size of one course.
-    target_id = str(announcement.id)
-    candidates = (
-        db.query(Notification)
-        .filter(Notification.type == "new_announcement", Notification.link == f"/courses/{announcement.course_id}")
-        .all()
+    # Every enrolled student got a ``new_announcement`` notification
+    # (see ``create_announcement``). Without this sweep the card stays
+    # in every recipient's bell showing stale text long after the
+    # announcement is gone.
+    delete_notifications_about(
+        db,
+        types=("new_announcement",),
+        link=f"/courses/{announcement.course_id}",
+        meta_key="announcement_id",
+        target_id=announcement.id,
     )
-    stale_ids = [n.id for n in candidates if isinstance(n.meta, dict) and n.meta.get("announcement_id") == target_id]
-    if stale_ids:
-        db.query(Notification).filter(Notification.id.in_(stale_ids)).delete(synchronize_session=False)
     db.delete(announcement)
     db.commit()

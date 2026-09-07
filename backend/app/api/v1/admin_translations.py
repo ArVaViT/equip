@@ -28,6 +28,7 @@ operator surface, so nothing was ever accepted and courses waited.
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -40,14 +41,18 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session  # noqa: TC002 — used by FastAPI Depends at runtime
 
 from app.api.dependencies import require_admin
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.content_version import ContentVersion
+from app.models.course import CourseStatus
 from app.models.translation_job import TranslationJob, TranslationJobStatus
 from app.schemas.locale import LocaleCode  # noqa: TC001 — used by FastAPI Query at runtime
 from app.services.audit_service import log_action
 from app.services.course_service import get_course
+from app.services.translation.completeness import promote_if_complete
 from app.services.translation.course_tree import iter_course_entities
+from app.services.translation.queue import enqueue_course_translation
 from app.services.translation.registry import ENTITY_MODEL, REGISTRY, EntityRegistration
 from app.services.translation.resolve_for_display import populate_spine_texts
 
@@ -55,6 +60,7 @@ if TYPE_CHECKING:
     from app.models.course import Course
     from app.models.user import User
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin/translations", tags=["admin-translations"])
 
@@ -315,7 +321,8 @@ def retry_reviewed(
     if payload.locale is not None:
         query = query.filter(ContentVersion.locale == payload.locale)
 
-    ids = [row.id for row in query.order_by(ContentVersion.created_at).limit(payload.limit).all()]
+    rows = query.order_by(ContentVersion.created_at).limit(payload.limit).all()
+    ids = [row.id for row in rows]
     if not ids:
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
@@ -338,6 +345,12 @@ def retry_reviewed(
         db.rollback()
         raise
 
+    # A re-opened row is ``failed``, and ``failed`` is retried — by the
+    # next pass, if there is one. The sweep would find it eventually,
+    # one cycle from now; the operator who just pressed the button is
+    # owed sooner than that, and so is the course waiting on the row.
+    queued = _requeue_courses_of(db, rows, requested_by=admin.id)
+
     log_action(
         db,
         admin.id,
@@ -350,10 +363,78 @@ def retry_reviewed(
         ",".join(str(i) for i in payload.ids[:10])
         if payload.ids is not None
         else f"{payload.entity_type}:{payload.locale or 'all'}",
-        details={"count": affected, "limit": payload.limit},
+        details={"count": affected, "limit": payload.limit, "queued_courses": queued},
         request=request,
     )
     return ResetResponse(reset=affected)
+
+
+def _courses_touched_by(db: Session, rows: list[ContentVersion]) -> list[Course]:
+    """The distinct courses the given rows hang off, in a stable order.
+
+    Daily Challenge rows belong to no course and resolve to nothing;
+    that is not an error, there is simply no course to move.
+    """
+    by_id = {course.id: course for course in _courses_for_rows(db, rows).values()}
+    return [by_id[key] for key in sorted(by_id)]
+
+
+def _promote_courses_of(db: Session, rows: list[ContentVersion]) -> list[str]:
+    """After rows were accepted: let every course they completed out.
+
+    Accepting the last parked row makes a course whole, and until
+    2026-09-05 nothing then acted on that. ``promote_if_complete`` had
+    one caller — the worker, after its own pass — and no pass follows
+    an accept: the executor skips a parked row whose source is
+    unchanged, the sweep queues no job for a course whose only gaps
+    were a person's to close, and the course sat in ``publishing``,
+    complete and invisible, until somebody happened to PATCH it. The
+    teacher meanwhile lost the "prepare for publication" button, which
+    the card hides once ``is_complete`` is true. Returns the ids of the
+    courses that went out.
+
+    A failure to promote never undoes the accept: the rows are already
+    committed and correct, and the sweep now promotes a whole
+    ``publishing`` course on its own cycle, so this is the fast path,
+    not the only path.
+    """
+    promoted: list[str] = []
+    for course in _courses_touched_by(db, rows):
+        if course.status != CourseStatus.PUBLISHING:
+            continue
+        try:
+            if promote_if_complete(db, course):
+                promoted.append(str(course.id))
+        except SQLAlchemyError:
+            db.rollback()
+            logger.exception("accept_reviewed: could not promote course %s after accepting its rows", course.id)
+    return promoted
+
+
+def _requeue_courses_of(db: Session, rows: list[ContentVersion], *, requested_by: UUID) -> list[str]:
+    """After rows were re-opened: queue a pass for every live course
+    they belong to, so the retry the operator asked for happens now
+    rather than whenever the sweep's cycle comes round.
+
+    ``enqueue_course_translation`` is idempotent and a redundant job
+    costs one plan and no provider calls, so queueing a course that
+    already has a job is free. Drafts are left alone, as everywhere:
+    their author translates them when ready. Only meaningful with the
+    queue on — without it there is no worker to drain what is queued.
+    """
+    if not settings.TRANSLATION_QUEUE_ENABLED:
+        return []
+    queued: list[str] = []
+    for course in _courses_touched_by(db, rows):
+        if course.status not in (CourseStatus.PUBLISHING, CourseStatus.PUBLISHED):
+            continue
+        try:
+            enqueue_course_translation(db, str(course.id), requested_by=requested_by)
+            queued.append(str(course.id))
+        except SQLAlchemyError:
+            db.rollback()
+            logger.exception("retry_reviewed: could not queue course %s after re-opening its rows", course.id)
+    return queued
 
 
 class OrphanReport(BaseModel):
@@ -605,6 +686,9 @@ def accept_reviewed(
         db.rollback()
         raise
 
+    # The row is servable; now the course it may have completed.
+    promoted = _promote_courses_of(db, rows)
+
     log_action(
         db,
         admin.id,
@@ -617,6 +701,7 @@ def accept_reviewed(
                 {"id": rid, "entity_type": etype, "locale": locale, "reason": reason}
                 for rid, etype, locale, reason in accepted
             ],
+            "promoted_courses": promoted,
         },
         request=request,
     )

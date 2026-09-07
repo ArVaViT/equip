@@ -30,18 +30,34 @@ from dataclasses import dataclass
 
 from app.services.bible.books import all_aliases, find_book, written_as_a_book_name
 
+# One space, however the author's tools wrote it. Word keeps a citation
+# on one line by putting a non-breaking space between the book and the
+# chapter (``Ин. 3:16``, ``1 Кор. 13:4``), and the editor stores that
+# character the way ``innerHTML`` serialises it — as the entity
+# ``&nbsp;``, six characters that ``\s`` does not match. A course pasted
+# from Word had every one of its citations skipped: no canonical verse
+# was substituted, and the model was left to re-word Scripture, which is
+# the one thing this whole layer exists to prevent. ``\s`` already covers
+# the bare U+00A0; the entity forms are added beside it. The ``#`` is
+# escaped because this class ends up inside a VERBOSE pattern, where a
+# bare ``#`` opens a comment.
+_SPACE = r"(?:\s|&nbsp;|&\#160;|&\#xa0;)"
+# The same three entities as a pattern to fold, for the book name that
+# the match hands to ``find_book``: ``1&nbsp;Кор.`` is ``1 Кор.`` to the
+# alias table only once the entity is a space again.
+_SPACE_ENTITY = re.compile(r"&nbsp;|&#160;|&#xa0;", re.IGNORECASE)
 # Between the number of a numbered book and its name. Four languages
 # print that join four ways — ``1 Samuel``, ``1. Mose``, ``1Кор.``,
 # ``1-е Коринтян`` — and ``books._normalize`` folds all four to
 # ``"1 name"``, so the pattern built from a folded alias has to unfold
 # them again. The two are a pair; the round-trip test walks every alias
 # through both.
-_NUMBER_JOIN = r"\s*[.\-]?\s*(?:ше|ге|тє|е)?\s*"
+_NUMBER_JOIN = rf"{_SPACE}*[.\-]?{_SPACE}*(?:ше|ге|тє|е)?{_SPACE}*"
 # Between the words of a multi-word name (``Song of Solomon``, ``Дії
 # апостолів``). Real whitespace, unlike the number join: the no-space
 # spellings that exist (``songofsolomon``) are declared aliases in their
 # own right.
-_WORD_JOIN = r"\s+"
+_WORD_JOIN = rf"{_SPACE}+"
 # Which apostrophe an author's keyboard produced is not a difference
 # worth failing on — ``Об'явлення`` and ``Об’явлення`` are one word.
 _APOSTROPHE_CLASS = "['’ʼ‘`]"
@@ -74,11 +90,11 @@ _REF_PATTERN = re.compile(
     rf"""
     (?<!\w)
     (?P<book>{_BOOK_RE})
-    \s+
+    {_SPACE}+
     (?P<chapter>\d+)
     [:.,]
     (?P<verse_start>\d+)
-    (?:\s*[-–—]\s*(?P<verse_end>\d+))?
+    (?:{_SPACE}*[-–—]{_SPACE}*(?P<verse_end>\d+))?
     """,
     re.VERBOSE | re.UNICODE | re.IGNORECASE,
 )
@@ -226,7 +242,7 @@ def parse_references(text: str, locale: str | None = None) -> list[ParsedReferen
         return []
     out: list[ParsedReference] = []
     for m in _REF_PATTERN.finditer(text):
-        book_raw = m.group("book")
+        book_raw = _SPACE_ENTITY.sub(" ", m.group("book"))
         # An alias that is also an ordinary word has to be written as a
         # book name to be read as one — otherwise "The ratio is 1:2" is
         # Isaiah and "am 10:30 Uhr" is Amos. See ``books.py``.

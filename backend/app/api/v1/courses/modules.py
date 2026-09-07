@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import require_teacher, verify_course_owner
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
+from app.core.sanitize import sanitize_plain_text
 from app.models.course import Module
 from app.models.user import User
 from app.schemas.course import ModuleCreate, ModuleResponse, ModuleUpdate
@@ -32,6 +33,8 @@ def create_new_module(
     db: Session = Depends(get_db),
 ) -> Module:
     verify_course_owner(db, course_id, teacher.id)
+    if data.title:
+        data.title = sanitize_plain_text(data.title)
     created = create_module(db, course_id, data)
     reconcile_entity_if_course_published(db, "module", created)
     return created
@@ -54,6 +57,8 @@ def update_existing_module(
             message=f"Module '{module_id}' not found in course '{course_id}'",
             context={"resource_type": "module", "module_id": module_id, "course_id": course_id},
         )
+    if data.title:
+        data.title = sanitize_plain_text(data.title)
     updated = update_module(db, module, data)
     reconcile_entity_if_course_published(db, "module", updated)
     return updated

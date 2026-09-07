@@ -97,7 +97,11 @@ export function renderLegalMarkdown(source: string): ReactNode[] {
       blocks.push(
         <h1
           key={`h${blocks.length}`}
-          className="font-serif text-3xl font-semibold tracking-tight text-ink"
+          /* A single long word — "Политика конфиденциальности",
+             "Datenschutzerklärung" — is wider than a 390px phone at 3xl and
+             pushed the whole document sideways. Smaller on phones, and
+             breakable as a last resort so no translation can do it again. */
+          className="font-serif text-2xl font-semibold tracking-tight text-ink break-words sm:text-3xl"
         >
           {trimmed.slice(2)}
         </h1>,

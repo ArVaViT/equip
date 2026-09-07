@@ -5,7 +5,9 @@ import { useAuth } from "@/context/useAuth"
 import { invitationsService, type InvitationPreview } from "@/services/invitations"
 import { makeAcceptInviteSchema } from "@/lib/validations/auth"
 import { setPendingInviteToken, takePendingInviteToken } from "@/lib/pendingInvite"
+import { isAxiosError } from "axios"
 import { getErrorCode } from "@/lib/errorCode"
+import { getErrorDetail } from "@/lib/errorDetail"
 import { authErrorMessage, isDuplicateEmail } from "@/lib/authError"
 import i18n, { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 
@@ -22,6 +24,7 @@ const EMPTY_FORM: FormState = { full_name: "", password: "", confirmPassword: ""
 export type AcceptInvitePhase =
   | "loading"
   | "invalid" // token doesn't exist
+  | "unavailable" // the server did not answer; nothing is known about the link yet
   | "unusable" // expired, already accepted, or revoked
   | "form" // pending + valid, caller not authenticated yet -- show signup form
   | "mismatch" // pending + valid, but signed in under a different email
@@ -37,6 +40,8 @@ export function useAcceptInvite() {
 
   const [preview, setPreview] = useState<InvitationPreview | null>(null)
   const [previewFailed, setPreviewFailed] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+  const [previewAttempt, setPreviewAttempt] = useState(0)
   const [phase, setPhase] = useState<AcceptInvitePhase>("loading")
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
@@ -52,26 +57,42 @@ export function useAcceptInvite() {
       return
     }
     let cancelled = false
+    setPreviewFailed(false)
+    setPreviewError(null)
     invitationsService
       .previewInvitation(token)
       .then((data) => {
         if (cancelled) return
         setPreview(data)
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (cancelled) return
-        setPreviewFailed(true)
+        // Only the server saying «no such link» makes the link invalid. A
+        // 500, a dropped connection or a rate limit used to read the same —
+        // «ask the administrator to resend it» — for a link that was fine.
+        const status = isAxiosError(err) ? err.response?.status : undefined
+        if (status === 400 || status === 404 || status === 410 || status === 422) {
+          setPreviewFailed(true)
+        } else {
+          setPreviewError(getErrorDetail(err, i18n.t("invite.errors.loadFailed")))
+        }
       })
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [token, previewAttempt])
+
+  const retryPreview = useCallback(() => setPreviewAttempt((n) => n + 1), [])
 
   // Derive the phase from (preview, previewFailed, user) whenever any of
   // them change -- keeps the state machine in one place instead of
   // scattered across the fetch handler and the auth-watching effect.
   useEffect(() => {
     if (phase === "accepting" || phase === "done" || phase === "awaitingConfirmation") return
+    if (previewError) {
+      setPhase("unavailable")
+      return
+    }
     if (previewFailed) {
       setPhase("invalid")
       return
@@ -89,7 +110,7 @@ export function useAcceptInvite() {
       return
     }
     setPhase(user.email.trim().toLowerCase() === preview.email.trim().toLowerCase() ? "ready" : "mismatch")
-  }, [preview, previewFailed, user, phase])
+  }, [preview, previewFailed, previewError, user, phase])
 
   const acceptNow = useCallback(async () => {
     setPhase("accepting")
@@ -177,6 +198,8 @@ export function useAcceptInvite() {
   }, [signInWithGoogle, token])
 
   return {
+    previewError,
+    retryPreview,
     phase,
     preview,
     form,

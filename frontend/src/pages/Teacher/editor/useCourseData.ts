@@ -4,6 +4,7 @@ import type { DropResult } from "@hello-pangea/dnd"
 import { coursesService } from "@/services/courses"
 import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
+import { getErrorDetail } from "@/lib/errorDetail"
 import { isoToLocalInput, localInputToIso } from "@/i18n/format"
 import type { Course } from "@/types"
 import type { useConfirm } from "@/components/ui/alert-dialog"
@@ -15,9 +16,17 @@ type CoursePatch = Parameters<typeof coursesService.updateCourse>[1]
 interface CourseData {
   course: Course | null
   loading: boolean
+  /** Why `course` is null after loading, in the reader's language. */
+  loadError: string | null
   sortedModules: NonNullable<Course["modules"]>
   /** True when the course status is "published". */
   published: boolean
+  /**
+   * True when the teacher has published the course but the server is
+   * still holding it back from the catalog — some language does not
+   * have it yet. Neither a draft nor live; its own word on screen.
+   */
+  publishing: boolean
   enrollStart: string
   setEnrollStart: (v: string) => void
   enrollEnd: string
@@ -44,11 +53,11 @@ interface CourseData {
 export function useCourseData(
   courseId: string | undefined,
   confirm: Confirm,
-  onNotFound: () => void,
 ): CourseData {
   const { t } = useTranslation()
   const [course, setCourse] = useState<Course | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [enrollStart, setEnrollStart] = useState("")
   const [enrollEnd, setEnrollEnd] = useState("")
   const [savingEnrollment, setSavingEnrollment] = useState(false)
@@ -58,6 +67,7 @@ export function useCourseData(
     async (signal: { cancelled: boolean }) => {
       if (!courseId) return
       setLoading(true)
+      setLoadError(null)
       try {
         // `getCourseForEdit` forces ``?source=1`` so the InlineEdit fields
         // bind to the source-language `title` / `description` columns,
@@ -69,13 +79,20 @@ export function useCourseData(
         setCourse(data)
         setEnrollStart(isoToLocalInput(data.enrollment_start))
         setEnrollEnd(isoToLocalInput(data.enrollment_end))
-      } catch {
-        if (!signal.cancelled) onNotFound()
+      } catch (err) {
+        // Stay on the page and say why. This used to bounce to /teacher with
+        // no word — the link a teacher had clicked simply came apart under
+        // them — and the «course not found» screen in CourseEditor could
+        // never render because the navigation always won.
+        if (!signal.cancelled) {
+          setCourse(null)
+          setLoadError(getErrorDetail(err, t("courseEditor.notFound.description")))
+        }
       } finally {
         if (!signal.cancelled) setLoading(false)
       }
     },
-    [courseId, onNotFound],
+    [courseId, t],
   )
 
   useEffect(() => {
@@ -146,15 +163,27 @@ export function useCourseData(
 
   const togglePublish = useCallback(async () => {
     if (!courseId || !course) return
-    const next = course.status === "published" ? ("draft" as const) : ("published" as const)
+    // Anything that is not a draft is on its way out, so the toggle
+    // takes it back to draft. A course sitting in ``publishing`` has
+    // been published by its teacher; asking again would change nothing.
+    const requested = course.status === "draft" ? ("published" as const) : ("draft" as const)
     try {
-      await coursesService.updateCourse(courseId, { status: next })
+      const updated = await coursesService.updateCourse(courseId, { status: requested })
+      // The server decides the resulting state: asking to publish a
+      // course whose languages are not all ready lands it in
+      // ``publishing``, not ``published``. Take its word, not ours.
+      // Writing ``published`` here from what we *asked for* is exactly
+      // how the editor came to say "Published" until the next reload,
+      // which then said "Draft" — the teacher read that as lost work.
+      const next = updated?.status ?? requested
       setCourse((p) => (p ? { ...p, status: next } : p))
       toast({
         title:
           next === "published"
             ? t("teacherEditor.toast.published")
-            : t("teacherEditor.toast.unpublished"),
+            : next === "publishing"
+              ? t("teacherEditor.toast.publishing")
+              : t("teacherEditor.toast.unpublished"),
         variant: "success",
       })
     } catch {
@@ -261,8 +290,10 @@ export function useCourseData(
   return {
     course,
     loading,
+    loadError,
     sortedModules,
     published: course?.status === "published",
+    publishing: course?.status === "publishing",
     enrollStart,
     setEnrollStart,
     enrollEnd,

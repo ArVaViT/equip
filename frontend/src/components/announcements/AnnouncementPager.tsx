@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { ChevronDown, ChevronUp, Megaphone, Trash2 } from "lucide-react"
+import { ChevronDown, ChevronUp, Megaphone, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { formatDateTime } from "@/i18n/format"
+import { formatDateLong, formatDateTime } from "@/i18n/format"
 import type { Announcement } from "@/types"
+import { LinkifiedText } from "./LinkifiedText"
 
 interface AnnouncementPagerProps {
   announcements: Announcement[]
+  /** Required only on surfaces where the viewer may edit entries
+   *  (i.e. the teacher's editor modal). Omitted on read-only feeds. */
+  onEdit?: (announcement: Announcement) => void
   /** Required only on surfaces where the viewer may delete entries
    *  (i.e. the teacher's editor modal). Omitted on read-only feeds
    *  (course detail page, banner, public surfaces). */
@@ -42,7 +46,7 @@ const DOTS_CAP = 7
  * listener is element-scoped, never window-level, so the keys never
  * fight surrounding form inputs.
  */
-export function AnnouncementPager({ announcements, onDelete }: AnnouncementPagerProps) {
+export function AnnouncementPager({ announcements, onEdit, onDelete }: AnnouncementPagerProps) {
   const { t } = useTranslation()
   const [index, setIndex] = useState(0)
   const total = announcements.length
@@ -98,23 +102,48 @@ export function AnnouncementPager({ announcements, onDelete }: AnnouncementPager
           </p>
           {current.content && (
             <p className="mt-0.5 text-xs text-ink-muted text-wrap-safe whitespace-pre-line">
-              {current.content}
+              <LinkifiedText text={current.content} />
             </p>
           )}
-          <time className="mt-1 block text-xs text-ink-muted">
-            {formatDateTime(current.created_at)}
+          {/* `formatDateTime` is the canonical machine format —
+              ``2026-04-23 00:29:06`` — meant for audit rows and latency
+              dashboards. An announcement is a teacher speaking to a class;
+              nobody in that conversation needs the seconds. The exact
+              moment stays one hover away, which is what the format module
+              itself recommends. */}
+          <time
+            className="mt-1 block text-xs text-ink-muted"
+            dateTime={current.created_at}
+            title={formatDateTime(current.created_at)}
+          >
+            {formatDateLong(current.created_at)}
           </time>
         </div>
-        {onDelete && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 shrink-0 p-0 text-destructive hover:text-destructive"
-            onClick={() => onDelete(current.id)}
-            aria-label={t("teacherEditor.modals.announcements.deleteAria", { title: current.title })}
-          >
-            <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
-          </Button>
+        {(onEdit || onDelete) && (
+          <div className="flex shrink-0 flex-col gap-1">
+            {onEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => onEdit(current)}
+                aria-label={t("teacherEditor.modals.announcements.editAria", { title: current.title })}
+              >
+                <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                onClick={() => onDelete(current.id)}
+                aria-label={t("teacherEditor.modals.announcements.deleteAria", { title: current.title })}
+              >
+                <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+              </Button>
+            )}
+          </div>
         )}
       </div>
       {hasNav && (

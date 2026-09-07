@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo, memo } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams, Link, useNavigate } from "react-router-dom"
+import { isAxiosError } from "axios"
 import { sanitizeHtml as sanitize } from "@/lib/sanitize"
 import { renderMathIn } from "@/lib/katex-render"
 import { renderToggleCalloutsIn } from "@/lib/callout-toggle"
@@ -533,8 +534,14 @@ export default function ChapterView() {
         setMod(m)
         setCourse(fullCourse)
         setCompletedIds(completedChapterIds === null ? null : new Set(completedChapterIds))
-      } catch {
-        if (!cancelled) setError(t("errors.loadChapterFailed"))
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            isAxiosError(err) && err.response?.status === 404
+              ? t("toast.chapterNotFound")
+              : t("errors.loadChapterFailed"),
+          )
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -673,7 +680,7 @@ export default function ChapterView() {
     if (!chapter || !courseId) return
     try {
       const completedChapterIds = await coursesService.getMyChapterProgress(courseId)
-      setCompletedIds(new Set(completedChapterIds))
+      setCompletedIds(completedChapterIds === null ? null : new Set(completedChapterIds))
     } catch {
       // non-critical
     }

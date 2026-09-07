@@ -32,6 +32,7 @@ known-first-party = ["app"]
 "app/services/bible/references.py" = ["RUF001", "RUF002", "RUF003"]
 "app/services/bible/substitution.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/test_bible_substitution.py" = ["RUF001", "RUF002", "RUF003"]
+"tests/test_a_citation_pasted_from_word.py" = ["RUF001", "RUF002", "RUF003"]
 # The typography pass and its tests are *about* the characters RUF001/2/3
 # calls ambiguous: a straight quote against a curly one, a hyphen against
 # an en dash, a Cyrillic apostrophe against a Latin one. Telling them

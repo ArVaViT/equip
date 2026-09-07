@@ -20,6 +20,8 @@ interface Props {
   onExpandToggle: () => void
   onDelete: () => void
   onBlockUpdated: (updated: ChapterBlock) => void
+  /** The block's editor holds text the server does not have yet (or no longer does). */
+  onUnsavedChange?: (unsaved: boolean) => void
   onDragStart: () => void
   onDragOver: (e: React.DragEvent) => void
   onDrop: () => void
@@ -40,6 +42,7 @@ export function BlockRow({
   onExpandToggle,
   onDelete,
   onBlockUpdated,
+  onUnsavedChange,
   onDragStart,
   onDragOver,
   onDrop,
@@ -99,7 +102,11 @@ export function BlockRow({
       {expanded && (
         <div className="border-t px-3 py-3 space-y-3">
           {block.block_type === "text" && (
-            <TextBlockEditor block={block} onSaved={onBlockUpdated} />
+            <TextBlockEditor
+              block={block}
+              onSaved={onBlockUpdated}
+              onUnsavedChange={onUnsavedChange}
+            />
           )}
           {block.block_type === "quiz" && (
             <QuizEditor

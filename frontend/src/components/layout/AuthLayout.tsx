@@ -30,7 +30,7 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
        * The instinct was right: a verse in the serif is exactly the register.
        * What it needed was paper and ink instead of glow — set as the title
        * page of a book, with the rule doing the work the gradient was doing. */}
-      <div className="relative hidden bg-card lg:flex lg:w-[480px] xl:w-[560px]">
+      <aside className="relative hidden bg-card lg:flex lg:w-[480px] xl:w-[560px]">
         <div className="relative z-10 flex flex-col justify-between p-12 text-ink">
           <Link
             to="/"
@@ -53,54 +53,67 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
             {t("auth.marketingPanelFooter", { year, appName: t("common.appName") })}
           </p>
         </div>
-      </div>
+      </aside>
 
       {/* Form panel */}
       <div className="flex flex-1 flex-col">
-        {/* Solid, not blurred: `backdrop-filter` is the most expensive property
-            on the phones this product is actually read on. */}
-        <div className="flex items-center justify-between bg-card px-4 py-2 lg:hidden">
-          <Link
-            to="/"
-            className="-mx-1 inline-flex min-h-[44px] items-center gap-2.5 px-1 text-ink transition-opacity hover:opacity-80"
-          >
-            <BookOpen className="h-5 w-5 shrink-0 text-accent" strokeWidth={1.75} aria-hidden />
-            <span className="font-serif text-base font-bold leading-none tracking-tight">{t("common.appName")}</span>
-          </Link>
-          <Button
-            variant="ghost"
-            size="sm"
-            type="button"
-            onClick={toggleTheme}
-            className="h-11 w-11 shrink-0 rounded-full p-0"
-            aria-label={t("auth.toggleColorTheme")}
-          >
-            {theme === "dark" ? (
-              <Sun className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            ) : (
-              <Moon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            )}
-          </Button>
-        </div>
+        {/* One <header> around both bars: they are the same landmark shown at
+            two breakpoints, and two <header> elements would be two banners. */}
+        <header>
+          {/* Solid, not blurred: `backdrop-filter` is the most expensive property
+              on the phones this product is actually read on. */}
+          <div className="flex items-center justify-between bg-card px-4 py-2 lg:hidden">
+            <Link
+              to="/"
+              className="-mx-1 inline-flex min-h-[44px] items-center gap-2.5 px-1 text-ink transition-opacity hover:opacity-80"
+            >
+              <BookOpen className="h-5 w-5 shrink-0 text-accent" strokeWidth={1.75} aria-hidden />
+              <span className="font-serif text-base font-bold leading-none tracking-tight">{t("common.appName")}</span>
+            </Link>
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              onClick={toggleTheme}
+              className="h-11 w-11 shrink-0 rounded-full p-0"
+              aria-label={t("auth.toggleColorTheme")}
+            >
+              {theme === "dark" ? (
+                <Sun className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              ) : (
+                <Moon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              )}
+            </Button>
+          </div>
 
-        <div className="hidden justify-end p-4 lg:flex">
-          <Button
-            variant="ghost"
-            size="sm"
-            type="button"
-            onClick={toggleTheme}
-            className="h-9 w-9 rounded-full p-0"
-            aria-label={t("auth.toggleColorTheme")}
-          >
-            {theme === "dark" ? (
-              <Sun className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            ) : (
-              <Moon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            )}
-          </Button>
-        </div>
+          <div className="hidden justify-end p-4 lg:flex">
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              onClick={toggleTheme}
+              className="h-9 w-9 rounded-full p-0"
+              aria-label={t("auth.toggleColorTheme")}
+            >
+              {theme === "dark" ? (
+                <Sun className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              ) : (
+                <Moon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              )}
+            </Button>
+          </div>
+        </header>
 
-        <div className="flex flex-1 items-center justify-center px-4 py-8 sm:px-8">
+        {/* The auth screens are the first page a visitor sees, and they had
+            no <main>: nothing for the skip link to reach, no landmark for a
+            screen reader to jump to, and `useFocusMainOnRouteChange` (App.tsx)
+            looking up `#main-content` found nothing — so moving between /login
+            and /register announced nothing at all. */}
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex flex-1 items-center justify-center px-4 py-8 focus:outline-none sm:px-8"
+        >
           <div className="w-full max-w-[420px] space-y-8">
             <div className="space-y-2 text-center lg:text-left">
               <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">{heading}</h1>
@@ -108,7 +121,7 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
             </div>
             {children}
           </div>
-        </div>
+        </main>
       </div>
     </div>
   )

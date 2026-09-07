@@ -4,6 +4,8 @@ import { ImagePlus, Loader2, Trash2, Upload } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toProxyImage } from "@/lib/images"
 import { toast } from "@/lib/toast"
+import { describeUploadError, preflightUpload } from "@/lib/uploadError"
+import { acceptAttribute, COURSE_ASSETS, MB } from "@/lib/uploadLimits"
 import { useConfirm } from "@/components/ui/alert-dialog"
 
 interface InlineEditCoverProps {
@@ -14,6 +16,8 @@ interface InlineEditCoverProps {
   aspect?: "16/9" | "4/3" | "21/9" | "1/1"
   disabled?: boolean
   className?: string
+  /** Defaults to the `course-assets` bucket's own cap. A caller may go
+   *  lower, never higher — the bucket has the last word. */
   maxSizeMB?: number
 }
 
@@ -32,7 +36,7 @@ export function InlineEditCover({
   aspect = "16/9",
   disabled = false,
   className,
-  maxSizeMB = 8,
+  maxSizeMB = COURSE_ASSETS.maxBytes / MB,
 }: InlineEditCoverProps) {
   const confirm = useConfirm()
   const { t } = useTranslation()
@@ -40,20 +44,17 @@ export function InlineEditCover({
   const [busy, setBusy] = React.useState(false)
   const [dragOver, setDragOver] = React.useState(false)
 
+  // The bucket's own limits, tightened to `maxSizeMB` when the caller
+  // asked for less.
+  const spec = { ...COURSE_ASSETS, maxBytes: Math.min(COURSE_ASSETS.maxBytes, maxSizeMB * MB) }
+
   const handleFile = async (file: File | undefined | null) => {
     if (!file) return
-    if (!file.type.startsWith("image/")) {
+    const issue = preflightUpload(file, spec)
+    if (issue) {
       toast({
-        title: t("inlineEdit.cover.unsupportedTitle"),
-        description: t("inlineEdit.cover.unsupportedDescription"),
-        variant: "destructive",
-      })
-      return
-    }
-    if (file.size > maxSizeMB * 1024 * 1024) {
-      toast({
-        title: t("inlineEdit.cover.tooLargeTitle"),
-        description: t("inlineEdit.cover.tooLargeDescription", { max: maxSizeMB }),
+        title: t(issue.kind === "size" ? "inlineEdit.cover.tooLargeTitle" : "inlineEdit.cover.unsupportedTitle"),
+        description: issue.message,
         variant: "destructive",
       })
       return
@@ -62,8 +63,11 @@ export function InlineEditCover({
       setBusy(true)
       await onUpload(file)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t("inlineEdit.cover.uploadFailedTitle")
-      toast({ title: t("inlineEdit.cover.uploadFailedTitle"), description: msg, variant: "destructive" })
+      toast({
+        title: t("inlineEdit.cover.uploadFailedTitle"),
+        description: describeUploadError(err, spec),
+        variant: "destructive",
+      })
     } finally {
       setBusy(false)
     }
@@ -171,7 +175,7 @@ export function InlineEditCover({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept={acceptAttribute(COURSE_ASSETS)}
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0]

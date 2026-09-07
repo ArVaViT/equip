@@ -40,10 +40,16 @@ export const progressService = {
     cacheInvalidatePrefix("analytics:course:")
   },
 
-  async getMyChapterProgress(courseId: string): Promise<string[]> {
+  /**
+   * Chapter ids the user has completed, or ``null`` when the server has no
+   * progress to report — the user is not enrolled (a teacher previewing her
+   * own course, most days). ``null`` is "unknown" to every caller: no ticks,
+   * and no locks — see `pages/Course/moduleProgress.ts`.
+   */
+  async getMyChapterProgress(courseId: string): Promise<string[] | null> {
     return cached(`progress:my:${courseId}`, CACHE_TTL.ONE_MINUTE, async () => {
-      const response = await api.get<string[]>(`/progress/course/${courseId}/my-progress`)
-      return response.data
+      const response = await api.get<string[] | null>(`/progress/course/${courseId}/my-progress`)
+      return response.data ?? null
     })
   },
 

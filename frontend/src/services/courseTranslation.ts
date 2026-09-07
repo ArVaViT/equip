@@ -29,6 +29,19 @@ export interface TranslationGapSummary {
   failed: number
 }
 
+/**
+ * Why a course is not whole yet, as one word the card turns into a
+ * sentence. Chosen by the server in this order — a person's gap
+ * outranks a machine's:
+ *
+ * - `needs_review` — translations came back and a person has to read
+ *   them before they are served. Nothing the teacher does moves them.
+ * - `failed_permanent` — the pipeline gave up after its retries; an
+ *   admin has to re-queue them.
+ * - `translating` — the pipeline has simply not got there yet.
+ */
+export type TranslationStuckReason = "needs_review" | "failed_permanent" | "translating"
+
 export interface CourseTranslationProgress {
   course_id: string
   status: string
@@ -44,6 +57,17 @@ export interface CourseTranslationProgress {
   blocked_edits: number
   /** False when no translation provider is configured. */
   enabled: boolean
+  /** `null` when the course is whole. See {@link TranslationStuckReason}. */
+  stuck_reason: TranslationStuckReason | null
+  /** How many (field, locale) pairs `stuck_reason` covers. */
+  stuck_count: number
+  /**
+   * A translation job for this course is queued or running right now.
+   * `false` beside a non-null `stuck_reason` is the state that used to
+   * look exactly like "working on it": nothing changes until somebody
+   * acts.
+   */
+  job_pending: boolean
 }
 
 export interface PrepareResult {

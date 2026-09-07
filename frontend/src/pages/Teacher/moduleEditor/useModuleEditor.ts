@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { DropResult } from "@hello-pangea/dnd";
+import { isAxiosError } from "axios";
 
 import { coursesService } from "@/services/courses";
 import { getErrorDetail } from "@/lib/errorDetail";
@@ -48,9 +49,17 @@ export function useModuleEditor(
         if (signal?.cancelled) return;
         setMod(data);
         setModDueDate(isoToLocalInput(data.due_date));
-      } catch {
+      } catch (err) {
         if (signal?.cancelled) return;
-        toast({ title: t("moduleEditor.toast.moduleNotFound"), variant: "destructive" });
+        // «Module not found» was the sentence for every failure, including a
+        // dropped connection to a module that is right there.
+        const notFound = isAxiosError(err) && err.response?.status === 404;
+        toast({
+          title: notFound
+            ? t("moduleEditor.toast.moduleNotFound")
+            : getErrorDetail(err, t("moduleEditor.toast.loadFailed")),
+          variant: "destructive",
+        });
         navigate(`/teacher/courses/${courseId}`);
       } finally {
         if (!signal?.cancelled) setLoading(false);

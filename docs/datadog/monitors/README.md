@@ -53,6 +53,13 @@ unread tokens per string without anyone noticing.
 | `translation-backlog-not-draining.json` | the queue never reaches empty for two hours: refilled as fast as it drains, or a job failing and re-queuing | **email** |
 | `edits-held-too-long.json` | edits to a live course blocked on a translation that cannot resolve itself — invisible to students, silent to the teacher | **email** |
 
+### Translation quality (added 2026-08-22)
+
+| File | What it catches | Notify |
+|---|---|---|
+| `a-row-is-parked-and-nobody-was-told.json` | a translation failed a blocking check and was parked at `needs_review`; the reader keeps the old text and nothing retries it until a person looks. One warning line, below the spike monitor's threshold | **email** |
+| `scripture-served-in-the-wrong-language.json` | the canonical verse could not be had for the target language and the reader gets the source-language verse inside translated prose (`verse_fallback_to_source`); usually the Bible API answering 429 | **email** |
+
 > **Note on queries.** These all match the backend's actual **Python-logger**
 > log shape (`status:error` / `status:warning`, `service:…`), not HTTP-access
 > fields. An earlier generation of JSONs queried `@http.url_details.path` /

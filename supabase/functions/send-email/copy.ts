@@ -9,11 +9,22 @@
 
 export const BRAND = "Equip";
 export const FROM = "Equip <noreply@equipbible.com>";
-const BTN_STYLE = "display: inline-block; background: #2563eb; color: #fff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 600; margin: 24px 0;";
-const WRAP_STYLE = "font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px;";
-const H1_STYLE = "color: #1a1a2e; font-size: 24px; margin-bottom: 16px;";
-const P_STYLE = "color: #4a4a6a; font-size: 16px; line-height: 1.6;";
-const SMALL_STYLE = "color: #8888a8; font-size: 13px;";
+/**
+ * These emails are the only thing a person sees before they ever reach the
+ * product, and they were dressed in a palette it left: a #2563eb button and
+ * three blue-violet greys, on a page that is paper and ink everywhere else.
+ *
+ * The colours below are the live design tokens — paper hsl(40 12% 97%), ink
+ * hsl(30 8% 11%), muted hsl(35 7% 40%) — written as hex because email clients
+ * do not read CSS variables. The heading is a serif for the same reason the
+ * interface sets one; Literata cannot be webfont-loaded reliably in mail, so
+ * Georgia leads a serif stack rather than a system sans pretending to be it.
+ */
+const BTN_STYLE = "display: inline-block; background: #1E1C1A; color: #F8F8F6; text-decoration: none; padding: 12px 32px; border-radius: 6px; font-weight: 600; margin: 24px 0;";
+const WRAP_STYLE = "font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F8F8F6; max-width: 560px; margin: 0 auto; padding: 40px 20px;";
+const H1_STYLE = "font-family: Literata, Georgia, Cambria, 'Times New Roman', serif; color: #1E1C1A; font-size: 24px; margin-bottom: 16px;";
+const P_STYLE = "color: #45413B; font-size: 16px; line-height: 1.6;";
+const SMALL_STYLE = "color: #6D675F; font-size: 13px;";
 
 /**
  * The four transactional emails, in the four languages this platform serves.
@@ -181,7 +192,7 @@ export const COPY: Record<string, Record<Locale, Copy>> = {
       footer: "Посилання діє добу. Якщо ви цього не запитували, просто не відповідайте на цей лист.",
     },
   },
-  magic_link: {
+  magiclink: {
     en: {
       subject: `${BRAND} — your login link`,
       heading: "Your login link",
@@ -265,10 +276,46 @@ export function renderEmail(copy: Copy, name: string, url: string): string {
     `;
 }
 
-/** Falls back to signup for an action type we have no copy for. */
+/**
+ * Every `email_action_type` GoTrue can send this hook, verbatim from the
+ * Send Email Hook schema. Kept here so a test can hold the keys of `COPY`
+ * against it: the table was written with `magic_link`, GoTrue sends
+ * `magiclink`, and the two never met. The mismatch was silent — the key
+ * missed, the fallback below took over, and anyone asking for a sign-in
+ * link was emailed "Thanks for registering. Confirm your address."
+ */
+export const GOTRUE_EMAIL_ACTION_TYPES = [
+  "signup",
+  "invite",
+  "magiclink",
+  "recovery",
+  "email_change",
+  "email",
+  "reauthentication",
+  "password_changed_notification",
+  "email_changed_notification",
+  "phone_changed_notification",
+  "identity_linked_notification",
+  "identity_unlinked_notification",
+  "mfa_factor_enrolled_notification",
+  "mfa_factor_unenrolled_notification",
+] as const;
+
+/**
+ * Falls back to signup for an action type we have no copy for.
+ *
+ * The fallback is deliberate — a new action type should still send *an*
+ * email rather than none — but it is no longer silent: a type we do not
+ * recognise at all is a bug in this table, and the caller logs it.
+ */
 export function copyFor(emailType: string, locale: Locale): Copy {
   const byLocale = COPY[emailType] ?? COPY.signup;
   return byLocale[locale] ?? byLocale[DEFAULT_LOCALE];
+}
+
+/** True when `COPY` has wording written specifically for this action type. */
+export function hasCopyFor(emailType: string): boolean {
+  return Object.hasOwn(COPY, emailType);
 }
 
 

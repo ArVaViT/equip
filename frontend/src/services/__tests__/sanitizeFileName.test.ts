@@ -44,3 +44,71 @@ describe("sanitizeFileName", () => {
     expect(result.length).toBeLessThanOrEqual(100)
   })
 })
+
+/**
+ * Supabase Storage accepts only ``[A-Za-z0-9_/!.*'() &$=@;:+,?-]`` in an
+ * object key. Verified against production: ``Проповедь_12_сентября.pdf``
+ * was a 400 ``InvalidKey``; ``Sermon_12.pdf`` in the same path was a 200.
+ * Every teacher this product has names files in Cyrillic, so this was
+ * nearly every upload.
+ *
+ * The key doubles as the display name in the materials list, which is
+ * why the letters are transliterated rather than blanked: a list of
+ * ``_______.pdf`` is legal and useless.
+ *
+ * Exact strings throughout — no ``\b``: a JavaScript word boundary is
+ * ASCII-only and would never match beside a Cyrillic letter.
+ */
+describe("sanitizeFileName — Cyrillic", () => {
+  const STORAGE_SAFE = /^[A-Za-z0-9._()-]+$/
+
+  it("transliterates a Russian name instead of blanking it", () => {
+    expect(sanitizeFileName("Проповедь_12_сентября.pdf")).toBe("Propoved_12_sentyabrya.pdf")
+  })
+
+  it("keeps the Latin half of a mixed name and transliterates the rest", () => {
+    // The em dash is not ASCII either; it and the spaces around it
+    // collapse into one underscore rather than three.
+    expect(sanitizeFileName("Lecture 3 — Введение.pptx")).toBe("Lecture_3_Vvedenie.pptx")
+  })
+
+  it("collapses an emoji (a surrogate pair) into a single underscore", () => {
+    expect(sanitizeFileName("Урок 🎉 1.pdf")).toBe("Urok_1.pdf")
+  })
+
+  it("survives a name that is nothing but Cyrillic", () => {
+    expect(sanitizeFileName("Домашнее задание")).toBe("Domashnee_zadanie")
+  })
+
+  it("transliterates a Cyrillic extension too", () => {
+    expect(sanitizeFileName("Конспект.пдф")).toBe("Konspekt.pdf")
+  })
+
+  it("keeps capitals where the teacher put them", () => {
+    expect(sanitizeFileName("Журнал ЖУРНАЛ.docx")).toBe("Zhurnal_ZhURNAL.docx")
+  })
+
+  it("knows the Ukrainian letters Russian lacks", () => {
+    expect(sanitizeFileName("Їжак і Ґудзик є.pdf")).toBe("Yizhak_i_Gudzik_ye.pdf")
+  })
+
+  it("emits only characters Storage accepts, whatever it is given", () => {
+    for (const name of [
+      "Проповедь_12_сентября.pdf",
+      "Фото с телефона (утро).jpg",
+      "Q&A #3 [final] 100%.pdf",
+      "🎉🎉🎉.pdf",
+      "文件.pdf",
+      "résumé.docx",
+    ]) {
+      expect(sanitizeFileName(name)).toMatch(STORAGE_SAFE)
+    }
+  })
+
+  it("still caps the length after transliteration, keeping the extension", () => {
+    // ``щ`` becomes four letters; the cap applies to the result, not the input.
+    const result = sanitizeFileName("щ".repeat(60) + ".pdf")
+    expect(result.length).toBeLessThanOrEqual(100)
+    expect(result.endsWith(".pdf")).toBe(true)
+  })
+})

@@ -18,6 +18,14 @@ interface UseQuizDraftResult {
   loading: boolean
   existingQuiz: Quiz | null
   setExistingQuiz: (q: Quiz | null) => void
+  /** How many attempts students have made on ``existingQuiz`` — what a
+   *  rebuild would delete. 0 when there is no quiz or the count failed
+   *  to load (the server refuses the delete either way). */
+  attemptCount: number
+  /** Questions at least one student has answered: their type is fixed. */
+  answeredQuestionIds: ReadonlySet<string>
+  /** After a rebuild: the new quiz has no attempts yet. */
+  clearAttempts: () => void
   title: string
   setTitle: (v: string) => void
   description: string
@@ -52,6 +60,8 @@ export function useQuizDraft({
   const [passingScore, setPassingScore] = useState(70)
   const [maxAttempts, setMaxAttempts] = useState<number>(1)
   const [questions, setQuestions] = useState<DraftQuestion[]>([])
+  const [attemptCount, setAttemptCount] = useState(0)
+  const [answeredQuestionIds, setAnsweredQuestionIds] = useState<ReadonlySet<string>>(() => new Set())
 
   useEffect(() => {
     let cancelled = false
@@ -82,6 +92,22 @@ export function useQuizDraft({
                   .map((o) => ({ ...o, is_correct: !!o.is_correct })),
               })),
           )
+          // What a rebuild would cost. Best-effort: if this fails the
+          // editor still opens, the count reads 0, and the server's own
+          // 409 is the backstop — it never deletes attempts unasked.
+          try {
+            const attempts = await coursesService.getQuizAttempts(q.id)
+            if (cancelled) return
+            setAttemptCount(attempts.length)
+            setAnsweredQuestionIds(
+              new Set(attempts.flatMap((attempt) => (attempt.answers ?? []).map((a) => a.question_id))),
+            )
+          } catch {
+            if (!cancelled) {
+              setAttemptCount(0)
+              setAnsweredQuestionIds(new Set())
+            }
+          }
         } else {
           setMaxAttempts(defaultMaxAttempts(chapterType))
         }
@@ -198,6 +224,11 @@ export function useQuizDraft({
     [],
   )
 
+  const clearAttempts = useCallback(() => {
+    setAttemptCount(0)
+    setAnsweredQuestionIds(new Set())
+  }, [])
+
   const resetAll = useCallback(() => {
     setExistingQuiz(null)
     setTitle("")
@@ -205,12 +236,16 @@ export function useQuizDraft({
     setPassingScore(70)
     setMaxAttempts(defaultMaxAttempts(chapterType))
     setQuestions([])
-  }, [chapterType])
+    clearAttempts()
+  }, [chapterType, clearAttempts])
 
   return {
     loading,
     existingQuiz,
     setExistingQuiz,
+    attemptCount,
+    answeredQuestionIds,
+    clearAttempts,
     title,
     setTitle,
     description,

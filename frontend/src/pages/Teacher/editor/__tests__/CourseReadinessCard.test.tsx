@@ -124,15 +124,16 @@ describe("CourseReadinessCard", () => {
 
     // Collapsed: the check's message must not be in the DOM yet.
     expect(
-      screen.queryByText(/has a description for the catalog/i),
+      screen.queryByText(/has no description for the catalog/i),
     ).not.toBeInTheDocument()
 
     const header = screen.getByRole("button", { expanded: false })
     await user.click(header)
 
-    // Expanded: the check appears.
+    // Expanded: the check appears — phrased as what is missing, because
+    // it is failing. The affirmative sentence is for the crossed-out row.
     expect(
-      screen.getByText(/has a description for the catalog/i),
+      screen.getByText(/has no description for the catalog/i),
     ).toBeInTheDocument()
   })
 

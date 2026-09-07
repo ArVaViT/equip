@@ -10,5 +10,9 @@ Disallow: /dashboard
 Disallow: /profile
 Disallow: /certificates
 Disallow: /calendar
+# One-time links carrying a token in the URL. Nothing to index, and a
+# crawler following one burns it.
+Disallow: /auth
+Disallow: /invite
 
 Sitemap: https://equipbible.com/sitemap.xml

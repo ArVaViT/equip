@@ -32,9 +32,7 @@
       "empty": "Click or drop image",
       "disabled": "No cover",
       "unsupportedTitle": "Unsupported file",
-      "unsupportedDescription": "Pick an image file.",
       "tooLargeTitle": "Image too large",
-      "tooLargeDescription": "Max {{max}} MB.",
       "uploadFailedTitle": "Upload failed",
       "removeConfirmTitle": "Remove cover?",
       "removeConfirmDescription": "This will clear the course cover image.",
@@ -46,8 +44,8 @@
     "courses": "Courses",
     "calendar": "Calendar",
     "certificates": "Certificates",
-    "manage": "Manage",
-    "manageCourses": "Manage Courses",
+    "manage": "Teaching",
+    "manageCourses": "Courses I teach",
     "admin": "Admin",
     "adminPanel": "Admin Panel",
     "profile": "Profile",
@@ -67,20 +65,17 @@
   },
   "landing": {
     "hero": {
-      "registerCta": "Create account"
-    },
-    "trust": {
-      "openSource": "Free & open-source",
-      "bilingual": "Four languages: RU · EN · DE · UK",
-      "certificates": "Certificates you can verify"
+      "registerCta": "Create account",
+      "manifesto": "Study Scripture in order, not in fragments",
+      "subline": "Courses with real assessment and a certificate anyone can check — for people who take Scripture seriously.",
+      "facts": "Free · Open source · RU EN DE UK · Verifiable certificate"
     },
     "value": {
       "heading": "What's in Equip",
-      "subheading": "Tools for serious Scripture study — no distractions, no lost progress.",
       "structure": {
         "eyebrow": "Course structure",
         "title": "A course, not a pile of videos",
-        "body": "Every course is modules and chapters in a fixed order. You always see what's done, what's left, and what comes next.",
+        "body": "Modules and chapters in a fixed order: you always see what is done and what comes next.",
         "module": "Module 1 · Genesis 1–11",
         "chapter1": "Chapter 1 — Creation",
         "chapter2": "Chapter 2 — The Fall",
@@ -89,21 +84,21 @@
       "assessment": {
         "eyebrow": "Assessment",
         "title": "Not just multiple choice",
-        "body": "Four question types, including essay and short answer — graded by a real teacher, not only auto-scored.",
+        "body": "Four question types, essays among them — read by a teacher, not only by a machine.",
         "sampleQuestion": "Summarize the main idea of this chapter in your own words.",
         "gradedBadge": "Teacher graded"
       },
       "certificates": {
         "eyebrow": "Certification",
         "title": "A certificate you can verify",
-        "body": "Complete a course and get a certificate with a unique number. Anyone can check it's real by that number.",
+        "body": "Every certificate carries its own number, and anyone can check it.",
         "certTitle": "Certificate of Completion",
         "verifyLabel": "Verify by number"
       },
       "bilingual": {
         "eyebrow": "Language",
         "title": "Multilingual from day one",
-        "body": "A teacher's Russian-language course becomes available in English, German, and Ukrainian automatically — no manual translation, no delay.",
+        "body": "A course written in Russian is available in English, German and Ukrainian straight away.",
         "caption": "Course materials translated automatically"
       }
     },
@@ -115,7 +110,7 @@
     },
     "finalCta": {
       "heading": "Ready to start?",
-      "body": "Sign up in a minute — courses are free, progress saves automatically.",
+      "body": "The courses are free, and progress saves itself.",
       "primary": "Create account"
     }
   },
@@ -139,7 +134,17 @@
       "emptyDescription": "Open the full calendar to see what's coming up this week."
     },
     "readingProgress_one": "{{read}} of {{count}} chapter read",
-    "readingProgress_other": "{{read}} of {{count}} chapters read"
+    "readingProgress_other": "{{read}} of {{count}} chapters read",
+    "teaching": {
+      "title": "Courses you teach",
+      "description": "Editing, grading and publishing all live under “Teaching”.",
+      "openAll": "All my courses",
+      "empty": "You have no courses yet. The first one takes a minute — a title and a description, the rest later.",
+      "createFirst": "Create your first course",
+      "edit": "Open in the editor",
+      "more_one": "and {{count}} more course",
+      "more_other": "and {{count}} more courses"
+    }
   },
   "onboarding": {
     "student": {
@@ -154,6 +159,9 @@
       "title": "Your first course starts here",
       "body": "Equip is your classroom. Lay out a course in chapters, write your own quizzes, sign certificates when students finish — and keep ownership of every word the whole way.",
       "primaryCta": "Create your first course"
+    },
+    "teacherAsStudent": {
+      "body": "Courses you are enrolled in as a student will appear here. The ones you teach are in the “Courses you teach” card and under “Teaching”."
     }
   },
   "completion": {
@@ -620,6 +628,12 @@
       "timedOut": "Sign-in didn't complete. Please try again.",
       "redirecting": "Redirecting to login..."
     },
+    "notice": {
+      "sessionExpired": "Your session has expired. Sign in again to continue.",
+      "accountDeactivated": "This account has been deactivated. If that is a mistake, contact your administrator.",
+      "signInToContinue": "Sign in to open this page.",
+      "sectionUnavailable": "This section is not available to you."
+    },
     "forgotPassword": {
       "heading": "Reset password",
       "subheading": "Enter your email and we'll send you a reset link",
@@ -665,7 +679,13 @@
       "generated": "Password generated and shown. Save it in your password manager before continuing.",
       "show": "Show password",
       "hide": "Hide password"
-    }
+    },
+    "signInLink": "Email me a link instead",
+    "signInLinkSending": "Sending…",
+    "signInLinkSent": "If we have that address, the email is on its way. Open it and press the button.",
+    "signInLinkAgain": "Send it again",
+    "signInLinkAgainIn": "Send it again in {{seconds}}s",
+    "signInLinkBackToPassword": "Use a password"
   },
   "profile": {
     "fullName": "Full Name",
@@ -747,6 +767,7 @@
       "refresh": "Refresh Page"
     },
     "generic": "Something went wrong.",
+    "network": "No connection. Check your internet and try again.",
     "byCode": {
       "auth_required": "Please sign in again.",
       "auth_forbidden": "You don't have permission for this.",
@@ -761,6 +782,9 @@
       "quiz_not_open": "This quiz isn't open.",
       "quiz_attempts_exhausted": "You've used all your attempts.",
       "quiz_not_translated": "This quiz isn't in your language yet.",
+      "quiz_question_already_answered": "Students have already answered this question, so its type can't change. You can still correct the wording, points and the right answer; for a different kind of question, add a new one.",
+      "quiz_has_attempts_one": "This quiz already has {{count}} attempt. Deleting it would delete that attempt and its grade.",
+      "quiz_has_attempts_other": "This quiz already has {{count}} attempts. Deleting it would delete every attempt and grade.",
       "daily_challenge_not_scheduled": "There's no question for today.",
       "daily_challenge_not_translated": "Today's question isn't in your language yet.",
       "daily_challenge_already_attempted": "You've already answered today.",
@@ -774,12 +798,71 @@
       "legal_document_changed": "This document has changed. Please reload and read it again."
     },
     "byStatus": {
+      "400": "The request couldn't be processed. Check what you entered.",
       "401": "Please sign in again.",
       "403": "You don't have permission for this.",
       "404": "We couldn't find that.",
       "409": "This conflicts with newer data. Reload and try again.",
+      "413": "This block is too large to save. Split it into several.",
+      "422": "Something you entered isn't right.",
       "429": "Too many requests. Please slow down.",
       "500": "Server error. Please try again later."
+    },
+    "where": {
+      "questions": "Question {{n}}",
+      "options": "option {{n}}"
+    },
+    "fields": {
+      "title": "title",
+      "description": "description",
+      "passing_score": "passing score",
+      "max_attempts": "maximum attempts",
+      "quiz_type": "quiz type",
+      "questions": "questions",
+      "question_text": "question text",
+      "question_type": "question type",
+      "points": "points",
+      "min_words": "minimum words",
+      "options": "options",
+      "option_text": "option text",
+      "is_correct": "correct answer",
+      "order_index": "order"
+    },
+    "validation": {
+      "less_than_equal": "must be no more than {{le}}",
+      "less_than": "must be less than {{lt}}",
+      "greater_than_equal": "must be at least {{ge}}",
+      "greater_than": "must be more than {{gt}}",
+      "string_too_short": "must be at least {{min_length}} characters",
+      "string_too_long": "must be no longer than {{max_length}} characters",
+      "too_short": "needs at least {{min_length}}",
+      "too_long": "no more than {{max_length}} allowed",
+      "missing": "is required",
+      "extra_forbidden": "isn't a field we know",
+      "int_parsing": "must be a whole number",
+      "int_type": "must be a whole number",
+      "int_from_float": "must be a whole number",
+      "string_type": "must be text",
+      "bool_type": "must be yes or no",
+      "literal_error": "isn't one of the allowed values",
+      "invalid": "isn't right",
+      "quiz_question_blank": "enter the question text",
+      "quiz_option_blank": "enter the option text",
+      "quiz_too_few_options": "needs at least two options",
+      "quiz_no_correct_option": "mark one option as correct",
+      "quiz_many_correct_options": "only one option can be correct",
+      "quiz_options_not_allowed": "a written-answer question has no options"
+    },
+    "storage": {
+      "tooLarge": "This file is {{sizeMb}} MB; the limit is {{maxMb}} MB.",
+      "tooLargeServer": "Storage refused the file: it is over {{maxMb}} MB.",
+      "unsupportedType": "This file format isn't supported. Allowed: {{formats}}.",
+      "heic": "HEIC photos from an iPhone aren't supported. Save it as a JPEG first — on the iPhone: Settings → Camera → Formats → Most Compatible.",
+      "invalidName": "Storage didn't accept the file name. Rename the file using Latin letters and try again.",
+      "forbidden": "You don't have permission to upload to this course. Sign in again and retry.",
+      "network": "Couldn't reach storage. Check your connection and try again.",
+      "generic": "The upload failed. Please try again.",
+      "genericWithCode": "The upload failed ({{code}}). Please try again."
     }
   },
   "toast": {
@@ -911,11 +994,17 @@
       "titleRequired": "Quiz title is required",
       "addAtLeastOneQuestion": "Add at least one question",
       "validScoreRequired": "Enter a valid score (0 or higher)",
-      "scoreCantExceed": "Score can't exceed {{max}} for this question"
+      "scoreCantExceed": "Score can't exceed {{max}} for this question",
+      "questionTextRequired": "Question {{n}}: enter the question text",
+      "optionTextRequired": "Question {{n}}, option {{m}}: enter the option text",
+      "tooFewOptions": "Question {{n}}: add at least two options",
+      "correctAnswerRequired": "Question {{n}}: mark the correct answer",
+      "pointsRange": "Question {{n}}: points must be a whole number from 1 to 100"
     },
     "toast": {
       "quizSaved": "Quiz saved",
       "quizSaveFailed": "Failed to save quiz",
+      "oldQuizNotDeleted": "The new quiz is saved, but the old one couldn't be deleted",
       "quizDeleted": "Quiz deleted",
       "quizDeleteFailed": "Failed to delete quiz",
       "gradeSaved": "Grade saved",
@@ -924,7 +1013,15 @@
     "confirmDelete": {
       "title": "Delete this quiz?",
       "description": "Students will lose access to the quiz and its attempts.",
+      "withAttempts_one": "This quiz already has {{count}} attempt. It will be deleted along with its grade, for good.",
+      "withAttempts_other": "This quiz already has {{count}} attempts. They will all be deleted along with their grades, for good.",
       "confirm": "Delete quiz"
+    },
+    "confirmRebuild": {
+      "title": "Rebuild this quiz?",
+      "description_one": "You added or removed questions or options. That change means rebuilding the quiz, and it already has {{count}} attempt — the attempt and its grade will be deleted for good. To keep it, cancel and limit the edit to wording, points and correct answers.",
+      "description_other": "You added or removed questions or options. That change means rebuilding the quiz, and it already has {{count}} attempts — every attempt and grade will be deleted for good. To keep them, cancel and limit the edit to wording, points and correct answers.",
+      "confirm": "Rebuild and delete attempts"
     },
     "heading": {
       "editQuiz": "Edit Quiz",
@@ -963,6 +1060,7 @@
       "removeQuestionAria": "Remove question {{n}}",
       "removeOptionAria": "Remove option {{n}}",
       "questionTypeAria": "Question type",
+      "typeLocked": "Students have already answered this question, so its type can't change. Correct the wording, points or the right answer instead; for a different kind of question, add a new one.",
       "trueFalseOption": {
         "True": "True",
         "False": "False"
@@ -1035,7 +1133,14 @@
       "saveButton": "Save Text",
       "statusUnsaved": "Unsaved changes...",
       "statusAutoSaving": "Auto-saving...",
-      "statusSaved": "Saved"
+      "statusSaved": "Saved",
+      "autoSaveFailedHint": "The text stays in this browser; we will try again in a few seconds.",
+      "statusFailed": "Not saved on the server yet — retrying…",
+      "saveAfterCloseFailed": "The block you closed could not be saved",
+      "saveAfterCloseFailedHint": "Its text is kept in this browser. Open the block again to get it back.",
+      "draftFound": "This browser holds unsaved text for this block, and it differs from the version on the server. Bring it back, or keep what the server has?",
+      "draftRestore": "Bring back the unsaved text",
+      "draftDiscard": "Keep the server version"
     },
     "file": {
       "uploaded": "File uploaded",
@@ -1244,6 +1349,7 @@
       "print": "Print",
       "back": "Back to certificates",
       "notIssued": "This certificate has not been issued yet",
+      "loadFailed": "Could not load the certificate.",
       "schoolUnnamed": "School name not set",
       "open": "Open certificate",
       "certificateOfCompletion": "Certificate of Completion",
@@ -1532,6 +1638,11 @@
       "reject": "Reject",
       "notEarnedYet_one": "Not earned yet: {{count}} thing outstanding",
       "notEarnedYet_other": "Not earned yet: {{count}} things outstanding"
+    },
+    "publishConfirm": {
+      "title": "Publish this course?",
+      "description": "The course appears in the catalog once every language has it. Until then students cannot see it — that is expected.",
+      "confirm": "Publish"
     }
   },
   "teacherEditor": {
@@ -1572,12 +1683,20 @@
         "carouselRole": "carousel",
         "prevAria": "Previous announcement",
         "nextAria": "Next announcement",
-        "position": "{{current}} / {{total}}"
+        "position": "{{current}} / {{total}}",
+        "newAnnouncement": "New announcement",
+        "editAnnouncement": "Edit announcement",
+        "save": "Save",
+        "saving": "Saving…",
+        "cancel": "Cancel",
+        "editAria": "Edit announcement {{title}}",
+        "notifyHint": "Enrolled students are notified when you post."
       },
       "materials": {
         "title": "Course Materials",
         "upload": "Upload File",
         "empty": "No materials uploaded yet.",
+        "loadFailed": "Could not load the list of materials.",
         "sizeBytes": "{{b}} B",
         "sizeKb": "{{kb}} KB",
         "sizeMb": "{{mb}} MB",
@@ -1604,7 +1723,8 @@
           "other": "Other"
         },
         "editAria": "Edit event {{title}}",
-        "deleteAria": "Delete event {{title}}"
+        "deleteAria": "Delete event {{title}}",
+        "notifyHint": "Enrolled students are notified about a new event and about a changed date."
       }
     },
     "toast": {
@@ -1630,7 +1750,11 @@
       "eventDeleteFailed": "Failed to delete event",
       "materialUploadFailed": "Upload failed",
       "materialDownloadFailed": "Download failed",
-      "materialDeleteFailed": "Failed to delete material"
+      "materialDeleteFailed": "Failed to delete material",
+      "publishing": "Published. It goes into the catalog once every language has it",
+      "announcementPosted": "Announcement posted — enrolled students will be notified",
+      "announcementUpdated": "Announcement updated",
+      "announcementUpdateFailed": "Failed to save announcement"
     },
     "confirm": {
       "deleteModuleTitle": "Delete this module?",
@@ -1655,6 +1779,7 @@
     },
     "toast": {
       "moduleNotFound": "Module not found",
+      "loadFailed": "Could not load the module.",
       "failedSaveModule": "Failed to save module",
       "failedSaveDueDate": "Failed to save due date",
       "chapterAdded": "Chapter added",
@@ -1744,7 +1869,9 @@
       "instituteDescription": "Students cannot self-enroll. Add them via a cohort in the admin panel.",
       "save": "Save",
       "saving": "Saving…"
-    }
+    },
+    "publishing": "Publishing",
+    "viewAsStudent": "View as a student"
   },
   "chapterEditor": {
     "notFound": {
@@ -1778,7 +1905,12 @@
     "save": "Save Chapter",
     "saving": "Saving...",
     "saveHint": "Ctrl+S to save",
-    "unsavedChanges": "You have unsaved changes"
+    "unsavedChanges": "You have unsaved changes",
+    "typeChangeConfirm": {
+      "title": "Change the chapter type?",
+      "description": "Nothing you wrote is deleted. The \"{{from}}\" editor is hidden while the chapter is a \"{{to}}\", and comes back with everything in it the moment you switch the type back.",
+      "confirm": "Change type"
+    }
   },
   "courseDetail": {
     "allCourses": "All Courses",
@@ -1823,6 +1955,14 @@
     },
     "upcoming": {
       "heading": "Upcoming Deadlines & Events"
+    },
+    "preview": {
+      "eyebrow": "Preview",
+      "backToEditor": "Back to the course editor",
+      "note": "This is how students will see the course once it is published. Until then nobody can enroll — but you can open any chapter and go through it as a student would.",
+      "heading": "Contents",
+      "emptyModule": "This module has no chapters yet.",
+      "noModules": "No modules yet — add them in the editor."
     }
   },
   "gradebook": {
@@ -2204,14 +2344,41 @@
       "errorPrefix": "Audit log error",
       "errorTableMissing": "The audit_logs table may not exist yet. Deploy the latest migration.",
       "actionValue": {
-        "create": "Created",
-        "update": "Updated",
-        "delete": "Deleted",
-        "publish": "Published",
-        "enroll": "Enrolled",
+        "accept": "Invitation accepted",
+        "accept_needs_review": "Translation accepted",
+        "add_student": "Student added",
+        "appoint_director": "Director appointed",
         "approve": "Approved",
+        "attach_course": "Course attached",
+        "bulk_role_update": "Roles changed in bulk",
+        "chapter_completed_by_teacher": "Chapter marked done by teacher",
+        "chapter_completion_removed_by_teacher": "Chapter mark removed",
+        "complete": "Completion",
+        "create": "Created",
+        "delete": "Deleted",
+        "detach_course": "Course detached",
+        "enroll": "Enrolled",
+        "grade": "Graded",
+        "grade_exemption_created": "Work excused",
+        "grade_exemption_removed": "Excusal removed",
+        "grade_sheet_finalized": "Grade sheet closed",
+        "grade_sheet_reopened": "Grade sheet reopened",
+        "grading_scheme_changed": "Grading scheme changed",
+        "permanent_delete": "Permanent deletion",
+        "publish": "Published",
+        "purge_orphan_translations": "Orphan translations purged",
         "reject": "Rejected",
-        "grade": "Graded"
+        "remove_student": "Student removed",
+        "reset_failed_permanent": "Failed translations reset",
+        "restore": "Restore",
+        "restore_last_good_translation": "Previous translation restored",
+        "resync_progress": "Progress recomputed",
+        "retake_request": "Retake requested",
+        "retry_needs_review": "Translation queued again",
+        "revoke": "Revocation",
+        "rubric_attached": "Rubric attached",
+        "rubric_created": "Rubric created",
+        "update": "Updated"
       },
       "resourceValue": {
         "course": "Course",
@@ -2352,7 +2519,12 @@
       "subheadingDefault": "Almost there — just one more step",
       "body": "We sent a confirmation link to <strong>{{email}}</strong>.",
       "clickLinkToActivate": "Click the link in the email to activate your account.",
-      "backToSignIn": "Back to Sign In"
+      "backToSignIn": "Back to Sign In",
+      "checkSpam": "If nothing arrives within a minute, check your Spam folder. The link works for 24 hours.",
+      "resend": "Send the email again",
+      "resendIn": "Send again in {{seconds}}s",
+      "resent": "Email sent again.",
+      "resendFailed": "Could not send the email. Please try again in a minute."
     }
   },
   "validation": {
@@ -2363,9 +2535,6 @@
   "editor": {
     "toast": {
       "imageUploadFailed": "Image upload failed",
-      "imageUploadFailedDetail": "Image upload failed: {{detail}}",
-      "imageWrongType": "That file isn't an image ({{type}}). Pick a JPG, PNG, WebP, or GIF.",
-      "imageTooLarge": "Image is too large. Maximum size is {{maxMb}} MB.",
       "audioUrlInvalid": "Audio URL must start with http(s)",
       "invalidUrl": "That doesn't look like a valid URL. Use a full address like https://example.com/page."
     },
@@ -2444,6 +2613,24 @@
       "quizWeightNonzero": "Quizzes count toward the final grade.",
       "assignmentWeightNonzero": "Assignments count toward the final grade.",
       "quizThresholdBelowCourse": "Some quizzes pass at a lower score than the course does. A student can clear every quiz and still finish below the course's pass line."
+    },
+    "missing": {
+      "hasDescription": "The course has no description for the catalog yet.",
+      "hasCoverImage": "The course has no cover image yet.",
+      "translationsComplete": "Not every language has this course yet. It goes into the catalog once they all do.",
+      "hasEnrollmentWindow": "Enrollment open / close dates are not set.",
+      "hasAtLeastOneModule": "The course has no modules yet.",
+      "hasMultipleModules": "The course has only one module.",
+      "moduleHasChapters": "\"{{title}}\" has no chapters yet.",
+      "readingHasContent": "\"{{title}}\" has no reading content yet.",
+      "quizHasQuestion": "Quiz in \"{{title}}\" has no questions yet.",
+      "examHasQuestion": "Exam in \"{{title}}\" has no questions yet.",
+      "quizQuestionsComplete": "Some questions in \"{{title}}\" are unfinished (missing options or a correct marker).",
+      "assignmentHasBrief": "Assignment in \"{{title}}\" has no brief / description yet.",
+      "quizThresholdAboveCourse": "A quiz demands a higher score than the course does. Students can pass the course on paper and still never complete the chapter, so the certificate stays out of reach.",
+      "quizWeightNonzero": "Quizzes do not count toward the final grade.",
+      "assignmentWeightNonzero": "Assignments do not count toward the final grade.",
+      "quizThresholdBelowCourse": "Some quizzes pass at a lower score than the course does. A student can clear every quiz and still finish below the course's pass line."
     }
   },
   "dateRangePicker": {
@@ -2473,6 +2660,7 @@
     "logOutAndSwitch": "Log out and switch accounts",
     "errors": {
       "notFound": "This invitation link isn't valid. Double-check the link or ask the admin who invited you to resend it.",
+      "loadFailed": "Could not check the invitation. Check your connection and try again — the link itself is still good.",
       "unusable": "This invitation has already been used, was revoked, or has expired. Ask the admin who invited you for a new one.",
       "emailMismatch": "This invitation was sent to a different email address.",
       "emailMismatchDetail": "This invitation was sent to <strong>{{invited}}</strong>, but you're signed in as <strong>{{current}}</strong>.",
@@ -2528,9 +2716,11 @@
   "vedomost": {
     "title": "Grade sheet",
     "loading": "Loading the grade sheet…",
+    "loadFailed": "Could not load the grade sheet.",
     "notClosedTitle": "This grade sheet has not been closed",
     "notClosedBody": "Closing it freezes every student's result as it stands today. The printed page reads from that snapshot, so re-marking work later cannot change a document already signed.",
     "close": "Close the grade sheet",
+    "closeFailed": "Could not close the grade sheet.",
     "print": "Print",
     "closedOn": "Closed {{date}}",
     "wasReopened": "This sheet replaces a reopened one. Reason: {{reason}}",
@@ -2565,6 +2755,7 @@
     "totalSoFar": "So far",
     "incompleteHint": "Until every criterion has a level, the work is not graded and the student sees nothing.",
     "loadFailed": "Could not load the rubric",
+    "loadFailedBody": "Marking waits until it is here — a bare number would not match the rubric.",
     "saveFailed": "Could not save the marks",
     "title": "Rubric",
     "yourGrid": "How your work was marked"
@@ -2644,8 +2835,16 @@
     "behindBy": "— {{count}} missing",
     "heldEdits": "{{count}} edits waiting on translation. Students see them once every language is ready.",
     "blockedEdits": "{{count}} edits are stuck. A translation failed its check and needs a person.",
-    "needsReview": "{{count}} translations need review. They will not resolve on their own.",
-    "openReviewQueue": "Open the review queue"
+    "openReviewQueue": "Open the review queue",
+    "waitingNote": "Students cannot see the course until every language has it. That is expected — it appears in the catalog on its own once the translations are ready.",
+    "beforePublishNote": "Once you publish, the course appears in the catalog when every language has it. Until then students cannot see it — that is expected.",
+    "working": "Translating — {{count}} left. This usually takes a few minutes.",
+    "waitingForReview_one": "{{count}} passage is waiting for a person to check it. We already know — nothing is needed from you.",
+    "waitingForReview_other": "{{count}} passages are waiting for a person to check them. We already know — nothing is needed from you.",
+    "couldNotTranslate_one": "{{count}} passage could not be translated automatically. We already know and will translate it by hand — nothing is needed from you.",
+    "couldNotTranslate_other": "{{count}} passages could not be translated automatically. We already know and will translate them by hand — nothing is needed from you.",
+    "notStartedYet": "Translation has not started yet. Press “Prepare for publication” — or it starts on its own when you publish the course.",
+    "continuesOnItsOwn": "Translation continues on its own — nothing is needed from you."
   },
   "verify": {
     "eyebrow": "AUTHENTICITY",

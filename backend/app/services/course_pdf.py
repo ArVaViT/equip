@@ -25,7 +25,6 @@ Out of scope (deliberate):
 from __future__ import annotations
 
 import io
-import re
 from typing import TYPE_CHECKING
 
 from app.core.sanitize import html_to_plain_text
@@ -34,10 +33,6 @@ if TYPE_CHECKING:
     from reportlab.lib.styles import ParagraphStyle
 
     from app.models.course import Course
-
-
-_TAG_STRIP = re.compile(r"<[^>]+>")
-_WHITESPACE_RUN = re.compile(r"\s+")
 
 
 def _to_plain_text(html: str | None) -> str:

@@ -440,6 +440,8 @@ export type NotificationType =
   | 'certificate_rejected'
   | 'assignment_graded'
   | 'new_announcement'
+  | 'new_event'
+  | 'event_rescheduled'
   | 'retake_requested'
 
 export interface Notification {

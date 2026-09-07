@@ -212,3 +212,77 @@ def test_progress_is_owner_only(student_client: TestClient, db: Session):
     resp = student_client.get(f"{_PREFIX}/{course.id}/translation-progress")
 
     assert resp.status_code in (403, 404)
+
+
+# ---------------------------------------------------------------------------
+# What the card can say beyond a number
+# ---------------------------------------------------------------------------
+#
+# The counts by reason were always in the response. What was not was an
+# answer to the teacher's actual question — "is anything going to
+# happen, and if not, who has to act?" — so a course held in
+# ``publishing`` by one parked row looked, on the card, exactly like a
+# course the pipeline was still working on: "1 remaining", for days.
+
+
+def _parked_title(db: Session, course: Course, locale: str) -> None:
+    record_mt_version(
+        db,
+        entity_type="course",
+        entity_id=str(course.id),
+        field="title",
+        locale=locale,
+        text="Something the check refused",
+        source_locale="ru",
+        source_hash=compute_source_hash("Курс о Деяниях", locale="ru"),
+        status="needs_review",
+        review_reason="[markup_mismatch] lost 2x<p>",
+    )
+
+
+def test_progress_says_a_person_has_to_act_and_on_how_many_rows(client: TestClient, db: Session):
+    """One parked row, two missing. The parked one is the answer,
+    because it is the one the teacher can do nothing about: the missing
+    ones the pipeline will get to, the parked one waits for a reader."""
+    course = _course(db, status="publishing")
+    _parked_title(db, course, "de")
+    db.commit()
+
+    body = client.get(f"{_PREFIX}/{course.id}/translation-progress").json()
+
+    assert body["stuck_reason"] == "needs_review"
+    assert body["stuck_count"] == 1
+    assert body["job_pending"] is False, "nothing is queued for this course; nothing will change on its own"
+
+
+def test_progress_says_the_pipeline_is_still_working_when_it_is(client: TestClient, db: Session, monkeypatch):
+    monkeypatch.setattr("app.core.config.settings.TRANSLATION_QUEUE_ENABLED", True)
+    course = _course(db)
+    client.post(f"{_PREFIX}/{course.id}/translate")
+
+    body = client.get(f"{_PREFIX}/{course.id}/translation-progress").json()
+
+    assert body["stuck_reason"] == "translating"
+    assert body["stuck_count"] == 3  # en, de, uk — nothing translated yet
+    assert body["job_pending"] is True
+
+
+def test_progress_has_no_reason_when_the_course_is_whole(client: TestClient, db: Session):
+    course = _course(db)
+    for locale in ("en", "de", "uk"):
+        record_mt_version(
+            db,
+            entity_type="course",
+            entity_id=str(course.id),
+            field="title",
+            locale=locale,
+            text=f"[{locale}] Acts",
+            source_locale="ru",
+            source_hash=compute_source_hash("Курс о Деяниях", locale="ru"),
+        )
+    db.commit()
+
+    body = client.get(f"{_PREFIX}/{course.id}/translation-progress").json()
+
+    assert body["stuck_reason"] is None
+    assert body["stuck_count"] == 0

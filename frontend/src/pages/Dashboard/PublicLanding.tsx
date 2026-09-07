@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Eyebrow } from "@/components/patterns";
 import Footer from "@/components/layout/Footer";
+import { Reveal } from "@/components/motion";
 import { AUTHORING_LOCALE, SUPPORTED_LOCALES } from "@/i18n/config";
 
 /**
@@ -52,30 +53,26 @@ export function PublicLanding() {
       <div className="container mx-auto max-w-5xl px-4">
         {/* ── Hero ────────────────────────────────────────────────── */}
         <section className="relative" aria-labelledby="landing-hero-heading">
-          <div className="relative z-10 flex flex-col items-center pt-16 text-center sm:pt-24">
+          <div className="relative z-10 flex flex-col items-center pt-20 text-center sm:pt-32">
+            {/* The claim, not the brand. The name is in the header, the
+                title tag and the footer; spending the largest type on the
+                page repeating it says nothing to somebody deciding whether
+                this is for them. */}
             <h1
               id="landing-hero-heading"
-              className="font-serif text-4xl font-bold tracking-tight text-ink sm:text-5xl md:text-6xl"
+              className="max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.1] tracking-tight text-ink sm:text-5xl md:text-6xl"
             >
-              {t("common.appName")}
+              {t("landing.hero.manifesto")}
             </h1>
-            <p className="mt-4 max-w-2xl text-balance text-base leading-relaxed text-ink-muted sm:text-lg">
-              {t("footer.tagline")}
+            <p className="mt-6 max-w-xl text-balance text-base leading-relaxed text-ink-muted sm:text-lg">
+              {t("landing.hero.subline")}
             </p>
-            <ul className="mt-6 flex flex-wrap items-center justify-center gap-2">
-              <li>
-                <Badge variant="outline">{t("landing.trust.openSource")}</Badge>
-              </li>
-              <li>
-                <Badge variant="outline">{t("landing.trust.bilingual")}</Badge>
-              </li>
-              <li>
-                <Badge variant="outline">
-                  {t("landing.trust.certificates")}
-                </Badge>
-              </li>
-            </ul>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            {/* One quiet line instead of three badges: the facts are worth
+                stating, not worth three boxes. */}
+            <p className="mt-6 text-xs uppercase tracking-[0.14em] text-ink-muted">
+              {t("landing.hero.facts")}
+            </p>
+            <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:gap-3">
               <Link to="/courses">
                 <Button size="lg">
                   {t("dashboard.browseAllCta")}
@@ -91,64 +88,62 @@ export function PublicLanding() {
                   {t("landing.hero.registerCta")}
                 </Button>
               </Link>
-              <Link to="/login">
-                <Button size="lg" variant="ghost">
-                  {t("common.signIn")}
-                </Button>
-              </Link>
             </div>
+            {/* Sign-in is for people who already decided. It does not need
+                to compete with the two actions above it. */}
+            <p className="mt-6 text-sm text-ink-muted">
+              <Link to="/login" className="font-medium text-brand hover:text-brand-ink">
+                {t("common.signIn")}
+              </Link>
+            </p>
           </div>
         </section>
 
         {/* ── Value rows ──────────────────────────────────────────── */}
-        <section
-          aria-labelledby="landing-value-heading"
-          className="mt-20 sm:mt-28"
-        >
-          <div className="mx-auto max-w-2xl text-center">
-            <h2
-              id="landing-value-heading"
-              className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl"
-            >
-              {t("landing.value.heading")}
-            </h2>
-            <p className="mt-2 text-sm text-ink-muted">
-              {t("landing.value.subheading")}
-            </p>
-          </div>
-
-          <div className="mt-12 flex flex-col gap-16 sm:mt-16 sm:gap-20">
-            <ValueRow
-              eyebrow={t("landing.value.structure.eyebrow")}
-              title={t("landing.value.structure.title")}
-              body={t("landing.value.structure.body")}
-              visual={<StructureMock />}
-            />
-            <ValueRow
-              eyebrow={t("landing.value.assessment.eyebrow")}
-              title={t("landing.value.assessment.title")}
-              body={t("landing.value.assessment.body")}
-              visual={<AssessmentMock />}
-              reverse
-            />
-            <ValueRow
-              eyebrow={t("landing.value.certificates.eyebrow")}
-              title={t("landing.value.certificates.title")}
-              body={t("landing.value.certificates.body")}
-              visual={<CertificateMock />}
-            />
-            <ValueRow
-              eyebrow={t("landing.value.bilingual.eyebrow")}
-              title={t("landing.value.bilingual.title")}
-              body={t("landing.value.bilingual.body")}
-              visual={<MultilingualMock />}
-              reverse
-            />
+        <section aria-label={t("landing.value.heading")} className="mt-24 sm:mt-36">
+          <div className="flex flex-col gap-24 sm:gap-32">
+            {/* Literal keys, one call per string — a template key would be
+                invisible to the ``keyCoverage`` check (docs/I18N.md). */}
+            <Reveal>
+              <ValueRow
+                eyebrow={t("landing.value.structure.eyebrow")}
+                title={t("landing.value.structure.title")}
+                body={t("landing.value.structure.body")}
+                visual={<StructureMock />}
+              />
+            </Reveal>
+            <Reveal>
+              <ValueRow
+                eyebrow={t("landing.value.assessment.eyebrow")}
+                title={t("landing.value.assessment.title")}
+                body={t("landing.value.assessment.body")}
+                visual={<AssessmentMock />}
+                reverse
+              />
+            </Reveal>
+            <Reveal>
+              <ValueRow
+                eyebrow={t("landing.value.certificates.eyebrow")}
+                title={t("landing.value.certificates.title")}
+                body={t("landing.value.certificates.body")}
+                visual={<CertificateMock />}
+              />
+            </Reveal>
+            <Reveal>
+              <ValueRow
+                eyebrow={t("landing.value.bilingual.eyebrow")}
+                title={t("landing.value.bilingual.title")}
+                body={t("landing.value.bilingual.body")}
+                visual={<MultilingualMock />}
+                reverse
+              />
+            </Reveal>
           </div>
         </section>
 
         {/* ── How it works ────────────────────────────────────────── */}
-        <section
+        <Reveal>
+          <section
           aria-labelledby="landing-how-heading"
           className="mt-20 rounded-lg bg-muted/40 px-6 py-10 sm:mt-28 sm:px-10 sm:py-12"
         >
@@ -161,12 +156,14 @@ export function PublicLanding() {
           <ol className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
             <Step n={1} text={t("landing.how.step1")} />
             <Step n={2} text={t("landing.how.step2")} />
-            <Step n={3} text={t("landing.how.step3")} />
-          </ol>
-        </section>
+              <Step n={3} text={t("landing.how.step3")} />
+            </ol>
+          </section>
+        </Reveal>
 
         {/* ── Final CTA ───────────────────────────────────────────── */}
-        <section className="mt-20 flex flex-col items-center text-center sm:mt-28">
+        <Reveal>
+          <section className="mt-20 flex flex-col items-center text-center sm:mt-28">
           <h2 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
             {t("landing.finalCta.heading")}
           </h2>
@@ -184,13 +181,14 @@ export function PublicLanding() {
                 />
               </Button>
             </Link>
-            <Link to="/courses">
-              <Button size="lg" variant="outline">
-                {t("dashboard.browseAllCta")}
-              </Button>
-            </Link>
-          </div>
-        </section>
+              <Link to="/courses">
+                <Button size="lg" variant="outline">
+                  {t("dashboard.browseAllCta")}
+                </Button>
+              </Link>
+            </div>
+          </section>
+        </Reveal>
       </div>
       <Footer />
     </div>

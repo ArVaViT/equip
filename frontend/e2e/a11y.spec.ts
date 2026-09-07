@@ -140,6 +140,59 @@ test.describe("page-level a11y (public)", () => {
   });
 });
 
+test.describe("landmarks", () => {
+  /**
+   * `landmark-one-main` and `region` are disabled in the scans above, and
+   * that hole hid a real defect: the auth screens — the first pages a
+   * visitor sees — rendered no <main> at all. Nothing for the skip link to
+   * reach, no landmark for a screen reader to jump to, and the route-change
+   * focus hook in App.tsx looked up `#main-content` and found nothing, so
+   * moving from /login to /register announced nothing.
+   *
+   * The rules stay disabled where they are (the CI preview builds against
+   * placeholder Supabase env and some pages render without their chrome).
+   * This checks the one thing that is true on every page regardless: there
+   * is exactly one main landmark, and it is the one the app navigates to.
+   */
+  for (const path of ["/", "/login", "/register", "/courses", "/auth/reset-password"]) {
+    test(`${path} has exactly one <main id="main-content">`, async ({ page }) => {
+      await page.goto(path, { waitUntil: "domcontentloaded" });
+      await settleAnimations(page);
+
+      const main = page.locator("main");
+      await expect(main).toHaveCount(1);
+      await expect(main).toHaveAttribute("id", "main-content");
+    });
+  }
+
+  test("a route change moves focus to the landmark", async ({ page }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await settleAnimations(page);
+
+    await page.locator('a[href="/courses"]').first().click();
+    await page.waitForURL(/\/courses/);
+
+    await expect
+      .poll(() => page.evaluate(() => document.activeElement?.id))
+      .toBe("main-content");
+  });
+
+  test("...but not away from a form that autofocused its first field", async ({ page }) => {
+    // The landmark focus and an autofocused field are both correct on their
+    // own and fight each other when combined: arriving at /register used to
+    // pull the cursor out of the name field the visitor was about to type in.
+    await page.goto("/login", { waitUntil: "domcontentloaded" });
+    await settleAnimations(page);
+
+    await page.locator('a[href="/register"]').first().click();
+    await page.waitForURL(/\/register/);
+
+    await expect
+      .poll(() => page.evaluate(() => document.activeElement?.id))
+      .toBe("fullName");
+  });
+});
+
 test.describe("page metadata", () => {
   test("home + login pages have non-empty <title>", async ({ page }) => {
     await page.goto("/", { waitUntil: "domcontentloaded" });

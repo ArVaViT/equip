@@ -226,6 +226,30 @@ def mark_job_paused(db: Session, job: TranslationJob, *, made_progress: bool) ->
     return job
 
 
+def has_pending_job(db: Session, course_id: str) -> bool:
+    """Whether anything is going to happen to ``course_id`` without a
+    person acting: a job queued, running, or failed-and-claimable.
+
+    The teacher's card reads this beside the gaps. "Twelve translations
+    missing" means one thing while a job is on its way and another when
+    nothing is — the second is the case that used to look identical to
+    the first and stayed silent for days.
+    """
+    return (
+        db.execute(
+            select(TranslationJob.id)
+            .where(
+                TranslationJob.course_id == course_id,
+                TranslationJob.status.in_(
+                    [TranslationJobStatus.QUEUED, TranslationJobStatus.PROCESSING, TranslationJobStatus.FAILED]
+                ),
+            )
+            .limit(1)
+        ).first()
+        is not None
+    )
+
+
 def get_queue_status(db: Session) -> dict[str, int]:
     """Return per-status row counts on ``translation_jobs``.
 

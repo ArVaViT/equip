@@ -9,9 +9,6 @@ export interface GradePair {
   differ: boolean
 }
 
-/** The one sentence that explains the gap, in the same words everywhere. */
-export const PAIR_EXPLAINER_KEY = "gradebook.pair.explainer"
-
 /**
  * The two grades a student has at any moment, formatted as a pair.
  *

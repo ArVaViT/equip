@@ -3,7 +3,9 @@ import { Link, useParams } from "react-router-dom"
 import { ArrowLeft, Printer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import PageSpinner from "@/components/ui/PageSpinner"
+import { ErrorState } from "@/components/patterns"
 import { coursesService } from "@/services/courses"
+import { getErrorDetail } from "@/lib/errorDetail"
 import { useAsyncData } from "@/hooks/useAsyncData"
 import type { Certificate } from "@/types"
 import "./certificate-print.css"
@@ -44,12 +46,34 @@ import "./certificate-print.css"
 export default function CertificateDocument() {
   const { certificateId } = useParams<{ certificateId: string }>()
   const { t } = useTranslation()
-  const { data, loading } = useAsyncData(
+  const { data, loading, error, refetch } = useAsyncData(
     async () => (await coursesService.getMyCertificates()).find((c) => c.id === certificateId) ?? null,
     [certificateId],
   )
 
   if (loading) return <PageSpinner />
+  if (error) {
+    // Before this the failure fell through to «not issued yet» below — the
+    // owner of an issued certificate, offline for a moment, was told it did
+    // not exist.
+    return (
+      <div className="container mx-auto max-w-2xl px-4 py-16 text-center">
+        <ErrorState
+          description={getErrorDetail(error, t("certificates.document.loadFailed"))}
+          action={
+            <Button variant="outline" size="sm" onClick={refetch}>
+              {t("common.tryAgain")}
+            </Button>
+          }
+          secondaryAction={
+            <Link to="/certificates">
+              <Button variant="ghost" size="sm">{t("certificates.document.back")}</Button>
+            </Link>
+          }
+        />
+      </div>
+    )
+  }
   const cert = data as Certificate | null
   if (!cert || cert.status !== "approved") {
     return (
