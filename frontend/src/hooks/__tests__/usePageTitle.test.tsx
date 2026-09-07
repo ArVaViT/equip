@@ -62,6 +62,18 @@ describe("page titles", () => {
     expect(document.title).toBe(`${i18n.t("notFound.title")} — ${i18n.t("common.appName")}`)
   })
 
+  it("names a lesson the same whether or not a module is in its address", () => {
+    // Both addresses open the same screen. The module-shaped one is what
+    // bookmarks and e-mails hold; the course-shaped one is what a lesson in
+    // no module has. Neither may fall through to the course's own title.
+    expect(matchTitleKey("/courses/c-1/chapters/ch-1")).toBe("pageTitle.chapter")
+    expect(matchTitleKey("/courses/c-1/modules/m-1/chapters/ch-1")).toBe("pageTitle.chapter")
+    expect(matchTitleKey("/teacher/courses/c-1/chapters/ch-1/edit")).toBe("pageTitle.editChapter")
+    expect(matchTitleKey("/teacher/courses/c-1/modules/m-1/chapters/ch-1/edit")).toBe(
+      "pageTitle.editChapter",
+    )
+  })
+
   it("keeps a route's own title when a longer route shares its prefix", () => {
     // /certificates/:id must not borrow the list page's rule by accident,
     // and /verify/:number must resolve like /verify.

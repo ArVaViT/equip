@@ -246,10 +246,17 @@ function AppRoutes() {
               <Route path="/certificates" element={<Gate mode="private"><CertificatesPage /></Gate>} />
               <Route path="/courses/:id" element={<Gate mode="private"><CourseDetail /></Gate>} />
               <Route path="/courses/:courseId/modules/:moduleId" element={<Gate mode="private"><ModuleView /></Gate>} />
+              {/* A lesson is addressed by its course, because that is what it
+                  belongs to — a module is only a grouping, and one a teacher
+                  may add or drop after the link was sent. The module-shaped
+                  address below stays: bookmarks, e-mails and the readiness
+                  checklist point at it, and it resolves to the same screen. */}
+              <Route path="/courses/:courseId/chapters/:chapterId" element={<Gate mode="private"><ChapterView /></Gate>} />
               <Route path="/courses/:courseId/modules/:moduleId/chapters/:chapterId" element={<Gate mode="private"><ChapterView /></Gate>} />
               <Route path="/teacher" element={<Gate mode="teacher"><TeacherDashboard /></Gate>} />
               <Route path="/teacher/courses/:courseId" element={<Gate mode="teacher"><CourseEditor /></Gate>} />
               <Route path="/teacher/courses/:courseId/modules/:moduleId/edit" element={<Gate mode="teacher"><ModuleEditor /></Gate>} />
+              <Route path="/teacher/courses/:courseId/chapters/:chapterId/edit" element={<Gate mode="teacher"><ChapterEditor /></Gate>} />
               <Route path="/teacher/courses/:courseId/modules/:moduleId/chapters/:chapterId/edit" element={<Gate mode="teacher"><ChapterEditor /></Gate>} />
               <Route path="/teacher/courses/:courseId/analytics" element={<Gate mode="teacher"><TeacherAnalytics /></Gate>} />
               <Route path="/certificates/:certificateId" element={<Gate mode="private"><CertificateDocument /></Gate>} />

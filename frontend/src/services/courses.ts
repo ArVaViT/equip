@@ -19,10 +19,15 @@ import { reviewsService } from "./reviews"
 import { analyticsService } from "./analytics"
 
 /**
- * Course, module, and chapter CRUD. These three entities share the same
- * nested URL structure (`/courses/:id/modules/:mid/chapters/:cid`) and the
- * same cache-invalidation graph (`courses:detail:*`, `courses:module:*`),
- * so they stay together. Every other domain lives in its own service file.
+ * Course, module, and chapter CRUD. All three hang off the same course URL
+ * and share one cache-invalidation graph (`courses:detail:*`,
+ * `courses:module:*`), so they stay together. Every other domain lives in
+ * its own service file.
+ *
+ * Chapters are addressed `/courses/:id/chapters/:cid` — a lesson belongs to
+ * the course, and the module that groups it is a field on the lesson rather
+ * than part of its address. The older `/modules/:mid/chapters/:cid` calls
+ * are still here, and still work, until the screens have moved off them.
  *
  * `coursesService` is also re-exported as a facade that spreads every
  * domain service so legacy call sites like `coursesService.getChapterQuiz`
@@ -41,14 +46,23 @@ function invalidateCourseLists(): void {
   cacheInvalidate("courses:teacher")
 }
 
-/** A specific course's detail and a specific module's snapshot. Touched by module/chapter mutations. */
+/** A specific course's detail and a specific module's snapshot. Touched by module mutations. */
 function invalidateModuleScope(courseId: string, moduleId: string): void {
   cacheInvalidate(`courses:detail:${courseId}`)
   cacheInvalidate(`courses:module:${courseId}:${moduleId}`)
 }
 
-/** All modules under a course plus the course's detail. Used when wiping a whole course. */
-function invalidateAllModulesUnderCourse(courseId: string): void {
+/**
+ * A course's detail and every module snapshot under it.
+ *
+ * This is the scope of a **chapter** mutation, and of anything that wipes a
+ * whole course. Chapters used to invalidate the (course, module) pair, which
+ * is now wrong twice over: a lesson in no module has no pair to name, and a
+ * lesson moving between modules leaves the module it *left* holding a stale
+ * copy of it. The course is the unit a chapter belongs to, so the course is
+ * the unit that goes stale.
+ */
+function invalidateCourseScope(courseId: string): void {
   cacheInvalidate(`courses:detail:${courseId}`)
   cacheInvalidatePrefix(`courses:module:${courseId}:`)
 }
@@ -130,7 +144,7 @@ const courseCrud = {
 
   async deleteCourse(id: string): Promise<void> {
     await api.delete(`/courses/${id}`)
-    invalidateAllModulesUnderCourse(id)
+    invalidateCourseScope(id)
     invalidateCourseLists()
   },
 
@@ -147,7 +161,7 @@ const courseCrud = {
 
   async permanentlyDeleteCourse(id: string): Promise<void> {
     await api.delete(`/courses/${id}/permanent`)
-    invalidateAllModulesUnderCourse(id)
+    invalidateCourseScope(id)
     invalidateCourseLists()
   },
 
@@ -183,7 +197,7 @@ const courseCrud = {
     data: { title: string; description?: string; order_index?: number },
   ): Promise<Module> {
     const response = await api.post<Module>(`/courses/${courseId}/modules`, data)
-    invalidateAllModulesUnderCourse(courseId)
+    invalidateCourseScope(courseId)
     return response.data
   },
 
@@ -210,6 +224,87 @@ const courseCrud = {
     invalidateModuleScope(courseId, moduleId)
   },
 
+  // ─── Chapters, addressed by their course ──────────────────────────────
+  // A lesson belongs to a course; a module only groups it. These four speak
+  // that shape — no module in the address, and `module_id` is a property of
+  // the lesson that a `PUT` can set or clear. Prefer them everywhere; the
+  // module-shaped trio below is what the screens still call, and goes when
+  // the last of them has moved.
+
+  /**
+   * Write a lesson straight into the course, grouped by nothing.
+   *
+   * The body deliberately has no `module_id`: the create endpoint rejects
+   * unknown keys, and a lesson that should start life inside a module is
+   * created here and then moved with `updateCourseChapter`.
+   */
+  async createCourseChapter(
+    courseId: string,
+    data: { title: string; order_index?: number; chapter_type?: string },
+  ): Promise<Chapter> {
+    const response = await api.post<Chapter>(`/courses/${courseId}/chapters`, data)
+    invalidateCourseScope(courseId)
+    return response.data
+  },
+
+  /**
+   * One lesson by its id — the whole reason this exists. Reaching a lesson
+   * used to mean fetching the module around it and picking the lesson out of
+   * the list, which asks for a module the lesson may not have.
+   *
+   * Editor-only, like `getCourseForEdit` and `getModuleForEdit`: the endpoint
+   * is owner/admin-gated and answers in the course's source language, so a
+   * teacher editing a RU course in an EN interface binds their fields to the
+   * Russian they wrote and not to its translation. Uncached for the same
+   * reason those two are.
+   */
+  async getChapterForEdit(courseId: string, chapterId: string): Promise<Chapter> {
+    const response = await api.get<Chapter>(
+      `/courses/${courseId}/chapters/${chapterId}`,
+    )
+    return response.data
+  },
+
+  /**
+   * Edit a lesson, including where it sits.
+   *
+   * `module_id` is three-valued and the difference matters on the wire:
+   *   - key absent — the grouping is left alone,
+   *   - `"<module id>"` — the lesson moves into that module (of this course;
+   *     a module belonging to another course is refused),
+   *   - `null` — the lesson comes out of its module and sits in the course.
+   * `undefined` drops out of the JSON body, so it reads as "absent" — which
+   * is why "leave it alone" must never be written as an explicit `null`.
+   */
+  async updateCourseChapter(
+    courseId: string,
+    chapterId: string,
+    data: {
+      title?: string
+      order_index?: number
+      chapter_type?: string
+      requires_completion?: boolean
+      is_locked?: boolean
+      module_id?: string | null
+    },
+  ): Promise<Chapter> {
+    const response = await api.put<Chapter>(
+      `/courses/${courseId}/chapters/${chapterId}`,
+      data,
+    )
+    invalidateCourseScope(courseId)
+    return response.data
+  },
+
+  async deleteCourseChapter(courseId: string, chapterId: string): Promise<void> {
+    await api.delete(`/courses/${courseId}/chapters/${chapterId}`)
+    invalidateCourseScope(courseId)
+  },
+
+  // ─── Chapters, addressed through their module (legacy) ────────────────
+  // Kept working while the screens migrate. Same endpoints as before; only
+  // the invalidation changed, to the course — see `invalidateCourseScope`.
+
   async createChapter(
     courseId: string,
     moduleId: string,
@@ -219,7 +314,7 @@ const courseCrud = {
       `/courses/${courseId}/modules/${moduleId}/chapters`,
       data,
     )
-    invalidateModuleScope(courseId, moduleId)
+    invalidateCourseScope(courseId)
     return response.data
   },
 
@@ -239,7 +334,7 @@ const courseCrud = {
       `/courses/${courseId}/modules/${moduleId}/chapters/${chapterId}`,
       data,
     )
-    invalidateModuleScope(courseId, moduleId)
+    invalidateCourseScope(courseId)
     return response.data
   },
 
@@ -251,7 +346,7 @@ const courseCrud = {
     await api.delete(
       `/courses/${courseId}/modules/${moduleId}/chapters/${chapterId}`,
     )
-    invalidateModuleScope(courseId, moduleId)
+    invalidateCourseScope(courseId)
   },
 }
 
