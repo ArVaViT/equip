@@ -101,19 +101,34 @@ def update_module(db: Session, module: Module, data: ModuleUpdate) -> Module:
 
 
 def delete_module(db: Session, module: Module) -> None:
-    now = datetime.now(UTC)
-    module.deleted_at = now
-    # Bulk UPDATE so the cascade is one round trip regardless of chapter count
-    # and works whether ``module.chapters`` was eager-loaded with a deleted_at
-    # filter or not.
+    """Bin the grouping; the lessons stay on the course.
+
+    Until the module became optional this binned every chapter under it,
+    because a chapter could not exist without a module — there was
+    nowhere for it to go. There is now: a chapter belongs to its course
+    and only names a module. So deleting a module deletes a heading, and
+    its chapters surface at the course, ungrouped, untouched
+    (``deleted_at`` is deliberately not written).
+
+    This is the whole point of the change. The teacher who prompted it
+    lost lessons to exactly this cascade: they were reshaping the tree,
+    deleted a module they had invented to satisfy the old model, and the
+    work went with it.
+
+    Bulk UPDATE so the detach is one round trip regardless of chapter
+    count, and works whether ``module.chapters`` was eager-loaded with a
+    ``deleted_at`` filter or not. Chapters already in the bin keep the
+    module they were binned under — that is history, and nothing reads a
+    binned chapter's module.
+
+    No progress resync: the set of live gradable chapters on the course
+    is exactly what it was a moment ago, so no denominator moved. The
+    old implementation resynced because this call used to delete
+    quizzes.
+    """
+    module.deleted_at = datetime.now(UTC)
     db.query(Chapter).filter(
         Chapter.module_id == module.id,
         Chapter.deleted_at.is_(None),
-    ).update({Chapter.deleted_at: now}, synchronize_session=False)
+    ).update({Chapter.module_id: None}, synchronize_session=False)
     db.commit()
-    # Deleting a module takes its quizzes with it, so the denominator moves
-    # for every student on the course. Imported here to avoid a circular
-    # import at module scope.
-    from app.services.course_service._enrollment import resync_course_progress
-
-    resync_course_progress(db, module.course_id)

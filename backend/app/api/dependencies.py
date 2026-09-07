@@ -308,9 +308,10 @@ def _resolve_chapter(db: Session, chapter_id: str) -> tuple[Chapter, Module | No
     # route (blocks, quizzes, assignments, progress). Before this filter,
     # content deleted via the teacher UI was still reachable via chapter_id.
     #
-    # The course comes from ``chapters.course_id``; the module is optional
-    # and joined only so a deleted one keeps hiding its chapters
-    # (``chapter_module_is_live_or_absent``).
+    # The course comes from ``chapters.course_id``. The module is joined
+    # only to hand callers the grouping the chapter names, if any — it
+    # has no say over visibility: binning a module detaches its chapters
+    # rather than taking them with it.
     row = (
         db.query(Chapter, Module, Course)
         .join(Course, Chapter.course_id == Course.id)
@@ -318,7 +319,6 @@ def _resolve_chapter(db: Session, chapter_id: str) -> tuple[Chapter, Module | No
         .filter(
             Chapter.id == chapter_id,
             Chapter.deleted_at.is_(None),
-            chapter_module_is_live_or_absent(),
             Course.deleted_at.is_(None),
         )
         .first()
@@ -381,6 +381,5 @@ def verify_chapter_owner(db: Session, chapter_id: str, teacher: User | str) -> t
 # ``assert_course_owner`` above. The re-export keeps existing call sites
 # in this module working without churn.
 from app.services.domain_access import (  # noqa: E402
-    chapter_module_is_live_or_absent,
     resolve_chapter_course_id,  # noqa: F401  (re-export)
 )
