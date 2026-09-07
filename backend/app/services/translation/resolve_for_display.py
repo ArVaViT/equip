@@ -728,6 +728,7 @@ def build_localized_course_response_with_tree(
                 {
                     "id": str(ch.id),
                     "module_id": str(ch.module_id),
+                    "course_id": str(ch.course_id),
                     "title": loc.pick("chapter", str(ch.id), "title", ch.title) or "",
                     "order_index": ch.order_index,
                     "chapter_type": ch.chapter_type or "reading",

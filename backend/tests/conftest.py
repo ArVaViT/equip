@@ -23,6 +23,7 @@ from sqlalchemy.pool import StaticPool
 from app.api.dependencies import get_current_user, get_optional_user
 from app.core.database import Base, get_db
 from app.main import app
+from app.models.course import Chapter, Module
 from app.models.organization import Organization
 from app.models.user import User, UserRole
 
@@ -96,6 +97,58 @@ def _belong_to_the_test_organization(session, _flush_context, _instances):
     for obj in session.new:
         if hasattr(obj, "organization_id") and getattr(obj, "organization_id", None) is None:
             obj.organization_id = TEST_ORGANIZATION_ID
+
+
+#: ``session.info`` key: set to switch the chapter autopopulator below off.
+CHAPTERS_NAME_THEIR_OWN_COURSE = "chapters_name_their_own_course"
+
+
+@pytest.fixture()
+def chapters_name_their_own_course(db: Session) -> None:
+    """Make this test's session refuse to fill ``Chapter.course_id`` in.
+
+    For the tests of the production write paths (``create_chapter``,
+    ``clone_course``, the chapter route): a path that forgot the column must
+    hit the NOT NULL, not be quietly corrected by the listener below.
+    """
+    db.info[CHAPTERS_NAME_THEIR_OWN_COURSE] = True
+
+
+@event.listens_for(Session, "before_flush")
+def _a_chapter_belongs_to_its_module_s_course(session, _flush_context, _instances):
+    """Give every new chapter the course of its module, unless it names one.
+
+    ``chapters.course_id`` is NOT NULL from 2026-09-07 and always equals
+    the module's ``course_id``; the production write paths set both.
+    Sixty-odd test builders predate the column and say only ``module_id``
+    — they are about grading, progress and readiness, not about which
+    parents a chapter carries — so the column is filled in here from the
+    module, which may itself still be pending in this very flush (looked
+    up in ``session.new`` before the database) and may know its course
+    only through the ``course`` relationship (its own FK is filled later
+    in the same flush).
+
+    Test infrastructure, like the organization above, and for the same
+    reason not a model default. The tests of the write paths themselves
+    switch it off (``chapters_name_their_own_course``), or they would prove
+    nothing.
+    """
+    if session.info.get(CHAPTERS_NAME_THEIR_OWN_COURSE):
+        return
+    pending_modules = {obj.id: obj for obj in session.new if isinstance(obj, Module)}
+    for obj in session.new:
+        if not isinstance(obj, Chapter) or obj.course_id is not None or obj.course is not None:
+            continue
+        module = obj.module or pending_modules.get(obj.module_id)
+        if module is None and obj.module_id is not None:
+            with session.no_autoflush:
+                module = session.get(Module, obj.module_id)
+        if module is None:
+            continue
+        if module.course_id is not None:
+            obj.course_id = module.course_id
+        elif module.course is not None:
+            obj.course = module.course
 
 
 @pytest.fixture(autouse=True)

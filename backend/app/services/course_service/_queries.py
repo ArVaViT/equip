@@ -39,6 +39,12 @@ _COURSE_TREE: tuple = (
     selectinload(Course.modules.and_(Module.deleted_at.is_(None))).selectinload(
         Module.chapters.and_(Chapter.deleted_at.is_(None))
     ),
+    # The same live chapters once more, straight from the course. Nothing
+    # serialises this list yet — responses still nest chapters under their
+    # modules — but the tree can now be read without going through a
+    # module, which is what the next steps of the chapter→course move
+    # build on. One more IN query per course load, no extra rows per module.
+    selectinload(Course.chapters.and_(Chapter.deleted_at.is_(None))),
 )
 
 # Slim loader for **catalog** views: pulls each course's modules so the UI

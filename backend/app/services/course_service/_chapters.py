@@ -27,6 +27,16 @@ def _next_chapter_order(db: Session, module_id: str) -> int:
     return 0 if current_max is None else current_max + 1
 
 
+def _course_id_for_module(db: Session, module_id: str) -> str | None:
+    """The course a module belongs to — the second parent a new chapter carries.
+
+    ``None`` only when the module does not exist, and then the NOT NULL on
+    ``chapters.course_id`` refuses the row exactly as the module FK always
+    did; the route checks the module first, so it never gets that far.
+    """
+    return db.query(Module.course_id).filter(Module.id == module_id).scalar()
+
+
 def _course_source_locale_for_module(db: Session, module_id: str) -> str | None:
     """Walk ``Chapter -> Module -> Course`` to find the parent course's
     source locale. Used as the fallback when a chapter title alone
@@ -64,6 +74,7 @@ def create_chapter(db: Session, module_id: str, data: ChapterCreate) -> Chapter:
     chapter = Chapter(
         id=str(uuid.uuid4()),
         module_id=module_id,
+        course_id=_course_id_for_module(db, module_id),
         title=data.title,
         order_index=order_index,
         chapter_type=data.chapter_type,

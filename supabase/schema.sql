@@ -378,6 +378,7 @@ CREATE TABLE public.chapters (
     requires_completion boolean DEFAULT false NOT NULL,
     is_locked boolean DEFAULT false NOT NULL,
     deleted_at timestamp with time zone,
+    course_id character varying NOT NULL,
     CONSTRAINT chapters_chapter_type_check CHECK (((chapter_type)::text = ANY (ARRAY[('reading'::character varying)::text, ('quiz'::character varying)::text, ('exam'::character varying)::text, ('assignment'::character varying)::text])))
 );
 
@@ -1774,6 +1775,13 @@ CREATE INDEX ix_chapter_progress_completed_by ON public.chapter_progress USING b
 
 
 --
+-- Name: ix_chapters_course_id_order_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_chapters_course_id_order_active ON public.chapters USING btree (course_id, order_index) WHERE (deleted_at IS NULL);
+
+
+--
 -- Name: ix_chapters_module_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2576,6 +2584,14 @@ ALTER TABLE ONLY public.chapter_progress
 
 ALTER TABLE ONLY public.chapter_progress
     ADD CONSTRAINT chapter_progress_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: chapters chapters_course_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chapters
+    ADD CONSTRAINT chapters_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id) ON DELETE CASCADE;
 
 
 --

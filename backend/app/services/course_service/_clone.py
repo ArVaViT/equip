@@ -197,6 +197,7 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
             new_chapter = Chapter(
                 id=new_chapter_id,
                 module_id=new_module_id,
+                course_id=new_course_id,
                 # ``chapters.title`` is still a spine column (not yet
                 # moved to cv-only); copy it verbatim. The cv row at
                 # the same locale also gets cloned below so the bilingual
