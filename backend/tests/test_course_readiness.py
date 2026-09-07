@@ -135,24 +135,26 @@ def _check(report: ReadinessReport, check_id_prefix: str):
 # ─── Service-level tests ────────────────────────────────────────────────
 
 
-def test_empty_course_flags_critical_missing_module(db: Session, teacher: User):
+def test_empty_course_flags_critical_missing_chapter(db: Session, teacher: User):
     course = _make_course(db)
     report = compute_readiness(db, course)
-    has_module_check = _check(report, "has_at_least_one_module")
-    assert has_module_check is not None
-    assert has_module_check.passed is False
-    assert has_module_check.severity == "critical"
+    has_chapter_check = _check(report, "has_at_least_one_chapter")
+    assert has_chapter_check is not None
+    assert has_chapter_check.passed is False
+    assert has_chapter_check.severity == "critical"
     assert report.critical_failing >= 1
 
 
-def test_module_without_chapters_flags_critical(db: Session, teacher: User):
+def test_module_without_chapters_is_polish(db: Session, teacher: User):
+    """An empty heading is untidy, not broken. See
+    ``test_a_course_is_its_chapters`` for why this severity moved."""
     course = _make_course(db)
     _add_module(db, course)
     report = compute_readiness(db, course)
     check = _check(report, "module_has_chapters:")
     assert check is not None
     assert check.passed is False
-    assert check.severity == "critical"
+    assert check.severity == "polish"
     assert check.subject and check.subject.type == "module"
 
 

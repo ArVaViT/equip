@@ -25,6 +25,7 @@ from app.models.enrollment import Enrollment
 from app.models.quiz import Quiz, QuizAnswer, QuizAttempt
 from app.models.user import User
 from app.schemas.locale import normalize_locale
+from app.services.course_structure import UNGROUPED_GROUP_ID, build_spine
 from app.services.grade_calculator import calculate_all_student_grades
 from app.services.translation.resolve_for_display import populate_module_texts, populate_spine_texts
 
@@ -36,11 +37,19 @@ if TYPE_CHECKING:
 
 def _load_course_structure(
     db: Session, course_id: str
-) -> tuple[list[Chapter], dict[str, dict[str, Any]], dict[str, str]]:
-    """Return (chapters, module_summary_map, chapter_title_map).
+) -> tuple[list[Chapter], dict[str, dict[str, Any]], dict[str, str], dict[str, str]]:
+    """Return (chapters, group_summary_map, chapter_title_map, group_of).
 
     Kept as a helper because both the aggregation pass and the per-student
     render pass need the same structural lookups.
+
+    ``group_summary_map`` is what the board and the gradebook receive as
+    ``"modules"``: every live module of the course, plus — when at least
+    one chapter is outside every module — one more entry standing for the
+    lessons that have no heading. That entry carries no title (there is
+    no content to translate) and is flagged ``is_ungrouped`` so the client
+    renders a label of its own. Without it those chapters keyed to a
+    group the client had never heard of and vanished from the matrix.
     """
     modules = (
         db.query(Module)
@@ -51,18 +60,30 @@ def _load_course_structure(
     if modules:
         src = db.query(Course.source_locale).filter(Course.id == course_id).scalar() or "en"
         populate_module_texts(db, modules, source_locale=normalize_locale(src))
-    module_map = {m.id: {"id": m.id, "title": m.title, "order_index": m.order_index} for m in modules}
 
-    chapters = db.query(Chapter).filter(Chapter.course_id == course_id, Chapter.deleted_at.is_(None)).all()
-    # The board walks the course in the order the tree shows it: by module,
-    # then by chapter. Sorted here from the modules already in hand rather
-    # than by joining the module table, so a chapter without a module is in
-    # the list at all. Where such a chapter sits is step 3's decision; for
-    # now it goes ahead of every module.
-    module_order = {m.id: m.order_index for m in modules}
-    chapters.sort(key=lambda c: (module_order.get(c.module_id, -1) if c.module_id else -1, c.order_index))
+    all_chapters = db.query(Chapter).filter(Chapter.course_id == course_id, Chapter.deleted_at.is_(None)).all()
+    # Course-global order with each group's chapters consecutive — the one
+    # rule, shared with the readiness checklist, in ``course_structure``.
+    spine = build_spine(modules, all_chapters)
+    chapters = list(spine.chapters)
+
+    module_map: dict[str, dict[str, Any]] = {
+        m.id: {"id": m.id, "title": m.title, "order_index": m.order_index, "is_ungrouped": False} for m in modules
+    }
+    if spine.has_ungrouped:
+        # Sorting by ``order_index`` is how the gradebook already orders
+        # these, so the loose group is numbered past the last module and
+        # lands where the spine puts it — at the end — with no change to
+        # any module's own number.
+        module_map[UNGROUPED_GROUP_ID] = {
+            "id": UNGROUPED_GROUP_ID,
+            "title": "",
+            "order_index": max((m.order_index for m in modules), default=-1) + 1,
+            "is_ungrouped": True,
+        }
+
     chapter_title_map = {c.id: c.title for c in chapters}
-    return chapters, module_map, chapter_title_map
+    return chapters, module_map, chapter_title_map, spine.group_of
 
 
 def _load_chapter_quizzes_and_assignments(
@@ -443,11 +464,20 @@ def _build_chapter_infos(
     assignment_by_id_str: dict[str, Assignment],
     quiz_map: dict[str, list[Quiz]] | None = None,
     assignment_map: dict[str, list[Assignment]] | None = None,
+    group_of: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
     """Per-chapter completion + embedded quiz/assignment result for one student.
 
     Shared by the row-expand detail (progress board) and the full gradebook
     matrix, which both need the per-chapter view for a student.
+
+    ``group_of`` (from :func:`_load_course_structure`) names the group each
+    chapter renders under. Every chapter has one — a module, or the loose
+    group — so ``module_id`` is always a key the client can find in the
+    ``modules`` list. It used to be ``str(ch.module_id)``, which for a
+    chapter with no module produced the literal string ``"None"``: the
+    gradebook grouped by it, found no such module, and dropped the lesson
+    off the matrix.
 
     ``gradable_item`` names the piece of work behind the chapter regardless of
     whether the student ever touched it — which is exactly the case where a
@@ -486,7 +516,7 @@ def _build_chapter_infos(
             {
                 "id": str(ch.id),
                 "title": ch.title,
-                "module_id": str(ch.module_id),
+                "module_id": (group_of or {}).get(ch.id) or (ch.module_id or UNGROUPED_GROUP_ID),
                 "chapter_type": ch.chapter_type or "reading",
                 "requires_completion": bool(ch.requires_completion),
                 "completed": cp is not None,
@@ -549,7 +579,7 @@ def build_course_student_progress(db: Session, course: Course, course_id: str) -
     student.
     """
     populate_spine_texts(db, [course])
-    chapters, module_map, _chapter_titles = _load_course_structure(db, course_id)
+    chapters, module_map, _chapter_titles, _group_of = _load_course_structure(db, course_id)
     gradable_chapter_ids = [c.id for c in chapters if c.chapter_type in GRADABLE_CHAPTER_TYPES]
 
     # Only two timestamps are needed from the result tables now — "last seen".
@@ -615,7 +645,7 @@ def build_student_chapter_detail(db: Session, course: Course, course_id: str, st
     regardless of roster size.
     """
     populate_spine_texts(db, [course])
-    chapters, _module_map, chapter_title_map = _load_course_structure(db, course_id)
+    chapters, _module_map, chapter_title_map, group_of = _load_course_structure(db, course_id)
     chapter_ids = [c.id for c in chapters]
 
     quiz_map, assignment_map = _load_chapter_quizzes_and_assignments(db, chapter_ids)
@@ -645,6 +675,7 @@ def build_student_chapter_detail(db: Session, course: Course, course_id: str, st
         assignment_by_id_str,
         quiz_map,
         assignment_map,
+        group_of,
     )
 
     return {
@@ -666,7 +697,7 @@ def build_course_gradebook_matrix(db: Session, course: Course, course_id: str) -
     ``quiz_result`` / ``assignment_result`` embedded in each chapter cell.
     """
     populate_spine_texts(db, [course])
-    chapters, module_map, _chapter_title_map = _load_course_structure(db, course_id)
+    chapters, module_map, _chapter_title_map, group_of = _load_course_structure(db, course_id)
     chapter_ids = [c.id for c in chapters]
     gradable_chapter_ids = [c.id for c in chapters if c.chapter_type in GRADABLE_CHAPTER_TYPES]
 
@@ -709,6 +740,7 @@ def build_course_gradebook_matrix(db: Session, course: Course, course_id: str) -
                     assignment_by_id_str,
                     quiz_map,
                     assignment_map,
+                    group_of,
                 ),
             }
         )

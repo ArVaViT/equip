@@ -389,7 +389,7 @@ def test_my_progress_is_the_module_walk(db: Session, student_client: TestClient)
 
 def test_the_board_walks_the_course_in_the_old_order(db: Session):
     _scene(db, loose=False)
-    chapters, module_map, titles = _load_course_structure(db, COURSE)
+    chapters, module_map, titles, _groups = _load_course_structure(db, COURSE)
     assert [c.id for c in chapters] == _module_walk_in_order(db, COURSE) == ["q1", "r1", "a1", "q2"]
     assert set(titles) == _module_walk(db, COURSE)
     assert set(module_map) == {"m1", "m2"}
@@ -525,12 +525,13 @@ def test_the_board_lists_a_loose_chapter(db: Session):
     _unread_essay(db, s["quiz_loose"], completed_at=NOW)
     _unmarked_submission(db, s["assignment_loose"], submitted_at=NOW)
 
-    chapters, _modules, _titles = _load_course_structure(db, COURSE)
+    chapters, _modules, _titles, _groups = _load_course_structure(db, COURSE)
     quiz_seen, submission_seen = _latest_activity_by_user(db, COURSE)
 
-    # Modular chapters keep their order; the loose ones are in the list —
-    # ahead of the modules for now, a placement step 3 revisits.
-    assert [c.id for c in chapters] == ["loose-q", "loose-a", "loose-r", "q1", "r1", "a1", "q2"]
+    # Modular chapters keep their order and the loose ones follow them,
+    # as one group at the tail — step 4's placement, replacing the
+    # provisional "ahead of every module" this test pinned in step 2.
+    assert [c.id for c in chapters] == ["q1", "r1", "a1", "q2", "loose-q", "loose-a", "loose-r"]
     assert quiz_seen[str(STUDENT_ID)].replace(tzinfo=UTC) == NOW
     assert submission_seen[str(STUDENT_ID)].replace(tzinfo=UTC) == NOW
 

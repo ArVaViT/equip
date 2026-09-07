@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.models.content_version import ContentVersion, ContentVersionStatus
@@ -54,13 +54,55 @@ _COURSE_TREE: tuple = (
 # ``CourseCard`` only consumes ``course.modules?.length``. Course-detail
 # requests stay on the full ``_COURSE_TREE`` so the nested chapter list
 # is still there for the enrolled-course view.
+#
+# The card wants a lesson count, not a module count, and it still does not
+# want the chapter rows to get one: ``attach_counts`` answers that with a
+# single grouped COUNT per page.
 _COURSE_LIST_TREE: tuple = (selectinload(Course.modules.and_(Module.deleted_at.is_(None))),)
 
 
+def attach_counts(db: Session, courses: list[Course]) -> None:
+    """Set ``chapter_count`` / ``module_count`` on each course.
+
+    Two grouped counts for the whole page, not one query per card, and
+    counted in SQL rather than off the loaded relationships — ``_COURSE_LIST_TREE``
+    deliberately does not load chapters, and a count taken from a list
+    that was never loaded is a zero that looks like an answer.
+
+    ``chapter_count`` is the number the catalog actually wants. A card
+    saying "0 modules" over a finished four-lesson course is the shape
+    of the old model showing through: the lessons are the course, and
+    the modules are headings the teacher may never have wanted.
+    ``module_count`` stays because the card still shows it until the
+    frontend moves across.
+    """
+    if not courses:
+        return
+    course_ids = [c.id for c in courses]
+    chapter_counts: dict[str, int] = {
+        course_id: count
+        for course_id, count in db.query(Chapter.course_id, func.count(Chapter.id))
+        .filter(Chapter.course_id.in_(course_ids), Chapter.deleted_at.is_(None))
+        .group_by(Chapter.course_id)
+        .all()
+    }
+    module_counts: dict[str, int] = {
+        course_id: count
+        for course_id, count in db.query(Module.course_id, func.count(Module.id))
+        .filter(Module.course_id.in_(course_ids), Module.deleted_at.is_(None))
+        .group_by(Module.course_id)
+        .all()
+    }
+    for course in courses:
+        course.chapter_count = chapter_counts.get(course.id, 0)
+        course.module_count = module_counts.get(course.id, 0)
+
+
 def _hydrate(db: Session, courses: list[Course]) -> list[Course]:
-    """Call ``populate_spine_texts`` and return the same list — convenience
-    so getters can ``return _hydrate(db, query.all())``."""
+    """Call ``populate_spine_texts`` + ``attach_counts`` and return the same
+    list — convenience so getters can ``return _hydrate(db, query.all())``."""
     populate_spine_texts(db, courses)
+    attach_counts(db, courses)
     return courses
 
 

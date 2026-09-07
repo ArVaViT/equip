@@ -223,6 +223,17 @@ class CourseResponse(_ReadTitle):
     def _only_chapters_no_module_groups(cls, value: list[ChapterResponse]) -> list[ChapterResponse]:
         return [chapter for chapter in value if chapter.module_id is None]
 
+    #: See ``CourseSummary`` for what these are and when they are ``None``.
+    #:
+    #: ``chapter_count`` is **every** live chapter of the course — the
+    #: whole of the partition above, not the length of either half. It is
+    #: counted in SQL (``course_service.attach_counts``), so it agrees
+    #: with ``len(chapters) + sum(len(m.chapters) for m in modules)``
+    #: without anything having to sum two lists and risk counting a
+    #: grouped chapter twice.
+    chapter_count: int | None = None
+    module_count: int | None = None
+
 
 class CourseSummary(_ReadTitle):
     """Catalog / list-view course. Kept as a separate shape from
@@ -262,6 +273,26 @@ class CourseSummary(_ReadTitle):
     enrollment_start: datetime | None = None
     enrollment_end: datetime | None = None
     modules: list[ModuleSummary] = []
+
+    #: How many lessons the course has, soft-deleted ones excluded. The
+    #: number a card should show: a course can be four finished lessons
+    #: and no module at all, and "0 modules" is then both true and
+    #: useless. ``modules`` stays on the shape and ``module_count``
+    #: alongside it so nothing breaks before the frontend moves over.
+    #:
+    #: This is the other half of the answer the docstring above gives:
+    #: the list loader must not carry chapter rows, so this shape gets
+    #: no ``chapters`` list — and a *count* is what the card actually
+    #: wanted from one. Counted in SQL over the course's chapters, so
+    #: the number does not depend on which relationships were loaded.
+    #:
+    #: ``None`` means *this endpoint did not count* — not zero. Every
+    #: list endpoint fills both in (``course_service._hydrate``); the
+    #: write endpoints that echo a course back do not, and a client
+    #: seeing ``None`` should fall back to the nested ``modules``
+    #: rather than render a zero nobody computed.
+    chapter_count: int | None = None
+    module_count: int | None = None
 
 
 class EnrollmentResponse(BaseModel):
