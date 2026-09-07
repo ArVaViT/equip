@@ -27,6 +27,7 @@ Russian text; that is what is stored. But both translations share a version, so
 
 from app.legal.registry import (
     GOVERNING_LOCALE,
+    LEGAL_DOCUMENT_FINGERPRINTS,
     LEGAL_DOCUMENTS,
     LegalDocument,
     document_for,
@@ -36,6 +37,7 @@ from app.legal.registry import (
 __all__ = [
     "GOVERNING_LOCALE",
     "LEGAL_DOCUMENTS",
+    "LEGAL_DOCUMENT_FINGERPRINTS",
     "LegalDocument",
     "document_for",
     "required_slugs",
