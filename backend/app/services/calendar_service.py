@@ -106,11 +106,9 @@ def build_calendar_events(
 
     chapter_ids_by_course: dict[str, list[str]] = {}
     chapters = (
-        db.query(Chapter.id, Module.course_id)
-        .join(Module, Chapter.module_id == Module.id)
+        db.query(Chapter.id, Chapter.course_id)
         .filter(
-            Module.course_id.in_(enrolled_course_ids),
-            Module.deleted_at.is_(None),
+            Chapter.course_id.in_(enrolled_course_ids),
             Chapter.deleted_at.is_(None),
         )
         .all()

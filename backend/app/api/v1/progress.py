@@ -17,7 +17,7 @@ from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.metrics import increment
 from app.models.chapter_progress import ChapterProgress
-from app.models.course import Chapter, Module
+from app.models.course import Chapter
 from app.models.enrollment import Enrollment
 from app.models.user import User
 from app.services.audit_service import log_action
@@ -56,10 +56,8 @@ def get_my_chapter_progress(
     completed = (
         db.query(ChapterProgress.chapter_id)
         .join(Chapter, Chapter.id == ChapterProgress.chapter_id)
-        .join(Module, Module.id == Chapter.module_id)
         .filter(
-            Module.course_id == course_id,
-            Module.deleted_at.is_(None),
+            Chapter.course_id == course_id,
             Chapter.deleted_at.is_(None),
             ChapterProgress.user_id == current_user.id,
             ChapterProgress.completed == True,

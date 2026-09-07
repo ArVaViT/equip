@@ -88,8 +88,9 @@ def _clone_cv_rows(
 def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Course | None:
     """Deep-clone a course and all nested content. Returns the new Course.
 
-    Copies: Course -> Modules -> Chapters -> ChapterBlocks, Quizzes
-    (with questions + options), Assignments.
+    Copies: Course -> Modules, Course -> Chapters -> ChapterBlocks, Quizzes
+    (with questions + options), Assignments. Chapters are read from the
+    course itself and keep their module (if any) through ``module_id_map``.
     ChapterBlock.quiz_id / assignment_id are remapped to the cloned entities.
     Enrollments, progress, grades, submissions, and certificates are NOT copied.
     """
@@ -101,7 +102,10 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
     if original is None:
         return None
 
-    all_chapter_ids = [ch.id for mod in original.modules for ch in mod.chapters]
+    # The course's own chapter list, not the module walk: a chapter outside
+    # any module is still part of the course and must be in the copy — with
+    # its blocks, quizzes and assignments, which hang off the chapter.
+    all_chapter_ids = [ch.id for ch in original.chapters]
     if not all_chapter_ids:
         all_quizzes: list[Quiz] = []
         all_questions: list[QuizQuestion] = []
@@ -191,111 +195,115 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
         )
         db.add(new_module)
 
-        for chapter in sorted(module.chapters, key=lambda c: c.order_index):
-            new_chapter_id = str(uuid.uuid4())
-            chapter_id_map[str(chapter.id)] = new_chapter_id
-            new_chapter = Chapter(
-                id=new_chapter_id,
-                module_id=new_module_id,
-                course_id=new_course_id,
-                # ``chapters.title`` is still a spine column (not yet
-                # moved to cv-only); copy it verbatim. The cv row at
-                # the same locale also gets cloned below so the bilingual
-                # overlay is preserved.
-                title=chapter.title,
-                order_index=chapter.order_index,
-                chapter_type=chapter.chapter_type,
-                requires_completion=chapter.requires_completion,
-                is_locked=chapter.is_locked,
+    for chapter in sorted(original.chapters, key=lambda c: c.order_index):
+        new_chapter_id = str(uuid.uuid4())
+        chapter_id_map[str(chapter.id)] = new_chapter_id
+        new_chapter = Chapter(
+            id=new_chapter_id,
+            # A chapter keeps its module in the copy when it has one. One
+            # without a module is copied under none — today the NOT NULL
+            # refuses that loudly; step 3 makes it a chapter the course
+            # holds directly.
+            module_id=module_id_map.get(str(chapter.module_id)) if chapter.module_id else None,
+            course_id=new_course_id,
+            # ``chapters.title`` is still a spine column (not yet
+            # moved to cv-only); copy it verbatim. The cv row at
+            # the same locale also gets cloned below so the bilingual
+            # overlay is preserved.
+            title=chapter.title,
+            order_index=chapter.order_index,
+            chapter_type=chapter.chapter_type,
+            requires_completion=chapter.requires_completion,
+            is_locked=chapter.is_locked,
+        )
+        db.add(new_chapter)
+        # Postgres' unit-of-work topological sort handles the chapter →
+        # block ordering correctly; SQLite (PRAGMA foreign_keys=ON, used
+        # by tests) does not because ``ChapterBlock.chapter_id`` is a
+        # plain String FK without a relationship wired through. Gate the
+        # flush to the SQLite path so prod clones don't take N
+        # round-trips for a cosmetic test-only safety net.
+        if db.bind is not None and db.bind.dialect.name == "sqlite":
+            db.flush()
+
+        quiz_id_map: dict[str, uuid.UUID] = {}
+        assignment_id_map: dict[str, uuid.UUID] = {}
+
+        for quiz in quizzes_by_chapter.get(chapter.id, []):
+            new_quiz_id = uuid.uuid4()
+            quiz_id_map[str(quiz.id)] = new_quiz_id
+            quiz_id_map_cv[str(quiz.id)] = str(new_quiz_id)
+            db.add(
+                Quiz(
+                    id=new_quiz_id,
+                    chapter_id=new_chapter_id,
+                    quiz_type=quiz.quiz_type or "quiz",
+                    max_attempts=quiz.max_attempts,
+                    passing_score=quiz.passing_score,
+                )
             )
-            db.add(new_chapter)
-            # Postgres' unit-of-work topological sort handles the chapter →
-            # block ordering correctly; SQLite (PRAGMA foreign_keys=ON, used
-            # by tests) does not because ``ChapterBlock.chapter_id`` is a
-            # plain String FK without a relationship wired through. Gate the
-            # flush to the SQLite path so prod clones don't take N
-            # round-trips for a cosmetic test-only safety net.
-            if db.bind is not None and db.bind.dialect.name == "sqlite":
-                db.flush()
 
-            quiz_id_map: dict[str, uuid.UUID] = {}
-            assignment_id_map: dict[str, uuid.UUID] = {}
-
-            for quiz in quizzes_by_chapter.get(chapter.id, []):
-                new_quiz_id = uuid.uuid4()
-                quiz_id_map[str(quiz.id)] = new_quiz_id
-                quiz_id_map_cv[str(quiz.id)] = str(new_quiz_id)
+            for question in sorted(
+                questions_by_quiz.get(str(quiz.id), []),
+                key=lambda q: q.order_index,
+            ):
+                new_question_id = uuid.uuid4()
+                question_id_map_cv[str(question.id)] = str(new_question_id)
                 db.add(
-                    Quiz(
-                        id=new_quiz_id,
-                        chapter_id=new_chapter_id,
-                        quiz_type=quiz.quiz_type or "quiz",
-                        max_attempts=quiz.max_attempts,
-                        passing_score=quiz.passing_score,
+                    QuizQuestion(
+                        id=new_question_id,
+                        quiz_id=new_quiz_id,
+                        question_type=question.question_type,
+                        order_index=question.order_index,
+                        points=question.points,
+                        min_words=question.min_words,
                     )
                 )
 
-                for question in sorted(
-                    questions_by_quiz.get(str(quiz.id), []),
-                    key=lambda q: q.order_index,
+                for option in sorted(
+                    options_by_question.get(str(question.id), []),
+                    key=lambda o: o.order_index,
                 ):
-                    new_question_id = uuid.uuid4()
-                    question_id_map_cv[str(question.id)] = str(new_question_id)
+                    new_option_id = uuid.uuid4()
+                    option_id_map_cv[str(option.id)] = str(new_option_id)
                     db.add(
-                        QuizQuestion(
-                            id=new_question_id,
-                            quiz_id=new_quiz_id,
-                            question_type=question.question_type,
-                            order_index=question.order_index,
-                            points=question.points,
-                            min_words=question.min_words,
+                        QuizOption(
+                            id=new_option_id,
+                            question_id=new_question_id,
+                            is_correct=option.is_correct,
+                            order_index=option.order_index,
                         )
                     )
 
-                    for option in sorted(
-                        options_by_question.get(str(question.id), []),
-                        key=lambda o: o.order_index,
-                    ):
-                        new_option_id = uuid.uuid4()
-                        option_id_map_cv[str(option.id)] = str(new_option_id)
-                        db.add(
-                            QuizOption(
-                                id=new_option_id,
-                                question_id=new_question_id,
-                                is_correct=option.is_correct,
-                                order_index=option.order_index,
-                            )
-                        )
-
-            for assignment in assignments_by_chapter.get(chapter.id, []):
-                new_assignment_id = uuid.uuid4()
-                assignment_id_map[str(assignment.id)] = new_assignment_id
-                assignment_id_map_cv[str(assignment.id)] = str(new_assignment_id)
-                db.add(
-                    Assignment(
-                        id=new_assignment_id,
-                        chapter_id=new_chapter_id,
-                        max_score=assignment.max_score,
-                        due_date=None,
-                    )
+        for assignment in assignments_by_chapter.get(chapter.id, []):
+            new_assignment_id = uuid.uuid4()
+            assignment_id_map[str(assignment.id)] = new_assignment_id
+            assignment_id_map_cv[str(assignment.id)] = str(new_assignment_id)
+            db.add(
+                Assignment(
+                    id=new_assignment_id,
+                    chapter_id=new_chapter_id,
+                    max_score=assignment.max_score,
+                    due_date=None,
                 )
+            )
 
-            for block in sorted(blocks_by_chapter.get(chapter.id, []), key=lambda b: b.order_index):
-                new_block_id = uuid.uuid4()
-                block_id_map[str(block.id)] = str(new_block_id)
-                db.add(
-                    ChapterBlock(
-                        id=new_block_id,
-                        chapter_id=new_chapter_id,
-                        block_type=block.block_type,
-                        order_index=block.order_index,
-                        quiz_id=quiz_id_map.get(str(block.quiz_id)) if block.quiz_id else None,
-                        assignment_id=assignment_id_map.get(str(block.assignment_id)) if block.assignment_id else None,
-                        file_bucket=block.file_bucket,
-                        file_path=block.file_path,
-                        file_name=block.file_name,
-                    )
+        for block in sorted(blocks_by_chapter.get(chapter.id, []), key=lambda b: b.order_index):
+            new_block_id = uuid.uuid4()
+            block_id_map[str(block.id)] = str(new_block_id)
+            db.add(
+                ChapterBlock(
+                    id=new_block_id,
+                    chapter_id=new_chapter_id,
+                    block_type=block.block_type,
+                    order_index=block.order_index,
+                    quiz_id=quiz_id_map.get(str(block.quiz_id)) if block.quiz_id else None,
+                    assignment_id=assignment_id_map.get(str(block.assignment_id)) if block.assignment_id else None,
+                    file_bucket=block.file_bucket,
+                    file_path=block.file_path,
+                    file_name=block.file_name,
                 )
+            )
 
     # Fan a single bulk SELECT + INSERT per entity_type across
     # the whole clone tree so the new course inherits its bilingual

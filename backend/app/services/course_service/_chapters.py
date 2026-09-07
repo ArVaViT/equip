@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import func
 
-from app.models.course import Chapter, Course, Module
+from app.models.course import Chapter, Module
 from app.services.content_versions import dual_write_entity_content
 from app.services.domain_access import course_source_locale_for_chapter
 
@@ -38,19 +38,6 @@ def _course_id_for_module(db: Session, module_id: str) -> str | None:
     return db.query(Module.course_id).filter(Module.id == module_id).scalar()
 
 
-def _course_source_locale_for_module(db: Session, module_id: str) -> str | None:
-    """Walk ``Chapter -> Module -> Course`` to find the parent course's
-    source locale. Used as the fallback when a chapter title alone
-    can't be classified by the language detector.
-    """
-    return (
-        db.query(Course.source_locale)
-        .join(Module, Module.course_id == Course.id)
-        .filter(Module.id == module_id)
-        .scalar()
-    )
-
-
 def _resync_progress_for_chapter(db: Session, chapter: Chapter) -> None:
     """Recompute everybody's percentage on the course this chapter belongs to.
 
@@ -63,9 +50,7 @@ def _resync_progress_for_chapter(db: Session, chapter: Chapter) -> None:
     if chapter.chapter_type not in GRADABLE_CHAPTER_TYPES:
         # Reading chapters are not in the fraction, so nothing moved.
         return
-    course_id = db.query(Module.course_id).filter(Module.id == chapter.module_id).scalar()
-    if course_id:
-        resync_course_progress(db, course_id)
+    resync_course_progress(db, chapter.course_id)
 
 
 def create_chapter(db: Session, module_id: str, data: ChapterCreate) -> Chapter:
@@ -89,7 +74,9 @@ def create_chapter(db: Session, module_id: str, data: ChapterCreate) -> Chapter:
         entity_type="chapter",
         entity_id=str(chapter.id),
         texts={"title": data.title},
-        fallback_locale=_course_source_locale_for_module(db, module_id),
+        # By the chapter's own course, like ``update_chapter`` — the module
+        # is not asked.
+        fallback_locale=course_source_locale_for_chapter(db, chapter.id),
     )
     db.commit()
     db.refresh(chapter)

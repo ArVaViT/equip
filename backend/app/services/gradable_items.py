@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any
 
 from app.constants import GRADABLE_CHAPTER_TYPES
 from app.models.assignment import Assignment
-from app.models.course import Chapter, Module
+from app.models.course import Chapter
 from app.models.quiz import Quiz
 
 if TYPE_CHECKING:
@@ -22,15 +22,13 @@ if TYPE_CHECKING:
 def course_items(db: Session, course_id: str) -> tuple[list[Any], list[Any]]:
     """Every gradable item in the course, with its chapter title.
 
-    Soft-deleted chapters and modules are excluded here for the same reason the
-    calculator excludes them: work in a deleted chapter is not owed.
+    Soft-deleted chapters are excluded here for the same reason the calculator
+    excludes them: work in a deleted chapter is not owed.
     """
     base = (
         db.query(Chapter.id.label("chapter_id"), Chapter.title.label("chapter_title"))
-        .join(Module, Module.id == Chapter.module_id)
         .filter(
-            Module.course_id == course_id,
-            Module.deleted_at.is_(None),
+            Chapter.course_id == course_id,
             Chapter.deleted_at.is_(None),
             Chapter.chapter_type.in_(GRADABLE_CHAPTER_TYPES),
         )

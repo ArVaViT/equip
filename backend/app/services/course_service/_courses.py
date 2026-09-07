@@ -6,8 +6,6 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import select
-
 from app.models.certificate import Certificate
 from app.models.course import Chapter, Course, Module
 from app.services.content_versions import (
@@ -151,6 +149,8 @@ def delete_course(db: Session, course: Course) -> None:
 
     Uses bulk UPDATEs so a course with hundreds of chapters still completes in
     three round trips (course + modules + chapters) instead of one per row.
+    Chapters are addressed by their own ``course_id``, so one outside any
+    module is binned with the course rather than left visible under it.
     Enrollments / progress / quiz attempts are intentionally left untouched
     so a restore is lossless.
     """
@@ -160,9 +160,8 @@ def delete_course(db: Session, course: Course) -> None:
         Module.course_id == course.id,
         Module.deleted_at.is_(None),
     ).update({Module.deleted_at: now}, synchronize_session=False)
-    module_ids = select(Module.id).where(Module.course_id == course.id).scalar_subquery()
     db.query(Chapter).filter(
-        Chapter.module_id.in_(module_ids),
+        Chapter.course_id == course.id,
         Chapter.deleted_at.is_(None),
     ).update({Chapter.deleted_at: now}, synchronize_session=False)
     db.commit()
@@ -190,9 +189,8 @@ def restore_course(db: Session, course: Course) -> Course:
             Module.course_id == course.id,
             Module.deleted_at == tombstone,
         ).update({Module.deleted_at: None}, synchronize_session=False)
-        module_ids = select(Module.id).where(Module.course_id == course.id).scalar_subquery()
         db.query(Chapter).filter(
-            Chapter.module_id.in_(module_ids),
+            Chapter.course_id == course.id,
             Chapter.deleted_at == tombstone,
         ).update({Chapter.deleted_at: None}, synchronize_session=False)
     db.commit()
@@ -262,10 +260,13 @@ def permanently_delete_course(db: Session, course: Course) -> None:
     # and everything hanging off a chapter — its blocks, quizzes,
     # assignments and their translations — was skipped. One deleted
     # course left three orphaned rows behind; production had 787.
+    #
+    # Chapters are gathered by their own ``course_id``, not through the
+    # modules: a chapter the course holds outside any module would otherwise
+    # be skipped here — with its blocks, quizzes and their translations — and
+    # the sweep would be back to leaving orphans behind.
     module_keys = [mid for (mid,) in db.query(Module.id).filter(Module.course_id == course.id)]
-    chapter_keys = (
-        [cid for (cid,) in db.query(Chapter.id).filter(Chapter.module_id.in_(module_keys))] if module_keys else []
-    )
+    chapter_keys = [cid for (cid,) in db.query(Chapter.id).filter(Chapter.course_id == course.id)]
 
     blocks: list[Any] = []
     quizzes: list[Any] = []

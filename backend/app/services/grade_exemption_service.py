@@ -27,7 +27,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.models.assignment import Assignment
 from app.models.chapter_progress import ChapterProgress
-from app.models.course import Chapter, Module
+from app.models.course import Chapter
 from app.models.grade_exemption import GradeExemption
 from app.models.quiz import Quiz
 from app.services.course_service._enrollment import sync_enrollment_progress
@@ -51,15 +51,14 @@ def chapter_for_item(db: Session, *, item_type: str, item_id: UUID, course_id: s
     model = Quiz if item_type == "quiz" else Assignment
     query = db.query(model.chapter_id).filter(model.id == item_id)
     if course_id is not None:
-        query = query.join(Chapter, Chapter.id == model.chapter_id).join(Module, Module.id == Chapter.module_id)
+        query = query.join(Chapter, Chapter.id == model.chapter_id)
         # Soft-deleted chapters are already out of every grade calculation, so
         # an exemption there can never move a number. Accepting one answers 201
         # and writes an audit entry for a decision with no effect — and one that
         # would quietly start applying if the chapter were ever restored.
         query = query.filter(
-            Module.course_id == course_id,
+            Chapter.course_id == course_id,
             Chapter.deleted_at.is_(None),
-            Module.deleted_at.is_(None),
         )
     return query.scalar()
 
