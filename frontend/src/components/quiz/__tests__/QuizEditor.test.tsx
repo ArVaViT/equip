@@ -297,7 +297,7 @@ describe("a quiz nobody could pass", () => {
     const user = userEvent.setup()
     render(<QuizEditor chapterId="chap-1" />, { wrapper: Wrapper })
     await screen.findByText("Создать тест")
-    await user.type(screen.getByPlaceholderText("напр. Тест по главе"), "Бытие 1")
+    await user.type(screen.getByPlaceholderText("напр. Тест по уроку"), "Бытие 1")
     await user.click(screen.getByRole("button", { name: "Добавить вопрос" }))
     await user.type(screen.getByPlaceholderText("Текст вопроса..."), "Сколько дней творения?")
     await user.type(screen.getByPlaceholderText("Вариант 1"), "Шесть")

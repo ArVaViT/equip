@@ -121,8 +121,8 @@ describe("NotEnrolledView — the author on an unpublished course", () => {
       "href",
       "/courses/c-1/modules/m-1",
     )
-    // A module with no chapters says so rather than rendering an empty box.
-    expect(screen.getByText(/This module has no chapters yet/)).toBeInTheDocument()
+    // A module with no lessons says so rather than rendering an empty box.
+    expect(screen.getByText(/This module has no lessons yet/)).toBeInTheDocument()
   })
 
   it("orders modules and chapters by their index, not by arrival", () => {
@@ -203,7 +203,7 @@ describe("NotEnrolledView — the author on an unpublished course", () => {
     // The line was keyed on the module count, so a course of lessons said
     // nothing at all about itself. It says what it has, and does not offer a
     // module count it hasn't got.
-    expect(screen.getByText(/1 chapter/)).toBeInTheDocument()
+    expect(screen.getByText(/1 lesson/)).toBeInTheDocument()
     expect(screen.queryByText(/module/i)).not.toBeInTheDocument()
   })
 

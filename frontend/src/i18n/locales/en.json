@@ -75,17 +75,17 @@
       "structure": {
         "eyebrow": "Course structure",
         "title": "A course, not a pile of videos",
-        "body": "Modules and chapters in a fixed order: you always see what is done and what comes next.",
+        "body": "Lessons in a fixed order — grouped into modules when a course grows big enough to need them. You always see what is done and what comes next.",
         "module": "Module 1 · Genesis 1–11",
-        "chapter1": "Chapter 1 — Creation",
-        "chapter2": "Chapter 2 — The Fall",
-        "chapter3": "Chapter 3 — Cain and Abel"
+        "chapter1": "Lesson 1 — Creation",
+        "chapter2": "Lesson 2 — The Fall",
+        "chapter3": "Lesson 3 — Cain and Abel"
       },
       "assessment": {
         "eyebrow": "Assessment",
         "title": "Not just multiple choice",
         "body": "Four question types, essays among them — read by a teacher, not only by a machine.",
-        "sampleQuestion": "Summarize the main idea of this chapter in your own words.",
+        "sampleQuestion": "Summarize the main idea of this passage in your own words.",
         "gradedBadge": "Teacher graded"
       },
       "certificates": {
@@ -106,7 +106,7 @@
       "heading": "How it works",
       "step1": "Sign up — takes a minute, email or Google is enough.",
       "step2": "Open the catalog and enroll in the course you want.",
-      "step3": "Work through chapters, take quizzes, claim your certificate at the end."
+      "step3": "Work through the lessons, take quizzes, claim your certificate at the end."
     },
     "finalCta": {
       "heading": "Ready to start?",
@@ -133,8 +133,8 @@
       "empty": "No events scheduled for today.",
       "emptyDescription": "Open the full calendar to see what's coming up this week."
     },
-    "readingProgress_one": "{{read}} of {{count}} chapter read",
-    "readingProgress_other": "{{read}} of {{count}} chapters read",
+    "readingProgress_one": "{{read}} of {{count}} lesson read",
+    "readingProgress_other": "{{read}} of {{count}} lessons read",
     "teaching": {
       "title": "Courses you teach",
       "description": "Editing, grading and publishing all live under “Teaching”.",
@@ -157,7 +157,7 @@
     "teacher": {
       "eyebrow": "Welcome",
       "title": "Your first course starts here",
-      "body": "Equip is your classroom. Lay out a course in chapters, write your own quizzes, sign certificates when students finish — and keep ownership of every word the whole way.",
+      "body": "Equip is your classroom. Lay out a course in lessons, write your own quizzes, sign certificates when students finish — and keep ownership of every word the whole way.",
       "primaryCta": "Create your first course"
     },
     "teacherAsStudent": {
@@ -218,7 +218,7 @@
     "splash": {
       "eyebrow": "Your shelf is ready",
       "eyebrowNamed": "Your shelf is ready, {{name}}",
-      "body": "Take a breath. We're opening the first chapter."
+      "body": "Take a breath. We're opening the first lesson."
     }
   },
   "grandTour": {
@@ -291,30 +291,30 @@
         "body": "Title, description, and an enroll button if you're not in yet — or your progress bar once you are. Everything you need to start."
       },
       "modules": {
-        "title": "Modules and chapters",
-        "body": "The course is laid out in modules; each module has chapters. Click a chapter to open it. Locked ones unlock as you progress."
+        "title": "Lessons and modules",
+        "body": "The course is a run of lessons in order. If the teacher grouped some of them, those show up here as modules. Click a lesson to open it. Locked ones unlock as you progress."
       },
       "finale": {
         "title": "Ready when you are",
-        "body": "Start with the first chapter. We'll track your progress and surface the next step automatically."
+        "body": "Start with the first lesson. We'll track your progress and surface the next step automatically."
       }
     },
     "chapter": {
       "header": {
         "title": "Where you are",
-        "body": "The eyebrow tells you which chapter you're on (e.g. 'Chapter 2 of 7') and what kind it is — reading, quiz, exam, or assignment."
+        "body": "The eyebrow tells you which lesson you're on (e.g. 'Lesson 2 of 7') and what kind it is — reading, quiz, exam, or assignment."
       },
       "body": {
-        "title": "The chapter content",
-        "body": "Read, take a quiz, or submit an assignment depending on the chapter type. Your progress saves automatically as you go."
+        "title": "The lesson content",
+        "body": "Read, take a quiz, or submit an assignment depending on the lesson type. Your progress saves automatically as you go."
       },
       "nav": {
-        "title": "Move between chapters",
-        "body": "Use these buttons to jump to the previous or next chapter without going back to the module list."
+        "title": "Move between lessons",
+        "body": "Use these buttons to jump to the previous or next lesson without going back to the course page."
       },
       "finale": {
         "title": "Take your time",
-        "body": "There's no clock. Work through the chapter at your pace and click 'Next' when you're ready."
+        "body": "There's no clock. Work through the lesson at your pace and click 'Next' when you're ready."
       }
     },
     "certs": {
@@ -354,7 +354,7 @@
     "teacher": {
       "newCourse": {
         "title": "Create a course",
-        "body": "Open the editor here. You'll lay out modules, write chapters and quizzes, and publish when ready."
+        "body": "Open the editor here. You'll write lessons and quizzes, group them into modules if the course needs it, and publish when ready."
       },
       "pendingCerts": {
         "title": "Pending certificates",
@@ -403,12 +403,12 @@
     },
     "chapterEditor": {
       "header": {
-        "title": "Chapter settings",
-        "body": "Title, type (reading / quiz / exam / assignment), lock state. These choose what the student sees when they open the chapter."
+        "title": "Lesson settings",
+        "body": "Title, type (reading / quiz / exam / assignment), lock state. These choose what the student sees when they open the lesson."
       },
       "blocks": {
         "title": "Content blocks",
-        "body": "Build the chapter out of blocks: rich text, files, a quiz, or an assignment. Drag to reorder. Each block saves on its own."
+        "body": "Build the lesson out of blocks: rich text, files, a quiz, or an assignment. Drag to reorder. Each block saves on its own."
       },
       "finale": {
         "title": "Author at your pace",
@@ -418,7 +418,7 @@
     "gradebook": {
       "table": {
         "title": "Your gradebook",
-        "body": "Every enrolled student gets a row; every gradable chapter gets a column. Click a cell to enter or update a grade."
+        "body": "Every enrolled student gets a row; every gradable lesson gets a column. Click a cell to enter or update a grade."
       },
       "finale": {
         "title": "Grades flow back",
@@ -432,7 +432,7 @@
       },
       "finale": {
         "title": "Watch how it lands",
-        "body": "Numbers update in real time as students enrol, finish chapters, and submit work. No refresh needed."
+        "body": "Numbers update in real time as students enrol, finish lessons, and submit work. No refresh needed."
       }
     },
     "studentProgress": {
@@ -442,7 +442,7 @@
       },
       "finale": {
         "title": "Coaching view",
-        "body": "Spot students who haven't logged in lately, or those stuck on a chapter. A nudge from you often makes the difference."
+        "body": "Spot students who haven't logged in lately, or those stuck on a lesson. A nudge from you often makes the difference."
       }
     }
   },
@@ -718,13 +718,13 @@
     "teacher": "Teacher Dashboard",
     "admin": "Admin Panel",
     "home": "Home",
-    "editChapter": "Edit Chapter",
+    "editChapter": "Edit Lesson",
     "editModule": "Edit Module",
     "gradebook": "Gradebook",
     "studentProgress": "Student Progress",
     "courseAnalytics": "Course Analytics",
     "courseEditor": "Course Editor",
-    "chapter": "Chapter",
+    "chapter": "Lesson",
     "module": "Module",
     "course": "Course",
     "courses": "Courses",
@@ -738,7 +738,7 @@
   },
   "errors": {
     "invalidCourseLink": "Invalid course or module link.",
-    "loadChapterFailed": "Failed to load chapter. Please try again.",
+    "loadChapterFailed": "Failed to load lesson. Please try again.",
     "loadModuleFailed": "Failed to load module. Please try again.",
     "loadCourseFailed": "Failed to load course. Please try again.",
     "loadTeacherCoursesFailed": "Failed to load your courses. Please try again.",
@@ -851,7 +851,7 @@
     "enrolledSuccess": "Enrolled successfully",
     "enrolledFailed": "Failed to enroll. Please try again.",
     "courseNotFound": "Course not found",
-    "chapterNotFound": "Chapter not found",
+    "chapterNotFound": "Lesson not found",
     "moduleNotFound": "Module not found",
     "certificateApproved": "Certificate approved",
     "certificateApproveFailed": "Failed to approve certificate",
@@ -885,9 +885,9 @@
     "due": "Due",
     "moduleComplete": "Module complete — well done!",
     "completedProgress": "{{done}} of {{total}} assessments done",
-    "chaptersHeading": "Chapters",
-    "noChaptersYet": "No chapters added yet",
-    "progressUnknown": "Couldn't load your progress. Completed-chapter marks are not shown right now — reload the page.",
+    "chaptersHeading": "Lessons",
+    "noChaptersYet": "No lessons added yet",
+    "progressUnknown": "Couldn't load your progress. Completed-lesson marks are not shown right now — reload the page.",
     "chapterRead": "Read"
   },
   "course": {
@@ -898,33 +898,33 @@
   },
   "chapter": {
     "attachmentEyebrow": "Attachment",
-    "blocksLoadFailed": "Couldn't load this chapter",
+    "blocksLoadFailed": "Couldn't load this lesson",
     "blocksLoadFailedDescription": "We couldn't load the lesson content. This is usually a temporary network issue — try again.",
-    "chapterOf": "Chapter {{current}} of {{total}}",
+    "chapterOf": "Lesson {{current}} of {{total}}",
     "completed": "Completed",
     "downloadFile": "Download file",
     "downloadFileAria": "Download attachment: {{name}}",
-    "emptyContent": "No content has been added to this chapter yet.",
+    "emptyContent": "No content has been added to this lesson yet.",
     "finishCourseLabel": "Course overview & certificate",
     "finishEyebrow": "Finish course",
-    "goToPreviousChapter": "Go to Previous Chapter",
+    "goToPreviousChapter": "Go to previous lesson",
     "imageLightbox": {
       "dialogAria": "Image preview",
       "closeAria": "Close image preview"
     },
-    "lockedHint": "Complete the previous chapter to unlock this one.",
-    "lockedTitle": "Chapter Locked",
+    "lockedHint": "Complete the previous lesson to unlock this one.",
+    "lockedTitle": "Lesson locked",
     "markRead": "Mark as read",
     "markReadFailed": "Could not mark it",
-    "markedRead": "Chapter read",
-    "navAriaLabel": "Chapter navigation",
-    "nextChapter": "Next Chapter",
+    "markedRead": "Lesson read",
+    "navAriaLabel": "Lesson navigation",
+    "nextChapter": "Next lesson",
     "nextEyebrow": "Next",
     "notTranslated": "This lesson is not available in your language yet. It will appear here as soon as it is ready.",
-    "positionEyebrow": "Chapter {{current}} of {{total}}",
-    "prevChapter": "Previous Chapter",
+    "positionEyebrow": "Lesson {{current}} of {{total}}",
+    "prevChapter": "Previous lesson",
     "prevEyebrow": "Previous",
-    "submitAssignmentToComplete": "Submit the assignment to complete this chapter"
+    "submitAssignmentToComplete": "Submit the assignment to complete this lesson"
   },
   "quiz": {
     "answerAll": "Answer all questions to submit",
@@ -1012,7 +1012,7 @@
     },
     "fields": {
       "quizTitle": "Quiz Title",
-      "titlePlaceholder": "e.g. Chapter Review Quiz",
+      "titlePlaceholder": "e.g. Lesson Review Quiz",
       "description": "Description (optional)",
       "descriptionPlaceholder": "Brief description of the quiz...",
       "passingScore": "Passing Score (%)",
@@ -1205,10 +1205,10 @@
     "loadFailed": "Failed to load assignments. Please try refreshing.",
     "heading": "Assignments ({{count}})",
     "newAssignment": "New Assignment",
-    "empty": "No assignments for this chapter.",
+    "empty": "No assignments for this lesson.",
     "form": {
       "title": "Title",
-      "titlePlaceholder": "e.g. Chapter Reflection Essay",
+      "titlePlaceholder": "e.g. Lesson Reflection Essay",
       "description": "Description (optional)",
       "descriptionPlaceholder": "Assignment instructions...",
       "maxScore": "Max Score",
@@ -1361,7 +1361,7 @@
       "name": "Name",
       "email": "Email",
       "progress": "Progress",
-      "chapters": "Chapters",
+      "chapters": "Lessons",
       "quizAvg": "Quiz Avg",
       "assignAvg": "Assign. Avg",
       "lastActive": "Last Active",
@@ -1377,12 +1377,12 @@
       "overallGrade": "Overall Grade",
       "overallGradeNa": "N/A",
       "enrolled": "Enrolled",
-      "chaptersCompleted": "Chapters Completed",
+      "chaptersCompleted": "Lessons Completed",
       "chaptersCompletedValue": "{{done}} of {{total}}",
       "progress": "Progress",
-      "chapterBreakdown": "Chapter Breakdown",
-      "loadingDetail": "Loading chapter breakdown…",
-      "detailFailed": "Couldn't load the chapter breakdown.",
+      "chapterBreakdown": "Lesson Breakdown",
+      "loadingDetail": "Loading lesson breakdown…",
+      "detailFailed": "Couldn't load the lesson breakdown.",
       "retry": "Retry",
       "gradebookButton": "Gradebook",
       "viewAnalytics": "View Analytics",
@@ -1421,7 +1421,7 @@
     },
     "excuse": {
       "title": "Excuse from “{{chapter}}”",
-      "explainer": "The work stops counting toward the grade, and the chapter counts as done — so progress can still reach 100% and the certificate stays reachable. You can return the work at any time.",
+      "explainer": "The work stops counting toward the grade, and the lesson counts as done — so progress can still reach 100% and the certificate stays reachable. You can return the work at any time.",
       "reasonLabel": "Reason (optional, visible to directors)",
       "reasonPlaceholder": "Illness, bereavement, joined the course late…",
       "confirm": "Excuse"
@@ -1602,7 +1602,7 @@
       "restoreFailed": "Failed to restore course",
       "confirmDelete": {
         "title": "Permanently delete this course?",
-        "description": "This will permanently delete the course and all its data (modules, chapters, enrollments, grades). This action cannot be undone.",
+        "description": "This will permanently delete the course and all its data (lessons, modules, enrollments, grades). This action cannot be undone.",
         "confirm": "Delete permanently"
       },
       "deleted": "Course permanently deleted",
@@ -1905,7 +1905,7 @@
     "unsavedChanges": "You have unsaved changes",
     "typeChangeConfirm": {
       "title": "Change the lesson type?",
-      "description": "Nothing you wrote is deleted. The \"{{from}}\" editor is hidden while the chapter is a \"{{to}}\", and comes back with everything in it the moment you switch the type back.",
+      "description": "Nothing you wrote is deleted. The \"{{from}}\" editor is hidden while the lesson is a \"{{to}}\", and comes back with everything in it the moment you switch the type back.",
       "confirm": "Change type"
     }
   },
@@ -1924,8 +1924,8 @@
     "studentsEnrolledOfMax": "{{enrolled}}/{{max}} students enrolled",
     "moduleCount_one": "{{count}} module",
     "moduleCount_other": "{{count}} modules",
-    "chapterCount_one": "{{count}} chapter",
-    "chapterCount_other": "{{count}} chapters",
+    "chapterCount_one": "{{count}} lesson",
+    "chapterCount_other": "{{count}} lessons",
     "percentComplete": "{{percent}}% complete",
     "modulesHeading": "Modules",
     "openModule": "Open",
@@ -1962,9 +1962,9 @@
     "preview": {
       "eyebrow": "Preview",
       "backToEditor": "Back to the course editor",
-      "note": "This is how students will see the course once it is published. Until then nobody can enroll — but you can open any chapter and go through it as a student would.",
+      "note": "This is how students will see the course once it is published. Until then nobody can enroll — but you can open any lesson and go through it as a student would.",
       "heading": "Contents",
-      "emptyModule": "This module has no chapters yet.",
+      "emptyModule": "This module has no lessons yet.",
       "empty": "No lessons yet — add them in the editor."
     }
   },
@@ -1995,7 +1995,7 @@
     },
     "summary": {
       "title": "Student Grades",
-      "description": "Auto-calculated based on quiz scores, assignment grades, and chapter completion. Click a student to override manually.",
+      "description": "Auto-calculated based on quiz scores, assignment grades, and lesson completion. Click a student to override manually.",
       "empty": "No students enrolled yet.",
       "thStudent": "Student",
       "thQuiz": "Quiz",
@@ -2014,8 +2014,8 @@
       "assignmentsNotCounted": "Assignments are set to 0% in this course, so their marks are shown but do not affect the total — the grade comes from quizzes alone. Change the weights in the grading settings if you want assignments to count.",
       "quizzesNotCounted": "Quizzes are set to 0% in this course, so their results are shown but do not affect the total — the grade comes from assignments alone. Change the weights in the grading settings if you want quizzes to count.",
       "notGradedYetCourse": "Nothing has been graded in this course yet, so there are no percentages to show. They appear as soon as the first quiz is taken or the first assignment is marked.",
-      "chaptersNotFilledIn": "This course has chapters meant to be graded, but no quiz or assignment has been filled in yet — a quiz is only saved once it has questions. Percentages appear once the content is there. Until then students are not being graded on anything.",
-      "completionPassCourse": "This course has no quizzes and no assignments, so there is no percentage to compute. It is passed by completion: a student passes once every chapter is done. This is expected, not an error.",
+      "chaptersNotFilledIn": "This course has lessons meant to be graded, but no quiz or assignment has been filled in yet — a quiz is only saved once it has questions. Percentages appear once the content is there. Until then students are not being graded on anything.",
+      "completionPassCourse": "This course has no quizzes and no assignments, so there is no percentage to compute. It is passed by completion: a student passes once every lesson is done. This is expected, not an error.",
       "quizzesWeighZero": "You set quizzes to 0% in this course, so they produce no percentage — their marks are visible in the Grade Table tab. A percentage appears once you mark the first assignment: assignments carry the whole grade here. To make quizzes count, change the weights in the grading settings.",
       "quizzesWeighZeroNoAssignments": "You set quizzes to 0% and this course has no assignments, so there is nothing to compute a percentage from. Quiz marks are visible in the Grade Table tab. To get a grade, add an assignment or give quizzes some weight in the grading settings.",
       "assignmentsWeighZeroNoQuizzes": "You set assignments to 0% and this course has no quizzes, so there is nothing to compute a percentage from. Assignment marks are visible in the Grade Table tab. To get a percentage, add a quiz or give assignments some weight in the grading settings.",
@@ -2041,7 +2041,7 @@
     },
     "table": {
       "title": "Student Grade Table",
-      "description": "Reading/video chapters = 1 pt for completion · Quiz/exam = scored · Assignment = teacher-graded pts",
+      "description": "Reading/video lessons = 1 pt for completion · Quiz/exam = scored · Assignment = teacher-graded pts",
       "thStudent": "Student",
       "thTotal": "Total",
       "overrideGrade": "Override Grade",
@@ -2354,8 +2354,8 @@
         "approve": "Approved",
         "attach_course": "Course attached",
         "bulk_role_update": "Roles changed in bulk",
-        "chapter_completed_by_teacher": "Chapter marked done by teacher",
-        "chapter_completion_removed_by_teacher": "Chapter mark removed",
+        "chapter_completed_by_teacher": "Lesson marked done by teacher",
+        "chapter_completion_removed_by_teacher": "Lesson mark removed",
         "complete": "Completion",
         "create": "Created",
         "delete": "Deleted",
@@ -2386,7 +2386,7 @@
       "resourceValue": {
         "course": "Course",
         "module": "Module",
-        "chapter": "Chapter",
+        "chapter": "Lesson",
         "enrollment": "Enrollment",
         "certificate": "Certificate",
         "assignment_submission": "Assignment submission",
@@ -2565,7 +2565,7 @@
   },
   "chapterTypes": {
     "reading": {
-      "label": "Lesson",
+      "label": "Reading",
       "description": "Mix text, video, audio, files and more into a single lesson"
     },
     "quiz": {
@@ -2604,15 +2604,15 @@
       "hasCoverImage": "The course has a cover image.",
       "translationsComplete": "Every language has this course. It goes into the catalog once they all do.",
       "hasEnrollmentWindow": "Enrollment open / close dates are set.",
-      "hasAtLeastOneChapter": "The course has at least one chapter.",
+      "hasAtLeastOneChapter": "The course has at least one lesson.",
       "hasMultipleModules": "The course has two or more modules.",
-      "moduleHasChapters": "\"{{title}}\" has at least one chapter.",
+      "moduleHasChapters": "\"{{title}}\" has at least one lesson.",
       "readingHasContent": "\"{{title}}\" has reading content.",
       "quizHasQuestion": "Quiz in \"{{title}}\" has at least one question.",
       "examHasQuestion": "Exam in \"{{title}}\" has at least one question.",
       "quizQuestionsComplete": "Every question in \"{{title}}\" has the answers it needs (options, correct marker).",
       "assignmentHasBrief": "Assignment in \"{{title}}\" has a brief / description.",
-      "quizThresholdAboveCourse": "A quiz demands a higher score than the course does. Students can pass the course on paper and still never complete the chapter, so the certificate stays out of reach.",
+      "quizThresholdAboveCourse": "A quiz demands a higher score than the course does. Students can pass the course on paper and still never complete the lesson, so the certificate stays out of reach.",
       "quizWeightNonzero": "Quizzes count toward the final grade.",
       "assignmentWeightNonzero": "Assignments count toward the final grade.",
       "quizThresholdBelowCourse": "Some quizzes pass at a lower score than the course does. A student can clear every quiz and still finish below the course's pass line."
@@ -2622,15 +2622,15 @@
       "hasCoverImage": "The course has no cover image yet.",
       "translationsComplete": "Not every language has this course yet. It goes into the catalog once they all do.",
       "hasEnrollmentWindow": "Enrollment open / close dates are not set.",
-      "hasAtLeastOneChapter": "The course has no chapters yet.",
+      "hasAtLeastOneChapter": "The course has no lessons yet.",
       "hasMultipleModules": "The course has only one module.",
-      "moduleHasChapters": "\"{{title}}\" has no chapters yet.",
+      "moduleHasChapters": "\"{{title}}\" has no lessons yet.",
       "readingHasContent": "\"{{title}}\" has no reading content yet.",
       "quizHasQuestion": "Quiz in \"{{title}}\" has no questions yet.",
       "examHasQuestion": "Exam in \"{{title}}\" has no questions yet.",
       "quizQuestionsComplete": "Some questions in \"{{title}}\" are unfinished (missing options or a correct marker).",
       "assignmentHasBrief": "Assignment in \"{{title}}\" has no brief / description yet.",
-      "quizThresholdAboveCourse": "A quiz demands a higher score than the course does. Students can pass the course on paper and still never complete the chapter, so the certificate stays out of reach.",
+      "quizThresholdAboveCourse": "A quiz demands a higher score than the course does. Students can pass the course on paper and still never complete the lesson, so the certificate stays out of reach.",
       "quizWeightNonzero": "Quizzes do not count toward the final grade.",
       "assignmentWeightNonzero": "Assignments do not count toward the final grade.",
       "quizThresholdBelowCourse": "Some quizzes pass at a lower score than the course does. A student can clear every quiz and still finish below the course's pass line."
