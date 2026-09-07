@@ -60,7 +60,7 @@ def _load_course_structure(
     # the list at all. Where such a chapter sits is step 3's decision; for
     # now it goes ahead of every module.
     module_order = {m.id: m.order_index for m in modules}
-    chapters.sort(key=lambda c: (module_order.get(c.module_id, -1), c.order_index))
+    chapters.sort(key=lambda c: (module_order.get(c.module_id, -1) if c.module_id else -1, c.order_index))
     chapter_title_map = {c.id: c.title for c in chapters}
     return chapters, module_map, chapter_title_map
 

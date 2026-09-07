@@ -12,8 +12,9 @@ from sqlalchemy.orm import joinedload
 from app.constants import GRADABLE_CHAPTER_TYPES
 from app.core.metrics import increment
 from app.models.chapter_progress import ChapterProgress
-from app.models.course import Chapter, Course
+from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
+from app.services.domain_access import chapter_module_is_live_or_absent
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -132,20 +133,24 @@ def resync_course_progress(db: Session, course_id: str | UUID) -> int:
     """
     gradable = (
         select(Chapter.id)
+        .outerjoin(Module, Chapter.module_id == Module.id)
         .where(
             Chapter.course_id == course_id,
             Chapter.chapter_type.in_(GRADABLE_CHAPTER_TYPES),
             Chapter.deleted_at.is_(None),
+            chapter_module_is_live_or_absent(),
         )
         .scalar_subquery()
     )
     total = (
         select(func.count())
         .select_from(Chapter)
+        .outerjoin(Module, Chapter.module_id == Module.id)
         .where(
             Chapter.course_id == course_id,
             Chapter.chapter_type.in_(GRADABLE_CHAPTER_TYPES),
             Chapter.deleted_at.is_(None),
+            chapter_module_is_live_or_absent(),
         )
         .scalar_subquery()
     )
@@ -224,6 +229,7 @@ def reading_progress_by_course(
             func.count(ChapterProgress.id).filter(ChapterProgress.completed.is_(True)).label("read"),
         )
         .select_from(Chapter)
+        .outerjoin(Module, Chapter.module_id == Module.id)
         .outerjoin(
             ChapterProgress,
             (ChapterProgress.chapter_id == Chapter.id) & (ChapterProgress.user_id == user_id),
@@ -236,6 +242,7 @@ def reading_progress_by_course(
             # work through instead of silently vanishing from both numbers.
             Chapter.chapter_type.notin_(GRADABLE_CHAPTER_TYPES),
             Chapter.deleted_at.is_(None),
+            chapter_module_is_live_or_absent(),
         )
         .group_by(Chapter.course_id)
         .all()
@@ -263,6 +270,7 @@ def sync_enrollment_progress(db: Session, user_id: str | UUID, course_id: str | 
             func.count(ChapterProgress.id).filter(ChapterProgress.completed.is_(True)).label("completed_gradable"),
         )
         .select_from(Chapter)
+        .outerjoin(Module, Chapter.module_id == Module.id)
         .outerjoin(
             ChapterProgress,
             (ChapterProgress.chapter_id == Chapter.id) & (ChapterProgress.user_id == user_id),
@@ -271,6 +279,7 @@ def sync_enrollment_progress(db: Session, user_id: str | UUID, course_id: str | 
             Chapter.course_id == course_id,
             Chapter.chapter_type.in_(GRADABLE_CHAPTER_TYPES),
             Chapter.deleted_at.is_(None),
+            chapter_module_is_live_or_absent(),
         )
         .one()
     )

@@ -40,6 +40,7 @@ from app.models.content_version import ContentVersion
 from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
 from app.models.quiz import Quiz, QuizAnswer, QuizAttempt, QuizQuestion
+from app.models.staged_content_version import StagedContentVersion
 from app.schemas.course import ChapterUpdate
 from app.services import zachet
 from app.services.calendar_service import build_calendar_events
@@ -563,19 +564,25 @@ def test_renaming_a_loose_chapter_finds_its_courses_language(db: Session):
 
     update_chapter(db, loose, ChapterUpdate(title="Урок"))
 
+    # The course is published, so the edit is held for translation rather
+    # than shown to students in the author's language — and a chapter with
+    # no module reaches that gate now like any other (the resolver behind
+    # ``edit_should_be_staged`` asks the chapter for its course, not its
+    # module). Before that fix this edit skipped staging entirely, which is
+    # why this test used to look for a live row instead.
     row = (
-        db.query(ContentVersion)
+        db.query(StagedContentVersion)
         .filter(
-            ContentVersion.entity_type == "chapter",
-            ContentVersion.entity_id == "loose-r",
-            ContentVersion.field == "title",
-            ContentVersion.superseded_by.is_(None),
+            StagedContentVersion.entity_type == "chapter",
+            StagedContentVersion.entity_id == "loose-r",
+            StagedContentVersion.field == "title",
         )
         .one()
     )
     # The title is short enough that detection alone cannot place it; the
     # course's language is the fallback, reached without a module.
     assert (row.text, row.locale) == ("Урок", "ru")
+    assert row.course_id == COURSE
 
 
 def test_the_bin_takes_a_loose_chapter_and_gives_it_back(db: Session):
