@@ -54,13 +54,10 @@ function makeCourse(over: Partial<Course> = {}): Course {
 }
 
 const confirm = vi.fn().mockResolvedValue(true) as unknown as Parameters<typeof useCourseData>[1]
-// Stable across renders on purpose: the hook's loader depends on it, and
-// a fresh function every render would restart (and cancel) the load.
-const onNotFound = vi.fn()
 
 async function renderLoaded(course: Course) {
   vi.spyOn(coursesService, "getCourseForEdit").mockResolvedValue(course)
-  const { result } = renderHook(() => useCourseData(course.id, confirm, onNotFound))
+  const { result } = renderHook(() => useCourseData(course.id, confirm))
   await waitFor(() => expect(result.current.loading).toBe(false))
   return result
 }

@@ -106,6 +106,21 @@ describe("VerifyCertificatePage", () => {
     expect(screen.queryByText(i18n.t("verify.validHeading"))).toBeNull();
   });
 
+  it("reads a number the server refuses to look up as unknown, not as a lost connection", async () => {
+    // The backend caps the path parameter; a 60-character paste is a 422.
+    // «Try again» would 422 again, so it must not be the network screen.
+    behaviour = async () => {
+      throw Object.assign(new Error("Unprocessable"), {
+        isAxiosError: true,
+        response: { status: 422, data: {} },
+      });
+    };
+    renderAt("/verify/" + "X".repeat(60));
+
+    expect(await screen.findByText(i18n.t("verify.invalidHeading"))).toBeInTheDocument();
+    expect(screen.queryByText(i18n.t("verify.errorTitle"))).toBeNull();
+  });
+
   it("looks up whatever is typed into the form", async () => {
     const user = userEvent.setup();
     behaviour = async () => GENUINE;

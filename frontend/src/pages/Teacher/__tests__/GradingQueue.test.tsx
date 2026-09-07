@@ -35,6 +35,13 @@ function work(over: Partial<WaitingSubmission> = {}): WaitingSubmission {
   }
 }
 
+function forbidden() {
+  return Object.assign(new Error("Forbidden"), {
+    isAxiosError: true,
+    response: { status: 403, data: {} },
+  })
+}
+
 function Wrapper({ children }: { children: ReactNode }) {
   return (
     <I18nextProvider i18n={i18n}>
@@ -64,6 +71,30 @@ describe("GradingQueue", () => {
     // A teacher who cleared the queue should be told, not shown a blank page
     // that reads as a failure to load.
     expect(await screen.findByText(/Всё проверено/)).toBeInTheDocument()
+  })
+
+  it("does not call a queue that failed to load «all marked»", async () => {
+    vi.spyOn(gradesService, "getQueue").mockRejectedValue(forbidden())
+    render(<GradingQueue />, { wrapper: Wrapper })
+
+    // The refusal stays on screen with a way to try again — a toast would
+    // have faded and left the reassuring empty state behind it.
+    expect(await screen.findByRole("alert")).toHaveTextContent(i18n.t("errors.byStatus.403"))
+    expect(screen.getByRole("button", { name: i18n.t("common.tryAgain") })).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t("grading.emptyTitle"))).toBeNull()
+  })
+
+  it("does not call a task whose work failed to load «marked»", async () => {
+    vi.spyOn(gradesService, "getQueue").mockResolvedValue([group()])
+    vi.spyOn(gradesService, "getAssignmentQueue").mockRejectedValue(forbidden())
+    render(<GradingQueue />, { wrapper: Wrapper })
+
+    await userEvent.click(await screen.findByRole("button", { name: /Проверять/ }))
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(i18n.t("errors.byStatus.403"))
+    // The green tick was the screen a failed fetch used to land on.
+    expect(screen.queryByText(i18n.t("grading.groupDoneTitle"))).toBeNull()
+    expect(screen.getByRole("button", { name: i18n.t("common.tryAgain") })).toBeInTheDocument()
   })
 
   it("opens a task and shows one piece of work at a time, oldest first", async () => {

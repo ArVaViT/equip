@@ -52,15 +52,15 @@ class TestProgressNotEnrolled:
     """``GET /progress/course/{course_id}/me`` requires enrollment.
     Non-enrolled student → 403 with the canonical envelope."""
 
-    def test_not_enrolled_returns_403(
+    def test_not_enrolled_is_null_not_a_refusal(
         self,
         student_client: TestClient,
         db: Session,
     ) -> None:
         # The student is logged in but never enrolled in this course.
         # The course doesn't need to exist for the enrollment check; the
-        # query just returns None either way.
+        # query just returns None either way. ``null`` (unknown), not ``[]``
+        # (nothing finished) — the client locks chapters on the latter.
         r = student_client.get("/api/v1/progress/course/never-enrolled-course/my-progress")
-        assert r.status_code == 403
-        body = r.json()
-        assert "not enrolled" in body["detail"]["message"].lower()
+        assert r.status_code == 200
+        assert r.json() is None

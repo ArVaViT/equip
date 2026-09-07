@@ -4,6 +4,7 @@ import type { DropResult } from "@hello-pangea/dnd"
 import { coursesService } from "@/services/courses"
 import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
+import { getErrorDetail } from "@/lib/errorDetail"
 import { isoToLocalInput, localInputToIso } from "@/i18n/format"
 import type { Course } from "@/types"
 import type { useConfirm } from "@/components/ui/alert-dialog"
@@ -15,6 +16,8 @@ type CoursePatch = Parameters<typeof coursesService.updateCourse>[1]
 interface CourseData {
   course: Course | null
   loading: boolean
+  /** Why `course` is null after loading, in the reader's language. */
+  loadError: string | null
   sortedModules: NonNullable<Course["modules"]>
   /** True when the course status is "published". */
   published: boolean
@@ -50,11 +53,11 @@ interface CourseData {
 export function useCourseData(
   courseId: string | undefined,
   confirm: Confirm,
-  onNotFound: () => void,
 ): CourseData {
   const { t } = useTranslation()
   const [course, setCourse] = useState<Course | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [enrollStart, setEnrollStart] = useState("")
   const [enrollEnd, setEnrollEnd] = useState("")
   const [savingEnrollment, setSavingEnrollment] = useState(false)
@@ -64,6 +67,7 @@ export function useCourseData(
     async (signal: { cancelled: boolean }) => {
       if (!courseId) return
       setLoading(true)
+      setLoadError(null)
       try {
         // `getCourseForEdit` forces ``?source=1`` so the InlineEdit fields
         // bind to the source-language `title` / `description` columns,
@@ -75,13 +79,20 @@ export function useCourseData(
         setCourse(data)
         setEnrollStart(isoToLocalInput(data.enrollment_start))
         setEnrollEnd(isoToLocalInput(data.enrollment_end))
-      } catch {
-        if (!signal.cancelled) onNotFound()
+      } catch (err) {
+        // Stay on the page and say why. This used to bounce to /teacher with
+        // no word — the link a teacher had clicked simply came apart under
+        // them — and the «course not found» screen in CourseEditor could
+        // never render because the navigation always won.
+        if (!signal.cancelled) {
+          setCourse(null)
+          setLoadError(getErrorDetail(err, t("courseEditor.notFound.description")))
+        }
       } finally {
         if (!signal.cancelled) setLoading(false)
       }
     },
-    [courseId, onNotFound],
+    [courseId, t],
   )
 
   useEffect(() => {
@@ -279,6 +290,7 @@ export function useCourseData(
   return {
     course,
     loading,
+    loadError,
     sortedModules,
     published: course?.status === "published",
     publishing: course?.status === "publishing",

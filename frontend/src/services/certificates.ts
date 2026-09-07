@@ -24,10 +24,16 @@ export const certificatesService = {
     return response.data
   },
 
+  /**
+   * The signed-in user's certificate for a course, or ``null`` when there is
+   * none yet — which is the ordinary state of a student mid-course, and the
+   * server answers it as a value. The 404 branch stays for the minutes in
+   * which a freshly deployed frontend talks to the previous backend.
+   */
   async getCourseCertificate(courseId: string): Promise<Certificate | null> {
     try {
-      const response = await api.get<Certificate>(`/certificates/course/${courseId}`)
-      return response.data
+      const response = await api.get<Certificate | null>(`/certificates/course/${courseId}`)
+      return response.data ?? null
     } catch (err: unknown) {
       if (isAxiosError(err) && err.response?.status === 404) return null
       throw err

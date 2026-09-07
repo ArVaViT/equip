@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useLocation, useSearchParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,8 +11,37 @@ import { Loader2 } from "lucide-react"
 import { authErrorMessage } from "@/lib/authError"
 import { GoogleIcon } from "./register/GoogleIcon"
 import { SignInLinkSent } from "./SignInLinkSent"
+import { takeSignOutReason, type SignOutReason } from "@/lib/signOutReason"
+import { returnPathFrom } from "@/lib/authRedirect"
+
+/**
+ * Why the sign-in form is on screen, when the person did not come here on
+ * purpose. Four arrivals used to look identical — a blank form:
+ *
+ * - the session expired mid-work and `api.ts` signed the person out;
+ * - the server reported the account deactivated;
+ * - `/auth/confirm` waited fifteen seconds for a session that never came and
+ *   sent them here with `?error=oauth_timeout`, which nothing read;
+ * - `Gate` refused a private page to a guest.
+ *
+ * Returns a key, not a sentence: resolved at render, so a language switch
+ * re-translates it.
+ */
+function noticeKeyFor(error: string | null, reason: SignOutReason | null, state: unknown): string | null {
+  if (reason === "session_expired") return "auth.notice.sessionExpired"
+  if (reason === "account_deactivated") return "auth.notice.accountDeactivated"
+  if (error === "oauth_timeout") return "auth.callback.timedOut"
+  if (returnPathFrom(state)) return "auth.notice.signInToContinue"
+  return null
+}
 
 export default function Login() {
+  const [searchParams] = useSearchParams()
+  const location = useLocation()
+  // Read once, on mount: `takeSignOutReason` clears what it reads.
+  const [noticeKey] = useState(() =>
+    noticeKeyFor(searchParams.get("error"), takeSignOutReason(), location.state),
+  )
   const [form, setForm] = useState<LoginFormData>({ email: "", password: "" })
   const [errors, setErrors] = useState<Partial<Record<keyof LoginFormData, string>>>({})
   const [serverError, setServerError] = useState("")
@@ -115,6 +144,14 @@ export default function Login() {
   return (
     <AuthLayout heading={t("auth.welcomeBack")} subheading={t("auth.signInSubheading")}>
       <div className="space-y-6 animate-fade-in">
+        {/* Not an error of the reader's making, so not in the error colour:
+            it explains the page, and steps aside once there is a real error
+            to show. */}
+        {noticeKey && !serverError && (
+          <div role="status" className="text-sm text-ink bg-muted border border-edge p-3 rounded-lg">
+            {t(noticeKey)}
+          </div>
+        )}
         {serverError && (
           <div role="alert" className="text-sm text-destructive-ink bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
             {serverError}

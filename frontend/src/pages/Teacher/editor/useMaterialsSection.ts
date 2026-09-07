@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
+import { getErrorDetail } from "@/lib/errorDetail"
 import { describeUploadError, preflightUpload } from "@/lib/uploadError"
 import { COURSE_MATERIALS } from "@/lib/uploadLimits"
 import type { useConfirm } from "@/components/ui/alert-dialog"
@@ -40,13 +41,17 @@ export function useMaterialsSection(
       .then((m) => {
         if (!cancelled) setMaterials(m)
       })
-      .catch(() => {
-        if (!cancelled) setMaterials([])
+      .catch((err: unknown) => {
+        if (cancelled) return
+        // An empty list here reads as «nothing uploaded yet», and a teacher
+        // who believes that uploads the same files a second time.
+        setMaterials([])
+        toast({ title: getErrorDetail(err, t("teacherEditor.modals.materials.loadFailed")), variant: "destructive" })
       })
     return () => {
       cancelled = true
     }
-  }, [courseId])
+  }, [courseId, t])
 
   const triggerUpload = useCallback(() => {
     inputRef.current?.click()

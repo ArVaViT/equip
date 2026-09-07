@@ -307,19 +307,24 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
   const [notScheduled, setNotScheduled] = useState(false)
   // That day had a question; this language does not have it yet.
   const [notTranslated, setNotTranslated] = useState(false)
+  // The request for this date failed for a reason that is not about the date.
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (!challengeDate) {
-      setData(null)
-      setReveal(null)
-      setNotScheduled(false)
-      return
-    }
+    // Every verdict is per date. `notTranslated` had no reset at all, so one
+    // untranslated day made every day chosen after it read «not translated»;
+    // and `data` survived a failed fetch, leaving the previous day's question
+    // under the new day's heading.
+    setData(null)
+    setReveal(null)
+    setNotScheduled(false)
+    setNotTranslated(false)
+    setLoadFailed(false)
+    if (!challengeDate) return
     let cancelled = false
     setLoading(true)
-    setNotScheduled(false)
-    setReveal(null)
     void dailyChallengeService
       .getArchiveQuestion(challengeDate)
       .then((res) => {
@@ -344,7 +349,7 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
         } else if (code === "daily_challenge.archive_date_not_allowed") {
           toast.error(t("dailyChallenge.archive.toast.dateNotAllowed"))
         } else {
-          toast.error(t("dailyChallenge.archive.loadError"))
+          setLoadFailed(true)
         }
       })
       .finally(() => {
@@ -353,7 +358,7 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
     return () => {
       cancelled = true
     }
-  }, [challengeDate, t])
+  }, [challengeDate, loadAttempt, t])
 
   const handleSelect = useCallback(
     async (optionId: string) => {
@@ -456,6 +461,16 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
             variant="compact"
             title={t("dailyChallenge.notTranslated.title")}
             description={t("dailyChallenge.notTranslated.body")}
+          />
+        ) : loadFailed ? (
+          <ErrorState
+            className="py-6"
+            description={t("dailyChallenge.archive.loadError")}
+            action={
+              <Button size="sm" variant="outline" onClick={() => setLoadAttempt((n) => n + 1)}>
+                {t("common.tryAgain")}
+              </Button>
+            }
           />
         ) : data ? (
           <>

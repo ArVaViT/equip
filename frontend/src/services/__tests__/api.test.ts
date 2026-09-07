@@ -1,6 +1,7 @@
 import axios from "axios"
 import MockAdapter from "axios-mock-adapter"
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest"
+import { takeSignOutReason } from "@/lib/signOutReason"
 
 // We need to mock supabase BEFORE importing api.ts, because api.ts primes
 // the token cache at module load and also attaches an onAuthStateChange
@@ -38,6 +39,7 @@ describe("api interceptors", () => {
     refreshSession.mockReset()
     signOut.mockReset()
     onAuthStateChange.mockClear()
+    window.sessionStorage.clear()
   })
 
   afterEach(() => {
@@ -118,6 +120,24 @@ describe("api interceptors", () => {
       401,
     )
     expect(signOut).toHaveBeenCalledTimes(1)
+    // The login form the sign-out lands on reads this and says «session
+    // expired» — instead of appearing out of nowhere, mid-sentence.
+    expect(takeSignOutReason()).toBe("session_expired")
+  })
+
+  it("leaves the reason behind when the server says the account is deactivated", async () => {
+    getSession.mockResolvedValue({
+      data: { session: { access_token: "tok" } },
+    })
+    signOut.mockResolvedValue({ error: null })
+
+    const api = await freshApi()
+    const mock = new MockAdapter(api)
+    mock.onGet("/me").reply(403, { detail: { code: "account.deactivated", message: "Deactivated" } })
+
+    await expect(api.get("/me")).rejects.toHaveProperty("response.status", 403)
+    expect(signOut).toHaveBeenCalledTimes(1)
+    expect(takeSignOutReason()).toBe("account_deactivated")
   })
 
   it("does not retry a single request more than once on 401", async () => {

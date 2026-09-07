@@ -2,6 +2,7 @@ import axios, { isAxiosError } from "axios"
 import type { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from "axios"
 import i18n, { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import { supabase } from "@/lib/supabase"
+import { rememberSignOutReason } from "@/lib/signOutReason"
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
 const cleanApiUrl = API_URL.replace(/\/+$/, "")
@@ -79,6 +80,9 @@ function refreshAccessTokenOnce(): Promise<string | null> {
       const newToken = data.session?.access_token ?? null
       if (refreshError || !newToken) {
         cachedToken = null
+        // Said before the sign-out, because the sign-out is what swaps the
+        // page for the login form — and the form is where this is read.
+        rememberSignOutReason("session_expired")
         await supabase.auth.signOut()
         return null
       }
@@ -86,6 +90,7 @@ function refreshAccessTokenOnce(): Promise<string | null> {
       return newToken
     } catch {
       cachedToken = null
+      rememberSignOutReason("session_expired")
       await supabase.auth.signOut()
       return null
     } finally {
@@ -104,6 +109,7 @@ api.interceptors.response.use(
     if (isAxiosError(error) && error.response?.status === 403) {
       const code = (error.response.data as { detail?: { code?: string } } | undefined)?.detail?.code
       if (code === "account.deactivated") {
+        rememberSignOutReason("account_deactivated")
         await supabase.auth.signOut()
         return Promise.reject(error)
       }

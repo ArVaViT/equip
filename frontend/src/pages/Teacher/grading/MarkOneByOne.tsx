@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { RubricGrid } from "@/components/rubric/RubricGrid"
+import { ErrorState } from "@/components/patterns"
 import { gradesService } from "@/services/grades"
 import { rubricsService } from "@/services/rubrics"
 import { coursesService } from "@/services/courses"
@@ -41,21 +42,29 @@ export function MarkOneByOne({
   const [grade, setGrade] = useState(0)
   const [feedback, setFeedback] = useState("")
   const [saving, setSaving] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const [rubricFailed, setRubricFailed] = useState(false)
+  const [rubricAttempt, setRubricAttempt] = useState(0)
 
   useEffect(() => {
     let cancelled = false
+    setLoadError(null)
     gradesService
       .getAssignmentQueue(assignmentId)
       .then((items) => {
         if (!cancelled) setWork(items)
       })
-      .catch(() => {
-        if (!cancelled) setWork([])
+      .catch((err: unknown) => {
+        // Not `[]`. An empty queue renders the green «all marked» card, and a
+        // queue that did not load — a 403 on somebody else's course, a
+        // dropped connection — is not one the teacher has finished.
+        if (!cancelled) setLoadError(getErrorDetail(err, t("grading.loadFailed")))
       })
     return () => {
       cancelled = true
     }
-  }, [assignmentId])
+  }, [assignmentId, loadAttempt, t])
 
   const current = work?.[index]
 
@@ -67,16 +76,22 @@ export function MarkOneByOne({
     setGrade(0)
     setFeedback("")
     setRubric(null)
+    setRubricFailed(false)
     rubricsService
       .forSubmission(current.submission_id)
       .then((r) => {
         if (!cancelled) setRubric(r)
       })
-      .catch(() => undefined)
+      .catch(() => {
+        // Without an answer the screen would fall back to the bare number
+        // box — and a number where the course uses a rubric is a different
+        // mark than the teacher meant to give. Say so and wait.
+        if (!cancelled) setRubricFailed(true)
+      })
     return () => {
       cancelled = true
     }
-  }, [current])
+  }, [current, rubricAttempt])
 
   const advance = useCallback(() => {
     if (!work) return
@@ -132,6 +147,24 @@ export function MarkOneByOne({
     }
   }
 
+  if (loadError) {
+    return (
+      <ErrorState
+        description={loadError}
+        action={
+          <Button size="sm" variant="outline" onClick={() => setLoadAttempt((n) => n + 1)}>
+            {t("common.tryAgain")}
+          </Button>
+        }
+        secondaryAction={
+          <Button size="sm" variant="ghost" onClick={onDone}>
+            {t("grading.backToQueue")}
+          </Button>
+        }
+      />
+    )
+  }
+
   if (work === null) {
     return (
       <div className="flex items-center gap-2 py-8 text-sm text-ink-muted">
@@ -178,7 +211,18 @@ export function MarkOneByOne({
         </CardContent>
       </Card>
 
-      {rubric?.rubric ? (
+      {rubricFailed ? (
+        <ErrorState
+          className="py-6"
+          title={t("rubric.loadFailed")}
+          description={t("rubric.loadFailedBody")}
+          action={
+            <Button size="sm" variant="outline" onClick={() => setRubricAttempt((n) => n + 1)}>
+              {t("common.tryAgain")}
+            </Button>
+          }
+        />
+      ) : rubric?.rubric ? (
         <Card>
           <CardContent className="p-4">
             <RubricGrid
@@ -211,7 +255,7 @@ export function MarkOneByOne({
       />
 
       <div className="flex items-center justify-end gap-2">
-        <Button onClick={saveAndNext} disabled={saving} className="min-h-11">
+        <Button onClick={saveAndNext} disabled={saving || rubricFailed} className="min-h-11">
           {saving ? (
             <Loader2 className="mr-1.5 h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
           ) : (

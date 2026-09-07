@@ -628,6 +628,12 @@
       "timedOut": "Sign-in didn't complete. Please try again.",
       "redirecting": "Redirecting to login..."
     },
+    "notice": {
+      "sessionExpired": "Your session has expired. Sign in again to continue.",
+      "accountDeactivated": "This account has been deactivated. If that is a mistake, contact your administrator.",
+      "signInToContinue": "Sign in to open this page.",
+      "sectionUnavailable": "This section is not available to you."
+    },
     "forgotPassword": {
       "heading": "Reset password",
       "subheading": "Enter your email and we'll send you a reset link",
@@ -1343,6 +1349,7 @@
       "print": "Print",
       "back": "Back to certificates",
       "notIssued": "This certificate has not been issued yet",
+      "loadFailed": "Could not load the certificate.",
       "schoolUnnamed": "School name not set",
       "open": "Open certificate",
       "certificateOfCompletion": "Certificate of Completion",
@@ -1689,6 +1696,7 @@
         "title": "Course Materials",
         "upload": "Upload File",
         "empty": "No materials uploaded yet.",
+        "loadFailed": "Could not load the list of materials.",
         "sizeBytes": "{{b}} B",
         "sizeKb": "{{kb}} KB",
         "sizeMb": "{{mb}} MB",
@@ -1771,6 +1779,7 @@
     },
     "toast": {
       "moduleNotFound": "Module not found",
+      "loadFailed": "Could not load the module.",
       "failedSaveModule": "Failed to save module",
       "failedSaveDueDate": "Failed to save due date",
       "chapterAdded": "Chapter added",
@@ -2651,6 +2660,7 @@
     "logOutAndSwitch": "Log out and switch accounts",
     "errors": {
       "notFound": "This invitation link isn't valid. Double-check the link or ask the admin who invited you to resend it.",
+      "loadFailed": "Could not check the invitation. Check your connection and try again — the link itself is still good.",
       "unusable": "This invitation has already been used, was revoked, or has expired. Ask the admin who invited you for a new one.",
       "emailMismatch": "This invitation was sent to a different email address.",
       "emailMismatchDetail": "This invitation was sent to <strong>{{invited}}</strong>, but you're signed in as <strong>{{current}}</strong>.",
@@ -2706,9 +2716,11 @@
   "vedomost": {
     "title": "Grade sheet",
     "loading": "Loading the grade sheet…",
+    "loadFailed": "Could not load the grade sheet.",
     "notClosedTitle": "This grade sheet has not been closed",
     "notClosedBody": "Closing it freezes every student's result as it stands today. The printed page reads from that snapshot, so re-marking work later cannot change a document already signed.",
     "close": "Close the grade sheet",
+    "closeFailed": "Could not close the grade sheet.",
     "print": "Print",
     "closedOn": "Closed {{date}}",
     "wasReopened": "This sheet replaces a reopened one. Reason: {{reason}}",
@@ -2743,6 +2755,7 @@
     "totalSoFar": "So far",
     "incompleteHint": "Until every criterion has a level, the work is not graded and the student sees nothing.",
     "loadFailed": "Could not load the rubric",
+    "loadFailedBody": "Marking waits until it is here — a bare number would not match the rubric.",
     "saveFailed": "Could not save the marks",
     "title": "Rubric",
     "yourGrid": "How your work was marked"

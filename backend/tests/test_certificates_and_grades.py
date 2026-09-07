@@ -279,10 +279,14 @@ class TestGetCourseCertificate:
         assert r.status_code == 200
         assert r.json()["id"] == str(cert.id)
 
-    def test_not_found(self, student_client: TestClient, db: Session):
+    def test_no_certificate_yet_is_null_not_an_error(self, student_client: TestClient, db: Session):
+        """Every student who has not finished the course lands here on every
+        visit to the course page. That is not a failure and must not be
+        logged as one."""
         _seed_enrolled_course(db)
         r = student_client.get("/api/v1/certificates/course/course-1")
-        assert r.status_code == 404
+        assert r.status_code == 200
+        assert r.json() is None
 
 
 class TestListMyCertificates:

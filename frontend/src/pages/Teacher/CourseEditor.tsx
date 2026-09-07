@@ -74,7 +74,7 @@ export default function CourseEditor() {
   const closeModal = useCallback(() => setModal(null), [])
   const goBack = useCallback(() => navigate("/teacher"), [navigate])
 
-  const data = useCourseData(courseId, confirm, goBack)
+  const data = useCourseData(courseId, confirm)
   const announcements = useAnnouncementsSection(courseId, confirm)
   const materials = useMaterialsSection(courseId, confirm)
   // Cohort management lives in the admin UI per ADR-010 — teachers
@@ -174,7 +174,7 @@ export default function CourseEditor() {
       <div className="container mx-auto px-4">
         <ErrorState
           title={t("courseEditor.notFound.title")}
-          description={t("courseEditor.notFound.description")}
+          description={data.loadError ?? t("courseEditor.notFound.description")}
           action={
             <Button variant="outline" size="sm" onClick={goBack}>
               {t("courseEditor.notFound.backToCourses")}

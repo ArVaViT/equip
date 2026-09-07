@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
+import { isAxiosError } from "axios"
 import { BadgeCheck, Search, ShieldX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -38,7 +39,15 @@ export default function VerifyCertificatePage() {
     setFailed(false)
     try {
       setResult(await certificatesService.verifyCertificate(number))
-    } catch {
+    } catch (err) {
+      // A number the server refuses to even look up — too long, not the shape
+      // of a certificate number — is not a fake certificate, but it is not a
+      // lost connection either, and «try again» would fail the same way. It
+      // reads as «not found», which is what the reader can act on.
+      if (isAxiosError(err) && err.response?.status === 422) {
+        setResult({ valid: false, certificate_number: number, user_name: null, course_title: null, issued_at: null })
+        return
+      }
       // A network or server failure is NOT "this certificate is fake" — the
       // two must never look alike on a page whose whole job is to be trusted.
       setResult(null)
@@ -61,6 +70,12 @@ export default function VerifyCertificatePage() {
     e.preventDefault()
     const trimmed = input.trim()
     if (!trimmed) return
+    // The fetch follows the URL; the same number again changes no URL, and
+    // after a failure the big button did nothing. Ask directly instead.
+    if (trimmed === certificateNumber) {
+      void check(trimmed)
+      return
+    }
     navigate(`/verify/${encodeURIComponent(trimmed)}`)
   }
 

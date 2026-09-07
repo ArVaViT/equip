@@ -630,17 +630,17 @@ class TestMigratedEndpointContractsUnchanged:
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
         assert resp.json()["detail"]["message"] == "Not enrolled in this course"
 
-    def test_progress_not_enrolled_still_403(
+    def test_progress_not_enrolled_is_null(
         self,
         db: Session,
         student_client,
     ) -> None:
-        """progress.get_my_chapter_progress keeps its 403 (AUTH_FORBIDDEN)
-        not-enrolled contract."""
+        """progress.get_my_chapter_progress answers ``null`` to a user who is
+        not enrolled: no progress to report is a value, not a refusal."""
         course_id, _, _ = _seed_published_course_with_chapter(db, course_id="reg-prog", owner=TEACHER_ID)
         resp = student_client.get(f"/api/v1/progress/course/{course_id}/my-progress")
-        assert resp.status_code == status.HTTP_403_FORBIDDEN
-        assert resp.json()["detail"]["message"] == "Not enrolled in this course"
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.json() is None
 
     def test_assignment_submit_not_enrolled_still_403(
         self,

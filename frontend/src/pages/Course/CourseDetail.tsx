@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams, Link } from "react-router-dom"
+import { isAxiosError } from "axios"
 import { BookOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ErrorState } from "@/components/patterns"
@@ -72,10 +73,12 @@ export default function CourseDetail() {
         // enrolled-student path saves an entire RTT. Anonymous users
         // pay nothing — the user-gated promises short-circuit to
         // their empty defaults.
+        // Not caught: «we could not find out» must not become «not
+        // enrolled». It did, and an enrolled student whose check timed out
+        // saw the enrol page with their modules, progress and certificate
+        // gone — and no error anywhere. A failed check fails the page.
         const enrolled = user
-          ? coursesService
-              .getEnrollmentStatus(id)
-              .catch(() => ({ enrolled: false, enrollment: null as Enrollment | null }))
+          ? coursesService.getEnrollmentStatus(id)
           : Promise.resolve({ enrolled: false, enrollment: null as Enrollment | null })
         const certP = user
           ? coursesService.getCourseCertificate(id).catch(() => null)
@@ -110,8 +113,14 @@ export default function CourseDetail() {
           setMaterials(mats)
           setCalendarEvents(evts)
         }
-      } catch {
-        if (!cancelled) setError(t("errors.loadCourseFailed"))
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            isAxiosError(err) && err.response?.status === 404
+              ? t("toast.courseNotFound")
+              : t("errors.loadCourseFailed"),
+          )
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }

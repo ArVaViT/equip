@@ -32,20 +32,26 @@ from app.services.student_progress_service import (
 router = APIRouter(prefix="/progress", tags=["progress"])
 
 
-@router.get("/course/{course_id}/my-progress")
+@router.get("/course/{course_id}/my-progress", response_model=list[str] | None)
 def get_my_chapter_progress(
     course_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> list[str] | None:
+    """Chapter ids the current user has completed in a course.
+
+    ``null`` — not ``[]`` — when the user is not enrolled: there is no
+    progress to speak of, which the client renders as "unknown" (no ticks,
+    no locks) rather than as "nothing finished". The one person this
+    routinely happens to is the course's own teacher previewing it, and
+    that used to be a 403 on every module and chapter page — a routine
+    visit filed as a refused one, several times an hour in production.
+    Nothing about another person is disclosed either way: the list is
+    always the caller's own.
+    """
     enrolled = lookup_enrollment(db, current_user.id, course_id)
     if not enrolled:
-        raise equip_error(
-            ErrorCode.AUTH_FORBIDDEN,
-            status_code=status.HTTP_403_FORBIDDEN,
-            message="Not enrolled in this course",
-            context={"resource_type": "progress", "course_id": course_id},
-        )
+        return None
 
     completed = (
         db.query(ChapterProgress.chapter_id)
