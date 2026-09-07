@@ -1676,7 +1676,14 @@
         "carouselRole": "Karussell",
         "prevAria": "Vorige Ankündigung",
         "nextAria": "Nächste Ankündigung",
-        "position": "{{current}} / {{total}}"
+        "position": "{{current}} / {{total}}",
+        "newAnnouncement": "Neue Ankündigung",
+        "editAnnouncement": "Ankündigung bearbeiten",
+        "save": "Speichern",
+        "saving": "Wird gespeichert …",
+        "cancel": "Abbrechen",
+        "editAria": "Ankündigung {{title}} bearbeiten",
+        "notifyHint": "Eingeschriebene Studierende werden über die Veröffentlichung benachrichtigt."
       },
       "materials": {
         "title": "Kursmaterialien",
@@ -1708,7 +1715,8 @@
           "other": "Sonstiges"
         },
         "editAria": "Termin {{title}} bearbeiten",
-        "deleteAria": "Termin {{title}} löschen"
+        "deleteAria": "Termin {{title}} löschen",
+        "notifyHint": "Eingeschriebene Studierende werden über einen neuen Termin und über eine Verschiebung benachrichtigt."
       }
     },
     "toast": {
@@ -1735,7 +1743,10 @@
       "materialUploadFailed": "Hochladen fehlgeschlagen",
       "materialDownloadFailed": "Herunterladen fehlgeschlagen",
       "materialDeleteFailed": "Material konnte nicht gelöscht werden",
-      "publishing": "Veröffentlicht. In den Katalog kommt der Kurs, sobald jede Sprache ihn hat"
+      "publishing": "Veröffentlicht. In den Katalog kommt der Kurs, sobald jede Sprache ihn hat",
+      "announcementPosted": "Ankündigung veröffentlicht – die Studierenden werden benachrichtigt",
+      "announcementUpdated": "Ankündigung aktualisiert",
+      "announcementUpdateFailed": "Ankündigung konnte nicht gespeichert werden"
     },
     "confirm": {
       "deleteModuleTitle": "Dieses Modul löschen?",

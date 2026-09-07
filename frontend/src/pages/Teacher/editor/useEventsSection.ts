@@ -9,6 +9,13 @@ import { EMPTY_EVENT_FORM, type EventFormState } from "./types"
 
 type Confirm = ReturnType<typeof useConfirm>
 
+/** The server lists events by date; keep that order after a local insert
+ *  or a moved date, so a new event lands where it belongs in the list
+ *  instead of at the bottom until the next reload. */
+function byDate(events: CourseEvent[]): CourseEvent[] {
+  return [...events].sort((a, b) => a.event_date.localeCompare(b.event_date))
+}
+
 interface EventsSection {
   events: CourseEvent[]
   form: EventFormState
@@ -83,11 +90,11 @@ export function useEventsSection(
     try {
       if (editingId) {
         const updated = await coursesService.updateCourseEvent(courseId, editingId, payload)
-        setEvents((p) => p.map((ev) => (ev.id === editingId ? updated : ev)))
+        setEvents((p) => byDate(p.map((ev) => (ev.id === editingId ? updated : ev))))
         toast({ title: t("teacherEditor.toast.eventUpdated"), variant: "success" })
       } else {
         const created = await coursesService.createCourseEvent(courseId, payload)
-        setEvents((p) => [...p, created])
+        setEvents((p) => byDate([...p, created]))
         toast({ title: t("teacherEditor.toast.eventCreated"), variant: "success" })
       }
       resetForm()

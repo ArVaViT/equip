@@ -359,8 +359,11 @@ export default function CourseEditor() {
         content={announcements.content}
         onTitleChange={announcements.setTitle}
         onContentChange={announcements.setContent}
+        editingId={announcements.editingId}
         posting={announcements.posting}
         onPost={announcements.post}
+        onEdit={announcements.startEdit}
+        onCancelEdit={announcements.resetForm}
         onDelete={announcements.remove}
       />
 

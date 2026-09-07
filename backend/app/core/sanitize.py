@@ -317,6 +317,34 @@ def sanitize_plain_text(value: str) -> str:
     return " ".join(strip_tags(unescape(value)).split())
 
 
+def sanitize_multiline_text(value: str) -> str:
+    """A few paragraphs of text with no markup in it — an announcement
+    body, a calendar event's description.
+
+    Both are typed into a plain ``<textarea>`` and rendered by React as
+    text, never as HTML. They used to go through ``sanitize_string``
+    because they are "the body", but bleach escapes text on its way
+    through: a Zoom link with ``?pwd=a&b`` came back as ``a&amp;b`` and
+    was shown to every student with the ``&amp;`` in it — and copied
+    into the browser broken. ``5 < 10`` read ``5 &lt; 10``.
+
+    Same rules as ``sanitize_plain_text`` (decode entities, drop tags,
+    nothing re-encoded), but line breaks survive: they are how a
+    teacher separates «когда» from «где». Runs of spaces fold within a
+    line, and more than one empty line in a row folds to one.
+    """
+    if not value:
+        return value
+    text = strip_tags(unescape(value)).replace("\r\n", "\n").replace("\r", "\n")
+    lines = [" ".join(line.split()) for line in text.split("\n")]
+    out: list[str] = []
+    for line in lines:
+        if line == "" and out and out[-1] == "":
+            continue
+        out.append(line)
+    return "\n".join(out).strip()
+
+
 def strip_tags(html: str) -> str:
     """Return the text content of ``html``, with tags replaced by spaces.
 
