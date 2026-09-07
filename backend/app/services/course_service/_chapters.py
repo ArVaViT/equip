@@ -27,13 +27,15 @@ def _next_chapter_order(db: Session, course_id: str) -> int:
     belongs to no module has no per-module maximum to be the tail of, so
     the old question had no answer for it.
 
-    Existing courses keep the order they display. Chapters render as
-    modules by ``module.order_index``, then chapters by
-    ``order_index`` inside each module, and a course-global maximum plus
-    one is by construction greater than any single module's maximum plus
-    one: an appended chapter still lands at the tail of its own module,
-    exactly where the per-module number used to put it. What changes is
-    the number, not the position.
+    Existing courses keep the order they display. How a course reads is
+    ``course_structure.build_spine`` and nowhere else — headings by
+    ``module.order_index``, lessons by ``order_index`` inside each
+    heading, a lesson with no heading placed by its own number — and a
+    course-global maximum plus one is by construction greater than any
+    single module's maximum plus one: an appended chapter still lands at
+    the tail of its own module, exactly where the per-module number used
+    to put it, and an appended loose chapter lands at the tail of the
+    course. What changes is the number, not the position.
     """
     current_max = (
         db.query(func.max(Chapter.order_index))
