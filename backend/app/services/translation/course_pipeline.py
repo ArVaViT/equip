@@ -5,8 +5,9 @@ Idempotent via the orchestrator's ``source_hash`` short-circuit, so a
 re-run on an unchanged course costs zero LLM calls.
 
 Per-entity field specs (which fields, which content_kind) live in
-``registry.REGISTRY``; the shape of the tree — how to walk modules →
-chapters → blocks → quiz/assignment plus the side entities bound by
+``registry.REGISTRY``; the shape of the tree — the course's modules, the
+course's chapters (by their own ``course_id``, whether or not a module
+groups them) → blocks → quiz/assignment, plus the side entities bound by
 ``course_id`` — lives in ``course_tree``. This module is what remains:
 walk, plan, execute.
 

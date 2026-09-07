@@ -125,36 +125,32 @@ def _resolve_course_via_attr(attr: str) -> Callable[[Session, Any], Course | Non
     return resolver
 
 
-def _resolve_course_via_module(_db: Session, entity: Any) -> Course | None:
-    """For chapters: walk chapter -> module -> course via loaded relations."""
-    module = getattr(entity, "module", None)
-    if module is None:
-        return None
-    return getattr(module, "course", None)
-
-
 def _resolve_course_via_chapter(db: Session, entity: Any) -> Course | None:
-    """For chapter_block / assignment: chapter_id -> chapter -> module -> course."""
+    """For chapter_block / assignment / quiz: chapter_id -> chapter -> course.
+
+    By the chapter's own ``course_id``, not through its module. A
+    chapter is allowed not to have a module; the old chapter → module →
+    course join answered ``None`` for one, and ``None`` here does not
+    fail — it means "orphan, nothing to translate", and every caller
+    that asked walked away quietly: no reconcile, no post-edit hook,
+    and ``edit_should_be_staged`` returning False, which sends a
+    teacher's edit on a published course straight to students in the
+    author's language.
+    """
     chapter_id = getattr(entity, "chapter_id", None)
     if not chapter_id:
         return None
-    row = (
-        db.query(Course)
-        .join(Module, Module.course_id == Course.id)
-        .join(Chapter, Chapter.module_id == Module.id)
-        .filter(Chapter.id == chapter_id)
-        .first()
-    )
+    row = db.query(Course).join(Chapter, Chapter.course_id == Course.id).filter(Chapter.id == chapter_id).first()
     return row
 
 
 def _resolve_course_via_quiz_chapter(db: Session, entity: Any) -> Course | None:
-    """Quiz -> chapter -> module -> course (same chapter_id walk as a block)."""
+    """Quiz -> chapter -> course (same chapter_id walk as a block)."""
     return _resolve_course_via_chapter(db, entity)
 
 
 def _resolve_course_via_question(db: Session, entity: Any) -> Course | None:
-    """QuizQuestion -> quiz -> chapter -> ... -> course."""
+    """QuizQuestion -> quiz -> chapter -> course."""
     quiz_id = getattr(entity, "quiz_id", None)
     if not quiz_id:
         return None
@@ -214,7 +210,7 @@ def _resolve_course_via_criterion(db: Session, entity: Any) -> Course | None:
 
 
 def _resolve_course_via_option(db: Session, entity: Any) -> Course | None:
-    """QuizOption -> question -> quiz -> chapter -> ... -> course."""
+    """QuizOption -> question -> quiz -> chapter -> course."""
     question_id = getattr(entity, "question_id", None)
     if not question_id:
         return None
@@ -404,7 +400,10 @@ REGISTRY: dict[EntityType, EntityRegistration] = {
     "chapter": EntityRegistration(
         entity_type="chapter",
         fields=(FieldSpec("title", "title"),),
-        resolve_course=_resolve_course_via_module,
+        # By the chapter's own ``course_id`` — the same resolver a module
+        # uses, because a chapter belongs to its course the same way.
+        # Not via ``chapter.module.course``: a chapter may have no module.
+        resolve_course=_resolve_course_via_attr("course_id"),
         build_context=lambda _ch, c: f"Chapter in course «{c.title}»",
     ),
     "chapter_block": EntityRegistration(
