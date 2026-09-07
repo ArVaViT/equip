@@ -1362,6 +1362,78 @@
   },
   {
     "method": "POST",
+    "path": "/api/v1/courses/{course_id}/chapters",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/courses/{course_id}/chapters/{chapter_id}",
+    "params": [
+      [
+        "chapter_id",
+        "path"
+      ],
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/courses/{course_id}/chapters/{chapter_id}",
+    "params": [
+      [
+        "chapter_id",
+        "path"
+      ],
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/courses/{course_id}/chapters/{chapter_id}",
+    "params": [
+      [
+        "chapter_id",
+        "path"
+      ],
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "POST",
     "path": "/api/v1/courses/{course_id}/clone",
     "params": [
       [

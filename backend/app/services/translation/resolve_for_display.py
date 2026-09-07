@@ -698,6 +698,12 @@ def build_localized_course_response_with_tree(
         )
         for ch in mod.chapters:
             specs.append(("chapter", str(ch.id), "title"))
+    # The lessons no module groups. ``course.chapters`` is every chapter
+    # of the course, so it is filtered here rather than served whole:
+    # the ones above already ride inside their module, and sending them
+    # twice would let anyone counting both lists count them twice.
+    ungrouped = [ch for ch in course.chapters if ch.module_id is None]
+    specs.extend(("chapter", str(ch.id), "title") for ch in ungrouped)
 
     loc = Localizer.build(
         db,
@@ -725,31 +731,30 @@ def build_localized_course_response_with_tree(
     # (rather than kwargs) keeps the ORM's wider column types — ``str`` for the
     # ``chapter_type`` / ``access_mode`` Literals — validating at runtime without
     # tripping the static type checker.
+    def localized_chapter(ch: Chapter) -> ChapterResponse:
+        return ChapterResponse.model_validate(
+            {
+                "id": str(ch.id),
+                # ``None`` stays ``None``: a chapter may have no module,
+                # and ``str(None)`` is the string "None" — a link to a
+                # module that does not exist, sent to the UI without a
+                # word. Chapters reached through ``ungrouped`` below are
+                # exactly the ones that arrive here with ``None``.
+                "module_id": ch.module_id,
+                "course_id": str(ch.course_id),
+                "title": loc.pick("chapter", str(ch.id), "title", ch.title) or "",
+                "order_index": ch.order_index,
+                "chapter_type": ch.chapter_type or "reading",
+                "requires_completion": ch.requires_completion,
+                "is_locked": ch.is_locked,
+            }
+        )
+
     new_modules: list[ModuleResponse] = []
     for mod in course.modules:
         mt = loc.pick("module", str(mod.id), "title", mod.title)
         md = loc.pick("module", str(mod.id), "description", mod.description)
-        new_chapters = [
-            ChapterResponse.model_validate(
-                {
-                    "id": str(ch.id),
-                    # ``None`` stays ``None``: a chapter may have no
-                    # module, and ``str(None)`` is the string "None" — a
-                    # link to a module that does not exist, sent to the UI
-                    # without a word. This loop still walks the modules,
-                    # so no such chapter reaches it yet; when the
-                    # serialisation moves to ``course.chapters`` it will.
-                    "module_id": ch.module_id,
-                    "course_id": str(ch.course_id),
-                    "title": loc.pick("chapter", str(ch.id), "title", ch.title) or "",
-                    "order_index": ch.order_index,
-                    "chapter_type": ch.chapter_type or "reading",
-                    "requires_completion": ch.requires_completion,
-                    "is_locked": ch.is_locked,
-                }
-            )
-            for ch in mod.chapters
-        ]
+        new_chapters = [localized_chapter(ch) for ch in mod.chapters]
         new_modules.append(
             ModuleResponse.model_validate(
                 {
@@ -779,6 +784,7 @@ def build_localized_course_response_with_tree(
             "enrollment_start": course.enrollment_start,
             "enrollment_end": course.enrollment_end,
             "modules": new_modules,
+            "chapters": [localized_chapter(ch) for ch in ungrouped],
         }
     )
 

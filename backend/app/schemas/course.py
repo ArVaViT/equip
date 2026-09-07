@@ -31,6 +31,19 @@ class ChapterUpdate(RequestModel):
     chapter_type: CHAPTER_TYPES | None = None
     requires_completion: bool | None = None
     is_locked: bool | None = None
+    #: Move the lesson between groups: a module id puts it under that
+    #: heading, ``null`` takes it out and leaves it in the course.
+    #:
+    #: This is the field a teacher reaches for when they got the
+    #: structure wrong the first time, which is the common case and the
+    #: reason the whole move exists. The route checks that the module
+    #: belongs to the same course — a chapter may be regrouped, never
+    #: rehomed into somebody else's course.
+    #:
+    #: ``None`` here is a real value ("no module"), not "unchanged":
+    #: ``update_chapter`` patches by ``exclude_unset``, so a body that
+    #: omits the key leaves the grouping alone.
+    module_id: str | None = None
 
 
 class ChapterResponse(ChapterBase):
@@ -60,7 +73,12 @@ class ChapterSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
-    module_id: str
+    # Optional for the same reason as on ``ChapterResponse``: a chapter
+    # belongs to its course and may have no module. This one lagged
+    # behind — a required ``str`` here cannot represent a module-less
+    # chapter at all, so any list response that grew one would raise
+    # instead of serialising it.
+    module_id: str | None
     course_id: str
     title: str = ""
     order_index: int = 0
@@ -178,12 +196,47 @@ class CourseResponse(_ReadTitle):
     enrollment_start: datetime | None = None
     enrollment_end: datetime | None = None
     modules: list[ModuleResponse] = []
+    #: The course's chapters that no module groups.
+    #:
+    #: New on 2026-09-07, when a chapter stopped needing a module. Such
+    #: a chapter has no place in ``modules[].chapters`` and without this
+    #: field would not reach the client at all — the lesson would exist,
+    #: be gradable, be counted in denominators, and be invisible.
+    #:
+    #: Deliberately **not** every chapter of the course, though the ORM
+    #: relationship behind it (``Course.chapters``) is exactly that.
+    #: ``modules[].chapters`` already carries the grouped ones and is
+    #: what every reader walks today; repeating them here would put each
+    #: grouped chapter in one payload twice, and anything summing the
+    #: two lists — a "N lessons" label, a progress denominator — would
+    #: count it twice. The two lists are a partition instead:
+    #: concatenate them and every live chapter appears exactly once.
+    #:
+    #: The validator below enforces that rather than trusting callers,
+    #: because ``CourseResponse.model_validate(course, from_attributes=True)``
+    #: — the ``?source=1`` editor path and the no-overlay path both take
+    #: it — reads the relationship whole.
+    chapters: list[ChapterResponse] = []
+
+    @field_validator("chapters", mode="after")
+    @classmethod
+    def _only_chapters_no_module_groups(cls, value: list[ChapterResponse]) -> list[ChapterResponse]:
+        return [chapter for chapter in value if chapter.module_id is None]
 
 
 class CourseSummary(_ReadTitle):
     """Catalog / list-view course. Kept as a separate shape from
     ``CourseResponse`` so that if we later decide to, say, omit modules/
     chapters from list responses entirely, we can do that in one place.
+
+    No course-level ``chapters`` here, unlike ``CourseResponse``. The
+    list loader (``_COURSE_LIST_TREE``) fetches modules and stops, on
+    purpose — a catalog page of 10 courses would otherwise carry every
+    chapter of every course — and a field this loader never fills would
+    report "no loose lessons" for a course that has them, which is worse
+    than not answering. The list surfaces render a module count and a
+    title; nothing there reads a chapter. The course detail view
+    (``GET /courses/{id}``) is where the tree is served.
     """
 
     model_config = ConfigDict(from_attributes=True)
