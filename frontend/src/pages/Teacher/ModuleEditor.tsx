@@ -10,9 +10,10 @@ import { useConfirm } from "@/components/ui/alert-dialog";
 import { EmptyState, ErrorState, InlineEdit, PageHeader } from "@/components/patterns";
 import { useUserTour } from "@/hooks/useUserTour";
 import { moduleEditorSteps } from "@/lib/tourSteps";
+import { chapterEditHref } from "@/lib/courseStructure";
 
-import { AddChapterBar } from "./moduleEditor/AddChapterBar";
-import { ChapterList } from "./moduleEditor/ChapterList";
+import { AddChapterBar } from "./chapters/AddChapterBar";
+import { ChapterList } from "./chapters/ChapterList";
 import { ModuleEditorSkeleton } from "./moduleEditor/LoadingSkeleton";
 import { useModuleEditor } from "./moduleEditor/useModuleEditor";
 
@@ -34,6 +35,7 @@ export default function ModuleEditor() {
     renameChapter,
     deleteChapter,
     toggleLock,
+    ungroupChapter,
     updateChapterLocal,
     handleChapterDragEnd,
   } = useModuleEditor(courseId, moduleId, confirm);
@@ -103,7 +105,7 @@ export default function ModuleEditor() {
         meta={
           <>
             <Badge variant="muted">
-              {t("teacherEditor.chapterCount", { count: chapters.length })}
+              {t("teacherEditor.lessonCount", { count: chapters.length })}
             </Badge>
             <div className="flex items-center gap-2">
               <CalendarDays className="h-3.5 w-3.5 text-ink-muted" strokeWidth={1.75} />
@@ -156,12 +158,16 @@ export default function ModuleEditor() {
             onTitleChange={(id, title) => updateChapterLocal(id, { title })}
             onRename={renameChapter}
             onToggleLock={toggleLock}
-            onEdit={(chId) =>
-              navigate(
-                `/teacher/courses/${courseId}/modules/${moduleId}/chapters/${chId}/edit`,
-              )
-            }
+            onEdit={(chId) => navigate(chapterEditHref(courseId ?? "", chId))}
             onDelete={deleteChapter}
+            // Out of this module and into the course. Only ever this one
+            // direction here: the course editor owns the list of modules a
+            // loose lesson could be filed under.
+            moveFor={(ch) => ({
+              intoModules: [],
+              canUngroup: true,
+              onMove: () => ungroupChapter(ch),
+            })}
           />
 
           <AddChapterBar onAdd={addChapter} variant="compact" />

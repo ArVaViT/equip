@@ -97,3 +97,25 @@ describe("CourseCard — a course that is out but not in the catalog yet", () =>
     expect(screen.queryByTitle("Опубликовать")).not.toBeInTheDocument()
   })
 })
+
+describe("CourseCard — how much of the course is written", () => {
+  // The card used to show one number, ``modules.length``. For a course that
+  // is four finished lessons and no grouping that reads "0 модулей" — true,
+  // and a lie about an empty course. The counts come from the server, which
+  // is what makes them right on a list payload carrying no chapter rows.
+  it("counts lessons, and says nothing about modules when there are none", async () => {
+    await i18n.changeLanguage("ru")
+    renderCard(0, makeCourse({ chapter_count: 4, module_count: 0 }))
+
+    expect(screen.getByText("4 урока")).toBeInTheDocument()
+    expect(screen.queryByText(/(?<!\p{L})модул\p{L}*/iu)).not.toBeInTheDocument()
+  })
+
+  it("adds the module count for a course that groups its lessons", async () => {
+    await i18n.changeLanguage("ru")
+    renderCard(0, makeCourse({ chapter_count: 7, module_count: 2 }))
+
+    expect(screen.getByText("7 уроков")).toBeInTheDocument()
+    expect(screen.getByText("2 модуля")).toBeInTheDocument()
+  })
+})

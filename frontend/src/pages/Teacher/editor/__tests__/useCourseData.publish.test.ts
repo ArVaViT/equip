@@ -19,6 +19,9 @@ vi.mock("@/lib/supabase", () => ({
 
 vi.mock("@/lib/toast", () => ({ toast: vi.fn() }))
 
+import { createElement, type ReactNode } from "react"
+import { MemoryRouter } from "react-router-dom"
+
 import i18n from "@/i18n/config"
 import { toast } from "@/lib/toast"
 import { coursesService } from "@/services/courses"
@@ -55,9 +58,17 @@ function makeCourse(over: Partial<Course> = {}): Course {
 
 const confirm = vi.fn().mockResolvedValue(true) as unknown as Parameters<typeof useCourseData>[1]
 
+// The hook navigates now — adding a lesson opens it — so it needs a router
+// around it the way the editor page gives it one.
+function withRouter({ children }: { children: ReactNode }) {
+  return createElement(MemoryRouter, null, children)
+}
+
 async function renderLoaded(course: Course) {
   vi.spyOn(coursesService, "getCourseForEdit").mockResolvedValue(course)
-  const { result } = renderHook(() => useCourseData(course.id, confirm))
+  const { result } = renderHook(() => useCourseData(course.id, confirm), {
+    wrapper: withRouter,
+  })
   await waitFor(() => expect(result.current.loading).toBe(false))
   return result
 }

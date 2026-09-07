@@ -40,8 +40,8 @@ import {
   CourseTranslationCard,
   EnrollmentModal,
   EventsModal,
+  CourseOutline,
   MaterialsModal,
-  ModulesList,
   useAnnouncementsSection,
   useCourseData,
   useCourseReadiness,
@@ -52,6 +52,7 @@ import {
 import type { CourseEditorModal } from "./editor/types"
 import { readinessMessage } from "./editor/readinessMessage"
 import type { ReadinessAction } from "@/services/courseReadiness"
+import { chapterEditHref } from "@/lib/courseStructure"
 
 /**
  * Course editor: the one place teachers edit everything about a course.
@@ -155,10 +156,10 @@ export default function CourseEditor() {
         case "open_chapter":
         case "open_quiz":
         case "open_assignment":
-          if (params.module_id && params.chapter_id)
-            navigate(
-              `/teacher/courses/${courseId}/modules/${params.module_id}/chapters/${params.chapter_id}/edit`,
-            )
+          // Course-shaped, so the button also works for a lesson that is
+          // in no module — where the check now sends no ``module_id`` at
+          // all, and requiring one left "Fix" doing nothing at all.
+          if (params.chapter_id) navigate(chapterEditHref(courseId ?? "", params.chapter_id))
           break
         case "open_grading_weights":
           navigate(`/teacher/courses/${courseId}/gradebook`)
@@ -319,17 +320,34 @@ export default function CourseEditor() {
         reviewHref={isAdmin && courseId ? `/admin?tab=translations&course=${courseId}` : null}
       />
 
-      <div data-tour="course-editor-modules">
-      <ModulesList
+      <div data-tour="course-editor-content">
+      <CourseOutline
         courseId={courseId ?? ""}
+        structure={data.structure}
         modules={data.sortedModules}
-        onDragEnd={data.reorderModules}
-        onAdd={async () => {
+        onModuleDragEnd={data.reorderModules}
+        onChapterDragEnd={data.reorderChapters}
+        onAddModule={async () => {
           await data.addModule()
           void readiness.refresh()
         }}
-        onRemove={async (id) => {
+        onAddChapter={async (type) => {
+          await data.addChapter(type)
+          void readiness.refresh()
+        }}
+        onRemoveModule={async (id) => {
           await data.removeModule(id)
+          void readiness.refresh()
+        }}
+        onChapterTitleChange={(id, title) => data.updateChapterLocal(id, { title })}
+        onRenameChapter={data.renameChapter}
+        onToggleChapterLock={data.toggleChapterLock}
+        onDeleteChapter={async (id) => {
+          await data.deleteChapter(id)
+          void readiness.refresh()
+        }}
+        onMoveChapter={async (id, moduleId) => {
+          await data.moveChapter(id, moduleId)
           void readiness.refresh()
         }}
       />

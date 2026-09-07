@@ -6,19 +6,23 @@ import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { isoToLocalInput, localInputToIso } from "@/i18n/format"
-import type { Course } from "@/types"
+import { readCourseStructure, type CourseStructure } from "@/lib/courseStructure"
+import type { Chapter, Course } from "@/types"
 import type { useConfirm } from "@/components/ui/alert-dialog"
+import { useCourseChapters, type CourseChapters } from "./useCourseChapters"
 
 type Confirm = ReturnType<typeof useConfirm>
 
 type CoursePatch = Parameters<typeof coursesService.updateCourse>[1]
 
-interface CourseData {
+interface CourseData extends CourseChapters {
   course: Course | null
   loading: boolean
   /** Why `course` is null after loading, in the reader's language. */
   loadError: string | null
   sortedModules: NonNullable<Course["modules"]>
+  /** The course read once: the outline to draw and the flat reading order. */
+  structure: CourseStructure
   /** True when the course status is "published". */
   published: boolean
   /**
@@ -46,6 +50,12 @@ interface CourseData {
  * Loads a course and exposes every mutation a teacher can make to the
  * course itself (title, description, cover, publish status, enrollment
  * window) and to its modules (create, delete, drag-to-reorder).
+ *
+ * Lessons are the other half, and they live in `useCourseChapters` — the
+ * course editor can now write one straight into the course, which is what
+ * a course of four lessons and no grouping needs. This hook owns `course`
+ * / `setCourse` and hands both to that one, so the two halves edit the one
+ * payload the outline renders.
  *
  * The five modal concerns (announcements, materials, cohorts, events)
  * each have their own hook so the editor page stays a thin orchestrator.
@@ -235,7 +245,22 @@ export function useCourseData(
       if (!ok) return
       try {
         await coursesService.deleteModule(courseId, id)
-        setCourse((p) => (p ? { ...p, modules: p.modules?.filter((m) => m.id !== id) } : p))
+        // Deleting a module deletes a heading. Its lessons stay on the
+        // course, ungrouped and untouched — `delete_module` clears their
+        // `module_id` and writes no `deleted_at`. Dropping the module from
+        // local state and stopping there is what the old cascade justified;
+        // now it would take four live lessons off the screen and leave the
+        // teacher looking at a course that had just lost its content.
+        setCourse((p) => {
+          if (!p) return p
+          const gone = p.modules?.find((m) => m.id === id)
+          const freed: Chapter[] = (gone?.chapters ?? []).map((c) => ({ ...c, module_id: null }))
+          return {
+            ...p,
+            modules: p.modules?.filter((m) => m.id !== id),
+            chapters: [...(p.chapters ?? []), ...freed],
+          }
+        })
       } catch {
         toast({ title: t("teacherEditor.toast.moduleRemoveFailed"), variant: "destructive" })
       }
@@ -247,6 +272,12 @@ export function useCourseData(
     () => [...(course?.modules ?? [])].sort((a, b) => a.order_index - b.order_index),
     [course?.modules],
   )
+
+  // One reading of the course for every screen that needs its shape. The
+  // editor used to sort modules here and let each child re-derive the rest.
+  const structure = useMemo(() => readCourseStructure(course), [course])
+
+  const chapters = useCourseChapters({ courseId, course, setCourse, confirm })
 
   const reorderModules = useCallback(
     async (result: DropResult) => {
@@ -288,10 +319,12 @@ export function useCourseData(
   )
 
   return {
+    ...chapters,
     course,
     loading,
     loadError,
     sortedModules,
+    structure,
     published: course?.status === "published",
     publishing: course?.status === "publishing",
     enrollStart,

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import {
   BarChart3,
+  BookOpen,
   ClipboardList,
   Copy,
   Eye,
@@ -26,6 +27,7 @@ import {
 import { CourseCoverFallback } from "@/components/course/CourseCoverFallback"
 import { toProxyImage } from "@/lib/images"
 import { formatDate } from "@/i18n/format"
+import { countChapters, countModules } from "@/lib/courseStructure"
 import type { Course } from "@/types"
 
 interface Props {
@@ -50,7 +52,13 @@ export function CourseCard({
   onDelete,
 }: Props) {
   const { t } = useTranslation()
-  const moduleCount = course.modules?.length ?? 0
+  // What the card is actually about: how much of the course is written.
+  // ``modules.length`` was the only number here, and for a course that is
+  // four lessons and no grouping it read "0 modules" — true, and a lie
+  // about an empty course. The counts come from the server, so they are
+  // right on a list payload that carries no chapter rows at all.
+  const lessonCount = countChapters(course)
+  const moduleCount = countModules(course)
   const isPublished = course.status === "published"
   // A course the teacher sent out that is not in the catalog yet: some
   // language does not have it, or a translation needs a person to look
@@ -111,9 +119,17 @@ export function CourseCard({
           )}
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
             <span className="flex items-center gap-1">
-              <Layers className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-              {t("teacherDashboard.courseCard.modules", { count: moduleCount })}
+              <BookOpen className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              {t("teacherDashboard.courseCard.lessons", { count: lessonCount })}
             </span>
+            {/* Only for a course that groups its lessons. A module count of
+                zero is not news to a teacher who never made one. */}
+            {moduleCount > 0 && (
+              <span className="flex items-center gap-1">
+                <Layers className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                {t("teacherDashboard.courseCard.modules", { count: moduleCount })}
+              </span>
+            )}
             <span>
               {t("teacherDashboard.courseCard.createdOn", {
                 date: formatDate(course.created_at),

@@ -13,9 +13,9 @@ import {
 interface AddChapterBarProps {
   onAdd: (type: ChapterType) => void
   /** ``"empty"`` renders the prominent 4-card layout for the
-   * EmptyState slot when the module has no chapters yet.
+   * EmptyState slot for a course or module with no lessons yet.
    * ``"compact"`` renders an inline row of 4 buttons below the
-   * chapter list. */
+   * lesson list. */
   variant: "empty" | "compact"
 }
 
@@ -53,7 +53,7 @@ export function AddChapterBar({ onAdd, variant }: AddChapterBarProps) {
                   {t(CHAPTER_TYPE_LABEL_KEYS[type])}
                 </p>
                 <p className="mt-0.5 text-xs text-ink-muted">
-                  {t(`moduleEditor.addBar.${type}.description`)}
+                  {t(`lessons.addBar.${type}.description`)}
                 </p>
               </div>
             </button>
@@ -62,7 +62,7 @@ export function AddChapterBar({ onAdd, variant }: AddChapterBarProps) {
       </div>
     )
   }
-  // ``compact`` — used below the chapter list. The 4 buttons sit in
+  // ``compact`` — used below the lesson list. The 4 buttons sit in
   // a single horizontal flex container; on narrow viewports they
   // wrap to two rows of two.
   return (

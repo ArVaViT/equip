@@ -384,13 +384,13 @@
         "title": "Інші інструменти курсу",
         "body": "Оголошення, матеріали, події календаря, запис групи — усі додаткові інструменти за цим меню."
       },
-      "modules": {
-        "title": "Модулі та розділи",
-        "body": "Додайте модуль, а в ньому — розділи. Перетягуйте, щоб змінити порядок. Натисніть розділ, щоб відкрити його редактор."
-      },
       "finale": {
         "title": "Будуйте у своєму темпі",
         "body": "Зберігайте чернетку раніше, публікуйте, коли готові. Студенти не бачать чернеток; ви можете переглядати їх будь-коли."
+      },
+      "content": {
+        "title": "Зміст курсу",
+        "body": "Додавайте уроки просто в курс — урок, тест, іспит або завдання. Перетягуйте, щоб змінити порядок; натисніть, щоб писати. Якщо курс виросте в частини, згрупуйте уроки в модуль через меню ⋯."
       }
     },
     "moduleEditor": {
@@ -399,8 +399,8 @@
         "body": "Назва, опис і термін здачі модуля редагуються просто тут. Зміни зберігаються, щойно ви клацнете поза полем."
       },
       "chapters": {
-        "title": "Розділи цього модуля",
-        "body": "Додавайте розділи (урок, тест, іспит або завдання), перетягуйте для порядку, натискайте для редагування. Закривайте ті, що мають відкриватися послідовно."
+        "title": "Уроки в цьому модулі",
+        "body": "Додавайте уроки, перетягуйте для порядку, натискайте, щоб редагувати. Закривайте ті, що мають відкриватися послідовно. Урок можна й винести з модуля — він залишиться в курсі."
       },
       "finale": {
         "title": "Модуль на місці",
@@ -1635,7 +1635,11 @@
       "pendingGrading_one": "{{count}} на оцінювання",
       "pendingGrading_few": "{{count}} на оцінювання",
       "pendingGrading_many": "{{count}} на оцінювання",
-      "pendingGrading_other": "{{count}} на оцінювання"
+      "pendingGrading_other": "{{count}} на оцінювання",
+      "lessons_one": "{{count}} урок",
+      "lessons_few": "{{count}} уроки",
+      "lessons_many": "{{count}} уроків",
+      "lessons_other": "{{count}} уроку"
     },
     "createForm": {
       "title": "Створити новий курс",
@@ -1696,14 +1700,7 @@
     "defaults": {
       "moduleTitle": "Модуль {{n}}"
     },
-    "modulesHeading": "Модулі",
-    "addModule": "Додати модуль",
-    "noModulesYet": "Модулів ще немає",
-    "noModulesYetDescription": "Додайте перший модуль, щоб почати будувати курс.",
-    "chapterCount_one": "{{count}} розділ",
-    "chapterCount_few": "{{count}} розділи",
-    "chapterCount_many": "{{count}} розділів",
-    "chapterCount_other": "{{count}} розділу",
+    "addModule": "Згрупувати уроки в модуль",
     "dragModuleAria": "Змінити порядок модуля {{title}}",
     "deleteModuleAria": "Видалити модуль {{title}}",
     "modals": {
@@ -1801,7 +1798,7 @@
     },
     "confirm": {
       "deleteModuleTitle": "Видалити цей модуль?",
-      "deleteModuleDescription": "Усі розділи всередині модуля також буде прибрано.",
+      "deleteModuleDescription": "Уроки залишаться в курсі. Зникне лише групування.",
       "deleteModuleAction": "Видалити",
       "deleteAnnouncementTitle": "Видалити це оголошення?",
       "deleteAnnouncementAction": "Видалити",
@@ -1810,57 +1807,26 @@
       "deleteMaterialTitle": "Видалити матеріал?",
       "deleteMaterialDescription": "«{{name}}» буде прибрано назавжди.",
       "deleteMaterialAction": "Видалити"
+    },
+    "lessonCount_one": "{{count}} урок",
+    "lessonCount_few": "{{count}} уроки",
+    "lessonCount_many": "{{count}} уроків",
+    "lessonCount_other": "{{count}} уроку",
+    "contentHeading": "Зміст курсу",
+    "outlineMenuAria": "Дії зі структурою курсу",
+    "empty": {
+      "title": "У курсі ще немає уроків",
+      "description": "Додайте перший урок — більшого курсу не потрібно. Оберіть, яким він буде."
     }
   },
-  "moduleEditor": {
+  "lessons": {
     "defaults": {
-      "chapterTitle": "Розділ {{n}}",
+      "chapterTitle": "Урок {{n}}",
       "readingTitle": "Урок {{n}}",
       "quizTitle": "Тест {{n}}",
       "examTitle": "Іспит {{n}}",
       "assignmentTitle": "Завдання {{n}}"
     },
-    "toast": {
-      "moduleNotFound": "Модуль не знайдено",
-      "loadFailed": "Не вдалося завантажити модуль.",
-      "failedSaveModule": "Не вдалося зберегти модуль",
-      "failedSaveDueDate": "Не вдалося зберегти термін здачі",
-      "chapterAdded": "Розділ додано",
-      "failedAddChapter": "Не вдалося додати розділ",
-      "failedRenameChapter": "Не вдалося перейменувати розділ",
-      "chapterDeleted": "Розділ видалено",
-      "failedDeleteChapter": "Не вдалося видалити розділ",
-      "chapterLocked": "Розділ закрито",
-      "chapterUnlocked": "Розділ відкрито",
-      "failedToggleLock": "Не вдалося змінити доступ: {{detail}}",
-      "failedReorderChapters": "Не вдалося зберегти порядок розділів"
-    },
-    "invalidField": "Некоректне значення: {{field}}",
-    "invalidChapterTitle": "Некоректна назва розділу",
-    "unknownError": "Невідома помилка",
-    "confirmDelete": {
-      "title": "Видалити цей розділ?",
-      "description": "Розділ і його вміст буде прибрано.",
-      "confirm": "Видалити"
-    },
-    "notFound": {
-      "title": "Модуль не знайдено",
-      "description": "Можливо, модуль видалено або у вас немає доступу.",
-      "backToCourse": "Назад до курсу"
-    },
-    "backToCourse": "Назад до курсу",
-    "untitledModule": "Модуль без назви",
-    "addDescription": "Додати опис модуля",
-    "editTitle": "Редагувати назву модуля",
-    "editDescription": "Редагувати опис модуля",
-    "dueDate": "Термін здачі",
-    "clear": "Очистити",
-    "noChapters": {
-      "title": "Розділів ще немає",
-      "description": "Оберіть тип розділу нижче, щоб почати будувати модуль. Уроки несуть ваш текст і візуальний матеріал; тести, іспити та завдання по-різному перевіряють розуміння.",
-      "action": "Додати розділ"
-    },
-    "addChapter": "Додати розділ",
     "addBar": {
       "reading": {
         "description": "Текст, зображення, відео, виноски, код, формули."
@@ -1875,11 +1841,64 @@
         "description": "Студент надсилає роботу; ви оцінюєте її вручну."
       }
     },
-    "lockChapterTooltip": "Закрити розділ",
-    "unlockChapterTooltip": "Відкрити розділ",
-    "editChapterAria": "Редагувати розділ {{title}}",
-    "deleteChapterAria": "Видалити розділ {{title}}",
-    "dragChapterAria": "Змінити порядок розділу {{title}}"
+    "dragAria": "Змінити порядок уроку «{{title}}»",
+    "editAria": "Редагувати урок «{{title}}»",
+    "deleteAria": "Видалити урок «{{title}}»",
+    "lockTooltip": "Закрити урок",
+    "unlockTooltip": "Відкрити урок",
+    "invalidTitle": "Некоректна назва уроку",
+    "unknownError": "Невідома помилка",
+    "move": {
+      "tooltip": "Перемістити урок",
+      "aria": "Перемістити урок «{{title}}»",
+      "toCourse": "Винести з модуля",
+      "intoModule": "Перенести до «{{title}}»",
+      "untitledModule": "Модуль без назви"
+    },
+    "confirmDelete": {
+      "title": "Видалити урок?",
+      "description": "Урок і все, що в ньому написано, буде прибрано.",
+      "confirm": "Видалити"
+    },
+    "toast": {
+      "added": "Урок додано",
+      "addFailed": "Не вдалося додати урок",
+      "renameFailed": "Не вдалося перейменувати урок",
+      "deleted": "Урок видалено",
+      "deleteFailed": "Не вдалося видалити урок",
+      "locked": "Урок закрито",
+      "unlocked": "Урок відкрито",
+      "lockFailed": "Не вдалося змінити доступ: {{detail}}",
+      "reorderFailed": "Не вдалося зберегти порядок уроків",
+      "movedToCourse": "Урок винесено з модуля — він залишився в курсі",
+      "movedToModule": "Урок перенесено до «{{title}}»",
+      "moveFailed": "Не вдалося перенести урок"
+    }
+  },
+  "moduleEditor": {
+    "toast": {
+      "moduleNotFound": "Модуль не знайдено",
+      "loadFailed": "Не вдалося завантажити модуль.",
+      "failedSaveModule": "Не вдалося зберегти модуль",
+      "failedSaveDueDate": "Не вдалося зберегти термін здачі"
+    },
+    "invalidField": "Некоректне значення: {{field}}",
+    "notFound": {
+      "title": "Модуль не знайдено",
+      "description": "Можливо, модуль видалено або у вас немає доступу.",
+      "backToCourse": "Назад до курсу"
+    },
+    "backToCourse": "Назад до курсу",
+    "untitledModule": "Модуль без назви",
+    "addDescription": "Додати опис модуля",
+    "editTitle": "Редагувати назву модуля",
+    "editDescription": "Редагувати опис модуля",
+    "dueDate": "Термін здачі",
+    "clear": "Очистити",
+    "noChapters": {
+      "title": "У цьому модулі ще немає уроків",
+      "description": "Оберіть тип уроку нижче. Урок несе ваш текст і візуальний матеріал; тести, іспити та завдання по-різному перевіряють розуміння."
+    }
   },
   "courseEditor": {
     "notFound": {
@@ -1918,21 +1937,20 @@
   },
   "chapterEditor": {
     "notFound": {
-      "title": "Розділ не знайдено",
-      "description": "Можливо, розділ видалено або у вас немає доступу.",
-      "backToModule": "Назад до модуля"
+      "title": "Урок не знайдено",
+      "description": "Урок могли видалити, або у вас немає доступу.",
+      "backToCourse": "До курсу"
     },
     "moduleFallback": "Модуль",
-    "chapterFallback": "Розділ",
+    "chapterFallback": "Урок",
     "breadcrumb": {
       "myCourses": "Мої курси",
       "course": "Курс"
     },
     "toast": {
-      "chapterNotFound": "Розділ не знайдено",
-      "loadFailed": "Не вдалося завантажити розділ",
-      "invalidData": "Некоректні дані розділу",
-      "saved": "Розділ збережено",
+      "loadFailed": "Не вдалося завантажити урок",
+      "invalidData": "Некоректні дані уроку",
+      "saved": "Урок збережено",
       "saveFailed": "Не вдалося зберегти: {{detail}}"
     },
     "unknownError": "Невідома помилка",
@@ -1942,15 +1960,15 @@
       "confirm": "Вийти"
     },
     "back": "Назад",
-    "titlePlaceholder": "Назва розділу",
-    "editTitleAria": "Редагувати назву розділу",
-    "chapterType": "Тип розділу",
-    "save": "Зберегти розділ",
+    "titlePlaceholder": "Назва уроку",
+    "editTitleAria": "Змінити назву уроку",
+    "chapterType": "Тип уроку",
+    "save": "Зберегти урок",
     "saving": "Збереження...",
     "saveHint": "Ctrl+S — зберегти",
     "unsavedChanges": "У вас є незбережені зміни",
     "typeChangeConfirm": {
-      "title": "Змінити тип розділу?",
+      "title": "Змінити тип уроку?",
       "description": "Написане не видалиться. Редактор «{{from}}» сховається, поки розділ — «{{to}}», і повернеться з усім вмістом, щойно ви перемкнете тип назад.",
       "confirm": "Змінити тип"
     }
