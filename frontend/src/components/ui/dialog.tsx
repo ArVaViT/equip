@@ -71,8 +71,13 @@ const DialogTitle = React.forwardRef<
 DialogTitle.displayName = DialogPrimitive.Title.displayName
 
 export {
-  Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 }
+
+// Bare alias of a Radix primitive. eslint-plugin-react-refresh >= 0.5.5 inspects
+// the initializer and cannot tell that `DialogPrimitive.Root` is a component;
+// Vite's Fast Refresh checks the runtime value, so HMR is unaffected.
+// eslint-disable-next-line react-refresh/only-export-components
+export { Dialog }
