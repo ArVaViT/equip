@@ -5,6 +5,7 @@ import { Link } from "react-router-dom"
 import { ArrowRight, CalendarDays } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState, Eyebrow } from "@/components/patterns"
+import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
 import { coursesService } from "@/services/courses"
 import { useAuth } from "@/context/useAuth"
 import type { CalendarEvent } from "@/types"
@@ -132,6 +133,10 @@ export function TodayCard() {
                   {e.course_title && (
                     <p className="truncate text-ink-muted">{e.course_title}</p>
                   )}
+                  {/* The card answers "what do I need to do today", and
+                      for a Saturday Zoom class the answer is a button,
+                      not an instruction to go and find one. */}
+                  <JoinMeetingLink url={e.meeting_url} title={e.title} className="mt-1.5" />
                 </div>
               </li>
             ))}

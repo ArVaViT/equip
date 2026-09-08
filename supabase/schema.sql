@@ -453,7 +453,8 @@ CREATE TABLE public.course_events (
     event_type character varying(30) DEFAULT 'other'::character varying NOT NULL,
     event_date timestamp with time zone NOT NULL,
     created_by uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now()
+    created_at timestamp with time zone DEFAULT now(),
+    meeting_url character varying(2048)
 );
 
 

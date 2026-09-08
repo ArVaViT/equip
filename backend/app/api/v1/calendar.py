@@ -87,7 +87,16 @@ def _notify_students_about_event(
         title = t(locale, f"{key}.title")
         message = t(locale, f"{key}.body", **params)
         link = _event_link(course.id)
-        metadata = {"course_id": course.id, "event_id": str(event.id)}
+        metadata: dict[str, str] = {"course_id": course.id, "event_id": str(event.id)}
+        # The bell is where a student is standing when the session is
+        # about to start, so the way in travels with the notification
+        # rather than only living on the course page. It goes in the
+        # metadata and not into ``message``: the row is rendered
+        # line-clamped to two lines, and a 90-character Zoom URL pasted
+        # into the sentence pushes out the title of the thing it is
+        # about. The client draws a "Join" button from this key.
+        if event.meeting_url:
+            metadata["meeting_url"] = event.meeting_url
         i18n = notification_text(key, **params)
         # Two literal call sites rather than one with a computed kind:
         # the notification-kinds test reads the kind off the source.
@@ -145,6 +154,7 @@ def _course_event_to_response(db: Session, event: CourseEvent, *, source_locale:
             "description": description,
             "event_type": event.event_type,
             "event_date": event.event_date,
+            "meeting_url": event.meeting_url,
             "created_by": event.created_by,
             "created_at": event.created_at,
         }
@@ -203,6 +213,12 @@ def create_course_event(
         course_id=course_id,
         event_type=data.event_type,
         event_date=data.event_date,
+        # Already refused unless it is an http(s) address — the schema
+        # validator ran before this line. Not sanitised beside the title
+        # and description: those are prose that gets tags stripped out
+        # of it, and a URL is not prose. Stripping "tags" from a link
+        # with ``<`` in a query parameter would quietly corrupt it.
+        meeting_url=data.meeting_url,
         created_by=teacher.id,
     )
     db.add(event)

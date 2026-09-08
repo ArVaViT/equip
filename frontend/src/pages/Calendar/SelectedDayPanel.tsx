@@ -5,6 +5,7 @@ import { BookOpen, CalendarDays, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/patterns";
 import type { CalendarEvent } from "@/types";
+import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink";
 import { getEventColor } from "./constants";
 import { formatTime } from "./utils";
 import { formatDateLong } from "@/i18n/format";
@@ -86,6 +87,14 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
                           {evt.description}
                         </p>
                       )}
+                      {/* Last in the card, under the description: this
+                          is the day's detail panel, and the action to
+                          take belongs after what the event is. */}
+                      <JoinMeetingLink
+                        url={evt.meeting_url}
+                        title={evt.title}
+                        className="mt-2"
+                      />
                     </div>
                   </div>
                 </div>

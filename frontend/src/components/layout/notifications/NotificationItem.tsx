@@ -1,8 +1,19 @@
 import { Trash2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import type { Notification } from "@/types"
+import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
 import { cn } from "@/lib/utils"
 import { orNotTranslated } from "@/lib/untranslated"
+
+/** The event's meeting link, when the row is about an event that has one.
+ *  `metadata` is `Record<string, unknown>` by declaration — it carries
+ *  whatever the emitting route put there — so the value is narrowed to a
+ *  string here rather than asserted. `JoinMeetingLink` decides whether it
+ *  is a link worth rendering. */
+function meetingUrlOf(notification: Notification): string | null {
+  const value = notification.metadata?.meeting_url
+  return typeof value === "string" ? value : null
+}
 import {
   colorFor,
   iconFor,
@@ -63,6 +74,17 @@ export function NotificationItem({ notification, onActivate, onDelete }: Props) 
           </p>
         </div>
       </button>
+      {/* Outside the button, never inside it: a link nested in a button
+          is invalid HTML, and browsers recover from it by breaking one
+          of the two — usually the link. So the join action is a sibling
+          of the row's own click target, sharing its bottom edge. The
+          bell is where a student is standing when a session starts, so
+          it is worth the row it costs. */}
+      <JoinMeetingLink
+        url={meetingUrlOf(notification)}
+        title={orNotTranslated(t, notification.title)}
+        className="self-center"
+      />
       <button
         onClick={(e) => {
           e.stopPropagation()

@@ -1,0 +1,72 @@
+-- A live session says where to join.
+--
+-- The complaint
+-- =============
+-- «Когда создаёшь ивент или объявление, должна быть опция для ссылки в зум
+-- или гугл мит, чтоб люди могли кликнуть на неё и открыть.»
+--
+-- What it already broke
+-- =====================
+-- The first teacher on the platform runs a preachers' course entirely in
+-- Zoom — one Saturday a month. `course_events` has had `live_session` in its
+-- `event_type` vocabulary from the start, so the class could be announced;
+-- there was nowhere to say where it happens. The address went into the
+-- description, which is the one field on the row that is *translated*: it is
+-- stored in `content_versions` and swept by the translation pipeline, so a
+-- German student's copy of the Zoom link is whatever a model made of it.
+--
+-- What it would break next
+-- ========================
+-- The description is also the field every machine-readable surface treats as
+-- prose. The iCalendar feed pours it into DESCRIPTION, where Apple Calendar
+-- and Google Calendar have a real place for a meeting URL and use neither.
+-- The notification fan-out ships it as a sentence. Nothing downstream can
+-- find a link inside prose, so nothing downstream could offer to open it.
+--
+-- The change
+-- ==========
+-- One nullable column. NULL means there is nothing to join — which is the
+-- honest state of a deadline, of an exam in a room, and of most events — and
+-- every surface renders the join button on the presence of a value, never on
+-- the event's type.
+--
+-- It is deliberately NOT in `content_versions` beside the title and the
+-- description. An address is the same string in every language; putting it
+-- through the translation pipeline would invite a model to rewrite a URL,
+-- and a rewritten URL is a link that looks right and joins nothing.
+--
+-- `character varying(2048)` rather than `text` so the database says the
+-- same thing the API does. Real links are short — Zoom's are about 90
+-- characters, Google Meet's about 35 — and the bound is there to refuse a
+-- paste of something that is not a link at all.
+--
+-- Only `http://` and `https://` values are ever written here: the API
+-- refuses everything else (`backend/app/core/meeting_url.py`) before the
+-- INSERT, because this value is handed to students as a clickable `href`
+-- and `javascript:` in an `href` runs in the reader's session. The column
+-- takes no CHECK constraint for that — a regex in the schema would be a
+-- second, weaker copy of a rule that has to be enforced in the application
+-- anyway, and the two would drift.
+--
+-- Announcements get no such column, on purpose: their body is free prose
+-- whose links the client already makes clickable, and a second place to put
+-- the same link is a second place for it to be wrong. See the PR.
+--
+-- Backfill
+-- ========
+-- None. Links that teachers have already typed into descriptions stay where
+-- they are and keep working — the description is still shown, and its links
+-- are still clickable in the app. Mining URLs out of existing prose and
+-- promoting them to this column would guess at which link in a paragraph is
+-- the meeting, and guessing wrong sends a class to the wrong room.
+--
+-- Not applied by `supabase db push` — the migration markers in this
+-- directory and in production have diverged. Run this file by hand in the
+-- SQL editor and then insert its version into
+-- `supabase_migrations.schema_migrations`.
+
+ALTER TABLE public.course_events
+    ADD COLUMN IF NOT EXISTS meeting_url character varying(2048);
+
+COMMENT ON COLUMN public.course_events.meeting_url IS
+    'Where a live session happens: the Zoom / Google Meet / any http(s) address a student clicks to join. NULL = nothing to join. Validated to http(s) by the API before write (app/core/meeting_url.py); never translated — it is an address, not text.';

@@ -808,7 +808,8 @@
       "options": "Optionen",
       "option_text": "Optionstext",
       "is_correct": "richtige Antwort",
-      "order_index": "Reihenfolge"
+      "order_index": "Reihenfolge",
+      "meeting_url": "Link zum Meeting"
     },
     "validation": {
       "less_than_equal": "höchstens {{le}}",
@@ -833,7 +834,10 @@
       "quiz_too_few_options": "braucht mindestens zwei Optionen",
       "quiz_no_correct_option": "markieren Sie eine Option als richtig",
       "quiz_many_correct_options": "nur eine Option kann richtig sein",
-      "quiz_options_not_allowed": "eine Frage mit schriftlicher Antwort hat keine Optionen"
+      "quiz_options_not_allowed": "eine Frage mit schriftlicher Antwort hat keine Optionen",
+      "meeting_url_not_a_web_address": "muss mit http:// oder https:// beginnen — fügen Sie die vollständige Adresse aus der Adresszeile des Browsers ein, zum Beispiel https://zoom.us/j/1234567890",
+      "meeting_url_credentials_in_url": "darf kein @ vor der Adresse der Website enthalten — ein solcher Link öffnet eine andere Website, als er vorgibt. Kopieren Sie die Adresse des Meetings erneut",
+      "meeting_url_too_long": "ist zu lang — höchstens 2048 Zeichen"
     },
     "storage": {
       "tooLarge": "Die Datei ist {{sizeMb}} MB groß, erlaubt sind {{maxMb}} MB.",
@@ -2865,5 +2869,12 @@
     "invalidDescription": "Die Nummer {{number}} gehört zu keinem ausgestellten Zertifikat. Bitte prüfen Sie, ob sie korrekt übertragen wurde.",
     "errorTitle": "Prüfung gerade nicht möglich",
     "errorDescription": "Das ist ein Verbindungsproblem und kein Urteil über das Zertifikat. Bitte erneut versuchen."
+  },
+  "meeting": {
+    "join": "Beitreten",
+    "joinAria": "Dem Meeting beitreten — {{title}}",
+    "linkLabel": "Link zum Meeting",
+    "linkPlaceholder": "https://zoom.us/j/…",
+    "linkHint": "Optional. Zoom, Google Meet — ein beliebiger Link. Studenten sehen dann eine Schaltfläche „Beitreten“."
   }
 }
