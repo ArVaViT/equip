@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { coursesService } from "@/services/courses"
+import { getErrorDetail } from "@/lib/errorDetail"
 import { toast } from "@/lib/toast"
 import { isoToLocalInput, localInputToIso } from "@/i18n/format"
 import type { CourseEvent } from "@/types"
@@ -69,6 +70,7 @@ export function useEventsSection(
       description: ev.description ?? "",
       event_type: ev.event_type,
       event_date: isoToLocalInput(ev.event_date),
+      meeting_url: ev.meeting_url ?? "",
     })
     setEditingId(ev.id)
   }, [])
@@ -86,6 +88,12 @@ export function useEventsSection(
       description: form.description.trim() || undefined,
       event_type: form.event_type,
       event_date: isoDate,
+      // `null`, not `undefined`, when the field is empty: on an update
+      // this is how a teacher takes a link back off an event. Sent
+      // `undefined` it would be dropped from the JSON body, the server
+      // would see an absent key, and `exclude_unset` would leave the old
+      // link in place — the field would look cleared and would not be.
+      meeting_url: form.meeting_url.trim() || null,
     }
     try {
       if (editingId) {
@@ -98,8 +106,16 @@ export function useEventsSection(
         toast({ title: t("teacherEditor.toast.eventCreated"), variant: "success" })
       }
       resetForm()
-    } catch {
-      toast({ title: t("teacherEditor.toast.eventSaveFailed"), variant: "destructive" })
+    } catch (err) {
+      // Was a fixed "could not save the event", which is true and
+      // useless: the commonest way to fail here is now a meeting link
+      // the server refused, and the server says exactly what is wrong
+      // with it. `getErrorDetail` renders that 422 in the reader's
+      // language and falls back to the old sentence for everything else.
+      toast({
+        title: getErrorDetail(err, t("teacherEditor.toast.eventSaveFailed")),
+        variant: "destructive",
+      })
     } finally {
       setSaving(false)
     }

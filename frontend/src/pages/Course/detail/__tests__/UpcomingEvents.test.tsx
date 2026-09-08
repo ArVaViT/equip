@@ -25,6 +25,7 @@ function eventAt(local: Date, overrides: Partial<CalendarEvent> = {}): CalendarE
     description: null,
     event_type: "live_session",
     event_date: local.toISOString(),
+    meeting_url: null,
     course_id: "c1",
     course_title: "Карта в кармане",
     source: "course_event",
@@ -57,5 +58,26 @@ describe("UpcomingEvents", () => {
     past.setDate(past.getDate() - 10)
     const { container } = render(<UpcomingEvents events={[eventAt(past)]} />, { wrapper: Wrapper })
     expect(container.firstChild).toBeNull()
+  })
+
+  it("offers a way into a live session that has one", () => {
+    const soon = new Date()
+    soon.setDate(soon.getDate() + 3)
+    const zoom = "https://zoom.us/j/1234567890?pwd=aB3dEf"
+    render(<UpcomingEvents events={[eventAt(soon, { meeting_url: zoom })]} />, { wrapper: Wrapper })
+    const link = screen.getByRole("link", { name: /Присоединиться/ })
+    expect(link).toHaveAttribute("href", zoom)
+    expect(link).toHaveAttribute("rel", "noopener noreferrer")
+  })
+
+  it("shows no join button on an event with nowhere to be", () => {
+    // A deadline is a moment, not a room. An empty button here would be
+    // a promise the row cannot keep.
+    const soon = new Date()
+    soon.setDate(soon.getDate() + 3)
+    render(<UpcomingEvents events={[eventAt(soon, { event_type: "deadline" })]} />, {
+      wrapper: Wrapper,
+    })
+    expect(screen.queryByRole("link")).toBeNull()
   })
 })

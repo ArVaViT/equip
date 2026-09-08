@@ -808,7 +808,8 @@
       "options": "options",
       "option_text": "option text",
       "is_correct": "correct answer",
-      "order_index": "order"
+      "order_index": "order",
+      "meeting_url": "meeting link"
     },
     "validation": {
       "less_than_equal": "must be no more than {{le}}",
@@ -833,7 +834,10 @@
       "quiz_too_few_options": "needs at least two options",
       "quiz_no_correct_option": "mark one option as correct",
       "quiz_many_correct_options": "only one option can be correct",
-      "quiz_options_not_allowed": "a written-answer question has no options"
+      "quiz_options_not_allowed": "a written-answer question has no options",
+      "meeting_url_not_a_web_address": "must start with http:// or https:// — paste the whole address from the browser's address bar, for example https://zoom.us/j/1234567890",
+      "meeting_url_credentials_in_url": "must not have an @ before the site address — a link like that opens a different site from the one it appears to name. Copy the meeting address again",
+      "meeting_url_too_long": "is too long — no more than 2048 characters"
     },
     "storage": {
       "tooLarge": "This file is {{sizeMb}} MB; the limit is {{maxMb}} MB.",
@@ -2865,5 +2869,12 @@
     "invalidDescription": "The number {{number}} does not match any issued certificate. Check that it was copied correctly.",
     "errorTitle": "Could not check right now",
     "errorDescription": "That is a connection problem, not a verdict on the certificate. Please try again."
+  },
+  "meeting": {
+    "join": "Join",
+    "joinAria": "Join the meeting for {{title}}",
+    "linkLabel": "Meeting link",
+    "linkPlaceholder": "https://zoom.us/j/…",
+    "linkHint": "Optional. Zoom, Google Meet — any link. Students will see a “Join” button."
   }
 }

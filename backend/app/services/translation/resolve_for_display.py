@@ -1223,6 +1223,11 @@ def localize_course_event_rows(
                     "description": texts.get((eid, "description")),
                     "event_type": e.event_type,
                     "event_date": e.event_date,
+                    # Straight off the row. Unlike the title and the
+                    # description it has no locale to resolve — the
+                    # address of a Zoom room is the same address for a
+                    # German reader as for a Russian one.
+                    "meeting_url": e.meeting_url,
                     "created_by": e.created_by,
                     "created_at": e.created_at,
                 }

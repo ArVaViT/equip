@@ -232,6 +232,10 @@ def build_calendar_events(
                 description=description,
                 event_type=ce.event_type,
                 event_date=ce.event_date,
+                # The one event kind that can have somewhere to be. The
+                # two deadline kinds above leave it at its default
+                # ``None``: a module's due date is a moment, not a room.
+                meeting_url=ce.meeting_url,
                 course_id=ce.course_id,
                 course_title=course_titles.get(ce.course_id),
                 source="course_event",

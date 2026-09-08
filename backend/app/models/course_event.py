@@ -23,5 +23,11 @@ class CourseEvent(Base):
     # writes through dual_write_entity_content(texts={...}).
     event_type: Mapped[str] = mapped_column(String(30), default="other")
     event_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # Where the live session happens. Not in cv with the title and the
+    # description, because it is not text: an address is the same string
+    # in every language, and running it through the translation pipeline
+    # would invite a model to "fix" a URL. Validated to http(s) before it
+    # is written — see app/core/meeting_url.py.
+    meeting_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     created_by: Mapped[uuid.UUID] = mapped_column()
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())

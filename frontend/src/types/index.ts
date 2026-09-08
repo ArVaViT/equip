@@ -545,6 +545,10 @@ export interface CalendarEvent {
   description: string | null
   event_type: CalendarEventType
   event_date: string
+  /** Where a live session happens. Only a `course_event` can carry one;
+   *  the two deadline sources are always `null`. Render the join action
+   *  on this being present, never on `event_type`. */
+  meeting_url: string | null
   course_id: string
   course_title: string | null
   source: CalendarEventSource
@@ -716,6 +720,7 @@ export interface CourseEvent {
   description: string | null
   event_type: CalendarEventType
   event_date: string
+  meeting_url: string | null
   created_by: string
   created_at: string
 }

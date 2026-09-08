@@ -116,6 +116,36 @@ def render_calendar(events: list[CalendarEvent], *, user_email: str | None = Non
         )
         if description:
             lines.append(_fold(f"DESCRIPTION:{_escape(description)}"))
+        if event.meeting_url:
+            # Both properties, because no single one of them works in
+            # both clients a student actually subscribes from.
+            #
+            # Apple Calendar shows URL as a "URL" row in the inspector
+            # and makes it clickable; it does not linkify LOCATION.
+            # Google Calendar is the mirror image — it ignores the URL
+            # property on an imported event entirely, and renders a
+            # LOCATION that parses as a URL as a link. Zoom's and
+            # Teams' own .ics exports emit both for exactly this
+            # reason, so this is the shape those clients are tuned for.
+            #
+            # LOCATION is TEXT (RFC 5545 §3.8.1.7), so its commas and
+            # semicolons are escaped like any other text value. URL's
+            # value type is URI (§3.8.4.6) and must NOT be text-escaped:
+            # a backslash in front of a comma inside a query string is
+            # part of the address as far as the client is concerned, and
+            # it would hand the student a broken link. Written bare
+            # rather than as ``URL;VALUE=URI:`` — URI is already the
+            # default type, and the bare form is what the RFC's own
+            # example and every exporter in the wild emit, so it is the
+            # form parsers are actually tested against.
+            #
+            # The value is safe to emit raw because
+            # ``normalize_meeting_url`` has already refused every
+            # newline and control character. Without that, a link could
+            # close this line and write properties of its own into the
+            # feed.
+            lines.append(_fold(f"LOCATION:{_escape(event.meeting_url)}"))
+            lines.append(_fold(f"URL:{event.meeting_url}"))
         lines.append(f"CATEGORIES:{_escape(event.event_type)}")
         lines.append("END:VEVENT")
 

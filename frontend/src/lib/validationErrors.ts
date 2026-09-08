@@ -47,6 +47,7 @@ const FIELD_KEYS = new Set([
   "option_text",
   "is_correct",
   "order_index",
+  "meeting_url",
 ])
 
 /** Error types the catalogue has a sentence for. */
@@ -73,6 +74,13 @@ const TYPE_KEYS = new Set([
   "quiz_no_correct_option",
   "quiz_many_correct_options",
   "quiz_options_not_allowed",
+  // Raised by ``_validated_meeting_url`` in ``schemas/calendar.py``.
+  // Three types rather than one because the three need different
+  // advice: a teacher shown "must start with https://" under a link
+  // that starts with https:// concludes the product is broken.
+  "meeting_url_not_a_web_address",
+  "meeting_url_credentials_in_url",
+  "meeting_url_too_long",
 ])
 
 /**

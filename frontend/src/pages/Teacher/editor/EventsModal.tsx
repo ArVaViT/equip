@@ -16,11 +16,15 @@ import { EmptyState, Modal } from "@/components/patterns"
 import { EventTypeBadge } from "./badges"
 import type { EventFormState } from "./types"
 import type { CourseEvent } from "@/types"
+import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
+import { isAbsoluteHttpUrl } from "@/lib/url"
 import { formatDateLong, formatDateTime } from "@/i18n/format"
 
 /** Mirrors ``CourseEventCreate`` on the server (``max_length``). */
 const TITLE_MAX = 255
 const DESCRIPTION_MAX = 5000
+/** Mirrors ``MEETING_URL_MAX_LENGTH`` in ``app/core/meeting_url.py``. */
+const MEETING_URL_MAX = 2048
 
 interface Props {
   open: boolean
@@ -55,7 +59,12 @@ export function EventsModal({
 }: Props) {
   const { t } = useTranslation()
   const patch = (p: Partial<EventFormState>) => onFormChange({ ...form, ...p })
-  const canSubmit = form.title.trim() && form.event_date && !saving
+  // Blank is fine — most events have no meeting. Only a link that has
+  // been typed and is not a link is an error, and it blocks the save so
+  // the teacher is not told about it by a toast after the fact.
+  const meetingUrlTyped = form.meeting_url.trim()
+  const meetingUrlBroken = meetingUrlTyped !== "" && !isAbsoluteHttpUrl(meetingUrlTyped)
+  const canSubmit = form.title.trim() && form.event_date && !meetingUrlBroken && !saving
 
   return (
     <Modal open={open} onClose={onClose} title={t("teacherEditor.modals.events.title")}>
@@ -106,6 +115,41 @@ export function EventsModal({
                 className="w-full"
               />
             </div>
+          </div>
+          {/* Optional, and it looks optional: its own labelled row after
+              the type and the date, never a required-field asterisk. A
+              deadline and an exam in a room have nothing to join, and
+              those are most events. */}
+          <div className="space-y-1">
+            <Label className="text-xs" htmlFor="event-meeting-url">
+              {t("meeting.linkLabel")}
+            </Label>
+            <Input
+              id="event-meeting-url"
+              type="url"
+              inputMode="url"
+              value={form.meeting_url}
+              maxLength={MEETING_URL_MAX}
+              onChange={(e) => patch({ meeting_url: e.target.value })}
+              placeholder={t("meeting.linkPlaceholder")}
+              aria-invalid={meetingUrlBroken || undefined}
+              aria-describedby={
+                meetingUrlBroken ? "event-meeting-url-error" : "event-meeting-url-hint"
+              }
+            />
+            {meetingUrlBroken ? (
+              // The same sentence the server would answer with, asked
+              // for by the same key — so the teacher reads one wording
+              // whether the browser caught it or the API did.
+              <p id="event-meeting-url-error" role="alert" className="text-xs text-destructive">
+                {t("errors.fields.meeting_url")}:{" "}
+                {t("errors.validation.meeting_url_not_a_web_address")}
+              </p>
+            ) : (
+              <p id="event-meeting-url-hint" className="text-xs text-ink-muted">
+                {t("meeting.linkHint")}
+              </p>
+            )}
           </div>
           <div className="flex gap-2">
             <Button size="sm" onClick={onSave} disabled={!canSubmit}>
@@ -176,6 +220,10 @@ function EventRow({
             {event.description}
           </p>
         )}
+        {/* The teacher sees the same button her students will, in the
+            same list she edits — which is how she finds out that the
+            link she pasted opens the room she meant, before Saturday. */}
+        <JoinMeetingLink url={event.meeting_url} title={event.title} className="mt-1.5" />
       </div>
       <div className="flex flex-col gap-1 shrink-0">
         <Button
