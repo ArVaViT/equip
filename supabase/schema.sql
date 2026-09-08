@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict tz2Cn38pMS98tngBbUQJMrGJBGuILXmB0lePDZBtfRfeNJ1FOJevIxaYGsteAjT
+\restrict LDUTi2G0ih5drfwFdeLhUDWNuRHQZ2KlXO94CEEZZmRO2D1c5eob6hYiossbIij
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10 (Homebrew)
@@ -27,6 +27,21 @@ CREATE SCHEMA public;
 
 
 --
+-- Name: can_teach(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.can_teach() RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE id = (SELECT auth.uid()) AND role IN ('teacher', 'director', 'admin')
+    );
+$$;
+
+
+--
 -- Name: content_versions_set_updated_at(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -42,7 +57,7 @@ $$;
 
 
 --
--- Name: custom_access_token_hook(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: current_organization_id(); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.current_organization_id() RETURNS uuid
@@ -53,27 +68,9 @@ CREATE FUNCTION public.current_organization_id() RETURNS uuid
 $$;
 
 
-CREATE FUNCTION public.is_platform_staff() RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public', 'pg_temp'
-    AS $$
-    SELECT EXISTS (
-        SELECT 1 FROM public.profiles
-        WHERE id = (SELECT auth.uid()) AND role = 'admin'
-    );
-$$;
-
-
-CREATE FUNCTION public.can_teach() RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public', 'pg_temp'
-    AS $$
-    SELECT EXISTS (
-        SELECT 1 FROM public.profiles
-        WHERE id = (SELECT auth.uid()) AND role IN ('teacher', 'director', 'admin')
-    );
-$$;
-
+--
+-- Name: custom_access_token_hook(jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
 
 CREATE FUNCTION public.custom_access_token_hook(event jsonb) RETURNS jsonb
     LANGUAGE plpgsql STABLE
@@ -151,6 +148,21 @@ BEGIN
     END;
   RETURN NEW;
 END;
+$$;
+
+
+--
+-- Name: is_platform_staff(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.is_platform_staff() RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE id = (SELECT auth.uid()) AND role = 'admin'
+    );
 $$;
 
 
@@ -371,13 +383,14 @@ CREATE TABLE public.chapter_progress (
 
 CREATE TABLE public.chapters (
     id character varying NOT NULL,
-    module_id character varying NOT NULL,
+    module_id character varying,
     title character varying NOT NULL,
     order_index integer DEFAULT 0 NOT NULL,
     chapter_type character varying(20) DEFAULT 'reading'::character varying NOT NULL,
     requires_completion boolean DEFAULT false NOT NULL,
     is_locked boolean DEFAULT false NOT NULL,
     deleted_at timestamp with time zone,
+    course_id character varying NOT NULL,
     CONSTRAINT chapters_chapter_type_check CHECK (((chapter_type)::text = ANY (ARRAY[('reading'::character varying)::text, ('quiz'::character varying)::text, ('exam'::character varying)::text, ('assignment'::character varying)::text])))
 );
 
@@ -452,7 +465,8 @@ CREATE TABLE public.course_events (
     event_type character varying(30) DEFAULT 'other'::character varying NOT NULL,
     event_date timestamp with time zone NOT NULL,
     created_by uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now()
+    created_at timestamp with time zone DEFAULT now(),
+    meeting_url character varying(2048)
 );
 
 
@@ -1774,6 +1788,13 @@ CREATE INDEX ix_chapter_progress_completed_by ON public.chapter_progress USING b
 
 
 --
+-- Name: ix_chapters_course_id_order_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_chapters_course_id_order_active ON public.chapters USING btree (course_id, order_index) WHERE (deleted_at IS NULL);
+
+
+--
 -- Name: ix_chapters_module_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2579,11 +2600,19 @@ ALTER TABLE ONLY public.chapter_progress
 
 
 --
+-- Name: chapters chapters_course_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chapters
+    ADD CONSTRAINT chapters_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id) ON DELETE CASCADE;
+
+
+--
 -- Name: chapters chapters_module_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.chapters
-    ADD CONSTRAINT chapters_module_id_fkey FOREIGN KEY (module_id) REFERENCES public.modules(id) ON DELETE CASCADE;
+    ADD CONSTRAINT chapters_module_id_fkey FOREIGN KEY (module_id) REFERENCES public.modules(id) ON DELETE SET NULL;
 
 
 --
@@ -3224,6 +3253,12 @@ CREATE POLICY announcements_select_authenticated ON public.announcements FOR SEL
 
 
 --
+-- Name: assignment_rubrics; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.assignment_rubrics ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: assignment_submissions; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -3271,7 +3306,7 @@ CREATE POLICY blocks_select_all ON public.chapter_blocks FOR SELECT TO authentic
 ALTER TABLE public.certificates ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: certificates certificates_select_own_or_teacher; Type: POLICY; Schema: public; Owner: -
+-- Name: certificates certificates_select_own_or_reviewer; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY certificates_select_own_or_reviewer ON public.certificates FOR SELECT TO authenticated USING (((user_id = ( SELECT auth.uid() AS uid)) OR public.is_platform_staff() OR ((public.current_organization_id() IS NOT NULL) AND (organization_id = public.current_organization_id()) AND (EXISTS ( SELECT 1
@@ -3333,7 +3368,7 @@ CREATE POLICY cohort_courses_select_all ON public.cohort_courses FOR SELECT USIN
 ALTER TABLE public.cohorts ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: cohorts cohorts_select_all; Type: POLICY; Schema: public; Owner: -
+-- Name: cohorts cohorts_select_own_organization; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY cohorts_select_own_organization ON public.cohorts FOR SELECT TO authenticated USING ((public.is_platform_staff() OR ((public.current_organization_id() IS NOT NULL) AND (organization_id = public.current_organization_id()))));
@@ -3526,6 +3561,12 @@ ALTER TABLE public.grade_sheets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.invitations ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: legal_acceptances; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.legal_acceptances ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: modules; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -3556,6 +3597,12 @@ CREATE POLICY notifications_select_own ON public.notifications FOR SELECT TO aut
 --
 
 ALTER TABLE public.org_settings ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: organizations; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: course_prerequisites prereqs_select_all; Type: POLICY; Schema: public; Owner: -
@@ -3685,6 +3732,30 @@ CREATE POLICY reviews_select_all ON public.course_reviews FOR SELECT TO authenti
 
 
 --
+-- Name: rubric_criteria; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.rubric_criteria ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: rubric_levels; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.rubric_levels ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: rubric_marks; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.rubric_marks ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: rubrics; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.rubrics ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: staged_content_versions; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -3704,6 +3775,12 @@ CREATE POLICY student_grades_select ON public.student_grades FOR SELECT TO authe
    FROM public.profiles p
   WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text])))))));
 
+
+--
+-- Name: submission_declarations; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.submission_declarations ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: assignment_submissions submissions_select_own_or_teacher; Type: POLICY; Schema: public; Owner: -
@@ -3731,5 +3808,5 @@ CREATE POLICY translation_jobs_no_client_access ON public.translation_jobs TO an
 -- PostgreSQL database dump complete
 --
 
-\unrestrict tz2Cn38pMS98tngBbUQJMrGJBGuILXmB0lePDZBtfRfeNJ1FOJevIxaYGsteAjT
+\unrestrict LDUTi2G0ih5drfwFdeLhUDWNuRHQZ2KlXO94CEEZZmRO2D1c5eob6hYiossbIij
 
