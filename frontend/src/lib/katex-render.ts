@@ -32,10 +32,22 @@ export async function renderMathIn(container: HTMLElement | null): Promise<void>
   if (!container.querySelector('span[data-type="inlineMath"]:not([data-katex-rendered])')) {
     return;
   }
-  const [{ default: katex }] = await Promise.all([
-    import("katex"),
-    import("katex/dist/katex.min.css"),
-  ]);
+  // A deploy landing under an open chapter takes the previous build's
+  // chunks with it, and this import is the first thing to notice: it
+  // rejects with "Failed to fetch dynamically imported module" or
+  // "Unable to preload CSS for …". Unhandled, that reached Datadog as an
+  // error on a page the student was reading perfectly happily — the math
+  // stays as its LaTeX source either way, which is the same degradation
+  // this function already accepts for an expression KaTeX cannot parse.
+  let katex: typeof import("katex").default;
+  try {
+    [{ default: katex }] = await Promise.all([
+      import("katex"),
+      import("katex/dist/katex.min.css"),
+    ]);
+  } catch {
+    return;
+  }
   // Re-query after the await: the injected HTML may have changed while
   // the chunk loaded, and the import is the slow part anyway.
   const nodes = container.querySelectorAll<HTMLSpanElement>(
