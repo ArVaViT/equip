@@ -739,7 +739,8 @@
       "replace": "Заменить",
       "removeAria": "Удалить файл",
       "uploading": "Загрузка...",
-      "uploadCta": "Загрузить файл"
+      "uploadCta": "Загрузить файл",
+      "openAria": "Открыть {{name}}"
     },
     "toolbar": {
       "ariaLabel": "Форматирование текста",

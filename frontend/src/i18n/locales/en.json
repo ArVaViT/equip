@@ -1135,7 +1135,8 @@
       "replace": "Replace",
       "removeAria": "Remove file",
       "uploading": "Uploading...",
-      "uploadCta": "Upload a file"
+      "uploadCta": "Upload a file",
+      "openAria": "Open {{name}}"
     },
     "toolbar": {
       "ariaLabel": "Text formatting",
