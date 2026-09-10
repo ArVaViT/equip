@@ -73,6 +73,103 @@ describe("api interceptors", () => {
     await api.get("/public")
   })
 
+  /**
+   * auth-js only auto-refreshes while the tab is awake and visible, so a
+   * lesson editor left open overnight held an expired JWT and sent it
+   * anyway. Production logged one 401 every 61 minutes for the single
+   * teacher building a course, on 2026-09-07 and -08.
+   */
+  describe("an access token that has gone stale", () => {
+    const HOUR = 3600
+
+    it("goes back to Supabase before sending an expired token", async () => {
+      const expired = Math.floor(Date.now() / 1000) - HOUR
+      getSession.mockResolvedValueOnce({
+        data: { session: { access_token: "stale", expires_at: expired } },
+      })
+      const api = await freshApi()
+      // The refresh that `getSession()` performs internally, seen from here
+      // as a session with a new token.
+      getSession.mockResolvedValue({
+        data: {
+          session: { access_token: "fresh", expires_at: expired + 2 * HOUR },
+        },
+      })
+
+      const mock = new MockAdapter(api)
+      const seen: (string | undefined)[] = []
+      mock.onGet("/poll").reply((config) => {
+        seen.push(config.headers?.Authorization as string | undefined)
+        return [200, {}]
+      })
+
+      await api.get("/poll")
+      expect(seen).toEqual(["Bearer fresh"])
+      // No 401 round trip was needed to get there.
+      expect(refreshSession).not.toHaveBeenCalled()
+    })
+
+    it("asks once when several calls fire at the same time", async () => {
+      const expired = Math.floor(Date.now() / 1000) - HOUR
+      getSession.mockResolvedValueOnce({
+        data: { session: { access_token: "stale", expires_at: expired } },
+      })
+      const api = await freshApi()
+      getSession.mockResolvedValue({
+        data: {
+          session: { access_token: "fresh", expires_at: expired + 2 * HOUR },
+        },
+      })
+      getSession.mockClear()
+
+      const mock = new MockAdapter(api)
+      mock.onGet("/a").reply(200, {})
+      mock.onGet("/b").reply(200, {})
+      mock.onGet("/c").reply(200, {})
+      await Promise.all([api.get("/a"), api.get("/b"), api.get("/c")])
+
+      expect(getSession).toHaveBeenCalledTimes(1)
+    })
+
+    it("leaves a token that is still good alone", async () => {
+      const later = Math.floor(Date.now() / 1000) + HOUR
+      getSession.mockResolvedValue({
+        data: { session: { access_token: "good", expires_at: later } },
+      })
+      const api = await freshApi()
+      getSession.mockClear()
+
+      const mock = new MockAdapter(api)
+      mock.onGet("/ping").reply((config) => {
+        expect(config.headers?.Authorization).toBe("Bearer good")
+        return [200, {}]
+      })
+      await api.get("/ping")
+
+      expect(getSession).not.toHaveBeenCalled()
+    })
+
+    it("keeps the old token when the lookup fails on a dropped connection", async () => {
+      const expired = Math.floor(Date.now() / 1000) - HOUR
+      getSession.mockResolvedValueOnce({
+        data: { session: { access_token: "stale", expires_at: expired } },
+      })
+      const api = await freshApi()
+      getSession.mockRejectedValue(new Error("Failed to fetch"))
+
+      const mock = new MockAdapter(api)
+      mock.onGet("/ping").reply((config) => {
+        // Still sent: it may be good, and a 401 is the honest way to find
+        // out. Dropping it here would sign the teacher out over one packet.
+        expect(config.headers?.Authorization).toBe("Bearer stale")
+        return [200, {}]
+      })
+      await api.get("/ping")
+
+      expect(signOut).not.toHaveBeenCalled()
+    })
+  })
+
   it("transparently retries a 401 after refreshing the session", async () => {
     getSession.mockResolvedValue({
       data: { session: { access_token: "old" } },

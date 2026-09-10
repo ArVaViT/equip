@@ -15,6 +15,19 @@ const api = axios.create({
 type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean }
 
 let cachedToken: string | null = null
+/** Unix seconds, straight off the session. `null` when unknown. */
+let cachedExpiresAt: number | null = null
+
+// How stale a cached token may be before we go back to Supabase for it.
+// Below `EXPIRY_MARGIN_MS` (90s in auth-js), `getSession()` refreshes rather
+// than hands back what it has, so anything under that number means "ask and
+// you will get a new one".
+const REFRESH_BEFORE_EXPIRY_S = 60
+
+function rememberSession(session: { access_token: string; expires_at?: number } | null) {
+  cachedToken = session?.access_token ?? null
+  cachedExpiresAt = session?.expires_at ?? null
+}
 
 // Prime the cache on module load, and keep it in sync with Supabase auth events.
 // Before the first `getSession()` resolves we fall back to a live lookup inside
@@ -22,17 +35,17 @@ let cachedToken: string | null = null
 let primed: Promise<void> | null = supabase.auth
   .getSession()
   .then(({ data }) => {
-    cachedToken = data.session?.access_token ?? null
+    rememberSession(data.session ?? null)
   })
   .catch(() => {
-    cachedToken = null
+    rememberSession(null)
   })
   .finally(() => {
     primed = null
   })
 
 supabase.auth.onAuthStateChange((_event, session) => {
-  cachedToken = session?.access_token ?? null
+  rememberSession(session ?? null)
 })
 
 function currentAcceptLanguage(): string {
@@ -45,14 +58,64 @@ function currentAcceptLanguage(): string {
   return isSupportedLocale(head) ? head : DEFAULT_LOCALE
 }
 
+/**
+ * True while the cached token has more than `REFRESH_BEFORE_EXPIRY_S` of
+ * life left. An unknown expiry counts as fresh: the 401 path below is the
+ * backstop, and refusing to send a token we cannot date would log people
+ * out over a missing field.
+ */
+function cachedTokenIsFresh(): boolean {
+  if (cachedExpiresAt === null) return true
+  return cachedExpiresAt - REFRESH_BEFORE_EXPIRY_S > Date.now() / 1000
+}
+
+// One `getSession()` at a time. A page that fires six calls on mount would
+// otherwise ask six times over.
+let sessionLookup: Promise<void> | null = null
+
+function syncSessionOnce(): Promise<void> {
+  sessionLookup ??= supabase.auth
+    .getSession()
+    .then(({ data }) => {
+      // `getSession()` refreshes an access token inside its expiry margin
+      // and hands back the new one, so a session that survived is already
+      // updated here. A session that did not survive comes back null, and
+      // the request goes out unauthenticated — same as before a login.
+      rememberSession(data.session ?? null)
+    })
+    .catch(() => {
+      // Network trouble mid-refresh. Keep the token we have: it may still
+      // be good, and if it is not, the 401 path answers properly. Wiping
+      // the cache here would turn a dropped packet into a sign-out.
+    })
+    .finally(() => {
+      sessionLookup = null
+    })
+  return sessionLookup
+}
+
+/**
+ * The token to send, refreshed first when it is about to expire.
+ *
+ * Without the freshness check this returned whatever the last auth event
+ * cached, expiry be damned. auth-js only auto-refreshes while the tab is
+ * visible and awake, so a lesson editor left open overnight kept sending an
+ * hour-old JWT: production logged a 401 on `/translation-progress` and
+ * `/notifications/unread-count` every 61 minutes on 2026-09-07 and -08 for
+ * the one teacher using the product. The 401 interceptor did recover each
+ * one, but the round trip is wasted, and any GET whose caller does not
+ * retry — the polling ones above — just shows nothing.
+ */
 async function getAccessToken(): Promise<string | null> {
-  if (cachedToken) return cachedToken
   if (primed) {
     try {
       await primed
     } catch {
-      // `primed` itself swallows errors; leave cachedToken null.
+      // `primed` itself swallows errors; leave the cache as it is.
     }
+  }
+  if (cachedToken && !cachedTokenIsFresh()) {
+    await syncSessionOnce()
   }
   return cachedToken
 }
@@ -79,17 +142,17 @@ function refreshAccessTokenOnce(): Promise<string | null> {
       const { data, error: refreshError } = await supabase.auth.refreshSession()
       const newToken = data.session?.access_token ?? null
       if (refreshError || !newToken) {
-        cachedToken = null
+        rememberSession(null)
         // Said before the sign-out, because the sign-out is what swaps the
         // page for the login form — and the form is where this is read.
         rememberSignOutReason("session_expired")
         await supabase.auth.signOut()
         return null
       }
-      cachedToken = newToken
+      rememberSession(data.session ?? null)
       return newToken
     } catch {
-      cachedToken = null
+      rememberSession(null)
       rememberSignOutReason("session_expired")
       await supabase.auth.signOut()
       return null
