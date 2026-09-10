@@ -132,9 +132,16 @@ export default function ProfilePage() {
     setUploading(true)
     setError("")
     try {
+      const previous = user.avatar_url ?? null
       const url = await storageService.uploadAvatar(user.id, file)
       await usersService.updateProfile({ avatar_url: url })
       await refreshUser()
+      // After the profile holds the new URL, never before. Best-effort:
+      // an orphaned avatar in the bucket beats an error on an upload
+      // that worked.
+      if (previous && previous !== url) {
+        void storageService.removePublicObject(previous).catch(() => {})
+      }
     } catch {
       setError(t("profile.uploadFailed"))
     } finally {

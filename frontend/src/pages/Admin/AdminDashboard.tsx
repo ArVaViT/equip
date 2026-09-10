@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react"
+import { Suspense } from "react"
 import { Navigate, useSearchParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Shield } from "lucide-react"
@@ -15,22 +15,23 @@ import { UsersCard } from "./dashboard/UsersCard"
 import { useAdminOverview } from "./dashboard/useAdminOverview"
 import { useAdminAudit } from "./dashboard/useAdminAudit"
 import { Section } from "@/components/layout/Section"
+import { lazyRoute } from "@/lib/lazyRoute"
 
 // The audit log and cohorts tabs are rarely the entry point — most admins
 // land on Overview. Splitting them off keeps the initial AdminDashboard
 // chunk lean (no react-window for cohorts via VirtualAdminUsers is still in
 // UsersCard, but the audit table machinery and the cohorts list components
 // don't need to ship until the matching tab is selected).
-const AuditLogTab = lazy(() =>
+const AuditLogTab = lazyRoute(() =>
   import("./dashboard/AuditLogTab").then((m) => ({ default: m.AuditLogTab })),
 )
-const CohortsTab = lazy(() =>
+const CohortsTab = lazyRoute(() =>
   import("./cohorts/CohortsTab").then((m) => ({ default: m.CohortsTab })),
 )
-const InvitationsTab = lazy(() =>
+const InvitationsTab = lazyRoute(() =>
   import("./invitations/InvitationsTab").then((m) => ({ default: m.InvitationsTab })),
 )
-const TranslationReviewTab = lazy(() =>
+const TranslationReviewTab = lazyRoute(() =>
   import("./translations/TranslationReviewTab").then((m) => ({ default: m.TranslationReviewTab })),
 )
 

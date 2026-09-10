@@ -26,13 +26,27 @@ import type { ComponentType } from "react"
  */
 const RELOAD_FLAG = "equip:chunk-reloaded"
 
-/** Vite, Webpack and Safari each word this differently. */
+/**
+ * Vite, Webpack and Safari each word this differently.
+ *
+ * The CSS line is not a fourth spelling of the same message — it is a
+ * different failure with the same cause, and it was missing here until
+ * 2026-09-09. Vite preloads a lazy chunk's stylesheets before running the
+ * chunk, and a `<link>` that 404s rejects with `Unable to preload CSS for
+ * <url>`. The teacher who found it opened the lesson editor during a deploy
+ * on 2026-09-06: `katex.min.css` is a static import of `RichTextEditor`, so
+ * it is one of the editor chunk's preloads. The route died with an error
+ * screen on a healthy site, which is exactly what this module exists to
+ * prevent — the three JS spellings below were matched and the CSS one was
+ * not.
+ */
 function isStaleChunkError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error)
   return (
     message.includes("Failed to fetch dynamically imported module") ||
     message.includes("error loading dynamically imported module") ||
-    message.includes("Importing a module script failed")
+    message.includes("Importing a module script failed") ||
+    message.includes("Unable to preload CSS for")
   )
 }
 

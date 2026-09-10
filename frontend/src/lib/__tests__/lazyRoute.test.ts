@@ -56,6 +56,24 @@ describe("lazyRoute", () => {
     expect(reload).not.toHaveBeenCalled()
   })
 
+  /**
+   * The failure a teacher actually hit on 2026-09-06, in the lesson editor,
+   * mid-deploy: Vite preloads a lazy chunk's stylesheets before running the
+   * chunk, and `katex.min.css` — a static import of `RichTextEditor` — was
+   * one of the editor chunk's preloads. Same cause as the three JS
+   * spellings above, different words, and until this test they were not
+   * matched: the route threw and the person saw an error screen.
+   */
+  it("reloads when the chunk's stylesheet is gone", async () => {
+    const cssGone = new Error(
+      "Unable to preload CSS for https://equipbible.com/assets/katex-Ddr6Z9Sf.css",
+    )
+    const settled = vi.fn()
+    void loadOnce(() => Promise.reject(cssGone)).then(settled, settled)
+    await vi.waitFor(() => expect(reload).toHaveBeenCalledOnce())
+    expect(settled).not.toHaveBeenCalled()
+  })
+
   it("lets a real error through untouched", async () => {
     const bug = new TypeError("Cannot read properties of undefined (reading 'map')")
     await expect(loadOnce(() => Promise.reject(bug))).rejects.toThrow(bug)

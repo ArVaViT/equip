@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -26,6 +26,7 @@ export function FileBlockEditor({ block, courseId, chapterId, onUpdated }: Props
   const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+  const [opening, setOpening] = useState(false)
   const hasFile = Boolean(block.file_bucket && block.file_path)
 
   const upload = async (file: File) => {
@@ -57,6 +58,30 @@ export function FileBlockEditor({ block, courseId, chapterId, onUpdated }: Props
     }
   }
 
+  /**
+   * Open the attached file, signing the URL at click time — the same
+   * thing the student's chapter page does, and for the same reason: a
+   * stored signature would outlive a JWT rotation.
+   *
+   * The teacher had no way to do this at all. The file name sat in a
+   * `<span>`, so the obvious click — on the name of the file you just
+   * uploaded, to check it is the right one — did nothing. Datadog counted
+   * four dead clicks on `Lesson_1__9-12-26.pdf` from the teacher who
+   * uploaded it, on 2026-09-07 and -08.
+   */
+  const open = useCallback(async () => {
+    if (!block.file_bucket || !block.file_path || opening) return
+    setOpening(true)
+    try {
+      const url = await storageService.getSignedBlockFileUrl(block.file_bucket, block.file_path)
+      window.open(url, "_blank", "noopener,noreferrer")
+    } catch {
+      toast({ title: t("toast.openFileFailed"), variant: "destructive" })
+    } finally {
+      setOpening(false)
+    }
+  }, [block.file_bucket, block.file_path, opening, t])
+
   const clear = async () => {
     try {
       const updated = await coursesService.updateBlock(block.id, {
@@ -78,10 +103,22 @@ export function FileBlockEditor({ block, courseId, chapterId, onUpdated }: Props
       </Label>
       {hasFile ? (
         <div className="flex items-center gap-2 rounded-md border px-3 py-2 bg-muted/30">
-          <FileText className="h-4 w-4 text-ink-muted shrink-0" strokeWidth={1.75} />
-          <span className="text-sm flex-1 truncate">
+          {opening ? (
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-ink-muted" strokeWidth={1.75} aria-hidden />
+          ) : (
+            <FileText className="h-4 w-4 text-ink-muted shrink-0" strokeWidth={1.75} aria-hidden />
+          )}
+          <button
+            type="button"
+            onClick={() => void open()}
+            disabled={opening}
+            className="flex-1 truncate rounded-sm text-left text-sm underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-60"
+            aria-label={t("blockEditor.file.openAria", {
+              name: block.file_name ?? block.file_path,
+            })}
+          >
             {block.file_name ?? block.file_path}
-          </span>
+          </button>
           <Button
             size="sm"
             variant="outline"

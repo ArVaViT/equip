@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react"
+import { Suspense } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { User as UserIcon } from "lucide-react"
@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { toProxyImage } from "@/lib/images"
 import type { User } from "@/types"
+import { lazyRoute } from "@/lib/lazyRoute"
 
-const NotificationBell = lazy(() => import("../NotificationBell"))
+const NotificationBell = lazyRoute(() => import("../NotificationBell"))
 
 const ICON_STROKE = 1.75 as const
 

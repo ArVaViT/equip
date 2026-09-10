@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react"
+import { Suspense } from "react"
 import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -23,11 +23,12 @@ import { ROLE_I18N_KEY } from "@/lib/roles"
 import type { UserRole } from "@/types"
 import { formatDate } from "@/i18n/format"
 import { type ProfileRow } from "./constants"
+import { lazyRoute } from "@/lib/lazyRoute"
 
 // Only rendered when the filtered list crosses USERS_VIRTUAL_THRESHOLD —
 // keeps `react-window` (~10 KB gz) out of the eager AdminDashboard chunk
 // for the common case (small tenants with <50 users).
-const VirtualAdminUsers = lazy(() => import("../VirtualAdminUsers"))
+const VirtualAdminUsers = lazyRoute(() => import("../VirtualAdminUsers"))
 
 /**
  * Above this row count we swap the full <table> render for a react-window

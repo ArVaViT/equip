@@ -115,6 +115,52 @@ describe("useCourseData.togglePublish", () => {
     expect(title).toBe("Опубликовано")
   })
 
+  /**
+   * Publishing takes a second or two on production and the button said
+   * nothing while it did. On 2026-09-08 a teacher pressed it twice: the
+   * audit log holds two `publish` events on the same course four seconds
+   * apart, the second one already `old_status: publishing`.
+   */
+  it("ignores a second press while the first is still in the air", async () => {
+    const draft = makeCourse()
+    let release: ((c: Course) => void) | undefined
+    const update = vi
+      .spyOn(coursesService, "updateCourse")
+      .mockImplementation(
+        () => new Promise<Course>((resolve) => { release = resolve }),
+      )
+    const result = await renderLoaded(draft)
+
+    let first: Promise<void> | undefined
+    act(() => { first = result.current.togglePublish() })
+    expect(result.current.publishPending).toBe(true)
+
+    // The second press, while the first request is still unanswered.
+    await act(() => result.current.togglePublish())
+    expect(update).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      release?.({ ...draft, status: "publishing" })
+      await first
+    })
+    expect(result.current.publishPending).toBe(false)
+    expect(update).toHaveBeenCalledTimes(1)
+  })
+
+  it("lets the next press through once the first has answered", async () => {
+    const draft = makeCourse()
+    const update = vi
+      .spyOn(coursesService, "updateCourse")
+      .mockResolvedValue({ ...draft, status: "published" })
+    const result = await renderLoaded(draft)
+
+    await act(() => result.current.togglePublish())
+    await act(() => result.current.togglePublish())
+
+    expect(update).toHaveBeenCalledTimes(2)
+    expect(update).toHaveBeenNthCalledWith(2, "c-1", { status: "draft" })
+  })
+
   it("takes a course that is still publishing back to draft, not to published again", async () => {
     const publishing = makeCourse({ status: "publishing" })
     const update = vi

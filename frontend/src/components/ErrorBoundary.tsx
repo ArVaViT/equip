@@ -23,6 +23,13 @@ const CHUNK_LOAD_PATTERNS: RegExp[] = [
   /failed to fetch dynamically imported module/i,
   /loading chunk \d+ failed/i,
   /chunkloaderror/i,
+  /importing a module script failed/i,
+  // A lazy chunk's stylesheet, not its script. Vite preloads both and
+  // rejects with this when the `<link>` 404s — the shape a teacher hit on
+  // 2026-09-06 when a deploy landed under their open lesson editor.
+  // `lazyRoute` catches it first for route chunks; this is the net under
+  // every other lazy boundary.
+  /unable to preload css/i,
 ]
 
 // Don't loop. If we just reloaded and still hit a chunk error, the

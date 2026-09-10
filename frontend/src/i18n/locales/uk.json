@@ -1175,7 +1175,8 @@
       "replace": "Замінити",
       "removeAria": "Прибрати файл",
       "uploading": "Завантаження...",
-      "uploadCta": "Завантажити файл"
+      "uploadCta": "Завантажити файл",
+      "openAria": "Відкрити {{name}}"
     },
     "toolbar": {
       "ariaLabel": "Форматування тексту",
