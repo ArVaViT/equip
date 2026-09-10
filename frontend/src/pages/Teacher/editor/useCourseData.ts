@@ -31,6 +31,8 @@ interface CourseData extends CourseChapters {
    * have it yet. Neither a draft nor live; its own word on screen.
    */
   publishing: boolean
+  /** True while a publish/unpublish request is in the air. */
+  publishPending: boolean
   enrollStart: string
   setEnrollStart: (v: string) => void
   enrollEnd: string
@@ -179,8 +181,20 @@ export function useCourseData(
     }
   }, [courseId, enrollStart, enrollEnd, t])
 
+  const publishInFlightRef = useRef(false)
+  const [publishPending, setPublishPending] = useState(false)
+
   const togglePublish = useCallback(async () => {
     if (!courseId || !course) return
+    // One request at a time. Publishing takes a second or two on
+    // production, the button gave no sign it had heard, and a teacher
+    // pressed it twice on 2026-09-08 — the audit log holds two `publish`
+    // events four seconds apart on the same course. The second click
+    // races the first: whichever answer lands last wins, and if the first
+    // has already returned, the same button now means *unpublish*.
+    if (publishInFlightRef.current) return
+    publishInFlightRef.current = true
+    setPublishPending(true)
     // Anything that is not a draft is on its way out, so the toggle
     // takes it back to draft. A course sitting in ``publishing`` has
     // been published by its teacher; asking again would change nothing.
@@ -206,6 +220,9 @@ export function useCourseData(
       })
     } catch {
       toast({ title: t("teacherEditor.toast.publishFailed"), variant: "destructive" })
+    } finally {
+      publishInFlightRef.current = false
+      setPublishPending(false)
     }
   }, [courseId, course, t])
 
@@ -335,6 +352,7 @@ export function useCourseData(
     structure,
     published: course?.status === "published",
     publishing: course?.status === "publishing",
+    publishPending,
     enrollStart,
     setEnrollStart,
     enrollEnd,

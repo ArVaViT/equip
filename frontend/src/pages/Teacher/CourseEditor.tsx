@@ -17,6 +17,7 @@ import {
   Eye,
   EyeOff,
   GraduationCap,
+  Loader2,
   Lock,
   Megaphone,
   MoreHorizontal,
@@ -253,8 +254,15 @@ export default function CourseEditor() {
             {/* A course in ``publishing`` is already on its way out;
                 offering "Publish" again would change nothing on the
                 server and tell the teacher their click did not count. */}
-            <Button variant="outline" size="sm" onClick={handleTogglePublish}>
-              {isOut ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTogglePublish}
+              disabled={data.publishPending}
+            >
+              {data.publishPending ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} aria-hidden />
+              ) : isOut ? (
                 <EyeOff className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
               ) : (
                 <Eye className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
