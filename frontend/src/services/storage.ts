@@ -137,18 +137,74 @@ function getPublicUrl(bucket: string, path: string): string {
 }
 
 /**
- * Upload to a public bucket with upsert semantics and return the
- * proxied public URL. Shared between avatar and cover-image uploads,
- * which differ only in bucket + path template.
+ * Upload to a public bucket under a fresh key and return the proxied
+ * public URL. Shared between avatar and cover-image uploads, which
+ * differ only in bucket + path template.
+ *
+ * Two reasons this writes a new key instead of overwriting the old one.
+ *
+ * **It could not overwrite.** `upsert: true` makes Storage look for an
+ * existing object first, and that lookup runs under RLS. Migration
+ * 20260421010827 dropped `avatars_public_read` and
+ * `course_assets_public_read` — correctly, they granted listing of every
+ * file in the bucket — and left neither bucket with any SELECT policy at
+ * all. Public URLs kept working, because a public bucket serves those
+ * without RLS. Replacing a file stopped: the lookup sees nothing, the
+ * insert that follows collides, and Storage answers "new row violates
+ * row-level security policy", which points at the wrong half of what
+ * just happened. Verified on production 2026-09-09: as `authenticated`
+ * with a teacher's claims, `storage.objects` shows zero rows in
+ * `course-assets`.
+ *
+ * **It should not overwrite anyway.** Both buckets are public and
+ * Storage serves public objects with a one-hour `cache-control`. A cover
+ * replaced at the same key stayed the old picture in the teacher's own
+ * browser for up to an hour after a successful upload — indistinguishable,
+ * from where they sit, from an upload that did nothing.
+ *
+ * The caller deletes the previous object once the new URL is safely
+ * persisted; see `removePublicObject`.
  */
 async function uploadToPublicBucket(
   bucket: string,
   path: string,
   file: File,
 ): Promise<string> {
-  const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true })
+  const { error } = await supabase.storage.from(bucket).upload(path, file)
   if (error) throw error
   return getPublicUrl(bucket, path)
+}
+
+/**
+ * Split a URL this module produced back into its bucket and object key.
+ * Accepts both the proxied `/img/<bucket>/<path>` form we store and the
+ * raw Supabase public URL, since older rows hold the latter. Anything
+ * else — an external image, a blob:, a malformed row — returns `null`
+ * and is left alone.
+ */
+export function parsePublicObjectUrl(
+  url: string | null | undefined,
+): { bucket: string; path: string } | null {
+  if (!url) return null
+  let pathname: string
+  try {
+    pathname = new URL(url, window.location.origin).pathname
+  } catch {
+    return null
+  }
+  const RAW_PREFIX = "/storage/v1/object/public/"
+  const rest = pathname.startsWith("/img/")
+    ? pathname.slice("/img/".length)
+    : pathname.startsWith(RAW_PREFIX)
+      ? pathname.slice(RAW_PREFIX.length)
+      : null
+  if (!rest) return null
+  const slash = rest.indexOf("/")
+  if (slash <= 0 || slash === rest.length - 1) return null
+  return {
+    bucket: decodeURIComponent(rest.slice(0, slash)),
+    path: decodeURIComponent(rest.slice(slash + 1)),
+  }
 }
 
 /**
@@ -172,13 +228,26 @@ interface UploadedBlockFile {
 
 export const storageService = {
   async uploadAvatar(userId: string, file: File): Promise<string> {
-    const path = `${userId}/avatar.${fileExtension(file.name)}`
+    const path = `${userId}/avatar-${crypto.randomUUID().slice(0, 8)}.${fileExtension(file.name)}`
     return uploadToPublicBucket(AVATARS_BUCKET, path, file)
   },
 
   async uploadCourseImage(courseId: string, file: File): Promise<string> {
-    const path = `${courseId}/cover.${fileExtension(file.name)}`
+    const path = `${courseId}/cover-${crypto.randomUUID().slice(0, 8)}.${fileExtension(file.name)}`
     return uploadToPublicBucket(COURSE_ASSETS_BUCKET, path, withBucketContentType(file, COURSE_ASSETS))
+  },
+
+  /**
+   * Delete an object this module uploaded, addressed by the public URL
+   * that was stored for it. Best-effort by design: the caller runs this
+   * *after* the replacement URL is persisted, so a failure here leaves an
+   * orphaned file and nothing else. Never let it surface as an error on
+   * an upload the user watched succeed.
+   */
+  async removePublicObject(url: string | null | undefined): Promise<void> {
+    const target = parsePublicObjectUrl(url)
+    if (!target) return
+    await supabase.storage.from(target.bucket).remove([target.path])
   },
 
   /**

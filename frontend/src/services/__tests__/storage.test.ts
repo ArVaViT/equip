@@ -10,17 +10,23 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 //
 // `vi.hoisted` so the upload spy exists before the hoisted `vi.mock` factory
 // runs; the mock only needs the storage surface the upload helpers touch.
-const { uploadMock, listMock } = vi.hoisted(() => ({ uploadMock: vi.fn(), listMock: vi.fn() }))
+const { uploadMock, listMock, removeMock, fromMock } = vi.hoisted(() => {
+  const uploadMock = vi.fn()
+  const listMock = vi.fn()
+  const removeMock = vi.fn()
+  const fromMock = vi.fn(() => ({ upload: uploadMock, list: listMock, remove: removeMock }))
+  return { uploadMock, listMock, removeMock, fromMock }
+})
 
 vi.mock("@/lib/supabase", () => ({
   supabase: {
     storage: {
-      from: vi.fn(() => ({ upload: uploadMock, list: listMock })),
+      from: fromMock,
     },
   },
 }))
 
-import { storageService } from "@/services/storage"
+import { parsePublicObjectUrl, storageService } from "@/services/storage"
 
 const COURSE_ID = "1f3c4803-d229-464b-ad8e-848a0355e71f"
 const CHAPTER_ID = "e7a8cfa0-e93a-4dfb-9648-ad6605a9ca2e"
@@ -146,5 +152,98 @@ describe("storageService.listCourseMaterials", () => {
       path: `${COURSE_ID}/1725580800000-Propoved.pdf`,
       size: 1234,
     })
+  })
+})
+
+/**
+ * Replacing a cover used to write the same object key with `upsert: true`,
+ * and that did two wrong things at once.
+ *
+ * Storage looks up the existing object before an upsert, under RLS —
+ * and migration 20260421010827 left `course-assets` and `avatars` with no
+ * SELECT policy at all, so the lookup finds nothing and the write fails
+ * as "new row violates row-level security policy". Confirmed on
+ * production 2026-09-09: as `authenticated` carrying a teacher's claims,
+ * `storage.objects` returns zero rows for `course-assets`.
+ *
+ * And a public bucket serves objects with an hour of `cache-control`, so
+ * even a successful same-key replacement showed the teacher their old
+ * picture long after the upload said it worked.
+ */
+describe("replacing a public image", () => {
+  beforeEach(() => {
+    uploadMock.mockReset()
+    uploadMock.mockResolvedValue({ error: null })
+    removeMock.mockReset()
+    removeMock.mockResolvedValue({ error: null })
+    fromMock.mockClear()
+  })
+
+  it("writes a cover under a fresh key, never upserting", async () => {
+    const url = await storageService.uploadCourseImage(COURSE_ID, new File([""], "cover.png", { type: "image/png" }))
+
+    const [path, , options] = uploadMock.mock.calls[0] ?? []
+    expect(path).toMatch(new RegExp(`^${COURSE_ID}/cover-[0-9a-f]{8}\\.png$`))
+    // No `{ upsert: true }` — that is the call that RLS refuses.
+    expect(options).toBeUndefined()
+    expect(url).toBe(`/img/course-assets/${path}`)
+  })
+
+  it("gives two uploads of the same file two different keys", async () => {
+    const file = () => new File([""], "cover.png", { type: "image/png" })
+    const first = await storageService.uploadCourseImage(COURSE_ID, file())
+    const second = await storageService.uploadCourseImage(COURSE_ID, file())
+    expect(first).not.toBe(second)
+  })
+
+  it("writes an avatar under a fresh key too", async () => {
+    const userId = "109bc291-018d-4e43-8a7c-385a35bd6800"
+    await storageService.uploadAvatar(userId, new File([""], "me.jpg", { type: "image/jpeg" }))
+
+    const [path, , options] = uploadMock.mock.calls[0] ?? []
+    expect(path).toMatch(new RegExp(`^${userId}/avatar-[0-9a-f]{8}\\.jpg$`))
+    expect(options).toBeUndefined()
+  })
+
+  it("removes the object a stored URL points at", async () => {
+    await storageService.removePublicObject(`/img/course-assets/${COURSE_ID}/cover-abcd1234.png`)
+
+    expect(fromMock).toHaveBeenCalledWith("course-assets")
+    expect(removeMock).toHaveBeenCalledWith([`${COURSE_ID}/cover-abcd1234.png`])
+  })
+
+  it("leaves anything it did not upload alone", async () => {
+    for (const url of [null, undefined, "", "https://example.com/logo.png", "/img/course-assets"]) {
+      await storageService.removePublicObject(url)
+    }
+    expect(removeMock).not.toHaveBeenCalled()
+  })
+})
+
+describe("parsePublicObjectUrl", () => {
+  it("reads the proxied form we store", () => {
+    expect(parsePublicObjectUrl("/img/avatars/u1/avatar-1234abcd.png")).toEqual({
+      bucket: "avatars",
+      path: "u1/avatar-1234abcd.png",
+    })
+  })
+
+  it("reads the raw Supabase form older rows hold", () => {
+    expect(
+      parsePublicObjectUrl(
+        "https://rrisqutxlkamwfhcashl.supabase.co/storage/v1/object/public/course-assets/c1/cover.png",
+      ),
+    ).toEqual({ bucket: "course-assets", path: "c1/cover.png" })
+  })
+
+  it("keeps a nested key whole", () => {
+    expect(parsePublicObjectUrl("/img/course-assets/content-images/1-ab.png")?.path).toBe(
+      "content-images/1-ab.png",
+    )
+  })
+
+  it("returns null for a URL from somewhere else", () => {
+    expect(parsePublicObjectUrl("https://cdn.example.com/x.png")).toBeNull()
+    expect(parsePublicObjectUrl("not a url at all")).toBeNull()
   })
 })

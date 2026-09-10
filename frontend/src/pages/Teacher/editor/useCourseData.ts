@@ -131,13 +131,21 @@ export function useCourseData(
   const uploadCover = useCallback(
     async (file: File) => {
       if (!courseId) throw new Error("no course")
+      const previous = course?.image_url ?? null
       const url = await storageService.uploadCourseImage(courseId, file)
       await coursesService.updateCourse(courseId, { image_url: url })
       setCourse((p) => (p ? { ...p, image_url: url } : p))
       toast({ title: t("teacherEditor.toast.coverUpdated"), variant: "success" })
+      // Only now that the new cover is the saved one. Sweeping the old
+      // file is housekeeping — a failure here costs an orphaned object in
+      // the bucket, and must never turn an upload the teacher just
+      // watched succeed into an error toast.
+      if (previous && previous !== url) {
+        void storageService.removePublicObject(previous).catch(() => {})
+      }
       return url
     },
-    [courseId, t],
+    [course?.image_url, courseId, t],
   )
 
   const removeCover = useCallback(async () => {
