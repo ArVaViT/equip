@@ -1,0 +1,33 @@
+-- `course-materials` is a private bucket, and now it is one.
+--
+-- The bucket was flagged `public`, which in Supabase Storage means its
+-- objects are served from `/storage/v1/object/public/<bucket>/<key>`
+-- without consulting RLS at all. Everything the code does to protect
+-- those files was therefore decoration:
+--
+--   * `course_materials_enrolled_read` checks admin / course owner /
+--     enrolment before handing over a row — and a plain URL skips it.
+--   * `getSignedMaterialUrl` and `getSignedBlockFileUrl` mint one-hour
+--     signatures on every click, deliberately storing nothing, so that
+--     rotating the JWT secret cannot leave a working link behind. Beside
+--     a permanent public door, that costs effort and buys nothing.
+--   * `frontend/vercel.json` rewrites `/img/:bucket/:path*` to the
+--     public endpoint for *any* bucket, so the proxy served these too.
+--     Narrowed to `course-assets` and `avatars` in the same change.
+--
+-- Verified on production 2026-09-10, unauthenticated, no cookies:
+-- `GET https://equipbible.com/img/course-materials/<course>/<file>.pdf`
+-- answered 200 with the teacher's PDF. The paths are not guessable —
+-- course UUID plus a timestamp — but they are not secret either: they
+-- appear in RUM resource events, in Vercel's logs, and in the browser
+-- history of everyone who has opened one.
+--
+-- Nothing depends on the public form. Checked before writing this:
+-- zero rows in `content_versions` mention `course-materials` (of 12,945),
+-- and no code path builds a public URL for this bucket — uploads return
+-- `{bucket, path}` and every reader signs on demand.
+--
+-- The other two buckets stay public on purpose: course covers and
+-- avatars are shown to anonymous visitors on the public course list.
+
+UPDATE storage.buckets SET public = false WHERE id = 'course-materials';

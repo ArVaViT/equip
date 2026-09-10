@@ -1,8 +1,12 @@
 {
   "rewrites": [
     {
-      "source": "/img/:bucket/:path*",
-      "destination": "https://rrisqutxlkamwfhcashl.supabase.co/storage/v1/object/public/:bucket/:path*"
+      "source": "/img/course-assets/:path*",
+      "destination": "https://rrisqutxlkamwfhcashl.supabase.co/storage/v1/object/public/course-assets/:path*"
+    },
+    {
+      "source": "/img/avatars/:path*",
+      "destination": "https://rrisqutxlkamwfhcashl.supabase.co/storage/v1/object/public/avatars/:path*"
     },
     {
       "source": "/(.*)",

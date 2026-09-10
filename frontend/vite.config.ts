@@ -66,8 +66,16 @@ export default defineConfig({
         changeOrigin: true,
       },
       // Same-origin proxy for Supabase Storage public objects. Mirrors the
-      // Vercel rewrite in frontend/vercel.json so local dev matches prod.
-      '/img': {
+      // Vercel rewrites in frontend/vercel.json so local dev matches prod —
+      // including which buckets are on the list. A wildcard here would let a
+      // path work locally that production refuses, which is the worst way to
+      // find out a bucket is private.
+      '/img/course-assets': {
+        target: process.env.VITE_SUPABASE_URL || 'https://rrisqutxlkamwfhcashl.supabase.co',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/img/, '/storage/v1/object/public'),
+      },
+      '/img/avatars': {
         target: process.env.VITE_SUPABASE_URL || 'https://rrisqutxlkamwfhcashl.supabase.co',
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/img/, '/storage/v1/object/public'),
