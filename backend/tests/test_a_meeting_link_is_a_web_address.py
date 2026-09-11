@@ -33,8 +33,10 @@ from app.core.meeting_url import (
     MEETING_URL_MAX_LENGTH,
     MeetingUrlRejected,
     MeetingUrlRejection,
+    find_meeting_url,
     normalize_meeting_url,
 )
+from app.models.course_event import CourseEvent
 from app.models.enrollment import Enrollment
 from app.models.notification import Notification
 from app.schemas.calendar import CalendarEvent
@@ -394,3 +396,135 @@ class TestTheSubscribedCalendarShowsAWayIn:
         ics = render_calendar([_ics_event(None)])
         assert "LOCATION:" not in ics
         assert "URL:" not in ics
+
+
+# ── The link the teacher put in the description ──────────────────────
+#
+# The description is a free text box, and a link is what people put in
+# free text boxes. The first teacher on this platform typed his Zoom
+# address there on 2026-09-06 — reasonably, the dedicated field did not
+# exist until the following day — and his lesson went out with no
+# meeting attached: no Join button on the course page, none in the
+# calendar, nothing in the feed. From where he sat, he had entered the
+# link and the product had swallowed it.
+
+
+@pytest.mark.parametrize(
+    ("described", "expected"),
+    [
+        ("https://us02web.zoom.us/j/4959692097", "https://us02web.zoom.us/j/4959692097"),
+        ("Подключайтесь: https://zoom.us/j/1.", "https://zoom.us/j/1"),
+        ("Ссылка (https://meet.google.com/abc-defg-hij) внутри скобок", "https://meet.google.com/abc-defg-hij"),
+        ("«https://zoom.us/j/1»", "https://zoom.us/j/1"),
+        ("Zoom: https://zoom.us/j/85?pwd=aB3.dEf — пароль внутри", "https://zoom.us/j/85?pwd=aB3.dEf"),
+        ("первая https://a.example/1, вторая https://b.example/2", "https://a.example/1"),
+    ],
+)
+def test_a_link_is_found_in_the_prose_around_it(described: str, expected: str) -> None:
+    assert find_meeting_url(described) == expected
+
+
+@pytest.mark.parametrize(
+    "described",
+    [
+        "",
+        None,
+        "Занятие в субботу, как обычно",
+        # The same bar as the field itself: a bare host is not a link,
+        "zoom.us/j/123",
+        # a different scheme is not a link,
+        "javascript:alert(1)",
+        "mailto:teacher@example.com",
+        # and a host wearing another host as a costume is refused here too.
+        "https://zoom.us@evil.com/j/1",
+    ],
+)
+def test_prose_without_a_web_address_yields_no_link(described: str | None) -> None:
+    assert find_meeting_url(described) is None
+
+
+class TestALinkInTheDescriptionStillReachesTheStudent:
+    def test_creating_an_event_lifts_the_link_out_of_the_description(
+        self, client: TestClient, db: Session, student: User
+    ) -> None:
+        course_id = _published_course_with_student(db, student)
+        r = _create_event(
+            client,
+            course_id,
+            description=f"Подключайтесь по ссылке: {ZOOM}",
+        )
+        assert r.status_code == 201
+        assert r.json()["meeting_url"] == ZOOM
+
+    def test_the_field_wins_when_the_teacher_filled_both(
+        self, client: TestClient, db: Session, student: User
+    ) -> None:
+        course_id = _published_course_with_student(db, student)
+        r = _create_event(
+            client,
+            course_id,
+            meeting_url=ZOOM,
+            description="Старая ссылка: https://zoom.us/j/000000",
+        )
+        assert r.json()["meeting_url"] == ZOOM
+
+    def test_rewriting_the_description_picks_the_link_up(
+        self, client: TestClient, db: Session, student: User
+    ) -> None:
+        """The shape of the real row: the column is empty and the link
+        lives in the prose. Touching the description is the teacher
+        telling us about the meeting, so that is where we look again."""
+        course_id = _published_course_with_student(db, student)
+        event_id = _create_event(client, course_id, description="Место уточню").json()["id"]
+        event = db.query(CourseEvent).filter(CourseEvent.id == uuid.UUID(event_id)).one()
+        assert event.meeting_url is None
+
+        edited = client.put(
+            f"{COURSES}/{course_id}/events/{event_id}",
+            json={"description": f"Подключайтесь: {ZOOM}"},
+        )
+        assert edited.status_code == 200
+        assert edited.json()["meeting_url"] == ZOOM
+
+    def test_an_edit_elsewhere_leaves_the_link_alone(
+        self, client: TestClient, db: Session, student: User
+    ) -> None:
+        """Moving the date says nothing about the meeting. Rows written
+        before the column existed are repaired by a data migration, not
+        by second-guessing every unrelated edit."""
+        course_id = _published_course_with_student(db, student)
+        event_id = _create_event(client, course_id, description=ZOOM).json()["id"]
+        event = db.query(CourseEvent).filter(CourseEvent.id == uuid.UUID(event_id)).one()
+        event.meeting_url = None
+        db.commit()
+
+        moved = client.put(
+            f"{COURSES}/{course_id}/events/{event_id}",
+            json={"event_date": "2026-10-10T18:00:00Z"},
+        )
+        assert moved.status_code == 200
+        assert moved.json()["meeting_url"] is None
+
+    def test_removing_the_link_on_purpose_stays_removed(
+        self, client: TestClient, db: Session, student: User
+    ) -> None:
+        """The rescue must not argue with the teacher. Clearing the field
+        is an explicit `meeting_url: null`, and the link is still sitting
+        in the description — which is exactly the case where reading it
+        back would look like the product refusing to let go."""
+        course_id = _published_course_with_student(db, student)
+        event_id = _create_event(client, course_id, description=f"Zoom: {ZOOM}").json()["id"]
+
+        cleared = client.put(
+            f"{COURSES}/{course_id}/events/{event_id}",
+            json={"meeting_url": None},
+        )
+        assert cleared.status_code == 200
+        assert cleared.json()["meeting_url"] is None
+
+        # And it stays gone through an unrelated edit afterwards.
+        renamed = client.put(
+            f"{COURSES}/{course_id}/events/{event_id}",
+            json={"title": "Занятие перенесено"},
+        )
+        assert renamed.json()["meeting_url"] is None

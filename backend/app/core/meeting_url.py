@@ -140,9 +140,55 @@ def normalize_meeting_url(value: str | None) -> str | None:
     return candidate
 
 
+#: Punctuation that belongs to the sentence rather than to the URL. A
+#: teacher writes "join here: https://zoom.us/j/123." and the full stop
+#: is not part of the link; brackets and quotes come in pairs, so both
+#: halves are here — ``str.strip`` trims each end. Not ``/``, which is a
+#: legal and common last character of a real link.
+_EDGE_NOISE = (
+    ".,;:!?()[]{}<>\"'«»„“”"
+    # Typographic single quotes, spelled as code points: as literals they
+    # trip ruff's ambiguous-character rule, and a reviewer cannot tell
+    # them from an apostrophe anyway.
+    "\u2018\u2019"
+)
+
+
+def find_meeting_url(text: str | None) -> str | None:
+    """The first meeting link inside ``text``, or ``None``.
+
+    Why this exists: the description is a free text box, and a link is
+    the kind of thing people put in free text boxes. The teacher who was
+    first to use this product typed his Zoom address there — reasonably,
+    since the dedicated field did not exist yet on the day he scheduled
+    the lesson — and the event went out with no meeting attached, so no
+    student ever saw a Join button. From where he sat he had entered the
+    link and the product had swallowed it.
+
+    The bar for what counts is exactly :func:`normalize_meeting_url`:
+    absolute ``http(s)``, a host, no credentials before it. Anything
+    else in the prose is prose. Candidates are split on whitespace,
+    because a URL has none, and stripped of sentence punctuation.
+    """
+    if not text:
+        return None
+    for token in text.split():
+        candidate = token.strip(_EDGE_NOISE)
+        if not candidate:
+            continue
+        try:
+            found = normalize_meeting_url(candidate)
+        except MeetingUrlRejected:
+            continue
+        if found:
+            return found
+    return None
+
+
 __all__ = [
     "MEETING_URL_MAX_LENGTH",
     "MeetingUrlRejected",
     "MeetingUrlRejection",
+    "find_meeting_url",
     "normalize_meeting_url",
 ]
