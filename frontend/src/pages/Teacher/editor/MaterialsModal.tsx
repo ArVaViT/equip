@@ -62,7 +62,7 @@ export function MaterialsModal({
 }: Props) {
   const { t } = useTranslation()
   return (
-    <Modal open={open} onClose={onClose} title={t("teacherEditor.modals.materials.title")}>
+    <Modal open={open} onClose={onClose} title={t("teacherEditor.modals.materials.title")} size="wide">
       <div className="space-y-4">
         <Button
           variant="outline"
@@ -92,19 +92,23 @@ export function MaterialsModal({
             title={t("teacherEditor.modals.materials.empty")}
           />
         ) : (
-          <div className="space-y-2 max-h-60 overflow-y-auto">
+          // No inner scroller: the list used to be capped at 240px inside a
+          // dialog that already scrolls at 85vh, so a course with four
+          // attachments scrolled in a box inside a box — with the file names
+          // truncated on top of that. The dialog's own cap is enough.
+          <div className="space-y-2">
             {materials.map((m) => (
               <div
                 key={m.path}
                 className="flex items-center gap-3 rounded-md border p-3 transition-colors hover:bg-muted/40"
               >
                 <Paperclip className="h-4 w-4 text-ink-muted shrink-0" strokeWidth={1.75} />
-                <span className="text-sm flex-1 truncate">{m.name}</span>
-                {m.size && (
-                  <span className="text-xs text-ink-muted shrink-0">
-                    {formatFileSize(m.size, t)}
-                  </span>
-                )}
+                <div className="min-w-0 flex-1">
+                  <p className="break-words text-sm">{m.name}</p>
+                  {m.size && (
+                    <p className="text-xs text-ink-muted">{formatFileSize(m.size, t)}</p>
+                  )}
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
