@@ -8,6 +8,7 @@ from app.api.dependencies import get_current_user, require_teacher, verify_cours
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.i18n import t
+from app.core.meeting_url import find_meeting_url
 from app.core.sanitize import sanitize_multiline_text, sanitize_plain_text
 from app.models.course import Course, CourseStatus
 from app.models.course_event import CourseEvent
@@ -218,7 +219,15 @@ def create_course_event(
         # and description: those are prose that gets tags stripped out
         # of it, and a URL is not prose. Stripping "tags" from a link
         # with ``<`` in a query parameter would quietly corrupt it.
-        meeting_url=data.meeting_url,
+        #
+        # Falls back to a link found in the description, because the
+        # description is a free text box and a link is what people put
+        # in free text boxes. The teacher who scheduled this product's
+        # first live lesson typed his Zoom address there — the dedicated
+        # field did not exist yet that day — and the event went out with
+        # no meeting on it, so no student ever saw a Join button. He had
+        # entered the link; the product had swallowed it.
+        meeting_url=data.meeting_url or find_meeting_url(description),
         created_by=teacher.id,
     )
     db.add(event)
@@ -366,8 +375,26 @@ def update_course_event(
     old_instant = event.event_date.replace(tzinfo=UTC) if event.event_date.tzinfo is None else event.event_date
     new_date = updates.get("event_date")
     rescheduled = new_date is not None and new_date != old_instant
+    # Whether this patch has an opinion about the link, recorded before
+    # the loop writes it. "Remove the meeting" arrives as an explicit
+    # ``meeting_url: null``.
+    meeting_url_given = "meeting_url" in updates
     for field, value in updates.items():
         setattr(event, field, value)
+    # The same rescue as on create, and deliberately no wider than the
+    # edit in front of it: a teacher rewriting the description is
+    # telling us about the meeting, and a link that appears there with
+    # the column empty is one they think they have entered.
+    #
+    # It does not run on edits that leave the description alone, and the
+    # reason is a test: clearing the field is an explicit null, the link
+    # is still down in the prose, and a rescue on the *next* unrelated
+    # edit would put it back — the product arguing with someone who
+    # removed a meeting on purpose. Events written before this column
+    # existed are repaired by a one-off data migration instead, which is
+    # the honest shape for a one-off.
+    if "description" in text_patch and not meeting_url_given and not event.meeting_url:
+        event.meeting_url = find_meeting_url(text_patch["description"])
     db.flush()
     source_locale = course.source_locale
     if text_patch:

@@ -5,7 +5,8 @@ import { BookOpen, CalendarDays, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/patterns";
 import type { CalendarEvent } from "@/types";
-import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink";
+import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
+import { LinkifiedText } from "@/components/calendar/LinkifiedText";
 import { getEventColor } from "./constants";
 import { formatTime } from "./utils";
 import { formatDateLong } from "@/i18n/format";
@@ -83,8 +84,8 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
                         </Link>
                       )}
                       {evt.description && (
-                        <p className="mt-1.5 text-xs text-ink-muted line-clamp-3">
-                          {evt.description}
+                        <p className="mt-1.5 text-xs text-ink-muted line-clamp-3 whitespace-pre-line">
+                          <LinkifiedText text={evt.description} />
                         </p>
                       )}
                       {/* Last in the card, under the description: this
