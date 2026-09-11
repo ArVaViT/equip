@@ -67,12 +67,14 @@ def test_unknown_document_is_a_404_not_a_blank_page(anon_client: TestClient) -> 
 
 
 def test_accepting_records_the_version_and_the_hash(student_client: TestClient, db: Session) -> None:
-    response = student_client.post(ACCEPT, json={"slug": "privacy", "version": "1.0", "locale": "ru"})
+    response = student_client.post(
+        ACCEPT, json={"slug": "privacy", "version": LEGAL_DOCUMENTS["privacy"], "locale": "ru"}
+    )
     assert response.status_code == 201
 
     row = db.query(LegalAcceptance).filter(LegalAcceptance.user_id == STUDENT_ID).one()
     assert row.document_slug == "privacy"
-    assert row.version == "1.0"
+    assert row.version == LEGAL_DOCUMENTS["privacy"]
     assert row.locale == "ru"
     # The fingerprint is of the server's copy, so the record attests to the
     # document that actually exists rather than whatever a client claimed.
@@ -80,7 +82,7 @@ def test_accepting_records_the_version_and_the_hash(student_client: TestClient, 
 
 
 def test_accepting_twice_is_not_two_consents(student_client: TestClient, db: Session) -> None:
-    payload = {"slug": "privacy", "version": "1.0", "locale": "ru"}
+    payload = {"slug": "privacy", "version": LEGAL_DOCUMENTS["privacy"], "locale": "ru"}
     first = student_client.post(ACCEPT, json=payload)
     second = student_client.post(ACCEPT, json=payload)
 
@@ -104,7 +106,7 @@ def test_status_says_what_is_still_outstanding(student_client: TestClient) -> No
     before = student_client.get(MINE).json()
     assert {d["slug"] for d in before["outstanding"]} == set(LEGAL_DOCUMENTS)
 
-    student_client.post(ACCEPT, json={"slug": "privacy", "version": "1.0", "locale": "ru"})
+    student_client.post(ACCEPT, json={"slug": "privacy", "version": LEGAL_DOCUMENTS["privacy"], "locale": "ru"})
     after = student_client.get(MINE).json()
 
     # The gate asks one question — "is there anything left" — and the server
@@ -114,7 +116,7 @@ def test_status_says_what_is_still_outstanding(student_client: TestClient) -> No
 
 
 def test_the_locale_recorded_is_the_one_they_read(student_client: TestClient, db: Session) -> None:
-    student_client.post(ACCEPT, json={"slug": "terms", "version": "1.0", "locale": "en"})
+    student_client.post(ACCEPT, json={"slug": "terms", "version": LEGAL_DOCUMENTS["terms"], "locale": "en"})
 
     row = db.query(LegalAcceptance).filter(LegalAcceptance.document_slug == "terms").one()
     assert row.locale == "en"
@@ -157,7 +159,9 @@ class TestTheLanguageAPersonIsActuallyReading:
     def test_the_record_names_the_text_they_saw_not_the_one_they_asked_for(
         self, student_client: TestClient, db: Session
     ) -> None:
-        response = student_client.post(ACCEPT, json={"slug": "privacy", "version": "1.0", "locale": "de"})
+        response = student_client.post(
+            ACCEPT, json={"slug": "privacy", "version": LEGAL_DOCUMENTS["privacy"], "locale": "de"}
+        )
         assert response.status_code == 201
         assert response.json()["locale"] == "en"
 

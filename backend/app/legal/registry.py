@@ -54,7 +54,7 @@ class LegalDocument:
 #: judgement and not something a file mtime can decide.
 LEGAL_DOCUMENTS: dict[str, str] = {
     "privacy": "1.0",
-    "terms": "1.0",
+    "terms": "1.1",
 }
 
 #: (slug, version, locale) -> sha256 of the file as served.
@@ -77,6 +77,8 @@ LEGAL_DOCUMENT_FINGERPRINTS: dict[tuple[str, str, str], str] = {
     ("privacy", "1.0", "ru"): "bcd8dd40c868c5881d46d891dc4520a2268579470ebdf7c992cf9c46f927de1a",
     ("terms", "1.0", "en"): "a4edd70619d288b248d9385e024b78b0e00813471e7dee424e9ed8a5e2e11654",
     ("terms", "1.0", "ru"): "c7f4997fd3c81eb9a4872628993a31d35828db50fa00e9e204f936e7b8b045ac",
+    ("terms", "1.1", "en"): "9e557f01a0b4188067b9c62bf02d647e5035dfe594fa506fed770dd136069c30",
+    ("terms", "1.1", "ru"): "1f6c209ec108bbb483907f4cf44a182e82c1521ae89b2440ac8b618c9af7e9b1",
 }
 
 
