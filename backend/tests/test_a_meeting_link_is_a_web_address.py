@@ -456,9 +456,7 @@ class TestALinkInTheDescriptionStillReachesTheStudent:
         assert r.status_code == 201
         assert r.json()["meeting_url"] == ZOOM
 
-    def test_the_field_wins_when_the_teacher_filled_both(
-        self, client: TestClient, db: Session, student: User
-    ) -> None:
+    def test_the_field_wins_when_the_teacher_filled_both(self, client: TestClient, db: Session, student: User) -> None:
         course_id = _published_course_with_student(db, student)
         r = _create_event(
             client,
@@ -468,9 +466,7 @@ class TestALinkInTheDescriptionStillReachesTheStudent:
         )
         assert r.json()["meeting_url"] == ZOOM
 
-    def test_rewriting_the_description_picks_the_link_up(
-        self, client: TestClient, db: Session, student: User
-    ) -> None:
+    def test_rewriting_the_description_picks_the_link_up(self, client: TestClient, db: Session, student: User) -> None:
         """The shape of the real row: the column is empty and the link
         lives in the prose. Touching the description is the teacher
         telling us about the meeting, so that is where we look again."""
@@ -486,9 +482,7 @@ class TestALinkInTheDescriptionStillReachesTheStudent:
         assert edited.status_code == 200
         assert edited.json()["meeting_url"] == ZOOM
 
-    def test_an_edit_elsewhere_leaves_the_link_alone(
-        self, client: TestClient, db: Session, student: User
-    ) -> None:
+    def test_an_edit_elsewhere_leaves_the_link_alone(self, client: TestClient, db: Session, student: User) -> None:
         """Moving the date says nothing about the meeting. Rows written
         before the column existed are repaired by a data migration, not
         by second-guessing every unrelated edit."""
@@ -505,9 +499,7 @@ class TestALinkInTheDescriptionStillReachesTheStudent:
         assert moved.status_code == 200
         assert moved.json()["meeting_url"] is None
 
-    def test_removing_the_link_on_purpose_stays_removed(
-        self, client: TestClient, db: Session, student: User
-    ) -> None:
+    def test_removing_the_link_on_purpose_stays_removed(self, client: TestClient, db: Session, student: User) -> None:
         """The rescue must not argue with the teacher. Clearing the field
         is an explicit `meeting_url: null`, and the link is still sitting
         in the description — which is exactly the case where reading it
