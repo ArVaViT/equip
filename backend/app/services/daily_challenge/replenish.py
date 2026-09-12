@@ -9,8 +9,8 @@ free daily budget (the same reason the translation cron survives on the
 free tier: it sips, it doesn't gulp).
 
 Per tick it:
-  1. picks the next seed passage (cursor = current question count, so it
-     advances every success and cycles through the 210-passage list),
+  1. picks the next seed passage (cursor = generation runs so far, so it
+     advances every tick and cycles through the 210-passage list),
   2. runs the full generation pipeline for that one passage (6-round
      confrontation + scripture/doctrinal/bilingual gates),
   3. promotes the surviving draft → published,
@@ -26,10 +26,10 @@ editorial helpers commit as they go), so the orphan is terminally
 in the editorial panel. A failed *schedule* step intentionally rejects
 nothing: the question is already published, and the autofill pool serves
 published questions, so it is usable inventory. Autofill keeps the live
-challenge working in the meantime; ``_pick_passage``'s cursor counts every
-question row (including rejected), so a failed passage is skipped until
-the 210-passage list wraps rather than stalling the pipeline by being
-retried into the same deterministic failure every day.
+challenge working in the meantime; ``_pick_passage``'s cursor counts
+generation runs, so a failed passage is skipped until the 210-passage
+list wraps rather than stalling the pipeline by being retried into the
+same deterministic failure every day.
 """
 
 from __future__ import annotations
@@ -43,6 +43,7 @@ from sqlalchemy import func
 
 from app.models.daily_challenge import (
     DailyChallengeQuestion,
+    DailyChallengeQuestionEvent,
     DailyChallengeQuestionStatus,
     DailyChallengeSchedule,
 )
@@ -100,14 +101,28 @@ def _next_unscheduled_date(db: Session, *, start: date) -> date:
 
 
 def _pick_passage(db: Session) -> dict[str, object]:
-    """Cursor = current question count (rejected rows included), so every
-    tick that persisted a question — even one that later failed and was
-    terminally rejected — advances the pointer. The worker cycles through
-    the seed list without repeats until it wraps (~210 days); a failed
-    passage gets its retry on the next wrap instead of stalling the
-    pipeline on a deterministic failure."""
-    count = db.query(func.count(DailyChallengeQuestion.id)).scalar() or 0
-    return SEED_PASSAGES[count % len(SEED_PASSAGES)]
+    """Cursor = number of generation runs, so every tick advances the
+    pointer whether or not it produced a question. The worker cycles
+    through the seed list without repeats until it wraps (~210 days); a
+    failed passage gets its retry on the next wrap instead of stalling
+    the pipeline on a deterministic failure.
+
+    It used to count question rows, on the reasoning that a rejected
+    question is still a row and still moves the cursor. That holds only
+    when a row was written. When every candidate is rejected *before*
+    one is persisted, nothing is written, the count does not move, and
+    the next tick asks for the same passage — which is the one case the
+    skip existed for. Production ran that loop for fifteen days on
+    2 Kings 5: 259 questions, ``259 % 210 = 49``, and seed 49 every
+    morning at 09:00, each one a paid generation that could not land.
+
+    A run is the honest unit: the orchestrator opens one per tick and
+    stamps every round it logs with the id, including the rounds of a
+    tick that ends with nothing. One question per run at most
+    (``max_survivors=1``), so on a healthy pipeline this counts exactly
+    what the question count used to."""
+    runs = db.query(func.count(func.distinct(DailyChallengeQuestionEvent.generation_run_id))).scalar() or 0
+    return SEED_PASSAGES[runs % len(SEED_PASSAGES)]
 
 
 def _system_actor_id(db: Session) -> uuid.UUID | None:

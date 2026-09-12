@@ -21,7 +21,7 @@ export function MaterialsModal({
 }: Props) {
   const { t } = useTranslation()
   return (
-    <Modal open={open} onClose={onClose} title={t("courseDetail.materialsModal.title")}>
+    <Modal open={open} onClose={onClose} title={t("courseDetail.materialsModal.title")} size="wide">
       {materials.length === 0 ? (
         <EmptyState
           variant="compact"
@@ -33,9 +33,9 @@ export function MaterialsModal({
           {materials.map((file) => (
             <div
               key={file.path}
-              className="flex items-center justify-between px-3 py-2 transition-colors hover:bg-muted/40"
+              className="flex items-center justify-between gap-2 px-3 py-3 transition-colors hover:bg-muted/40"
             >
-              <span className="truncate mr-2">{file.name}</span>
+              <span className="min-w-0 flex-1 break-words">{file.name}</span>
               <Button
                 variant="ghost"
                 size="sm"

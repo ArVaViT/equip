@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 from app.models.daily_challenge import (
     DailyChallengeQuestion,
+    DailyChallengeQuestionEvent,
     DailyChallengeQuestionStatus,
     DailyChallengeSchedule,
 )
@@ -35,6 +36,23 @@ def _admin(db: Session) -> User:
     return u
 
 
+def _run(
+    db: Session,
+    *,
+    run_id: uuid.UUID | None = None,
+    event_type: str = "ai_generated",
+) -> uuid.UUID:
+    """One logged round of a generation run, question row or not.
+
+    The orchestrator writes these before any question exists, which is
+    what makes a run countable even when the run ends with nothing.
+    """
+    run_id = run_id or uuid.uuid4()
+    db.add(DailyChallengeQuestionEvent(id=uuid.uuid4(), event_type=event_type, generation_run_id=run_id))
+    db.commit()
+    return run_id
+
+
 def _draft(db: Session, *, created_by: uuid.UUID) -> DailyChallengeQuestion:
     q = DailyChallengeQuestion(
         id=uuid.uuid4(),
@@ -52,11 +70,27 @@ def _draft(db: Session, *, created_by: uuid.UUID) -> DailyChallengeQuestion:
 
 
 class TestPickPassage:
-    def test_cursor_advances_with_question_count(self, db: Session) -> None:
-        # 0 questions → index 0; after N questions → index N (mod len).
+    def test_cursor_advances_with_generation_runs(self, db: Session) -> None:
+        # 0 runs → index 0; after N runs → index N (mod len).
         assert R._pick_passage(db) == SEED_PASSAGES[0]
-        admin = _admin(db)
-        _draft(db, created_by=admin.id)
+        _run(db)
+        assert R._pick_passage(db) == SEED_PASSAGES[1]
+
+    def test_a_run_that_yields_nothing_still_moves_the_cursor(self, db: Session) -> None:
+        # The case that ran in production for fifteen days: every candidate
+        # rejected before a question row was written, so a cursor counting
+        # questions never moved and the worker asked for the same passage
+        # every morning. Rounds are logged either way, so runs do move.
+        _run(db)
+        first = R._pick_passage(db)
+        _run(db)
+        assert R._pick_passage(db) != first
+
+    def test_rounds_of_one_run_count_once(self, db: Session) -> None:
+        # A run logs several rounds; the cursor counts the run, not its rows.
+        run_id = uuid.uuid4()
+        _run(db, run_id=run_id)
+        _run(db, run_id=run_id, event_type="ai_critique")
         assert R._pick_passage(db) == SEED_PASSAGES[1]
 
     def test_cursor_wraps(self, db: Session) -> None:

@@ -56,6 +56,16 @@ Whoever awards marks and signs a grade sheet answers for what they signed. A mar
 entered in the system is an act by a specific person, and the platform's log
 records who performed it and when.
 
+## Material uploaded to a course
+
+Whoever uploads a file answers for the right to share it. A teacher who attaches a
+book, a presentation or a recording to a lesson confirms that the material is
+theirs, licensed to them, or free to share. Equip does not check what is uploaded
+for copyright and does not take on the uploader's responsibility for it.
+
+Tell us that a file infringes your rights and we will take it down and tell the
+person who uploaded it. An account used for this again and again is closed.
+
 ## Certificates
 
 A certificate is issued by the school, not by Equip. We record the moment of
