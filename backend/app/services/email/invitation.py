@@ -49,15 +49,23 @@ def _absolute(url: str | None) -> str | None:
     return f"{settings.FRONTEND_URL.rstrip('/')}{url}"
 
 
-def _day(moment: datetime) -> str:
-    """A date every locale reads the same way.
+#: How each language writes a bare date. Not month names: that would be
+#: forty-eight catalog entries, and Russian and Ukrainian would then
+#: have to decline them ("19 сентября" is not "сентябрь"). A numeric
+#: date says the same thing in every language and cannot be declined
+#: wrongly. Day-first where the language reads day-first; ISO for
+#: English, which is what the web app already prints.
+_DATE_FORMAT: dict[str, str] = {
+    "ru": "%d.%m.%Y",
+    "uk": "%d.%m.%Y",
+    "de": "%d.%m.%Y",
+    "en": "%Y-%m-%d",
+}
 
-    ISO, not a written-out month: the four catalogs would each need
-    twelve month names to say "19 September" and would then disagree
-    about declension. The web app prints dates older than a week the
-    same way.
-    """
-    return moment.date().isoformat()
+
+def _day(moment: datetime, locale: LocaleCode) -> str:
+    """The link's last day, written the way this language writes dates."""
+    return moment.date().strftime(_DATE_FORMAT.get(locale, "%Y-%m-%d"))
 
 
 def _lesson_count(db: Session, course_id: str) -> int:
@@ -129,7 +137,7 @@ def build_invitation_message(
         cta_url=accept_url,
         preview=t(locale, "email.invitation.preview", title=title),
         notes=(
-            t(locale, "email.invitation.expires", date=_day(invitation.expires_at)),
+            t(locale, "email.invitation.expires", date=_day(invitation.expires_at, locale)),
             t(locale, "email.invitation.ignore"),
         ),
         footer=t(locale, "email.invitation.footer"),

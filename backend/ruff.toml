@@ -38,6 +38,11 @@ known-first-party = ["app"]
 # an en dash, a Cyrillic apostrophe against a Latin one. Telling them
 # apart is the entire job.
 "app/services/translation/typography.py" = ["RUF001", "RUF002", "RUF003"]
+# The invitation email is asserted on in the languages it is written in:
+# the test names the exact Russian string a mail client produced when the
+# label ran into its value. Quoting it in Latin would quote a different
+# bug than the one that happened.
+"tests/test_the_invitation_arrives_in_a_language.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/test_a_translation_betrayed_by_its_punctuation.py" = ["RUF001", "RUF002", "RUF003"]
 
 [format]

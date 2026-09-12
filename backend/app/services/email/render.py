@@ -63,8 +63,11 @@ class Message:
 
 def _header(message: Message) -> str:
     org = (
+        # The leading space is not decoration: a client that renders the
+        # text alternative runs the tags together, and "EquipUCOAT" was
+        # the first line of the message.
         f'<span style="font-family:{theme.SANS}; font-size:12px; color:{theme.ON_INK_MUTED}; '
-        f'letter-spacing:0.18em; text-transform:uppercase; float:right; padding-top:6px;">'
+        f'letter-spacing:0.18em; text-transform:uppercase; float:right; padding-top:6px;"> '
         f"{escape(message.org_name)}</span>"
         if message.org_name
         else ""
@@ -111,7 +114,10 @@ def _facts(message: Message) -> str:
     cells = "".join(
         f'<td width="{width}%" valign="top" style="padding:16px 12px 16px 0; '
         f'font-family:{theme.SANS}; font-size:14px; line-height:1.5; color:{theme.INK_BODY};">'
-        f'<strong style="display:block; color:{theme.INK};">{escape(fact.label)}</strong>'
+        # <br> as well as display:block. The text alternative a client
+        # derives by stripping tags does not see CSS, so without the
+        # break each label ran straight into its value on one line.
+        f'<strong style="display:block; color:{theme.INK};">{escape(fact.label)}</strong><br>'
         f"{escape(fact.value)}</td>"
         for fact in message.facts
     )

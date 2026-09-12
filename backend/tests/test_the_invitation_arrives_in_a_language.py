@@ -18,7 +18,9 @@ side too, which is the only reason the two can stay in step.
 
 from __future__ import annotations
 
+import re
 import uuid
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -215,3 +217,58 @@ class TestHowItLooks:
         assert "<script>" not in html
         assert 'onmouseover="x' not in html
         assert "&lt;script&gt;" in html
+
+
+class TestTheTextAlternative:
+    """What a client shows when it renders the text, not the HTML.
+
+    Gmail derives that version by stripping tags, and CSS does not
+    exist for it. The first real send read "EquipUCOAT" on its first
+    line and "Уроков4Ваша рольстудент" in the middle — both of which
+    looked fine in every HTML preview.
+    """
+
+    @staticmethod
+    def _as_text(html: str) -> str:
+        """Roughly what a client does to derive the text alternative.
+
+        Only the tags that actually break a line break one: <br> and the
+        end of a paragraph or a row. Notably NOT </strong> — Gmail does
+        not break there, which is exactly why ``display:block`` was not
+        enough and the label ran into its value.
+        """
+        broken = re.sub(r"<br\s*/?>|</p>|</tr>", "\n", html)
+        return re.sub(r"<[^>]+>", "", broken)
+
+    def test_the_wordmark_and_the_school_do_not_run_together(self, db: Session, admin: User) -> None:
+        _school(db)
+        invitation = _invitation(db)
+
+        text = self._as_text(
+            render(build_invitation_message(db, invitation, accept_url=ACCEPT_URL, locale="ru", inviter_name="Vadym"))
+        )
+
+        assert "EquipUCOAT" not in text
+        assert "Equip UCOAT" in text
+
+    def test_each_fact_keeps_its_label_off_its_value(self, db: Session, admin: User) -> None:
+        _school(db)
+        invitation = _invitation(db)
+
+        text = self._as_text(
+            render(build_invitation_message(db, invitation, accept_url=ACCEPT_URL, locale="ru", inviter_name="Vadym"))
+        )
+
+        assert "Ваша рольстудент" not in text
+
+    @pytest.mark.parametrize(("locale", "expected"), [("ru", "19.09.2026"), ("en", "2026-09-19")])
+    def test_the_date_is_written_the_way_the_language_writes_dates(
+        self, db: Session, admin: User, locale: str, expected: str
+    ) -> None:
+        invitation = _invitation(db)
+        invitation.expires_at = datetime(2026, 9, 19, 12, 0, tzinfo=UTC)
+        db.commit()
+
+        message = build_invitation_message(db, invitation, accept_url=ACCEPT_URL, locale=locale, inviter_name=None)
+
+        assert any(expected in note for note in message.notes)
