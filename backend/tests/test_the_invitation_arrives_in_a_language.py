@@ -103,9 +103,7 @@ class TestWhoseLanguage:
 
 
 class TestWhatItSays:
-    def test_a_course_invitation_names_the_course_the_school_and_the_inviter(
-        self, db: Session, admin: User
-    ) -> None:
+    def test_a_course_invitation_names_the_course_the_school_and_the_inviter(self, db: Session, admin: User) -> None:
         _school(db)
         _course_with_title(db)
         invitation = _invitation(db, scope=InvitationScope.COURSE.value, course_id=COURSE_ID)
@@ -191,9 +189,7 @@ class TestHowItLooks:
         _course_with_title(db)
         invitation = _invitation(db, scope=InvitationScope.COURSE.value, course_id=COURSE_ID)
 
-        html = render(
-            build_invitation_message(db, invitation, accept_url=ACCEPT_URL, locale="en", inviter_name=None)
-        )
+        html = render(build_invitation_message(db, invitation, accept_url=ACCEPT_URL, locale="en", inviter_name=None))
 
         assert "<img" in html
         assert "height=" not in html
