@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useSyncExternalStore } from "react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { motion, useReducedMotion } from "motion/react"
@@ -22,6 +22,7 @@ import { firstNameOf } from "@/lib/names"
 import { PublicLanding } from "./PublicLanding"
 import { cn } from "@/lib/utils"
 import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
+import { enrollmentsVersion, subscribeEnrollments } from "@/lib/enrollmentsChanged"
 import { isNewcomer, visibleEnrollments } from "./myCourses"
 
 interface MyCoursesSectionProps {
@@ -48,6 +49,12 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
+  // Accepting an invitation enrols somebody who is already signed in,
+  // so neither the user id nor the locale moves and this effect would
+  // never re-run. Without this the dashboard keeps the empty state it
+  // loaded before the invitation was accepted, and only a page refresh
+  // shows the course.
+  const enrollmentsAt = useSyncExternalStore(subscribeEnrollments, enrollmentsVersion, enrollmentsVersion)
 
   useEffect(() => {
     let cancelled = false
@@ -77,7 +84,7 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
     return () => {
       cancelled = true
     }
-  }, [user?.id, retryCount, i18n.language])
+  }, [user?.id, retryCount, i18n.language, enrollmentsAt])
 
   const filtered = visibleEnrollments(enrollments)
   const newcomer = isNewcomer({ enrollments, loading, failed: fetchError })

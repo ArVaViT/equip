@@ -2033,7 +2033,11 @@
       "enroll": "Записатися"
     },
     "upcoming": {
-      "heading": "Найближчі терміни та події"
+      "heading": "Найближчі терміни та події",
+      "collapse": "Згорнути",
+      "expand_one": "ще {{count}}",
+      "expand_few": "ще {{count}}",
+      "expand_many": "ще {{count}}"
     },
     "preview": {
       "eyebrow": "Попередній перегляд",
@@ -2757,7 +2761,8 @@
       "emailMismatchDetail": "Це запрошення надіслано на <strong>{{invited}}</strong>, а ви увійшли як <strong>{{current}}</strong>.",
       "acceptFailed": "Не вдалося прийняти запрошення. Спробуйте ще раз.",
       "accountExists": "У вас уже є обліковий запис Equip із цією поштою. Увійдіть і відкрийте це посилання знову."
-    }
+    },
+    "openCourse": "Відкрити курс"
   },
   "myGrade": {
     "title": "Ваша оцінка",

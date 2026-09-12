@@ -43,12 +43,18 @@ describe("tourState", () => {
     expect(spy).toHaveBeenCalledTimes(2)
   })
 
-  it("isCoveredByGrandTour matches the student-covered tour ids", () => {
+  it("isCoveredByGrandTour covers the dashboard and nothing else", () => {
     expect(isCoveredByGrandTour("student-dashboard-v1")).toBe(true)
-    expect(isCoveredByGrandTour("courses-catalog-v1")).toBe(true)
-    expect(isCoveredByGrandTour("calendar-v1")).toBe(true)
-    expect(isCoveredByGrandTour("certificates-v1")).toBe(true)
-    expect(isCoveredByGrandTour("profile-v1")).toBe(true)
+
+    // The grand tour used to walk the whole product and mark these
+    // seen on the way out. It now stays on the dashboard, so each of
+    // these keeps its own per-page tour — which is the point: the
+    // explanation fires where the thing is, not where the tour
+    // teleported somebody who had not asked to go there.
+    expect(isCoveredByGrandTour("courses-catalog-v1")).toBe(false)
+    expect(isCoveredByGrandTour("calendar-v1")).toBe(false)
+    expect(isCoveredByGrandTour("certificates-v1")).toBe(false)
+    expect(isCoveredByGrandTour("profile-v1")).toBe(false)
   })
 
   it("isCoveredByGrandTour returns false for tours outside the manifest", () => {

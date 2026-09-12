@@ -1597,7 +1597,11 @@
       "enroll": "Записаться"
     },
     "upcoming": {
-      "heading": "Ближайшие дедлайны и события"
+      "heading": "Ближайшие дедлайны и события",
+      "collapse": "Свернуть",
+      "expand_one": "ещё {{count}}",
+      "expand_few": "ещё {{count}}",
+      "expand_many": "ещё {{count}}"
     },
     "preview": {
       "eyebrow": "Предпросмотр",
@@ -2757,7 +2761,8 @@
       "emailMismatchDetail": "Это приглашение отправлено на <strong>{{invited}}</strong>, но вы вошли как <strong>{{current}}</strong>.",
       "acceptFailed": "Не удалось принять приглашение. Попробуйте ещё раз.",
       "accountExists": "У вас уже есть аккаунт Equip с этим email. Войдите в систему, затем снова откройте эту ссылку-приглашение, чтобы принять его."
-    }
+    },
+    "openCourse": "Открыть курс"
   },
   "myGrade": {
     "title": "Ваша оценка",
