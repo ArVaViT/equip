@@ -19,10 +19,12 @@ from __future__ import annotations
 import contextlib
 import logging
 from dataclasses import dataclass
+from time import perf_counter
 
 import httpx
 
 from app.core.config import settings
+from app.core.metrics import increment, timing
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +62,10 @@ def send_email(*, to: str, subject: str, html: str, kind: str) -> Delivery:
         # A deployment without the key is a real configuration (preview
         # builds, local work), not an error to raise on a person.
         logger.warning("email skipped: no RESEND_API_KEY (kind=%s domain=%s)", kind, _domain_of(to))
+        increment("equip.email.attempts_total", kind=kind, outcome="not_configured")
         return Delivery(sent=False, reason="not_configured")
 
+    started = perf_counter()
     try:
         response = httpx.post(
             _RESEND_URL,
@@ -74,6 +78,7 @@ def send_email(*, to: str, subject: str, html: str, kind: str) -> Delivery:
         )
     except httpx.HTTPError as exc:
         logger.warning("email transport failed (kind=%s domain=%s): %s", kind, _domain_of(to), type(exc).__name__)
+        increment("equip.email.attempts_total", kind=kind, outcome="http_error", error=type(exc).__name__)
         return Delivery(sent=False, reason="http_error")
 
     if response.status_code >= 400:
@@ -83,6 +88,12 @@ def send_email(*, to: str, subject: str, html: str, kind: str) -> Delivery:
             _domain_of(to),
             response.status_code,
         )
+        increment(
+            "equip.email.attempts_total",
+            kind=kind,
+            outcome="rejected",
+            status_code=str(response.status_code),
+        )
         return Delivery(sent=False, reason="rejected")
 
     provider_id = None
@@ -90,4 +101,7 @@ def send_email(*, to: str, subject: str, html: str, kind: str) -> Delivery:
     with contextlib.suppress(ValueError):
         provider_id = response.json().get("id")
     logger.info("email sent (kind=%s domain=%s id=%s)", kind, _domain_of(to), provider_id)
+    increment("equip.email.attempts_total", kind=kind, outcome="sent")
+    # How long a person waits on the provider inside their own request.
+    timing("equip.email.provider_ms", (perf_counter() - started) * 1000, kind=kind)
     return Delivery(sent=True, provider_id=provider_id)

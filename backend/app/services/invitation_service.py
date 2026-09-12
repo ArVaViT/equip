@@ -9,6 +9,7 @@ from fastapi import status
 
 from app.core.config import settings
 from app.core.errors import ErrorCode, equip_error
+from app.core.metrics import increment, timing
 from app.models.course import Course
 from app.models.invitation import Invitation, InvitationScope, InvitationStatus
 from app.models.user import User, higher_role
@@ -189,6 +190,7 @@ def create_or_resend_invitation(
         .first()
     )
     if existing is not None and not is_invitation_expired(existing):
+        increment("equip.invitations.created_total", scope=scope, role=role, kind="resend")
         _mail_the_invitation(db, existing, invited_by=invited_by)
         return existing, False
 
@@ -218,6 +220,7 @@ def create_or_resend_invitation(
         request=request,
     )
 
+    increment("equip.invitations.created_total", scope=scope, role=role, kind="new")
     _mail_the_invitation(db, invitation, invited_by=invited_by)
     return invitation, True
 
@@ -359,6 +362,7 @@ def accept_invitation(
     invitation = get_invitation_by_token(db, token)
 
     if invitation.status != InvitationStatus.PENDING.value:
+        increment("equip.invitations.refused_total", reason="already_used", scope=invitation.scope)
         raise equip_error(
             ErrorCode.INVITATION_ALREADY_USED,
             status_code=status.HTTP_409_CONFLICT,
@@ -366,6 +370,7 @@ def accept_invitation(
             context={"resource_type": "invitation"},
         )
     if is_invitation_expired(invitation):
+        increment("equip.invitations.refused_total", reason="expired", scope=invitation.scope)
         raise equip_error(
             ErrorCode.INVITATION_EXPIRED,
             status_code=status.HTTP_410_GONE,
@@ -373,6 +378,7 @@ def accept_invitation(
             context={"resource_type": "invitation"},
         )
     if invitation.email != current_user_email.strip().lower():
+        increment("equip.invitations.refused_total", reason="email_mismatch", scope=invitation.scope)
         raise equip_error(
             ErrorCode.INVITATION_EMAIL_MISMATCH,
             status_code=status.HTTP_403_FORBIDDEN,
@@ -402,6 +408,8 @@ def accept_invitation(
         )
     )
     if updated == 0:
+        # Lost the race rather than arrived late: two devices, one token.
+        increment("equip.invitations.refused_total", reason="lost_race", scope=invitation.scope)
         raise equip_error(
             ErrorCode.INVITATION_ALREADY_USED,
             status_code=status.HTTP_409_CONFLICT,
@@ -429,6 +437,16 @@ def accept_invitation(
         changes[User.role] = granted_role
     if invitation.scope != InvitationScope.PLATFORM.value:
         changes[User.organization_id] = invitation.organization_id
+    if course is not None and user.onboarding_completed_at is None:
+        # First-run exists to turn an empty dashboard into a course to
+        # open, and the invitation is about to do exactly that. Left
+        # unset, it sent an invited student to a picker to choose the
+        # course they had already been enrolled on.
+        #
+        # Only the picker is skipped. Legal consent is a separate gate,
+        # checked before this flag is ever read, and untouched here.
+        changes[User.onboarding_completed_at] = datetime.now(UTC)
+
     if changes:
         db.query(User).filter(User.id == current_user_id).update(changes)
 
@@ -439,6 +457,28 @@ def accept_invitation(
 
     db.commit()
     db.refresh(invitation)
+
+    increment(
+        "equip.invitations.accepted_total",
+        scope=invitation.scope,
+        role=granted_role,
+        # Whether the invitation actually moved the person's role, which
+        # is the difference between "a new teacher" and "somebody who
+        # was already one accepting a course invitation".
+        role_changed=str(granted_role != previous_role).lower(),
+        joined_organization=str(previous_organization_id != invitation.organization_id).lower(),
+    )
+    # How long an invitation sits before it is used. The tail of this is
+    # what tells us a seven-day life is too short or too long.
+    if invitation.created_at is not None:
+        created = invitation.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=UTC)
+        timing(
+            "equip.invitations.time_to_accept_ms",
+            (datetime.now(UTC) - created).total_seconds() * 1000,
+            scope=invitation.scope,
+        )
 
     log_action(
         db,
