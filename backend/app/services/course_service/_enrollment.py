@@ -26,7 +26,19 @@ def enroll_user_in_course(
     user_id: str | UUID,
     course_id: str,
     cohort_id: str | None = None,
+    *,
+    commit: bool = True,
 ) -> Enrollment:
+    """Put a person on a course, idempotently.
+
+    ``commit=False`` keeps the row inside the caller's transaction. It
+    exists for accepting an invitation, where the enrolment is one of
+    four writes that have to land together or not at all — committing
+    here would leave a half-accepted invitation reachable if a later
+    statement failed. The uniqueness race is then caught on a SAVEPOINT
+    instead of a rollback, because rolling the whole transaction back
+    would discard the caller's work along with ours.
+    """
     # Existence is scoped to (user, course, cohort) — matching the DB unique
     # index `(user_id, course_id, COALESCE(cohort_id, sentinel))`. A student
     # who took the course solo (or in cohort A) may re-enrol via cohort B and
@@ -51,11 +63,18 @@ def enroll_user_in_course(
     )
     db.add(enrollment)
     try:
-        db.commit()
+        if commit:
+            db.commit()
+        else:
+            # SAVEPOINT: a collision here must not take the caller's
+            # other writes with it.
+            with db.begin_nested():
+                db.flush()
     except IntegrityError:
-        # A concurrent POST for the same (user, course, cohort) just committed.
-        # Return the winner row instead of propagating the 500.
-        db.rollback()
+        # A concurrent write for the same (user, course, cohort) just
+        # landed. Return the winner row instead of propagating the 500.
+        if commit:
+            db.rollback()
         existing = (
             db.query(Enrollment)
             .filter(Enrollment.user_id == user_id, Enrollment.course_id == course_id, cohort_match)
@@ -64,7 +83,8 @@ def enroll_user_in_course(
         if existing:
             return existing
         raise
-    db.refresh(enrollment)
+    if commit:
+        db.refresh(enrollment)
     # equip.enrollments.created_total feeds the Course Engagement
     # dashboard's enrollment-rate tile + the dropoff_count derived
     # metric (denominator = sum(enrollments.created_total) - sum(

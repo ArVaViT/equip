@@ -2536,6 +2536,10 @@
     "path": "/api/v1/invitations/token/{token}",
     "params": [
       [
+        "Accept-Language",
+        "header"
+      ],
+      [
         "token",
         "path"
       ]

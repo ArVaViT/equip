@@ -758,6 +758,10 @@ CREATE TABLE public.invitations (
     accepted_at timestamp with time zone,
     expires_at timestamp with time zone DEFAULT (now() + '7 days'::interval) NOT NULL,
     organization_id uuid NOT NULL,
+    scope text DEFAULT 'organization'::text NOT NULL,
+    course_id character varying,
+    CONSTRAINT chk_invitations_course_matches_scope CHECK ((((scope = 'course'::text) AND (course_id IS NOT NULL)) OR ((scope <> 'course'::text) AND (course_id IS NULL)))),
+    CONSTRAINT chk_invitations_scope CHECK ((scope = ANY (ARRAY['platform'::text, 'organization'::text, 'course'::text]))),
     CONSTRAINT invitations_role_check CHECK ((role = ANY (ARRAY['teacher'::text, 'student'::text]))),
     CONSTRAINT invitations_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'revoked'::text])))
 );
@@ -2108,10 +2112,17 @@ CREATE INDEX ix_invitations_email_role ON public.invitations USING btree (email,
 
 
 --
--- Name: ix_invitations_one_pending_per_email_role; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_invitations_course_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX ix_invitations_one_pending_per_email_role ON public.invitations USING btree (email, role) WHERE (status = 'pending'::text);
+CREATE INDEX ix_invitations_course_id ON public.invitations USING btree (course_id) WHERE (course_id IS NOT NULL);
+
+
+--
+-- Name: ix_invitations_one_pending_per_scope; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_invitations_one_pending_per_scope ON public.invitations USING btree (organization_id, email, role, COALESCE(course_id, ''::character varying)) WHERE (status = 'pending'::text);
 
 
 --
@@ -2937,6 +2948,14 @@ ALTER TABLE ONLY public.grade_sheets
 
 ALTER TABLE ONLY public.grade_sheets
     ADD CONSTRAINT grade_sheets_reopened_by_fkey FOREIGN KEY (reopened_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: invitations invitations_invited_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.invitations
+    ADD CONSTRAINT invitations_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id) ON DELETE CASCADE;
 
 
 --
