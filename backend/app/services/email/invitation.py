@@ -14,11 +14,14 @@ account yet, so there is no preference of theirs to read.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo
 
 from app.core.config import settings
 from app.core.i18n import t
 from app.models.course import Chapter, Course
+from app.models.course_event import CourseEvent
 from app.models.invitation import InvitationScope
 from app.models.organization import Organization
 from app.services.email.render import Fact, Message, render
@@ -26,8 +29,6 @@ from app.services.email.send import Delivery, send_email
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 
 if TYPE_CHECKING:
-    from datetime import datetime
-
     from sqlalchemy.orm import Session
 
     from app.models.invitation import Invitation
@@ -77,6 +78,46 @@ def _course_title(db: Session, course_id: str, locale: LocaleCode) -> str | None
     return titles.get(course_id) or None
 
 
+#: Where the school keeps its clock. A time without a zone in an
+#: invitation is worse than no time at all: half these students are on
+#: the west coast, and "20:00" has meant two different evenings to two
+#: readers of the same letter. Until org_settings carries a timezone
+#: (ADR-012, step 6) this is the one school we have, and it is written
+#: down here rather than guessed at the call site.
+_SCHOOL_TIMEZONE = ZoneInfo("America/Indiana/Indianapolis")
+_ALSO_SHOWN = ZoneInfo("America/Los_Angeles")
+
+
+def _next_session(db: Session, course_id: str) -> datetime | None:
+    """The soonest live session still ahead, if the course has one."""
+    return (
+        db.query(CourseEvent.event_date)
+        .filter(
+            CourseEvent.course_id == course_id,
+            CourseEvent.event_type == "live_session",
+            CourseEvent.event_date > datetime.now(UTC),
+        )
+        .order_by(CourseEvent.event_date)
+        .limit(1)
+        .scalar()
+    )
+
+
+def _session_text(moment: datetime, locale: LocaleCode) -> str:
+    """"12 сентября, 20:00 по восточному (17:00 по тихоокеанскому)"."""
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=UTC)
+    eastern = moment.astimezone(_SCHOOL_TIMEZONE)
+    pacific = moment.astimezone(_ALSO_SHOWN)
+    return t(
+        locale,
+        "email.invitation.session_at",
+        date=_day(eastern, locale),
+        eastern=eastern.strftime("%H:%M"),
+        pacific=pacific.strftime("%H:%M"),
+    )
+
+
 def build_invitation_message(
     db: Session,
     invitation: Invitation,
@@ -107,9 +148,21 @@ def build_invitation_message(
 
     facts: list[Fact] = []
     if course is not None:
+        session = _next_session(db, course.id)
+        if session is not None:
+            facts.append(
+                Fact(label=t(locale, "email.invitation.fact.first_session"), value=_session_text(session, locale))
+            )
         lessons = _lesson_count(db, course.id)
         if lessons:
-            facts.append(Fact(label=t(locale, "email.invitation.fact.lessons"), value=str(lessons)))
+            facts.append(
+                Fact(
+                    label=t(locale, "email.invitation.fact.lessons"),
+                    value=t(locale, "email.invitation.fact.lessons_value", count=str(lessons)),
+                )
+            )
+        if inviter_name:
+            facts.append(Fact(label=t(locale, "email.invitation.fact.teacher"), value=inviter_name))
     facts.append(Fact(label=t(locale, "email.invitation.fact.role"), value=role))
 
     if course is not None and course_title:
@@ -126,12 +179,11 @@ def build_invitation_message(
         lede = t(locale, "email.invitation.lede.platform", inviter=inviter, role=role, brand=_BRAND)
 
     return Message(
-        eyebrow=eyebrow,
+        eyebrow=t("en" if locale == "en" else locale, "email.invitation.eyebrow", org=org_name or _BRAND)
+        if org_name
+        else eyebrow,
         title=title,
         lede=lede,
-        org_name=org_name,
-        banner_url=_absolute(course.image_url) if course is not None else None,
-        banner_alt=course_title,
         facts=tuple(facts),
         cta_label=t(locale, "email.invitation.cta"),
         cta_url=accept_url,
@@ -140,7 +192,6 @@ def build_invitation_message(
             t(locale, "email.invitation.expires", date=_day(invitation.expires_at, locale)),
             t(locale, "email.invitation.ignore"),
         ),
-        footer=t(locale, "email.invitation.footer"),
     )
 
 

@@ -5,17 +5,24 @@ Mail is not the web: no stylesheet, no flex, no grid. Gmail strips
 every rule is inline, and that is a constraint rather than a style
 choice.
 
+**The message carries no images.** An earlier version led with the
+course cover, which looked well in a preview and badly everywhere else:
+roughly half of recipients never load images, a cover is a picture of
+text so it cannot reflow on a phone, and a cover written in one
+language opens a letter written in another — which is exactly how a
+Russian invitation arrived under an English banner. Everything that
+looks like a poster here is real text: it reads the same with images
+off, in a dark theme and on a watch, and it weighs kilobytes.
+
 Two rules this module exists to keep:
 
 * **Nothing interpolates unescaped.** A course title, a school name and
   the name of whoever is inviting are all typed by people, and they end
   up inside HTML and inside an ``href``. ``escape`` is applied here so
   no caller has to remember it.
-* **The message reads with images off.** Roughly half of recipients see
-  no images at all, so the banner carries an ``alt`` and — deliberately
-  — no height attribute: a reserved height leaves a dark rectangle
-  where a picture was supposed to be, and everything that matters is in
-  the text below it.
+* **The text alternative is a first-class reader.** A client that
+  strips tags sees no CSS, so nothing may rely on ``display:block`` to
+  keep two words apart.
 """
 
 from __future__ import annotations
@@ -28,7 +35,7 @@ from app.services.email import theme
 
 @dataclass(frozen=True)
 class Fact:
-    """One short label/value pair in the strip under the lede."""
+    """One row of the detail table: what it is, and what it says."""
 
     label: str
     value: str
@@ -43,90 +50,63 @@ class Message:
     database and keeps language decisions in one place — the caller.
     """
 
-    #: Small caps line above the title ("Course invitation").
+    #: Small caps line above the title ("UCOAT · invitation").
     eyebrow: str
     title: str
+    #: The one sentence under the title, when there is one to say.
     lede: str
     cta_label: str
     cta_url: str
     #: Shown in the client's message list before the mail is opened.
     preview: str
-    #: Right of the wordmark in the header — the school, when there is one.
-    org_name: str | None = None
-    banner_url: str | None = None
-    banner_alt: str | None = None
+    #: The detail table: when it starts, how many lessons, who teaches.
     facts: tuple[Fact, ...] = field(default_factory=tuple)
     #: Small print under the button, in order.
     notes: tuple[str, ...] = field(default_factory=tuple)
-    footer: str = ""
-
-
-def _header(message: Message) -> str:
-    org = (
-        # The leading space is not decoration: a client that renders the
-        # text alternative runs the tags together, and "EquipUCOAT" was
-        # the first line of the message.
-        f'<span style="font-family:{theme.SANS}; font-size:12px; color:{theme.ON_INK_MUTED}; '
-        f'letter-spacing:0.18em; text-transform:uppercase; float:right; padding-top:6px;"> '
-        f"{escape(message.org_name)}</span>"
-        if message.org_name
-        else ""
-    )
-    return (
-        f'<tr><td style="padding:22px 32px; background:{theme.INK};">'
-        f'<span style="font-family:{theme.SERIF}; font-size:20px; font-weight:600; '
-        f'color:{theme.ON_INK}; letter-spacing:0.01em;">Equip</span>{org}'
-        f"</td></tr>"
-    )
-
-
-def _banner(message: Message) -> str:
-    if not message.banner_url:
-        return ""
-    alt = escape(message.banner_alt or "")
-    return (
-        f'<tr><td style="padding:0; line-height:0; background:{theme.INK};">'
-        f'<img src="{escape(message.banner_url, quote=True)}" width="600" alt="{alt}" '
-        f'style="display:block; width:100%; max-width:600px; height:auto; border:0; '
-        f'font-family:{theme.SERIF}; font-size:16px; color:{theme.ON_INK}; padding:14px 0;">'
-        f"</td></tr>"
-    )
 
 
 def _lede(message: Message) -> str:
-    return (
-        f'<tr><td style="padding:36px 32px 8px 32px;">'
-        f'<p style="margin:0 0 10px 0; font-family:{theme.SANS}; font-size:12px; '
-        f'letter-spacing:0.18em; text-transform:uppercase; color:{theme.INK_FAINT};">'
+    eyebrow = (
+        f'<p style="margin:0 0 30px 0; font-family:{theme.SANS}; font-size:11px; '
+        f'letter-spacing:0.22em; text-transform:uppercase; color:{theme.INK_FAINT};">'
         f"{escape(message.eyebrow)}</p>"
-        f'<h1 style="margin:0 0 18px 0; font-family:{theme.SERIF}; font-size:30px; '
-        f'line-height:1.25; font-weight:600; color:{theme.INK};">{escape(message.title)}</h1>'
-        f'<p style="margin:0; font-family:{theme.SANS}; font-size:16px; line-height:1.65; '
-        f'color:{theme.INK_BODY};">{escape(message.lede)}</p>'
-        f"</td></tr>"
+        if message.eyebrow
+        else ""
+    )
+    lede = (
+        f'<p style="margin:22px 0 0 0; font-family:{theme.SANS}; font-size:16px; '
+        f'line-height:1.65; color:{theme.INK_BODY};">{escape(message.lede)}</p>'
+        if message.lede
+        else ""
+    )
+    return (
+        f'<tr><td style="padding:46px 44px 0 44px;">{eyebrow}'
+        f'<h1 style="margin:0; font-family:{theme.SERIF}; font-size:46px; line-height:1.08; '
+        f'font-weight:600; letter-spacing:-0.02em; color:{theme.INK};">{escape(message.title)}</h1>'
+        f"{lede}</td></tr>"
     )
 
 
 def _facts(message: Message) -> str:
     if not message.facts:
         return ""
-    width = 100 // len(message.facts)
-    cells = "".join(
-        f'<td width="{width}%" valign="top" style="padding:16px 12px 16px 0; '
-        f'font-family:{theme.SANS}; font-size:14px; line-height:1.5; color:{theme.INK_BODY};">'
-        # <br> as well as display:block. The text alternative a client
-        # derives by stripping tags does not see CSS, so without the
-        # break each label ran straight into its value on one line.
-        f'<strong style="display:block; color:{theme.INK};">{escape(fact.label)}</strong><br>'
-        f"{escape(fact.value)}</td>"
-        for fact in message.facts
-    )
-    # A table rather than a list: Outlook renders list markers its own way.
+    rows = ""
+    for index, fact in enumerate(message.facts):
+        edges = f"border-top:1px solid {theme.RULE};"
+        if index == len(message.facts) - 1:
+            edges += f" border-bottom:1px solid {theme.RULE};"
+        rows += (
+            f"<tr>"
+            f'<td width="45%" style="padding:13px 0; {edges} font-family:{theme.SANS}; '
+            f'font-size:15px; line-height:1.5; color:{theme.INK_BODY};">{escape(fact.label)}</td>'
+            f'<td width="55%" align="right" style="padding:13px 0; {edges} font-family:{theme.SANS}; '
+            f'font-size:15px; line-height:1.5; color:{theme.INK};"><strong>{escape(fact.value)}</strong></td>'
+            f"</tr>"
+        )
     return (
-        f'<tr><td style="padding:14px 32px 6px 32px;">'
-        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
-        f'style="border-top:1px solid {theme.RULE}; border-bottom:1px solid {theme.RULE};">'
-        f"<tr>{cells}</tr></table></td></tr>"
+        f'<tr><td style="padding:32px 44px 0 44px;">'
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
+        f"{rows}</table></td></tr>"
     )
 
 
@@ -134,12 +114,12 @@ def _cta(message: Message) -> str:
     # Text, not an image: with images off a picture-button is a message
     # with no way out of it.
     return (
-        f'<tr><td style="padding:28px 32px 8px 32px;">'
-        f'<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>'
-        f'<td align="center" style="background:{theme.INK}; border-radius:8px;">'
+        f'<tr><td style="padding:30px 44px 0 44px;">'
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
+        f'<td align="center" style="background:{theme.INK}; border-radius:10px;">'
         f'<a href="{escape(message.cta_url, quote=True)}" '
-        f'style="display:inline-block; padding:15px 38px; font-family:{theme.SANS}; '
-        f'font-size:16px; font-weight:600; color:{theme.ON_INK}; text-decoration:none;">'
+        f'style="display:block; padding:17px 24px; font-family:{theme.SANS}; font-size:16px; '
+        f'font-weight:600; color:{theme.ON_INK}; text-decoration:none; text-align:center;">'
         f"{escape(message.cta_label)}</a>"
         f"</td></tr></table></td></tr>"
     )
@@ -148,31 +128,12 @@ def _cta(message: Message) -> str:
 def _notes(message: Message) -> str:
     if not message.notes:
         return ""
-    first, *rest = message.notes
-    lines = (
-        f'<p style="margin:0 0 6px 0; font-family:{theme.SANS}; font-size:13px; '
-        f'line-height:1.6; color:{theme.INK_MUTED};">{escape(first)}</p>'
+    lines = "".join(
+        f'<p style="margin:0 0 4px 0; font-family:{theme.SANS}; font-size:12px; '
+        f'line-height:1.6; color:{theme.INK_FAINT};">{escape(note)}</p>'
+        for note in message.notes
     )
-    lines += "".join(
-        f'<p style="margin:0; font-family:{theme.SANS}; font-size:13px; line-height:1.6; '
-        f'color:{theme.INK_FAINT};">{escape(note)}</p>'
-        for note in rest
-    )
-    return f'<tr><td style="padding:10px 32px 34px 32px;">{lines}</td></tr>'
-
-
-def _footer(message: Message) -> str:
-    if not message.footer:
-        return ""
-    return (
-        f'<tr><td style="padding:18px 32px; background:{theme.FOOTER_GROUND}; '
-        f'border-top:1px solid {theme.RULE};">'
-        f'<p style="margin:0; font-family:{theme.SANS}; font-size:12px; line-height:1.6; '
-        f'color:{theme.INK_FAINT};">{escape(message.footer)} '
-        f'<a href="https://equipbible.com" style="color:{theme.INK_MUTED}; '
-        f'text-decoration:underline;">equipbible.com</a></p>'
-        f"</td></tr>"
-    )
+    return f'<tr><td style="padding:18px 44px 40px 44px;" align="center">{lines}</td></tr>'
 
 
 def render(message: Message) -> str:
@@ -184,11 +145,9 @@ def render(message: Message) -> str:
         f'<body style="margin:0; padding:0; background:{theme.GROUND};">'
         f"{hidden_preview}"
         f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
-        f'style="background:{theme.GROUND}; padding:32px 12px;"><tr><td align="center">'
+        f'style="background:{theme.GROUND}; padding:36px 12px;"><tr><td align="center">'
         f'<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" '
-        f'style="width:600px; max-width:100%; background:{theme.CARD}; border-radius:14px; '
-        f'overflow:hidden; border:1px solid {theme.CARD_EDGE};">'
-        f"{_header(message)}{_banner(message)}{_lede(message)}{_facts(message)}"
-        f"{_cta(message)}{_notes(message)}{_footer(message)}"
+        f'style="width:600px; max-width:100%; background:{theme.CARD}; border-radius:16px; overflow:hidden;">'
+        f"{_lede(message)}{_facts(message)}{_cta(message)}{_notes(message)}"
         f"</table></td></tr></table></body>"
     )
