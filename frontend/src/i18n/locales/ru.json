@@ -1601,7 +1601,8 @@
       "collapse": "Свернуть",
       "expand_one": "ещё {{count}}",
       "expand_few": "ещё {{count}}",
-      "expand_many": "ещё {{count}}"
+      "expand_many": "ещё {{count}}",
+      "expand_other": "ещё {{count}}"
     },
     "preview": {
       "eyebrow": "Предпросмотр",

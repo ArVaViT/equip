@@ -2037,7 +2037,8 @@
       "collapse": "Згорнути",
       "expand_one": "ще {{count}}",
       "expand_few": "ще {{count}}",
-      "expand_many": "ще {{count}}"
+      "expand_many": "ще {{count}}",
+      "expand_other": "ще {{count}}"
     },
     "preview": {
       "eyebrow": "Попередній перегляд",
