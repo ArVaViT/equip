@@ -1,6 +1,6 @@
 from typing import cast
 
-from fastapi import APIRouter, Depends, Path, Query, Request
+from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, organization_of, require_director
@@ -14,10 +14,13 @@ from app.schemas.invitation import (
     InvitationPreview,
     InvitationResponse,
     InvitationRoleLiteral,
+    InvitationScopeLiteral,
     InvitationStatusLiteral,
 )
+from app.schemas.locale import normalize_locale
 from app.services.invitation_service import (
     accept_invitation,
+    course_title_for_invitation,
     create_or_resend_invitation,
     get_invitation_by_token,
     is_invitation_expired,
@@ -34,6 +37,8 @@ def _to_response(invitation: Invitation) -> InvitationResponse:
         id=invitation.id,
         email=invitation.email,
         role=cast("InvitationRoleLiteral", invitation.role),
+        scope=cast("InvitationScopeLiteral", invitation.scope),
+        course_id=invitation.course_id,
         status=cast("InvitationStatusLiteral", invitation.status),
         invited_by=invitation.invited_by,
         created_at=invitation.created_at,
@@ -60,6 +65,8 @@ def create_invitation(
         db,
         email=body.email,
         role=body.role,
+        scope=body.scope,
+        course_id=body.course_id,
         invited_by=director.id,
         organization_id=organization_of(director),
         request=request,
@@ -118,7 +125,9 @@ def revoke_invitation_route(
 
 @router.get("/token/{token}", response_model=InvitationPreview)
 def preview_invitation(
+    response: Response,
     token: str = Path(..., max_length=128),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     db: Session = Depends(get_db),
 ) -> InvitationPreview:
     """Unauthenticated preview of an invite, for the accept-invite page
@@ -128,9 +137,20 @@ def preview_invitation(
     a clear "this invite expired" state instead of a generic not-found.
     """
     invitation = get_invitation_by_token(db, token)
+    # The course title is the only translated text on this route, and it
+    # is resolved per reader, so the answer varies by header.
+    response.headers["Vary"] = "Accept-Language"
     return InvitationPreview(
         email=invitation.email,
         role=cast("InvitationRoleLiteral", invitation.role),
+        scope=cast("InvitationScopeLiteral", invitation.scope),
+        # Only the title, and only for a course invitation: someone
+        # deciding whether to accept is entitled to know what they are
+        # being invited to, and a published course's title is public
+        # anyway. In their own language or not at all — they have no
+        # profile yet, so the browser's header is the only thing that
+        # knows what they read.
+        course_title=course_title_for_invitation(db, invitation, display_locale=normalize_locale(accept_language)),
         status=cast("InvitationStatusLiteral", invitation.status),
         is_expired=invitation.status == "pending" and is_invitation_expired(invitation),
     )
@@ -157,4 +177,8 @@ def accept_invitation_route(
         current_user_email=current_user.email,
         request=request,
     )
-    return InvitationAcceptResponse(role=cast("InvitationRoleLiteral", invitation.role))
+    return InvitationAcceptResponse(
+        role=cast("InvitationRoleLiteral", invitation.role),
+        scope=cast("InvitationScopeLiteral", invitation.scope),
+        enrolled_course_id=invitation.course_id,
+    )

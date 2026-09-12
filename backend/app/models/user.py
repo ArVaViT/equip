@@ -45,6 +45,34 @@ def can_teach(role: str) -> bool:
     return role in TEACHING_ROLES
 
 
+#: How much of the product a role opens, least to most. It exists for one
+#: question — "would this change take something away?" — and the only
+#: caller today is accepting an invitation, which used to write the
+#: invited role unconditionally and so turned a director who accepted a
+#: student invitation into a student.
+#:
+#: This is a reach ordering, not a hierarchy of authority: a platform
+#: admin is not a "better director", the two answer to different things.
+#: Do not use it to decide whether one person may act on another.
+_ROLE_RANK: dict[str, int] = {
+    UserRole.STUDENT.value: 0,
+    UserRole.TEACHER.value: 1,
+    UserRole.DIRECTOR.value: 2,
+    UserRole.ADMIN.value: 3,
+}
+
+
+def higher_role(current: str, offered: str) -> str:
+    """The role a person should end up with when they are offered one.
+
+    An unknown value on either side loses to the known one rather than
+    raising: the caller is in the middle of a transaction a person is
+    waiting on, and a role nobody recognises should not be able to
+    silently outrank one we do.
+    """
+    return offered if _ROLE_RANK.get(offered, -1) > _ROLE_RANK.get(current, -1) else current
+
+
 class User(Base):
     __tablename__ = "profiles"
     __table_args__ = (

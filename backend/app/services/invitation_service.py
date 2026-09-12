@@ -3,17 +3,19 @@ from __future__ import annotations
 import secrets
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from fastapi import status
 
 from app.core.config import settings
 from app.core.errors import ErrorCode, equip_error
-from app.models.invitation import Invitation, InvitationStatus
-from app.models.user import User
-from app.schemas.locale import LocaleCode  # noqa: TC001 — annotation is evaluated at runtime by FastAPI
+from app.models.course import Course
+from app.models.invitation import Invitation, InvitationScope, InvitationStatus
+from app.models.user import User, higher_role
 from app.services.audit_service import log_action
-from app.services.email_service import send_invitation_email
+from app.services.course_service._enrollment import enroll_user_in_course
+from app.services.email.invitation import send_invitation_email
+from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 from app.services.user_locale import preferred_locale_of
 
 if TYPE_CHECKING:
@@ -21,6 +23,8 @@ if TYPE_CHECKING:
 
     from fastapi import Request
     from sqlalchemy.orm import Session
+
+    from app.schemas.locale import LocaleCode
 
 _TOKEN_BYTES = 32
 
@@ -59,6 +63,77 @@ def _inviter_locale(db: Session, invited_by: uuid.UUID | str | None) -> LocaleCo
     return preferred_locale_of(db, invited_by)
 
 
+def _mail_the_invitation(db: Session, invitation: Invitation, *, invited_by: UUID) -> None:
+    """Send the invitation, in the inviting person's language and name.
+
+    Delivery is deliberately not checked: the row and its token already
+    exist, the link works whether or not the mail got out, and a
+    provider hiccup must not turn "invitation created" into an error on
+    somebody's screen. What a failure does leave is a log line — see
+    ``services/email/send.py``.
+    """
+    inviter = db.query(User).filter(User.id == invited_by).first()
+    send_invitation_email(
+        db,
+        invitation,
+        accept_url=_accept_url(invitation.token),
+        locale=_inviter_locale(db, invited_by),
+        inviter_name=inviter.full_name if inviter else None,
+    )
+
+
+def course_of_organization(db: Session, course_id: str, organization_id: UUID) -> Course:
+    """The course this organization may invite onto, or 404.
+
+    Same 404-for-everything rule the rest of the invitation surface
+    uses: a course in another school and a course that does not exist
+    are the same answer, because the difference is information the
+    caller has not earned.
+
+    Checked at creation *and* again at acceptance, because seven days
+    pass in between and a course can be unpublished, deleted or moved
+    in that time.
+    """
+    course = (
+        db.query(Course)
+        .filter(
+            Course.id == course_id,
+            Course.organization_id == organization_id,
+            Course.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if course is None:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Course not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
+    return course
+
+
+def course_title_for_invitation(db: Session, invitation: Invitation, *, display_locale: LocaleCode) -> str | None:
+    """The title to show on the accept page, or ``None``.
+
+    Only for a course invitation, and only in the reader's own language.
+    The invited person has no account yet, so the language comes from
+    their browser — and when the course has no title in it, the answer
+    is nothing rather than a title in a language they did not ask for.
+    The page leaves the line out; it does not print a blank.
+
+    The temptation here is ``source_then_any``, so that every invitation
+    names *something*. That is the fallback reserved for people looking
+    at their own material — an author, a marker, a certificate that
+    would otherwise go out with an empty line — and a stranger reading
+    an invitation is none of those.
+    """
+    if invitation.scope != InvitationScope.COURSE.value or not invitation.course_id:
+        return None
+    titles = fetch_course_titles_by_id(db, [invitation.course_id], display_locale=display_locale)
+    return titles.get(invitation.course_id) or None
+
+
 def create_or_resend_invitation(
     db: Session,
     *,
@@ -66,38 +141,55 @@ def create_or_resend_invitation(
     role: str,
     invited_by: UUID,
     organization_id: UUID,
+    scope: str = InvitationScope.ORGANIZATION.value,
+    course_id: str | None = None,
     request: Request | None = None,
 ) -> tuple[Invitation, bool]:
     """Create a new invitation, or resend the existing pending one.
 
-    Returns ``(invitation, is_new)``. Dedup key is ``(email, role)`` while
-    ``status == 'pending'`` -- mirrors the partial unique index in the
-    migration, which is the real race guard; this lookup is the
-    happy-path short-circuit that avoids hitting it on a normal "resend"
-    click. A resend does NOT rotate the token or reset ``expires_at`` --
-    a link already shared/clicked stays valid on its original clock.
+    Returns ``(invitation, is_new)``. The dedup key is ``(organization,
+    email, role, course)`` while ``status == 'pending'`` -- it mirrors
+    the partial unique index, which is the real race guard; this lookup
+    is the happy-path short-circuit that avoids hitting it on a normal
+    "resend" click.
 
-    An expired-but-still-``pending`` row is revoked first so the fresh
-    insert doesn't collide with the partial unique index.
+    The organization is part of that key and was not always: the lookup
+    used to match ``(email, role)`` globally, so a second school
+    inviting a person who had a pending invitation from a first school
+    got the *first school's row* back and mailed out its token. One
+    school inviting the same person onto two courses hit the same index
+    from the other side.
+
+    A resend does NOT rotate the token or reset ``expires_at`` -- a link
+    already shared stays valid on its original clock. An
+    expired-but-still-``pending`` row is revoked first so the fresh
+    insert does not collide with the index.
     """
     normalized_email = email.strip().lower()
+    if scope == InvitationScope.COURSE.value:
+        # Raises 404 when the course is not this organization's to offer.
+        course_of_organization(db, course_id or "", organization_id)
+    elif course_id is not None:
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            message="course_id is only meaningful when scope is 'course'",
+            context={"resource_type": "invitation"},
+        )
 
     existing = (
         db.query(Invitation)
         .filter(
+            Invitation.organization_id == organization_id,
             Invitation.email == normalized_email,
             Invitation.role == role,
+            Invitation.course_id == course_id if course_id is not None else Invitation.course_id.is_(None),
             Invitation.status == InvitationStatus.PENDING.value,
         )
         .first()
     )
     if existing is not None and not is_invitation_expired(existing):
-        send_invitation_email(
-            to_email=normalized_email,
-            role=role,
-            accept_url=_accept_url(existing.token),
-            locale=_inviter_locale(db, invited_by),
-        )
+        _mail_the_invitation(db, existing, invited_by=invited_by)
         return existing, False
 
     if existing is not None:
@@ -107,6 +199,8 @@ def create_or_resend_invitation(
         organization_id=organization_id,
         email=normalized_email,
         role=role,
+        scope=scope,
+        course_id=course_id,
         token=_generate_token(),
         invited_by=invited_by,
     )
@@ -120,16 +214,11 @@ def create_or_resend_invitation(
         "create",
         "invitation",
         str(invitation.id),
-        details={"email": normalized_email, "role": role},
+        details={"email": normalized_email, "role": role, "scope": scope, "course_id": course_id},
         request=request,
     )
 
-    send_invitation_email(
-        to_email=normalized_email,
-        role=role,
-        accept_url=_accept_url(invitation.token),
-        locale=_inviter_locale(db, invited_by),
-    )
+    _mail_the_invitation(db, invitation, invited_by=invited_by)
     return invitation, True
 
 
@@ -243,19 +332,29 @@ def accept_invitation(
     current_user_email: str,
     request: Request | None = None,
 ) -> Invitation:
-    """Redeem a token: validate, atomically flip it to accepted, then
-    promote the caller's role.
+    """Redeem a token and grant everything the invitation promised.
 
     The caller must already be authenticated as a user whose email
-    matches the invitation -- see the migration/module docstrings for why
-    the backend doesn't mint the Supabase Auth user itself. Role
-    promotion piggybacks on the same DB session/commit as the invitation
-    UPDATE isn't strictly atomic with it (two statements), but the
-    single-use guard (UPDATE ... WHERE status='pending') is what prevents
-    a double-redeem; a crash between the two commits leaves, at worst, an
-    accepted invitation with the role not yet flipped, which is safely
-    retryable (accept is idempotent for the row's owner: hitting it again
-    just meets `already_used` -- to recover, an admin can re-invite).
+    matches the invitation -- see the migration/module docstrings for
+    why the backend does not mint the Supabase Auth user itself.
+
+    One transaction, four writes, all or nothing: the invitation flips
+    to accepted, the role moves (never downward), the person joins the
+    organization, and a course invitation seats them on the course.
+    Until 2026-09-12 this wrote the role and stopped there, so an
+    invited teacher was left with a role and no school -- 403 on every
+    organizational route, invisible catalogue -- and a director who
+    accepted a student invitation was demoted by it.
+
+    The single-use guard (``UPDATE ... WHERE status='pending'``) is
+    still what defeats a double click: the second one loses the race in
+    Postgres rather than in Python.
+
+    The course is re-checked here even though it was checked when the
+    invitation was written. Seven days is long enough for a course to be
+    deleted or moved to another school, and the person clicking the link
+    should meet an honest 404 rather than an enrolment on something that
+    is no longer there.
     """
     invitation = get_invitation_by_token(db, token)
 
@@ -281,6 +380,16 @@ def accept_invitation(
             context={"resource_type": "invitation"},
         )
 
+    # Everything that can refuse comes before anything that changes.
+    # The course is re-checked here even though creation checked it:
+    # seven days is long enough for it to be deleted or moved, and a
+    # person meeting a 404 must not also lose their invitation to it.
+    course = (
+        course_of_organization(db, invitation.course_id or "", invitation.organization_id)
+        if invitation.scope == InvitationScope.COURSE.value
+        else None
+    )
+
     # Single-use guard: only flips a row still 'pending'. A concurrent
     # accept (double click, retried request) loses the race here rather
     # than in application logic.
@@ -300,7 +409,34 @@ def accept_invitation(
             context={"resource_type": "invitation"},
         )
 
-    db.query(User).filter(User.id == current_user_id).update({User.role: invitation.role})
+    user = db.query(User).filter(User.id == current_user_id).first()
+    if user is None:
+        # The session says who they are and the row says otherwise: a
+        # deleted account holding a live token. Nothing to grant.
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Account not found",
+            context={"resource_type": "user"},
+        )
+
+    previous_role = user.role
+    previous_organization_id = user.organization_id
+    granted_role = higher_role(previous_role, invitation.role)
+
+    changes: dict[Any, Any] = {}
+    if granted_role != previous_role:
+        changes[User.role] = granted_role
+    if invitation.scope != InvitationScope.PLATFORM.value:
+        changes[User.organization_id] = invitation.organization_id
+    if changes:
+        db.query(User).filter(User.id == current_user_id).update(changes)
+
+    enrolled_course_id: str | None = None
+    if course is not None:
+        enroll_user_in_course(db, current_user_id, course.id, commit=False)
+        enrolled_course_id = course.id
+
     db.commit()
     db.refresh(invitation)
 
@@ -310,7 +446,18 @@ def accept_invitation(
         "accept",
         "invitation",
         str(invitation.id),
-        details={"role": invitation.role},
+        details={
+            "scope": invitation.scope,
+            "role": granted_role,
+            # Both sides of every move, because "what did accepting this
+            # actually change" is the question an audit row is kept for.
+            "previous_role": previous_role,
+            "organization_id": str(invitation.organization_id)
+            if invitation.scope != InvitationScope.PLATFORM.value
+            else None,
+            "previous_organization_id": str(previous_organization_id) if previous_organization_id else None,
+            "enrolled_course_id": enrolled_course_id,
+        },
         request=request,
     )
 
