@@ -17,6 +17,7 @@ import hashlib
 from typing import TYPE_CHECKING
 
 from app.legal import LEGAL_DOCUMENTS, document_for
+from app.legal.registry import REFERENCE_DOCUMENTS, required_slugs
 from app.models.legal_acceptance import LegalAcceptance
 
 if TYPE_CHECKING:
@@ -170,3 +171,44 @@ class TestTheLanguageAPersonIsActuallyReading:
         # And the fingerprint is of the English text, so "you agreed to this"
         # still points at something reproducible.
         assert row.content_sha256 == hashlib.sha256(document_for("privacy", "en").body.encode()).hexdigest()
+
+
+class TestAReferencePageIsNotAContract:
+    """The providers list is read, never signed.
+
+    It exists so that swapping a supplier does not ask a hundred people
+    to agree to a policy whose promises have not moved. That only works
+    if the platform never asks for it: a reference page in the consent
+    gate would train people to click through consent screens, which is
+    the opposite of what consent is for.
+    """
+
+    def test_it_is_served_like_any_other_page(self, anon_client: TestClient) -> None:
+        response = anon_client.get(f"{DOCS}/providers")
+
+        assert response.status_code == 200
+        body = response.json()
+        # The date it last changed, carried in the field a signed
+        # document uses for its version.
+        assert body["version"] == REFERENCE_DOCUMENTS["providers"]
+        assert "Resend" in body["body"]
+
+    def test_it_is_never_asked_for(self) -> None:
+        assert "providers" not in required_slugs()
+
+    def test_it_exists_in_every_locale_the_policy_does(self, anon_client: TestClient) -> None:
+        # A person reading the policy in Russian and following its link
+        # must not land in English.
+        assert anon_client.get(f"{DOCS}/providers?locale=ru").json()["locale"] == "ru"
+
+    def test_accepting_it_is_refused(self, student_client: TestClient) -> None:
+        """Even if a stale page or a curious caller tries.
+
+        It has no version to accept, and the acceptance route must not
+        invent one.
+        """
+        response = student_client.post(
+            ACCEPT, json={"slug": "providers", "version": REFERENCE_DOCUMENTS["providers"], "locale": "en"}
+        )
+
+        assert response.status_code in (400, 409, 422)

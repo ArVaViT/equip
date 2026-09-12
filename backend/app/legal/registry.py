@@ -53,8 +53,24 @@ class LegalDocument:
 #: again; it is deliberately a hand edit, because "material change" is a
 #: judgement and not something a file mtime can decide.
 LEGAL_DOCUMENTS: dict[str, str] = {
-    "privacy": "1.0",
+    "privacy": "1.1",
     "terms": "1.1",
+}
+
+#: Pages the policies point at, which are read and never signed.
+#:
+#: The distinction is the whole point. A consent record answers "which text did
+#: this person agree to", and every version bump asks everyone to answer it
+#: again. Housekeeping — which supplier holds the database this quarter — does
+#: not change a single promise, and making it a version bump would train people
+#: to click through a consent screen without reading it, which is the opposite
+#: of what consent is for.
+#:
+#: The value is the date the page last changed, carried in the same field as a
+#: version so one route can serve both kinds. These are NOT in
+#: ``LEGAL_DOCUMENTS``, so ``required_slugs`` never asks for them.
+REFERENCE_DOCUMENTS: dict[str, str] = {
+    "providers": "2026-09-12",
 }
 
 #: (slug, version, locale) -> sha256 of the file as served.
@@ -79,13 +95,21 @@ LEGAL_DOCUMENT_FINGERPRINTS: dict[tuple[str, str, str], str] = {
     ("terms", "1.0", "ru"): "c7f4997fd3c81eb9a4872628993a31d35828db50fa00e9e204f936e7b8b045ac",
     ("terms", "1.1", "en"): "9e557f01a0b4188067b9c62bf02d647e5035dfe594fa506fed770dd136069c30",
     ("terms", "1.1", "ru"): "1f6c209ec108bbb483907f4cf44a182e82c1521ae89b2440ac8b618c9af7e9b1",
+    ("privacy", "1.1", "en"): "fbc305b6b7fc7cb98f0281a64f2d5724c7c0037d58656b677e43eafbeb867ae6",
+    ("privacy", "1.1", "ru"): "5a1ab9ddd4647562347069733af3cfa521b8d3f0a916922b48307bbac825f37a",
 }
 
 
 #: Every file that may ever be read here, keyed by what may ask for it.
 _DOCUMENT_PATHS: dict[tuple[str, str], Path] = {
-    (slug, locale): DOCUMENTS_DIR / f"{slug}.{locale}.md" for slug in LEGAL_DOCUMENTS for locale in LOCALES
+    (slug, locale): DOCUMENTS_DIR / f"{slug}.{locale}.md"
+    for slug in (*LEGAL_DOCUMENTS, *REFERENCE_DOCUMENTS)
+    for locale in LOCALES
 }
+
+#: Version for a slug of either kind — a real version for the documents that
+#: are signed, the last-changed date for the pages that are not.
+_VERSIONS: dict[str, str] = {**LEGAL_DOCUMENTS, **REFERENCE_DOCUMENTS}
 
 
 def required_slugs() -> tuple[str, ...]:
@@ -107,7 +131,7 @@ def document_for(slug: str, locale: str) -> LegalDocument:
     uncached because the cache is per-process — a deploy replaces the process,
     which is the only moment the files can change.
     """
-    if slug not in LEGAL_DOCUMENTS:
+    if slug not in _VERSIONS:
         raise KeyError(f"unknown legal document: {slug}")
     served = locale if locale in LOCALES else GOVERNING_LOCALE
     # Looked up, not built. The filename used to be interpolated from the
@@ -122,7 +146,7 @@ def document_for(slug: str, locale: str) -> LegalDocument:
         raise FileNotFoundError(f"legal document missing from the build: {path.name}")
     return LegalDocument(
         slug=slug,
-        version=LEGAL_DOCUMENTS[slug],
+        version=_VERSIONS[slug],
         locale=served,
         body=path.read_text(encoding="utf-8"),
     )

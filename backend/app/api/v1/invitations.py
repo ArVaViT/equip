@@ -1,10 +1,17 @@
 from typing import cast
 
-from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response
+from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, organization_of, require_director
+from app.api.dependencies import (
+    get_current_user,
+    organization_of,
+    require_director,
+    require_teacher,
+    verify_course_owner,
+)
 from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
 from app.models.invitation import Invitation
 from app.models.user import User, UserRole
 from app.schemas.invitation import (
@@ -52,23 +59,56 @@ def _to_response(invitation: Invitation) -> InvitationResponse:
 def create_invitation(
     body: InvitationCreate,
     request: Request,
-    director: User = Depends(require_director),
+    teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> InvitationResponse:
-    """Admin-only: invite an email to join as teacher or student.
+    """Invite an address onto a course, into the school, or to the platform.
+
+    Who may do which:
+
+    * **A course invitation** may be written by the person who owns the
+      course, which is what makes the invitation come from the teacher
+      the student is about to study under rather than from an
+      administrator they have never met. The course must be theirs —
+      ``verify_course_owner`` — and the role must be ``student``: a
+      teacher who could mint teachers would be an escalation with extra
+      steps.
+    * **Everything else** — inviting into the organization at large, or
+      to the platform, and any invitation carrying a teaching role —
+      stays with a director or a platform admin.
 
     Idempotent on re-invite while a prior invitation for the same
-    (email, role) is still pending and unexpired -- see
-    ``create_or_resend_invitation`` for the dedupe/resend contract.
+    (organization, email, role, course) is still pending and unexpired;
+    see ``create_or_resend_invitation`` for the dedupe/resend contract.
     """
+    is_director = teacher.role in (UserRole.DIRECTOR.value, UserRole.ADMIN.value)
+    if not is_director:
+        if body.scope != "course" or not body.course_id:
+            raise equip_error(
+                ErrorCode.AUTH_FORBIDDEN,
+                status_code=status.HTTP_403_FORBIDDEN,
+                message="A teacher can only invite people onto their own course",
+                context={"resource_type": "invitation"},
+            )
+        if body.role != UserRole.STUDENT.value:
+            raise equip_error(
+                ErrorCode.AUTH_FORBIDDEN,
+                status_code=status.HTTP_403_FORBIDDEN,
+                message="A teacher can invite students; a teaching role is granted by a director",
+                context={"resource_type": "invitation", "field": "role"},
+            )
+        # 404 when the course is not theirs, on the same rule the rest
+        # of this surface follows: whether it exists is not their answer.
+        verify_course_owner(db, body.course_id, teacher.id)
+
     invitation, _is_new = create_or_resend_invitation(
         db,
         email=body.email,
         role=body.role,
         scope=body.scope,
         course_id=body.course_id,
-        invited_by=director.id,
-        organization_id=organization_of(director),
+        invited_by=teacher.id,
+        organization_id=organization_of(teacher),
         request=request,
     )
     return _to_response(invitation)

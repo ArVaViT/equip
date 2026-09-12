@@ -58,6 +58,8 @@ export function matchTitleKey(pathname: string): string | null {
   if (/^\/courses\/[^/]+\/modules\//.test(pathname)) return "pageTitle.module"
   if (pathname.startsWith("/courses/")) return "pageTitle.course"
   if (pathname.startsWith("/admin")) return "pageTitle.admin"
+  // Checked before /privacy, which would otherwise swallow it.
+  if (pathname === "/privacy/providers") return "pageTitle.providers"
   if (pathname === "/privacy") return "pageTitle.privacy"
   if (pathname === "/terms") return "pageTitle.terms"
 

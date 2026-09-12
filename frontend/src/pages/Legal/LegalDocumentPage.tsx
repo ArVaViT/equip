@@ -7,7 +7,16 @@ import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import { renderLegalMarkdown } from "@/components/legal/renderLegalMarkdown"
 import PageSpinner from "@/components/ui/PageSpinner"
 
-export type LegalSlug = "privacy" | "terms"
+/** The pages this component can render.
+ *
+ * `providers` is not a document anybody signs — it is the list the
+ * privacy policy points at, kept separate so that swapping a supplier
+ * does not ask everyone to agree to a policy whose promises have not
+ * moved. The backend serves it from the same route and carries its
+ * last-changed date in the field a signed document uses for its
+ * version.
+ */
+export type LegalSlug = "privacy" | "terms" | "providers"
 
 /**
  * The page the consent checkbox has been pointing at all along.

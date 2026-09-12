@@ -100,6 +100,20 @@ def accept(
     current_user: User = Depends(get_current_user),
 ) -> LegalAcceptanceOut:
     """Record an acceptance of a document the server can still produce."""
+    # Only the documents that are actually asked for can be accepted.
+    # The same route serves reference pages — the provider list the
+    # privacy policy points at — and those are read, never signed: a row
+    # in ``legal_acceptances`` asserting agreement to a page nobody was
+    # ever asked to agree to makes the table harder to read and answers
+    # a question nobody posed.
+    if payload.slug not in required_slugs():
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            message=f"'{payload.slug}' is not a document that requires acceptance",
+            context={"resource_type": "legal_document", "resource_id": payload.slug},
+        )
+
     try:
         doc = document_for(payload.slug, payload.locale)
     except (KeyError, FileNotFoundError) as exc:

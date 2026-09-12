@@ -240,6 +240,8 @@ function AppRoutes() {
               <Route path="/verify/:certificateNumber" element={<VerifyCertificatePage />} />
               <Route path="/privacy" element={<LegalDocumentPage slug="privacy" />} />
               <Route path="/terms" element={<LegalDocumentPage slug="terms" />} />
+              {/* Linked from the privacy policy; read, never signed. */}
+              <Route path="/privacy/providers" element={<LegalDocumentPage slug="providers" />} />
               <Route path="/profile" element={<Gate mode="private"><ProfilePage /></Gate>} />
               <Route path="/calendar" element={<Gate mode="private"><CalendarPage /></Gate>} />
               <Route path="/daily-challenge/archive" element={<Gate mode="private"><DailyChallengeArchivePage /></Gate>} />

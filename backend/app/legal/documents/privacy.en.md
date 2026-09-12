@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Version 1.0 · in force from 13 August 2026**
+**Version 1.1 · in force from 12 September 2026**
 
 Equip is a platform for Bible schools. This document sets out what the platform
 stores, why, who can see it, and how to take it away or delete it. It is written
@@ -30,6 +30,11 @@ The IP is stored precisely so that an acceptance and a declaration can be shown
 to have actually been made — not to track anyone, and it is used for nothing
 else.
 
+**Messages the platform sends you.** What was sent, to which address, when, and
+whether the provider accepted or refused it. This exists so that "I never got
+the email" is a question with an answer; it does not include whether you opened
+a message, and the platform does not place tracking pixels in its mail.
+
 We do **not** store payment details: there are no payments on the platform.
 
 ## Who can see it
@@ -43,13 +48,20 @@ We do **not** store payment details: there are no payments on the platform.
 
 ## The providers the platform cannot run without
 
-| Who | What they see | Why |
-|---|---|---|
-| Supabase | the database and account sign-in | storing everything above |
-| Vercel | requests to the site | delivering the application |
-| Datadog | technical logs and errors | so we notice breakage before you do |
+The platform runs on infrastructure we rent: somewhere to keep the database and
+sign people in, somewhere to serve the application, somewhere to collect
+technical errors, and something that sends the email the platform owes you.
 
-Each of them processes data on our instructions; none of them owns it.
+Each provider processes data on our instructions and on our behalf; none of them
+owns it, and none of them may use it for their own purposes.
+
+**Who they are at any moment is listed at [/privacy/providers](/privacy/providers),
+with the date that list last changed.** It is kept separate on purpose: swapping
+one supplier for another does not change anything we promise you here, and it
+should not oblige a hundred people to re-agree to a document whose substance has
+not moved. What would oblige that is a change to the promises themselves — a new
+purpose, a new category of data, a new audience — and those live in this
+document, where a change means a new version.
 
 ## How long we keep it
 
@@ -73,11 +85,29 @@ You can register yourself from **16**. A younger student is enrolled by a school
 administrator, and in that case parental consent is the school's responsibility —
 they know the family and we do not.
 
+## Email the platform sends
+
+Three kinds, and no others:
+
+- **Account mail** — confirming your address, resetting your password, an
+  invitation somebody sent you. It cannot be turned off; without it an account
+  cannot be used.
+- **Course mail** — things you would be worse off not knowing: a session that is
+  about to start, a certificate decided. Each kind can be turned off in your
+  profile, and every such message carries an unsubscribe link.
+- **Nothing else.** No newsletters, no product announcements, no marketing, and
+  no selling or renting your address to anybody.
+
 ## Changes
 
 If this document changes materially we ask you to agree again, and we record
 which version you agreed to. Old versions are not rewritten. Your consent is a
 record of a specific text, not a tick in the abstract.
+
+Two things deliberately sit outside that promise, because treating them as
+material changes would mean asking everyone to re-agree over housekeeping: the
+list of infrastructure providers, and the exact retention periods where the law
+does not fix them. Both are published with the date they last changed.
 
 ## Law
 

@@ -386,3 +386,91 @@ class TestTheTelemetry:
         # A resend is not a second invitation, and counting it as one
         # would make the acceptance rate look half as good as it is.
         assert "kind=resend" in created[1]
+
+
+class TestTheInvitationComesFromTheTeacher:
+    """A course invitation is written by whoever owns the course.
+
+    The person receiving it is about to study under that teacher, and an
+    invitation signed by an administrator they have never met is a worse
+    invitation. What a teacher may NOT do is mint another teacher —
+    that would be an escalation with extra steps — so a teaching role
+    stays with a director.
+    """
+
+    def test_a_teacher_may_invite_a_student_onto_their_own_course(self, db: Session, admin: User) -> None:
+        teacher = User(
+            id=uuid.UUID("aaaaaaaa-1111-1111-1111-aaaaaaaaaaaa"),
+            email="teacher@example.com",
+            full_name="Teacher",
+            role=UserRole.TEACHER.value,
+        )
+        db.add(teacher)
+        db.commit()
+        course = Course(
+            id="teachers-own",
+            status="published",
+            access_mode="public",
+            created_by=teacher.id,
+            source_locale="en",
+            organization_id=TEST_ORGANIZATION_ID,
+        )
+        db.add(course)
+        db.commit()
+
+        invitation, is_new = create_or_resend_invitation(
+            db,
+            email=INVITEE_EMAIL,
+            role=UserRole.STUDENT.value,
+            invited_by=teacher.id,
+            organization_id=TEST_ORGANIZATION_ID,
+            scope=InvitationScope.COURSE.value,
+            course_id=course.id,
+        )
+
+        assert is_new is True
+        assert invitation.invited_by == teacher.id
+
+
+class TestTheLinkIsSpentOnce:
+    """Accepting ends the invitation, whoever the person turned out to be.
+
+    Two paths reach the same place: somebody who had no account and made
+    one from the link, and somebody who was already signed in. Both end
+    with the invitation accepted and the link refusing a second use.
+    """
+
+    def test_an_account_that_already_existed_spends_it_too(self, db: Session, admin: User) -> None:
+        # No registration step here: this person already had an account
+        # and simply clicked the link.
+        _invitee(db)
+        _course(db)
+        invitation = _invitation(db)
+
+        accepted = _accept(db, invitation)
+
+        assert accepted.status == InvitationStatus.ACCEPTED.value
+        assert accepted.accepted_at is not None
+        assert db.query(Enrollment).filter(Enrollment.user_id == INVITEE_ID).count() == 1
+
+        with pytest.raises(HTTPException) as exc:
+            _accept(db, invitation)
+        assert _status_of(exc.value) == 409
+
+    def test_the_seat_is_what_makes_it_accepted(self, db: Session, admin: User) -> None:
+        """For a course invitation the two are the same event.
+
+        The enrolment and the status flip land in one transaction, so
+        there is no state where the invitation reads as used and the
+        person is not on the course, or the other way round.
+        """
+        _invitee(db)
+        _course(db)
+        invitation = _invitation(db)
+
+        _accept(db, invitation)
+
+        row = db.query(Invitation).filter(Invitation.id == invitation.id).one()
+        enrolment = db.query(Enrollment).filter(Enrollment.user_id == INVITEE_ID).one()
+        assert row.status == InvitationStatus.ACCEPTED.value
+        assert enrolment.course_id == COURSE_ID

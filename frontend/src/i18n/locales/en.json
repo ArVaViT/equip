@@ -729,7 +729,8 @@
     "course": "Course",
     "courses": "Courses",
     "privacy": "Privacy Policy",
-    "terms": "Terms of Use"
+    "terms": "Terms of Use",
+    "providers": "Infrastructure providers"
   },
   "notFound": {
     "title": "Page not found",
