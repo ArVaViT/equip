@@ -1,4 +1,5 @@
-import { AlertTriangle, CalendarDays } from "lucide-react"
+import { useState } from "react"
+import { AlertTriangle, CalendarDays, ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import type { CalendarEvent } from "@/types"
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
@@ -8,8 +9,18 @@ interface Props {
   events: CalendarEvent[]
 }
 
+/**
+ * What is coming, with the next one first and the rest folded away.
+ *
+ * The list used to render five rows permanently. On a course with a
+ * month of deadlines that is a wall above the lessons, and the only row
+ * anybody reads is the first one: the next thing due. The rest are now
+ * behind a count — one click, no navigation — and they stay put once
+ * opened.
+ */
 export function UpcomingEvents({ events }: Props) {
   const { t } = useTranslation()
+  const [expanded, setExpanded] = useState(false)
   if (events.length === 0) return null
 
   const now = new Date()
@@ -30,7 +41,7 @@ export function UpcomingEvents({ events }: Props) {
         {t("courseDetail.upcoming.heading")}
       </h2>
       <div className="space-y-1.5">
-        {upcoming.map((evt) => {
+        {(expanded ? upcoming : upcoming.slice(0, 1)).map((evt) => {
           const evtDate = new Date(evt.event_date)
           const overdue = evtDate < now && evt.event_type === "deadline"
           return (
@@ -84,6 +95,23 @@ export function UpcomingEvents({ events }: Props) {
             </div>
           )
         })}
+        {upcoming.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setExpanded((open) => !open)}
+            aria-expanded={expanded}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs text-ink-muted transition-colors hover:bg-muted/40"
+          >
+            <ChevronDown
+              className={`h-3.5 w-3.5 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
+              strokeWidth={1.75}
+              aria-hidden
+            />
+            {expanded
+              ? t("courseDetail.upcoming.collapse")
+              : t("courseDetail.upcoming.expand", { count: upcoming.length - 1 })}
+          </button>
+        )}
       </div>
     </div>
   )

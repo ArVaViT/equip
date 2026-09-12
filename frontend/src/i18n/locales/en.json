@@ -1963,7 +1963,10 @@
       "enroll": "Enroll"
     },
     "upcoming": {
-      "heading": "Upcoming Deadlines & Events"
+      "heading": "Upcoming Deadlines & Events",
+      "collapse": "Hide",
+      "expand_one": "{{count}} more",
+      "expand_other": "{{count}} more"
     },
     "preview": {
       "eyebrow": "Preview",
@@ -2675,7 +2678,8 @@
       "emailMismatchDetail": "This invitation was sent to <strong>{{invited}}</strong>, but you're signed in as <strong>{{current}}</strong>.",
       "acceptFailed": "Couldn't accept this invitation. Please try again.",
       "accountExists": "You already have an Equip account with this email. Log in, then reopen this invite link to accept it."
-    }
+    },
+    "openCourse": "Open the course"
   },
   "myGrade": {
     "title": "Your grade",

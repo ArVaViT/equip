@@ -1,4 +1,11 @@
 import api from "./api"
+/** What the acceptance actually did, so the page can say it rather than guess. */
+export interface AcceptedInvitation {
+  role: InvitationRole
+  scope: "platform" | "organization" | "course"
+  enrolled_course_id: string | null
+}
+
 import type { Invitation, InvitationRole, InvitationStatus } from "@/types"
 
 export interface InvitationPreview {
@@ -47,8 +54,8 @@ export const invitationsService = {
     return response.data
   },
 
-  async acceptInvitation(token: string): Promise<{ role: InvitationRole }> {
-    const response = await api.post<{ role: InvitationRole }>("/invitations/accept", { token })
+  async acceptInvitation(token: string): Promise<AcceptedInvitation> {
+    const response = await api.post<AcceptedInvitation>("/invitations/accept", { token })
     return response.data
   },
 }

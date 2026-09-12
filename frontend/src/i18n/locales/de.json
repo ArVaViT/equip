@@ -1963,7 +1963,10 @@
       "enroll": "Einschreiben"
     },
     "upcoming": {
-      "heading": "Anstehende Fristen und Termine"
+      "heading": "Anstehende Fristen und Termine",
+      "collapse": "Ausblenden",
+      "expand_one": "{{count}} weiteres",
+      "expand_other": "{{count}} weitere"
     },
     "preview": {
       "eyebrow": "Vorschau",
@@ -2675,7 +2678,8 @@
       "emailMismatchDetail": "Diese Einladung ging an <strong>{{invited}}</strong>, angemeldet sind Sie aber als <strong>{{current}}</strong>.",
       "acceptFailed": "Die Einladung konnte nicht angenommen werden. Bitte erneut versuchen.",
       "accountExists": "Sie haben mit dieser Adresse bereits ein Equip-Konto. Melden Sie sich an und öffnen Sie den Einladungslink dann erneut."
-    }
+    },
+    "openCourse": "Kurs öffnen"
   },
   "myGrade": {
     "title": "Ihre Note",

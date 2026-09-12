@@ -2,14 +2,25 @@ import type { TFunction } from "i18next"
 import type { GrandTourStep } from "@/lib/grandTour"
 
 /**
- * Student grand tour — the first-time guided walkthrough that auto-
- * navigates across the top-level student routes:
+ * Student grand tour — the first-time walkthrough, and it stays on the
+ * dashboard.
  *
- *   /  →  /courses  →  /calendar  →  /certificates  →  /profile  →  /
+ * It used to walk the whole product: dashboard → catalogue → calendar
+ * → certificates → profile, twelve steps, auto-navigating between
+ * routes. Somebody arriving through an invitation wants to open the
+ * course they were invited to, and a twelve-step tour of surfaces they
+ * have not asked about yet stands between them and it.
+ *
+ * Nothing is lost by shortening it: the catalogue, calendar,
+ * certificates and profile each have their own per-page tour, which
+ * fires the first time a person actually goes there — where it is
+ * about something in front of them rather than somewhere they have
+ * been teleported. That is also why they came off
+ * ``STUDENT_GRAND_TOUR_COVERS`` below: staying on that list would mark
+ * them seen and silence the explanation entirely.
  *
  * Each step targets the same ``data-tour="…"`` anchors the per-page
- * tours use, so spotlights land on the exact same elements; the
- * orchestrator just chains them across routes.
+ * tours use, so spotlights land on the exact same elements.
  *
  * **Why student-only**: the teacher journey requires a course id for
  * the editor surfaces (``/teacher/courses/:id``) which a brand-new
@@ -61,90 +72,6 @@ export function studentGrandTourSteps(t: TFunction): GrandTourStep[] {
         align: "end",
       },
     },
-    // ─────── Header (still on /) ───────────────────────────────────
-    // Two header steps before we leave the dashboard so the user
-    // knows the global navigation + where to find their profile
-    // BEFORE the tour teleports them around. Stays on ``/`` so no
-    // route change between Streak and these.
-    {
-      route: "/",
-      element: '[data-tour="header-nav"]',
-      popover: {
-        title: t("grandTour.headerNav.title"),
-        description: t("grandTour.headerNav.body"),
-        side: "bottom",
-        align: "center",
-      },
-    },
-    {
-      route: "/",
-      element: '[data-tour="header-profile"]',
-      popover: {
-        title: t("grandTour.headerProfile.title"),
-        description: t("grandTour.headerProfile.body"),
-        side: "bottom",
-        align: "end",
-      },
-    },
-    // ─────── Catalog ───────────────────────────────────────────────
-    {
-      route: "/courses",
-      element: '[data-tour="catalog-search"]',
-      popover: {
-        title: t("tour.catalog.search.title"),
-        description: t("tour.catalog.search.body"),
-        side: "bottom",
-        align: "center",
-      },
-    },
-    {
-      route: "/courses",
-      element: '[data-tour="catalog-grid"]',
-      popover: {
-        title: t("tour.catalog.grid.title"),
-        description: t("tour.catalog.grid.body"),
-        side: "top",
-        align: "center",
-      },
-    },
-    // ─────── Calendar ──────────────────────────────────────────────
-    // The grid + upcoming panel only render once the user has at
-    // least one enrollment; a brand-new user without any will see an
-    // EmptyState here. The tour step still highlights the page-level
-    // header in that case (the eyebrow + title) via the centered
-    // fallback when the data-tour anchor is missing.
-    {
-      route: "/calendar",
-      element: '[data-tour="calendar-grid"]',
-      popover: {
-        title: t("grandTour.calendar.title"),
-        description: t("grandTour.calendar.body"),
-        side: "top",
-        align: "center",
-      },
-    },
-    // ─────── Certificates ──────────────────────────────────────────
-    {
-      route: "/certificates",
-      element: '[data-tour="certs-header"]',
-      popover: {
-        title: t("tour.certs.header.title"),
-        description: t("tour.certs.header.body"),
-        side: "bottom",
-        align: "start",
-      },
-    },
-    // ─────── Profile ───────────────────────────────────────────────
-    {
-      route: "/profile",
-      element: '[data-tour="profile-form"]',
-      popover: {
-        title: t("tour.profile.form.title"),
-        description: t("tour.profile.form.body"),
-        side: "top",
-        align: "center",
-      },
-    },
     // ─────── Finale (back home) ────────────────────────────────────
     {
       route: "/",
@@ -168,10 +95,4 @@ export function studentGrandTourSteps(t: TFunction): GrandTourStep[] {
  * skips, and a contextual tour the first time you land on them is
  * still desirable.
  */
-export const STUDENT_GRAND_TOUR_COVERS = [
-  "student-dashboard-v1",
-  "courses-catalog-v1",
-  "calendar-v1",
-  "certificates-v1",
-  "profile-v1",
-] as const
+export const STUDENT_GRAND_TOUR_COVERS = ["student-dashboard-v1"] as const

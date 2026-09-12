@@ -27,6 +27,7 @@ export default function AcceptInvite() {
     submitting,
     googleLoading,
     acceptedRole,
+    enrolledCourseId,
     currentUserEmail,
     passwordAffordances,
     handleChange,
@@ -119,9 +120,12 @@ export default function AcceptInvite() {
               ? t("invite.acceptedAs", { role: t(ROLE_I18N_KEY[acceptedRole as "teacher" | "student"]) })
               : t("invite.accepted")}
           </p>
-          <Link to="/" className="block w-full">
+          {/* Straight into the course when there is one. Somebody
+              invited onto a course came for the course; the dashboard
+              is a detour they then have to find their way out of. */}
+          <Link to={enrolledCourseId ? `/courses/${enrolledCourseId}` : "/"} className="block w-full">
             <Button size="lg" className="w-full">
-              {t("invite.goToDashboard")}
+              {enrolledCourseId ? t("invite.openCourse") : t("invite.goToDashboard")}
             </Button>
           </Link>
         </div>

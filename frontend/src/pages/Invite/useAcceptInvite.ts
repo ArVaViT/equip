@@ -6,6 +6,7 @@ import { invitationsService, type InvitationPreview } from "@/services/invitatio
 import { makeAcceptInviteSchema } from "@/lib/validations/auth"
 import { setPendingInviteToken, takePendingInviteToken } from "@/lib/pendingInvite"
 import { isAxiosError } from "axios"
+import { enrollmentsChanged } from "@/lib/enrollmentsChanged"
 import { getErrorCode } from "@/lib/errorCode"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { authErrorMessage, isDuplicateEmail } from "@/lib/authError"
@@ -49,6 +50,7 @@ export function useAcceptInvite() {
   const [submitting, setSubmitting] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [acceptedRole, setAcceptedRole] = useState<string | null>(null)
+  const [enrolledCourseId, setEnrolledCourseId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!token) {
@@ -118,6 +120,12 @@ export function useAcceptInvite() {
     try {
       const result = await invitationsService.acceptInvitation(token)
       setAcceptedRole(result.role)
+      setEnrolledCourseId(result.enrolled_course_id)
+      // The dashboard reads enrollments in an effect keyed on the user
+      // and the locale; accepting moves neither, so without this it
+      // keeps the empty state it loaded before and only a refresh shows
+      // the course.
+      enrollmentsChanged()
       await refreshUser()
       setPhase("done")
     } catch (err) {
@@ -208,6 +216,7 @@ export function useAcceptInvite() {
     submitting,
     googleLoading,
     acceptedRole,
+    enrolledCourseId,
     currentUserEmail: user?.email ?? null,
     passwordAffordances,
     handleChange,
