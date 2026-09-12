@@ -194,6 +194,18 @@ BEGIN
     RAISE EXCEPTION 'profiles.created_at is immutable'
       USING ERRCODE = 'check_violation';
   END IF;
+  IF NEW.organization_id IS DISTINCT FROM OLD.organization_id THEN
+    RAISE EXCEPTION 'profiles.organization_id is granted by an invitation or a director, not by the client'
+      USING ERRCODE = 'check_violation';
+  END IF;
+  IF NEW.deactivated_at IS DISTINCT FROM OLD.deactivated_at THEN
+    RAISE EXCEPTION 'profiles.deactivated_at can only be changed by an administrator'
+      USING ERRCODE = 'check_violation';
+  END IF;
+  IF NEW.onboarding_completed_at IS DISTINCT FROM OLD.onboarding_completed_at THEN
+    RAISE EXCEPTION 'profiles.onboarding_completed_at is recorded by the server'
+      USING ERRCODE = 'check_violation';
+  END IF;
   RETURN NEW;
 END;
 $$;

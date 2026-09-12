@@ -428,6 +428,68 @@ BEGIN
   RAISE NOTICE 'OK: certificates scoped to the reader''s organization';
 END $$;
 
+-- 15) profiles: the columns a client must not write.
+--
+-- `authenticated` holds table-level UPDATE on profiles and
+-- `profiles_update_own_safe_fields` allows the own row, so every column
+-- the immutable-fields trigger does not name is writable from a browser
+-- holding nothing but the anon key and a session. Three were added to
+-- the table after the trigger was written and are worth more than the
+-- ones it already guards: `organization_id` reads another school's
+-- institute courses and cohorts, `deactivated_at` un-shuts-off a closed
+-- account, `onboarding_completed_at` steps over the legal consent gate.
+--
+-- Still the director of school A from section 14.
+
+DO $$
+BEGIN
+  UPDATE public.profiles SET organization_id = 'bbbb2222-0000-0000-0000-000000000002'
+  WHERE id = '33333333-3333-3333-3333-333333333333';
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated walked into another organization';
+EXCEPTION
+  WHEN check_violation THEN RAISE NOTICE 'OK: profiles.organization_id is not client-writable (trigger)';
+END $$;
+
+-- Shut the account off as the owner first: "NULL -> NULL" is not a change,
+-- so an account that was never deactivated cannot prove anything here.
+RESET ROLE;
+UPDATE public.profiles SET deactivated_at = now()
+WHERE id = '33333333-3333-3333-3333-333333333333';
+SET ROLE authenticated;
+
+DO $$
+BEGIN
+  UPDATE public.profiles SET deactivated_at = NULL
+  WHERE id = '33333333-3333-3333-3333-333333333333';
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated cleared its own deactivation';
+EXCEPTION
+  WHEN check_violation THEN RAISE NOTICE 'OK: profiles.deactivated_at is not client-writable (trigger)';
+END $$;
+
+DO $$
+BEGIN
+  UPDATE public.profiles SET onboarding_completed_at = now()
+  WHERE id = '33333333-3333-3333-3333-333333333333';
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated skipped the first-run gate';
+EXCEPTION
+  WHEN check_violation THEN RAISE NOTICE 'OK: profiles.onboarding_completed_at is not client-writable (trigger)';
+END $$;
+
+-- Positive control for this section: the safe fields still move, so the
+-- three assertions above are proving a guard rather than a broken write
+-- path.
+DO $$
+DECLARE n int;
+BEGIN
+  UPDATE public.profiles SET full_name = 'Director A', preferred_locale = 'uk'
+  WHERE id = '33333333-3333-3333-3333-333333333333';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'HARNESS BROKEN: own-row safe-field update affected % row(s), expected 1', n;
+  END IF;
+  RAISE NOTICE 'OK: full_name and preferred_locale remain client-writable (positive control)';
+END $$;
+
 RESET ROLE;
 
 SELECT 'RLS policy assertions passed' AS result;
