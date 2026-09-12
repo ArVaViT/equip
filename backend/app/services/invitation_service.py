@@ -14,7 +14,7 @@ from app.models.invitation import Invitation, InvitationScope, InvitationStatus
 from app.models.user import User, higher_role
 from app.services.audit_service import log_action
 from app.services.course_service._enrollment import enroll_user_in_course
-from app.services.email_service import send_invitation_email
+from app.services.email.invitation import send_invitation_email
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 from app.services.user_locale import preferred_locale_of
 
@@ -61,6 +61,25 @@ def _inviter_locale(db: Session, invited_by: uuid.UUID | str | None) -> LocaleCo
     an answer to "we know nothing", not a substitute for asking.
     """
     return preferred_locale_of(db, invited_by)
+
+
+def _mail_the_invitation(db: Session, invitation: Invitation, *, invited_by: UUID) -> None:
+    """Send the invitation, in the inviting person's language and name.
+
+    Delivery is deliberately not checked: the row and its token already
+    exist, the link works whether or not the mail got out, and a
+    provider hiccup must not turn "invitation created" into an error on
+    somebody's screen. What a failure does leave is a log line — see
+    ``services/email/send.py``.
+    """
+    inviter = db.query(User).filter(User.id == invited_by).first()
+    send_invitation_email(
+        db,
+        invitation,
+        accept_url=_accept_url(invitation.token),
+        locale=_inviter_locale(db, invited_by),
+        inviter_name=inviter.full_name if inviter else None,
+    )
 
 
 def course_of_organization(db: Session, course_id: str, organization_id: UUID) -> Course:
@@ -170,12 +189,7 @@ def create_or_resend_invitation(
         .first()
     )
     if existing is not None and not is_invitation_expired(existing):
-        send_invitation_email(
-            to_email=normalized_email,
-            role=role,
-            accept_url=_accept_url(existing.token),
-            locale=_inviter_locale(db, invited_by),
-        )
+        _mail_the_invitation(db, existing, invited_by=invited_by)
         return existing, False
 
     if existing is not None:
@@ -204,12 +218,7 @@ def create_or_resend_invitation(
         request=request,
     )
 
-    send_invitation_email(
-        to_email=normalized_email,
-        role=role,
-        accept_url=_accept_url(invitation.token),
-        locale=_inviter_locale(db, invited_by),
-    )
+    _mail_the_invitation(db, invitation, invited_by=invited_by)
     return invitation, True
 
 
