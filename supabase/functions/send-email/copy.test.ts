@@ -21,6 +21,7 @@ import {
   knownLocale,
   localeFor,
   renderEmail,
+  renderText,
 } from "./copy.ts";
 
 const TYPES = ["signup", "recovery", "magiclink", "email_change"] as const;
@@ -292,4 +293,30 @@ Deno.test("the emails are dressed in the product's colours", () => {
   assertEquals(retired, [], `retired palette in the email HTML: ${retired.join(", ")}`);
   assertStringIncludes(html, "#1E1C1A");
   assertStringIncludes(html, "serif");
+});
+
+Deno.test("the text alternative keeps every line apart", () => {
+  // The failure this exists to stop: Resend derives the text part by
+  // stripping tags, and a heading, a sentence and a link arrive as one
+  // run of words. Every reader whose client prefers text sees that, and
+  // so does every filter weighing whether a person wrote it.
+  const copy = copyFor("signup", "ru");
+  const text = renderText(copy, "Денис", "https://equipbible.com/confirm?token=abc");
+
+  assertStringIncludes(text, "https://equipbible.com/confirm?token=abc");
+  assertEquals(text.includes("<"), false);
+  // The call to action stands on its own line, with its URL beside it.
+  const cta = text.split("\n").find((line) => line.includes("https://"));
+  assertStringIncludes(cta ?? "", copy.cta);
+});
+
+Deno.test("every locale writes its own text alternative", () => {
+  for (const locale of LOCALES) {
+    const copy = copyFor("signup", locale);
+    const text = renderText(copy, "", "https://equipbible.com/confirm");
+
+    assertStringIncludes(text, copy.body);
+    assertStringIncludes(text, copy.footer);
+    assertEquals(text.trim().length > 0, true);
+  }
 });
