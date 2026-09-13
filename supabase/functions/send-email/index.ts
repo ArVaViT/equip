@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { Webhook } from "https://esm.sh/standardwebhooks@1.0.0";
-import { FROM, confirmationUrl, copyFor, localeFor, renderEmail, hasCopyFor } from "./copy.ts";
+import { FROM, confirmationUrl, copyFor, localeFor, renderEmail, renderText, hasCopyFor } from "./copy.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SEND_EMAIL_HOOK_SECRET = Deno.env.get("SEND_EMAIL_HOOK_SECRET");
@@ -123,6 +123,9 @@ Deno.serve(async (req: Request) => {
         to: [user.email],
         subject: copy.subject,
         html: renderEmail(copy, name, confirmUrl),
+        // Without our own, Resend derives one by stripping tags and the
+        // reader gets a wall of words. See `renderText`.
+        text: renderText(copy, name, confirmUrl),
       }),
     });
 

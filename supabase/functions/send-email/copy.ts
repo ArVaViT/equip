@@ -277,6 +277,25 @@ export function renderEmail(copy: Copy, name: string, url: string): string {
 }
 
 /**
+ * The same message as plain text, written rather than derived.
+ *
+ * Left without one, Resend builds the text alternative by stripping tags,
+ * and the result reads as one run of words with a URL in it — the shape of
+ * the spam corpus, and what a text client actually shows. The backend's
+ * invitation stopped doing that on 2026-09-12; this is the same fix for
+ * the one message every new account must receive to exist at all.
+ */
+export function renderText(copy: Copy, name: string, url: string): string {
+  const heading = copy.greeting ? copy.heading : `${copy.heading}${name ? `, ${name}` : ""}`;
+  const lines = [heading, ""];
+  if (copy.greeting) {
+    lines.push(copy.greeting(name), "");
+  }
+  lines.push(copy.body, "", `${copy.cta}: ${url}`, "", copy.footer);
+  return lines.join("\n");
+}
+
+/**
  * Every `email_action_type` GoTrue can send this hook, verbatim from the
  * Send Email Hook schema. Kept here so a test can hold the keys of `COPY`
  * against it: the table was written with `magic_link`, GoTrue sends
