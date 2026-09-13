@@ -151,3 +151,35 @@ def render(message: Message) -> str:
         f"{_lede(message)}{_facts(message)}{_cta(message)}{_notes(message)}"
         f"</table></td></tr></table></body>"
     )
+
+
+def render_text(message: Message) -> str:
+    """The plain-text alternative, written rather than derived.
+
+    Left to the provider, this is produced by stripping tags, and a
+    table becomes one run-on line: "First session2026-09-12, 20:00
+    EasternLessons4, 75 minutes each". Anyone whose client prefers text
+    reads that, and so does every filter weighing whether the message
+    looks like something a person would send.
+
+    So it is written here, from the same values as the HTML, and the
+    two cannot drift: they are the same object.
+    """
+    lines: list[str] = []
+    if message.eyebrow:
+        lines.append(message.eyebrow.upper())
+        lines.append("")
+    lines.append(message.title)
+    if message.lede:
+        lines.append("")
+        lines.append(message.lede)
+    if message.facts:
+        lines.append("")
+        for fact in message.facts:
+            lines.append(f"{fact.label}: {fact.value}")
+    lines.append("")
+    lines.append(f"{message.cta_label}: {message.cta_url}")
+    if message.notes:
+        lines.append("")
+        lines.extend(message.notes)
+    return "\n".join(lines)

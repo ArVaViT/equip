@@ -31,8 +31,35 @@ logger = logging.getLogger(__name__)
 _RESEND_URL = "https://api.resend.com/emails"
 #: Not configurable, and deliberately in one place: the domain is
 #: verified with the provider and the DNS records are cut for it.
-FROM = "Equip <noreply@equipbible.com>"
+FROM_ADDRESS = "noreply@equipbible.com"
+FROM = f"Equip <{FROM_ADDRESS}>"
 _TIMEOUT_SECONDS = 10.0
+#: Characters a display name may not carry into a header.
+_FORBIDDEN_IN_A_NAME = frozenset('"\\<>\r\n\t')
+#: Long enough for any real name, short of a header a client truncates.
+_NAME_LIMIT = 64
+
+
+def _from_header(sender_name: str | None) -> str:
+    """Who the message is from, as a mail client shows it.
+
+    "Equip" alone is a system nobody recognises. "Dmytro Kostantynov
+    via Equip" is a person the reader knows, next to the product that
+    sent it — the shape Google and the rest have used for years, and
+    the one a spam filter has seen a billion times. The address stays
+    the verified one; only the display name changes, so SPF, DKIM and
+    DMARC are untouched.
+    """
+    if not sender_name:
+        return FROM
+    # The name is typed by a person and lands in a header, so it is
+    # stripped down to what a display name may contain: quotes and
+    # backslashes would close ours early, angle brackets would look
+    # like a second address, and a newline would start a header of the
+    # attacker's choosing.
+    cleaned = "".join(" " if character in _FORBIDDEN_IN_A_NAME else character for character in sender_name)
+    cleaned = " ".join(cleaned.split())[:_NAME_LIMIT].strip()
+    return f'"{cleaned} via Equip" <{FROM_ADDRESS}>' if cleaned else FROM
 
 
 @dataclass(frozen=True)
@@ -52,11 +79,31 @@ def _domain_of(address: str) -> str:
     return domain or "unknown"
 
 
-def send_email(*, to: str, subject: str, html: str, kind: str) -> Delivery:
+def send_email(
+    *,
+    to: str,
+    subject: str,
+    html: str,
+    kind: str,
+    text: str | None = None,
+    sender_name: str | None = None,
+    reply_to: str | None = None,
+) -> Delivery:
     """Hand one message to the provider.
 
     ``kind`` is the message type ("invitation"), carried into telemetry
     so a failure can be attributed without reading the body.
+
+    ``text`` is the plain-text alternative, and it is not optional in
+    spirit. Left out, the provider derives one by stripping tags, and a
+    table-based layout comes back as "First session2026-09-12, 20:00
+    EasternLessons4" — unreadable for anyone whose client prefers text,
+    and a poor signal to every filter that reads it. Measured on a real
+    message on 2026-09-12, which is how it was found.
+
+    ``reply_to`` is the inviting person's own address. A message nobody
+    can answer is a message a filter has every reason to distrust, and
+    a person who replies "is this really you?" should reach a human.
     """
     if settings.RESEND_API_KEY is None or not settings.RESEND_API_KEY.get_secret_value():
         # A deployment without the key is a real configuration (preview
@@ -73,7 +120,14 @@ def send_email(*, to: str, subject: str, html: str, kind: str) -> Delivery:
                 "Authorization": f"Bearer {settings.RESEND_API_KEY.get_secret_value()}",
                 "Content-Type": "application/json",
             },
-            json={"from": FROM, "to": [to], "subject": subject, "html": html},
+            json={
+                "from": _from_header(sender_name),
+                "to": [to],
+                "subject": subject,
+                "html": html,
+                **({"text": text} if text else {}),
+                **({"reply_to": reply_to} if reply_to else {}),
+            },
             timeout=_TIMEOUT_SECONDS,
         )
     except httpx.HTTPError as exc:

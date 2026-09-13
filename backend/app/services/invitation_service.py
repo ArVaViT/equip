@@ -80,6 +80,7 @@ def _mail_the_invitation(db: Session, invitation: Invitation, *, invited_by: UUI
         accept_url=_accept_url(invitation.token),
         locale=_inviter_locale(db, invited_by),
         inviter_name=inviter.full_name if inviter else None,
+        inviter_email=inviter.email if inviter else None,
     )
 
 

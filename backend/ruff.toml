@@ -44,6 +44,9 @@ known-first-party = ["app"]
 # bug than the one that happened.
 "tests/test_the_invitation_arrives_in_a_language.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/test_a_translation_betrayed_by_its_punctuation.py" = ["RUF001", "RUF002", "RUF003"]
+# The deliverability test quotes the run-on Russian line a mail client
+# actually showed. The characters are the evidence.
+"tests/test_the_letter_looks_like_a_person_sent_it.py" = ["RUF001", "RUF002", "RUF003"]
 
 [format]
 quote-style = "double"
