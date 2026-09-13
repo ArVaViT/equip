@@ -133,7 +133,7 @@ In `Logs` → `Configuration` → `Generate Metrics` → `New Metric`:
 
 | Field | Value |
 |---|---|
-| Filter query | `@metric:equip.gemini.tokens_thinking_total` |
+| Filter query | `source:vercel @metric.name:equip.gemini.tokens_thinking_total` |
 | Metric name | `equip.gemini.tokens_thinking_total` |
 | Value | `@value` — the numeric field, **not** "count of logs" |
 | Group by | `model`, and nothing else |
@@ -178,6 +178,20 @@ the backend logs structured `equip.metric:` lines (see
 drain ships them to Datadog, and the log pipeline **'Equip — drain
 metric parsing'** parses them into generated metrics
 (type: distribution).
+
+**A metric with no rule is a metric that does not exist.** The rule is
+created per name, by hand, and the emitter cannot tell you it is
+missing: the code logs, the line is parsed, and nothing counts it. Six
+names sat that way from 2026-09-11 to 2026-09-13. When you add a metric,
+add its rule in the same sitting, and check for a point before calling
+it done.
+
+The rule's filter must be `source:vercel @metric.name:<name>` and its
+compute a distribution over `@metric.value`. The parsed attribute is
+`@metric.name`, **not** `@metric` — a rule written the second way is
+accepted by the API, appears in the list, and silently matches nothing.
+That is how the six above were first created, and how they stayed at
+zero for another half hour.
 
 Consequences for queries:
 
