@@ -108,3 +108,27 @@ def test_somebody_not_enrolled_cannot_mark_anything(student_client, db: Session,
 
 def test_a_chapter_that_does_not_exist_is_a_404(student_client, db: Session, teacher, student) -> None:
     assert student_client.put(URL.format("no-such-chapter")).status_code == 404
+
+
+def test_a_teacher_can_walk_their_own_draft(client, db: Session, teacher) -> None:
+    """Found in production on 2026-09-12, three refusals in seven seconds.
+
+    A teacher previewing the course they are writing is not enrolled in
+    it — nobody is; it is still a draft. Every other read path already
+    lets the owner through; this one asked for enrolment and nothing
+    else, so the button it draws was a button that always failed.
+    """
+    chapter = _chapter(db, "read-own-draft", enrol=False)
+
+    response = client.put(URL.format(chapter.id))
+
+    assert response.status_code == 200, response.text
+
+
+def test_a_stranger_still_cannot(student_client, db: Session, teacher, student) -> None:
+    """The owner is let through; enrolment is still the rule for everyone else."""
+    chapter = _chapter(db, "read-stranger", enrol=False)
+
+    response = student_client.put(URL.format(chapter.id))
+
+    assert response.status_code == 403
