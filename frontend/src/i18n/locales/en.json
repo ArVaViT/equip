@@ -1945,6 +1945,7 @@
     "noLessonsYetDescription": "The teacher hasn't published any lessons for this course. Check back soon — they'll appear here as they're added.",
     "lessonLocked": "Locked",
     "lessonLockHint": "Finish the previous lesson to unlock this one.",
+    "lessonNotOpenedHint": "The teacher has not opened this lesson yet.",
     "due": "Due",
     "overdue": "Overdue",
     "downloadFailed": "Failed to download file",

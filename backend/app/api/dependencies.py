@@ -12,6 +12,7 @@ from app.core.security import decode_access_token
 from app.models.course import Chapter, Course, CourseStatus, Module
 from app.models.enrollment import Enrollment
 from app.models.user import User, UserRole, can_teach
+from app.services.chapter_gate import chapter_is_open_to
 
 security = HTTPBearer()
 optional_security = HTTPBearer(auto_error=False)
@@ -355,6 +356,16 @@ def verify_chapter_access(db: Session, chapter_id: str, user: User) -> Chapter:
             ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
             message="You must be enrolled in this course",
+        )
+    # The lock, honoured here rather than only drawn in the web app. See
+    # ``app.services.chapter_gate`` for the rule and for what it cost to
+    # leave it to the client.
+    if not chapter_is_open_to(db, chapter, user.id):
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="This lesson is not open yet",
+            context={"resource_type": "chapter", "resource_id": chapter_id},
         )
     return chapter
 

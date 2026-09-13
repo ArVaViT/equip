@@ -1945,6 +1945,7 @@
     "noLessonsYetDescription": "Die Lehrkraft hat für diesen Kurs noch keine Lektionen veröffentlicht. Schauen Sie bald wieder vorbei — sie erscheinen hier, sobald sie hinzugefügt werden.",
     "lessonLocked": "Gesperrt",
     "lessonLockHint": "Schließen Sie die vorherige Lektion ab, um diese freizuschalten.",
+    "lessonNotOpenedHint": "Die Lehrkraft hat diese Lektion noch nicht freigegeben.",
     "due": "Fällig",
     "overdue": "Überfällig",
     "downloadFailed": "Datei konnte nicht heruntergeladen werden",
