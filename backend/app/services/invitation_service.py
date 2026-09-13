@@ -136,6 +136,28 @@ def course_title_for_invitation(db: Session, invitation: Invitation, *, display_
     return titles.get(invitation.course_id) or None
 
 
+def _subsumes_scope(outer_scope: str, outer_course: str | None, inner_scope: str, inner_course: str | None) -> bool:
+    """Does a grant of ``outer`` already include everything ``inner`` gives?
+
+    Platform covers everything; a course covers its school; a school
+    covers itself, and covers nothing about a course. Two courses cover
+    each other only when they are the same course.
+    """
+    if outer_scope == InvitationScope.PLATFORM.value:
+        return True
+    if inner_scope == InvitationScope.PLATFORM.value:
+        return False
+    if inner_scope == InvitationScope.ORGANIZATION.value:
+        # Both course and organization grants carry school membership.
+        return True
+    return outer_scope == InvitationScope.COURSE.value and outer_course == inner_course
+
+
+def _subsumes(existing: Invitation, *, scope: str, course_id: str | None) -> bool:
+    """Whether the invitation already sent covers what is being asked for."""
+    return _subsumes_scope(existing.scope, existing.course_id, scope, course_id)
+
+
 def create_or_resend_invitation(
     db: Session,
     *,
@@ -166,6 +188,22 @@ def create_or_resend_invitation(
     already shared stays valid on its original clock. An
     expired-but-still-``pending`` row is revoked first so the fresh
     insert does not collide with the index.
+
+    **Scopes are not peers.** A course invitation grants school
+    membership *and* the course; a school invitation grants only the
+    membership. So the school one is contained in the course one, and
+    issuing both leaves a person holding two links that do different
+    things -- which is what happened on 2026-09-12: somebody with a
+    pending invitation to a course was invited to the school as a nudge,
+    and got a second email whose link would have put them in the school
+    without the course they were nudged about.
+
+    Hence ``_subsumes``: asked for the lesser grant when the greater one
+    is already pending, this resends the greater. Asked for the greater
+    when only the lesser is pending, it revokes the lesser -- either way
+    one person holds one link. Two invitations to two *different*
+    courses stay two invitations: those are genuinely different offers,
+    and each email names its course.
     """
     normalized_email = email.strip().lower()
     if scope == InvitationScope.COURSE.value:
@@ -179,7 +217,36 @@ def create_or_resend_invitation(
             context={"resource_type": "invitation"},
         )
 
-    existing = (
+    # Every live invitation this school already holds for this person in
+    # this role. The exact match is one of them; a course invitation
+    # standing in for a requested school one is another.
+    live = [
+        candidate
+        for candidate in db.query(Invitation)
+        .filter(
+            Invitation.organization_id == organization_id,
+            Invitation.email == normalized_email,
+            Invitation.role == role,
+            Invitation.status == InvitationStatus.PENDING.value,
+        )
+        .all()
+        if not is_invitation_expired(candidate)
+    ]
+
+    standing = next((row for row in live if _subsumes(row, scope=scope, course_id=course_id)), None)
+    if standing is not None:
+        increment("equip.invitations.created_total", scope=scope, role=role, kind="resend")
+        _mail_the_invitation(db, standing, invited_by=invited_by)
+        return standing, False
+
+    # Nothing outstanding covers what is being offered now, so whatever
+    # the new one subsumes is retired rather than left to arrive as a
+    # second, weaker link.
+    for row in live:
+        if _subsumes_scope(scope, course_id, row.scope, row.course_id):
+            row.status = InvitationStatus.REVOKED.value
+
+    expired_exact = (
         db.query(Invitation)
         .filter(
             Invitation.organization_id == organization_id,
@@ -190,13 +257,8 @@ def create_or_resend_invitation(
         )
         .first()
     )
-    if existing is not None and not is_invitation_expired(existing):
-        increment("equip.invitations.created_total", scope=scope, role=role, kind="resend")
-        _mail_the_invitation(db, existing, invited_by=invited_by)
-        return existing, False
-
-    if existing is not None:
-        existing.status = InvitationStatus.REVOKED.value
+    if expired_exact is not None:
+        expired_exact.status = InvitationStatus.REVOKED.value
 
     invitation = Invitation(
         organization_id=organization_id,
