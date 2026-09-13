@@ -17,9 +17,9 @@ from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.metrics import increment
 from app.models.chapter_progress import ChapterProgress
-from app.models.course import Chapter
+from app.models.course import Chapter, Course
 from app.models.enrollment import Enrollment
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.services.audit_service import log_action
 from app.services.course_service import sync_enrollment_progress
 from app.services.domain_access import resolve_chapter_course_id
@@ -157,10 +157,18 @@ def mark_chapter_read(
         )
 
     course_id = resolve_chapter_course_id(db, chapter_id)
+    # A teacher walking their own draft is not enrolled in it, and on
+    # 2026-09-12 one pressed this three times in a row and was refused
+    # three times. Every other read path already lets the owner and an
+    # admin through; this one demanded enrolment and nothing else.
+    course = db.query(Course).filter(Course.id == course_id).first()
+    privileged = current_user.role == UserRole.ADMIN.value or (
+        course is not None and str(course.created_by) == str(current_user.id)
+    )
     enrolled = (
         db.query(Enrollment).filter(Enrollment.user_id == current_user.id, Enrollment.course_id == course_id).first()
     )
-    if not enrolled:
+    if not enrolled and not privileged:
         raise equip_error(
             ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
