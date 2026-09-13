@@ -163,6 +163,59 @@ describe("what stands between a student and the next lesson", () => {
     expect(screen.queryByText("Locked")).not.toBeInTheDocument()
   })
 
+  it("keeps a lesson the teacher locked shut, with no assessment to open it", () => {
+    // The shape of Dmytro's preaching course on the day it launched:
+    // one reading lesson written, three locked and empty behind it.
+    // Nothing before them can be *completed*, and the old rule read
+    // that as "not locked" — so three unwritten lessons stood open to
+    // everybody who enrolled.
+    show(
+      course({
+        chapters: [
+          chapter({ id: "w1", title: "The topical sermon", order_index: 0 }),
+          chapter({ id: "w2", title: "The textual sermon", order_index: 1, is_locked: true }),
+          chapter({ id: "w3", title: "The expository sermon", order_index: 2, is_locked: true }),
+          chapter({ id: "w4", title: "The art of delivery", order_index: 3, is_locked: true }),
+        ],
+      }),
+      new Set<string>(),
+    )
+
+    expect(screen.getAllByText("Locked")).toHaveLength(3)
+    expect(screen.queryByRole("link", { name: /The textual sermon/ })).not.toBeInTheDocument()
+    expect(screen.getByText(/has not opened this lesson yet/)).toBeInTheDocument()
+    // And it does not tell the reader to finish something they cannot.
+    expect(screen.queryByText(/Finish the previous lesson/)).not.toBeInTheDocument()
+  })
+
+  it("stays shut even when we could not find out what the reader finished", () => {
+    // The fail-open is for the lock a reader can open. This one they
+    // cannot, so unknown progress is no reason to hand over an empty
+    // lesson.
+    show(
+      course({
+        chapters: [
+          chapter({ id: "w1", title: "The topical sermon", order_index: 0 }),
+          chapter({ id: "w2", title: "The textual sermon", order_index: 1, is_locked: true }),
+        ],
+      }),
+      null,
+    )
+
+    expect(screen.getByText("Locked")).toBeInTheDocument()
+  })
+
+  it("locks the very first lesson when it is the one the teacher shut", () => {
+    show(
+      course({
+        chapters: [chapter({ id: "w1", title: "Not ready", order_index: 0, is_locked: true })],
+      }),
+      new Set<string>(),
+    )
+
+    expect(screen.getByText("Locked")).toBeInTheDocument()
+  })
+
   it("explains the rule once, next to the first door it applies to", () => {
     show(
       course({

@@ -34,15 +34,45 @@ export function isChapterComplete(
   return isGradable && completed.has(chapter.id)
 }
 
+/**
+ * Why a chapter is shut, when it is.
+ *
+ * Two different locks wore the same flag and only one of them worked.
+ *
+ * `"sequence"` is the one that did: finish the assessment before this
+ * lesson and it opens. The reader is told how, because there is a how.
+ *
+ * `"teacher"` is the one that did not. A locked lesson whose
+ * predecessor is a reading — or that has no predecessor — has nothing
+ * a reader could complete, and the old rule read that as "not locked".
+ * So three unwritten lessons of a live course stood open to everybody
+ * the day it launched. Nothing to earn means the teacher shut it, and
+ * a teacher's lock does not open by reading harder.
+ */
+export type LockReason = "sequence" | "teacher"
+
+export function chapterLockReason(
+  completed: CompletedIds,
+  chapter: ChapterLike,
+  previous: ChapterLike | null,
+  previousIsGradable: boolean,
+): LockReason | null {
+  if (!chapter.is_locked) return null
+  if (previous === null || !previousIsGradable) return "teacher"
+  // Fails open on unknown progress, and only here: this is the lock a
+  // reader can open, so guessing wrong would wall them out of what
+  // they have already earned. See the note at the top.
+  if (completed === null) return null
+  return completed.has(previous.id) ? null : "sequence"
+}
+
 export function isChapterLocked(
   completed: CompletedIds,
   chapter: ChapterLike,
   previous: ChapterLike | null,
   previousIsGradable: boolean,
 ): boolean {
-  // Fails open on unknown. See the note above.
-  if (completed === null) return false
-  return Boolean(chapter.is_locked) && previous !== null && previousIsGradable && !completed.has(previous.id)
+  return chapterLockReason(completed, chapter, previous, previousIsGradable) !== null
 }
 
 /**

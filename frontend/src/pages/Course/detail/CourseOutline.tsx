@@ -25,7 +25,8 @@ import { isGradableChapterType } from "@/lib/chapterTypes"
 import { chapterHref, type CourseOutlineGroup, type CourseStructure } from "@/lib/courseStructure"
 import type { Chapter, Module } from "@/types"
 import { formatDate } from "./types"
-import { isChapterComplete, isChapterLocked, isChapterRead, isModuleLocked } from "../moduleProgress"
+import { chapterLockReason, isChapterComplete, isChapterRead, isModuleLocked } from "../moduleProgress"
+import type { LockReason } from "../moduleProgress"
 import { orNotTranslated } from "@/lib/untranslated"
 
 /**
@@ -71,7 +72,7 @@ function gradableIds(chapters: Chapter[]): string[] {
 /** A row of the outline, resolved: which lock applies and where it sits. */
 type OutlineRow =
   | { kind: "module"; key: string; group: CourseOutlineGroup; module: Module; ordinal: number; locked: boolean }
-  | { kind: "lesson"; key: string; chapter: Chapter; position: number; locked: boolean }
+  | { kind: "lesson"; key: string; chapter: Chapter; position: number; locked: boolean; lockReason: LockReason | null }
 
 /**
  * Flatten the outline into the rows the page draws, with each row's lock
@@ -112,17 +113,19 @@ function buildRows(structure: CourseStructure, completed: Set<string> | null): O
 
     for (const chapter of group.chapters) {
       const previous = structure.chapters[position - 1] ?? null
+      const lockReason = chapterLockReason(
+        completed,
+        chapter,
+        previous,
+        previous ? isGradableChapterType(previous.chapter_type) : false,
+      )
       rows.push({
         kind: "lesson",
         key: chapter.id,
         chapter,
         position: position + 1,
-        locked: isChapterLocked(
-          completed,
-          chapter,
-          previous,
-          previous ? isGradableChapterType(previous.chapter_type) : false,
-        ),
+        locked: lockReason !== null,
+        lockReason,
       })
       position += 1
     }
@@ -178,6 +181,7 @@ export function CourseOutline({ courseId, structure, completedChapterIds }: Prop
                 chapter={row.chapter}
                 position={row.position}
                 isLocked={row.locked}
+                lockReason={row.lockReason}
                 isFirstLocked={row.key === firstLockedKey}
                 completedChapterIds={completedChapterIds}
               />
@@ -341,6 +345,8 @@ interface LessonRowProps {
   /** The lesson's place in the course's reading order, 1-based. */
   position: number
   isLocked: boolean
+  /** Which of the two locks this is — see `chapterLockReason`. */
+  lockReason: LockReason | null
   isFirstLocked: boolean
   /** `null` when the progress request failed. See `moduleProgress.ts`. */
   completedChapterIds: Set<string> | null
@@ -357,6 +363,7 @@ const LessonRow = memo(function LessonRow({
   chapter,
   position,
   isLocked,
+  lockReason,
   isFirstLocked,
   completedChapterIds,
 }: LessonRowProps) {
@@ -395,7 +402,9 @@ const LessonRow = memo(function LessonRow({
           )}
         </div>
         {isLocked && isFirstLocked && (
-          <p className="text-xs text-ink-muted ml-8 mt-1">{t("courseDetail.lessonLockHint")}</p>
+          <p className="text-xs text-ink-muted ml-8 mt-1">
+            {t(lockReason === "teacher" ? "courseDetail.lessonNotOpenedHint" : "courseDetail.lessonLockHint")}
+          </p>
         )}
       </CardHeader>
     </Card>
