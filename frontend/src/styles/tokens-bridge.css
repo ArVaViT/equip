@@ -1,27 +1,22 @@
 /*
- * Visual overhaul v2 — Wave 2 bridge layer (ADR-0011).
+ * Semantic token layer.
  *
- * Defines the v2 semantic token NAMES (--color-surface, --color-ink,
- * etc.) backed by the existing v1 HSL palette via ``hsl(var(--*))``
- * pass-throughs. This way:
+ * Defines the semantic token NAMES (--color-surface, --color-ink, etc.)
+ * backed by the HSL palette via ``var(--*)`` pass-throughs, so the
+ * vocabulary classes (border-edge, text-ink, bg-surface-elevated) and
+ * tailwind.config.js's ``hsl(var(--color-*))`` colours resolve.
  *
- * 1. Component code can start using the new names immediately
- *    (``bg-[hsl(var(--color-surface))]``), and the rendered result
- *    matches the v1 palette today.
- * 2. When Wave 9 swaps the backing palette over to the OKLCH values
- *    in ``tokens-v2.css``, every consumer flips at once with no
- *    component-level edit.
- * 3. The OKLCH layer (``tokens-v2.css``) stays unused until then —
- *    it's the future-state preview the design team iterates on
- *    without touching production.
+ * THIS FILE IS LOAD-BEARING: the Tailwind palette is built on these
+ * names. Removing it leaves every --color-* token undefined.
+ *
+ * Introduced as "Wave 2" of the Tailwind v4 + OKLCH migration proposed
+ * in ADR-0011. That migration was cancelled (ADR-0011, Superseded
+ * 2026-08-24) and its unused OKLCH preview layer (tokens-v2.css) was
+ * deleted 2026-09-13 — this bridge stays, permanently, as the place the
+ * semantic names are defined.
  *
  * Imported by ``index.css`` after the v1 token block so the v1 tokens
  * are already declared by the time these references resolve.
- *
- * The names mirror ``tokens-v2.css`` exactly (the OKLCH future-state).
- * Anything missing here is intentional — it means that token isn't
- * usable yet and a component using it would fail visually, which is
- * the signal a wave hasn't covered that surface.
  */
 
 :root,
