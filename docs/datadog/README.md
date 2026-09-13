@@ -133,7 +133,7 @@ In `Logs` → `Configuration` → `Generate Metrics` → `New Metric`:
 
 | Field | Value |
 |---|---|
-| Filter query | `@metric:equip.gemini.tokens_thinking_total` |
+| Filter query | `source:vercel @metric.name:equip.gemini.tokens_thinking_total` |
 | Metric name | `equip.gemini.tokens_thinking_total` |
 | Value | `@value` — the numeric field, **not** "count of logs" |
 | Group by | `model`, and nothing else |
@@ -179,6 +179,20 @@ drain ships them to Datadog, and the log pipeline **'Equip — drain
 metric parsing'** parses them into generated metrics
 (type: distribution).
 
+**A metric with no rule is a metric that does not exist.** The rule is
+created per name, by hand, and the emitter cannot tell you it is
+missing: the code logs, the line is parsed, and nothing counts it. Six
+names sat that way from 2026-09-11 to 2026-09-13. When you add a metric,
+add its rule in the same sitting, and check for a point before calling
+it done.
+
+The rule's filter must be `source:vercel @metric.name:<name>` and its
+compute a distribution over `@metric.value`. The parsed attribute is
+`@metric.name`, **not** `@metric` — a rule written the second way is
+accepted by the API, appears in the list, and silently matches nothing.
+That is how the six above were first created, and how they stayed at
+zero for another half hour.
+
 Consequences for queries:
 
 * `avg:` / `max:` / `sum:` query shapes work on every metric;
@@ -205,6 +219,12 @@ Consequences for queries:
 | `equip.grading.graded_total` | `teacher_id` | — | `app/api/v1/quizzes/grading.py` on the `pending → graded` transition (guarded against re-grade double-count) |
 | `equip.grading.time_to_grade.p50` | `teacher_id` | yes | same site; submission → grade latency in seconds |
 | `equip.youversion.api_calls_total` | `bible_id`, `outcome` | — | `app/services/verse_of_the_day.py::_fetch_passage`; `outcome=not_in_bible` is the version-difference walk-forward case, not a failure |
+| `equip.invitations.created_total` | `scope`, `role`, `kind` | — | `app/services/invitation_service.py::create_or_resend_invitation`; `kind` is `new` or `resend`, so a nudge is distinguishable from a first offer |
+| `equip.invitations.accepted_total` | `scope`, `role` | — | same module, on the accept transaction |
+| `equip.invitations.refused_total` | `scope`, `reason` | — | same module; `reason` says which guard turned the link away (expired, spent, revoked, wrong address) |
+| `equip.invitations.time_to_accept_ms` | `scope` | yes | sent → accepted, in milliseconds. The distribution is the point: a median of minutes and a tail of days are two different products. |
+| `equip.email.attempts_total` | `kind`, `outcome` | — | `app/services/email/send.py`, once per send attempt; `outcome` is `sent` or `failed`, never the address |
+| `equip.email.provider_ms` | `kind` | yes | same site; how long Resend took to accept the message |
 | `equip.enrollments.created_total` | `course_id`, `cohort_id` | — | `app/services/course_service/_enrollment.py::enroll_user_in_course`, once per NEW row |
 | `equip.completion.course_avg_pct` | `course_id` | — | `..._enrollment.py::sync_enrollment_progress`, gauge on every progress recompute |
 | `equip.translation.queue_depth` / `equip.translation.queue_processing` / `equip.translation.queue_failed_permanent` | (none) | — | `app/api/v1/internal_translation_worker.py::_emit_queue_gauges` on every cron tick; watched by `translation-backlog-not-draining.json` (the older `translation-queue-backlog` monitor was retired in #777) |
