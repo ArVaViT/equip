@@ -24,7 +24,7 @@ from app.models.course import Chapter, Course
 from app.models.course_event import CourseEvent
 from app.models.invitation import InvitationScope
 from app.models.organization import Organization
-from app.services.email.render import Fact, Message, render
+from app.services.email.render import Fact, Message, render, render_text
 from app.services.email.send import Delivery, send_email
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 
@@ -104,7 +104,7 @@ def _next_session(db: Session, course_id: str) -> datetime | None:
 
 
 def _session_text(moment: datetime, locale: LocaleCode) -> str:
-    """"12 сентября, 20:00 по восточному (17:00 по тихоокеанскому)"."""
+    """ "12 сентября, 20:00 по восточному (17:00 по тихоокеанскому)"."""
     if moment.tzinfo is None:
         moment = moment.replace(tzinfo=UTC)
     eastern = moment.astimezone(_SCHOOL_TIMEZONE)
@@ -207,6 +207,7 @@ def send_invitation_email(
     accept_url: str,
     locale: LocaleCode,
     inviter_name: str | None = None,
+    inviter_email: str | None = None,
 ) -> Delivery:
     """Render and send. Never raises — see ``send_email``."""
     message = build_invitation_message(
@@ -220,5 +221,11 @@ def send_invitation_email(
         to=invitation.email,
         subject=invitation_subject(message, locale, invitation.scope),
         html=render(message),
+        text=render_text(message),
         kind="invitation",
+        # The teacher's name on the envelope and their address behind
+        # "reply": an invitation the reader can answer is an invitation
+        # a filter has less reason to doubt.
+        sender_name=inviter_name,
+        reply_to=inviter_email,
     )
