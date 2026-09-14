@@ -1,0 +1,41 @@
+{
+  "$comment": [
+    "Auth settings this project holds deliberately, as code. Everything else",
+    "in the Auth config is left to Supabase's defaults and is never touched",
+    "by the apply job — a file claiming every field would go stale the first",
+    "time the platform added one.",
+    "",
+    "Why this file exists: rate_limit_email_sent sat at 2 for months. Two auth",
+    "emails per hour, shared between sign-up and password recovery, was the",
+    "real reason recovery mail 'went missing' while /recover answered 200. It",
+    "was written off as a platform limit needing custom SMTP. It is a field in",
+    "the Auth config, and it stayed invisible because nothing in the repository",
+    "described it.",
+    "",
+    "Every setting below carries a $<name> line saying why it holds that value;",
+    "a test fails if one is missing. Change a value, open a PR, then run the",
+    "Supabase Guardrails workflow with apply=true. The nightly run fails when",
+    "production drifts from this file."
+  ],
+
+  "mailer_otp_exp": 86400,
+  "$mailer_otp_exp": "24 hours. A one-hour link expired before people opened their mail: six of seven password sign-ups never confirmed.",
+
+  "mailer_autoconfirm": false,
+  "$mailer_autoconfirm": "Addresses must be proven — certificates carry a person's name and are publicly verifiable.",
+
+  "password_min_length": 12,
+  "$password_min_length": "Server-side floor. The client asks for the same and shows the requirement; before 2026-08-31 it asked for 6 and the server refused at 12.",
+
+  "password_hibp_enabled": true,
+  "$password_hibp_enabled": "Refuse passwords found in breach corpora. Free, and the audience reuses passwords.",
+
+  "rate_limit_email_sent": 30,
+  "$rate_limit_email_sent": "Was 2/hour across sign-up and recovery: one teacher inviting a class, or one person retrying a reset, exhausted it and the next caller got a silent 200. Mail leaves through the send-email hook into Resend, whose limits are the real ceiling; 30/hour is generous here and far below them.",
+
+  "refresh_token_rotation_enabled": true,
+  "$refresh_token_rotation_enabled": "A refresh token is spent on use, so a stolen one dies at the next legitimate refresh.",
+
+  "security_refresh_token_reuse_interval": 10,
+  "$security_refresh_token_reuse_interval": "10s grace so two requests firing at once do not log someone out; long enough for a slow mobile round trip, short enough to stay a grace window."
+}

@@ -1,0 +1,95 @@
+name: Supabase Guardrails
+
+# Two things about the Supabase project that were previously invisible
+# until they hurt:
+#
+#   advisors  — the weekly advisor email is easy to stop reading, and its
+#               wording overstates severity, so real findings hide among
+#               accepted ones. This applies the judgement (see the script)
+#               and speaks only when something needs a person.
+#   auth      — `rate_limit_email_sent` sat at 2 for months, blamed on the
+#               platform. It is a config field. Now it lives in
+#               supabase/config/auth.production.json and drift fails here.
+#
+# Checking is automatic and read-only. Writing is never automatic: applying
+# the Auth config takes a deliberate manual run with apply=true.
+
+on:
+  schedule:
+    # 06:40 UTC — after the edge-function drift check, before the day
+    # starts in America/Indianapolis.
+    - cron: "40 6 * * *"
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/config/**"
+      - ".github/scripts/supabase_advisors.py"
+      - ".github/scripts/supabase_auth_config.py"
+      - ".github/workflows/supabase-guardrails.yml"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Write the Auth settings from supabase/config/auth.production.json to the project"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  PROJECT_REF: rrisqutxlkamwfhcashl
+
+jobs:
+  auth-config:
+    name: auth config
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check (or apply) Auth settings
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          if [ "${{ inputs.apply }}" = "true" ]; then
+            echo "Applying — this writes to production Auth."
+            python3 .github/scripts/supabase_auth_config.py --apply
+          else
+            python3 .github/scripts/supabase_auth_config.py
+          fi
+
+  advisors:
+    name: advisors
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Read table sizes
+        id: rows
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          # The unindexed-foreign-key rule is judged against table size, so
+          # the advisor findings alone are not enough. A failure here must
+          # not hide the advisors, so fall back to an empty set: unknown
+          # size then counts as "big enough to report".
+          set +e
+          supabase link --project-ref "$PROJECT_REF" >/dev/null 2>&1
+          out=$(supabase db query --linked \
+            "select relname || '=' || n_live_tup as line from pg_stat_user_tables order by n_live_tup desc" 2>/dev/null \
+            | python3 -c 'import sys,re,json; m=re.search(r"\[.*\]", sys.stdin.read(), re.S); print(m.group(0) if m else "[]")')
+          [ -z "$out" ] && out="[]"
+          echo "counts<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$out" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Check advisors
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          python3 .github/scripts/supabase_advisors.py --row-counts '${{ steps.rows.outputs.counts }}'

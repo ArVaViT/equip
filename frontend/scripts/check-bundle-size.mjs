@@ -1,63 +1,78 @@
 #!/usr/bin/env node
-// Bundle-size sentinel — runs after ``vite build`` and fails the build
-// when any JS chunk grows past the per-chunk budget.
-//
-// Why per-chunk thresholds instead of one total: each chunk maps to a
-// specific surface (ChapterEditor = teacher rich-text editor lazy load,
-// index = always-on shell). Regressions usually land in ONE chunk
-// because someone import-ed a heavy lib into one route — a per-chunk
-// gate catches that on the next PR build, a total-bytes gate would
-// silently let it grow until cumulative drift forces a panicked
-// optimisation pass.
-//
-// Budgets are anchored to current size + ~15% headroom so day-to-day
-// editor refactors don't trip the gate. Bump deliberately and document
-// the reason in the commit message when a chunk legitimately grows.
+/*
+ * Bundle-size sentinel. Runs as part of `npm run build`, after `vite build`,
+ * and fails the build when the shipped JS drifts from what we agreed to ship.
+ *
+ * Why per-chunk ceilings instead of one total: each chunk maps to a surface
+ * (ChapterEditor = the teacher's rich-text editor, loaded lazily; index = the
+ * always-on shell). A regression usually lands in ONE chunk because somebody
+ * imported a heavy library into one route — a per-chunk gate names the chunk
+ * on the next PR build, where a total-bytes gate would absorb it until
+ * cumulative drift forces a panicked optimisation pass.
+ *
+ * The rules live in `bundle-budget.mjs` so they can be unit-tested; this file
+ * is the IO around them. See that file for what the four verdicts mean.
+ *
+ * BUDGETS ARE ANCHORED TO MEASURED SIZE + ~15%. That is not decoration: a
+ * budget far above the real number gates nothing, so the sentinel now fails
+ * on a stale budget exactly as it fails on a regression. When a chunk
+ * legitimately grows or shrinks, move its number IN THE SAME PR and say why
+ * in the commit message.
+ */
 
-import { readdir, stat } from "node:fs/promises";
+import { readdir, stat, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { gzip } from "node:zlib";
+import { promisify } from "node:util";
+import { chunkPrefix, evaluate, explain, UNBUDGETED_LIMIT_KB } from "./bundle-budget.mjs";
 
 const DIST = join(process.cwd(), "dist", "assets");
+const gzipAsync = promisify(gzip);
 
-// Per-chunk gzip-budgeted ceilings, in kB. We assert on **gzip** size
-// because that's what the browser actually downloads — minified-but-
-// uncompressed size is misleading. Numbers reflect the 2026-06-03
-// baseline + ~15% headroom.
+// Per-chunk gzip ceilings, in kB — gzip because that is what the browser
+// downloads; minified-but-uncompressed size is misleading. Measured
+// 2026-09-13 against the production build, plus ~15% headroom.
 const BUDGETS_GZIP_KB = {
-  index: 200, // shell — always loaded; main app router + Datadog RUM init.
-  ChapterEditor: 340, // teacher TipTap surface; lazy-loaded per /teacher/courses route.
-  ChapterView: 100, // student chapter render (DOMPurify + i18n).
-  vendor: 80, // React + react-router + a few small libs.
-  supabase: 70, // supabase-js v2 client; could be split if it grows further.
-  config: 60, // i18next config + bundled namespaces.
-  "dnd.esm": 35, // @hello-pangea/dnd ESM build.
-  schemas: 22, // zod schemas (shared across forms).
+  ChapterEditor: 252, // teacher TipTap surface; lazy per /teacher/courses.
+  katex: 86, // math typesetting, pulled in by lesson content rendering.
+  vendor: 82, // React + react-router + react-dom.
+  supabase: 61, // supabase-js v2 client.
+  esm: 59, // vendor ESM build named after its package entry file; give it
+  //         an explicit manualChunks name when someone touches that area.
+  motion: 47, // motion / motion-dom / motion-utils, pinned out of the shell.
+  ChapterList: 35, // student lesson list route.
+  index: 29, // shell — always loaded; app router + Datadog RUM init.
+  schemas: 20, // zod schemas shared across forms.
+  config: 19, // i18next config + bundled namespaces.
+  ChapterView: 14, // student chapter render (DOMPurify + i18n).
 };
 
-// Vite chunk filenames look like ``<name>-<hash>.js``. The name can
-// contain dots (e.g. ``dnd.esm-DcITUONc.js``), so we split on the
-// last hyphen and treat everything before it as the chunk name.
-function chunkPrefix(filename) {
-  if (!filename.endsWith(".js")) return null;
-  const stem = filename.slice(0, -3);
-  const lastDash = stem.lastIndexOf("-");
-  if (lastDash <= 0) return null;
-  const name = stem.slice(0, lastDash);
-  const hash = stem.slice(lastDash + 1);
-  // Sanity: the hash part should be at least 6 chars of alphanumerics.
-  if (!/^[A-Za-z0-9_-]{6,}$/.test(hash)) return null;
-  return name;
+async function gzipSizeKb(path) {
+  const buf = await readFile(path);
+  const gz = await gzipAsync(buf);
+  return gz.byteLength / 1024;
 }
 
-async function gzipSizeKb(path) {
-  // Vite emits an adjacent ``<file>.gz`` only when compress plugin is
-  // configured — we don't, so compute via Node's zlib.
-  const { gzip } = await import("node:zlib");
-  const { readFile } = await import("node:fs/promises");
-  const { promisify } = await import("node:util");
-  const buf = await readFile(path);
-  const gz = await promisify(gzip)(buf);
-  return gz.byteLength / 1024;
+/** name → largest gzip kB among files sharing that chunk name. */
+async function measure(files) {
+  const sizes = new Map();
+  const duplicates = new Map();
+  for (const f of files) {
+    const prefix = chunkPrefix(f);
+    if (prefix === null) continue;
+    const path = join(DIST, f);
+    const st = await stat(path);
+    if (!st.isFile()) continue;
+    const gz = await gzipSizeKb(path);
+    const seen = sizes.get(prefix);
+    if (seen === undefined) {
+      sizes.set(prefix, gz);
+    } else {
+      sizes.set(prefix, Math.max(seen, gz));
+      duplicates.set(prefix, (duplicates.get(prefix) ?? 1) + 1);
+    }
+  }
+  return { sizes, duplicates };
 }
 
 async function main() {
@@ -70,68 +85,43 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-  const violations = [];
-  // A budget name can match more than one emitted file (e.g. the
-  // ``supabase`` manual chunk plus a tiny same-named import facade).
-  // Collect every match per budget first, then assert on the LARGEST —
-  // that's the real payload; the facade would otherwise shadow it.
-  const matchesByPrefix = new Map();
-  for (const f of files) {
-    if (!f.endsWith(".js")) continue;
-    const prefix = chunkPrefix(f);
-    if (prefix === null) continue;
-    const budget = BUDGETS_GZIP_KB[prefix];
-    if (budget === undefined) continue;
-    const path = join(DIST, f);
-    const st = await stat(path);
-    if (!st.isFile()) continue;
-    const gz = await gzipSizeKb(path);
-    if (!matchesByPrefix.has(prefix)) matchesByPrefix.set(prefix, []);
-    matchesByPrefix.get(prefix).push({ prefix, file: f, gz, budget });
+
+  const { sizes, duplicates } = await measure(files);
+  for (const [name, count] of duplicates) {
+    console.warn(`warn: chunk name "${name}" matched ${count} files; asserting on the largest.`);
   }
-  const checked = [];
-  for (const [prefix, matches] of matchesByPrefix) {
-    matches.sort((a, b) => b.gz - a.gz);
-    const largest = matches[0];
-    if (matches.length > 1) {
-      console.warn(
-        `warn: budget "${prefix}" matched ${matches.length} files ` +
-          `(${matches.map((m) => m.file).join(", ")}); asserting on the largest.`,
-      );
-    }
-    checked.push(largest);
-    if (largest.gz > largest.budget) {
-      violations.push(largest);
-    }
-  }
-  // Always print the budget table so reviewers see headroom at a glance.
+
+  const verdict = evaluate({ sizes, budgets: BUDGETS_GZIP_KB });
+
   console.log("\nBundle-size sentinel (gzip kB):");
   console.log("  " + "chunk".padEnd(16) + "actual".padStart(10) + "  /  " + "budget".padEnd(10));
-  for (const c of checked.sort((a, b) => b.gz - a.gz)) {
-    const flag = c.gz > c.budget ? " ✗" : "";
+  for (const c of [...verdict.checked].sort((a, b) => b.actual - a.actual)) {
+    const flag = c.actual > c.budget ? " ✗ over" : c.actual < c.budget * 0.6 ? " ✗ stale" : "";
     console.log(
       "  " +
-        c.prefix.padEnd(16) +
-        c.gz.toFixed(1).padStart(10) +
+        c.name.padEnd(16) +
+        c.actual.toFixed(1).padStart(10) +
         "  /  " +
-        c.budget.toFixed(0).padEnd(10) +
+        String(c.budget).padEnd(10) +
         flag,
     );
   }
-  if (violations.length > 0) {
-    console.error(
-      "\nFAIL — these chunks exceed their gzip budget:",
-      JSON.stringify(violations, null, 2),
-    );
-    console.error(
-      "\nIf the growth is intentional, bump the matching BUDGETS_GZIP_KB " +
-        "entry in scripts/check-bundle-size.mjs IN THE SAME PR and explain " +
-        "why in the commit message.",
-    );
+  const budgetedTotal = verdict.checked.reduce((n, c) => n + c.actual, 0);
+  const allTotal = [...sizes.values()].reduce((n, v) => n + v, 0);
+  console.log(
+    `  ${String(sizes.size).padStart(3)} chunks total, ${verdict.checked.length} budgeted ` +
+      `(${budgetedTotal.toFixed(0)} of ${allTotal.toFixed(0)} kB gzip); ` +
+      `anything ≥ ${UNBUDGETED_LIMIT_KB} kB must be budgeted.`,
+  );
+
+  if (!verdict.ok) {
+    console.error("\nFAIL — bundle sentinel:\n");
+    for (const line of explain(verdict)) console.error("  " + line);
+    console.error("");
     process.exitCode = 1;
     return;
   }
-  console.log("\nOK — all chunks within budget.\n");
+  console.log("\nOK — every chunk within budget, every budget still gating.\n");
 }
 
 main().catch((err) => {
