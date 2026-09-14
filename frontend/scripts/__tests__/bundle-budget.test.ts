@@ -32,6 +32,25 @@ describe("chunkPrefix", () => {
     expect(chunkPrefix("sw.js")).toBeNull();
     expect(chunkPrefix("chunk-ab.js")).toBeNull();
   });
+
+  // The 2026-09-14 production outage: rolldown hashes are base64url, so
+  // roughly one file in ten carries a hyphen INSIDE the hash. Splitting on
+  // the last hyphen read the name as `index-4HQpI`, found no `index` chunk,
+  // and failed the build with DEAD BUDGET — at random, bump by bump.
+  it("reads the name when the hash itself contains a hyphen", () => {
+    expect(chunkPrefix("index-4HQpI-e4.js")).toBe("index");
+    expect(chunkPrefix("dist-MOeUB-rB.js")).toBe("dist");
+    expect(chunkPrefix("helpers-DuB-b6nd.js")).toBe("helpers");
+  });
+
+  it("does not hand a hyphenated hash back as part of the name", () => {
+    expect(chunkPrefix("driver.js-D-TfuXKP.js")).toBe("driver.js");
+    expect(chunkPrefix("heart-handshake--Qdd77qy.js")).toBe("heart-handshake");
+  });
+
+  it("reads a name that ends in a hyphen-bearing hash and contains hyphens", () => {
+    expect(chunkPrefix("circle-check-big-DLn8jA-9.js")).toBe("circle-check-big");
+  });
 });
 
 describe("evaluate — regression (the case the sentinel always caught)", () => {
@@ -164,7 +183,44 @@ describe("evaluate — the shape of a healthy build", () => {
   });
 });
 
+describe("evaluate — unreadable filename (the sentinel measuring nothing)", () => {
+  it("fails when a heavy file yielded no chunk name", () => {
+    const v = evaluate({
+      sizes: { vendor: 70 },
+      budgets: { vendor: 82 },
+      unparsed: [{ file: "index-4HQpI-e4x.js", actual: 26 }],
+    });
+    expect(v.ok).toBe(false);
+    expect(v.unreadable).toEqual([{ file: "index-4HQpI-e4x.js", actual: 26 }]);
+  });
+
+  it("lets a small unreadable file pass — noise, not hidden payload", () => {
+    const v = evaluate({
+      sizes: { vendor: 70 },
+      budgets: { vendor: 82 },
+      unparsed: [{ file: "sw.js", actual: 2 }],
+    });
+    expect(v.ok).toBe(true);
+    expect(v.unreadable).toEqual([]);
+  });
+
+  it("stays clean when nothing was unparsed", () => {
+    const v = evaluate({ sizes: { vendor: 70 }, budgets: { vendor: 82 } });
+    expect(v.ok).toBe(true);
+    expect(v.unreadable).toEqual([]);
+  });
+});
+
 describe("explain", () => {
+  it("names the file and the fix for an unreadable name", () => {
+    const v = evaluate({
+      sizes: {},
+      budgets: {},
+      unparsed: [{ file: "index-4HQpI-e4x.js", actual: 26 }],
+    });
+    expect(explain(v).join("\n")).toContain("UNREADABLE   index-4HQpI-e4x.js");
+  });
+
   it("names the chunk and the fix for every kind of failure", () => {
     const v = evaluate({
       sizes: { over: 100, stale: 20, fresh: 30 },
