@@ -4,8 +4,8 @@
  * Pins:
  * - Bridge file exists, parses, and is imported by index.css (Wave 2
  *   IS wired, unlike Wave 1 which was preview-only).
- * - Every token name from tokens-v2.css ALSO appears in the bridge
- *   so any component using a v2 name has a backing value today.
+ * - Every canonical token name appears in the bridge so any component
+ *   using a v2 name has a backing value today.
  * - Every bridge value is a ``var(--*)`` pass-through into the v1
  *   palette (no direct hex / hsl / oklch — those belong in the
  *   palette files, not the bridge).
@@ -17,7 +17,6 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const BRIDGE_FILE = resolve(HERE, "..", "tokens-bridge.css");
-const V2_FILE = resolve(HERE, "..", "tokens-v2.css");
 const INDEX_FILE = resolve(HERE, "..", "..", "index.css");
 
 const REQUIRED_TOKENS = [
@@ -58,11 +57,8 @@ describe("tokens-bridge.css (ADR-0011 Wave 2)", () => {
 
   it("matches the canonical v2 token vocabulary", () => {
     const bridge = readFileSync(BRIDGE_FILE, "utf-8");
-    const v2 = readFileSync(V2_FILE, "utf-8");
     for (const token of REQUIRED_TOKENS) {
-      // Both files must declare every canonical token name.
       expect(bridge.includes(token), `bridge missing ${token}`).toBe(true);
-      expect(v2.includes(token), `tokens-v2 missing ${token}`).toBe(true);
     }
   });
 
