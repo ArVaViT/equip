@@ -57,12 +57,19 @@ async function gzipSizeKb(path) {
 async function measure(files) {
   const sizes = new Map();
   const duplicates = new Map();
+  const unparsed = [];
   for (const f of files) {
-    const prefix = chunkPrefix(f);
-    if (prefix === null) continue;
+    if (!f.endsWith(".js")) continue;
     const path = join(DIST, f);
     const st = await stat(path);
     if (!st.isFile()) continue;
+    const prefix = chunkPrefix(f);
+    if (prefix === null) {
+      // Weighed, not skipped: an unreadable name hides real payload, and
+      // hiding it in silence is what let the shell chunk disappear.
+      unparsed.push({ file: f, actual: await gzipSizeKb(path) });
+      continue;
+    }
     const gz = await gzipSizeKb(path);
     const seen = sizes.get(prefix);
     if (seen === undefined) {
@@ -72,7 +79,7 @@ async function measure(files) {
       duplicates.set(prefix, (duplicates.get(prefix) ?? 1) + 1);
     }
   }
-  return { sizes, duplicates };
+  return { sizes, duplicates, unparsed };
 }
 
 async function main() {
@@ -86,12 +93,22 @@ async function main() {
     return;
   }
 
-  const { sizes, duplicates } = await measure(files);
+  const { sizes, duplicates, unparsed } = await measure(files);
   for (const [name, count] of duplicates) {
     console.warn(`warn: chunk name "${name}" matched ${count} files; asserting on the largest.`);
   }
+  if (unparsed.length > 0) {
+    console.warn(
+      `warn: ${unparsed.length} JS file(s) yielded no chunk name: ` +
+        unparsed
+          .map((u) => u.file)
+          .slice(0, 5)
+          .join(", ") +
+        (unparsed.length > 5 ? ", …" : ""),
+    );
+  }
 
-  const verdict = evaluate({ sizes, budgets: BUDGETS_GZIP_KB });
+  const verdict = evaluate({ sizes, budgets: BUDGETS_GZIP_KB, unparsed });
 
   console.log("\nBundle-size sentinel (gzip kB):");
   console.log("  " + "chunk".padEnd(16) + "actual".padStart(10) + "  /  " + "budget".padEnd(10));
