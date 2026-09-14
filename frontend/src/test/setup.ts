@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom'
+import '@testing-library/jest-dom/vitest'
 import i18n, { i18nReady, SUPPORTED_LOCALES } from '@/i18n/config'
 
 // i18n catalogs are lazy per-locale chunks in the app (see i18n/config.ts).
