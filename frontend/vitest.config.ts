@@ -19,7 +19,9 @@ export default defineConfig({
     // throws when run under Vitest's runner. The default vitest
     // include is ``**/*.{test,spec}...`` which is too broad once we
     // have e2e tests alongside the unit suite.
-    include: ['src/**/*.{test,spec}.{js,ts,jsx,tsx}'],
+    // ``scripts/`` holds build-time sentinels (bundle budgets, locale
+    // boot) whose rules deserve tests too — they gate every build.
+    include: ['src/**/*.{test,spec}.{js,ts,jsx,tsx}', 'scripts/**/*.{test,spec}.{js,ts,mjs}'],
     exclude: ['node_modules/**', 'dist/**', 'e2e/**'],
     // Coverage is opt-in via `npm run test:run -- --coverage`. The defaults
     // here only kick in when that flag is passed (CI), so day-to-day

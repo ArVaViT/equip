@@ -155,19 +155,59 @@ same PR** (see [`supabase/ci/README.md`](../supabase/ci/README.md) for the exact
 `pg_dump` command). The diff is the audit trail; the replay job is the gate. This
 is what would have caught the `cohorts.name` drift before it broke prod.
 
-## Edge functions -- the other manual step
+## Auth settings live in the repository
 
-`supabase/functions/send-email` is **not deployed by any workflow**.
-`edge-functions-ci.yml` only runs its Deno tests; `git push` does nothing
-to it, and a green pipeline on a PR that changes it means only that its
-tests passed. The version
-answering Supabase Auth right now is whatever was last pushed by hand.
+`supabase/config/auth.production.json` holds the Auth settings this
+project keeps deliberately -- OTP lifetime, password floor, refresh-token
+rotation, and the email rate limit. `.github/workflows/supabase-guardrails.yml`
+checks them nightly and on every PR touching the file; drift fails the run.
 
-This is worth stating plainly because the failure is silent in the
-worst direction: the code in `main` and the code sending your users'
-email can differ for weeks, and every check you have will be green
-while they do. On 2026-09-01 three merged fixes to the email copy sat
-undeployed for exactly this reason.
+Applying is never automatic. Run the workflow by hand with `apply=true`
+(Actions -> Supabase Guardrails -> Run workflow) and it writes only the
+settings that differ, then reads them back -- a PATCH to this endpoint is
+not instant, so the read-back is the proof, not the response.
+
+Settings not named in that file keep Supabase's defaults and are never
+touched.
+
+**Why it exists.** `rate_limit_email_sent` sat at 2 for months. Two auth
+emails per hour, shared by sign-up and password recovery, was the real
+reason recovery mail "went missing" while `/recover` answered 200 -- and
+it was written off as a platform limit that needed custom SMTP. It is a
+field in the Auth config. Nothing in the repository described it, so
+nobody questioned it.
+
+## Edge functions -- deployed by CI since 2026-09-14
+
+`supabase/functions/send-email` is deployed by
+`.github/workflows/edge-functions-deploy.yml` on every push to `main` that
+touches it. Nothing needs doing by hand.
+
+**What this replaced, and why it is worth remembering.** Until 2026-09-14
+no workflow deployed the function: `git push` did nothing to it, and a
+green pipeline on a PR that changed it meant only that its Deno tests
+passed. The version answering Supabase Auth was whatever was last pushed
+by hand. The failure was silent in the worst direction -- the code in
+`main` and the code sending your users' email could differ for weeks with
+every check green. On 2026-09-01 three merged fixes to the email copy sat
+undeployed for exactly that reason.
+
+Two guards now stand there:
+
+* the deploy job runs on push and then **reads the function back**, so a
+  deploy step that reports success without deploying fails the run;
+* a drift job runs nightly and on every PR touching the function. It
+  compares the deploy timestamp against the last commit that changed the
+  source, and fails when production is older. That comparison would have
+  caught 2026-09-01 the following morning.
+
+The workflow needs `SUPABASE_ACCESS_TOKEN` in repository secrets. That
+token carries full access to the Supabase project, which is the price of
+CI being able to deploy at all -- keep it in mind when reviewing workflow
+changes, and rotate it in 1Password and GitHub together.
+
+Deploying by hand still works and is sometimes right (a hotfix while CI is
+down):
 
 ```bash
 cd ~/Projects/equip
