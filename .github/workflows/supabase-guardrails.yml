@@ -54,6 +54,10 @@ jobs:
           if [ "${{ inputs.apply }}" = "true" ]; then
             echo "Applying — this writes to production Auth."
             python3 .github/scripts/supabase_auth_config.py --apply
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            # A PR that changes a value is drifted until it is merged and
+            # applied, so on PRs the difference is reported, not failed.
+            python3 .github/scripts/supabase_auth_config.py --warn-only
           else
             python3 .github/scripts/supabase_auth_config.py
           fi
@@ -65,31 +69,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Read table sizes
-        id: rows
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          # The unindexed-foreign-key rule is judged against table size, so
-          # the advisor findings alone are not enough. A failure here must
-          # not hide the advisors, so fall back to an empty set: unknown
-          # size then counts as "big enough to report".
-          set +e
-          supabase link --project-ref "$PROJECT_REF" >/dev/null 2>&1
-          out=$(supabase db query --linked \
-            "select relname || '=' || n_live_tup as line from pg_stat_user_tables order by n_live_tup desc" 2>/dev/null \
-            | python3 -c 'import sys,re,json; m=re.search(r"\[.*\]", sys.stdin.read(), re.S); print(m.group(0) if m else "[]")')
-          [ -z "$out" ] && out="[]"
-          echo "counts<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$out" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
       - name: Check advisors
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          python3 .github/scripts/supabase_advisors.py --row-counts '${{ steps.rows.outputs.counts }}'
+        # The script reads table sizes itself through the Management API —
+        # `supabase db query` would need a linked project and a database
+        # password, and when that silently failed the foreign-key rule fired
+        # seventeen times on empty tables.
+        run: python3 .github/scripts/supabase_advisors.py

@@ -69,6 +69,14 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--project-ref", default=os.environ.get("PROJECT_REF", "rrisqutxlkamwfhcashl"))
     ap.add_argument("--apply", action="store_true", help="write the settings instead of checking")
+    ap.add_argument(
+        "--warn-only",
+        action="store_true",
+        help=(
+            "report drift without failing — used on pull requests, where a PR that "
+            "changes a value is drifted by definition until it is merged and applied"
+        ),
+    )
     ap.add_argument("--config", default=str(CONFIG))
     args = ap.parse_args()
 
@@ -105,14 +113,18 @@ def main() -> int:
         return 0
 
     if not args.apply:
-        print("\n::error::Auth config drifted from supabase/config/auth.production.json:")
+        level = "warning" if args.warn_only else "error"
+        print(f"\n::{level}::Auth config drifted from supabase/config/auth.production.json:")
         for key, (want, got) in drifted.items():
             print(f"  {key}: repository says {want!r}, production has {got!r}")
         print(
-            "::error::Either the change was made in the dashboard and belongs in the "
-            "file, or the file is right and the Guardrails workflow should be run "
+            f"::{level}::Either the change was made in the dashboard and belongs in "
+            "the file, or the file is right and the Guardrails workflow should be run "
             "with apply=true."
         )
+        if args.warn_only:
+            print("\n(warn-only: not failing — apply after merge.)")
+            return 0
         return 1
 
     # PATCH carries only the drifted keys. Sending the whole desired set

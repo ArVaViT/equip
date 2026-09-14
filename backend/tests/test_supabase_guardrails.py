@@ -56,9 +56,22 @@ class TestUnindexedForeignKeys:
         assert not advisors.should_report(f, {"t": advisors.ROW_THRESHOLD - 1})
         assert advisors.should_report(f, {"t": advisors.ROW_THRESHOLD})
 
-    def test_unknown_table_size_reports_rather_than_stays_quiet(self):
-        """Failing to size a table is not a reason to say nothing."""
+    def test_table_missing_from_sizes_we_did_read_is_reported(self):
+        """We could measure and it was not there — that deserves a look."""
         assert advisors.should_report(finding("unindexed_foreign_keys", "INFO", "mystery"), {})
+
+    def test_rule_is_skipped_when_sizes_could_not_be_read_at_all(self):
+        """
+        The CI run on 2026-09-14: `supabase db query` failed silently, sizes came
+        back empty, and the gate fired seventeen lines nobody could act on. A gate
+        that cries wolf gets muted, so it now says it could not measure instead.
+        """
+        assert not advisors.should_report(finding("unindexed_foreign_keys", "INFO", "t"), None)
+
+    def test_skipping_the_fk_rule_does_not_silence_real_findings(self):
+        """Sizes missing must not become a way for a WARN to slip through."""
+        assert advisors.should_report(finding("some_new_lint", "WARN"), None)
+        assert advisors.should_report(finding("rls_disabled_in_public", "ERROR", "profiles"), None)
 
     def test_threshold_is_overridable_for_a_deliberate_sweep(self):
         f = finding("unindexed_foreign_keys", "INFO", "t")
@@ -71,12 +84,8 @@ class TestAcceptedFindings:
 
     def test_security_definer_helpers_are_not_reported(self):
         """Revoking EXECUTE would break the public catalogue, not close a hole."""
-        assert not advisors.should_report(
-            finding("anon_security_definer_function_executable", "WARN"), {}
-        )
-        assert not advisors.should_report(
-            finding("authenticated_security_definer_function_executable", "WARN"), {}
-        )
+        assert not advisors.should_report(finding("anon_security_definer_function_executable", "WARN"), {})
+        assert not advisors.should_report(finding("authenticated_security_definer_function_executable", "WARN"), {})
 
     def test_long_otp_expiry_is_a_decision_not_a_defect(self):
         assert not advisors.should_report(finding("auth_otp_long_expiry", "WARN"), {})
@@ -111,6 +120,40 @@ class TestRowCountParsing:
     def test_survives_junk_without_crashing_the_run(self):
         rows = [{"line": "broken"}, {"line": "t=notanumber"}, {}, {"line": "ok=5"}]
         assert advisors.parse_row_counts(rows) == {"ok": 5}
+
+
+class TestRowCountsFromApi:
+    """Sizes come from the Management API now — the CLI needed a password CI has not."""
+
+    def test_reads_the_management_api_shape(self, monkeypatch):
+        monkeypatch.setattr(
+            advisors,
+            "post",
+            lambda *a, **k: [
+                {"relname": "content_versions", "n_live_tup": 28926},
+                {"relname": "grade_sheets", "n_live_tup": 0},
+            ],
+        )
+        assert advisors.fetch_row_counts("ref", "token") == {
+            "content_versions": 28926,
+            "grade_sheets": 0,
+        }
+
+    def test_unwraps_a_result_envelope(self, monkeypatch):
+        monkeypatch.setattr(advisors, "post", lambda *a, **k: {"result": [{"relname": "t", "n_live_tup": 5}]})
+        assert advisors.fetch_row_counts("ref", "token") == {"t": 5}
+
+    def test_returns_none_when_the_call_fails(self, monkeypatch):
+        def boom(*a, **k):
+            raise TimeoutError
+
+        monkeypatch.setattr(advisors, "post", boom)
+        assert advisors.fetch_row_counts("ref", "token") is None
+
+    def test_returns_none_rather_than_an_empty_set(self, monkeypatch):
+        """Empty and unknown must not be confused: empty would skip every table."""
+        monkeypatch.setattr(advisors, "post", lambda *a, **k: [])
+        assert advisors.fetch_row_counts("ref", "token") is None
 
 
 class TestAuthConfigFile:

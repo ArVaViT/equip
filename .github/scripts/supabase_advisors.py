@@ -59,8 +59,7 @@ ACCEPTED: dict[str, str] = {
         "revoking EXECUTE would break the catalogue rather than close a hole."
     ),
     "authenticated_security_definer_function_executable": (
-        "Same three helpers; authenticated callers need EXECUTE for the policies "
-        "that call them to run at all."
+        "Same three helpers; authenticated callers need EXECUTE for the policies that call them to run at all."
     ),
     "unused_index": (
         "Indexes are judged when there is traffic to judge them by. With the "
@@ -85,6 +84,21 @@ def fetch(path: str, token: str) -> dict:
         return json.load(resp)
 
 
+def post(path: str, token: str, body: dict) -> dict | list:
+    req = urllib.request.Request(
+        f"{API}{path}",
+        data=json.dumps(body).encode(),
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "User-Agent": "equip-ci",
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=45) as resp:
+        return json.load(resp)
+
+
 def lints(payload: dict | list) -> list[dict]:
     if isinstance(payload, dict):
         return payload.get("lints", [])
@@ -96,12 +110,23 @@ def table_of(finding: dict) -> str | None:
     return meta.get("name")
 
 
-def should_report(finding: dict, row_counts: dict[str, int], threshold: int = ROW_THRESHOLD) -> bool:
+def should_report(
+    finding: dict,
+    row_counts: dict[str, int] | None,
+    threshold: int = ROW_THRESHOLD,
+) -> bool:
     """Does this finding need a person today?
 
     The row-count rule applies only to unindexed foreign keys: that is the
     finding whose cost scales with table size. Everything else is judged on
     its name and severity alone.
+
+    `row_counts` of None means the sizes could not be read at all. The
+    foreign-key rule is then skipped rather than fired: firing it would
+    turn every run into the same seventeen lines nobody can act on, which
+    is how a gate stops being read. The caller says so out loud instead —
+    see `main`. A table simply missing from a set we DID read is different:
+    it gets reported, because we could measure and it was not there.
     """
     name = finding.get("name", "")
     if name in ACCEPTED:
@@ -110,18 +135,40 @@ def should_report(finding: dict, row_counts: dict[str, int], threshold: int = RO
         if name != "unindexed_foreign_keys":
             return False
     if name == "unindexed_foreign_keys":
+        if row_counts is None:
+            return False
         table = table_of(finding)
-        # Unknown table → report. Not being able to size it is not a reason
-        # to stay quiet.
         return row_counts.get(table, threshold) >= threshold if table else True
     return True
 
 
-def row_counts_query() -> str:
-    return (
-        "select relname || '=' || n_live_tup as line "
-        "from pg_stat_user_tables order by n_live_tup desc"
-    )
+ROW_COUNTS_SQL = "select relname, n_live_tup from pg_stat_user_tables order by n_live_tup desc"
+
+
+def fetch_row_counts(ref: str, token: str) -> dict[str, int] | None:
+    """Live row counts, or None when they cannot be had.
+
+    Read through the Management API rather than the CLI: `supabase db query`
+    needs a linked project and a database password, neither of which CI has,
+    and a silent failure there previously turned this gate into seventeen
+    lines of noise.
+    """
+    try:
+        payload = post(f"/v1/projects/{ref}/database/query", token, {"query": ROW_COUNTS_SQL})
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError):
+        return None
+    rows = payload if isinstance(payload, list) else payload.get("result", payload.get("rows", []))
+    if not isinstance(rows, list):
+        return None
+    counts: dict[str, int] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        name = row.get("relname")
+        value = row.get("n_live_tup")
+        if isinstance(name, str) and isinstance(value, (int, float)):
+            counts[name] = int(value)
+    return counts or None
 
 
 def parse_row_counts(rows: list[dict]) -> dict[str, int]:
@@ -149,9 +196,17 @@ def main() -> int:
         print("::error::SUPABASE_ACCESS_TOKEN is not set — cannot read advisors.")
         return 1
 
-    row_counts: dict[str, int] = {}
     if args.row_counts:
-        row_counts = parse_row_counts(json.loads(args.row_counts))
+        row_counts: dict[str, int] | None = parse_row_counts(json.loads(args.row_counts))
+    else:
+        row_counts = fetch_row_counts(args.project_ref, token)
+    if row_counts is None:
+        print(
+            "::warning::Could not read table sizes, so the unindexed-foreign-key "
+            "rule is skipped this run. Everything else is still checked."
+        )
+    else:
+        print(f"table sizes read for {len(row_counts)} tables.")
 
     actionable: list[dict] = []
     accepted_count = 0
@@ -175,10 +230,7 @@ def main() -> int:
             else:
                 quiet_count += 1
 
-    print(
-        f"advisors: {accepted_count} accepted, {quiet_count} below threshold, "
-        f"{len(actionable)} need a person."
-    )
+    print(f"advisors: {accepted_count} accepted, {quiet_count} below threshold, {len(actionable)} need a person.")
 
     if not actionable:
         print("nothing to act on.")

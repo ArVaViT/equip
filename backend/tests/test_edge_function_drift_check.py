@@ -14,9 +14,7 @@ from pathlib import Path
 
 import pytest
 
-MODULE_PATH = (
-    Path(__file__).resolve().parents[2] / ".github" / "scripts" / "edge_function_drift.py"
-)
+MODULE_PATH = Path(__file__).resolve().parents[2] / ".github" / "scripts" / "edge_function_drift.py"
 
 
 def _load():
@@ -55,9 +53,7 @@ class TestIsDrifted:
 
     def test_comparison_survives_mixed_offsets(self):
         """Deploy time arrives as UTC epoch, git as a local ISO offset."""
-        source_local = dt.datetime(
-            2026, 9, 13, 22, 55, tzinfo=dt.timezone(dt.timedelta(hours=-4))
-        ).astimezone(dt.UTC)
+        source_local = dt.datetime(2026, 9, 13, 22, 55, tzinfo=dt.timezone(dt.timedelta(hours=-4))).astimezone(dt.UTC)
         deployed = _utc(2026, 9, 14, 3, 0)
         assert not drift.is_drifted(source_changed_at=source_local, deployed_at=deployed)
 
