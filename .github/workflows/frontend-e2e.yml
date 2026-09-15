@@ -4,11 +4,15 @@ on:
   pull_request:
     paths:
       - "frontend/**"
+      - "backend/**"
+      - "supabase/**"
       - ".github/workflows/frontend-e2e.yml"
   push:
     branches: [main]
     paths:
       - "frontend/**"
+      - "backend/**"
+      - "supabase/**"
       - ".github/workflows/frontend-e2e.yml"
 
 # Least-privilege token: this workflow only checks out the repo and uploads
@@ -26,13 +30,20 @@ concurrency:
 # We pin Node to the same minor as the rest of the CI matrix
 # (frontend-ci.yml uses 22.18.0) so a bundler / browser-runtime mismatch
 # can't introduce flakiness here that doesn't reproduce in dev.
+#
+# The whole stack this job drives — Postgres + GoTrue (Auth) + Storage +
+# Kong, via `supabase start` — is local Docker containers on the runner.
+# There is no staging environment any more (see docs/STAGING.md): it cost
+# real money to keep live, drifted 417 commits behind main while nobody
+# noticed because a stale green run looks identical to a fresh one, and a
+# from-scratch local stack proves the schema + app boot cleanly on every
+# PR instead of trusting a long-lived environment to still be honest.
+# Nothing here needs a secret, so fork and Dependabot PRs get the full
+# authenticated suite too — not just the public smoke specs.
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: frontend
+    timeout-minutes: 25
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -43,7 +54,22 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          version: "2.111.0"
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
       - name: Install npm dependencies
+        working-directory: frontend
         run: npm ci
 
       - name: Resolve Playwright version
@@ -51,6 +77,7 @@ jobs:
         # @playwright/test version from the lockfile so a Playwright bump
         # naturally invalidates the cache.
         id: playwright-version
+        working-directory: frontend
         run: >-
           echo "version=$(node -p
           "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
@@ -69,32 +96,188 @@ jobs:
         # the headless browser needs on Ubuntu. This step runs even on a
         # cache hit: the browser download is then a ~2s no-op, but the OS
         # deps still need installing on the fresh runner.
+        working-directory: frontend
         run: npx playwright install --with-deps chromium
 
-      - name: Start preview server
+      # ---------------------------------------------------------------
+      # Local Supabase stack (Postgres + GoTrue + Storage + Kong).
+      # ---------------------------------------------------------------
+
+      - name: Start local Supabase stack
+        # `supabase/config.toml` has `[db.migrations] enabled = false` —
+        # supabase/migrations/*.sql is incremental history that doesn't
+        # replay from empty (see the file header + docs/STAGING.md), so
+        # the schema gets loaded by hand below instead. Excluded
+        # containers (studio/realtime/imgproxy/mailpit/postgres-meta/
+        # edge-runtime/logflare/vector/supavisor) are all things this
+        # e2e run never touches — role users are created pre-confirmed
+        # via the admin API so no mail is ever sent, and the backend
+        # talks to Postgres directly rather than through the pooler.
+        run: |
+          supabase start -x studio,realtime,imgproxy,mailpit,postgres-meta,edge-runtime,logflare,vector,supavisor
+
+      - name: Export local Supabase connection info
+        run: |
+          set -euo pipefail
+          supabase status -o env > /tmp/supabase-status.env
+          # Local-only, throwaway demo credentials from the CLI's fixed
+          # dev config — safe to print for debugging a first-run mismatch.
+          cat /tmp/supabase-status.env
+          sed -i 's/^export //' /tmp/supabase-status.env
+          set -a
+          # shellcheck disable=SC1091
+          source /tmp/supabase-status.env
+          set +a
+          {
+            echo "SUPABASE_URL=$API_URL"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "JWT_SECRET_KEY=$JWT_SECRET"
+            # `_get_engine()` (backend/app/core/database.py) force-appends
+            # `sslmode=require` to any DATABASE_URL that doesn't already
+            # carry an sslmode — the local stack's Postgres has no TLS
+            # configured, so that would break every connection. Pin it
+            # explicitly instead.
+            echo "DATABASE_URL=${DB_URL}?sslmode=disable"
+          } >> "$GITHUB_ENV"
+
+      - name: Load the production schema onto the local stack
+        # Recipe from docs/STAGING.md "Spin-up", steps 1-2: schema.sql
+        # (minus the `CREATE SCHEMA public;` line — `supabase start`
+        # already created an empty one), then the GRANTs schema.sql was
+        # dumped without (`--no-privileges`, see supabase/ci/README.md),
+        # then the write-surface lockdown + the auth.users trigger, then
+        # the storage buckets + policies (schema.sql only covers the
+        # `public` schema, so these ship as their own migration files —
+        # replayed in the order they landed in prod).
+        run: |
+          set -euo pipefail
+          # No spaces in a Postgres URI, so word-splitting this unquoted
+          # is safe and lets $PSQL expand into separate psql arguments.
+          PSQL="psql $DATABASE_URL -v ON_ERROR_STOP=1"
+          grep -v '^CREATE SCHEMA public;$' supabase/schema.sql > /tmp/schema.sql
+          echo "::group::Load production schema"
+          $PSQL -f /tmp/schema.sql
+          echo "::endgroup::"
+          echo "::group::Apply production GRANTs"
+          $PSQL -f supabase/ci/rls_grants.sql
+          echo "::endgroup::"
+          echo "::group::Write-surface lockdown + auth.users trigger"
+          $PSQL -f supabase/ci/local_stack_lockdown.sql
+          echo "::endgroup::"
+          echo "::group::Storage buckets + policies"
+          for f in \
+            supabase/migrations/20260227031449_create_storage_buckets.sql \
+            supabase/migrations/20260227031530_storage_rls_policies.sql \
+            supabase/migrations/20260421010827_remove_public_bucket_listing_policies.sql \
+            supabase/migrations/20260906090000_a_director_uploads_course_assets.sql \
+            supabase/migrations/20260910120214_a_teacher_can_see_the_file_they_uploaded.sql \
+            supabase/migrations/20260910123047_course_materials_is_a_private_bucket.sql \
+            supabase/migrations/20260915142924_a_policy_without_to_still_reaches_anon.sql \
+          ; do
+            $PSQL -f "$f"
+          done
+          echo "::endgroup::"
+
+      - name: Create student/teacher/admin role users
+        # Real signup through GoTrue's admin API — `handle_new_user()`
+        # (the trigger just created) force-sets every new profile to
+        # role='student' (anti-escalation guard), so teacher/admin are
+        # promoted with a direct UPDATE afterwards, exactly as a human
+        # operator would per docs/STAGING.md step 3. Passwords are
+        # generated here and never leave this job.
+        run: |
+          set -euo pipefail
+          create_user() {
+            local email="$1" password="$2"
+            curl -sf -X POST "$SUPABASE_URL/auth/v1/admin/users" \
+              -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -n --arg email "$email" --arg password "$password" \
+                   '{email:$email,password:$password,email_confirm:true}')"
+          }
+
+          STUDENT_PASSWORD="$(openssl rand -base64 24)"
+          TEACHER_PASSWORD="$(openssl rand -base64 24)"
+          ADMIN_PASSWORD="$(openssl rand -base64 24)"
+          echo "::add-mask::$STUDENT_PASSWORD"
+          echo "::add-mask::$TEACHER_PASSWORD"
+          echo "::add-mask::$ADMIN_PASSWORD"
+
+          STUDENT_ID="$(create_user "e2e-student@equip-ci.invalid" "$STUDENT_PASSWORD" | jq -r .id)"
+          TEACHER_ID="$(create_user "e2e-teacher@equip-ci.invalid" "$TEACHER_PASSWORD" | jq -r .id)"
+          ADMIN_ID="$(create_user "e2e-admin@equip-ci.invalid" "$ADMIN_PASSWORD" | jq -r .id)"
+
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+            -c "UPDATE public.profiles SET role = 'teacher' WHERE id = '$TEACHER_ID';"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+            -c "UPDATE public.profiles SET role = 'admin' WHERE id = '$ADMIN_ID';"
+
+          {
+            echo "E2E_STUDENT_EMAIL=e2e-student@equip-ci.invalid"
+            echo "E2E_STUDENT_ID=$STUDENT_ID"
+            echo "E2E_TEACHER_EMAIL=e2e-teacher@equip-ci.invalid"
+            echo "E2E_TEACHER_ID=$TEACHER_ID"
+            echo "E2E_ADMIN_EMAIL=e2e-admin@equip-ci.invalid"
+            echo "E2E_ADMIN_ID=$ADMIN_ID"
+            echo "E2E_STUDENT_PASSWORD=$STUDENT_PASSWORD"
+            echo "E2E_TEACHER_PASSWORD=$TEACHER_PASSWORD"
+            echo "E2E_ADMIN_PASSWORD=$ADMIN_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Seed minimal course + Daily Challenge data
+        # One draft course (teacher dashboard shows own courses regardless
+        # of status; the analytics endpoint doesn't require students or
+        # even modules) and one published Daily Challenge question (the
+        # student dashboard's autofill picks it up for "today" with no
+        # explicit schedule row needed — see the script's docstring).
+        # Small numbers on purpose: this only needs to exist, not to be
+        # realistic at pilot scale (that's what seed_fat_test_course.py's
+        # own defaults are for, run by hand against a real environment).
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          python -m scripts.seed_fat_test_course \
+            --course-id e2e-course \
+            --teacher-email e2e-teacher@equip-ci.invalid \
+            --modules 1 --chapters-per-module 1 --students 0
+          python -m scripts.seed_e2e_daily_challenge --created-by "$E2E_TEACHER_ID"
+
+      - name: Start FastAPI backend
+        working-directory: backend
+        env:
+          # http://127.0.0.1:5173 isn't covered by the backend's default
+          # CORS allow-list (CORS_ORIGIN_REGEX matches any localhost port,
+          # not 127.0.0.1) or by http://localhost:5173 alone — vite
+          # preview below binds 127.0.0.1 to match the existing
+          # E2E_BASE_URL convention, so state both explicitly.
+          CORS_ORIGINS: "http://127.0.0.1:5173,http://localhost:5173"
+        run: |
+          set -euo pipefail
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/backend.log 2>&1 &
+          for _ in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8000/health > /dev/null; then
+              echo "Backend is up"
+              curl -s http://127.0.0.1:8000/health
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Backend did not become healthy in time" >&2
+          cat /tmp/backend.log >&2
+          exit 1
+
+      - name: Build + serve the frontend against the local stack
         # Build + serve so the e2e suite runs against the production
         # bundle, not the dev HMR pipeline. Catches build-time issues
-        # (missing tree-shake-safe markers, env wiring) the same way
-        # a real prod deploy would.
+        # (missing tree-shake-safe markers, env wiring) the same way a
+        # real prod deploy would.
+        working-directory: frontend
         env:
-          # Two modes, switched by the repo variable STAGING_ACTIVE:
-          #
-          # * STAGING_ACTIVE == 'true' — build against the live staging
-          #   stack (api-staging.equipbible.com + the staging Supabase
-          #   branch), which lets global.setup.ts sign the role users in
-          #   and unlocks the authenticated student/teacher specs.
-          # * otherwise — placeholder env; src/lib/supabase.ts THROWS at
-          #   module load if VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are
-          #   unset (blanking the SPA), so placeholders keep the public
-          #   smoke specs alive. Fork/Dependabot PRs see no secrets and
-          #   land here automatically.
-          #
-          # Staging is ephemeral by design — tearing it down only requires
-          # flipping STAGING_ACTIVE to 'false'; the auth'd specs then skip
-          # instead of failing.
-          VITE_API_URL: ${{ vars.STAGING_ACTIVE == 'true' && 'https://api-staging.equipbible.com' || 'http://localhost:8000' }}
-          VITE_SUPABASE_URL: ${{ vars.STAGING_ACTIVE == 'true' && secrets.STAGING_SUPABASE_URL || 'https://example.supabase.co' }}
-          VITE_SUPABASE_ANON_KEY: ${{ vars.STAGING_ACTIVE == 'true' && secrets.STAGING_SUPABASE_ANON_KEY || 'e2e-placeholder-anon-key-not-real' }}
+          VITE_API_URL: http://127.0.0.1:8000
+          VITE_SUPABASE_URL: ${{ env.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ env.SUPABASE_ANON_KEY }}
         run: |
           npm run build
           npx vite preview --host 127.0.0.1 --port 5173 &
@@ -103,21 +286,10 @@ jobs:
           npx wait-on http://127.0.0.1:5173 --timeout 60000
 
       - name: Run Playwright tests
+        working-directory: frontend
         env:
           CI: "true"
           E2E_BASE_URL: http://127.0.0.1:5173
-          # Role-user credentials for the staging Supabase branch. Empty
-          # when STAGING_ACTIVE != 'true' (or on fork/Dependabot PRs) —
-          # global.setup.ts and the auth'd specs skip gracefully then.
-          E2E_STUDENT_EMAIL: ${{ vars.STAGING_ACTIVE == 'true' && secrets.E2E_STUDENT_EMAIL || '' }}
-          E2E_STUDENT_PASSWORD: ${{ vars.STAGING_ACTIVE == 'true' && secrets.E2E_STUDENT_PASSWORD || '' }}
-          E2E_STUDENT_ID: ${{ vars.STAGING_ACTIVE == 'true' && secrets.E2E_STUDENT_ID || '' }}
-          E2E_TEACHER_EMAIL: ${{ vars.STAGING_ACTIVE == 'true' && secrets.E2E_TEACHER_EMAIL || '' }}
-          E2E_TEACHER_PASSWORD: ${{ vars.STAGING_ACTIVE == 'true' && secrets.E2E_TEACHER_PASSWORD || '' }}
-          E2E_TEACHER_ID: ${{ vars.STAGING_ACTIVE == 'true' && secrets.E2E_TEACHER_ID || '' }}
-          E2E_ADMIN_EMAIL: ${{ vars.STAGING_ACTIVE == 'true' && secrets.E2E_ADMIN_EMAIL || '' }}
-          E2E_ADMIN_PASSWORD: ${{ vars.STAGING_ACTIVE == 'true' && secrets.E2E_ADMIN_PASSWORD || '' }}
-          E2E_ADMIN_ID: ${{ vars.STAGING_ACTIVE == 'true' && secrets.E2E_ADMIN_ID || '' }}
         run: npx playwright test
 
       - name: Upload Playwright report on failure
@@ -134,4 +306,12 @@ jobs:
         with:
           name: playwright-traces
           path: frontend/test-results/
+          retention-days: 7
+
+      - name: Upload backend log on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: backend-log
+          path: /tmp/backend.log
           retention-days: 7

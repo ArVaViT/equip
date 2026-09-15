@@ -20,10 +20,11 @@
  *    localStorage. Faster and decoupled from any login-form
  *    regressions in the SUT.
  *
- * Neither path is wired into the CI workflow yet — the CI preview
- * has no real Supabase project. The fixtures land as a structured
- * placeholder so the first golden-path spec can use them once the
- * test Supabase project is provisioned.
+ * Path 1 is wired into CI via ``global.setup.ts`` against the local
+ * Supabase stack ``.github/workflows/frontend-e2e.yml`` boots per run
+ * (``docs/STAGING.md``). Path 2 (``injectSession``) has no caller yet —
+ * it stays here as a documented option for a spec that wants a specific
+ * signed-in state without going through the login form.
  */
 import { test as base } from "@playwright/test";
 import type { Page, BrowserContext } from "@playwright/test";
@@ -40,10 +41,13 @@ interface TestUser {
 }
 
 /**
- * Read the test credentials for a role from env vars. The CI
- * workflow will need to set these once a test Supabase project
- * exists. Local dev can copy them from
- * ``Memory/equip-e2e-test-users.md``.
+ * Read the test credentials for a role from env vars. In CI, the
+ * "Create student/teacher/admin role users" step in
+ * ``.github/workflows/frontend-e2e.yml`` generates a password, signs
+ * the user up against the local Supabase stack, and exports all three
+ * (email/password/id) via ``$GITHUB_ENV`` — no repository secret
+ * involved. For local dev, set them by hand in ``frontend/.env.local``
+ * against whatever Supabase project ``VITE_SUPABASE_URL`` points at.
  */
 export function getTestUser(role: AuthRole): TestUser {
   const prefix = `E2E_${role.toUpperCase()}`;
@@ -53,8 +57,8 @@ export function getTestUser(role: AuthRole): TestUser {
   if (!email || !password || !id) {
     throw new Error(
       `Missing ${prefix}_EMAIL / _PASSWORD / _ID. ` +
-        "These come from the test Supabase project; populate them in CI " +
-        "via repository secrets and locally via frontend/.env.local.",
+        "In CI these come from frontend-e2e.yml's role-user creation step; " +
+        "locally, set them in frontend/.env.local.",
     );
   }
   return { email, password, id, role };

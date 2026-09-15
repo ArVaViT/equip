@@ -71,9 +71,10 @@ Authenticated (need the `E2E_*` env vars, otherwise skipped):
 
 ## CI
 
-`.github/workflows/frontend-e2e.yml` builds the frontend, serves it, runs
-the suite and uploads traces + screenshots on failure. The authenticated
-specs run only while the repo variable `STAGING_ACTIVE` is `true` and the
-`E2E_*` secrets point at staging (see `docs/STAGING.md`); in every other
-state the build falls back to placeholder env and only the public specs
-run -- a green run does not by itself prove the student and teacher paths.
+`.github/workflows/frontend-e2e.yml` boots a local Supabase + FastAPI
+stack, seeds student/teacher/admin role users and minimal course/Daily
+Challenge data, then builds the frontend against that stack, serves it,
+runs the full suite (public and authenticated specs together) and
+uploads traces + screenshots on failure. This needs no repository
+secrets, so it runs the same way on fork and Dependabot PRs — see
+`docs/STAGING.md` for the full recipe.
