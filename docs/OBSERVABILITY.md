@@ -95,8 +95,7 @@ a busy day. Nearly all of it was one line per successful static asset
 request -- a visitor's first load alone is around fifty of them.
 
 So successful static hits are now sampled at the index, by an exclusion
-filter named **"vercel: successful static hits (404s on vanished chunks
-kept)"**:
+filter named **"vercel: successful static hits (non-200 kept)"**:
 
 ```
 query:       source:vercel @proxy.pathType:STATIC @proxy.statusCode:200
