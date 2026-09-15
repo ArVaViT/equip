@@ -240,9 +240,9 @@ not affect the metrics.
    with the key from 1Password via `op run`) -- list the last 20 sends and
    look at `last_event`.
 
-## Two noisy signals that were investigated and are not problems
+## Three noisy signals that were investigated and are not ours to fix
 
-Written down because both look alarming in a log query, and both cost a
+Written down because each looks alarming in a log query, and each cost a
 day to rule out. Do not re-derive this.
 
 ### `Warp server error: Thread killed by timeout manager` (PostgREST)
@@ -270,6 +270,34 @@ Warp is PostgREST's internal HTTP server. An error there with no matching
 edge request is almost certainly an internal readiness probe against the
 PostgREST pod. **No index, no config change.** If it recurs, look at the
 pod's health and restart history on the Supabase side, not at SQL.
+
+### `DEPRECATION NOTICE: GOTRUE_JWT_*_GROUP_NAME` in the Auth logs
+
+Two warning-level lines on every GoTrue start, confirmed live on
+2026-09-15 at 19:30:56 UTC in the same startup batch as "GoTrue migrations
+applied successfully":
+
+```
+DEPRECATION NOTICE: GOTRUE_JWT_DEFAULT_GROUP_NAME not supported by Supabase's GoTrue, will be removed soon
+DEPRECATION NOTICE: GOTRUE_JWT_ADMIN_GROUP_NAME not supported by Supabase's GoTrue, will be removed soon
+```
+
+**Neither variable is ours to unset**, which is the whole point of writing
+this down. Checked:
+
+- `GET /v1/projects/{ref}/config/auth` has no field of either name, and
+  neither exists in the `AuthConfigResponse` schema;
+- `GET /v1/projects/{ref}/secrets` lists 12 secrets, all ours, no `GOTRUE_*`;
+- nothing in this repository sets them — no `supabase/config.toml`, no
+  compose file, no self-hosted GoTrue config; a repo-wide grep finds nothing.
+
+They are inherited defaults in the project's managed GoTrue deployment,
+left from the Netlify-era variable names. A support ticket is the only
+route; the text is drafted and waiting to be sent.
+
+Why it is worth a ticket rather than a shrug: these are the **only**
+warning-level lines the Auth service emits on a healthy start, so they are
+what a person hits first when scanning auth logs for something real.
 
 ### `database "template1" has a collation version mismatch`
 
