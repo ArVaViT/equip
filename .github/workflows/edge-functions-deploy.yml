@@ -71,7 +71,13 @@ jobs:
 
   drift:
     name: drift check
-    if: github.event_name == 'schedule' || github.event_name == 'pull_request'
+    # Not on Dependabot PRs: such runs get no SUPABASE_ACCESS_TOKEN (GitHub
+    # withholds repository secrets from them), so the check fails before it
+    # reaches Supabase. The paths filter includes this workflow file, which
+    # is exactly what an actions bump edits.
+    if: >-
+      (github.event_name == 'schedule' || github.event_name == 'pull_request')
+      && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

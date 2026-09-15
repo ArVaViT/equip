@@ -42,6 +42,12 @@ env:
 jobs:
   auth-config:
     name: auth config
+    # Skipped on Dependabot PRs: GitHub withholds ordinary repository secrets
+    # from dependabot-triggered runs, so SUPABASE_ACCESS_TOKEN arrives empty
+    # and the job fails on its first line — a red cross that says nothing
+    # about the bump. The paths filter above lists this very file, so every
+    # actions bump used to trip it. Scheduled runs and human PRs still check.
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -64,6 +70,8 @@ jobs:
 
   advisors:
     name: advisors
+    # Same reason as auth-config above.
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
