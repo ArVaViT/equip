@@ -31,17 +31,25 @@ const gzipAsync = promisify(gzip);
 
 // Per-chunk gzip ceilings, in kB — gzip because that is what the browser
 // downloads; minified-but-uncompressed size is misleading. Measured
-// 2026-09-13 against the production build, plus ~15% headroom.
+// 2026-09-14 against the production build, plus ~15% headroom.
+//
+// Re-measured for vite 8.3 / rolldown 1.2, which consolidates chunks far
+// more aggressively than 8.2 did. Judge that by first-load weight, not by
+// any single chunk: the entry page went from 49 chunks / 337.2 kB gzip to
+// 24 chunks / 330.7 kB. Slightly lighter, half the requests — so the growth
+// of `index` below is consolidation, not a regression, and the numbers move
+// to match. Nothing was added to the shell that a visitor did not already
+// download under 8.2.
 const BUDGETS_GZIP_KB = {
   ChapterEditor: 252, // teacher TipTap surface; lazy per /teacher/courses.
+  index: 109, // shell — always loaded. Under 8.2 this was 29 kB and the
+  //           Datadog RUM core sat beside it in a nameless `esm` chunk;
+  //           8.3 folds that core, sonner and the radix dialog/tooltip in.
   katex: 86, // math typesetting, pulled in by lesson content rendering.
   vendor: 82, // React + react-router + react-dom.
   supabase: 61, // supabase-js v2 client.
-  esm: 59, // vendor ESM build named after its package entry file; give it
-  //         an explicit manualChunks name when someone touches that area.
   motion: 47, // motion / motion-dom / motion-utils, pinned out of the shell.
   ChapterList: 35, // student lesson list route.
-  index: 29, // shell — always loaded; app router + Datadog RUM init.
   schemas: 20, // zod schemas shared across forms.
   config: 19, // i18next config + bundled namespaces.
   ChapterView: 14, // student chapter render (DOMPurify + i18n).
