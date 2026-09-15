@@ -16,6 +16,9 @@
  * 4. Is a heavy chunk missing from the budget table entirely?  (7 of 178
  *    chunks were budgeted; `katex` at 74.7 kB — heavier than `vendor` —
  *    was not one of them)
+ * 5. Did a heavy file fail to yield a chunk name at all?  (added 2026-09-14:
+ *    a filename the parser cannot read used to be skipped in silence, which
+ *    is how the shell chunk went missing and the build failed at random)
  */
 
 /** Budget is treated as stale when actual < budget * this. */
@@ -32,20 +35,31 @@ export const MIN_STALE_KB = 10;
 export const UNBUDGETED_LIMIT_KB = 25;
 
 /**
- * Vite chunk filenames look like `<name>-<hash>.js`. The name can contain
- * dots (`dnd.esm-DcITUONc.js`), so split on the LAST hyphen and treat what
- * precedes it as the chunk name. Returns null for anything that is not a
- * hashed JS chunk.
+ * Length of the hash Vite appends to a chunk filename. Rolldown emits
+ * base64url, so a hash is 8 characters of `[A-Za-z0-9_-]` — HYPHEN INCLUDED.
+ */
+export const HASH_LENGTH = 8;
+
+/**
+ * Vite chunk filenames look like `<name>-<hash>.js`. Both halves may contain
+ * a hyphen — the name (`use-reduced-motion-CXFKzUjI.js`) and, about 10% of
+ * the time, the base64url hash itself (`index-4HQpI-e4.js`). So the split
+ * cannot be "last hyphen": it has to be "the last HASH_LENGTH characters".
+ *
+ * Splitting on the last hyphen is what broke production on 2026-09-14. It
+ * read `index-4HQpI-e4.js` as name `index-4HQpI` + hash `e4`, rejected the
+ * too-short hash, and dropped the file — so the shell chunk vanished from
+ * the measurement and `index` was reported DEAD. The build then failed at
+ * random, because whether a hash contains a hyphen changes with every
+ * dependency bump. 20 of 204 files were misread that day.
+ *
+ * Returns null for anything that is not a hashed JS chunk.
  */
 export function chunkPrefix(filename) {
   if (!filename.endsWith(".js")) return null;
   const stem = filename.slice(0, -3);
-  const lastDash = stem.lastIndexOf("-");
-  if (lastDash <= 0) return null;
-  const name = stem.slice(0, lastDash);
-  const hash = stem.slice(lastDash + 1);
-  if (!/^[A-Za-z0-9_-]{6,}$/.test(hash)) return null;
-  return name;
+  const match = new RegExp(`^(.+)-([A-Za-z0-9_-]{${HASH_LENGTH}})$`).exec(stem);
+  return match === null ? null : match[1];
 }
 
 /**
@@ -57,10 +71,13 @@ export function chunkPrefix(filename) {
  *   passes the largest: that is the real payload, and a same-named import
  *   facade would otherwise shadow it.
  * @param {Record<string, number>} args.budgets chunk name → gzip kB ceiling.
+ * @param {Array<{file: string, actual: number}>} [args.unparsed] JS files whose
+ *   name did not yield a chunk name. A heavy one means the sentinel is blind
+ *   to real payload — see question 5.
  * @param {object} [args.options] overrides for the three thresholds.
- * @returns {{over: Array, stale: Array, dead: Array, unbudgeted: Array, checked: Array, ok: boolean}}
+ * @returns {{over: Array, stale: Array, dead: Array, unbudgeted: Array, unreadable: Array, checked: Array, ok: boolean}}
  */
-export function evaluate({ sizes, budgets, options = {} }) {
+export function evaluate({ sizes, budgets, unparsed = [], options = {} }) {
   const staleRatio = options.staleRatio ?? STALE_RATIO;
   const minStaleKb = options.minStaleKb ?? MIN_STALE_KB;
   const unbudgetedLimitKb = options.unbudgetedLimitKb ?? UNBUDGETED_LIMIT_KB;
@@ -94,18 +111,27 @@ export function evaluate({ sizes, budgets, options = {} }) {
     }
   }
 
+  const unreadable = unparsed.filter((u) => u.actual >= unbudgetedLimitKb);
+
   over.sort((a, b) => b.actual - a.actual);
   stale.sort((a, b) => b.budget - a.budget);
   unbudgeted.sort((a, b) => b.actual - a.actual);
   dead.sort((a, b) => a.name.localeCompare(b.name));
+  unreadable.sort((a, b) => b.actual - a.actual);
 
   return {
     over,
     stale,
     dead,
     unbudgeted,
+    unreadable,
     checked,
-    ok: over.length === 0 && stale.length === 0 && dead.length === 0 && unbudgeted.length === 0,
+    ok:
+      over.length === 0 &&
+      stale.length === 0 &&
+      dead.length === 0 &&
+      unbudgeted.length === 0 &&
+      unreadable.length === 0,
   };
 }
 
@@ -135,6 +161,13 @@ export function explain(verdict) {
     lines.push(
       `NO BUDGET    ${v.name}: ${v.actual.toFixed(1)} kB and nothing is watching it. ` +
         `Add an entry (~${v.suggested} kB) or split the chunk.`,
+    );
+  }
+  for (const v of verdict.unreadable ?? []) {
+    lines.push(
+      `UNREADABLE   ${v.file}: ${v.actual.toFixed(1)} kB, but the filename yields no ` +
+        `chunk name, so nothing measured it. The build tool changed its hash format — ` +
+        `update HASH_LENGTH / chunkPrefix to match before trusting this report.`,
     );
   }
   return lines;
