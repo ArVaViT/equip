@@ -203,6 +203,63 @@ not affect the metrics.
    with the key from 1Password via `op run`) -- list the last 20 sends and
    look at `last_event`.
 
+## Two noisy signals that were investigated and are not problems
+
+Written down because both look alarming in a log query, and both cost a
+day to rule out. Do not re-derive this.
+
+### `Warp server error: Thread killed by timeout manager` (PostgREST)
+
+79 occurrences over 09-08…09-14, rising to 34 on 09-12 and fading after.
+The obvious theory — a slow query against `content_versions` (28 950 rows,
+25 204 sequential scans) hanging the REST API — **is wrong**:
+
+- Each event was matched against `/rest/v1/*` in `edge_logs` within ±2 s.
+  **1 of 79 matched**, and that one was a healthy `GET /profiles`, 200 in
+  342 ms. The other 78 correspond to no logged request at all.
+- Across six days: **zero 5xx** on `/rest/v1/*`, exactly one response over
+  2 s. Total REST traffic is 48-128 requests/day, nearly all browser
+  preflights and Datadog synthetics — the app talks to Postgres through
+  the backend and the pooler, not PostgREST.
+- `content_versions` already carries 9 indexes, including partial ones
+  matching the real access pattern. The batched ORM lookups average
+  0.07-28 ms. The sequential scans come from occasional manual
+  `text LIKE '%…%'` queries run through the SQL editor as `postgres`.
+- Not the same mechanism as `statement_timeout` (3 s anon / 8 s
+  authenticated), which surfaces as an HTTP 500 saying "canceling
+  statement" and would appear in `edge_logs`.
+
+Warp is PostgREST's internal HTTP server. An error there with no matching
+edge request is almost certainly an internal readiness probe against the
+PostgREST pod. **No index, no config change.** If it recurs, look at the
+pod's health and restart history on the Supabase side, not at SQL.
+
+### `database "template1" has a collation version mismatch`
+
+~10 000 warnings a week — over 99 % of all Postgres WARNING volume — at
+roughly one a minute. `template1` reports collation version 153.120 while
+the OS provides 153.121, after a glibc upgrade underneath the instance.
+
+The application database is **not** affected (153.121 both sides), and
+`template1` holds no data: it is the template new databases are cloned
+from. So this is pure log noise, not a correctness risk — but it drowns
+the Postgres WARNING stream, which is why the stream is worth nothing
+today.
+
+Fixed by one statement, which needs an operator (it alters a shared
+database, so agents are blocked from running it):
+
+```sql
+ALTER DATABASE template1 REFRESH COLLATION VERSION;
+```
+
+Confirm with:
+
+```sql
+SELECT datname, datcollversion, pg_database_collation_actual_version(oid)
+FROM pg_database WHERE datname = 'template1';
+```
+
 ## What's NOT wired up (known gaps)
 
 These are deliberate omissions; revisit when traffic or budget grows.
